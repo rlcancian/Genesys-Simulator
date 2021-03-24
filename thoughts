@@ -1,0 +1,42 @@
+"Gerenciador de Experimentos é o responsável por configurar, executar e coletar os resultados de um ou mais experimentos (SimulationScenarios) sobre um modelo"
+----------------------------
+-> experiment manager possui (deveria(?) tem get, mas n tem atributo) lista de scenarios
+
+-> experiment manager pode mandar iniciar simulação de um scenario e simplesmente iniciar simulação (seria todos scenarios da lista(?) provavel)
+
+-> dos 3 gets de list em experiment manager apenas 1 tem a lista em sí pra pegar, provável q só está faltando msm, mas n sei (getScenarios, *getControls*, getResponses) : *unico*
+-------------------------
+
+"Um experimento é definido como a execução de uma certa quantidade de replicaçoes do modelo quando um ou mais dos parâmetros do modelo (SimulationControls) são setados para certos valores, e depois um ou mais resultados da simulação (SimulationResponses) são coletados."
+-------------------------
+->SimulationScenario: "Represents a scenario where a specific model (defined <by> my ModelFilename) will be simulated. To each scenario will be associated a set of SimulationControl and SimulationResponse, and their values are set to the scenario by the ProcessAnalyser."
+
+->Scenarios guarda o nome do arquivo do modelo
+ ->->provavel aquele que o professor manda salvar ao antes de executar o problema
+   ->->->talvez para testar: inicie o modelo igual exemplos do professor-> crie os scenarios -> salvar o arquivo do modelo nele -> adicioná-los a uma lista do manager-> mandar manager rodar com os scenarios
+    ->->->-> Problema: métodos que salvam e carregam os arquivos não parecem pronto
+    
+->"ProcessAnalyser" aparentemente o nome antigo de "experiment manager"
+ ->->* File:   ProcessAnalyserDefaultImpl1.h   :  em ExperimentManagerDefaultImpl1.h
+ ->->* File:   ProcessAnalyserDefaultImpl1.cpp :  em ExperimentManagerDefaultImpl1.cpp
+ 
+->"and their values are set to the scenario by the *ExperimentManager*"
+ ->->Funções que tem sobre eles são essas:
+ 	virtual List<SimulationControl*>* getControls() const;
+	virtual List<SimulationResponse*>* getResponses() const;
+	virtual List<SimulationControl*>* extractControlsFromModel(std::string modelFilename) const;
+	virtual List<SimulationResponse*>* extractResponsesFromModel(std::string modelFilename) const;
+  ->->->talvez, Duas ultimas: talvez a ideia seja usar o _modelFilename dos scenarios, e extrair pra dentro do scenario q se usou pra pegar tal nome. Sem certeza se é isso
+   ->->->-> Se for o caso em SimulationScenario.h tem: (vide comentario)
+    ->->->->->  std::list<SimulationControl*>* _selectedControls = new std::list<SimulationControl*>(); /*!< a subset of SimulationControls available in the model */
+	     std::list<SimulationResponse*>* _selectedResponses = new std::list<SimulationResponse*>(); /*!< a subset of SimulationResponses available in the model */
+    ->->->->-> (?) : Extrair em manager usando o nome_do_modelo dos scenarios, e por em _selectedControls e _selectedResponses dos scenarios que foram usados para pegar o nome : parece fazer sentido
+->->Que subsets exatamente extrair? (isso ainda se o que levantei acima tá certo, se não de volta a estaca 0 :-D)
+
+->->->"[...]quando um ou mais dos parâmetros do modelo (SimulationControls) são setados para certos valores[...]" Confuso, que valores se setar?
+->->->  Controles inicializados assim: (exemplo de create.cpp)
+	GetterMember getter = DefineGetterMember<SourceModelComponent>(this, &Create::getEntitiesPerCreation);
+	SetterMember setter = DefineSetterMember<SourceModelComponent>(this, &Create::setEntitiesPerCreation);
+	model->getControls()->insert(new SimulationControl(Util::TypeOf<Create>(), _name + ".EntitiesPerCreation", getter, setter));
+->->-> construidos apenas em: Create, Delay, Resource, Model. Todos esses estão na lista de SimulationControl em Model... ok, mas "parâmetros do modelo (SimulationControls) são setados para certos valores" ????? setados pra que certos valores?? No SimulationScenario.h diz apenas pra pegar um subset (qual???como definir?) dessa lista? confuso. Tela azul cerebral. desculpe-me.
+
