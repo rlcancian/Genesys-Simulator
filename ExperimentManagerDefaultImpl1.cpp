@@ -17,7 +17,7 @@ ExperimentManagerDefaultImpl1::ExperimentManagerDefaultImpl1() {
 }
 
 List<SimulationScenario*>* ExperimentManagerDefaultImpl1::getScenarios() const {
-	// \todo: implement
+        return _scenarios;
 }
 
 List<SimulationControl*>* ExperimentManagerDefaultImpl1::getControls() const {
@@ -25,7 +25,7 @@ List<SimulationControl*>* ExperimentManagerDefaultImpl1::getControls() const {
 }
 
 List<SimulationResponse*>* ExperimentManagerDefaultImpl1::getResponses() const {
-	// \todo: implement
+        return _responses;
 }
 
 List<SimulationControl*>* ExperimentManagerDefaultImpl1::extractControlsFromModel(std::string modelFilename) const {
@@ -37,11 +37,13 @@ List<SimulationResponse*>* ExperimentManagerDefaultImpl1::extractResponsesFromMo
 }
 
 void ExperimentManagerDefaultImpl1::startSimulationOfScenario(SimulationScenario* scenario) {
-	// \todo: implement
+    scenario->startSimulation("error message goes here");
 }
 
 void ExperimentManagerDefaultImpl1::startSimulation() {
-	// \todo: implement
+    for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list(); ++i) {
+        startSimulationOfScenario(*i);
+    }
 }
 
 void ExperimentManagerDefaultImpl1::stopSimulation() {

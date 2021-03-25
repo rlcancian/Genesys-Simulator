@@ -35,6 +35,8 @@ public:
 	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener);
 private:
 	List<SimulationControl*>* _controls = new List<SimulationControl*>();
+        List<SimulationScenario*>*  _scenarios = new List<SimulationScenario*>();
+        List<SimulationResponse*>* _responses = new List<SimulationResponse*>();
 };
 
 #endif /* PROCESSANALYSERDEFAULTIMPL1_H */

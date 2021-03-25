@@ -44,7 +44,7 @@ public: // gets
 	void setScenarioDescription(std::string _scenarioDescription);
 	std::string getScenarioDescription() const;
 private:
-	std::string _scenarioName;
+        std::string _scenarioName;
 	std::string _scenarioDescription;
 	std::string _modelFilename;
 	std::list<SimulationControl*>* _selectedControls = new std::list<SimulationControl*>(); /*!< a subset of SimulationControls available in the model */
