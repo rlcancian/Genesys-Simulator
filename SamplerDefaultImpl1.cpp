@@ -174,7 +174,7 @@ double SamplerDefaultImpl1::sampleChiSqrt(double degrees) {
 	return chi2;
 }
 
-double SamplerDefaultImpl1::gammaFunction(double n) {
+double SamplerDefaultImpl1::gammaFunction(int n) {
     int fact = n - 1;
     for (int i = (fact - 1); n > 1; n--) {
         fact *= i
@@ -183,11 +183,22 @@ double SamplerDefaultImpl1::gammaFunction(double n) {
     return fact;
 }
 
-double SamplerDefaultImpl1::sampleGammaPDF(double alpha, double beta) {
+double SamplerDefaultImpl1::sampleGammaPDF(int alpha, int beta) {
     double x;
     x = random();
 
     return (pow(beta,alpha)*pow(x,alpha-1)*exp(-beta*x))/gammaFunction(alpha);
+}
+
+double SamplerDefaultImpl1::betaFunction(int y, int x) {
+    return gammaFunction(x)*gammaFunction(y)/gammaFunction(x+y);
+}
+
+double SamplerDefaultImpl1::sampleBetaPDF(int alpha, int beta) {
+    double x;
+    x = random();
+
+    return (pow(x,alpha-1)*pow(1-x, beta-1))/betaFunction(alpha, beta)
 }
 
 void SamplerDefaultImpl1::setRNGparameters(Sampler_if::RNG_Parameters * param) {
