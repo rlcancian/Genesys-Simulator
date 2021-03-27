@@ -44,6 +44,7 @@
 		virtual double sampleGumbellInv(double mode, double scale);
 		virtual double sampleGumbell(double mode, double scale);
 		virtual double sampleChiSqrt(double degrees);
+        virtual double sampleGammaPDF(double alpha, double beta);
 
 	public:
 		void reset(); ///< reinitialize seed and other parameters so (pseudo) random number sequence will be generated again.
@@ -51,6 +52,7 @@
 		virtual void setRNGparameters(RNG_Parameters* param);
 		virtual RNG_Parameters* getRNGparameters() const;
 	private:
+        double gammaFunction(double n);
 		double _gammaJonk(double alpha);
 	private:
 		RNG_Parameters* _param = new DefaultImpl1RNG_Parameters();
