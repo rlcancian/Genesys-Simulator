@@ -41,6 +41,10 @@
 		virtual double sampleTriangular(double min, double mode, double max);
 		virtual double sampleUniform(double min, double max);
 		virtual double sampleWeibull(double alpha, double scale);
+		virtual double sampleGumbellInv(double mode, double scale);
+		virtual double sampleGumbell(double mode, double scale);
+		virtual double sampleChiSqrt(double degrees);
+
 	public:
 		void reset(); ///< reinitialize seed and other parameters so (pseudo) random number sequence will be generated again.
 	public:

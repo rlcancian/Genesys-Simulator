@@ -152,6 +152,28 @@ double SamplerDefaultImpl1::sampleDiscrete(double acumProb, double value, ...) {
 	return 0.0;
 }
 
+double SamplerDefaultImpl1::sampleGumbellInv(double mode, double scale) {
+	double x;
+	x = random();
+	return mode - (scale * log(-log(x)));
+}
+
+double SamplerDefaultImpl1::sampleGumbell(double mode, double scale) {
+	double x;
+	x = random();
+	return exp(-exp(-(x-mode)/scale));
+}
+
+double SamplerDefaultImpl1::sampleChiSqrt(double degrees) {
+	double chi2, z;
+	chi2 = 0;
+	for (int i=0; i < degrees; i++) {
+		z = sampleNormal(0,1);
+		chi2 = chi2 + (z*z);
+	}
+	return chi2;
+}
+
 void SamplerDefaultImpl1::setRNGparameters(Sampler_if::RNG_Parameters * param) {
 
 	_param = param; // there is a better solution for this...
