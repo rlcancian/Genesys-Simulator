@@ -44,7 +44,7 @@
 		virtual double sampleGumbellInv(double mode, double scale);
 		virtual double sampleGumbell(double mode, double scale);
 		virtual double sampleChiSqrt(double degrees);
-        virtual double sampleGammaPDF(double alpha, double beta);
+        virtual double sampleGammaPDF(int alpha, int beta);
         virtual double sampleBetaPDF(int alpha, int beta);
 
 	public:
