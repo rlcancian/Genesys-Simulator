@@ -152,6 +152,8 @@ double SamplerDefaultImpl1::sampleDiscrete(double acumProb, double value, ...) {
 	return 0.0;
 }
 
+/* Discrete Distributions: Binomal and Geometric */
+
 double SamplerDefaultImpl1::sampleBinomial(int trials){
 	double binomial = 0.0;
 	double U;
@@ -229,13 +231,4 @@ void SamplerDefaultImpl1::setRNGparameters(Sampler_if::RNG_Parameters * param) {
 
 Sampler_if::RNG_Parameters * SamplerDefaultImpl1::getRNGparameters() const {
 	return _param;
-}
-
-// Testing: Delete Afterwards //
-int main () {
-	SamplerDefaultImpl1 sampler = SamplerDefaultImpl1();
-	for(int i = 1; i <= 3; i++){
-		double test = sampler.sampleGeometric(i, 0.02);
-		printf("%f\n", test);
-	}
 }
