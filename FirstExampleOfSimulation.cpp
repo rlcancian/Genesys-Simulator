@@ -34,14 +34,14 @@ int FirstExampleOfSimulation::main(int argc, char** argv) {
 		file << sampler.sampleChiSqrt(2) << std::endl;
 	}
 	file.close();
-	
+
 	sampler.reset();
 	file.open("Gumbell(1,2)-Output");
 	for (int i = 0; i < 1000; i++) {
 		file << sampler.sampleGumbell(1,2) << std::endl;
 	}
 	file.close();
-	
+
 	sampler.reset();
 	file.open("GumbellInv(1,2)-Output");
 	for (int i = 0; i < 1000; i++) {
@@ -63,6 +63,19 @@ int FirstExampleOfSimulation::main(int argc, char** argv) {
 	}
 	file.close();
 
+	sampler.reset();
+	file.open("sampleBinomial(10)-Output");
+		for(int i = 0; i < 1000; i++){
+		file << sampler.sampleBinomial(10) << std::endl;
+	}
+	file.close();
+
+	sampler.reset();
+	file.open("sampleGeometric(0.02)-Output");
+		for(int i = 0; i < 100; i++){
+		file << sampler.sampleGeometric(i, 0.02) << std::endl;
+	}
+	file.close();
 
 	return 0;
 };

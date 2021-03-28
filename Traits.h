@@ -64,7 +64,6 @@
 #include "FullSimulationOfComplexModel.h"
 //#include "BuildSimulationModel03.h"
 #include "FirstExampleOfSimulation.h"
-#include "DistributionOutput.h"
 #include "SecondExampleOfSimulation.h"
 #include "FourthExampleOfSimulation.h"
 #include "GenesysGUI.h"
