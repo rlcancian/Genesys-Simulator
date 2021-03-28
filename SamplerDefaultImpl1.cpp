@@ -152,6 +152,27 @@ double SamplerDefaultImpl1::sampleDiscrete(double acumProb, double value, ...) {
 	return 0.0;
 }
 
+/*
+	One way to generate random samples from a binomial distribution is to use an inversion algorithm.
+	To do so, one must calculate the probability that Pr(X = k) for all values k from 0 through n.
+	Then by using a pseudorandom number generator to generate samples uniformly between 0 and 1,
+	one can transform the calculated samples into discrete numbers by using the probabilities
+	calculated in the first step.
+*/
+double SamplerDefaultImpl1::sampleBinomial(int trials){
+	double binomial = 0.0;
+	double U;
+
+	for(int i = 0; i < trials; i++){
+		U = sampleUniform(0.0, 1.0);
+		if(U < 0.5){
+			binomial += 1.0;
+		}
+	}
+
+	return binomial;
+}
+
 double SamplerDefaultImpl1::sampleGumbellInv(double mode, double scale) {
 	double x;
 	x = random();
@@ -177,9 +198,9 @@ double SamplerDefaultImpl1::sampleChiSqrt(double degrees) {
 double SamplerDefaultImpl1::gammaFunction(int n) {
     int fact = n - 1;
     for (int i = (fact - 1); n > 1; n--) {
-        fact *= i
+        fact *= i;
     }
-    
+
     return fact;
 }
 
@@ -198,7 +219,7 @@ double SamplerDefaultImpl1::sampleBetaPDF(int alpha, int beta) {
     double x;
     x = random();
 
-    return (pow(x,alpha-1)*pow(1-x, beta-1))/betaFunction(alpha, beta)
+    return (pow(x,alpha-1)*pow(1-x, beta-1))/betaFunction(alpha, beta);
 }
 
 void SamplerDefaultImpl1::setRNGparameters(Sampler_if::RNG_Parameters * param) {
