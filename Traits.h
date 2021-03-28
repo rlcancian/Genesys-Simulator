@@ -64,6 +64,7 @@
 #include "FullSimulationOfComplexModel.h"
 //#include "BuildSimulationModel03.h"
 #include "FirstExampleOfSimulation.h"
+#include "DistributionOutput.h"
 #include "SecondExampleOfSimulation.h"
 #include "FourthExampleOfSimulation.h"
 #include "GenesysGUI.h"
@@ -95,10 +96,11 @@ template <> struct Traits<GenesysApplication_if> {
 	//typedef TestSimulationControlAndSimulationResponse Application;
 	//typedef TestMatricesOfAttributesAndVariables Application;
 	// examples
-	//typedef FirstExampleOfSimulation Application;
+	typedef FirstExampleOfSimulation Application;
 	//typedef SecondExampleOfSimulation Application;
 	//typedef ThirdExampleOfSimulation Application;
-	typedef FourthExampleOfSimulation Application;
+	//typedef FourthExampleOfSimulation Application;
+	//typedef DistributionOutput Application;
 	//typedef FullSimulationOfComplexModel Application;
 	// full aplications
 	//typedef GenesysGUI Application;
