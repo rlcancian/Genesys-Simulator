@@ -11,6 +11,7 @@
  * Created on 3 de Setembro de 2019, 18:34
  */
 #include <fstream>
+#include <iostream>
 
 #include "FirstExampleOfSimulation.h"
 
@@ -61,10 +62,6 @@ int FirstExampleOfSimulation::main(int argc, char** argv) {
 		file << sampler.sampleGammaPDF(1,2) << std::endl;
 	}
 	file.close();
-
-
-
-
 
 
 	return 0;
