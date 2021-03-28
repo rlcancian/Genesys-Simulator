@@ -166,6 +166,13 @@ double SamplerDefaultImpl1::sampleBinomial(int trials){
 	return binomial;
 }
 
+double SamplerDefaultImpl1::sampleGeometric(double k, double p){
+	assert(p > 0 && p <= 1);
+
+	return pow((1-p),(k-1))*p;
+}
+
+
 double SamplerDefaultImpl1::sampleGumbellInv(double mode, double scale) {
 	double x;
 	x = random();
@@ -227,8 +234,8 @@ Sampler_if::RNG_Parameters * SamplerDefaultImpl1::getRNGparameters() const {
 // Testing: Delete Afterwards //
 int main () {
 	SamplerDefaultImpl1 sampler = SamplerDefaultImpl1();
-	for(int i = 0; i < 100; i++){
-		double test = sampler.sampleBinomial(10);
+	for(int i = 1; i <= 3; i++){
+		double test = sampler.sampleGeometric(i, 0.02);
 		printf("%f\n", test);
 	}
 }

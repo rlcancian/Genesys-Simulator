@@ -47,6 +47,7 @@
     virtual double sampleGammaPDF(int alpha, int beta);
     virtual double sampleBetaPDF(int alpha, int beta);
     virtual double sampleBinomial(int trials);
+    virtual double sampleGeometric(double k, double p);
 
 	public:
 		void reset(); ///< reinitialize seed and other parameters so (pseudo) random number sequence will be generated again.
