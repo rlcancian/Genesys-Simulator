@@ -12,6 +12,7 @@
  */
 
 #include "ExperimentManagerDefaultImpl1.h"
+#include "Simulator.h"
 
 ExperimentManagerDefaultImpl1::ExperimentManagerDefaultImpl1() {
 }
@@ -29,19 +30,26 @@ List<SimulationResponse*>* ExperimentManagerDefaultImpl1::getResponses() const {
 }
 
 List<SimulationControl*>* ExperimentManagerDefaultImpl1::extractControlsFromModel(std::string modelFilename) const {
-	// \todo: implement
+        Simulator *simulator = new Simulator();
+        Model *model = new Model(simulator);
+        model->load(modelFilename);
+        return model->getControls();
 }
 
 List<SimulationResponse*>* ExperimentManagerDefaultImpl1::extractResponsesFromModel(std::string modelFilename) const {
-	// \todo: implement
+	Simulator *simulator = new Simulator();
+        Model *model = new Model(simulator);
+        model->load(modelFilename);
+        return model->getResponses();
 }
 
 void ExperimentManagerDefaultImpl1::startSimulationOfScenario(SimulationScenario* scenario) {
-    scenario->startSimulation("error message goes here");
+    std::string a("AAA");
+    scenario->startSimulation(&a);
 }
 
 void ExperimentManagerDefaultImpl1::startSimulation() {
-    for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list(); ++i) {
+    for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list()->end(); ++i) {
         startSimulationOfScenario(*i);
     }
 }
