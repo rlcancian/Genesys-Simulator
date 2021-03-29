@@ -26,13 +26,8 @@ StatisticsCollector::StatisticsCollector(Model* model, std::string name, ModelEl
 }
 
 void StatisticsCollector::_addSimulationResponses() {
-
-	//std::string parentName = "";
-	//if (_parent != nullptr)
-		//parentName = _parent->name();
-	// add the average as response
 	GetterMember getterMemberAverage = DefineGetterMember<StatisticsClass>(static_cast<StatisticsClass*> (this->_statistics), &StatisticsClass::average);
-	SimulationResponse* resp = new SimulationResponse(Util::TypeOf<StatisticsClass>(), /*parentName + ":" + */_name + ".average", getterMemberAverage);
+	SimulationResponse* resp = new SimulationResponse(Util::TypeOf<StatisticsClass>(), _name + ".average", getterMemberAverage);
 	_parentModel->getResponses()->insert(resp);
 	// add the halfwidth as response
 	GetterMember getterMemberHalfWidth = DefineGetterMember<StatisticsClass>(static_cast<StatisticsClass*> (this->_statistics), &StatisticsClass::halfWidthConfidenceInterval);

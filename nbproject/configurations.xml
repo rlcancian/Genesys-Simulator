@@ -119,14 +119,24 @@
       </logicalFolder>
       <logicalFolder name="f2" displayName="Statistics" projectFiles="true">
         <logicalFolder name="f2" displayName="Impl" projectFiles="true">
+          <itemPath>CollectorDatafileDefaultImpl1.cpp</itemPath>
+          <itemPath>CollectorDatafileDefaultImpl1.h</itemPath>
+          <itemPath>CollectorDefaultImpl1.cpp</itemPath>
+          <itemPath>CollectorDefaultImpl1.h</itemPath>
           <itemPath>SamplerBoostImpl.cpp</itemPath>
           <itemPath>SamplerBoostImpl.h</itemPath>
           <itemPath>SamplerDefaultImpl1.cpp</itemPath>
           <itemPath>SamplerDefaultImpl1.h</itemPath>
+          <itemPath>StatisticsDataFileDefaultImpl.cpp</itemPath>
+          <itemPath>StatisticsDataFileDefaultImpl.h</itemPath>
+          <itemPath>StatisticsDefaultImpl1.cpp</itemPath>
+          <itemPath>StatisticsDefaultImpl1.h</itemPath>
         </logicalFolder>
         <logicalFolder name="f1" displayName="Interfaces" projectFiles="true">
+          <itemPath>CollectorDatafile_if.h</itemPath>
           <itemPath>Collector_if.h</itemPath>
           <itemPath>Sampler_if.h</itemPath>
+          <itemPath>StatisticsDataFile_if.h</itemPath>
           <itemPath>Statistics_if.h</itemPath>
         </logicalFolder>
       </logicalFolder>
@@ -206,10 +216,6 @@
     </logicalFolder>
     <logicalFolder name="f4" displayName="Statistics" projectFiles="true">
       <logicalFolder name="f1" displayName="Impl" projectFiles="true">
-        <itemPath>CollectorDatafileDefaultImpl1.cpp</itemPath>
-        <itemPath>CollectorDatafileDefaultImpl1.h</itemPath>
-        <itemPath>CollectorDefaultImpl1.cpp</itemPath>
-        <itemPath>CollectorDefaultImpl1.h</itemPath>
         <itemPath>FitterDefaultImpl1.cpp</itemPath>
         <itemPath>FitterDefaultImpl1.h</itemPath>
         <itemPath>HypothesisTesterBoostImpl.cpp</itemPath>
@@ -222,19 +228,13 @@
         <itemPath>ProbDistribBoostImpl.h</itemPath>
         <itemPath>ProbDistribDefaultImpl1.cpp</itemPath>
         <itemPath>ProbDistribDefaultImpl1.h</itemPath>
-        <itemPath>StatisticsDataFileDefaultImpl.cpp</itemPath>
-        <itemPath>StatisticsDataFileDefaultImpl.h</itemPath>
-        <itemPath>StatisticsDefaultImpl1.cpp</itemPath>
-        <itemPath>StatisticsDefaultImpl1.h</itemPath>
       </logicalFolder>
       <logicalFolder name="f2" displayName="Interfaces" projectFiles="true">
         <itemPath>AnalysisOfVariance_if.h</itemPath>
-        <itemPath>CollectorDatafile_if.h</itemPath>
         <itemPath>Fitter_if.h</itemPath>
         <itemPath>HypothesisTester_if.h</itemPath>
         <itemPath>Integrator_if.h</itemPath>
         <itemPath>Prob_Distrib_if.h</itemPath>
-        <itemPath>StatisticsDataFile_if.h</itemPath>
       </logicalFolder>
     </logicalFolder>
     <logicalFolder name="f8" displayName="Tools" projectFiles="true">

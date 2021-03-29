@@ -41,7 +41,7 @@ FourthExampleOfSimulation::FourthExampleOfSimulation() {
 
 int FourthExampleOfSimulation::main(int argc, char** argv) {
 	Simulator* simulator = new Simulator();
-	simulator->getTracer()->setTraceLevel(Util::TraceLevel::modelResult); //componentArrival);
+	simulator->getTracer()->setTraceLevel(Util::TraceLevel::everythingMostDetailed); // modelResult); //componentArrival);
 	this->setDefaultTraceHandlers(simulator->getTracer());
 	this->insertFakePluginsByHand(simulator);
 	bool wantToCreateNewModelAndSaveInsteadOfJustLoad = true;
@@ -75,7 +75,7 @@ int FourthExampleOfSimulation::main(int argc, char** argv) {
 		write1->writeElements()->insert(new WriteElement("Variável nextIndex: "));
 		write1->writeElements()->insert(new WriteElement("varNextIndex", true, true));
 		write1->writeElements()->insert(new WriteElement("Quantidade ocupada das máquinas: "));
-		write1->writeElements()->insert(new WriteElement("NR(Machine_1)", true));
+		write1->writeElements()->insert(new WriteElement("NR( Machine_1 )", true));
 		write1->writeElements()->insert(new WriteElement(", "));
 		write1->writeElements()->insert(new WriteElement("NR(Machine_2)", true));
 		write1->writeElements()->insert(new WriteElement(", "));
@@ -114,8 +114,8 @@ int FourthExampleOfSimulation::main(int argc, char** argv) {
 		machSet->getElementSet()->insert(machine3);
 		// model->insert(machSet);
 		Decide* decide1 = new Decide(model);
-		decide1->getConditions()->insert("NR(Machine_1)<MR(Machine_1)");
-		decide1->getConditions()->insert("NR(Machine_2)<MR(Machine_2)");
+		decide1->getConditions()->insert("NR(Machine_1) < MR(Machine_1)");
+		decide1->getConditions()->insert("NR(Machine_2) < MR(Machine_2)");
 		// model->insert(decide1);
 		Queue* queueSeize1 = new Queue(model, "Queue_Seize_1");
 		queueSeize1->setOrderRule(Queue::OrderRule::FIFO);
@@ -185,7 +185,7 @@ int FourthExampleOfSimulation::main(int argc, char** argv) {
 		model = simulator->getModels()->current();
 	}
 	this->setDefaultEventHandlers(model->getOnEvents());
-	model->getSimulation()->start();
+	//model->getSimulation()->start();
 	return 0;
 }
 

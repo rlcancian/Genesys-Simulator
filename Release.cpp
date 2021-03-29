@@ -112,8 +112,9 @@ bool Release::_loadInstance(std::map<std::string, std::string>* fields) {
 		//Resource* res = dynamic_cast<Resource*> (_model->elements()->element(Util::TypeOf<Resource>(), resourceId));
 		std::string resourceName = ((*(fields->find("resourceName"))).second);
 		Resource* res = dynamic_cast<Resource*> (_parentModel->getElements()->getElement(Util::TypeOf<Resource>(), resourceName));
-		this->_releaseRequest->setQuantityExpression(((*(fields->find("quantity"))).second));
-		this->_releaseRequest->setResource(res);
+		this->_releaseRequest = new ResourceItemRequest(res, (*(fields->find("quantity"))).second);
+		//this->_releaseRequest->setQuantityExpression(());
+		//this->_releaseRequest->setResource(res);
 	}
 	return res;
 }

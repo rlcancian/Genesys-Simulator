@@ -32,13 +32,16 @@
 		bool _loadFields(std::string line);
 		void _loadSimulatorInfoFields(std::map<std::string, std::string>* fields);
 		std::list<std::string>* _adjustFieldsToSave(std::map<std::string, std::string>* fields);
+		std::string _convertLineseparatorToLineseparatorReplacement(std::string str);
+		std::string _convertLineseparatorReplacementBacktoLineseparator(std::string str);
 		std::map<std::string, std::string>* _getSimulatorInfoFieldsToSave();
 	private:
 		std::list<std::map<std::string, std::string>*>* _componentFields = new std::list<std::map<std::string, std::string>*>();
 	private:
 		Model* _model = nullptr;
 		bool _hasChanged = false;
-		std::string _linefieldseparator = "; ";
+		std::string _fieldseparator = " "; // fields are separated by space
+		std::string _fieldseparatorReplacement ="\\_"; // in cases where spaces are in data to be saved, they are replaced by this pattern, so there will not be separators inside data (replacement is \_)
 	};
 //namespace\\}
 #endif /* MODELPERSISTENCEDEFAULTIMPL1_H */

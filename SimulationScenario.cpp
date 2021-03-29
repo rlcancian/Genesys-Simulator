@@ -42,11 +42,11 @@ std::string SimulationScenario::getModelFilename() const {
 	return _modelFilename;
 }
 
-std::list<SimulationResponse*>* SimulationScenario::getSelectedResponses() const {
+std::list<std::string>* SimulationScenario::getSelectedResponses() const {
 	return _selectedResponses;
 }
 
-std::list<SimulationControl*>* SimulationScenario::getSelectedControls() const {
+std::list<std::pair<std::string, double>*>* SimulationScenario::getSelectedControls() const {
 	return _selectedControls;
 }
 
