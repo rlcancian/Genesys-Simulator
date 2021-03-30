@@ -272,6 +272,8 @@
                    displayName="User Program Interfaces"
                    projectFiles="true">
       <logicalFolder name="f3" displayName="ModelExamples" projectFiles="true">
+        <itemPath>ExperimentManagerExampleOfSimulation.cpp</itemPath>
+        <itemPath>ExperimentManagerExampleOfSimulation.h</itemPath>
         <itemPath>FifthExampleOfSimulation.cpp</itemPath>
         <itemPath>FifthExampleOfSimulation.h</itemPath>
         <itemPath>FirstExampleOfSimulation.cpp</itemPath>
@@ -446,6 +448,16 @@
       <item path="ExperimentManagerDefaultImpl1.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="ExperimentManagerDefaultImpl1.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="ExperimentManagerExampleOfSimulation.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="ExperimentManagerExampleOfSimulation.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
       </item>
       <item path="ExperimetManager_if.h" ex="false" tool="3" flavor2="0">
       </item>
@@ -970,6 +982,16 @@
       <item path="ExperimentManagerDefaultImpl1.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="ExperimentManagerDefaultImpl1.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="ExperimentManagerExampleOfSimulation.cpp"
+            ex="false"
+            tool="1"
+            flavor2="0">
+      </item>
+      <item path="ExperimentManagerExampleOfSimulation.h"
+            ex="false"
+            tool="3"
+            flavor2="0">
       </item>
       <item path="ExperimetManager_if.h" ex="false" tool="3" flavor2="0">
       </item>
