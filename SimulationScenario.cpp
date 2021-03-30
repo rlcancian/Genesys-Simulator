@@ -12,6 +12,7 @@
  */
 
 #include "SimulationScenario.h"
+#include "Simulator.h"
 
 SimulationScenario::SimulationScenario() {
 }
@@ -23,7 +24,55 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
 	// get the value of the _selectedResponses from the model and store results on _responseValues
 	// clear selected controls and responses
 	// close the model
-	return false;
+    
+    // Creating and loading model
+    Simulator * simulator = new Simulator();
+    Model * model = new Model(simulator);
+    model->load(this->_modelFilename);
+    
+    // Setting control values
+    for (
+            std::list<std::pair<std::string, double>*>::iterator scen_it = this->_selectedControls->begin();
+            scen_it != this->_selectedControls->end();
+            ++scen_it
+        ) 
+    {
+        for (
+                std::list<SimulationControl*>::iterator mod_it = model->getControls()->list()->begin();
+                mod_it != model->getControls()->list()->end();
+                ++mod_it
+            )
+        {
+            if (!scen_it->first.equals(mod_it->getName())) {
+                mod_it.setValue(scen_it->second);
+            }
+        }
+    }
+    
+    // Running simulation
+    model->getSimulation()->start();
+    
+    // Acquiring response values
+    for (
+            std::list<std::string>::iterator scen_it = this->_selectedResponses->begin();
+            scen_it != this->_selectedResponses->end();
+            ++scen_it
+        ) 
+    {
+        for (
+                std::list<SimulationResponse*>::iterator mod_it = model->getResponses()->list()->begin();
+                mod_it != model->getResponses()->list()->end();
+                ++mod_it
+            )
+        {
+            if (!(*scen_it).equals(mod_it->getName()))
+                this->_responseValues->push_back(new std::pair<std::string, double>((*scen_it), mod_it->getValue()));
+        }
+    }
+    
+    model->clear();
+    delete model;
+    return true;
 }
 
 void SimulationScenario::setScenarioName(std::string _name) {
