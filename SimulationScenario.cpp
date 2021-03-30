@@ -31,7 +31,7 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
     Model * model = new Model(simulator);
     model->load(this->_modelFilename);
     model->check();
-    std::cout <<this->getScenarioName()<< ": My load is completed"<< std::endl;
+    std::cout <<this->getScenarioName()<< ": My load is now complete"<< std::endl;
     // Setting control values
     for (
             std::list<std::pair<std::string, double>*>::iterator scen_it = this->_selectedControls->begin();
@@ -53,7 +53,6 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
     // Running simulation
     model->getSimulation()->start();
 
-    model->check();
     // Acquiring response values
     for (
             std::list<std::string>::iterator scen_it = this->_selectedResponses->begin();
