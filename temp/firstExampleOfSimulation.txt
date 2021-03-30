@@ -1,5 +1,5 @@
 # Genesys simulation model 
-# Last saved on Tue Mar 30 13:41:00 2021
+# Last saved on Tue Mar 30 18:40:22 2021
 # simulator infos
 0   SimulatorInfo   name="GenESyS\_-\_GENeric\_and\_Expansible\_SYstem\_Simulator" version="21.03\_(backtotrack)" 
 
@@ -8,6 +8,10 @@
 
 # model elements
 1   EntityType      initialNVACost=0.000000 initialOtherCost=0.000000 initialPicture=report initialVACost=0.000000 initialWaitingCost=0.000000 name=Type_of_Representative_Entity reportStatistics=1 
+
+10  Attribute       name=Entity.ArrivalTime reportStatistics=1 
+
+11  Attribute       name=Entity.WaitTime reportStatistics=1 
 
 # model components
 2   Create          entitiesPerCreation=1 entityTypename=Type_of_Representative_Entity firstCreation=0.000000 maxCreations="4294967295" name=Create_1 nextId0=3 nextInputNumber0=0 nextSize=1 reportStatistics=1 timeBetweenCreations="1.5" timeBetweenCreationsTimeUnit=5 
