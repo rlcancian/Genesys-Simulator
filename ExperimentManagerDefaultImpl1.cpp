@@ -53,10 +53,12 @@ List<SimulationResponse*>* ExperimentManagerDefaultImpl1::extractResponsesFromMo
 
 void ExperimentManagerDefaultImpl1::startSimulationOfScenario(SimulationScenario* scenario) {
     std::string a("AAA");
+    std::cout << "Scenario's name: "<< scenario->getScenarioName() << std::endl;
     scenario->startSimulation(&a);
 }
 
 void ExperimentManagerDefaultImpl1::startSimulation() {
+    std::cout << "startSimulation" << std::endl;
     for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list()->end(); ++i) {
         startSimulationOfScenario(*i);
     }

@@ -57,6 +57,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/ExperimentDesignDefaultImpl1.o \
 	${OBJECTDIR}/ExperimentDesignDummyImpl.o \
 	${OBJECTDIR}/ExperimentManagerDefaultImpl1.o \
+	${OBJECTDIR}/ExperimentManagerExampleOfSimulation.o \
 	${OBJECTDIR}/FactorOrInteractionContribution.o \
 	${OBJECTDIR}/Failure.o \
 	${OBJECTDIR}/FifthExampleOfSimulation.o \
@@ -160,11 +161,11 @@ LDLIBSOPTIONS=
 
 # Build Targets
 .build-conf: ${BUILD_SUBPROJECTS}
-	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/genesysincludingkernel
+	"${MAKE}"  -f nbproject/Makefile-${CND_CONF}.mk ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/2019_2022_genesys
 
-${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/genesysincludingkernel: ${OBJECTFILES}
+${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/2019_2022_genesys: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}
-	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/genesysincludingkernel ${OBJECTFILES} ${LDLIBSOPTIONS}
+	${LINK.cc} -o ${CND_DISTDIR}/${CND_CONF}/${CND_PLATFORM}/2019_2022_genesys ${OBJECTFILES} ${LDLIBSOPTIONS}
 
 ${OBJECTDIR}/Assign.o: Assign.cpp nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}
@@ -275,6 +276,11 @@ ${OBJECTDIR}/ExperimentManagerDefaultImpl1.o: ExperimentManagerDefaultImpl1.cpp 
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -std=c++11 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/ExperimentManagerDefaultImpl1.o ExperimentManagerDefaultImpl1.cpp
+
+${OBJECTDIR}/ExperimentManagerExampleOfSimulation.o: ExperimentManagerExampleOfSimulation.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -std=c++11 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/ExperimentManagerExampleOfSimulation.o ExperimentManagerExampleOfSimulation.cpp
 
 ${OBJECTDIR}/FactorOrInteractionContribution.o: FactorOrInteractionContribution.cpp nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}

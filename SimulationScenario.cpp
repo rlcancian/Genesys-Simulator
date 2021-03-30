@@ -26,10 +26,11 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
     // close the model
 
     // Creating and loading model
+    std::cout <<this->getScenarioName()<< ": I shall do the honour of loading the model from "<< this->_modelFilename << std::endl;
     Simulator * simulator = new Simulator();
     Model * model = new Model(simulator);
     model->load(this->_modelFilename);
-
+    std::cout <<this->getScenarioName()<< ": My load is completed"<< std::endl;
     // Setting control values
     for (
             std::list<std::pair<std::string, double>*>::iterator scen_it = this->_selectedControls->begin();
@@ -42,6 +43,7 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
                 ++mod_it
                 ) {
             if (!(*scen_it)->first.compare((*mod_it)->getName())) {
+                std::cout <<this->getScenarioName()<< ": set value"<< std::endl;
                 (*mod_it)->setValue((*scen_it)->second);
             }
         }
@@ -49,20 +51,24 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
 
     // Running simulation
     model->getSimulation()->start();
-
+    std::cout << "Mozafucka!!!! "<< std::endl;
     // Acquiring response values
     for (
             std::list<std::string>::iterator scen_it = this->_selectedResponses->begin();
             scen_it != this->_selectedResponses->end();
             ++scen_it
             ) {
+        std::cout << "pelo menos aqui eu chego"<< std::endl;
         for (
                 std::list<SimulationResponse*>::iterator mod_it = model->getResponses()->list()->begin();
                 mod_it != model->getResponses()->list()->end();
                 ++mod_it
                 ) {
-            if (!(*scen_it).compare((*mod_it)->getName()))
+            std::cout << "n to entarndo aq ne scen_it: "<< (*scen_it) <<". mod_it :"<< (*mod_it)->getName()<<std::endl;
+            if (!(*scen_it).compare((*mod_it)->getName())) {
+                std::cout << "n to entarndo aq ne"<< (*scen_it) << std::endl;
                 this->_responseValues->push_back(new std::pair<std::string, double>((*scen_it), (*mod_it)->getValue()));
+            }
         }
     }
 
@@ -79,8 +85,19 @@ std::string SimulationScenario::getScenarioName() const {
     return _scenarioName;
 }
 
-std::list<std::pair<std::string, double>*>* SimulationScenario::getResponseValues() {
+std::list<std::pair<std::string, double>*>* SimulationScenario::getResponseValues() const {
     return _responseValues;
+}
+
+double SimulationScenario::getResponseValue(std::string responseName) {
+    std::cout << "oi rsrs" << std::endl;
+    for(std::list<std::pair<std::string, double>*>::iterator it = this->_responseValues->begin(); it != this->_responseValues->end(); ++it) {
+        std::cout << "getResponseValue for, response name :" << (*it)->first <<std::endl;
+        if (!(*it)->first.compare(responseName))
+            return (*it)->second;
+    }
+    std::cout << "Oh noo, n encontrei"<<std::endl;
+    return 100.5;
 }
 
 void SimulationScenario::setModelFilename(std::string _modelFilename) {

@@ -16,6 +16,19 @@
 #include "SourceModelComponent.h"
 #include <string>
 #include <iostream>
+// you have to included need libs
+
+// GEnSyS Simulator
+#include "Simulator.h"
+
+// Model Components
+#include "Create.h"
+#include "Delay.h"
+#include "Dispose.h"
+
+// Model model
+#include "EntityType.h"
+
 
 ExperimentManagerExampleOfSimulation::ExperimentManagerExampleOfSimulation() {
 }
@@ -65,7 +78,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         model->getResponses()->insert(new SimulationResponse(
                 Util::TypeOf<Create>(),
                 "Created Entities",
-                DefineGetterMember<Create>(create1, &create1->getEntitiesCreated())
+                DefineGetterMember<Create>(create1, &Create::getEntitiesCreated)
                 ));
 
         // save the model into a text file
@@ -78,38 +91,51 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     // execute the simulation util completed and show the report
     ExperimentManager_if * manager = new Traits<ExperimentManager_if>::Implementation();
 
+    std::cout << "b4 simulsce new" << std::endl;
     SimulationScenario * scenario1 = new SimulationScenario();
-    scenario1->getSelectedControls()->insert(new std::pair<std::string, double>("NumberOfReplications", 50));
-    scenario1->getSelectedControls()->insert(new std::pair<std::string, double>("ReplicationLength", 60));
-    scenario1->getSelectedControls()->insert(new std::pair<std::string, double>("WarmupPeriod", 10));
-    scenario1->getSelectedResponses()->insert("Created Entities");
-    //    scenario1->getSelectedResponses()->insert("");
-    //    scenario1->getSelectedResponses()->insert("");
+    scenario1->setScenarioName("scenario1");
+    std::cout << "after simulsce new" << std::endl;
+    scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 50));
+    std::cout << "pushed a control of choice" << std::endl;
+    scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 60));
+    scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 10));
+    std::cout << "pushed all of the chosen controls" << std::endl;
+    scenario1->getSelectedResponses()->push_back("Created Entities");
+    std::cout << "responses are also fine" << std::endl;
+    //    scenario1->getSelectedResponses()->push_back("");
+    //    scenario1->getSelectedResponses()->push_back("");
+    std::cout << "Now, Am I able to insert the scenario into the manager?" << std::endl;
     manager->getScenarios()->insert(scenario1);
 
     SimulationScenario * scenario2 = new SimulationScenario();
-    scenario2->getSelectedControls()->insert(new std::pair<std::string, double>("NumberOfReplications", 20));
-    scenario2->getSelectedControls()->insert(new std::pair<std::string, double>("ReplicationLength", 30));
-    scenario2->getSelectedControls()->insert(new std::pair<std::string, double>("WarmupPeriod", 0));
-    scenario2->getSelectedResponses()->insert("Created Entities");
+    scenario2->setScenarioName("scenario2");
+    scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 20));
+    scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 30));
+    scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 0));
+    scenario2->getSelectedResponses()->push_back("Created Entities");
     manager->getScenarios()->insert(scenario2);
 
     SimulationScenario * scenario3 = new SimulationScenario();
-    scenario3->getSelectedControls()->insert(new std::pair<std::string, double>("NumberOfReplications", 10));
-    scenario3->getSelectedControls()->insert(new std::pair<std::string, double>("ReplicationLength", 120));
-    scenario3->getSelectedControls()->insert(new std::pair<std::string, double>("WarmupPeriod", 25));
-    scenario3->getSelectedResponses()->insert("Created Entities");
+    scenario3->setScenarioName("scenario3");
+    scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 10));
+    scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 120));
+    scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 25));
+    scenario3->getSelectedResponses()->push_back("Created Entities");
     manager->getScenarios()->insert(scenario3);
 
+    std::cout << "Awesome! all of 'em are in. shall we begin?" << std::endl;
     manager->startSimulation();
+    std::cout << "Managed to finish simulation. Onto the responses: " << std::endl;
 
-    for (SimulationScenario scenario = manager->getScenarios()->front(), int i = 1;
+    for (SimulationScenario *scenario = manager->getScenarios()->front();
             !manager->getScenarios()->empty();
-            manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front(), ++i) {
+            manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front()) {
+        std::cout << "nao morri no if" << std::endl;
         double value = scenario->getResponseValue("Created Entities");
-        std::cout << "Scenario " << i << " Created Entities: " << value << std::endl;
+        std::cout << scenario->getScenarioName() << " Created Entities: " << value << std::endl;
     }
-
+    
+    std::cout << "I should not have reached this point lol" << std::endl;
     simulator->~Simulator();
     return 0;
 }

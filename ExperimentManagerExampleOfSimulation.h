@@ -14,6 +14,8 @@
 #ifndef EXPERIMENTMANAGEREXAMPLEOFSIMULATION_H
 #define EXPERIMENTMANAGEREXAMPLEOFSIMULATION_H
 
+#include "BaseConsoleGenesysApplication.h"
+
 class ExperimentManagerExampleOfSimulation : public BaseConsoleGenesysApplication {
 public:
     ExperimentManagerExampleOfSimulation();

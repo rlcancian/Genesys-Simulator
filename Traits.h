@@ -66,6 +66,7 @@
 #include "FirstExampleOfSimulation.h"
 #include "SecondExampleOfSimulation.h"
 #include "FourthExampleOfSimulation.h"
+#include "ExperimentManagerExampleOfSimulation.h"
 #include "GenesysGUI.h"
 #include "GenesysConsole.h"
 #include "ThirdExampleOfSimultion.h"
@@ -89,19 +90,20 @@ struct Traits {
  */
 
 template <> struct Traits<GenesysApplication_if> {
-	// tests
-	//typedef TestLSODE Application;
-	//typedef TestMarkovChain Application;
-	//typedef TestSimulationControlAndSimulationResponse Application;
-	//typedef TestMatricesOfAttributesAndVariables Application;
-	// examples
-	//typedef FirstExampleOfSimulation Application;
-	//typedef SecondExampleOfSimulation Application;
-	//typedef ThirdExampleOfSimulation Application;
-	typedef FourthExampleOfSimulation Application;
-	//typedef FullSimulationOfComplexModel Application;
-	// full aplications
-	//typedef GenesysGUI Application;
+    // tests
+    //typedef TestLSODE Application;
+    //typedef TestMarkovChain Application;
+    //typedef TestSimulationControlAndSimulationResponse Application;
+    //typedef TestMatricesOfAttributesAndVariables Application;
+    // examples
+    //typedef FirstExampleOfSimulation Application;
+    //typedef SecondExampleOfSimulation Application;
+    //typedef ThirdExampleOfSimulation Application;
+    //typedef FourthExampleOfSimulation Application;
+    typedef ExperimentManagerExampleOfSimulation Application;
+    //typedef FullSimulationOfComplexModel Application;
+    // full aplications
+    //typedef GenesysGUI Application;
 };
 
 /*
@@ -110,11 +112,11 @@ template <> struct Traits<GenesysApplication_if> {
 
 
 template <> struct Traits<PluginConnector_if> {
-	typedef PluginConnectorDummyImpl1 Implementation;
+    typedef PluginConnectorDummyImpl1 Implementation;
 };
 
 template <> struct Traits<Parser_if> {
-	typedef ParserDefaultImpl2 Implementation;
+    typedef ParserDefaultImpl2 Implementation;
 };
 
 /*
@@ -122,30 +124,31 @@ template <> struct Traits<Parser_if> {
  */
 
 template <> struct Traits<Model> {
-	static const bool debugged = true;
-	static const Util::TraceLevel traceLevel = Util::TraceLevel::modelSimulationEvent;
+    static const bool debugged = true;
+    static const Util::TraceLevel traceLevel = Util::TraceLevel::modelSimulationEvent;
 };
 
 template <> struct Traits<ModelPersistence_if> {
-	typedef ModelPersistenceDefaultImpl1 Implementation;
+    typedef ModelPersistenceDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<SimulationReporter_if> {
-	typedef SimulationReporterDefaultImpl1 Implementation;
-	typedef Counter CounterImplementation;
+    typedef SimulationReporterDefaultImpl1 Implementation;
+    typedef Counter CounterImplementation;
 };
 
 template <> struct Traits<ModelChecker_if> {
-	typedef ModelCheckerDefaultImpl1 Implementation;
+    typedef ModelCheckerDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<ModelComponent> {
-	typedef StatisticsDefaultImpl1 StatisticsCollector_StatisticsImplementation;
-	typedef CollectorDefaultImpl1 StatisticsCollector_CollectorImplementation;
-	static constexpr bool reportStatistics = true;
+    typedef StatisticsDefaultImpl1 StatisticsCollector_StatisticsImplementation;
+    typedef CollectorDefaultImpl1 StatisticsCollector_CollectorImplementation;
+    static constexpr bool reportStatistics = true;
 };
+
 template <> struct Traits<ModelElement> {
-	static constexpr bool reportStatistics = true;
+    static constexpr bool reportStatistics = true;
 };
 
 /*
@@ -153,37 +156,37 @@ template <> struct Traits<ModelElement> {
  */
 
 template <> struct Traits<Collector_if> {
-	typedef CollectorDatafileDefaultImpl1 Implementation;
+    typedef CollectorDatafileDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<Statistics_if> {
-	typedef StatisticsDefaultImpl1 Implementation;
-	typedef CollectorDefaultImpl1 CollectorImplementation;
-	static constexpr double SignificanceLevel = 0.05;
+    typedef StatisticsDefaultImpl1 Implementation;
+    typedef CollectorDefaultImpl1 CollectorImplementation;
+    static constexpr double SignificanceLevel = 0.05;
 };
 
 template <> struct Traits<Integrator_if> {
-	typedef IntegratorDefaultImpl1 Implementation;
-	static constexpr unsigned int MaxIterations = 1e3;
-	static constexpr double Precision = 1e-9;
+    typedef IntegratorDefaultImpl1 Implementation;
+    static constexpr unsigned int MaxIterations = 1e3;
+    static constexpr double Precision = 1e-9;
 };
 
 template <> struct Traits<Sampler_if> {
-	typedef SamplerDefaultImpl1 Implementation;
-	typedef SamplerDefaultImpl1::DefaultImpl1RNG_Parameters Parameters;
+    typedef SamplerDefaultImpl1 Implementation;
+    typedef SamplerDefaultImpl1::DefaultImpl1RNG_Parameters Parameters;
 };
 
 template <> struct Traits<ProbDistrib_if> {
-	typedef ProbDistribDefaultImpl1 Implementation;
+    typedef ProbDistribDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<Fitter_if> {
-	typedef FitterDefaultImpl1 Implementation;
+    typedef FitterDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<HypothesisTester_if> {
-	typedef IntegratorDefaultImpl1 IntegratorImplementation;
-	typedef HypothesisTesterDefaultImpl1 Implementation;
+    typedef IntegratorDefaultImpl1 IntegratorImplementation;
+    typedef HypothesisTesterDefaultImpl1 Implementation;
 };
 
 /*
@@ -191,11 +194,11 @@ template <> struct Traits<HypothesisTester_if> {
  */
 
 template <> struct Traits<ExperimentDesign_if> {
-	typedef ExperimentDesignDefaultImpl1 Implementation;
+    typedef ExperimentDesignDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<ExperimentManager_if> {
-	typedef ExperimentManagerDefaultImpl1 Implementation;
+    typedef ExperimentManagerDefaultImpl1 Implementation;
 };
 
 #endif /* TRAITS_H */
