@@ -18,29 +18,39 @@ ExperimentManagerDefaultImpl1::ExperimentManagerDefaultImpl1() {
 }
 
 List<SimulationScenario*>* ExperimentManagerDefaultImpl1::getScenarios() const {
-        return _scenarios;
+    return _scenarios;
 }
 
 List<SimulationControl*>* ExperimentManagerDefaultImpl1::getControls() const {
-	return _controls;
+    return _controls;
 }
 
 List<SimulationResponse*>* ExperimentManagerDefaultImpl1::getResponses() const {
-        return _responses;
+    return _responses;
 }
 
 List<SimulationControl*>* ExperimentManagerDefaultImpl1::extractControlsFromModel(std::string modelFilename) const {
-        Simulator *simulator = new Simulator();
-        Model *model = new Model(simulator);
-        model->load(modelFilename);
-        return model->getControls();
+    Simulator *simulator = new Simulator();
+    Model *model = new Model(simulator);
+    model->load(modelFilename);
+    this->_controls = model->getControls();
+    model->clear();
+    delete model;
+    delete simulator;
+
+    return this->_controls;
 }
 
 List<SimulationResponse*>* ExperimentManagerDefaultImpl1::extractResponsesFromModel(std::string modelFilename) const {
-	Simulator *simulator = new Simulator();
-        Model *model = new Model(simulator);
-        model->load(modelFilename);
-        return model->getResponses();
+    Simulator *simulator = new Simulator();
+    Model *model = new Model(simulator);
+    model->load(modelFilename);
+    this->_responses = model->getResponses();
+    model->clear();
+    delete model;
+    delete simulator;
+
+    return this->_responses;
 }
 
 void ExperimentManagerDefaultImpl1::startSimulationOfScenario(SimulationScenario* scenario) {
@@ -55,7 +65,7 @@ void ExperimentManagerDefaultImpl1::startSimulation() {
 }
 
 void ExperimentManagerDefaultImpl1::stopSimulation() {
-	// \todo: implement
+    // \todo: implement
 }
 
 void ExperimentManagerDefaultImpl1::addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) {
