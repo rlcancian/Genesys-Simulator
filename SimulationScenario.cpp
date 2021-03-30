@@ -43,22 +43,22 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
                 ++mod_it
                 ) {
             if (!(*scen_it)->first.compare((*mod_it)->getName())) {
-                std::cout <<this->getScenarioName()<< ": set value"<< std::endl;
+                std::cout <<this->getScenarioName()<< ": set value "<< (*mod_it)->getName()<< std::endl;
                 (*mod_it)->setValue((*scen_it)->second);
             }
         }
     }
-
+    
     // Running simulation
     model->getSimulation()->start();
-    std::cout << "Mozafucka!!!! "<< std::endl;
+
     // Acquiring response values
     for (
             std::list<std::string>::iterator scen_it = this->_selectedResponses->begin();
             scen_it != this->_selectedResponses->end();
             ++scen_it
             ) {
-        std::cout << "pelo menos aqui eu chego"<< std::endl;
+        std::cout << "my selectedRes: "<< *scen_it <<", but, the model doesn't seem to have responses in it: "<<std::endl;
         for (
                 std::list<SimulationResponse*>::iterator mod_it = model->getResponses()->list()->begin();
                 mod_it != model->getResponses()->list()->end();
@@ -90,14 +90,14 @@ std::list<std::pair<std::string, double>*>* SimulationScenario::getResponseValue
 }
 
 double SimulationScenario::getResponseValue(std::string responseName) {
-    std::cout << "oi rsrs" << std::endl;
+    std::cout << "a'aight, Imma get the response value of "<< responseName << std::endl;
     for(std::list<std::pair<std::string, double>*>::iterator it = this->_responseValues->begin(); it != this->_responseValues->end(); ++it) {
         std::cout << "getResponseValue for, response name :" << (*it)->first <<std::endl;
         if (!(*it)->first.compare(responseName))
             return (*it)->second;
     }
-    std::cout << "Oh noo, n encontrei"<<std::endl;
-    return 100.5;
+    std::cout << "Oh noo, there's no value for this response, chief"<<std::endl;
+    return -1;
 }
 
 void SimulationScenario::setModelFilename(std::string _modelFilename) {

@@ -80,6 +80,8 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
                 "Created Entities",
                 DefineGetterMember<Create>(create1, &Create::getEntitiesCreated)
                 ));
+        
+        std::cout << "There actually is something in responses: " << model->getResponses()->front()->getName() << std::endl;
 
         // save the model into a text file
         model->save(filename);
@@ -94,6 +96,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     std::cout << "b4 simulsce new" << std::endl;
     SimulationScenario * scenario1 = new SimulationScenario();
     scenario1->setScenarioName("scenario1");
+    scenario1->setModelFilename(filename);
     std::cout << "after simulsce new" << std::endl;
     scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 50));
     std::cout << "pushed a control of choice" << std::endl;
@@ -109,6 +112,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
 
     SimulationScenario * scenario2 = new SimulationScenario();
     scenario2->setScenarioName("scenario2");
+    scenario2->setModelFilename(filename);
     scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 20));
     scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 30));
     scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 0));
@@ -117,6 +121,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
 
     SimulationScenario * scenario3 = new SimulationScenario();
     scenario3->setScenarioName("scenario3");
+    scenario3->setModelFilename(filename);
     scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 10));
     scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 120));
     scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 25));
@@ -132,10 +137,9 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
             manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front()) {
         std::cout << "nao morri no if" << std::endl;
         double value = scenario->getResponseValue("Created Entities");
-        std::cout << scenario->getScenarioName() << " Created Entities: " << value << std::endl;
+        std::cout << scenario->getScenarioName() << " -> Created Entities: " << value << std::endl;
     }
     
-    std::cout << "I should not have reached this point lol" << std::endl;
     simulator->~Simulator();
     return 0;
 }
