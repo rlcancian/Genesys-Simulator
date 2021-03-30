@@ -43,8 +43,8 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
                 ++mod_it
             )
         {
-            if (!scen_it->first.equals(mod_it->getName())) {
-                mod_it.setValue(scen_it->second);
+            if (!(*scen_it)->first.compare((*mod_it)->getName())) {
+                (*mod_it)->setValue((*scen_it)->second);
             }
         }
     }
@@ -65,8 +65,8 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
                 ++mod_it
             )
         {
-            if (!(*scen_it).equals(mod_it->getName()))
-                this->_responseValues->push_back(new std::pair<std::string, double>((*scen_it), mod_it->getValue()));
+            if (!(*scen_it).compare((*mod_it)->getName()))
+                this->_responseValues->push_back(new std::pair<std::string, double>((*scen_it), (*mod_it)->getValue()));
         }
     }
     
