@@ -25,24 +25,25 @@ int TestSimulationControlAndSimulationResponse::main(int argc, char** argv) {
 	Simulator* simulator = new Simulator();
 	TraceManager* tm = simulator->getTracer();
 	this->setDefaultTraceHandlers(tm);
-	tm->setTraceLevel(Util::TraceLevel::componentDetailed);
+	tm->setTraceLevel(Util::TraceLevel::everythingMostDetailed);
 	this->insertFakePluginsByHand(simulator);
 
 	simulator->getModels()->loadModel("./temp/forthExampleOfSimulation.txt");
 	Model* model = simulator->getModels()->current();
-	model->check();
 
-	tm->trace("Controls:");
-	for (std::list<SimulationControl*>::iterator it = model->getControls()->list()->begin(); it != model->getControls()->list()->end(); it++) {
-		tm->trace((*it)->getName() + ": " + std::to_string((*it)->getValue()));
-	}
+	tm->trace("\nModel before check:");
+	model->show();
+	model->check();
+	tm->trace("\nModel after check:");
+	model->show();
+
+	model->getSimulation()->start();
 
 
 	tm->trace("\nResponses:");
 	for (std::list<SimulationResponse*>::iterator it = model->getResponses()->list()->begin(); it != model->getResponses()->list()->end(); it++) {
 		tm->trace((*it)->getName() + ": " + std::to_string((*it)->getValue()));
 	}
-
 
 	/*
 	Model* model = new Model(simulator);

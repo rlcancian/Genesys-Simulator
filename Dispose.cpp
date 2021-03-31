@@ -28,8 +28,8 @@ void Dispose::_execute(Entity* entity) {
 	if (_reportStatistics) {
 		_numberOut->incCountValue();
 		double timeInSystem = _parentModel->getSimulation()->getSimulatedTime() - entity->attributeValue("Entity.ArrivalTime");
-		if (entity->entityType()->isReportStatistics())
-			entity->entityType()->addGetStatisticsCollector(entity->entityType()->getName() + "." + "TotalTime")->getStatistics()->getCollector()->addValue(timeInSystem);
+		if (entity->getEntityType()->isReportStatistics())
+			entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + "." + "TotalTime")->getStatistics()->getCollector()->addValue(timeInSystem);
 	}
 	_parentModel->removeEntity(entity, _reportStatistics);
 }

@@ -121,7 +121,15 @@ std::list<std::map<std::string,std::string>*>* ModelElement::_saveInstance(std::
  */
 
 std::string ModelElement::show() {
-	return "id=" + std::to_string(_id) + ",name=\"" + _name + "\"";
+	std::string children = "";
+	if (_childrenElements->size() > 0) {
+		children = ", children=[";
+		for (std::map<std::string, ModelElement*>::iterator it = _childrenElements->begin(); it != _childrenElements->end(); it++) {
+			children += (*it).second->getName() + ",";
+		}
+		children = children.substr(0, children.length() - 1) + "]";
+	}
+	return "id=" + std::to_string(_id) + ",name=\"" + _name + "\"" + children;
 }
 
 std::list<std::string>* ModelElement::getChildrenElementKeys() const {

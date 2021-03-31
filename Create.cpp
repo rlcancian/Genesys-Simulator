@@ -48,7 +48,7 @@ void Create::_execute(Entity* entity) {
 		if (_entitiesCreatedSoFar < _maxCreations) {
 			_entitiesCreatedSoFar++;
 			Entity* newEntity = new Entity(_parentModel);
-			newEntity->setEntityType(entity->entityType());
+			newEntity->setEntityType(entity->getEntityType());
 			//_parentModel->elements()->insert(newEntity); // ->getEntities()->insert(newEntity);
 			timeBetweenCreations = _parentModel->parseExpression(this->_timeBetweenCreationsExpression);
 			timeScale = Util::TimeUnitConvert(this->_timeBetweenCreationsTimeUnit, _parentModel->getInfos()->getReplicationLengthTimeUnit());

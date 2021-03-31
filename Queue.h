@@ -133,7 +133,7 @@ private: //1::1
 	OrderRule _orderRule = OrderRule::FIFO;
 	std::string _attributeName = "";
 private: // inner children elements
-	StatisticsCollector* _cstatNumberInQueue;
+	StatisticsCollector* _cstatNumberInQueue = nullptr;
 	StatisticsCollector* _cstatTimeInQueue;
 };
 

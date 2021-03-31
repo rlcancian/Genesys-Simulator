@@ -59,8 +59,8 @@ void Station::leave(Entity* entity) {
 	if (_reportStatistics) {
 		_cstatNumberInStation->getStatistics()->getCollector()->addValue(_numberInStation);
 		_cstatTimeInStation->getStatistics()->getCollector()->addValue(timeInStation);
-		if (entity->entityType()->isReportStatistics())
-			entity->entityType()->addGetStatisticsCollector("TimeInStations")->getStatistics()->getCollector()->addValue(timeInStation); // \todo: should check if entitytype reports (?)
+		if (entity->getEntityType()->isReportStatistics())
+			entity->getEntityType()->addGetStatisticsCollector("TimeInStations")->getStatistics()->getCollector()->addValue(timeInStation); // \todo: should check if entitytype reports (?)
 	}
 }
 

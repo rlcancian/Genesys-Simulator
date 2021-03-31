@@ -81,7 +81,7 @@ protected:
 	virtual bool _check(std::string* errorMessage);
 	virtual void _createInternalElements();
 private: // children elements
-	Counter* _numberOut;
+	Counter* _numberOut = nullptr;
 };
 
 #endif /* CREATE_H */

@@ -37,7 +37,7 @@ void Entity::setEntityTypeName(std::string entityTypeName) throw () {
 	}
 }
 
-std::string Entity::entityTypeName() const {
+std::string Entity::getEntityTypeName() const {
 	return this->_entityType->getName();
 }
 
@@ -45,7 +45,7 @@ void Entity::setEntityType(EntityType* entityType) {
 	_entityType = entityType;
 }
 
-EntityType* Entity::entityType() const {
+EntityType* Entity::getEntityType() const {
 	return _entityType;
 }
 

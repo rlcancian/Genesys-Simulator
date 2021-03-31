@@ -117,7 +117,7 @@ protected:
 private: // association
 	Station* _station;
 private: // children elements
-	Counter* _numberIn;
+	Counter* _numberIn = nullptr;
 };
 
 #endif /* ENTER_H */

@@ -73,8 +73,8 @@ void Delay::_execute(Entity* entity) {
 	double waitTime = _parentModel->parseExpression(_delayExpression) * Util::TimeUnitConvert(_delayTimeUnit, _parentModel->getInfos()->getReplicationLengthTimeUnit());
 	if (_reportStatistics) {
 		_cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
-		if (entity->entityType()->isReportStatistics())
-			entity->entityType()->addGetStatisticsCollector("WaitTime")->getStatistics()->getCollector()->addValue(waitTime);
+		if (entity->getEntityType()->isReportStatistics())
+			entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + ".WaitTime")->getStatistics()->getCollector()->addValue(waitTime);
 	}
 	entity->setAttributeValue("Entity.WaitTime", entity->attributeValue("Entity.WaitTime") + waitTime);
 	double delayEndTime = _parentModel->getSimulation()->getSimulatedTime() + waitTime;
@@ -127,7 +127,7 @@ void Delay::_createInternalElements() {
 		for (std::list<ModelElement*>::iterator it = enttypes->begin(); it != enttypes->end(); it++) {
 			EntityType* enttype = static_cast<EntityType*> ((*it));
 			if ((*it)->isReportStatistics())
-				enttype->addGetStatisticsCollector("WaitTime"); // force create this CStat before simulation starts
+				enttype->addGetStatisticsCollector(enttype->getName() + ".WaitTime"); // force create this CStat before simulation starts
 		}
 	} else {
 		_removeChildrenElements();

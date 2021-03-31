@@ -48,7 +48,7 @@ private:
 private: //1::n
 	List<Entity*>* _list = new List<Entity*>();
 private: // child inner element
-	StatisticsCollector* _cstatNumberInGroup;
+	StatisticsCollector* _cstatNumberInGroup = nullptr;
 };
 
 #endif /* ENTITYGROUP_H */

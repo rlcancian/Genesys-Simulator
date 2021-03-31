@@ -85,7 +85,7 @@ private:
 	unsigned int _numberInStation = 0;
 	ModelComponent* _enterIntoStationComponent;
 private: // inner elements
-	StatisticsCollector* _cstatNumberInStation;
+	StatisticsCollector* _cstatNumberInStation = nullptr;
 	StatisticsCollector* _cstatTimeInStation;
 };
 

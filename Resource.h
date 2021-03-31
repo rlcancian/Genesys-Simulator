@@ -184,7 +184,7 @@ private: //1::n
 	//aFailures:	TStringList;
 	//std::list<Failure*>* _failures;
 private: // inner children elements
-	StatisticsCollector* _cstatTimeSeized;
+	StatisticsCollector* _cstatTimeSeized = nullptr;
 	Counter* _numSeizes;
 	Counter* _numReleases;
 };

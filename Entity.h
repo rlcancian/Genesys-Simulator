@@ -82,9 +82,9 @@
 
 	public: // g & s
 		void setEntityTypeName(std::string entityTypeName) throw (); // indirect access to EntityType
-		std::string entityTypeName() const;
+		std::string getEntityTypeName() const;
 		void setEntityType(EntityType* entityType); // direct access to EntityType
-		EntityType* entityType() const;
+		EntityType* getEntityType() const;
 	public:
 		double attributeValue(std::string attributeName);
 		double attributeValue(std::string index, std::string attributeName);

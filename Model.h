@@ -83,6 +83,7 @@
 		 * PRIVATE
 		 */
 	private:
+		void _showConnections() const;
 		void _showComponents() const;
 		void _showElements() const;
 		void _showSimulationControls() const;

@@ -75,8 +75,8 @@ void Route::_execute(Entity* entity) {
 		_numberIn->incCountValue();
 	// adds the route time to the TransferTime statistics / attribute related to the Entitys
 	double routeTime = _parentModel->parseExpression(_routeTimeExpression) * Util::TimeUnitConvert(_routeTimeTimeUnit, _parentModel->getInfos()->getReplicationLengthTimeUnit());
-	if (entity->entityType()->isReportStatistics())
-		entity->entityType()->addGetStatisticsCollector("TransferTime")->getStatistics()->getCollector()->addValue(routeTime);
+	if (entity->getEntityType()->isReportStatistics())
+		entity->getEntityType()->addGetStatisticsCollector("TransferTime")->getStatistics()->getCollector()->addValue(routeTime);
 	entity->setAttributeValue("Entity.TransferTime", entity->attributeValue("Entity.TransferTime") + routeTime);
 	if (routeTime > 0.0) {
 		// calculates when this Entity will reach the end of this route and schedule this Event

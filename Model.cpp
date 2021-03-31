@@ -53,15 +53,15 @@ Model::Model(Simulator* simulator) {
 	_responses = new List<SimulationResponse*>();
 	_controls = new List<SimulationControl*>();
 	// insert controls
-	_controls->insert(new SimulationControl("Model Info", "NumberOfReplications",
+	_controls->insert(new SimulationControl("ModelInfo", "NumberOfReplications",
 			DefineGetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::getNumberOfReplications),
 			DefineSetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::setNumberOfReplications))
 			);
-	_controls->insert(new SimulationControl("Model Info", "ReplicationLength",
+	_controls->insert(new SimulationControl("ModelInfo", "ReplicationLength",
 			DefineGetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::getReplicationLength),
 			DefineSetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::setReplicationLength))
 			);
-	_controls->insert(new SimulationControl("Model Info", "WarmupPeriod",
+	_controls->insert(new SimulationControl("ModelInfo", "WarmupPeriod",
 			DefineGetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::getWarmUpPeriod),
 			DefineSetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::setWarmUpPeriod))
 			);
@@ -138,6 +138,7 @@ void Model::show() {
 		Util::IncIndent();
 		getTracer()->trace(Util::TraceLevel::report, this->getInfos()->show());
 		Util::DecIndent();
+		_showConnections();
 		_showComponents();
 		_showElements();
 		_showSimulationControls();
@@ -187,6 +188,10 @@ void Model::_showElements() const {
 	Util::DecIndent();
 }
 
+void Model::_showConnections() const {
+	// \todo
+}
+
 void Model::_showComponents() const {
 	getTracer()->trace(Util::TraceLevel::report, "Components:");
 	Util::IncIndent();
@@ -226,7 +231,9 @@ void Model::_createModelInternalElements() {
 
 	for (std::list<ModelComponent*>::iterator it = _componentManager->begin(); it != _componentManager->end(); it++) {
 		getTracer()->trace(Util::TraceLevel::modelInternal, "Internals for " + (*it)->getClassname() + " \"" + (*it)->getName() + "\"");
+		Util::IncIndent();
 		ModelComponent::CreateInternalElements((*it));
+		Util::DecIndent();
 	}
 
 	std::list<ModelElement*>* modelElements;
@@ -245,7 +252,9 @@ void Model::_createModelInternalElements() {
 		//}
 		for (std::list<ModelElement*>::iterator itel = modelElements->begin(); itel != modelElements->end(); itel++) {
 			getTracer()->trace(Util::TraceLevel::modelInternal, "Internals for " + (*itel)->getClassname() + " \"" + (*itel)->getName() + "\""); // (" + std::to_string(pos) + "/" + std::to_string(originalSize) + ")");
+			Util::IncIndent();
 			ModelElement::CreateInternalElements((*itel));
+			Util::DecIndent();
 		}
 		if (originalSize == getElements()->getElementClassnames()->size()) {
 			itty++;

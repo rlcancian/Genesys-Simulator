@@ -198,14 +198,16 @@ void ModelSimulation::_showSimulationHeader() {
 	// model controls and responses
 	std::string controls;
 	for (std::list<SimulationControl*>::iterator it = _model->getControls()->list()->begin(); it != _model->getControls()->list()->end(); it++) {
-		controls += (*it)->getName() + "(" + (*it)->getType() + "), ";
+		controls += (*it)->getName() + "(" + (*it)->getType() + ")=" + std::to_string((*it)->getValue()) + ", ";
 	}
-	tm->traceReport("Simulation controls: " + controls);
+	controls = controls.substr(0, controls.length() - 2);
+	tm->traceReport("> Simulation controls: " + controls);
 	std::string responses;
 	for (std::list<SimulationResponse*>::iterator it = _model->getResponses()->list()->begin(); it != _model->getResponses()->list()->end(); it++) {
 		responses += (*it)->getName() + "(" + (*it)->getType() + "), ";
 	}
-	tm->traceReport("Simulation responses: " + responses);
+	responses = responses.substr(0, responses.length() - 2);
+	tm->traceReport("> Simulation responses: " + responses);
 	tm->traceReport("");
 }
 
