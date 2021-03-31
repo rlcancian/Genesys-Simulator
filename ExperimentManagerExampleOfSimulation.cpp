@@ -29,7 +29,6 @@
 // Model model
 #include "EntityType.h"
 
-
 ExperimentManagerExampleOfSimulation::ExperimentManagerExampleOfSimulation() {
 }
 
@@ -40,7 +39,7 @@ ExperimentManagerExampleOfSimulation::~ExperimentManagerExampleOfSimulation() {
 }
 
 int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
-    std::string filename{ "./temp/firstExampleOfSimulation.txt"};
+    std::string filename{ "./temp/experimentManagerExampleOfSimulation.txt"};
 
     Simulator* simulator = new Simulator();
     // Handle traces and simulation events to output them
@@ -73,23 +72,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         delay1->getNextComponents()->insert(dispose1);
         // insert the model into the simulator
         simulator->getModels()->insert(model);
-
-        // create responses
-        //model->getResponses()->insert(new SimulationResponse(
-          //      Util::TypeOf<Create>(),
-            //    "Created Entities",
-              //  DefineGetterMember<Create>(create1, &Create::getEntitiesCreated)
-                //));
-        
-        
         model->check();
-              //  std::cout << "There actually is something in responses: " << model->getResponses()->front()->getName() << std::endl;
-
-        //for(std::list<SimulationResponse*>::iterator it =  model->getResponses()->list()->begin(); it != model->getResponses()->list()->end(); ++it) {
-        // // std::cout << (*it)->getName() << std::endl;
-        //}
-        
-
         // save the model into a text file
         model->save(filename);
     } else {
@@ -98,55 +81,47 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     }
 
     // execute the simulation util completed and show the report
-    ExperimentManager_if * manager = new Traits<ExperimentManager_if>::Implementation();
+    ExperimentManager_if * manager = new Traits<ExperimentManager_if>::Implementation(simulator);
 
-    //std::cout << "b4 simulsce new" << std::endl;
     SimulationScenario * scenario1 = new SimulationScenario();
+    scenario1->setModel(model);
     scenario1->setScenarioName("scenario1");
     scenario1->setModelFilename(filename);
-    //std::cout << "after simulsce new" << std::endl;
-    scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 50));
-    //std::cout << "pushed a control of choice" << std::endl;
+    scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));
     scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 60));
     scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 10));
-    //std::cout << "pushed all of the chosen controls" << std::endl;
     scenario1->getSelectedResponses()->push_back("Create_1.CountNumberIn");
-    //std::cout << "responses are also fine" << std::endl;
-    //    scenario1->getSelectedResponses()->push_back("");
-    //    scenario1->getSelectedResponses()->push_back("");
-    //std::cout << "Now, Am I able to insert the scenario into the manager?" << std::endl;
     manager->getScenarios()->insert(scenario1);
 
     SimulationScenario * scenario2 = new SimulationScenario();
+    scenario2->setModel(model);
     scenario2->setScenarioName("scenario2");
     scenario2->setModelFilename(filename);
-    scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 20));
+    scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));
     scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 30));
     scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 0));
     scenario2->getSelectedResponses()->push_back("Create_1.CountNumberIn");
     manager->getScenarios()->insert(scenario2);
 
     SimulationScenario * scenario3 = new SimulationScenario();
+    scenario3->setModel(model);
     scenario3->setScenarioName("scenario3");
     scenario3->setModelFilename(filename);
-    scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 10));
+    scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));
     scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 120));
     scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 25));
     scenario3->getSelectedResponses()->push_back("Create_1.CountNumberIn");
     manager->getScenarios()->insert(scenario3);
 
-    //std::cout << "Awesome! all of 'em are in. shall we begin?" << std::endl;
     manager->startSimulation();
-    //std::cout << "Managed to finish simulation. Onto the responses: " << std::endl;
 
     for (SimulationScenario *scenario = manager->getScenarios()->front();
             !manager->getScenarios()->empty();
             manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front()) {
-        //std::cout << "nao morri no if" << std::endl;
         double value = scenario->getResponseValue("Create_1.CountNumberIn");
         std::cout << scenario->getScenarioName() << " -> Created Entities: " << value << std::endl;
     }
-    
+
     simulator->~Simulator();
     return 0;
 }

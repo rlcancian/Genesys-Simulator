@@ -13,6 +13,7 @@
 
 #include "SimulationScenario.h"
 #include "Simulator.h"
+#include "Traits.h"
 
 SimulationScenario::SimulationScenario() {
 }
@@ -25,14 +26,6 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
     // clear selected controls and responses
     // close the model
 
-    // Creating and loading model
-    //std::cout <<this->getScenarioName()<< ": I shall do the honour of loading the model from "<< this->_modelFilename << std::endl;
-    Simulator * simulator = new Simulator();
-    simulator->getTracer()->setTraceLevel(Util::TraceLevel::componentDetailed);
-    Model * model = new Model(simulator);
-    model->load(this->_modelFilename);
-    model->check();
-    //std::cout <<this->getScenarioName()<< ": My load is now complete"<< std::endl;
     // Setting control values
     for (
             std::list<std::pair<std::string, double>*>::iterator scen_it = this->_selectedControls->begin();
@@ -40,19 +33,19 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
             ++scen_it
             ) {
         for (
-                std::list<SimulationControl*>::iterator mod_it = model->getControls()->list()->begin();
-                mod_it != model->getControls()->list()->end();
+                std::list<SimulationControl*>::iterator mod_it = this->_model->getControls()->list()->begin();
+                mod_it != this->_model->getControls()->list()->end();
                 ++mod_it
                 ) {
             if (!(*scen_it)->first.compare((*mod_it)->getName())) {
-                //std::cout <<this->getScenarioName()<< ": set value "<< (*mod_it)->getName()<< std::endl;
+                
                 (*mod_it)->setValue((*scen_it)->second);
             }
         }
     }
     
     // Running simulation
-    model->getSimulation()->start();
+    this->_model->getSimulation()->start();
 
     // Acquiring response values
     for (
@@ -60,24 +53,32 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
             scen_it != this->_selectedResponses->end();
             ++scen_it
             ) {
-        //std::cout << "my selectedRes: "<< *scen_it <<", but, the model doesn't seem to have responses in it: "<<std::endl;
-        //std::cout << "model->getResponses()->list()->size(): "<< model->getResponses()->list()->size() <<std::endl;
         for (
-                std::list<SimulationResponse*>::iterator mod_it = model->getResponses()->list()->begin();
-                mod_it != model->getResponses()->list()->end();
+                std::list<SimulationResponse*>::iterator mod_it = this->_model->getResponses()->list()->begin();
+                mod_it != this->_model->getResponses()->list()->end();
                 ++mod_it
                 ) {
-           // std::cout << "n to entarndo aq ne scen_it: "<< (*scen_it) <<". mod_it :"<< (*mod_it)->getName()<<std::endl;
             if (!(*scen_it).compare((*mod_it)->getName())) {
-            //    std::cout << "n to entarndo aq ne"<< (*scen_it) << std::endl;
                 this->_responseValues->push_back(new std::pair<std::string, double>((*scen_it), (*mod_it)->getValue()));
             }
         }
     }
-
-    model->clear();
-    delete model;
+    
+    this->_selectedControls = new std::list<std::pair<std::string, double>*>();
+    this->_selectedResponses = new std::list<std::string>();
+    
     return true;
+}
+
+void SimulationScenario::setModel(Model * _model) {
+    this->_selectedControls = new std::list<std::pair<std::string, double>*>();
+    this->_selectedResponses = new std::list<std::string>();
+    this->_responseValues = new std::list<std::pair<std::string, double>*>();
+    this->_model = _model;
+}
+
+Model * SimulationScenario::getModel() const {
+    return this->_model;
 }
 
 void SimulationScenario::setScenarioName(std::string _name) {
@@ -93,13 +94,10 @@ std::list<std::pair<std::string, double>*>* SimulationScenario::getResponseValue
 }
 
 double SimulationScenario::getResponseValue(std::string responseName) {
-    //std::cout << "a'aight, Imma get the response value of "<< responseName << std::endl;
     for(std::list<std::pair<std::string, double>*>::iterator it = this->_responseValues->begin(); it != this->_responseValues->end(); ++it) {
-      //  std::cout << "getResponseValue for, response name :" << (*it)->first <<std::endl;
         if (!(*it)->first.compare(responseName))
             return (*it)->second;
     }
-    //std::cout << "Oh noo, there's no value for this response, chief"<<std::endl;
     return -1;
 }
 

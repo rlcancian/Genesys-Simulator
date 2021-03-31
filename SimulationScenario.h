@@ -16,6 +16,7 @@
 
 #include <string>
 #include <list>
+#include "Model.h"
 #include "SimulationResponse.h"
 #include "SimulationControl.h"
 
@@ -34,6 +35,8 @@ public: // results
 public: // gets and sets
 	void setModelFilename(std::string _modelFilename);
 	std::string getModelFilename() const;
+        void setModel(Model * _model);
+        Model * getModel() const;
 	void setScenarioName(std::string _name);
 	std::string getScenarioName() const;
 	void setScenarioDescription(std::string _scenarioDescription);
@@ -46,6 +49,7 @@ private:
         std::string _scenarioName;
 	std::string _scenarioDescription;
 	std::string _modelFilename;
+        Model * _model;
 	std::list<std::pair<std::string, double>*>* _selectedControls = new std::list<std::pair<std::string, double>*>(); /*!< a subset of SimulationControls available in the model (chosen by user)*/
 	std::list<std::string>* _selectedResponses = new std::list<std::string>(); /*!< a subset of SimulationResponses available in the model (chosen by user) */
 	std::list<std::pair<std::string, double>*>* _responseValues = new std::list<std::pair<std::string, double>*>(); /*!< stored values of the results returned by simulation <name of response, value returned>*/

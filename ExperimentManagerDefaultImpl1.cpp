@@ -17,55 +17,51 @@
 ExperimentManagerDefaultImpl1::ExperimentManagerDefaultImpl1() {
 }
 
+ExperimentManagerDefaultImpl1::ExperimentManagerDefaultImpl1(Simulator * simulator) {
+    this->_simulator = simulator;
+}
+
 List<SimulationScenario*>* ExperimentManagerDefaultImpl1::getScenarios() const {
-        return _scenarios;
+    return _scenarios;
 }
 
 List<SimulationControl*>* ExperimentManagerDefaultImpl1::getControls() const {
-	return _controls;
+    return _controls;
 }
 
 List<SimulationResponse*>* ExperimentManagerDefaultImpl1::getResponses() const {
-        return _responses;
+    return _responses;
 }
 
 List<SimulationControl*>* ExperimentManagerDefaultImpl1::extractControlsFromModel(std::string modelFilename) const {
-        Simulator *simulator = new Simulator();
-        Model *model = new Model(simulator);
-        model->load(modelFilename);
-        List<SimulationControl*>* controls = model->getControls();
-        model->clear();
-        delete model;
-        delete simulator;
-        return controls;
+    this->_simulator->getModels()->loadModel(modelFilename);
+    Model *model = this->_simulator->getModels()->current();
+    List<SimulationControl*>* controls = model->getControls();
+    _controls->list()->insert(_controls->list()->end(), controls->list()->begin(), controls->list()->end());
+    return controls;
 }
 
 List<SimulationResponse*>* ExperimentManagerDefaultImpl1::extractResponsesFromModel(std::string modelFilename) const {
-	Simulator *simulator = new Simulator();
-        Model *model = new Model(simulator);
-        model->load(modelFilename);
-        List<SimulationResponse*>* responses = model->getResponses();
-        model->clear();
-        delete model;
-        delete simulator;
-        return responses;
+    this->_simulator->getModels()->loadModel(modelFilename);
+    Model *model = this->_simulator->getModels()->current();
+    List<SimulationResponse*>* response = model->getResponses();
+    _responses->list()->insert(_responses->list()->end(), response->list()->begin(), response->list()->end());
+    return response;
 }
 
 void ExperimentManagerDefaultImpl1::startSimulationOfScenario(SimulationScenario* scenario) {
     std::string a("AAA");
-    //std::cout << "Scenario's name: "<< scenario->getScenarioName() << std::endl;
     scenario->startSimulation(&a);
 }
 
 void ExperimentManagerDefaultImpl1::startSimulation() {
-    //std::cout << "startSimulation" << std::endl;
     for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list()->end(); ++i) {
         startSimulationOfScenario(*i);
     }
 }
 
 void ExperimentManagerDefaultImpl1::stopSimulation() {
-	// \todo: implement
+    // \todo: implement
 }
 
 void ExperimentManagerDefaultImpl1::addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) {

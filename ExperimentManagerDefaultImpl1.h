@@ -21,7 +21,8 @@
 
 class ExperimentManagerDefaultImpl1 : public ExperimentManager_if {
 public:
-	ExperimentManagerDefaultImpl1();
+    	ExperimentManagerDefaultImpl1();
+	ExperimentManagerDefaultImpl1(Simulator * simulator);
 	virtual ~ExperimentManagerDefaultImpl1() = default;
 public:
 	virtual List<SimulationScenario*>* getScenarios() const;
@@ -37,6 +38,7 @@ private:
 	List<SimulationControl*>* _controls = new List<SimulationControl*>();
         List<SimulationScenario*>*  _scenarios = new List<SimulationScenario*>();
         List<SimulationResponse*>* _responses = new List<SimulationResponse*>();
+        Simulator * _simulator;
 };
 
 #endif /* PROCESSANALYSERDEFAULTIMPL1_H */
