@@ -137,6 +137,9 @@ bool ModelPersistenceDefaultImpl1::_loadFields(std::string line) {
 			if (veckeyval[0] != "") { // it should always be, rigth? \todo case for assert?
 				if (veckeyval.size() > 1) {
 					trim((veckeyval[1]));
+					if (veckeyval[1].substr(0, 1) == "\"" && veckeyval[1].substr(veckeyval[1].length() - 1, 1) == "\"") { // remove ""
+						veckeyval[1] = veckeyval[1].substr(1, veckeyval[1].length() - 2);
+					}
 					veckeyval[1] = this->_convertLineseparatorReplacementBacktoLineseparator(veckeyval[1]);
 					fields->emplace(veckeyval[0], veckeyval[1]);
 				} else {

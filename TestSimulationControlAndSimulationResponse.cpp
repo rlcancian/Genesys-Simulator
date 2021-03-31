@@ -26,7 +26,25 @@ int TestSimulationControlAndSimulationResponse::main(int argc, char** argv) {
 	TraceManager* tm = simulator->getTracer();
 	this->setDefaultTraceHandlers(tm);
 	tm->setTraceLevel(Util::TraceLevel::componentDetailed);
+	this->insertFakePluginsByHand(simulator);
 
+	simulator->getModels()->loadModel("./temp/forthExampleOfSimulation.txt");
+	Model* model = simulator->getModels()->current();
+	model->check();
+
+	tm->trace("Controls:");
+	for (std::list<SimulationControl*>::iterator it = model->getControls()->list()->begin(); it != model->getControls()->list()->end(); it++) {
+		tm->trace((*it)->getName() + ": " + std::to_string((*it)->getValue()));
+	}
+
+
+	tm->trace("\nResponses:");
+	for (std::list<SimulationResponse*>::iterator it = model->getResponses()->list()->begin(); it != model->getResponses()->list()->end(); it++) {
+		tm->trace((*it)->getName() + ": " + std::to_string((*it)->getValue()));
+	}
+
+
+	/*
 	Model* model = new Model(simulator);
 	model->show();
 
@@ -38,5 +56,6 @@ int TestSimulationControlAndSimulationResponse::main(int argc, char** argv) {
 	control->setValue(20);
 	std::cout << control->getName() << " depois: " << control->getValue() << std::endl;
 	std::cout << "NumRepl depois: " << model->getInfos()->getNumberOfReplications() << std::endl;
+	 */
 	return 0;
 }
