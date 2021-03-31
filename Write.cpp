@@ -81,14 +81,6 @@ void Write::_execute(Entity* entity) {
 	this->_parentModel->sendEntityToComponent(entity, this->getNextComponents()->getFrontConnection(), 0.0);
 }
 
-bool Write::_loadInstance(std::map<std::string, std::string>* fields) {
-	bool res = ModelComponent::_loadInstance(fields);
-	if (res) {
-		//...
-	}
-	return res;
-}
-
 void Write::_initBetweenReplications() {
 	try {
 		std::ofstream savefile;
@@ -100,9 +92,36 @@ void Write::_initBetweenReplications() {
 	}
 }
 
+bool Write::_loadInstance(std::map<std::string, std::string>* fields) {
+	bool res = ModelComponent::_loadInstance(fields);
+	if (res) {
+		this->_writeToType = static_cast<WriteToType> (std::stoi((*fields->find("writeToType")).second));
+		unsigned short writesSize = std::stoi((*fields->find("writesSize")).second);
+		for (unsigned short i = 0; i < writesSize; i++) {
+			std::string text = (*fields->find(text)).second;
+			bool isExpression = static_cast<bool> (std::stoi((*fields->find("isExpression")).second));
+			bool newline = static_cast<bool> (std::stoi((*fields->find("newline")).second));
+			this->_writeElements->insert(new WriteElement(text, isExpression, newline));
+		}
+	}
+	return res;
+}
+
 std::map<std::string, std::string>* Write::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance();
-	//...
+	fields->emplace("writeToType", std::to_string(static_cast<int> (_writeToType)));
+	fields->emplace("writesSize", std::to_string(_writeElements->size()));
+	unsigned short i = 0;
+	WriteElement* writeElem;
+	for (std::list<WriteElement*>::iterator it = _writeElements->list()->begin(); it != _writeElements->list()->end(); it++) {
+
+		writeElem = (*it);
+		fields->emplace("isExpression" + std::to_string(i), std::to_string(writeElem->isExpression));
+		fields->emplace("newline" + std::to_string(i), std::to_string(writeElem->newline));
+		fields->emplace("text" + std::to_string(i), writeElem->text);
+		i++;
+	}
+	//this->_writeElements
 	return fields;
 }
 
@@ -120,6 +139,7 @@ bool Write::_check(std::string* errorMessage) {
 	}
 	// when cheking the model (before simulating it), remove the file if exists
 	std::remove(_filename.c_str());
+
 	return resultAll;
 }
 
