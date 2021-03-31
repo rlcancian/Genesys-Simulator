@@ -83,11 +83,11 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         
         
         model->check();
-                std::cout << "There actually is something in responses: " << model->getResponses()->front()->getName() << std::endl;
+              //  std::cout << "There actually is something in responses: " << model->getResponses()->front()->getName() << std::endl;
 
-        for(std::list<SimulationResponse*>::iterator it =  model->getResponses()->list()->begin(); it != model->getResponses()->list()->end(); ++it) {
-          std::cout << (*it)->getName() << std::endl;
-        }
+        //for(std::list<SimulationResponse*>::iterator it =  model->getResponses()->list()->begin(); it != model->getResponses()->list()->end(); ++it) {
+        // // std::cout << (*it)->getName() << std::endl;
+        //}
         
 
         // save the model into a text file
@@ -100,21 +100,21 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     // execute the simulation util completed and show the report
     ExperimentManager_if * manager = new Traits<ExperimentManager_if>::Implementation();
 
-    std::cout << "b4 simulsce new" << std::endl;
+    //std::cout << "b4 simulsce new" << std::endl;
     SimulationScenario * scenario1 = new SimulationScenario();
     scenario1->setScenarioName("scenario1");
     scenario1->setModelFilename(filename);
-    std::cout << "after simulsce new" << std::endl;
+    //std::cout << "after simulsce new" << std::endl;
     scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 50));
-    std::cout << "pushed a control of choice" << std::endl;
+    //std::cout << "pushed a control of choice" << std::endl;
     scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 60));
     scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 10));
-    std::cout << "pushed all of the chosen controls" << std::endl;
+    //std::cout << "pushed all of the chosen controls" << std::endl;
     scenario1->getSelectedResponses()->push_back("Create_1.CountNumberIn");
-    std::cout << "responses are also fine" << std::endl;
+    //std::cout << "responses are also fine" << std::endl;
     //    scenario1->getSelectedResponses()->push_back("");
     //    scenario1->getSelectedResponses()->push_back("");
-    std::cout << "Now, Am I able to insert the scenario into the manager?" << std::endl;
+    //std::cout << "Now, Am I able to insert the scenario into the manager?" << std::endl;
     manager->getScenarios()->insert(scenario1);
 
     SimulationScenario * scenario2 = new SimulationScenario();
@@ -135,14 +135,14 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario3->getSelectedResponses()->push_back("Create_1.CountNumberIn");
     manager->getScenarios()->insert(scenario3);
 
-    std::cout << "Awesome! all of 'em are in. shall we begin?" << std::endl;
+    //std::cout << "Awesome! all of 'em are in. shall we begin?" << std::endl;
     manager->startSimulation();
-    std::cout << "Managed to finish simulation. Onto the responses: " << std::endl;
+    //std::cout << "Managed to finish simulation. Onto the responses: " << std::endl;
 
     for (SimulationScenario *scenario = manager->getScenarios()->front();
             !manager->getScenarios()->empty();
             manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front()) {
-        std::cout << "nao morri no if" << std::endl;
+        //std::cout << "nao morri no if" << std::endl;
         double value = scenario->getResponseValue("Create_1.CountNumberIn");
         std::cout << scenario->getScenarioName() << " -> Created Entities: " << value << std::endl;
     }
