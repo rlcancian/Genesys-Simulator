@@ -78,11 +78,11 @@ std::string Entity::show() {
 	return message;
 }
 
-double Entity::attributeValue(std::string attributeName) {
-	return attributeValue("", attributeName);
+double Entity::getAttributeValue(std::string attributeName) {
+	return getAttributeValue("", attributeName);
 }
 
-double Entity::attributeValue(std::string index, std::string attributeName) {
+double Entity::getAttributeValue(std::string index, std::string attributeName) {
 	int rank = _parentModel->getElements()->getRankOf(Util::TypeOf<Attribute>(), attributeName);
 	if (rank >= 0) {
 		std::map<std::string, double>* map = this->_attributeValues->getAtRank(rank);
@@ -97,14 +97,14 @@ double Entity::attributeValue(std::string index, std::string attributeName) {
 	return 0.0; /* \todo: !! Never should happen. check how to report */
 }
 
-double Entity::attributeValue(Util::identification attributeID) {
-	return attributeValue("", attributeID);
+double Entity::getAttributeValue(Util::identification attributeID) {
+	return getAttributeValue("", attributeID);
 }
 
-double Entity::attributeValue(std::string index, Util::identification attributeID) {
+double Entity::getAttributeValue(std::string index, Util::identification attributeID) {
 	ModelElement* element = _parentModel->getElements()->getElement(Util::TypeOf<Attribute>(), attributeID);
 	if (element != nullptr) {
-		return attributeValue(index, element->getName());
+		return getAttributeValue(index, element->getName());
 	}
 	return 0.0; // attribute not found
 }

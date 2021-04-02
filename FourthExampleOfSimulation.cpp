@@ -61,8 +61,8 @@ int FourthExampleOfSimulation::main(int argc, char** argv) {
 		create1->setEntitiesPerCreation(1);
 		// model->insert(create1);
 		Assign* assign1 = new Assign(model);
-		assign1->assignments()->insert(new Assign::Assignment("varNextIndex", "varNextIndex + 1"));
-		assign1->assignments()->insert(new Assign::Assignment("index", "varNextIndex"));
+		assign1->getAssignments()->insert(new Assign::Assignment("varNextIndex", "varNextIndex + 1"));
+		assign1->getAssignments()->insert(new Assign::Assignment("index", "varNextIndex"));
 		// model->insert(assign1);
 		Attribute* attr1 = new Attribute(model, "index");
 		// model->insert(attr1);

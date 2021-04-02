@@ -48,7 +48,7 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 	const std::string UtilTypeOfCounter = Util::TypeOf<Counter>();
 	// runs over all elements and list the statistics for each one, and then the statistics with no parent
 	Util::IncIndent();
-	this->showSimulationControls();
+	//this->showSimulationControls();
 	// copy the ist of statistics and counters into a single new list
 	std::list<ModelElement*>* statisticsAndCounters = new std::list<ModelElement*>(*(_model->getElements()->getElementList(UtilTypeOfStatisticsCollector)->list()));
 	std::list<ModelElement*>* counters = new std::list<ModelElement*>(*(_model->getElements()->getElementList(UtilTypeOfCounter)->list()));
@@ -96,6 +96,11 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 		//_model->getTraceManager()->traceReport(parentTypename + " -> " + parentName + " -> " + stat->show());
 	}
 	// now runs over that map of maps showing the statistics
+	Util::IncIndent();
+	Util::IncIndent();
+	_model->getTracer()->traceReport(Util::SetW("name", _nameW) + Util::SetW("elems", _w) + Util::SetW("min", _w) + Util::SetW("max", _w) + Util::SetW("average", _w) + Util::SetW("variance", _w) + Util::SetW("stddev", _w) + Util::SetW("varCoef", _w) + Util::SetW("confInterv", _w) + Util::SetW("confLevel", _w));
+	Util::DecIndent();
+	Util::DecIndent();
 	for (auto const mapmapItem : *mapMapTypeStat) {
 		_model->getTracer()->traceReport("Statistis for " + mapmapItem.first + ":");
 		Util::IncIndent();
@@ -104,8 +109,7 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 				_model->getTracer()->traceReport(mapItem.first + ":");
 				Util::IncIndent();
 				{
-					_model->getTracer()->traceReport(Util::SetW("name", _nameW) +
-							Util::SetW("elems", _w) + Util::SetW("min", _w) + Util::SetW("max", _w) + Util::SetW("average", _w) + Util::SetW("variance", _w) + Util::SetW("stddev", _w) + Util::SetW("varCoef", _w) + Util::SetW("confInterv", _w) + Util::SetW("confLevel", _w));
+					//					_model->getTracer()->traceReport(Util::SetW("name", _nameW) + Util::SetW("elems", _w) + Util::SetW("min", _w) + Util::SetW("max", _w) + Util::SetW("average", _w) + Util::SetW("variance", _w) + Util::SetW("stddev", _w) + Util::SetW("varCoef", _w) + Util::SetW("confInterv", _w) + Util::SetW("confLevel", _w));
 					for (ModelElement * const item : *(mapItem.second)) {
 						if (item->getClassname() == UtilTypeOfStatisticsCollector) {
 							Statistics_if* stat = dynamic_cast<StatisticsCollector*> (item)->getStatistics();
@@ -137,7 +141,7 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 		}
 		Util::DecIndent();
 	}
-	this->showSimulationResponses();
+	//this->showSimulationResponses();
 	Util::DecIndent();
 	_model->getTracer()->traceReport("End of Report for replication " + std::to_string(_simulation->getCurrentReplicationNumber()) + " of " + std::to_string(_model->getInfos()->getNumberOfReplications()));
 	_model->getTracer()->traceReport("------------------------------");
@@ -207,6 +211,11 @@ void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<Statisti
 	}
 	// now runs over that map of maps showing the statistics
 	//int w = 12;
+	Util::IncIndent();
+	Util::IncIndent();
+	_model->getTracer()->traceReport(Util::SetW("name", _nameW) + Util::SetW("elems", _w) + Util::SetW("min", _w) + Util::SetW("max", _w) + Util::SetW("average", _w) + Util::SetW("variance", _w) + Util::SetW("stddev", _w) + Util::SetW("varCoef", _w) + Util::SetW("confInterv", _w) + Util::SetW("confLevel", _w));
+	Util::DecIndent();
+	Util::DecIndent();
 	for (auto const mapmapItem : *mapMapTypeStat) {
 		_model->getTracer()->traceReport("Statistis for " + mapmapItem.first + ":");
 		Util::IncIndent();
@@ -215,8 +224,6 @@ void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<Statisti
 				_model->getTracer()->traceReport(mapItem.first + ":");
 				Util::IncIndent();
 				{
-					_model->getTracer()->traceReport(Util::SetW("name", _nameW) +
-							Util::SetW("elems", _w) + Util::SetW("min", _w) + Util::SetW("max", _w) + Util::SetW("average", _w) + Util::SetW("variance", _w) + Util::SetW("stddev", _w) + Util::SetW("varCoef", _w) + Util::SetW("confInterv", _w) + Util::SetW("confLevel", _w));
 					for (ModelElement * const item : *(mapItem.second)) {
 						if (item->getClassname() == UtilTypeOfStatisticsCollector) {
 							Statistics_if* stat = dynamic_cast<StatisticsCollector*> (item)->getStatistics();

@@ -34,6 +34,7 @@ ModelComponent* Enter::LoadInstance(Model* model, std::map<std::string, std::str
 
 void Enter::setStation(Station* _station) {
 	this->_station = _station;
+	_station->setEnterIntoStationComponent(this);
 }
 
 Station* Enter::getStation() const {
@@ -70,9 +71,6 @@ std::map<std::string, std::string>* Enter::_saveInstance() {
 bool Enter::_check(std::string* errorMessage) {
 	bool resultAll = true;
 	resultAll &= _parentModel->getElements()->check(Util::TypeOf<Station>(), _station, "Station", errorMessage);
-	if (resultAll) {
-		_station->setEnterIntoStationComponent(this); // this component will be executed when an entity enters into the station
-	}
 	return resultAll;
 }
 

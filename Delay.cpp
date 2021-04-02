@@ -76,7 +76,7 @@ void Delay::_execute(Entity* entity) {
 		if (entity->getEntityType()->isReportStatistics())
 			entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + ".WaitTime")->getStatistics()->getCollector()->addValue(waitTime);
 	}
-	entity->setAttributeValue("Entity.WaitTime", entity->attributeValue("Entity.WaitTime") + waitTime);
+	entity->setAttributeValue("Entity.TotalWaitTime", entity->getAttributeValue("Entity.TotalWaitTime") + waitTime);
 	double delayEndTime = _parentModel->getSimulation()->getSimulatedTime() + waitTime;
 	Event* newEvent = new Event(delayEndTime, entity, this->getNextComponents()->getFrontConnection());
 	_parentModel->getFutureEvents()->insert(newEvent);
@@ -105,7 +105,7 @@ std::map<std::string, std::string>* Delay::_saveInstance() {
 bool Delay::_check(std::string* errorMessage) {
 	//include attributes needed
 	ElementManager* elements = _parentModel->getElements();
-	std::vector<std::string> neededNames = {"Entity.WaitTime"};
+	std::vector<std::string> neededNames = {"Entity.TotalWaitTime"};
 	std::string neededName;
 	for (unsigned int i = 0; i < neededNames.size(); i++) {
 		neededName = neededNames[i];
@@ -121,7 +121,7 @@ void Delay::_createInternalElements() {
 	if (_reportStatistics && _cstatWaitTime == nullptr) {
 		_cstatWaitTime = new StatisticsCollector(_parentModel, _name + "." + "WaitTime", this);
 		_childrenElements->insert({"WaitTime", _cstatWaitTime});
-		// include StatisticsCollector needed in EntityType \todo should insert if entityType reports statistics (?)
+		// include StatisticsCollector needed in EntityType 
 		ElementManager* elements = _parentModel->getElements();
 		std::list<ModelElement*>* enttypes = elements->getElementList(Util::TypeOf<EntityType>())->list();
 		for (std::list<ModelElement*>::iterator it = enttypes->begin(); it != enttypes->end(); it++) {

@@ -60,7 +60,7 @@ std::map<std::string, std::string>* SourceModelComponent::_saveInstance() {
 bool SourceModelComponent::_check(std::string* errorMessage) {
 	/* include attributes needed */
 	ElementManager* elements = _parentModel->getElements();
-	std::vector<std::string> neededNames = {"Entity.ArrivalTime"}; // "Entity.VATime", "Entity.NVATime", "Entity.WaitTime", "Entity.TransferTime", "Entity.OtherTime"
+	std::vector<std::string> neededNames = {"Entity.ArrivalTime"}; 
 	std::string neededName;
 	for (unsigned int i = 0; i < neededNames.size(); i++) {
 		neededName = neededNames[i];

@@ -38,6 +38,10 @@ ModelElement* Sequence::LoadInstance(Model* model, std::map<std::string, std::st
 	return newElement;
 }
 
+List<SequenceStep*>* Sequence::getSteps() const {
+	return _steps;
+}
+
 bool Sequence::_loadInstance(std::map<std::string, std::string>* fields) {
 	bool res = ModelElement::_loadInstance(fields);
 	if (res) {
@@ -55,7 +59,7 @@ std::map<std::string, std::string>* Sequence::_saveInstance() {
 
 bool Sequence::_check(std::string* errorMessage) {
 	/* include attributes needed */
-	std::vector<std::string> neededNames = {"Entity.Sequence"};
+	std::vector<std::string> neededNames = {"Entity.Sequence", "Entity.SequenceStep"};
 	std::string neededName;
 	for (unsigned int i = 0; i < neededNames.size(); i++) {
 		neededName = neededNames[i];

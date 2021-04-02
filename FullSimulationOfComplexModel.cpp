@@ -83,9 +83,9 @@ int FullSimulationOfComplexModel::main(int argc, char** argv) {
 
 	Assign* assign1 = new Assign(model);
 	Assign::Assignment* attrib2Assignment = new Assign::Assignment("Variable_1", "Variable_1 + 1");
-	assign1->assignments()->insert(attrib2Assignment);
+	assign1->getAssignments()->insert(attrib2Assignment);
 	Assign::Assignment* attrib1Assignment = new Assign::Assignment("Attribute_1", "Variable_1");
-	assign1->assignments()->insert(attrib1Assignment);
+	assign1->getAssignments()->insert(attrib1Assignment);
 	components->insert(assign1);
 
 	Decide* decide1 = new Decide(model);

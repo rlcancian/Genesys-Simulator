@@ -30,16 +30,7 @@ int TestSimulationControlAndSimulationResponse::main(int argc, char** argv) {
 
 	simulator->getModels()->loadModel("./temp/forthExampleOfSimulation.txt");
 	Model* model = simulator->getModels()->current();
-
-	tm->trace("\nModel before check:");
-	model->show();
-	model->check();
-	tm->trace("\nModel after check:");
-	model->show();
-
 	model->getSimulation()->start();
-
-
 	tm->trace("\nResponses:");
 	for (std::list<SimulationResponse*>::iterator it = model->getResponses()->list()->begin(); it != model->getResponses()->list()->end(); it++) {
 		tm->trace((*it)->getName() + ": " + std::to_string((*it)->getValue()));

@@ -59,6 +59,10 @@
 		ModelComponent* getCurrentComponent() const;
 		Entity* getCurrentEntity() const;
 		unsigned int getCurrentInputNumber() const;
+        void setShowReportsAfterReplication(bool showReportsAfterReplication);
+        bool isShowReportsAfterReplication() const;
+        void setShowReportsAfterSimulation(bool showReportsAfterSimulation);
+        bool isShowReportsAfterSimulation() const;
 		/*
 		 * PRIVATE
 		 */
@@ -90,6 +94,8 @@
 		bool _stopRequested = false;
 		bool _simulationIsInitiated = false;
 		bool _replicationIsInitiaded = false;
+		bool _showReportsAfterSimulation = true;
+		bool _showReportsAfterReplication = true;
 	private:
 		Entity* _currentEntity;
 		ModelComponent* _currentComponent;
