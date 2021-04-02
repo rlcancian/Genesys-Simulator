@@ -47,7 +47,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     simulator->getTracer()->setTraceLevel(Util::TraceLevel::componentDetailed);
     // insert "fake plugins" since plugins based on dynamic loaded library are not implemented yet
     this->insertFakePluginsByHand(simulator);
-    bool wantToCreateNewModelAndSaveInsteadOfJustLoad = true;
+    bool wantToCreateNewModelAndSaveInsteadOfJustLoad = false;
     Model* model;
     if (wantToCreateNewModelAndSaveInsteadOfJustLoad) {
         // creates an empty model
@@ -79,7 +79,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         simulator->getModels()->loadModel(filename);
         model = simulator->getModels()->current();
     }
-
+       
     // execute the simulation util completed and show the report
     ExperimentManager_if * manager = new Traits<ExperimentManager_if>::Implementation(simulator);
 
@@ -119,7 +119,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
             !manager->getScenarios()->empty();
             manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front()) {
         double value = scenario->getResponseValue("Create_1.CountNumberIn");
-        std::cout << scenario->getScenarioName() << " -> Created Entities: " << value << std::endl;
+        std::cout << scenario->getScenarioName() << " -> Created Creates: " << value << std::endl;
     }
 
     simulator->~Simulator();
