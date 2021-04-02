@@ -99,7 +99,8 @@ void ModelSimulation::start() {
 		}
 	} while (_currentReplicationNumber <= _info->getNumberOfReplications() && !_pauseRequested);
 	if (!_pauseRequested) {
-		_simulationReporter->showSimulationStatistics(); //_cStatsSimulation);
+		if (this->_showReportsAfterSimulation)
+			_simulationReporter->showSimulationStatistics(); //_cStatsSimulation);
 		Util::DecIndent();
 
 		_model->getTracer()->trace(Util::TraceLevel::modelSimulationEvent, "Simulation of model \"" + _info->getName() + "\" has finished.\n");
@@ -114,7 +115,8 @@ void ModelSimulation::start() {
 void ModelSimulation::_replicationEnded() {
 	_traceReplicationEnded();
 	_model->getOnEvents()->NotifyReplicationEndHandlers(new SimulationEvent(_currentReplicationNumber, nullptr));
-	_simulationReporter->showReplicationStatistics();
+	if (this->_showReportsAfterReplication)
+		_simulationReporter->showReplicationStatistics();
 	//_simulationReporter->showSimulationResponses();
 	_actualizeSimulationStatistics();
 }
@@ -319,7 +321,6 @@ void ModelSimulation::_initStatistics() {
 		counter = (Counter*) (*it);
 		counter->clear();
 	}
-
 }
 
 void ModelSimulation::_checkWarmUpTime(Event* nextEvent) {
@@ -458,6 +459,22 @@ SimulationReporter_if* ModelSimulation::getReporter() const {
 
 unsigned int ModelSimulation::getCurrentInputNumber() const {
 	return _currentInputNumber;
+}
+
+void ModelSimulation::setShowReportsAfterReplication(bool showReportsAfterReplication) {
+	this->_showReportsAfterReplication = showReportsAfterReplication;
+}
+
+bool ModelSimulation::isShowReportsAfterReplication() const {
+	return _showReportsAfterReplication;
+}
+
+void ModelSimulation::setShowReportsAfterSimulation(bool showReportsAfterSimulation) {
+	this->_showReportsAfterSimulation = showReportsAfterSimulation;
+}
+
+bool ModelSimulation::isShowReportsAfterSimulation() const {
+	return _showReportsAfterSimulation;
 }
 
 bool ModelSimulation::isPaused() const {

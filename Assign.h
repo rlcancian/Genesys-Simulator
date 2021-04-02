@@ -100,7 +100,7 @@ public:
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, std::map<std::string, std::string>* fields);
 public:
-	List<Assignment*>* assignments() const;
+	List<Assignment*>* getAssignments() const;
 protected:
 	virtual void _execute(Entity* entity);
 	virtual bool _loadInstance(std::map<std::string, std::string>* fields);

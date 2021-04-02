@@ -20,7 +20,6 @@
 EntityType::EntityType(Model* model, std::string name) : ModelElement(model, Util::TypeOf<EntityType>(), name) {
 }
 
-
 void EntityType::_initBetweenReplications() {
 	_initialWaitingCost = 0.0;
 	_initialVACost = 0.0;
@@ -141,11 +140,13 @@ bool EntityType::_check(std::string* errorMessage) {
 }
 
 void EntityType::_createInternalElements() {
-	if (!_reportStatistics)
+	if (_reportStatistics) {
+	} else {
 		while (_statisticsCollectors->size() > 0) {
 			_parentModel->getElements()->remove(_statisticsCollectors->front());
 			_statisticsCollectors->front()->~StatisticsCollector();
 			_statisticsCollectors->pop_front();
 		}
+	}
 }
 

@@ -19,6 +19,33 @@
 #include "PluginInformation.h"
 #include "Station.h"
 
+class SequenceStep {
+public:
+
+	SequenceStep(Station* station, std::list<std::string>* assignments = nullptr) {
+		_station = station;
+		if (assignments == nullptr)
+			_assignments = new std::list<std::string>();
+		else
+			_assignments = assignments;
+	}
+
+	std::list<std::string>* getAssignments() const {
+		return _assignments;
+	}
+
+	void setStation(Station* _station) {
+		this->_station = _station;
+	}
+
+	Station* getStation() const {
+		return _station;
+	}
+private:
+	Station* _station;
+	std::list<std::string>* _assignments;
+};
+
 /*!
  * Sequence module
 DESCRIPTION
@@ -47,11 +74,7 @@ TYPICAL USES
 class Sequence : public ModelElement {
 public:
 
-	class SequenceStep {
-	public:
-		Station* _station;
-		std::list<std::string>* _assignments;
-	};
+
 public:
 	Sequence(Model* model, std::string name = "");
 	virtual ~Sequence() = default;
@@ -60,13 +83,14 @@ public:
 public: // static 
 	static PluginInformation* GetPluginInformation();
 	static ModelElement* LoadInstance(Model* model, std::map<std::string, std::string>* fields);
+	List<SequenceStep*>* getSteps() const;
 public:
 protected:
 	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
 	virtual std::map<std::string, std::string>* _saveInstance();
 	virtual bool _check(std::string* errorMessage);
 private:
-
+	List<SequenceStep*>* _steps = new List<SequenceStep*>();
 };
 
 #endif /* SEQUENCE_H */

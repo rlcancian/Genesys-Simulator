@@ -52,7 +52,7 @@ void Station::enter(Entity* entity) {
 void Station::leave(Entity* entity) {
 	std::string attributeName = "Entity.ArrivalAt" + this->getName();
 	trimwithin(attributeName);
-	double arrivalTime = entity->attributeValue(attributeName);
+	double arrivalTime = entity->getAttributeValue(attributeName);
 	double timeInStation = _parentModel->getSimulation()->getSimulatedTime() - arrivalTime;
 	entity->setAttributeValue("Entity.Station", 0.0);
 	_numberInStation--;
@@ -60,7 +60,7 @@ void Station::leave(Entity* entity) {
 		_cstatNumberInStation->getStatistics()->getCollector()->addValue(_numberInStation);
 		_cstatTimeInStation->getStatistics()->getCollector()->addValue(timeInStation);
 		if (entity->getEntityType()->isReportStatistics())
-			entity->getEntityType()->addGetStatisticsCollector("TimeInStations")->getStatistics()->getCollector()->addValue(timeInStation); // \todo: should check if entitytype reports (?)
+			entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + ".TimeInStations")->getStatistics()->getCollector()->addValue(timeInStation); // \todo: should check if entitytype reports (?)
 	}
 }
 
@@ -129,7 +129,7 @@ void Station::_createInternalElements() {
 			std::list<ModelElement*>* enttypes = _parentModel->getElements()->getElementList(Util::TypeOf<EntityType>())->list();
 			for (std::list<ModelElement*>::iterator it = enttypes->begin(); it != enttypes->end(); it++) {
 				if ((*it)->isReportStatistics())
-					static_cast<EntityType*> ((*it))->addGetStatisticsCollector("TimeInStations"); // force create this CStat before simulation starts
+					static_cast<EntityType*> ((*it))->addGetStatisticsCollector((*it)->getName() + ".TimeInStations"); // force create this CStat before simulation starts
 			}
 
 		}

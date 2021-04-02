@@ -18,7 +18,6 @@
 //using namespace GenesysKernel;
 
 ModelComponent::ModelComponent(Model* model, std::string componentTypename, std::string name) : ModelElement(model, componentTypename, name, false) {
-	_reportStatistics = Traits<ModelComponent>::reportStatistics;
 	model->getComponents()->insert(this);
 }
 

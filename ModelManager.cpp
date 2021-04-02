@@ -22,6 +22,11 @@ ModelManager::ModelManager(Simulator* simulator) {
 	_currentModel = nullptr;
 }
 
+Model* ModelManager::newModel() {
+	_currentModel = new Model(_simulator);
+	return _currentModel;
+}
+
 void ModelManager::insert(Model* model) {
 	_models->insert(model);
 	this->_currentModel = model;
