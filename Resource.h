@@ -20,35 +20,7 @@
 #include "Counter.h"
 #include "Plugin.h"
 
-class Resource;
-
-class ResourceItemRequest {
-public:
-
-	ResourceItemRequest(Resource* resource, std::string quantityExpression = "1") {
-		_resource = resource;
-		_quantityExpression = quantityExpression;
-	}
-
-	std::string quantityExpression() const {
-		return _quantityExpression;
-	}
-
-	Resource* resource() const {
-		return _resource;
-	}
-
-    void setQuantityExpression(std::string _quantityExpression) {
-    	this->_quantityExpression = _quantityExpression;
-    }
-
-    void setResource(Resource* _resource) {
-    	this->_resource = _resource;
-    }
-private:
-	Resource* _resource;
-	std::string _quantityExpression;
-};
+class SeizableItemRequest;
 
 /*!
 Resource module
@@ -115,14 +87,6 @@ public:
 		return std::bind(function, object, std::placeholders::_1);
 	}
 
-	enum class ResourceType : int {
-		SET = 1, RESOURCE = 2
-	};
-
-	enum class ResourceRule : int {
-		RANDOM = 1, CICLICAL = 2, ESPECIFIC = 3, SMALLESTBUSY = 4, LARGESTREMAININGCAPACITY = 5
-	};
-
 	enum class ResourceState : int {
 		IDLE = 1, BUSY = 2, FAILED = 3, INACTIVE = 4, OTHER = 5
 	};
@@ -139,7 +103,6 @@ public:
 public:
 	void seize(unsigned int quantity, double tnow);
 	void release(unsigned int quantity, double tnow);
-	void initBetweenReplications();
 public: // g&s
 	void setResourceState(ResourceState _resourceState);
 	Resource::ResourceState getResourceState() const;
@@ -161,17 +124,23 @@ protected:
 	virtual std::map<std::string, std::string>* _saveInstance();
 	virtual bool _check(std::string* errorMessage);
 	virtual void _createInternalElements();
-
+	virtual void _initBetweenReplications(); 
 private:
 	void _notifyReleaseEventHandlers(); ///< Notify observer classes that some of the resource capacity has been released. It is useful for allocation components (such as Seize) to know when an entity waiting into a queue can try to seize the resource again
 	//private:
 	//    ElementManager* _elems;
 private:
-	unsigned int _capacity = 1;
-	double _costBusyHour = 1.0;
-	double _costIdleHour = 1.0;
-	double _costPerUse = 1.0;
-	ResourceState _resourceState = ResourceState::IDLE;
+
+	const struct DEFAULT_VALUES {
+		unsigned int capacity = 1;
+		double cost = 1.0;
+		ResourceState resourceState = ResourceState::IDLE;
+	} DEFAULT;
+	unsigned int _capacity = DEFAULT.capacity;
+	double _costBusyHour = DEFAULT.cost;
+	double _costIdleHour = DEFAULT.cost;
+	double _costPerUse = DEFAULT.cost;
+	ResourceState _resourceState = DEFAULT.resourceState;
 private: // only gets
 	unsigned int _numberBusy = 0;
 	//unsigned int _numberOut = 0;

@@ -51,7 +51,7 @@ void Enter::_execute(Entity* entity) {
 bool Enter::_loadInstance(std::map<std::string, std::string>* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		std::string stationName = ((*(fields->find("stationName"))).second);
+		std::string stationName = LoadField(fields, "station", "");
 		Station* station = dynamic_cast<Station*> (_parentModel->getElements()->getElement(Util::TypeOf<Station>(), stationName));
 		this->_station = station;
 	}
@@ -64,7 +64,7 @@ void Enter::_initBetweenReplications() {
 
 std::map<std::string, std::string>* Enter::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance();
-	fields->emplace("stationName", (this->_station->getName()));
+	SaveField(fields, "station", _station->getName(), "");
 	return fields;
 }
 
@@ -84,7 +84,7 @@ PluginInformation* Enter::GetPluginInformation() {
 void Enter::_createInternalElements() {
 	if (_reportStatistics) {
 		if (_numberIn == nullptr) {
-			_numberIn = new Counter(_parentModel, _name + "." + "CountNumberIn", this);
+			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 			_childrenElements->insert({"CountNumberIn", _numberIn});
 		}
 	} else

@@ -24,7 +24,7 @@ Route::Route(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 std::string Route::show() {
 	std::string msg = ModelComponent::show() +
 			",destinationType=" + std::to_string(static_cast<int> (this->_routeDestinationType)) +
-			",timeExpression=" + this->_routeTimeExpression + " " + Util::StrTimeUnit(this->_routeTimeTimeUnit);
+			",timeExpression=" + this->_routeTimeExpression + " " + Util::StrTimeUnitShort(this->_routeTimeTimeUnit);
 	if (_station != nullptr)
 		msg += ",station=" + this->_station->getName();
 	return msg;
@@ -85,15 +85,15 @@ void Route::_execute(Entity* entity) {
 			assert(seqStep != nullptr);
 		}
 		destinyStation = seqStep->getStation();
-		for (std::list<std::string>::iterator it = seqStep->getAssignments()->begin(); it != seqStep->getAssignments()->end(); it++) {
-			_parentModel->parseExpression((*it));
+		for (SequenceStep::Assignment* assignment : *seqStep->getAssignments()) {
+			_parentModel->parseExpression(assignment->getDestination() + "=" + assignment->getExpression());
 		}
 		entity->setAttributeValue("Entity.SequenceStep", step + 1.0);
 	}
 	if (_reportStatistics)
 		_numberIn->incCountValue();
 	// adds the route time to the TransferTime statistics / attribute related to the Entitys
-	double routeTime = _parentModel->parseExpression(_routeTimeExpression) * Util::TimeUnitConvert(_routeTimeTimeUnit, _parentModel->getInfos()->getReplicationLengthTimeUnit());
+	double routeTime = _parentModel->parseExpression(_routeTimeExpression) * Util::TimeUnitConvert(_routeTimeTimeUnit, _parentModel->getSimulation()->getReplicationBaseTimeUnit());
 	if (entity->getEntityType()->isReportStatistics())
 		entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + ".TransferTime")->getStatistics()->getCollector()->addValue(routeTime);
 	entity->setAttributeValue("Entity.TotalTransferTime", entity->getAttributeValue("Entity.TotalTransferTime") + routeTime);
@@ -112,12 +112,14 @@ void Route::_execute(Entity* entity) {
 bool Route::_loadInstance(std::map<std::string, std::string>* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_routeTimeExpression = (*fields->find("routeTimeExpression")).second;
-		this->_routeTimeTimeUnit = static_cast<Util::TimeUnit> (std::stoi((*fields->find("routeTimeTimeUnit")).second));
-		this->_routeDestinationType = static_cast<Route::DestinationType> (std::stoi((*fields->find("routeDestinationType")).second));
-		std::string stationName = ((*(fields->find("stationName"))).second);
-		Station* station = dynamic_cast<Station*> (_parentModel->getElements()->getElement(Util::TypeOf<Station>(), stationName));
-		this->_station = station;
+		this->_routeTimeExpression = LoadField(fields, "routeTimeExpression", DEFAULT.routeTimeExpression);
+		this->_routeTimeTimeUnit = LoadField(fields, "routeTimeTimeUnit", DEFAULT.routeTimeTimeUnit);
+		this->_routeDestinationType = static_cast<Route::DestinationType> (LoadField(fields, "destinationType", static_cast<int> (DEFAULT.routeDestinationType)));
+		if (_routeDestinationType == DestinationType::Station) {
+			std::string stationName = LoadField(fields, "station", "");
+			Station* station = dynamic_cast<Station*> (_parentModel->getElements()->getElement(Util::TypeOf<Station>(), stationName));
+			this->_station = station;
+		}
 	}
 	return res;
 }
@@ -128,11 +130,12 @@ void Route::_initBetweenReplications() {
 
 std::map<std::string, std::string>* Route::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance();
-	fields->emplace("stationId", std::to_string(this->_station->getId()));
-	fields->emplace("stationName", (this->_station->getName()));
-	fields->emplace("routeTimeExpression", "\"" + this->_routeTimeExpression + "\"");
-	fields->emplace("routeTimeTimeUnit", std::to_string(static_cast<int> (this->_routeTimeTimeUnit)));
-	fields->emplace("routeDestinationType", std::to_string(static_cast<int> (this->_routeDestinationType)));
+	if (_routeDestinationType == DestinationType::Station) {
+		SaveField(fields, "station", (this->_station->getName()));
+	}
+	SaveField(fields, "routeTimeExpression", _routeTimeExpression, DEFAULT.routeTimeExpression);
+	SaveField(fields, "routeTimeTimeUnit", _routeTimeTimeUnit, DEFAULT.routeTimeTimeUnit);
+	SaveField(fields, "destinationType", static_cast<int> (_routeDestinationType), static_cast<int> (DEFAULT.routeDestinationType));
 	return fields;
 }
 
@@ -179,7 +182,7 @@ PluginInformation* Route::GetPluginInformation() {
 void Route::_createInternalElements() {
 	if (_reportStatistics) {
 		if (_numberIn == nullptr) {
-			_numberIn = new Counter(_parentModel, _name + "." + "CountNumberIn", this);
+			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 			_childrenElements->insert({"CountNumberIn", _numberIn});
 		}
 	} else

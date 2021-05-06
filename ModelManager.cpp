@@ -11,6 +11,11 @@
  * Created on 31 de Maio de 2019, 08:37
  */
 
+#include <fstream>
+#include <stdio.h>
+#include <iostream>
+#include <cstdio>
+
 #include "ModelManager.h"
 #include "List.h"
 #include "Simulator.h"
@@ -30,7 +35,7 @@ Model* ModelManager::newModel() {
 void ModelManager::insert(Model* model) {
 	_models->insert(model);
 	this->_currentModel = model;
-	_simulator->getTracer()->trace(Util::TraceLevel::simulatorResult, "Model successfully inserted");
+	_simulator->getTracer()->trace(Util::TraceLevel::L3_results, "Model successfully inserted");
 }
 
 void ModelManager::remove(Model* model) {
@@ -39,7 +44,7 @@ void ModelManager::remove(Model* model) {
 		_currentModel = this->front();
 	}
 	model->~Model();
-	_simulator->getTracer()->trace(Util::TraceLevel::simulatorResult, "Model successfully removed");
+	_simulator->getTracer()->trace(Util::TraceLevel::L3_results, "Model successfully removed");
 }
 
 unsigned int ModelManager::size() {
@@ -57,12 +62,32 @@ bool ModelManager::loadModel(std::string filename) {
 	bool res = model->load(filename);
 	if (res) {
 		this->insert(model);
-		_simulator->getTracer()->trace(Util::TraceLevel::simulatorResult, "Model successfully loaded");
+		_simulator->getTracer()->trace(Util::TraceLevel::L3_results, "Model successfully loaded");
 	} else {
 		model->~Model();
-		_simulator->getTracer()->trace(Util::TraceLevel::simulatorResult, "Model coud not be loaded");
+		_simulator->getTracer()->trace(Util::TraceLevel::L3_results, "Model coud not be loaded");
 	}
 	return res;
+}
+
+bool ModelManager::createFromLanguage(std::string modelSpecification) {
+	std::string randomTempFilename = "_tmp";
+	const char alphanum[] =
+			"0123456789_."
+			"ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+			"abcdefghijklmnopqrstuvwxyz";
+	unsigned short stringLength = sizeof (alphanum) - 1;
+	for (unsigned short i = 0; i < 16; i++) {
+		randomTempFilename += alphanum[rand() % stringLength];
+	}
+	std::ofstream savefile;
+	savefile.open("tmp_createfromlanguage.tmp" /*randomTempFilename*/, std::ofstream::out);
+	savefile << modelSpecification;
+	savefile.close();
+	bool result = this->loadModel(randomTempFilename);
+	//const std::string filename = randomTempFilename;
+	std::remove("tmp_createfromlanguage.tmp" /*randomTempFilename*/);
+	return result;
 }
 
 void ModelManager::setCurrent(Model* model) {

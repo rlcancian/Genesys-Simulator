@@ -15,7 +15,7 @@
 #include "Model.h"
 
 Dispose::Dispose(Model* model, std::string name) : SinkModelComponent(model, Util::TypeOf<Dispose>(), name) {
-	//_numberOut = new Counter(_parentModel, _name + "." + "Count_number_out", this);
+	//_numberOut = new Counter(_parentModel, getName() + "." + "Count_number_out", this);
 	_connections->setMinOutputConnections(0);
 	_connections->setMaxOutputConnections(0);
 }
@@ -57,7 +57,7 @@ bool Dispose::_check(std::string* errorMessage) {
 void Dispose::_createInternalElements() {
 	if (_reportStatistics && _numberOut == nullptr) {
 		// creates the counter (and then the CStats)
-		_numberOut = new Counter(_parentModel, _name + "." + "CountNumberIn", this);
+		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		_childrenElements->insert({"CountNumberIn", _numberOut});
 		// include StatisticsCollector needed for each EntityType
 		std::list<ModelElement*>* enttypes = _parentModel->getElements()->getElementList(Util::TypeOf<EntityType>())->list();

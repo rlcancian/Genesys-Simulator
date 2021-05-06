@@ -18,7 +18,6 @@
 
 TraceManager::TraceManager(Simulator* simulator) {//(Model* model) {
 	_simulator = simulator;
-	_debugged = Traits<Model>::debugged;
 	_traceLevel = Traits<Model>::traceLevel;
 }
 
@@ -125,5 +124,5 @@ List<std::string>* TraceManager::errorMessages() const {
 }
 
 bool TraceManager::_traceConditionPassed(Util::TraceLevel level) {
-	return this->_debugged && static_cast<int> (this->_traceLevel) >= static_cast<int> (level);
+	return /*this->_debugged &&*/ static_cast<int> (this->_traceLevel) >= static_cast<int> (level);
 }

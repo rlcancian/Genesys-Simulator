@@ -96,7 +96,7 @@ bool Formula::_loadInstance(std::map<std::string, std::string>* fields) {
 
 std::map<std::string, std::string>* Formula::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelElement::_saveInstance();
-	//fields->emplace("...", std::to_string(this->_...));
+	//SaveField(fields, "...", std::to_string(this->_...));
 	return fields;
 }
 
@@ -107,7 +107,7 @@ bool Formula::_check(std::string* errorMessage) {
 	for (std::map<std::string, std::string>::iterator it = _formulaExpressions->begin(); it != _formulaExpressions->end(); it++) {
 		res = _parentModel->checkExpression((*it).second, "formula expression[" + (*it).first + "]", &errorMsg);
 		if (!res) {
-			_parentModel->getTracer()->trace(Util::TraceLevel::errorFatal, "Error parsing expression \"" + (*it).second + "\"");
+			_parentModel->getTracer()->trace(Util::TraceLevel::L1_errorFatal, "Error parsing expression \"" + (*it).second + "\"");
 		}
 		resAll &= res;
 	}

@@ -30,6 +30,10 @@ std::string SimulationResponse::getName() const {
 	return _name;
 }
 
+void SimulationResponse::setName(std::string name) {
+	_name = name;
+}
+
 std::string SimulationResponse::getType() const {
 	return _type;
 }

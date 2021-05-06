@@ -1,0 +1,30 @@
+0   SimulatorInfo "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=210420 
+0   ModelInfo  "Model 1" 
+0   ModelSimulation "fixed experiment name in ModelSimulation" numberOfReplications=30 replicationLength=1000.000000 replicationLengthTimeUnit=4 
+1   EntityType "processo" 
+12  Resource   "CPU" 
+13  Queue      "Fila_CPU" 
+17  Attribute  "fatiaTempo" 
+23  Station    "Estacao_de_liberacao_de_memoria" 
+4   Attribute  "memoriaOcupada" 
+5   Attribute  "tempoExecucao" 
+6   Resource   "memoria" capacity=64 
+7   Queue      "Fila_Alocacao_Memoria" 
+9   Station    "Estacao_de_Execucao" 
+10  Route      "Route_1" caption="Processo é enviado para execução na CPU" station="Estacao_de_Execucao" nextSize=0 
+11  Enter      "Enter_1" caption="Processo chega para ser executado" station="Estacao_de_Execucao" nextId=14 
+14  Seize      "Seize_2" caption="Processo aloca CPU" queueId=13 queueable="Fila_CPU" seizable0="CPU" nextId=15 
+15  Decide     "Decide_1" caption="Define tempo de execução da fatia de tempo atual" condition0="tempoExecucao >= 1" conditions=1 nextSize=2 nextId0=16 nextId1=18 
+16  Assign     "Assign_2" assignments=2 caption="Define execucao por um quantum de tempo" destination0="fatiaTempo" destination1="tempoExecucao" expression0="1" expression1="tempoExecucao-fatiaTempo" nextId=19 
+18  Assign     "Assign_3" assignments=2 caption="Executa até o final" destination0="fatiaTempo" destination1="tempoExecucao" expression0="tempoExecucao" expression1="tempoExecucao - fatiaTempo" nextId=19 
+19  Delay      "Delay_1" caption="Processo executa na CPU" delayExpression="fatiaTempo" delayExpressionTimeUnit=4 nextId=20 
+2   Create     "Create_1" EntityType="processo" caption="Processo é criado no computador" timeBetweenCreations="expo(10)" timeBetweenCreationsTimeUnit=4 nextId=3 
+20  Release    "Release_1" caption="Processo libera CPU" seizable0="CPU" nextId=21 
+21  Decide     "Decide_2" caption="Se processo ainda precisa executar então vai para estação de execução" condition0="tempoExecucao > 0" conditions=1 nextSize=2 nextId0=22 nextId1=24 
+22  Route      "Route_2" caption="Processo é enviado de volta para execução" station="Estacao_de_Execucao" nextSize=0 
+24  Route      "Route_3" caption="Processo é enviado para liberar memória" station="Estacao_de_liberacao_de_memoria" nextSize=0 
+25  Enter      "Enter_2" caption="Processo chega para liberar memória" station="Estacao_de_liberacao_de_memoria" nextId=26 
+26  Release    "Release_2" caption="Processo libera memória" quantityExpression0="memoriaOcupada" seizable0="memoria" nextId=27 
+27  Dispose    "Dispose_1" caption="Processo é encerrado" nextSize=0 
+3   Assign     "Assign_1" assignments=2 caption="Define tempo de execução e memória ocupada" destination0="memoriaOcupada" destination1="tempoExecucao" expression0="TRUNC(UNIF(2,32))" expression1="NORM(5,1) * memoriaOcupada/10" nextId=8 
+8   Seize      "Seize_1" caption="Processo aloca memória" quantityExpression0="memoriaOcupada" queueId=7 queueable="Fila_Alocacao_Memoria" seizable0="memoria" nextId=10 

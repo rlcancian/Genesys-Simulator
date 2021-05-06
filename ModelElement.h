@@ -21,6 +21,7 @@
 #include "Util.h"
 
 #include "ParserChangesInformation.h"
+#include "PersistentObject_base.h"
 
 //namespace GenesysKernel {
 	class Model;
@@ -29,7 +30,7 @@
 	 * This class is the basis for any element of the model (such as Queue, Resource, Variable, etc.) and also for any component of the model. 
 	 * It has the infrastructure to read and write on file and to verify symbols.
 	 */
-	class ModelElement {
+	class ModelElement: PersistentObject_base {
 	public:
 		ModelElement(Model* model, std::string elementTypename, std::string name = "", bool insertIntoModel = true);
 		//ModelElement(Model* model, std::string elementTypename, std::string name = "", bool insertIntoModel = true);
@@ -38,7 +39,7 @@
 
 	public: // get & set
 		Util::identification getId() const;
-		void setName(std::string _name);
+		void setName(std::string name);
 		std::string getName() const;
 		std::string getClassname() const;
         bool isReportStatistics() const;
@@ -53,6 +54,7 @@
 		virtual std::string show();
 		std::list<std::string>* getChildrenElementKeys() const;
 		ModelElement* getChildElement(std::string key) const;
+        bool hasChanged() const;
 	protected:
 		void _setChildElement(std::string key, ModelElement* child);
 		void _removeChildrenElements();
@@ -67,11 +69,13 @@
 		virtual void _createInternalElements(); ///< This method is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the element must exist when checking such expression    
 	private:
 		void _build(Model* model, std::string thistypename, bool insertIntoModel);
+	private: // name is now private. So changes in name must be throught setName, wich gives oportunity to rename childrenElements, SimulationControls and SimulationResponses
+		std::string _name;
 	protected:
 		Util::identification _id;
-		std::string _name;
 		std::string _typename;
 		bool _reportStatistics;
+		bool _hasChanged;
 		Model* _parentModel;
 	protected:
 		std::map<std::string, ModelElement*>* _childrenElements = new std::map<std::string, ModelElement*>();

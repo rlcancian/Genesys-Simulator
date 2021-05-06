@@ -50,8 +50,13 @@ void OnEventManager::addOnSimulationStartHandler(simulationEventHandler EventHan
 void OnEventManager::addOnSimulationPausedStartHandler(simulationEventHandler EventHandler) {
 	_addOnHandler(_onSimulationPausedStartHandlers, EventHandler);
 }
+
 void OnEventManager::addOnSimulationEndHandler(simulationEventHandler EventHandler) {
 	_addOnHandler(_onSimulationEndHandlers, EventHandler);
+}
+
+void OnEventManager::addOnBreakpointHandler(simulationEventHandler EventHandler) {
+	_addOnHandler(_onBreakpointHandlers, EventHandler);
 }
 
 void OnEventManager::_NotifyHandlers(List<simulationEventHandler>* list, SimulationEvent* se) {
@@ -98,4 +103,8 @@ void OnEventManager::NotifySimulationPausedStartHandlers(SimulationEvent* se) {
 
 void OnEventManager::NotifySimulationEndHandlers(SimulationEvent* se) {
 	this->_NotifyHandlers(this->_onSimulationEndHandlers, se);
+}
+
+void OnEventManager::NotifyBreakpointHandlers(SimulationEvent* se) {
+	this->_NotifyHandlers(this->_onBreakpointHandlers, se);
 }

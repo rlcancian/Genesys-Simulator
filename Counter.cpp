@@ -23,7 +23,7 @@ Counter::Counter(Model* model, std::string name, ModelElement* parent) : ModelEl
 	//std::string parentName = "";
 	//if (_parent != nullptr)
 	//	parentName = _parent->name();
-	SimulationResponse* resp = new SimulationResponse(Util::TypeOf<Counter>(), /*parentName + ":" +*/ _name, getterMember);
+	SimulationResponse* resp = new SimulationResponse(Util::TypeOf<Counter>(), /*parentName + ":" +*/ getName(), getterMember);
 	_parentModel->getResponses()->insert(resp);
 }
 

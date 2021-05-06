@@ -62,8 +62,13 @@ protected:
 	virtual bool _check(std::string* errorMessage);
 	virtual void _createInternalElements();
 private:
-	std::string _delayExpression = "1.0";
-	Util::TimeUnit _delayTimeUnit = Util::TimeUnit::second;
+
+	const struct DEFAULT_VALUES {
+		std::string delayExpression = "1.0";
+		Util::TimeUnit delayTimeUnit = Util::TimeUnit::second;
+	} DEFAULT;
+	std::string _delayExpression = DEFAULT.delayExpression;
+	Util::TimeUnit _delayTimeUnit = DEFAULT.delayTimeUnit;
 private: // inner children elements
 	StatisticsCollector* _cstatWaitTime = nullptr;
 };

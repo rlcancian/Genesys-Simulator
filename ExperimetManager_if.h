@@ -31,8 +31,8 @@ public:
 	virtual List<SimulationControl*>* extractControlsFromModel(std::string modelFilename) const = 0;
 	virtual List<SimulationResponse*>* extractResponsesFromModel(std::string modelFilename) const = 0;
 	virtual void startSimulationOfScenario(SimulationScenario* scenario) = 0;
-	virtual void startSimulation() = 0;
-	virtual void stopSimulation() = 0;
+	virtual void startExperiment() = 0;
+	virtual void stopExperiment() = 0;
 	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) = 0;
 };
 

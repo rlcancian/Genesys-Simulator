@@ -16,9 +16,9 @@
 
 #include "BaseConsoleGenesysApplication.h"
 
-class SecondExampleOfSimulation : public BaseConsoleGenesysApplication {
+class Model_CreateDelayDispose2 : public BaseConsoleGenesysApplication {
 public:
-	SecondExampleOfSimulation();
+	Model_CreateDelayDispose2();
 public:
 	virtual int main(int argc, char** argv);
 };

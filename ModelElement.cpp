@@ -28,9 +28,14 @@ ModelElement::ModelElement(Model* model, std::string thistypename, std::string n
 		_name = thistypename + "_" + std::to_string(Util::GenerateNewIdOfType(thistypename));
 	else
 		_name = name;
+	_hasChanged = false;
 	if (insertIntoModel) {
 		model->insert(this);
 	}
+}
+
+bool ModelElement::hasChanged() const {
+	return _hasChanged;
 }
 
 //ModelElement::ModelElement(const ModelElement &orig) {
@@ -40,7 +45,7 @@ ModelElement::ModelElement(Model* model, std::string thistypename, std::string n
 //}
 
 ModelElement::~ModelElement() {
-	_parentModel->getTracer()->trace(Util::TraceLevel::everythingMostDetailed, "Removing Element \"" + this->_name + "\" from the model");
+	_parentModel->getTracer()->trace(Util::TraceLevel::L8_mostDetailed, "Removing Element \"" + this->_name + "\" from the model");
 	_removeChildrenElements();
 	_parentModel->getElements()->remove(this);
 }
@@ -81,22 +86,19 @@ bool ModelElement::_loadInstance(std::map<std::string, std::string>* fields) {
 	it = fields->find("id");
 	it != fields->end() ? this->_id = std::stoi((*it).second) : res = false;
 	it = fields->find("name");
-	if (it != fields->end()) {
-		this->_name = (*it).second;
-	} else
-		res = false;
+	it != fields->end() ? this->_name = (*it).second : this->_name = "";
 	//it != fields->end() ? this->_name = (*it).second : res = false;
 	it = fields->find("reportStatistics");
-	it != fields->end() ? this->_reportStatistics = std::stoi((*it).second) : res = false;
+	it != fields->end() ? this->_reportStatistics = std::stoi((*it).second) : this->_reportStatistics = Traits<ModelElement>::reportStatistics;
 	return res;
 }
 
 std::map<std::string, std::string>* ModelElement::_saveInstance() {
 	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
-	fields->emplace("typename", this->_typename);
-	fields->emplace("id", std::to_string(this->_id));
-	fields->emplace("name", this->_name);
-	fields->emplace("reportStatistics", std::to_string(this->_reportStatistics));
+	SaveField(fields, "typename", _typename);
+	SaveField(fields, "id", this->_id);
+	SaveField(fields, "name", _name);
+	SaveField(fields, "reportStatistics", _reportStatistics, Traits<ModelElement>::reportStatistics);
 	return fields;
 }
 
@@ -141,8 +143,40 @@ Util::identification ModelElement::getId() const {
 	return _id;
 }
 
-void ModelElement::setName(std::string _name) {
-	this->_name = _name;
+void ModelElement::setName(std::string name) {
+	// rename every "stuff" related to this element (controls, responses and childrenElements
+	if (name != _name) {
+		std::string stuffName;
+		unsigned int pos;
+		for (std::pair<std::string, ModelElement*> child : *_childrenElements) {
+			stuffName = child.second->getName();
+			pos = stuffName.find(getName(), 0);
+			if (pos != std::string::npos) {
+				stuffName = stuffName.replace(pos, pos + getName().length(), name);
+				child.second->setName(stuffName);
+			}
+		}
+
+		for (SimulationControl* control : *_parentModel->getControls()->list()) {
+			stuffName = control->getName();
+			pos = stuffName.find(getName(), 0);
+			if (pos != std::string::npos) {
+				stuffName = stuffName.replace(pos, pos + getName().length(), name);
+				control->setName(stuffName);
+			}
+		}
+
+		for (SimulationResponse* response : *_parentModel->getResponses()->list()) {
+			stuffName = response->getName();
+			pos = stuffName.find(getName(), 0);
+			if (pos != std::string::npos) {
+				stuffName = stuffName.replace(pos, pos + getName().length(), name);
+				response->setName(stuffName);
+			}
+		}
+		this->_name = name;
+		_hasChanged = true;
+	}
 }
 
 std::string ModelElement::getName() const {
@@ -154,7 +188,7 @@ std::string ModelElement::getClassname() const {
 }
 
 void ModelElement::InitBetweenReplications(ModelElement* element) {
-	//component->_model->getTraceManager()->trace(Util::TraceLevel::blockArrival, "Writing component \"" + component->_name + "\""); //std::to_string(component->_id));
+	element->_parentModel->getTracer()->trace("Initing element \"" + element->getName() + "\"", Util::TraceLevel::L7_detailed); //std::to_string(component->_id));
 	try {
 		element->_initBetweenReplications();
 	} catch (const std::exception& e) {
@@ -190,7 +224,7 @@ std::map<std::string, std::string>* ModelElement::SaveInstance(ModelElement* ele
 }
 
 bool ModelElement::Check(ModelElement* element, std::string* errorMessage) {
-	//    element->_model->getTraceManager()->trace(Util::TraceLevel::mostDetailed, "Checking " + element->_typename + ": " + element->_name); //std::to_string(element->_id));
+	//    element->_model->getTraceManager()->trace(Util::TraceLevel::L8_mostDetailed, "Checking " + element->_typename + ": " + element->_name); //std::to_string(element->_id));
 	bool res = false;
 	Util::IncIndent();
 	{
@@ -222,7 +256,10 @@ void ModelElement::_createInternalElements() {
 }
 
 void ModelElement::setReportStatistics(bool reportStatistics) {
-	this->_reportStatistics = reportStatistics;
+	if (_reportStatistics != reportStatistics) {
+		this->_reportStatistics = reportStatistics;
+		_hasChanged = true;
+	}
 }
 
 bool ModelElement::isReportStatistics() const {

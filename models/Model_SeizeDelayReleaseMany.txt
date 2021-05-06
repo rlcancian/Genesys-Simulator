@@ -1,0 +1,14 @@
+0   SimulatorInfo "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=210420 
+0   ModelInfo  "Model 1" 
+0   ModelSimulation "fixed experiment name in ModelSimulation" numberOfReplications=3 replicationLength=30.000000 
+1   EntityType "EntityType_1" 
+3   Resource   "Resource_1" 
+4   Resource   "Resource_2" 
+5   Resource   "Resource_3" 
+6   Resource   "Resource_4" 
+7   Queue      "Queue_1" 
+10  Release    "Release_1" resquestSize=4 seizable0="Resource_1" seizable1="Resource_2" seizable2="Resource_3" seizable3="Resource_4" nextId=11 
+11  Dispose    "Dispose_1" nextSize=0 
+2   Create     "Create_1" EntityType="EntityType_1" timeBetweenCreations="unif(1,2)" nextId=8 
+8   Seize      "Seize_1" queueId=7 queueable="Queue_1" resquestSize=4 seizable0="Resource_1" seizable1="Resource_2" seizable2="Resource_3" seizable3="Resource_4" nextId=9 
+9   Delay      "Delay_1" delayExpression="unif(1,2)" nextId=10 

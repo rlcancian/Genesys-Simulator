@@ -44,7 +44,7 @@
 // #include "Signal.h"
 // #include "Store.h"
 // #include "PickStation.h"
-// #include "Sequence.h"
+#include "Sequence.h"
 // #include "Start.h"
 // #include "Stop.h"
 // #include "Unstore.h"
@@ -174,8 +174,8 @@
 	//		GetInfo = &Storage::GetPluginInformation;
 	//	else if (fn == "pickstation.so")
 	//		GetInfo = &PickStation::GetPluginInformation;
-	//	else if (fn == "sequence.so")
-	//		GetInfo = &Sequence::GetPluginInformation;
+	else if (fn == "sequence.so")
+		GetInfo = &Sequence::GetPluginInformation;
 	//	else if (fn == "access.so")
 	//		GetInfo = &Access::GetPluginInformation;
 	//	else if (fn == "exit.so")

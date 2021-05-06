@@ -30,6 +30,7 @@
 		void setCurrent(Model* model);
 		bool saveModel(std::string filename);
 		bool loadModel(std::string filename);
+		bool createFromLanguage(std::string modelSpecification);
 		unsigned int size();
 	public:
 		Model* front();

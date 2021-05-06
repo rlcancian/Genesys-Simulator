@@ -22,7 +22,7 @@
 class HypothesisTester_if {
 public:
 
-	enum H1Comparition {
+	enum class H1Comparition: int {
 		DIFFERENT = 1,
 		LESS_THAN = 2,
 		GREATER_THAN = 3

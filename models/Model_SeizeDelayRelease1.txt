@@ -1,0 +1,11 @@
+0   SimulatorInfo "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=210420 
+0   ModelInfo  "Model 1" 
+0   ModelSimulation "fixed experiment name in ModelSimulation" numberOfReplications=2 replicationLength=120.000000 
+1   EntityType "Customer" 
+3   Resource   "Machine_1" 
+4   Queue      "Seize_1.Queue" 
+2   Create     "Create_1" EntityType="Customer" timeBetweenCreations="expo(20)" nextId=5 
+5   Seize      "Seize_1" queueId=4 queueable="Seize_1.Queue" seizable0="Machine_1" nextId=6 
+6   Delay      "Delay_1" delayExpression="unif(15,30)" nextId=7 
+7   Release    "Release_1" seizable0="Machine_1" nextId=8 
+8   Dispose    "Dispose_1" nextSize=0 

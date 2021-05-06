@@ -30,7 +30,7 @@ double ParserDefaultImpl2::parse(const std::string expression) { // may throw ex
 			throw std::string("Error parsing expression \"" + expression + "\"");
 		}
 	} catch (std::string e) {
-		_model->getTracer()->trace(Util::TraceLevel::errorFatal, e);
+		_model->getTracer()->trace(Util::TraceLevel::L1_errorFatal, e);
 		return _wrapper.getResult();
 	}
 }
@@ -41,8 +41,13 @@ std::string* ParserDefaultImpl2::getErrorMessage() {
 }
 
 double ParserDefaultImpl2::parse(const std::string expression, bool* success, std::string* errorMessage) {
-	_wrapper.setThrowsException(false);
-	int res = _wrapper.parse_str(expression);
+	_wrapper.setThrowsException(true); //false);
+	int res = -1;
+	try {
+		res = _wrapper.parse_str(expression);
+	} catch (...) {
+		res = -1;
+	}
 	if (res == 0) {
 		*success = true;
 		return _wrapper.getResult();

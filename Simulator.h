@@ -36,8 +36,9 @@
 		Simulator();
 		virtual ~Simulator() = default;
 	public: // only get
-		std::string version() const;
-		std::string name() const;
+		std::string getVersion() const;
+		unsigned int getVersionNumber() const;
+		std::string getName() const;
 		LicenceManager* getLicenceManager() const;
 		PluginManager* getPlugins() const;
 		ModelManager* getModels() const;
@@ -52,7 +53,8 @@
 		ParserManager* _parserManager;
 	private: // attributes 1:1 native
 		const std::string _name = "GenESyS - GENeric and Expansible SYstem Simulator";
-		const std::string _version = "21.03 (backtotrack)";
+		const std::string _versionName = "russel";
+		const unsigned int _versionNumber = 210420;
 	};
 //namespace\\}
 

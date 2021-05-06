@@ -15,6 +15,7 @@
 #include "Entity.h"
 #include "Attribute.h"
 #include "Model.h"
+#include <cassert>
 
 //using namespace GenesysKernel;
 
@@ -63,17 +64,19 @@ std::string Entity::show() {
 		if (map->size() == 0) { // scalar
 			message += "NaN;"; //std::to_string(map->begin()->second) + ";";
 		} else if (map->size() == 1) { // scalar
-			message += std::to_string(map->begin()->second) + ";";
+			message += std::to_string(map->begin()->second) + ",";
 		} else {
 			// array or matrix
 			message += "[";
-			for (std::map<std::string, double>::iterator valIt = map->begin(); valIt != map->end(); valIt++) {
-				message += (*valIt).first + "=>" + std::to_string((*valIt).second) + ",";
+			for (std::pair<std::string, double> valIt : *map) {
+				message += valIt.first + "=>" + std::to_string(valIt.second) + ",";
 			}
+			message = message.substr(0, message.length() - 1);
 			message += "];";
 		}
 		_attributeValues->next();
 	}
+	message = message.substr(0, message.length() - 1);
 	message += "]";
 	return message;
 }
@@ -93,7 +96,7 @@ double Entity::getAttributeValue(std::string index, std::string attributeName) {
 			return 0.0;
 		}
 	}
-	_parentModel->getTracer()->trace(Util::TraceLevel::errorRecover, "Attribute \"" + attributeName + "\" not found");
+	_parentModel->getTracer()->trace(Util::TraceLevel::L2_errorRecover, "Attribute \"" + attributeName + "\" not found");
 	return 0.0; /* \todo: !! Never should happen. check how to report */
 }
 
@@ -102,6 +105,7 @@ double Entity::getAttributeValue(Util::identification attributeID) {
 }
 
 double Entity::getAttributeValue(std::string index, Util::identification attributeID) {
+	//assert(this->_parentModel != nullptr);
 	ModelElement* element = _parentModel->getElements()->getElement(Util::TypeOf<Attribute>(), attributeID);
 	if (element != nullptr) {
 		return getAttributeValue(index, element->getName());
@@ -124,7 +128,7 @@ void Entity::setAttributeValue(std::string index, std::string attributeName, dou
 			map->insert({index, value}); // (map->end(), std::pair<std::string, double>(index, value));
 		}
 	} else
-		_parentModel->getTracer()->trace(Util::TraceLevel::errorRecover, "Attribute \"" + attributeName + "\" not found");
+		_parentModel->getTracer()->trace(Util::TraceLevel::L2_errorRecover, "Attribute \"" + attributeName + "\" not found");
 
 }
 

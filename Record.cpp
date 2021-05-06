@@ -76,18 +76,18 @@ void Record::_execute(Entity* entity) {
 
 std::map<std::string, std::string>* Record::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(); //Util::TypeOf<Record>());
-	fields->emplace("expression0", "\"" + this->_expression + "\"");
-	fields->emplace("expressionName0", this->_expressionName);
-	fields->emplace("fileName0", "\"" + this->_filename + "\"");
+	SaveField(fields, "expression0", this->_expression, "");
+	SaveField(fields, "expressionName0", this->_expressionName, "");
+	SaveField(fields, "fileName0", this->_filename, "");
 	return fields;
 }
 
 bool Record::_loadInstance(std::map<std::string, std::string>* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_expression = ((*(fields->find("expression0"))).second);
-		this->_expressionName = ((*(fields->find("expressionName0"))).second);
-		this->_filename = ((*(fields->find("fileName0"))).second);
+		this->_expression = LoadField(fields, "expression0", "");
+		this->_expressionName = LoadField(fields, "expressionName0", "");
+		this->_filename = LoadField(fields, "fileName0", "");
 	}
 	return res;
 }

@@ -16,9 +16,9 @@
 
 #include "BaseConsoleGenesysApplication.h"
 
-class FourthExampleOfSimulation : public BaseConsoleGenesysApplication {
+class Model_AssignWrite3Seizes : public BaseConsoleGenesysApplication {
 public:
-	FourthExampleOfSimulation();
+	Model_AssignWrite3Seizes();
 public:
 	virtual int main(int argc, char** argv);
 };

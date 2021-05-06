@@ -34,14 +34,14 @@ TestMatricesOfAttributesAndVariables::~TestMatricesOfAttributesAndVariables() {
 }
 
 int TestMatricesOfAttributesAndVariables::main(int argc, char** argv) {
-	Simulator* sim = new Simulator();
-	setDefaultTraceHandlers(sim->getTracer());
-	sim->getTracer()->setTraceLevel(Util::TraceLevel::modelSimulationInternal);
-	insertFakePluginsByHand(sim);
-	Model* m = new Model(sim);
-	sim->getModels()->insert(m);
+	Simulator* genesys = new Simulator();
+	setDefaultTraceHandlers(genesys->getTracer());
+	genesys->getTracer()->setTraceLevel(Util::TraceLevel::L6_internal);
+	insertFakePluginsByHand(genesys);
+	Model* m = new Model(genesys);
+	genesys->getModels()->insert(m);
 	m->getInfos()->setProjectTitle("Stochastic Simulation of Chemical Reactions");
-	m->getInfos()->setReplicationLength(500);
+	m->getSimulation()->setReplicationLength(500);
 	Create* cr1 = new Create(m);
 	Write* w1 = new Write(m);
 	Assign* as1 = new Assign(m, "Define próxima reação a ocorrer");
@@ -94,7 +94,7 @@ int TestMatricesOfAttributesAndVariables::main(int argc, char** argv) {
 	as1->getAssignments()->insert(new Assign::Assignment("temp[6]", "1-exp(-temp[3])"));
 	as1->getAssignments()->insert(new Assign::Assignment("temp[7]", "expo(temp[6])"));
 	de1->setDelayExpression("temp[7]");
-	m->getInfos()->setTerminatingCondition("(N[1]+N[2]+N[3])==0");
+	m->getSimulation()->setTerminatingCondition("(N[1]+N[2]+N[3])==0");
 	m->getSimulation()->start();
 	return 0;
 
