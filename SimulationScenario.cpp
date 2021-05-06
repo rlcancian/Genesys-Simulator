@@ -23,9 +23,9 @@ _selectedResponses(new std::unordered_set<std::string>()) {
 }
 
 SimulationScenario::~SimulationScenario() {
-    delete this->_responseValues;
-    delete this->_selectedControls;
-    delete this->_selectedResponses;
+    delete _responseValues;
+    delete _selectedControls;
+    delete _selectedResponses;
 }
 
 bool SimulationScenario::startSimulation(Simulator * simulator, std::string* errorMessage) {
@@ -36,10 +36,10 @@ bool SimulationScenario::startSimulation(Simulator * simulator, std::string* err
     // clear selected controls and responses
     // close the model
 
-    bool loaded = simulator->getModels()->loadModel(this->_modelFilename);
+    auto loaded = simulator->getModels()->loadModel(this->_modelFilename);
     if (!loaded)
         return false;
-    Model * model = simulator->getModels()->current();
+    auto model = simulator->getModels()->current();
 
     // Setting control values   
     auto control_list = model->getControls();
@@ -75,17 +75,14 @@ bool SimulationScenario::startSimulation(Simulator * simulator, std::string* err
 }
 
 void SimulationScenario::setScenarioName(std::string _name) {
-
     this->_scenarioName = _name;
 }
 
 std::string SimulationScenario::getScenarioName() const {
-
     return _scenarioName;
 }
 
 std::unordered_map<std::string, double>* SimulationScenario::getResponseValues() const {
-
     return _responseValues;
 }
 
@@ -97,14 +94,11 @@ void SimulationScenario::selectResponse(std::string responseName) {
     _selectedResponses->insert(responseName);
 }
 
-
 void SimulationScenario::setModelFilename(std::string _modelFilename) {
-
     this->_modelFilename = _modelFilename;
 }
 
 std::string SimulationScenario::getModelFilename() const {
-
     return _modelFilename;
 }
 
@@ -121,7 +115,6 @@ void SimulationScenario::setControlValue(std::string controlName, double value) 
 }
 
 void SimulationScenario::setScenarioDescription(std::string _scenarioDescription) {
-
     this->_scenarioDescription = _scenarioDescription;
 }
 
