@@ -25,15 +25,15 @@ void EntityType::_initBetweenReplications() {
 	_initialVACost = 0.0;
 	_initialNVACost = 0.0;
 	_initialOtherCost = 0.0;
-	for (std::list<StatisticsCollector*>::iterator it = this->_statisticsCollectors->list()->begin(); it != this->_statisticsCollectors->list()->end(); it++) {
-		(*it)->getStatistics()->getCollector()->clear();
+	for (StatisticsCollector* cstat : *_statisticsCollectors->list()) {
+		cstat->getStatistics()->getCollector()->clear();
 	}
 }
 
 EntityType::~EntityType() {
 	// remove all CStats
-	for (std::list<StatisticsCollector*>::iterator it = this->_statisticsCollectors->list()->begin(); it != this->_statisticsCollectors->list()->end(); it++) {
-		_parentModel->getElements()->remove(Util::TypeOf<StatisticsCollector>(), (*it));
+	for (StatisticsCollector* cstat : *_statisticsCollectors->list()) {
+		_parentModel->getElements()->remove(Util::TypeOf<StatisticsCollector>(), cstat);
 	}
 }
 
@@ -83,15 +83,13 @@ std::string EntityType::initialPicture() const {
 }
 
 StatisticsCollector* EntityType::addGetStatisticsCollector(std::string name) {
-	StatisticsCollector* cstat;
-	for (std::list<StatisticsCollector*>::iterator it = _statisticsCollectors->list()->begin(); it != _statisticsCollectors->list()->end(); it++) {
-		cstat = (*it);
+	for (StatisticsCollector* cstat : *_statisticsCollectors->list()) {
 		if (cstat->getName() == name) {
 			return cstat;
 		}
 	}
 	// not found. Create it, insert it into the list of cstats, into the model element manager, and then return it
-	cstat = new StatisticsCollector(_parentModel, name, this);
+	StatisticsCollector* cstat = new StatisticsCollector(_parentModel, name, this);
 	_statisticsCollectors->insert(cstat); // \todo _statisticsCollectors list is probabily redundant to _childrenElements and unnecessary
 	_childrenElements->insert({name, cstat});
 	//_parentModel->insert(cstat); // unnecessary
@@ -116,22 +114,22 @@ ModelElement* EntityType::LoadInstance(Model* model, std::map<std::string, std::
 bool EntityType::_loadInstance(std::map<std::string, std::string>* fields) {
 	bool res = ModelElement::_loadInstance(fields);
 	if (res) {
-		this->_initialNVACost = std::stod((*(fields->find("initialNVACost"))).second);
-		this->_initialOtherCost = std::stod((*(fields->find("initialOtherCost"))).second);
-		this->_initialPicture = ((*(fields->find("initialPicture"))).second);
-		this->_initialVACost = std::stod((*(fields->find("initialVACost"))).second);
-		this->_initialWaitingCost = std::stod((*(fields->find("initialWaitingCost"))).second);
+		this->_initialNVACost = LoadField(fields, "initialNVACost", DEFAULT.initialCost);
+		this->_initialOtherCost = LoadField(fields, "initialOtherCost", DEFAULT.initialCost);
+		this->_initialVACost = LoadField(fields, "initialVACost", DEFAULT.initialCost);
+		this->_initialWaitingCost = LoadField(fields, "initialWaitingCost", DEFAULT.initialCost);
+		this->_initialPicture = LoadField(fields, "initialPicture", DEFAULT.initialPicture);
 	}
 	return res;
 }
 
 std::map<std::string, std::string>* EntityType::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelElement::_saveInstance(); //Util::TypeOf<EntityType>());
-	fields->emplace("initialNVACost", std::to_string(this->_initialNVACost));
-	fields->emplace("initialOtherCost", std::to_string(this->_initialOtherCost));
-	fields->emplace("initialPicture", this->_initialPicture);
-	fields->emplace("initialVACost", std::to_string(this->_initialVACost));
-	fields->emplace("initialWaitingCost", std::to_string(this->_initialWaitingCost));
+	SaveField(fields, "initialNVACost", _initialNVACost, DEFAULT.initialCost);
+	SaveField(fields, "initialOtherCost", _initialOtherCost, DEFAULT.initialCost);
+	SaveField(fields, "initialVACost", _initialVACost, DEFAULT.initialCost);
+	SaveField(fields, "initialWaitingCost", _initialWaitingCost, DEFAULT.initialCost);
+	SaveField(fields, "initialPicture", _initialPicture, DEFAULT.initialPicture);
 	return fields;
 }
 

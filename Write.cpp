@@ -66,7 +66,7 @@ void Write::_execute(Entity* entity) {
 		}
 		if (msgElem->newline) {
 			if (this->_writeToType == Write::WriteToType::SCREEN) { //\todo: Write To FILE not implemented
-				_parentModel->getTracer()->trace(Util::TraceLevel::report, message);
+				_parentModel->getTracer()->trace(Util::TraceLevel::L3_results, message);
 			} else if (this->_writeToType == Write::WriteToType::FILE) {
 				// open file
 				std::ofstream savefile;
@@ -85,7 +85,7 @@ void Write::_initBetweenReplications() {
 	try {
 		std::ofstream savefile;
 		savefile.open(_filename, std::ofstream::app);
-		savefile << "# Replication number " << _parentModel->getSimulation()->getCurrentReplicationNumber() << "/" << _parentModel->getInfos()->getNumberOfReplications() << std::endl;
+		savefile << "# Replication number " << _parentModel->getSimulation()->getCurrentReplicationNumber() << "/" << _parentModel->getSimulation()->getNumberOfReplications() << std::endl;
 		savefile.close();
 	} catch (...) {
 
@@ -109,17 +109,15 @@ bool Write::_loadInstance(std::map<std::string, std::string>* fields) {
 
 std::map<std::string, std::string>* Write::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance();
-	fields->emplace("writeToType", std::to_string(static_cast<int> (_writeToType)));
-	fields->emplace("writesSize", std::to_string(_writeElements->size()));
+	SaveField(fields, "writeToType", static_cast<int> (_writeToType));
+	SaveField(fields, "writesSize", _writeElements->size(), 0u);
 	unsigned short i = 0;
 	WriteElement* writeElem;
-	for (std::list<WriteElement*>::iterator it = _writeElements->list()->begin(); it != _writeElements->list()->end(); it++) {
-
+	for (std::list<WriteElement*>::iterator it = _writeElements->list()->begin(); it != _writeElements->list()->end(); it++, i++) {
 		writeElem = (*it);
-		fields->emplace("isExpression" + std::to_string(i), std::to_string(writeElem->isExpression));
-		fields->emplace("newline" + std::to_string(i), std::to_string(writeElem->newline));
-		fields->emplace("text" + std::to_string(i), writeElem->text);
-		i++;
+		SaveField(fields, "isExpression" + std::to_string(i), writeElem->isExpression, writeElem->DEFAULT.isExpression);
+		SaveField(fields, "newline" + std::to_string(i), writeElem->newline, writeElem->DEFAULT.newline);
+		SaveField(fields, "text" + std::to_string(i), writeElem->text, writeElem->DEFAULT.text);
 	}
 	//this->_writeElements
 	return fields;

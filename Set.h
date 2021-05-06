@@ -18,7 +18,7 @@
 #include "ElementManager.h"
 #include "ParserChangesInformation.h"
 #include "PluginInformation.h"
-
+#include "EntityType.h"
 /*!
  Set module
 DESCRIPTION
@@ -74,6 +74,10 @@ protected: // could be overriden by derived classes
 	virtual ParserChangesInformation* _getParserChangesInformation();
 private:
 	//ElementManager* _elems;
+	const struct DEFAULT_VALUES {
+		unsigned int membersSize = 0;
+		std::string setOfType = Util::TypeOf<EntityType>();
+	} DEFAULT;
 	List<ModelElement*>* _elementSet = new List<ModelElement*>();
 	std::string _setOfType;
 };

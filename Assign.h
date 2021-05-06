@@ -109,6 +109,9 @@ protected:
 	virtual bool _check(std::string* errorMessage);
 private:
 private:
+	const struct DEFAULT_VALUES {
+		unsigned int assignmentsSize = 1;
+	} DEFAULT;
 	List<Assignment*>* _assignments = new List<Assignment*>();
 };
 

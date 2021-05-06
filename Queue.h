@@ -130,8 +130,13 @@ private:
 private: //1::n
 	List<Waiting*>* _list = new List<Waiting*>();
 private: //1::1
-	OrderRule _orderRule = OrderRule::FIFO;
-	std::string _attributeName = "";
+
+	const struct DEFAULT_VALUES {
+		OrderRule orderRule = OrderRule::FIFO;
+		std::string attributeName = "";
+	} DEFAULT;
+	OrderRule _orderRule = DEFAULT.orderRule;
+	std::string _attributeName = DEFAULT.attributeName;
 private: // inner children elements
 	StatisticsCollector* _cstatNumberInQueue = nullptr;
 	StatisticsCollector* _cstatTimeInQueue;

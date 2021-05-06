@@ -22,8 +22,12 @@ Assign::Assign(Model* model, std::string name) : ModelComponent(model, Util::Typ
 }
 
 std::string Assign::show() {
-	return ModelComponent::show() +
-			"";
+	std::string txt = ModelComponent::show() + ",assignments=[";
+	for (std::list<Assignment*>::iterator it = _assignments->list()->begin(); it != _assignments->list()->end(); it++) {
+		txt += (*it)->getDestination() + "=" + (*it)->getExpression() + ",";
+	}
+	txt = txt.substr(0, txt.length() - 1) + "]";
+	return txt;
 }
 
 List<Assign::Assignment*>* Assign::getAssignments() const {
@@ -66,11 +70,10 @@ void Assign::_initBetweenReplications() {
 bool Assign::_loadInstance(std::map<std::string, std::string>* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		unsigned int nv = std::stoi((*(fields->find("assignments"))).second);
+		unsigned int nv = LoadField(fields, "assignments", DEFAULT.assignmentsSize);
 		for (unsigned int i = 0; i < nv; i++) {
-			//DestinationType dt = static_cast<DestinationType> (std::stoi((*(fields->find("destinationType" + std::to_string(i)))).second));
-			std::string dest = ((*(fields->find("destination" + std::to_string(i)))).second);
-			std::string exp = ((*(fields->find("expression" + std::to_string(i)))).second);
+			std::string dest = LoadField(fields, "destination" + std::to_string(i), "");
+			std::string exp = LoadField(fields, "expression" + std::to_string(i), "");
 			Assignment* assmt = new Assignment(dest, exp);
 			this->_assignments->insert(assmt);
 		}
@@ -81,24 +84,20 @@ bool Assign::_loadInstance(std::map<std::string, std::string>* fields) {
 std::map<std::string, std::string>* Assign::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(); //Util::TypeOf<Assign>());
 	Assignment* let;
-	fields->emplace("assignments", std::to_string(_assignments->size()));
+	SaveField(fields, "assignments", _assignments->size(), DEFAULT.assignmentsSize);
 	unsigned short i = 0;
-	for (std::list<Assignment*>::iterator it = _assignments->list()->begin(); it != _assignments->list()->end(); it++) {
+	for (std::list<Assignment*>::iterator it = _assignments->list()->begin(); it != _assignments->list()->end(); it++, i++) {
 		let = (*it);
-
-		//fields->emplace("destinationType" + std::to_string(i), std::to_string(static_cast<int> (let->getDestinationType())));
-		fields->emplace("destination" + std::to_string(i), let->getDestination());
-		fields->emplace("expression" + std::to_string(i), "\"" + let->getExpression() + "\"");
+		SaveField(fields, "destination" + std::to_string(i), let->getDestination(), "");
+		SaveField(fields, "expression" + std::to_string(i), let->getExpression(), "");
 	}
 	return fields;
 }
 
 bool Assign::_check(std::string* errorMessage) {
-	Assignment* let;
 	bool resultAll = true;
 	// \todo: Reimplement it. Since 201910, attributes may have index, just like "atrrib1[2]" or "att[10,1]". Because of that, the string may contain not only the name of the attribute, but also its index and therefore, fails on the test bellow.
-	for (std::list<Assignment*>::iterator it = _assignments->list()->begin(); it != _assignments->list()->end(); it++) {
-		let = (*it);
+	for (Assignment* let : *_assignments->list()) {
 		resultAll &= _parentModel->checkExpression(let->getExpression(), "assignment", errorMessage);
 	}
 	return resultAll;

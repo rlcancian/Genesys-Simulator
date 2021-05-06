@@ -30,7 +30,7 @@ Event::Event(double time, Entity* entity, Connection* connection) {
 }
 
 std::string Event::show() {
-	return "time=" + std::to_string(_time) +
+	return "time=" + std::to_string(_time) + //Util::StrTimeUnit(???)+
 			",entity=" + std::to_string(_entity->entityNumber()) +
 			",comp=\"" + _component->getName() + "\""; //+std::to_string(_component->getId())+"}";
 }

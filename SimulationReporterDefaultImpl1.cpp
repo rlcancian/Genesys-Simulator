@@ -39,7 +39,7 @@ void SimulationReporterDefaultImpl1::showSimulationControls() {
 
 void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 	_model->getTracer()->traceReport("");
-	_model->getTracer()->traceReport("Begin of Report for replication " + std::to_string(_simulation->getCurrentReplicationNumber()) + " of " + std::to_string(_model->getInfos()->getNumberOfReplications()));
+	_model->getTracer()->traceReport("Begin of Report for replication " + std::to_string(_simulation->getCurrentReplicationNumber()) + " of " + std::to_string(_model->getSimulation()->getNumberOfReplications()));
 	/* \todo: StatisticsCollector and Counter should NOT be special classes. It should iterate classes looking for classes that can generate reports.
 	 StatisticsCollector and Counter should ovveride an inherited attribute from ModelElement to specify they generate report information
 	 look for _generateReportInformation = true;  using bool generateReportInformation() const;
@@ -113,7 +113,7 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 					for (ModelElement * const item : *(mapItem.second)) {
 						if (item->getClassname() == UtilTypeOfStatisticsCollector) {
 							Statistics_if* stat = dynamic_cast<StatisticsCollector*> (item)->getStatistics();
-							_model->getTracer()->traceReport(Util::TraceLevel::report,
+							_model->getTracer()->traceReport(Util::TraceLevel::L3_results,
 									Util::SetW(item->getName() + std::string(_nameW, '.'), _nameW - 1) + " " +
 									Util::SetW(std::to_string(stat->numElements()), _w) +
 									Util::SetW(std::to_string(stat->min()), _w) +
@@ -128,7 +128,7 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 						} else {
 							if (item->getClassname() == UtilTypeOfCounter) {
 								Counter* count = dynamic_cast<Counter*> (item);
-								_model->getTracer()->traceReport(Util::TraceLevel::report,
+								_model->getTracer()->traceReport(Util::TraceLevel::L3_results,
 										Util::SetW(count->getName() + std::string(_nameW, '.'), _nameW - 1) + " " +
 										Util::SetW(std::to_string(count->getCountValue()), _w)
 										);
@@ -143,8 +143,8 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 	}
 	//this->showSimulationResponses();
 	Util::DecIndent();
-	_model->getTracer()->traceReport("End of Report for replication " + std::to_string(_simulation->getCurrentReplicationNumber()) + " of " + std::to_string(_model->getInfos()->getNumberOfReplications()));
-	_model->getTracer()->traceReport("------------------------------");
+	_model->getTracer()->traceReport("End of Report for replication " + std::to_string(_simulation->getCurrentReplicationNumber()) + " of " + std::to_string(_model->getSimulation()->getNumberOfReplications()));
+	_model->getTracer()->traceReport("-------------------------------------");
 }
 
 void SimulationReporterDefaultImpl1::showSimulationResponses() {
@@ -161,7 +161,7 @@ void SimulationReporterDefaultImpl1::showSimulationResponses() {
 
 void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<StatisticsCollector*>* cstatsSimulation) {
 	_model->getTracer()->traceReport("");
-	_model->getTracer()->traceReport("Begin of Report for Simulation (based on " + std::to_string(_model->getInfos()->getNumberOfReplications()) + " replications)");
+	_model->getTracer()->traceReport("Begin of Report for Simulation (based on " + std::to_string(_model->getSimulation()->getNumberOfReplications()) + " replications)");
 	const std::string UtilTypeOfStatisticsCollector = Util::TypeOf<StatisticsCollector>();
 	const std::string UtilTypeOfCounter = Util::TypeOf<Counter>();
 	// runs over all elements and list the statistics for each one, and then the statistics with no parent
@@ -227,7 +227,7 @@ void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<Statisti
 					for (ModelElement * const item : *(mapItem.second)) {
 						if (item->getClassname() == UtilTypeOfStatisticsCollector) {
 							Statistics_if* stat = dynamic_cast<StatisticsCollector*> (item)->getStatistics();
-							_model->getTracer()->traceReport(Util::TraceLevel::report,
+							_model->getTracer()->traceReport(Util::TraceLevel::L3_results,
 									Util::SetW(item->getName() + std::string(_nameW, '.'), _nameW - 1) + " " +
 									Util::SetW(std::to_string(stat->numElements()), _w) +
 									Util::SetW(std::to_string(stat->min()), _w) +
@@ -242,7 +242,7 @@ void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<Statisti
 						} else {
 							if (item->getClassname() == UtilTypeOfCounter) {
 								Counter* cnt = dynamic_cast<Counter*> (item);
-								_model->getTracer()->traceReport(Util::TraceLevel::report,
+								_model->getTracer()->traceReport(Util::TraceLevel::L3_results,
 										Util::SetW(cnt->getName() + std::string(_nameW, '.'), _nameW - 1) + " " +
 										Util::SetW(std::to_string(cnt->getCountValue()), _w)
 										);

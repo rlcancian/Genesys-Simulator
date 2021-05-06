@@ -1,0 +1,7 @@
+0   SimulatorInfo "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=210420 
+0   ModelInfo  "Model 1" 
+0   ModelSimulation "fixed experiment name in ModelSimulation" replicationLength=60.000000 
+1   EntityType "Type_of_Representative_Entity" 
+2   Create     "Create_1" EntityType="Type_of_Representative_Entity" timeBetweenCreations="1.5" nextId=3 
+3   Delay      "Delay_1" nextId=4 
+4   Dispose    "Dispose_1" nextSize=0 

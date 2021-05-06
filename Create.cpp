@@ -19,13 +19,13 @@
 #include "Assign.h"
 
 Create::Create(Model* model, std::string name) : SourceModelComponent(model, Util::TypeOf<Create>(), name) {
-	//_numberOut = new Counter(_parentModel, _name + "." + "Count_number_in", this);
+	//_numberOut = new Counter(_parentModel, getName() + "." + "Count_number_in", this);
 	// \todo Check if element has already been inserted and this is not needed: _parentModel->elements()->insert(_numberOut);
 	_connections->setMinInputConnections(0);
 	_connections->setMaxInputConnections(0);
 	GetterMember getter = DefineGetterMember<SourceModelComponent>(this, &Create::getEntitiesPerCreation);
 	SetterMember setter = DefineSetterMember<SourceModelComponent>(this, &Create::setEntitiesPerCreation);
-	model->getControls()->insert(new SimulationControl(Util::TypeOf<Create>(), _name + ".EntitiesPerCreation", getter, setter));
+	model->getControls()->insert(new SimulationControl(Util::TypeOf<Create>(), getName() + ".EntitiesPerCreation", getter, setter));
 	/* \todo:
 	model->getControls()->insert(new SimulationControl(Util::TypeOf<Create>(), "Time Between Creations",
 		DefineGetterMember<SourceModelComponent>(this, &Create::getTimeBetweenCreationsExpression),
@@ -51,7 +51,7 @@ void Create::_execute(Entity* entity) {
 			newEntity->setEntityType(entity->getEntityType());
 			//_parentModel->elements()->insert(newEntity); // ->getEntities()->insert(newEntity);
 			timeBetweenCreations = _parentModel->parseExpression(this->_timeBetweenCreationsExpression);
-			timeScale = Util::TimeUnitConvert(this->_timeBetweenCreationsTimeUnit, _parentModel->getInfos()->getReplicationLengthTimeUnit());
+			timeScale = Util::TimeUnitConvert(this->_timeBetweenCreationsTimeUnit, _parentModel->getSimulation()->getReplicationBaseTimeUnit());
 			newArrivalTime = tnow + timeBetweenCreations*timeScale;
 			Event* newEvent = new Event(newArrivalTime, newEntity, this);
 			_parentModel->getFutureEvents()->insert(newEvent);
@@ -103,7 +103,7 @@ bool Create::_check(std::string* errorMessage) {
 
 void Create::_createInternalElements() {
 	if (_reportStatistics && _numberOut == nullptr) {
-		_numberOut = new Counter(_parentModel, _name + "." + "CountNumberIn", this);
+		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		_childrenElements->insert({"CountNumberIn", _numberOut});
 		// \todo _childrenElements->insert("Count_number_in", _numberOut);
 	} else if (!_reportStatistics && _numberOut != nullptr) {

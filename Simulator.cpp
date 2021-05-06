@@ -36,7 +36,7 @@ extern "C" void DestroySimulator(/*GenesysKernel::*/Simulator* p) {
 
 Simulator::Simulator() {
 	// This is the ONLY method in the entire software where std::cout is allowed.
-	std::cout << "STARTING " << _name << ", version " << _version << std::endl;
+	std::cout << "STARTING " << _name << ", version " << getVersion() << std::endl;
 	_licenceManager = new LicenceManager(this);
 	_pluginManager = new PluginManager(this);
 	_modelManager = new ModelManager(this);
@@ -63,11 +63,15 @@ ParserManager* Simulator::getParser() const {
 	return _parserManager;
 }
 
-std::string Simulator::version() const {
-	return _version;
+std::string Simulator::getVersion() const {
+	return std::to_string(_versionNumber) + " (" + _versionName + ")";
 }
 
-std::string Simulator::name() const {
+unsigned int Simulator::getVersionNumber() const {
+	return _versionNumber;
+}
+
+std::string Simulator::getName() const {
 	return _name;
 }
 

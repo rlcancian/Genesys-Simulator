@@ -22,23 +22,6 @@ unsigned int Util::_S_indentation;
 std::map<std::string, Util::identification> Util::_S_lastIdOfType = std::map<std::string, Util::identification>();
 std::map<std::string, std::string> Util::_S_TypeOf = std::map<std::string, std::string>();
 
-/*
-std::string Util::ToStrTimeUnit(TimeUnit tu) {
-	switch (tu) {
-	case Util::TimeUnit::picosecond: return "picosecond";
-	case Util::TimeUnit::nanosecond: return "nanosecond";
-	case Util::TimeUnit::microsecond: return "microsecond";
-	case Util::TimeUnit::milisecond: return "milisecond";
-	case Util::TimeUnit::second: return "second";
-	case Util::TimeUnit::minute: return "minute";
-	case Util::TimeUnit::hour: return "hour";
-	case Util::TimeUnit::day: return "day";
-	case Util::TimeUnit::week: return "week";
-	default: return "";
-	}
-}
- */
-
 void Util::IncIndent() {
 	Util::_S_indentation++;
 }
@@ -86,7 +69,23 @@ std::string Util::SetW(std::string text, unsigned short width) {
 	return result.substr(0, width);
 }
 
-std::string Util::StrTimeUnit(Util::TimeUnit timeUnit) {
+std::string Util::StrTimeUnitShort(Util::TimeUnit timeUnit) {
+	switch (static_cast<int> (timeUnit)) {
+		case 1: return "ps";
+		case 2: return "ns";
+		case 3: return "us";
+		case 4: return "ms";
+		case 5: return "s";
+		case 6: return "min";
+		case 7: return "h";
+		case 8: return "d";
+		case 9: return "w";
+		default: break;
+	}
+	return "";
+}
+
+std::string Util::StrTimeUnitLong(Util::TimeUnit timeUnit) {
 	switch (static_cast<int> (timeUnit)) {
 		case 1: return "picosecond";
 		case 2: return "nanosecond";
@@ -144,8 +143,8 @@ void Util::ResetIdOfType(std::string objtype) {
 }
 
 double Util::TimeUnitConvert(Util::TimeUnit timeUnit1, Util::TimeUnit timeUnit2) {
-	double scaleValues[] = {1.0, 1000.0, 1000.0, 1000.0, 1000.0, 60.0, 60.0, 24.0, 7.0};
-	// TU_picosecond = 1, TU_microsecond = 3, TU_milisecond = 4, TU_second = 5, TU_minute = 6, TU_hour = 7, TU_day = 8, TU_week = 9
+	double scaleValues[] = {1.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0, 60.0, 60.0, 24.0, 7.0};
+	// picosecond = 1, nanosecond = 2, microsecond = 3, milisecond = 4, second = 5, minute = 6, hour = 7, day = 8, week = 9
 	double res = 1.0;
 	int intTimeUnit1, intTimeUnit2;
 	intTimeUnit1 = static_cast<int> (timeUnit1);

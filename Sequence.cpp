@@ -72,3 +72,69 @@ bool Sequence::_check(std::string* errorMessage) {
 	return true;
 }
 
+SequenceStep::SequenceStep(Station* station, std::list<Assignment*>* assignments) {
+	this->_station = station;
+	if (assignments != nullptr)
+		_assignments = assignments;
+	else
+		_assignments = new std::list<Assignment*>();
+}
+
+bool SequenceStep::_loadInstance(std::map<std::string, std::string>* fields, unsigned int parentIndex) {
+	bool res = true;
+	std::string num = std::to_string(parentIndex);
+	std::string destination, expression;
+	try {
+		std::string stationName = LoadField(fields, "station" + num, "");
+		// \todo _station =
+		unsigned int assignmentsSize = LoadField(fields, "assignmentSize" + num, DEFAULT.assignmentsSize);
+		for (unsigned short i = 0; i < assignmentsSize; i++) {
+			destination = LoadField(fields, "destination" + num + "_" + std::to_string(i));
+			expression = LoadField(fields, "expression" + num + "_" + std::to_string(i));
+			_assignments->insert(_assignments->end(), new Assignment(destination, expression));
+		}
+	} catch (...) {
+		res = false;
+	}
+	return res;
+}
+
+std::map<std::string, std::string>* SequenceStep::_saveInstance(unsigned int parentIndex) {
+	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
+	std::string num = std::to_string(parentIndex);
+	SaveField(fields, "station" + num, _station->getName());
+	//SaveField(fields, "resourceId" + num, _resourceOrSet->getId());
+	SaveField(fields, "assignmentSize" + num, _assignments->size(), DEFAULT.assignmentsSize);
+	unsigned short i = 0;
+	for (Assignment* assm : *_assignments) {
+		SaveField(fields, "destination" + num + "_" + std::to_string(i), assm->getDestination());
+		SaveField(fields, "expression" + num + "_" + std::to_string(i), assm->getExpression());
+		i++;
+	}
+	return fields;
+}
+
+bool SequenceStep::_loadInstance(std::map<std::string, std::string>* fields) {
+	bool res = true;
+	try {
+	} catch (...) {
+		res = false;
+	}
+	return res;
+}
+
+std::map<std::string, std::string>* SequenceStep::_saveInstance() {
+
+}
+
+std::list<SequenceStep::Assignment*>* SequenceStep::getAssignments() const {
+	return _assignments;
+}
+
+void SequenceStep::setStation(Station* _station) {
+	this->_station = _station;
+}
+
+Station* SequenceStep::getStation() const {
+	return _station;
+}

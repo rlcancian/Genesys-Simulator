@@ -120,8 +120,8 @@ bool Station::_check(std::string* errorMessage) {
 void Station::_createInternalElements() {
 	if (_reportStatistics) {
 		if (_cstatNumberInStation == nullptr) {
-			_cstatNumberInStation = new StatisticsCollector(_parentModel, _name + "." + "NumberInStation", this);
-			_cstatTimeInStation = new StatisticsCollector(_parentModel, _name + "." + "TimeInStation", this);
+			_cstatNumberInStation = new StatisticsCollector(_parentModel, getName() + "." + "NumberInStation", this);
+			_cstatTimeInStation = new StatisticsCollector(_parentModel, getName() + "." + "TimeInStation", this);
 			_childrenElements->insert({"NumberInStation", _cstatNumberInStation});
 			_childrenElements->insert({"TimeInStation", _cstatTimeInStation});
 			//

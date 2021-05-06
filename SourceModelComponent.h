@@ -17,7 +17,6 @@
 #include "ModelComponent.h"
 #include <string>
 #include <limits>
-//#include <numeric_limits>
 //namespace GenesysKernel {
 
 	/*!
@@ -53,11 +52,18 @@
 		virtual bool _check(std::string* errorMessage);
 	protected: // get & set
 		EntityType* _entityType;
-		double _firstCreation = 0.0;
-		unsigned int _entitiesPerCreation = 1;
-		std::string _maxCreationsExpression = std::to_string(std::numeric_limits<unsigned int>::max()); // std::numeric_limits<unsigned int>::max();
-		std::string _timeBetweenCreationsExpression = "EXPO(1)"; ////
-		Util::TimeUnit _timeBetweenCreationsTimeUnit = Util::TimeUnit::second;
+		const struct DEFAULT_VALUES {
+			const double firstCreation = 0.0;
+			const unsigned int entitiesPerCreation = 1;
+			const std::string maxCreationsExpression = std::to_string(std::numeric_limits<unsigned int>::max());
+			const std::string timeBetweenCreationsExpression = "EXPO(1.0)";
+			const Util::TimeUnit timeBetweenCreationsTimeUnit = Util::TimeUnit::second;
+		} DEFAULT;
+		double _firstCreation = DEFAULT.firstCreation;
+		unsigned int _entitiesPerCreation = DEFAULT.entitiesPerCreation;
+		std::string _maxCreationsExpression = DEFAULT.maxCreationsExpression;
+		std::string _timeBetweenCreationsExpression = DEFAULT.timeBetweenCreationsExpression;
+		Util::TimeUnit _timeBetweenCreationsTimeUnit = DEFAULT.timeBetweenCreationsTimeUnit;
 		unsigned int _entitiesCreatedSoFar = 0;
 	};
 //namespace\\}

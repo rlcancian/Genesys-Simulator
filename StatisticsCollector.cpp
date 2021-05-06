@@ -27,11 +27,11 @@ StatisticsCollector::StatisticsCollector(Model* model, std::string name, ModelEl
 
 void StatisticsCollector::_addSimulationResponses() {
 	GetterMember getterMemberAverage = DefineGetterMember<StatisticsClass>(static_cast<StatisticsClass*> (this->_statistics), &StatisticsClass::average);
-	SimulationResponse* resp = new SimulationResponse(Util::TypeOf<StatisticsClass>(), _name + ".average", getterMemberAverage);
+	SimulationResponse* resp = new SimulationResponse(Util::TypeOf<StatisticsClass>(), getName() + ".average", getterMemberAverage);
 	_parentModel->getResponses()->insert(resp);
 	// add the halfwidth as response
 	GetterMember getterMemberHalfWidth = DefineGetterMember<StatisticsClass>(static_cast<StatisticsClass*> (this->_statistics), &StatisticsClass::halfWidthConfidenceInterval);
-	resp = new SimulationResponse(Util::TypeOf<StatisticsClass>(), /*parentName + ":" + */_name + ".halfWidth", getterMemberHalfWidth);
+	resp = new SimulationResponse(Util::TypeOf<StatisticsClass>(), /*parentName + ":" + */getName() + ".halfWidth", getterMemberHalfWidth);
 	_parentModel->getResponses()->insert(resp);
 }
 
@@ -92,8 +92,8 @@ std::map<std::string, std::string>* StatisticsCollector::_saveInstance() {
 		parentId = std::to_string(_parent->getId());
 		parentTypename = _parent->getClassname();
 	}
-	fields->emplace("parentTypename", parentTypename);
-	fields->emplace("parentId", parentId);
+	SaveField(fields, "parentTypename", parentTypename);
+	SaveField(fields, "parentId", parentId);
 	return fields;
 }
 

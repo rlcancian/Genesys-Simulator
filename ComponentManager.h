@@ -26,6 +26,7 @@
 	public:
 		bool insert(ModelComponent* comp);
 		void remove(ModelComponent* comp);
+		ModelComponent* find(std::string name);
 		void clear();
 		//bool check(ModelComponent* comp, std::string expressionName, std::string* errorMessage);
 		//bool check(std::string compName, std::string expressionName, bool mandatory, std::string* errorMessage);    

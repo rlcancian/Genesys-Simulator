@@ -82,9 +82,15 @@ protected:
 	virtual bool _check(std::string* errorMessage);
 	virtual void _createInternalElements();
 private:
-	std::string _routeTimeExpression = "0.0";
-	Util::TimeUnit _routeTimeTimeUnit = Util::TimeUnit::second;
-	Route::DestinationType _routeDestinationType = DestinationType::Station;
+
+	const struct DEFAULT_VALUES {
+		std::string routeTimeExpression = "0.0";
+		Util::TimeUnit routeTimeTimeUnit = Util::TimeUnit::second;
+		Route::DestinationType routeDestinationType = DestinationType::Station;
+	} DEFAULT;
+	std::string _routeTimeExpression = DEFAULT.routeTimeExpression;
+	Util::TimeUnit _routeTimeTimeUnit = DEFAULT.routeTimeTimeUnit;
+	Route::DestinationType _routeDestinationType = DEFAULT.routeDestinationType;
 private: // association
 	Station* _station;
 private: // children elements

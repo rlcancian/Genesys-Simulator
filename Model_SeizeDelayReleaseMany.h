@@ -5,23 +5,23 @@
  */
 
 /* 
- * File:   FirstExampleOfSimulation.h
+ * File:   Model_SeizeDelayReleaseMany.h
  * Author: rlcancian
  *
- * Created on 3 de Setembro de 2019, 18:34
+ * Created on 9 de abril de 2021, 18:09
  */
 
-#ifndef FIRSTEXAMPLEOFSIMULATION_H
-#define FIRSTEXAMPLEOFSIMULATION_H
+#ifndef MODEL_SEIZEDELAYRELEASEMANY_H
+#define MODEL_SEIZEDELAYRELEASEMANY_H
 
 #include "BaseConsoleGenesysApplication.h"
 
-class FirstExampleOfSimulation : public BaseConsoleGenesysApplication {
+class Model_SeizeDelayReleaseMany : public BaseConsoleGenesysApplication {
 public:
-	FirstExampleOfSimulation();
+	Model_SeizeDelayReleaseMany();
 public:
 	virtual int main(int argc, char** argv);
 };
 
-#endif /* FIRSTEXAMPLEOFSIMULATION_H */
+#endif /* MODEL_SEIZEDELAYRELEASEMANY_H */
 

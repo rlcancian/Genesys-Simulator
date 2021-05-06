@@ -56,11 +56,15 @@
 	private:
 		void _initCostsAndStatistics();
 	private:
-		std::string _initialPicture = "report";
-		double _initialVACost = 0.0;
-		double _initialNVACost = 0.0;
-		double _initialOtherCost = 0.0;
-		double _initialWaitingCost = 0.0;
+		const struct DEFAULT_VALUES {
+			std::string initialPicture = "report";
+			double initialCost = 0.0;
+		} DEFAULT;
+		std::string _initialPicture = DEFAULT.initialPicture;
+		double _initialVACost = DEFAULT.initialCost;
+		double _initialNVACost = DEFAULT.initialCost;
+		double _initialOtherCost = DEFAULT.initialCost;
+		double _initialWaitingCost = DEFAULT.initialCost;
 	private: //1:n
 		List<StatisticsCollector*>* _statisticsCollectors = new List<StatisticsCollector*>();
 	};

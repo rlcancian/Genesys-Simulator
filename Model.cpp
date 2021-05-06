@@ -53,17 +53,17 @@ Model::Model(Simulator* simulator) {
 	_responses = new List<SimulationResponse*>();
 	_controls = new List<SimulationControl*>();
 	// insert controls
-	_controls->insert(new SimulationControl("ModelInfo", "NumberOfReplications",
-			DefineGetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::getNumberOfReplications),
-			DefineSetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::setNumberOfReplications))
+	_controls->insert(new SimulationControl("ModelSimulation", "NumberOfReplications",
+			DefineGetterMember<ModelSimulation>(this->_simulation, &ModelSimulation::getNumberOfReplications),
+			DefineSetterMember<ModelSimulation>(this->_simulation, &ModelSimulation::setNumberOfReplications))
 			);
-	_controls->insert(new SimulationControl("ModelInfo", "ReplicationLength",
-			DefineGetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::getReplicationLength),
-			DefineSetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::setReplicationLength))
+	_controls->insert(new SimulationControl("ModelSimulation", "ReplicationLength",
+			DefineGetterMember<ModelSimulation>(this->_simulation, &ModelSimulation::getReplicationLength),
+			DefineSetterMember<ModelSimulation>(this->_simulation, &ModelSimulation::setReplicationLength))
 			);
-	_controls->insert(new SimulationControl("ModelInfo", "WarmupPeriod",
-			DefineGetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::getWarmUpPeriod),
-			DefineSetterMember<ModelInfo>(this->_modelInfo, &ModelInfo::setWarmUpPeriod))
+	_controls->insert(new SimulationControl("ModelSimulation", "WarmupPeriod",
+			DefineGetterMember<ModelSimulation>(this->_simulation, &ModelSimulation::getWarmUpPeriod),
+			DefineSetterMember<ModelSimulation>(this->_simulation, &ModelSimulation::setWarmUpPeriod))
 			);
 }
 
@@ -73,25 +73,25 @@ void Model::sendEntityToComponent(Entity* entity, Connection* connection, double
 
 void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, double timeDelay, unsigned int componentInputNumber) {
 	this->getOnEvents()->NotifyEntityMoveHandlers(new SimulationEvent(_simulation->getCurrentReplicationNumber(), new Event(_simulation->getSimulatedTime(), entity, component, componentInputNumber))); //\todo: Event should include information about "from component" and timeDelay, but it doesn't
-	if (timeDelay > 0) {
+	//// if (timeDelay > 0) {
 		// schedule to send it
 		Event* newEvent = new Event(this->getSimulation()->getSimulatedTime() + timeDelay, entity, component, componentInputNumber);
 		this->getFutureEvents()->insert(newEvent);
-	} else {
-		// send it now
-		/*  \todo: -: supposed not to be a queue associated to a component */
-		Util::DecIndent();
-		ModelComponent::Execute(entity, component, componentInputNumber);
-		Util::IncIndent();
-	}
+	//// } else {
+	//// 	// send it now
+	//// 	/*  \todo: -: supposed not to be a queue associated to a component */
+	//// 	Util::DecIndent();
+	//// 	ModelComponent::Execute(entity, component, componentInputNumber);
+	//// 	Util::IncIndent();
+	//// }
 }
 
 bool Model::save(std::string filename) {
 	bool res = this->_modelPersistence->save(filename);
 	if (res) {
-		this->_traceManager->trace(Util::TraceLevel::modelResult, "Model successfully saved");
+		this->_traceManager->trace(Util::TraceLevel::L3_results, "Model successfully saved");
 	} else {
-		this->_traceManager->trace(Util::TraceLevel::modelResult, "Model could not be saved");
+		this->_traceManager->trace(Util::TraceLevel::L3_results, "Model could not be saved");
 
 	}
 	return res;
@@ -101,9 +101,9 @@ bool Model::load(std::string filename) {
 	this->clear();
 	bool res = this->_modelPersistence->load(filename);
 	if (res)
-		this->_traceManager->trace(Util::TraceLevel::modelResult, "Model successfully loaded");
+		this->_traceManager->trace(Util::TraceLevel::L3_results, "Model successfully loaded");
 	else
-		this->_traceManager->trace(Util::TraceLevel::modelResult, "Model could not be loaded");
+		this->_traceManager->trace(Util::TraceLevel::L3_results, "Model could not be loaded");
 	return res;
 }
 
@@ -117,7 +117,12 @@ double Model::parseExpression(const std::string expression) {
 
 bool Model::checkExpression(const std::string expression, const std::string expressionName, std::string* errorMessage) {
 	bool result;
-	parseExpression(expression, &result, errorMessage);
+	getTracer()->trace("Checking expression \"" + expression + "\"");
+	try {
+		parseExpression(expression, &result, errorMessage);
+	} catch (...) {
+		result = false;
+	}
 	if (!result) {
 		std::string msg = "Expression \"" + expression + "\" for '" + expressionName + "' is incorrect. ";
 		errorMessage->append(msg);
@@ -131,12 +136,12 @@ double Model::parseExpression(const std::string expression, bool* success, std::
 }
 
 void Model::show() {
-	getTracer()->trace(Util::TraceLevel::report, "Simulation Model:");
+	getTracer()->trace(Util::TraceLevel::L3_results, "Simulation Model:");
 	Util::IncIndent();
 	{
-		getTracer()->trace(Util::TraceLevel::report, "Information:");
+		getTracer()->trace(Util::TraceLevel::L3_results, "Information:");
 		Util::IncIndent();
-		getTracer()->trace(Util::TraceLevel::report, this->getInfos()->show());
+		getTracer()->trace(Util::TraceLevel::L3_results, this->getInfos()->show());
 		Util::DecIndent();
 		_showConnections();
 		_showComponents();
@@ -145,7 +150,7 @@ void Model::show() {
 		_showSimulationResponses();
 	}
 	Util::DecIndent();
-	getTracer()->trace(Util::TraceLevel::report, "End of Simulation Model");
+	getTracer()->trace(Util::TraceLevel::L3_results, "End of Simulation Model");
 }
 
 bool Model::insert(ModelElement* elemOrComp) {
@@ -165,7 +170,7 @@ void Model::remove(ModelElement* elemOrComp) {
 }
 
 void Model::_showElements() const {
-	getTracer()->trace(Util::TraceLevel::report, "Elements:");
+	getTracer()->trace(Util::TraceLevel::L3_results, "Elements:");
 	Util::IncIndent();
 	{
 		std::string elementType;
@@ -174,12 +179,12 @@ void Model::_showElements() const {
 		for (std::list<std::string>::iterator typeIt = elementTypes->begin(); typeIt != elementTypes->end(); typeIt++) {
 			elementType = (*typeIt);
 			List<ModelElement*>* em = getElements()->getElementList(elementType);
-			getTracer()->trace(Util::TraceLevel::report, elementType + ":");
+			getTracer()->trace(Util::TraceLevel::L3_results, elementType + ":");
 			Util::IncIndent();
 			{
 				for (std::list<ModelElement*>::iterator it = em->list()->begin(); it != em->list()->end(); it++) {
 					element = (*it);
-					getTracer()->trace(Util::TraceLevel::report, element->show());
+					getTracer()->trace(Util::TraceLevel::L3_results, element->show());
 				}
 			}
 			Util::DecIndent();
@@ -193,28 +198,28 @@ void Model::_showConnections() const {
 }
 
 void Model::_showComponents() const {
-	getTracer()->trace(Util::TraceLevel::report, "Components:");
+	getTracer()->trace(Util::TraceLevel::L3_results, "Components:");
 	Util::IncIndent();
 	for (std::list<ModelComponent*>::iterator it = getComponents()->begin(); it != getComponents()->end(); it++) {
-		getTracer()->trace(Util::TraceLevel::report, (*it)->show()); ////
+		getTracer()->trace(Util::TraceLevel::L3_results, (*it)->show()); ////
 	}
 	Util::DecIndent();
 }
 
 void Model::_showSimulationControls() const {
-	getTracer()->trace(Util::TraceLevel::report, "Simulation Controls:");
+	getTracer()->trace(Util::TraceLevel::L3_results, "Simulation Controls:");
 	Util::IncIndent();
 	for (std::list<SimulationControl*>::iterator it = _controls->list()->begin(); it != _controls->list()->end(); it++) {
-		getTracer()->trace(Util::TraceLevel::report, (*it)->show()); ////
+		getTracer()->trace(Util::TraceLevel::L3_results, (*it)->show()); ////
 	}
 	Util::DecIndent();
 }
 
 void Model::_showSimulationResponses() const {
-	getTracer()->trace(Util::TraceLevel::report, "Simulation Responses:");
+	getTracer()->trace(Util::TraceLevel::L3_results, "Simulation Responses:");
 	Util::IncIndent();
 	for (std::list<SimulationResponse*>::iterator it = _responses->list()->begin(); it != _responses->list()->end(); it++) {
-		getTracer()->trace(Util::TraceLevel::report, (*it)->show()); ////
+		getTracer()->trace(Util::TraceLevel::L3_results, (*it)->show()); ////
 	}
 	Util::DecIndent();
 }
@@ -222,17 +227,20 @@ void Model::_showSimulationResponses() const {
 void Model::clear() {
 	this->_componentManager->clear();
 	this->_elementManager->clear();
+	this->_futureEvents->clear();
+	//this->_simulation->clear();  // \todo clear method
+	//this->_modelInfo->clear(); // \todo clear method
 	//Util::ResetAllIds(); // \todo: To implement
 }
 
 void Model::_createModelInternalElements() {
-	getTracer()->trace(Util::TraceLevel::modelInternal, "Creating internal elements");
+	getTracer()->trace(Util::TraceLevel::L6_internal, "Creating internal elements");
 	Util::IncIndent();
 
-	for (std::list<ModelComponent*>::iterator it = _componentManager->begin(); it != _componentManager->end(); it++) {
-		getTracer()->trace(Util::TraceLevel::modelInternal, "Internals for " + (*it)->getClassname() + " \"" + (*it)->getName() + "\"");
+	for (ModelComponent* component : *_componentManager) {
+		getTracer()->trace(Util::TraceLevel::L6_internal, "Internals for " + component->getClassname() + " \"" + component->getName() + "\"");
 		Util::IncIndent();
-		ModelComponent::CreateInternalElements((*it));
+		ModelComponent::CreateInternalElements(component);
 		Util::DecIndent();
 	}
 
@@ -248,10 +256,10 @@ void Model::_createModelInternalElements() {
 		// ops. Sorted list has changed and iteration fails. Starts iterating again
 		//	itty = elements()->elementClassnames()->begin();
 		//	modelElements = elements()->elementList((*itty))->list();
-		//	tracer()->trace(Util::TraceLevel::modelInternal, "Creating internal elements");
+		//	tracer()->trace(Util::TraceLevel::L6_internal, "Creating internal elements");
 		//}
 		for (std::list<ModelElement*>::iterator itel = modelElements->begin(); itel != modelElements->end(); itel++) {
-			getTracer()->trace(Util::TraceLevel::modelInternal, "Internals for " + (*itel)->getClassname() + " \"" + (*itel)->getName() + "\""); // (" + std::to_string(pos) + "/" + std::to_string(originalSize) + ")");
+			getTracer()->trace(Util::TraceLevel::L6_internal, "Internals for " + (*itel)->getClassname() + " \"" + (*itel)->getName() + "\""); // (" + std::to_string(pos) + "/" + std::to_string(originalSize) + ")");
 			Util::IncIndent();
 			ModelElement::CreateInternalElements((*itel));
 			Util::DecIndent();
@@ -263,25 +271,25 @@ void Model::_createModelInternalElements() {
 			originalSize = getElements()->getElementClassnames()->size();
 			itty = getElements()->getElementClassnames()->begin();
 			pos = 1;
-			getTracer()->trace(Util::TraceLevel::modelInternal, "Restarting to create internal elements (due to previous creations)");
+			getTracer()->trace(Util::TraceLevel::L6_internal, "Restarting to create internal elements (due to previous creations)");
 		}
 	}
 	Util::DecIndent();
 }
 
 bool Model::check() {
-	getTracer()->trace(Util::TraceLevel::modelInternal, "Checking model consistency");
+	getTracer()->trace(Util::TraceLevel::L6_internal, "Checking model consistency");
 	Util::IncIndent();
 	// before checking the model, creates all necessary internal ModelElements
 	_createModelInternalElements();
 	bool res = this->_modelChecker->checkAll();
 	Util::DecIndent();
 	if (res) {
-		getTracer()->trace(Util::TraceLevel::modelResult, "End of Model checking: Success");
+		getTracer()->trace(Util::TraceLevel::L3_results, "End of Model checking: Success");
 	} else {
 		//std::exception e = new std::exception();
 		//getTrace()->traceError() ;
-		getTracer()->trace(Util::TraceLevel::modelResult, "End of Model checking: Failed");
+		getTracer()->trace(Util::TraceLevel::L3_results, "End of Model checking: Failed");
 	}
 	return res;
 }

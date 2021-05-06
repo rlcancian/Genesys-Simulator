@@ -31,6 +31,7 @@
 	public:
 		double getValue();
 		std::string getName() const;
+		void setName(std::string name);
 		std::string getType() const;
 	protected:
 		std::string _type;

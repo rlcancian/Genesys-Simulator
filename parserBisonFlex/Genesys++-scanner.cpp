@@ -4422,7 +4422,7 @@ YY_RULE_SETUP
 	//Will not fail because of regex
 	//std::string text("Found Hexadecimal: ");
 	//text += yytext;
-	//driver.getModel()->getTraceManager()->trace(Util::TraceLevel::mostDetailed, text);
+	//driver.getModel()->getTraceManager()->trace(Util::TraceLevel::L8_mostDetailed, text);
 	return yy::genesyspp_parser::make_NUMH(obj_t(atof(yytext), std::string("Hexadecimal")),loc);
       }
 	YY_BREAK
@@ -4434,7 +4434,7 @@ YY_RULE_SETUP
        //Will not fail because of regex
        //std::string text("Found Float: ");
        //text += yytext;
-       //driver.getModel()->getTraceManager()->trace(Util::TraceLevel::mostDetailed, text);
+       //driver.getModel()->getTraceManager()->trace(Util::TraceLevel::L8_mostDetailed, text);
        return yy::genesyspp_parser::make_NUMD(obj_t(atof(yytext),std::string("Float")), loc);
      }
 	YY_BREAK
@@ -4446,7 +4446,7 @@ YY_RULE_SETUP
        //Will not fail because of regex
        //std::string text("Found Decimal: ");
        //text += yytext;
-       //driver.getModel()->getTraceManager()->trace(Util::TraceLevel::mostDetailed, text);
+       //driver.getModel()->getTraceManager()->trace(Util::TraceLevel::L8_mostDetailed, text);
        return yy::genesyspp_parser::make_NUMD(obj_t(atof(yytext),std::string("Decimal")), loc);
       }
 	YY_BREAK
@@ -4803,9 +4803,11 @@ YY_RULE_SETUP
         ModelElement* element; 
 
 		//std::cout << "Verificando o que é o Literal \""+std::string(yytext)+"\"\n";
+		//std::cout << driver.getModel()->getInfos()->getName() << std::endl;
         // check if it is an ATTRIBUTE (and return the attribute ID (and not the value!)
-        element = driver.getModel()->getElements()->getElement(Util::TypeOf<Attribute>(), std::string(yytext));
-        if (element != nullptr) { 
+		element = driver.getModel()->getElements()->getElement(Util::TypeOf<Attribute>(), std::string(yytext));
+        if (element != nullptr) {
+			//std::cout << "Found attribute" << std::string(yytext) << std::endl;
             return yy::genesyspp_parser::make_ATRIB(obj_t(0, Util::TypeOf<Attribute>(), element->getId()),loc);
         }
 
@@ -4863,19 +4865,19 @@ YY_RULE_SETUP
 	YY_BREAK
 case 70:
 YY_RULE_SETUP
-#line 243 "lexerparser.ll"
+#line 245 "lexerparser.ll"
 {return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string("Illegal")), loc);}
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 245 "lexerparser.ll"
+#line 247 "lexerparser.ll"
 {return yy::genesyspp_parser::make_END(loc);}
 	YY_BREAK
 case 71:
 YY_RULE_SETUP
-#line 248 "lexerparser.ll"
+#line 250 "lexerparser.ll"
 ECHO;
 	YY_BREAK
-#line 4879 "../Genesys++-scanner.cpp"
+#line 4881 "../Genesys++-scanner.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -5836,7 +5838,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 248 "lexerparser.ll"
+#line 250 "lexerparser.ll"
 
 
 void

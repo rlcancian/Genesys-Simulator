@@ -30,6 +30,6 @@ Fitter_if* ToolManager::fitter() const {
 	return _fitter;
 }
 
-ExperimentManager_if* ToolManager::experimentDesigner() const {
+ExperimentManager_if* ToolManager::experimentManager() const {
 	return _processAnalyser;
 }

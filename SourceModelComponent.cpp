@@ -4,10 +4,10 @@
  * and open the template in the editor.
  */
 
-/* 
+/*
  * File:   SourceModelCOmponent.cpp
  * Author: rafael.luiz.cancian
- * 
+ *
  * Created on 21 de Junho de 2018, 19:50
  */
 
@@ -30,12 +30,12 @@ std::string SourceModelComponent::show() {
 bool SourceModelComponent::_loadInstance(std::map<std::string, std::string>* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_entitiesPerCreation = std::stoi((*fields->find("entitiesPerCreation")).second);
-		this->_firstCreation = std::stod((*fields->find("firstCreation")).second);
-		this->_timeBetweenCreationsExpression = (*fields->find("timeBetweenCreations")).second;
-		this->_timeBetweenCreationsTimeUnit = static_cast<Util::TimeUnit> (std::stoi((*fields->find("timeBetweenCreationsTimeUnit")).second));
-		this->_maxCreationsExpression = (*fields->find("maxCreations")).second;
-		std::string entityTypename = (*fields->find("entityTypename")).second;
+		this->_entitiesPerCreation = LoadField(fields, "entitiesPerCreation", DEFAULT.entitiesPerCreation);
+		this->_firstCreation = LoadField(fields, "firstCreation", DEFAULT.firstCreation);
+		this->_timeBetweenCreationsExpression = LoadField(fields, "timeBetweenCreations", DEFAULT.timeBetweenCreationsExpression);
+		this->_timeBetweenCreationsTimeUnit = LoadField(fields, "timeBetweenCreationsTimeUnit", DEFAULT.timeBetweenCreationsTimeUnit);
+		this->_maxCreationsExpression = LoadField(fields, "maxCreations", DEFAULT.maxCreationsExpression);
+		std::string entityTypename = LoadField(fields, "EntityType");
 		this->_entityType = dynamic_cast<EntityType*> (_parentModel->getElements()->getElement(Util::TypeOf<EntityType>(), entityTypename));
 	}
 	return res;
@@ -47,26 +47,25 @@ void SourceModelComponent::_initBetweenReplications() {
 
 std::map<std::string, std::string>* SourceModelComponent::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance();
-	fields->emplace("entitiesPerCreation", std::to_string(this->_entitiesPerCreation));
-	fields->emplace("firstCreation", std::to_string(this->_firstCreation));
-	fields->emplace("timeBetweenCreations", "\"" + this->_timeBetweenCreationsExpression + "\"");
-	fields->emplace("timeBetweenCreationsTimeUnit", std::to_string(static_cast<int> (this->_timeBetweenCreationsTimeUnit)));
-	fields->emplace("maxCreations", "\"" + this->_maxCreationsExpression + "\"");
-	fields->emplace("entityTypename", (this->_entityType->getName())); // save the name
-	//fields->emplace("collectStatistics" , std::to_string(this->_collectStatistics));
+	SaveField(fields, "entitiesPerCreation", _entitiesPerCreation, DEFAULT.entitiesPerCreation);
+	SaveField(fields, "firstCreation", _firstCreation, DEFAULT.firstCreation);
+	SaveField(fields, "timeBetweenCreations", _timeBetweenCreationsExpression, DEFAULT.timeBetweenCreationsExpression);
+	SaveField(fields, "timeBetweenCreationsTimeUnit", _timeBetweenCreationsTimeUnit, DEFAULT.timeBetweenCreationsTimeUnit);
+	SaveField(fields, "maxCreations", _maxCreationsExpression, DEFAULT.maxCreationsExpression);
+	SaveField(fields, "EntityType", _entityType->getName());
 	return fields;
 }
 
 bool SourceModelComponent::_check(std::string* errorMessage) {
 	/* include attributes needed */
 	ElementManager* elements = _parentModel->getElements();
-	std::vector<std::string> neededNames = {"Entity.ArrivalTime"}; 
+	std::vector<std::string> neededNames = {"Entity.ArrivalTime"};
 	std::string neededName;
 	for (unsigned int i = 0; i < neededNames.size(); i++) {
 		neededName = neededNames[i];
 		if (elements->getElement(Util::TypeOf<Attribute>(), neededName) == nullptr) {
 			Attribute* attr1 = new Attribute(_parentModel, neededName);
-			elements->insert(attr1);
+			//elements->insert(attr1);
 		}
 	}
 	bool resultAll = true;
@@ -139,4 +138,3 @@ void SourceModelComponent::setEntitiesPerCreation(unsigned int _entitiesPerCreat
 unsigned int SourceModelComponent::getEntitiesPerCreation() const {
 	return _entitiesPerCreation;
 }
-

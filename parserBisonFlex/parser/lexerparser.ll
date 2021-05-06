@@ -55,7 +55,7 @@ L      [A-Za-z0-9_.]+
 	//Will not fail because of regex
 	//std::string text("Found Hexadecimal: ");
 	//text += yytext;
-	//driver.getModel()->getTraceManager()->trace(Util::TraceLevel::mostDetailed, text);
+	//driver.getModel()->getTraceManager()->trace(Util::TraceLevel::L8_mostDetailed, text);
 	return yy::genesyspp_parser::make_NUMH(obj_t(atof(yytext), std::string("Hexadecimal")),loc);
       }
 
@@ -64,7 +64,7 @@ L      [A-Za-z0-9_.]+
        //Will not fail because of regex
        //std::string text("Found Float: ");
        //text += yytext;
-       //driver.getModel()->getTraceManager()->trace(Util::TraceLevel::mostDetailed, text);
+       //driver.getModel()->getTraceManager()->trace(Util::TraceLevel::L8_mostDetailed, text);
        return yy::genesyspp_parser::make_NUMD(obj_t(atof(yytext),std::string("Float")), loc);
      }
 
@@ -73,7 +73,7 @@ L      [A-Za-z0-9_.]+
        //Will not fail because of regex
        //std::string text("Found Decimal: ");
        //text += yytext;
-       //driver.getModel()->getTraceManager()->trace(Util::TraceLevel::mostDetailed, text);
+       //driver.getModel()->getTraceManager()->trace(Util::TraceLevel::L8_mostDetailed, text);
        return yy::genesyspp_parser::make_NUMD(obj_t(atof(yytext),std::string("Decimal")), loc);
       }
 
@@ -181,9 +181,11 @@ T
         ModelElement* element; 
 
 		//std::cout << "Verificando o que é o Literal \""+std::string(yytext)+"\"\n";
+		//std::cout << driver.getModel()->getInfos()->getName() << std::endl;
         // check if it is an ATTRIBUTE (and return the attribute ID (and not the value!)
-        element = driver.getModel()->getElements()->getElement(Util::TypeOf<Attribute>(), std::string(yytext));
-        if (element != nullptr) { 
+		element = driver.getModel()->getElements()->getElement(Util::TypeOf<Attribute>(), std::string(yytext));
+        if (element != nullptr) {
+			//std::cout << "Found attribute" << std::string(yytext) << std::endl;
             return yy::genesyspp_parser::make_ATRIB(obj_t(0, Util::TypeOf<Attribute>(), element->getId()),loc);
         }
 

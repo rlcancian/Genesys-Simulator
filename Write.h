@@ -19,11 +19,16 @@
 class WriteElement {
 public:
 
-	WriteElement(std::string text, bool isExpression = false, bool newline = false) {
+	WriteElement(std::string text = "", bool isExpression = false, bool newline = false) {
 		this->text = text;
 		this->isExpression = isExpression;
 		this->newline = newline;
 	}
+	const struct DEFAULT_VALUES {
+		const std::string text = "";
+		const bool isExpression = false;
+		const bool newline = false;
+	} DEFAULT;
 	std::string text;
 	bool isExpression;
 	bool newline;
@@ -65,8 +70,13 @@ protected: // virtual
 private: // methods
 	//std::string _buildText();
 private: // attributes 1:1
-	WriteToType _writeToType = Write::WriteToType::SCREEN;
-	std::string _filename = "";
+
+	const struct DEFAULT_VALUES {
+		WriteToType writeToType = Write::WriteToType::SCREEN;
+		std::string filename = "";
+	} DEFAULT;
+	WriteToType _writeToType = DEFAULT.writeToType;
+	std::string _filename = DEFAULT.filename;
 private: // attributes 1:n
 	List<WriteElement*>* _writeElements = new List<WriteElement*>();
 };

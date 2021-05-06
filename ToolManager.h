@@ -26,8 +26,8 @@ public:
 	virtual ~ToolManager() = default;
 public:
 	Sampler_if* sampler() const; ///< Returns the Sampler, used to generate samples accordingly to a probability distribution
-	Fitter_if* fitter() const;
-	ExperimentManager_if* experimentDesigner() const; ///< Returns the fitter, responsible for carrying out tests of adherence of theoretical distributions of probability with sampled data.
+	Fitter_if* fitter() const;  ///< Returns the fitter, responsible for carrying out tests of adherence of theoretical distributions of probability with sampled data.
+	ExperimentManager_if* experimentManager() const; // \todo 202104 to be moved to kernel, controlling SimulationScenarios and therefore ModelSimulations
 public: // event handlers
 private:
 	Fitter_if* _fitter; // = new Traits<Fitter_if>::Implementation();

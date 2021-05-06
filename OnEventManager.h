@@ -68,6 +68,7 @@
 		void addOnSimulationPausedStartHandler(simulationEventHandler EventHandler);
 		void addOnSimulationEndHandler(simulationEventHandler EventHandler);
 		void addOnEntityRemoveHandler(simulationEventHandler EventHandler);
+		void addOnBreakpointHandler(simulationEventHandler EventHandler);
 		// for handlers that are class members (methods)
 		template<typename Class> void addOnProcessEventHandler(Class * object, void (Class::*function)(SimulationEvent*));
 		//  \todo: ...
@@ -80,6 +81,7 @@
 		void NotifySimulationStartHandlers(SimulationEvent* se);
 		void NotifySimulationPausedStartHandlers(SimulationEvent* se);
 		void NotifySimulationEndHandlers(SimulationEvent* se);
+		void NotifyBreakpointHandlers(SimulationEvent* se);
 	private:
 		void _NotifyHandlers(List<simulationEventHandler>* list, SimulationEvent* se);
 		void _NotifyHandlerMethods(List<simulationEventHandlerMethod>* list, SimulationEvent* se);
@@ -93,6 +95,7 @@
 		List<simulationEventHandler>* _onSimulationStartHandlers = new List<simulationEventHandler>();
 		List<simulationEventHandler>* _onSimulationPausedStartHandlers = new List<simulationEventHandler>();
 		List<simulationEventHandler>* _onSimulationEndHandlers = new List<simulationEventHandler>();
+		List<simulationEventHandler>* _onBreakpointHandlers = new List<simulationEventHandler>();
 		// for handlers that are class members (methods)
 		List<simulationEventHandlerMethod>* _onProcessEventHandlerMethods = new List<simulationEventHandlerMethod>();
 		//  \todo: ...

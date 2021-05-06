@@ -54,14 +54,14 @@ void ExperimentManagerDefaultImpl1::startSimulationOfScenario(SimulationScenario
     scenario->startSimulation(&a);
 }
 
-void ExperimentManagerDefaultImpl1::startSimulation() {
-    for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list()->end(); ++i) {
+void ExperimentManagerDefaultImpl1::startExperiment() {
+	for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list()->end(); ++i) {
         startSimulationOfScenario(*i);
     }
 }
 
-void ExperimentManagerDefaultImpl1::stopSimulation() {
-    // \todo: implement
+void ExperimentManagerDefaultImpl1::stopExperiment() {
+	// \todo: implement
 }
 
 void ExperimentManagerDefaultImpl1::addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) {

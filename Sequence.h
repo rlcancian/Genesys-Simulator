@@ -19,31 +19,62 @@
 #include "PluginInformation.h"
 #include "Station.h"
 
-class SequenceStep {
+class SequenceStep : PersistentObject_base {
 public:
 
-	SequenceStep(Station* station, std::list<std::string>* assignments = nullptr) {
-		_station = station;
-		if (assignments == nullptr)
-			_assignments = new std::list<std::string>();
-		else
-			_assignments = assignments;
-	}
+	class Assignment {
+	public:
 
-	std::list<std::string>* getAssignments() const {
-		return _assignments;
-	}
+		Assignment(std::string destination, std::string expression) {
+			this->_destination = destination;
+			this->_expression = expression;
+			// an assignment is always in the form:
+			// (destinationType) destination = expression
+		};
 
-	void setStation(Station* _station) {
-		this->_station = _station;
-	}
+		void setDestination(std::string _destination) {
+			this->_destination = _destination;
+		}
 
-	Station* getStation() const {
-		return _station;
-	}
+		std::string getDestination() const {
+			return _destination;
+		}
+
+		void setExpression(std::string _expression) {
+			this->_expression = _expression;
+		}
+
+		std::string getExpression() const {
+			return _expression;
+		}
+	private:
+		std::string _destination = "";
+		std::string _expression = "";
+
+	};
+
+public:
+
+	SequenceStep(Station* station, std::list<Assignment*>* assignments = nullptr);
+public: // virtual
+
+	virtual bool _loadInstance(std::map<std::string, std::string>* fields, unsigned int parentIndex);
+	virtual std::map<std::string, std::string>* _saveInstance(unsigned int parentIndex);
+	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
+	virtual std::map<std::string, std::string>* _saveInstance();
+
+public:
+
+	std::list<SequenceStep::Assignment*>* getAssignments() const;
+	void setStation(Station* _station);
+	Station* getStation() const;
 private:
+
+	const struct DEFAULT_VALUES {
+		const unsigned int assignmentsSize = 0;
+	} DEFAULT;
 	Station* _station;
-	std::list<std::string>* _assignments;
+	std::list<Assignment*>* _assignments;
 };
 
 /*!

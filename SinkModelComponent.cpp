@@ -31,7 +31,6 @@ void SinkModelComponent::_initBetweenReplications() {
 
 std::map<std::string, std::string>* SinkModelComponent::_saveInstance() {
 	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance();
-	//fields->emplace("collectStatistics", std::to_string(this->_reportStatistics));
 	return fields;
 }
 
