@@ -41,10 +41,11 @@ ExperimentManagerExampleOfSimulation::~ExperimentManagerExampleOfSimulation() {
 int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     std::string filename{ "./temp/experimentManagerExampleOfSimulation.txt"};
 
-    Simulator* simulator = new Simulator();
+    ExperimentManager_if * manager = new Traits<ExperimentManager_if>::Implementation();
+    Simulator* simulator = manager->simulator();
     // Handle traces and simulation events to output them
     this->setDefaultTraceHandlers(simulator->getTracer());
-    simulator->getTracer()->setTraceLevel(Util::TraceLevel::componentDetailed);
+    simulator->getTracer()->setTraceLevel(Util::TraceLevel::L8_mostDetailed);
     // insert "fake plugins" since plugins based on dynamic loaded library are not implemented yet
     this->insertFakePluginsByHand(simulator);
     bool wantToCreateNewModelAndSaveInsteadOfJustLoad = false;
@@ -55,7 +56,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         //
         // build the simulation model
         // if no ModelInfo is provided, then the model will be simulated once (one replication) and the replication length will be 3600 seconds (simulated time)
-        model->getInfos()->setReplicationLength(60);
+        model->getSimulation()->setReplicationLength(60);
         // create a (Source)ModelElement of type EntityType, used by a ModelComponent that follows
         EntityType* entityType1 = new EntityType(model, "Type_of_Representative_Entity");
         // create a ModelComponent of type Create, used to insert entities into the model
@@ -79,9 +80,8 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         simulator->getModels()->loadModel(filename);
         model = simulator->getModels()->current();
     }
-       
+
     // execute the simulation util completed and show the report
-    ExperimentManager_if * manager = new Traits<ExperimentManager_if>::Implementation(simulator);
 
     SimulationScenario * scenario1 = new SimulationScenario();
     scenario1->setModel(model);
@@ -113,7 +113,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario3->getSelectedResponses()->push_back("Create_1.CountNumberIn");
     manager->getScenarios()->insert(scenario3);
 
-    manager->startSimulation();
+    manager->startExperiment();
 
     for (SimulationScenario *scenario = manager->getScenarios()->front();
             !manager->getScenarios()->empty();
@@ -122,6 +122,6 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         std::cout << scenario->getScenarioName() << " -> Created Creates: " << value << std::endl;
     }
 
-    simulator->~Simulator();
+    delete manager;
     return 0;
 }

@@ -34,6 +34,7 @@ public:
 	virtual void startExperiment() = 0;
 	virtual void stopExperiment() = 0;
 	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) = 0;
+        virtual Simulator * simulator() const = 0;
 };
 
 #endif /* EXPERIMENTMANAGER_IF_H */

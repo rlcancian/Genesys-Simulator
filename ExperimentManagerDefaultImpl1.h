@@ -22,8 +22,7 @@
 class ExperimentManagerDefaultImpl1 : public ExperimentManager_if {
 public:
     	ExperimentManagerDefaultImpl1();
-	ExperimentManagerDefaultImpl1(Simulator * simulator);
-	virtual ~ExperimentManagerDefaultImpl1() = default;
+	virtual ~ExperimentManagerDefaultImpl1();
 public:
 	virtual List<SimulationScenario*>* getScenarios() const;
 	virtual List<SimulationControl*>* getControls() const;
@@ -34,6 +33,7 @@ public:
 	virtual void startExperiment();
 	virtual void stopExperiment();
 	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener);
+        virtual Simulator * simulator() const;
 private:
 	List<SimulationControl*>* _controls = new List<SimulationControl*>();
         List<SimulationScenario*>*  _scenarios = new List<SimulationScenario*>();

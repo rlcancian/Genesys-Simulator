@@ -15,10 +15,11 @@
 #include "Simulator.h"
 
 ExperimentManagerDefaultImpl1::ExperimentManagerDefaultImpl1() {
+    this->_simulator = new Simulator();
 }
 
-ExperimentManagerDefaultImpl1::ExperimentManagerDefaultImpl1(Simulator * simulator) {
-    this->_simulator = simulator;
+ExperimentManagerDefaultImpl1::~ExperimentManagerDefaultImpl1() {
+    delete _simulator;
 }
 
 List<SimulationScenario*>* ExperimentManagerDefaultImpl1::getScenarios() const {
@@ -65,4 +66,8 @@ void ExperimentManagerDefaultImpl1::stopExperiment() {
 }
 
 void ExperimentManagerDefaultImpl1::addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) {
+}
+
+Simulator * ExperimentManagerDefaultImpl1::simulator() const {
+    return this->_simulator;
 }
