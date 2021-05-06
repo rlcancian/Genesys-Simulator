@@ -52,17 +52,17 @@ List<SimulationResponse*>* ExperimentManagerDefaultImpl1::extractResponsesFromMo
 
 void ExperimentManagerDefaultImpl1::startSimulationOfScenario(SimulationScenario* scenario) {
     std::string a("AAA");
-    scenario->startSimulation(&a);
+    scenario->startSimulation(this->_simulator, &a);
 }
 
 void ExperimentManagerDefaultImpl1::startExperiment() {
-	for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list()->end(); ++i) {
+    for (std::list<SimulationScenario*>::iterator i = _scenarios->list()->begin(); i != _scenarios->list()->end(); ++i) {
         startSimulationOfScenario(*i);
     }
 }
 
 void ExperimentManagerDefaultImpl1::stopExperiment() {
-	// \todo: implement
+    // \todo: implement
 }
 
 void ExperimentManagerDefaultImpl1::addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) {

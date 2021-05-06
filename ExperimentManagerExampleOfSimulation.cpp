@@ -84,7 +84,6 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     // execute the simulation util completed and show the report
 
     SimulationScenario * scenario1 = new SimulationScenario();
-    scenario1->setModel(model);
     scenario1->setScenarioName("scenario1");
     scenario1->setModelFilename(filename);
     scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));
@@ -94,7 +93,6 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     manager->getScenarios()->insert(scenario1);
 
     SimulationScenario * scenario2 = new SimulationScenario();
-    scenario2->setModel(model);
     scenario2->setScenarioName("scenario2");
     scenario2->setModelFilename(filename);
     scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));
@@ -104,7 +102,6 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     manager->getScenarios()->insert(scenario2);
 
     SimulationScenario * scenario3 = new SimulationScenario();
-    scenario3->setModel(model);
     scenario3->setScenarioName("scenario3");
     scenario3->setModelFilename(filename);
     scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));

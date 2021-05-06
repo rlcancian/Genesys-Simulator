@@ -18,7 +18,13 @@
 SimulationScenario::SimulationScenario() {
 }
 
-bool SimulationScenario::startSimulation(std::string* errorMessage) {
+SimulationScenario::~SimulationScenario() {
+    delete this->_responseValues;
+    delete this->_selectedControls;
+    delete this->_selectedResponses;
+}
+
+bool SimulationScenario::startSimulation(Simulator * simulator, std::string* errorMessage) {
     // model->loadmodel _modelFilename
     // set values for the _selectedControls
     // model->startSimulation
@@ -26,15 +32,20 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
     // clear selected controls and responses
     // close the model
 
-    // Setting control values
+    // Setting control values   
+    bool loaded = simulator->getModels()->loadModel(this->_modelFilename);
+    if (!loaded)
+        return false;
+    Model * model = simulator->getModels()->current();
+    
     for (
             std::list<std::pair<std::string, double>*>::iterator scen_it = this->_selectedControls->begin();
             scen_it != this->_selectedControls->end();
             ++scen_it
             ) {
         for (
-                std::list<SimulationControl*>::iterator mod_it = this->_model->getControls()->list()->begin();
-                mod_it != this->_model->getControls()->list()->end();
+                std::list<SimulationControl*>::iterator mod_it = model->getControls()->list()->begin();
+                mod_it != model->getControls()->list()->end();
                 ++mod_it
                 ) {
             if (!(*scen_it)->first.compare((*mod_it)->getName())) {
@@ -45,7 +56,7 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
     }
     
     // Running simulation
-    this->_model->getSimulation()->start();
+    model->getSimulation()->start();
 
     // Acquiring response values
     for (
@@ -54,8 +65,8 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
             ++scen_it
             ) {
         for (
-                std::list<SimulationResponse*>::iterator mod_it = this->_model->getResponses()->list()->begin();
-                mod_it != this->_model->getResponses()->list()->end();
+                std::list<SimulationResponse*>::iterator mod_it = model->getResponses()->list()->begin();
+                mod_it != model->getResponses()->list()->end();
                 ++mod_it
                 ) {
             if (!(*scen_it).compare((*mod_it)->getName())) {
@@ -68,17 +79,6 @@ bool SimulationScenario::startSimulation(std::string* errorMessage) {
     this->_selectedResponses = new std::list<std::string>();
     
     return true;
-}
-
-void SimulationScenario::setModel(Model * _model) {
-    this->_selectedControls = new std::list<std::pair<std::string, double>*>();
-    this->_selectedResponses = new std::list<std::string>();
-    this->_responseValues = new std::list<std::pair<std::string, double>*>();
-    this->_model = _model;
-}
-
-Model * SimulationScenario::getModel() const {
-    return this->_model;
 }
 
 void SimulationScenario::setScenarioName(std::string _name) {

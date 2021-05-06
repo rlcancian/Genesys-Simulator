@@ -26,17 +26,15 @@
 class SimulationScenario {
 public:
 	SimulationScenario();
-	virtual ~SimulationScenario() = default;
+	virtual ~SimulationScenario();
 public: // results
-	bool startSimulation(std::string* errorMessage);
+	bool startSimulation(Simulator * simulator, std::string* errorMessage);
 	std::list<std::pair<std::string, double>*>* getResponseValues() const; /*!< The final result of the simulationScenario */
 	std::list<std::pair<std::string, double>*>* getControlValues() const;
 	double getResponseValue(std::string responseName);
 public: // gets and sets
 	void setModelFilename(std::string _modelFilename);
 	std::string getModelFilename() const;
-        void setModel(Model * _model);
-        Model * getModel() const;
 	void setScenarioName(std::string _name);
 	std::string getScenarioName() const;
 	void setScenarioDescription(std::string _scenarioDescription);
@@ -49,7 +47,6 @@ private:
         std::string _scenarioName;
 	std::string _scenarioDescription;
 	std::string _modelFilename;
-        Model * _model;
 	std::list<std::pair<std::string, double>*>* _selectedControls = new std::list<std::pair<std::string, double>*>(); /*!< a subset of SimulationControls available in the model (chosen by user)*/
 	std::list<std::string>* _selectedResponses = new std::list<std::string>(); /*!< a subset of SimulationResponses available in the model (chosen by user) */
 	std::list<std::pair<std::string, double>*>* _responseValues = new std::list<std::pair<std::string, double>*>(); /*!< stored values of the results returned by simulation <name of response, value returned>*/
