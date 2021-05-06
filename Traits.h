@@ -63,14 +63,16 @@
 // genesys applications
 #include "FullSimulationOfComplexModel.h"
 //#include "BuildSimulationModel03.h"
-#include "FirstExampleOfSimulation.h"
-#include "SecondExampleOfSimulation.h"
-#include "FourthExampleOfSimulation.h"
-#include "ExperimentManagerExampleOfSimulation.h"
+#include "Model_CreateDelayDispose.h"
+#include "Model_CreteDelayDispose2.h"
+#include "Model_AssignWrite3Seizes.h"
 #include "GenesysGUI.h"
 #include "GenesysConsole.h"
-#include "ThirdExampleOfSimultion.h"
-#include "FifthExampleOfSimulation.h"
+#include "Model_SeizeDelayRelease1.h"
+#include "Model_SeizeDelayReleaseMany.h"
+#include "Model_StatationRouteSequence.h"
+#include "Modelo_SistemaOperacional02.h"
+#include "Modelo_SistemaOperacional03.h"
 #include "TestEnterLeaveRoute.h"
 #include "TestFunctions.h"
 #include "TestSimulationControlAndSimulationResponse.h"
@@ -80,6 +82,7 @@
 
 template <typename T>
 struct Traits {
+	static const Util::TraceLevel traceLevel = Util::TraceLevel::L3_results;
 };
 
 /*
@@ -91,22 +94,13 @@ struct Traits {
  */
 
 template <> struct Traits<GenesysApplication_if> {
-	// tests
-	//typedef TestLSODE Application;
-	//typedef TestMarkovChain Application;
-	//typedef TestSimulationControlAndSimulationResponse Application;
-	//typedef TestMatricesOfAttributesAndVariables Application;
-	// examples
-	//typedef FirstExampleOfSimulation Application;
-	//typedef SecondExampleOfSimulation Application;
-	//typedef ThirdExampleOfSimulation Application;
-	//typedef FourthExampleOfSimulation Application;
-	//typedef FifthExampleOfSimulation Application;
-        typedef ExperimentManagerExampleOfSimulation Application;
-
-	//typedef FullSimulationOfComplexModel Application;
-	// full aplications
-	//typedef GenesysGUI Application;
+	//typedef Model_CreateDelayDispose Application;
+	//typedef Model_SeizeDelayRelease1 Application;
+	//typedef Model_SeizeDelayReleaseMany Application;
+	////typedef Model_AssignWrite3Seizes Application;
+	//typedef Model_StatationRouteSequence Application;
+	typedef Modelo_SistemaOperacional02 Application;
+	//typedef Modelo_SistemaOperacional03 Application;
 };
 
 /*
@@ -115,11 +109,12 @@ template <> struct Traits<GenesysApplication_if> {
 
 
 template <> struct Traits<PluginConnector_if> {
-    typedef PluginConnectorDummyImpl1 Implementation;
+	typedef PluginConnectorDummyImpl1 Implementation;
+	static const Util::TraceLevel traceLevel = Util::TraceLevel::L4_warning;
 };
 
 template <> struct Traits<Parser_if> {
-    typedef ParserDefaultImpl2 Implementation;
+	typedef ParserDefaultImpl2 Implementation;
 };
 
 /*
@@ -127,31 +122,34 @@ template <> struct Traits<Parser_if> {
  */
 
 template <> struct Traits<Model> {
-    static const bool debugged = true;
-    static const Util::TraceLevel traceLevel = Util::TraceLevel::modelSimulationEvent;
+	static const Util::TraceLevel traceLevel = Util::TraceLevel::L4_warning;
 };
 
 template <> struct Traits<ModelPersistence_if> {
-    typedef ModelPersistenceDefaultImpl1 Implementation;
+	typedef ModelPersistenceDefaultImpl1 Implementation;
+	static const Util::TraceLevel traceLevel = Util::TraceLevel::L3_results;
 };
 
 template <> struct Traits<SimulationReporter_if> {
-    typedef SimulationReporterDefaultImpl1 Implementation;
-    typedef Counter CounterImplementation;
+	typedef SimulationReporterDefaultImpl1 Implementation;
+	typedef Counter CounterImplementation;
+	static const Util::TraceLevel traceLevel = Util::TraceLevel::L3_results;
 };
 
 template <> struct Traits<ModelChecker_if> {
-    typedef ModelCheckerDefaultImpl1 Implementation;
+	typedef ModelCheckerDefaultImpl1 Implementation;
+	static const Util::TraceLevel traceLevel = Util::TraceLevel::L3_results;
 };
 
 template <> struct Traits<ModelComponent> {
-    typedef StatisticsDefaultImpl1 StatisticsCollector_StatisticsImplementation;
-    typedef CollectorDefaultImpl1 StatisticsCollector_CollectorImplementation;
-    static constexpr bool reportStatistics = true;
+	typedef StatisticsDefaultImpl1 StatisticsCollector_StatisticsImplementation;
+	typedef CollectorDefaultImpl1 StatisticsCollector_CollectorImplementation;
+	static constexpr bool reportStatistics = true;
+	static const Util::TraceLevel traceLevel = Util::TraceLevel::L3_results;
 };
-
 template <> struct Traits<ModelElement> {
-    static constexpr bool reportStatistics = true;
+	static constexpr bool reportStatistics = true;
+	static const Util::TraceLevel traceLevel = Util::TraceLevel::L3_results;
 };
 
 /*
@@ -159,37 +157,37 @@ template <> struct Traits<ModelElement> {
  */
 
 template <> struct Traits<Collector_if> {
-    typedef CollectorDatafileDefaultImpl1 Implementation;
+	typedef CollectorDatafileDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<Statistics_if> {
-    typedef StatisticsDefaultImpl1 Implementation;
-    typedef CollectorDefaultImpl1 CollectorImplementation;
-    static constexpr double SignificanceLevel = 0.05;
+	typedef StatisticsDefaultImpl1 Implementation;
+	typedef CollectorDefaultImpl1 CollectorImplementation;
+	static constexpr double SignificanceLevel = 0.05;
 };
 
 template <> struct Traits<Integrator_if> {
-    typedef IntegratorDefaultImpl1 Implementation;
-    static constexpr unsigned int MaxIterations = 1e3;
-    static constexpr double Precision = 1e-9;
+	typedef IntegratorDefaultImpl1 Implementation;
+	static constexpr unsigned int MaxIterations = 1e3;
+	static constexpr double Precision = 1e-9;
 };
 
 template <> struct Traits<Sampler_if> {
-    typedef SamplerDefaultImpl1 Implementation;
-    typedef SamplerDefaultImpl1::DefaultImpl1RNG_Parameters Parameters;
+	typedef SamplerDefaultImpl1 Implementation;
+	typedef SamplerDefaultImpl1::DefaultImpl1RNG_Parameters Parameters;
 };
 
 template <> struct Traits<ProbDistrib_if> {
-    typedef ProbDistribDefaultImpl1 Implementation;
+	typedef ProbDistribDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<Fitter_if> {
-    typedef FitterDefaultImpl1 Implementation;
+	typedef FitterDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<HypothesisTester_if> {
-    typedef IntegratorDefaultImpl1 IntegratorImplementation;
-    typedef HypothesisTesterDefaultImpl1 Implementation;
+	typedef IntegratorDefaultImpl1 IntegratorImplementation;
+	typedef HypothesisTesterDefaultImpl1 Implementation;
 };
 
 /*
@@ -197,11 +195,11 @@ template <> struct Traits<HypothesisTester_if> {
  */
 
 template <> struct Traits<ExperimentDesign_if> {
-    typedef ExperimentDesignDefaultImpl1 Implementation;
+	typedef ExperimentDesignDefaultImpl1 Implementation;
 };
 
 template <> struct Traits<ExperimentManager_if> {
-    typedef ExperimentManagerDefaultImpl1 Implementation;
+	typedef ExperimentManagerDefaultImpl1 Implementation;
 };
 
 #endif /* TRAITS_H */
