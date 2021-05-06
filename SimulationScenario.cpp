@@ -35,8 +35,11 @@ bool SimulationScenario::startSimulation(Simulator * simulator) {
     // get the value of the _selectedResponses from the model and store results on _responseValues
     // clear selected controls and responses
     // close the model
-
-    auto loaded = simulator->getModels()->loadModel(this->_modelFilename);
+    
+    delete _responseValues;
+    _responseValues = new std::unordered_map<std::string, double>();
+    
+    auto loaded = simulator->getModels()->loadModel(_modelFilename);
     if (!loaded)
         return false;
     auto model = simulator->getModels()->current();
@@ -66,8 +69,10 @@ bool SimulationScenario::startSimulation(Simulator * simulator) {
         }
     }
 
-    this->_selectedControls = new std::unordered_map<std::string, double>;
-    this->_selectedResponses = new std::unordered_set<std::string>();
+    delete _selectedControls;
+    delete _selectedResponses;
+    _selectedControls = new std::unordered_map<std::string, double>;
+    _selectedResponses = new std::unordered_set<std::string>();
 
     model->clear();
     simulator->getModels()->remove(model);
@@ -75,7 +80,7 @@ bool SimulationScenario::startSimulation(Simulator * simulator) {
 }
 
 void SimulationScenario::setScenarioName(std::string _name) {
-    this->_scenarioName = _name;
+    _scenarioName = _name;
 }
 
 std::string SimulationScenario::getScenarioName() const {
@@ -91,11 +96,11 @@ double SimulationScenario::getResponseValue(std::string responseName) {
 }
 
 void SimulationScenario::selectResponse(std::string responseName) {
-    _selectedResponses->insert(responseName);
+    _selectedResponses->emplace(responseName);
 }
 
-void SimulationScenario::setModelFilename(std::string _modelFilename) {
-    this->_modelFilename = _modelFilename;
+void SimulationScenario::setModelFilename(std::string modelFilename) {
+    _modelFilename = modelFilename;
 }
 
 std::string SimulationScenario::getModelFilename() const {
@@ -115,7 +120,7 @@ void SimulationScenario::setControlValue(std::string controlName, double value) 
 }
 
 void SimulationScenario::setScenarioDescription(std::string _scenarioDescription) {
-    this->_scenarioDescription = _scenarioDescription;
+    _scenarioDescription = _scenarioDescription;
 }
 
 std::string SimulationScenario::getScenarioDescription() const {

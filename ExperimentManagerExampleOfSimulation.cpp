@@ -103,8 +103,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario1->setControlValue("NumberOfReplications", 1);
     scenario1->setControlValue("ReplicationLength", 60);
     scenario1->setControlValue("WarmupPeriod", 10);
-    scenario1->selectResponse("Type_of_Representative_Entity.TotalTimeInSystem.halfWidth");
-    manager->getScenarios()->insert(scenario1);
+    scenario1->selectResponse("Type_of_Representative_Entity.TotalTimeInSystem.average");
 
     SimulationScenario * scenario2 = new SimulationScenario();
     scenario2->setScenarioName("scenario2");
@@ -113,7 +112,6 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario2->setControlValue("ReplicationLength", 30);
     scenario2->setControlValue("WarmupPeriod", 0);
     scenario2->selectResponse("Create_1.CountNumberIn");
-    manager->getScenarios()->insert(scenario2);
 
     SimulationScenario * scenario3 = new SimulationScenario();
     scenario3->setScenarioName("scenario3");
@@ -122,7 +120,10 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario3->setControlValue("ReplicationLength", 120);
     scenario3->setControlValue("WarmupPeriod", 25);
     scenario3->selectResponse("Delay_1.WaitTime.average");
+
+    manager->getScenarios()->insert(scenario2);
     manager->getScenarios()->insert(scenario3);
+    manager->getScenarios()->insert(scenario1);
 
     // Handle traces and simulation events to output them
     this->setDefaultTraceHandlers(simulator->getTracer());
@@ -131,14 +132,16 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     manager->startExperiment();
 
     std::cout << std::endl;
-    for (SimulationScenario *scenario = manager->getScenarios()->front();
-            !manager->getScenarios()->empty();
-            manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front()) {
-        for (std::unordered_set<std::string>::iterator it = scenario->getSelectedResponses()->begin(); 
-                it != scenario->getSelectedResponses()->end(); ++it) {
-            double value = scenario->getResponseValue(*it);
-            std::cout << scenario->getScenarioName() << " -> "<< *it << ": "<<value << std::endl;
+    std::cout << "Responses from simulation:" << std::endl;
+    auto list_scenario = manager->getScenarios();
+    for (auto scenario = list_scenario->front(); !list_scenario->empty(); scenario = list_scenario->front()) {
+
+        auto response_values = scenario->getResponseValues();
+        for (auto it = response_values->begin(); it != response_values->end(); ++it) {
+            std::cout << scenario->getScenarioName() << ": " << it->first << " = " << it->second << std::endl;
         }
+
+        list_scenario->pop_front();
     }
     std::cout << std::endl;
 
