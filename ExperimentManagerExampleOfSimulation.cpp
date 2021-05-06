@@ -77,7 +77,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         simulator->getModels()->loadModel(filename);
         model = simulator->getModels()->current();
     }
-    
+
     std::cout << std::endl;
     auto controls = manager->extractControlsFromModel(filename);
     std::cout << "Controls:" << std::endl;
@@ -92,18 +92,18 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         std::cout << responses.getAtRank(i) << std::endl;
     }
     std::cout << std::endl;
-    
+
     std::cout << "Press ENTER to run the simulation..." << std::endl;
     std::string s;
     std::getline(std::cin, s);
-    
+
     SimulationScenario * scenario1 = new SimulationScenario();
     scenario1->setScenarioName("scenario1");
     scenario1->setModelFilename(filename);
     scenario1->setControlValue("NumberOfReplications", 1);
     scenario1->setControlValue("ReplicationLength", 60);
     scenario1->setControlValue("WarmupPeriod", 10);
-    scenario1->selectResponse("Create_1.CountNumberIn");
+    scenario1->selectResponse("Type_of_Representative_Entity.TotalTimeInSystem.halfWidth");
     manager->getScenarios()->insert(scenario1);
 
     SimulationScenario * scenario2 = new SimulationScenario();
@@ -121,7 +121,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario3->setControlValue("NumberOfReplications", 1);
     scenario3->setControlValue("ReplicationLength", 120);
     scenario3->setControlValue("WarmupPeriod", 25);
-    scenario3->selectResponse("Create_1.CountNumberIn");
+    scenario3->selectResponse("Delay_1.WaitTime.average");
     manager->getScenarios()->insert(scenario3);
 
     // Handle traces and simulation events to output them
@@ -134,11 +134,14 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     for (SimulationScenario *scenario = manager->getScenarios()->front();
             !manager->getScenarios()->empty();
             manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front()) {
-        double value = scenario->getResponseValue("Create_1.CountNumberIn");
-        std::cout << scenario->getScenarioName() << " -> Created Creates: " << value << std::endl;
+        for (std::unordered_set<std::string>::iterator it = scenario->getSelectedResponses()->begin(); 
+                it != scenario->getSelectedResponses()->end(); ++it) {
+            double value = scenario->getResponseValue(*it);
+            std::cout << scenario->getScenarioName() << " -> "<< *it << ": "<<value << std::endl;
+        }
     }
     std::cout << std::endl;
-    
+
     delete manager;
     return 0;
 }
