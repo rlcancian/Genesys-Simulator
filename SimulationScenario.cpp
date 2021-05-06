@@ -11,11 +11,15 @@
  * Created on 10 de Outubro de 2018, 18:21
  */
 
+#include <unordered_map>
+#include <exception>
 #include "SimulationScenario.h"
 #include "Simulator.h"
 #include "Traits.h"
 
-SimulationScenario::SimulationScenario() {
+SimulationScenario::SimulationScenario() : _responseValues(new std::unordered_map<std::string, double>()),
+_selectedControls(new std::unordered_map<std::string, double>),
+_selectedResponses(new std::unordered_set<std::string>()) {
 }
 
 SimulationScenario::~SimulationScenario() {
@@ -32,92 +36,92 @@ bool SimulationScenario::startSimulation(Simulator * simulator, std::string* err
     // clear selected controls and responses
     // close the model
 
-    // Setting control values   
     bool loaded = simulator->getModels()->loadModel(this->_modelFilename);
     if (!loaded)
         return false;
     Model * model = simulator->getModels()->current();
-    
-    for (
-            std::list<std::pair<std::string, double>*>::iterator scen_it = this->_selectedControls->begin();
-            scen_it != this->_selectedControls->end();
-            ++scen_it
-            ) {
-        for (
-                std::list<SimulationControl*>::iterator mod_it = model->getControls()->list()->begin();
-                mod_it != model->getControls()->list()->end();
-                ++mod_it
-                ) {
-            if (!(*scen_it)->first.compare((*mod_it)->getName())) {
-                
-                (*mod_it)->setValue((*scen_it)->second);
-            }
+
+    // Setting control values   
+    auto control_list = model->getControls();
+    for (auto i = 0; i < control_list->size(); ++i) {
+        auto control = control_list->getAtRank(i);
+        auto control_name = control->getName();
+        try {
+            control->setValue(_selectedControls->at(control_name));
+        } catch (std::out_of_range& e) {
+            continue;
         }
     }
-    
+
     // Running simulation
     model->getSimulation()->start();
 
     // Acquiring response values
-    for (
-            std::list<std::string>::iterator scen_it = this->_selectedResponses->begin();
-            scen_it != this->_selectedResponses->end();
-            ++scen_it
-            ) {
-        for (
-                std::list<SimulationResponse*>::iterator mod_it = model->getResponses()->list()->begin();
-                mod_it != model->getResponses()->list()->end();
-                ++mod_it
-                ) {
-            if (!(*scen_it).compare((*mod_it)->getName())) {
-                this->_responseValues->push_back(new std::pair<std::string, double>((*scen_it), (*mod_it)->getValue()));
-            }
+    auto response_list = model->getResponses();
+    for (auto i = 0; i < response_list->size(); ++i) {
+        auto response = response_list->getAtRank(i);
+        auto response_name = response->getName();
+        if (_selectedResponses->find(response_name) != _selectedResponses->end()) {
+            (*_responseValues)[response_name] = response->getValue();
         }
     }
-    
-    this->_selectedControls = new std::list<std::pair<std::string, double>*>();
-    this->_selectedResponses = new std::list<std::string>();
-    
+
+    this->_selectedControls = new std::unordered_map<std::string, double>;
+    this->_selectedResponses = new std::unordered_set<std::string>();
+
+    model->clear();
+    simulator->getModels()->remove(model);
     return true;
 }
 
 void SimulationScenario::setScenarioName(std::string _name) {
+
     this->_scenarioName = _name;
 }
 
 std::string SimulationScenario::getScenarioName() const {
+
     return _scenarioName;
 }
 
-std::list<std::pair<std::string, double>*>* SimulationScenario::getResponseValues() const {
+std::unordered_map<std::string, double>* SimulationScenario::getResponseValues() const {
+
     return _responseValues;
 }
 
 double SimulationScenario::getResponseValue(std::string responseName) {
-    for(std::list<std::pair<std::string, double>*>::iterator it = this->_responseValues->begin(); it != this->_responseValues->end(); ++it) {
-        if (!(*it)->first.compare(responseName))
-            return (*it)->second;
-    }
-    return -1;
+    return (*_responseValues)[responseName];
 }
 
+void SimulationScenario::selectResponse(std::string responseName) {
+    _selectedResponses->insert(responseName);
+}
+
+
 void SimulationScenario::setModelFilename(std::string _modelFilename) {
+
     this->_modelFilename = _modelFilename;
 }
 
 std::string SimulationScenario::getModelFilename() const {
+
     return _modelFilename;
 }
 
-std::list<std::string>* SimulationScenario::getSelectedResponses() const {
+std::unordered_set<std::string>* SimulationScenario::getSelectedResponses() const {
     return _selectedResponses;
 }
 
-std::list<std::pair<std::string, double>*>* SimulationScenario::getSelectedControls() const {
+std::unordered_map<std::string, double>* SimulationScenario::getSelectedControls() const {
     return _selectedControls;
 }
 
+void SimulationScenario::setControlValue(std::string controlName, double value) {
+    (*_selectedControls)[controlName] = value;
+}
+
 void SimulationScenario::setScenarioDescription(std::string _scenarioDescription) {
+
     this->_scenarioDescription = _scenarioDescription;
 }
 

@@ -86,28 +86,28 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     SimulationScenario * scenario1 = new SimulationScenario();
     scenario1->setScenarioName("scenario1");
     scenario1->setModelFilename(filename);
-    scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));
-    scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 60));
-    scenario1->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 10));
-    scenario1->getSelectedResponses()->push_back("Create_1.CountNumberIn");
+    scenario1->setControlValue("NumberOfReplications", 1);
+    scenario1->setControlValue("ReplicationLength", 60);
+    scenario1->setControlValue("WarmupPeriod", 10);
+    scenario1->selectResponse("Create_1.CountNumberIn");
     manager->getScenarios()->insert(scenario1);
 
     SimulationScenario * scenario2 = new SimulationScenario();
     scenario2->setScenarioName("scenario2");
     scenario2->setModelFilename(filename);
-    scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));
-    scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 30));
-    scenario2->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 0));
-    scenario2->getSelectedResponses()->push_back("Create_1.CountNumberIn");
+    scenario2->setControlValue("NumberOfReplications", 1);
+    scenario2->setControlValue("ReplicationLength", 30);
+    scenario2->setControlValue("WarmupPeriod", 0);
+    scenario2->selectResponse("Create_1.CountNumberIn");
     manager->getScenarios()->insert(scenario2);
 
     SimulationScenario * scenario3 = new SimulationScenario();
     scenario3->setScenarioName("scenario3");
     scenario3->setModelFilename(filename);
-    scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("NumberOfReplications", 1));
-    scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("ReplicationLength", 120));
-    scenario3->getSelectedControls()->push_back(new std::pair<std::string, double>("WarmupPeriod", 25));
-    scenario3->getSelectedResponses()->push_back("Create_1.CountNumberIn");
+    scenario3->setControlValue("NumberOfReplications", 1);
+    scenario3->setControlValue("ReplicationLength", 120);
+    scenario3->setControlValue("WarmupPeriod", 25);
+    scenario3->selectResponse("Create_1.CountNumberIn");
     manager->getScenarios()->insert(scenario3);
 
     manager->startExperiment();
