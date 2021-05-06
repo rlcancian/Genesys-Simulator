@@ -26,8 +26,8 @@
 class ExperimentManager_if {
 public:
 	virtual List<SimulationScenario*>* getScenarios() const = 0;
-	virtual List<std::string>* getControls() const = 0;
-	virtual List<std::string>* getResponses() const = 0;
+	virtual std::unordered_set<std::string>* getControls() const = 0;
+	virtual std::unordered_set<std::string>* getResponses() const = 0;
 	virtual List<std::string> extractControlsFromModel(std::string modelFilename) const = 0;
 	virtual List<std::string> extractResponsesFromModel(std::string modelFilename) const = 0;
 	virtual void startSimulationOfScenario(SimulationScenario* scenario) = 0;
