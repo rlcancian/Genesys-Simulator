@@ -25,19 +25,19 @@ public:
 	virtual ~ExperimentManagerDefaultImpl1();
 public:
 	virtual List<SimulationScenario*>* getScenarios() const;
-	virtual List<SimulationControl*>* getControls() const;
-	virtual List<SimulationResponse*>* getResponses() const;
-	virtual List<SimulationControl*>* extractControlsFromModel(std::string modelFilename) const;
-	virtual List<SimulationResponse*>* extractResponsesFromModel(std::string modelFilename) const;
+	virtual std::unordered_set<std::string>* getControls() const;
+	virtual std::unordered_set<std::string>* getResponses() const;
+	virtual List<std::string> extractControlsFromModel(std::string modelFilename) const;
+	virtual List<std::string> extractResponsesFromModel(std::string modelFilename) const;
 	virtual void startSimulationOfScenario(SimulationScenario* scenario);
 	virtual void startExperiment();
 	virtual void stopExperiment();
 	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener);
         virtual Simulator * simulator() const;
 private:
-	List<SimulationControl*>* _controls = new List<SimulationControl*>();
-        List<SimulationScenario*>*  _scenarios = new List<SimulationScenario*>();
-        List<SimulationResponse*>* _responses = new List<SimulationResponse*>();
+	std::unordered_set<std::string>* _controls;
+        std::unordered_set<std::string>* _responses;
+        List<SimulationScenario*>*  _scenarios;
         Simulator * _simulator;
 };
 

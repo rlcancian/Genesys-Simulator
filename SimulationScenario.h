@@ -29,7 +29,7 @@ public:
     SimulationScenario();
     virtual ~SimulationScenario();
 public: // results
-    bool startSimulation(Simulator * simulator, std::string* errorMessage);
+    bool startSimulation(Simulator * simulator);
     std::unordered_map<std::string, double>* getResponseValues() const; /*!< The final result of the simulationScenario */
     double getResponseValue(std::string responseName);
 public: // gets and sets

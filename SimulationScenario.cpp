@@ -28,7 +28,7 @@ SimulationScenario::~SimulationScenario() {
     delete _selectedResponses;
 }
 
-bool SimulationScenario::startSimulation(Simulator * simulator, std::string* errorMessage) {
+bool SimulationScenario::startSimulation(Simulator * simulator) {
     // model->loadmodel _modelFilename
     // set values for the _selectedControls
     // model->startSimulation

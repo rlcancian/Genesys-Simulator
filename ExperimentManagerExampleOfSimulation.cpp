@@ -43,9 +43,6 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
 
     ExperimentManager_if * manager = new Traits<ExperimentManager_if>::Implementation();
     Simulator* simulator = manager->simulator();
-    // Handle traces and simulation events to output them
-    this->setDefaultTraceHandlers(simulator->getTracer());
-    simulator->getTracer()->setTraceLevel(Util::TraceLevel::L8_mostDetailed);
     // insert "fake plugins" since plugins based on dynamic loaded library are not implemented yet
     this->insertFakePluginsByHand(simulator);
     bool wantToCreateNewModelAndSaveInsteadOfJustLoad = false;
@@ -80,9 +77,26 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         simulator->getModels()->loadModel(filename);
         model = simulator->getModels()->current();
     }
+    
+    std::cout << std::endl;
+    auto controls = manager->extractControlsFromModel(filename);
+    std::cout << "Controls:" << std::endl;
+    for (auto i = 0; i < controls.size(); ++i) {
+        std::cout << controls.getAtRank(i) << std::endl;
+    }
+    std::cout << std::endl;
 
-    // execute the simulation util completed and show the report
-
+    auto responses = manager->extractResponsesFromModel(filename);
+    std::cout << "Responses:" << std::endl;
+    for (auto i = 0; i < responses.size(); ++i) {
+        std::cout << responses.getAtRank(i) << std::endl;
+    }
+    std::cout << std::endl;
+    
+    std::cout << "Press ENTER to run the simulation..." << std::endl;
+    std::string s;
+    std::getline(std::cin, s);
+    
     SimulationScenario * scenario1 = new SimulationScenario();
     scenario1->setScenarioName("scenario1");
     scenario1->setModelFilename(filename);
@@ -110,15 +124,21 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario3->selectResponse("Create_1.CountNumberIn");
     manager->getScenarios()->insert(scenario3);
 
+    // Handle traces and simulation events to output them
+    this->setDefaultTraceHandlers(simulator->getTracer());
+    simulator->getTracer()->setTraceLevel(Util::TraceLevel::L8_mostDetailed);
+
     manager->startExperiment();
 
+    std::cout << std::endl;
     for (SimulationScenario *scenario = manager->getScenarios()->front();
             !manager->getScenarios()->empty();
             manager->getScenarios()->pop_front(), scenario = manager->getScenarios()->front()) {
         double value = scenario->getResponseValue("Create_1.CountNumberIn");
         std::cout << scenario->getScenarioName() << " -> Created Creates: " << value << std::endl;
     }
-
+    std::cout << std::endl;
+    
     delete manager;
     return 0;
 }
