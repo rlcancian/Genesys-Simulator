@@ -28,14 +28,7 @@ SimulationScenario::~SimulationScenario() {
     delete _selectedResponses;
 }
 
-bool SimulationScenario::startSimulation(Simulator * simulator) {
-    // model->loadmodel _modelFilename
-    // set values for the _selectedControls
-    // model->startSimulation
-    // get the value of the _selectedResponses from the model and store results on _responseValues
-    // clear selected controls and responses
-    // close the model
-    
+bool SimulationScenario::startSimulation(Simulator * simulator) {   
     delete _responseValues;
     _responseValues = new std::map<std::string, double>();
     
@@ -56,6 +49,11 @@ bool SimulationScenario::startSimulation(Simulator * simulator) {
         }
     }
 
+    // Check model
+    auto check = model->check();
+    if (!check)
+        return false;
+    
     // Running simulation
     model->getSimulation()->start();
 
@@ -74,8 +72,8 @@ bool SimulationScenario::startSimulation(Simulator * simulator) {
     _selectedControls = new std::map<std::string, double>;
     _selectedResponses = new std::set<std::string>();
 
-    model->clear();
     simulator->getModels()->remove(model);
+    delete model;
     return true;
 }
 
