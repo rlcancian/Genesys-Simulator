@@ -45,11 +45,10 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     Simulator* simulator = manager->simulator();
     // insert "fake plugins" since plugins based on dynamic loaded library are not implemented yet
     this->insertFakePluginsByHand(simulator);
-    bool wantToCreateNewModelAndSaveInsteadOfJustLoad = false;
-    Model* model;
-    if (wantToCreateNewModelAndSaveInsteadOfJustLoad) {
+
+    {
         // creates an empty model
-        model = new Model(simulator);
+        Model * model = new Model(simulator);
         //
         // build the simulation model
         // if no ModelInfo is provided, then the model will be simulated once (one replication) and the replication length will be 3600 seconds (simulated time)
@@ -73,9 +72,6 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         model->check();
         // save the model into a text file
         model->save(filename);
-    } else {
-        simulator->getModels()->loadModel(filename);
-        model = simulator->getModels()->current();
     }
 
     std::cout << std::endl;
@@ -112,7 +108,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario2->setControlValue("ReplicationLength", 30);
     scenario2->setControlValue("WarmupPeriod", 0);
     scenario2->selectResponse("Create_1.CountNumberIn");
-    
+
     SimulationScenario * scenario3 = new SimulationScenario();
     scenario3->setScenarioName("scenario3");
     scenario3->setModelFilename(filename);
