@@ -72,6 +72,9 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
         model->check();
         // save the model into a text file
         model->save(filename);
+
+        simulator->getModels()->remove(model);
+        delete model;
     }
 
     std::cout << std::endl;
@@ -117,9 +120,9 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario3->setControlValue("WarmupPeriod", 25);
     scenario3->selectResponse("Delay_1.WaitTime.average");
 
+    manager->getScenarios()->insert(scenario1);
     manager->getScenarios()->insert(scenario2);
     manager->getScenarios()->insert(scenario3);
-    manager->getScenarios()->insert(scenario1);
 
     // Handle traces and simulation events to output them
     this->setDefaultTraceHandlers(simulator->getTracer());
