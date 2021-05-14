@@ -15,8 +15,8 @@
 #include "Simulator.h"
 
 ExperimentManagerDefaultImpl1::ExperimentManagerDefaultImpl1() : _simulator(new Simulator()),
-_controls(new std::unordered_set<std::string>()), _responses(new std::unordered_set<std::string>()),
-_scenarios(new List<SimulationScenario*>()) {
+_controls(new List<SimulationControl*>()), _responses(new List<SimulationResponse*>()),
+_scenarios(new List<SimulationScenario*>()), _loaded_models() {
 }
 
 ExperimentManagerDefaultImpl1::~ExperimentManagerDefaultImpl1() {
@@ -30,41 +30,48 @@ List<SimulationScenario*>* ExperimentManagerDefaultImpl1::getScenarios() const {
     return _scenarios;
 }
 
-std::unordered_set<std::string>* ExperimentManagerDefaultImpl1::getControls() const {
+List<SimulationControl*>* ExperimentManagerDefaultImpl1::getControls() const {
     return _controls;
 }
 
-std::unordered_set<std::string>* ExperimentManagerDefaultImpl1::getResponses() const {
+List<SimulationResponse*>* ExperimentManagerDefaultImpl1::getResponses() const {
     return _responses;
 }
 
-List<std::string> ExperimentManagerDefaultImpl1::extractControlsFromModel(std::string modelFilename) const {
-    List<std::string> model_control_names{};
-    _simulator->getModels()->loadModel(modelFilename);
-    auto model = _simulator->getModels()->current();
+List<SimulationControl*>* ExperimentManagerDefaultImpl1::extractControlsFromModel(std::string modelFilename) {
+    Model * model;
+    try {
+        model = _loaded_models.at(modelFilename);
+    } catch (std::out_of_range & e) {
+        _simulator->getModels()->loadModel(modelFilename);
+        model = _simulator->getModels()->current();
+        _loaded_models[modelFilename] = model;
+    }
     auto model_controls = model->getControls();
     for (auto i = 0; i < model_controls->size(); ++i) {
-        std::string control_name = model_controls->getAtRank(i)->getName();
-        _controls->insert(control_name);
-        model_control_names.insert(control_name);
+        auto control = model_controls->getAtRank(i);
+        _controls->insert(control);
     }
-    _simulator->getModels()->remove(model);
-    return std::move(model_control_names);
+    return model_controls;
 }
 
-List<std::string> ExperimentManagerDefaultImpl1::extractResponsesFromModel(std::string modelFilename) const {
-    List<std::string> model_response_names{};
+List<SimulationResponse*>* ExperimentManagerDefaultImpl1::extractResponsesFromModel(std::string modelFilename) {
+    Model * model;
+    try {
+        model = _loaded_models.at(modelFilename);
+    } catch (std::out_of_range & e) {
+        _simulator->getModels()->loadModel(modelFilename);
+        model = _simulator->getModels()->current();
+        _loaded_models[modelFilename] = model;
+    }
     _simulator->getModels()->loadModel(modelFilename);
-    auto model = _simulator->getModels()->current();
-    model->getSimulation()->start();
+    model->check();
     auto model_responses = model->getResponses();
     for (auto i = 0; i < model_responses->size(); ++i) {
-        std::string response_name = model_responses->getAtRank(i)->getName();
-        _responses->insert(response_name);
-        model_response_names.insert(response_name);
+        auto response = model_responses->getAtRank(i);
+        _responses->insert(response);
     }
-    _simulator->getModels()->remove(model);
-    return std::move(model_response_names);
+    return model_responses;
 }
 
 void ExperimentManagerDefaultImpl1::startSimulationOfScenario(SimulationScenario* scenario) {

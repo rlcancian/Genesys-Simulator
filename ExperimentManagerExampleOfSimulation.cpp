@@ -81,15 +81,15 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     std::cout << std::endl;
     auto controls = manager->extractControlsFromModel(filename);
     std::cout << "Controls:" << std::endl;
-    for (auto i = 0; i < controls.size(); ++i) {
-        std::cout << controls.getAtRank(i) << std::endl;
+    for (auto i = 0; i < controls->size(); ++i) {
+        std::cout << controls->getAtRank(i)->getName() << std::endl;
     }
     std::cout << std::endl;
 
     auto responses = manager->extractResponsesFromModel(filename);
     std::cout << "Responses:" << std::endl;
-    for (auto i = 0; i < responses.size(); ++i) {
-        std::cout << responses.getAtRank(i) << std::endl;
+    for (auto i = 0; i < responses->size(); ++i) {
+        std::cout << responses->getAtRank(i)->getName() << std::endl;
     }
     std::cout << std::endl;
 
@@ -112,7 +112,7 @@ int ExperimentManagerExampleOfSimulation::main(int argc, char** argv) {
     scenario2->setControlValue("ReplicationLength", 30);
     scenario2->setControlValue("WarmupPeriod", 0);
     scenario2->selectResponse("Create_1.CountNumberIn");
-
+    
     SimulationScenario * scenario3 = new SimulationScenario();
     scenario3->setScenarioName("scenario3");
     scenario3->setModelFilename(filename);

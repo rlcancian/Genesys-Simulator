@@ -17,9 +17,9 @@
 #include "Simulator.h"
 #include "Traits.h"
 
-SimulationScenario::SimulationScenario() : _responseValues(new std::unordered_map<std::string, double>()),
-_selectedControls(new std::unordered_map<std::string, double>),
-_selectedResponses(new std::unordered_set<std::string>()) {
+SimulationScenario::SimulationScenario() : _responseValues(new std::map<std::string, double>()),
+_selectedControls(new std::map<std::string, double>),
+_selectedResponses(new std::set<std::string>()) {
 }
 
 SimulationScenario::~SimulationScenario() {
@@ -37,7 +37,7 @@ bool SimulationScenario::startSimulation(Simulator * simulator) {
     // close the model
     
     delete _responseValues;
-    _responseValues = new std::unordered_map<std::string, double>();
+    _responseValues = new std::map<std::string, double>();
     
     auto loaded = simulator->getModels()->loadModel(_modelFilename);
     if (!loaded)
@@ -71,8 +71,8 @@ bool SimulationScenario::startSimulation(Simulator * simulator) {
 
     delete _selectedControls;
     delete _selectedResponses;
-    _selectedControls = new std::unordered_map<std::string, double>;
-    _selectedResponses = new std::unordered_set<std::string>();
+    _selectedControls = new std::map<std::string, double>;
+    _selectedResponses = new std::set<std::string>();
 
     model->clear();
     simulator->getModels()->remove(model);
@@ -87,7 +87,7 @@ std::string SimulationScenario::getScenarioName() const {
     return _scenarioName;
 }
 
-std::unordered_map<std::string, double>* SimulationScenario::getResponseValues() const {
+std::map<std::string, double>* SimulationScenario::getResponseValues() const {
     return _responseValues;
 }
 
@@ -107,11 +107,11 @@ std::string SimulationScenario::getModelFilename() const {
     return _modelFilename;
 }
 
-std::unordered_set<std::string>* SimulationScenario::getSelectedResponses() const {
+std::set<std::string>* SimulationScenario::getSelectedResponses() const {
     return _selectedResponses;
 }
 
-std::unordered_map<std::string, double>* SimulationScenario::getSelectedControls() const {
+std::map<std::string, double>* SimulationScenario::getSelectedControls() const {
     return _selectedControls;
 }
 
