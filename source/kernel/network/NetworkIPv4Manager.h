@@ -5,30 +5,29 @@
  */
 
 /* 
- * File:   NetworkIPv4Imp1.h
+ * File:   NetworkIPv4Manager.h
  * Author: José Luiz de Souza
  * Email: joseloolo@hotmail.com
  *
  * Created on 28 de Maio de 2022, 23:30
  */
 
-#ifndef NETWORKIPV4IMP1_H
-#define NETWORKIPV4IMP1_H
+#ifndef NETWORKIPV4MANAGER_H
+#define NETWORKIPV4MANAGER_H
 
 #include <string>
 
-#include "Network_if.h"
-
-class NetworkIPv4Imp1 : public Network_if {
+class NetworkIPv4Manager{
 public:
-	NetworkIPv4Imp1();
-	virtual ~NetworkIPv4Imp1() = default;
+	NetworkIPv4Manager();
+	virtual ~NetworkIPv4Manager() = default;
 public: // inherited from Network_if
-	// void clear();
-	// void addValue(double value);
-	// double getLastValue();
-	// unsigned long numElements();
+	virtual void setPort(int port);
+	virtual void setIpList(std::string ipList);
+private:
+	int _port;
+	std::string _ipList;
 };
 
-#endif /* NETWORKIPV4IMP1_H */
+#endif /* NETWORKIPV4MANAGER_H */
 

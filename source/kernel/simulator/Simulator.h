@@ -26,6 +26,8 @@
 #include "ParserManager.h"
 #include "ExperimentManager.h"
 
+#include "../network/NetworkIPv4Manager.h"
+
 //namespace GenesysKernel {
 
 /* https://www.doxygen.nl/manual/commands.html
@@ -54,6 +56,7 @@ public: // only get
 	TraceManager* getTracer() const;
 	ParserManager* getParser() const;
 	ExperimentManager* getExperimenter() const;
+	NetworkIPv4Manager* getNetwork() const;
 private:
 	bool _completePluginsFieldsAndTemplate();
 	friend class PluginManager; //@TODO: should be only member function PluginManager::completePluginsFieldsAndTemplate()
@@ -64,6 +67,8 @@ private: // attributes 1:1 objects
 	TraceManager* _traceManager;
 	ParserManager* _parserManager;
 	ExperimentManager* _experimentManager;
+	NetworkIPv4Manager* _networkManager;
+
 
 private: // attributes 1:1 native
 	const std::string _name = "GenESyS - GENeric and Expansible SYstem Simulator";

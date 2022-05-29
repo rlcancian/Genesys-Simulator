@@ -64,6 +64,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/18d98d98/OperatingSystem03.o \
 	${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Client_Dummy.o \
 	${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Server_Dummy.o \
+	${OBJECTDIR}/_ext/EuToMaluco/NetworkIPv4Manager.o \
 	${OBJECTDIR}/_ext/113d9686/Attribute.o \
 	${OBJECTDIR}/_ext/113d9686/ComponentManager.o \
 	${OBJECTDIR}/_ext/113d9686/ConnectionManager.o \
@@ -541,6 +542,12 @@ ${OBJECTDIR}/_ext/5dd0aee1/CollectorDatafileDefaultImpl1.o: ../../source/kernel/
 	${MKDIR} -p ${OBJECTDIR}/_ext/5dd0aee1
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/5dd0aee1/CollectorDatafileDefaultImpl1.o ../../source/kernel/statistics/CollectorDatafileDefaultImpl1.cpp
+
+${OBJECTDIR}/_ext/EuToMaluco/NetworkIPv4Manager.o: ../../source/kernel/network/NetworkIPv4Manager.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/EuToMaluco
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/EuToMaluco/NetworkIPv4Manager.o ../../source/kernel/network/NetworkIPv4Manager.cpp
+
 
 ${OBJECTDIR}/_ext/5dd0aee1/CollectorDefaultImpl1.o: ../../source/kernel/statistics/CollectorDefaultImpl1.cpp nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}/_ext/5dd0aee1
