@@ -30,6 +30,8 @@
 #include "statistics/StatisticsDataFileDefaultImpl.h"
 #include "statistics/SamplerDefaultImpl1.h"
 
+#include "network/NetworkIPv4Imp1.h"
+
 //namespace GenesysKernel {
 
 template <typename T>
@@ -114,6 +116,12 @@ template <> struct TraitsKernel<Sampler_if> {
 template <> struct TraitsKernel<Collector_if> {
 	typedef CollectorDatafileDefaultImpl1 Implementation;
 	typedef double DataType; // TODO: not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
+};
+/*
+ *  Network
+ */
+template <> struct TraitsKernel<Network_if> {
+	typedef NetworkIPv4Imp1 Implementation;
 };
 //namespace\\}
 

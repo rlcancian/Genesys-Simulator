@@ -29,6 +29,7 @@
 ModelSimulation::ModelSimulation(Model* model) {
 	_model = model;
 	_info = model->getInfos();
+	_network = new TraitsKernel<Network_if>::Implementation();
 	_cstatsAndCountersSimulation->setSortFunc([](const ModelDataDefinition* a, const ModelDataDefinition * b) {
 		return a->getId() < b->getId();
 	});
@@ -696,4 +697,8 @@ void ModelSimulation::setReplicationReportBaseTimeUnit(Util::TimeUnit _replicati
 
 Util::TimeUnit ModelSimulation::getReplicationBaseTimeUnit() const {
 	return _replicationBaseTimeUnit;
+}
+
+Network_if* ModelSimulation::getNetwork() const {
+	return _network;
 }

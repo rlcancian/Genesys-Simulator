@@ -20,6 +20,7 @@
 #include "ModelInfo.h"
 #include "SimulationReporter_if.h"
 #include "OnEventManager.h"
+#include "../network/Network_if.h"
 //#include "Counter.h"
 //namespace GenesysKernel {
 
@@ -90,6 +91,8 @@ public:
 	bool isShowSimulationResposesInReport() const;
 	void setShowSimulationControlsInReport(bool _showSimulationControlsInReport);
 	bool isShowSimulationControlsInReport() const;
+public: //Network
+	Network_if* getNetwork() const;
 	/*
 	 * PRIVATE
 	 */
@@ -179,6 +182,9 @@ private:
 	double _justTriggeredBreakpointsOnTime = 0.0;
 	ModelComponent* _justTriggeredBreakpointsOnComponent = nullptr;
 	Entity* _justTriggeredBreakpointsOnEntity = nullptr;
+private: //network
+	Network_if* _network;
+
 };
 //namespace\\}
 #endif /* MODELSIMULATION_H */

@@ -45,7 +45,6 @@ Simulator::Simulator() {
 	_modelManager = new ModelManager(this);
 	_traceManager = new TraceManager(this);
 	_experimentManager = new ExperimentManager(this);
-	_networkManager = new NetworkIPv4Manager();
 	std::cout << '|' << '\t' << _licenceManager->showLicence() << std::endl;
 	//std::cout << '|' << '\t' << _licenceManager->showActivationCode() << std::endl;
 	//std::cout << '|' << '\t' << _licenceManager->showLimits() << std::endl;
