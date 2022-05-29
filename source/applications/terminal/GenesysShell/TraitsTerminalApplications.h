@@ -46,6 +46,9 @@
 #include "../../examples/teaching/AnElectronicAssemblyAndTestSystem.h"
 #include "../../examples/teaching/OperatingSystem02.h"
 #include "../../examples/teaching/OperatingSystem03.h"
+//network
+#include "../../examples/network/Network_Client_Dummy.h"
+#include "../../examples/network/Network_Server_Dummy.h"
 
 template <typename T>
 struct Traits {
@@ -59,7 +62,7 @@ template <> struct Traits<GenesysApplication_if> {
     //// SMART SMART_S SORTED
 	//typedef Smart_AssignWriteSeizes Application;
 	//typedef Smart_BatchSeparate Application;
-	typedef Smart_Delay Application;
+	// typedef Smart_Delay Application;
     //typedef Smart_Dummy Application;
     //typedef Smart_HoldSignal Application;
     //typedef Smart_ModelInfoModelSimulation Application;
@@ -83,6 +86,10 @@ template <> struct Traits<GenesysApplication_if> {
 
     //// APPLICATIONS
     //typedef GenesysTerminalApp Application;
+
+    //// NETWORK
+	//typedef Network_Client_Dummy Application;
+	typedef Network_Server_Dummy Application;
 };
 
 

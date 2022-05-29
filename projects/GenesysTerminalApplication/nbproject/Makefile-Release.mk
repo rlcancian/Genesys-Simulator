@@ -62,6 +62,8 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/18d98d98/FullSimulationOfComplexModel.o \
 	${OBJECTDIR}/_ext/18d98d98/OperatingSystem02.o \
 	${OBJECTDIR}/_ext/18d98d98/OperatingSystem03.o \
+	${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Client_Dummy.o \
+	${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Server_Dummy.o \
 	${OBJECTDIR}/_ext/113d9686/Attribute.o \
 	${OBJECTDIR}/_ext/113d9686/ComponentManager.o \
 	${OBJECTDIR}/_ext/113d9686/ConnectionManager.o \
@@ -334,6 +336,16 @@ ${OBJECTDIR}/_ext/18d98d98/OperatingSystem03.o: ../../source/applications/termin
 	${MKDIR} -p ${OBJECTDIR}/_ext/18d98d98
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/18d98d98/OperatingSystem03.o ../../source/applications/terminal/examples/teaching/OperatingSystem03.cpp
+
+${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Client_Dummy.o: ../../source/applications/terminal/examples/network/Network_Client_Dummy.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Client_Dummy.o ../../source/applications/terminal/examples/network/Network_Client_Dummy.cpp
+
+${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Server_Dummy.o: ../../source/applications/terminal/examples/network/Network_Server_Dummy.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Server_Dummy.o ../../source/applications/terminal/examples/network/Network_Server_Dummy.cpp
 
 ${OBJECTDIR}/_ext/113d9686/Attribute.o: ../../source/kernel/simulator/Attribute.cpp nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}/_ext/113d9686

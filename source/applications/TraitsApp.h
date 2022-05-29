@@ -46,6 +46,10 @@
 #include "terminal/examples/teaching/AnElectronicAssemblyAndTestSystem.h"
 #include "terminal/examples/teaching/OperatingSystem02.h"
 #include "terminal/examples/teaching/OperatingSystem03.h"
+//network
+#include "terminal/examples/network/Network_Client_Dummy.h"
+#include "terminal/examples/network/Network_Server_Dummy.h"
+
 
 template <typename T>
 struct TraitsApp {
@@ -60,7 +64,7 @@ template <> struct TraitsApp<GenesysApplication_if> {
 	//typedef Smart_AssignWriteSeizes Application;
 	//typedef Smart_BatchSeparate Application;
 	//typedef Smart_Delay Application;
-	//typedef Smart_Dummy Application;
+	// typedef Smart_Dummy Application;
 	//typedef Smart_HoldSignal Application;
 	//typedef Smart_ModelInfoModelSimulation Application;
 	//typedef Smart_ODE Application;
@@ -71,7 +75,7 @@ template <> struct TraitsApp<GenesysApplication_if> {
 	//typedef Smart_Process Application;
 	//typedef Smart_ProcessSet Application;
 	//typedef Smart_RouteStation Application;
-	typedef Smart_SeizeDelayRelease Application;
+	// typedef Smart_SeizeDelayRelease Application;
 	//typedef Smart_SeizeDelayReleaseNoDataDefs Application;
 	//typedef Smart_SeizeDelayReleaseMany Application; 
 	//typedef Smart_Sequence Application;
@@ -87,6 +91,10 @@ template <> struct TraitsApp<GenesysApplication_if> {
 
 	//// TERMINAL APPLICATIONS
 	//typedef GenesysTerminalApp Application;
+
+	//// NETWORK
+	//typedef Network_Client_Dummy Application;
+	typedef Network_Server_Dummy Application;
 };
 
 #endif /* TRAITSAPP_H */
