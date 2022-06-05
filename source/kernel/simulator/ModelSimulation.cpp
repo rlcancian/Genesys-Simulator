@@ -29,11 +29,23 @@
 ModelSimulation::ModelSimulation(Model* model) {
 	_model = model;
 	_info = model->getInfos();
-	_network = new TraitsKernel<Network_if>::Implementation();
+	_network = new TraitsKernel<Network_if>::Implementation(model);
 	_cstatsAndCountersSimulation->setSortFunc([](const ModelDataDefinition* a, const ModelDataDefinition * b) {
 		return a->getId() < b->getId();
 	});
 	_simulationReporter = new TraitsKernel<SimulationReporter_if>::Implementation(this, model, this->_cstatsAndCountersSimulation);
+}
+
+void ModelSimulation::startServerSimulation() {
+	std::cout << "Similação teste kaka" << std::endl;
+	TraitsKernel<Network_if>::Socket_Data* a = _network->newSocketData(2,100);
+	std::cout << "Similação teste id " << a->_id << std::endl;
+	std::cout << "Similação teste seed" << a->_seed << std::endl;
+	std::cout << "Similação teste socket" << a->_socket << std::endl;
+}
+
+void ModelSimulation::startClientSimulation() {
+	std::cout << "Similação teste kaka" << std::endl;
 }
 
 std::string ModelSimulation::show() {

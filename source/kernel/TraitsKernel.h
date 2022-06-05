@@ -122,6 +122,7 @@ template <> struct TraitsKernel<Collector_if> {
  */
 template <> struct TraitsKernel<Network_if> {
 	typedef NetworkIPv4Imp1 Implementation;
+	typedef NetworkIPv4Imp1::Socket_Data Socket_Data;
 };
 //namespace\\}
 

@@ -16,23 +16,35 @@
 #define NETWORKIPV4IMP1_H
 
 #include <string>
-
 #include "Network_if.h"
 
-class NetworkIPv4Imp1 : public Network_if {
+#include "../simulator/Model.h"
+
+class NetworkIPv4Imp1 : public Network_if{
 public:
-	NetworkIPv4Imp1();
+	NetworkIPv4Imp1(Model* model);
 	virtual ~NetworkIPv4Imp1() = default;
+public:
+	// struct Socket_Data {
+	// 	int _id;
+	// 	int _seed;
+	// 	int _socket;
+	// 	~Socket_Data() = default;
+	// };
 public: // inherited from Network_if
 	void setPort(int port);
 	void setIpList(std::string ipList);
-	// virtual void setServer();
-	// virtual void setClient();
+	int getPort();
+	void sendSocketData(Socket_Data* socketData);
+	void sendModel(std::string modelFilePath);
+	Socket_Data* newSocketData(int id, int seed);
+	void deleteSocketData(Socket_Data* socketData);
+public:
+	int getSocket(Socket_Data* socketData);
 private:
 	int _port;
 	std::string _ipList;
-	// bool _isServer;
-	// bool _isClient;
+	Model* _model;
 };
 #endif /* NETWORKIPV4IMP1_H */
 

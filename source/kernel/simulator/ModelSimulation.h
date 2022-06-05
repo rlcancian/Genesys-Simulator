@@ -93,6 +93,8 @@ public:
 	bool isShowSimulationControlsInReport() const;
 public: //Network
 	Network_if* getNetwork() const;
+	void startServerSimulation();
+	void startClientSimulation();
 	/*
 	 * PRIVATE
 	 */

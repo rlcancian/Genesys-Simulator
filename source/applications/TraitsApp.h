@@ -93,8 +93,8 @@ template <> struct TraitsApp<GenesysApplication_if> {
 	//typedef GenesysTerminalApp Application;
 
 	//// NETWORK
-	//typedef Network_Client_Dummy Application;
-	typedef Network_Server_Dummy Application;
+	typedef Network_Client_Dummy Application;
+	// typedef Network_Server_Dummy Application;
 };
 
 #endif /* TRAITSAPP_H */

@@ -47,8 +47,9 @@ int Network_Server_Dummy::main(int argc, char** argv) {
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(60);
 	model->getSimulation()->setNumberOfReplications(2);
-	model->save("./models/Network_Dummy.gen");
-	model->getSimulation()->start();
+	model->save("../../models/Network_Dummy.gen");
+	// model->getSimulation()->start();
+	// model->getSimulation()->startClientSimulation();
 	genesys->~Simulator();
 
 	return 0;

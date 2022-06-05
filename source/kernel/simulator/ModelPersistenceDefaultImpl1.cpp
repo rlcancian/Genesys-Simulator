@@ -104,6 +104,8 @@ bool ModelPersistenceDefaultImpl1::save(std::string filename) {
             // open file
             std::ofstream savefile;
             savefile.open(filename, std::ofstream::out);
+            if (savefile.fail())
+                std::cout << "Fail to save the file " << filename << std::endl;
             savefile << "# Genesys Simulation Model " << std::endl;
             ////time_t now = time(0);
             ////char* dt = ctime(&now);
