@@ -13,6 +13,8 @@
 
 #include "ModelSimulation.h"
 #include <iostream>
+#include <cstring>
+#include <poll.h>
 #include <cassert>
 #include <chrono>
 #include "Model.h"
@@ -37,15 +39,55 @@ ModelSimulation::ModelSimulation(Model* model) {
 }
 
 void ModelSimulation::startServerSimulation() {
-	std::cout << "Similação teste kaka" << std::endl;
-	TraitsKernel<Network_if>::Socket_Data* a = _network->newSocketData(2,100);
-	std::cout << "Similação teste id " << a->_id << std::endl;
-	std::cout << "Similação teste seed" << a->_seed << std::endl;
-	std::cout << "Similação teste socket" << a->_socket << std::endl;
+	if (!_network->check()) {
+		_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Network check failed. Cannot start simulation in network.");
+		return;
+	}
+	TraitsKernel<Network_if>::Socket_Data* _socket = _network->newSocketDataServer();
+	_network->serverBind(_socket);
+	_network->serverListen(_socket);
+
+	while (1) {
+		Util::NetworkCode code = _network->getNextNetworkEvent();
+		switch (code)
+		{
+			case Util::NetworkCode::C0_Nothing:
+				break;
+			case Util::NetworkCode::C1_IsAlive:
+				_network->sendIsAliveMessage();
+				break;
+			case Util::NetworkCode::C2_Benchmark:
+				_network->sendBenchmarkMessage();
+				break;
+			case Util::NetworkCode::C3_Model:
+				_network->receiveModel(_socket);
+				_model->load("../../networkModel.gen");
+				start();
+				break;
+			case Util::NetworkCode::C4_Execution:
+				break;
+			case Util::NetworkCode::C5_Error:
+				break;
+			default:
+				break;
+		}
+	}
+
 }
 
 void ModelSimulation::startClientSimulation() {
-	std::cout << "Similação teste kaka" << std::endl;
+	if (_numberOfReplications == 1) {
+		_model->getTracer()->traceError(Util::TraceLevel::L4_warning, "There is only one replication defined. Network simulation will be ignored.");
+		start();
+		return;
+	}
+	if (!_network->check()) {
+		_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Network check failed. Cannot start simulation in network.");
+		return;
+	}
+	TraitsKernel<Network_if>::Socket_Data* _socket = _network->newSocketDataClient(2,100);
+	_network->clientConnect(_socket);
+	//Create a simulation structure
 }
 
 std::string ModelSimulation::show() {
@@ -218,6 +260,7 @@ void ModelSimulation::_actualizeSimulationStatistics() {
 		assert(cstatSimulation != nullptr);
 		// actualize simulation cstat statistics by collecting the new value from the model/replication stat
 		cstatSimulation->getStatistics()->getCollector()->addValue(cstatModel->getStatistics()->average());
+		printf("[A] %f\n", cstatModel->getStatistics()->average());
 	}
 	// runs over all Counters in the model and create the equivalent for the entire simulation
 	Counter *counterModel; //, *cntSim;
@@ -238,6 +281,7 @@ void ModelSimulation::_actualizeSimulationStatistics() {
 		assert(cstatSimulation != nullptr);
 		// actualize simulation cstat statistics by collecting the new value from the model/replication stat
 		cstatSimulation->getStatistics()->getCollector()->addValue(counterModel->getCountValue());
+		printf("[B] %f\n", counterModel->getCountValue());
 	}
 }
 

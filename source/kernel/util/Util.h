@@ -189,6 +189,15 @@ public:
         L8_detailed = 8,
         L9_mostDetailed = 9
     };
+
+    enum class NetworkCode : int {
+        C0_Nothing = 0,
+        C1_IsAlive = 1,
+        C2_Benchmark = 2,
+        C3_Model = 3,
+		C4_Execution = 4,
+        C5_Error = 5
+    };
 private:
     static unsigned int _S_indentation;
     static Util::identification _S_lastId;

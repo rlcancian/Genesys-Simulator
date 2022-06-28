@@ -46,9 +46,16 @@ int Network_Client_Dummy::main(int argc, char** argv) {
 	// dummy1->getConnections()->insert(dispose1);
 	// // set options, save and simulate
 	// model->getSimulation()->setReplicationLength(60);
-	// model->getSimulation()->setNumberOfReplications(2);
-	model->load("../../models/Network_Dummy.gen");
+	model->getSimulation()->setNumberOfReplications(2);
+	// model->load("../../models/Network_Dummy.gen");
 	// model->getSimulation()->start();
+	std::vector<std::string> iplist = {"127.0.0.9", "127.0.0.8"};
+	model->getSimulation()->getNetwork()->setPort(5555);
+	model->getSimulation()->getNetwork()->setPort("../../port.txt");
+	std::cout << model->getSimulation()->getNetwork()->getPort() << std::endl;
+	//@TODO setIpList by nmap command
+	model->getSimulation()->getNetwork()->setIpList(iplist);
+	model->getSimulation()->getNetwork()->setIpList("../../iplist.txt");
 	model->getSimulation()->startServerSimulation();
 	genesys->~Simulator();
 
