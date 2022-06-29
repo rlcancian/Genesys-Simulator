@@ -181,6 +181,12 @@ void Model::remove(ModelDataDefinition* elemOrComp) {
 		this->getComponents()->remove(comp);
 }
 
+void Model::setSamplerSeed(int seed) {
+	TraitsKernel<Sampler_if>::Parameters* param;
+	param = static_cast<TraitsKernel<Sampler_if>::Parameters*>(_parser->sampler()->getRNGparameters());
+	param->seed = seed;
+}
+
 void Model::_showElements() const {
 	getTracer()->trace(Util::TraceLevel::L2_results, "Elements:");
 	Util::IncIndent();

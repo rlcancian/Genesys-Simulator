@@ -27,6 +27,7 @@ public:
 	struct Socket_Data {
 		int _id;
 		int _seed;
+		int _numberOfReplications;
 		int _socket;
 		struct sockaddr_in _address;
 		~Socket_Data() = default;
@@ -42,19 +43,30 @@ public:
 	virtual int getPort() = 0;
 	virtual void sendSocketData(Socket_Data* socketData) = 0;
 	virtual void sendModel(std::string modelFilePath) = 0;
-	virtual Socket_Data* newSocketDataClient(int id, int seed) = 0;
+	virtual Socket_Data* newSocketDataClient(int id, int seed, int numberOfReplications) = 0;
 	virtual Socket_Data* newSocketDataServer() = 0;
 	virtual void deleteSocketData(Socket_Data* socketData) = 0;
 	virtual bool clientConnect(Socket_Data* socketData) = 0;
 	virtual void serverBind(Socket_Data* socketData) = 0;
 	virtual void serverListen(Socket_Data* socketData) = 0;
-	virtual int receiveSeed(Socket_Data* socketData) = 0;
 	virtual Util::NetworkCode getNextNetworkEvent() = 0;
 
-	virtual void sendIsAliveMessage(int socket) = 0;
-	virtual bool receiveIsAliveMessage() = 0;
+	virtual void sendCodeMessage(Util::NetworkCode code, int socket = -1) = 0;
+	virtual bool receiveCodeMessage(Util::NetworkCode code, int socket = -1) = 0;
 	virtual void sendBenchmarkMessage() = 0;
-	virtual void receiveModel(Socket_Data* socketData) = 0;
+	virtual bool receiveModel(Socket_Data* socketData) = 0;
+	virtual bool receiveSeed(Socket_Data* socketData) = 0;
+	virtual bool receiveID(Socket_Data* socketData) = 0;
+	virtual bool receiveNumerOfReplications(Socket_Data* socketData) = 0;
+
+	virtual void sendModelResults(Socket_Data* socketData) = 0;
+
+	virtual bool isServer() = 0;
+	virtual bool isClient() = 0;
+	virtual void setServer(bool server) = 0;
+	virtual void setClient(bool client) = 0;
+
+	virtual void insertNewData(double value) = 0;
 };
 
 #endif /* NETWORK_IF_H */

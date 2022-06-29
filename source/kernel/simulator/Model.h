@@ -87,6 +87,9 @@ public: // gets and sets
 	bool isAutomaticallyCreatesModelDataDefinitions() const;
 	unsigned int getLevel() const; ///< Provides access to the class that performs the trace of simulation and replications.
 
+public:
+	void setSamplerSeed(int seed);
+
 private:
 	void _showConnections() const;
 	void _showComponents() const;

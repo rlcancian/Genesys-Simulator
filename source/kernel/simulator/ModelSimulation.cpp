@@ -16,6 +16,7 @@
 #include <cstring>
 #include <poll.h>
 #include <cassert>
+#include <thread>
 #include <chrono>
 #include "Model.h"
 #include "Simulator.h"
@@ -39,13 +40,11 @@ ModelSimulation::ModelSimulation(Model* model) {
 }
 
 void ModelSimulation::startServerSimulation() {
-	if (!_network->check()) {
-		_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Network check failed. Cannot start simulation in network.");
-		return;
-	}
+	_network->setServer(true);
 	TraitsKernel<Network_if>::Socket_Data* _socket = _network->newSocketDataServer();
 	_network->serverBind(_socket);
 	_network->serverListen(_socket);
+	std::thread thread_simulation;
 
 	while (1) {
 		Util::NetworkCode code = _network->getNextNetworkEvent();
@@ -54,25 +53,38 @@ void ModelSimulation::startServerSimulation() {
 			case Util::NetworkCode::C0_Nothing:
 				break;
 			case Util::NetworkCode::C1_IsAlive:
-				_network->sendIsAliveMessage();
+				_network->sendCodeMessage(Util::NetworkCode::C1_IsAlive);
 				break;
 			case Util::NetworkCode::C2_Benchmark:
 				_network->sendBenchmarkMessage();
 				break;
 			case Util::NetworkCode::C3_Model:
-				_network->receiveModel(_socket);
-				_model->load("../../networkModel.gen");
-				start();
+				if (!_network->receiveModel(_socket))
+					break;
+				_model->getSimulation()->setNumberOfReplications(_socket->_numberOfReplications);
+				_model->setSamplerSeed(_socket->_seed);
+				if (_model->load("../../networkModel.gen")) {
+					thread_simulation = std::thread(&ModelSimulation::start, this);
+					_network->sendCodeMessage(Util::NetworkCode::C3_Model);
+				} else {
+					_network->sendCodeMessage(Util::NetworkCode::C6_Error);
+				}
 				break;
-			case Util::NetworkCode::C4_Execution:
+			case Util::NetworkCode::C4_Results:
+				thread_simulation.join();
+				std::cout << "c4??" << std::endl;
+				_network->sendModelResults(_socket);
 				break;
-			case Util::NetworkCode::C5_Error:
+			case Util::NetworkCode::C5_CalcelOP:
+				thread_simulation.~thread();
+				_network->sendCodeMessage(Util::NetworkCode::C5_CalcelOP);
+				break;
+			case Util::NetworkCode::C6_Error:
 				break;
 			default:
 				break;
 		}
 	}
-
 }
 
 void ModelSimulation::startClientSimulation() {
@@ -85,7 +97,8 @@ void ModelSimulation::startClientSimulation() {
 		_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Network check failed. Cannot start simulation in network.");
 		return;
 	}
-	TraitsKernel<Network_if>::Socket_Data* _socket = _network->newSocketDataClient(2,100);
+	_network->setClient(true);
+	TraitsKernel<Network_if>::Socket_Data* _socket = _network->newSocketDataClient(2,100, 1);
 	_network->clientConnect(_socket);
 	//Create a simulation structure
 }
@@ -259,8 +272,13 @@ void ModelSimulation::_actualizeSimulationStatistics() {
 		}
 		assert(cstatSimulation != nullptr);
 		// actualize simulation cstat statistics by collecting the new value from the model/replication stat
-		cstatSimulation->getStatistics()->getCollector()->addValue(cstatModel->getStatistics()->average());
-		printf("[A] %f\n", cstatModel->getStatistics()->average());
+		if (_network->isServer()) {
+			_network->insertNewData(cstatModel->getStatistics()->average());
+		} else if (_network->isClient()) {
+			//pass
+		} else {
+			cstatSimulation->getStatistics()->getCollector()->addValue(cstatModel->getStatistics()->average());
+		}
 	}
 	// runs over all Counters in the model and create the equivalent for the entire simulation
 	Counter *counterModel; //, *cntSim;
@@ -280,8 +298,13 @@ void ModelSimulation::_actualizeSimulationStatistics() {
 		}
 		assert(cstatSimulation != nullptr);
 		// actualize simulation cstat statistics by collecting the new value from the model/replication stat
-		cstatSimulation->getStatistics()->getCollector()->addValue(counterModel->getCountValue());
-		printf("[B] %f\n", counterModel->getCountValue());
+		if (_network->isServer()) {
+			_network->insertNewData(counterModel->getCountValue());
+		} else if (_network->isClient()) {
+			//pass
+		} else {
+			cstatSimulation->getStatistics()->getCollector()->addValue(counterModel->getCountValue());
+		}
 	}
 }
 

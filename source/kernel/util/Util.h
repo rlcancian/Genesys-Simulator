@@ -195,8 +195,9 @@ public:
         C1_IsAlive = 1,
         C2_Benchmark = 2,
         C3_Model = 3,
-		C4_Execution = 4,
-        C5_Error = 5
+		C4_Results = 4,
+        C5_CalcelOP = 5,
+        C6_Error = 6
     };
 private:
     static unsigned int _S_indentation;

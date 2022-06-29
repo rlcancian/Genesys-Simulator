@@ -34,7 +34,7 @@ public: // inherited from Network_if
 	int getPort();
 	void sendSocketData(Socket_Data* socketData);
 	void sendModel(std::string modelFilePath);
-	Socket_Data* newSocketDataClient(int id, int seed);
+	Socket_Data* newSocketDataClient(int id, int seed, int numberOfReplications);
 	Socket_Data* newSocketDataServer();
 	void deleteSocketData(Socket_Data* socketData);
 	bool clientConnect(Socket_Data* socketData);
@@ -45,16 +45,28 @@ public: // inherited from Network_if
 	bool check();
 	Util::NetworkCode getNextNetworkEvent();
 
-	int receiveSeed(Socket_Data* socketData);
 
-	void sendIsAliveMessage(int socket);
-	bool receiveIsAliveMessage();
+	void sendCodeMessage(Util::NetworkCode code, int socket);
+	bool receiveCodeMessage(Util::NetworkCode code, int socket);
 	void sendBenchmarkMessage();
-	void receiveModel(Socket_Data* socketData);
+	bool receiveModel(Socket_Data* socketData);
+	bool receiveSeed(Socket_Data* socketData);
+	bool receiveID(Socket_Data* socketData);
+	bool receiveNumerOfReplications(Socket_Data* socketData);
+
+	bool isServer();
+	bool isClient();
+	void setServer(bool server);
+	void setClient(bool client);
+
+	void insertNewData(double data);
+
+	void sendModelResults(Socket_Data* socketData);
 private:
 	int createSocket();
 	void newConnection(int socket);
 	void endConnection();
+	bool createModelResultsFile(std::string filename);
 private:
 	int _port;
 	std::vector<std::string> _ipList;
@@ -63,6 +75,10 @@ private:
 	int max_nfds = 2;
 	struct pollfd fds[2] = {{.fd = 0, .events = POLLIN}};
 	volatile int nfds = 1;
+private:
+	bool _isServer = false;
+	bool _isClient = false;
+	std::vector<double> _data;
 };
 #endif /* NETWORKIPV4IMP1_H */
 
