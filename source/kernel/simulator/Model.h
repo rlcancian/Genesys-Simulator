@@ -89,6 +89,7 @@ public: // gets and sets
 
 public:
 	void setSamplerSeed(int seed);
+	int getRandom();
 
 private:
 	void _showConnections() const;

@@ -31,6 +31,7 @@
 #include "statistics/SamplerDefaultImpl1.h"
 
 #include "network/NetworkIPv4Imp1.h"
+#include "network/NetworkSchedulerStatic.h"
 
 //namespace GenesysKernel {
 
@@ -123,6 +124,11 @@ template <> struct TraitsKernel<Collector_if> {
 template <> struct TraitsKernel<Network_if> {
 	typedef NetworkIPv4Imp1 Implementation;
 	typedef NetworkIPv4Imp1::Socket_Data Socket_Data;
+};
+
+template <> struct TraitsKernel<NetworkScheduler_if> {
+	typedef NetworkSchedulerStatic Implementation;
+	typedef NetworkSchedulerStatic::Scheduler_Info Scheduler_Info;
 };
 //namespace\\}
 

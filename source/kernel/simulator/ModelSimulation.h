@@ -15,12 +15,15 @@
 #define MODELSIMULATION_H
 
 #include <chrono>
+#include <mutex>
+#include <thread>
 #include "Event.h"
 #include "Entity.h"
 #include "ModelInfo.h"
 #include "SimulationReporter_if.h"
 #include "OnEventManager.h"
 #include "../network/Network_if.h"
+#include "../network/NetworkScheduler_if.h"
 //#include "Counter.h"
 //namespace GenesysKernel {
 
@@ -93,8 +96,11 @@ public:
 	bool isShowSimulationControlsInReport() const;
 public: //Network
 	Network_if* getNetwork() const;
-	void startServerSimulation();
-	void startClientSimulation();
+	void startServerSimulation(int argc, char** argv);
+	void startClientSimulation(int argc, char** argv);
+	void threadClientSimulation(Network_if::Socket_Data* socket);
+	void threadWaitResults(Network_if::Socket_Data* socket);
+	void insertNetworkData(NetworkScheduler_if::Scheduler_Info* info, std::vector<double>* data);
 	/*
 	 * PRIVATE
 	 */
@@ -186,6 +192,15 @@ private:
 	Entity* _justTriggeredBreakpointsOnEntity = nullptr;
 private: //network
 	Network_if* _network;
+	NetworkScheduler_if* _networkScheduler;
+	std::mutex _networkMutex;
+	std::mutex _networkDataMutex;
+	std::mutex _networkReplicationMutex;
+	std::mutex _networkSimulationEnded;
+	std::mutex _networkGetResult;
+	std::vector<double> _data;
+	bool _isNetworkModelRunning = false;
+	bool _getResultNetwork = false;
 
 };
 //namespace\\}

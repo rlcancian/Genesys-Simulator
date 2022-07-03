@@ -33,6 +33,7 @@ void SamplerDefaultImpl1::reset() {
 void SamplerDefaultImpl1::setRNGparameters(Sampler_if::RNG_Parameters * param) {
 
 	_param = param; // there is a better solution for this...
+	reset();
 }
 
 Sampler_if::RNG_Parameters * SamplerDefaultImpl1::getRNGparameters() const {

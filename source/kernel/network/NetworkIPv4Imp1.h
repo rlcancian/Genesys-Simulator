@@ -33,8 +33,7 @@ public: // inherited from Network_if
 	bool setIpList(std::vector<std::string> iplist);
 	int getPort();
 	void sendSocketData(Socket_Data* socketData);
-	void sendModel(std::string modelFilePath);
-	Socket_Data* newSocketDataClient(int id, int seed, int numberOfReplications);
+	Socket_Data* newSocketDataClient(int id);
 	Socket_Data* newSocketDataServer();
 	void deleteSocketData(Socket_Data* socketData);
 	bool clientConnect(Socket_Data* socketData);
@@ -48,11 +47,16 @@ public: // inherited from Network_if
 
 	void sendCodeMessage(Util::NetworkCode code, int socket);
 	bool receiveCodeMessage(Util::NetworkCode code, int socket);
-	void sendBenchmarkMessage();
+	void sendBenchmark();
+	void receiveBenchmark(Socket_Data* socketData);
+	void sendModel(Socket_Data* socketData);
 	bool receiveModel(Socket_Data* socketData);
+	void sendSeed(Socket_Data* socketData);
 	bool receiveSeed(Socket_Data* socketData);
+	void sendID(Socket_Data* socketData);
 	bool receiveID(Socket_Data* socketData);
-	bool receiveNumerOfReplications(Socket_Data* socketData);
+	void sendNumberOfReplications(Socket_Data* socketData);
+	bool receiveNumberOfReplications(Socket_Data* socketData);
 
 	bool isServer();
 	bool isClient();
@@ -61,7 +65,17 @@ public: // inherited from Network_if
 
 	void insertNewData(double data);
 
+	void receiveModelResults(Socket_Data* socketData, std::vector<double>* results);
 	void sendModelResults(Socket_Data* socketData);
+
+	void opt(int argc, char** argv);
+
+	void createSockets(std::vector<Socket_Data*>* sockets);
+	void getBenchmarks(std::vector<Socket_Data*>* sockets);
+
+	void reset();
+
+	// int getValidIpListSize();
 private:
 	int createSocket();
 	void newConnection(int socket);

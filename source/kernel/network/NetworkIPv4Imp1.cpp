@@ -36,6 +36,39 @@ NetworkIPv4Imp1::NetworkIPv4Imp1(Model* model) {
 	_model = model;
 }
 
+void NetworkIPv4Imp1::opt(int argc, char** argv) {
+	std::vector<std::string> iplist;
+	int opt;
+    while((opt = getopt(argc, argv, ":p:f:i:h")) != -1)
+    {
+        if(opt == 'p'){
+			int port;
+			try {
+			port = std::stoi(optarg);
+			} catch (const std::invalid_argument & e) {
+				_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Failed on getopt. Invalid parameter.");
+				break;
+			}
+            _model->getSimulation()->getNetwork()->setPort(port);
+        }else if(opt == 'f'){
+			_model->getSimulation()->getNetwork()->setIpList(optarg);
+		}else if(opt == 'i'){
+			iplist.insert(iplist.end(), optarg);
+        }else if(opt == 'h'){
+			std::string msg;
+			msg = "Usage: genesys [options...]\n";
+			msg += "Options:\n";
+			msg += "   -p PORT         define que listening port\n";
+			msg += "   -f FILE         define a file to read a ip list\n";
+			msg += "   -i IP           define a ip\n";
+            _model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, msg);
+			exit(0);
+        }
+    }
+	_model->getSimulation()->getNetwork()->setIpList(iplist);
+	return;
+}
+
 bool NetworkIPv4Imp1::isServer() {
 	return _isServer;
 }
@@ -56,6 +89,40 @@ void NetworkIPv4Imp1::insertNewData(double value) {
 	_data.insert(_data.end(), value);
 }
 
+void NetworkIPv4Imp1::createSockets(std::vector<Socket_Data*>* sockets) {
+	int j = 0;
+	for (int i = 0; i < _ipList.size(); i++) {
+		// int r = _model->getRandom();
+		std::string msg;
+		NetworkIPv4Imp1::Socket_Data* temp = newSocketDataClient(j);
+		if (clientConnect(temp)) {
+			sendCodeMessage(Util::NetworkCode::C1_IsAlive, temp->_socket);
+			if (receiveCodeMessage(Util::NetworkCode::C1_IsAlive, temp->_socket)) {
+				sockets->insert(sockets->end(), temp);
+				j++;
+				msg = "[OK  ] - " + _ipList.at(i);
+				_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg);
+			} else {
+				deleteSocketData(temp);
+				msg = "[FAIL] - " + _ipList.at(i);
+				_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg);
+			}
+		} else {
+			deleteSocketData(temp);
+			msg = "[FAIL] - " + _ipList.at(i);
+			_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg);
+		}
+	}
+}
+
+void NetworkIPv4Imp1::getBenchmarks(std::vector<Socket_Data*>* sockets) {
+	for (int i = 0; i < sockets->size(); i++) {
+		sendCodeMessage(Util::NetworkCode::C2_Benchmark, sockets->at(i)->_socket);
+		receiveBenchmark(sockets->at(i));
+	}
+	_model->getTracer()->traceError(Util::TraceLevel::L5_event, "getBenchmarks OK!");
+}
+
 void NetworkIPv4Imp1::sendModelResults(Socket_Data* socketData) {
 	std::string filename = "modelresults";
 	createModelResultsFile(filename);
@@ -64,6 +131,42 @@ void NetworkIPv4Imp1::sendModelResults(Socket_Data* socketData) {
 	std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
 	send(fds[1].fd , contents.c_str() , contents.length() , 0);
 	file.close();
+}
+
+void NetworkIPv4Imp1::receiveModelResults(Socket_Data* socketData, std::vector<double>* results) {
+	sendCodeMessage(Util::NetworkCode::C4_Results, socketData->_socket);
+	//If we don't receive a C4_Results, then the operation was canceled
+	if (!receiveCodeMessage(Util::NetworkCode::C4_Results, socketData->_socket))
+		return;
+	char buffer[512];
+	memset(buffer, 0, 512);
+	std::ofstream file;
+	file.open("results.txt", std::ios::out | std::ios::binary);
+	while (1) {
+		int p = recv(socketData->_socket, buffer, 512, 0);
+		if (p == 0) {
+			break;
+		}
+		if (p > 0) {
+			file.write(buffer, p);
+			if (p < 64)
+				break;
+		}
+		if (p < 1) {
+			_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Fail to receive the model results.");
+		}
+	}
+	file.close();
+
+	std::ifstream file2;
+	file2.open("results.txt", std::ios::in | std::ios::binary);
+	while (file2.good() && !file2.eof()) {
+		double temp = 0;
+		file2.read((char*)&temp, sizeof(double));
+		results->insert(results->end(), temp);
+		std::cout << temp << std::endl;
+	}
+	file2.close();
 }
 
 bool NetworkIPv4Imp1::createModelResultsFile(std::string filename) {
@@ -84,11 +187,16 @@ bool NetworkIPv4Imp1::createModelResultsFile(std::string filename) {
 	return true;
 }
 
+void NetworkIPv4Imp1::reset() {
+	_data.clear();
+}
 
 //Client
 bool NetworkIPv4Imp1::setPort(int port) {
 	if (port > 0 && port < 65535) {
 		_port = port;
+		std::string msg = "New port defined: " + std::to_string(port);
+		_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg);
 		return true;
 	}
 	_model->getTracer()->traceError(Util::TraceLevel::L4_warning, "Fail on setPort. Invalid port number.");
@@ -112,13 +220,8 @@ bool NetworkIPv4Imp1::setPort(std::string filename) {
 		_model->getTracer()->traceError(Util::TraceLevel::L4_warning, "Failed on setPort. Invalid argument in file.");
 		return false;
 	}
-
-	if (port > 0 && port < 65535) {
-		_port = port;
-		return true;
-	}
-	_model->getTracer()->traceError(Util::TraceLevel::L4_warning, "Fail on setPort. Invalid port number.");
-	return false;
+	file.close();
+	return setPort(port);
 }
 
 //Client
@@ -144,17 +247,20 @@ bool NetworkIPv4Imp1::setIpList(std::string filename) {
 	while (file >> temp)
 	{
 		_ipList.insert(_ipList.end(), temp);
+		std::string msg = "New ip inserted: " + temp;
+		_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg);
 	}
-	for (int i=0; i<_ipList.size(); i++)
-        std::cout << _ipList[i] << std::endl;
+	file.close();
 	return true;
 }
 
 //Client
 bool NetworkIPv4Imp1::setIpList(std::vector<std::string> iplist) {
-	_ipList.assign(iplist.begin(), iplist.end());
-	for (int i=0; i<_ipList.size(); i++)
-        std::cout << _ipList[i] << std::endl;
+	for (int i=0; i<iplist.size(); i++) {
+		_ipList.insert(_ipList.end(), iplist.at(i));
+        std::string msg = "New ip inserted: " + iplist.at(i);
+		_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg);
+	}
 	return true;
 }
 
@@ -162,15 +268,24 @@ bool NetworkIPv4Imp1::setIpList(std::vector<std::string> iplist) {
 void NetworkIPv4Imp1::checkIpList() {
 	std::vector<std::string> iplist;
 	for (int i=0; i<_ipList.size(); i++) {
-		NetworkIPv4Imp1::Socket_Data* temp = newSocketDataClient(i, -1, -1);
+		std::string msg = "";
+		NetworkIPv4Imp1::Socket_Data* temp = newSocketDataClient(i);
 		if (clientConnect(temp)) {
 			sendCodeMessage(Util::NetworkCode::C1_IsAlive, temp->_socket);
 			if (receiveCodeMessage(Util::NetworkCode::C1_IsAlive, temp->_socket)) {
 				iplist.insert(iplist.end(), _ipList.at(i));
+			} else {
+				msg = "[FAIL] - " + _ipList.at(i);
+				_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg);
 			}
+		} else {
+			msg = "[FAIL] - " + _ipList.at(i);
+			_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg);
 		}
 		deleteSocketData(temp);
 	}
+	_ipList.clear();
+	setIpList(iplist);
 	_model->getTracer()->traceError(Util::TraceLevel::L5_event, "CheckIpList finished.");
 }
 
@@ -192,10 +307,6 @@ void NetworkIPv4Imp1::sendSocketData(Socket_Data* socketData) {
 	//@TODO
 }
 
-void NetworkIPv4Imp1::sendModel(std::string modelFilePath) {
-	//@TODO
-}
-
 //Client & Server
 int NetworkIPv4Imp1::createSocket() {
 	int _socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -207,11 +318,11 @@ int NetworkIPv4Imp1::createSocket() {
 }
 
 //Client
-NetworkIPv4Imp1::Socket_Data* NetworkIPv4Imp1::newSocketDataClient(int id, int seed, int numberOfReplications) {
+NetworkIPv4Imp1::Socket_Data* NetworkIPv4Imp1::newSocketDataClient(int id) {
 	Socket_Data* data = new Socket_Data();
-	data->_id = id;
-	data->_seed = seed;
-	data->_numberOfReplications = numberOfReplications;
+	data->_id = -1;
+	data->_seed = -1;
+	data->_numberOfReplications = -1;
 	data->_socket = createSocket();
 	data->_address.sin_family = AF_INET;
 	data->_address.sin_addr.s_addr = inet_addr(_ipList.at(id).c_str());
@@ -317,6 +428,8 @@ void NetworkIPv4Imp1::sendCodeMessage(Util::NetworkCode code, int socket = -1) {
 	int client_socket = (socket == -1) ? fds[1].fd : socket;
 	int msg = htonl((int)code);
 	send(client_socket, &msg, sizeof(int), 0);
+	std::string msg_code = "Sending code " + std::to_string((int)code) + "...";
+	_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg_code);
 }
 
 //Cliente & Server
@@ -331,8 +444,8 @@ bool NetworkIPv4Imp1::receiveCodeMessage(Util::NetworkCode code, int socket = -1
 	if (p > 0) {
 		Util::NetworkCode _code;
 		_code = (Util::NetworkCode)ntohl(buffer);
-		_model->getTracer()->traceError(Util::TraceLevel::L5_event, "Network event. Client send a code.");
-		std::cout << (int)_code << std::endl;
+		std::string msg_code = "Received code " + std::to_string((int)_code) + "...";
+		_model->getTracer()->traceError(Util::TraceLevel::L5_event, msg_code);
 		return (_code == code);
 	} else {
 		return false;
@@ -341,7 +454,7 @@ bool NetworkIPv4Imp1::receiveCodeMessage(Util::NetworkCode code, int socket = -1
 }
 
 //Server
-void NetworkIPv4Imp1::sendBenchmarkMessage() {
+void NetworkIPv4Imp1::sendBenchmark() {
 	Benchmark::Machine_Info info;
 	Benchmark::getMachineInfo(&info);
 	int client_socket = fds[1].fd;
@@ -349,8 +462,23 @@ void NetworkIPv4Imp1::sendBenchmarkMessage() {
 	send(client_socket, tmp, sizeof(Benchmark::Machine_Info), 0);
 }
 
+//Client
+void NetworkIPv4Imp1::receiveBenchmark(Socket_Data* socketData) {
+	int p = recv(socketData->_socket, &socketData->_machine_info, sizeof(Benchmark::Machine_Info), 0);
+	if (p < 1) {
+		_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Error receiving the benchmark.");
+	}
+}
+
+//Client
+void NetworkIPv4Imp1::sendNumberOfReplications(Socket_Data* socketData) {
+	int a = htonl(socketData->_numberOfReplications);
+	char* tmp = reinterpret_cast<char*>(&a);
+	send(socketData->_socket, tmp, sizeof(int), 0);
+}
+
 //Server
-bool NetworkIPv4Imp1::receiveNumerOfReplications(Socket_Data* socketData) {
+bool NetworkIPv4Imp1::receiveNumberOfReplications(Socket_Data* socketData) {
 	int buffer = -1;
 	int p = recv(fds[1].fd, &buffer, sizeof(int), 0);
 	if (p > 0) {
@@ -364,6 +492,13 @@ bool NetworkIPv4Imp1::receiveNumerOfReplications(Socket_Data* socketData) {
 		return false;
 	}
 	return false;
+}
+
+//Client
+void NetworkIPv4Imp1::sendSeed(Socket_Data* socketData) {
+	int a = htonl(socketData->_seed);
+	char* tmp = reinterpret_cast<char*>(&a);
+	send(socketData->_socket, tmp, sizeof(int), 0);
 }
 
 //Server
@@ -383,6 +518,13 @@ bool NetworkIPv4Imp1::receiveSeed(Socket_Data* socketData) {
 	return false;
 }
 
+//Client
+void NetworkIPv4Imp1::sendID(Socket_Data* socketData) {
+	int a = htonl(socketData->_id);
+	char* tmp = reinterpret_cast<char*>(&a);
+	send(socketData->_socket, tmp, sizeof(int), 0);
+}
+
 //Server
 bool NetworkIPv4Imp1::receiveID(Socket_Data* socketData) {
 	int buffer = -1;
@@ -400,6 +542,22 @@ bool NetworkIPv4Imp1::receiveID(Socket_Data* socketData) {
 	return false;
 }
 
+void NetworkIPv4Imp1::sendModel(Socket_Data* socketData) {
+	sendCodeMessage(Util::NetworkCode::C3_Model, socketData->_socket);
+	sendID(socketData);
+	sendSeed(socketData);
+	sendNumberOfReplications(socketData);
+	std::fstream file;
+    file.open("modelo.gen", std::ios::in | std::ios::binary);
+    std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	send(socketData->_socket , contents.c_str() , contents.length() , 0 );
+	if (receiveCodeMessage(Util::NetworkCode::C3_Model, socketData->_socket)) {
+		_model->getTracer()->traceError(Util::TraceLevel::L5_event, "sendModel OK!");
+	} else {
+		_model->getTracer()->traceError(Util::TraceLevel::L5_event, "sendModel ERROR!");
+	}
+}
+
 //Server
 bool NetworkIPv4Imp1::receiveModel(Socket_Data* socketData) {
 	if (!receiveID(socketData)) {
@@ -410,7 +568,7 @@ bool NetworkIPv4Imp1::receiveModel(Socket_Data* socketData) {
 		endConnection();
 		return false;
 	}
-	if (!receiveNumerOfReplications(socketData)) {
+	if (!receiveNumberOfReplications(socketData)) {
 		endConnection();
 		return false;
 	}
@@ -422,7 +580,7 @@ bool NetworkIPv4Imp1::receiveModel(Socket_Data* socketData) {
 	memset(buffer[1], 0, chunk_size);
 
 	std::ofstream file;
-	file.open("../../networkModel.gen", std::ios::out | std::ios::binary);
+	file.open("networkModel.gen", std::ios::out | std::ios::binary);
 	if (!file.is_open()) {
 		_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Fail to open a file.");
 		endConnection();
@@ -471,3 +629,6 @@ void NetworkIPv4Imp1::serverListen(Socket_Data* socketData) {
 	listen(socketData->_socket, max_nfds);
 }
 
+// int NetworkIPv4Imp1::getValidIpListSize() {
+// 	return _ipList.size();
+// }

@@ -15,6 +15,7 @@
 #include <iostream>
 #include <algorithm>
 #include <string>
+#include <cmath>
 
 #include "Model.h"
 #include "SourceModelComponent.h"
@@ -185,6 +186,12 @@ void Model::setSamplerSeed(int seed) {
 	TraitsKernel<Sampler_if>::Parameters* param;
 	param = static_cast<TraitsKernel<Sampler_if>::Parameters*>(_parser->sampler()->getRNGparameters());
 	param->seed = seed;
+	_parser->sampler()->setRNGparameters(param);
+}
+
+int Model::getRandom() {
+	double r = _parser->sampler()->random()*1000000;
+	return (int)r;
 }
 
 void Model::_showElements() const {

@@ -199,6 +199,7 @@ public:
         C5_CalcelOP = 5,
         C6_Error = 6
     };
+
 private:
     static unsigned int _S_indentation;
     static Util::identification _S_lastId;

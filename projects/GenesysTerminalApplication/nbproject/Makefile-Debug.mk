@@ -101,6 +101,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/113d9686/StatisticsCollector.o \
 	${OBJECTDIR}/_ext/113d9686/TraceManager.o \
 	${OBJECTDIR}/_ext/113d9686/NetworkIPv4Imp1.o \
+	${OBJECTDIR}/_ext/113d9686/NetworkSchedulerStatic.o \
 	${OBJECTDIR}/_ext/113d9686/Benchmark.o \
 	${OBJECTDIR}/_ext/5dd0aee1/CollectorDatafileDefaultImpl1.o \
 	${OBJECTDIR}/_ext/5dd0aee1/CollectorDefaultImpl1.o \
@@ -543,6 +544,12 @@ ${OBJECTDIR}/_ext/113d9686/NetworkIPv4Imp1.o: ../../source/kernel/network/Networ
 	${MKDIR} -p ${OBJECTDIR}/_ext/113d9686
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/113d9686/NetworkIPv4Imp1.o ../../source/kernel/network/NetworkIPv4Imp1.cpp
+
+${OBJECTDIR}/_ext/113d9686/NetworkSchedulerStatic.o: ../../source/kernel/network/NetworkSchedulerStatic.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/113d9686
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/113d9686/NetworkSchedulerStatic.o ../../source/kernel/network/NetworkSchedulerStatic.cpp
+
 
 ${OBJECTDIR}/_ext/113d9686/Benchmark.o: ../../source/kernel/network/Benchmark.cpp nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}/_ext/113d9686

@@ -33,19 +33,25 @@ ModelSimulation::ModelSimulation(Model* model) {
 	_model = model;
 	_info = model->getInfos();
 	_network = new TraitsKernel<Network_if>::Implementation(model);
+	_networkScheduler = new TraitsKernel<NetworkScheduler_if>::Implementation(model);
 	_cstatsAndCountersSimulation->setSortFunc([](const ModelDataDefinition* a, const ModelDataDefinition * b) {
 		return a->getId() < b->getId();
 	});
 	_simulationReporter = new TraitsKernel<SimulationReporter_if>::Implementation(this, model, this->_cstatsAndCountersSimulation);
 }
 
-void ModelSimulation::startServerSimulation() {
+void ModelSimulation::startServerSimulation(int argc, char** argv) {
+	_network->opt(argc, argv);
 	_network->setServer(true);
 	TraitsKernel<Network_if>::Socket_Data* _socket = _network->newSocketDataServer();
 	_network->serverBind(_socket);
 	_network->serverListen(_socket);
 	std::thread thread_simulation;
+	std::thread thread_results;
 
+	_networkGetResult.lock();
+	_networkSimulationEnded.lock();
+	thread_results = std::thread(&ModelSimulation::threadWaitResults, this, _socket);
 	while (1) {
 		Util::NetworkCode code = _network->getNextNetworkEvent();
 		switch (code)
@@ -56,28 +62,45 @@ void ModelSimulation::startServerSimulation() {
 				_network->sendCodeMessage(Util::NetworkCode::C1_IsAlive);
 				break;
 			case Util::NetworkCode::C2_Benchmark:
-				_network->sendBenchmarkMessage();
+				_network->sendBenchmark();
 				break;
 			case Util::NetworkCode::C3_Model:
 				if (!_network->receiveModel(_socket))
 					break;
 				_model->getSimulation()->setNumberOfReplications(_socket->_numberOfReplications);
 				_model->setSamplerSeed(_socket->_seed);
-				if (_model->load("../../networkModel.gen")) {
-					thread_simulation = std::thread(&ModelSimulation::start, this);
-					_network->sendCodeMessage(Util::NetworkCode::C3_Model);
+				if (!_isNetworkModelRunning) {
+					_isNetworkModelRunning = true;
+					if (_model->load("networkModel.gen")) {
+						if (thread_simulation.joinable())
+							thread_simulation.join();
+						thread_simulation = std::thread(&ModelSimulation::start, this);
+						_network->sendCodeMessage(Util::NetworkCode::C3_Model);
+					} else {
+						_network->sendCodeMessage(Util::NetworkCode::C6_Error);
+						_isNetworkModelRunning = false;
+					}
 				} else {
 					_network->sendCodeMessage(Util::NetworkCode::C6_Error);
 				}
 				break;
 			case Util::NetworkCode::C4_Results:
-				thread_simulation.join();
-				std::cout << "c4??" << std::endl;
-				_network->sendModelResults(_socket);
+				if (_isNetworkModelRunning) {
+					_getResultNetwork = true;
+				}
 				break;
 			case Util::NetworkCode::C5_CalcelOP:
-				thread_simulation.~thread();
+				_getResultNetwork = false;
+				std::cout << "teste:?" << std::endl;
+				if (_isNetworkModelRunning) {
+					_isNetworkModelRunning = false;
+					thread_simulation.detach();
+					thread_simulation.~thread();
+				}
+				// _networkSimulationEnded.unlock();
+				// _networkSimulationEnded.lock();
 				_network->sendCodeMessage(Util::NetworkCode::C5_CalcelOP);
+				_network->reset();
 				break;
 			case Util::NetworkCode::C6_Error:
 				break;
@@ -87,7 +110,20 @@ void ModelSimulation::startServerSimulation() {
 	}
 }
 
-void ModelSimulation::startClientSimulation() {
+void ModelSimulation::threadWaitResults(Network_if::Socket_Data* socket) {
+	while (1) {
+		_networkSimulationEnded.lock();
+		if (_getResultNetwork) {
+			_network->sendCodeMessage(Util::NetworkCode::C4_Results);
+			_network->sendModelResults(socket);
+			_network->reset();
+			_isNetworkModelRunning = false;
+		}
+	}
+}
+
+void ModelSimulation::startClientSimulation(int argc, char** argv) {
+	_network->opt(argc, argv);
 	if (_numberOfReplications == 1) {
 		_model->getTracer()->traceError(Util::TraceLevel::L4_warning, "There is only one replication defined. Network simulation will be ignored.");
 		start();
@@ -98,9 +134,58 @@ void ModelSimulation::startClientSimulation() {
 		return;
 	}
 	_network->setClient(true);
-	TraitsKernel<Network_if>::Socket_Data* _socket = _network->newSocketDataClient(2,100, 1);
-	_network->clientConnect(_socket);
-	//Create a simulation structure
+	_network->createSockets(&_network->_sockets);
+	_network->getBenchmarks(&_network->_sockets);
+	_networkReplicationMutex.lock();
+	// _networkMutex.lock();
+	_networkScheduler->set(_model->getSimulation()->_numberOfReplications, &_network->_sockets);
+	//Create a thread for every socket...
+	int threads_size = _network->_sockets.size();
+	std::thread thread_simulation[threads_size];
+	std::thread thread_start;
+	thread_start = std::thread(&ModelSimulation::start, this);
+	for (int i = 0; i < threads_size; i++) {
+		thread_simulation[i] = std::thread(&ModelSimulation::threadClientSimulation, this, _network->_sockets.at(i));
+	}
+
+	// start();
+	thread_start.join();
+	for (int i = 0; i < threads_size; i++)
+		thread_simulation[i].detach();
+	for (int i = 0; i < _network->_sockets.size(); i++)
+		close(_network->_sockets.at(i)->_socket);
+
+}
+
+void ModelSimulation::insertNetworkData(NetworkScheduler_if::Scheduler_Info* info, std::vector<double>* data) {
+	//_
+	_networkDataMutex.lock();
+	_data.clear();
+	for (int i = 0; i < data->size(); i++)
+		_data.insert(_data.begin(), data->at(i));
+	info->finished = true;
+	_networkReplicationMutex.unlock();
+}
+
+void ModelSimulation::threadClientSimulation(Network_if::Socket_Data* socket) {
+	TraitsKernel<NetworkScheduler_if>::Scheduler_Info* info = nullptr;
+	while((info = _networkScheduler->getNextSimulation(socket)) != nullptr) {
+		std::cout << info->id << std::endl;
+		std::cout << info->numberOfReplications << std::endl;
+		std::cout << info->seed << std::endl;
+		std::cout << info->time_stamp << std::endl;
+		std::cout << info->finished << std::endl;
+		socket->_id = info->id;
+		socket->_seed = info->seed;
+		socket->_numberOfReplications = info->numberOfReplications;
+		_network->sendModel(socket);
+		std::vector<double> _results;
+		_network->receiveModelResults(socket, &_results);
+		if (_results.size() == 0)
+			continue;
+		insertNetworkData(info, &_results);
+	}
+	// _networkMutex.unlock();
 }
 
 std::string ModelSimulation::show() {
@@ -157,6 +242,7 @@ SimulationEvent* ModelSimulation::_createSimulationEvent(void* thiscustomObject)
  * Checks the model and if ok then initialize the simulation, execute repeatedly each replication and then show simulation statistics
  */
 void ModelSimulation::start() {
+	std::cout << "chegu aqui::" << std::endl;
 	if (!_simulationIsInitiated) { // begin of a new simulation
 		Util::SetIndent(0); //force indentation
 		if (!_model->check()) {
@@ -175,21 +261,25 @@ void ModelSimulation::start() {
 	}
 	bool replicationEnded;
 	do {
-		if (!_replicationIsInitiaded) {
-			Util::SetIndent(1);
-			_initReplication();
-			_model->getOnEvents()->NotifyReplicationStartHandlers(_createSimulationEvent());
-			Util::IncIndent();
-		}
-		replicationEnded = _isReplicationEndCondition();
-		while (!replicationEnded) { // this is the main simulation loop
-			_stepSimulation();
-			replicationEnded = _isReplicationEndCondition();
-			if (_pauseRequested || _stopRequested) { //check this only after _stepSimulation() and not on loop entering conditin
-				break;
+		if(!_network->isClient()) {
+			if (!_replicationIsInitiaded) {
+				Util::SetIndent(1);
+				_initReplication();
+				_model->getOnEvents()->NotifyReplicationStartHandlers(_createSimulationEvent());
+				Util::IncIndent();
 			}
-		};
-		if (replicationEnded) {
+			replicationEnded = _isReplicationEndCondition();
+			while (!replicationEnded) { // this is the main simulation loop
+				_stepSimulation();
+				replicationEnded = _isReplicationEndCondition();
+				if (_pauseRequested || _stopRequested) { //check this only after _stepSimulation() and not on loop entering conditin
+					break;
+				}
+			};
+		}
+		if (replicationEnded || _network->isClient()) {
+			if (_network->isClient())
+				_networkReplicationMutex.lock();
 			Util::SetIndent(1); // force
 			_replicationEnded();
 			_currentReplicationNumber++;
@@ -201,6 +291,8 @@ void ModelSimulation::start() {
 			} else {
 				_pauseRequested = false;
 			}
+			if (_network->isClient())
+				_networkDataMutex.unlock();
 		}
 	} while (_currentReplicationNumber <= _numberOfReplications && !(_pauseRequested || _stopRequested));
 	// all replications done (or paused during execution)
@@ -214,6 +306,8 @@ void ModelSimulation::start() {
 		_isPaused = true;
 		_model->getOnEvents()->NotifySimulationPausedHandlers(_createSimulationEvent());
 	}
+	if (_network->isServer())
+		_networkSimulationEnded.unlock();
 }
 
 void ModelSimulation::_simulationEnded() {
@@ -234,14 +328,15 @@ void ModelSimulation::_simulationEnded() {
 void ModelSimulation::_replicationEnded() {
 	_traceReplicationEnded();
 	_model->getOnEvents()->NotifyReplicationEndHandlers(_createSimulationEvent());
-	if (this->_showReportsAfterReplication)
-		_simulationReporter->showReplicationStatistics();
+	// if (this->_showReportsAfterReplication)
+	// 	_simulationReporter->showReplicationStatistics();
 	//_simulationReporter->showSimulationResponses();
 	_actualizeSimulationStatistics();
 	_replicationIsInitiaded = false;
 }
 
 void ModelSimulation::_actualizeSimulationStatistics() {
+	int count = 0;
 	//@TODO: should not be only CSTAT and COUNTER, but any modeldatum that generateReportInformation
 	const std::string UtilTypeOfStatisticsCollector = Util::TypeOf<StatisticsCollector>();
 	const std::string UtilTypeOfCounter = Util::TypeOf<Counter>();
@@ -274,8 +369,13 @@ void ModelSimulation::_actualizeSimulationStatistics() {
 		// actualize simulation cstat statistics by collecting the new value from the model/replication stat
 		if (_network->isServer()) {
 			_network->insertNewData(cstatModel->getStatistics()->average());
+			cstatSimulation->getStatistics()->getCollector()->addValue(cstatModel->getStatistics()->average());
 		} else if (_network->isClient()) {
 			//pass
+			std::cout << "[B]" <<  _data.at(count) << std::endl;
+			cstatSimulation->getStatistics()->getCollector()->addValue(_data.at(count));
+			count++;
+
 		} else {
 			cstatSimulation->getStatistics()->getCollector()->addValue(cstatModel->getStatistics()->average());
 		}
@@ -300,8 +400,11 @@ void ModelSimulation::_actualizeSimulationStatistics() {
 		// actualize simulation cstat statistics by collecting the new value from the model/replication stat
 		if (_network->isServer()) {
 			_network->insertNewData(counterModel->getCountValue());
+			cstatSimulation->getStatistics()->getCollector()->addValue(counterModel->getCountValue());
 		} else if (_network->isClient()) {
-			//pass
+			std::cout << "[B]" << _data.at(count) << std::endl;
+			cstatSimulation->getStatistics()->getCollector()->addValue(_data.at(count));
+			count++;
 		} else {
 			cstatSimulation->getStatistics()->getCollector()->addValue(counterModel->getCountValue());
 		}
