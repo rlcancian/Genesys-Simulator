@@ -66,6 +66,7 @@ SOURCES += \
 	../../../../plugins/components/CellularAutomata.cpp \
 	../../../../plugins/components/CppForG.cpp \
 	../../../../plugins/components/Create.cpp \
+	../../../../plugins/components/FSM.cpp \
 	../../../../plugins/components/Decide.cpp \
 	../../../../plugins/components/Delay.cpp \
 	../../../../plugins/components/Dispose.cpp \
@@ -128,6 +129,7 @@ SOURCES += \
 	../../../terminal/examples/smarts/Smart_CppForG.cpp \
 	../../../terminal/examples/smarts/Smart_Delay.cpp \
 	../../../terminal/examples/smarts/Smart_Dummy.cpp \
+	../../../terminal/examples/smarts/Smart_FSM.cpp \
 	../../../terminal/examples/smarts/Smart_Failures.cpp \
 	../../../terminal/examples/smarts/Smart_WaitScanCondition.cpp \
 	../../../terminal/examples/smarts/Smart_WaitSignal.cpp \
@@ -239,6 +241,7 @@ HEADERS += \
 	../../../../plugins/components/CellularAutomata.h \
 	../../../../plugins/components/CppForG.h \
 	../../../../plugins/components/Create.h \
+	../../../../plugins/components/FSM.h \
 	../../../../plugins/components/Decide.h \
 	../../../../plugins/components/Delay.h \
 	../../../../plugins/components/Dispose.h \
@@ -309,6 +312,7 @@ HEADERS += \
 	../../../terminal/examples/smarts/Smart_CppForG.h \
 	../../../terminal/examples/smarts/Smart_Delay.h \
 	../../../terminal/examples/smarts/Smart_Dummy.h \
+	../../../terminal/examples/smarts/Smart_FSM.h \
 	../../../terminal/examples/smarts/Smart_Failures.h \
 	../../../terminal/examples/smarts/Smart_WaitScanCondition.h \
 	../../../terminal/examples/smarts/Smart_WaitSignal.h \

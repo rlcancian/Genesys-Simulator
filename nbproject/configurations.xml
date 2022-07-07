@@ -2426,6 +2426,8 @@
         <itemPath>examples/smarts/Smart_Delay.h</itemPath>
         <itemPath>examples/smarts/Smart_Dummy.cpp</itemPath>
         <itemPath>examples/smarts/Smart_Dummy.h</itemPath>
+        <itemPath>examples/smarts/Smart_FSM.cpp</itemPath>
+        <itemPath>examples/smarts/Smart_FSM.h</itemPath>
         <itemPath>examples/smarts/Smart_HoldSignal.cpp</itemPath>
         <itemPath>examples/smarts/Smart_HoldSignal.h</itemPath>
         <itemPath>examples/smarts/Smart_ModelInfoModelSimulation.cpp</itemPath>
@@ -2608,6 +2610,8 @@
         <itemPath>plugins/components/CppForG.h</itemPath>
         <itemPath>plugins/components/Create.cpp</itemPath>
         <itemPath>plugins/components/Create.h</itemPath>
+        <itemPath>plugins/components/FSM.cpp</itemPath>
+        <itemPath>plugins/components/FSM.h</itemPath>
         <itemPath>plugins/components/Decide.cpp</itemPath>
         <itemPath>plugins/components/Decide.h</itemPath>
         <itemPath>plugins/components/Delay.cpp</itemPath>
@@ -14995,6 +14999,10 @@
       </item>
       <item path="examples/smarts/Smart_Dummy.h" ex="false" tool="3" flavor2="0">
       </item>
+      <item path="examples/smarts/Smart_FSM.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="examples/smarts/Smart_HoldSignal.cpp"
             ex="false"
             tool="1"
@@ -15638,6 +15646,10 @@
       <item path="plugins/components/Create.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="plugins/components/Create.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="plugins/components/FSM.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="plugins/components/FSM.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="plugins/components/Decide.cpp" ex="false" tool="1" flavor2="0">
       </item>
@@ -27577,6 +27589,10 @@
       </item>
       <item path="examples/smarts/Smart_Dummy.h" ex="false" tool="3" flavor2="0">
       </item>
+      <item path="examples/smarts/Smart_FSM.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="examples/smarts/Smart_HoldSignal.cpp"
             ex="false"
             tool="1"
@@ -28220,6 +28236,10 @@
       <item path="plugins/components/Create.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="plugins/components/Create.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="plugins/components/FSM.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="plugins/components/FSM.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="plugins/components/Decide.cpp" ex="false" tool="1" flavor2="0">
       </item>

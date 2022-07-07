@@ -44,6 +44,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/296208d5/Smart_CppForG.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_Delay.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_Dummy.o \
+	${OBJECTDIR}/_ext/296208d5/Smart_FSM.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_Failures.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_ModelInfoModelSimulation.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_ODE.o \
@@ -259,6 +260,11 @@ ${OBJECTDIR}/_ext/296208d5/Smart_Dummy.o: ../../source/applications/terminal/exa
 	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_Dummy.o ../../source/applications/terminal/examples/smarts/Smart_Dummy.cpp
+
+${OBJECTDIR}/_ext/296208d5/Smart_FSM.o: ../../source/applications/terminal/examples/smarts/Smart_FSM.cpp
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM.o ../../source/applications/terminal/examples/smarts/Smart_FSM.cpp
 
 ${OBJECTDIR}/_ext/296208d5/Smart_Failures.o: ../../source/applications/terminal/examples/smarts/Smart_Failures.cpp
 	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
@@ -1069,6 +1075,19 @@ ${OBJECTDIR}/_ext/296208d5/Smart_Dummy_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smar
 	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_Dummy_nomain.o ../../source/applications/terminal/examples/smarts/Smart_Dummy.cpp;\
 	else  \
 	    ${CP} ${OBJECTDIR}/_ext/296208d5/Smart_Dummy.o ${OBJECTDIR}/_ext/296208d5/Smart_Dummy_nomain.o;\
+	fi
+
+${OBJECTDIR}/_ext/296208d5/Smart_FSM_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smart_FSM.o ../../source/applications/terminal/examples/smarts/Smart_FSM.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
+	@NMOUTPUT=`${NM} ${OBJECTDIR}/_ext/296208d5/Smart_FSM.o`; \
+	if (echo "$$NMOUTPUT" | ${GREP} '|main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
+	then  \
+	    ${RM} "$@.d";\
+	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_Dummy_nomain.o ../../source/applications/terminal/examples/smarts/Smart_Dummy.cpp;\
+	else  \
+	    ${CP} ${OBJECTDIR}/_ext/296208d5/Smart_FSM.o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_nomain.o;\
 	fi
 
 ${OBJECTDIR}/_ext/296208d5/Smart_Failures_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smart_Failures.o ../../source/applications/terminal/examples/smarts/Smart_Failures.cpp 
