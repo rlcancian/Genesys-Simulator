@@ -70,15 +70,16 @@ void ModelSimulation::startServerSimulation(int argc, char** argv) {
 				_model->getSimulation()->setNumberOfReplications(_socket->_numberOfReplications);
 				_model->setSamplerSeed(_socket->_seed);
 				if (!_isNetworkModelRunning) {
-					_isNetworkModelRunning = true;
 					if (_model->load("networkModel.gen")) {
 						if (thread_simulation.joinable())
 							thread_simulation.join();
+						_isNetworkModelRunningMutex.lock();
+						_isNetworkModelRunning = true;
+						_isNetworkModelRunningMutex.unlock();
 						thread_simulation = std::thread(&ModelSimulation::start, this);
 						_network->sendCodeMessage(Util::NetworkCode::C3_Model);
 					} else {
 						_network->sendCodeMessage(Util::NetworkCode::C6_Error);
-						_isNetworkModelRunning = false;
 					}
 				} else {
 					_network->sendCodeMessage(Util::NetworkCode::C6_Error);
@@ -86,17 +87,22 @@ void ModelSimulation::startServerSimulation(int argc, char** argv) {
 				break;
 			case Util::NetworkCode::C4_Results:
 				if (_isNetworkModelRunning) {
+					_getResultNetworkMutex.lock();
 					_getResultNetwork = true;
+					_getResultNetworkMutex.unlock();
 				}
 				break;
 			case Util::NetworkCode::C5_CalcelOP:
+				_getResultNetworkMutex.lock();
 				_getResultNetwork = false;
-				std::cout << "teste:?" << std::endl;
 				if (_isNetworkModelRunning) {
+					_isNetworkModelRunningMutex.lock();
 					_isNetworkModelRunning = false;
 					thread_simulation.detach();
 					thread_simulation.~thread();
+					_isNetworkModelRunningMutex.unlock();
 				}
+				_getResultNetworkMutex.unlock();
 				// _networkSimulationEnded.unlock();
 				// _networkSimulationEnded.lock();
 				_network->sendCodeMessage(Util::NetworkCode::C5_CalcelOP);
@@ -117,7 +123,12 @@ void ModelSimulation::threadWaitResults(Network_if::Socket_Data* socket) {
 			_network->sendCodeMessage(Util::NetworkCode::C4_Results);
 			_network->sendModelResults(socket);
 			_network->reset();
+			_isNetworkModelRunningMutex.lock();
 			_isNetworkModelRunning = false;
+			_isNetworkModelRunningMutex.unlock();
+			_getResultNetworkMutex.lock();
+			_getResultNetwork = false;
+			_getResultNetworkMutex.unlock();
 		}
 	}
 }

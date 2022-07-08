@@ -200,7 +200,9 @@ private: //network
 	std::mutex _networkGetResult;
 	std::vector<double> _data;
 	bool _isNetworkModelRunning = false;
+	std::mutex _isNetworkModelRunningMutex;
 	bool _getResultNetwork = false;
+	std::mutex _getResultNetworkMutex;
 
 };
 //namespace\\}
