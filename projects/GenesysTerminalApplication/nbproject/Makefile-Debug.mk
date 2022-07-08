@@ -110,8 +110,8 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/5dd0aee1/SorttFile.o \
 	${OBJECTDIR}/_ext/5dd0aee1/StatisticsDataFileDefaultImpl.o \
 	${OBJECTDIR}/_ext/5dd0aee1/StatisticsDefaultImpl1.o \
-	${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Client_Dummy.o \
-	${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Server_Dummy.o \
+	${OBJECTDIR}/_ext/296208d5/Network_Client_Dummy.o \
+	${OBJECTDIR}/_ext/296208d5/Network_Server_Dummy.o \
 	${OBJECTDIR}/_ext/12f39440/Util.o \
 	${OBJECTDIR}/_ext/58b95ef3/Genesys++-driver.o \
 	${OBJECTDIR}/_ext/58b95ef3/Genesys++-scanner.o \
@@ -335,15 +335,15 @@ ${OBJECTDIR}/_ext/18d98d98/OperatingSystem02.o: ../../source/applications/termin
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/18d98d98/OperatingSystem02.o ../../source/applications/terminal/examples/teaching/OperatingSystem02.cpp
 
-${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Client_Dummy.o: ../../source/applications/terminal/examples/network/Network_Client_Dummy.cpp nbproject/Makefile-${CND_CONF}.mk
-	${MKDIR} -p ${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite
+${OBJECTDIR}/_ext/296208d5/Network_Client_Dummy.o: ../../source/applications/terminal/examples/network/Network_Client_Dummy.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
 	${RM} "$@.d"
-	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Client_Dummy.o ../../source/applications/terminal/examples/network/Network_Client_Dummy.cpp
+	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Network_Client_Dummy.o ../../source/applications/terminal/examples/network/Network_Client_Dummy.cpp
 
-${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Server_Dummy.o: ../../source/applications/terminal/examples/network/Network_Server_Dummy.cpp nbproject/Makefile-${CND_CONF}.mk
-	${MKDIR} -p ${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite
+${OBJECTDIR}/_ext/296208d5/Network_Server_Dummy.o: ../../source/applications/terminal/examples/network/Network_Server_Dummy.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
 	${RM} "$@.d"
-	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/SoDeusSabeOQueEuToPassandoNessaNoite/Network_Server_Dummy.o ../../source/applications/terminal/examples/network/Network_Server_Dummy.cpp
+	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Network_Server_Dummy.o ../../source/applications/terminal/examples/network/Network_Server_Dummy.cpp
 
 ${OBJECTDIR}/_ext/18d98d98/OperatingSystem03.o: ../../source/applications/terminal/examples/teaching/OperatingSystem03.cpp nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}/_ext/18d98d98
