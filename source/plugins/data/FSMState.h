@@ -37,7 +37,7 @@ protected: // must be overriden
 protected: // could be overriden
     virtual bool _check(std::string *errorMessage);
     virtual void _initBetweenReplications();
-    virtual void _createInternalData();
-}
+    // virtual void _createInternalData();
+};
 
 #endif /* FSMSTATE_H */

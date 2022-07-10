@@ -15,6 +15,7 @@
 #define SMART_FSM_H
 
 #include "../../../BaseGenesysTerminalApplication.h"
+#include "../../../../plugins/components/FSM.h"
 
 class Smart_FSM : public BaseGenesysTerminalApplication
 {

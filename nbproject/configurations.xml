@@ -2684,6 +2684,8 @@
         <itemPath>plugins/data/CppCode.h</itemPath>
         <itemPath>plugins/data/DummyElement.cpp</itemPath>
         <itemPath>plugins/data/DummyElement.h</itemPath>
+        <itemPath>plugins/data/FSMState.cpp</itemPath>
+        <itemPath>plugins/data/FSMState.h</itemPath>
         <itemPath>plugins/data/EntityGroup.cpp</itemPath>
         <itemPath>plugins/data/EntityGroup.h</itemPath>
         <itemPath>plugins/data/Failure.cpp</itemPath>
@@ -15809,6 +15811,10 @@
       </item>
       <item path="plugins/data/DummyElement.h" ex="false" tool="3" flavor2="0">
       </item>
+      <item path="plugins/data/FSMState.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="plugins/data/FSMState.h" ex="false" tool="3" flavor2="0">
+      </item>
       <item path="plugins/data/EntityGroup.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="plugins/data/EntityGroup.h" ex="false" tool="3" flavor2="0">
@@ -28398,6 +28404,10 @@
       <item path="plugins/data/DummyElement.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="plugins/data/DummyElement.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="plugins/data/FSMState.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="plugins/data/FSMState.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="plugins/data/EntityGroup.cpp" ex="false" tool="1" flavor2="0">
       </item>

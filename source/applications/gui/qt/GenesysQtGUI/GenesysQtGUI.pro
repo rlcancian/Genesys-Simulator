@@ -102,6 +102,7 @@ SOURCES += \
 	../../../../plugins/data/AssignmentItem.cpp \
 	../../../../plugins/data/CppCode.cpp \
 	../../../../plugins/data/DummyElement.cpp \
+	../../../../plugins/data/FSMState.cpp \
 	../../../../plugins/data/EntityGroup.cpp \
 	../../../../plugins/data/Failure.cpp \
 	../../../../plugins/data/File.cpp \
@@ -277,6 +278,7 @@ HEADERS += \
 	../../../../plugins/data/AssignmentItem.h \
 	../../../../plugins/data/CppCode.h \
 	../../../../plugins/data/DummyElement.h \
+	../../../../plugins/data/FSMState.h \
 	../../../../plugins/data/EntityGroup.h \
 	../../../../plugins/data/Failure.h \
 	../../../../plugins/data/File.h \

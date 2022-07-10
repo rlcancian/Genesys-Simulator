@@ -15,6 +15,8 @@
 #define FSM_H
 
 #include "../../kernel/simulator/ModelComponent.h"
+#include "../../plugins/data/FSMState.h"
+#include "../../plugins/data/FSMTransition.h"
 
 /*!
  This component ...
@@ -46,13 +48,13 @@ protected: // must be overriden
 protected: // could be overriden .
     virtual bool _check(std::string *errorMessage);
     virtual void _initBetweenReplications();
-    virtual void _createInternalData();
+    // virtual void _createInternalData();
 
 private: // methods
 private: // attributes 1:1
 private: // attributes 1:n
     List<FSMState *> *_states = new List<FSMState *>();
-    List<FSMTransition *> *_states = new List<FSMTransition *>();
+    List<FSMTransition *> *_transitions = new List<FSMTransition *>();
 };
 
 #endif /* FSM_H */

@@ -51,31 +51,31 @@ int Smart_FSM::main(int argc, char **argv)
 
     // Creating states to represent when a variable in the model is even or odd
     FSMState *evenState = plugins->newInstance<FSMState>(model);
-    fsm1->states()->insert(evenState);
+    // fsm1->states()->insert(evenState);
     FSMState *oddState = plugins->newInstance<FSMState>(model);
-    fsm1->states()->insert(oddState);
+    // fsm1->states()->insert(oddState);
 
     // Creating transitions that check if the variable is even or odd
-    FSMTransition *evenToOdd = plugins->newInstance<FSMTransition>(model);
-    evenToOdd->setGuard("var % 2 == 1");
+    // FSMTransition *evenToOdd = plugins->newInstance<FSMTransition>(model);
+    // evenToOdd->setGuard("var % 2 == 1");
     // Add a function to be called whenever the transition is activated
     // Inside this function, we can do whatever we want, like changing variables or sending the entity to the next component
-    evenToOdd->onTransition(&Smart_FSM::onEvenToOdd);
+    // evenToOdd->onTransition(&Smart_FSM::onEvenToOdd);
     // fsm1->transitions()->insert(evenToOdd);
-    fsm1->insertTransition(evenToOdd, evenState, oddState);
+    // fsm1->insertTransition(evenToOdd, evenState, oddState);
 
     // This transition doesn't have a guard, so it's a default transition
     // It also doesn't have a side-effect (like setAttribute)
-    FSMTransition *evenToEven = plugins->newInstance<FSMTransition>(model);
-    fsm1->insertTransition(evenToEven, evenState, evenState);
+    // FSMTransition *evenToEven = plugins->newInstance<FSMTransition>(model);
+    // fsm1->insertTransition(evenToEven, evenState, evenState);
 
-    FSMTransition *oddToEven = plugins->newInstance<FSMTransition>(model);
-    oddToEven->setGuard("var % 2 == 0");
-    oddToEven->onTransition(&Smart_FSM::onOddToEven);
-    fsm1->insertTransition(oddToEven, oddState, evenState);
+    // FSMTransition *oddToEven = plugins->newInstance<FSMTransition>(model);
+    // oddToEven->setGuard("var % 2 == 0");
+    // oddToEven->onTransition(&Smart_FSM::onOddToEven);
+    // fsm1->insertTransition(oddToEven, oddState, evenState);
 
-    FSMTransition *oddToOdd = plugins->newInstance<FSMTransition>(model);
-    fsm1->insertTransition(oddToOdd, oddState, oddState);
+    // FSMTransition *oddToOdd = plugins->newInstance<FSMTransition>(model);
+    // fsm1->insertTransition(oddToOdd, oddState, oddState);
 
     Dispose *dispose1 = plugins->newInstance<Dispose>(model);
     // connect model components to create a "workflow"

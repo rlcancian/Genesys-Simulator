@@ -126,6 +126,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/f13e5db9/Dispose.o \
 	${OBJECTDIR}/_ext/f13e5db9/DropOff.o \
 	${OBJECTDIR}/_ext/f13e5db9/DummyComponent.o \
+	${OBJECTDIR}/_ext/f13e5db9/FSM.o \
 	${OBJECTDIR}/_ext/f13e5db9/Enter.o \
 	${OBJECTDIR}/_ext/f13e5db9/Exit.o \
 	${OBJECTDIR}/_ext/f13e5db9/LSODE.o \
@@ -156,6 +157,8 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/ccae408d/AssignmentItem.o \
 	${OBJECTDIR}/_ext/ccae408d/CppCode.o \
 	${OBJECTDIR}/_ext/ccae408d/DummyElement.o \
+	${OBJECTDIR}/_ext/ccae408d/FSMState.o \
+	${OBJECTDIR}/_ext/ccae408d/FSMTransition.o \
 	${OBJECTDIR}/_ext/ccae408d/EntityGroup.o \
 	${OBJECTDIR}/_ext/ccae408d/Failure.o \
 	${OBJECTDIR}/_ext/ccae408d/File.o \
@@ -671,6 +674,11 @@ ${OBJECTDIR}/_ext/f13e5db9/DummyComponent.o: ../../source/plugins/components/Dum
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/f13e5db9/DummyComponent.o ../../source/plugins/components/DummyComponent.cpp
 
+${OBJECTDIR}/_ext/f13e5db9/FSM.o: ../../source/plugins/components/FSM.cpp
+	${MKDIR} -p ${OBJECTDIR}/_ext/f13e5db9
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/f13e5db9/FSM.o ../../source/plugins/components/FSM.cpp
+
 ${OBJECTDIR}/_ext/f13e5db9/Enter.o: ../../source/plugins/components/Enter.cpp
 	${MKDIR} -p ${OBJECTDIR}/_ext/f13e5db9
 	${RM} "$@.d"
@@ -820,6 +828,16 @@ ${OBJECTDIR}/_ext/ccae408d/DummyElement.o: ../../source/plugins/data/DummyElemen
 	${MKDIR} -p ${OBJECTDIR}/_ext/ccae408d
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/ccae408d/DummyElement.o ../../source/plugins/data/DummyElement.cpp
+
+${OBJECTDIR}/_ext/ccae408d/FSMState.o: ../../source/plugins/data/FSMState.cpp
+	${MKDIR} -p ${OBJECTDIR}/_ext/ccae408d
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/ccae408d/FSMState.o ../../source/plugins/data/FSMState.cpp
+
+${OBJECTDIR}/_ext/ccae408d/FSMTransition.o: ../../source/plugins/data/FSMTransition.cpp
+	${MKDIR} -p ${OBJECTDIR}/_ext/ccae408d
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/ccae408d/FSMTransition.o ../../source/plugins/data/FSMTransition.cpp
 
 ${OBJECTDIR}/_ext/ccae408d/EntityGroup.o: ../../source/plugins/data/EntityGroup.cpp
 	${MKDIR} -p ${OBJECTDIR}/_ext/ccae408d
@@ -1085,7 +1103,7 @@ ${OBJECTDIR}/_ext/296208d5/Smart_FSM_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smart_
 	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
 	then  \
 	    ${RM} "$@.d";\
-	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_Dummy_nomain.o ../../source/applications/terminal/examples/smarts/Smart_Dummy.cpp;\
+	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_nomain.o ../../source/applications/terminal/examples/smarts/Smart_FSM.cpp;\
 	else  \
 	    ${CP} ${OBJECTDIR}/_ext/296208d5/Smart_FSM.o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_nomain.o;\
 	fi
@@ -2143,6 +2161,19 @@ ${OBJECTDIR}/_ext/f13e5db9/DummyComponent_nomain.o: ${OBJECTDIR}/_ext/f13e5db9/D
 	    ${CP} ${OBJECTDIR}/_ext/f13e5db9/DummyComponent.o ${OBJECTDIR}/_ext/f13e5db9/DummyComponent_nomain.o;\
 	fi
 
+${OBJECTDIR}/_ext/f13e5db9/FSM_nomain.o: ${OBJECTDIR}/_ext/f13e5db9/FSM.o ../../source/plugins/components/FSM.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/f13e5db9
+	@NMOUTPUT=`${NM} ${OBJECTDIR}/_ext/f13e5db9/FSM.o`; \
+	if (echo "$$NMOUTPUT" | ${GREP} '|main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
+	then  \
+	    ${RM} "$@.d";\
+	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/f13e5db9/FSM_nomain.o ../../source/plugins/components/FSM.cpp;\
+	else  \
+	    ${CP} ${OBJECTDIR}/_ext/f13e5db9/FSM.o ${OBJECTDIR}/_ext/f13e5db9/FSM_nomain.o;\
+	fi
+
 ${OBJECTDIR}/_ext/f13e5db9/Enter_nomain.o: ${OBJECTDIR}/_ext/f13e5db9/Enter.o ../../source/plugins/components/Enter.cpp 
 	${MKDIR} -p ${OBJECTDIR}/_ext/f13e5db9
 	@NMOUTPUT=`${NM} ${OBJECTDIR}/_ext/f13e5db9/Enter.o`; \
@@ -2531,6 +2562,32 @@ ${OBJECTDIR}/_ext/ccae408d/DummyElement_nomain.o: ${OBJECTDIR}/_ext/ccae408d/Dum
 	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/ccae408d/DummyElement_nomain.o ../../source/plugins/data/DummyElement.cpp;\
 	else  \
 	    ${CP} ${OBJECTDIR}/_ext/ccae408d/DummyElement.o ${OBJECTDIR}/_ext/ccae408d/DummyElement_nomain.o;\
+	fi
+
+${OBJECTDIR}/_ext/ccae408d/FSMState_nomain.o: ${OBJECTDIR}/_ext/ccae408d/FSMState.o ../../source/plugins/data/FSMState.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/ccae408d
+	@NMOUTPUT=`${NM} ${OBJECTDIR}/_ext/ccae408d/FSMState.o`; \
+	if (echo "$$NMOUTPUT" | ${GREP} '|main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
+	then  \
+	    ${RM} "$@.d";\
+	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/ccae408d/FSMState_nomain.o ../../source/plugins/data/FSMState.cpp;\
+	else  \
+	    ${CP} ${OBJECTDIR}/_ext/ccae408d/FSMState.o ${OBJECTDIR}/_ext/ccae408d/FSMState_nomain.o;\
+	fi
+
+${OBJECTDIR}/_ext/ccae408d/FSMTransition_nomain.o: ${OBJECTDIR}/_ext/ccae408d/FSMTransition.o ../../source/plugins/data/FSMTransition.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/ccae408d
+	@NMOUTPUT=`${NM} ${OBJECTDIR}/_ext/ccae408d/FSMTransition.o`; \
+	if (echo "$$NMOUTPUT" | ${GREP} '|main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
+	then  \
+	    ${RM} "$@.d";\
+	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/ccae408d/FSMTransition_nomain.o ../../source/plugins/data/FSMTransition.cpp;\
+	else  \
+	    ${CP} ${OBJECTDIR}/_ext/ccae408d/FSMTransition.o ${OBJECTDIR}/_ext/ccae408d/FSMTransition_nomain.o;\
 	fi
 
 ${OBJECTDIR}/_ext/ccae408d/EntityGroup_nomain.o: ${OBJECTDIR}/_ext/ccae408d/EntityGroup.o ../../source/plugins/data/EntityGroup.cpp 
