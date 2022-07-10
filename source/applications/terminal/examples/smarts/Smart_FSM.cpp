@@ -56,8 +56,8 @@ int Smart_FSM::main(int argc, char **argv)
     fsm1->states()->insert(oddState);
 
     // Creating transitions that check if the variable is even or odd
-    // FSMTransition *evenToOdd = plugins->newInstance<FSMTransition>(model);
-    // evenToOdd->setGuard("var % 2 == 1");
+    FSMTransition *evenToOdd = plugins->newInstance<FSMTransition>(model);
+    evenToOdd->setGuardExpression("var % 2 == 1");
     // Add a function to be called whenever the transition is activated
     // Inside this function, we can do whatever we want, like changing variables or sending the entity to the next component
     // evenToOdd->onTransition(&Smart_FSM::onEvenToOdd);

@@ -29,6 +29,11 @@ ModelDataDefinition *FSMTransition::NewInstance(Model *model, std::string name)
 
 FSMTransition::FSMTransition(Model *model, std::string name) : ModelDataDefinition(model, Util::TypeOf<FSMTransition>(), name)
 {
+    PropertyT<std::string> *guardExpressionProperty = new PropertyT<std::string>(
+        Util::TypeOf<FSMTransition>(),
+        "Guard Expression",
+        DefineGetter<FSMTransition, std::string>(this, &FSMTransition::guardExpression),
+        DefineSetter<FSMTransition, std::string>(this, &FSMTransition::setGuardExpression));
 }
 
 // public
@@ -36,6 +41,16 @@ FSMTransition::FSMTransition(Model *model, std::string name) : ModelDataDefiniti
 std::string FSMTransition::show()
 {
     return ModelDataDefinition::show();
+}
+
+void FSMTransition::setGuardExpression(std::string expression)
+{
+    _guardExpression = expression;
+}
+
+std::string FSMTransition::guardExpression()
+{
+    return _guardExpression;
 }
 
 // public static

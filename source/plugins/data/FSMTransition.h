@@ -33,7 +33,8 @@ public:
     virtual std::string show();
 
 public:
-    void setGuard(std::string expression);
+    void setGuardExpression(std::string expression);
+    std::string guardExpression();
     // void onTransition(std::function<void(Model *, FSM *)> handler);
     // template <typename Class>
     // void onTransition(Class *object, void (Class::*function)(void *), void *parameter)
@@ -47,6 +48,7 @@ private:
     // OnTransitionHandler _handler;
     void *_parameter;
     void *_object;
+    std::string _guardExpression;
 
 protected: // must be overriden
     virtual bool _loadInstance(std::map<std::string, std::string> *fields);
