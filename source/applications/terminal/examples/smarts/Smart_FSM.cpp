@@ -39,7 +39,7 @@ int Smart_FSM::main(int argc, char **argv)
     Simulator *genesys = new Simulator();
     this->setDefaultTraceHandlers(genesys->getTracer());
     this->insertFakePluginsByHand(genesys);
-    // crete model
+    // create model
     Model *model = genesys->getModels()->newModel();
     PluginManager *plugins = genesys->getPlugins();
     Create *create1 = plugins->newInstance<Create>(model);
@@ -51,9 +51,9 @@ int Smart_FSM::main(int argc, char **argv)
 
     // Creating states to represent when a variable in the model is even or odd
     FSMState *evenState = plugins->newInstance<FSMState>(model);
-    // fsm1->states()->insert(evenState);
+    fsm1->states()->insert(evenState);
     FSMState *oddState = plugins->newInstance<FSMState>(model);
-    // fsm1->states()->insert(oddState);
+    fsm1->states()->insert(oddState);
 
     // Creating transitions that check if the variable is even or odd
     // FSMTransition *evenToOdd = plugins->newInstance<FSMTransition>(model);

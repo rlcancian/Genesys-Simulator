@@ -38,6 +38,13 @@ std::string FSM::show()
     return ModelComponent::show() + "";
 }
 
+// public
+
+List<FSMState *> *FSM::states() const
+{
+    return _states;
+}
+
 // public static
 
 ModelComponent *FSM::LoadInstance(Model *model, std::map<std::string, std::string> *fields)
