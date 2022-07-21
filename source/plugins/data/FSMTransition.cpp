@@ -53,6 +53,11 @@ std::string FSMTransition::guardExpression()
     return _guardExpression;
 }
 
+void FSMTransition::onTransition(std::function<void(Model *)> handler)
+{
+    _onTransition = handler;
+}
+
 // public static
 
 ModelDataDefinition *FSMTransition::LoadInstance(Model *model, std::map<std::string, std::string> *fields)

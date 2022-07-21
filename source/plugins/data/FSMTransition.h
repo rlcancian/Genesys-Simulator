@@ -33,9 +33,11 @@ public:
 public:
     void setGuardExpression(std::string expression);
     std::string guardExpression();
+    void onTransition(std::function<void(Model *)> handler);
 
 private:
     std::string _guardExpression;
+    std::function<void(Model *)> _onTransition;
 
 protected: // must be overriden
     virtual bool _loadInstance(std::map<std::string, std::string> *fields);

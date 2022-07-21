@@ -23,8 +23,8 @@ public:
     Smart_FSM();
 
 public:
-    void onEvenToOdd(Model *model);
-    void onOddToEven(Model *model);
+    static void onEvenToOdd(Model *model);
+    static void onOddToEven(Model *model);
 
 public:
     virtual int main(int argc, char **argv);
