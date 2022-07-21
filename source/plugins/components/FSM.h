@@ -39,22 +39,30 @@ public:
     List<FSMState *> *states() const;
     List<FSMTransition *> *transitions() const;
     void insertTransition(FSMTransition *transition, FSMState *from, FSMState *to);
+    void insertState(FSMState *state);
 
 protected: // must be overriden
+    virtual void _onDispatchEvent(Entity *entity, unsigned int inputPortNumber);
     virtual bool _loadInstance(std::map<std::string, std::string> *fields);
     virtual std::map<std::string, std::string> *_saveInstance(bool saveDefaultValues);
-    virtual void _onDispatchEvent(Entity *entity, unsigned int inputPortNumber);
 
 protected: // could be overriden .
     virtual bool _check(std::string *errorMessage);
-    virtual void _initBetweenReplications();
     // virtual void _createInternalData();
 
 private: // methods
 private: // attributes 1:1
 private: // attributes 1:n
     List<FSMState *> *_states = new List<FSMState *>();
-    List<FSMTransition *> *_transitions = new List<FSMTransition *>();
+    List<FSMTransition *> *_transitions;
+
+    struct TransitionData
+    {
+        FSMTransition *transition;
+        FSMState *to;
+    };
+
+    std::map<FSMState *, List<TransitionData *> *> _transitionMap;
 };
 
 #endif /* FSM_H */

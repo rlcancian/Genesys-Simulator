@@ -50,6 +50,7 @@
 #include "../../plugins/components/Unstore.h"
 #include "../../plugins/components/Write.h"
 #include "../../plugins/components/LSODE.h"
+#include "../../plugins/components/FSM.h"
 
 
 // Model data definitions
@@ -65,6 +66,8 @@
 #include "../../plugins/data/Station.h"
 #include "../../plugins/data/Storage.h"
 #include "../../plugins/data/Variable.h"
+#include "../../plugins/data/FSMState.h"
+#include "../../plugins/data/FSMTransition.h"
 //#include "../../plugins/data/Expression.h"
 //#include "../../plugins/data/Conveyor.h"
 //#include "../../plugins/data/Segment.h"
@@ -196,6 +199,12 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
 		GetInfo = &Stop::GetPluginInformation;
 	else if (fn == "cppcode.so")
 		GetInfo = &CppCode::GetPluginInformation;
+	else if (fn == "fsm.so")
+		GetInfo = &FSM::GetPluginInformation;
+	else if (fn == "fsmstate.so")
+		GetInfo = &FSMState::GetPluginInformation;
+	else if (fn == "fsmtransition.so")
+		GetInfo = &FSMTransition::GetPluginInformation;
 	//else if (fn == "conveyour.so")
 	//    GetInfo = &Conveyour::GetPluginInformation;
 	//else if (fn == "segment.so")

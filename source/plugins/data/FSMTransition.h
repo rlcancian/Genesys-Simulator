@@ -16,8 +16,6 @@
 
 #include "../../kernel/simulator/ModelDataDefinition.h"
 
-// typedef std::function<void(void *)> OnTransitionHandler;
-
 class FSMTransition : public ModelDataDefinition
 {
 public:
@@ -35,19 +33,8 @@ public:
 public:
     void setGuardExpression(std::string expression);
     std::string guardExpression();
-    // void onTransition(std::function<void(Model *, FSM *)> handler);
-    // template <typename Class>
-    // void onTransition(Class *object, void (Class::*function)(void *), void *parameter)
-    // {
-    //     _object = object;
-    //     _handler = std::bind(function, object, parameter);
-    //     _parameter = parameter;
-    // }
 
 private:
-    // OnTransitionHandler _handler;
-    void *_parameter;
-    void *_object;
     std::string _guardExpression;
 
 protected: // must be overriden

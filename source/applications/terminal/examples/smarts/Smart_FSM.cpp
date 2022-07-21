@@ -30,6 +30,16 @@ Smart_FSM::Smart_FSM()
 {
 }
 
+void Smart_FSM::onEvenToOdd(Model *model)
+{
+    std::cout << "Going from even to odd" << std::endl;
+}
+
+void Smart_FSM::onOddToEven(Model *model)
+{
+    std::cout << "Going from odd to even" << std::endl;
+}
+
 /**
  * This is the main function of the application.
  * It instanciates the simulator, builds a simulation model and then simulate that model.
@@ -44,14 +54,12 @@ int Smart_FSM::main(int argc, char **argv)
     PluginManager *plugins = genesys->getPlugins();
     Create *create1 = plugins->newInstance<Create>(model);
 
-    FSM *fsm1 = plugins->newInstance<FSM>(model);
-
-    Variable *var = plugins->newInstance<Variable>(model, "var");
-    var->setInitialValue(0);
+    FSM *fsm1 = plugins->newInstance<FSM>(model, "FSM");
 
     // Creating states to represent when a variable in the model is even or odd
     FSMState *evenState = plugins->newInstance<FSMState>(model);
-    fsm1->states()->insert(evenState);
+
+    fsm1->insertState(evenState);
     FSMState *oddState = plugins->newInstance<FSMState>(model);
     fsm1->states()->insert(oddState);
 
@@ -62,7 +70,7 @@ int Smart_FSM::main(int argc, char **argv)
     // Inside this function, we can do whatever we want, like changing variables or sending the entity to the next component
     // evenToOdd->onTransition(&Smart_FSM::onEvenToOdd);
     // fsm1->transitions()->insert(evenToOdd);
-    // fsm1->insertTransition(evenToOdd, evenState, oddState);
+    fsm1->insertTransition(evenToOdd, evenState, oddState);
 
     // This transition doesn't have a guard, so it's a default transition
     // It also doesn't have a side-effect (like setAttribute)

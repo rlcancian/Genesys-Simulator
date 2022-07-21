@@ -45,6 +45,21 @@ List<FSMState *> *FSM::states() const
     return _states;
 }
 
+void FSM::insertState(FSMState *state)
+{
+    _states->insert(state);
+}
+
+void FSM::insertTransition(FSMTransition *transition, FSMState *from, FSMState *to)
+{
+    TransitionData transitionData = {transition, to};
+    if (!_transitionMap[from])
+    {
+        _transitionMap[from] = new List<TransitionData *>();
+    }
+    _transitionMap[from]->insert(&transitionData);
+}
+
 // public static
 
 ModelComponent *FSM::LoadInstance(Model *model, std::map<std::string, std::string> *fields)
@@ -100,8 +115,4 @@ bool FSM::_check(std::string *errorMessage)
 {
     bool resultAll = true;
     return resultAll;
-}
-
-void FSM::_initBetweenReplications()
-{
 }
