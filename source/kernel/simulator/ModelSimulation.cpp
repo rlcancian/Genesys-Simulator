@@ -631,46 +631,43 @@ std::string ModelSimulation::getTerminatingCondition() const {
 	return _terminatingCondition;
 }
 
-void ModelSimulation::loadInstance(std::map<std::string, std::string>* fields) {
-	this->_numberOfReplications = LoadField(fields, "numberOfReplications", DEFAULT.numberOfReplications);
-	this->_replicationLength = LoadField(fields, "replicationLength", DEFAULT.replicationLength);
-	this->_replicationLengthTimeUnit = LoadField(fields, "replicationLengthTimeUnit", DEFAULT.replicationLengthTimeUnit);
-	this->_replicationBaseTimeUnit = LoadField(fields, "replicationBaseTimeUnit", DEFAULT.replicationBeseTimeUnit);
-	this->_terminatingCondition = LoadField(fields, "terminatingCondition", DEFAULT.terminatingCondition);
-	this->_warmUpPeriod = LoadField(fields, "warmUpTime", DEFAULT.warmUpPeriod);
-	this->_warmUpPeriodTimeUnit = LoadField(fields, "warmUpTimeTimeUnit", DEFAULT.warmUpPeriodTimeUnit);
-	this->_showReportsAfterReplication = LoadField(fields, "showReportsAfterReplication", DEFAULT.showReportsAfterReplication);
-	this->_showReportsAfterSimulation = LoadField(fields, "showReportsAfterSimulation", DEFAULT.showReportsAfterSimulation);
-	this->_showSimulationControlsInReport = LoadField(fields, "showSimulationControlsInReport", DEFAULT.showSimulationControlsInReport);
-	this->_showSimulationResposesInReport = LoadField(fields, "showSimulationResposesInReport", DEFAULT.showSimulationResposesInReport);
+void ModelSimulation::loadInstance(PersistenceRecord *fields) {
+	this->_numberOfReplications = fields->loadField("numberOfReplications", DEFAULT.numberOfReplications);
+	this->_replicationLength = fields->loadField("replicationLength", DEFAULT.replicationLength);
+	this->_replicationLengthTimeUnit = fields->loadField("replicationLengthTimeUnit", DEFAULT.replicationLengthTimeUnit);
+	this->_replicationBaseTimeUnit = fields->loadField("replicationBaseTimeUnit", DEFAULT.replicationBeseTimeUnit);
+	this->_terminatingCondition = fields->loadField("terminatingCondition", DEFAULT.terminatingCondition);
+	this->_warmUpPeriod = fields->loadField("warmUpTime", DEFAULT.warmUpPeriod);
+	this->_warmUpPeriodTimeUnit = fields->loadField("warmUpTimeTimeUnit", DEFAULT.warmUpPeriodTimeUnit);
+	this->_showReportsAfterReplication = fields->loadField("showReportsAfterReplication", DEFAULT.showReportsAfterReplication);
+	this->_showReportsAfterSimulation = fields->loadField("showReportsAfterSimulation", DEFAULT.showReportsAfterSimulation);
+	this->_showSimulationControlsInReport = fields->loadField("showSimulationControlsInReport", DEFAULT.showSimulationControlsInReport);
+	this->_showSimulationResposesInReport = fields->loadField("showSimulationResposesInReport", DEFAULT.showSimulationResposesInReport);
 	// not a field of ModelSimulation, but I'll load it here
-	TraceManager::Level traceLevel = static_cast<TraceManager::Level> (LoadField(fields, "traceLevel", static_cast<int> (TraitsKernel<Model>::traceLevel)));
+	TraceManager::Level traceLevel = static_cast<TraceManager::Level> (fields->loadField("traceLevel", static_cast<int> (TraitsKernel<Model>::traceLevel)));
 	this->_model->getTracer()->setTraceLevel(traceLevel);
 	_hasChanged = false;
 }
 
 // @TODO:!: implement check method (to check things like terminating condition)
 
-std::map<std::string, std::string>* ModelSimulation::saveInstance(bool saveDefaults) {
-	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
-	SaveField(fields, "typename", "ModelSimulation");
-	SaveField(fields, "name", ""); //getName());
-	SaveField(fields, "numberOfReplications", _numberOfReplications, DEFAULT.numberOfReplications, saveDefaults);
-	SaveField(fields, "replicationLength", _replicationLength, DEFAULT.replicationLength, saveDefaults);
-	SaveField(fields, "replicationLengthTimeUnit", _replicationLengthTimeUnit, DEFAULT.replicationLengthTimeUnit, saveDefaults);
-	SaveField(fields, "replicationBaseTimeUnit", _replicationBaseTimeUnit, DEFAULT.replicationBeseTimeUnit, saveDefaults);
-	SaveField(fields, "terminatingCondition", _terminatingCondition, DEFAULT.terminatingCondition, saveDefaults);
-	SaveField(fields, "warmUpTime", _warmUpPeriod, DEFAULT.warmUpPeriod, saveDefaults);
-	SaveField(fields, "warmUpTimeTimeUnit", _warmUpPeriodTimeUnit, DEFAULT.warmUpPeriodTimeUnit, saveDefaults);
-	SaveField(fields, "showReportsAfterReplicaton", _showReportsAfterReplication, DEFAULT.showReportsAfterReplication, saveDefaults);
-	SaveField(fields, "showReportsAfterSimulation", _showReportsAfterSimulation, DEFAULT.showReportsAfterSimulation, saveDefaults);
-	SaveField(fields, "showSimulationControlsInReport", _showSimulationControlsInReport, DEFAULT.showSimulationControlsInReport, saveDefaults);
-	SaveField(fields, "showSimulationResposesInReport", _showSimulationResposesInReport, DEFAULT.showSimulationResposesInReport, saveDefaults);
+void ModelSimulation::saveInstance(PersistenceRecord *fields, bool saveDefaults) {
+	fields->saveField("typename", "ModelSimulation");
+	fields->saveField("name", ""); //getName());
+	fields->saveField("numberOfReplications", _numberOfReplications, DEFAULT.numberOfReplications, saveDefaults);
+	fields->saveField("replicationLength", _replicationLength, DEFAULT.replicationLength, saveDefaults);
+	fields->saveField("replicationLengthTimeUnit", _replicationLengthTimeUnit, DEFAULT.replicationLengthTimeUnit, saveDefaults);
+	fields->saveField("replicationBaseTimeUnit", _replicationBaseTimeUnit, DEFAULT.replicationBeseTimeUnit, saveDefaults);
+	fields->saveField("terminatingCondition", _terminatingCondition, DEFAULT.terminatingCondition, saveDefaults);
+	fields->saveField("warmUpTime", _warmUpPeriod, DEFAULT.warmUpPeriod, saveDefaults);
+	fields->saveField("warmUpTimeTimeUnit", _warmUpPeriodTimeUnit, DEFAULT.warmUpPeriodTimeUnit, saveDefaults);
+	fields->saveField("showReportsAfterReplicaton", _showReportsAfterReplication, DEFAULT.showReportsAfterReplication, saveDefaults);
+	fields->saveField("showReportsAfterSimulation", _showReportsAfterSimulation, DEFAULT.showReportsAfterSimulation, saveDefaults);
+	fields->saveField("showSimulationControlsInReport", _showSimulationControlsInReport, DEFAULT.showSimulationControlsInReport, saveDefaults);
+	fields->saveField("showSimulationResposesInReport", _showSimulationResposesInReport, DEFAULT.showSimulationResposesInReport, saveDefaults);
 	// @TODO not a field of ModelSimulation, but I'll save it here for now
-	SaveField(fields, "traceLevel", static_cast<int> (_model->getTracer()->getTraceLevel()), static_cast<int> (TraitsKernel<Model>::traceLevel));
+	fields->saveField("traceLevel", static_cast<int> (_model->getTracer()->getTraceLevel()), static_cast<int> (TraitsKernel<Model>::traceLevel));
 	_hasChanged = false;
-
-	return fields;
 }
 
 Event* ModelSimulation::getCurrentEvent() const {

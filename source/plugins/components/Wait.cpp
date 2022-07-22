@@ -61,7 +61,7 @@ Wait::WaitType Wait::getWaitType() const {
 
 //public static
 
-ModelComponent* Wait::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Wait::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Wait* newComponent = new Wait(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -95,7 +95,7 @@ void Wait::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_queue->insertElement(waiting);
 }
 
-bool Wait::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Wait::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -103,15 +103,12 @@ bool Wait::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Wait::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Wait::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 // protected virtual could override
-
-//void Wait::_initBetweenReplications() {}
 
 bool Wait::_check(std::string * errorMessage) {
 	bool resultAll = true;

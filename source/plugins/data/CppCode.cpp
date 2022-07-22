@@ -28,7 +28,7 @@ CppCode::CppCode(Model* model, std::string name) : ModelDataDefinition(model, Ut
 
 // static 
 
-ModelDataDefinition* CppCode::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* CppCode::LoadInstance(Model* model, PersistenceRecord *fields) {
 	CppCode* newElement = new CppCode(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -64,7 +64,7 @@ std::string CppCode::getCode() const {
 }
 // must be overriden 
 
-bool CppCode::_loadInstance(std::map<std::string, std::string>* fields) {
+bool CppCode::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -72,10 +72,9 @@ bool CppCode::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* CppCode::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues);
+void CppCode::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 // could be overriden 
@@ -83,10 +82,6 @@ std::map<std::string, std::string>* CppCode::_saveInstance(bool saveDefaultValue
 bool CppCode::_check(std::string* errorMessage) {
 	return true;
 }
-
-//ParserChangesInformation* CppCode::_getParserChangesInformation() {}
-
-//void CppCode::_initBetweenReplications() {}
 
 void CppCode::_createInternalAndAttachedData() {
 }

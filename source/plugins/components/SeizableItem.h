@@ -36,10 +36,10 @@ public:
 	SeizableItem(Model* model, std::string resourceName, std::string quantityExpression = "1", SeizableItem::SelectionRule selectionRule = SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY, std::string saveAttribute = "", std::string index = "0");
 
 public:
-	bool loadInstance(std::map<std::string, std::string>* fields, unsigned int parentIndex);
-	std::map<std::string, std::string>* saveInstance(unsigned int parentIndex, bool saveDefault);
-	bool loadInstance(std::map<std::string, std::string>* fields);
-	std::map<std::string, std::string>* saveInstance(bool saveDefaults);
+	bool loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
+	void saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefault);
+	bool loadInstance(PersistenceRecord *fields);
+	void saveInstance(PersistenceRecord *fields, bool saveDefaults);
 public:
 	std::string show();
 	void setIndex(std::string index);

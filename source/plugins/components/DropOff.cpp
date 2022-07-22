@@ -32,7 +32,7 @@ std::string DropOff::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* DropOff::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* DropOff::LoadInstance(Model* model, PersistenceRecord *fields) {
 	DropOff* newComponent = new DropOff(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -47,7 +47,7 @@ void DropOff::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool DropOff::_loadInstance(std::map<std::string, std::string>* fields) {
+bool DropOff::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -57,10 +57,9 @@ bool DropOff::_loadInstance(std::map<std::string, std::string>* fields) {
 
 //void DropOff::_initBetweenReplications() {}
 
-std::map<std::string, std::string>* DropOff::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void DropOff::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool DropOff::_check(std::string* errorMessage) {

@@ -74,7 +74,7 @@ PluginInformation* StatisticsCollector::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* StatisticsCollector::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* StatisticsCollector::LoadInstance(Model* model, PersistenceRecord *fields) {
 	StatisticsCollector* newElement = new StatisticsCollector(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -84,23 +84,22 @@ ModelDataDefinition* StatisticsCollector::LoadInstance(Model* model, std::map<st
 	return newElement;
 }
 
-bool StatisticsCollector::_loadInstance(std::map<std::string, std::string>* fields) {
+bool StatisticsCollector::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* StatisticsCollector::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<StatisticsCollector>());
+void StatisticsCollector::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	std::string parentId = "", parentTypename = "";
 	if (this->_parent != nullptr) {
 		parentId = std::to_string(_parent->getId());
 		parentTypename = _parent->getClassname();
 	}
-	SaveField(fields, "parentTypename", parentTypename);
-	SaveField(fields, "parentId", parentId);
-	return fields;
+	fields->saveField("parentTypename", parentTypename);
+	fields->saveField("parentId", parentId);
 }
 
 bool StatisticsCollector::_check(std::string* errorMessage) {

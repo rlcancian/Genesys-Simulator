@@ -125,7 +125,7 @@ PluginInformation* Failure::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Failure::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Failure::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Failure* newElement = new Failure(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -135,25 +135,20 @@ ModelDataDefinition* Failure::LoadInstance(Model* model, std::map<std::string, s
 	return newElement;
 }
 
-bool Failure::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Failure::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
 			//@TODO not implemented yet
-			//this->attribute = LoadField(fields, "field", DEFAULT.fields);
-
 		} catch (...) {
 		}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* Failure::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Failure>());
+void Failure::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	//@TODO not implemented yet
-	//SaveField(fields, "orderRule", std::to_string(static_cast<int> (this->_orderRule)));
-	//SaveField(fields, "attributeName", "\""+this->_attributeName+"\"");
-	return fields;
 }
 
 bool Failure::_check(std::string* errorMessage) {

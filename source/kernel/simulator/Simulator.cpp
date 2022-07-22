@@ -12,7 +12,11 @@
  */
 
 #include "Simulator.h"
+
+#include <memory>
+
 #include "LicenceManager.h"
+
 
 extern "C" GenesysSimulator CreateSimulator2() {
 	return new /*GenesysKernel::*/Simulator();
@@ -93,9 +97,9 @@ bool Simulator::_completePluginsFieldsAndTemplate() {
 	_traceManager->setTraceLevel(TraceManager::Level::L0_noTraces); // this crap stuff should not been shown
 	Model* tempModel = new Model(this);
 	tempModel->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
+	auto fields = std::make_unique<PersistenceRecord>(tempModel->getPersistence());
 	Plugin* plugin;
 	PluginInformation* info;
-	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
 	ModelDataDefinition* datum;
 	ModelComponent* comp;
 	std::string text;
@@ -108,27 +112,28 @@ bool Simulator::_completePluginsFieldsAndTemplate() {
 				fields->clear();
 				try {
 					if (info->isComponent()) {
-						comp = dynamic_cast<ModelComponent*> (plugin->loadNew(tempModel, fields));
+						comp = dynamic_cast<ModelComponent*> (plugin->loadNew(tempModel, fields.get()));
 						comp->setName("name");
 						while (comp->getConnections()->size() < info->getMinimumOutputs()) {
 							comp->getConnections()->insert(comp);
 						}
-						fields = comp->SaveInstance(comp);
+						fields->clear();
+						comp->SaveInstance(fields.get(), comp);
 					} else {
-						datum = plugin->loadNew(tempModel, fields);
+						datum = plugin->loadNew(tempModel, fields.get());
 						datum->setName("name");
-						fields = datum->SaveInstance(datum);
+						fields->clear();
+						datum->SaveInstance(fields.get(), datum);
 					}
 				} catch (...) {
 					//@TODO
 					//std::cout << "ERROR completing plugin " << info->getPluginTypename() << std::endl;
 				}
-				for (std::pair<std::string, std::string> field : *fields) {
+				for (std::pair<std::string, std::string> field : *fields.get()) {
 					info->getFields()->insert({field.first, ""});
 				}
 				if (info->getLanguageTemplate() == "") {
-					std::string templateLanguage = tempModel->getPersistence()->getFormatedField(fields);
-					//std::cout << info->getPluginTypename() << ": " << templateLanguage << std::endl;
+					std::string templateLanguage = tempModel->getPersistence()->getFormatedField(fields.get());
 					info->setLanguageTemplate(templateLanguage);
 				}
 			}

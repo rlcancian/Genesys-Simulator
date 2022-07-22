@@ -98,8 +98,8 @@ public:
 	void setAttributeValue(std::string index, Util::identification attributeID, double value);
 	Util::identification entityNumber() const;
 protected:
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 	virtual bool _check(std::string* errorMessage);
 private:
 	Util::identification _entityNumber;

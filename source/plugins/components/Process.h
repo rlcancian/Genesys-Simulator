@@ -30,7 +30,7 @@ public: // virtual
 	virtual std::string show();
 public: // static
 	static PluginInformation* GetPluginInformation();
-	static ModelComponent* LoadInstance(Model* model, std::map<std::string, std::string>* fields);
+	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
 	void setPriority(unsigned short _priority);
@@ -49,8 +49,8 @@ public:
 protected: // virtual
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
 	// virtual void _initBetweenReplications();
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 	virtual bool _check(std::string* errorMessage);
 	virtual void _createInternalAndAttachedData();
 private: // methods

@@ -21,7 +21,7 @@
 #include "../util/Util.h"
 
 #include "ParserChangesInformation.h"
-#include "PersistentObject_base.h"
+#include "Persistence.h"
 #include "PluginInformation.h"
 #include "Property.h"
 
@@ -50,11 +50,11 @@ public: // get & set
 	void setReportStatistics(bool reportStatistics);
 public: // static
 	/*! This class method receives a map of fields readed from a file (or somewhere else) creates an instace of the ModelDatas and inokes the protected method _loadInstance() of that instance, whch fills the field values. The instance can be automatticaly inserted into the simulation model if required*/
-	static ModelDataDefinition* LoadInstance(Model* model, std::map<std::string, std::string>* fields, bool insertIntoModel); // @TODO: return ModelComponent* ?
+	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields, bool insertIntoModel); // @TODO: return ModelComponent* ?
 	/*! This class method invokes the constructor and returns a new instance (that demands a typecast to the rigth subclass). It is used to construct a new instance when plugins are connected using dynamic loaded libraries*/
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 	/*! This class method takes an instance of a ModelDataDefinition, invokes the protected method _saveInstance() of that instance and retorns a map of filds (name=value) that can be saved on a file (or somewhere else)*/
-	static std::map<std::string, std::string>* SaveInstance(ModelDataDefinition* modeldatum);
+	static void SaveInstance(PersistenceRecord *fields, ModelDataDefinition* modeldatum);
 	/*! This class method takes an instance of a ModelDataDefinition and invokes the private method_check() method of that instance, which checks itself */
 	static bool Check(ModelDataDefinition* modeldatum, std::string* errorMessage);
 	/*! This class method is responsible for invoking the protected method _check() of the instance modeldatum, which creates any internal ModelDataDefinition (such as internelElements) or even other external needed ModelDatas, such as attributes or variables */
@@ -84,8 +84,8 @@ protected: // methods to be called inside the _createInternalAndAttachedData() m
 protected:
 	bool _getSaveDefaultsOption();
 protected: // must be overriden by derived classes
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 protected: // could be overriden by derived classes
 	virtual bool _check(std::string* errorMessage);
 	/*! This method returns all changes in the parser that are needed by plugins of this ModelDatas. When connecting a new plugin, ParserChangesInformation are used to change parser source code, whch is after compiled and dinamically linked to to simulator kernel to reflect the changes */

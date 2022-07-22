@@ -32,7 +32,7 @@ Label::Label(Model* model, std::string name) : ModelDataDefinition(model, Util::
 
 // static
 
-ModelDataDefinition* Label::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Label::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Label* newElement = new Label(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -83,12 +83,12 @@ void Label::sendEntityToLabelComponent(Entity* entity, double timeDelay) {
 
 // must be overriden 
 
-bool Label::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Label::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			this->_label = LoadField(fields, "label", "");
-			std::string componentName = LoadField(fields, "enteringComponentName", "");
+			this->_label = fields->loadField("label", "");
+			std::string componentName = fields->loadField("enteringComponentName", "");
 			ModelComponent* comp = _parentModel->getComponents()->find(componentName);
 			this->_enteringLabelComponent = comp;
 		} catch (...) {
@@ -97,13 +97,12 @@ bool Label::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Label::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Queue>());
-	SaveField(fields, "label", this->_label, "", saveDefaultValues);
+void Label::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("label", this->_label, "", saveDefaultValues);
 	if (_enteringLabelComponent != nullptr) {
-		SaveField(fields, "enteringComponentName", _enteringLabelComponent->getName(), "", saveDefaultValues);
+		fields->saveField("enteringComponentName", _enteringLabelComponent->getName(), "", saveDefaultValues);
 	}
-	return fields;
 }
 
 // could be overriden 

@@ -67,7 +67,7 @@ List<Entity*>* EntityGroup::getGroup(unsigned int idKey) {
 	}
 }
 
-bool EntityGroup::_loadInstance(std::map<std::string, std::string>* fields) {
+bool EntityGroup::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
@@ -77,9 +77,8 @@ bool EntityGroup::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* EntityGroup::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Group>());
-	return fields;
+void EntityGroup::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 PluginInformation * EntityGroup::GetPluginInformation() {
@@ -91,7 +90,7 @@ PluginInformation * EntityGroup::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition * EntityGroup::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition * EntityGroup::LoadInstance(Model* model, PersistenceRecord *fields) {
 	EntityGroup* newElement = new EntityGroup(model);
 	try {
 		newElement->_loadInstance(fields);

@@ -80,7 +80,7 @@ public:
 	Failure(Model* model, std::string name = "");
 	virtual ~Failure() = default;
 public: // static
-	static ModelDataDefinition* LoadInstance(Model* model, std::map<std::string, std::string>* fields);
+	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static PluginInformation* GetPluginInformation();
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
@@ -105,8 +105,8 @@ public: // gets & sets
 	List<Resource*>*falingResources() const;
 
 protected: // must be overriden
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 protected: // could be overriden .
 	virtual bool _check(std::string* errorMessage);
 	virtual void _initBetweenReplications();

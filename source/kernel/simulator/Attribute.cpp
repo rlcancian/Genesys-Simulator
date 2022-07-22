@@ -33,7 +33,7 @@ std::string Attribute::show() {
 	return ModelDataDefinition::show();
 }
 
-bool Attribute::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Attribute::_loadInstance(PersistenceRecord *fields) {
 	return ModelDataDefinition::_loadInstance(fields);
 }
 
@@ -44,7 +44,7 @@ PluginInformation* Attribute::GetPluginInformation() {
 
 }
 
-ModelDataDefinition* Attribute::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Attribute::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Attribute* newElement = new Attribute(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -54,10 +54,9 @@ ModelDataDefinition* Attribute::LoadInstance(Model* model, std::map<std::string,
 	return newElement;
 }
 
-std::map<std::string, std::string>* Attribute::_saveInstance(bool saveDefaultValues) {
+void Attribute::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	bool saveDefaults = this->_getSaveDefaultsOption();
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Attribute>());
-	return fields;
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Attribute::_check(std::string* errorMessage) {

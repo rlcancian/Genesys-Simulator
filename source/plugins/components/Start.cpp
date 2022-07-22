@@ -33,7 +33,7 @@ std::string Start::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Start::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Start::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Start* newComponent = new Start(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -48,7 +48,7 @@ void Start::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Start::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Start::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -56,12 +56,9 @@ bool Start::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void Start::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* Start::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Start::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool Start::_check(std::string* errorMessage) {

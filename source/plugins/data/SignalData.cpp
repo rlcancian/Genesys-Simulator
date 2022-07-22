@@ -55,7 +55,7 @@ void SignalData::addSignalDataEventHandler(SignalDataEventHandler eventHandler, 
 
 // public static
 
-ModelDataDefinition* SignalData::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* SignalData::LoadInstance(Model* model, PersistenceRecord *fields) {
 	SignalData* newElement = new SignalData(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -79,26 +79,22 @@ PluginInformation* SignalData::GetPluginInformation() {
 
 // protected virtual -- must be overriden
 
-bool SignalData::_loadInstance(std::map<std::string, std::string>* fields) {
+bool SignalData::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			//this->_someUint = LoadField(fields, "someUint", DEFAULT.someUint);
+			//this->_someUint = fields->loadField("someUint", DEFAULT.someUint);
 		} catch (...) {
 		}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* SignalData::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Queue>());
-	//SaveField(fields, "someUint", _someUint, DEFAULT.someUint);
-	return fields;
+void SignalData::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 // protected virtual -- could be overriden
-
-//ParserChangesInformation* SignalData::_getParserChangesInformation() {}
 
 bool SignalData::_check(std::string* errorMessage) {
 	bool resultAll = true;

@@ -34,7 +34,7 @@ std::string Enter::show() {
 	return ModelComponent::show() + ",station=" + this->_station->getName();
 }
 
-ModelComponent* Enter::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Enter::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Enter* newComponent = new Enter(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -70,10 +70,10 @@ void Enter::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Enter::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Enter::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		std::string stationName = LoadField(fields, "station", "");
+		std::string stationName = fields->loadField("station", "");
 		Station* station = dynamic_cast<Station*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
 		this->_station = station;
 		if (station != nullptr) {
@@ -85,14 +85,13 @@ bool Enter::_loadInstance(std::map<std::string, std::string>* fields) {
 
 //void Enter::_initBetweenReplications() {}
 
-std::map<std::string, std::string>* Enter::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Enter::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	std::string text = "";
 	if (_station != nullptr) {
 		text = _station->getName();
 	}
-	SaveField(fields, "station", text, "", saveDefaultValues);
-	return fields;
+	fields->saveField("station", text, "", saveDefaultValues);
 }
 
 PluginInformation* Enter::GetPluginInformation() {

@@ -38,7 +38,7 @@ PluginInformation* Schedule::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Schedule::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Schedule::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Schedule* newElement = new Schedule(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -48,25 +48,22 @@ ModelDataDefinition* Schedule::LoadInstance(Model* model, std::map<std::string, 
 	return newElement;
 }
 
-bool Schedule::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Schedule::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
 			// @TODO: Not implemented
-			//this->_attributeName = LoadField(fields, "attributeName", DEFAULT.attributeName);
-			//this->_orderRule = static_cast<OrderRule> (LoadField(fields, "orderRule", static_cast<int> (DEFAULT.orderRule)));
+			//this->_attributeName = fields->loadField("attributeName", DEFAULT.attributeName);
+			//this->_orderRule = static_cast<OrderRule> (fields->loadField("orderRule", static_cast<int> (DEFAULT.orderRule)));
 		} catch (...) {
 		}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* Schedule::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Queue>());
+void Schedule::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	// @TODO: Not implemented
-	//SaveField(fields, "orderRule", static_cast<int> (this->_orderRule), static_cast<int> (DEFAULT.orderRule));
-	//SaveField(fields, "attributeName", this->_attributeName, DEFAULT.attributeName);
-	return fields;
 }
 
 bool Schedule::_check(std::string* errorMessage) {
@@ -74,4 +71,3 @@ bool Schedule::_check(std::string* errorMessage) {
 	*errorMessage += "";
 	return true;
 }
-

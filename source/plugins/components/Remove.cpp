@@ -32,7 +32,7 @@ std::string Remove::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Remove::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Remove::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Remove* newComponent = new Remove(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -47,7 +47,7 @@ void Remove::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Remove::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Remove::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -55,12 +55,9 @@ bool Remove::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void Remove::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* Remove::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Remove::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool Remove::_check(std::string* errorMessage) {

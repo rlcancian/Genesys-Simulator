@@ -12,6 +12,9 @@
  */
 
 #include "Process.h"
+
+#include <memory>
+
 #include "../../kernel/simulator/Simulator.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -20,6 +23,7 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 	return &Process::GetPluginInformation;
 }
 #endif
+
 
 ModelDataDefinition* Process::NewInstance(Model* model, std::string name) {
 	return new Process(model, name);
@@ -85,7 +89,7 @@ Util::TimeUnit Process::delayTimeUnit() const {
 	return _delay->delayTimeUnit();
 }
 
-ModelComponent* Process::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Process::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Process* newComponent = new Process(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -112,25 +116,25 @@ void Process::_adjustConnections() {
 	}
 }
 
-bool Process::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Process::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		_seize->setAllocationType(LoadField(fields, "allocationType", _seize->DEFAULT.allocationType));
-		_seize->setPriority(LoadField(fields, "priority", _seize->DEFAULT.priority));
-		_seize->setSaveAttribute(LoadField(fields, "saveAttribute", _seize->DEFAULT.saveAttribute));
+		_seize->setAllocationType(fields->loadField("allocationType", _seize->DEFAULT.allocationType));
+		_seize->setPriority(fields->loadField("priority", _seize->DEFAULT.priority));
+		_seize->setSaveAttribute(fields->loadField("saveAttribute", _seize->DEFAULT.saveAttribute));
 		QueueableItem* queueableItem = new QueueableItem(nullptr);
 		queueableItem->setElementManager(_parentModel->getDataManager());
 		queueableItem->loadInstance(fields);
 		_seize->setQueueableItem(queueableItem);
-		unsigned short numRequests = LoadField(fields, "resquests", _seize->DEFAULT.seizeRequestSize);
+		unsigned short numRequests = fields->loadField("resquests", _seize->DEFAULT.seizeRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr);
 			item->setElementManager(_parentModel->getDataManager());
 			item->loadInstance(fields, i);
 			_seize->getSeizeRequests()->insert(item);
 		}
-		_delay->setDelayExpression(LoadField(fields, "delayExpression", _delay->DEFAULT.delayExpression));
-		_delay->setDelayTimeUnit(LoadField(fields, "delayExpressionTimeUnit", _delay->DEFAULT.delayTimeUnit));
+		_delay->setDelayExpression(fields->loadField("delayExpression", _delay->DEFAULT.delayExpression));
+		_delay->setDelayTimeUnit(fields->loadField("delayExpressionTimeUnit", _delay->DEFAULT.delayTimeUnit));
 		_seize->setModelLevel(_id);
 		_delay->setModelLevel(_id);
 		_release->setModelLevel(_id);
@@ -138,10 +142,11 @@ bool Process::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Process::_saveInstance(bool saveDefaultValues) {
+void Process::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	_adjustConnections();
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues); //Util::TypeOf<Assign>());
-	std::map<std::string, std::string>* seizefields = ModelComponent::SaveInstance(_seize);
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	auto seizefields = std::unique_ptr<PersistenceRecord>(fields->newInstance());
+	ModelComponent::SaveInstance(seizefields.get(), _seize);
 	seizefields->erase("id");
 	seizefields->erase("typename");
 	seizefields->erase("name");
@@ -150,7 +155,8 @@ std::map<std::string, std::string>* Process::_saveInstance(bool saveDefaultValue
 	seizefields->erase("caption");
 	seizefields->erase("reportStatistics");
 	fields->insert(seizefields->begin(), seizefields->end());
-	std::map<std::string, std::string>* delayfields = ModelComponent::SaveInstance(_delay);
+	auto delayfields = std::unique_ptr<PersistenceRecord>(fields->newInstance());
+	ModelComponent::SaveInstance(delayfields.get(), _delay);
 	delayfields->erase("id");
 	delayfields->erase("typename");
 	delayfields->erase("name");
@@ -159,11 +165,9 @@ std::map<std::string, std::string>* Process::_saveInstance(bool saveDefaultValue
 	delayfields->erase("caption");
 	delayfields->erase("reportStatistics");
 	fields->insert(delayfields->begin(), delayfields->end());
-	std::map<std::string, std::string>* releasefields = ModelComponent::SaveInstance(_release);
-	fields->erase("nextId");
-	std::map<std::string, std::string>::iterator it = releasefields->find("nextId");
-	fields->insert((*it));
-	return fields;
+	auto releasefields = std::unique_ptr<PersistenceRecord>(fields->newInstance());
+	ModelComponent::SaveInstance(releasefields.get(), _release);
+	fields->saveField("nextId", releasefields->loadField("nextId"));
 }
 
 PluginInformation* Process::GetPluginInformation() {

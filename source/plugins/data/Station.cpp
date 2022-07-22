@@ -95,7 +95,7 @@ PluginInformation* Station::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Station::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Station::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Station* newElement = new Station(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -105,14 +105,13 @@ ModelDataDefinition* Station::LoadInstance(Model* model, std::map<std::string, s
 	return newElement;
 }
 
-bool Station::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Station::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	return res;
 }
 
-std::map<std::string, std::string>* Station::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues);
-	return fields;
+void Station::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Station::_check(std::string* errorMessage) {

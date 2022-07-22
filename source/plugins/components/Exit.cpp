@@ -33,7 +33,7 @@ std::string Exit::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Exit::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Exit::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Exit* newComponent = new Exit(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -48,9 +48,7 @@ void Exit::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-//void Exit::_initBetweenReplications() {}
-
-bool Exit::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Exit::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -58,10 +56,9 @@ bool Exit::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Exit::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Exit::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool Exit::_check(std::string* errorMessage) {

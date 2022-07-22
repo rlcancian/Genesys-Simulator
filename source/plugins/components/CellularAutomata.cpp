@@ -32,7 +32,7 @@ std::string CellularAutomata::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* CellularAutomata::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* CellularAutomata::LoadInstance(Model* model, PersistenceRecord *fields) {
 	CellularAutomata* newComponent = new CellularAutomata(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -47,7 +47,7 @@ void CellularAutomata::_onDispatchEvent(Entity* entity, unsigned int inputPortNu
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool CellularAutomata::_loadInstance(std::map<std::string, std::string>* fields) {
+bool CellularAutomata::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -55,12 +55,9 @@ bool CellularAutomata::_loadInstance(std::map<std::string, std::string>* fields)
 	return res;
 }
 
-//void CelularAutomata::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* CellularAutomata::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void CellularAutomata::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool CellularAutomata::_check(std::string* errorMessage) {

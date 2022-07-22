@@ -121,7 +121,7 @@ PluginInformation* Seize::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* Seize::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Seize::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Seize* newComponent = new Seize(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -158,16 +158,16 @@ void Seize::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Seize::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Seize::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_allocationType = LoadField(fields, "allocationType", DEFAULT.allocationType);
-		this->_priority = LoadField(fields, "priority", DEFAULT.priority);
-		this->_saveAttribute = LoadField(fields, "saveAttribute", DEFAULT.saveAttribute);
+		this->_allocationType = fields->loadField("allocationType", DEFAULT.allocationType);
+		this->_priority = fields->loadField("priority", DEFAULT.priority);
+		this->_saveAttribute = fields->loadField("saveAttribute", DEFAULT.saveAttribute);
 		_queueableItem = new QueueableItem(nullptr);
 		_queueableItem->setElementManager(_parentModel->getDataManager());
 		_queueableItem->loadInstance(fields);
-		unsigned short numRequests = LoadField(fields, "resquests", DEFAULT.seizeRequestSize);
+		unsigned short numRequests = fields->loadField("resquests", DEFAULT.seizeRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr);
 			item->setElementManager(_parentModel->getDataManager());
@@ -178,23 +178,20 @@ bool Seize::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Seize::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues); //Util::TypeOf<Seize>());
-	SaveField(fields, "allocationType", _allocationType, DEFAULT.allocationType, saveDefaultValues);
-	SaveField(fields, "priority=", _priority, DEFAULT.priority, saveDefaultValues);
-	SaveField(fields, "saveAttribute=", _saveAttribute, DEFAULT.saveAttribute, saveDefaultValues);
+void Seize::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("allocationType", _allocationType, DEFAULT.allocationType, saveDefaultValues);
+	fields->saveField("priority=", _priority, DEFAULT.priority, saveDefaultValues);
+	fields->saveField("saveAttribute=", _saveAttribute, DEFAULT.saveAttribute, saveDefaultValues);
 	if (_queueableItem != nullptr) {
-		std::map<std::string, std::string>* queueablefields = _queueableItem->saveInstance(saveDefaultValues);
-		fields->insert(queueablefields->begin(), queueablefields->end());
+		_queueableItem->saveInstance(fields, saveDefaultValues);
 	}
-	SaveField(fields, "resquests", _seizeRequests->size(), DEFAULT.seizeRequestSize, saveDefaultValues);
+	fields->saveField("resquests", _seizeRequests->size(), DEFAULT.seizeRequestSize, saveDefaultValues);
 	unsigned short i = 0;
 	for (SeizableItem* request : *_seizeRequests->list()) {
-		std::map<std::string, std::string>* seizablefields = request->saveInstance(i, saveDefaultValues);
-		fields->insert(seizablefields->begin(), seizablefields->end());
+		request->saveInstance(fields, i, saveDefaultValues);
 		i++;
 	}
-	return fields;
 }
 
 // protected could override

@@ -206,7 +206,7 @@ PluginInformation* Resource::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Resource::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Resource::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Resource* newElement = new Resource(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -216,29 +216,27 @@ ModelDataDefinition* Resource::LoadInstance(Model* model, std::map<std::string, 
 	return newElement;
 }
 
-bool Resource::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Resource::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		_capacity = LoadField(fields, "capacity", DEFAULT.capacity);
-		_costBusyHour = LoadField(fields, "costBusyHour", DEFAULT.cost);
-		_costIdleHour = LoadField(fields, "costIdleHour", DEFAULT.cost);
-		_costPerUse = LoadField(fields, "costPerUse", DEFAULT.cost);
-		_resourceState = static_cast<Resource::ResourceState> (LoadField(fields, "resourceState", static_cast<int> (DEFAULT.resourceState)));
+		_capacity = fields->loadField("capacity", DEFAULT.capacity);
+		_costBusyHour = fields->loadField("costBusyHour", DEFAULT.cost);
+		_costIdleHour = fields->loadField("costIdleHour", DEFAULT.cost);
+		_costPerUse = fields->loadField("costPerUse", DEFAULT.cost);
+		_resourceState = static_cast<Resource::ResourceState> (fields->loadField("resourceState", static_cast<int> (DEFAULT.resourceState)));
 	}
 	//@TODO: Save failures
 	return res;
 }
 
-std::map<std::string, std::string>* Resource::_saveInstance(bool saveDefaultValues) {
-	// bool saveDefaults = _getSaveDefaultsOption();
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Resource>());
-	SaveField(fields, "capacity", _capacity, DEFAULT.capacity, saveDefaultValues);
-	SaveField(fields, "costBusyHour", _costBusyHour, DEFAULT.cost, saveDefaultValues);
-	SaveField(fields, "costIdleHour", _costIdleHour, DEFAULT.cost, saveDefaultValues);
-	SaveField(fields, "costPerUse", _costPerUse, DEFAULT.cost, saveDefaultValues);
-	SaveField(fields, "resourceState", static_cast<int> (_resourceState), static_cast<int> (DEFAULT.resourceState), saveDefaultValues);
+void Resource::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("capacity", _capacity, DEFAULT.capacity, saveDefaultValues);
+	fields->saveField("costBusyHour", _costBusyHour, DEFAULT.cost, saveDefaultValues);
+	fields->saveField("costIdleHour", _costIdleHour, DEFAULT.cost, saveDefaultValues);
+	fields->saveField("costPerUse", _costPerUse, DEFAULT.cost, saveDefaultValues);
+	fields->saveField("resourceState", static_cast<int> (_resourceState), static_cast<int> (DEFAULT.resourceState), saveDefaultValues);
 	//@TODO: load failures
-	return fields;
 }
 
 bool Resource::_check(std::string* errorMessage) {

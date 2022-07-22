@@ -48,8 +48,8 @@ public:
 	void setAttributeNotVariable(bool isAttributeNotVariable);
 	bool isAttributeNotVariable() const;
 public:
-	bool loadInstance(std::map<std::string, std::string>* fields, unsigned int parentIndex);
-	std::map<std::string, std::string>* saveInstance(unsigned int parentIndex, bool saveDefault);
+	bool loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
+	void saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefault);
 private:
 	std::string _destination = "";
 	std::string _expression = "";

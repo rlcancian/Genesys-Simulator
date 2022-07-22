@@ -33,7 +33,7 @@ std::string LSODE::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* LSODE::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* LSODE::LoadInstance(Model* model, PersistenceRecord *fields) {
 	LSODE* newComponent = new LSODE(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -161,7 +161,7 @@ void LSODE::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_parentModel->sendEntityToComponent(entity, getConnections()->getFrontConnection());
 }
 
-bool LSODE::_loadInstance(std::map<std::string, std::string>* fields) {
+bool LSODE::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -170,13 +170,9 @@ bool LSODE::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void LSODE::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* LSODE::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void LSODE::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-
-	return fields;
 }
 
 bool LSODE::_check(std::string* errorMessage) {

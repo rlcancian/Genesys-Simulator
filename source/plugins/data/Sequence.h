@@ -28,10 +28,10 @@ public:
 	SequenceStep(Model* model, std::string stationOrLabelName, bool isStation = true, std::list<Assignment*>* assignments = nullptr);
 public: // virtual
 
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields, unsigned int parentIndex);
-	virtual std::map<std::string, std::string>* _saveInstance(unsigned int parentIndex, bool saveDefaultValues);
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
+	virtual void _saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 
 public:
 
@@ -89,13 +89,13 @@ public:
 	virtual std::string show();
 public: // static 
 	static PluginInformation* GetPluginInformation();
-	static ModelDataDefinition* LoadInstance(Model* model, std::map<std::string, std::string>* fields);
+	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
 	List<SequenceStep*>* getSteps() const;
 protected:
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 	virtual bool _check(std::string* errorMessage);
 private:
 	List<SequenceStep*>* _steps = new List<SequenceStep*>();

@@ -31,10 +31,8 @@ public:
 	QueueableItem(ModelDataDefinition* queueOrSet, QueueableItem::QueueableType queueableType = QueueableItem::QueueableType::QUEUE, std::string index = "0");
 	QueueableItem(Model* model, std::string queueName);
 public:
-	//virtual bool _loadInstance(std::map<std::string, std::string>* fields, unsigned int parentIndex);
-	//virtual std::map<std::string, std::string>* _saveInstance(unsigned int parentIndex);
-	bool loadInstance(std::map<std::string, std::string>* fields);
-	std::map<std::string, std::string>* saveInstance(bool saveDefaultValues);
+	bool loadInstance(PersistenceRecord *fields);
+	void saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 public:
 	std::string show();
 	void setIndex(std::string index);

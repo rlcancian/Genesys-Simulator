@@ -112,11 +112,11 @@ void Release::_initBetweenReplications() {
 	//}
 }
 
-bool Release::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Release::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_priority = LoadField(fields, "priority", DEFAULT.priority);
-		unsigned short numRequests = LoadField(fields, "resquests", DEFAULT.releaseRequestSize);
+		this->_priority = fields->loadField("priority", DEFAULT.priority);
+		unsigned short numRequests = fields->loadField("resquests", DEFAULT.releaseRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr);
 			item->setElementManager(_parentModel->getDataManager());
@@ -127,17 +127,15 @@ bool Release::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Release::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues); //Util::TypeOf<Release>());
-	SaveField(fields, "priority", _priority, DEFAULT.priority, saveDefaultValues);
-	SaveField(fields, "resquests", _releaseRequests->size(), DEFAULT.releaseRequestSize, saveDefaultValues);
+void Release::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("priority", _priority, DEFAULT.priority, saveDefaultValues);
+	fields->saveField("resquests", _releaseRequests->size(), DEFAULT.releaseRequestSize, saveDefaultValues);
 	unsigned short i = 0;
 	for (SeizableItem* request : *_releaseRequests->list()) {
-		std::map<std::string, std::string>* seizablefields = request->saveInstance(i, saveDefaultValues);
-		fields->insert(seizablefields->begin(), seizablefields->end());
+		request->saveInstance(fields, i, saveDefaultValues);
 		i++;
 	}
-	return fields;
 }
 
 void Release::_createInternalAndAttachedData() {
@@ -191,7 +189,7 @@ PluginInformation* Release::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* Release::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Release::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Release* newComponent = new Release(model);
 	try {
 		newComponent->_loadInstance(fields);

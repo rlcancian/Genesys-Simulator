@@ -33,7 +33,7 @@ std::string Access::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Access::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Access::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Access* newComponent = new Access(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -48,7 +48,7 @@ void Access::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Access::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Access::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -58,10 +58,9 @@ bool Access::_loadInstance(std::map<std::string, std::string>* fields) {
 
 //void Access::_initBetweenReplications() {}
 
-std::map<std::string, std::string>* Access::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Access::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool Access::_check(std::string* errorMessage) {

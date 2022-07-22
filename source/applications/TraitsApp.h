@@ -78,11 +78,11 @@ template <> struct TraitsApp<GenesysApplication_if> {
 	//typedef Smart_Parser Application;
 	//typedef Smart_ParserModelFunctions Application;
 	//typedef Smart_Plugin Application;
-	//typedef Smart_Process Application;
+	typedef Smart_Process Application;
 	//typedef Smart_ProcessSet Application;
 	//typedef Smart_RouteStation Application;
 	//typedef Smart_SeizeDelayRelease Application;
-	typedef Smart_Failures Application;
+	// typedef Smart_Failures Application;
 	//typedef Smart_SeizeDelayReleaseNoDataDefs Application;
 	//typedef Smart_SeizeDelayReleaseMany Application;
 	//typedef Smart_Sequence Application;

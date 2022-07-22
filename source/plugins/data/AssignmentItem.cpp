@@ -80,19 +80,16 @@ bool Assignment::isAttributeNotVariable() const {
 	return _isAttributeNotVariable;
 }
 
-bool Assignment::loadInstance(std::map<std::string, std::string>* fields, unsigned int parentIndex) {
-	_destination = LoadField(fields, "assignDest" + strIndex(parentIndex), "");
-	_expression = LoadField(fields, "assignExpr" + strIndex(parentIndex), "");
-	_isAttributeNotVariable = LoadField(fields, "assignIsAttrib" + strIndex(parentIndex), true);
-	return true; /////
+bool Assignment::loadInstance(PersistenceRecord *fields, unsigned int parentIndex) {
+	_destination = fields->loadField("assignDest" + strIndex(parentIndex), "");
+	_expression = fields->loadField("assignExpr" + strIndex(parentIndex), "");
+	_isAttributeNotVariable = fields->loadField("assignIsAttrib" + strIndex(parentIndex), true);
+	return true;
 }
 
-std::map<std::string, std::string>* Assignment::saveInstance(unsigned int parentIndex, bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
+void Assignment::saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues) {
 	std::string num = strIndex(parentIndex);
-	SaveField(fields, "assignDest" + strIndex(parentIndex), getDestination(), "", saveDefaultValues);
-	SaveField(fields, "assignExpr" + strIndex(parentIndex), getExpression(), "", saveDefaultValues);
-	SaveField(fields, "assignIsAttrib" + strIndex(parentIndex), isAttributeNotVariable(), true, saveDefaultValues);
-	return fields;
+	fields->saveField("assignDest" + strIndex(parentIndex), getDestination(), "", saveDefaultValues);
+	fields->saveField("assignExpr" + strIndex(parentIndex), getExpression(), "", saveDefaultValues);
+	fields->saveField("assignIsAttrib" + strIndex(parentIndex), isAttributeNotVariable(), true, saveDefaultValues);
 }
-

@@ -98,7 +98,7 @@ PluginInformation* Create::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* Create::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Create::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Create* newComponent = new Create(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -109,7 +109,7 @@ ModelComponent* Create::LoadInstance(Model* model, std::map<std::string, std::st
 	return newComponent;
 }
 
-bool Create::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Create::_loadInstance(PersistenceRecord *fields) {
 	return SourceModelComponent::_loadInstance(fields);
 }
 
@@ -117,10 +117,8 @@ void Create::_initBetweenReplications() {
 	SourceModelComponent::_initBetweenReplications();
 }
 
-std::map<std::string, std::string>* Create::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = SourceModelComponent::_saveInstance(saveDefaultValues);
-
-	return fields;
+void Create::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	SourceModelComponent::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Create::_check(std::string* errorMessage) {

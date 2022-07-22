@@ -17,8 +17,9 @@
 #include <string>
 #include <functional>
 #include <list>
-#include "../util/Util.h"
 
+#include "../util/Util.h"
+#include "Persistence.h"
 #include "PluginInformation.h"
 
 //namespace GenesysKernel {
@@ -38,12 +39,12 @@ public:
     bool isIsValidPlugin() const;
     PluginInformation* getPluginInfo() const;
 public:
-    ModelDataDefinition* loadNew(Model* model, std::map<std::string, std::string>* fields); ///< creates a new ModelDataDefinition from fields loaded from a file
-    bool loadAndInsertNew(Model* model, std::map<std::string, std::string>* fields);
+    ModelDataDefinition* loadNew(Model* model, PersistenceRecord *fields); ///< creates a new ModelDataDefinition from fields loaded from a file
+    bool loadAndInsertNew(Model* model, PersistenceRecord *fields);
     ModelDataDefinition* newInstance(Model* model, std::string name="");
 private:
-    ModelComponent* _loadNewComponent(Model* model, std::map<std::string, std::string>* fields);
-    ModelDataDefinition* _loadNewElement(Model* model, std::map<std::string, std::string>* fields);
+    ModelComponent* _loadNewComponent(Model* model, PersistenceRecord *fields);
+    ModelDataDefinition* _loadNewElement(Model* model, PersistenceRecord *fields);
 private: // read only
     bool _isValidPlugin;
     PluginInformation* _pluginInfo;

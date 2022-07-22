@@ -38,7 +38,7 @@ std::string MarkovChain::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* MarkovChain::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* MarkovChain::LoadInstance(Model* model, PersistenceRecord *fields) {
 	MarkovChain* newComponent = new MarkovChain(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -117,7 +117,7 @@ void MarkovChain::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool MarkovChain::_loadInstance(std::map<std::string, std::string>* fields) {
+bool MarkovChain::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -129,10 +129,9 @@ void MarkovChain::_initBetweenReplications() {
 	this->_initilized = false;
 }
 
-std::map<std::string, std::string>* MarkovChain::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void MarkovChain::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool MarkovChain::_check(std::string* errorMessage) {

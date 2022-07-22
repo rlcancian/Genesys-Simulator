@@ -103,7 +103,7 @@ public:
 	virtual std::string show();
 public: // static
 	static PluginInformation* GetPluginInformation();
-	static ModelDataDefinition* LoadInstance(Model* model, std::map<std::string, std::string>* fields);
+	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
 	void insertElement(Waiting* modeldatum);
@@ -121,8 +121,8 @@ public: // to implement SIMAN functions
 	//public:
 	//	void initBetweenReplications();
 protected: // must be overriden
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 protected: // could be overriden
 	virtual bool _check(std::string* errorMessage);
 	virtual void _initBetweenReplications();

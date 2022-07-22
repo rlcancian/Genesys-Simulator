@@ -36,7 +36,7 @@ std::string Batch::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Batch::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Batch::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Batch* newComponent = new Batch(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -203,15 +203,15 @@ void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	}
 }
 
-bool Batch::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Batch::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		_batchType = static_cast<Batch::BatchType> (LoadField(fields, "batchType", static_cast<int> (DEFAULT.batchType)));
-		_rule = static_cast<Batch::Rule> (LoadField(fields, "rule", static_cast<int> (DEFAULT.rule)));
-		_groupedAttributes = static_cast<Batch::GroupedAttribs> (LoadField(fields, "groupedAttributes", static_cast<int> (DEFAULT.groupedAttributes)));
-		_batchSize = LoadField(fields, "batchSize", DEFAULT.batchSize);
-		_attributeName = LoadField(fields, "attributeName", DEFAULT.attributeName);
-		std::string groupedEntityTypeName = LoadField(fields, "groupedEntityType", "");
+		_batchType = static_cast<Batch::BatchType> (fields->loadField("batchType", static_cast<int> (DEFAULT.batchType)));
+		_rule = static_cast<Batch::Rule> (fields->loadField("rule", static_cast<int> (DEFAULT.rule)));
+		_groupedAttributes = static_cast<Batch::GroupedAttribs> (fields->loadField("groupedAttributes", static_cast<int> (DEFAULT.groupedAttributes)));
+		_batchSize = fields->loadField("batchSize", DEFAULT.batchSize);
+		_attributeName = fields->loadField("attributeName", DEFAULT.attributeName);
+		std::string groupedEntityTypeName = fields->loadField("groupedEntityType", "");
 		if (groupedEntityTypeName != "") {
 			_groupedEntityType = dynamic_cast<EntityType*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityType>(), groupedEntityTypeName));
 		}
@@ -219,20 +219,17 @@ bool Batch::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Batch::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
-	SaveField(fields, "batchType", static_cast<int> (_batchType), static_cast<int> (DEFAULT.batchType), saveDefaultValues);
-	SaveField(fields, "rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
-	SaveField(fields, "groupedAttributes", static_cast<int> (_groupedAttributes), static_cast<int> (DEFAULT.groupedAttributes), saveDefaultValues);
-	SaveField(fields, "batchSize", _batchSize, DEFAULT.batchSize, saveDefaultValues);
-	SaveField(fields, "attributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
+void Batch::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("batchType", static_cast<int> (_batchType), static_cast<int> (DEFAULT.batchType), saveDefaultValues);
+	fields->saveField("rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
+	fields->saveField("groupedAttributes", static_cast<int> (_groupedAttributes), static_cast<int> (DEFAULT.groupedAttributes), saveDefaultValues);
+	fields->saveField("batchSize", _batchSize, DEFAULT.batchSize, saveDefaultValues);
+	fields->saveField("attributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
 	if (_groupedEntityType != nullptr) {
-		SaveField(fields, "groupedEntityType", _groupedEntityType->getName(), "", saveDefaultValues);
+		fields->saveField("groupedEntityType", _groupedEntityType->getName(), "", saveDefaultValues);
 	}
-	return fields;
 }
-
-//void Batch::_initBetweenReplications() {}
 
 void Batch::_createInternalAndAttachedData() {
 	_attachedAttributesInsert({"Entity.Group"});

@@ -61,7 +61,7 @@ PluginInformation* Storage::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Storage::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Storage::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Storage* newElement = new Storage(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -71,24 +71,21 @@ ModelDataDefinition* Storage::LoadInstance(Model* model, std::map<std::string, s
 	return newElement;
 }
 
-bool Storage::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Storage::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			this->_capacity = LoadField(fields, "capacity", DEFAULT.capacity);
-			this->_totalArea = LoadField(fields, "totalArea", DEFAULT.totalArea);
-			this->_unitsPerArea = LoadField(fields, "unitPerArea", DEFAULT.unitsPerArea);
+			this->_capacity = fields->loadField("capacity", DEFAULT.capacity);
+			this->_totalArea = fields->loadField("totalArea", DEFAULT.totalArea);
+			this->_unitsPerArea = fields->loadField("unitPerArea", DEFAULT.unitsPerArea);
 		} catch (...) {
 		}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* Storage::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Storage>());
-	//SaveField(fields, "orderRule", std::to_string(static_cast<int> (this->_orderRule)));
-	//SaveField(fields, "attributeName", "\""+this->_attributeName+"\"");
-	return fields;
+void Storage::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Storage::_check(std::string* errorMessage) {

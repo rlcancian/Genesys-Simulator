@@ -150,14 +150,12 @@ Util::identification Entity::entityNumber() const {
 	return _entityNumber;
 }
 
-bool Entity::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Entity::_loadInstance(PersistenceRecord *fields) {
 	// never loads an entity 
-	fields = nullptr; // just to use the parameter and avoid warning for not using it
-	return fields;
+	return true;
 }
 
-std::map<std::string, std::string>* Entity::_saveInstance(bool saveDefaultValues) {
-	return new std::map<std::string, std::string>();
+void Entity::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 }
 
 bool Entity::_check(std::string* errorMessage) {

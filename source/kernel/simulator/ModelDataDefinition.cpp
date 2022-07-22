@@ -168,33 +168,33 @@ bool ModelDataDefinition::_getSaveDefaultsOption() {
 	return _parentModel->getPersistence()->getOption(ModelPersistence_if::Options::SAVEDEFAULTS);
 }
 
-bool ModelDataDefinition::_loadInstance(std::map<std::string, std::string>* fields) {
-	//std::cout << "FIELDS: " << map2str(fields) << std::endl;
+bool ModelDataDefinition::_loadInstance(PersistenceRecord *fields) {
 	bool res = true;
-	std::map<std::string, std::string>::iterator it;
-	it = fields->find("id");
-	if (it != fields->end())
-		this->_id = std::stoi((*it).second);
-	else
+
+	int id = fields->loadField("id", -1);
+	if (id > 0) {
+		this->_id = id;
+	} else {
 		res = false;
-	it = fields->find("name");
-	if (it != fields->end())
-		this->_name = (*it).second;
-	else
-		this->_name = "";
-	//it != fields->end() ? this->_name = (*it).second : res = false;
-	it = fields->find("reportStatistics");
-	it != fields->end() ? this->_reportStatistics = std::stoi((*it).second) : this->_reportStatistics = TraitsKernel<ModelDataDefinition>::reportStatistics;
+	}
+	
+	this->_name = fields->loadField("name", "");
+
+	int reportStats = fields->loadField("reportStatistics", -1);
+	if (reportStats < 0) {
+		this->_reportStatistics = TraitsKernel<ModelDataDefinition>::reportStatistics;
+	} else {
+		this->_reportStatistics = reportStats != 0;
+	}
+
 	return res;
 }
 
-std::map<std::string, std::string>* ModelDataDefinition::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
-	SaveField(fields, "typename", _typename);
-	SaveField(fields, "id", _id);
-	SaveField(fields, "name", _name);
-	SaveField(fields, "reportStatistics", _reportStatistics, TraitsKernel<ModelDataDefinition>::reportStatistics, saveDefaultValues);
-	return fields;
+void ModelDataDefinition::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	fields->saveField("typename", _typename);
+	fields->saveField("id", _id);
+	fields->saveField("name", _name);
+	fields->saveField("reportStatistics", _reportStatistics, TraitsKernel<ModelDataDefinition>::reportStatistics, saveDefaultValues);
 }
 
 bool ModelDataDefinition::_check(std::string* errorMessage) {
@@ -211,14 +211,6 @@ void ModelDataDefinition::_initBetweenReplications() {
 		pair.second->_initBetweenReplications();
 	}
 }
-
-/*
-std::list<std::map<std::string,std::string>*>* ModelDataDefinition::_saveInstance(std::string type) {
-	std::list<std::map<std::string,std::string>*>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues);
-	fields->push_back(type);
-	return fields;
-}
- */
 
 std::string ModelDataDefinition::show() {
 	std::string internel = "";
@@ -315,13 +307,11 @@ void ModelDataDefinition::InitBetweenReplications(ModelDataDefinition* modeldatu
 	};
 }
 
-ModelDataDefinition* ModelDataDefinition::LoadInstance(Model* model, std::map<std::string, std::string>* fields, bool insertIntoModel) {
+ModelDataDefinition* ModelDataDefinition::LoadInstance(Model* model, PersistenceRecord *fields, bool insertIntoModel) {
 	std::string name = "";
 	if (insertIntoModel) {
 		// extracts the name from the fields even before "_laodInstance" and even before construct a new ModelDataDefinition in such way when constructing the ModelDataDefinition, it's done with the correct name and that correct name is show in trace
-		std::map<std::string, std::string>::iterator it = fields->find("name");
-		if (it != fields->end())
-			name = (*it).second;
+		name = fields->loadField("name", name);
 	}
 	ModelDataDefinition* newElement = new ModelDataDefinition(model, "ModelDataDefinition", name, insertIntoModel);
 	try {
@@ -338,14 +328,12 @@ ModelDataDefinition* ModelDataDefinition::NewInstance(Model* model, std::string 
 	return nullptr;
 }
 
-std::map<std::string, std::string>* ModelDataDefinition::SaveInstance(ModelDataDefinition* modeldatum) {
-	std::map<std::string, std::string>* fields; // = new std::list<std::string>();
+void ModelDataDefinition::SaveInstance(PersistenceRecord *fields, ModelDataDefinition* modeldatum) {
 	try {
-		fields = modeldatum->_saveInstance(modeldatum->_getSaveDefaultsOption());
+		modeldatum->_saveInstance(fields, modeldatum->_getSaveDefaultsOption());
 	} catch (const std::exception& e) {
 		//modeldatum->_model->getTrace()->traceError(e, "Error saving anElement " + modeldatum->show());
 	}
-	return fields;
 }
 
 bool ModelDataDefinition::Check(ModelDataDefinition* modeldatum, std::string* errorMessage) {

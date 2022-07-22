@@ -32,7 +32,7 @@ std::string Unstore::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Unstore::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Unstore::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Unstore* newComponent = new Unstore(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -47,7 +47,7 @@ void Unstore::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Unstore::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Unstore::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -55,12 +55,9 @@ bool Unstore::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void Unstore::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* Unstore::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Unstore::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool Unstore::_check(std::string* errorMessage) {

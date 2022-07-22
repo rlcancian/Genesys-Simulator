@@ -34,7 +34,7 @@ std::string Match::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Match::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Match::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Match* newComponent = new Match(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -90,7 +90,7 @@ void Match::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	}
 }
 
-bool Match::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Match::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -98,15 +98,12 @@ bool Match::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void Match::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* Match::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
-	SaveField(fields, "rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
-	SaveField(fields, "matchSize", _matchSize, DEFAULT.matchSize, saveDefaultValues);
-	SaveField(fields, "attributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
-	SaveField(fields, "queues", _queues->size(), 0u, saveDefaultValues);
-	return fields;
+void Match::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
+	fields->saveField("matchSize", _matchSize, DEFAULT.matchSize, saveDefaultValues);
+	fields->saveField("attributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
+	fields->saveField("queues", _queues->size(), 0u, saveDefaultValues);
 }
 
 void Match::setRule(Match::Rule _rule) {

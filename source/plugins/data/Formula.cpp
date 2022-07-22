@@ -90,7 +90,7 @@ PluginInformation* Formula::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Formula::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Formula::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Formula* newElement = new Formula(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -100,14 +100,12 @@ ModelDataDefinition* Formula::LoadInstance(Model* model, std::map<std::string, s
 	return newElement;
 }
 
-bool Formula::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Formula::_loadInstance(PersistenceRecord *fields) {
 	return ModelDataDefinition::_loadInstance(fields);
 }
 
-std::map<std::string, std::string>* Formula::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues);
-	//SaveField(fields, "...", std::to_string(this->_...));
-	return fields;
+void Formula::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Formula::_check(std::string* errorMessage) {

@@ -106,7 +106,7 @@ std::list<unsigned int>* Variable::getDimensionSizes() const {
 	return _dimensionSizes;
 }
 
-ModelDataDefinition* Variable::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Variable::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Variable* newElement = new Variable(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -116,41 +116,39 @@ ModelDataDefinition* Variable::LoadInstance(Model* model, std::map<std::string, 
 	return newElement;
 }
 
-bool Variable::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Variable::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		std::string pos;
 		double value;
 		unsigned int nv;
-		nv = LoadField(fields, "dimensions", 0);
+		nv = fields->loadField("dimensions", 0);
 		for (unsigned int i = 0; i < nv; i++) {
-			value = LoadField(fields, "dimension" + strIndex(i), 0);
+			value = fields->loadField("dimension" + strIndex(i), 0);
 			//this->_dimensionSizes->insert(value);
 			this->insertDimentionSize(value);
 		}
-		nv = LoadField(fields, "values", 0);
+		nv = fields->loadField("values", 0);
 		for (unsigned int i = 0; i < nv; i++) {
-			pos = LoadField(fields, "valuePos" + strIndex(i), 0);
-			value = LoadField(fields, "value" + strIndex(i), 0);
+			pos = fields->loadField("valuePos" + strIndex(i), 0);
+			value = fields->loadField("value" + strIndex(i), 0);
 			this->_initialValues->emplace(pos, value);
 		}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* Variable::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Variable>());
+void Variable::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	unsigned int i = 0;
-	SaveField(fields, "dimensions", _dimensionSizes->size(), 0u, saveDefaultValues);
+	fields->saveField("dimensions", _dimensionSizes->size(), 0u, saveDefaultValues);
 	for (unsigned int dimension : *_dimensionSizes) {
-		SaveField(fields, "dimension" + strIndex(i), dimension, 1u, saveDefaultValues);
+		fields->saveField("dimension" + strIndex(i), dimension, 1u, saveDefaultValues);
 	}
-	SaveField(fields, "values", _initialValues->size(), 0);
+	fields->saveField("values", _initialValues->size(), 0);
 	for (std::map<std::string, double>::iterator it = _initialValues->begin(); it != _initialValues->end(); it++, i++) {
-		SaveField(fields, "valuePos" + strIndex(i), (*it).first, "0", saveDefaultValues);
-		SaveField(fields, "value" + strIndex(i), (*it).second, 0.0, saveDefaultValues);
+		fields->saveField("valuePos" + strIndex(i), (*it).first, "0", saveDefaultValues);
+		fields->saveField("value" + strIndex(i), (*it).second, 0.0, saveDefaultValues);
 	}
-	return fields;
 }
 
 bool Variable::_check(std::string* errorMessage) {

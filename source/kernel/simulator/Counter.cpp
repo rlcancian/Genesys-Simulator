@@ -70,7 +70,7 @@ PluginInformation* Counter::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Counter::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Counter::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Counter* newElement = new Counter(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -80,12 +80,12 @@ ModelDataDefinition* Counter::LoadInstance(Model* model, std::map<std::string, s
 	return newElement;
 }
 
-bool Counter::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Counter::_loadInstance(PersistenceRecord *fields) {
 	return ModelDataDefinition::_loadInstance(fields);
 }
 
-std::map<std::string, std::string>* Counter::_saveInstance(bool saveDefaultValues) {
-	return ModelDataDefinition::_saveInstance(saveDefaultValues);
+void Counter::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Counter::_check(std::string* errorMessage) {

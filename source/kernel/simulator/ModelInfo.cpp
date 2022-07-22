@@ -72,27 +72,25 @@ std::string ModelInfo::getVersion() const {
 	return _version;
 }
 
-void ModelInfo::loadInstance(std::map<std::string, std::string>* fields) {
-	this->_analystName = LoadField(fields, "analystName");
-	this->_description = LoadField(fields, "description");
-	this->_name = LoadField(fields, "name");
-	this->_projectTitle = LoadField(fields, "projectTitle");
-	this->_version = LoadField(fields, "version");
+void ModelInfo::loadInstance(PersistenceRecord *fields) {
+	this->_analystName = fields->loadField("analystName");
+	this->_description = fields->loadField("description");
+	this->_name = fields->loadField("name");
+	this->_projectTitle = fields->loadField("projectTitle");
+	this->_version = fields->loadField("version");
 	_hasChanged = false;
 }
 
 // @TODO:!: implement check method (to check things like terminating condition)
 
-std::map<std::string, std::string>* ModelInfo::saveInstance() {
-	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
-	SaveField(fields, "typename", "ModelInfo");
-	SaveField(fields, "analystName", _analystName);
-	SaveField(fields, "description", _description);
-	SaveField(fields, "name", this->getName());
-	SaveField(fields, "projectTitle", _projectTitle);
-	SaveField(fields, "version", _version); // , "1.0");
+void ModelInfo::saveInstance(PersistenceRecord *fields) {
+	fields->saveField("typename", "ModelInfo");
+	fields->saveField("analystName", _analystName);
+	fields->saveField("description", _description);
+	fields->saveField("name", this->getName());
+	fields->saveField("projectTitle", _projectTitle);
+	fields->saveField("version", _version);
 	_hasChanged = false;
-	return fields;
 }
 
 bool ModelInfo::hasChanged() const {

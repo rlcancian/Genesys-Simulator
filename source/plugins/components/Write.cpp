@@ -34,7 +34,7 @@ std::string Write::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Write::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Write::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Write* newComponent = new Write(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -128,15 +128,14 @@ void Write::_initBetweenReplications() {
 	}
 }
 
-bool Write::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Write::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		//this->_writeToType = static_cast<WriteToType> (std::stoi((*fields->find("writeToType")).second));
-		_writeToType = static_cast<WriteToType> (LoadField(fields, "writeToType", static_cast<int> (DEFAULT.writeToType)));
-		_filename = LoadField(fields, "filename", DEFAULT.filename);
-		unsigned short writesSize = LoadField(fields, "writes", 0u); //std::stoi((*fields->find("writesSize")).second);
+		_writeToType = static_cast<WriteToType> (fields->loadField("writeToType", static_cast<int> (DEFAULT.writeToType)));
+		_filename = fields->loadField("filename", DEFAULT.filename);
+		unsigned short writesSize = fields->loadField("writes", 0u);
 		for (unsigned short i = 0; i < writesSize; i++) {
-			std::string text = LoadField(fields, "write" + strIndex(i), "");
+			std::string text = fields->loadField("write" + strIndex(i), "");
 			_writeElements->insert(text);
 			i++;
 		}
@@ -144,18 +143,17 @@ bool Write::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Write::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
-	SaveField(fields, "writeToType", static_cast<int> (_writeToType), static_cast<int> (DEFAULT.writeToType), saveDefaultValues);
-	SaveField(fields, "filename", _filename, DEFAULT.filename, saveDefaultValues);
-	SaveField(fields, "writes", _writeElements->size(), 0u, saveDefaultValues);
+void Write::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("writeToType", static_cast<int> (_writeToType), static_cast<int> (DEFAULT.writeToType), saveDefaultValues);
+	fields->saveField("filename", _filename, DEFAULT.filename, saveDefaultValues);
+	fields->saveField("writes", _writeElements->size(), 0u, saveDefaultValues);
 	unsigned short i = 0;
 	for (std::string text : *_writeElements->list()) {
 		//@ TODO: NEED TO AVOID \N TO BE SAVE AS A REAL NEW LINE. SHOULD SAVE "\n"
-		SaveField(fields, "write" + strIndex(i), text, "", saveDefaultValues);
+		fields->saveField("write" + strIndex(i), text, "", saveDefaultValues);
 		i++;
 	}
-	return fields;
 }
 
 bool Write::_check(std::string* errorMessage) {

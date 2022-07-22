@@ -47,7 +47,7 @@ void Signal::setSignalData(SignalData* signal) {
 
 // public static
 
-ModelComponent* Signal::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Signal::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Signal* newComponent = new Signal(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -73,25 +73,22 @@ void Signal::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Signal::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Signal::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
-		this->_limitExpression = LoadField(fields, "limitExpression", DEFAULT.limitExpression);
+		this->_limitExpression = fields->loadField("limitExpression", DEFAULT.limitExpression);
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* Signal::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Signal::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	SaveField(fields, "limitExpression", _limitExpression, DEFAULT.limitExpression);
-	return fields;
+	fields->saveField("limitExpression", _limitExpression, DEFAULT.limitExpression);
 }
 
 // protected should override
-
-//void Signal::_initBetweenReplications() {}
 
 bool Signal::_check(std::string* errorMessage) {
 	bool resultAll = true;

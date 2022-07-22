@@ -50,7 +50,7 @@ void Dispose::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_parentModel->removeEntity(entity); //, _reportStatistics);
 }
 
-bool Dispose::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Dispose::_loadInstance(PersistenceRecord *fields) {
 
 	return ModelComponent::_loadInstance(fields);
 }
@@ -60,11 +60,8 @@ void Dispose::_initBetweenReplications() {
 	SinkModelComponent::_initBetweenReplications();
 }
 
-std::map<std::string, std::string>* Dispose::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
-
-	return fields;
-
+void Dispose::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Dispose::_check(std::string* errorMessage) {
@@ -106,7 +103,7 @@ PluginInformation* Dispose::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* Dispose::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Dispose::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Dispose* newComponent = new Dispose(model);
 	try {
 		newComponent->_loadInstance(fields);

@@ -86,7 +86,7 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_parentModel->getTracer()->traceSimulation(this, "End of delay of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " scheduled to time " + std::to_string(delayEndTime) + Util::StrTimeUnitShort(stu) + " (wait time " + std::to_string(waitTime) + Util::StrTimeUnitShort(stu) + ") // " + _delayExpression);
 }
 
-ModelComponent* Delay::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Delay::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Delay* newComponent = new Delay(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -96,22 +96,19 @@ ModelComponent* Delay::LoadInstance(Model* model, std::map<std::string, std::str
 	return newComponent;
 }
 
-bool Delay::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Delay::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_delayExpression = LoadField(fields, "delayExpression", DEFAULT.delayExpression);
-		this->_delayTimeUnit = LoadField(fields, "delayExpressionTimeUnit", DEFAULT.delayTimeUnit);
+		this->_delayExpression = fields->loadField("delayExpression", DEFAULT.delayExpression);
+		this->_delayTimeUnit = fields->loadField("delayExpressionTimeUnit", DEFAULT.delayTimeUnit);
 	}
 	return res;
 }
 
-//void Delay::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* Delay::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues); //Util::TypeOf<Delay>());
-	SaveField(fields, "delayExpression", this->_delayExpression, DEFAULT.delayExpression, saveDefaultValues);
-	SaveField(fields, "delayExpressionTimeUnit", _delayTimeUnit, DEFAULT.delayTimeUnit, saveDefaultValues);
-	return fields;
+void Delay::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("delayExpression", this->_delayExpression, DEFAULT.delayExpression, saveDefaultValues);
+	fields->saveField("delayExpressionTimeUnit", _delayTimeUnit, DEFAULT.delayTimeUnit, saveDefaultValues);
 }
 
 bool Delay::_check(std::string* errorMessage) {

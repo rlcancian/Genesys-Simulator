@@ -113,7 +113,7 @@ PluginInformation* EntityType::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* EntityType::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* EntityType::LoadInstance(Model* model, PersistenceRecord *fields) {
 	EntityType* newElement = new EntityType(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -123,27 +123,26 @@ ModelDataDefinition* EntityType::LoadInstance(Model* model, std::map<std::string
 	return newElement;
 }
 
-bool EntityType::_loadInstance(std::map<std::string, std::string>* fields) {
+bool EntityType::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		this->_initialNVACost = LoadField(fields, "initialNVACost", DEFAULT.initialCost);
-		this->_initialOtherCost = LoadField(fields, "initialOtherCost", DEFAULT.initialCost);
-		this->_initialVACost = LoadField(fields, "initialVACost", DEFAULT.initialCost);
-		this->_initialWaitingCost = LoadField(fields, "initialWaitingCost", DEFAULT.initialCost);
-		this->_initialPicture = LoadField(fields, "initialPicture", DEFAULT.initialPicture);
+		this->_initialNVACost = fields->loadField("initialNVACost", DEFAULT.initialCost);
+		this->_initialOtherCost = fields->loadField("initialOtherCost", DEFAULT.initialCost);
+		this->_initialVACost = fields->loadField("initialVACost", DEFAULT.initialCost);
+		this->_initialWaitingCost = fields->loadField("initialWaitingCost", DEFAULT.initialCost);
+		this->_initialPicture = fields->loadField("initialPicture", DEFAULT.initialPicture);
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* EntityType::_saveInstance(bool saveDefaultValues) {
+void EntityType::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	bool saveDefaults = _getSaveDefaultsOption();
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<EntityType>());
-	SaveField(fields, "initialNVACost", _initialNVACost, DEFAULT.initialCost, saveDefaults);
-	SaveField(fields, "initialOtherCost", _initialOtherCost, DEFAULT.initialCost, saveDefaults);
-	SaveField(fields, "initialVACost", _initialVACost, DEFAULT.initialCost, saveDefaults);
-	SaveField(fields, "initialWaitingCost", _initialWaitingCost, DEFAULT.initialCost, saveDefaults);
-	SaveField(fields, "initialPicture", _initialPicture, DEFAULT.initialPicture, saveDefaults);
-	return fields;
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("initialNVACost", _initialNVACost, DEFAULT.initialCost, saveDefaults);
+	fields->saveField("initialOtherCost", _initialOtherCost, DEFAULT.initialCost, saveDefaults);
+	fields->saveField("initialVACost", _initialVACost, DEFAULT.initialCost, saveDefaults);
+	fields->saveField("initialWaitingCost", _initialWaitingCost, DEFAULT.initialCost, saveDefaults);
+	fields->saveField("initialPicture", _initialPicture, DEFAULT.initialPicture, saveDefaults);
 }
 
 bool EntityType::_check(std::string* errorMessage) {

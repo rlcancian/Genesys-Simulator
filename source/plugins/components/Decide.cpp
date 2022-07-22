@@ -67,25 +67,24 @@ void Decide::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 //	}
 //}
 
-bool Decide::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Decide::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		unsigned int nv = LoadField(fields, "conditions", 0);
+		unsigned int nv = fields->loadField("conditions", 0);
 		for (unsigned int i = 0; i < nv; i++) {
-			this->_conditions->insert(LoadField(fields, "condition" + strIndex(i), ""));
+			this->_conditions->insert(fields->loadField("condition" + strIndex(i), ""));
 		}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* Decide::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues); //Util::TypeOf<Decide>());
-	SaveField(fields, "conditions", _conditions->size(), 0u, saveDefaultValues);
+void Decide::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("conditions", _conditions->size(), 0u, saveDefaultValues);
 	unsigned short i = 0;
 	for (std::list<std::string>::iterator it = _conditions->list()->begin(); it != _conditions->list()->end(); it++, i++) {
-		SaveField(fields, "condition" + strIndex(i), (*it), "", saveDefaultValues);
+		fields->saveField("condition" + strIndex(i), (*it), "", saveDefaultValues);
 	}
-	return fields;
 }
 
 bool Decide::_check(std::string* errorMessage) {
@@ -129,7 +128,7 @@ PluginInformation* Decide::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* Decide::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Decide::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Decide* newComponent = new Decide(model);
 	try {
 		newComponent->_loadInstance(fields);

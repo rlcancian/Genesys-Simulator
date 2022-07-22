@@ -33,7 +33,7 @@ std::string Leave::show() {
 	return ModelComponent::show() + ",station=" + this->_station->getName();
 }
 
-ModelComponent* Leave::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Leave::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Leave* newComponent = new Leave(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -69,24 +69,23 @@ void Leave::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 
 //void Leave::_initBetweenReplications() {}
 
-bool Leave::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Leave::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		std::string stationName = LoadField(fields, "station", "");
+		std::string stationName = fields->loadField("station", "");
 		Station* station = dynamic_cast<Station*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
 		this->_station = station;
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* Leave::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Leave::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	std::string text = "";
 	if (_station != nullptr) {
 		text = _station->getName();
 	}
-	SaveField(fields, "station", text, "", saveDefaultValues);
-	return fields;
+	fields->saveField("station", text, "", saveDefaultValues);
 }
 
 PluginInformation* Leave::GetPluginInformation() {

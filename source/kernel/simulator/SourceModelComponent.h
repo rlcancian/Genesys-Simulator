@@ -48,9 +48,9 @@ public: // get & set
 public:
 	virtual std::string show();
 protected:
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
+	virtual bool _loadInstance(PersistenceRecord *fields);
 	virtual void _initBetweenReplications();
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
 	virtual bool _check(std::string* errorMessage);
 	virtual void _createInternalAndAttachedData();
 protected: // get & set

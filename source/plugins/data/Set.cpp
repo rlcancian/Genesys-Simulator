@@ -50,7 +50,7 @@ PluginInformation* Set::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Set::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Set::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Set* newElement = new Set(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -60,14 +60,14 @@ ModelDataDefinition* Set::LoadInstance(Model* model, std::map<std::string, std::
 	return newElement;
 }
 
-bool Set::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Set::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			_setOfType = LoadField(fields, "type", DEFAULT.setOfType);
-			unsigned int memberSize = LoadField(fields, "members", DEFAULT.membersSize);
+			_setOfType = fields->loadField("type", DEFAULT.setOfType);
+			unsigned int memberSize = fields->loadField("members", DEFAULT.membersSize);
 			for (unsigned int i = 0; i < memberSize; i++) {
-				std::string memberName = LoadField(fields, "member" + strIndex(i));
+				std::string memberName = fields->loadField("member" + strIndex(i));
 				ModelDataDefinition* member = _parentModel->getDataManager()->getDataDefinition(_setOfType, memberName);
 				if (member == nullptr) { // not found. That's a problem. Resource not loaded yet (or mismatch name
 					_parentModel->getTracer()->traceError("ERROR: Could not found " + _setOfType + " set member named \"" + memberName + "\"", TraceManager::Level::L1_errorFatal);
@@ -81,16 +81,15 @@ bool Set::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Set::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Set>());
-	SaveField(fields, "type", _setOfType, DEFAULT.setOfType, saveDefaultValues);
-	SaveField(fields, "members", _elementSet->size(), DEFAULT.membersSize, saveDefaultValues);
+void Set::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("type", _setOfType, DEFAULT.setOfType, saveDefaultValues);
+	fields->saveField("members", _elementSet->size(), DEFAULT.membersSize, saveDefaultValues);
 	unsigned int i = 0;
 	for (ModelDataDefinition* modeldatum : *_elementSet->list()) {
-		SaveField(fields, "member" + strIndex(i), modeldatum->getName());
+		fields->saveField("member" + strIndex(i), modeldatum->getName());
 		i++;
 	}
-	return fields;
 }
 
 bool Set::_check(std::string* errorMessage) {

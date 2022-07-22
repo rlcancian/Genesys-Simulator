@@ -42,7 +42,7 @@ std::string Route::show() {
 	return msg;
 }
 
-ModelComponent* Route::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Route::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Route* newComponent = new Route(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -152,19 +152,19 @@ void Route::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 
 //void Route::_initBetweenReplications() {}
 
-bool Route::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Route::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_routeTimeExpression = LoadField(fields, "routeTimeExpression", DEFAULT.routeTimeExpression);
-		this->_routeTimeTimeUnit = LoadField(fields, "routeTimeTimeUnit", DEFAULT.routeTimeTimeUnit);
-		this->_routeDestinationType = static_cast<Route::DestinationType> (LoadField(fields, "destinationType", static_cast<int> (DEFAULT.routeDestinationType)));
+		this->_routeTimeExpression = fields->loadField("routeTimeExpression", DEFAULT.routeTimeExpression);
+		this->_routeTimeTimeUnit = fields->loadField("routeTimeTimeUnit", DEFAULT.routeTimeTimeUnit);
+		this->_routeDestinationType = static_cast<Route::DestinationType> (fields->loadField("destinationType", static_cast<int> (DEFAULT.routeDestinationType)));
 		if (_routeDestinationType == DestinationType::Station) {
-			std::string stationName = LoadField(fields, "station", "");
+			std::string stationName = fields->loadField("station", "");
 			Station* station = dynamic_cast<Station*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
 			this->_station = station;
 		}
 		if (_routeDestinationType == DestinationType::Label) {
-			std::string stationName = LoadField(fields, "label", "");
+			std::string stationName = fields->loadField("label", "");
 			Label* label = dynamic_cast<Label*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
 			this->_label = label;
 		}
@@ -172,18 +172,17 @@ bool Route::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* Route::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
-	SaveField(fields, "destinationType", static_cast<int> (_routeDestinationType), static_cast<int> (DEFAULT.routeDestinationType), saveDefaultValues);
+void Route::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("destinationType", static_cast<int> (_routeDestinationType), static_cast<int> (DEFAULT.routeDestinationType), saveDefaultValues);
 	if (_routeDestinationType == DestinationType::Station && _station != nullptr) {
-		SaveField(fields, "station", _station->getName());
+		fields->saveField("station", _station->getName());
 	}
 	if (_routeDestinationType == DestinationType::Label && _label != nullptr) {
-		SaveField(fields, "label", _label->getName());
+		fields->saveField("label", _label->getName());
 	}
-	SaveField(fields, "routeTimeExpression", _routeTimeExpression, DEFAULT.routeTimeExpression, saveDefaultValues);
-	SaveField(fields, "routeTimeTimeUnit", _routeTimeTimeUnit, DEFAULT.routeTimeTimeUnit, saveDefaultValues);
-	return fields;
+	fields->saveField("routeTimeExpression", _routeTimeExpression, DEFAULT.routeTimeExpression, saveDefaultValues);
+	fields->saveField("routeTimeTimeUnit", _routeTimeTimeUnit, DEFAULT.routeTimeTimeUnit, saveDefaultValues);
 }
 
 PluginInformation* Route::GetPluginInformation() {

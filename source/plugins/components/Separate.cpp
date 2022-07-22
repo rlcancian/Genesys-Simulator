@@ -35,7 +35,7 @@ std::string Separate::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Separate::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Separate::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Separate* newComponent = new Separate(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -67,16 +67,13 @@ void Separate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	}
 }
 
-//void Separate::_initBetweenReplications() {}
-
-bool Separate::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Separate::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	return res;
 }
 
-std::map<std::string, std::string>* Separate::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
-	return fields;
+void Separate::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Separate::_check(std::string* errorMessage) {

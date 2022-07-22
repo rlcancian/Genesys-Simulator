@@ -30,15 +30,15 @@ std::string SourceModelComponent::show() {
 	return text;
 }
 
-bool SourceModelComponent::_loadInstance(std::map<std::string, std::string>* fields) {
+bool SourceModelComponent::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_entitiesPerCreation = LoadField(fields, "entitiesPerCreation", DEFAULT.entitiesPerCreation);
-		this->_firstCreation = LoadField(fields, "firstCreation", DEFAULT.firstCreation);
-		this->_timeBetweenCreationsExpression = LoadField(fields, "timeBetweenCreations", DEFAULT.timeBetweenCreationsExpression);
-		this->_timeBetweenCreationsTimeUnit = LoadField(fields, "timeBetweenCreationsTimeUnit", DEFAULT.timeBetweenCreationsTimeUnit);
-		this->_maxCreationsExpression = LoadField(fields, "maxCreations", DEFAULT.maxCreationsExpression);
-		std::string entityTypename = LoadField(fields, "entityType", DEFAULT.entityTypename);
+		this->_entitiesPerCreation = fields->loadField("entitiesPerCreation", DEFAULT.entitiesPerCreation);
+		this->_firstCreation = fields->loadField("firstCreation", DEFAULT.firstCreation);
+		this->_timeBetweenCreationsExpression = fields->loadField("timeBetweenCreations", DEFAULT.timeBetweenCreationsExpression);
+		this->_timeBetweenCreationsTimeUnit = fields->loadField("timeBetweenCreationsTimeUnit", DEFAULT.timeBetweenCreationsTimeUnit);
+		this->_maxCreationsExpression = fields->loadField("maxCreations", DEFAULT.maxCreationsExpression);
+		std::string entityTypename = fields->loadField("entityType", DEFAULT.entityTypename);
 		ModelDataDefinition* enttype = (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityType>(), entityTypename));
 		if (enttype != nullptr) {
 			this->_entityType = dynamic_cast<EntityType*> (enttype);
@@ -59,19 +59,18 @@ void SourceModelComponent::_initBetweenReplications() {
 	_entitiesCreatedSoFar = _entitiesPerCreation;
 }
 
-std::map<std::string, std::string>* SourceModelComponent::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
-	SaveField(fields, "entitiesPerCreation", _entitiesPerCreation, DEFAULT.entitiesPerCreation, saveDefaultValues);
-	SaveField(fields, "firstCreation", _firstCreation, DEFAULT.firstCreation, saveDefaultValues);
-	SaveField(fields, "timeBetweenCreations", _timeBetweenCreationsExpression, DEFAULT.timeBetweenCreationsExpression, saveDefaultValues);
-	SaveField(fields, "timeBetweenCreationsTimeUnit", _timeBetweenCreationsTimeUnit, DEFAULT.timeBetweenCreationsTimeUnit, saveDefaultValues);
-	SaveField(fields, "maxCreations", _maxCreationsExpression, DEFAULT.maxCreationsExpression, saveDefaultValues);
+void SourceModelComponent::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("entitiesPerCreation", _entitiesPerCreation, DEFAULT.entitiesPerCreation, saveDefaultValues);
+	fields->saveField("firstCreation", _firstCreation, DEFAULT.firstCreation, saveDefaultValues);
+	fields->saveField("timeBetweenCreations", _timeBetweenCreationsExpression, DEFAULT.timeBetweenCreationsExpression, saveDefaultValues);
+	fields->saveField("timeBetweenCreationsTimeUnit", _timeBetweenCreationsTimeUnit, DEFAULT.timeBetweenCreationsTimeUnit, saveDefaultValues);
+	fields->saveField("maxCreations", _maxCreationsExpression, DEFAULT.maxCreationsExpression, saveDefaultValues);
 	if (_entityType != nullptr) {
-		SaveField(fields, "entityType", _entityType->getName());
+		fields->saveField("entityType", _entityType->getName());
 	} else {
-		SaveField(fields, "entityType", DEFAULT.entityTypename);
+		fields->saveField("entityType", DEFAULT.entityTypename);
 	}
-	return fields;
 }
 
 bool SourceModelComponent::_check(std::string* errorMessage) {

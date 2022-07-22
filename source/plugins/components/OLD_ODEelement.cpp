@@ -68,7 +68,7 @@ PluginInformation* OLD_ODEelement::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* OLD_ODEelement::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* OLD_ODEelement::LoadInstance(Model* model, PersistenceRecord *fields) {
 	OLD_ODEelement* newElement = new OLD_ODEelement(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -78,12 +78,12 @@ ModelDataDefinition* OLD_ODEelement::LoadInstance(Model* model, std::map<std::st
 	return newElement;
 }
 
-bool OLD_ODEelement::_loadInstance(std::map<std::string, std::string>* fields) {
+bool OLD_ODEelement::_loadInstance(PersistenceRecord *fields) {
 	return ModelDataDefinition::_loadInstance(fields);
 }
 
-std::map<std::string, std::string>* OLD_ODEelement::_saveInstance(bool saveDefaultValues) {
-	return ModelDataDefinition::_saveInstance(saveDefaultValues);
+void OLD_ODEelement::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	return ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 bool OLD_ODEelement::_check(std::string* errorMessage) {

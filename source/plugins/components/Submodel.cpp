@@ -33,7 +33,7 @@ std::string Submodel::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Submodel::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Submodel::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Submodel* newComponent = new Submodel(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -48,7 +48,7 @@ void Submodel::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Submodel::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Submodel::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -56,12 +56,9 @@ bool Submodel::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void Submodel::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* Submodel::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Submodel::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool Submodel::_check(std::string* errorMessage) {

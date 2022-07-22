@@ -33,7 +33,7 @@ std::string PickStation::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* PickStation::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* PickStation::LoadInstance(Model* model, PersistenceRecord *fields) {
 	PickStation* newComponent = new PickStation(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -48,7 +48,7 @@ void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool PickStation::_loadInstance(std::map<std::string, std::string>* fields) {
+bool PickStation::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -56,12 +56,9 @@ bool PickStation::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void PickStation::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* PickStation::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void PickStation::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool PickStation::_check(std::string* errorMessage) {

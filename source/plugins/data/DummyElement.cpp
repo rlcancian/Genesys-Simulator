@@ -36,7 +36,7 @@ std::string DummyElement::show() {
 
 // public static 
 
-ModelDataDefinition* DummyElement::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* DummyElement::LoadInstance(Model* model, PersistenceRecord *fields) {
 	DummyElement* newElement = new DummyElement(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -60,23 +60,22 @@ PluginInformation* DummyElement::GetPluginInformation() {
 
 // protected virtual -- must be overriden 
 
-bool DummyElement::_loadInstance(std::map<std::string, std::string>* fields) {
+bool DummyElement::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			this->_someString = LoadField(fields, "someString", DEFAULT.someString);
-			this->_someUint = LoadField(fields, "someUint", DEFAULT.someUint);
+			this->_someString = fields->loadField("someString", DEFAULT.someString);
+			this->_someUint = fields->loadField("someUint", DEFAULT.someUint);
 		} catch (...) {
 		}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* DummyElement::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Queue>());
-	SaveField(fields, "someUint", _someUint, DEFAULT.someUint);
-	SaveField(fields, "someString", _someString, DEFAULT.someString);
-	return fields;
+void DummyElement::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("someUint", _someUint, DEFAULT.someUint);
+	fields->saveField("someString", _someString, DEFAULT.someString);
 }
 
 // protected virtual -- could be overriden 

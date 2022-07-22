@@ -99,7 +99,7 @@ bool Plugin::isIsValidPlugin() const {
 //    _drain = drain;
 //}
 
-ModelDataDefinition* Plugin::loadNew(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Plugin::loadNew(Model* model, PersistenceRecord *fields) {
     if (this->_pluginInfo->isComponent()) {
         return _loadNewComponent(model, fields);
     } else {
@@ -107,7 +107,7 @@ ModelDataDefinition* Plugin::loadNew(Model* model, std::map<std::string, std::st
     }
 }
 
-bool Plugin::loadAndInsertNew(Model* model, std::map<std::string, std::string>* fields) {
+bool Plugin::loadAndInsertNew(Model* model, PersistenceRecord *fields) {
     if (this->_pluginInfo->isComponent()) {
         ModelComponent* newComp = _loadNewComponent(model, fields);
         if (newComp != nullptr) {
@@ -134,14 +134,13 @@ ModelDataDefinition* Plugin::newInstance(Model* model, std::string name) {
 // Private
 //--------------------------
 
-ModelComponent* Plugin::_loadNewComponent(Model* model, std::map<std::string, std::string>* fields) {
-    //return this->_pluginInfo->loader(model, fields);
+ModelComponent* Plugin::_loadNewComponent(Model* model, PersistenceRecord *fields) {
     StaticLoaderComponentInstance loader = this->_pluginInfo->GetComponentLoader();
     ModelComponent* newElementOrComponent = loader(model, fields);
     return newElementOrComponent;
 }
 
-ModelDataDefinition* Plugin::_loadNewElement(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Plugin::_loadNewElement(Model* model, PersistenceRecord *fields) {
     StaticLoaderDataDefinitionInstance loader = this->_pluginInfo->getDataDefinitionLoader();
     ModelDataDefinition* newElementOrComponent = loader(model, fields);
     return newElementOrComponent;

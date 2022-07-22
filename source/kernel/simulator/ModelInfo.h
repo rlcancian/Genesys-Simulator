@@ -15,7 +15,9 @@
 #define MODELINFO_H
 
 #include <string>
+
 #include "../util/Util.h"
+#include "Persistence.h"
 
 //namespace GenesysKernel {
 
@@ -40,8 +42,8 @@ public: // gets and sets
 	void setVersion(std::string _version);
 	std::string getVersion() const;
 public:
-	void loadInstance(std::map<std::string, std::string>* fields);
-	std::map<std::string, std::string>* saveInstance();
+	void loadInstance(PersistenceRecord *fields);
+	void saveInstance(PersistenceRecord *fields);
 	bool hasChanged() const;
 private: // with public access (get & set)
 	// model general information

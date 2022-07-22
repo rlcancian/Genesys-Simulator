@@ -113,7 +113,7 @@ PluginInformation* Queue::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* Queue::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* Queue::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Queue* newElement = new Queue(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -123,23 +123,22 @@ ModelDataDefinition* Queue::LoadInstance(Model* model, std::map<std::string, std
 	return newElement;
 }
 
-bool Queue::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Queue::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			this->_attributeName = LoadField(fields, "attributeName", DEFAULT.attributeName);
-			this->_orderRule = static_cast<OrderRule> (LoadField(fields, "orderRule", static_cast<int> (DEFAULT.orderRule)));
+			this->_attributeName = fields->loadField("attributeName", DEFAULT.attributeName);
+			this->_orderRule = static_cast<OrderRule> (fields->loadField("orderRule", static_cast<int> (DEFAULT.orderRule)));
 		} catch (...) {
 		}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* Queue::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<Queue>());
-	SaveField(fields, "orderRule", static_cast<int> (this->_orderRule), static_cast<int> (DEFAULT.orderRule), saveDefaultValues);
-	SaveField(fields, "attributeName", this->_attributeName, DEFAULT.attributeName, saveDefaultValues);
-	return fields;
+void Queue::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("orderRule", static_cast<int> (this->_orderRule), static_cast<int> (DEFAULT.orderRule), saveDefaultValues);
+	fields->saveField("attributeName", this->_attributeName, DEFAULT.attributeName, saveDefaultValues);
 }
 
 bool Queue::_check(std::string* errorMessage) {

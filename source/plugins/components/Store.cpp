@@ -32,7 +32,7 @@ std::string Store::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* Store::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Store::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Store* newComponent = new Store(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -47,7 +47,7 @@ void Store::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool Store::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Store::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -55,12 +55,9 @@ bool Store::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void Store::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* Store::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void Store::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool Store::_check(std::string* errorMessage) {

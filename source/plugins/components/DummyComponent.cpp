@@ -36,7 +36,7 @@ std::string DummyComponent::show() {
 
 // public static 
 
-ModelComponent* DummyComponent::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* DummyComponent::LoadInstance(Model* model, PersistenceRecord *fields) {
 	DummyComponent* newComponent = new DummyComponent(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -59,7 +59,7 @@ void DummyComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool DummyComponent::_loadInstance(std::map<std::string, std::string>* fields) {
+bool DummyComponent::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -67,10 +67,9 @@ bool DummyComponent::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* DummyComponent::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void DummyComponent::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 

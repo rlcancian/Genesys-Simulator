@@ -23,9 +23,10 @@ class ModelDataDefinition;
 class ModelComponent;
 class Model;
 class ModelDataManager;
+class PersistenceRecord;
 
-typedef ModelComponent* (*StaticLoaderComponentInstance)(Model*, std::map<std::string, std::string>*);
-typedef ModelDataDefinition* (*StaticLoaderDataDefinitionInstance)(Model*, std::map<std::string, std::string>*);
+typedef ModelComponent* (*StaticLoaderComponentInstance)(Model*, PersistenceRecord*);
+typedef ModelDataDefinition* (*StaticLoaderDataDefinitionInstance)(Model*, PersistenceRecord*);
 typedef ModelDataDefinition* (*StaticConstructorDataDefinitionInstance)(Model*, std::string);
 class PluginInformation;
 typedef PluginInformation* (*StaticGetPluginInformation)();

@@ -15,7 +15,7 @@
 #define EXPERIMENTMANAGER_H
 
 //#include "Simulator.h"
-#include "PersistentObject_base.h"
+#include "Persistence.h"
 //#include "SimulationControl.h"
 //#include "SimulationResponse.h"
 #include "SimulationExperiment.h"

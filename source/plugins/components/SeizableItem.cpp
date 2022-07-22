@@ -42,27 +42,15 @@ SeizableItem::SeizableItem(Model* model, std::string resourceName, std::string q
 	SeizableItem(resource, quantityExpression, selectionRule, saveAttribute, index);
 }
 
-/*
-SeizableItem::SeizableItem(ModelDataDefinition* resourceOrSet, SeizableItem::SeizableType resourceType, std::string quantityExpression, SeizableItem::SelectionRule selectionRule, std::string saveAttribute, std::string index) {
-	// TODO: It could infer _seizableType from resourceOrSet and avoid resourceType parameter
-	_seizableType = resourceType;
-	_resourceOrSet = resourceOrSet;
-	_quantityExpression = quantityExpression;
-	_selectionRule = selectionRule;
-	_saveAttribute = saveAttribute;
-	_index = index;
-}
- */
-
-bool SeizableItem::loadInstance(std::map<std::string, std::string>* fields) {
+bool SeizableItem::loadInstance(PersistenceRecord *fields) {
 	bool res = true;
 	try {
-		_seizableType = static_cast<SeizableItem::SeizableType> (LoadField(fields, "requestSeizableType", static_cast<int> (DEFAULT.seizableType)));
-		_seizableName = LoadField(fields, "requestSeizable", "");
-		_quantityExpression = LoadField(fields, "requestQuantityExpression", DEFAULT.quantityExpression);
-		_selectionRule = static_cast<SeizableItem::SelectionRule> (LoadField(fields, "requestSelectionRule", static_cast<int> (DEFAULT.selectionRule)));
-		_saveAttribute = LoadField(fields, "requestSaveAttribute", DEFAULT.saveAttribute);
-		_index = LoadField(fields, "requestIndex", DEFAULT.index);
+		_seizableType = static_cast<SeizableItem::SeizableType> (fields->loadField("requestSeizableType", static_cast<int> (DEFAULT.seizableType)));
+		_seizableName = fields->loadField("requestSeizable", "");
+		_quantityExpression = fields->loadField("requestQuantityExpression", DEFAULT.quantityExpression);
+		_selectionRule = static_cast<SeizableItem::SelectionRule> (fields->loadField("requestSelectionRule", static_cast<int> (DEFAULT.selectionRule)));
+		_saveAttribute = fields->loadField("requestSaveAttribute", DEFAULT.saveAttribute);
+		_index = fields->loadField("requestIndex", DEFAULT.index);
 		if (_modeldataManager != nullptr) {
 			if (_seizableType == SeizableItem::SeizableType::RESOURCE) {
 				_resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
@@ -77,16 +65,16 @@ bool SeizableItem::loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-bool SeizableItem::loadInstance(std::map<std::string, std::string>* fields, unsigned int parentIndex) {
+bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIndex) {
 	bool res = true;
 	std::string num = strIndex(parentIndex);
 	try {
-		_seizableType = static_cast<SeizableItem::SeizableType> (LoadField(fields, "requestSeizableType" + num, static_cast<int> (DEFAULT.seizableType)));
-		_seizableName = LoadField(fields, "requestSeizable" + num, "");
-		_quantityExpression = LoadField(fields, "requestQuantityExpression" + num, DEFAULT.quantityExpression);
-		_selectionRule = static_cast<SeizableItem::SelectionRule> (LoadField(fields, "requestSelectionRule" + num, static_cast<int> (DEFAULT.selectionRule)));
-		_saveAttribute = LoadField(fields, "requestSaveAttribute" + num, DEFAULT.saveAttribute);
-		_index = LoadField(fields, "requestIndex" + num, DEFAULT.index);
+		_seizableType = static_cast<SeizableItem::SeizableType> (fields->loadField("requestSeizableType" + num, static_cast<int> (DEFAULT.seizableType)));
+		_seizableName = fields->loadField("requestSeizable" + num, "");
+		_quantityExpression = fields->loadField("requestQuantityExpression" + num, DEFAULT.quantityExpression);
+		_selectionRule = static_cast<SeizableItem::SelectionRule> (fields->loadField("requestSelectionRule" + num, static_cast<int> (DEFAULT.selectionRule)));
+		_saveAttribute = fields->loadField("requestSaveAttribute" + num, DEFAULT.saveAttribute);
+		_index = fields->loadField("requestIndex" + num, DEFAULT.index);
 		if (_modeldataManager != nullptr) {
 			if (_seizableType == SeizableItem::SeizableType::RESOURCE) {
 				_resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
@@ -104,28 +92,24 @@ bool SeizableItem::loadInstance(std::map<std::string, std::string>* fields, unsi
 	return res;
 }
 
-std::map<std::string, std::string>* SeizableItem::saveInstance(unsigned int parentIndex, bool saveDefaults) {
-	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
+void SeizableItem::saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaults) {
 	std::string num = strIndex(parentIndex);
-	SaveField(fields, "requestSeizableType" + num, static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
-	SaveField(fields, "requestSeizable" + num, _resourceOrSet->getName(), "", saveDefaults);
-	SaveField(fields, "requestQuantityExpression" + num, _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
-	SaveField(fields, "requestSelectionRule" + num, static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
-	SaveField(fields, "requestSaveAttribute" + num, _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
-	SaveField(fields, "requestIndex" + num, _index, DEFAULT.index, saveDefaults);
-	return fields;
+	fields->saveField("requestSeizableType" + num, static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
+	fields->saveField("requestSeizable" + num, _resourceOrSet->getName(), "", saveDefaults);
+	fields->saveField("requestQuantityExpression" + num, _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
+	fields->saveField("requestSelectionRule" + num, static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
+	fields->saveField("requestSaveAttribute" + num, _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
+	fields->saveField("requestIndex" + num, _index, DEFAULT.index, saveDefaults);
 }
 
-std::map<std::string, std::string>* SeizableItem::saveInstance(bool saveDefaults) {
-	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
-	SaveField(fields, "requestSeizableType", static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
-	//SaveField(fields, "resourceId", _resourceOrSet->getId());
-	SaveField(fields, "requestSeizable", _resourceOrSet->getName(), "", saveDefaults);
-	SaveField(fields, "requestQuantityExpression", _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
-	SaveField(fields, "requestSelectionRule", static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
-	SaveField(fields, "requestSaveAttribute", _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
-	SaveField(fields, "requestIndex", _index, DEFAULT.index, saveDefaults);
-	return fields;
+void SeizableItem::saveInstance(PersistenceRecord *fields, bool saveDefaults) {
+	fields->saveField("requestSeizableType", static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
+	//fields->saveField("resourceId", _resourceOrSet->getId());
+	fields->saveField("requestSeizable", _resourceOrSet->getName(), "", saveDefaults);
+	fields->saveField("requestQuantityExpression", _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
+	fields->saveField("requestSelectionRule", static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
+	fields->saveField("requestSaveAttribute", _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
+	fields->saveField("requestIndex", _index, DEFAULT.index, saveDefaults);
 }
 
 std::string SeizableItem::show() {

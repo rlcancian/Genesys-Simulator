@@ -60,15 +60,13 @@ void ModelComponent::CreateInternalData(ModelComponent* component) {
 	};
 }
 
-std::map<std::string, std::string>* ModelComponent::SaveInstance(ModelComponent* component) {
-	component->_parentModel->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing component \"" + component->getName() + "\""); //std::to_string(component->_id));
-	std::map<std::string, std::string>* fields = new std::map<std::string, std::string>();
+void ModelComponent::SaveInstance(PersistenceRecord *fields, ModelComponent* component) {
+	component->_parentModel->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing component \"" + component->getName() + "\"");
 	try {
-		fields = component->_saveInstance(component->_getSaveDefaultsOption());
+		component->_saveInstance(fields, component->_getSaveDefaultsOption());
 	} catch (const std::exception& e) {
 		component->_parentModel->getTracer()->traceError(e, "Error executing component " + component->show());
 	}
-	return fields;
 }
 
 void ModelComponent::setDescription(std::string description) {
@@ -113,41 +111,31 @@ std::string ModelComponent::show() {
 	return ModelDataDefinition::show(); // "{id=" + std::to_string(this->_id) + ",name=\""+this->_name + "\"}"; // , nextComponents[]=(" + _nextComponents->show() + ")}";
 }
 
-bool ModelComponent::_loadInstance(std::map<std::string, std::string>* fields) {
+bool ModelComponent::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		_description = LoadField(fields, "caption", DEFAULT.description);
+		_description = fields->loadField("caption", DEFAULT.description);
 		// Now it should load nextComponents. The problem is that the nextComponent may not be loaded yet.
-		// So, what can be done is to temporarily load the ID of the nextComponents, and to wait until all the components have been loaded to update nextComponents based on the temporarilyIDs now being loaded
-		//unsigned short nextSize = std::stoi((*fields->find("nextSize")).second);
-		//this->_tempLoadNextComponentsIDs = new List<Util::identification>();
-		//for (unsigned short i = 0; i < nextSize; i++) {
-		//    Util::identification nextId = std::stoi((*fields->find("nextId" + std::to_string(i))).second);
-		//    this->_tempLoadNextComponentsIDs->insert(nextId);
-		//}
 	}
 	return res;
 }
 
-std::map<std::string, std::string>* ModelComponent::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues);
-	SaveField(fields, "caption", _description, DEFAULT.description, saveDefaultValues);
+void ModelComponent::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("caption", _description, DEFAULT.description, saveDefaultValues);
 	if (true) {//(_connections->size() != 1) { // save nextSize only if it is != 1
-		SaveField(fields, "nexts", _connections->size(), DEFAULT.nextSize, saveDefaultValues);
+		fields->saveField("nexts", _connections->size(), DEFAULT.nextSize, saveDefaultValues);
 	}
 	unsigned short i;
 	for (std::pair<unsigned int, Connection*> connectionPair : *_connections->connections()) {
 		i = connectionPair.first; // output port
 		if (_connections->connections()->size() == 1 && i == 0) {
-			SaveField(fields, "nextId", connectionPair.second->component->_id, 0, saveDefaultValues);
+			fields->saveField("nextId", connectionPair.second->component->_id, 0, saveDefaultValues);
 		} else {
-			SaveField(fields, "nextId" + strIndex(i), connectionPair.second->component->_id, 0, saveDefaultValues);
+			fields->saveField("nextId" + strIndex(i), connectionPair.second->component->_id, 0, saveDefaultValues);
 		}
 		if (connectionPair.second->port != 0) {//((*it)->second != 0) { // save nextinputPortNumber only if it is != 0
-			SaveField(fields, "nextinputPortNumber" + strIndex(i), connectionPair.second->port, DEFAULT.nextinputPortNumber, saveDefaultValues);
+			fields->saveField("nextinputPortNumber" + strIndex(i), connectionPair.second->port, DEFAULT.nextinputPortNumber, saveDefaultValues);
 		}
 	}
-	return fields;
 }
-
-//void ModelComponent::_createInternalAndAttachedData() {}

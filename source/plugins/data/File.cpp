@@ -38,7 +38,7 @@ PluginInformation* File::GetPluginInformation() {
 	return info;
 }
 
-ModelDataDefinition* File::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelDataDefinition* File::LoadInstance(Model* model, PersistenceRecord *fields) {
 	File* newElement = new File(model);
 	try {
 		newElement->_loadInstance(fields);
@@ -48,12 +48,12 @@ ModelDataDefinition* File::LoadInstance(Model* model, std::map<std::string, std:
 	return newElement;
 }
 
-bool File::_loadInstance(std::map<std::string, std::string>* fields) {
+bool File::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
 			//@TODO not implemented yet
-			//this->attribute = LoadField(fields, "field", DEFAULT.fields);
+			//this->attribute = fields->loadField("field", DEFAULT.fields);
 			
 		} catch (...) {
 		}
@@ -61,12 +61,9 @@ bool File::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-std::map<std::string, std::string>* File::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelDataDefinition::_saveInstance(saveDefaultValues); //Util::TypeOf<File>());
+void File::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	//@TODO not implemented yet
-	//SaveField(fields, "orderRule", std::to_string(static_cast<int> (this->_orderRule)));
-	//SaveField(fields, "attributeName", "\""+this->_attributeName+"\"");
-	return fields;
 }
 
 bool File::_check(std::string* errorMessage) {

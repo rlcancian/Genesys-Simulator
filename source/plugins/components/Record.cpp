@@ -87,20 +87,19 @@ void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 
 }
 
-std::map<std::string, std::string>* Record::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues); //Util::TypeOf<Record>());
-	SaveField(fields, "expression", this->_expression, "", saveDefaultValues);
-	SaveField(fields, "expressionName", this->_expressionName, "", saveDefaultValues);
-	SaveField(fields, "fileName", this->_filename, "", saveDefaultValues);
-	return fields;
+void Record::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
+	fields->saveField("expression", this->_expression, "", saveDefaultValues);
+	fields->saveField("expressionName", this->_expressionName, "", saveDefaultValues);
+	fields->saveField("fileName", this->_filename, "", saveDefaultValues);
 }
 
-bool Record::_loadInstance(std::map<std::string, std::string>* fields) {
+bool Record::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_expression = LoadField(fields, "expression", "");
-		this->_expressionName = LoadField(fields, "expressionName", "");
-		this->_filename = LoadField(fields, "fileName", "");
+		this->_expression = fields->loadField("expression", "");
+		this->_expressionName = fields->loadField("expressionName", "");
+		this->_filename = fields->loadField("fileName", "");
 	}
 	return res;
 }
@@ -130,7 +129,7 @@ PluginInformation* Record::GetPluginInformation() {
 	return info;
 }
 
-ModelComponent* Record::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* Record::LoadInstance(Model* model, PersistenceRecord *fields) {
 	Record* newComponent = new Record(model);
 	try {
 		newComponent->_loadInstance(fields);

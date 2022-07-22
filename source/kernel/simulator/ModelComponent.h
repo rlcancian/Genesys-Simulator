@@ -45,13 +45,13 @@ public: // static
 	//static void InitBetweenReplications(ModelComponent* component);
 	static void CreateInternalData(ModelComponent* component);
 	static bool Check(ModelComponent* component);
-	static ModelComponent* LoadInstance(Model* model, std::map<std::string, std::string>* fields);
-	static std::map<std::string, std::string>* SaveInstance(ModelComponent* component);
+	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
+	static void SaveInstance(PersistenceRecord *fields, ModelComponent* component);
 	void setDescription(std::string _description);
 	std::string getDescription() const;
 protected: // must be overriden by derived classes
-	virtual std::map<std::string, std::string>* _saveInstance(bool saveDefaultValues);
-	virtual bool _loadInstance(std::map<std::string, std::string>* fields);
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields);
 	// new virtual methods
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) = 0;
 protected: // could be overriden by derived classes.

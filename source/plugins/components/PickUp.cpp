@@ -33,7 +33,7 @@ std::string PickUp::show() {
 	return ModelComponent::show() + "";
 }
 
-ModelComponent* PickUp::LoadInstance(Model* model, std::map<std::string, std::string>* fields) {
+ModelComponent* PickUp::LoadInstance(Model* model, PersistenceRecord *fields) {
 	PickUp* newComponent = new PickUp(model);
 	try {
 		newComponent->_loadInstance(fields);
@@ -48,7 +48,7 @@ void PickUp::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
 }
 
-bool PickUp::_loadInstance(std::map<std::string, std::string>* fields) {
+bool PickUp::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
@@ -56,12 +56,9 @@ bool PickUp::_loadInstance(std::map<std::string, std::string>* fields) {
 	return res;
 }
 
-//void PickUp::_initBetweenReplications() {}
-
-std::map<std::string, std::string>* PickUp::_saveInstance(bool saveDefaultValues) {
-	std::map<std::string, std::string>* fields = ModelComponent::_saveInstance(saveDefaultValues);
+void PickUp::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	return fields;
 }
 
 bool PickUp::_check(std::string* errorMessage) {
