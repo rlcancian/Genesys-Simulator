@@ -11,6 +11,14 @@
  * Created on 22 de Maio de 2019, 18:41
  */
 
+// TODO - Set initial state ✅
+// TODO - Check transition conditions when entity comes in ✅
+// TODO - Perform transition (if appropriate) ✅
+// TODO - Set final states
+// TODO - Pass entity along when reaching final states
+// TODO - Implement _loadInstance, _saveInstance and _check
+// TODO - Update docs
+
 #include "FSM.h"
 #include "../../kernel/simulator/Model.h"
 #include "../../kernel/simulator/Simulator.h"
@@ -48,16 +56,59 @@ List<FSMState *> *FSM::states() const
 void FSM::insertState(FSMState *state)
 {
     _states->insert(state);
+    _transitionMap[state] = new List<TransitionData>();
 }
 
 void FSM::insertTransition(FSMTransition *transition, FSMState *from, FSMState *to)
 {
     TransitionData transitionData = {transition, to};
-    if (!_transitionMap[from])
+
+    _transitionMap[from]->insert(transitionData);
+}
+
+void FSM::setInitialState(FSMState *state)
+{
+    _initialState = state;
+}
+
+// private
+
+void FSM::_transitionAll()
+{
+    for (const auto &entityState : _entityStates)
     {
-        _transitionMap[from] = new List<TransitionData *>();
+        Entity *entity = entityState.first;
+        FSMState *from = entityState.second;
+        List<FSM::TransitionData> *transitionDatum = _transitionMap[from];
+
+        FSM::TransitionData *transitionToFollow = _findTransition(transitionDatum);
+
+        if (transitionToFollow == nullptr)
+        {
+            _parentModel->getTracer()->trace("Entity " + entity->getName() + " had no valid transition");
+            continue;
+        }
+
+        _parentModel->getTracer()->trace("Transitioning " + entity->getName() + " from " + from->getName() + " to " + transitionToFollow->to->getName() + " through " + transitionToFollow->transition->getName());
+
+        transitionToFollow->transition->perform();
+
+        // TODO - Does this affect the loop we're in?? Should we create a new map and merge it after the loop?
+        _entityStates[entity] = transitionToFollow->to;
     }
-    _transitionMap[from]->insert(&transitionData);
+}
+
+FSM::TransitionData *FSM::_findTransition(List<TransitionData> *transitions)
+{
+    for (TransitionData &transitionData : *transitions->list())
+    {
+        if (transitionData.transition->canPerform())
+        {
+            return &transitionData;
+        }
+    }
+
+    return nullptr;
 }
 
 // public static
@@ -86,8 +137,10 @@ PluginInformation *FSM::GetPluginInformation()
 
 void FSM::_onDispatchEvent(Entity *entity, unsigned int inputPortNumber)
 {
-    _parentModel->getTracer()->trace("I'm just a dummy model and I'll just send the entity forward");
-    this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+    // _parentModel->getTracer()->trace("I'm just a dummy model and I'll just send the entity forward");
+    // this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+    _entityStates[entity] = _initialState;
+    _transitionAll();
 }
 
 bool FSM::_loadInstance(std::map<std::string, std::string> *fields)

@@ -14,6 +14,8 @@
 #ifndef FSMTRANSITION_H
 #define FSMTRANSITION_H
 
+#include <string>
+
 #include "../../kernel/simulator/ModelDataDefinition.h"
 
 class FSMTransition : public ModelDataDefinition
@@ -34,10 +36,18 @@ public:
     void setGuardExpression(std::string expression);
     std::string guardExpression();
     void onTransition(std::function<void(Model *)> handler);
+    void perform();
+    bool canPerform();
+
+public:
+    const struct DEFAULT_VALUES
+    {
+        const std::string guardExpression = "";
+    } DEFAULT;
 
 private:
-    std::string _guardExpression;
-    std::function<void(Model *)> _onTransition;
+    std::string _guardExpression = DEFAULT.guardExpression;
+    std::function<void(Model *)> _onTransition = nullptr;
 
 protected: // must be overriden
     virtual bool _loadInstance(std::map<std::string, std::string> *fields);
@@ -45,8 +55,6 @@ protected: // must be overriden
 
 protected: // could be overriden
     virtual bool _check(std::string *errorMessage);
-    virtual void _initBetweenReplications();
-    // virtual void _createInternalData();
 };
 
 #endif /* FSMTRANSITION_H */

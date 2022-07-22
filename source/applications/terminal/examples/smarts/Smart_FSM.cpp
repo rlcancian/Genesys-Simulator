@@ -23,7 +23,6 @@
 #include "../../../../plugins/components/FSM.h"
 #include "../../../../plugins/data/FSMState.h"
 #include "../../../../plugins/data/FSMTransition.h"
-#include "../../../../plugins/data/Variable.h"
 #include "../../../../plugins/components/Dispose.h"
 
 Smart_FSM::Smart_FSM()
@@ -61,11 +60,14 @@ int Smart_FSM::main(int argc, char **argv)
 
     fsm1->insertState(evenState);
     FSMState *oddState = plugins->newInstance<FSMState>(model);
-    fsm1->states()->insert(oddState);
+    fsm1->insertState(oddState);
+
+    // Set evenState as the initial state for the FSM
+    fsm1->setInitialState(evenState);
 
     // Creating transitions that check if the variable is even or odd
     FSMTransition *evenToOdd = plugins->newInstance<FSMTransition>(model);
-    evenToOdd->setGuardExpression("var % 2 == 1");
+    evenToOdd->setGuardExpression("if 1 1 else 0");
 
     // Add a function to be called whenever the transition is activated
     // Inside this function, we can do whatever we want, like changing variables or sending the entity to the next component
@@ -77,7 +79,7 @@ int Smart_FSM::main(int argc, char **argv)
     fsm1->insertTransition(evenToEven, evenState, evenState);
 
     FSMTransition *oddToEven = plugins->newInstance<FSMTransition>(model);
-    oddToEven->setGuardExpression("var % 2 == 0");
+    oddToEven->setGuardExpression("if 1 1 else 0");
     oddToEven->onTransition(&Smart_FSM::onOddToEven);
     fsm1->insertTransition(oddToEven, oddState, evenState);
 

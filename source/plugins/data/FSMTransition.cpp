@@ -11,6 +11,7 @@
  */
 
 #include "FSMTransition.h"
+#include "../../kernel/simulator/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -34,13 +35,16 @@ FSMTransition::FSMTransition(Model *model, std::string name) : ModelDataDefiniti
         "Guard Expression",
         DefineGetter<FSMTransition, std::string>(this, &FSMTransition::guardExpression),
         DefineSetter<FSMTransition, std::string>(this, &FSMTransition::setGuardExpression));
+    model->getControls()->insert(guardExpressionProperty);
+    _addProperty(guardExpressionProperty);
 }
 
 // public
 
 std::string FSMTransition::show()
 {
-    return ModelDataDefinition::show();
+    return ModelDataDefinition::show() +
+           ",guardExpression=" + this->_guardExpression;
 }
 
 void FSMTransition::setGuardExpression(std::string expression)
@@ -56,6 +60,26 @@ std::string FSMTransition::guardExpression()
 void FSMTransition::onTransition(std::function<void(Model *)> handler)
 {
     _onTransition = handler;
+}
+
+void FSMTransition::perform()
+{
+    if (_onTransition == nullptr)
+    {
+        return;
+    }
+
+    _onTransition(_parentModel);
+}
+
+bool FSMTransition::canPerform()
+{
+    if (_guardExpression.empty())
+    {
+        return true;
+    }
+
+    return _parentModel->parseExpression(_guardExpression);
 }
 
 // public static
@@ -93,12 +117,7 @@ bool FSMTransition::_loadInstance(std::map<std::string, std::string> *fields)
     bool res = ModelDataDefinition::_loadInstance(fields);
     if (res)
     {
-        try
-        {
-        }
-        catch (...)
-        {
-        }
+        this->_guardExpression = LoadField(fields, "guardExpression", DEFAULT.guardExpression);
     }
     return res;
 }
@@ -106,6 +125,7 @@ bool FSMTransition::_loadInstance(std::map<std::string, std::string> *fields)
 std::map<std::string, std::string> *FSMTransition::_saveInstance(bool saveDefaultValues)
 {
     std::map<std::string, std::string> *fields = ModelDataDefinition::_saveInstance(saveDefaultValues); // Util::TypeOf<Queue>());
+    SaveField(fields, "guardExpression", _guardExpression, DEFAULT.guardExpression, saveDefaultValues);
     return fields;
 }
 
@@ -115,12 +135,7 @@ std::map<std::string, std::string> *FSMTransition::_saveInstance(bool saveDefaul
 
 bool FSMTransition::_check(std::string *errorMessage)
 {
-    bool resultAll = true;
-    return resultAll;
-}
-
-void FSMTransition::_initBetweenReplications()
-{
+    return _parentModel->checkExpression(_guardExpression, "Guard expression", errorMessage);
 }
 
 // private

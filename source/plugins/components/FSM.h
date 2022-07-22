@@ -40,6 +40,12 @@ public:
     List<FSMTransition *> *transitions() const;
     void insertTransition(FSMTransition *transition, FSMState *from, FSMState *to);
     void insertState(FSMState *state);
+    void setInitialState(FSMState *state);
+    struct TransitionData
+    {
+        FSMTransition *transition;
+        FSMState *to;
+    };
 
 protected: // must be overriden
     virtual void _onDispatchEvent(Entity *entity, unsigned int inputPortNumber);
@@ -51,18 +57,18 @@ protected: // could be overriden .
     // virtual void _createInternalData();
 
 private: // methods
+    void _transitionAll();
+
 private: // attributes 1:1
+    FSMState *_initialState = nullptr;
+    TransitionData *_findTransition(List<TransitionData> *transitions);
+
 private: // attributes 1:n
     List<FSMState *> *_states = new List<FSMState *>();
     List<FSMTransition *> *_transitions;
+    std::map<Entity *, FSMState *> _entityStates;
 
-    struct TransitionData
-    {
-        FSMTransition *transition;
-        FSMState *to;
-    };
-
-    std::map<FSMState *, List<TransitionData *> *> _transitionMap;
+    std::map<FSMState *, List<TransitionData> *> _transitionMap;
 };
 
 #endif /* FSM_H */
