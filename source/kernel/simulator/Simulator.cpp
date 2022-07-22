@@ -97,7 +97,7 @@ bool Simulator::_completePluginsFieldsAndTemplate() {
 	_traceManager->setTraceLevel(TraceManager::Level::L0_noTraces); // this crap stuff should not been shown
 	Model* tempModel = new Model(this);
 	tempModel->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
-	auto fields = std::make_unique<PersistenceRecord>(tempModel->getPersistence());
+	auto fields = std::make_unique<PersistenceRecord>(*tempModel->getPersistence());
 	Plugin* plugin;
 	PluginInformation* info;
 	ModelDataDefinition* datum;

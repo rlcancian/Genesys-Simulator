@@ -10,13 +10,13 @@
 
 
 /*!
- * Serialization/Deserialization structure which behaves like an associative array.
+ * @brief Serialization/Deserialization structure which behaves like an associative array.
  *
  * Simulation models/components/definitions use this as a "visitor", which is guided
  * across their innards during ser/deserialization and filled with fields. See `PersistentObject_base`.
  * 
  * When this structure reaches the main model persistence interface, it finishes
- * the serialization process in a format-specific manner. See `ModelPersistence_if`.
+ * the serialization process in a format-specific manner. See `ModelPersistence_if` and `ModelSerializer`.
  * 
  * The concrete implementation of this abstract class defaults to the GenESyS format.
  */
@@ -59,7 +59,7 @@ public:
 	// these are only needed because existing code does not abstract away the STL container API
 	// still, subclasses implementing this interface may use them to insert post-processed entries
 
-	explicit PersistenceRecord(ModelPersistence_if *config);
+	explicit PersistenceRecord(ModelPersistence_if& config);
 
 	//! Returns the number of distinct entries in the record.
 	std::size_t size() const;
@@ -79,6 +79,9 @@ public:
 	//! Removes all entries from this record.
 	void clear();
 
+	//! Returns an iterator over a specific entry, if found.
+	Iterator find(const std::string& key);
+
 	//! Returns an iterator over raw entries.
 	Iterator begin();
 
@@ -87,7 +90,7 @@ public:
 
 private:
 	std::unordered_map<std::string, Payload> _fields;
-	ModelPersistence_if *_config;
+	ModelPersistence_if& _config;
 };
 
 

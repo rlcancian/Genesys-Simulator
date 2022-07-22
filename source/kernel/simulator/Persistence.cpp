@@ -10,7 +10,7 @@ PersistenceRecord::Entry::Entry(std::pair<const std::string, Payload> entry):
 {}
 
 
-PersistenceRecord::PersistenceRecord(ModelPersistence_if *config):
+PersistenceRecord::PersistenceRecord(ModelPersistence_if& config):
     _fields{}, _config(config)
 {}
 
@@ -28,6 +28,10 @@ void PersistenceRecord::erase(const std::string& key) {
 
 void PersistenceRecord::clear() {
     _fields.clear();
+}
+
+PersistenceRecord::Iterator PersistenceRecord::find(const std::string& key) {
+    return _fields.find(key);
 }
 
 PersistenceRecord::Iterator PersistenceRecord::begin() {
@@ -75,7 +79,7 @@ void PersistenceRecord::saveField(std::string key, std::string value, const std:
 }
 
 void PersistenceRecord::saveField(std::string key, std::string value) {
-    _fields[key] = "\"" + value + "\"";
+    _fields[key] = key == "typename" ? value : "\"" + value + "\"";
 }
 
 void PersistenceRecord::saveField(std::string key, double value, const double defaultValue, const bool saveIfDefault) {

@@ -46,7 +46,7 @@ bool ModelPersistenceDefaultImpl1::save(std::string filename) {
     std::list<std::string> simulatorInfosToSave{}, simulationInfosToSave{}, modelInfosToSave{}, modelElementsToSave{}, modelComponentsToSave{};
     {
         //bool res = true;
-        auto fields = std::make_unique<PersistenceRecord>(this);
+        auto fields = std::make_unique<PersistenceRecord>(*this);
         _getSimulatorInfoFieldsToSave(fields.get());
         simulatorInfosToSave = _adjustFieldsToSave(fields.get());
         // save model own infos
@@ -210,7 +210,7 @@ bool ModelPersistenceDefaultImpl1::_loadFields(std::list<std::map<std::string, s
         }
 
         // now the map<str,str> is ready. Look for the right class to load it
-        auto persistence = std::make_unique<PersistenceRecord>(this);
+        auto persistence = std::make_unique<PersistenceRecord>(*this);
         persistence->insert(fields.begin(), fields.end());
         Util::IncIndent();
         {
