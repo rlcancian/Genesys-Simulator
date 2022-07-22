@@ -30,6 +30,10 @@ public: // static
 public:
     virtual std::string show();
 
+public:
+    bool isFinal() const;
+    void setIsFinal(bool isFinal);
+
 protected: // must be overriden
     virtual bool _loadInstance(std::map<std::string, std::string> *fields);
     virtual std::map<std::string, std::string> *_saveInstance(bool saveDefaultValues);
@@ -38,6 +42,9 @@ protected: // could be overriden
     virtual bool _check(std::string *errorMessage);
     virtual void _initBetweenReplications();
     // virtual void _createInternalData();
+
+private:
+    bool _isFinal = false;
 };
 
 #endif /* FSMSTATE_H */

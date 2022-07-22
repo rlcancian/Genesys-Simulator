@@ -11,6 +11,7 @@
  */
 
 #include "FSMState.h"
+#include "../../kernel/simulator/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -29,6 +30,13 @@ ModelDataDefinition *FSMState::NewInstance(Model *model, std::string name)
 
 FSMState::FSMState(Model *model, std::string name) : ModelDataDefinition(model, Util::TypeOf<FSMState>(), name)
 {
+    PropertyT<bool> *isFinalProperty = new PropertyT<bool>(
+        Util::TypeOf<FSMState>(),
+        "Is Final",
+        DefineGetter<FSMState, bool>(this, &FSMState::isFinal),
+        DefineSetter<FSMState, bool>(this, &FSMState::setIsFinal));
+    model->getControls()->insert(isFinalProperty);
+    _addProperty(isFinalProperty);
 }
 
 // public
@@ -38,6 +46,15 @@ std::string FSMState::show()
     return ModelDataDefinition::show();
 }
 
+bool FSMState::isFinal() const
+{
+    return _isFinal;
+}
+
+void FSMState::setIsFinal(bool isFinal)
+{
+    _isFinal = isFinal;
+}
 // public static
 
 ModelDataDefinition *FSMState::LoadInstance(Model *model, std::map<std::string, std::string> *fields)
@@ -73,12 +90,7 @@ bool FSMState::_loadInstance(std::map<std::string, std::string> *fields)
     bool res = ModelDataDefinition::_loadInstance(fields);
     if (res)
     {
-        try
-        {
-        }
-        catch (...)
-        {
-        }
+        this->_isFinal = LoadField(fields, "isFinal", false);
     }
     return res;
 }
@@ -86,6 +98,7 @@ bool FSMState::_loadInstance(std::map<std::string, std::string> *fields)
 std::map<std::string, std::string> *FSMState::_saveInstance(bool saveDefaultValues)
 {
     std::map<std::string, std::string> *fields = ModelDataDefinition::_saveInstance(saveDefaultValues); // Util::TypeOf<Queue>());
+    SaveField(fields, "isFinal", _isFinal, false, saveDefaultValues);
     return fields;
 }
 
