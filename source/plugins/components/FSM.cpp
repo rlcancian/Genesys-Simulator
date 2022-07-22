@@ -14,7 +14,7 @@
 // TODO - Set initial state ✅
 // TODO - Check transition conditions when entity comes in ✅
 // TODO - Perform transition (if appropriate) ✅
-// TODO - Set final states
+// TODO - Set final states ✅
 // TODO - Pass entity along when reaching final states
 // TODO - Implement _loadInstance, _saveInstance and _check
 // TODO - Update docs
@@ -93,8 +93,18 @@ void FSM::_transitionAll()
 
         transitionToFollow->transition->perform();
 
-        // TODO - Does this affect the loop we're in?? Should we create a new map and merge it after the loop?
-        _entityStates[entity] = transitionToFollow->to;
+        if (transitionToFollow->to->isFinal())
+        {
+            _parentModel->getTracer()->trace("Entity " + entity->getName() + " reached final state " + transitionToFollow->to->getName());
+            _entityStates.erase(entity);
+            _parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+            // TODO - Add transition delay?
+        }
+        else
+        {
+            // TODO - Does this affect the loop we're in?? Should we create a new map and merge it after the loop?
+            _entityStates[entity] = transitionToFollow->to;
+        }
     }
 }
 

@@ -60,6 +60,7 @@ int Smart_FSM::main(int argc, char **argv)
 
     fsm1->insertState(evenState);
     FSMState *oddState = plugins->newInstance<FSMState>(model);
+    oddState->setIsFinal(true);
     fsm1->insertState(oddState);
 
     // Set evenState as the initial state for the FSM
