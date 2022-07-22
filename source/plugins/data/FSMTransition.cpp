@@ -45,6 +45,14 @@ FSMTransition::FSMTransition(Model *model, std::string name) : ModelDataDefiniti
         DefineSetter<FSMTransition, std::string>(this, &FSMTransition::setDelayExpression));
     model->getControls()->insert(delayExpressionProperty);
     _addProperty(delayExpressionProperty);
+
+    PropertyT<Util::TimeUnit> *timeUnitProperty = new PropertyT<Util::TimeUnit>(
+        Util::TypeOf<FSMTransition>(),
+        "Delay Time Unit",
+        DefineGetter<FSMTransition, Util::TimeUnit>(this, &FSMTransition::delayTimeUnit),
+        DefineSetter<FSMTransition, Util::TimeUnit>(this, &FSMTransition::setDelayTimeUnit));
+    model->getControls()->insert(timeUnitProperty);
+    _addProperty(timeUnitProperty);
 }
 
 // public
@@ -76,9 +84,23 @@ std::string FSMTransition::delayExpression()
     return _delayExpression;
 }
 
+void FSMTransition::setDelayTimeUnit(Util::TimeUnit timeUnit)
+{
+    _delayTimeUnit = timeUnit;
+}
+
+Util::TimeUnit FSMTransition::delayTimeUnit() const
+{
+    return _delayTimeUnit;
+}
+
 double FSMTransition::delay() const
 {
-    return _parentModel->parseExpression(_delayExpression);
+    double waitTime = _parentModel->parseExpression(_delayExpression);
+    Util::TimeUnit standardTimeUnit = _parentModel->getSimulation()->getReplicationBaseTimeUnit();
+    waitTime *= Util::TimeUnitConvert(_delayTimeUnit, standardTimeUnit);
+
+    return waitTime;
 }
 
 void FSMTransition::onTransition(std::function<void(Model *)> handler)
