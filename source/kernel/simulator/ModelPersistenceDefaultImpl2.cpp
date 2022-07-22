@@ -211,7 +211,10 @@ bool ModelPersistenceDefaultImpl2::load(std::string filename) {
                 if (nextSize == 1) nextId = fields->loadField("nextId", static_cast<unsigned int>(nextId));
                 // id -> component
                 ModelComponent* nextComponent = cm->find(nextId);
-                assert(nextComponent != nullptr);
+                if (nextComponent == nullptr) {
+                    _model->getTracer()->traceError("found unregistered target ID " + std::to_string(nextId));
+                    continue;
+                }
                 // target port
                 unsigned short nextPort = fields->loadField("nextinputPortNumber" + strIndex(i), 0);
                 // connect

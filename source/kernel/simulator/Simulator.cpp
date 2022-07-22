@@ -129,7 +129,7 @@ bool Simulator::_completePluginsFieldsAndTemplate() {
 					//@TODO
 					//std::cout << "ERROR completing plugin " << info->getPluginTypename() << std::endl;
 				}
-				for (std::pair<std::string, std::string> field : *fields.get()) {
+				for (auto& field : *fields.get()) {
 					info->getFields()->insert({field.first, ""});
 				}
 				if (info->getLanguageTemplate() == "") {

@@ -2,6 +2,8 @@
 
 #include <cassert>
 #include <regex>
+#include <vector>
+#include <algorithm>
 
 #include "Simulator.h"
 
@@ -46,6 +48,7 @@ bool GenSerializer::dump(std::ostream& output) {
         Plugin* plugin = _model->getParentSimulator()->getPlugins()->find(type);
         if (plugin == nullptr) return 1;
         if (plugin->getPluginInfo()->isComponent()) return 0;
+        _model->getTracer()->trace(linearize(fields.get()));
         output << linearize(fields.get());
         return 0;
     });
@@ -59,6 +62,7 @@ bool GenSerializer::dump(std::ostream& output) {
         Plugin* plugin = _model->getParentSimulator()->getPlugins()->find(type);
         if (plugin == nullptr) return 1;
         if (!plugin->getPluginInfo()->isComponent()) return 0;
+        _model->getTracer()->trace(linearize(fields.get()));
         output << linearize(fields.get());
         return 0;
     });
@@ -70,7 +74,8 @@ bool GenSerializer::dump(std::ostream& output) {
 std::string GenSerializer::linearize(PersistenceRecord *fields) {
     // linearize fields
     std::string id, type, name, attrs;
-    for (auto& field : *fields) {
+    for (auto& it : *fields) {
+        auto field = it.second;
         if (field.first == "id") id = field.second;
         else if (field.first == "typename") type = field.second;
         else if (field.first == "name") name = "\"" + field.second + "\"";
@@ -78,7 +83,7 @@ std::string GenSerializer::linearize(PersistenceRecord *fields) {
             auto& key = field.first;
             auto escaped = field.second;
             // add quotes when needed
-            if (!std::regex_match(escaped, std::regex("^-?(?:[1-9]\\d+|\\d)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$"))) {
+            if (field.kind == PersistenceRecord::Entry::Kind::text) {
                 escaped = "\"" + escaped + "\"";
             }
             attrs += key + "=" + escaped + " ";
@@ -165,8 +170,10 @@ bool GenSerializer::load(std::istream& input) {
             if (sit != strings.end()) {
                 auto& str = sit->second;
                 val = str.substr(1, str.length() - 2);
+                fields->insert({ key, val, PersistenceRecord::Entry::Kind::text });
+            } else {
+                fields->insert({ key, val, PersistenceRecord::Entry::Kind::numeric });
             }
-            fields->insert({key, val}); // notice the raw insert
         }
 
         // then, save each record
@@ -202,8 +209,17 @@ bool GenSerializer::put(const std::string name, const std::string type, const Ut
 
 
 int GenSerializer::for_each(std::function<int(const std::string&)> delegate) {
-    for (auto& entry : _components) {
-        int stop = delegate(entry.first);
+    // enfore id-order
+    std::vector<std::string> sorted;
+    sorted.reserve(_components.size());
+    for (auto& entry : _components) sorted.push_back(entry.first);
+    std::sort(sorted.begin(), sorted.end(), [&](auto& a, auto& b){
+        return this->_components.at(a)->loadField("id", -1) < this->_components.at(b)->loadField("id", -1);
+    });
+
+    // then do the user-level iteration
+    for (auto& label : sorted) {
+        int stop = delegate(label);
         if (stop) return stop;
     }
     return 0;

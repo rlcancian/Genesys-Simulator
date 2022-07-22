@@ -167,7 +167,8 @@ void Process::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	fields->insert(delayfields->begin(), delayfields->end());
 	auto releasefields = std::unique_ptr<PersistenceRecord>(fields->newInstance());
 	ModelComponent::SaveInstance(releasefields.get(), _release);
-	fields->saveField("nextId", releasefields->loadField("nextId"));
+	Util::identification next = releasefields->loadField("nextId", -1);
+	fields->saveField("nextId", next);
 }
 
 PluginInformation* Process::GetPluginInformation() {

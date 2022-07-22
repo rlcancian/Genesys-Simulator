@@ -17,26 +17,20 @@
  * 
  * When this structure reaches the main model persistence interface, it finishes
  * the serialization process in a format-specific manner. See `ModelPersistence_if` and `ModelSerializer`.
- * 
- * The concrete implementation of this abstract class defaults to the GenESyS format.
  */
 class PersistenceRecord {
 public:
 	using Payload = std::string;
-	using Iterator = std::unordered_map<std::string, Payload>::iterator;
-
 	//! "Raw" entry, users should treat this as an opaque type since payloads could be in any format.
 	struct Entry {
-		friend PersistenceRecord;
-	public:
-		Entry(const std::string key, Payload val);
-		Entry(std::pair<const std::string, Payload> entry);
-	private:
-		const std::string first;
+		enum Kind { text, numeric };
+		std::string first;
 		Payload second;
+		Kind kind{Kind::text};
 	};
+	using Iterator = std::unordered_map<std::string, Entry>::iterator;
 
-	// this is the actual abstract interface, with implementations varying from one format to another
+	// this is the actual abstract interface
 
 	virtual ~PersistenceRecord();
 
@@ -68,10 +62,7 @@ public:
 	void insert(Entry entry);
 
 	//! Inserts multiple entries from the given iterators.
-	template <typename Iterator>
-	void insert(Iterator it, Iterator end) {
-		for (; it != end; ++it) insert(*it);
-	}
+	void insert(Iterator it, Iterator end);
 
 	//! Removes a specific entry from the record.
 	void erase(const std::string& key);
@@ -89,7 +80,7 @@ public:
 	Iterator end();
 
 private:
-	std::unordered_map<std::string, Payload> _fields;
+	std::unordered_map<std::string, Entry> _fields;
 	ModelPersistence_if& _config;
 };
 

@@ -1,6 +1,8 @@
 #ifndef JSONSERIALIZER_H
 #define JSONSERIALIZER_H
 
+#include <unordered_map>
+
 #include "ModelSerializer.h"
 #include "Model.h"
 
@@ -19,6 +21,8 @@ public: // ModelSerializer interface
 
 private:
     Model *_model{};
+    std::unordered_map<std::string, std::unique_ptr<PersistenceRecord>> _metaobjects{};
+    std::unordered_map<std::string, std::unique_ptr<PersistenceRecord>> _components{};
 };
 
 #endif // JSONSERIALIZER_H

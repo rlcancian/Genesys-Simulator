@@ -211,7 +211,9 @@ bool ModelPersistenceDefaultImpl1::_loadFields(std::list<std::map<std::string, s
 
         // now the map<str,str> is ready. Look for the right class to load it
         auto persistence = std::make_unique<PersistenceRecord>(*this);
-        persistence->insert(fields.begin(), fields.end());
+        for (auto& field : fields) {
+            persistence->insert({field.first, field.second});
+        }
         Util::IncIndent();
         {
             std::string thistypename = fields.find("typename")->second;
@@ -389,26 +391,25 @@ std::list<std::string> ModelPersistenceDefaultImpl1::_adjustFieldsToSave(Persist
     idV2003 = "0";
     std::string attrValue;
     for (auto it = fields->begin(); it != fields->end(); it++) {
-        //newStr += (*it).first + "=" + (*it).second + this->_linefieldseparator;
-        if ((*it).first == "id")
-            idV2003 = (*it).second;
-        else if ((*it).first == "typename") {
-            if ((*it).second.substr(0, 1) == "\"" && (*it).second.substr((*it).second.length() - 1, 1) == "\"")
-                typenameV2003 = (*it).second.substr(1, (*it).second.length() - 2); // remove "" on the bounders
-            else
-                typenameV2003 = (*it).second;
-        } else if ((*it).first == "name")
-            nameV2003 = (*it).second; //_convertLineseparatorToLineseparatorReplacement((*it).second);
-        else if ((*it).first.find("nextId", 0) != std::string::npos)
-            nextIDV2004 += (*it).first + "=" + (*it).second + _fieldseparator;
-        else if ((*it).first.find("nextinputPortNumber", 0) != std::string::npos)
-            nextIDV2004 += (*it).first + "=" + (*it).second + _fieldseparator;
-        else if ((*it).first.find("nexts", 0) != std::string::npos)
-            nextIDV2004 = (*it).first + "=" + (*it).second + _fieldseparator + nextIDV2004;
+        auto key = it->first;
+        auto val = it->second.second;
+        //newStr += key + "=" + val + this->_linefieldseparator;
+        if (key == "id")
+            idV2003 = val;
+        else if (key == "typename") {
+            typenameV2003 = val;
+        } else if (key == "name")
+            nameV2003 = val; //_convertLineseparatorToLineseparatorReplacement(val);
+        else if (key.find("nextId", 0) != std::string::npos)
+            nextIDV2004 += key + "=" + val + _fieldseparator;
+        else if (key.find("nextinputPortNumber", 0) != std::string::npos)
+            nextIDV2004 += key + "=" + val + _fieldseparator;
+        else if (key.find("nexts", 0) != std::string::npos)
+            nextIDV2004 = key + "=" + val + _fieldseparator + nextIDV2004;
         else {
-            // version V210329: (*it).second should NEVER contain _linefieldseparator. So, replace it by _linefieldseparatorReplacement
-            attrValue = (*it).second; // _convertLineseparatorToLineseparatorReplacement((*it).second);
-            strV2003 += (*it).first + "=" + attrValue + _fieldseparator;
+            // version V210329: val should NEVER contain _linefieldseparator. So, replace it by _linefieldseparatorReplacement
+            attrValue = val; // _convertLineseparatorToLineseparatorReplacement(val);
+            strV2003 += key + "=" + attrValue + _fieldseparator;
         }
     }
     while (idV2003.length() < 3)

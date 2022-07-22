@@ -7,6 +7,8 @@
 #include <vector>
 #include <stack>
 #include <cctype>
+#include <algorithm>
+#include <utility>
 
 #define INDENT "\t"
 
@@ -53,7 +55,7 @@ static std::string prettyPrint(const std::string& key, PersistenceRecord *fields
             xml += "<" + field + ">";
         }
         // escape especial sequences in text
-        std::string value = it->second;
+        std::string value = it->second.second;
         value = std::regex_replace(value, std::regex("&"), "&amp;");
         value = std::regex_replace(value, std::regex("\""), "&quot;");
         value = std::regex_replace(value, std::regex("'"), "&apos;");
@@ -71,7 +73,6 @@ static std::string prettyPrint(const std::string& key, PersistenceRecord *fields
 
 bool XmlSerializer::dump(std::ostream& output) {
     auto fields = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
-    bool found = false;
 
     output << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n";
     output << "<GenesysModel>\n";
@@ -112,7 +113,7 @@ bool XmlSerializer::load(std::istream& input) {
         // only if non-leaf
         std::vector<std::unique_ptr<Xml>> children{};
     };
-    std::vector<std::unique_ptr<Xml>> elements;
+    std::vector<Xml> elements;
 
     // helper macros
     #define HALT(msg) do { \
@@ -141,7 +142,7 @@ bool XmlSerializer::load(std::istream& input) {
     };
 
     // parse with stack for balance check
-    std::stack<std::unique_ptr<Xml>> stack;
+    std::stack<Xml> stack;
 	for (std::size_t cursor = 0u; cursor < xml.length();) {
         // ignore whitespace
         while (cursor < xml.length() && std::isspace(xml[cursor])) ++cursor;
@@ -175,24 +176,24 @@ bool XmlSerializer::load(std::istream& input) {
 
         // closing tag? check top of stack
         if (tag[0] == '/') {
-            if (stack.empty() || stack.top()->tag != tag.substr(1)) {
+            if (stack.empty() || stack.top().tag != tag.substr(1)) {
                 HALT("invalid XML: found unexpected closing tag <" + tag + ">");
             }
             // if ok, finalize the current element
             auto finalized = std::move(stack.top());
             stack.pop();
-            if (finalized->leaf) _model->getTracer()->trace(finalized->payload);
+            if (finalized.leaf) _model->getTracer()->trace(finalized.payload);
             Util::DecIndent();
             // then, either add it to the outer element, or to the toplevel
             if (stack.empty()) {
                 elements.push_back(std::move(finalized));
             } else {
                 // if this was added to an outer element, that outer thing cannot be a leaf
-                if (trim(stack.top()->payload) != "") {
-                    HALT("invalid XML syntax in subtree of <" + stack.top()->tag + ">: \"" + stack.top()->payload + "\"");
+                if (trim(stack.top().payload) != "") {
+                    HALT("invalid XML syntax in subtree of <" + stack.top().tag + ">: \"" + stack.top().payload + "\"");
                 }
-                stack.top()->children.push_back(std::move(finalized));
-                stack.top()->leaf = false;
+                stack.top().children.push_back(std::make_unique<Xml>(std::move(finalized)));
+                stack.top().leaf = false;
             }
             cursor = tag_close + 1;
             continue;
@@ -227,7 +228,7 @@ bool XmlSerializer::load(std::istream& input) {
 
         // push the just-opened element
         Xml element = { .tag = tagname, .attributes =  attributes, .leaf = true, .payload = unescape(payload) };
-        stack.push(std::make_unique<Xml>(std::move(element)));
+        stack.push(std::move(element));
         _model->getTracer()->trace("<" + tag + ">");
         Util::IncIndent();
     }
@@ -239,7 +240,11 @@ bool XmlSerializer::load(std::istream& input) {
 
         // attributes contain name and id
         for (auto& attribute : xml.attributes) {
-            fields->saveField(attribute.first, attribute.second);
+            auto kind = PersistenceRecord::Entry::Kind::text;
+            if (std::regex_match(attribute.second, std::regex("^-?(?:[1-9]\\d+|\\d)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$"))) {
+                kind = PersistenceRecord::Entry::Kind::numeric;
+            }
+            fields->insert({ attribute.first, attribute.second, kind });
         }
 
         // children are assumed to be leafs, tags as field names (maybe including an index attribute)
@@ -249,10 +254,13 @@ bool XmlSerializer::load(std::istream& input) {
             auto it = field->attributes.find("index");
             if (it != field->attributes.end()) {
                 int index = std::stoi(it->second);
-                fields->saveField(field->tag + strIndex(index), field->payload);
-            } else {
-                fields->saveField(field->tag, field->payload);
+                name = field->tag + strIndex(index);
             }
+            auto kind = PersistenceRecord::Entry::Kind::text;
+            if (std::regex_match(field->payload, std::regex("^-?(?:[1-9]\\d+|\\d)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$"))) {
+                kind = PersistenceRecord::Entry::Kind::numeric;
+            }
+            fields->insert({ name, field->payload, kind });
         }
     
         // record tag = typename
@@ -260,12 +268,12 @@ bool XmlSerializer::load(std::istream& input) {
 
         return ok;
     };
-    if (elements.size() != 1 || elements[0]->tag != "GenesysModel") {
+    if (elements.size() != 1 || elements[0].tag != "GenesysModel") {
         HALT("invalid XML model: expected a single <GenesysModel> in the toplevel");
     }
     auto fields = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
     bool ok = true;
-    for (auto& element : elements[0]->children) {
+    for (auto& element : elements[0].children) {
         if (element->tag != "Components") {
             fields->clear();
             ok &= xml2fields(fields.get(), *element);
@@ -328,12 +336,24 @@ bool XmlSerializer::put(const std::string name, const std::string type, const Ut
 
 
 int XmlSerializer::for_each(std::function<int(const std::string&)> delegate) {
-    for (auto& entry : _metaobjects) {
-        int stop = delegate(entry.first);
-        if (stop) return stop;
-    }
-    for (auto& entry : _components) {
-        int stop = delegate(entry.first);
+    // enfore id-order
+    std::vector<std::pair<bool, std::string>> sorted;
+    sorted.reserve(_metaobjects.size() + _components.size());
+    for (auto& entry : _metaobjects) sorted.push_back({true, entry.first});
+    for (auto& entry : _components) sorted.push_back({false, entry.first});
+    std::sort(sorted.begin(), sorted.end(), [&](auto& a, auto& b){
+        if (a.first && b.first) { // both metatypes
+            return this->_metaobjects.at(a.second)->loadField("id", 0) < this->_metaobjects.at(b.second)->loadField("id", 0);
+        } else if (!a.first && !b.first) {
+            return this->_components.at(a.second)->loadField("id", -1) < this->_components.at(b.second)->loadField("id", -1);
+        } else /* different origins? metatypes < components */ {
+            return a.first && !b.first;
+        }
+    });
+
+    // then do the user-level iteration
+    for (auto& e : sorted) {
+        int stop = delegate(e.second);
         if (stop) return stop;
     }
     return 0;

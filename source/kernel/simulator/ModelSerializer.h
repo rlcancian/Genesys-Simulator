@@ -72,7 +72,7 @@ public:
     virtual bool put(const std::string name, const std::string type, const Util::identification id, PersistenceRecord *fields) = 0;
 
     /*!
-     * @brief Iterates over this structure's entries.
+     * @brief Iterates over this structure's entries, ordered by ID.
      * 
      * @param delegate delegate which is applied to every entry-identifying key, until it returns a non-zero value.
      * 
