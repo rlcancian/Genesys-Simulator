@@ -169,25 +169,14 @@ bool ModelDataDefinition::_getSaveDefaultsOption() {
 }
 
 bool ModelDataDefinition::_loadInstance(PersistenceRecord *fields) {
-	bool res = true;
-
 	int id = fields->loadField("id", -1);
-	if (id > 0) {
-		this->_id = id;
-	} else {
-		res = false;
-	}
+	if (id > 0) this->_id = id;
+	else        return false;
 	
-	this->_name = fields->loadField("name", "");
+	setName(fields->loadField("name", ""));
+	this->_reportStatistics = fields->loadField("reportStatistics", TraitsKernel<ModelDataDefinition>::reportStatistics);
 
-	int reportStats = fields->loadField("reportStatistics", -1);
-	if (reportStats < 0) {
-		this->_reportStatistics = TraitsKernel<ModelDataDefinition>::reportStatistics;
-	} else {
-		this->_reportStatistics = reportStats != 0;
-	}
-
-	return res;
+	return true;
 }
 
 void ModelDataDefinition::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {

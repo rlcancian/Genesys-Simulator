@@ -3,7 +3,6 @@
 #include <cassert>
 #include <regex>
 
-#include "Counter.h"
 #include "Simulator.h"
 
 
@@ -20,72 +19,51 @@ PersistenceRecord* GenSerializer::newPersistenceRecord() {
 
 
 bool GenSerializer::dump(std::ostream& output) {
-    const bool saveDefaults = _model->getPersistence()->getOption(ModelPersistence_if::Options::SAVEDEFAULTS);
+    auto fields = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
+    bool found, err;
 
-    // grab simulator info
-    auto simulator = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
-    simulator->saveField("typename", "Simulator");
-    simulator->saveField("id", 0);
-    simulator->saveField("name", _model->getParentSimulator()->getName());
-    simulator->saveField("versionNumber", _model->getParentSimulator()->getVersionNumber());
+    output << "# Genesys Simulation Model\n";
+    output << "# Simulator, Model and Simulation infos\n";
 
-    // grab model metadata
-    auto meta = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
-    meta->saveField("id", 0);
-    _model->getInfos()->saveInstance(meta.get());
+    fields->clear();
+    found = get("SimulatorInfo", fields.get()) ? true : get("Simulator", fields.get());
+    if (found) output << linearize(fields.get());
 
-    // grab simulation params
-    auto simulation = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
-    simulation->saveField("id", 0);
-    _model->getSimulation()->saveInstance(simulation.get(), saveDefaults);
+    fields->clear();
+    found = get("ModelInfo", fields.get());
+    if (found) output << linearize(fields.get());
 
-    // grab data definitions
-    std::vector<std::unique_ptr<PersistenceRecord>> elements;
-    const std::string counter = Util::TypeOf<Counter>();
-    const std::string statsCollector = Util::TypeOf<StatisticsCollector>();
-    for (auto& type : *_model->getDataManager()->getDataDefinitionClassnames()) {
-        if (type == statsCollector || type == counter) continue; // these don't need to be saved
-        _model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing elements of type \"" + type + "\":");
-        Util::IncIndent();
-        for (ModelDataDefinition *data : *_model->getDataManager()->getDataDefinitionList(type)->list()) {
-            _model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing " + type + " \"" + data->getName() + "\"");
-            auto fields = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
-            data->SaveInstance(fields.get(), data);
-            elements.push_back(std::move(fields));
-        }
-        Util::DecIndent();
-    }
+    fields->clear();
+    found = get("ModelSimulation", fields.get());
+    if (found) output << linearize(fields.get());
 
-    // grab model components
-    std::vector<std::unique_ptr<PersistenceRecord>> components;
-    _model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing components\":");
-    Util::IncIndent();
-    for (ModelComponent* component : *_model->getComponents()) {
-        if (component->getLevel() == 0) {
-            auto fields = std::unique_ptr<PersistenceRecord>(newPersistenceRecord());
-            component->SaveInstance(fields.get(), component);
-            components.push_back(std::move(fields));
-        }
-    }
-    Util::DecIndent();
+    output << "\n# Model Data Definitions\n";
+    err = for_each([&](auto& key){
+        fields->clear();
+        get(key, fields.get());
+        auto type = fields->loadField("typename");
+        if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
+        Plugin* plugin = _model->getParentSimulator()->getPlugins()->find(type);
+        if (plugin == nullptr) return 1;
+        if (plugin->getPluginInfo()->isComponent()) return 0;
+        output << linearize(fields.get());
+        return 0;
+    });
 
-    // now we actually flush the just-gathered contents
-    _model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file");
-    Util::IncIndent();
-    {
-        output << "# Genesys Simulation Model\n";
-        output << "# Simulator, Model and Simulation infos\n";
-        output << linearize(simulator.get());
-        output << linearize(meta.get());
-        output << linearize(simulation.get());
-        output << "\n# Model Data Definitions\n";
-        for (auto& element : elements) output << linearize(element.get());
-        output << "\n# Model Components\n";
-        for (auto& component : components) output << linearize(component.get());
-    }
-    Util::DecIndent();
+    output << "\n# Model Components\n";
+    err = for_each([&](auto& key){
+        fields->clear();
+        get(key, fields.get());
+        auto type = fields->loadField("typename");
+        if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
+        Plugin* plugin = _model->getParentSimulator()->getPlugins()->find(type);
+        if (plugin == nullptr) return 1;
+        if (!plugin->getPluginInfo()->isComponent()) return 0;
+        output << linearize(fields.get());
+        return 0;
+    });
 
-    return true;
+    return !err;
 }
 
 
@@ -95,8 +73,16 @@ std::string GenSerializer::linearize(PersistenceRecord *fields) {
     for (auto& field : *fields) {
         if (field.first == "id") id = field.second;
         else if (field.first == "typename") type = field.second;
-        else if (field.first == "name") name = field.second;
-        else attrs += field.first + "=" + field.second + " ";
+        else if (field.first == "name") name = "\"" + field.second + "\"";
+        else {
+            auto& key = field.first;
+            auto escaped = field.second;
+            // add quotes when needed
+            if (!std::regex_match(escaped, std::regex("^-?(?:[1-9]\\d+|\\d)(?:\\.\\d+)?(?:[eE][+-]?\\d+)?$"))) {
+                escaped = "\"" + escaped + "\"";
+            }
+            attrs += key + "=" + escaped + " ";
+        }
     }
 
     // add padding
@@ -184,10 +170,10 @@ bool GenSerializer::load(std::istream& input) {
         }
 
         // then, save each record
-        std::string type = fields->loadField("typename");
+        std::string type = fields->loadField("typename", "");
         if (type == "") return false;
         Util::identification id = fields->loadField("id", 0);
-        std::string name = id == 0 ? type : fields->loadField("name", "$" + std::to_string(id));
+        std::string name = id == 0 ? type : fields->loadField("name", "_" + std::to_string(id));
         res = put(name, type, id, fields.get());
     }
     return res;
@@ -207,7 +193,7 @@ bool GenSerializer::put(const std::string name, const std::string type, const Ut
     assert(fields != nullptr);
     auto saved = std::unique_ptr<PersistenceRecord>(this->newPersistenceRecord());
     saved->insert(fields->begin(), fields->end());
-    saved->saveField("name", name);
+    if (id != 0) saved->saveField("name", name);
     saved->saveField("typename", type);
     saved->saveField("id", id);
     _components[name] = std::move(saved);

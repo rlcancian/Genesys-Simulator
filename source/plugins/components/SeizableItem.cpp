@@ -78,13 +78,20 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
 		if (_modeldataManager != nullptr) {
 			if (_seizableType == SeizableItem::SeizableType::RESOURCE) {
 				_resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
+				if (_resourceOrSet == nullptr) {
+					auto model = _modeldataManager->getParentModel();
+					_resourceOrSet = model->getParentSimulator()->getPlugins()->newInstance<Resource>(model, _seizableName);
+				}
 			} else if (_seizableType == SeizableItem::SeizableType::SET) {
 				_resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _seizableName);
+				if (_resourceOrSet == nullptr) {
+					auto model = _modeldataManager->getParentModel();
+					_resourceOrSet = model->getParentSimulator()->getPlugins()->newInstance<Set>(model, _seizableName);
+				}
 			} else {
 				_resourceOrSet = nullptr;
 				_modeldataManager->getParentModel()->getTracer()->traceError("SeizableItem named '" + _seizableName + "' could not be found on loading");
 			}
-			//assert(_resourceOrSet != nullptr); // @TODO TraceError
 		}
 	} catch (...) {
 		res = false;

@@ -45,11 +45,13 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Queue>(), _queueableName);
 			} else if (_queueableType == QueueableItem::QueueableType::SET) {
 				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Queue>(), _queueableName);
-				//            } else if (_queueableType == QueueableItem::QueueableType::HOLD) {
-				//                _queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Hold>(), _queueableName);
 			}
-			//assert(_queueOrSet != nullptr);
+			if (_queueOrSet == nullptr) {
+				auto model = _modeldataManager->getParentModel();
+				_queueOrSet = model->getParentSimulator()->getPlugins()->newInstance<Queue>(model, _queueableName);
+			}
 		}
+		assert(_queueOrSet != nullptr);
 	} catch (...) {
 		res = false;
 	}

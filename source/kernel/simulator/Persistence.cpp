@@ -79,7 +79,7 @@ void PersistenceRecord::saveField(std::string key, std::string value, const std:
 }
 
 void PersistenceRecord::saveField(std::string key, std::string value) {
-    _fields[key] = key == "typename" ? value : "\"" + value + "\"";
+    _fields[key] = value;
 }
 
 void PersistenceRecord::saveField(std::string key, double value, const double defaultValue, const bool saveIfDefault) {

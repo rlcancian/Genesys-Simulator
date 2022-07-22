@@ -9,6 +9,7 @@
 #include "ModelSerializer.h"
 #include "Simulator.h"
 #include "../util/Util.h"
+#include "Counter.h"
 
 #include "GenSerializer.h"
 #include "XmlSerializer.h"
@@ -46,10 +47,68 @@ bool ModelPersistenceDefaultImpl2::save(std::string filename) {
         }
     }
 
-    // save file
+    const bool saveDefaults = _model->getPersistence()->getOption(ModelPersistence_if::Options::SAVEDEFAULTS);
+    auto fields = std::unique_ptr<PersistenceRecord>(serializer->newPersistenceRecord());
+
+    // grab simulator info
+    fields->clear();
+    fields->saveField("typename", "Simulator");
+    fields->saveField("name", _model->getParentSimulator()->getName());
+    fields->saveField("versionNumber", _model->getParentSimulator()->getVersionNumber());
+    serializer->put("SimulatorInfo", "Simulator", 0, fields.get());
+
+    // grab model metadata
+    fields->clear();
+    _model->getInfos()->saveInstance(fields.get());
+    serializer->put("ModelInfo", "ModelInfo", 0, fields.get());
+
+    // grab simulation params
+    fields->clear();
+    _model->getSimulation()->saveInstance(fields.get(), saveDefaults);
+    serializer->put("ModelSimulation", "ModelSimulation", 0, fields.get());
+
+    // gather data definitions
+    const std::string counter = Util::TypeOf<Counter>();
+    const std::string statsCollector = Util::TypeOf<StatisticsCollector>();
+    for (auto& type : *_model->getDataManager()->getDataDefinitionClassnames()) {
+        if (type == statsCollector || type == counter) continue; // these don't need to be saved
+        _model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing elements of type \"" + type + "\":");
+        Util::IncIndent();
+        for (ModelDataDefinition *data : *_model->getDataManager()->getDataDefinitionList(type)->list()) {
+            _model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing " + type + " \"" + data->getName() + "\"");
+            fields->clear();
+            data->SaveInstance(fields.get(), data);
+            auto name = data->getName();
+            auto id = data->getId();
+            auto type = data->getClassname();
+            serializer->put(name, type, id, fields.get());
+        }
+        Util::DecIndent();
+    }
+
+    // gather model components
+    _model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing components:");
+    Util::IncIndent();
+    for (ModelComponent* component : *_model->getComponents()) {
+        if (component->getLevel() == 0) {
+            fields->clear();
+            component->SaveInstance(fields.get(), component);
+            auto name = component->getName();
+            auto id = component->getId();
+            auto type = component->getClassname();
+            serializer->put(name, type, id, fields.get());
+        }
+    }
+    Util::DecIndent();
+
+    // write contents to file
+    _model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file");
+    Util::IncIndent();
     std::ofstream file{filename};
     bool ok = serializer->dump(file);
+    Util::DecIndent();
 
+    // finish save
     Util::DecIndent();
     if (ok) _dirty = false;
     return ok;
@@ -140,7 +199,10 @@ bool ModelPersistenceDefaultImpl2::load(std::string filename) {
             // get a handle to the component
             Util::identification id = fields->loadField("id", -1);
             ModelComponent *component = cm->find(id);
-            assert(component != nullptr);
+            if (component == nullptr) {
+                _model->getTracer()->traceError("found unregistered component ID " + std::to_string(id));
+                continue;
+            }
             // then set up its connections
             unsigned short nextSize = fields->loadField("nexts", 1);
             for (unsigned short i = 0; i < nextSize; i++) {
