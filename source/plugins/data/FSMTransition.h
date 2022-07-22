@@ -35,6 +35,9 @@ public:
 public:
     void setGuardExpression(std::string expression);
     std::string guardExpression();
+    void setDelayExpression(std::string expression);
+    std::string delayExpression();
+    double delay() const;
     void onTransition(std::function<void(Model *)> handler);
     void perform();
     bool canPerform();
@@ -42,11 +45,13 @@ public:
 public:
     const struct DEFAULT_VALUES
     {
-        const std::string guardExpression = "";
+        const std::string guardExpression = "1";
+        const std::string delayExpression = "0";
     } DEFAULT;
 
 private:
     std::string _guardExpression = DEFAULT.guardExpression;
+    std::string _delayExpression = DEFAULT.delayExpression;
     std::function<void(Model *)> _onTransition = nullptr;
 
 protected: // must be overriden

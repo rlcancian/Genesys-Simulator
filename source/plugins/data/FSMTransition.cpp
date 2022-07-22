@@ -37,6 +37,14 @@ FSMTransition::FSMTransition(Model *model, std::string name) : ModelDataDefiniti
         DefineSetter<FSMTransition, std::string>(this, &FSMTransition::setGuardExpression));
     model->getControls()->insert(guardExpressionProperty);
     _addProperty(guardExpressionProperty);
+
+    PropertyT<std::string> *delayExpressionProperty = new PropertyT<std::string>(
+        Util::TypeOf<FSMTransition>(),
+        "Delay Expression",
+        DefineGetter<FSMTransition, std::string>(this, &FSMTransition::delayExpression),
+        DefineSetter<FSMTransition, std::string>(this, &FSMTransition::setDelayExpression));
+    model->getControls()->insert(delayExpressionProperty);
+    _addProperty(delayExpressionProperty);
 }
 
 // public
@@ -57,6 +65,22 @@ std::string FSMTransition::guardExpression()
     return _guardExpression;
 }
 
+void FSMTransition::setDelayExpression(std::string expression)
+{
+    _delayExpression = expression;
+}
+
+std::string FSMTransition::delayExpression()
+{
+    // TODO - Time Unit
+    return _delayExpression;
+}
+
+double FSMTransition::delay() const
+{
+    return _parentModel->parseExpression(_delayExpression);
+}
+
 void FSMTransition::onTransition(std::function<void(Model *)> handler)
 {
     _onTransition = handler;
@@ -74,11 +98,6 @@ void FSMTransition::perform()
 
 bool FSMTransition::canPerform()
 {
-    if (_guardExpression.empty())
-    {
-        return true;
-    }
-
     return _parentModel->parseExpression(_guardExpression);
 }
 

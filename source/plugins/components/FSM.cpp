@@ -91,17 +91,8 @@ void FSM::_transition(Entity *entity)
 
     transitionDataToFollow->transition->perform();
 
-    if (transitionDataToFollow->to->isFinal())
-    {
-        _parentModel->getTracer()->trace("Entity " + entity->getName() + " reached final state " + transitionDataToFollow->to->getName());
-        _entityStates.erase(entity);
-        _parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
-        // TODO - Add transition delay?
-        return;
-    }
-
     _entityStates[entity] = transitionDataToFollow->to;
-    _parentModel->sendEntityToComponent(entity, this);
+    _parentModel->sendEntityToComponent(entity, this, transitionDataToFollow->transition->delay());
 }
 
 FSM::TransitionData *FSM::_findTransition(List<TransitionData> *transitions)
@@ -149,6 +140,14 @@ void FSM::_onDispatchEvent(Entity *entity, unsigned int inputPortNumber)
     {
         // Entity is not yet in the FSM, so insert it into the initial state
         _entityStates[entity] = _initialState;
+    }
+
+    if (_entityStates[entity]->isFinal())
+    {
+        _parentModel->getTracer()->trace("Entity " + entity->getName() + " reached final state " + _entityStates[entity]->getName());
+        _entityStates.erase(entity);
+        _parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+        return;
     }
 
     _transition(entity);
