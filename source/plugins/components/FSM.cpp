@@ -15,7 +15,7 @@
 // TODO - Check transition conditions when entity comes in ✅
 // TODO - Perform transition (if appropriate) ✅
 // TODO - Set final states ✅
-// TODO - Pass entity along when reaching final states
+// TODO - Pass entity along when reaching final states ✅
 // TODO - Implement _loadInstance, _saveInstance and _check
 // TODO - Update docs
 
@@ -73,39 +73,35 @@ void FSM::setInitialState(FSMState *state)
 
 // private
 
-void FSM::_transitionAll()
+void FSM::_transition(Entity *entity)
 {
-    for (const auto &entityState : _entityStates)
+    FSMState *currentState = _entityStates[entity];
+    List<FSM::TransitionData> *transitionDatum = _transitionMap[currentState];
+
+    FSM::TransitionData *transitionDataToFollow = _findTransition(transitionDatum);
+
+    if (transitionDataToFollow == nullptr)
     {
-        Entity *entity = entityState.first;
-        FSMState *from = entityState.second;
-        List<FSM::TransitionData> *transitionDatum = _transitionMap[from];
-
-        FSM::TransitionData *transitionToFollow = _findTransition(transitionDatum);
-
-        if (transitionToFollow == nullptr)
-        {
-            _parentModel->getTracer()->trace("Entity " + entity->getName() + " had no valid transition");
-            continue;
-        }
-
-        _parentModel->getTracer()->trace("Transitioning " + entity->getName() + " from " + from->getName() + " to " + transitionToFollow->to->getName() + " through " + transitionToFollow->transition->getName());
-
-        transitionToFollow->transition->perform();
-
-        if (transitionToFollow->to->isFinal())
-        {
-            _parentModel->getTracer()->trace("Entity " + entity->getName() + " reached final state " + transitionToFollow->to->getName());
-            _entityStates.erase(entity);
-            _parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
-            // TODO - Add transition delay?
-        }
-        else
-        {
-            // TODO - Does this affect the loop we're in?? Should we create a new map and merge it after the loop?
-            _entityStates[entity] = transitionToFollow->to;
-        }
+        _parentModel->getTracer()->trace("Entity " + entity->getName() + " had no valid transition");
+        // TODO - Schedule event to try again?
+        return;
     }
+
+    _parentModel->getTracer()->trace("Transitioning " + entity->getName() + " from " + currentState->getName() + " to " + transitionDataToFollow->to->getName() + " through " + transitionDataToFollow->transition->getName());
+
+    transitionDataToFollow->transition->perform();
+
+    if (transitionDataToFollow->to->isFinal())
+    {
+        _parentModel->getTracer()->trace("Entity " + entity->getName() + " reached final state " + transitionDataToFollow->to->getName());
+        _entityStates.erase(entity);
+        _parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+        // TODO - Add transition delay?
+        return;
+    }
+
+    _entityStates[entity] = transitionDataToFollow->to;
+    _parentModel->sendEntityToComponent(entity, this);
 }
 
 FSM::TransitionData *FSM::_findTransition(List<TransitionData> *transitions)
@@ -149,8 +145,13 @@ void FSM::_onDispatchEvent(Entity *entity, unsigned int inputPortNumber)
 {
     // _parentModel->getTracer()->trace("I'm just a dummy model and I'll just send the entity forward");
     // this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
-    _entityStates[entity] = _initialState;
-    _transitionAll();
+    if (_entityStates.find(entity) == _entityStates.end())
+    {
+        // Entity is not yet in the FSM, so insert it into the initial state
+        _entityStates[entity] = _initialState;
+    }
+
+    _transition(entity);
 }
 
 bool FSM::_loadInstance(std::map<std::string, std::string> *fields)

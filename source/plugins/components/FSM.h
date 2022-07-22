@@ -57,7 +57,7 @@ protected: // could be overriden .
     // virtual void _createInternalData();
 
 private: // methods
-    void _transitionAll();
+    void _transition(Entity *entity);
 
 private: // attributes 1:1
     FSMState *_initialState = nullptr;
