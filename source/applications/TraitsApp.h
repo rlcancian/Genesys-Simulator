@@ -31,6 +31,7 @@
 #include "terminal/examples/smarts/Smart_FSM.h"
 #include "terminal/examples/smarts/Smart_FSM_Hierarchical.h"
 #include "terminal/examples/smarts/Smart_FSM_Wait_Condition.h"
+#include "terminal/examples/smarts/Smart_FSM_Transitions.h"
 #include "terminal/examples/smarts/Smart_BatchSeparate.h"
 #include "terminal/examples/smarts/Smart_Delay.h"
 #include "terminal/examples/smarts/Smart_Dummy.h"
@@ -91,7 +92,8 @@ struct TraitsApp<GenesysApplication_if>
 	//  typedef Smart_Failures Application;
 	// typedef Smart_FSM Application;
 	// typedef Smart_FSM_Hierarchical Application;
-	typedef Smart_FSM_WaitCondition Application;
+	// typedef Smart_FSM_WaitCondition Application;
+	typedef Smart_FSM_Transitions Application;
 	// typedef Smart_SeizeDelayReleaseNoDataDefs Application;
 	// typedef Smart_SeizeDelayReleaseMany Application;
 	// typedef Smart_Sequence Application;

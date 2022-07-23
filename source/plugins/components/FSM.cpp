@@ -65,6 +65,7 @@ void FSM::insertState(FSMState *state)
 {
     _states->insert(state);
     _transitionMap[state] = new List<TransitionData>();
+    _parentModel->getTracer()->trace("State " + state->getName() + " inserted into FSM " + this->getName());
 }
 
 void FSM::insertTransition(FSMTransition *transition, FSMState *from, FSMState *to)
@@ -72,6 +73,7 @@ void FSM::insertTransition(FSMTransition *transition, FSMState *from, FSMState *
     TransitionData transitionData = {transition, to};
 
     _transitionMap[from]->insert(transitionData);
+    _parentModel->getTracer()->trace("Transition " + transition->getName() + " inserted into FSM " + this->getName());
 }
 
 void FSM::setInitialState(FSMState *state)

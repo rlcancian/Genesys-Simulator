@@ -133,6 +133,7 @@ SOURCES += \
 	../../../terminal/examples/smarts/Smart_FSM.cpp \
 	../../../terminal/examples/smarts/Smart_FSM_Hierarchical.cpp \
 	../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.cpp \
+	../../../terminal/examples/smarts/Smart_FSM_Transitions.cpp \
 	../../../terminal/examples/smarts/Smart_Failures.cpp \
 	../../../terminal/examples/smarts/Smart_WaitScanCondition.cpp \
 	../../../terminal/examples/smarts/Smart_WaitSignal.cpp \
@@ -319,6 +320,7 @@ HEADERS += \
 	../../../terminal/examples/smarts/Smart_FSM.h \
 	../../../terminal/examples/smarts/Smart_FSM_Hierarchical.h \
 	../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.h \
+	../../../terminal/examples/smarts/Smart_FSM_Transitions.h \
 	../../../terminal/examples/smarts/Smart_Failures.h \
 	../../../terminal/examples/smarts/Smart_WaitScanCondition.h \
 	../../../terminal/examples/smarts/Smart_WaitSignal.h \

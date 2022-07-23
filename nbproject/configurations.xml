@@ -2432,6 +2432,8 @@
         <itemPath>examples/smarts/Smart_FSM_Hierarchical.h</itemPath>
         <itemPath>examples/smarts/Smart_FSM_Wait_Condition.cpp</itemPath>
         <itemPath>examples/smarts/Smart_FSM_Wait_Condition.h</itemPath>
+        <itemPath>examples/smarts/Smart_FSM_Transitions.cpp</itemPath>
+        <itemPath>examples/smarts/Smart_FSM_Transitions.h</itemPath>
         <itemPath>examples/smarts/Smart_HoldSignal.cpp</itemPath>
         <itemPath>examples/smarts/Smart_HoldSignal.h</itemPath>
         <itemPath>examples/smarts/Smart_ModelInfoModelSimulation.cpp</itemPath>
@@ -15016,6 +15018,10 @@
       <item path="examples/smarts/Smart_FSM_Wait_Condition.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="examples/smarts/Smart_FSM_Wait_Condition.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM_Transitions.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM_Transitions.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="examples/smarts/Smart_HoldSignal.cpp"
             ex="false"
@@ -27618,6 +27624,10 @@
       <item path="examples/smarts/Smart_FSM_Wait_Condition.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="examples/smarts/Smart_FSM_Wait_Condition.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM_Transitions.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM_Transitions.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="examples/smarts/Smart_HoldSignal.cpp"
             ex="false"

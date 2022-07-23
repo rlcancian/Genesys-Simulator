@@ -47,6 +47,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/296208d5/Smart_FSM.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_FSM_Wait_Condition.o \
+	${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_Failures.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_ModelInfoModelSimulation.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_ODE.o \
@@ -280,6 +281,11 @@ ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Wait_Condition.o: ../../source/applications
 	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Wait_Condition.o ../../source/applications/terminal/examples/smarts/Smart_FSM_Wait_Condition.cpp
+
+${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions.o: ../../source/applications/terminal/examples/smarts/Smart_FSM_Transitions.cpp
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions.o ../../source/applications/terminal/examples/smarts/Smart_FSM_Transitions.cpp
 
 ${OBJECTDIR}/_ext/296208d5/Smart_Failures.o: ../../source/applications/terminal/examples/smarts/Smart_Failures.cpp
 	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
@@ -1144,6 +1150,19 @@ ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Wait_Condition_nomain.o: ${OBJECTDIR}/_ext/
 	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Wait_Condition_nomain.o ../../source/applications/terminal/examples/smarts/Smart_FSM_Wait_Condition.cpp;\
 	else  \
 	    ${CP} ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Wait_Condition.o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Wait_Condition_nomain.o;\
+	fi
+
+${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions.o ../../source/applications/terminal/examples/smarts/Smart_FSM_Transitions.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
+	@NMOUTPUT=`${NM} ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions.o`; \
+	if (echo "$$NMOUTPUT" | ${GREP} '|main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
+	then  \
+	    ${RM} "$@.d";\
+	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions_nomain.o ../../source/applications/terminal/examples/smarts/Smart_FSM_Transitions.cpp;\
+	else  \
+	    ${CP} ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions.o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Transitions_nomain.o;\
 	fi
 
 ${OBJECTDIR}/_ext/296208d5/Smart_Failures_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smart_Failures.o ../../source/applications/terminal/examples/smarts/Smart_Failures.cpp 
