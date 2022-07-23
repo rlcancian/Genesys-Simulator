@@ -17,6 +17,7 @@
 #include "../../kernel/simulator/ModelComponent.h"
 #include "../../plugins/data/FSMTransition.h"
 #include "../../plugins/data/FSMState.h"
+#include "../../kernel/simulator/OnEventManager.h"
 
 class FSMState;
 
@@ -60,6 +61,7 @@ protected: // could be overriden .
 
 private: // methods
     void _transition(Entity *entity);
+    void _handlerForAfterProcessEventEvent(SimulationEvent *event);
 
 private: // attributes 1:1
     FSMState *_initialState = nullptr;
@@ -69,6 +71,7 @@ private: // attributes 1:n
     List<FSMState *> *_states = new List<FSMState *>();
     List<FSMTransition *> *_transitions;
     std::map<Entity *, FSMState *> _entityStates;
+    List<Entity *> *_entitiesWaitingForCondition = new List<Entity *>();
 
     std::map<FSMState *, List<TransitionData> *> _transitionMap;
 };

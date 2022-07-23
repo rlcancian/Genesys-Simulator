@@ -18,6 +18,14 @@
 // TODO - Pass entity along when reaching final states ✅
 // TODO - Implement _loadInstance, _saveInstance and _check
 // TODO - Update docs
+// TODO - Listen to `onReplicationStep` ✅
+
+// - Basic
+// - Hierarchical
+// - Transition side effects
+// - Transition conditions
+// - Transition delays
+// - Waiting for condition
 
 #include "FSM.h"
 #include "../../kernel/simulator/Model.h"
@@ -80,13 +88,19 @@ void FSM::_transition(Entity *entity)
 
     FSM::TransitionData *transitionDataToFollow = _findTransition(transitionDatum);
 
-    // TODO - Should we remove this?
-    // TODO - Check graph in _check?
     if (transitionDataToFollow == nullptr)
     {
-        _parentModel->getTracer()->trace("Entity " + entity->getName() + " had no valid transition");
+        _parentModel->getTracer()->trace("Entity " + entity->getName() + " had no valid transition. Listening for events");
+
+        // Only insert the entity into the list if it is not already there
+        if (_entitiesWaitingForCondition->find(entity) == _entitiesWaitingForCondition->list()->end())
+        {
+            _entitiesWaitingForCondition->insert(entity);
+        }
         return;
     }
+
+    _entitiesWaitingForCondition->remove(entity);
 
     _parentModel->getTracer()->trace("Transitioning " + entity->getName() + " from " + currentState->getName() + " to " + transitionDataToFollow->to->getName() + " through " + transitionDataToFollow->transition->getName());
 
@@ -114,6 +128,16 @@ FSM::TransitionData *FSM::_findTransition(List<TransitionData> *transitions)
     }
 
     return nullptr;
+}
+
+void FSM::_handlerForAfterProcessEventEvent(SimulationEvent *event)
+{
+    // After processing an event, check if there are any entities waiting for a condition, which may be true now
+    for (Entity *entity : *_entitiesWaitingForCondition->list())
+    {
+        std::cout << "ENTITY WAITING FOR CONDITION :) " << entity->getName() << std::endl;
+        _transition(entity);
+    }
 }
 
 // public static
@@ -192,6 +216,12 @@ std::map<std::string, std::string> *FSM::_saveInstance(bool saveDefaultValues)
 bool FSM::_check(std::string *errorMessage)
 {
     bool resultAll = true;
+
+    if (resultAll)
+    {
+        _parentModel->getOnEvents()->addOnAfterProcessEventHandler(this, &FSM::_handlerForAfterProcessEventEvent);
+    }
+
     return resultAll;
 }
 
