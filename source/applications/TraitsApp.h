@@ -90,10 +90,10 @@ struct TraitsApp<GenesysApplication_if>
 	// typedef Smart_RouteStation Application;
 	// typedef Smart_SeizeDelayRelease Application;
 	//  typedef Smart_Failures Application;
-	// typedef Smart_FSM Application;
+	typedef Smart_FSM Application;
 	// typedef Smart_FSM_Hierarchical Application;
 	// typedef Smart_FSM_WaitCondition Application;
-	typedef Smart_FSM_Transitions Application;
+	// typedef Smart_FSM_Transitions Application;
 	// typedef Smart_SeizeDelayReleaseNoDataDefs Application;
 	// typedef Smart_SeizeDelayReleaseMany Application;
 	// typedef Smart_Sequence Application;
