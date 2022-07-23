@@ -29,16 +29,6 @@ Smart_FSM::Smart_FSM()
 {
 }
 
-void Smart_FSM::onEvenToOdd(Model *model)
-{
-    std::cout << "Going from even to odd" << std::endl;
-}
-
-void Smart_FSM::onOddToEven(Model *model)
-{
-    std::cout << "Going from odd to even" << std::endl;
-}
-
 /**
  * This is the main function of the application.
  * It instanciates the simulator, builds a simulation model and then simulate that model.
