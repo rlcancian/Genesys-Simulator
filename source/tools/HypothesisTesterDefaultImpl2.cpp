@@ -322,7 +322,7 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl2::testChiSquared(dou
 	double cumulative;
 	bool rejectH0;
 	double testStat = chi;
-	double pvalue = ProbabilityDistribution::chi2(testStat, n - 1);
+	double pvalue = integrator->integrate(-100, testStat, &ProbabilityDistribution::chi2, n - 1);
 	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
 		cumulative = significanceLevel;
 		rejectH0 = pvalue > significanceLevel;
