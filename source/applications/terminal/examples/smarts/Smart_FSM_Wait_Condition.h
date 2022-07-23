@@ -11,19 +11,19 @@
  * Created on 27 de Maio de 2022, 16:34
  */
 
-#ifndef SMART_FSM_HIERARCHICAL_H
-#define SMART_FSM_HIERARCHICAL_H
+#ifndef SMART_FSM_WAIT_CONDITION_H
+#define SMART_FSM_WAIT_CONDITION_H
 
 #include "../../../BaseGenesysTerminalApplication.h"
 #include "../../../../plugins/components/FSM.h"
 
-class Smart_FSM_Hierarchical : public BaseGenesysTerminalApplication
+class Smart_FSM_WaitCondition : public BaseGenesysTerminalApplication
 {
 public:
-    Smart_FSM_Hierarchical();
+    Smart_FSM_WaitCondition();
 
 public:
     virtual int main(int argc, char **argv);
 };
 
-#endif /* SMART_FSM_HIERARCHICAL_H */
+#endif /* SMART_FSM_WAIT_CONDITION_H */

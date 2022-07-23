@@ -174,6 +174,7 @@ SOURCES       = /home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccPro
 		../../../../terminal/examples/smarts/Smart_Dummy.cpp \
 		../../../../terminal/examples/smarts/Smart_FSM.cpp \
 		../../../../terminal/examples/smarts/Smart_FSM_Hierarchical.cpp \
+		../../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.cpp \
 		../../../../terminal/examples/smarts/Smart_Failures.cpp \
 		../../../../terminal/examples/smarts/Smart_WaitScanCondition.cpp \
 		../../../../terminal/examples/smarts/Smart_WaitSignal.cpp \
@@ -333,6 +334,7 @@ OBJECTS       = Attribute.o \
 		Smart_Dummy.o \
 		Smart_FSM.o \
 		Smart_FSM_Hierarchical.o \
+		Smart_FSM_Wait_Condition.o \
 		Smart_Failures.o \
 		Smart_WaitScanCondition.o \
 		Smart_WaitSignal.o \
@@ -610,6 +612,7 @@ DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		../../../../terminal/examples/smarts/Smart_Dummy.h \
 		../../../../terminal/examples/smarts/Smart_FSM.h \
 		../../../../terminal/examples/smarts/Smart_FSM_Hierarchical.h \
+		../../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.h \
 		../../../../terminal/examples/smarts/Smart_Failures.h \
 		../../../../terminal/examples/smarts/Smart_WaitScanCondition.h \
 		../../../../terminal/examples/smarts/Smart_WaitSignal.h \
@@ -763,6 +766,7 @@ DIST          = /usr/lib/x86_64-linux-gnu/qt5/mkspecs/features/spec_pre.prf \
 		../../../../terminal/examples/smarts/Smart_Dummy.cpp \
 		../../../../terminal/examples/smarts/Smart_FSM.cpp \
 		../../../../terminal/examples/smarts/Smart_FSM_Hierarchical.cpp \
+		../../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.cpp \
 		../../../../terminal/examples/smarts/Smart_Failures.cpp \
 		../../../../terminal/examples/smarts/Smart_WaitScanCondition.cpp \
 		../../../../terminal/examples/smarts/Smart_WaitSignal.cpp \
@@ -6019,6 +6023,56 @@ Smart_FSM_Hierarchical.o: ../../../../terminal/examples/smarts/Smart_FSM_Hierarc
 		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/SinkModelComponent.h
 	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Smart_FSM_Hierarchical.o ../../../../terminal/examples/smarts/Smart_FSM_Hierarchical.cpp
 
+Smart_FSM_Wait_Condition.o: ../../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.cpp ../../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.h \
+		../../../../BaseGenesysTerminalApplication.h \
+		../../../../GenesysApplication_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/TraceManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/util/List.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/util/Util.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ModelDataDefinition.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ParserChangesInformation.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/PersistentObject_base.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/PluginInformation.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/Property.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/OnEventManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/Event.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/Entity.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/EntityType.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/StatisticsCollector.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/statistics/Statistics_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/statistics/Collector_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ModelDataManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/Plugin.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ModelComponent.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ConnectionManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/Simulator.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/Model.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ModelChecker_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/Parser_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/statistics/Sampler_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ModelPersistence_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ComponentManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/SourceModelComponent.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ModelInfo.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ModelSimulation.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/SimulationReporter_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/LicenceManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/PluginManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/PluginConnector_if.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ModelManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ParserManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/ExperimentManager.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/SimulationExperiment.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/plugins/components/Create.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/plugins/components/FSM.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/plugins/components/FSMState.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/Counter.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/plugins/components/DummyComponent.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/plugins/data/DummyElement.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/plugins/components/Dispose.h \
+		/home/rlcancian/Laboratory/Software_Lab/IA32_Architecture/GccProjects/RebornedGenESyS/Genesys-Simulator/source/kernel/simulator/SinkModelComponent.h
+	$(CXX) -c $(CXXFLAGS) $(INCPATH) -o Smart_FSM_Wait_Condition.o ../../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.cpp
+
 Smart_Failures.o: ../../../../terminal/examples/smarts/Smart_Failures.cpp ../../../../terminal/examples/smarts/Smart_Failures.h \
 		../../../../BaseGenesysTerminalApplication.h \
 		../../../../GenesysApplication_if.h \
@@ -7336,6 +7390,7 @@ main.o: ../main.cpp ../mainwindow.h \
 		../../../../terminal/examples/smarts/Smart_Dummy.h \
 		../../../../terminal/examples/smarts/Smart_FSM.h \
 		../../../../terminal/examples/smarts/Smart_FSM_Hierarchical.h \
+		../../../../terminal/examples/smarts/Smart_FSM_Wait_Condition.h \
 		../../../../terminal/examples/smarts/Smart_Failures.h \
 		../../../../terminal/examples/smarts/Smart_ModelInfoModelSimulation.h \
 		../../../../terminal/examples/smarts/Smart_ODE.h \

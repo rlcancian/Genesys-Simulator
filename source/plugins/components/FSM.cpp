@@ -133,9 +133,14 @@ FSM::TransitionData *FSM::_findTransition(List<TransitionData> *transitions)
 void FSM::_handlerForAfterProcessEventEvent(SimulationEvent *event)
 {
     // After processing an event, check if there are any entities waiting for a condition, which may be true now
-    for (Entity *entity : *_entitiesWaitingForCondition->list())
+    for (unsigned int i = 0; i < _entitiesWaitingForCondition->size(); i++)
     {
-        std::cout << "ENTITY WAITING FOR CONDITION :) " << entity->getName() << std::endl;
+        Entity *entity = _entitiesWaitingForCondition->getAtRank(i);
+        if (entity == event->getCurrentEvent()->getEntity())
+        {
+            continue;
+        }
+
         _transition(entity);
     }
 }
@@ -167,8 +172,6 @@ PluginInformation *FSM::GetPluginInformation()
 
 void FSM::_onDispatchEvent(Entity *entity, unsigned int inputPortNumber)
 {
-    // _parentModel->getTracer()->trace("I'm just a dummy model and I'll just send the entity forward");
-    // this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
     if (_entityStates.find(entity) == _entityStates.end())
     {
         // Entity is not yet in the FSM, so insert it into the initial state
