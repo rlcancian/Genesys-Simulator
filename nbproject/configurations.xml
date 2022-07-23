@@ -2428,6 +2428,8 @@
         <itemPath>examples/smarts/Smart_Dummy.h</itemPath>
         <itemPath>examples/smarts/Smart_FSM.cpp</itemPath>
         <itemPath>examples/smarts/Smart_FSM.h</itemPath>
+        <itemPath>examples/smarts/Smart_FSM_Hierarchical.cpp</itemPath>
+        <itemPath>examples/smarts/Smart_FSM_Hierarchical.h</itemPath>
         <itemPath>examples/smarts/Smart_HoldSignal.cpp</itemPath>
         <itemPath>examples/smarts/Smart_HoldSignal.h</itemPath>
         <itemPath>examples/smarts/Smart_ModelInfoModelSimulation.cpp</itemPath>
@@ -15004,6 +15006,10 @@
       <item path="examples/smarts/Smart_FSM.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="examples/smarts/Smart_FSM.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM_Hierarchical.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM_Hierarchical.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="examples/smarts/Smart_HoldSignal.cpp"
             ex="false"
@@ -27598,6 +27604,10 @@
       <item path="examples/smarts/Smart_FSM.cpp" ex="false" tool="1" flavor2="0">
       </item>
       <item path="examples/smarts/Smart_FSM.h" ex="false" tool="3" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM_Hierarchical.cpp" ex="false" tool="1" flavor2="0">
+      </item>
+      <item path="examples/smarts/Smart_FSM_Hierarchical.h" ex="false" tool="3" flavor2="0">
       </item>
       <item path="examples/smarts/Smart_HoldSignal.cpp"
             ex="false"

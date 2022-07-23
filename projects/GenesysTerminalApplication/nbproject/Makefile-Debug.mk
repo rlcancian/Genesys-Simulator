@@ -45,6 +45,7 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/296208d5/Smart_Delay.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_Dummy.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_FSM.o \
+	${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_Failures.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_ModelInfoModelSimulation.o \
 	${OBJECTDIR}/_ext/296208d5/Smart_ODE.o \
@@ -268,6 +269,11 @@ ${OBJECTDIR}/_ext/296208d5/Smart_FSM.o: ../../source/applications/terminal/examp
 	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
 	${RM} "$@.d"
 	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM.o ../../source/applications/terminal/examples/smarts/Smart_FSM.cpp
+
+${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical.o: ../../source/applications/terminal/examples/smarts/Smart_FSM_Hierarchical.cpp
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -Wall -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical.o ../../source/applications/terminal/examples/smarts/Smart_FSM_Hierarchical.cpp
 
 ${OBJECTDIR}/_ext/296208d5/Smart_Failures.o: ../../source/applications/terminal/examples/smarts/Smart_Failures.cpp
 	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
@@ -1106,6 +1112,19 @@ ${OBJECTDIR}/_ext/296208d5/Smart_FSM_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smart_
 	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_nomain.o ../../source/applications/terminal/examples/smarts/Smart_FSM.cpp;\
 	else  \
 	    ${CP} ${OBJECTDIR}/_ext/296208d5/Smart_FSM.o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_nomain.o;\
+	fi
+
+${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical.o ../../source/applications/terminal/examples/smarts/Smart_FSM_Hierarchical.cpp 
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
+	@NMOUTPUT=`${NM} ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical.o`; \
+	if (echo "$$NMOUTPUT" | ${GREP} '|main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T main$$') || \
+	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
+	then  \
+	    ${RM} "$@.d";\
+	    $(COMPILE.cc) -g -Wall -std=c++14 -Dmain=__nomain -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical_nomain.o ../../source/applications/terminal/examples/smarts/Smart_FSM_Hierarchical.cpp;\
+	else  \
+	    ${CP} ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical.o ${OBJECTDIR}/_ext/296208d5/Smart_FSM_Hierarchical_nomain.o;\
 	fi
 
 ${OBJECTDIR}/_ext/296208d5/Smart_Failures_nomain.o: ${OBJECTDIR}/_ext/296208d5/Smart_Failures.o ../../source/applications/terminal/examples/smarts/Smart_Failures.cpp 

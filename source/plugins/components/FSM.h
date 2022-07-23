@@ -15,8 +15,10 @@
 #define FSM_H
 
 #include "../../kernel/simulator/ModelComponent.h"
-#include "../../plugins/data/FSMState.h"
 #include "../../plugins/data/FSMTransition.h"
+#include "../../plugins/data/FSMState.h"
+
+class FSMState;
 
 /*!
  This component ...

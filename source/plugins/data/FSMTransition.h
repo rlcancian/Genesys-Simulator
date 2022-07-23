@@ -17,6 +17,7 @@
 #include <string>
 
 #include "../../kernel/simulator/ModelDataDefinition.h"
+#include "../../kernel/simulator/Entity.h"
 
 class FSMTransition : public ModelDataDefinition
 {

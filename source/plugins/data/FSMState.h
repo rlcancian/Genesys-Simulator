@@ -17,6 +17,8 @@
 #include "../../kernel/simulator/ModelDataDefinition.h"
 #include "../components/FSM.h"
 
+class FSM;
+
 // TODO - Should this be a component?
 class FSMState : public ModelDataDefinition
 {
