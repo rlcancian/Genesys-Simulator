@@ -5,9 +5,9 @@
 
 /*
  * File:   FSMTransition.cpp
- * Author: rlcancian
+ * Author: Henrique da Cunha Buss
  *
- * Created on 11 de janeiro de 2022, 22:26
+ * Created on 28 de maio de 2022, 11:20
  */
 
 #include "FSMTransition.h"
@@ -60,7 +60,9 @@ FSMTransition::FSMTransition(Model *model, std::string name) : ModelDataDefiniti
 std::string FSMTransition::show()
 {
     return ModelDataDefinition::show() +
-           ",guardExpression=" + this->_guardExpression;
+           ",guardExpression=" + this->_guardExpression +
+           ",delayExpression=" + this->_delayExpression +
+           ",timeUnit=" + std::to_string(static_cast<int>(this->_delayTimeUnit));
 }
 
 void FSMTransition::setGuardExpression(std::string expression)
@@ -80,7 +82,6 @@ void FSMTransition::setDelayExpression(std::string expression)
 
 std::string FSMTransition::delayExpression()
 {
-    // TODO - Time Unit
     return _delayExpression;
 }
 
@@ -141,13 +142,12 @@ ModelDataDefinition *FSMTransition::LoadInstance(Model *model, std::map<std::str
 PluginInformation *FSMTransition::GetPluginInformation()
 {
     PluginInformation *info = new PluginInformation(Util::TypeOf<FSMTransition>(), &FSMTransition::LoadInstance, &FSMTransition::NewInstance);
-    info->setDescriptionHelp("//@TODO");
-    // info->setDescriptionHelp("");
-    // info->setObservation("");
-    // info->setMinimumOutputs();
-    // info->setDynamicLibFilenameDependencies();
-    // info->setFields();
-    //  ...
+    std::string text = "The FSMTransition class is used to define a transition in a FSM. ";
+    text += "A transition can have a guard expression and a delay expression. ";
+    text += "The guard expression is used to define the condition to perform the transition. ";
+    text += "The delay expression is used to define the time to wait before performing the transition. ";
+    text += "The time unit is used to define the time unit of the delay expression.";
+    info->setDescriptionHelp(text);
     return info;
 }
 
@@ -158,7 +158,9 @@ bool FSMTransition::_loadInstance(std::map<std::string, std::string> *fields)
     bool res = ModelDataDefinition::_loadInstance(fields);
     if (res)
     {
-        this->_guardExpression = LoadField(fields, "guardExpression", DEFAULT.guardExpression);
+        _guardExpression = LoadField(fields, "guardExpression", DEFAULT.guardExpression);
+        _delayExpression = LoadField(fields, "delayExpression", DEFAULT.delayExpression);
+        _delayTimeUnit = LoadField(fields, "delayTimeUnit", DEFAULT.delayTimeUnit);
     }
     return res;
 }
@@ -167,16 +169,18 @@ std::map<std::string, std::string> *FSMTransition::_saveInstance(bool saveDefaul
 {
     std::map<std::string, std::string> *fields = ModelDataDefinition::_saveInstance(saveDefaultValues); // Util::TypeOf<Queue>());
     SaveField(fields, "guardExpression", _guardExpression, DEFAULT.guardExpression, saveDefaultValues);
+    SaveField(fields, "delayExpression", _delayExpression, DEFAULT.delayExpression, saveDefaultValues);
+    SaveField(fields, "delayTimeUnit", _delayTimeUnit, DEFAULT.delayTimeUnit, saveDefaultValues);
     return fields;
 }
 
 // protected virtual -- could be overriden
 
-// ParserChangesInformation* FSMTransition::_getParserChangesInformation() {}
-
 bool FSMTransition::_check(std::string *errorMessage)
 {
-    return _parentModel->checkExpression(_guardExpression, "Guard expression", errorMessage);
+    bool validGuardExpression = _parentModel->checkExpression(_guardExpression, "Guard expression", errorMessage);
+    bool validDelayExpression = _parentModel->checkExpression(_delayExpression, "Delay expression", errorMessage);
+    return validGuardExpression && validDelayExpression;
 }
 
 // private

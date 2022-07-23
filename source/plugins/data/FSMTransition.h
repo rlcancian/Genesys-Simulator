@@ -6,7 +6,7 @@
 
 /*
  * File:   FSMTransition.h
- * Author: henrique.buss
+ * Author: Henrique da Cunha Buss
  *
  * Created on 28 de Maio de 2022, 11:16
  */
