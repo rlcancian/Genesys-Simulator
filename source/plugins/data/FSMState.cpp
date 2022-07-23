@@ -55,6 +55,22 @@ void FSMState::setIsFinal(bool isFinal)
 {
     _isFinal = isFinal;
 }
+
+void FSMState::setRefinement(FSM *refinement)
+{
+    _refinement = refinement;
+}
+
+bool FSMState::hasRefinement() const
+{
+    return _refinement != nullptr;
+}
+
+FSM *FSMState::refinement() const
+{
+    return _refinement;
+}
+
 // public static
 
 ModelDataDefinition *FSMState::LoadInstance(Model *model, std::map<std::string, std::string> *fields)

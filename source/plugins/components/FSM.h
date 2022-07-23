@@ -54,7 +54,7 @@ protected: // must be overriden
 
 protected: // could be overriden .
     virtual bool _check(std::string *errorMessage);
-    // virtual void _createInternalData();
+    virtual void _createInternalAndAttachedData();
 
 private: // methods
     void _transition(Entity *entity);

@@ -15,7 +15,9 @@
 #define FSMSTATE_H
 
 #include "../../kernel/simulator/ModelDataDefinition.h"
+#include "../components/FSM.h"
 
+// TODO - Should this be a component?
 class FSMState : public ModelDataDefinition
 {
 public:
@@ -33,6 +35,9 @@ public:
 public:
     bool isFinal() const;
     void setIsFinal(bool isFinal);
+    void setRefinement(FSM *refinement);
+    bool hasRefinement() const;
+    FSM *refinement() const;
 
 protected: // must be overriden
     virtual bool _loadInstance(std::map<std::string, std::string> *fields);
@@ -45,6 +50,7 @@ protected: // could be overriden
 
 private:
     bool _isFinal = false;
+    FSM *_refinement = nullptr;
 };
 
 #endif /* FSMSTATE_H */

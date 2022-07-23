@@ -80,10 +80,11 @@ void FSM::_transition(Entity *entity)
 
     FSM::TransitionData *transitionDataToFollow = _findTransition(transitionDatum);
 
+    // TODO - Should we remove this?
+    // TODO - Check graph in _check?
     if (transitionDataToFollow == nullptr)
     {
         _parentModel->getTracer()->trace("Entity " + entity->getName() + " had no valid transition");
-        // TODO - Schedule event to try again?
         return;
     }
 
@@ -92,7 +93,14 @@ void FSM::_transition(Entity *entity)
     transitionDataToFollow->transition->perform(entity);
 
     _entityStates[entity] = transitionDataToFollow->to;
-    _parentModel->sendEntityToComponent(entity, this, transitionDataToFollow->transition->delay());
+
+    ModelComponent *nextComponent = this;
+    if (transitionDataToFollow->to->hasRefinement())
+    {
+        nextComponent = transitionDataToFollow->to->refinement();
+    }
+
+    _parentModel->sendEntityToComponent(entity, nextComponent, transitionDataToFollow->transition->delay());
 }
 
 FSM::TransitionData *FSM::_findTransition(List<TransitionData> *transitions)
@@ -140,6 +148,12 @@ void FSM::_onDispatchEvent(Entity *entity, unsigned int inputPortNumber)
     {
         // Entity is not yet in the FSM, so insert it into the initial state
         _entityStates[entity] = _initialState;
+
+        if (_initialState->hasRefinement())
+        {
+            _parentModel->sendEntityToComponent(entity, _initialState->refinement());
+            return;
+        }
     }
 
     if (_entityStates[entity]->isFinal())
@@ -178,4 +192,16 @@ bool FSM::_check(std::string *errorMessage)
 {
     bool resultAll = true;
     return resultAll;
+}
+
+void FSM::_createInternalAndAttachedData()
+{
+    for (FSMState *state : *_states->list())
+    {
+        if (state->hasRefinement())
+        {
+            state->refinement()->getConnections()->connections()->clear();
+            state->refinement()->getConnections()->insert(this);
+        }
+    }
 }
