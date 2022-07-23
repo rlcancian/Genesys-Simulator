@@ -6,7 +6,7 @@
 
 /*
  * File:   FSMState.h
- * Author: henrique.buss
+ * Author: Henrique da Cunha Buss
  *
  * Created on 28 de Maio de 2022, 11:13
  */
@@ -19,7 +19,6 @@
 
 class FSM;
 
-// TODO - Should this be a component?
 class FSMState : public ModelDataDefinition
 {
 public:
@@ -48,7 +47,6 @@ protected: // must be overriden
 protected: // could be overriden
     virtual bool _check(std::string *errorMessage);
     virtual void _initBetweenReplications();
-    // virtual void _createInternalData();
 
 private:
     bool _isFinal = false;

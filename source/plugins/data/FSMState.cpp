@@ -5,7 +5,7 @@
 
 /*
  * File:   FSMState.cpp
- * Author: rlcancian
+ * Author: Henrique da Cunha Buss
  *
  * Created on 11 de janeiro de 2022, 22:26
  */
@@ -89,13 +89,11 @@ ModelDataDefinition *FSMState::LoadInstance(Model *model, std::map<std::string, 
 PluginInformation *FSMState::GetPluginInformation()
 {
     PluginInformation *info = new PluginInformation(Util::TypeOf<FSMState>(), &FSMState::LoadInstance, &FSMState::NewInstance);
-    info->setDescriptionHelp("//@TODO");
-    // info->setDescriptionHelp("");
-    // info->setObservation("");
-    // info->setMinimumOutputs();
-    // info->setDynamicLibFilenameDependencies();
-    // info->setFields();
-    //  ...
+    std::string text = "The FSMState class is used to define a state in a FSM. ";
+    text += "It can optionally have a refinement, meaning an entire FSM inside of it. ";
+    text += "Entities will need to reach a final state of that FSM before going back to the parent FSM.";
+    info->setDescriptionHelp(text);
+
     return info;
 }
 
@@ -106,7 +104,7 @@ bool FSMState::_loadInstance(std::map<std::string, std::string> *fields)
     bool res = ModelDataDefinition::_loadInstance(fields);
     if (res)
     {
-        this->_isFinal = LoadField(fields, "isFinal", false);
+        _isFinal = LoadField(fields, "isFinal", false);
     }
     return res;
 }
@@ -120,16 +118,16 @@ std::map<std::string, std::string> *FSMState::_saveInstance(bool saveDefaultValu
 
 // protected virtual -- could be overriden
 
-// ParserChangesInformation* FSMState::_getParserChangesInformation() {}
-
 bool FSMState::_check(std::string *errorMessage)
 {
-    bool resultAll = true;
-    return resultAll;
+    if (_refinement == nullptr)
+    {
+        return true;
+    }
+
+    return ModelComponent::Check(_refinement);
 }
 
 void FSMState::_initBetweenReplications()
 {
 }
-
-// private

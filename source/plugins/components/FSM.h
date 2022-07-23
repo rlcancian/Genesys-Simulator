@@ -6,7 +6,7 @@
 
 /*
  * File:   FSM.h
- * Author: henrique.buss
+ * Author: Henrique da Cunha Buss
  *
  * Created on 27 de Maio de 2022, 16:32
  */
@@ -22,7 +22,10 @@
 class FSMState;
 
 /*!
- This component ...
+    The FSM module is used to model Finite State Machines.
+    Each FSM has a set of FSMStates and a set of FSMTransitions, which connect the states.
+    Each state may have a refinement (another FSM) inside of it.
+    When an entity enters a state, it will be sent to the refinement of that state, if any.
  */
 class FSM : public ModelComponent
 {
@@ -62,6 +65,7 @@ protected: // could be overriden .
 private: // methods
     void _transition(Entity *entity);
     void _handlerForAfterProcessEventEvent(SimulationEvent *event);
+    bool _reachesFinalState(FSMState *state, List<FSMState *> *visited);
 
 private: // attributes 1:1
     FSMState *_initialState = nullptr;

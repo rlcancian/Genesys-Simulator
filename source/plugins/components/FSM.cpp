@@ -5,27 +5,11 @@
  */
 
 /*
- * File:   Dummy.cpp
- * Author: rafael.luiz.cancian
+ * File:   FSM.cpp
+ * Author: Henrique da Cunha Buss
  *
  * Created on 22 de Maio de 2019, 18:41
  */
-
-// TODO - Set initial state ✅
-// TODO - Check transition conditions when entity comes in ✅
-// TODO - Perform transition (if appropriate) ✅
-// TODO - Set final states ✅
-// TODO - Pass entity along when reaching final states ✅
-// TODO - Implement _loadInstance, _saveInstance and _check
-// TODO - Update docs
-// TODO - Listen to `onReplicationStep` ✅
-
-// - Basic
-// - Hierarchical
-// - Transition side effects
-// - Transition conditions
-// - Transition delays
-// - Waiting for condition
 
 #include "FSM.h"
 #include "../../kernel/simulator/Model.h"
@@ -165,8 +149,14 @@ ModelComponent *FSM::LoadInstance(Model *model, std::map<std::string, std::strin
 PluginInformation *FSM::GetPluginInformation()
 {
     PluginInformation *info = new PluginInformation(Util::TypeOf<FSM>(), &FSM::LoadInstance, &FSM::NewInstance);
-    info->setDescriptionHelp("//@TODO");
+    std::string text = "The FSM module is used to model Finite State Machines. ";
+    text += "Each FSM has a set of FSMStates and a set of FSMTransitions, which connect the states. ";
+    text += "Each state may have a refinement (another FSM) inside of it. ";
+    text += "When an entity enters a state, it will be sent to the refinement of that state, if any. ";
+    info->setDescriptionHelp(text);
+
     info->setSendTransfer(true);
+
     return info;
 }
 
@@ -202,7 +192,6 @@ bool FSM::_loadInstance(std::map<std::string, std::string> *fields)
     bool res = ModelComponent::_loadInstance(fields);
     if (res)
     {
-        // @TODO: not implemented yet
     }
     return res;
 }
@@ -210,24 +199,61 @@ bool FSM::_loadInstance(std::map<std::string, std::string> *fields)
 std::map<std::string, std::string> *FSM::_saveInstance(bool saveDefaultValues)
 {
     std::map<std::string, std::string> *fields = ModelComponent::_saveInstance(saveDefaultValues);
-    // @TODO: not implemented yet
     return fields;
 }
 
 // protected virtual -- could be overriden
 
-// ParserChangesInformation* DummyElement::_getParserChangesInformation() {}
-
 bool FSM::_check(std::string *errorMessage)
 {
-    bool resultAll = true;
-
-    if (resultAll)
+    if (_states->size() == 0)
     {
-        _parentModel->getOnEvents()->addOnAfterProcessEventHandler(this, &FSM::_handlerForAfterProcessEventEvent);
+        std::string msg = "FSM " + this->getName() + " has no states. ";
+        errorMessage->append(msg);
+        return false;
     }
 
-    return resultAll;
+    if (_initialState == nullptr)
+    {
+        std::string msg = "FSM " + this->getName() + " has no initial state. ";
+        errorMessage->append(msg);
+        return false;
+    }
+
+    if (!_reachesFinalState(_initialState, new List<FSMState *>()))
+    {
+        std::string msg = "FSM " + this->getName() + " can't reach any final state. ";
+        errorMessage->append(msg);
+        return false;
+    }
+
+    _parentModel->getOnEvents()->addOnAfterProcessEventHandler(this, &FSM::_handlerForAfterProcessEventEvent);
+
+    return true;
+}
+
+bool FSM::_reachesFinalState(FSMState *state, List<FSMState *> *visited)
+{
+    if (state->isFinal())
+    {
+        return true;
+    }
+
+    if (visited->find(state) != visited->list()->end())
+    {
+        return false;
+    }
+
+    visited->insert(state);
+    for (TransitionData &transitionData : *_transitionMap[state]->list())
+    {
+        if (_reachesFinalState(transitionData.to, visited))
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 void FSM::_createInternalAndAttachedData()
