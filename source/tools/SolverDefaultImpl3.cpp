@@ -25,7 +25,7 @@ double SolverDefaultImpl3::getMaxSteps() {
 }
 
 double SolverDefaultImpl3::integrate(double min, double max, double (*f)(double, double), double p2) {
-	std::string key = std::to_string((int)f) + " " + std::to_string(p2);
+	std::string key = std::to_string((int)f) + " " + std::to_string(p2) + " " + std::to_string(min) + " " + std::to_string(max);
     if (cachedResults.find(key) != cachedResults.end())
         return cachedResults[key];
     // Simpson's 1/3 rule
@@ -53,7 +53,7 @@ double SolverDefaultImpl3::integrate(double min, double max, double (*f)(double,
 }
 
 double SolverDefaultImpl3::integrate(double min, double max, double (*f)(double, double, double), double p2, double p3) {
-	std::string key = std::to_string((int)f) + " " + std::to_string(p2) + " " + std::to_string(p3);
+	std::string key = std::to_string((int)f) + " " + std::to_string(p2) + " " + std::to_string(p3) + " " + std::to_string(min) + " " + std::to_string(max);
     if (cachedResults.find(key) != cachedResults.end())
         return cachedResults[key];
     // Simpson's 1/3 rule
@@ -81,7 +81,7 @@ double SolverDefaultImpl3::integrate(double min, double max, double (*f)(double,
 }
 
 double SolverDefaultImpl3::integrate(double min, double max, double (*f)(double, double, double, double), double p2, double p3, double p4) {
-	std::string key = std::to_string((int)f) + " " + std::to_string(p2) + " " + std::to_string(p3) + " " + std::to_string(p4);
+	std::string key = std::to_string((int)f) + " " + std::to_string(p2) + " " + std::to_string(p3) + " " + std::to_string(p4) + " " + std::to_string(min) + " " + std::to_string(max);
     if (cachedResults.find(key) != cachedResults.end())
         return cachedResults[key];
     // Simpson's 1/3 rule
@@ -109,7 +109,7 @@ double SolverDefaultImpl3::integrate(double min, double max, double (*f)(double,
 }
 
 double SolverDefaultImpl3::integrate(double min, double max, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5) {
-	std::string key = std::to_string((int)f) + " " + std::to_string(p2) + " " + std::to_string(p3) + " " + std::to_string(p4) + " " + std::to_string(p5);
+	std::string key = std::to_string((int)f) + " " + std::to_string(p2) + " " + std::to_string(p3) + " " + std::to_string(p4) + " " + std::to_string(p5) + " " + std::to_string(min) + " " + std::to_string(max);
     if (cachedResults.find(key) != cachedResults.end())
         return cachedResults[key];
     // Simpson's 1/3 rule
