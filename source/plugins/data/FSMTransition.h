@@ -40,8 +40,8 @@ public:
     double delay() const;
     void setDelayTimeUnit(Util::TimeUnit timeUnit);
     Util::TimeUnit delayTimeUnit() const;
-    void onTransition(std::function<void(Model *)> handler);
-    void perform();
+    void onTransition(std::function<void(Model *, Entity *)> handler);
+    void perform(Entity *entity);
     bool canPerform();
 
 public:
@@ -56,7 +56,7 @@ private:
     std::string _guardExpression = DEFAULT.guardExpression;
     std::string _delayExpression = DEFAULT.delayExpression;
     Util::TimeUnit _delayTimeUnit = DEFAULT.delayTimeUnit;
-    std::function<void(Model *)> _onTransition = nullptr;
+    std::function<void(Model *, Entity *)> _onTransition = nullptr;
 
 protected: // must be overriden
     virtual bool _loadInstance(std::map<std::string, std::string> *fields);

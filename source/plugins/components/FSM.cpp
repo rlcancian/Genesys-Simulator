@@ -89,7 +89,7 @@ void FSM::_transition(Entity *entity)
 
     _parentModel->getTracer()->trace("Transitioning " + entity->getName() + " from " + currentState->getName() + " to " + transitionDataToFollow->to->getName() + " through " + transitionDataToFollow->transition->getName());
 
-    transitionDataToFollow->transition->perform();
+    transitionDataToFollow->transition->perform(entity);
 
     _entityStates[entity] = transitionDataToFollow->to;
     _parentModel->sendEntityToComponent(entity, this, transitionDataToFollow->transition->delay());

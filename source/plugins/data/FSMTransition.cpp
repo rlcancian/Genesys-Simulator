@@ -103,19 +103,19 @@ double FSMTransition::delay() const
     return waitTime;
 }
 
-void FSMTransition::onTransition(std::function<void(Model *)> handler)
+void FSMTransition::onTransition(std::function<void(Model *, Entity *)> handler)
 {
     _onTransition = handler;
 }
 
-void FSMTransition::perform()
+void FSMTransition::perform(Entity *entity)
 {
     if (_onTransition == nullptr)
     {
         return;
     }
 
-    _onTransition(_parentModel);
+    _onTransition(_parentModel, entity);
 }
 
 bool FSMTransition::canPerform()
