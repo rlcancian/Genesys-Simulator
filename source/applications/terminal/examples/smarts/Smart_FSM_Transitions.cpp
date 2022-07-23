@@ -32,19 +32,16 @@ Smart_FSM_Transitions::Smart_FSM_Transitions()
 
 void Smart_FSM_Transitions::onNewGuessTransition(Model *model, Entity *entity)
 {
-    std::cout << "NEW GUESS TRANSITION" << std::endl;
     model->parseExpression("guess = ROUND(min + (max - min) / 2)");
 }
 
 void Smart_FSM_Transitions::onSmallerTransition(Model *model, Entity *entity)
 {
-    std::cout << "Smaller TRANSITION" << std::endl;
     model->parseExpression("min = ROUND(min + (max - min) / 2)");
 }
 
 void Smart_FSM_Transitions::onLargerTransition(Model *model, Entity *entity)
 {
-    std::cout << "LARGER TRANSITION" << std::endl;
     model->parseExpression("max = ROUND(max - (max - min) / 2)");
 }
 

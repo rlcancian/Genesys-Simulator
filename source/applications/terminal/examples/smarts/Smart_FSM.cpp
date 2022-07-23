@@ -53,6 +53,7 @@ int Smart_FSM::main(int argc, char **argv)
     PluginManager *plugins = genesys->getPlugins();
     Create *create1 = plugins->newInstance<Create>(model);
     create1->setTimeBetweenCreationsExpression("1");
+    create1->setMaxCreations(1);
 
     FSM *fsm1 = plugins->newInstance<FSM>(model, "FSM");
 
