@@ -135,6 +135,7 @@ PluginInformation *FSM::GetPluginInformation()
 {
     PluginInformation *info = new PluginInformation(Util::TypeOf<FSM>(), &FSM::LoadInstance, &FSM::NewInstance);
     info->setDescriptionHelp("//@TODO");
+    info->setSendTransfer(true);
     return info;
 }
 
@@ -196,15 +197,18 @@ bool FSM::_check(std::string *errorMessage)
 
 void FSM::_createInternalAndAttachedData()
 {
-    for (unsigned int i = 0; i < _states->size(); i++)
+    unsigned int connections = 1;
+    for (FSMState *state : *_states->list())
     {
-        FSMState *state = _states->getAtRank(i);
         if (state->hasRefinement())
         {
             state->refinement()->setModelLevel(_id);
-            Connection connection = {state->refinement(), 0};
-            std::cout << "INSERTING REFINEMENT CONNECTIONS AT " << i << std::endl;
-            this->getConnections()->insertAtPort(i, &connection);
+            Connection *connection = new Connection();
+            connection->component = state->refinement();
+            connection->port = 0;
+            this->getConnections()->insertAtPort(connections, connection);
+            connections++;
+
             state->refinement()->getConnections()->connections()->clear();
             state->refinement()->getConnections()->insert(this);
         }

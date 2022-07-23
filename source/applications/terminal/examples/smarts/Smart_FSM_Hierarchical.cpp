@@ -43,7 +43,7 @@ int Smart_FSM_Hierarchical::main(int argc, char **argv)
     Model *model = genesys->getModels()->newModel();
     PluginManager *plugins = genesys->getPlugins();
     Create *create1 = plugins->newInstance<Create>(model);
-    create1->setEntitiesCreated(1);
+    create1->setMaxCreations(1);
     create1->setTimeBetweenCreationsExpression("1");
 
     FSM *fsm1 = plugins->newInstance<FSM>(model, "FSM");
@@ -62,6 +62,9 @@ int Smart_FSM_Hierarchical::main(int argc, char **argv)
     FSMState *subState2 = plugins->newInstance<FSMState>(model, "SubState2");
     subState2->setIsFinal(true);
     fsm2->insertState(subState2);
+
+    FSMTransition *subTransition = plugins->newInstance<FSMTransition>(model, "SubTransition");
+    fsm2->insertTransition(subTransition, subState1, subState2);
 
     fsm2->setInitialState(subState1);
     secondState->setRefinement(fsm2);
