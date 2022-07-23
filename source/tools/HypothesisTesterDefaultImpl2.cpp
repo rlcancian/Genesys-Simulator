@@ -298,7 +298,7 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl2::testProportion(std
 		if (function(value))
 			count++;
 	}
-	double prop = (double) count / stat->numElements();
+	double prop1 = (double) count / stat->numElements();
 	count = 0;
 	for (unsigned long i = 0; i < stat2->numElements(); i++) {
 		value = static_cast<CollectorDatafile_if*> (stat2->getCollector())->getValue(i);
