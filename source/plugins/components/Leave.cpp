@@ -72,7 +72,7 @@ void Leave::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Leave::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		std::string stationName = fields->loadField("station", "");
+		std::string stationName = fields->loadField("Station", "");
 		Station* station = dynamic_cast<Station*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
 		this->_station = station;
 	}
@@ -85,7 +85,7 @@ void Leave::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	if (_station != nullptr) {
 		text = _station->getName();
 	}
-	fields->saveField("station", text, "", saveDefaultValues);
+	fields->saveField("Station", text, "", saveDefaultValues);
 }
 
 PluginInformation* Leave::GetPluginInformation() {

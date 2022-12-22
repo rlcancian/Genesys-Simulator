@@ -205,12 +205,12 @@ void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Batch::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		_batchType = static_cast<Batch::BatchType> (fields->loadField("batchType", static_cast<int> (DEFAULT.batchType)));
-		_rule = static_cast<Batch::Rule> (fields->loadField("rule", static_cast<int> (DEFAULT.rule)));
-		_groupedAttributes = static_cast<Batch::GroupedAttribs> (fields->loadField("groupedAttributes", static_cast<int> (DEFAULT.groupedAttributes)));
-		_batchSize = fields->loadField("batchSize", DEFAULT.batchSize);
-		_attributeName = fields->loadField("attributeName", DEFAULT.attributeName);
-		std::string groupedEntityTypeName = fields->loadField("groupedEntityType", "");
+		_batchType = static_cast<Batch::BatchType> (fields->loadField("BatchType", static_cast<int> (DEFAULT.batchType)));
+		_rule = static_cast<Batch::Rule> (fields->loadField("Rule", static_cast<int> (DEFAULT.rule)));
+		_groupedAttributes = static_cast<Batch::GroupedAttribs> (fields->loadField("GroupedAttributes", static_cast<int> (DEFAULT.groupedAttributes)));
+		_batchSize = fields->loadField("BatchSize", DEFAULT.batchSize);
+		_attributeName = fields->loadField("AttributeName", DEFAULT.attributeName);
+		std::string groupedEntityTypeName = fields->loadField("GroupedEntityType", "");
 		if (groupedEntityTypeName != "") {
 			_groupedEntityType = dynamic_cast<EntityType*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityType>(), groupedEntityTypeName));
 		}
@@ -220,13 +220,13 @@ bool Batch::_loadInstance(PersistenceRecord *fields) {
 
 void Batch::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("batchType", static_cast<int> (_batchType), static_cast<int> (DEFAULT.batchType), saveDefaultValues);
-	fields->saveField("rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
-	fields->saveField("groupedAttributes", static_cast<int> (_groupedAttributes), static_cast<int> (DEFAULT.groupedAttributes), saveDefaultValues);
-	fields->saveField("batchSize", _batchSize, DEFAULT.batchSize, saveDefaultValues);
-	fields->saveField("attributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
+	fields->saveField("BatchType", static_cast<int> (_batchType), static_cast<int> (DEFAULT.batchType), saveDefaultValues);
+	fields->saveField("Rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
+	fields->saveField("GroupedAttributes", static_cast<int> (_groupedAttributes), static_cast<int> (DEFAULT.groupedAttributes), saveDefaultValues);
+	fields->saveField("BatchSize", _batchSize, DEFAULT.batchSize, saveDefaultValues);
+	fields->saveField("AttributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
 	if (_groupedEntityType != nullptr) {
-		fields->saveField("groupedEntityType", _groupedEntityType->getName(), "", saveDefaultValues);
+		fields->saveField("GroupedEntityType", _groupedEntityType->getName(), "", saveDefaultValues);
 	}
 }
 

@@ -115,14 +115,18 @@ void Remove::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Remove::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_removeFromType = static_cast<Remove::RemoveFromType> (fields->loadField("RemoveFromType", static_cast<int> (DEFAULT.removeFromType)));
+		_removeStartRank = fields->loadField("RemoveStartRank", DEFAULT.removeStartRank);
+		_removeEndRank = fields->loadField("RemoveEndRank", DEFAULT.removeEndRank);
 	}
 	return res;
 }
 
 void Remove::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("RemoveFromType", static_cast<int> (_removeFromType), static_cast<int> (DEFAULT.removeFromType), saveDefaultValues);        
+	fields->saveField("RemoveStartRank", _removeStartRank, DEFAULT.removeStartRank, saveDefaultValues);
+	fields->saveField("RemoveEndRank", _removeEndRank, DEFAULT.removeEndRank, saveDefaultValues);
 }
 
 bool Remove::_check(std::string* errorMessage) {

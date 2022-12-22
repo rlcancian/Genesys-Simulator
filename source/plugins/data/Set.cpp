@@ -64,8 +64,8 @@ bool Set::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			_setOfType = fields->loadField("type", DEFAULT.setOfType);
-			unsigned int memberSize = fields->loadField("members", DEFAULT.membersSize);
+			_setOfType = fields->loadField("SetOfType", DEFAULT.setOfType);
+			unsigned int memberSize = fields->loadField("ElementSet", DEFAULT.membersSize);
 			for (unsigned int i = 0; i < memberSize; i++) {
 				std::string memberName = fields->loadField("member" + Util::StrIndex(i));
 				ModelDataDefinition* member = _parentModel->getDataManager()->getDataDefinition(_setOfType, memberName);
@@ -83,8 +83,8 @@ bool Set::_loadInstance(PersistenceRecord *fields) {
 
 void Set::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("type", _setOfType, DEFAULT.setOfType, saveDefaultValues);
-	fields->saveField("members", _elementSet->size(), DEFAULT.membersSize, saveDefaultValues);
+	fields->saveField("SetOfType", _setOfType, DEFAULT.setOfType, saveDefaultValues);
+	fields->saveField("ElementSet", _elementSet->size(), DEFAULT.membersSize, saveDefaultValues);
 	unsigned int i = 0;
 	for (ModelDataDefinition* modeldatum : *_elementSet->list()) {
 		fields->saveField("member" + Util::StrIndex(i), modeldatum->getName());

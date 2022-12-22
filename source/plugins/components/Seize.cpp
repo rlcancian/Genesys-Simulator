@@ -167,13 +167,13 @@ void Seize::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Seize::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_allocationType = static_cast<Util::AllocationType> (fields->loadField("allocationType", static_cast<int> (DEFAULT.allocationType)));
-		this->_priority = fields->loadField("priority", DEFAULT.priority);
-		this->_priorityExpression = fields->loadField("priorityExpression", DEFAULT.priority);
+		this->_allocationType = static_cast<Util::AllocationType> (fields->loadField("AllocationType", static_cast<int> (DEFAULT.allocationType)));
+		this->_priority = fields->loadField("Priority", DEFAULT.priority);
+		this->_priorityExpression = fields->loadField("PriorityExpression", DEFAULT.priority);
 		_queueableItem = new QueueableItem(nullptr);
 		_queueableItem->setElementManager(_parentModel->getDataManager());
 		_queueableItem->loadInstance(fields);
-		unsigned short numRequests = fields->loadField("resquests", DEFAULT.seizeRequestSize);
+		unsigned short numRequests = fields->loadField("SeizeRequests", DEFAULT.seizeRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr, "", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
 			item->setElementManager(_parentModel->getDataManager());
@@ -186,13 +186,13 @@ bool Seize::_loadInstance(PersistenceRecord *fields) {
 
 void Seize::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("allocationType", static_cast<int> (_allocationType), static_cast<int> (DEFAULT.allocationType), saveDefaultValues);
-	fields->saveField("priority=", _priority, DEFAULT.priority, saveDefaultValues);
-	fields->saveField("priorityExpression=", _priorityExpression, DEFAULT.priorityExpression, saveDefaultValues);
+	fields->saveField("AllocationType", static_cast<int> (_allocationType), static_cast<int> (DEFAULT.allocationType), saveDefaultValues);
+	fields->saveField("Priority", _priority, DEFAULT.priority, saveDefaultValues);
+	fields->saveField("PriorityExpression", _priorityExpression, DEFAULT.priorityExpression, saveDefaultValues);
 	if (_queueableItem != nullptr) {
 		_queueableItem->saveInstance(fields, saveDefaultValues);
 	}
-	fields->saveField("resquests", _seizeRequests->size(), DEFAULT.seizeRequestSize, saveDefaultValues);
+	fields->saveField("SeizeRequests", _seizeRequests->size(), DEFAULT.seizeRequestSize, saveDefaultValues);
 	unsigned short i = 0;
 	for (SeizableItem* request : *_seizeRequests->list()) {
 		request->saveInstance(fields, i, saveDefaultValues);
@@ -234,12 +234,6 @@ void Seize::_createInternalAndAttachedData() {
 			for (ModelDataDefinition* datum : *seizable->getSet()->getElementSet()->list()) {
 				rec = static_cast<Resource*> (datum);
 				rec->addReleaseResourceEventHandler(Resource::SetResourceEventHandler<Seize>(&Seize::_handlerForResourceEvent, this), this, _priority);
-			}
-		}
-		if (seizable->getSaveAttribute() != "") {
-			Attribute* attr = static_cast<Attribute*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(),seizable->getSaveAttribute()));
-			if (attr == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
-				_attachedAttributesInsert({seizable->getSaveAttribute()});
 			}
 		}
 		i++;

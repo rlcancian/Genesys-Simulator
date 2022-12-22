@@ -113,18 +113,18 @@ ModelComponent* Delay::LoadInstance(Model* model, PersistenceRecord *fields) {
 bool Delay::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_delayExpression = fields->loadField("delayExpression", DEFAULT.delayExpression);
-		this->_delayTimeUnit = fields->loadField("delayExpressionTimeUnit", DEFAULT.delayTimeUnit);
-		this->_allocation = static_cast<Util::AllocationType> (fields->loadField("allocation", static_cast<int> (DEFAULT.allocation)));
+		this->_delayExpression = fields->loadField("DelayExpression", DEFAULT.delayExpression);
+		this->_delayTimeUnit = fields->loadField("DelayTimeUnit", DEFAULT.delayTimeUnit);
+		this->_allocation = static_cast<Util::AllocationType> (fields->loadField("Allocation", static_cast<int> (DEFAULT.allocation)));
 	}
 	return res;
 }
 
 void Delay::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("delayExpression", this->_delayExpression, DEFAULT.delayExpression, saveDefaultValues);
-	fields->saveField("delayExpressionTimeUnit", _delayTimeUnit, DEFAULT.delayTimeUnit, saveDefaultValues);
-	fields->saveField("allocation", static_cast<int> (_allocation), static_cast<int> (DEFAULT.allocation), saveDefaultValues);
+	fields->saveField("DelayExpression", this->_delayExpression, DEFAULT.delayExpression, saveDefaultValues);
+	fields->saveField("DelayTimeUnit", _delayTimeUnit, DEFAULT.delayTimeUnit, saveDefaultValues);
+	fields->saveField("Allocation", static_cast<int> (_allocation), static_cast<int> (DEFAULT.allocation), saveDefaultValues);
 }
 
 bool Delay::_check(std::string* errorMessage) {

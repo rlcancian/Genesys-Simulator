@@ -107,14 +107,16 @@ void Wait::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Wait::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+            _waitType = static_cast<Wait::WaitType> (fields->loadField("WaitType", static_cast<int> (DEFAULT.waitType)));
+            _condition = fields->loadField("Condition", DEFAULT.condition);
 	}
 	return res;
 }
 
 void Wait::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("WaitType", static_cast<int> (_waitType), static_cast<int> (DEFAULT.waitType), saveDefaultValues);
+        fields->saveField("Condition", _condition, DEFAULT.condition, saveDefaultValues);
 }
 
 // protected virtual could override

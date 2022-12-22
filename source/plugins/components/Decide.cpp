@@ -70,7 +70,7 @@ void Decide::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Decide::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		unsigned int nv = fields->loadField("conditions", 0);
+		unsigned int nv = fields->loadField("Conditions", 0);
 		for (unsigned int i = 0; i < nv; i++) {
 			this->_conditions->insert(fields->loadField("condition" + Util::StrIndex(i), ""));
 		}
@@ -80,7 +80,7 @@ bool Decide::_loadInstance(PersistenceRecord *fields) {
 
 void Decide::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("conditions", _conditions->size(), 0u, saveDefaultValues);
+	fields->saveField("Conditions", _conditions->size(), 0u, saveDefaultValues);
 	unsigned short i = 0;
 	for (std::list<std::string>::iterator it = _conditions->list()->begin(); it != _conditions->list()->end(); it++, i++) {
 		fields->saveField("condition" + Util::StrIndex(i), (*it), "", saveDefaultValues);

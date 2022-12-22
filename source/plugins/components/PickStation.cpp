@@ -161,14 +161,22 @@ void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 bool PickStation::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+            _testCondition = static_cast<PickStation::TestCondition> (fields->loadField("TestCondition", static_cast<int> (DEFAULT.testCondition)));
+            _saveAttribute = fields->loadField("SaveAttribute", DEFAULT.saveAttribute);
+            _pickConditionExpression = fields->loadField("PickConditionExpression", DEFAULT.pickConditionExpression);
+            _pickConditionNumberInQueue = fields->loadField("PickConditionNumberInQueue", DEFAULT.pickConditionNumberInQueue);
+            _pickConditionNumberBusyResource = fields->loadField("PickConditionNumberBusyResource", DEFAULT.pickConditionNumberBusyResource);
 	}
 	return res;
 }
 
 void PickStation::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("SaveAttribute", _saveAttribute, DEFAULT.saveAttribute, saveDefaultValues);
+	fields->saveField("TestCondition", static_cast<int> (_testCondition), static_cast<int> (DEFAULT.testCondition), saveDefaultValues);
+	fields->saveField("PickConditionNumberBusyResource", _pickConditionNumberBusyResource, DEFAULT.pickConditionNumberBusyResource, saveDefaultValues);
+	fields->saveField("PickConditionNumberInQueue", _pickConditionNumberInQueue, DEFAULT.pickConditionNumberInQueue, saveDefaultValues);
+	fields->saveField("PickConditionExpression", _pickConditionExpression, DEFAULT.pickConditionExpression, saveDefaultValues);
 }
 
 

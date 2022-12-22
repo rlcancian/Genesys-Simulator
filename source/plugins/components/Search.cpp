@@ -149,14 +149,23 @@ void Search::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Search::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+            _searchInType = static_cast<Search::SearchInType> (fields->loadField("SearchInType", static_cast<int> (DEFAULT.searchInType)));
+            _startRank = fields->loadField("StartRank", DEFAULT.startRank);
+            _endRank = fields->loadField("EndRank", DEFAULT.endRank);
+            _searchCondition = fields->loadField("SearchCondition", DEFAULT.searchCondition);
+            _saveFounRankAttribute = fields->loadField("SaveFounRankAttribute", DEFAULT.saveFounRankAttribute);  //se consertar o typo, precisa consertar aqui também
 	}
 	return res;
 }
 
 void Search::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("SearchInType", static_cast<int> (_searchInType), static_cast<int> (DEFAULT.searchInType), saveDefaultValues);
+	fields->saveField("StartRank", _startRank, DEFAULT.startRank, saveDefaultValues);
+	fields->saveField("EndRank", _endRank, DEFAULT.endRank, saveDefaultValues);
+	fields->saveField("SearchCondition", _searchCondition, DEFAULT.searchCondition, saveDefaultValues);
+	fields->saveField("SaveFounRankAttribute", _saveFounRankAttribute, DEFAULT.saveFounRankAttribute, saveDefaultValues);  //se consertar o typo, precisa consertar aqui também
+        
 }
 
 bool Search::_check(std::string* errorMessage) {

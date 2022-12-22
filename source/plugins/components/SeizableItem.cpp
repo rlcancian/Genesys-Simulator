@@ -57,12 +57,12 @@ SeizableItem::SeizableItem(SeizableItem* original) {
 bool SeizableItem::loadInstance(PersistenceRecord *fields) {
 	bool res = true;
 	try {
-		_seizableType = static_cast<SeizableItem::SeizableType> (fields->loadField("requestSeizableType", static_cast<int> (DEFAULT.seizableType)));
-		_seizableName = fields->loadField("requestSeizable", "");
-		_quantityExpression = fields->loadField("requestQuantityExpression", DEFAULT.quantityExpression);
-		_selectionRule = static_cast<SeizableItem::SelectionRule> (fields->loadField("requestSelectionRule", static_cast<int> (DEFAULT.selectionRule)));
-		_saveAttribute = fields->loadField("requestSaveAttribute", DEFAULT.saveAttribute);
-		_index = fields->loadField("requestIndex", DEFAULT.index);
+		_seizableType = static_cast<SeizableItem::SeizableType> (fields->loadField("SeizableType", static_cast<int> (DEFAULT.seizableType)));
+		_seizableName = fields->loadField("ResourceName", "");
+		_quantityExpression = fields->loadField("QuantityExpression", DEFAULT.quantityExpression);
+		_selectionRule = static_cast<SeizableItem::SelectionRule> (fields->loadField("SelectionRule", static_cast<int> (DEFAULT.selectionRule)));
+		_saveAttribute = fields->loadField("SaveAttribute", DEFAULT.saveAttribute);
+		_index = fields->loadField("Index", DEFAULT.index);
 		if (_modeldataManager != nullptr) {
 			if (_seizableType == SeizableItem::SeizableType::RESOURCE) {
 				_resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
@@ -81,12 +81,12 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
 	bool res = true;
 	std::string num = Util::StrIndex(parentIndex);
 	try {
-		_seizableType = static_cast<SeizableItem::SeizableType> (fields->loadField("requestSeizableType" + num, static_cast<int> (DEFAULT.seizableType)));
-		_seizableName = fields->loadField("requestSeizable" + num, "");
-		_quantityExpression = fields->loadField("requestQuantityExpression" + num, DEFAULT.quantityExpression);
-		_selectionRule = static_cast<SeizableItem::SelectionRule> (fields->loadField("requestSelectionRule" + num, static_cast<int> (DEFAULT.selectionRule)));
-		_saveAttribute = fields->loadField("requestSaveAttribute" + num, DEFAULT.saveAttribute);
-		_index = fields->loadField("requestIndex" + num, DEFAULT.index);
+		_seizableType = static_cast<SeizableItem::SeizableType> (fields->loadField("SeizableType" + num, static_cast<int> (DEFAULT.seizableType)));
+		_seizableName = fields->loadField("ResourceName" + num, "");
+		_quantityExpression = fields->loadField("QuantityExpression" + num, DEFAULT.quantityExpression);
+		_selectionRule = static_cast<SeizableItem::SelectionRule> (fields->loadField("SelectionRule" + num, static_cast<int> (DEFAULT.selectionRule)));
+		_saveAttribute = fields->loadField("SaveAttribute" + num, DEFAULT.saveAttribute);
+		_index = fields->loadField("Index" + num, DEFAULT.index);
 		if (_modeldataManager != nullptr) {
 			if (_seizableType == SeizableItem::SeizableType::RESOURCE) {
 				_resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
@@ -113,22 +113,22 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
 
 void SeizableItem::saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaults) {
 	std::string num = Util::StrIndex(parentIndex);
-	fields->saveField("requestSeizableType" + num, static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
-	fields->saveField("requestSeizable" + num, _resourceOrSet->getName(), "", saveDefaults);
-	fields->saveField("requestQuantityExpression" + num, _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
-	fields->saveField("requestSelectionRule" + num, static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
-	fields->saveField("requestSaveAttribute" + num, _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
-	fields->saveField("requestIndex" + num, _index, DEFAULT.index, saveDefaults);
+	fields->saveField("SeizableType" + num, static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
+	fields->saveField("ResourceName" + num, _resourceOrSet->getName(), "", saveDefaults);
+	fields->saveField("QuantityExpression" + num, _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
+	fields->saveField("SelectionRule" + num, static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
+	fields->saveField("SaveAttribute" + num, _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
+	fields->saveField("Index" + num, _index, DEFAULT.index, saveDefaults);
 }
 
 void SeizableItem::saveInstance(PersistenceRecord *fields, bool saveDefaults) {
-	fields->saveField("requestSeizableType", static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
+	fields->saveField("SeizableType", static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
 	//fields->saveField("resourceId", _resourceOrSet->getId());
-	fields->saveField("requestSeizable", _resourceOrSet->getName(), "", saveDefaults);
-	fields->saveField("requestQuantityExpression", _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
-	fields->saveField("requestSelectionRule", static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
-	fields->saveField("requestSaveAttribute", _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
-	fields->saveField("requestIndex", _index, DEFAULT.index, saveDefaults);
+	fields->saveField("ResourceName", _resourceOrSet->getName(), "", saveDefaults);
+	fields->saveField("QuantityExpression", _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
+	fields->saveField("SelectionRule", static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
+	fields->saveField("SaveAttribute", _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
+	fields->saveField("Index", _index, DEFAULT.index, saveDefaults);
 }
 
 std::string SeizableItem::show() {

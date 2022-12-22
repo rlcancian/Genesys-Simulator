@@ -33,9 +33,9 @@ If the station destination is entered as By Sequence, the next station is determ
 the entity’s sequence and step within the set (defined by special-purpose attributes
 Entity.Sequence and Entity.Jobstep, respectively).
 TYPICAL USES
- * Send a part to its next processing station based on its routing slip
- * Send an account balance call to an account agent
- * Send restaurant customers to a specific table
+* Send a part to its next processing station based on its routing slip
+* Send an account balance call to an account agent
+* Send restaurant customers to a specific table
 PROMPTS
 Prompt Description
 Name Unique name of the module that will be displayed in the
@@ -71,10 +71,9 @@ public:
 	void setStationName(std::string stationName);
 	void setStation(Station* _station);
 	Station* getStation() const;
-	void setStationExpression(std::string _stationExpression);
-	std::string getStationExpression() const;
+    void setStationExpression(std::string _stationExpression);
+    std::string getStationExpression() const;
 	void setRouteTimeExpression(std::string _routeTimeExpression);
-	void setRouteTimeExpression(std::string _routeTimeExpression, Util::TimeUnit _routeTimeTimeUnit);
 	std::string getRouteTimeExpression() const;
 	void setRouteTimeTimeUnit(Util::TimeUnit _routeTimeTimeUnit);
 	Util::TimeUnit getRouteTimeTimeUnit() const;

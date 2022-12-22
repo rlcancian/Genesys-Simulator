@@ -97,19 +97,14 @@ PluginInformation* Schedule::GetPluginInformation() {
 bool Schedule::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		try {
-			//this->_someString = fields->loadField("someString", DEFAULT.someString);
-			//this->_someUint = fields->loadField("someUint", DEFAULT.someUint);
-		} catch (...) {
-		}
+            _repeatAfterLast = fields->loadField("RepeatAfterLast", DEFAULT.repeatAfterLast);
 	}
 	return res;
 }
 
 void Schedule::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	//fields->saveField("someUint", _someUint, DEFAULT.someUint);
-	//fields->saveField("someString", _someString, DEFAULT.someString);
+	fields->saveField("RepeatAfterLast", _repeatAfterLast, DEFAULT.repeatAfterLast);
 }
 
 //

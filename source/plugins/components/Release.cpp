@@ -204,7 +204,7 @@ bool Release::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		this->_priority = fields->loadField("priority", DEFAULT.priority);
-		unsigned short numRequests = fields->loadField("resquests", DEFAULT.releaseRequestSize);
+		unsigned short numRequests = fields->loadField("ReleaseRequests", DEFAULT.releaseRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr, "", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
 			item->setElementManager(_parentModel->getDataManager());
@@ -217,8 +217,8 @@ bool Release::_loadInstance(PersistenceRecord *fields) {
 
 void Release::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("priority", _priority, DEFAULT.priority, saveDefaultValues);
-	fields->saveField("resquests", _releaseRequests->size(), DEFAULT.releaseRequestSize, saveDefaultValues);
+	fields->saveField("Priority", _priority, DEFAULT.priority, saveDefaultValues);
+	fields->saveField("ReleaseRequests", _releaseRequests->size(), DEFAULT.releaseRequestSize, saveDefaultValues);
 	unsigned short i = 0;
 	for (SeizableItem* request : *_releaseRequests->list()) {
 		request->saveInstance(fields, i, saveDefaultValues);

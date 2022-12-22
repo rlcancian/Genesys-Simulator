@@ -92,7 +92,7 @@ void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Assign::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		unsigned int nv = fields->loadField("assignments", DEFAULT.assignmentsSize);
+		unsigned int nv = fields->loadField("Assignments", DEFAULT.assignmentsSize);
 		for (unsigned short i = 0; i < nv; i++) {
 			Assignment* item = new Assignment("", "");
 			item->loadInstance(fields, i);
@@ -105,7 +105,7 @@ bool Assign::_loadInstance(PersistenceRecord *fields) {
 void Assign::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	Assignment* let;
-	fields->saveField("assignments", _assignments->size(), DEFAULT.assignmentsSize, saveDefaultValues);
+	fields->saveField("Assignments", _assignments->size(), DEFAULT.assignmentsSize, saveDefaultValues);
 	unsigned short i = 0;
 	for (std::list<Assignment*>::iterator it = _assignments->list()->begin(); it != _assignments->list()->end(); it++, i++) {
 		let = (*it);

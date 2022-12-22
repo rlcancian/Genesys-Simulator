@@ -81,15 +81,16 @@ bool Assignment::isAttributeNotVariable() const {
 }
 
 bool Assignment::loadInstance(PersistenceRecord *fields, unsigned int parentIndex) {
-	_destination = fields->loadField("assignDest" + Util::StrIndex(parentIndex), "");
-	_expression = fields->loadField("assignExpr" + Util::StrIndex(parentIndex), "");
-	_isAttributeNotVariable = fields->loadField("assignIsAttrib" + Util::StrIndex(parentIndex), true);
+	std::string num = Util::StrIndex(parentIndex);
+	_destination = fields->loadField("Destination" + num, "");
+	_expression = fields->loadField("Expression" + num, "");
+	_isAttributeNotVariable = fields->loadField("AttributeNotVariable" + num, true);
 	return true;
 }
 
 void Assignment::saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues) {
 	std::string num = Util::StrIndex(parentIndex);
-	fields->saveField("assignDest" + Util::StrIndex(parentIndex), getDestination(), "", saveDefaultValues);
-	fields->saveField("assignExpr" + Util::StrIndex(parentIndex), getExpression(), "", saveDefaultValues);
-	fields->saveField("assignIsAttrib" + Util::StrIndex(parentIndex), isAttributeNotVariable(), true, saveDefaultValues);
+	fields->saveField("Destination" + num, getDestination(), "", saveDefaultValues);
+	fields->saveField("Expression" + num, getExpression(), "", saveDefaultValues);
+	fields->saveField("AttributeNotVariable" + num, isAttributeNotVariable(), true, saveDefaultValues);
 }

@@ -131,9 +131,9 @@ void Write::_initBetweenReplications() {
 bool Write::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		_writeToType = static_cast<WriteToType> (fields->loadField("writeToType", static_cast<int> (DEFAULT.writeToType)));
-		_filename = fields->loadField("filename", DEFAULT.filename);
-		unsigned short writesSize = fields->loadField("writes", 0u);
+		_writeToType = static_cast<WriteToType> (fields->loadField("WriteToType", static_cast<int> (DEFAULT.writeToType)));
+		_filename = fields->loadField("Filename", DEFAULT.filename);
+		unsigned short writesSize = fields->loadField("Writes", 0u);
 		for (unsigned short i = 0; i < writesSize; i++) {
 			std::string text = fields->loadField("write" + Util::StrIndex(i), "");
 			_writeElements->insert(text);
@@ -145,9 +145,9 @@ bool Write::_loadInstance(PersistenceRecord *fields) {
 
 void Write::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("writeToType", static_cast<int> (_writeToType), static_cast<int> (DEFAULT.writeToType), saveDefaultValues);
-	fields->saveField("filename", _filename, DEFAULT.filename, saveDefaultValues);
-	fields->saveField("writes", _writeElements->size(), 0u, saveDefaultValues);
+	fields->saveField("WriteToType", static_cast<int> (_writeToType), static_cast<int> (DEFAULT.writeToType), saveDefaultValues);
+	fields->saveField("Filename", _filename, DEFAULT.filename, saveDefaultValues);
+	fields->saveField("Writes", _writeElements->size(), 0u, saveDefaultValues);
 	unsigned short i = 0;
 	for (std::string text : *_writeElements->list()) {
 		//@ TODO: NEED TO AVOID \N TO BE SAVE AS A REAL NEW LINE. SHOULD SAVE "\n"

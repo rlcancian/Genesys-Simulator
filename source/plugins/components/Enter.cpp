@@ -73,7 +73,7 @@ void Enter::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Enter::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		std::string stationName = fields->loadField("station", "");
+		std::string stationName = fields->loadField("Station", "");
 		Station* station = dynamic_cast<Station*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
 		this->_station = station;
 		if (station != nullptr) {
@@ -91,7 +91,7 @@ void Enter::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	if (_station != nullptr) {
 		text = _station->getName();
 	}
-	fields->saveField("station", text, "", saveDefaultValues);
+	fields->saveField("Station", text, "", saveDefaultValues);
 }
 
 PluginInformation* Enter::GetPluginInformation() {

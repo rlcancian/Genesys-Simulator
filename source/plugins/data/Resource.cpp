@@ -55,7 +55,7 @@ std::string Resource::show() {
 			",state=" + Util::StrTruncIfInt(std::to_string(static_cast<int> (_resourceState)));
 }
 
-bool Resource::seize(unsigned int quantity, double priority) {  //@ TODO: Considere priority. (Is it here??)
+bool Resource::seize(unsigned int quantity, double priority) {
 	double tnow = _parentModel->getSimulation()->getSimulatedTime();
 	_sumCapacityOverTime += _lastTimeCapacityEvaluated * getCapacity();
 	_lastTimeCapacityEvaluated = tnow;
@@ -284,24 +284,38 @@ void Resource::_notifyReleaseEventHandlers() {
 bool Resource::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		_capacity = fields->loadField("capacity", DEFAULT.capacity);
-		_costBusyTimeUnit = fields->loadField("costBusyTimeUnit", DEFAULT.cost);
-		_costIdleTimeUnit = fields->loadField("costIdleTimeUnit", DEFAULT.cost);
-		_costPerUse = fields->loadField("costPerUse", DEFAULT.cost);
-		_resourceState = static_cast<Resource::ResourceState> (fields->loadField("resourceState", static_cast<int> (DEFAULT.resourceState)));
+		_capacity = fields->loadField("Capacity", DEFAULT.capacity);
+		_costBusyTimeUnit = fields->loadField("CostBusyTimeUnit", DEFAULT.cost);
+		_costIdleTimeUnit = fields->loadField("CostIdleTimeUnit", DEFAULT.cost);
+		_costPerUse = fields->loadField("CostPerUse", DEFAULT.cost);
+		_resourceState = static_cast<Resource::ResourceState> (fields->loadField("ResourceState", static_cast<int> (DEFAULT.resourceState)));
+
+//		unsigned int nv = fields->loadField("Failures", 0u);
+//		for (unsigned short i = 0; i < nv; i++) {
+//			Failure* item = new Failure();
+//			item->loadInstance(fields, i);
+//			this->_failures->insert(item);
+//		}
 	}
-	//@TODO: Save failures
 	return res;
 }
 
 void Resource::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("capacity", _capacity, DEFAULT.capacity, saveDefaultValues);
-	fields->saveField("costBusyTimeUnit", _costBusyTimeUnit, DEFAULT.cost, saveDefaultValues);
-	fields->saveField("costIdleTimeUnit", _costIdleTimeUnit, DEFAULT.cost, saveDefaultValues);
-	fields->saveField("costPerUse", _costPerUse, DEFAULT.cost, saveDefaultValues);
-	fields->saveField("resourceState", static_cast<int> (_resourceState), static_cast<int> (DEFAULT.resourceState), saveDefaultValues);
-	//@TODO: load failures
+	fields->saveField("Capacity", _capacity, DEFAULT.capacity, saveDefaultValues);
+	fields->saveField("CostBusyTimeUnit", _costBusyTimeUnit, DEFAULT.cost, saveDefaultValues);
+	fields->saveField("CostIdleTimeUnit", _costIdleTimeUnit, DEFAULT.cost, saveDefaultValues);
+	fields->saveField("CostPerUse", _costPerUse, DEFAULT.cost, saveDefaultValues);
+	fields->saveField("ResourceState", static_cast<int> (_resourceState), static_cast<int> (DEFAULT.resourceState), saveDefaultValues);
+	
+//	Failure* let;
+//	fields->saveField("Failures", _failures->size(), 0u, saveDefaultValues);
+//	unsigned short i = 0;
+//	for (std::list<Failure*>::iterator it = _failures->list()->begin(); it != _failures->list()->end(); it++, i++) {
+//		let = (*it);
+//		let->saveInstance(fields, i, saveDefaultValues);
+//		i++;
+//	}
 }
 
 bool Resource::_check(std::string* errorMessage) {

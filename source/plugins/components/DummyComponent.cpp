@@ -62,14 +62,20 @@ void DummyComponent::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 bool DummyComponent::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_someString = fields->loadField("SomeString", DEFAULT.someString);
+		_someUint = fields->loadField("SomeUint", DEFAULT.someUint);
+                //_internalDataDefinition->loadInstance(fields, nullptr);
 	}
 	return res;
 }
 
 void DummyComponent::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+        _someString = fields->loadField("SomeString", DEFAULT.someString);
+        _someUint = fields->loadField("SomeUint", DEFAULT.someUint);
+//        if (_internalDataDefinition != nullptr) {                                 //Não sei se era pra implementar o _internalDataDefinition
+//            _internalDataDefinition->saveInstance(fields, saveDefaultValues);
+//        }
 }
 
 

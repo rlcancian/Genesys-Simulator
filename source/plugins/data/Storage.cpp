@@ -74,18 +74,18 @@ ModelDataDefinition* Storage::LoadInstance(Model* model, PersistenceRecord *fiel
 bool Storage::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		try {
-			this->_capacity = fields->loadField("capacity", DEFAULT.capacity);
-			this->_totalArea = fields->loadField("totalArea", DEFAULT.totalArea);
-			this->_unitsPerArea = fields->loadField("unitPerArea", DEFAULT.unitsPerArea);
-		} catch (...) {
-		}
+            _totalArea = fields->loadField("TotalArea", DEFAULT.totalArea);
+            _capacity = fields->loadField("Capacity", DEFAULT.capacity);
+            _unitsPerArea = fields->loadField("UnitPerArea", DEFAULT.unitsPerArea);
 	}
 	return res;
 }
 
 void Storage::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+        fields->saveField("TotalArea", _totalArea, DEFAULT.totalArea, saveDefaultValues);
+        fields->saveField("Capacity", _capacity, DEFAULT.capacity, saveDefaultValues);
+        fields->saveField("UnitsPerArea", _unitsPerArea, DEFAULT.unitsPerArea, saveDefaultValues);
 }
 
 bool Storage::_check(std::string* errorMessage) {

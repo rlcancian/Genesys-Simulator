@@ -44,7 +44,7 @@ std::string DummyElement::show() {
 ModelDataDefinition* DummyElement::LoadInstance(Model* model, PersistenceRecord *fields) {
 	DummyElement* newElement = new DummyElement(model);
 	try {
-		newElement->_loadInstance(fields);
+		newElement->loadInstance(fields);
 	} catch (const std::exception& e) {
 
 	}
@@ -67,22 +67,22 @@ PluginInformation* DummyElement::GetPluginInformation() {
 // protected virtual -- must be overriden 
 //
 
-bool DummyElement::_loadInstance(PersistenceRecord *fields) {
+bool DummyElement::loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			this->_someString = fields->loadField("someString", DEFAULT.someString);
-			this->_someUint = fields->loadField("someUint", DEFAULT.someUint);
+			this->_someString = fields->loadField("SomeString", DEFAULT.someString);
+			this->_someUint = fields->loadField("SomeUint", DEFAULT.someUint);
 		} catch (...) {
 		}
 	}
 	return res;
 }
 
-void DummyElement::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+void DummyElement::saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("someUint", _someUint, DEFAULT.someUint);
-	fields->saveField("someString", _someString, DEFAULT.someString);
+	fields->saveField("SomeUint", _someUint, DEFAULT.someUint);
+	fields->saveField("SomeString", _someString, DEFAULT.someString);
 }
 
 //

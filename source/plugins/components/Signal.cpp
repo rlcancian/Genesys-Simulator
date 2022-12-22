@@ -77,7 +77,7 @@ bool Signal::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		// @TODO: not implemented yet
-		this->_limitExpression = fields->loadField("limitExpression", DEFAULT.limitExpression);
+		this->_limitExpression = fields->loadField("LimitExpression", DEFAULT.limitExpression);
 	}
 	return res;
 }
@@ -85,7 +85,7 @@ bool Signal::_loadInstance(PersistenceRecord *fields) {
 void Signal::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	// @TODO: not implemented yet
-	fields->saveField("limitExpression", _limitExpression, DEFAULT.limitExpression);
+	fields->saveField("LimitExpression", _limitExpression, DEFAULT.limitExpression);
 }
 
 // protected should override

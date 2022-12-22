@@ -87,8 +87,8 @@ bool Label::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			this->_label = fields->loadField("label", "");
-			std::string componentName = fields->loadField("enteringComponentName", "");
+			this->_label = fields->loadField("Label", "");
+			std::string componentName = fields->loadField("EnterIntoLabelComponent", "");
 			ModelComponent* comp = _parentModel->getComponents()->find(componentName);
 			this->_enteringLabelComponent = comp;
 		} catch (...) {
@@ -99,9 +99,9 @@ bool Label::_loadInstance(PersistenceRecord *fields) {
 
 void Label::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("label", this->_label, "", saveDefaultValues);
+	fields->saveField("Label", this->_label, "", saveDefaultValues);
 	if (_enteringLabelComponent != nullptr) {
-		fields->saveField("enteringComponentName", _enteringLabelComponent->getName(), "", saveDefaultValues);
+		fields->saveField("EnterIntoLabelComponent", _enteringLabelComponent->getName(), "", saveDefaultValues);
 	}
 }
 

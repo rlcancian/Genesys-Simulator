@@ -78,11 +78,6 @@ void Process::setDelayExpression(std::string _delayExpression) {
 	_delay->setDelayExpression(_delayExpression);
 }
 
-void Process::setDelayExpression(std::string _delayExpression, Util::TimeUnit _delayTimeUnit) {
-	_delay->setDelayExpression(_delayExpression);
-	_delay->setDelayTimeUnit(_delayTimeUnit);	
-}
-
 std::string Process::delayExpression() const {
 	return _delay->delayExpression();
 }

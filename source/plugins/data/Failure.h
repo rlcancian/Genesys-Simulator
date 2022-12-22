@@ -104,9 +104,11 @@ public: // gets & sets
 
 	List<Resource*>*falingResources() const;
 
-protected: // must be overriden
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+public: // must be overriden
+	virtual bool loadInstance(PersistenceRecord *fields);
+	virtual void saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
+	virtual void saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues);
 protected: // could be overriden .
 	virtual bool _check(std::string* errorMessage);
 	virtual void _initBetweenReplications();

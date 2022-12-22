@@ -111,7 +111,6 @@ private: // methods
 	unsigned int _handlerForSignalDataEvent(SignalData* signalData);
 	void _handlerForAfterProcessEventEvent(SimulationEvent* event);
 private: // attributes 1:1
-
 	const struct DEFAULT_VALUES {
 		const WaitType waitType = Wait::WaitType::WaitForSignal;
 		const std::string condition = "";
@@ -119,7 +118,7 @@ private: // attributes 1:1
 	WaitType _waitType = DEFAULT.waitType;
 	std::string _condition = DEFAULT.condition;
 private: // internal
-	Queue *_queue = nullptr; // @TODO: It should be a QueueableItem, (Queue or Set)
+	Queue *_queue = nullptr;
 private: // attached
 	SignalData* _signalData = nullptr;
 private: // attributes 1:n

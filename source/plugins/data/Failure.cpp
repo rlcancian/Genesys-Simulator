@@ -135,20 +135,55 @@ ModelDataDefinition* Failure::LoadInstance(Model* model, PersistenceRecord *fiel
 	return newElement;
 }
 
-bool Failure::_loadInstance(PersistenceRecord *fields) {
+bool Failure::loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		try {
-			//@TODO not implemented yet
-		} catch (...) {
-		}
+            _failureType = static_cast<Failure::FailureType> (fields->loadField("FailureType", static_cast<int> (DEFAULT.failureType)));
+            _failureRule = static_cast<Failure::FailureRule> (fields->loadField("FailureRule", static_cast<int> (DEFAULT.failureRule)));
+            _countExpression = fields->loadField("CountExpression", DEFAULT.countExpression);
+            _upTimeExpression = fields->loadField("UpTimeExpression", DEFAULT.upTimeExpression);
+            _upTimeTimeUnit = static_cast<Util::TimeUnit> (fields->loadField("UpTimeTimeUnit", static_cast<int> (DEFAULT.upTimeTimeUnit)));
+            _downTimeExpression = fields->loadField("DownTimeExpression", DEFAULT.downTimeExpression);
+            _downTimeTimeUnit = static_cast<Util::TimeUnit> (fields->loadField("DownTimeTimeUnit", static_cast<int> (DEFAULT.downTimeTimeUnit)));
 	}
 	return res;
 }
 
-void Failure::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+bool Failure::loadInstance(PersistenceRecord *fields, unsigned int parentIndex) {
+        std::string num = Util::StrIndex(parentIndex);
+	bool res = ModelDataDefinition::_loadInstance(fields);
+	if (res) {
+            _failureType = static_cast<Failure::FailureType> (fields->loadField("FailureType" + num, static_cast<int> (DEFAULT.failureType)));
+            _failureRule = static_cast<Failure::FailureRule> (fields->loadField("FailureRule" + num, static_cast<int> (DEFAULT.failureRule)));
+            _countExpression = fields->loadField("CountExpression" + num, DEFAULT.countExpression);
+            _upTimeExpression = fields->loadField("UpTimeExpression" + num, DEFAULT.upTimeExpression);
+            _upTimeTimeUnit = static_cast<Util::TimeUnit> (fields->loadField("UpTimeTimeUnit" + num, static_cast<int> (DEFAULT.upTimeTimeUnit)));
+            _downTimeExpression = fields->loadField("DownTimeExpression" + num, DEFAULT.downTimeExpression);
+            _downTimeTimeUnit = static_cast<Util::TimeUnit> (fields->loadField("DownTimeTimeUnit" + num, static_cast<int> (DEFAULT.downTimeTimeUnit)));
+	}
+	return res;
+}
+
+void Failure::saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	//@TODO not implemented yet
+	fields->saveField("FailureType", static_cast<int> (_failureType), static_cast<int> (DEFAULT.failureType), saveDefaultValues);
+	fields->saveField("FailureRule", static_cast<int> (_failureRule), static_cast<int> (DEFAULT.failureRule), saveDefaultValues);
+	fields->saveField("CountExpression", _countExpression, DEFAULT.countExpression, saveDefaultValues);
+	fields->saveField("UpTimeExpression", _upTimeExpression, DEFAULT.upTimeExpression, saveDefaultValues);
+	fields->saveField("UpTimeTimeUnit", static_cast<int> (_upTimeTimeUnit), static_cast<int> (DEFAULT.upTimeTimeUnit), saveDefaultValues);
+	fields->saveField("DownTimeExpression", _downTimeExpression, DEFAULT.downTimeExpression, saveDefaultValues);
+	fields->saveField("DownTimeTimeUnit", static_cast<int> (_downTimeTimeUnit), static_cast<int> (DEFAULT.downTimeTimeUnit), saveDefaultValues);
+}
+
+void Failure::saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues) {
+	std::string num = Util::StrIndex(parentIndex);
+	fields->saveField("Destination" + num, static_cast<int> (_failureType), static_cast<int> (DEFAULT.failureType), saveDefaultValues);
+	fields->saveField("FailureRule" + num, static_cast<int> (_failureRule), static_cast<int> (DEFAULT.failureRule), saveDefaultValues);
+	fields->saveField("CountExpression" + num, _countExpression, DEFAULT.countExpression, saveDefaultValues);
+	fields->saveField("UpTimeExpression" + num, _upTimeExpression, DEFAULT.upTimeExpression, saveDefaultValues);
+	fields->saveField("UpTimeTimeUnit" + num, static_cast<int> (_upTimeTimeUnit), static_cast<int> (DEFAULT.upTimeTimeUnit), saveDefaultValues);
+	fields->saveField("DownTimeExpression" + num, _downTimeExpression, DEFAULT.downTimeExpression, saveDefaultValues);
+	fields->saveField("DownTimeTimeUnit" + num, static_cast<int> (_downTimeTimeUnit), static_cast<int> (DEFAULT.downTimeTimeUnit), saveDefaultValues);
 }
 
 bool Failure::_check(std::string* errorMessage) {

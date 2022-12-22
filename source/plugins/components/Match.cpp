@@ -93,17 +93,20 @@ void Match::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Match::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+            _rule = static_cast<Match::Rule> (fields->loadField("Rule", static_cast<int> (DEFAULT.rule)));
+            _matchSize = fields->loadField("MatchSize", DEFAULT.matchSize);
+            _attributeName = fields->loadField("AttributeName", DEFAULT.attributeName);
+            _numberOfQueues = fields->loadField("NumberOfQueues", DEFAULT.numberOfQueues);	
 	}
 	return res;
 }
 
 void Match::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
-	fields->saveField("matchSize", _matchSize, DEFAULT.matchSize, saveDefaultValues);
-	fields->saveField("attributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
-	fields->saveField("queues", _queues->size(), 0u, saveDefaultValues);
+	fields->saveField("Rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
+	fields->saveField("MatchSize", _matchSize, DEFAULT.matchSize, saveDefaultValues);
+	fields->saveField("AttributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
+	fields->saveField("NumberOfQueues", _numberOfQueues, DEFAULT.numberOfQueues, saveDefaultValues);
 }
 
 void Match::setRule(Match::Rule _rule) {

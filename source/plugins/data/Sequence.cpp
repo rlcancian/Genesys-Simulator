@@ -58,7 +58,7 @@ bool Sequence::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			unsigned short numSteps = fields->loadField("steps", 0);
+			unsigned short numSteps = fields->loadField("Steps", 0);
 			for (unsigned short i = 0; i < numSteps; i++) {
 				SequenceStep* step = new SequenceStep((Station*)nullptr);
 				step->setElementManager(_parentModel->getDataManager());
@@ -73,7 +73,7 @@ bool Sequence::_loadInstance(PersistenceRecord *fields) {
 
 void Sequence::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("steps", _steps->size(), 0u, saveDefaultValues);
+	fields->saveField("Steps", _steps->size(), 0u, saveDefaultValues);
 	int i = 0;
 	for (SequenceStep* step : *_steps->list()) {
 		step->_saveInstance(fields, i, saveDefaultValues);
@@ -141,15 +141,15 @@ bool SequenceStep::_loadInstance(PersistenceRecord *fields, unsigned int parentI
 	std::string num = Util::StrIndex(parentIndex);
 	std::string destination, expression;
 	try {
-		std::string stationName = fields->loadField("stepStation" + num, "");
+		std::string stationName = fields->loadField("Station" + num, "");
 		if (_modeldataManager != nullptr) {
 			_station = static_cast<Station*> (_modeldataManager->getDataDefinition(Util::TypeOf<Station>(), stationName));
 		}
-		std::string labelName = fields->loadField("stepLabel" + num, "");
+		std::string labelName = fields->loadField("Label" + num, "");
 		if (_modeldataManager != nullptr) {
 			_label = static_cast<Label*> (_modeldataManager->getDataDefinition(Util::TypeOf<Label>(), labelName));
 		}
-		unsigned int assignmentsSize = fields->loadField("stepAssignments" + num, DEFAULT.assignmentsSize);
+		unsigned int assignmentsSize = fields->loadField("Assignments" + num, DEFAULT.assignmentsSize);
 		for (unsigned short i = 0; i < assignmentsSize; i++) {
 			Assignment* assm = new Assignment("", "");
 			assm->loadInstance(fields, i);
@@ -164,12 +164,12 @@ bool SequenceStep::_loadInstance(PersistenceRecord *fields, unsigned int parentI
 void SequenceStep::_saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues) {
 	std::string num = Util::StrIndex(parentIndex);
 	if (_station != nullptr) {
-		fields->saveField("stepStation" + num, _station->getName());
+		fields->saveField("Station" + num, _station->getName());
 	}
 	if (_label != nullptr) {
-		fields->saveField("stepLabel" + num, _label->getName());
+		fields->saveField("Label" + num, _label->getName());
 	}
-	fields->saveField("stepAssignments" + num, _assignments->size(), DEFAULT.assignmentsSize);
+	fields->saveField("Assignments" + num, _assignments->size(), DEFAULT.assignmentsSize);
 	unsigned short i = 0;
 	for (Assignment* assm : *_assignments) {
 		assm->saveInstance(fields, i, saveDefaultValues);

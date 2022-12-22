@@ -126,19 +126,16 @@ ModelDataDefinition* Queue::LoadInstance(Model* model, PersistenceRecord *fields
 bool Queue::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		try {
-			this->_attributeName = fields->loadField("attributeName", DEFAULT.attributeName);
-			this->_orderRule = static_cast<OrderRule> (fields->loadField("orderRule", static_cast<int> (DEFAULT.orderRule)));
-		} catch (...) {
-		}
-	}
+            _attributeName = fields->loadField("AttributeName", DEFAULT.attributeName);
+            _orderRule = static_cast<OrderRule> (fields->loadField("OrderRule", static_cast<int> (DEFAULT.orderRule)));	
+        }
 	return res;
 }
 
 void Queue::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("orderRule", static_cast<int> (this->_orderRule), static_cast<int> (DEFAULT.orderRule), saveDefaultValues);
-	fields->saveField("attributeName", this->_attributeName, DEFAULT.attributeName, saveDefaultValues);
+	fields->saveField("OrderRule", static_cast<int> (this->_orderRule), static_cast<int> (DEFAULT.orderRule), saveDefaultValues);
+	fields->saveField("AttributeName", this->_attributeName, DEFAULT.attributeName, saveDefaultValues);
 }
 
 bool Queue::_check(std::string* errorMessage) {

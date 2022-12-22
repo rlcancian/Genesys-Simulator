@@ -37,9 +37,9 @@ QueueableItem::QueueableItem(Model* model, std::string queueName = "") {
 bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 	bool res = true;
 	try {
-		_queueableType = static_cast<QueueableItem::QueueableType> (fields->loadField("queueableType", static_cast<int> (DEFAULT.queueableType)));
-		_queueableName = fields->loadField("queueable", "");
-		_index = fields->loadField("index", DEFAULT.index);
+		_queueableType = static_cast<QueueableItem::QueueableType> (fields->loadField("QueueableType", static_cast<int> (DEFAULT.queueableType)));
+		_queueableName = fields->loadField("Queueable", "");
+		_index = fields->loadField("Index", DEFAULT.index);
 		if (_modeldataManager != nullptr) {
 			if (_queueableType == QueueableItem::QueueableType::QUEUE) {
 				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Queue>(), _queueableName);
@@ -59,9 +59,9 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 }
 
 void QueueableItem::saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
-	fields->saveField("queueableType", static_cast<int> (_queueableType), static_cast<int> (DEFAULT.queueableType), saveDefaultValues);
-	fields->saveField("queueable", _queueOrSet->getName());
-	fields->saveField("index", _index, DEFAULT.index, saveDefaultValues);
+	fields->saveField("QueueableType", static_cast<int> (_queueableType), static_cast<int> (DEFAULT.queueableType), saveDefaultValues);
+	fields->saveField("Queueable", _queueOrSet->getName());
+	fields->saveField("Index", _index, DEFAULT.index, saveDefaultValues);
 }
 
 std::string QueueableItem::show() {

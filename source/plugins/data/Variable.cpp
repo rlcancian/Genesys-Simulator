@@ -122,13 +122,13 @@ bool Variable::_loadInstance(PersistenceRecord *fields) {
 		std::string pos;
 		double value;
 		unsigned int nv;
-		nv = fields->loadField("dimensions", 0);
+		nv = fields->loadField("DimensionSizes", 0);
 		for (unsigned int i = 0; i < nv; i++) {
-			value = fields->loadField("dimension" + Util::StrIndex(i), 0);
+			value = fields->loadField("Dimension" + Util::StrIndex(i), 0);
 			//this->_dimensionSizes->insert(value);
 			this->insertDimentionSize(value);
 		}
-		nv = fields->loadField("values", 0);
+		nv = fields->loadField("InitialValue", 0);
 		for (unsigned int i = 0; i < nv; i++) {
 			pos = fields->loadField("valuePos" + Util::StrIndex(i), 0);
 			value = fields->loadField("value" + Util::StrIndex(i), 0);
@@ -140,11 +140,11 @@ bool Variable::_loadInstance(PersistenceRecord *fields) {
 
 void Variable::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	unsigned int i = 0;
-	fields->saveField("dimensions", _dimensionSizes->size(), 0u, saveDefaultValues);
+	fields->saveField("DimensionSizes", _dimensionSizes->size(), 0u, saveDefaultValues);
 	for (unsigned int dimension : *_dimensionSizes) {
-		fields->saveField("dimension" + Util::StrIndex(i), dimension, 1u, saveDefaultValues);
+		fields->saveField("Dimension" + Util::StrIndex(i), dimension, 1u, saveDefaultValues);
 	}
-	fields->saveField("values", _initialValues->size(), 0);
+	fields->saveField("InitialValue", _initialValues->size(), 0);
 	for (std::map<std::string, double>::iterator it = _initialValues->begin(); it != _initialValues->end(); it++, i++) {
 		fields->saveField("valuePos" + Util::StrIndex(i), (*it).first, "0", saveDefaultValues);
 		fields->saveField("value" + Util::StrIndex(i), (*it).second, 0.0, saveDefaultValues);

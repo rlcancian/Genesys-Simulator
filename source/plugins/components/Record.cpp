@@ -89,17 +89,17 @@ void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 
 void Record::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("expression", this->_expression, "", saveDefaultValues);
-	fields->saveField("expressionName", this->_expressionName, "", saveDefaultValues);
-	fields->saveField("fileName", this->_filename, "", saveDefaultValues);
+	fields->saveField("Expression", this->_expression, "", saveDefaultValues);
+	fields->saveField("ExpressionName", this->_expressionName, "", saveDefaultValues);
+	fields->saveField("FileName", this->_filename, "", saveDefaultValues);
 }
 
 bool Record::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		this->_expression = fields->loadField("expression", "");
-		this->_expressionName = fields->loadField("expressionName", "");
-		this->_filename = fields->loadField("fileName", "");
+		this->_expression = fields->loadField("Expression", "");
+		this->_expressionName = fields->loadField("ExpressionName", "");
+		this->_filename = fields->loadField("FileName", "");
 	}
 	return res;
 }

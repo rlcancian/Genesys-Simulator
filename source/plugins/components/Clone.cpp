@@ -93,14 +93,14 @@ void Clone::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Clone::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+            _numClonesExpression = fields->loadField("NumClonesExpression", DEFAULT.numClonesExpression);
 	}
 	return res;
 }
 
 void Clone::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("NumClonesExpression", _numClonesExpression, DEFAULT.numClonesExpression, saveDefaultValues);
 }
 
 
@@ -118,8 +118,8 @@ void Clone::_initBetweenReplications() {
 void Clone::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
 		if (_counter == nullptr) {
-			//PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-			_counter = new Counter(_parentModel, getName() + "." + "CountClones", this);//pm->newInstance<Counter>(_parentModel, getName() + "." + "CountClones", this);
+			PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
+			_counter = pm->newInstance<Counter>(_parentModel, getName() + "." + "CountClones");
 			_internalDataInsert("CountClones", _counter);
 		}
 	} else {
