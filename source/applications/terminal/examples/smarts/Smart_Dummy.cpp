@@ -22,6 +22,7 @@
 #include "../../../../plugins/components/Create.h"
 #include "../../../../plugins/components/DummyComponent.h"
 #include "../../../../plugins/components/Dispose.h"
+#include "../../../distributed/DistributedExecutionManager.h"
 
 Smart_Dummy::Smart_Dummy() {
 }
@@ -47,7 +48,12 @@ int Smart_Dummy::main(int argc, char** argv) {
 	model->getSimulation()->setReplicationLength(60, Util::TimeUnit::second);
 	model->getSimulation()->setTerminatingCondition("count(Dispose_1.CountNumberIn)>30");
 	model->save("./models/Smart_Dummy.gen");
-	model->getSimulation()->start();
+	//model->getSimulation()->start();
+
+	DistributedExecutionManager* distMan = new DistributedExecutionManager();
+ 	distMan->localExecute(model);
+	//Benchmark::getBenchmarkInfo(&distMan->benchmarkInfo);
+
 	delete genesys;
 	return 0;
 };

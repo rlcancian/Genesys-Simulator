@@ -7,6 +7,7 @@
 #include "plugins/components/Create.h"
 #include "plugins/components/Dispose.h"
 #include "plugins/components/DummyComponent.h"
+#include "applications/distributed/DistributedExecutionManager.h"
 
 int main(int argc, char** argv) {
 	// instantiate simulator
@@ -35,7 +36,10 @@ int main(int argc, char** argv) {
 	sim->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
 	
 	// run the simulation
-	sim->start();
+	//	sim->start();
+
+	DistributedExecutionManager distMan = new DistributedExecutionManager();
+	distMan.localExecute(model);
 	
 	// free memory
 	delete genesys;
