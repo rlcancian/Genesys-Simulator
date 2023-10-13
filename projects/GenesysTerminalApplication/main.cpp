@@ -13,7 +13,6 @@
  */
 
 #include "../../source/applications/TraitsApp.h"
-
 /*!
  * This is the MAIN application of GenESyS. It just calls the Application specificied on the configuration/traits file.
  * This file should NOT be changed. Configure the application to be executed using TraitsApp<GenesysApplication_if>

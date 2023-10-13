@@ -228,7 +228,9 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/d18efc87/ProbabilityDistribution.o \
 	${OBJECTDIR}/_ext/d18efc87/ProbabilityDistributionBase.o \
 	${OBJECTDIR}/_ext/d18efc87/SolverDefaultImpl1.o \
-	${OBJECTDIR}/main.o
+	${OBJECTDIR}/main.o \
+	${OBJECTDIR}/_ext/teste/DistributedExecutionManager.o \
+	${OBJECTDIR}/_ext/teste/Benchmark.o
 
 # Test Directory
 TESTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}/tests
@@ -265,6 +267,16 @@ LDLIBSOPTIONS=-L../GoogleTestsStaticLibrary/dist/Debug/GNU-Linux
 ${CND_DISTDIR}/genesysterminalapplication: ${OBJECTFILES}
 	${MKDIR} -p ${CND_DISTDIR}
 	${LINK.cc} -o ${CND_DISTDIR}/genesysterminalapplication ${OBJECTFILES} ${LDLIBSOPTIONS}
+
+${OBJECTDIR}/_ext/teste/Benchmark.o: ../../source/applications/distributed/Benchmark.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/teste
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/teste/Benchmark.o ../../source/applications/distributed/Benchmark.cpp
+
+${OBJECTDIR}/_ext/teste/DistributedExecutionManager.o: ../../source/applications/distributed/DistributedExecutionManager.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/teste
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/teste/DistributedExecutionManager.o ../../source/applications/distributed/DistributedExecutionManager.cpp
 
 ${OBJECTDIR}/_ext/6bf258f7/BaseGenesysTerminalApplication.o: ../../source/applications/BaseGenesysTerminalApplication.cpp
 	${MKDIR} -p ${OBJECTDIR}/_ext/6bf258f7

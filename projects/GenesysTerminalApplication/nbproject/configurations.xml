@@ -57,6 +57,14 @@
       <logicalFolder name="applications"
                      displayName="applications"
                      projectFiles="true">
+            <logicalFolder name="distributed" displayName="distributed" projectFiles="true">
+                  <itemPath>../../source/applications/distributed/Benchmark.h</itemPath>
+                  <itemPath>../../source/applications/distributed/Benchmark.cpp</itemPath>
+                  <itemPath>../../source/applications/distributed/DistributedExecutionManager.cpp</itemPath>
+                  <itemPath>../../source/applications/distributed/DistributedExecutionManager.h</itemPath>
+                  <itemPath>../../source/applications/distributed/ParallelExecutionManager.cpp</itemPath>
+                  <itemPath>../../source/applications/distributed/ParallelExecutionManager.h</itemPath>
+            </logicalFolder>
         <logicalFolder name="terminal" displayName="terminal" projectFiles="true">
           <logicalFolder name="examples" displayName="examples" projectFiles="true">
             <logicalFolder name="arenaExamples"
@@ -227,7 +235,6 @@
         <itemPath>../../source/applications/BaseGenesysTerminalApplication.h</itemPath>
         <itemPath>../../source/applications/GenesysApplication_if.h</itemPath>
         <itemPath>../../source/applications/TraitsApp.h</itemPath>
-      </logicalFolder>
       <logicalFolder name="gtest" displayName="gtest" projectFiles="true">
         <logicalFolder name="internal" displayName="internal" projectFiles="true">
           <logicalFolder name="custom" displayName="custom" projectFiles="true">

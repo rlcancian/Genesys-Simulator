@@ -228,7 +228,8 @@ OBJECTFILES= \
 	${OBJECTDIR}/_ext/d18efc87/ProbabilityDistribution.o \
 	${OBJECTDIR}/_ext/d18efc87/ProbabilityDistributionBase.o \
 	${OBJECTDIR}/_ext/d18efc87/SolverDefaultImpl1.o \
-	${OBJECTDIR}/main.o
+	${OBJECTDIR}/main.o \
+	${OBJECTDIR}/_ext/teste/
 
 # Test Directory
 TESTDIR=${CND_BUILDDIR}/${CND_CONF}/${CND_PLATFORM}/tests
@@ -275,6 +276,16 @@ ${OBJECTDIR}/_ext/acd0b333/GenesysShell.o: ../../source/applications/terminal/Ge
 	${MKDIR} -p ${OBJECTDIR}/_ext/acd0b333
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/acd0b333/GenesysShell.o ../../source/applications/terminal/GenesysShell/GenesysShell.cpp
+
+${OBJECTDIR}/_ext/teste/Benchmark.o: ../../source/applications/distributed/Benchmark.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/teste
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/teste/Benchmark.o ../../source/applications/distributed/Benchmark.cpp
+
+${OBJECTDIR}/_ext/teste/DistributedExecutionManager.o: ../../source/applications/distributed/DistributedExecutionManager.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/teste
+	${RM} "$@.d"
+	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/teste/DistributedExecutionManager.o ../../source/applications/distributed/DistributedExecutionManager.cpp
 
 ${OBJECTDIR}/_ext/bea3505/AirportSecurityExample.o: ../../source/applications/terminal/examples/arenaExamples/AirportSecurityExample.cpp nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}/_ext/bea3505
@@ -1235,6 +1246,16 @@ ${OBJECTDIR}/main.o: main.cpp nbproject/Makefile-${CND_CONF}.mk
 	${MKDIR} -p ${OBJECTDIR}
 	${RM} "$@.d"
 	$(COMPILE.cc) -O2 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/main.o main.cpp
+
+${OBJECTDIR}/_ext/teste/Network_Client_Dummy.o: ../../source/applications/terminal/examples/network/Network_Client_Dummy.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Network_Client_Dummy.o ../../source/applications/terminal/examples/network/Network_Client_Dummy.cpp
+
+${OBJECTDIR}/_ext/296208d5/Network_Server_Dummy.o: ../../source/applications/terminal/examples/network/Network_Server_Dummy.cpp nbproject/Makefile-${CND_CONF}.mk
+	${MKDIR} -p ${OBJECTDIR}/_ext/296208d5
+	${RM} "$@.d"
+	$(COMPILE.cc) -g -std=c++14 -MMD -MP -MF "$@.d" -o ${OBJECTDIR}/_ext/296208d5/Network_Server_Dummy.o ../../source/applications/terminal/examples/network/Network_Server_Dummy.cpp
 
 # Subprojects
 .build-subprojects:

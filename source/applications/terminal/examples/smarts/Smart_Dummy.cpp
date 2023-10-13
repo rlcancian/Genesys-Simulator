@@ -52,7 +52,7 @@ int Smart_Dummy::main(int argc, char** argv) {
 
 	DistributedExecutionManager* distMan = new DistributedExecutionManager();
  	distMan->localExecute(model);
-	//Benchmark::getBenchmarkInfo(&distMan->benchmarkInfo);
+	//Benchmark::getBenchmarkInfo();
 
 	delete genesys;
 	return 0;

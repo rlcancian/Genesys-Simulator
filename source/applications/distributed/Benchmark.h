@@ -11,6 +11,7 @@ public:
 	};
 
     static void getBenchmarkInfo(BenchmarkInfo *info);
+	static int getBenchmarkInfo();
 };
 
 #endif

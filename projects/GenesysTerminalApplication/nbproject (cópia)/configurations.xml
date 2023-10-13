@@ -57,6 +57,12 @@
       <logicalFolder name="applications"
                      displayName="applications"
                      projectFiles="true">
+		<logicalFolder name="distributed" displayName="distributed" projectFiles="true">
+			<itemPath>../../source/applications/distributed/Benchmark.h</itemPath>
+			<itemPath>../../source/applications/distributed/Benchmark.cpp</itemPath>
+			<itemPath>../../source/applications/distributed/DistributedExecutionManager.cpp</itemPath>
+			<itemPath>../../source/applications/distributed/DistributedExecutionManager.h</itemPath> 
+		</logicalFolder>
         <logicalFolder name="terminal" displayName="terminal" projectFiles="true">
           <logicalFolder name="examples" displayName="examples" projectFiles="true">
             <logicalFolder name="book" displayName="book" projectFiles="true">
@@ -136,6 +142,10 @@
             <itemPath>../../source/applications/terminal/GenesysShell/GenesysShell_if.h</itemPath>
           </logicalFolder>
         </logicalFolder>
+        <itemPath>../../source/applications/BaseGenesysTerminalApplication.cpp</itemPath>
+        <itemPath>../../source/applications/BaseGenesysTerminalApplication.h</itemPath>
+        <itemPath>../../source/applications/GenesysApplication_if.h</itemPath>
+        <itemPath>../../source/applications/TraitsApp.h</itemPath>
         <itemPath>../../source/applications/BaseGenesysTerminalApplication.cpp</itemPath>
         <itemPath>../../source/applications/BaseGenesysTerminalApplication.h</itemPath>
         <itemPath>../../source/applications/GenesysApplication_if.h</itemPath>

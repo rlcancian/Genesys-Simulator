@@ -37,9 +37,9 @@ bool DistributedExecutionManager::localExecute(Model* model) {
 	std::thread threadStart;
 	//thread_start = std::thread(&modelSimSimulation::start, this);
 
-	for (int i = 0; i < threadNumber; i++) {
-		threadList[i] = std::thread(&getRamAmount);
-	}
+	// for (int i = 0; i < threadNumber; i++) {
+	// 	//threadList[i] = std::thread(&getRamAmount);
+	// };
 
-    //modelSim->getSimulation()->start();
+    model->getSimulation()->start();
 }

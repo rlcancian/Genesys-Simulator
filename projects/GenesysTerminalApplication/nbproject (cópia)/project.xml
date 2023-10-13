@@ -12,6 +12,7 @@
             <sourceRootList>
                 <sourceRootElem>../../source</sourceRootElem>
                 <sourceRootElem>../../documentation</sourceRootElem>
+                <sourceRootElem>../../</sourceRootElem>
                 <sourceRootElem>../../models</sourceRootElem>
                 <sourceRootElem>..</sourceRootElem>
             </sourceRootList>

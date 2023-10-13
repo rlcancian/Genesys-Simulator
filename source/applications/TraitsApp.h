@@ -99,6 +99,9 @@
 #include "terminal/examples/teaching/OperatingSystem02.h"
 #include "terminal/examples/teaching/OperatingSystem03.h"
 
+
+#include "distributed/Benchmark.h"
+#include "distributed/DistributedExecutionManager.h"
 template <typename T>
 struct TraitsApp {
 };
@@ -120,6 +123,8 @@ template <> struct TraitsApp<GenesysApplication_if> {
 	//typedef Smart_CppForG Application;
 	//typedef Smart_Delay Application;
 	typedef Smart_Dummy Application;
+	// typedef DistributedExecutionManager DistributedExecutionManagerApp;
+	// typedef Benchmark BenchmarkApp;
 	//typedef Smart_Failures Application;
 	//typedef Smart_FiniteStateMachine Application;
 	//typedef Smart_HoldSearchRemove Application;
