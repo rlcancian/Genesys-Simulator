@@ -45,6 +45,7 @@ int Smart_Dummy::main(int argc, char** argv) {
 	create1->getConnections()->insert(dummy1);
 	dummy1->getConnections()->insert(dispose1);
 	// set options, save and simulate
+	model->getSimulation()->setNumberOfReplications(10);
 	model->getSimulation()->setReplicationLength(60, Util::TimeUnit::second);
 	model->getSimulation()->setTerminatingCondition("count(Dispose_1.CountNumberIn)>30");
 	model->save("./models/Smart_Dummy.gen");

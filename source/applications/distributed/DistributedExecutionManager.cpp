@@ -4,7 +4,7 @@
 #include "../../kernel/TraitsKernel.h"
 
 DistributedExecutionManager::DistributedExecutionManager() {
-    Benchmark::getBenchmarkInfo(&benchmarkInfo);
+    Benchmark::getBenchmarkInfo(&_benchmarkInfo);
 }
 
 DistributedExecutionManager::~DistributedExecutionManager() {
@@ -12,14 +12,30 @@ DistributedExecutionManager::~DistributedExecutionManager() {
 }
 
 int DistributedExecutionManager::getNumberThreads() {
-    return 2;
+    return _benchmarkInfo._nucleos;
 }
 
 int DistributedExecutionManager::getRamAmount() {
-    return benchmarkInfo._memoria;
+    return _benchmarkInfo._memoria;
 }
 
-bool DistributedExecutionManager::localExecute(Model* model) {
+unsigned int DistributedExecutionManager::getRandomSeed() {
+    srand((unsigned) time(NULL));
+    return rand();
+}
+
+DistributedExecutionManager::SocketData* DistributedExecutionManager::createNewSocketDataClient(int id) {
+    DistributedExecutionManager::SocketData* sdata = new DistributedExecutionManager::SocketData();
+    sdata->address.sin_family = AF_INET;
+    sdata->address.sin_port = htons(getPort());
+    sdata->address.sin_addr.s_addr;
+}
+
+bool DistributedExecutionManager::remoteSendExecute(Model* model) {
+
+}
+
+bool DistributedExecutionManager::execute(Model* model) {
     // Criar varios modelos que possuam um numero de 
     // replicacoes para executar
     int replications = model->getSimulation()->getNumberOfReplications();
@@ -34,12 +50,11 @@ bool DistributedExecutionManager::localExecute(Model* model) {
     int replicationsByThread = replications/threadNumber;
 
     std::thread threadList[threadNumber];
-	std::thread threadStart;
-	//thread_start = std::thread(&modelSimSimulation::start, this);
 
-	// for (int i = 0; i < threadNumber; i++) {
-	// 	//threadList[i] = std::thread(&getRamAmount);
-	// };
+	for (int i = 0; i < threadNumber; i++) {
+
+		//threadList[i] = std::thread(&getRamAmount);
+	};
 
     model->getSimulation()->start();
 }
