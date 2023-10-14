@@ -51,8 +51,8 @@ int Smart_Dummy::main(int argc, char** argv) {
 	model->save("./models/Smart_Dummy.gen");
 	//model->getSimulation()->start();
 
-	DistributedExecutionManager* distMan = new DistributedExecutionManager();
- 	distMan->localExecute(model);
+	DistributedExecutionManager* distMan = new DistributedExecutionManager(model);
+ 	distMan->execute(model);
 	//Benchmark::getBenchmarkInfo();
 
 	delete genesys;

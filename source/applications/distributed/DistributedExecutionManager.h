@@ -1,5 +1,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <poll.h>
+
 #include "../../kernel/simulator/Simulator.h"
 #include "Benchmark.h"
 #include "../../kernel/util/Util.h"
@@ -13,14 +15,13 @@
 
 class DistributedExecutionManager
 {
-private:
-    Benchmark::BenchmarkInfo _benchmarkInfo;
 public:
     struct SocketData {
-        int id;
-        unsigned int seed;
-        unsigned int replicationNumber;
-        struct sockaddr_in address;
+        int _id;
+        unsigned int _seed;
+        unsigned int _replicationNumber;
+        struct sockaddr_in _address;
+        int _socket;
     };
 
     struct ModelExecutionPayload {
@@ -28,26 +29,60 @@ public:
         Model model;
     };
 
-    DistributedExecutionManager();
+    enum DistributedCommunication {
+        INIT_CONNECTION = 1,
+        SEND_MODEL = 2,
+        RECEIVE_DATA = 3,
+        RESULTS = 4,
+        CLOSE_CONNECTION = 5,
+        NOTHING = 6,
+        FAILURE = 7,
+        BENCHMARK = 8
+    };
+
+public:
+    DistributedExecutionManager(Model* model);
     ~DistributedExecutionManager();
+
+    Model* getModel();
+    void setModel(Model* model);
 
     int getNumberThreads();
     int getRamAmount();
     unsigned int getRandomSeed();
 
     void setPort();
-    int getPort();
+    unsigned int getClientPort();
+    unsigned int getServerPort();
+
+    void sendBenchmark();
+
+    bool receivePayload();
+    bool sendPayload(SocketData* socketData);
 
     // std::vector<std::string> getAvailableIps();
     // void setAvailableIps(std::vector<std::string>);
-    
 
-    SocketData* createNewSocketDataClient(int id);
-    SocketData* createNewSocketDataServer(int id);
+    std::vector<SocketData*>* getSocketDataList();
+    void appendSocketDataList(SocketData* socketDataItem);
+    
+    int createSocket();
+    SocketData* createNewSocketDataClient(unsigned int port, int ipId);
+    SocketData* createNewSocketDataServer(unsigned int port);
     
 
     // Used to connect to a server (a instance of genesys listening for connections)
-    bool connectToServer();
+    bool connectToServers();
+    bool connectToServerSocket(SocketData* socketData);
+
+
+    bool connectToClient(SocketData* socketData);
+
+    void sendCodeMessage(DistributedCommunication code, int socket);
+    bool receiveCodeMessage(DistributedCommunication code, int socket);
+
+    void createServerBind(SocketData* socketData);
+    void createServerListen(SocketData* socketData);
 
     // Main function executed inside driver code to distribute replications of a model
     bool execute(Model* model);
@@ -55,11 +90,27 @@ public:
     // Function thread uses to pass necessary info to execute distributed replications of a model
     bool remoteSendExecute(Model* model);
 
-    
-
     // // canvas through possible genesys instances
     // bool distributedExecute(Model* model);
 
+    DistributedCommunication getNextDistributedCommunicationCode();
+
+    void createNewConnection(int socket);
+    void endConnection();
+
+    void startServerSimulation();
+    void startClientSimulation();
+
+    void createClientThreadTask(SocketData* socketData);
+
+private:
+    Benchmark::BenchmarkInfo _benchmarkInfo;
+    Model* _model;
+    struct pollfd fds[2] = {{.fd = 0, .events = POLLIN}};
+    int nfds = 2;
+    int max_nfds = 4;
+    std::vector<SocketData*> _sockets;
+    std::vector<std::string> _ipList;
 };
 
 #endif
