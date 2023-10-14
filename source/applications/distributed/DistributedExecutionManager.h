@@ -63,6 +63,7 @@ public:
     bool receiveSocketData(SocketData* socketData);
 
     uint64_t receiveFileSize(SocketData* socketData);
+    bool sendFileSize(SocketData* socketData, uint64_t fileSize);
 
     // std::vector<std::string> getAvailableIps();
     // void setAvailableIps(std::vector<std::string>);

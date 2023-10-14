@@ -338,6 +338,7 @@ uint64_t DistributedExecutionManager::receiveFileSize(SocketData* socketData) {
 	}
 	if (res < 1) {
 		_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Fail to receive fileSize.");
+		perror("ERROR ->");
 		return -1;
 	}
 	return -1;
@@ -409,22 +410,45 @@ void DistributedExecutionManager::sendSocketData(SocketData* socketData) {
 	}
 }
 
+bool DistributedExecutionManager::sendFileSize(SocketData* socketData, uint64_t fileSize) {
+    int res = send(socketData->_socket, &fileSize, sizeof(fileSize), 0);
+    if (res > 0) {
+        _model->getTracer()->traceError(TraceManager::Level::L5_event, "fileSize sent.");
+    } else {
+        _model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Fail to send fileSize.");
+        perror("ERROR ->");
+    }
+}
+
 bool DistributedExecutionManager::sendPayload(SocketData* socketData) {
-	sendSocketData(socketData);
-	
-	std::string fileToSend = modelToFile();
-	send(fds[1].fd , fileToSend.c_str() , fileToSend.length() , 0);
-	
-	if (receiveCodeMessage(DistributedCommunication::SEND_MODEL, socketData->_socket)) {
-		_model->getTracer()->traceError(TraceManager::Level::L5_event, "sendModel OK!");
-	} else {
-		_model->getTracer()->traceError(TraceManager::Level::L5_event, "sendModel ERROR!");
-	}
+    std::string fileToSend = modelToFile();
+    
+    // Get the file size
+    std::ifstream file("modeloEnvio.gen", std::ios::binary | std::ios::ate);
+    uint64_t fileSize = file.tellg();
+    file.close();
+        
+    // Send the SocketData with the file size
+    sendSocketData(socketData);
+
+	// Send the file size
+    sendFileSize(socketData, fileSize);
+
+    // Send the actual file data
+    send(socketData->_socket, fileToSend.c_str(), fileToSend.length(), 0);
+
+    if (receiveCodeMessage(DistributedCommunication::SEND_MODEL, socketData->_socket)) {
+        _model->getTracer()->traceError(TraceManager::Level::L5_event, "sendModel OK!");
+    } else {
+        _model->getTracer()->traceError(TraceManager::Level::L5_event, "sendModel ERROR!");
+    }
 }
 
 void DistributedExecutionManager::createClientThreadTask(SocketData* socketData) {
 	sendCodeMessage(DistributedCommunication::SEND_MODEL, socketData->_socket);
-	sendPayload(socketData);
+	if (receiveCodeMessage(DistributedCommunication::SEND_MODEL), socketData->_socket) {
+		sendPayload(socketData);
+	}
 }
 
 void DistributedExecutionManager::startClientSimulation() {
@@ -453,11 +477,10 @@ void DistributedExecutionManager::startClientSimulation() {
 		threadSimulation[i] = std::thread(&DistributedExecutionManager::createClientThreadTask, this, _sockets.at(i));
 	}
 
-	// start();
-	// for (int i = 0; i < threadNumber; i++)
-	// 	threadSimulation[i].detach();
-	// for (int i = 0; i < _sockets.size(); i++)
-	// 	close(_sockets.at(i)->_socket);
+	for (int i = 0; i < threadNumber; i++)
+		threadSimulation[i].detach();
+	for (int i = 0; i < _sockets.size(); i++)
+		close(_sockets.at(i)->_socket);
 }
 
 void DistributedExecutionManager::sendBenchmark() {
