@@ -103,9 +103,7 @@ DistributedExecutionManager::SocketData* DistributedExecutionManager::createNewS
 	socketData->_replicationNumber = -1;
 	socketData->_socket = createSocket();
 	socketData->_address.sin_family = AF_INET;
-	//socketData->_address.sin_addr.s_addr = inet_addr(_ipList.at(ipId).c_str());
-    socketData->_address.sin_addr.s_addr = inet_addr("127.0.0.1");//
-    
+    socketData->_address.sin_addr.s_addr = inet_addr("127.0.0.1");
 	socketData->_address.sin_port = htons(port);
     return socketData;
 }
@@ -118,12 +116,10 @@ DistributedExecutionManager::SocketData* DistributedExecutionManager::createNewS
 	socketData->_socket = createSocket();
 	socketData->_address.sin_family = AF_INET;
 	socketData->_address.sin_addr.s_addr = htonl(INADDR_ANY);
-	// socketData->_address.sin_addr.s_addr = inet_addr("127.0.0.1"); //
 	socketData->_address.sin_port = htons(port);
 	int on = 1;
 	if (setsockopt(socketData->_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0) {
     	getModel()->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "setsockopt falhou - Socket ocupado?");
-    // handle error
 	}
 
 	fds[0].fd = socketData->_socket;
@@ -223,11 +219,6 @@ DistributedExecutionManager::DistributedCommunication DistributedExecutionManage
 				}
 				break;
 			}
-			case POLLNVAL:
-			case POLLPRI:
-			case POLLOUT:
-			case POLLERR:
-			case POLLHUP:
 			default:
 				_model->getTracer()->traceError(TraceManager::Level::L4_warning, "Network error. Unespected revents.");
 				closeConnection();
@@ -261,8 +252,6 @@ void DistributedExecutionManager::startServerSimulation() {
 	std::thread thread_simulation;
 	std::thread thread_results;
 
-	// _networkGetResult.lock();
-	// _networkSimulationEnded.lock();
 	//thread_results = std::thread(&ModelSimulation::threadWaitResults, this, socketData);
 	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Entering listening loop");
 	while (1) {
@@ -288,22 +277,13 @@ void DistributedExecutionManager::startServerSimulation() {
 					_model->getTracer()->traceError(TraceManager::Level::L5_event, "receivePayload completed!");
 				} 
 				_model->getSimulation()->setNumberOfReplications(socketData->_replicationNumber);
-				// setSeed(socketData->_seed);
 				if (thread_simulation.joinable())
 					thread_simulation.join();
-				// _isNetworkModelRunningMutex.lock();
-				// _isNetworkModelRunning = true;
-				// _isNetworkModelRunningMutex.unlock();
-				// thread_simulation = std::thread(&ModelSimulation::start, this);
+
 				sendCodeMessage(DistributedExecutionManager::DistributedCommunication::SEND_MODEL);
 				break;
 			case DistributedExecutionManager::DistributedCommunication::RESULTS:
 				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Received RESULTS from client");
-				// if (_isNetworkModelRunning) {
-				// 	_getResultNetworkMutex.lock();
-				// 	_getResultNetwork = true;
-				// 	_getResultNetworkMutex.unlock();
-				// }
 				break;
 			case DistributedExecutionManager::DistributedCommunication::FAILURE:
 				break;
@@ -452,23 +432,6 @@ void DistributedExecutionManager::createClientThreadTask(SocketData* socketData)
 }
 
 void DistributedExecutionManager::startClientSimulation() {
-	// if (_replica == 1) {
-	// 	_model->getTracer()->traceError(Util::TraceLevel::L4_warning, "There is only one replication defined. Network simulation will be ignored.");
-	// 	start();
-	// 	return;
-
-	// }
-	// if (!_network->check()) {
-	// 	_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Network check failed. Cannot start simulation in network.");
-	// 	return;
-	// }
-
-	//getBenchmarks(&_network->_sockets);
-	//_networkReplicationMutex.lock();
-	// _networkMutex.lock();
-	//_networkScheduler->set(_model->getSimulation()->_numberOfReplications, &_network->_sockets);
-	//Create a thread for every socket...
-	//int threadNumber = _sockets.size();
 	connectToServers();
 	int threadNumber = 1;
 	std::thread threadSimulation[threadNumber];
