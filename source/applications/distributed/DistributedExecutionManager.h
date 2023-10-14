@@ -26,7 +26,6 @@ public:
 
     struct ModelExecutionPayload {
         SocketData socketData;
-        Model model;
     };
 
     enum DistributedCommunication {
@@ -57,8 +56,13 @@ public:
 
     void sendBenchmark();
 
-    bool receivePayload();
+    bool receivePayload(SocketData* socketData);
     bool sendPayload(SocketData* socketData);
+
+    void sendSocketData(SocketData* socketData);
+    bool receiveSocketData(SocketData* socketData);
+
+    uint64_t receiveFileSize(SocketData* socketData);
 
     // std::vector<std::string> getAvailableIps();
     // void setAvailableIps(std::vector<std::string>);
@@ -90,13 +94,15 @@ public:
     // Function thread uses to pass necessary info to execute distributed replications of a model
     bool remoteSendExecute(Model* model);
 
+    std::string modelToFile();
+
     // // canvas through possible genesys instances
     // bool distributedExecute(Model* model);
 
     DistributedCommunication getNextDistributedCommunicationCode();
 
     void createNewConnection(int socket);
-    void endConnection();
+    void closeConnection();
 
     void startServerSimulation();
     void startClientSimulation();
@@ -107,7 +113,7 @@ private:
     Benchmark::BenchmarkInfo _benchmarkInfo;
     Model* _model;
     struct pollfd fds[2] = {{.fd = 0, .events = POLLIN}};
-    int nfds = 2;
+    int nfds = 1;
     int max_nfds = 4;
     std::vector<SocketData*> _sockets;
     std::vector<std::string> _ipList;

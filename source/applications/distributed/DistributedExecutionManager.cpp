@@ -2,6 +2,7 @@
 #include <netinet/in.h>
 #include <poll.h>
 #include <arpa/inet.h>
+#include <fstream>
 
 #include "DistributedExecutionManager.h"
 #include "../../kernel/simulator/TraceManager.h"
@@ -58,11 +59,17 @@ bool DistributedExecutionManager::connectToServers() {
     //Create IPList and iterate through 
     // for i in range(ipList.size)...
     //    tempSocketData = createNewSocketDataCliente(i)
-    DistributedExecutionManager::SocketData* tempSocketData = createNewSocketDataClient(0, 0);
+    DistributedExecutionManager::SocketData* tempSocketData = createNewSocketDataClient(6000, 0);
+	_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "[EVENT] Executing connect to servers");
+
     if (connectToServerSocket(tempSocketData)) {
         sendCodeMessage(DistributedCommunication::INIT_CONNECTION, tempSocketData->_socket);
+		_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "[EVENT] Sending init_connection to server");
         if (receiveCodeMessage(DistributedCommunication::INIT_CONNECTION, tempSocketData->_socket)) {
+			_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "[EVENT] init_connection received");
             appendSocketDataList(tempSocketData);
+			return true;
+			_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Added to socketDataList");
         } else {
             _model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "[ERROR - FATAL] Instance didn't return the expected command");
         }
@@ -97,7 +104,7 @@ DistributedExecutionManager::SocketData* DistributedExecutionManager::createNewS
 	socketData->_socket = createSocket();
 	socketData->_address.sin_family = AF_INET;
 	//socketData->_address.sin_addr.s_addr = inet_addr(_ipList.at(ipId).c_str());
-    socketData->_address.sin_addr.s_addr = inet_addr("6666");//
+    socketData->_address.sin_addr.s_addr = inet_addr("127.0.0.1");//
     
 	socketData->_address.sin_port = htons(port);
     return socketData;
@@ -111,17 +118,24 @@ DistributedExecutionManager::SocketData* DistributedExecutionManager::createNewS
 	socketData->_socket = createSocket();
 	socketData->_address.sin_family = AF_INET;
 	socketData->_address.sin_addr.s_addr = htonl(INADDR_ANY);
+	// socketData->_address.sin_addr.s_addr = inet_addr("127.0.0.1"); //
 	socketData->_address.sin_port = htons(port);
 	int on = 1;
-	setsockopt(socketData->_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&on,sizeof(on));
+	if (setsockopt(socketData->_socket, SOL_SOCKET, SO_REUSEADDR, (char *)&on, sizeof(on)) < 0) {
+    	getModel()->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "setsockopt falhou - Socket ocupado?");
+    // handle error
+	}
+
 	fds[0].fd = socketData->_socket;
 	return socketData;
 }
 
 
 bool DistributedExecutionManager::connectToServerSocket(DistributedExecutionManager::SocketData* socketData) {
+	getModel()->getTracer()->traceError(TraceManager::Level::L5_event, "[EVENT] Attempting to connect to server socket.");
 	if ((connect(socketData->_socket, (struct sockaddr *) &socketData->_address, sizeof(socketData->_address))) < 0) {
 		getModel()->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "[ERROR - FATAL] Failed to connect to the server.");
+		perror("connect failed, heres why");
 		return false;
 	}
 	getModel()->getTracer()->traceError(TraceManager::Level::L5_event, "[EVENT] Connected to the server.");
@@ -161,12 +175,17 @@ bool DistributedExecutionManager::execute(Model* model) {
 }
 
 DistributedExecutionManager::DistributedCommunication DistributedExecutionManager::getNextDistributedCommunicationCode() {
+	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Polling for events");
 	poll(fds, nfds, -1);
+	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Poll successful, getting ready read input");
+
 	int buffer = -1;
 
 	for (int i = 0; i < nfds; i++) {
+		//_model->getTracer()->traceError(TraceManager::Level::L5_event, std::to_string(fds[i].revents));
 		switch (fds[i].revents) {
 			case 0:
+				_model->getTracer()->traceError(TraceManager::Level::L5_event, "revents is 0 breaking loop");
 				break;
 			case POLLIN:
 			{
@@ -174,6 +193,7 @@ DistributedExecutionManager::DistributedCommunication DistributedExecutionManage
 					struct sockaddr_in addr;
 					int socklen, newsock, bytes, ret;
 					char op, str[INET_ADDRSTRLEN];
+					_model->getTracer()->traceError(TraceManager::Level::L5_event, "Server will be accepting");
 					newsock = accept(fds[0].fd, NULL, NULL);
 					if (nfds == max_nfds) {
 						_model->getTracer()->traceError(TraceManager::Level::L4_warning, "Network error. Client limit reached.");
@@ -184,9 +204,12 @@ DistributedExecutionManager::DistributedCommunication DistributedExecutionManage
 						createNewConnection(newsock);
 					}
 					fflush(stdout);
-					return DistributedExecutionManager::DistributedCommunication::NOTHING;
+					_model->getTracer()->traceError(TraceManager::Level::L5_event, "Sending INIT_CONNECTION to client");
+					return DistributedExecutionManager::DistributedCommunication::INIT_CONNECTION;
 				}
+				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Using buffer to get code");
 				int p = recv(fds[i].fd, &buffer, sizeof(int), 0);
+				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Code is in buffer");
 				if (p > 0) {
 					DistributedExecutionManager::DistributedCommunication code;
 					code = (DistributedExecutionManager::DistributedCommunication)ntohl(buffer);
@@ -195,7 +218,7 @@ DistributedExecutionManager::DistributedCommunication DistributedExecutionManage
 					fflush(stdout);
 					return code;
 				} else {
-					endConnection();
+					closeConnection();
 					DistributedExecutionManager::DistributedCommunication::NOTHING;
 				}
 				break;
@@ -207,10 +230,11 @@ DistributedExecutionManager::DistributedCommunication DistributedExecutionManage
 			case POLLHUP:
 			default:
 				_model->getTracer()->traceError(TraceManager::Level::L4_warning, "Network error. Unespected revents.");
-				endConnection();
+				closeConnection();
 				return DistributedExecutionManager::DistributedCommunication::FAILURE;
             }
 		}
+	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Returning nothing from getNetwork");
 	return DistributedExecutionManager::DistributedCommunication::NOTHING;
 }
 
@@ -218,11 +242,12 @@ void DistributedExecutionManager::createNewConnection(int socket) {
 	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Network event. Starting a new connection with a client.");
 	fds[1].fd = socket;
 	fds[1].events = POLLIN;
+	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Adding to nfds " + std::to_string(nfds) + " to " + std::to_string(nfds + 1));
 	nfds++;
 }
 
-//Server
-void DistributedExecutionManager::endConnection() {
+
+void DistributedExecutionManager::closeConnection() {
 	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Network event. Ending a connection with the client.");
 	close(fds[1].fd);
 	fds[1].fd = 0;
@@ -239,36 +264,41 @@ void DistributedExecutionManager::startServerSimulation() {
 	// _networkGetResult.lock();
 	// _networkSimulationEnded.lock();
 	//thread_results = std::thread(&ModelSimulation::threadWaitResults, this, socketData);
+	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Entering listening loop");
 	while (1) {
 		DistributedExecutionManager::DistributedCommunication code = getNextDistributedCommunicationCode();
 		switch (code)
 		{
 			case DistributedExecutionManager::DistributedCommunication::NOTHING:
+				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Received NOTHING from client");
 				break;
 			case DistributedExecutionManager::DistributedCommunication::INIT_CONNECTION:
+				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Received INIT_CONNECTION from client");
 				sendCodeMessage(DistributedExecutionManager::DistributedCommunication::INIT_CONNECTION);
 				break;
 			case DistributedExecutionManager::DistributedCommunication::BENCHMARK:
+				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Received BENCHMARK from client");
 				sendBenchmark();
 				break;
 			case DistributedExecutionManager::DistributedCommunication::SEND_MODEL:
-				if (!receivePayload())
+				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Received SEND_MODEL from client");
+				if (!receivePayload(socketData)) {
 					break;
+				} else {
+					_model->getTracer()->traceError(TraceManager::Level::L5_event, "receivePayload completed!");
+				} 
 				_model->getSimulation()->setNumberOfReplications(socketData->_replicationNumber);
 				// setSeed(socketData->_seed);
-                if (_model->load("networkModel.gen")) {
-                    if (thread_simulation.joinable())
-                        thread_simulation.join();
-                    // _isNetworkModelRunningMutex.lock();
-                    // _isNetworkModelRunning = true;
-                    // _isNetworkModelRunningMutex.unlock();
-                    // thread_simulation = std::thread(&ModelSimulation::start, this);
-                    sendCodeMessage(DistributedExecutionManager::DistributedCommunication::SEND_MODEL);
-                } else {
-                    sendCodeMessage(DistributedExecutionManager::DistributedCommunication::FAILURE);
-                }
+				if (thread_simulation.joinable())
+					thread_simulation.join();
+				// _isNetworkModelRunningMutex.lock();
+				// _isNetworkModelRunning = true;
+				// _isNetworkModelRunningMutex.unlock();
+				// thread_simulation = std::thread(&ModelSimulation::start, this);
+				sendCodeMessage(DistributedExecutionManager::DistributedCommunication::SEND_MODEL);
 				break;
 			case DistributedExecutionManager::DistributedCommunication::RESULTS:
+				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Received RESULTS from client");
 				// if (_isNetworkModelRunning) {
 				// 	_getResultNetworkMutex.lock();
 				// 	_getResultNetwork = true;
@@ -283,29 +313,108 @@ void DistributedExecutionManager::startServerSimulation() {
 	}
 }
 
-bool DistributedExecutionManager::receivePayload() {
-    char buffer[sizeof(DistributedExecutionManager::ModelExecutionPayload)];
-    
-    while (1) {
-		int p = recv(fds[1].fd, buffer, sizeof(DistributedExecutionManager::ModelExecutionPayload), 0);
-		std::cout << p << std::endl;
-		if (p == 0) {
-			break;
+bool DistributedExecutionManager::receiveSocketData(SocketData* socketData) {
+	char buffer[sizeof(DistributedExecutionManager::SocketData)];
+	//SocketData* socketDataTemp;
+	int res = recv(fds[1].fd, &buffer, sizeof(DistributedExecutionManager::SocketData), 0);
+	if (res > 0) {
+		std::memcpy(socketData, buffer, sizeof(SocketData));
+		_model->getTracer()->traceError(TraceManager::Level::L5_event, "socketData received.");
+		return true;
+	}
+	if (res < 1) {
+		_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Fail to receive socketData.");
+		return false;
+	}
+	return false;
+}
+
+uint64_t DistributedExecutionManager::receiveFileSize(SocketData* socketData) {
+	uint64_t fileSize;
+    int res = recv(socketData->_socket, &fileSize, sizeof(fileSize), 0) < sizeof(fileSize);
+	if (res > 0) {
+		_model->getTracer()->traceError(TraceManager::Level::L5_event, "fileSize received.");
+		return fileSize;
+	}
+	if (res < 1) {
+		_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Fail to receive fileSize.");
+		return -1;
+	}
+	return -1;
+}
+
+bool DistributedExecutionManager::receivePayload(SocketData* socketData) {
+	if (!receiveSocketData(socketData)) { closeConnection(); return false; };
+
+	uint64_t fileSize = receiveFileSize(socketData);
+
+	if (fileSize == -1) { closeConnection(); return false; }
+	
+	std::ofstream file;
+	file.open("networkModel.gen", std::ios::out | std::ios::binary);
+	char* buffer = new char[fileSize];
+
+	if (!file.is_open()) {
+		_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Fail to open a file.");
+		closeConnection();
+		return false;
 		}
-		if (p > 0) {
-            break;
-		}
-		if (p < 1) {
-			_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Fail to receive the model.");
-			endConnection();
+
+	ssize_t totalBytesReceived = 0;
+	while (totalBytesReceived < fileSize) {
+		ssize_t bytesReceived = recv(socketData->_socket, buffer + totalBytesReceived, fileSize - totalBytesReceived, 0);
+		if (bytesReceived < 0) {
+			_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Unexpected error in receiving model");
+			closeConnection();
+			delete[] buffer;
+			return false;
+		} else if (bytesReceived == 0) {
+			_model->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Unexpected error. No bytes received");
+			closeConnection();
+			delete[] buffer;
 			return false;
 		}
+		totalBytesReceived += bytesReceived;
+	}
+
+    file.write(buffer, fileSize);
+    if (!file.good()) {
+		closeConnection();
+        delete[] buffer;
+        return false;
     }
+
+    file.close();
+    delete[] buffer;
+    return true;
+}
+
+std::string DistributedExecutionManager::modelToFile() {
+	std::fstream file;
+	_model->save("modeloEnvio.gen");
+	file.open("modeloEnvio.gen", std::ios::in | std::ios::binary);
+	std::string contents((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+	return contents;
+}
+
+void DistributedExecutionManager::sendSocketData(SocketData* socketData) {
+	char buffer[sizeof(DistributedExecutionManager::SocketData)];
+	char emptyBuffer[sizeof(DistributedExecutionManager::SocketData)];
+
+	std::memcpy(buffer, socketData, sizeof(DistributedExecutionManager::SocketData));
+    send(socketData->_socket, buffer, sizeof(DistributedExecutionManager::SocketData), 0);
+
+	if (std::memcmp(buffer, emptyBuffer, sizeof(DistributedExecutionManager::SocketData)) == 0) {
+		_model->getTracer()->traceError(TraceManager::Level::L5_event, "bufferVazio");
+	}
 }
 
 bool DistributedExecutionManager::sendPayload(SocketData* socketData) {
-    char buffer[sizeof(DistributedExecutionManager::ModelExecutionPayload)];
-	send(socketData->_socket , buffer , sizeof(DistributedExecutionManager::ModelExecutionPayload) , 0 );
+	sendSocketData(socketData);
+	
+	std::string fileToSend = modelToFile();
+	send(fds[1].fd , fileToSend.c_str() , fileToSend.length() , 0);
+	
 	if (receiveCodeMessage(DistributedCommunication::SEND_MODEL, socketData->_socket)) {
 		_model->getTracer()->traceError(TraceManager::Level::L5_event, "sendModel OK!");
 	} else {
@@ -314,7 +423,8 @@ bool DistributedExecutionManager::sendPayload(SocketData* socketData) {
 }
 
 void DistributedExecutionManager::createClientThreadTask(SocketData* socketData) {
-    sendPayload(socketData);
+	sendCodeMessage(DistributedCommunication::SEND_MODEL, socketData->_socket);
+	sendPayload(socketData);
 }
 
 void DistributedExecutionManager::startClientSimulation() {
@@ -328,26 +438,26 @@ void DistributedExecutionManager::startClientSimulation() {
 	// 	_model->getTracer()->traceError(Util::TraceLevel::L1_errorFatal, "Network check failed. Cannot start simulation in network.");
 	// 	return;
 	// }
-    connectToServers();
+
 	//getBenchmarks(&_network->_sockets);
 	//_networkReplicationMutex.lock();
 	// _networkMutex.lock();
 	//_networkScheduler->set(_model->getSimulation()->_numberOfReplications, &_network->_sockets);
 	//Create a thread for every socket...
-	int threads_size = 1;
-	std::thread thread_simulation[threads_size];
-	std::thread thread_start;
+	//int threadNumber = _sockets.size();
+	connectToServers();
+	int threadNumber = 1;
+	std::thread threadSimulation[threadNumber];
 	//thread_start = std::thread(&ModelSimulation::start, this);
-	for (int i = 0; i < threads_size; i++) {
-		thread_simulation[i] = std::thread(&DistributedExecutionManager::createClientThreadTask, this, _sockets.at(i));
+	for (int i = 0; i < threadNumber; i++) {
+		threadSimulation[i] = std::thread(&DistributedExecutionManager::createClientThreadTask, this, _sockets.at(i));
 	}
 
 	// start();
-	thread_start.join();
-	for (int i = 0; i < threads_size; i++)
-		thread_simulation[i].detach();
-	for (int i = 0; i < _sockets.size(); i++)
-		close(_sockets.at(i)->_socket);
+	// for (int i = 0; i < threadNumber; i++)
+	// 	threadSimulation[i].detach();
+	// for (int i = 0; i < _sockets.size(); i++)
+	// 	close(_sockets.at(i)->_socket);
 }
 
 void DistributedExecutionManager::sendBenchmark() {
