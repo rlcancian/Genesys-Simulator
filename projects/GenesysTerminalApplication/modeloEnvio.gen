@@ -1,0 +1,12 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 numberOfReplications=10 terminatingCondition="count(Dispose_1.CountNumberIn)>30" 
+
+# Model Data Definitions
+
+# Model Components
+61  Create     "Create_1" entityType="entitytype" nextId=62 
+62  DummyComponent "DummyComponent_1" nextId=63 
+63  Dispose    "Dispose_1" nexts=0 

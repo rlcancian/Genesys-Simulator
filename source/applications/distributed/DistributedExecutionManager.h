@@ -19,7 +19,7 @@ public:
     struct SocketData {
         int _id;
         unsigned int _seed;
-        unsigned int _replicationNumber;
+        int _replicationNumber;
         struct sockaddr_in _address;
         int _socket;
     };
@@ -39,6 +39,12 @@ public:
         BENCHMARK = 8
     };
 
+    struct ResultPayload {
+        DistributedCommunication code;
+        int threadId;
+        std::vector<double> results;
+    };
+
 public:
     DistributedExecutionManager(Model* model);
     ~DistributedExecutionManager();
@@ -56,14 +62,17 @@ public:
 
     void sendBenchmark();
 
-    bool receivePayload(SocketData* socketData);
-    bool sendPayload(SocketData* socketData);
+    bool receiveRequestPayload(SocketData* socketData);
+    bool sendRequestPayload(SocketData* socketData);
 
-    void sendSocketData(SocketData* socketData);
+    bool sendSocketData(SocketData* socketData);
     bool receiveSocketData(SocketData* socketData);
 
-    uint64_t receiveFileSize(SocketData* socketData);
-    bool sendFileSize(SocketData* socketData, uint64_t fileSize);
+    bool receiveFileSize(SocketData* socketData, int& fileSize);
+    bool sendFileSize(SocketData* socketData, int fileSize);
+
+    bool receiveResultPayload(SocketData* socketData, ResultPayload& resultPayload);
+    bool sendResultPayload(SocketData* socketData);
 
     // std::vector<std::string> getAvailableIps();
     // void setAvailableIps(std::vector<std::string>);
@@ -72,8 +81,9 @@ public:
     void appendSocketDataList(SocketData* socketDataItem);
     
     int createSocket();
-    SocketData* createNewSocketDataClient(unsigned int port, int ipId);
+    SocketData* createClientSocketData(int clientSockfd, const struct sockaddr_in& clientAddress);
     SocketData* createNewSocketDataServer(unsigned int port);
+    SocketData* createNewSocketDataClient(unsigned int port, int ipId);
     
 
     // Used to connect to a server (a instance of genesys listening for connections)
@@ -108,7 +118,13 @@ public:
     void startServerSimulation();
     void startClientSimulation();
 
-    void createClientThreadTask(SocketData* socketData);
+    ResultPayload createClientThreadTask(SocketData* socketData);
+    ResultPayload createServerThreadTask(SocketData* socketData);
+
+    std::string socketDataToString(SocketData* socketData);
+    std::string resultPayloadtoString(ResultPayload* ResultPayload);
+    std::string enumToString(DistributedCommunication code) const;
+    std::string socketInfoToString(int client_sockfd, const struct sockaddr_in& clientAddress, socklen_t clientLen);
 
 private:
     Benchmark::BenchmarkInfo _benchmarkInfo;
@@ -118,6 +134,7 @@ private:
     int max_nfds = 4;
     std::vector<SocketData*> _sockets;
     std::vector<std::string> _ipList;
+    int originalNumberOfReplications;
 };
 
 #endif
