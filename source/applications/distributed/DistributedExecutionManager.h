@@ -19,14 +19,13 @@ public:
     struct SocketData {
         int _id;
         unsigned int _seed;
-        unsigned int _replicationNumber;
+        int _replicationNumber;
         struct sockaddr_in _address;
         int _socket;
     };
 
     struct ModelExecutionPayload {
         SocketData socketData;
-        Model model;
     };
 
     enum DistributedCommunication {
@@ -40,77 +39,101 @@ public:
         BENCHMARK = 8
     };
 
+    struct ResultPayload {
+        DistributedCommunication code;
+        int threadId;
+        std::vector<double> results;
+    };
+
 public:
     DistributedExecutionManager(Model* model);
     ~DistributedExecutionManager();
 
+    // Functions to set and get model passed as parameter to this class
     Model* getModel();
     void setModel(Model* model);
 
+    // Aux functions for benchmark and connectivity
     int getNumberThreads();
     int getRamAmount();
     unsigned int getRandomSeed();
 
-    void setPort();
     unsigned int getClientPort();
     unsigned int getServerPort();
 
     void sendBenchmark();
 
-    bool receivePayload();
-    bool sendPayload(SocketData* socketData);
+    // Functions for communication of requests (wrapper of model and number of replications, etc...)
+    bool receiveRequestPayload(SocketData* socketData);
+    bool sendRequestPayload(SocketData* socketData);
 
-    // std::vector<std::string> getAvailableIps();
-    // void setAvailableIps(std::vector<std::string>);
+    // Functions for communications of socketData (id, seed, replication number, address and socket)
+    bool sendSocketData(SocketData* socketData);
+    bool receiveSocketData(SocketData* socketData);
 
+    // Send and receive fileSize of model
+    bool receiveFileSize(SocketData* socketData, int& fileSize);
+    bool sendFileSize(SocketData* socketData, int fileSize);
+
+    // Send and receive of results (wrapper for all statistics)
+    bool receiveResultPayload(SocketData* socketData, ResultPayload& resultPayload);
+    bool sendResultPayload(SocketData* socketData);
+
+    // get and append to socket data list of avaible instances of genesys
     std::vector<SocketData*>* getSocketDataList();
     void appendSocketDataList(SocketData* socketDataItem);
     
+    // create sockets and socketData objects for client and server
     int createSocket();
-    SocketData* createNewSocketDataClient(unsigned int port, int ipId);
+    SocketData* createClientSocketData(int clientSockfd, const struct sockaddr_in& clientAddress);
     SocketData* createNewSocketDataServer(unsigned int port);
+    SocketData* createNewSocketDataClient(unsigned int port, int ipId);
     
 
     // Used to connect to a server (a instance of genesys listening for connections)
     bool connectToServers();
     bool connectToServerSocket(SocketData* socketData);
 
-
-    bool connectToClient(SocketData* socketData);
-
+    // Receive and send code messages used for communication
     void sendCodeMessage(DistributedCommunication code, int socket);
     bool receiveCodeMessage(DistributedCommunication code, int socket);
 
+    // Server functions
     void createServerBind(SocketData* socketData);
     void createServerListen(SocketData* socketData);
 
     // Main function executed inside driver code to distribute replications of a model
     bool execute(Model* model);
 
-    // Function thread uses to pass necessary info to execute distributed replications of a model
-    bool remoteSendExecute(Model* model);
+    // Save current model and output it to stream
+    std::string modelToFile();
 
-    // // canvas through possible genesys instances
-    // bool distributedExecute(Model* model);
-
-    DistributedCommunication getNextDistributedCommunicationCode();
-
+    // create and close connections with sockets
     void createNewConnection(int socket);
-    void endConnection();
+    void closeConnection();
 
+    // main functions for server and client
     void startServerSimulation();
     void startClientSimulation();
 
-    void createClientThreadTask(SocketData* socketData);
+    // Thread task functions for client and server threads
+    ResultPayload createClientThreadTask(SocketData* socketData);
+    ResultPayload createServerThreadTask(SocketData* socketData);
+
+    // Aux functions for debugging
+    std::string socketDataToString(SocketData* socketData);
+    std::string resultPayloadtoString(ResultPayload* ResultPayload);
+    std::string enumToString(DistributedCommunication code) const;
+    std::string socketInfoToString(int client_sockfd, const struct sockaddr_in& clientAddress, socklen_t clientLen);
 
 private:
     Benchmark::BenchmarkInfo _benchmarkInfo;
     Model* _model;
     struct pollfd fds[2] = {{.fd = 0, .events = POLLIN}};
-    int nfds = 2;
     int max_nfds = 4;
     std::vector<SocketData*> _sockets;
     std::vector<std::string> _ipList;
+    int originalNumberOfReplications;
 };
 
 #endif
