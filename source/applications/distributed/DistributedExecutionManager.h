@@ -131,6 +131,7 @@ private:
     Model* _model;
     struct pollfd fds[2] = {{.fd = 0, .events = POLLIN}};
     int max_nfds = 4;
+    int nfds = 2;
     std::vector<SocketData*> _sockets;
     std::vector<std::string> _ipList;
     int originalNumberOfReplications;
