@@ -38,8 +38,8 @@ int main(int argc, char** argv) {
 	// run the simulation
 	//	sim->start();
 
-	DistributedExecutionManager distMan = new DistributedExecutionManager();
-	distMan.localExecute(model);
+	// DistributedExecutionManager distMan = new DistributedExecutionManager();
+	// distMan.localExecute(model);
 	
 	// free memory
 	delete genesys;
