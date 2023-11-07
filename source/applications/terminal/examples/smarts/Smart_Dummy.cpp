@@ -52,8 +52,9 @@ int Smart_Dummy::main(int argc, char** argv) {
 	//model->getSimulation()->start();
 
 	DistributedExecutionManager* distMan = new DistributedExecutionManager(model);
- 	// distMan->execute(model);
-	distMan->startClientSimulation();
+ 	
+	distMan->startServerSimulation();
+	// distMan->execute(model);
 	//Benchmark::getBenchmarkInfo();
 
 	delete genesys;

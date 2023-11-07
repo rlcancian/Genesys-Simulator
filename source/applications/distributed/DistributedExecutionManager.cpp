@@ -233,67 +233,6 @@ bool DistributedExecutionManager::execute(Model* model) {
     model->getSimulation()->start();
 }
 
-DistributedCommunication DistributedExecutionManager::getNextDistributedCommunicationCode() {
-	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Polling for events");
-	poll(fds, nfds, -1);
-	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Poll successful, getting ready read input");
-
-	int buffer = -1;
-
-	for (int i = 0; i < nfds; i++) {
-		//_model->getTracer()->traceError(TraceManager::Level::L5_event, std::to_string(fds[i].revents));
-		switch (fds[i].revents) {
-			case 0:
-				_model->getTracer()->traceError(TraceManager::Level::L5_event, "revents is 0 breaking loop");
-				break;
-			case POLLIN:
-			{
-				if (fds[i].fd == fds[0].fd) {
-					struct sockaddr_in addr;
-					int socklen, newsock, bytes, ret;
-					char op, str[INET_ADDRSTRLEN];
-					_model->getTracer()->traceError(TraceManager::Level::L5_event, "Server will be accepting");
-					newsock = accept(fds[0].fd, NULL, NULL);
-					if (nfds == max_nfds) {
-						_model->getTracer()->traceError(TraceManager::Level::L4_warning, "Network error. Client limit reached.");
-						close(newsock);
-						return DistributedCommunication::FAILURE;
-					} else {
-						_model->getTracer()->traceError(TraceManager::Level::L5_event, "Network connection. New client connected.");
-						createNewConnection(newsock);
-					}
-					fflush(stdout);
-					_model->getTracer()->traceError(TraceManager::Level::L5_event, "Sending INIT_CONNECTION to client");
-					return DistributedCommunication::INIT_CONNECTION;
-				}
-				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Using buffer to get code");
-				int p = recv(fds[i].fd, &buffer, sizeof(int), 0);
-				_model->getTracer()->traceError(TraceManager::Level::L5_event, "Code is in buffer");
-				if (p > 0) {
-					DistributedCommunication code;
-					code = (DistributedCommunication)ntohl(buffer);
-					DistributedCommunication codeEnum = static_cast<DistributedCommunication>(code);
-					//TEMPORARY
-					std::cout << codeEnum << "\n";
-					_model->getTracer()->traceError(TraceManager::Level::L5_event, "Network event. Client send a code. -> " + enumToString(codeEnum));
-					fflush(stdout);
-					return code;
-				} else {
-					closeConnection();
-					DistributedCommunication::NOTHING;
-				}
-				break;
-			}
-			default:
-				_model->getTracer()->traceError(TraceManager::Level::L4_warning, "Network error. Unespected revents.");
-				closeConnection();
-				return DistributedCommunication::FAILURE;
-            }
-		}
-	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Returning nothing from getNetwork");
-	return DistributedCommunication::NOTHING;
-}
-
 void DistributedExecutionManager::createNewConnection(int socket) {
 	_model->getTracer()->traceError(TraceManager::Level::L5_event, "Network event. Starting a new connection with a client.");
 	fds[1].fd = socket;
@@ -627,7 +566,7 @@ bool DistributedExecutionManager::receiveResultPayload(SocketData* socketData, R
 	char buffer[sizeof(ResultPayload)];
 	int bytesReceived = recv(socketData->_socket, &buffer, sizeof(buffer), 0);
 
-	if (bytesReceived == sizeof(buffer)) {
+	if (bytesReceived == sizeof(buffer)) {repsByThread
 		_model->getTracer()->traceError(TraceManager::Level::L5_event, "[DEM] receiveResultPayload finished!");
 		std::memcpy(&resultPayload, buffer, sizeof(ResultPayload));
 		return true;
@@ -753,8 +692,9 @@ void DistributedExecutionManager::startClientSimulation() {
 
 				_model->getTracer()->traceError(TraceManager::Level::L5_event, resultPayloadtoString(&result));
             } else {
+				continue;
                 // Check the elapsed time for the future
-                auto elapsed = std::chrono::steady_clock::now() - startTimes[&future];
+                // auto elapsed = std::chrono::steady_clock::now() - startTimes[&future];
 
                 if (elapsed > timeout) { 
                     // If the future has exceeded the timeout, cancel the operation and erase the future

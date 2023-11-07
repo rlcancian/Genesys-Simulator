@@ -2,7 +2,7 @@
 # Simulator, Model and Simulation infos
 0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
-0   ModelSimulation "" traceLevel=9 terminatingCondition="count(Dispose_1.CountNumberIn)>30" 
+0   ModelSimulation "" traceLevel=9 numberOfReplications=10 terminatingCondition="count(Dispose_1.CountNumberIn)>30" 
 
 # Model Data Definitions
 
