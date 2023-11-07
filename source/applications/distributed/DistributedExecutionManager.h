@@ -3,8 +3,9 @@
 #include <poll.h>
 
 #include "../../kernel/simulator/Simulator.h"
-#include "Benchmark.h"
 #include "../../kernel/util/Util.h"
+#include "Benchmark.h"
+#include "Utils.h"
 
 #ifndef DISTRIBUTED_EXECUTION_MANAGER_H
 #define DISTRIBUTED_EXECUTION_MANAGER_H
@@ -15,36 +16,6 @@
 
 class DistributedExecutionManager
 {
-public:
-    struct SocketData {
-        int _id;
-        unsigned int _seed;
-        int _replicationNumber;
-        struct sockaddr_in _address;
-        int _socket;
-    };
-
-    struct ModelExecutionPayload {
-        SocketData socketData;
-    };
-
-    enum DistributedCommunication {
-        INIT_CONNECTION = 1,
-        SEND_MODEL = 2,
-        RECEIVE_DATA = 3,
-        RESULTS = 4,
-        CLOSE_CONNECTION = 5,
-        NOTHING = 6,
-        FAILURE = 7,
-        BENCHMARK = 8
-    };
-
-    struct ResultPayload {
-        DistributedCommunication code;
-        int threadId;
-        std::vector<double> results;
-    };
-
 public:
     DistributedExecutionManager(Model* model);
     ~DistributedExecutionManager();
@@ -77,7 +48,7 @@ public:
     // std::vector<std::string> getAvailableIps();
     // void setAvailableIps(std::vector<std::string>);
 
-    std::vector<SocketData*>* getSocketDataList();
+    std::vector<SocketData*> getSocketDataList();
     void appendSocketDataList(SocketData* socketDataItem);
     
     int createSocket();
