@@ -32,19 +32,15 @@ public:
     unsigned int getClientPort();
     unsigned int getServerPort();
 
-    void sendBenchmark();
-
     // Functions for communication of requests (wrapper of model and number of replications, etc...)
-    bool receiveRequestPayload(SocketData* socketData);
-    bool sendRequestPayload(SocketData* socketData);
 
     // Functions for communications of socketData (id, seed, replication number, address and socket)
     bool sendSocketData(SocketData* socketData);
-    bool receiveSocketData(SocketData* socketData);
+    bool receiveSocketData(SocketData* socketData, int socket);
 
     // Send and receive fileSize of model
-    bool receiveFileSize(SocketData* socketData, int& fileSize);
-    bool sendFileSize(SocketData* socketData, int fileSize);
+    bool receiveFileSize(int socket, int* fileSize);
+    bool sendFileSize(int socket, int fileSize);
 
     // Send and receive of results (wrapper for all statistics)
     bool receiveResultPayload(SocketData* socketData, ResultPayload& resultPayload);
@@ -58,18 +54,21 @@ public:
     
     // create sockets and socketData objects for client and server
     int createSocket();
-    SocketData* createClientSocketData(int clientSockfd, const struct sockaddr_in& clientAddress);
     SocketData* createNewSocketDataServer(unsigned int port);
-    SocketData* createNewSocketDataClient(unsigned int port, int ipId);
-    
+    SocketData* createSocketData(int clientSocketFd, sockaddr_in clientAddress);
+    SocketData* createSocketData(int clientSocketFd);
 
     // Used to connect to a server (a instance of genesys listening for connections)
     bool connectToServers();
     bool connectToServerSocket(SocketData* socketData);
 
     // Receive and send code messages used for communication
-    void sendCodeMessage(DistributedCommunication code, int socket);
-    bool receiveCodeMessage(DistributedCommunication code, int socket);
+    bool sendCodeMessage(DistributedCommunication code, int socket);
+    bool receiveCodeMessage(DistributedCommunication expectedCode, int socket);
+
+    bool sendModel(std::string file, int socket);
+    bool receiveModel(std::string* file, int fileSize, int socket);
+
 
     // Server functions
     void createServerBind(SocketData* socketData);
@@ -80,34 +79,35 @@ public:
 
     // Save current model and output it to stream
     std::string modelToFile();
+    void writeToFile(const std::string fileName, const std::string& content);
 
     // create and close connections with sockets
     void createNewConnection(int socket);
-    void closeConnection();
-
-    // main functions for server and client
-    void startServerSimulation();
-    void startClientSimulation();
+    void closeConnection(int socketFd);
 
     // Thread task functions for client and server threads
-    ResultPayload createClientThreadTask(SocketData* socketData);
+    ResultPayload createClientThreadTask(SocketData* socketData, std::string file);
     ResultPayload createServerThreadTask(SocketData* socketData);
 
+
+
     // Aux functions for debugging
-    std::string socketDataToString(SocketData* socketData);
     std::string resultPayloadtoString(ResultPayload* ResultPayload);
-    std::string enumToString(DistributedCommunication code) const;
     std::string socketInfoToString(int client_sockfd, const struct sockaddr_in& clientAddress, socklen_t clientLen);
+
+    int acceptConnection(SocketData* socketData);
 
 private:
     Benchmark::BenchmarkInfo _benchmarkInfo;
     Model* _model;
+    Simulator* _sim;
     struct pollfd fds[2] = {{.fd = 0, .events = POLLIN}};
     int nfds = 1;
     int max_nfds = 4;
     std::vector<SocketData*> _sockets;
     std::vector<std::string> _ipList;
     int originalNumberOfReplications;
+    int numberOfReplications;
 };
 
 #endif

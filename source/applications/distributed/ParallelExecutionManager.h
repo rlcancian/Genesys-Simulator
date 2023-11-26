@@ -10,37 +10,29 @@
 class ParallelExecutionManager
 {
 private:
-    /* data */
+    Model* _model;
 public:
-    ParallelExecutionManager(/* args */);
-    ~ParallelExecutionManager();
-    int getThreadNumber();
+    ParallelExecutionManager(Model* model) { this->_model = model; }
+    ~ParallelExecutionManager() { this->_model = nullptr; }
+    unsigned int getThreadNumber();
 
     // Based on how many possible genesys instances there are, create a number of
     // client threads to handle them
     bool createClientThreads(
         // DistributedExecutionManager function that is being passed to each client thread
-        ResultPayload (DistributedExecutionManager::*func)(SocketData*),
+        ResultPayload (DistributedExecutionManager::*func)(SocketData*, std::string),
         DistributedExecutionManager* obj,
         std::vector<SocketData*> socketDataList,
+        std::string model,
+        int replicationsByThread,
         int threadNumber
     );
 
     // Used to create a single future thread each time. Returns a future (promise)
-    bool createServerThread(
-        std::future<ResultPayload> (DistributedExecutionManager::*func)(SocketData),
+    ResultPayload createServerThread(ResultPayload (DistributedExecutionManager::*func)(SocketData*),
         DistributedExecutionManager* obj,
-        SocketData socketData
+        SocketData* socketData
     );
-
 };
-
-ParallelExecutionManager::ParallelExecutionManager(/* args */)
-{
-}
-
-ParallelExecutionManager::~ParallelExecutionManager()
-{
-}
 
 #endif

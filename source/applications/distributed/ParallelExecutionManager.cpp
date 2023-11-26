@@ -7,71 +7,83 @@
 #include "Utils.h"
 
 bool ParallelExecutionManager::createClientThreads(
-	ResultPayload (DistributedExecutionManager::*func)(SocketData*),
+    ResultPayload (DistributedExecutionManager::*func)(SocketData*, std::string),
 	DistributedExecutionManager* obj,
 	std::vector<SocketData*> socketDataList,
+	std::string file,
+	int replicationsByThread,
 	int threadNumber)
 {
-	if (threadNumber >= socketDataList.size()) {
-		threadNumber = socketDataList.size();
-	}
-
-	// TODO - How to get number of replications? Add model to attributes of clientThreads? 
-	// or add as a parameter
-
 	std::vector<std::future<ResultPayload>> threads;
     std::unordered_map<std::future<ResultPayload>*, std::chrono::time_point<std::chrono::steady_clock>> startTimes;
 
+
 	for (int i = 0; i < threadNumber; i++) {
-		socketDataList[i]->_replicationNumber = repsByThread;
-		threads.push_back(std::async(std::launch::async, &DistributedExecutionManager::createClientThreadTask, this, _sockets[i]));
+        std::cout << "[DEM] Launching future\n";
+        srand((unsigned) time(NULL));
+
+		socketDataList[i]->_replicationNumber = replicationsByThread;
+        socketDataList[i]->_id = i;
+        socketDataList[i]->_seed = rand();
+
+		threads.push_back(std::async(std::launch::async, func, obj, socketDataList[i], file));
 		startTimes[&threads.at(i)] = std::chrono::steady_clock::now();
 	}
 
-	// set a timetout
-	auto timeout = std::chrono::seconds(20);
+	auto timeout = std::chrono::seconds(10);
 
 
-	// Use a non-blocking loop to periodically check the status of the futures
-    while (!threads.empty()) {
-        for (auto it = threads.begin(); it != threads.end();) {
-            auto& future = *it;
-            auto status = future.wait_for(std::chrono::milliseconds(0));
+    for (auto& future : threads) {
+        ResultPayload resultPayload = future.get();
+        std::cout << "Code: " << static_cast<int>(resultPayload.code) << std::endl;
+        std::cout << "Thread ID: " << resultPayload.threadId << std::endl;
 
-            if (status == std::future_status::ready) {
-                // If the future is ready, retrieve the result
-				_model->getTracer()->traceError(TraceManager::Level::L5_event, "[DEM] thread ready!, removing it!");
-                ResultPayload result = future.get();
-                it = threads.erase(it);
-
-				_model->getTracer()->traceError(TraceManager::Level::L5_event, resultPayloadtoString(&result));
-            } else {
-                // Check the elapsed time for the future
-                auto elapsed = std::chrono::steady_clock::now() - startTimes[&future];
-
-                if (elapsed > timeout) { 
-                    // If the future has exceeded the timeout, cancel the operation and erase the future
-					_model->getTracer()->traceError(TraceManager::Level::L5_event, "[DEM] TIMEOUT for thread, removing it!");
-					// add here a list of sockets to try again (?)
-                    it = threads.erase(it);
-                } else {
-                    ++it;
-                }
-            }
+        std::cout << "Results:" << std::endl;
+        for (const auto& data : resultPayload.results) {
+            std::cout << "  Average: " << data.average << std::endl;
+            std::cout << "  Variance: " << data.variance << std::endl;
+            std::cout << "  Stddeviation: " << data.stddeviation << std::endl;
+            std::cout << std::endl;
         }
-	}
-	//destroy semaphores
+    }
 
-	return;
+	return true;
 }
 
-bool ParallelExecutionManager::createServerThread(std::future<ResultPayload> (DistributedExecutionManager::*func)(SocketData),
+ResultPayload ParallelExecutionManager::createServerThread(ResultPayload (DistributedExecutionManager::*func)(SocketData*),
 	DistributedExecutionManager* obj,
-	SocketData socketData)
+	SocketData* socketData
+    )
 {
-	
-}
+    ResultPayload result;
+    std::cout << "launching future for server\n";
+    std::future<ResultPayload> resultPayloadFuture = std::async(std::launch::async, func, obj, socketData);
 
-int ParallelExecutionManager::getThreadNumber() {
-	return std::thread::hardware_concurrency();
+    auto startTime = std::chrono::steady_clock::now();
+
+    while (true) {
+        auto futureState = resultPayloadFuture.wait_for(std::chrono::seconds(0));
+
+        auto currentTime = std::chrono::steady_clock::now();
+        if (currentTime - startTime > std::chrono::seconds(20)) {
+            std::cout << "Server thread TIMED OUT\n";
+            result.code = DistributedCommunication::FAILURE;
+            result.threadId = -1;
+            return result;
+        }
+
+        if (futureState == std::future_status::ready) {
+            break;
+        }
+    }
+
+    resultPayloadFuture.get();
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    std::cout << "[DEM] AUX Server thread returned normally\n";
+    return result;
+}
+unsigned int ParallelExecutionManager::getThreadNumber()
+{
+    return std::thread::hardware_concurrency();
 }

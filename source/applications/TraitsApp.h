@@ -16,6 +16,7 @@
 
 #include "../kernel/util/Util.h"
 
+
 // TERMINAL USER INTERFACES
 #include "terminal/GenesysShell/GenesysShell.h"
 //
@@ -101,7 +102,7 @@
 
 
 #include "distributed/Benchmark.h"
-#include "distributed/DistributedExecutionManager.h"
+#include "distributed/ParallelAndDistributedManager.h"
 template <typename T>
 struct TraitsApp {
 };
@@ -113,6 +114,8 @@ template <> struct TraitsApp<GenesysApplication_if> {
 	//static const bool runTests = false;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L9_mostDetailed;
 
+	typedef ParallelAndDistributedManager Application;
+
 	//// TESTS @TODO: To be replaced by googletest
 	//typedef Tests Application;
 
@@ -122,7 +125,7 @@ template <> struct TraitsApp<GenesysApplication_if> {
 	//typedef Smart_Clone Application;
 	//typedef Smart_CppForG Application;
 	//typedef Smart_Delay Application;
-	typedef Smart_Dummy Application;
+	//typedef Smart_Dummy Application;
 	// typedef DistributedExecutionManager DistributedExecutionManagerApp;
 	// typedef Benchmark BenchmarkApp;
 	//typedef Smart_Failures Application;

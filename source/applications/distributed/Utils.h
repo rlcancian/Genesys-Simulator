@@ -1,5 +1,7 @@
 #include <netinet/in.h>
 #include <vector>
+#include <ostream>
+#include <iostream>
 
 #ifndef UTILS_H
 #define UTILS_H
@@ -24,10 +26,15 @@ enum DistributedCommunication {
     BENCHMARK = 8
 };
 
+struct dataPayload {
+    double average;
+    double variance;
+    double stddeviation;
+};
+
 struct ResultPayload {
     DistributedCommunication code;
     int threadId;
-    std::vector<double> results;
+    std::vector<dataPayload> results;
 };
-
 #endif
