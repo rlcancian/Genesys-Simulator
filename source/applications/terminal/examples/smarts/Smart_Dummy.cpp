@@ -51,9 +51,6 @@ int Smart_Dummy::main(int argc, char** argv) {
 	model->save("./models/Smart_Dummy.gen");
 	//model->getSimulation()->start();
 
-	DistributedExecutionManager* distMan = new DistributedExecutionManager(model);
- 	
-	distMan->startServerSimulation();
 	// distMan->execute(model);
 	//Benchmark::getBenchmarkInfo();
 
