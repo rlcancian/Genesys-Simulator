@@ -114,13 +114,13 @@ template <> struct TraitsApp<GenesysApplication_if> {
 	//static const bool runTests = false;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L9_mostDetailed;
 
-	typedef ParallelAndDistributedManager Application;
+	//typedef ParallelAndDistributedManager Application;
 
 	//// TESTS @TODO: To be replaced by googletest
 	//typedef Tests Application;
 
 	//// SMART SMARTs ALPHA SORTED
-	//typedef Smart_AssignWriteSeizes Application;
+	typedef Smart_AssignWriteSeizes Application;
 	//typedef Smart_BatchSeparate Application;
 	//typedef Smart_Clone Application;
 	//typedef Smart_CppForG Application;

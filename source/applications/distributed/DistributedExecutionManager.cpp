@@ -17,6 +17,8 @@
 #include "DistributedExecutionManager.h"
 #include "Utils.h"
 
+#define PDEM_MODEL_FILENAME "pdem_model.gen"
+
 void printSocketData(const SocketData* socketData) {
     if (socketData == nullptr) {
         std::cerr << "Error: SocketData pointer is null.\n";
@@ -194,15 +196,16 @@ bool DistributedExecutionManager::receiveModel(std::string* file, int fileSize, 
     ssize_t bytesRead;
     ssize_t totalBytesRead = 0;
 
-    std::cout << "[DEM] Reading model of size: " << fileSize << "\n"; 
+    std::cout << "[DEM] Reading model of size: " << fileSize << "\n";
 
     // Continue reading until the entire file is received
-	bytesRead = read(socket, file, sizeof(fileSize));
+	bytesRead = read(socket, buffer + totalBytesRead, fileSize - totalBytesRead);
 
-	if (bytesRead == -1) {
-		std::cout << "[DEM] Error reading from socket\n";
-		return false;
-	}
+    // Assuming std::string has a constructor that takes a char array and size
+    std::string finalFile = std::string(buffer, fileSize);
+
+
+	file->append(finalFile);
 
     std::cout << "[DEM] Finished receiving model\n";
 
@@ -406,24 +409,33 @@ ResultPayload DistributedExecutionManager::createServerThreadTask(SocketData* so
 
 	}
 
-	std::string* file;
+	std::string file;
 
-	if (!receiveModel(file, fileSize, socketData->_socket)) {
+	if (!receiveModel(&file, fileSize, socketData->_socket)) {
 		resultPayload.code = DistributedCommunication::FAILURE;
 		return resultPayload;
 	}
 
+	std::cout<< "---------------------\n";
+	std::cout << file << "\n";
+	std::cout << "--------------------\n";
+
 	// while loop to check if client thread wants to cancel simulation
 	// execute model simulation -> semaphore for using the simulator
-	this->writeToFile("modelo_envio.gen", *file);
-	this->_model->load("modelo_envio");
+	this->writeToFile(PDEM_MODEL_FILENAME, file);
+	if (!this->_model->load(PDEM_MODEL_FILENAME)) {
+		std::cout << "Couldn't open model received\n";
+	};
 
-	this->_model->getSimulation()->setNumberOfReplications(resultSocketData->_replicationNumber);
+	//this->_model->getSimulation()->setNumberOfReplications(resultSocketData->_replicationNumber);
+	this->_model->getSimulation()->setNumberOfReplications(1);
+	
 	// Add seed
 	
 	// SEMAPHORE FOR RUNNING THE SIM
 	if (!this->_model->getSimulation()->isRunning()) {
 		this->_model->getSimulation()->start();
+
 	}
 
 	std::cout << "[DEM] Simulation ran\n";

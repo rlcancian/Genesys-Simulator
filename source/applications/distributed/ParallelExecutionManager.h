@@ -7,6 +7,10 @@
 #ifndef PARALLEL_EXECUTION_MANAGER_H
 #define PARALLEL_EXECUTION_MANAGER_H
 
+//TODO
+// Create semaphore executing model
+// create semaphore for using file (?) only needed when client and server are being executed from the same genesys
+
 class ParallelExecutionManager
 {
 private:

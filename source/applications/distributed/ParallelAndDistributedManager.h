@@ -3,6 +3,16 @@
 #include "ParallelExecutionManager.h"
 #include "Utils.h"
 #include "../../kernel/simulator/Simulator.h"
+#include "../../kernel/simulator/Plugin.h"
+
+#include "../../plugins/components/Create.h"
+#include "../../plugins/components/Process.h"
+#include "../../plugins/components/Decide.h"
+#include "../../plugins/components/Dispose.h"
+#include "../../plugins/components/Assign.h"
+#include "../../plugins/components/Record.h"
+#include "../../plugins/data/Variable.h"
+#include "../../kernel/simulator/Attribute.h"
 
 #ifndef PARALLEL_DISTRIBUTED_MANAGER_H
 #define PARALLEL_DISTRIBUTED_MANAGER_H
@@ -31,9 +41,8 @@ public:
     int main(int argc, char** argv);
 
     // Start parallel and distributed execution, depending whether it its a client or a server
-    void execute(Model* model, std::string filename);
+    void execute(std::string filename);
     void executeServer();
-    void findServers();
     void executeClient(std::string filename);
 
     void setIsClient(bool boolean);
@@ -43,7 +52,8 @@ public:
     void logError(char* msg);
     void logEvent(char* msg);
 
-    std::string readFile(const std::string &filename);
+    bool readFile(const std::string &filename, std::string* fileOutput);
+    void createModelTemp();
 
     // Transform model to file so it can be sent to servers
     std::string modelToFile(std::string filename);
