@@ -194,17 +194,11 @@ bool DistributedExecutionManager::sendModel(std::string file, int socket) {
 bool DistributedExecutionManager::receiveModel(std::string* file, int fileSize, int socket) {
     char buffer[fileSize];
     ssize_t bytesRead;
-    ssize_t totalBytesRead = 0;
 
     std::cout << "[DEM] Reading model of size: " << fileSize << "\n";
 
-    // Continue reading until the entire file is received
-	bytesRead = read(socket, buffer + totalBytesRead, fileSize - totalBytesRead);
-
-    // Assuming std::string has a constructor that takes a char array and size
+	bytesRead = read(socket, buffer, fileSize);
     std::string finalFile = std::string(buffer, fileSize);
-
-
 	file->append(finalFile);
 
     std::cout << "[DEM] Finished receiving model\n";
