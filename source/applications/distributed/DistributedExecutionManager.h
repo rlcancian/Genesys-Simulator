@@ -17,12 +17,13 @@
 class DistributedExecutionManager
 {
 public:
-    DistributedExecutionManager(Model* model);
+    DistributedExecutionManager(Simulator* simulator);
     ~DistributedExecutionManager();
 
     // Functions to set and get model passed as parameter to this class
     Model* getModel();
     void setModel(Model* model);
+    void setSimulator(Simulator* simulator);
 
     // Aux functions for benchmark and connectivity
     int getNumberThreads();
@@ -100,10 +101,7 @@ public:
 private:
     Benchmark::BenchmarkInfo _benchmarkInfo;
     Model* _model;
-    Simulator* _sim;
-    struct pollfd fds[2] = {{.fd = 0, .events = POLLIN}};
-    int nfds = 1;
-    int max_nfds = 4;
+    Simulator* _simulator;
     std::vector<SocketData*> _sockets;
     std::vector<std::string> _ipList;
     int originalNumberOfReplications;

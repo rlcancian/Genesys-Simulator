@@ -43,41 +43,48 @@ int ParallelAndDistributedManager::main(int argc, char** argv) {
 
     this->_simulator = new Simulator();
     this->_model = new Model(this->_simulator);
+    this->insertFakePluginsByHand(this->_simulator);
 
     // if (this->getIsClient()) {
     //     std::string modelToString;
-    //     if (!this->readFile(modelName, &modelToString)) {
-    //         this->logError("[DPEM] Error trying to open file");
-    //         return 1;
-    //     }
-
-    //     this->logEvent("File opened and model is this: ----------\n");
-    //     this->logEvent(const_cast<char*>(modelToString.c_str()));
-    //     this->logEvent("End of model ---------\n");
-
-    //     this->insertFakePluginsByHand(this->_simulator);
-        
     //     std::string path = "../../models/";
 
     //     if (!this->_model->load(path.append(modelName))) {
     //         this->logError("[DPEM] Failed to load model.");
     //         return 1;
+    //     } else {
+    //         this->logEvent("[DPEM] Model loaded succesfully\n");
     //     }
 
-    //     this->_simulator->getModels()->setCurrent(this->_model);
     //     this->logEvent("[DPEM] Model loaded, starting PDEM execution");
     // }
 
+    this->_simulator->getModels()->setCurrent(this->_model);
     this->setDefaultTraceHandlers(this->_simulator->getTracer());
 
     if (this->getIsClient()) {
-        this->insertFakePluginsByHand(this->_simulator);
+        // Create model exactly like smart
         this->createModelTemp();
+        // Save this model to file
+        this->_model->save("../../models/predefined_model.cpp");
+        // Clear model
+        this->_model->clear();
+        // Load model from file
+        this->_model->load("../../models/predefined_model.cpp");
+        // Test execution model inside client
+        this->_model->getSimulation()->setNumberOfReplications(1);
+        this->_model->getSimulation()->start();
+
+        // OR
+
+        // // execute smart directly from smart example (same code)
+        // this->createModelTemp();
+        // this->_model->getSimulation()->start();
     }
     
     logEvent("Executing PDEM Right Now\n");
 
-    this->_distributedExecutionManager = new DistributedExecutionManager(this->_model);
+    this->_distributedExecutionManager = new DistributedExecutionManager(this->_simulator);
     this->_parallelExecutionManager = new ParallelExecutionManager(this->_model);
     this->execute(modelName);
 
@@ -144,7 +151,9 @@ void ParallelAndDistributedManager::executeClient(std::string filename) {
     socketItem->_address.sin_addr.s_addr = inet_addr("127.0.0.1");
     socketItem->_address.sin_port = htons(6000);
 
-   std::string file = this->modelToFile(filename); 
+    std::string file;
+    std::string path = "../../models/";
+    this->readFile(path.append(filename), &file); 
 
     this->_distributedExecutionManager->appendSocketDataList(socketItem);
 

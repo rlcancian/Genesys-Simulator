@@ -17,7 +17,7 @@
 #include "DistributedExecutionManager.h"
 #include "Utils.h"
 
-#define PDEM_MODEL_FILENAME "pdem_model.gen"
+#define PDEM_MODEL_FILENAME "../../models/pdem_model.gen"
 
 void printSocketData(const SocketData* socketData) {
     if (socketData == nullptr) {
@@ -35,9 +35,10 @@ void printSocketData(const SocketData* socketData) {
     std::cout << "  _socket: " << socketData->_socket << "\n";
 }
 
-DistributedExecutionManager::DistributedExecutionManager(Model* model) {
-    this->originalNumberOfReplications = model->getSimulation()->getNumberOfReplications();
-	setModel(model);
+DistributedExecutionManager::DistributedExecutionManager(Simulator* simulator) {
+	setSimulator(simulator);
+	setModel(this->_simulator->getModels()->current());
+    this->originalNumberOfReplications = this->_simulator->getModels()->current()->getSimulation()->getNumberOfReplications();
     Benchmark::getBenchmarkInfo(&_benchmarkInfo);
 }
 
@@ -46,6 +47,8 @@ DistributedExecutionManager::~DistributedExecutionManager() {
 }
 
 void DistributedExecutionManager::setModel(Model* model) { _model = model; }
+
+void DistributedExecutionManager::setSimulator(Simulator* simulator) { _simulator = simulator; }
 
 Model* DistributedExecutionManager::getModel() { return _model; }
 
@@ -201,7 +204,9 @@ bool DistributedExecutionManager::receiveModel(std::string* file, int fileSize, 
     std::string finalFile = std::string(buffer, fileSize);
 	file->append(finalFile);
 
-    std::cout << "[DEM] Finished receiving model\n";
+    std::cout << "[DEM] Finished receiving model -----------------\n";
+	std::cout << *file << "\n";
+	std::cout << "------------------------------------- End of file\n";
 
     return true;
 }
@@ -319,6 +324,16 @@ bool DistributedExecutionManager::sendResultPayload(SocketData* socketData) {
 		resultPayload.results.insert(resultPayload.results.end(), dataItem);
 	}
 
+	std::cout << "Code: " << static_cast<int>(resultPayload.code) << std::endl;
+	std::cout << "Thread ID: " << resultPayload.threadId << std::endl;
+
+	std::cout << "Results:" << std::endl;
+	for (const auto& data : resultPayload.results) {
+		std::cout << "  Average: " << data.average << std::endl;
+		std::cout << "  Variance: " << data.variance << std::endl;
+		std::cout << "  Stddeviation: " << data.stddeviation << std::endl;
+		std::cout << std::endl;
+	}
 
 	// MOCK RESULT
 	resultPayload.code = DistributedCommunication::RESULTS;
@@ -339,6 +354,8 @@ bool DistributedExecutionManager::receiveResultPayload(SocketData* socketData, R
 	char buffer[sizeof(ResultPayload)];
 	int bytesReceived = read(socketData->_socket, &buffer, sizeof(buffer));
 
+	std::cout << "About to receive results\n";
+
 	if (bytesReceived == sizeof(buffer)) {
 		std::cout << "[DEM] receiveResultPayload finished!\n";
 		std::memcpy(&resultPayload, buffer, sizeof(ResultPayload));
@@ -351,6 +368,7 @@ bool DistributedExecutionManager::receiveResultPayload(SocketData* socketData, R
 // Create semaphores for when receiving results from threads or sending the model
 ResultPayload DistributedExecutionManager::createClientThreadTask(SocketData* socketData, std::string file) {
 	ResultPayload resultPayload;
+	std::cout << "Starting send\n";
 	
 	if (!sendCodeMessage(DistributedCommunication::INIT_CONNECTION, socketData->_socket)) {
 		std::cout << "[DEM] Error sending handshake with server\n";
@@ -374,6 +392,9 @@ ResultPayload DistributedExecutionManager::createClientThreadTask(SocketData* so
 	if (!receiveResultPayload(socketData, resultPayload)) {
 		std::cout << "[DEM] Couldn't receive result payload\n";
 	}
+
+	std::cout << "Received result payload ----------\n";
+	std::cout << "Received result payload ----------\n";
 
 
 	return resultPayload;
@@ -421,15 +442,16 @@ ResultPayload DistributedExecutionManager::createServerThreadTask(SocketData* so
 		std::cout << "Couldn't open model received\n";
 	};
 
-	//this->_model->getSimulation()->setNumberOfReplications(resultSocketData->_replicationNumber);
-	this->_model->getSimulation()->setNumberOfReplications(1);
+	this->_model->getSimulation()->setNumberOfReplications(resultSocketData->_replicationNumber);
+	//this->_model->getSimulation()->setNumberOfReplications(1);
 	
 	// Add seed
 	
 	// SEMAPHORE FOR RUNNING THE SIM
 	if (!this->_model->getSimulation()->isRunning()) {
 		this->_model->getSimulation()->start();
-
+	} else {
+		std::cout << "This is running!\n";
 	}
 
 	std::cout << "[DEM] Simulation ran\n";
@@ -464,4 +486,7 @@ ResultPayload DistributedExecutionManager::createServerThreadTask(SocketData* so
     outputFile.close();
 
     std::cout << "[DEM] File '" << fileName << "' created and written successfully." << std::endl;
+	
+	std::cout << content << "\n";
+	;
 }
