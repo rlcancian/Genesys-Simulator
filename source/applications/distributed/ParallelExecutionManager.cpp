@@ -23,7 +23,6 @@ bool ParallelExecutionManager::createClientThreads(
         srand((unsigned) time(NULL));
 
 		socketDataList[i]->_replicationNumber = replicationsByThread;
-        socketDataList[i]->_id = i;
         socketDataList[i]->_seed = rand();
 
 		threads.push_back(std::async(std::launch::async, func, obj, socketDataList[i], file));

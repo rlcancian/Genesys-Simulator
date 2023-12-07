@@ -65,11 +65,13 @@ ResultPayload DistributedExecutionManager::createClientThreadTask(SocketData* so
 	}
 
 	std::cout << "Received result payload ----------\n";
+	std::cout << "----------------" << "THREAD ID: " << resultPayload.threadId << "\n";
 
-	std::cout << "This is the code: " << resultPayload.code << "\n";
+	List<ModelDataDefinition*>* stats = this->_model->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());
 
 	for (const auto& data : dataPayloadList) {
-		std::cout << "  Id: " << data.dataId << "\n";
+		std::cout << "Name: " << data.dataName.data();
+		std::cout << "Id: " + std::to_string(data.dataId);
 		std::cout << "  Average: " << data.average << std::endl;
 		std::cout << "  Variance: " << data.variance << std::endl;
 		std::cout << "  Stddeviation: " << data.stddeviation << std::endl;
@@ -109,7 +111,7 @@ ResultPayload DistributedExecutionManager::createServerThreadTask(SocketData* so
 		return resultPayload;
 	}
 
-	this->_model->getSimulation()->setNumberOfReplications(1);
+	this->_model->getSimulation()->setNumberOfReplications(resultSocketData->_replicationNumber);
 	
 	// Add seed
 	//this->_model->getSimulation()->seed
@@ -404,6 +406,11 @@ bool DistributedExecutionManager::sendResultPayload(SocketData* socketData) {
 
 		DataPayload dataPayload;
 		dataPayload.dataId = data->getId();
+
+		std::string name = data->getName();
+		std::strncpy(dataPayload.dataName.data(), name.c_str(), dataPayload.dataName.size());
+		dataPayload.dataName.back() = '\0';
+
 		dataPayload.variance = cstatModel->getStatistics()->variance();
 		dataPayload.stddeviation = cstatModel->getStatistics()->stddeviation();
 		dataPayload.average = cstatModel->getStatistics()->average();
@@ -541,10 +548,6 @@ void DistributedExecutionManager::setModel(Model* model) { _model = model; }
 void DistributedExecutionManager::setSimulator(Simulator* simulator) { _simulator = simulator; }
 
 Model* DistributedExecutionManager::getModel() { return _model; }
-
-unsigned int DistributedExecutionManager::getClientPort() { return 6666; }
-
-unsigned int DistributedExecutionManager::getServerPort() { return 6000; }
 
 int DistributedExecutionManager::getNumberThreads() { return _benchmarkInfo._nucleos; }
 

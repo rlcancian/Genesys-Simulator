@@ -35,6 +35,7 @@ struct ResultPayload {
 
 struct DataPayload {
     long dataId;
+    std::array<char, 100> dataName;
     double average;
     double variance;
     double stddeviation;

@@ -24,6 +24,8 @@ int ParallelAndDistributedManager::main(int argc, char** argv) {
     std::string type;
     std::string modelName;
 
+    this->logEvent("[DPEM] Use ip.txt file inside distributed application folder to add ip addresses for possible servers");
+
     if (argc < 2) {
         this->logError("[DPEM] Not enough arguments to start DPEM");
         this->logError("[DPEM] Usage: ./exec <cliente>|<servidor> <nome_modelo> (caso cliente)");
@@ -110,10 +112,11 @@ void ParallelAndDistributedManager::execute(std::string filename) {
 
 void ParallelAndDistributedManager::executeServer() {
     SocketData* socketDataMainServer = this->_distributedExecutionManager->createNewSocketDataServer(6000);
+    int newPort = 6000;
 
 	while (!_distributedExecutionManager->createServerBind(socketDataMainServer)) {
-        int newPort = 6000;
-        socketDataMainServer->_address.sin_port = htons(newPort + 1);
+        newPort ++;
+        socketDataMainServer->_address.sin_port = htons(newPort);
     };
 
     std::ostringstream bindStream;
@@ -150,15 +153,6 @@ void ParallelAndDistributedManager::executeServer() {
 
 void ParallelAndDistributedManager::executeClient(std::string filename) {
     this->logEvent("[DPEM] Connecting to servers");
-    // TODO Add IP LIST
-    // TODO SEMAPHORE FOR READING MODEL
-    // int socket = this->_distributedExecutionManager->createSocket();
-    // SocketData* socketItem = this->_distributedExecutionManager->createSocketData(socket);
-    // socketItem->_address.sin_family = AF_INET;
-    // socketItem->_address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    // socketItem->_address.sin_port = htons(6000);
-    // this->_distributedExecutionManager->appendSocketDataList(socketItem);
-
     this->readIPListFromFile("../../source/applications/distributed/ip.txt");
 
     std::string file;
