@@ -90,7 +90,7 @@ std::string GenSerializer::linearize(PersistenceRecord *fields) {
 	while (type.length() < 10) type += " ";
 
 	// compose line
-	std::string line = id + " " + type + " " + name + " " + attrs + "\n";
+	std::string line = id + " " + type + " " + name + " " + attrs;
 
 	return line;
 };

@@ -19,22 +19,6 @@
 
 #define PDEM_MODEL_FILENAME "../../models/pdem_model.gen"
 
-void printSocketData(const SocketData* socketData) {
-    if (socketData == nullptr) {
-        std::cerr << "Error: SocketData pointer is null.\n";
-        return;
-    }
-
-    std::cout << "Socket Data:\n";
-    std::cout << "  _id: " << socketData->_id << "\n";
-    std::cout << "  _seed: " << socketData->_seed << "\n";
-    std::cout << "  _replicationNumber: " << socketData->_replicationNumber << "\n";
-    std::cout << "  _address.sin_family: " << socketData->_address.sin_family << "\n";
-    std::cout << "  _address.sin_addr.s_addr: " << inet_ntoa(socketData->_address.sin_addr) << "\n";
-    std::cout << "  _address.sin_port: " << ntohs(socketData->_address.sin_port) << "\n";
-    std::cout << "  _socket: " << socketData->_socket << "\n";
-}
-
 DistributedExecutionManager::DistributedExecutionManager(Simulator* simulator) {
 	setSimulator(simulator);
 	setModel(this->_simulator->getModels()->current());
@@ -46,23 +30,111 @@ DistributedExecutionManager::~DistributedExecutionManager() {
 	this->_model = nullptr;
 }
 
-void DistributedExecutionManager::setModel(Model* model) { _model = model; }
+// TODO - Create semaphores for when receiving results from threads or sending the model
+// Main methods por DEM - createClientThreadTask and createServerThreadTask
+ResultPayload DistributedExecutionManager::createClientThreadTask(SocketData* socketData, std::string filename) {
+	
+	std::cout << "Starting send\n";
+	
+	if (!sendCodeMessage(DistributedCommunication::INIT_CONNECTION, socketData->_socket)) {
+		std::cout << "[DEM] Error sending handshake with server\n";
+	};
 
-void DistributedExecutionManager::setSimulator(Simulator* simulator) { _simulator = simulator; }
+	if (!sendSocketData(socketData)) {
+		std::cout << "[DEM] Couldn't send socketData\n";
+	};
 
-Model* DistributedExecutionManager::getModel() { return _model; }
+	std::cout << "[DEM] Preparing to receive model\n";
 
-unsigned int DistributedExecutionManager::getClientPort() { return 6666; }
+	int fileSize = filename.size();
 
-unsigned int DistributedExecutionManager::getServerPort() { return 6000; }
+	if (!sendFileSize(socketData->_socket, fileSize)) {
+		std::cout << "[DEM] Couldn't send filesize\n";
+	}
 
-int DistributedExecutionManager::getNumberThreads() { return _benchmarkInfo._nucleos; }
+	if (!sendFileName(socketData->_socket, filename)) {
+		std::cout << "[DEM] Couldn't send filename\n";
+	}
 
-int DistributedExecutionManager::getRamAmount() { return _benchmarkInfo._memoria; }
+	ResultPayload resultPayload;
+	std::vector<DataPayload> dataPayloadList;
 
-std::vector<SocketData*> DistributedExecutionManager::getSocketDataList() { return _sockets; }
+	if (!receiveResultPayload(socketData, resultPayload, dataPayloadList)) {
+		std::cout << "[DEM] Couldn't receive result payload\n";
+	}
 
-void DistributedExecutionManager::appendSocketDataList(SocketData* socketDataItem) {  _sockets.insert(_sockets.end(), socketDataItem); }
+	std::cout << "Received result payload ----------\n";
+
+	std::cout << "This is the code: " << resultPayload.code << "\n";
+
+	for (const auto& data : dataPayloadList) {
+		//std::cout << "  Var Name: " << data.dataName << std::endl;
+		std::cout << "  Average: " << data.average << std::endl;
+		std::cout << "  Variance: " << data.variance << std::endl;
+		std::cout << "  Stddeviation: " << data.stddeviation << std::endl;
+		std::cout << std::endl;
+	}
+
+	return resultPayload;
+
+		// client thread wait on a send of "receiving results"
+}
+
+ResultPayload DistributedExecutionManager::createServerThreadTask(SocketData* socketData) {
+	ResultPayload resultPayload;
+	SocketData* resultSocketData = new SocketData();
+	
+	if (!receiveCodeMessage(DistributedCommunication::INIT_CONNECTION, socketData->_socket)) {
+		resultPayload.code = DistributedCommunication::FAILURE;
+		return resultPayload;
+	}
+
+	if (!receiveSocketData(resultSocketData, socketData->_socket)) {
+		resultPayload.code = DistributedCommunication::FAILURE;
+		return resultPayload;
+	}
+	
+	int fileSize;
+
+	if (!receiveFileSize(socketData->_socket, &fileSize)) {
+		resultPayload.code = DistributedCommunication::FAILURE;
+		return resultPayload;
+	}
+
+	std::string filename;
+
+	if (!receiveFileName(socketData->_socket, &filename, fileSize)) {
+		resultPayload.code = DistributedCommunication::FAILURE;
+		return resultPayload;
+	}
+
+	this->_model->getSimulation()->setNumberOfReplications(1);
+	
+	// Add seed
+	//this->_model->getSimulation()->seed
+	
+	// SEMAPHORE FOR RUNNING THE SIM
+	if (!this->_model->getSimulation()->isRunning()) {
+		this->_model->getSimulation()->start();
+	} else {
+		std::cout << "This is running!\n";
+	}
+
+	std::cout << "[DEM] Simulation ran\n";
+
+	//this->_model->getSimulation()->get
+	//send results
+
+
+	if (!sendResultPayload(socketData)) {
+		std::cout << "[DEM] Failed to send resultPayload, cancelling\n";
+		resultPayload.code = DistributedCommunication::FAILURE;
+		return resultPayload;
+	}
+
+	resultPayload.code = DistributedCommunication::RESULTS;
+	return resultPayload;
+}
 
 unsigned int DistributedExecutionManager::getRandomSeed() {
     srand((unsigned) time(NULL));
@@ -77,7 +149,6 @@ int DistributedExecutionManager::createSocket() {
 	}
 	return _socket;
 }
-
 
 void DistributedExecutionManager::createServerBind(SocketData* socketData) {
 	if (bind(socketData->_socket, (struct sockaddr*)&socketData->_address, sizeof(socketData->_address)) == -1) {
@@ -260,7 +331,7 @@ bool DistributedExecutionManager::receiveFileSize(int socket, int* fileSize) {
         return false;
     }
 
-	std::cout << "Finished receiving fileSize\n";
+	std::cout << "[DEM] Finished receiving fileSize\n";
 
     return true;
 }
@@ -301,45 +372,35 @@ bool DistributedExecutionManager::sendFileSize(int socket, int fileSize) {
     }
 }
 
-
 bool DistributedExecutionManager::sendResultPayload(SocketData* socketData) {
 	const std::string UtilTypeOfStatisticsCollector = Util::TypeOf<StatisticsCollector>();
 	const std::string UtilTypeOfCounter = Util::TypeOf<Counter>();
 	StatisticsCollector *cstatModel, *cstatSimulation;
 
 	ResultPayload resultPayload;
+	std::vector<DataPayload> dataPayloadList;
 
 	List<ModelDataDefinition*>* stats = this->_model->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());
 
 	for (ModelDataDefinition* data : *stats->list()) {
 		cstatModel = dynamic_cast<StatisticsCollector*> (data);
-		std::cout << cstatModel->getName() << "\n";
 		cstatSimulation = nullptr;
 
-		dataPayload dataItem;
-		dataItem.variance = cstatModel->getStatistics()->variance();
-		dataItem.stddeviation = cstatModel->getStatistics()->stddeviation();
-		dataItem.average = cstatModel->getStatistics()->average();
+		DataPayload dataPayload;
+		//dataPayload.dataName = data->getName();
+		dataPayload.variance = cstatModel->getStatistics()->variance();
+		dataPayload.stddeviation = cstatModel->getStatistics()->stddeviation();
+		dataPayload.average = cstatModel->getStatistics()->average();
 
-		resultPayload.results.insert(resultPayload.results.end(), dataItem);
+		dataPayloadList.insert(dataPayloadList.end(), dataPayload);
 	}
 
-	std::cout << "Code: " << static_cast<int>(resultPayload.code) << std::endl;
-	std::cout << "Thread ID: " << resultPayload.threadId << std::endl;
-
-	std::cout << "Results:" << std::endl;
-	for (const auto& data : resultPayload.results) {
-		std::cout << "  Average: " << data.average << std::endl;
-		std::cout << "  Variance: " << data.variance << std::endl;
-		std::cout << "  Stddeviation: " << data.stddeviation << std::endl;
-		std::cout << std::endl;
-	}
-
-	// MOCK RESULT
 	resultPayload.code = DistributedCommunication::RESULTS;
+	resultPayload.dataLength = stats->list()->size();
+	resultPayload.threadId = socketData->_id;
 
-	char buffer[sizeof(ResultPayload)];
-	std::memcpy(buffer, &resultPayload, sizeof(ResultPayload));
+	char buffer[sizeof(resultPayload)];
+	std::memcpy(buffer, &resultPayload, sizeof(resultPayload));
 	int bytesSent = send(socketData->_socket, &resultPayload, sizeof(resultPayload), 0);
 	
 	if (bytesSent != sizeof(buffer)) {
@@ -347,126 +408,92 @@ bool DistributedExecutionManager::sendResultPayload(SocketData* socketData) {
 		return false;
 	}
 
+	this->_model->getTracer()->trace("[DEM] ResultPayload sent");
+
+	for (const DataPayload& dataPayload : dataPayloadList) {
+		char dataBuffer[sizeof(DataPayload)];
+		std::memcpy(dataBuffer, &dataPayload, sizeof(DataPayload));
+
+		int dataBytesSent = send(socketData->_socket, dataBuffer, sizeof(DataPayload), 0);
+
+		if (dataBytesSent != sizeof(DataPayload)) {
+			std::cout << "[DEM] sendDataPayload error!\n";
+			return false;
+		}
+	}
+
+    this->_model->getTracer()->trace("[DEM] DataPayload sent");
 	return true;
 }
 
-bool DistributedExecutionManager::receiveResultPayload(SocketData* socketData, ResultPayload& resultPayload) {
-	char buffer[sizeof(ResultPayload)];
-	int bytesReceived = read(socketData->_socket, &buffer, sizeof(buffer));
+bool DistributedExecutionManager::receiveResultPayload(SocketData* socketData, ResultPayload& resultPayload, std::vector<DataPayload>& dataPayloadList) {
+    char buffer[sizeof(ResultPayload)];
+    int bytesReceived = read(socketData->_socket, &buffer, sizeof(buffer));
 
-	std::cout << "About to receive results\n";
+    std::cout << "About to receive results\n";
 
-	if (bytesReceived == sizeof(buffer)) {
-		std::cout << "[DEM] receiveResultPayload finished!\n";
-		std::memcpy(&resultPayload, buffer, sizeof(ResultPayload));
-		return true;
-	} else {
-		std::cout << "[DEM] receiveResultPayload error!\n";
-		return false;
-	}
-}
-// Create semaphores for when receiving results from threads or sending the model
-ResultPayload DistributedExecutionManager::createClientThreadTask(SocketData* socketData, std::string file) {
-	ResultPayload resultPayload;
-	std::cout << "Starting send\n";
-	
-	if (!sendCodeMessage(DistributedCommunication::INIT_CONNECTION, socketData->_socket)) {
-		std::cout << "[DEM] Error sending handshake with server\n";
-	};
+    if (bytesReceived == sizeof(buffer)) {
+        std::cout << "[DEM] receiveResultPayload finished!\n";
+        std::memcpy(&resultPayload, buffer, sizeof(ResultPayload));
 
-	if (!sendSocketData(socketData)) {
-		std::cout << "[DEM] Couldn't send socketData\n";
-	};
+        // Receive DataPayload items
+        for (size_t i = 0; i < resultPayload.dataLength; ++i) {
+            char dataBuffer[sizeof(DataPayload)];
+            int dataBytesReceived = read(socketData->_socket, &dataBuffer, sizeof(dataBuffer));
 
-	std::cout << "[DEM] Preparing to receive model\n";
+            if (dataBytesReceived == sizeof(dataBuffer)) {
+                DataPayload dataPayload;
+                std::memcpy(&dataPayload, dataBuffer, sizeof(DataPayload));
+                dataPayloadList.push_back(dataPayload);
+            } else {
+                std::cout << "[DEM] receiveDataPayload error!\n";
+                return false;
+            }
+        }
 
-	int fileSize = file.size();
-	if (!sendFileSize(socketData->_socket, fileSize)) {
-		std::cout << "[DEM] Couldn't send filesize\n";
-	}
+        return true;
+    } else {
+        std::cout << "[DEM] receiveResultPayload error!\n";
+        return false;
+    }
 
-	if (!sendModel(file, socketData->_socket)) {
-		std::cout << "[DEM] Couldn't send model\n";
-	}
-
-	if (!receiveResultPayload(socketData, resultPayload)) {
-		std::cout << "[DEM] Couldn't receive result payload\n";
-	}
-
-	std::cout << "Received result payload ----------\n";
-	std::cout << "Received result payload ----------\n";
-
-
-	return resultPayload;
-
-		// client thread wait on a send of "receiving results"
+	std::cout << "[DEM] receiveResultPayload OK!\n";
+	return true;
 }
 
-ResultPayload DistributedExecutionManager::createServerThreadTask(SocketData* socketData) {
-	ResultPayload resultPayload;
-	SocketData* resultSocketData = new SocketData();
-	
-	if (!receiveCodeMessage(DistributedCommunication::INIT_CONNECTION, socketData->_socket)) {
-		resultPayload.code = DistributedCommunication::FAILURE;
-		return resultPayload;
-	}
+bool DistributedExecutionManager::sendFileName(int socket, std::string filename) {
+    int res = write(socket, filename.c_str(), filename.size());
+    if (res == static_cast<int>(filename.size())) {
+        std::ostringstream oss;
+        std::cout << "[DEM] filename sent: " << filename << "\n";
+        return true;
+    } else {
+        std::cout << "[DEM] Failed to send filename " << filename << "\n";
+        return false;
+    }
+}
 
-	if (!receiveSocketData(resultSocketData, socketData->_socket)) {
-		resultPayload.code = DistributedCommunication::FAILURE;
-		return resultPayload;
+bool DistributedExecutionManager::receiveFileName(int socket, std::string* filename, int fileSize) {
+    char buffer[fileSize];
 
-	}
-	
-	int fileSize;
-	if (!receiveFileSize(socketData->_socket, &fileSize)) {
-		resultPayload.code = DistributedCommunication::FAILURE;
-		return resultPayload;
+    ssize_t bytesRead = read(socket, buffer, fileSize);
 
-	}
+    if (bytesRead == -1) {
+        std::cout << "Error reading from socket: " << strerror(errno) << std::endl;
+        return false;
+    } else if (bytesRead == 0) {
+        std::cout << "Connection closed by the other end" << std::endl;
+        return false;
+    }
 
-	std::string file;
+    std::cout << buffer << "\n";
+    std::string finalFile(buffer, bytesRead);  // Construct a string from the buffer
+    std::cout << finalFile << "\n";
+    filename->append(finalFile);
 
-	if (!receiveModel(&file, fileSize, socketData->_socket)) {
-		resultPayload.code = DistributedCommunication::FAILURE;
-		return resultPayload;
-	}
+    std::cout << "Finished receiving filename: " << *filename << "\n";
 
-	std::cout<< "---------------------\n";
-	std::cout << file << "\n";
-	std::cout << "--------------------\n";
-
-	// while loop to check if client thread wants to cancel simulation
-	// execute model simulation -> semaphore for using the simulator
-	this->writeToFile(PDEM_MODEL_FILENAME, file);
-	if (!this->_model->load(PDEM_MODEL_FILENAME)) {
-		std::cout << "Couldn't open model received\n";
-	};
-
-	this->_model->getSimulation()->setNumberOfReplications(resultSocketData->_replicationNumber);
-	//this->_model->getSimulation()->setNumberOfReplications(1);
-	
-	// Add seed
-	
-	// SEMAPHORE FOR RUNNING THE SIM
-	if (!this->_model->getSimulation()->isRunning()) {
-		this->_model->getSimulation()->start();
-	} else {
-		std::cout << "This is running!\n";
-	}
-
-	std::cout << "[DEM] Simulation ran\n";
-
-	//this->_model->getSimulation()->get
-	//send results
-
-	if (!sendResultPayload(socketData)) {
-		std::cout << "[DEM] Failed to send resultPayload, cancelling\n";
-		resultPayload.code = DistributedCommunication::FAILURE;
-		return resultPayload;
-	}
-
-	resultPayload.code = DistributedCommunication::RESULTS;
-	return resultPayload;
+    return true;
 }
 
  void DistributedExecutionManager::writeToFile(const std::string fileName, const std::string& content) {
@@ -490,3 +517,23 @@ ResultPayload DistributedExecutionManager::createServerThreadTask(SocketData* so
 	std::cout << content << "\n";
 	;
 }
+
+void DistributedExecutionManager::setModel(Model* model) { _model = model; }
+
+void DistributedExecutionManager::setSimulator(Simulator* simulator) { _simulator = simulator; }
+
+Model* DistributedExecutionManager::getModel() { return _model; }
+
+unsigned int DistributedExecutionManager::getClientPort() { return 6666; }
+
+unsigned int DistributedExecutionManager::getServerPort() { return 6000; }
+
+int DistributedExecutionManager::getNumberThreads() { return _benchmarkInfo._nucleos; }
+
+int DistributedExecutionManager::getRamAmount() { return _benchmarkInfo._memoria; }
+
+std::vector<SocketData*> DistributedExecutionManager::getSocketDataList() { return _sockets; }
+
+void DistributedExecutionManager::appendSocketDataList(SocketData* socketDataItem) {  _sockets.insert(_sockets.end(), socketDataItem); }
+
+

@@ -32,21 +32,6 @@ bool ParallelExecutionManager::createClientThreads(
 
 	auto timeout = std::chrono::seconds(10);
 
-
-    for (auto& future : threads) {
-        ResultPayload resultPayload = future.get();
-        std::cout << "Code: " << static_cast<int>(resultPayload.code) << std::endl;
-        std::cout << "Thread ID: " << resultPayload.threadId << std::endl;
-
-        std::cout << "Results:" << std::endl;
-        for (const auto& data : resultPayload.results) {
-            std::cout << "  Average: " << data.average << std::endl;
-            std::cout << "  Variance: " << data.variance << std::endl;
-            std::cout << "  Stddeviation: " << data.stddeviation << std::endl;
-            std::cout << std::endl;
-        }
-    }
-
 	return true;
 }
 

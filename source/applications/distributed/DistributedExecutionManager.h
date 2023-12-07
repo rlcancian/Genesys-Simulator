@@ -33,8 +33,6 @@ public:
     unsigned int getClientPort();
     unsigned int getServerPort();
 
-    // Functions for communication of requests (wrapper of model and number of replications, etc...)
-
     // Functions for communications of socketData (id, seed, replication number, address and socket)
     bool sendSocketData(SocketData* socketData);
     bool receiveSocketData(SocketData* socketData, int socket);
@@ -44,11 +42,11 @@ public:
     bool sendFileSize(int socket, int fileSize);
 
     // Send and receive of results (wrapper for all statistics)
-    bool receiveResultPayload(SocketData* socketData, ResultPayload& resultPayload);
+    bool receiveResultPayload(SocketData* socketData, ResultPayload& resultPayload, std::vector<DataPayload>& dataPayloadList);
     bool sendResultPayload(SocketData* socketData);
 
-    // std::vector<std::string> getAvailableIps();
-    // void setAvailableIps(std::vector<std::string>);
+    bool sendFileName(int socket, std::string filename);
+    bool receiveFileName(int socket, std::string* filename, int fileSize);
 
     std::vector<SocketData*> getSocketDataList();
     void appendSocketDataList(SocketData* socketDataItem);
@@ -56,7 +54,6 @@ public:
     // create sockets and socketData objects for client and server
     int createSocket();
     SocketData* createNewSocketDataServer(unsigned int port);
-    SocketData* createSocketData(int clientSocketFd, sockaddr_in clientAddress);
     SocketData* createSocketData(int clientSocketFd);
 
     // Used to connect to a server (a instance of genesys listening for connections)
@@ -70,31 +67,17 @@ public:
     bool sendModel(std::string file, int socket);
     bool receiveModel(std::string* file, int fileSize, int socket);
 
-
     // Server functions
     void createServerBind(SocketData* socketData);
     void createServerListen(SocketData* socketData);
 
-    // Main function executed inside driver code to distribute replications of a model
-    bool execute(Model* model);
-
-    // Save current model and output it to stream
-    std::string modelToFile();
     void writeToFile(const std::string fileName, const std::string& content);
 
-    // create and close connections with sockets
-    void createNewConnection(int socket);
     void closeConnection(int socketFd);
 
     // Thread task functions for client and server threads
-    ResultPayload createClientThreadTask(SocketData* socketData, std::string file);
+    ResultPayload createClientThreadTask(SocketData* socketData, std::string filename);
     ResultPayload createServerThreadTask(SocketData* socketData);
-
-
-
-    // Aux functions for debugging
-    std::string resultPayloadtoString(ResultPayload* ResultPayload);
-    std::string socketInfoToString(int client_sockfd, const struct sockaddr_in& clientAddress, socklen_t clientLen);
 
     int acceptConnection(SocketData* socketData);
 

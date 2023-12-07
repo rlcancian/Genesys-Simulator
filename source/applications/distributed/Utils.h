@@ -26,15 +26,18 @@ enum DistributedCommunication {
     BENCHMARK = 8
 };
 
-struct dataPayload {
+
+struct ResultPayload {
+    DistributedCommunication code;
+    int threadId;
+    int dataLength;
+};
+
+struct DataPayload {
     double average;
     double variance;
     double stddeviation;
 };
 
-struct ResultPayload {
-    DistributedCommunication code;
-    int threadId;
-    std::vector<dataPayload> results;
-};
+
 #endif
