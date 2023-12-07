@@ -68,7 +68,7 @@ public:
     bool receiveModel(std::string* file, int fileSize, int socket);
 
     // Server functions
-    void createServerBind(SocketData* socketData);
+    bool createServerBind(SocketData* socketData);
     void createServerListen(SocketData* socketData);
 
     void writeToFile(const std::string fileName, const std::string& content);

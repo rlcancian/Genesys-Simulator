@@ -57,6 +57,7 @@ public:
 
     // Transform model to file so it can be sent to servers
     std::string modelToFile(std::string filename);
+    void readIPListFromFile(const std::string& filename);
 };
 
 #endif

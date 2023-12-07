@@ -34,9 +34,12 @@ struct ResultPayload {
 };
 
 struct DataPayload {
+    long dataId;
     double average;
     double variance;
     double stddeviation;
+    double min;
+    double max;
 };
 
 

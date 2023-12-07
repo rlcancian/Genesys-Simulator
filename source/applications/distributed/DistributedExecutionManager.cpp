@@ -1,3 +1,4 @@
+#include <cstring> // for strerror
 #include <iostream>
 #include <thread>
 #include <netinet/in.h>
@@ -68,7 +69,7 @@ ResultPayload DistributedExecutionManager::createClientThreadTask(SocketData* so
 	std::cout << "This is the code: " << resultPayload.code << "\n";
 
 	for (const auto& data : dataPayloadList) {
-		//std::cout << "  Var Name: " << data.dataName << std::endl;
+		std::cout << "  Id: " << data.dataId << "\n";
 		std::cout << "  Average: " << data.average << std::endl;
 		std::cout << "  Variance: " << data.variance << std::endl;
 		std::cout << "  Stddeviation: " << data.stddeviation << std::endl;
@@ -150,12 +151,19 @@ int DistributedExecutionManager::createSocket() {
 	return _socket;
 }
 
-void DistributedExecutionManager::createServerBind(SocketData* socketData) {
+bool DistributedExecutionManager::createServerBind(SocketData* socketData) {
 	if (bind(socketData->_socket, (struct sockaddr*)&socketData->_address, sizeof(socketData->_address)) == -1) {
-		std::cerr << "Error binding socket: " << strerror(errno) << std::endl;
-		// Handle the error, possibly by closing the socket and exiting the program
-		exit(EXIT_FAILURE);
+		std::string errorString = strerror(errno);
+		std::cerr << "Error binding socket: " << errorString << std::endl;
+
+		if (errorString == "Address already in use") {
+			return false;
+		} else {
+			exit(EXIT_FAILURE);
+		}
 	}
+
+	return true;
 }
 
 void DistributedExecutionManager::createServerListen(SocketData* socketData) {
@@ -203,19 +211,27 @@ SocketData* DistributedExecutionManager::createNewSocketDataServer(unsigned int 
 }
 
 bool DistributedExecutionManager::connectToServers() {
-	for (int i = 0; i < this->_sockets.size(); i++) {
-		socklen_t len = sizeof(this->_sockets[i]->_address);
-		int result = connect(this->_sockets[i]->_socket, (struct sockaddr *)&this->_sockets[i]->_address, len);
+    for (auto it = _sockets.begin(); it != _sockets.end();) {
+		(*it)->_socket = this->createSocket();
 
-		if (result != 0) {
-			std::cout << "Erro ao conectar\n";
-			// remove from socketList
-			continue;
-		}
-	}
-	return true;
-	
+        socklen_t len = sizeof((*it)->_address);
+        int result = connect((*it)->_socket, (struct sockaddr*)&(*it)->_address, len);
+
+        if (result != 0) {
+            std::cerr << "Error connecting to server at ID: " << (*it)->_id << " - " << strerror(errno) << std::endl;
+
+            // Remove the entry from the socketData list
+            it = _sockets.erase(it); // Remove the entry from the list and update the iterator
+            continue;
+        }
+
+        // If connect was successful, move to the next entry
+        ++it;
+    }
+
+    return !_sockets.empty(); // Return true if there are still sockets in the list
 }
+
 
 bool DistributedExecutionManager::connectToServerSocket(SocketData* socketData) {
     std::cout << "[EVENT] Attempting to connect to server socket." << std::endl;
@@ -387,10 +403,12 @@ bool DistributedExecutionManager::sendResultPayload(SocketData* socketData) {
 		cstatSimulation = nullptr;
 
 		DataPayload dataPayload;
-		//dataPayload.dataName = data->getName();
+		dataPayload.dataId = data->getId();
 		dataPayload.variance = cstatModel->getStatistics()->variance();
 		dataPayload.stddeviation = cstatModel->getStatistics()->stddeviation();
 		dataPayload.average = cstatModel->getStatistics()->average();
+		dataPayload.min = cstatModel->getStatistics()->min();
+		dataPayload.max = cstatModel->getStatistics()->max();
 
 		dataPayloadList.insert(dataPayloadList.end(), dataPayload);
 	}
@@ -534,6 +552,24 @@ int DistributedExecutionManager::getRamAmount() { return _benchmarkInfo._memoria
 
 std::vector<SocketData*> DistributedExecutionManager::getSocketDataList() { return _sockets; }
 
-void DistributedExecutionManager::appendSocketDataList(SocketData* socketDataItem) {  _sockets.insert(_sockets.end(), socketDataItem); }
+void DistributedExecutionManager::appendSocketDataList(SocketData* socketDataItem) {
+    if (socketDataItem == nullptr) {
+        std::cerr << "Error: Attempting to append nullptr SocketData." << std::endl;
+        return;
+    }
+
+    _sockets.push_back(socketDataItem);
+
+    // Print the added SocketData
+    std::cout << "Added SocketData to the list:" << std::endl;
+    std::cout << "SocketData - ID: " << socketDataItem->_id << ", Seed: " << socketDataItem->_seed
+              << ", Replication Number: " << socketDataItem->_replicationNumber << std::endl;
+
+    char ipBuffer[INET_ADDRSTRLEN];
+    inet_ntop(AF_INET, &socketDataItem->_address.sin_addr, ipBuffer, sizeof(ipBuffer));
+    std::cout << "    IP Address: " << ipBuffer << ", Port: " << ntohs(socketDataItem->_address.sin_port) << std::endl;
+
+    std::cout << "    Socket: " << socketDataItem->_socket << std::endl;
+}
 
 

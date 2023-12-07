@@ -111,9 +111,17 @@ void ParallelAndDistributedManager::execute(std::string filename) {
 void ParallelAndDistributedManager::executeServer() {
     SocketData* socketDataMainServer = this->_distributedExecutionManager->createNewSocketDataServer(6000);
 
-	_distributedExecutionManager->createServerBind(socketDataMainServer);
-    this->logEvent("[DPEM] Creating server bind");
-	_distributedExecutionManager->createServerListen(socketDataMainServer);
+	while (!_distributedExecutionManager->createServerBind(socketDataMainServer)) {
+        int newPort = 6000;
+        socketDataMainServer->_address.sin_port = htons(newPort + 1);
+    };
+
+    std::ostringstream bindStream;
+    bindStream << "[DPEM] Created server bind, at port: " << ntohs(socketDataMainServer->_address.sin_port);
+    std::string bindString = bindStream.str();
+    this->logEvent(const_cast<char*>(bindString.c_str()));
+	
+    _distributedExecutionManager->createServerListen(socketDataMainServer);
     this->logEvent("[DPEM] Created server listen");
 
     this->logEvent("[DPEM] Start listening loop for server");
@@ -144,16 +152,18 @@ void ParallelAndDistributedManager::executeClient(std::string filename) {
     this->logEvent("[DPEM] Connecting to servers");
     // TODO Add IP LIST
     // TODO SEMAPHORE FOR READING MODEL
-    int socket = this->_distributedExecutionManager->createSocket();
-    SocketData* socketItem = this->_distributedExecutionManager->createSocketData(socket);
-    socketItem->_address.sin_family = AF_INET;
-    socketItem->_address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    socketItem->_address.sin_port = htons(6000);
+    // int socket = this->_distributedExecutionManager->createSocket();
+    // SocketData* socketItem = this->_distributedExecutionManager->createSocketData(socket);
+    // socketItem->_address.sin_family = AF_INET;
+    // socketItem->_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+    // socketItem->_address.sin_port = htons(6000);
+    // this->_distributedExecutionManager->appendSocketDataList(socketItem);
+
+    this->readIPListFromFile("../../source/applications/distributed/ip.txt");
 
     std::string file;
     std::string path = "../../models/";
 
-    this->_distributedExecutionManager->appendSocketDataList(socketItem);
 
     this->_distributedExecutionManager->connectToServers();
 
@@ -307,6 +317,66 @@ void ParallelAndDistributedManager::createModelTemp() {
     this->_model->getSimulation()->setWarmUpPeriod(0.1);
     this->_model->getSimulation()->setWarmUpPeriodTimeUnit(Util::TimeUnit::day);
     
+}
+
+void ParallelAndDistributedManager::readIPListFromFile(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        std::cerr << "Error opening file: " << filename << " - " << strerror(errno) << std::endl;
+        return;
+    }
+
+    std::string line;
+    int id = 0;
+
+    while (std::getline(file, line)) {
+        int socket = this->_distributedExecutionManager->createSocket();
+        SocketData* socketData = this->_distributedExecutionManager->createSocketData(socket);
+        socketData->_id = id++;
+
+        std::cout << "Read Line: " << line << std::endl;
+
+        // Split the line into tokens using colon as a delimiter
+        std::istringstream lineStream(line);
+        std::string token;
+        std::vector<std::string> tokens;
+
+        while (std::getline(lineStream, token, ':')) {
+            tokens.push_back(token);
+        }
+
+        // Check if the line has exactly two tokens
+        if (tokens.size() != 2) {
+            std::cerr << "Error parsing line: " << line << std::endl;
+            continue;
+        }
+
+        // Attempt to convert tokens to the required types
+
+        // int socket = this->_distributedExecutionManager->createSocket();
+        // SocketData* socketItem = this->_distributedExecutionManager->createSocketData(socket);
+        // socketItem->_address.sin_family = AF_INET;
+        // socketItem->_address.sin_addr.s_addr = inet_addr("127.0.0.1");
+        // socketItem->_address.sin_port = htons(6000);
+        // this->_distributedExecutionManager->appendSocketDataList(socketItem);
+        socketData->_address.sin_family = AF_INET;
+        socketData->_address.sin_addr.s_addr = inet_addr(tokens[0].c_str());
+
+        try {
+            socketData->_address.sin_port = htons(std::stoi(tokens[1]));
+        } catch (const std::invalid_argument& e) {
+            std::cerr << "Error parsing port in line: " << line << std::endl;
+            continue;
+        } catch (const std::out_of_range& e) {
+            std::cerr << "Port value out of range in line: " << line << std::endl;
+            continue;
+        }
+
+        // Add the SocketData object to the list using the provided method
+        this->_distributedExecutionManager->appendSocketDataList(socketData);
+    }
+
+    file.close();
 }
 
 ParallelAndDistributedManager::ParallelAndDistributedManager()
