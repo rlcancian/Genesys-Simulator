@@ -23,6 +23,9 @@ void ParallelAndDistributedManager::log(char* msg, TraceManager::Level level) {
 int ParallelAndDistributedManager::main(int argc, char** argv) {
     std::string type;
     std::string modelName;
+    int port = -1;
+
+    std::cout << argc << "\n";
 
     this->logEvent("[DPEM] Use ip.txt file inside distributed application folder to add ip addresses for possible servers");
 
@@ -34,9 +37,19 @@ int ParallelAndDistributedManager::main(int argc, char** argv) {
 
     try {
         type = argv[1];
-        if (type == "cliente") {
+        if (type == "cliente" && argc > 2) {
             this->setIsClient(true);
             modelName = argv[2]; 
+        } else if (type == "servidor") {
+            this->setIsClient(false);
+
+            if (argc > 2) {
+                port = std::stoi(argv[2]);
+            }
+        } else {
+            this->logError("[DPEM] Not enough arguments to start DPEM");
+            this->logError("[DPEM] Usage: ./exec <cliente>|<servidor> <nome_modelo> (caso cliente)");
+            return 1; 
         }
     }
     catch(const std::exception& e) {
@@ -92,12 +105,12 @@ int ParallelAndDistributedManager::main(int argc, char** argv) {
 
     this->_distributedExecutionManager = new DistributedExecutionManager(this->_simulator);
     this->_parallelExecutionManager = new ParallelExecutionManager(this->_model);
-    this->execute(modelName);
+    this->execute(modelName, port);
 
     return 0;
 }
 
-void ParallelAndDistributedManager::execute(std::string filename) {
+void ParallelAndDistributedManager::execute(std::string filename, int port) {
     if (this->getIsClient()) {
         this->traceHandler(TraceEvent("[DPEM] Executing genesys as client", TraceManager::Level::L1_errorFatal));
         
@@ -106,14 +119,21 @@ void ParallelAndDistributedManager::execute(std::string filename) {
     };
 
     this->traceHandler(TraceEvent("[DPEM] Executing genesys as server", TraceManager::Level::L1_errorFatal));
-    this->executeServer();
+    this->executeServer(port);
     return;
 }
 
-void ParallelAndDistributedManager::executeServer() {
-    SocketData* socketDataMainServer = this->_distributedExecutionManager->createNewSocketDataServer(6000);
+void ParallelAndDistributedManager::executeServer(int port) {
     int newPort = 6000;
 
+    if (port != -1) {
+        newPort = port;
+    }
+
+    std::cout << newPort << "\n";
+
+    SocketData* socketDataMainServer = this->_distributedExecutionManager->createNewSocketDataServer(newPort);
+    
 	while (!_distributedExecutionManager->createServerBind(socketDataMainServer)) {
         newPort ++;
         socketDataMainServer->_address.sin_port = htons(newPort);

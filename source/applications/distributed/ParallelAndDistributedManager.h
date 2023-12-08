@@ -41,8 +41,8 @@ public:
     int main(int argc, char** argv);
 
     // Start parallel and distributed execution, depending whether it its a client or a server
-    void execute(std::string filename);
-    void executeServer();
+    void execute(std::string filename, int port);
+    void executeServer(int port);
     void executeClient(std::string filename);
 
     void setIsClient(bool boolean);

@@ -205,7 +205,7 @@ SocketData* DistributedExecutionManager::createNewSocketDataServer(unsigned int 
 	SocketData* socketData = new SocketData();
     socketData->_address.sin_family = AF_INET;
     socketData->_address.sin_addr.s_addr = inet_addr("127.0.0.1");
-    socketData->_address.sin_port = htons(6000);
+    socketData->_address.sin_port = htons(port);
     socketData->_socket = createSocket();
 	int reuse = 1;
 	setsockopt(socketData->_socket, SOL_SOCKET, SO_REUSEADDR, &reuse, sizeof(reuse));
