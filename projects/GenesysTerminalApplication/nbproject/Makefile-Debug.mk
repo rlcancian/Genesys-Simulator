@@ -439,9 +439,9 @@ ${OBJECTDIR}/_ext/577f3b86/Smart_ProcessArena.o: ../../source/applications/termi
 	${MKDIR} -p ${OBJECTDIR}/_ext/577f3b86
 	$(COMPILE.cc) -g -I../../source/gtest -std=c++14 -o ${OBJECTDIR}/_ext/577f3b86/Smart_ProcessArena.o ../../source/applications/terminal/examples/arenaSmarts/Smart_ProcessArena.cpp
 
-${OBJECTDIR}/_ext/577f3b86/Smart_Record.o: ../../source/applications/terminal/examples/arenaSmarts/Smart_Record.cpp
+${OBJECTDIR}/_ext/577f3b86/Smart_Record.o: ../../source/applications/terminal/examples/smarts/Smart_Record.cpp
 	${MKDIR} -p ${OBJECTDIR}/_ext/577f3b86
-	$(COMPILE.cc) -g -I../../source/gtest -std=c++14 -o ${OBJECTDIR}/_ext/577f3b86/Smart_Record.o ../../source/applications/terminal/examples/arenaSmarts/Smart_Record.cpp
+	$(COMPILE.cc) -g -I../../source/gtest -std=c++14 -o ${OBJECTDIR}/_ext/577f3b86/Smart_Record.o ../../source/applications/terminal/examples/smarts/Smart_Record.cpp
 
 ${OBJECTDIR}/_ext/577f3b86/Smart_RemovingAndReorderingEntitiesInAQueue.o: ../../source/applications/terminal/examples/arenaSmarts/Smart_RemovingAndReorderingEntitiesInAQueue.cpp
 	${MKDIR} -p ${OBJECTDIR}/_ext/577f3b86
@@ -1617,14 +1617,14 @@ ${OBJECTDIR}/_ext/577f3b86/Smart_ProcessArena_nomain.o: ${OBJECTDIR}/_ext/577f3b
 	    ${CP} ${OBJECTDIR}/_ext/577f3b86/Smart_ProcessArena.o ${OBJECTDIR}/_ext/577f3b86/Smart_ProcessArena_nomain.o;\
 	fi
 
-${OBJECTDIR}/_ext/577f3b86/Smart_Record_nomain.o: ${OBJECTDIR}/_ext/577f3b86/Smart_Record.o ../../source/applications/terminal/examples/arenaSmarts/Smart_Record.cpp 
+${OBJECTDIR}/_ext/577f3b86/Smart_Record_nomain.o: ${OBJECTDIR}/_ext/577f3b86/Smart_Record.o ../../source/applications/terminal/examples/smarts/Smart_Record.cpp 
 	${MKDIR} -p ${OBJECTDIR}/_ext/577f3b86
 	@NMOUTPUT=`${NM} ${OBJECTDIR}/_ext/577f3b86/Smart_Record.o`; \
 	if (echo "$$NMOUTPUT" | ${GREP} '|main$$') || \
 	   (echo "$$NMOUTPUT" | ${GREP} 'T main$$') || \
 	   (echo "$$NMOUTPUT" | ${GREP} 'T _main$$'); \
 	then  \
-	    $(COMPILE.cc) -g -I../../source/gtest -std=c++14 -Dmain=__nomain -o ${OBJECTDIR}/_ext/577f3b86/Smart_Record_nomain.o ../../source/applications/terminal/examples/arenaSmarts/Smart_Record.cpp;\
+	    $(COMPILE.cc) -g -I../../source/gtest -std=c++14 -Dmain=__nomain -o ${OBJECTDIR}/_ext/577f3b86/Smart_Record_nomain.o ../../source/applications/terminal/examples/smarts/Smart_Record.cpp;\
 	else  \
 	    ${CP} ${OBJECTDIR}/_ext/577f3b86/Smart_Record.o ${OBJECTDIR}/_ext/577f3b86/Smart_Record_nomain.o;\
 	fi
