@@ -25,10 +25,10 @@ public:
 public:
 	virtual int main(int argc, char** argv) {
 		Simulator* genesys = new Simulator();
-		this->setDefaultTraceHandlers(genesys->getTracer());
-		genesys->getPlugins()->autoInsertPlugins("autoloadplugins.txt");
-		Model* model = genesys->getModels()->newModel();
-		PluginManager* plugins = genesys->getPlugins();
+		this->setDefaultTraceHandlers(genesys->getTraceManager());
+		genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
+		Model* model = genesys->getModelManager()->newModel();
+		PluginManager* plugins = genesys->getPluginManager();
 
 		Create* create1 = plugins->newInstance<Create>(model);
 		create1->setTimeBetweenCreationsExpression("1", Util::TimeUnit::hour);

@@ -31,7 +31,7 @@ using namespace std;
 //#include "ProbDistribDefaultImpl1.h"
 
 GenesysShell::GenesysShell() {
-	setDefaultTraceHandlers(simulator->getTracer());
+	setDefaultTraceHandlers(simulator->getTraceManager());
 }
 
 void GenesysShell::Trace(string message) {
@@ -61,10 +61,10 @@ void GenesysShell::run(List<string>* commandlineArgs) {
 	return;
 	 */
 
-	simulator->getTracer()->setTraceLevel(TraceManager::Level::L1_errorFatal);
-	if (!simulator->getPlugins()->autoInsertPlugins("autoloadplugins.txt"))
+	simulator->getTraceManager()->setTraceLevel(TraceManager::Level::L1_errorFatal);
+	if (!simulator->getPluginManager()->autoInsertPlugins("autoloadplugins.txt"))
 		cout << "Error: Could not auto load plugins from file \"autoloadplugins.txt\"." << endl;
-	simulator->getTracer()->setTraceLevel(TraceManager::Level::L7_internal);
+	simulator->getTraceManager()->setTraceLevel(TraceManager::Level::L7_internal);
 	_history->resize(100);
 	Trace("Genesys Shell is running. Type your command. For help, type the command \"help\".");
 	string inputText, historyText; //, shortPrefix, longPrefix, separator; //,longPrefix, separator;
@@ -307,12 +307,12 @@ void GenesysShell::cmdTraceLevel() {
 			if (levelInt>=1) {
 				cout<<"Setting tracelevel to "<<levelInt<<endl;
 				TraceManager::Level level = static_cast<TraceManager::Level> (levelInt);
-				simulator->getTracer()->setTraceLevel(level);
+				simulator->getTraceManager()->setTraceLevel(level);
 			} else {
 				cout<<"Error: "<<value<<" is not a valid level"<<endl;
 			}
 		} else if (key=="-s"||key=="--show") {
-			cout<<"Trace level is "<<static_cast<int> (simulator->getTracer()->getTraceLevel())<<endl;
+			cout<<"Trace level is "<<static_cast<int> (simulator->getTraceManager()->getTraceLevel())<<endl;
 		} else {
 			cout<<"Syntax error on "<<parameter<<endl;
 		}
@@ -332,14 +332,14 @@ void GenesysShell::cmdPlugin() {
 		value = "";
 		Util::SepKeyVal(parameter, key, value);
 		if (key=="-l"||key=="--list") {
-			if (simulator->getPlugins()->size()==0) {
+			if (simulator->getPluginManager()->size()==0) {
 				cout<<"There is no installed plugins. Install some using the plugin --autoload=<filename>"<<endl;
 				return;
 			}
 			PluginInformation* p;
 			cout<<"List of installed plugins:"<<endl;
-			for (unsigned short i = 0; i<simulator->getPlugins()->size(); i++) {
-				p = simulator->getPlugins()->getAtRank(i)->getPluginInfo();
+			for (unsigned short i = 0; i<simulator->getPluginManager()->size(); i++) {
+				p = simulator->getPluginManager()->getAtRank(i)->getPluginInfo();
 				if (p->isSource())
 					cout<<"Source ";
 				if (p->isSink())
@@ -359,15 +359,15 @@ void GenesysShell::cmdPlugin() {
 			}
 		} else if (key=="-a"||key=="--autoload") {
 			cout<<"Loading list of plugins from file "<<value<<endl;
-			simulator->getPlugins()->autoInsertPlugins(value);
+			simulator->getPluginManager()->autoInsertPlugins(value);
 		} else if (key=="-i"||key=="--info") {
-			if (simulator->getPlugins()->size()==0) {
+			if (simulator->getPluginManager()->size()==0) {
 				cout<<"There is no installed plugins. Install some using the plugin --autoload=<filename>"<<endl;
 				return;
 			}
 			Plugin* p;
-			for (unsigned short i = 0; i<simulator->getPlugins()->size(); i++) {
-				p = simulator->getPlugins()->getAtRank(i);
+			for (unsigned short i = 0; i<simulator->getPluginManager()->size(); i++) {
+				p = simulator->getPluginManager()->getAtRank(i);
 				if (p->getPluginInfo()->getPluginTypename()==value) {
 					cout<<"Information for plugin "<<value<<":"<<endl;
 					cout<<p->show()<<endl;
@@ -376,15 +376,15 @@ void GenesysShell::cmdPlugin() {
 			}
 			cout<<"Error: Could not find plugin of type "<<value<<endl;
 		} else if (key=="-t"||key=="--template") {
-			if (simulator->getPlugins()->size()==0) {
+			if (simulator->getPluginManager()->size()==0) {
 				cout<<"There is no installed plugins. Install some using the plugin --autoload=<filename>"<<endl;
 				return;
 			}
 			Plugin* p;
 			string pf;
-			for (unsigned short i = 0; i<simulator->getPlugins()->size(); i++) {
+			for (unsigned short i = 0; i<simulator->getPluginManager()->size(); i++) {
 				pf = "";
-				p = simulator->getPlugins()->getAtRank(i);
+				p = simulator->getPluginManager()->getAtRank(i);
 				if (p->getPluginInfo()->getPluginTypename()==value||value=="") {
 					if (value=="")
 						cout<<"Language syntax for plugin \""<<p->getPluginInfo()->getPluginTypename()<<"\":"<<endl;
@@ -484,19 +484,19 @@ void GenesysShell::cmdModel() {
 				//	cout<<"Wrong number of parameters"<<endl;
 				//	return;
 				//} else {
-				simulator->getModels()->remove(model);
+				simulator->getModelManager()->remove(model);
 				model = nullptr;
 				//}
 			}
 			cout<<"Creating a new model"<<endl;
-			model = simulator->getModels()->newModel();
+			model = simulator->getModelManager()->newModel();
 		} else if (parameter=="-r"||parameter=="--remove") {
 			if (model==nullptr) {
 				cout<<"Error: There is no loaded model to close."<<endl;
 				return;
 			}
 			cout<<"Closing the model"<<endl;
-			simulator->getModels()->remove(model);
+			simulator->getModelManager()->remove(model);
 			model = nullptr;
 		} else if (parameter=="-c"||parameter=="--check") {
 			if (model==nullptr) {
@@ -525,7 +525,7 @@ void GenesysShell::cmdModelLoad() {
 	}
 	std::string parameter = _typedWords->at(1);
 	cout<<"Loading model "<<parameter<<endl;
-	model = simulator->getModels()->loadModel(parameter);
+	model = simulator->getModelManager()->loadModel(parameter);
 	if (model==nullptr) {
 		cout<<"Error: Could not load the model"<<endl;
 	} else {

@@ -259,8 +259,8 @@ void ModelSimulation::_showSimulationHeader() {
 	//tm->traceReport("\n-----------------------------------------------------");
 	// simulator infos
 	tm->traceReport(_model->getParentSimulator()->getName());
-	tm->traceReport(_model->getParentSimulator()->getLicence()->showLicence());
-	tm->traceReport(_model->getParentSimulator()->getLicence()->showLimits());
+	tm->traceReport(_model->getParentSimulator()->getLicenceManager()->showLicence());
+	tm->traceReport(_model->getParentSimulator()->getLicenceManager()->showLimits());
 	// model infos
 	tm->traceReport("Analyst Name: "+_info->getAnalystName());
 	tm->traceReport("Project Title: "+_info->getProjectTitle());

@@ -108,7 +108,7 @@ bool Signal::_check(std::string* errorMessage) {
 
 void Signal::_createInternalAndAttachedData() {
 	// internal
-	PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
+	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
 	//attached
 	if (_signalData == nullptr) {
 		_signalData = pm->newInstance<SignalData>(_parentModel);

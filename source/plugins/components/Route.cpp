@@ -105,7 +105,7 @@ void Route::setStationName(std::string stationName) {
 	if (data != nullptr) {
 		_station = dynamic_cast<Station*> (data);
 	} else {
-		_station = _parentModel->getParentSimulator()->getPlugins()->newInstance<Station>(_parentModel, stationName);
+		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel, stationName);
 	}
 }
 
@@ -284,10 +284,10 @@ void Route::_createInternalAndAttachedData() {
 		}
 	_attachedAttributesInsert({"Entity.TotalTransferTime", "Entity.Station", "Entity.Sequence", "Entity.SequenceStep"});
 	if (_station == nullptr && this->_routeDestinationType == Route::DestinationType::Station && this->_stationExpression == "") {
-		_station = _parentModel->getParentSimulator()->getPlugins()->newInstance<Station>(_parentModel);
+		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
 	}
 	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label) {
-		_label = _parentModel->getParentSimulator()->getPlugins()->newInstance<Label>(_parentModel);
+		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Label>(_parentModel);
 	}
 	_attachedDataInsert("Station", _station);
 	_attachedDataInsert("Label", _label);

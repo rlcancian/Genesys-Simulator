@@ -54,17 +54,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // Genesys Simulator
     simulator = new Simulator();
-    simulator->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-    simulator->getTracer()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);
-    simulator->getTracer()->addTraceErrorHandler<MainWindow>(this, &MainWindow::_simulatorTraceErrorHandler);
-    simulator->getTracer()->addTraceReportHandler<MainWindow>(this, &MainWindow::_simulatorTraceReportsHandler);
-    simulator->getTracer()->addTraceSimulationHandler<MainWindow>(this, &MainWindow::_simulatorTraceSimulationHandler);
+    simulator->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+    simulator->getTraceManager()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);
+    simulator->getTraceManager()->addTraceErrorHandler<MainWindow>(this, &MainWindow::_simulatorTraceErrorHandler);
+    simulator->getTraceManager()->addTraceReportHandler<MainWindow>(this, &MainWindow::_simulatorTraceReportsHandler);
+    simulator->getTraceManager()->addTraceSimulationHandler<MainWindow>(this, &MainWindow::_simulatorTraceSimulationHandler);
 
-    simulator->getPlugins()->autoInsertPlugins(_autoLoadPluginsFilename.toStdString());
+    simulator->getPluginManager()->autoInsertPlugins(_autoLoadPluginsFilename.toStdString());
     // now complete the information
-    for (unsigned int i = 0; i < simulator->getPlugins()->size(); i++) {
+    for (unsigned int i = 0; i < simulator->getPluginManager()->size(); i++) {
         //@TODO: now it's the opportunity to adjust template
-        _insertPluginUI(simulator->getPlugins()->getAtRank(i));
+        _insertPluginUI(simulator->getPluginManager()->getAtRank(i));
     }
 
 	propertyGenesys = new PropertyEditorGenesys();
@@ -369,7 +369,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
     QString extension = fileInfo.suffix();
 
     if (extension != "gui") {
-        model = simulator->getModels()->loadModel(file.fileName().toStdString());
+        model = simulator->getModelManager()->loadModel(file.fileName().toStdString());
         if (model != nullptr) _generateGraphicalModelFromModel();
         return model;
     }
@@ -459,7 +459,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
     outStream.flush();
 
     std::string nameTempFile = tempFile.fileName().toStdString();
-    model = simulator->getModels()->loadModel(nameTempFile);
+    model = simulator->getModelManager()->loadModel(nameTempFile);
 
     tempFile.close();
 
@@ -560,10 +560,10 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
             ModelGraphicsScene *scene = (ModelGraphicsScene *)(ui->graphicsView->scene());
 
             // Pega o Plugin
-            Plugin* plugin = simulator->getPlugins()->find(comp.toStdString());
+            Plugin* plugin = simulator->getPluginManager()->find(comp.toStdString());
 
             // Cria o componente no modelo
-            ModelComponent* component = simulator->getModels()->current()->getComponents()->find(id);
+            ModelComponent* component = simulator->getModelManager()->current()->getComponents()->find(id);
 
             if (!component) continue;
             // Desenha na tela
@@ -722,7 +722,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
 //-----------------
 
 void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* component, List<ModelComponent*>* visited, std::map<ModelComponent*,GraphicalModelComponent*>* map, int *x, int *y, int *ymax, int sequenceInLine) {
-    PluginManager* pm = simulator->getPlugins();
+    PluginManager* pm = simulator->getPluginManager();
     GraphicalModelComponent *gmc;
     ModelGraphicsScene* scene = ui->graphicsView->getScene();
     Plugin* plugin = pm->find(component->getClassname());
@@ -762,7 +762,7 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
 }
 
 void MainWindow::_generateGraphicalModelFromModel() {
-    Model* m=simulator->getModels()->current();
+    Model* m=simulator->getModelManager()->current();
     if (m!=nullptr) {
         ui->graphicsView->setCanNotifyGraphicalModelEventHandlers(false);
         //ui->graphicsView->getScene()->showGrid();
@@ -796,15 +796,15 @@ void MainWindow::_generateGraphicalModelFromModel() {
 }
 
 void MainWindow::_actualizeActions() {
-    bool opened = simulator->getModels()->current() != nullptr;
+    bool opened = simulator->getModelManager()->current() != nullptr;
     bool running = false;
     bool paused = false;
     unsigned int numSelectedGraphicals = 0;
     unsigned int actualCommandundoRedo = 0; //@TODO
     unsigned int maxCommandundoRedo = 0; //@TODO
     if (opened) {
-        running = simulator->getModels()->current()->getSimulation()->isRunning();
-        paused = simulator->getModels()->current()->getSimulation()->isPaused();
+        running = simulator->getModelManager()->current()->getSimulation()->isRunning();
+        paused = simulator->getModelManager()->current()->getSimulation()->isPaused();
         numSelectedGraphicals = 0;//@TODO get total of selected graphical objects (this should br on another "actualize", I think
     }
 
@@ -871,7 +871,7 @@ void MainWindow::_actualizeActions() {
 }
 
 void MainWindow::_actualizeTabPanes() {
-    bool opened = simulator->getModels()->current() != nullptr;
+    bool opened = simulator->getModelManager()->current() != nullptr;
     if (opened) {
         int index = ui->tabWidgetCentral->currentIndex();
         if (index == CONST.TabCentralModelIndex) {
@@ -929,7 +929,7 @@ void MainWindow::_actualizeDebugVariables(bool force) {
     QCoreApplication::processEvents();
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationVariablesIndex) {
         ui->tableWidget_Variables->setRowCount(0);
-        List<ModelDataDefinition*>* variables = simulator->getModels()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Variable>());
+        List<ModelDataDefinition*>* variables = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Variable>());
         int row = 0;
         ui->tableWidget_Variables->setRowCount(variables->size());
         Variable* variable;
@@ -949,8 +949,8 @@ void MainWindow::_actualizeDebugVariables(bool force) {
 void MainWindow::_actualizeDebugEntities(bool force) {
     QCoreApplication::processEvents();
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationEntitiesIndex) {
-        List<ModelDataDefinition*>* entities = simulator->getModels()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
-        List<ModelDataDefinition*>* attributes = simulator->getModels()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Attribute>());
+        List<ModelDataDefinition*>* entities = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
+        List<ModelDataDefinition*>* attributes = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Attribute>());
         Entity* entity;
         int row = 0;
         int column = 3;
@@ -989,7 +989,7 @@ void MainWindow::_actualizeDebugBreakpoints(bool force) {
     QCoreApplication::processEvents();
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationBreakpointsIndex) {
         ui->tableWidget_Breakpoints->setRowCount(0);
-        ModelSimulation* sim = simulator->getModels()->current()->getSimulation();
+        ModelSimulation* sim = simulator->getModelManager()->current()->getSimulation();
         int row = 0;
         for (ModelComponent* comp : *sim->getBreakpointsOnComponent()->list()) {
             ui->tableWidget_Breakpoints->setRowCount(row + 1);
@@ -1022,7 +1022,7 @@ void MainWindow::_actualizeDebugBreakpoints(bool force) {
 }
 
 void MainWindow::_actualizeModelComponents(bool force) {
-    Model* m = simulator->getModels()->current();
+    Model* m = simulator->getModelManager()->current();
     ui->treeWidgetComponents->clear();
     if (m == nullptr) {
         return;
@@ -1048,7 +1048,7 @@ void MainWindow::_actualizeModelComponents(bool force) {
 }
 
 void MainWindow::_actualizeModelDataDefinitions(bool force) {
-    Model* m = simulator->getModels()->current();
+    Model* m = simulator->getModelManager()->current();
     ui->treeWidgetDataDefnitions->clear();
     if (m == nullptr) {
         return;
@@ -1107,7 +1107,7 @@ void MainWindow::_onAfterProcessEvent(SimulationEvent *re) {
     // Cria as animações de contadores, variáveis e tempo (atualiza assim que termina)
     myScene()->animateCounter();
     myScene()->animateVariable();
-    myScene()->animateTimer(simulator->getModels()->current()->getSimulation()->getSimulatedTime());
+    myScene()->animateTimer(simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
 }
 
 QColor MainWindow::myrgba(uint64_t color) {
@@ -1137,7 +1137,7 @@ void MainWindow::_insertCommandInConsole(std::string text) {
 }
 
 void MainWindow::_actualizeModelSimLanguage() {
-    Model* m = simulator->getModels()->current();
+    Model* m = simulator->getModelManager()->current();
     if (m != nullptr) {
         m->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
         std::string tempFilename = "./temp.tmp";
@@ -1167,7 +1167,7 @@ void MainWindow::_clearModelEditors() {
 }
 
 bool MainWindow::_setSimulationModelBasedOnText() {
-    Model* model = simulator->getModels()->current();
+    Model* model = simulator->getModelManager()->current();
     if (this->_textModelHasChanged) {
         //@TODO !!!!!!!!!!!!!!
         // simulator->getModels()->remove(model);
@@ -1175,16 +1175,16 @@ bool MainWindow::_setSimulationModelBasedOnText() {
     }
     if (model == nullptr) { // only model text written in UI
         QString modelLanguage = ui->TextCodeEditor->toPlainText();
-        if (!simulator->getModels()->createFromLanguage(modelLanguage.toStdString())) {
+        if (!simulator->getModelManager()->createFromLanguage(modelLanguage.toStdString())) {
             QMessageBox::critical(this, "Check Model", "Error in the model text. See console for more information.");
         }
-        model = simulator->getModels()->current();
+        model = simulator->getModelManager()->current();
         if (model != nullptr) {
 
             _setOnEventHandlers();
         }
     }
-    return simulator->getModels()->current() != nullptr;
+    return simulator->getModelManager()->current() != nullptr;
 }
 
 std::string MainWindow::_adjustDotName(std::string name) {
@@ -1274,14 +1274,14 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
 
     visited->insert(visited->end(), componentOrData);
     std::string text;
-    unsigned int modellevel = simulator->getModels()->current()->getLevel();
+    unsigned int modellevel = simulator->getModelManager()->current()->getLevel();
     std::list<ModelDataDefinition*>::iterator visitedIt;
     ModelComponent* parentComponentSuperLevel = nullptr;
     unsigned int level = componentOrData->getLevel();
     if (dynamic_cast<ModelComponent*> (componentOrData) != nullptr) {
         if (level != modellevel && !ui->checkBox_ShowLevels->isChecked()) {
             // do not show the component itself, but its parent on the model level
-            parentComponentSuperLevel = simulator->getModels()->current()->getComponents()->find(level);
+            parentComponentSuperLevel = simulator->getModelManager()->current()->getComponents()->find(level);
             assert(parentComponentSuperLevel != nullptr);
             visitedIt = std::find(visited->begin(), visited->end(), parentComponentSuperLevel);
             if (visitedIt == visited->end()) {
@@ -1374,7 +1374,7 @@ std::string MainWindow::_addCppCodeLine(std::string line, unsigned int indent) {
 }
 
 void MainWindow::_actualizeModelCppCode() {
-    Model* m = simulator->getModels()->current();
+    Model* m = simulator->getModelManager()->current();
     if (m != nullptr) {
         unsigned short tabs = 0;
         std::string text, text2, name;
@@ -1503,7 +1503,7 @@ bool MainWindow::_createModelImage() {
     dot += "  compound=true; rankdir=LR; \n";
     std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap = new std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>();
 
-    std::list<SourceModelComponent*>* sources = simulator->getModels()->current()->getComponents()->getSourceComponents();
+    std::list<SourceModelComponent*>* sources = simulator->getModelManager()->current()->getComponents()->getSourceComponents();
     std::list<ModelDataDefinition*>* visited = new std::list<ModelDataDefinition*>();
     std::list<ModelDataDefinition*>::iterator visitedIt;
     for (SourceModelComponent* source : *sources) {
@@ -1512,14 +1512,14 @@ bool MainWindow::_createModelImage() {
             _recursiveCreateModelGraphicPicture(source, visited, dotmap);
         }
     }
-    std::list<ModelComponent*>* transfers = simulator->getModels()->current()->getComponents()->getTransferInComponents();
+    std::list<ModelComponent*>* transfers = simulator->getModelManager()->current()->getComponents()->getTransferInComponents();
     for (ModelComponent* transfer : *transfers) {
         visitedIt = std::find(visited->begin(), visited->end(), transfer);
         if (visitedIt == visited->end()) {
             _recursiveCreateModelGraphicPicture(transfer, visited, dotmap);
         }
     }
-    std::list<ModelComponent*>* allComps = simulator->getModels()->current()->getComponents()->getAllComponents();
+    std::list<ModelComponent*>* allComps = simulator->getModelManager()->current()->getComponents()->getAllComponents();
     for (ModelComponent* comp : *allComps) {
         visitedIt = std::find(visited->begin(), visited->end(), comp);
         if (visitedIt == visited->end()) {
@@ -1527,7 +1527,7 @@ bool MainWindow::_createModelImage() {
         }
     }
     // combine all level subgraphs
-    unsigned int modelLevel = simulator->getModels()->current()->getLevel();
+    unsigned int modelLevel = simulator->getModelManager()->current()->getLevel();
     for (std::pair<unsigned int, std::map<unsigned int, std::list<std::string>*>*> dotpair : *dotmap) {
         if (dotpair.first == modelLevel) {
             dot += "\n  // model level\n";
@@ -1547,7 +1547,7 @@ bool MainWindow::_createModelImage() {
         } else if (ui->checkBox_ShowLevels->isChecked()) {
             dot += "\n\n // submodel level  " + std::to_string(dotpair.first) + "\n";
             dot += " subgraph cluster_level_" + std::to_string(dotpair.first) + " {\n";
-            dot += "   graph[style=filled; fillcolor=mistyrose2] label=\"" + simulator->getModels()->current()->getComponents()->find(dotpair.first)->getName() + "\";\n";
+            dot += "   graph[style=filled; fillcolor=mistyrose2] label=\"" + simulator->getModelManager()->current()->getComponents()->find(dotpair.first)->getName() + "\";\n";
             for (std::pair<unsigned int, std::list<std::string>*> dotpair2 : *dotpair.second) {
                 dot += "  {\n";
                 if (dotpair2.first == 0)
@@ -1666,8 +1666,8 @@ void MainWindow::_simulatorTraceReportsHandler(TraceEvent e) {
 
 void MainWindow::_onModelCheckSuccessHandler(ModelEvent* re) {
     // create (and positione and draw) or remove GraphicalModelDataDefinitions based on what actually exists on the model
-    Model* model = simulator->getModels()->current();
-    if (simulator->getModels()->current() == re->getModel()) { // the current model is the one changed
+    Model* model = simulator->getModelManager()->current();
+    if (simulator->getModelManager()->current() == re->getModel()) { // the current model is the one changed
         ModelDataManager* dm = model->getDataManager();
         ModelGraphicsView* modelGraphView = ((ModelGraphicsView*)(ui->graphicsView));
         for(auto elemclassname: *dm->getDataDefinitionClassnames()) {
@@ -1681,7 +1681,7 @@ void MainWindow::_onModelCheckSuccessHandler(ModelEvent* re) {
 
 void MainWindow::_onReplicationStartHandler(SimulationEvent * re) {
 
-    ModelSimulation* sim = simulator->getModels()->current()->getSimulation();
+    ModelSimulation* sim = simulator->getModelManager()->current()->getSimulation();
     QString text = QString::fromStdString(std::to_string(sim->getCurrentReplicationNumber())) + "/" + QString::fromStdString(std::to_string(sim->getNumberOfReplications()));
     ui->label_ReplicationNum->setText(text);
     int row = ui->tableWidget_Simulation_Event->rowCount();
@@ -1695,7 +1695,7 @@ void MainWindow::_onReplicationStartHandler(SimulationEvent * re) {
 
 void MainWindow::_onSimulationStartHandler(SimulationEvent * re) {
     _actualizeActions();
-    ui->progressBarSimulation->setMaximum(simulator->getModels()->current()->getSimulation()->getReplicationLength());
+    ui->progressBarSimulation->setMaximum(simulator->getModelManager()->current()->getSimulation()->getReplicationLength());
     ui->tableWidget_Simulation_Event->setRowCount(0);
     ui->tableWidget_Entities->setRowCount(0);
     ui->tableWidget_Variables->setRowCount(0);
@@ -1703,7 +1703,7 @@ void MainWindow::_onSimulationStartHandler(SimulationEvent * re) {
     ui->textEdit_Reports->clear();
 
     // Fator de conversão para segundos
-    Util::TimeUnit replicationBaseTimeUnit = simulator->getModels()->current()->getSimulation()->getReplicationBaseTimeUnit();
+    Util::TimeUnit replicationBaseTimeUnit = simulator->getModelManager()->current()->getSimulation()->getReplicationBaseTimeUnit();
     double conversionFactorToSeconds = Util::TimeUnitConvert(replicationBaseTimeUnit, Util::TimeUnit(5));
     AnimationTimer::setConversionFactorToSeconds(conversionFactorToSeconds);
 
@@ -1751,7 +1751,7 @@ void MainWindow::_onSimulationEndHandler(SimulationEvent * re) {
 }
 
 void MainWindow::_onProcessEventHandler(SimulationEvent * re) {
-    ui->progressBarSimulation->setValue(simulator->getModels()->current()->getSimulation()->getSimulatedTime());
+    ui->progressBarSimulation->setValue(simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
     _actualizeSimulationEvents(re);
     _actualizeDebugEntities(false);
     _actualizeDebugVariables(false);
@@ -1882,7 +1882,7 @@ void MainWindow::_initModelGraphicsView() {
 }
 
 void MainWindow::_setOnEventHandlers() {
-    OnEventManager* eventManager = simulator->getModels()->current()->getOnEvents();
+    OnEventManager* eventManager = simulator->getModelManager()->current()->getOnEvents();
     eventManager->addOnAfterProcessEventHandler(this, &MainWindow::_onAfterProcessEvent);
     eventManager->addOnEntityCreateHandler(this, &MainWindow::_onEntityCreateHandler);
     eventManager->addOnEntityRemoveHandler(this, &MainWindow::_onEntityRemoveHandler);
@@ -2188,7 +2188,7 @@ void MainWindow::on_pushButton_Breakpoint_Insert_clicked() {
 }
 
 void MainWindow::on_pushButton_Breakpoint_Remove_clicked() {
-    ModelSimulation* sim = simulator->getModels()->current()->getSimulation();
+    ModelSimulation* sim = simulator->getModelManager()->current()->getSimulation();
 }
 
 void MainWindow::on_tabWidgetCentral_currentChanged(int index) {
@@ -2267,7 +2267,7 @@ void MainWindow::on_actionComponent_Breakpoint_triggered() {
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*> (gi);
         if (gmc != nullptr) {
             ModelComponent* mc = gmc->getComponent();
-            ModelSimulation* sim = simulator->getModels()->current()->getSimulation();
+            ModelSimulation* sim = simulator->getModelManager()->current()->getSimulation();
             if (sim->getBreakpointsOnComponent()->find(mc) == sim->getBreakpointsOnComponent()->list()->end()) {
                 sim->getBreakpointsOnComponent()->insert(mc);
             } else {
@@ -2317,7 +2317,7 @@ void MainWindow::on_actionSimulationStop_triggered() {
 
     _insertCommandInConsole("stop");
 
-    simulator->getModels()->current()->getSimulation()->stop();
+    simulator->getModelManager()->current()->getSimulation()->stop();
 
     _actualizeActions();
 }
@@ -2336,7 +2336,7 @@ void MainWindow::on_actionSimulationStart_triggered() {
     if (res) {
         _insertCommandInConsole("start");
         if (_setSimulationModelBasedOnText())
-            simulator->getModels()->current()->getSimulation()->start();
+            simulator->getModelManager()->current()->getSimulation()->start();
     }
 }
 
@@ -2354,7 +2354,7 @@ void MainWindow::on_actionSimulationStep_triggered() {
         _insertCommandInConsole("step");
 
         if (_setSimulationModelBasedOnText())
-            simulator->getModels()->current()->getSimulation()->step();
+            simulator->getModelManager()->current()->getSimulation()->step();
     }
 }
 
@@ -2363,7 +2363,7 @@ void MainWindow::on_actionSimulationPause_triggered() {
     AnimationTransition::setPause(true);
 
     _insertCommandInConsole("pause");
-    simulator->getModels()->current()->getSimulation()->pause();
+    simulator->getModelManager()->current()->getSimulation()->pause();
 }
 
 void MainWindow::on_actionSimulationResume_triggered() {
@@ -2373,7 +2373,7 @@ void MainWindow::on_actionSimulationResume_triggered() {
     _insertCommandInConsole("resume");
 
     if (_setSimulationModelBasedOnText())
-        simulator->getModels()->current()->getSimulation()->start();
+        simulator->getModelManager()->current()->getSimulation()->start();
 }
 
 
@@ -2382,7 +2382,7 @@ void MainWindow::on_actionAboutAbout_triggered() {
 }
 
 void MainWindow::on_actionAboutLicence_triggered() {
-    LicenceManager* licman = simulator->getLicence();
+    LicenceManager* licman = simulator->getLicenceManager();
     std::string text = licman->showLicence() + "\n";
     text += licman->showLimits() + "\n";
     text += licman->showActivationCode();
@@ -2607,13 +2607,13 @@ void MainWindow::_helpCopy() {
         ModelComponent * previousComponent = gmc->getComponent();
 
         // Adiciona o componente no modelo
-        simulator->getModels()->current()->getComponents()->insert(previousComponent);
+        simulator->getModelManager()->current()->getComponents()->insert(previousComponent);
 
         // Nome do plugin para a copia do componente
         std::string pluginname = previousComponent->getClassname();
 
         // Plugin para a copia do novo component
-        Plugin* plugin = simulator->getPlugins()->find(pluginname);
+        Plugin* plugin = simulator->getPluginManager()->find(pluginname);
 
         // Ajustando a posicao da copia
         //@TODO: Modificar para por onde o mouse clicou
@@ -2623,7 +2623,7 @@ void MainWindow::_helpCopy() {
         QColor color = gmc->getColor();
 
         // Componente de Copia ou Recorte
-        ModelComponent * component  = (ModelComponent*) plugin->newInstance(simulator->getModels()->current());
+        ModelComponent * component  = (ModelComponent*) plugin->newInstance(simulator->getModelManager()->current());
 
 
         GraphicalModelComponent* newgmc = new GraphicalModelComponent(plugin, component, position, color);
@@ -2653,13 +2653,13 @@ void MainWindow::_helpCopy() {
             ModelComponent * previousComponent = gmc->getComponent();
 
             // Adiciona o componente no modelo
-            simulator->getModels()->current()->getComponents()->insert(previousComponent);
+            simulator->getModelManager()->current()->getComponents()->insert(previousComponent);
 
             // Nome do plugin para a copia do componente
             std::string pluginname = previousComponent->getClassname();
 
             // Plugin para a copia do novo component
-            Plugin* plugin = simulator->getPlugins()->find(pluginname);
+            Plugin* plugin = simulator->getPluginManager()->find(pluginname);
 
             // Ajustando a posicao da copia
             //@TODO: Modificar para por onde o mouse clicou
@@ -2669,7 +2669,7 @@ void MainWindow::_helpCopy() {
             QColor color = gmc->getColor();
 
             // Componente de Copia ou Recorte
-            ModelComponent * component  = (ModelComponent*) plugin->newInstance(simulator->getModels()->current());
+            ModelComponent * component  = (ModelComponent*) plugin->newInstance(simulator->getModelManager()->current());
 
             GraphicalModelComponent* newgmc = new GraphicalModelComponent(plugin, component, position, color);
             // Adiciona o componente graficamente
@@ -3225,7 +3225,7 @@ void MainWindow::_actualizeUndo() {
 
 void MainWindow::on_actionModelNew_triggered() {
     Model* m;
-    if ((m = simulator->getModels()->current()) != nullptr) {
+    if ((m = simulator->getModelManager()->current()) != nullptr) {
         QMessageBox::StandardButton reply = QMessageBox::question(this, "New Model", "There is a model already oppened. Do you want to close it and to create new model?", QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::No) {
             return;
@@ -3236,16 +3236,16 @@ void MainWindow::on_actionModelNew_triggered() {
     }
     _insertCommandInConsole("new");
     if (m != nullptr) {
-        simulator->getModels()->remove(m);
+        simulator->getModelManager()->remove(m);
     }
-    m = simulator->getModels()->newModel();
+    m = simulator->getModelManager()->newModel();
     _initUiForNewModel(m);
 }
 
 void MainWindow::on_actionModelOpen_triggered()
 {
     Model *m;
-    if ((m = simulator->getModels()->current()) != nullptr) {
+    if ((m = simulator->getModelManager()->current()) != nullptr) {
         QMessageBox msgBox;
         msgBox.setIcon(QMessageBox::Question);
         msgBox.setWindowTitle("New Model");
@@ -3342,7 +3342,7 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 
 void MainWindow::on_actionModelClose_triggered()
 {
-    if (_textModelHasChanged || simulator->getModels()->current()->hasChanged()) {
+    if (_textModelHasChanged || simulator->getModelManager()->current()->hasChanged()) {
         QMessageBox msgBox;
         msgBox.setIcon(QMessageBox::Question);
         msgBox.setWindowTitle("Close ModelSyS");
@@ -3377,10 +3377,10 @@ void MainWindow::on_actionModelClose_triggered()
     ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
 
     // limpando tudo a que se refere ao modelo
-    simulator->getModels()->current()->getComponents()->getAllComponents()->clear();
-    simulator->getModels()->current()->getComponents()->clear();
+    simulator->getModelManager()->current()->getComponents()->getAllComponents()->clear();
+    simulator->getModelManager()->current()->getComponents()->clear();
     ui->progressBarSimulation->setValue(0); // Seta o progresso da simulação para zero
-    simulator->getModels()->remove(simulator->getModels()->current());
+    simulator->getModelManager()->remove(simulator->getModelManager()->current());
 
     ui->actionActivateGraphicalSimulation->setChecked(false);
 
@@ -3417,7 +3417,7 @@ bool MainWindow::_check(bool success)
     ui->actionActivateGraphicalSimulation->setChecked(true);
 
     // Valida o modelo
-    bool res = simulator->getModels()->current()->check();
+    bool res = simulator->getModelManager()->current()->check();
 
     // cria o StatisticsCollector pro EntityType se necessário
     setStatisticsCollector();
@@ -3459,8 +3459,8 @@ bool MainWindow::_check(bool success)
 }
 
 void MainWindow::setStatisticsCollector() {
-    std::list<ModelDataDefinition*>* entityTypes = simulator->getModels()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
-    std::list<ModelDataDefinition*>* stCollectors = simulator->getModels()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>())->list();
+    std::list<ModelDataDefinition*>* entityTypes = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
+    std::list<ModelDataDefinition*>* stCollectors = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>())->list();
 
     QList<ModelDataDefinition*> qlStCollectors(stCollectors->begin(), stCollectors->end());
 
@@ -3474,7 +3474,7 @@ void MainWindow::setStatisticsCollector() {
                 // necessário pois o kernel remove o StatisticsCollector de DataManager mas não de _statisticsCollectors usado
                 // por addGetStatisticsCollector para criar ou não (verifica se tem na lista) o Data Definition
                 if (!qlStCollectors.contains(stc)) {
-                    simulator->getModels()->current()->getDataManager()->insert(stc);
+                    simulator->getModelManager()->current()->getDataManager()->insert(stc);
                 }
             }
         }
@@ -3537,7 +3537,7 @@ void MainWindow::on_treeWidgetDataDefnitions_itemChanged(QTreeWidgetItem *item, 
 
         // Get the changes
         QString after = item->text(column);
-        Model * m = simulator->getModels()->current();
+        Model * m = simulator->getModelManager()->current();
 
         // Save in the model
         for (std::string dataTypename : *m->getDataManager()->getDataDefinitionClassnames()) {

@@ -21,10 +21,10 @@ Book_Cap02_Example01::Book_Cap02_Example01() {
 
 int Book_Cap02_Example01::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	this->setDefaultTraceHandlers(genesys->getTracer());
-	genesys->getPlugins()->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
-	PluginManager* plugins = genesys->getPlugins();
+	this->setDefaultTraceHandlers(genesys->getTraceManager());
+	genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
+	Model* model = genesys->getModelManager()->newModel();
+	PluginManager* plugins = genesys->getPluginManager();
 	Create* create1 = plugins->newInstance<Create>(model);
 	//EntityType* entityType1 = plugins->newInstance<EntityType>(model, "EntityType1");
 	//create1->setEntityType(entityType1);

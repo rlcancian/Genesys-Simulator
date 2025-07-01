@@ -32,11 +32,11 @@ Smart_Parser::Smart_Parser() {
  */
 int Smart_Parser::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-	setDefaultTraceHandlers(genesys->getTracer());
-	PluginManager* plugins = genesys->getPlugins();
+	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// Just parser evaluating different expressions
 	// (arithmetic, trigonometric, matemathic, logic, statistic and conditional)
 	std::vector<std::string> expressions = {

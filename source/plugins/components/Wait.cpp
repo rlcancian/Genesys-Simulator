@@ -174,7 +174,7 @@ bool Wait::_check(std::string * errorMessage) {
 
 void Wait::_createInternalAndAttachedData() {
 	// internal
-	PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
+	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
 	if (_queue == nullptr) {
 		_queue = pm->newInstance<Queue>(_parentModel, getName() + ".Queue");
 	}

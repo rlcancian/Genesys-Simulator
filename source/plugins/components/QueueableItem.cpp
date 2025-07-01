@@ -39,7 +39,7 @@ QueueableItem::QueueableItem(Model* model, std::string queueName = "") {
 	if (data != nullptr) {
 		_queueOrSet = dynamic_cast<Queue*> (data);
 	} else {
-		_queueOrSet = model->getParentSimulator()->getPlugins()->newInstance<Queue>(model, queueName);
+		_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, queueName);
 	}
 	_index = "0";
     _queueableName = queueName;
@@ -86,7 +86,7 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 			}
 			if (_queueOrSet == nullptr) {
 				auto model = _modeldataManager->getParentModel();
-				_queueOrSet = model->getParentSimulator()->getPlugins()->newInstance<Queue>(model, _queueableName);
+				_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, _queueableName);
 			}
 		}
 		assert(_queueOrSet != nullptr);

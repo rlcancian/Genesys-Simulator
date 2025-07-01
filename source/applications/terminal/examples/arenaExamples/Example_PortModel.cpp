@@ -38,12 +38,12 @@ Example_PortModel::Example_PortModel() {
  */
 int Example_PortModel::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	this->setDefaultTraceHandlers(genesys->getTracer());
-        genesys->getTracer()->setTraceLevel(TraceManager::Level::L2_results);
-	genesys->getPlugins()->autoInsertPlugins("autoloadplugins.txt");
+	this->setDefaultTraceHandlers(genesys->getTraceManager());
+        genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L2_results);
+	genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
 	// crete model
-	Model* model = genesys->getModels()->newModel();
-	PluginManager* plugins = genesys->getPlugins();
+	Model* model = genesys->getModelManager()->newModel();
+	PluginManager* plugins = genesys->getPluginManager();
 
         Resource* rBuffer = plugins->newInstance<Resource>(model, "rBuffer");
         rBuffer->setCapacity(1);

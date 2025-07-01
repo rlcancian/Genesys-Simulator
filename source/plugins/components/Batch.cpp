@@ -294,7 +294,7 @@ void Batch::_createInternalAndAttachedData() {
 	_attachedAttributesInsert({"Entity.Group"});
 	_attachedDataInsert("GroupdEntityType", _groupedEntityType);
 	if (_queue == nullptr) {
-		PluginManager* plugins = _parentModel->getParentSimulator()->getPlugins();
+		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 		_queue = plugins->newInstance<Queue>(_parentModel, this->getName() + ".Queue");
 		_internalDataInsert("EntityQueue", _queue);
 		_entityGroup = plugins->newInstance<EntityGroup>(_parentModel, this->getName() + ".EntiyGroup");

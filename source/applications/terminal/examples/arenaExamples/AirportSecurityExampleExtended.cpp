@@ -14,10 +14,10 @@ AirportSecurityExampleExtended::AirportSecurityExampleExtended() {
 
 int AirportSecurityExampleExtended::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	this->setDefaultTraceHandlers(genesys->getTracer());
-	genesys->getPlugins()->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
-	PluginManager* plugins = genesys->getPlugins();
+	this->setDefaultTraceHandlers(genesys->getTraceManager());
+	genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
+	Model* model = genesys->getModelManager()->newModel();
+	PluginManager* plugins = genesys->getPluginManager();
 
 	model->getInfos()->setName("Airport Security Example Extended");
 
@@ -102,7 +102,7 @@ int AirportSecurityExampleExtended::main(int argc, char** argv) {
 	decidePassSecurity->getConnections()->insert(disposeDenied);
 
 	//genesys->getTracer()->setTraceLevel(TraceManager::Level::L9_mostDetailed);
-	genesys->getTracer()->setTraceLevel(TraceManager::Level::L2_results);
+	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L2_results);
 	model->getSimulation()->setReplicationLength(12, Util::TimeUnit::hour);
 	model->getSimulation()->setNumberOfReplications(3);
 	model->getSimulation()->setWarmUpPeriod(0.5);

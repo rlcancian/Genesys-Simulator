@@ -15,9 +15,9 @@ DialogSimulationConfigure::~DialogSimulationConfigure()
 
 // Set the attributes required to save in model
 void DialogSimulationConfigure::setSimulator(Simulator * sim) {
-    ms = sim->getModels()->current()->getSimulation();
-    trace = sim->getTracer();
-    infos = sim->getModels()->current()->getInfos();
+    ms = sim->getModelManager()->current()->getSimulation();
+    trace = sim->getTraceManager();
+    infos = sim->getModelManager()->current()->getInfos();
 
 }
 

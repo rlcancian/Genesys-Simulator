@@ -36,10 +36,10 @@ Smart_HoldSearchRemove::Smart_HoldSearchRemove() {
 int Smart_HoldSearchRemove::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
 	//genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-	setDefaultTraceHandlers(genesys->getTracer());
-	PluginManager* plugins = genesys->getPlugins();
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// crete model
 	Create* create1 = plugins->newInstance<Create>(model);
 	Create* create2 = plugins->newInstance<Create>(model);

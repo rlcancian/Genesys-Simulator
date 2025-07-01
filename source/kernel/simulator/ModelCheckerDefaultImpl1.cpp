@@ -89,7 +89,7 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 	/*  @TODO: +-: not implemented yet */
 	_model->getTracer()->trace("Checking connected", TraceManager::Level::L7_internal);
 	bool resultAll = true;
-	PluginManager* pluginManager = this->_model->getParentSimulator()->getPlugins();
+	PluginManager* pluginManager = this->_model->getParentSimulator()->getPluginManager();
 	Plugin* plugin;
 	Util::IncIndent();
 	{
@@ -196,7 +196,7 @@ bool ModelCheckerDefaultImpl1::checkLimits() {
 	bool res = true;
 	std::string text;
 	unsigned int value, limit;
-	LicenceManager *licence = _model->getParentSimulator()->getLicence();
+	LicenceManager *licence = _model->getParentSimulator()->getLicenceManager();
 	_model->getTracer()->trace("Checking model limits", TraceManager::Level::L7_internal);
 	Util::IncIndent();
 	{

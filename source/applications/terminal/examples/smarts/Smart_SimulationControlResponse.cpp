@@ -28,11 +28,11 @@ Smart_SimulationControlResponse::Smart_SimulationControlResponse() {
 
 int Smart_SimulationControlResponse::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-	setDefaultTraceHandlers(genesys->getTracer());
-	PluginManager* plugins = genesys->getPlugins();
+	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// create model
 	Create* create1 = plugins->newInstance<Create>(model);
 	Process* process1 = plugins->newInstance<Process>(model);
@@ -48,7 +48,7 @@ int Smart_SimulationControlResponse::main(int argc, char** argv) {
 	//model->save("./models/Smart_SimulationControlResponse.gen");
 	model->check();
 	model->show();
-	genesys->getTracer()->setTraceLevel(TraceManager::Level::L9_mostDetailed);
+	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L9_mostDetailed);
 	model->getSimulation()->setShowSimulationControlsInReport(true);
 	model->getSimulation()->setShowSimulationResposesInReport(true);
 	model->getSimulation()->start();

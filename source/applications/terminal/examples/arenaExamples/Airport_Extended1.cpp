@@ -21,11 +21,11 @@ Airport_Extended1::Airport_Extended1() {
  */
 int Airport_Extended1::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	this->setDefaultTraceHandlers(genesys->getTracer());
-	genesys->getPlugins()->autoInsertPlugins("autoloadplugins.txt");
+	this->setDefaultTraceHandlers(genesys->getTraceManager());
+	genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
 	// create model
-	Model* model = genesys->getModels()->newModel();
-	PluginManager* plugins = genesys->getPlugins();
+	Model* model = genesys->getModelManager()->newModel();
+	PluginManager* plugins = genesys->getPluginManager();
         
         //Inicio do modelo
         Create* create1 = plugins->newInstance<Create>(model);

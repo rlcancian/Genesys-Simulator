@@ -36,11 +36,11 @@ Smart_DecideNWayByChance::Smart_DecideNWayByChance() {
 
 int Smart_DecideNWayByChance::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-	setDefaultTraceHandlers(genesys->getTracer());
-	PluginManager* plugins = genesys->getPlugins();
+	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// create model
 	Create* create_1 = plugins->newInstance<Create>(model, "Create_1");
     Delay* process_1 = plugins->newInstance<Delay>(model, "Process_1");

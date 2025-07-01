@@ -171,7 +171,7 @@ bool ModelPersistenceDefaultImpl2::load(std::string filename) {
 			_model->getSimulation()->loadInstance(fields.get());
 					_dirty = true;
 		} else {
-			Plugin* plugin = this->_model->getParentSimulator()->getPlugins()->find(type);
+			Plugin* plugin = this->_model->getParentSimulator()->getPluginManager()->find(type);
 			if (plugin != nullptr) {
 				ok = plugin->loadAndInsertNew(_model, fields.get());
 				if (ok && plugin->getPluginInfo()->isComponent()) {

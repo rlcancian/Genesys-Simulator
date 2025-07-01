@@ -187,7 +187,7 @@ void Match::_createInternalAndAttachedData() {
 		_queues->remove(_queues->last());
 	}
 	while (_queues->size() < _numberOfQueues) {
-		Queue* newQueue = _parentModel->getParentSimulator()->getPlugins()->newInstance<Queue>(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+		Queue* newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
 		_queues->insert(newQueue);
 		_internalDataInsert(newQueue->getName(), newQueue);
 	}

@@ -64,7 +64,7 @@ void dialogBreakpoint::on_comboBox_Type_activated(const QString &arg1) {
 	widget.comboBox_On->setVisible(!isOnTime);
 	widget.comboBox_On->setEnabled(true);
 	widget.doubleSpinBox_OnTme->setVisible(isOnTime);
-	Model* model = simulator->getModels()->current();
+	Model* model = simulator->getModelManager()->current();
 	ModelSimulation* sim = model->getSimulation();
 	widget.doubleSpinBox_OnTme->setMaximum(sim->getReplicationLength());
 	widget.doubleSpinBox_OnTme->setSingleStep(sim->getReplicationLength() / 200.0);

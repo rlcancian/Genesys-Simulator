@@ -36,10 +36,10 @@ OperatingSystem02::OperatingSystem02() {
 
 int OperatingSystem02::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	this->setDefaultTraceHandlers(genesys->getTracer());
-	genesys->getPlugins()->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
-	PluginManager* plugins = genesys->getPlugins();
+	this->setDefaultTraceHandlers(genesys->getTraceManager());
+	genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
+	Model* model = genesys->getModelManager()->newModel();
+	PluginManager* plugins = genesys->getPluginManager();
 	//
 	// CREATE Processo é criado no computador
 	//EntityType* et = plugins->newInstance<EntityType>(model, "processo");
@@ -180,7 +180,7 @@ int OperatingSystem02::main(int argc, char** argv) {
 	sim->setNumberOfReplications(30);
 	sim->setPauseOnReplication(true);
 	// AJUSTA NÍVEL DE TRACE
-	genesys->getTracer()->setTraceLevel(TraceManager::Level::L2_results);
+	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L2_results);
 	// SALVA MODELO
 	model->save("./models/SistemaOperacional02.gen");
 	// EXECUTA CADA REPLICAÇÃO, RECOMEÇANDO APÓS CADA PAUSA

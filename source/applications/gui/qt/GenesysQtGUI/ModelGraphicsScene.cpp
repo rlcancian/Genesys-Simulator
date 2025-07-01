@@ -453,7 +453,7 @@ void ModelGraphicsScene::removeComponentInModel(GraphicalModelComponent* gmc) {
     // pega o componente do modelo grafico
     ModelComponent* component = gmc->getComponent();
     // pega o modelo corrente
-    Model* model = _simulator->getModels()->current();
+    Model* model = _simulator->getModelManager()->current();
     // remove o componente do modelo
     model->getComponents()->remove(component);
 
@@ -466,7 +466,7 @@ void ModelGraphicsScene::insertComponent(GraphicalModelComponent* gmc, QList<Gra
     // pega o componente do modelo grafico
     ModelComponent* component = gmc->getComponent();
     // pega o modelo corrente
-    Model* model = _simulator->getModels()->current();
+    Model* model = _simulator->getModelManager()->current();
     // adiciona o componente do modelo
     model->insert(component);
     // adiciona na lista de componentes do modelo
@@ -785,7 +785,7 @@ void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
                     if (isSrc) {
                         EntityType* entityType = isSrc->getEntityType();
                         if (entityType != nullptr)
-                            _simulator->getModels()->current()->getDataManager()->remove(entityType);
+                            _simulator->getModelManager()->current()->getDataManager()->remove(entityType);
                     }
                 }
             }
@@ -795,25 +795,25 @@ void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
     if (!components->empty()) {
         for (GraphicalModelComponent* component : *components) {
             for (ModelDataDefinition* dataInternal : *component->getInternalData()) {
-                _simulator->getModels()->current()->getDataManager()->insert(dataInternal);
+                _simulator->getModelManager()->current()->getDataManager()->insert(dataInternal);
             }
 
             for (ModelDataDefinition* dataAttached : *component->getAttachedData()) {
-                _simulator->getModels()->current()->getDataManager()->insert(dataAttached);
+                _simulator->getModelManager()->current()->getDataManager()->insert(dataAttached);
             }
 
             if (component->getEntityType() != nullptr) {
-                unsigned int size = _simulator->getModels()->current()->getDataManager()->getNumberOfDataDefinitions("EntityType");
+                unsigned int size = _simulator->getModelManager()->current()->getDataManager()->getNumberOfDataDefinitions("EntityType");
 
                 if (size == 0) {
-                    _simulator->getModels()->current()->getDataManager()->insert(component->getEntityType());
+                    _simulator->getModelManager()->current()->getDataManager()->insert(component->getEntityType());
                 }
             }
         }
     }
 
     if (loaded) {
-        std::list<ModelDataDefinition*>* entityTypes = _simulator->getModels()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
+        std::list<ModelDataDefinition*>* entityTypes = _simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
         entityTypes->clear();
     }
 }
@@ -962,7 +962,7 @@ void ModelGraphicsScene::showGrid()
 
 void ModelGraphicsScene::createDiagrams()
 {
-    Model * m = _simulator->getModels()->current();
+    Model * m = _simulator->getModelManager()->current();
     ModelDataManager* dataManager = m->getDataManager();
 
     QColor purple(128,0,128);
@@ -974,7 +974,7 @@ void ModelGraphicsScene::createDiagrams()
         for (auto it = listDataDefinitions->begin(); it != listDataDefinitions->end(); ++it) {
             ModelDataDefinition* datadef = *it;
             std::string pluginName = datadef->getName();
-            Plugin* plugin = _simulator->getPlugins()->find(pluginName);
+            Plugin* plugin = _simulator->getPluginManager()->find(pluginName);
             addGraphicalModelDataDefinition(plugin, datadef, QPointF(0, 0), grey);
         }
     }
@@ -1763,8 +1763,8 @@ void ModelGraphicsScene::arranjeModels(int direction) {
 //-------------------------
 
 bool ModelGraphicsScene::checkIgnoreEvent() {
-    if (_simulator->getModels()->current()->getSimulation()) {
-        if (_simulator->getModels()->current()->getSimulation()->isRunning()) {
+    if (_simulator->getModelManager()->current()->getSimulation()) {
+        if (_simulator->getModelManager()->current()->getSimulation()->isRunning()) {
             return true;
         } else {
             return false;
@@ -2283,7 +2283,7 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent *event) {
         if (treeItem != nullptr) {
             QColor color = treeItem->foreground(0).color(); // treeItem->textColor(0);
             QString pluginname = treeItem->whatsThis(0);
-            Plugin* plugin = _simulator->getPlugins()->find(pluginname.toStdString());
+            Plugin* plugin = _simulator->getPluginManager()->find(pluginname.toStdString());
             if (plugin != nullptr) {
                 if (plugin->getPluginInfo()->isComponent()) {
                     destroyDiagram();
@@ -2291,7 +2291,7 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent *event) {
                     event->setDropAction(Qt::IgnoreAction);
                     event->accept();
                     // create component in the model
-                    ModelComponent* component = (ModelComponent*) plugin->newInstance(_simulator->getModels()->current());
+                    ModelComponent* component = (ModelComponent*) plugin->newInstance(_simulator->getModelManager()->current());
                     // create graphically
                     addGraphicalModelComponent(plugin, component, event->scenePos(), color, true);
                     return;
@@ -2501,7 +2501,7 @@ void ModelGraphicsScene::clearAnimationsValues() {
 
 
 void ModelGraphicsScene::setCounters() {
-    Model* currentModel = _simulator->getModels()->current();
+    Model* currentModel = _simulator->getModelManager()->current();
 
     QList<ModelDataDefinition *> *counters = nullptr;
 
@@ -2523,7 +2523,7 @@ void ModelGraphicsScene::setCounters() {
 }
 
 void ModelGraphicsScene::setVariables() {
-    Model* currentModel = _simulator->getModels()->current();
+    Model* currentModel = _simulator->getModelManager()->current();
 
     QList<ModelDataDefinition *> *variables = nullptr;
 

@@ -183,7 +183,7 @@ unsigned int Buffer::_handlerForSignalDataEvent(SignalData* signalData) {
 
 
 void Buffer::_createInternalAndAttachedData() {
-	PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
+	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
 	//attached
 	if (_advanceOn == AdvanceOn::Signal) {
 		if (_attachedSignal  == nullptr) {

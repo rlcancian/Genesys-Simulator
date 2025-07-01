@@ -64,32 +64,32 @@ public: // only get
 	 * \brief getLicence
 	 * \return
 	 */
-	LicenceManager* getLicence() const;
+    LicenceManager* getLicenceManager() const;
 	/*!
 	 * \brief getPlugins
 	 * \return
 	 */
-	PluginManager* getPlugins() const;
+    PluginManager* getPluginManager() const;
 	/*!
-	 * \brief getModels
+     * \brief getModelManager
 	 * \return
 	 */
-	ModelManager* getModels() const;
+    ModelManager* getModelManager() const;
 	/*!
-	 * \brief getTracer
+     * \brief getTraceManager
 	 * \return
 	 */
-	TraceManager* getTracer() const;
+    TraceManager* getTraceManager() const;
 	/*!
-	 * \brief getParser
+     * \brief getParserManager
 	 * \return
 	 */
-	ParserManager* getParser() const;
+    ParserManager* getParserManager() const;
 	/*!
-	 * \brief getExperimenter
+     * \brief getExperimentManager
 	 * \return
 	 */
-	ExperimentManager* getExperimenter() const;
+    ExperimentManager* getExperimentManager() const;
 
 private:
 	bool _completePluginsFieldsAndTemplate();

@@ -250,7 +250,7 @@ void Search::_createInternalAndAttachedData() {
 	if (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), _saveFounRankAttribute) == nullptr) {
 		this->_attachedAttributesInsert({_saveFounRankAttribute});
 	}
-	PluginManager* plugins = _parentModel->getParentSimulator()->getPlugins();
+	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_searchInType == Search::SearchInType::QUEUE) {
 		if (_searchIn == nullptr) {
 			_searchIn = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");

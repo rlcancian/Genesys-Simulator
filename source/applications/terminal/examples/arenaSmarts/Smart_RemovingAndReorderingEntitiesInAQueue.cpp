@@ -34,11 +34,11 @@ Smart_RemovingAndReorderingEntitiesInAQueue::Smart_RemovingAndReorderingEntities
  */
 int Smart_RemovingAndReorderingEntitiesInAQueue::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-	setDefaultTraceHandlers(genesys->getTracer());
-	PluginManager* plugins = genesys->getPlugins();
+	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// create model
 
 	plugins->newInstance<Attribute>(model, "Wait_Time");

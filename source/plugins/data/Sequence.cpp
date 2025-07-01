@@ -117,7 +117,7 @@ SequenceStep::SequenceStep(Model* model, std::string stationOrLabelName, bool is
 		if (data != nullptr) {
 			station = dynamic_cast<Station*> (data);
 		} else {
-			station = model->getParentSimulator()->getPlugins()->newInstance<Station>(model, stationOrLabelName);
+			station = model->getParentSimulator()->getPluginManager()->newInstance<Station>(model, stationOrLabelName);
 		}
 		this->_station = station;
 	} else {//isLabel
@@ -126,7 +126,7 @@ SequenceStep::SequenceStep(Model* model, std::string stationOrLabelName, bool is
 		if (data != nullptr) {
 			label = dynamic_cast<Label*> (data);
 		} else {
-			label = model->getParentSimulator()->getPlugins()->newInstance<Label>(model, stationOrLabelName);
+			label = model->getParentSimulator()->getPluginManager()->newInstance<Label>(model, stationOrLabelName);
 		}
 		this->_label = label;
 	}

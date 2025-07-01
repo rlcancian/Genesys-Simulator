@@ -124,7 +124,7 @@ std::list<SourceModelComponent*>* ComponentManager::getSourceComponents() {
 std::list<ModelComponent*>* ComponentManager::getTransferInComponents() {
 	std::list<ModelComponent*>* sourcelist = new std::list<ModelComponent*>();
 	//  ModelComponent* source;
-	PluginManager* plugman = _parentModel->getParentSimulator()->getPlugins();
+	PluginManager* plugman = _parentModel->getParentSimulator()->getPluginManager();
 	Plugin* plugin;
 	for (ModelComponent* component : *_components->list()) {
 		plugin = plugman->find(component->getClassname());

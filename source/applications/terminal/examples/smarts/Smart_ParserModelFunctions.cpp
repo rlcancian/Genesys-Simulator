@@ -39,11 +39,11 @@ Smart_ParserModelFunctions::Smart_ParserModelFunctions() {
  */
 int Smart_ParserModelFunctions::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-	setDefaultTraceHandlers(genesys->getTracer());
-	PluginManager* plugins = genesys->getPlugins();
+	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// create model
 	Create* c1 = plugins->newInstance<Create>(model);
 	plugins->newInstance<Attribute>(model, "att1");
@@ -85,9 +85,9 @@ int Smart_ParserModelFunctions::main(int argc, char** argv) {
 	model->getSimulation()->setReplicationLength(5);
 	model->getSimulation()->setShowReportsAfterReplication(false);
 	model->getSimulation()->setShowReportsAfterSimulation(false);
-	genesys->getTracer()->setTraceLevel(TraceManager::Level::L9_mostDetailed);
+	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L9_mostDetailed);
 	model->check();
-	genesys->getTracer()->setTraceLevel(TraceManager::Level::L4_warning);
+	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L4_warning);
 	model->getSimulation()->start();
 	delete genesys;
 	return 0;

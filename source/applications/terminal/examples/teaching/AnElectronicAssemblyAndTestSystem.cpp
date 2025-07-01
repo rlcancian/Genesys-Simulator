@@ -33,11 +33,11 @@ AnElectronicAssemblyAndTestSystem::AnElectronicAssemblyAndTestSystem() {
 
 int AnElectronicAssemblyAndTestSystem::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	this->setDefaultTraceHandlers(genesys->getTracer());
-	genesys->getPlugins()->autoInsertPlugins("autoloadplugins.txt");
+	this->setDefaultTraceHandlers(genesys->getTraceManager());
+	genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
 	// creating the model
-	Model* model = genesys->getModels()->newModel();
-	PluginManager* plugins = genesys->getPlugins();
+	Model* model = genesys->getModelManager()->newModel();
+	PluginManager* plugins = genesys->getPluginManager();
 	ModelInfo* infos = model->getInfos();
 	infos->setName("An Electronic Assembly And Test System");
 	infos->setDescription("Example 4.1 from chapter 4 \"Modeling Basic Operations and Inputs\" of the Book \"...\"");

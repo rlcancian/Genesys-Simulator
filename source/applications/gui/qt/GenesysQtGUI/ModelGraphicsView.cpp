@@ -185,7 +185,7 @@ void ModelGraphicsView::dragEnterEvent(QDragEnterEvent *event) {
 				QTreeWidgetItem* treeItem = tree->selectedItems().at(0);
 				QString name = treeItem->whatsThis(0);
 				//std::cout << "Drop name: " << name.toStdString() << std::endl;
-				Plugin* plugin = _simulator->getPlugins()->find(name.toStdString());
+				Plugin* plugin = _simulator->getPluginManager()->find(name.toStdString());
 				if (plugin != nullptr) {
 					event->setDropAction(Qt::CopyAction);
 					event->accept();

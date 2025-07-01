@@ -41,7 +41,7 @@ bool GenSerializer::dump(std::ostream& output) {
 		get(key, fields.get());
 		auto type = fields->loadField("typename");
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
-				Plugin * plugin = _model->getParentSimulator()->getPlugins()->find(type);
+				Plugin * plugin = _model->getParentSimulator()->getPluginManager()->find(type);
 			if (plugin == nullptr) return 1;
 				if (plugin->getPluginInfo()->isComponent()) return 0;
 						_model->getTracer()->trace(linearize(fields.get()));
@@ -55,7 +55,7 @@ bool GenSerializer::dump(std::ostream& output) {
 		get(key, fields.get());
 		auto type = fields->loadField("typename");
 		if (type == "Simulator" || type == "SimulatorInfo" || type == "ModelInfo" || type == "ModelSimulation") return 0;
-				Plugin * plugin = _model->getParentSimulator()->getPlugins()->find(type);
+				Plugin * plugin = _model->getParentSimulator()->getPluginManager()->find(type);
 			if (plugin == nullptr) return 1;
 				if (!plugin->getPluginInfo()->isComponent()) return 0;
 						_model->getTracer()->trace(linearize(fields.get()));

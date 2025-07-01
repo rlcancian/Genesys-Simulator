@@ -41,13 +41,13 @@ Example_BasicOrderShipping::Example_BasicOrderShipping() {
 int Example_BasicOrderShipping::main(int argc, char** argv) {
 	// instantiate simulator
 	Simulator* genesys = new Simulator();
-	this->setDefaultTraceHandlers(genesys->getTracer());
-	genesys->getPlugins()->autoInsertPlugins("autoloadplugins.txt");
-	genesys->getTracer()->setTraceLevel(TraceManager::Level::L3_errorRecover);
-	PluginManager* plugins = genesys->getPlugins();
+	this->setDefaultTraceHandlers(genesys->getTraceManager());
+	genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
+	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L3_errorRecover);
+	PluginManager* plugins = genesys->getPluginManager();
 
 	// create model
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// model->load("model.gen")
 	model->getInfos()->setName("Basic Order Shipping");
 

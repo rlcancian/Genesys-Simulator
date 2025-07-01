@@ -34,11 +34,11 @@ Smart_Record::Smart_Record() {
  */
 int Smart_Record::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-	setDefaultTraceHandlers(genesys->getTracer());
-	PluginManager* plugins = genesys->getPlugins();
+	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// create model
 	Create *create = plugins->newInstance<Create>(model);
 	Process* process = plugins->newInstance<Process>(model);
@@ -72,7 +72,7 @@ int Smart_Record::main(int argc, char** argv) {
 	model->getSimulation()->setReplicationLength(1e3);
 	model->getSimulation()->setNumberOfReplications(30);
 	model->save("./models/Smart_Record.gen");
-	genesys->getTracer()->setTraceLevel(TraceManager::Level::L2_results);
+	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L2_results);
 	// execute the simulation
 	//do {
 	//	model->getSimulation()->step();

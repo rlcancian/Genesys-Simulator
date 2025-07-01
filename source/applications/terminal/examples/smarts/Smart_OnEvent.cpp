@@ -81,11 +81,11 @@ void Smart_OnEvent::onSimulationResumeHandler(SimulationEvent* re) {
  */
 int Smart_OnEvent::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
-	setDefaultTraceHandlers(genesys->getTracer());
-	PluginManager* plugins = genesys->getPlugins();
+	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+	setDefaultTraceHandlers(genesys->getTraceManager());
+	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
-	Model* model = genesys->getModels()->newModel();
+	Model* model = genesys->getModelManager()->newModel();
 	// create model
 	model->getTracer()->setTraceLevel(TraceManager::Level::L0_noTraces); // NO TRACES. Genesys will show anything!
 	// set event handler to the previous methods. All outputs will come from these handlers

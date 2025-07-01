@@ -58,7 +58,7 @@ SeizableItem::SeizableItem(ModelDataDefinition* resourceOrSet, std::string quant
 SeizableItem::SeizableItem(Model* model, std::string resourceName, std::string quantityExpression, SeizableItem::SelectionRule selectionRule, std::string saveAttribute, std::string index) {
     ModelDataDefinition* resource = model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), resourceName);
     if (resource == nullptr) {
-        resource = model->getParentSimulator()->getPlugins()->newInstance<Resource>(model, resourceName);
+        resource = model->getParentSimulator()->getPluginManager()->newInstance<Resource>(model, resourceName);
     }
     _seizableName = resourceName;
 
@@ -168,13 +168,13 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
                 if (_resourceOrSet == nullptr) {
                     auto model = _modeldataManager->getParentModel();
-                    _resourceOrSet = model->getParentSimulator()->getPlugins()->newInstance<Resource>(model, _seizableName);
+                    _resourceOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Resource>(model, _seizableName);
                 }
             } else if (_seizableType == SeizableItem::SeizableType::SET) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _seizableName);
                 if (_resourceOrSet == nullptr) {
                     auto model = _modeldataManager->getParentModel();
-                    _resourceOrSet = model->getParentSimulator()->getPlugins()->newInstance<Set>(model, _seizableName);
+                    _resourceOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Set>(model, _seizableName);
                 }
             } else {
                 _resourceOrSet = nullptr;

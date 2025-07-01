@@ -235,7 +235,7 @@ PluginInformation* Process::GetPluginInformation() {
 
 void Process::_createInternalAndAttachedData() {
 	if (_seize == nullptr) {
-		PluginManager* plugins = _parentModel->getParentSimulator()->getPlugins();
+		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 		// the following components are created into the "_id" model level (a submodel) and therefore will not be saved
 		_seize = plugins->newInstance<Seize>(_parentModel, getName() + ".Seize");
 		_delay = plugins->newInstance<Delay>(_parentModel, getName() + ".Delay");

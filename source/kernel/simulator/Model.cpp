@@ -41,7 +41,7 @@ Model::Model(Simulator* simulator, unsigned int level) {
 	_responses = new List<SimulationControl*>();
 	_controls = new List<SimulationControl*>();
 	// 1:1 associations (no Traits)
-	_traceManager = simulator->getTracer(); // every model starts with the same tracer, unless a specific one is set
+	_traceManager = simulator->getTraceManager(); // every model starts with the same tracer, unless a specific one is set
 	_modelInfo = new ModelInfo();	//Sampler_if* sampler = new Traits<Sampler_if>::Implementation();
 
 	_eventManager = new OnEventManager(); // should be on .h (all that does not depends on THIS)

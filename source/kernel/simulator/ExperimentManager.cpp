@@ -31,7 +31,7 @@ SimulationExperiment* ExperimentManager::newSimulationExperiment() {
 void ExperimentManager::insert(SimulationExperiment* experiment) {
 	_experiments->insert(experiment);
 	this->_currentSimulationExperiment = experiment;
-	_simulator->getTracer()->trace("Experiment successfully inserted", TraceManager::Level::L2_results);
+	_simulator->getTraceManager()->trace("Experiment successfully inserted", TraceManager::Level::L2_results);
 }
 
 void ExperimentManager::remove(SimulationExperiment* experiment) {
@@ -40,7 +40,7 @@ void ExperimentManager::remove(SimulationExperiment* experiment) {
 		_currentSimulationExperiment = this->front();
 	}
 	delete experiment; //->~SimulationExperiment();
-	_simulator->getTracer()->trace("Experiment successfully removed",TraceManager::Level::L2_results);
+	_simulator->getTraceManager()->trace("Experiment successfully removed",TraceManager::Level::L2_results);
 }
 
 unsigned int ExperimentManager::size() {
@@ -63,10 +63,10 @@ bool ExperimentManager::loadSimulationExperiment(std::string filename) {
 	bool res = false; // = experiment->load(filename);
 	if (res) {
 		this->insert(experiment);
-		_simulator->getTracer()->trace("Experiment successfully loaded",TraceManager::Level::L2_results);
+		_simulator->getTraceManager()->trace("Experiment successfully loaded",TraceManager::Level::L2_results);
 	} else {
 		delete experiment; //->~SimulationExperiment();
-		_simulator->getTracer()->trace("Experiment coud not be loaded", TraceManager::Level::L2_results);
+		_simulator->getTraceManager()->trace("Experiment coud not be loaded", TraceManager::Level::L2_results);
 	}
 	return res;
 }
