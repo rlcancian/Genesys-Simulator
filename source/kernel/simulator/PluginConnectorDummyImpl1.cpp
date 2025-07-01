@@ -19,7 +19,6 @@
 #include "../../plugins/components/Assign.h"
 #include "../../plugins/components/Batch.h"
 #include "../../plugins/components/Buffer.h"
-#include "../../plugins/components/CellularAutomataComp.h"
 #include "../../plugins/components/Clone.h"
 #include "../../plugins/components/CppForG.h"
 #include "../../plugins/components/Create.h"
@@ -31,10 +30,6 @@
 #include "../../plugins/components/DummyComponent.h"
 #include "../../plugins/components/Enter.h"
 #include "../../plugins/components/Exit.h"
-#include "../../plugins/components/FiniteStateMachine.h"
-#include "../../plugins/components/FSM_ModalModel.h"
-#include "../../plugins/components/FSM_Transition.h"
-#include "../../plugins/components/FSM_State.h"
 #include "../../plugins/components/Leave.h"
 #include "../../plugins/components/Match.h"
 #include "../../plugins/components/MarkovChain.h"
@@ -65,7 +60,6 @@
 
 // Model data definitions
 #include "../../plugins/data/CppCompiler.h"
-#include "../../plugins/data/EFSM.h"
 #include "../../plugins/data/EntityGroup.h"
 #include "../../plugins/data/Failure.h"
 #include "../../plugins/data/File.h"
@@ -262,19 +256,23 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectTransfer(const std
 
 StaticGetPluginInformation PluginConnectorDummyImpl1::_connectNetwork(const std::string fn){
     StaticGetPluginInformation GetInfo = nullptr;
-        if (fn == "cellularautomata.so")
-        GetInfo = &CellularAutomataComp::GetPluginInformation;
-    else if (fn == "efsmData.so")
+    //if (fn == "cellularautomata.so")
+    //    GetInfo = &CellularAutomataComp::GetPluginInformation;
+    //else
+    /*
+    if (fn == "efsmData.so")
         GetInfo = &ExtendedFSM::GetPluginInformation;
     else if (fn == "efsm.so")
-        GetInfo = &FiniteStateMachine::GetPluginInformation;
+        GetInfo = &OLD_FiniteStateMachine::GetPluginInformation;
     else if (fn == "fsm_state.so")
         GetInfo = &FSM_State::GetPluginInformation;
     else if (fn == "fsm_transition.so")
         GetInfo = &FSM_Transition::GetPluginInformation;
     else if (fn == "fsm_modalmodel.so")
         GetInfo = &FSM_ModalModel::GetPluginInformation;
-    else if (fn == "markovchain.so")
+    else
+    */
+    if (fn == "markovchain.so")
         GetInfo = &MarkovChain::GetPluginInformation;
 
     // boolean networks

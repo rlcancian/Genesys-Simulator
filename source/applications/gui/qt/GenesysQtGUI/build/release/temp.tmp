@@ -1,7 +1,0 @@
-# Genesys Simulation Model
-# Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=230914 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 0   ModelSimulation "" traceLevel=9 
-# Model Data Definitions
-
-# Model Components
-57  Create     "Create_1" entityType="entitytype" nexts=0 

@@ -21,7 +21,7 @@
 // Model Components
 #include "../../../../plugins/components/Create.h"
 //#include "../../../../plugins/components/ExtendedFinishStateMachine.h"
-#include "../../../../plugins/components/FiniteStateMachine.h"
+#include "../../../../plugins/components/OLD_FiniteStateMachine.h"
 #include "../../../../plugins/components/Dispose.h"
 
 Smart_ExtendedFSM::Smart_ExtendedFSM() {
@@ -38,7 +38,7 @@ int Smart_ExtendedFSM::main(int argc, char** argv) {
 	Model* model = genesys->getModels()->newModel();
 	PluginManager* plugins = genesys->getPlugins();
 	Create* create1 = plugins->newInstance<Create>(model);
-    FiniteStateMachine* efsm1 = plugins->newInstance<FiniteStateMachine>(model);
+    OLD_FiniteStateMachine* efsm1 = plugins->newInstance<OLD_FiniteStateMachine>(model);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
 	create1->getConnections()->insert(efsm1);

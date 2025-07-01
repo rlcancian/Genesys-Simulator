@@ -14,7 +14,7 @@
 #pragma once
 
 #include "GenesysShell/GenesysShell.h"
-#include "examples/smarts/Smart_SeizeDelayRelease.h"
+#include "examples/smarts/Smart_DefaultModalModel.h"
 
 template <typename T>
 struct TraitsTerminalApp {
@@ -38,8 +38,9 @@ template <> struct TraitsTerminalApp<GenesysApplication_if> {
 	//typedef Smart_Clone Application;
 	//typedef Smart_CppForG Application;
 	//typedef Smart_Delay Application;
-	//typedef Smart_Dummy Application;
-	//typedef Smart_EFSM1 Application;
+    typedef Smart_DefaultModalModel Application;
+    //typedef Smart_Dummy Application;
+    //typedef Smart_EFSM1 Application;
     //typedef Smart_EFSM2 Application;
 	//typedef Smart_Failures Application;
 	//typedef Smart_FiniteStateMachine Application;
@@ -55,7 +56,7 @@ template <> struct TraitsTerminalApp<GenesysApplication_if> {
 	//typedef Smart_ProcessSet Application;
 	//typedef Smart_Record Application;
 	//typedef Smart_RouteStation Application;
-    typedef Smart_SeizeDelayRelease Application;
+    //typedef Smart_SeizeDelayRelease Application;
 	//typedef Smart_SeizeDelayReleaseNoDataDefs Application;
 	//typedef Smart_SeizeDelayReleaseMany Application;
 	//typedef Smart_Sequence Application;

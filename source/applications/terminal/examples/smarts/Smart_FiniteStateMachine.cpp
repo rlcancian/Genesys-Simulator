@@ -20,7 +20,7 @@
 
 // Model Components
 #include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/FiniteStateMachine.h"
+#include "../../../../plugins/components/OLD_FiniteStateMachine.h"
 #include "../../../../plugins/components/Dispose.h"
 
 Smart_FiniteStateMachine::Smart_FiniteStateMachine() {
@@ -37,7 +37,7 @@ int Smart_FiniteStateMachine::main(int argc, char** argv) {
 	Model* model = genesys->getModels()->newModel();
 	PluginManager* plugins = genesys->getPlugins();
 	Create* create1 = plugins->newInstance<Create>(model);
-	FiniteStateMachine* fsm1 = plugins->newInstance<FiniteStateMachine>(model);
+	OLD_FiniteStateMachine* fsm1 = plugins->newInstance<OLD_FiniteStateMachine>(model);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
 	create1->getConnections()->insert(fsm1);
