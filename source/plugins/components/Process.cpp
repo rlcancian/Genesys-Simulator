@@ -159,15 +159,15 @@ void Process::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 }
 
 void Process::_adjustConnections() {
-	if (getConnections()->size() > 0 && getConnections()->getFrontConnection()->component != _seize) {
+	if (getConnectionManager()->size() > 0 && getConnectionManager()->getFrontConnection()->component != _seize) {
 		// chance connections so Process is connected to Seize, and Release to the one that Process was connected to
 		Connection* connection = new Connection();
-		connection->component = getConnections()->getFrontConnection()->component;
-		connection->channel.portNumber = getConnections()->getFrontConnection()->channel.portNumber;
-		getConnections()->getFrontConnection()->component = _seize;
-		getConnections()->getFrontConnection()->channel.portNumber = 0;
-		_release->getConnections()->connections()->clear();
-		_release->getConnections()->insert(connection);
+		connection->component = getConnectionManager()->getFrontConnection()->component;
+		connection->channel.portNumber = getConnectionManager()->getFrontConnection()->channel.portNumber;
+		getConnectionManager()->getFrontConnection()->component = _seize;
+		getConnectionManager()->getFrontConnection()->channel.portNumber = 0;
+		_release->getConnectionManager()->connections()->clear();
+		_release->getConnectionManager()->insert(connection);
 	}
 }
 
@@ -243,8 +243,8 @@ void Process::_createInternalAndAttachedData() {
 		_seize->setModelLevel(_id); // set level as subcomponent
 		_delay->setModelLevel(_id); // set level as subcomponent
 		_release->setModelLevel(_id); // set level as subcomponent
-		_seize->getConnections()->insert(_delay);
-		_delay->getConnections()->insert(_release);
+		_seize->getConnectionManager()->insert(_delay);
+		_delay->getConnectionManager()->insert(_release);
 		_internalDataInsert("Seize", _seize);
 		_internalDataInsert("Delay", _delay);
 		_internalDataInsert("Release", _release);

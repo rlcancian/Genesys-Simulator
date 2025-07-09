@@ -18,9 +18,9 @@
 
 class DefaultNode;
 
-class NodeTrasition {
+class DefaultNodeTransition {
 public:
-    NodeTrasition(DefaultNode* source,DefaultNode* destination) {
+    DefaultNodeTransition(DefaultNode* source,DefaultNode* destination) {
         _source = source;
         _destination = destination;
     }
@@ -72,12 +72,12 @@ private: /// Attributes that should be loaded or saved with this component (Pers
 
 	/// Default values for the attributes. Used on initing, loading and saving
 	const struct DEFAULT_VALUES {
-		const std::string someString = "Test";
-		const unsigned int someUint = 1;
+        //const std::string someString = "Test";
+        //const unsigned int someUint = 1;
 	} DEFAULT;
-	std::string _someString = DEFAULT.someString;
-	unsigned int _someUint = DEFAULT.someUint;
-    List<NodeTrasition*>* _transitions = new List<NodeTrasition*>();
+    //std::string _someString = DEFAULT.someString;
+    //unsigned int _someUint = DEFAULT.someUint;
+    List<DefaultNodeTransition*>* _transitions = new List<DefaultNodeTransition*>();
 
 private: /// internal DataElements (Composition)
     //DummyElement* _internalDataDefinition = nullptr;

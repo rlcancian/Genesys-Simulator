@@ -114,8 +114,8 @@ bool Simulator::_completePluginsFieldsAndTemplate() {
 					if (info->isComponent()) {
 						comp = dynamic_cast<ModelComponent*> (plugin->loadNew(tempModel, fields.get()));
 						comp->setName("name");
-						while (comp->getConnections()->size() < info->getMinimumOutputs()) {
-							comp->getConnections()->insert(comp);
+						while (comp->getConnectionManager()->size() < info->getMinimumOutputs()) {
+							comp->getConnectionManager()->insert(comp);
 						}
 						fields->clear();
 						comp->SaveInstance(fields.get(), comp);

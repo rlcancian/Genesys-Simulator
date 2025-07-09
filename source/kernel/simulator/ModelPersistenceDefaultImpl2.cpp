@@ -86,7 +86,7 @@ bool ModelPersistenceDefaultImpl2::save(std::string filename) {
 	// gather model components
 	_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing components:");
 	Util::IncIndent();
-	for (ModelComponent* component : *_model->getComponents()) {
+	for (ModelComponent* component : *_model->getComponentManager()) {
 		if (component->getLevel() == 0) {
 			fields->clear();
 			component->SaveInstance(fields.get(), component);
@@ -189,7 +189,7 @@ bool ModelPersistenceDefaultImpl2::load(std::string filename) {
 
 	// after all components have been loaded, connect them at the toplevel
 	if (ok) {
-		ComponentManager* cm = _model->getComponents();
+		ComponentManager* cm = _model->getComponentManager();
 		_model->getTracer()->trace("Connecting loaded components");
 		Util::IncIndent();
 		for (auto& fields : componentFields) {
@@ -215,7 +215,7 @@ bool ModelPersistenceDefaultImpl2::load(std::string filename) {
 				// target port
 				unsigned short nextPort = fields->loadField("nextinputPortNumber" + Util::StrIndex(i), 0);
 				// connect
-				component->getConnections()->insert(nextComponent, nextPort);
+				component->getConnectionManager()->insert(nextComponent, nextPort);
 				_model->getTracer()->trace(component->getName() + "<" + std::to_string(i) + ">" + " --> " + nextComponent->getName() + "<" + std::to_string(nextPort) + ">");
 			}
 		}

@@ -45,7 +45,7 @@ ModelComponent* Access::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Access::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	traceSimulation(this, "I'm just a dummy model and I'll just send the entity forward");
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 bool Access::_loadInstance(PersistenceRecord *fields) {

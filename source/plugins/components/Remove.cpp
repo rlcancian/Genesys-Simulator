@@ -126,7 +126,7 @@ void Remove::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 				//queue->removeElement(waiting); // will remove later, on other loop
 				Entity* removedEntity = waiting->getEntity();
 				traceSimulation(this, TraceManager::Level::L8_detailed, "Entity \"" + removedEntity->getName() + "\" was removed from queue \"" + queue->getName() + "\" at rank "+std::to_string(rank));
-				_parentModel->sendEntityToComponent(removedEntity, this->getConnections()->getConnectionAtPort(1)); // port 1 is the removed entities output
+				_parentModel->sendEntityToComponent(removedEntity, this->getConnectionManager()->getConnectionAtPort(1)); // port 1 is the removed entities output
 			} else {
 				traceSimulation(this, TraceManager::Level::L8_detailed, "Could not remove entity from queue \"" + queue->getName() + "\" at rank " + std::to_string(rank));
 			}
@@ -141,7 +141,7 @@ void Remove::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_removeFromType == RemoveFromType::ENTITYGROUP) {
 		//@TODO
 	}
-	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 bool Remove::_loadInstance(PersistenceRecord *fields) {

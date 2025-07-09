@@ -57,7 +57,7 @@ bool CppSerializer::dump(std::ostream& output) {
 		datadefs.insert(klass);
 		includes.insert("plugins/data/" + klass + ".h");
 	}
-	for (auto& comp : *_model->getComponents()->getAllComponents()) {
+	for (auto& comp : *_model->getComponentManager()->getAllComponents()) {
 		if (!typenames.count(comp->getClassname())) continue;
 		components.insert(comp->getClassname());
 		includes.insert("plugins/components/" + comp->getClassname() + ".h");
@@ -90,7 +90,7 @@ bool CppSerializer::dump(std::ostream& output) {
 	output << indent(1) << "\n";
 
 	output << indent(1) << "// connect model components\n";
-	ComponentManager* cm = _model->getComponents();
+	ComponentManager* cm = _model->getComponentManager();
 	for (auto& var : parts) {
 		std::string type = var->loadField("typename");
 		if (!components.count(type)) continue;

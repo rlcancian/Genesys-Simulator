@@ -135,7 +135,7 @@ void Write::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (this->_writeToType == Write::WriteToType::FILE) { // file is kept open during replication (//@TODO: whould need to intercept end of simulation event
 		_savefile.close();
 	}
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 void Write::_initBetweenReplications() {

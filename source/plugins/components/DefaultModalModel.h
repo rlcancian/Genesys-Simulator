@@ -24,7 +24,11 @@ public: /// constructors
     virtual ~    DefaultModalModel() = default;
 
 public: /// new public user methods for this component
-	// ...
+    virtual void addNode(DefaultNode* node);
+    virtual void removeNode(DefaultNode* node);
+    virtual void addTransition(DefaultNodeTransition* transition);
+    virtual void removeTransition(DefaultNodeTransition* transition);
+    // ...
 
 public: /// virtual public methods
 	virtual std::string show();
@@ -66,6 +70,7 @@ private: /// Attributes that should be loaded or saved with this component (Pers
 
 private: /// internal COMPONENTS (since it's a modal model / network) (Composition)
     List<DefaultNode*>* _nodes = new List<DefaultNode*>();
+    List<DefaultNodeTransition*>* _transitions = new List<DefaultNodeTransition*>();
 
 private: /// internal DataElements (Composition)
     // ...

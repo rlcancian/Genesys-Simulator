@@ -110,7 +110,7 @@ void Match::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 					queue->removeElement(waiting);
 					// @TODO: Actualize STATISTICS about queue/wait time
 					waitingEntity = waiting->getEntity();
-					_parentModel->sendEntityToComponent(waitingEntity, this->getConnections()->getFrontConnection(), 0.0);
+					_parentModel->sendEntityToComponent(waitingEntity, this->getConnectionManager()->getFrontConnection(), 0.0);
 				}
 			}
 		}

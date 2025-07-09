@@ -147,7 +147,7 @@ void DiffEquations::_onDispatchEvent(Entity* entity, unsigned int inputPortNumbe
 	} catch (const std::exception& e) {
 
 	}
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 

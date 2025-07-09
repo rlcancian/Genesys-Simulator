@@ -116,7 +116,7 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		entity->setAttributeValue("Entity.Total" + allocationCategory + "Time", totalWaitTime + waitTime, attribIndex, true);
 	}
 	double delayEndTime = _parentModel->getSimulation()->getSimulatedTime() + waitTime;
-	Event* newEvent = new Event(delayEndTime, entity, this->getConnections()->getFrontConnection());
+	Event* newEvent = new Event(delayEndTime, entity, this->getConnectionManager()->getFrontConnection());
 	_parentModel->getFutureEvents()->insert(newEvent);
 	traceSimulation(this, "End of delay of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " scheduled to time " + std::to_string(delayEndTime) + Util::StrTimeUnitShort(stu) + " (wait time " + std::to_string(waitTime) + Util::StrTimeUnitShort(stu) + ") // " + _delayExpression+ " "+Util::StrTimeUnitShort(_delayTimeUnit));
 }

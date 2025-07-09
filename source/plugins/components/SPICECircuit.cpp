@@ -112,7 +112,7 @@ void SPICECircuit::BuildCircuit(std::string description, unsigned int id, std::v
 void SPICECircuit::UpdateConnections() {
 	build();
 
-	for (auto [pin, connection] : *getConnections()->connections()) {
+	for (auto [pin, connection] : *getConnectionManager()->connections()) {
 		pins[pin] = static_cast<SPICENode*>(connection->component)->getNodeName();
 
 		if (!plain_circuit) *spice_instance = "x"+spice_name+std::to_string(id)+" ";
@@ -1134,5 +1134,5 @@ void SPICECircuit::_saveInstance(PersistenceRecord *fields, bool saveDefaultValu
 
 void SPICECircuit::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_parentModel->getTracer()->traceSimulation(this, "I'm just an electric circuit model and I'm not event oriented.");
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }

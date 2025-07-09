@@ -394,7 +394,7 @@ void Resource::_createInternalAndAttachedData() {
         _internalDataInsert("CostIdle", _counterTotalCostIdle);
         _counterTotalCostPerUse = new Counter(_parentModel, getName() + "." + "CostPerUse", this);
         _internalDataInsert("CostPerUse", _counterTotalCostPerUse);
-        _parentModel->getOnEvents()->addOnReplicationEndHandler(this, &Resource::_onReplicationEnd);
+        _parentModel->getOnEventManager()->addOnReplicationEndHandler(this, &Resource::_onReplicationEnd);
     } else if (!_reportStatistics && _cstatTimeSeized != nullptr) {
         _internalDataClear();
     }

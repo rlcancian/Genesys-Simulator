@@ -49,7 +49,7 @@ void Separate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	unsigned int entityGroupId = entity->getAttributeValue("Entity.Group"); //This attribute refers to the Batch internal modeldatum EntityGroup (which may contain several groups --map--
 	if (entityGroupId == 0) {
 		traceSimulation(this, TraceManager::Level::L7_internal, "Entity is not grouped. Nothing to do");
-		this->_parentModel->sendEntityToComponent(entity, getConnections()->getFrontConnection());
+		this->_parentModel->sendEntityToComponent(entity, getConnectionManager()->getFrontConnection());
 	} else {
 		EntityGroup* entityGroup = dynamic_cast<EntityGroup*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), entityGroupId));
 		if (entityGroup == nullptr) {

@@ -212,7 +212,7 @@ void Release::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			entity->setAttributeValue("Entity.Total"+allocationCategory+"Time", entity->getAttributeValue("Entity.Total"+allocationCategory+"Time") + timeSeized, attribIndex, true);			
 		}
 	}
-	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 void Release::_initBetweenReplications() {

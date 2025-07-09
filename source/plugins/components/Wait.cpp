@@ -166,7 +166,7 @@ bool Wait::_check(std::string * errorMessage) {
 	if (_waitType == Wait::WaitType::ScanForCondition) {
 		resultAll = _parentModel->checkExpression(_condition, "Condition", errorMessage);
 		if (resultAll) { // add handler to event AfterProcessEvent
-			_parentModel->getOnEvents()->addOnAfterProcessEventHandler(this, &Wait::_handlerForAfterProcessEventEvent);
+			_parentModel->getOnEventManager()->addOnAfterProcessEventHandler(this, &Wait::_handlerForAfterProcessEventEvent);
 		}
 	}
 	return resultAll;
@@ -209,7 +209,7 @@ unsigned int Wait::_handlerForSignalDataEvent(SignalData* signalData) {
 		Entity* ent = w->getEntity();
 		std::string message = getName() + " received " + signalData->getName() + ". " + ent->getName() + " removed from " + _queue->getName() + ". " + std::to_string(freed) + " freed, " + std::to_string(signalData->remainsToLimit()) + " remaining";
 		_parentModel->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, _parentModel->getSimulation()->getSimulatedTime(), ent, this, message);
-		_parentModel->sendEntityToComponent(w->getEntity(), w->geComponent()->getConnections()->getFrontConnection());
+		_parentModel->sendEntityToComponent(w->getEntity(), w->geComponent()->getConnectionManager()->getFrontConnection());
 	}
 	return freed;
 }
@@ -225,7 +225,7 @@ void Wait::_handlerForAfterProcessEventEvent(SimulationEvent* event) {
 			Entity* ent = w->getEntity();
 			std::string message = getName() + " evaluated condition " + _condition + " as true. " + ent->getName() + " removed from " + _queue->getName();
 			_parentModel->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, _parentModel->getSimulation()->getSimulatedTime(), ent, this, message);
-			_parentModel->sendEntityToComponent(w->getEntity(), w->geComponent()->getConnections()->getFrontConnection());
+			_parentModel->sendEntityToComponent(w->getEntity(), w->geComponent()->getConnectionManager()->getFrontConnection());
 		}
 
 	}

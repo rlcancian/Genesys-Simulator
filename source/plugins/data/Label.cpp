@@ -98,7 +98,7 @@ bool Label::_loadInstance(PersistenceRecord *fields) {
 		try {
 			this->_label = fields->loadField("label", "");
 			std::string componentName = fields->loadField("enteringComponentName", "");
-			ModelComponent* comp = _parentModel->getComponents()->find(componentName);
+			ModelComponent* comp = _parentModel->getComponentManager()->find(componentName);
 			this->_enteringLabelComponent = comp;
 		} catch (...) {
 		}

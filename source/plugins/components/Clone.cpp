@@ -91,12 +91,12 @@ void Clone::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			newEntity->setAttributeValue(attribName, value);
 		}
 		traceSimulation(this, TraceManager::Level::L8_detailed, "Entity \"" + entity->getName() + "\" was cloned to " + newEntity->getName());
-		_parentModel->sendEntityToComponent(newEntity, this->getConnections()->getConnectionAtPort(1)); // port 1 is the clone output port
+		_parentModel->sendEntityToComponent(newEntity, this->getConnectionManager()->getConnectionAtPort(1)); // port 1 is the clone output port
 	}
 	if (_reportStatistics) {
 		_counter->incCountValue(numClones);
 	}
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection()); // port 0 is the original output
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection()); // port 0 is the original output
 }
 
 bool Clone::_loadInstance(PersistenceRecord *fields) {

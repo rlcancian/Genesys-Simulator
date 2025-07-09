@@ -100,7 +100,7 @@ void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		traceSimulation(this, "Let \"" + let->getDestination() + "\" = " + Util::StrTruncIfInt(std::to_string(value)) + "  // " + let->getExpression());
 	}
 
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 //void Assign::_initBetweenReplications() {}

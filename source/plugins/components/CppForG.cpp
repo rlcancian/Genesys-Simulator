@@ -113,7 +113,7 @@ void CppForG::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	} catch (const std::exception& e) {
 
 	}
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 bool CppForG::_loadInstance(PersistenceRecord *fields) {

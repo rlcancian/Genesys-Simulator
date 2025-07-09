@@ -21,12 +21,12 @@
 //
 
 ModelComponent::ModelComponent(Model* model, std::string componentTypename, std::string name) : ModelDataDefinition(model, componentTypename, name, false) {
-	model->getComponents()->insert(this);
+	model->getComponentManager()->insert(this);
 	// ADD_PROPERTY(std::string, ModelComponent, "Description", getDescription, setDescription)
 }
 
 ModelComponent::~ModelComponent() {
-    _parentModel->getComponents()->remove(this);
+    _parentModel->getComponentManager()->remove(this);
 }
 
 
@@ -34,7 +34,7 @@ ModelComponent::~ModelComponent() {
 // public: //! new public user methods for this component
 //
 
-ConnectionManager* ModelComponent::getConnections() const {
+ConnectionManager* ModelComponent::getConnectionManager() const {
 	return _connections; // @TODO How to know if it changes?
 }
 

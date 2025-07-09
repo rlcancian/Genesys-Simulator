@@ -103,5 +103,5 @@ void SPICENode::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues)
 
 void SPICENode::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_parentModel->getTracer()->traceSimulation(this, "I'm just an electric Node model and I'm not event oriented.");
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }

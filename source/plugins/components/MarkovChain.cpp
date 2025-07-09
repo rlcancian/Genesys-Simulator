@@ -141,7 +141,7 @@ void MarkovChain::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 		}
 		traceSimulation(this, "Current state=" + std::to_string(_currentState->getValue()));
 	}
-	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 bool MarkovChain::_loadInstance(PersistenceRecord *fields) {

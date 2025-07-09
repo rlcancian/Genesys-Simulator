@@ -57,17 +57,17 @@ void ModelCheckerDefaultImpl1::_recursiveConnectedTo(PluginManager* pluginManage
 	_model->getTracer()->trace("Connected to \"" + comp->getName() + "\"");
 	Plugin* plugin = pluginManager->find(comp->getClassname());
 	assert(plugin != nullptr);
-	if (plugin->getPluginInfo()->isSink() || (plugin->getPluginInfo()->isSendTransfer() && comp->getConnections()->size() == 0)) {//(dynamic_cast<SinkModelComponent*> (comp) != nullptr) {
+	if (plugin->getPluginInfo()->isSink() || (plugin->getPluginInfo()->isSendTransfer() && comp->getConnectionManager()->size() == 0)) {//(dynamic_cast<SinkModelComponent*> (comp) != nullptr) {
 		// it is a sink OR it can send entities throught a transfer and has no nextConnections
 		*drenoFound = true;
 	} else { // it is not a sink
-		if (comp->getConnections()->size() == 0) {
+		if (comp->getConnectionManager()->size() == 0) {
 			unconnected->insert(comp);
 			_model->getTracer()->traceError("Component \"" + comp->getName() + "\" is unconnected (not a sink with no next componentes connected to)");
 			*drenoFound = false;
 		} else {
 			ModelComponent* nextComp;
-			for (std::map<unsigned int, Connection*>::iterator it = comp->getConnections()->connections()->begin(); it != comp->getConnections()->connections()->end(); it++) {
+			for (std::map<unsigned int, Connection*>::iterator it = comp->getConnectionManager()->connections()->begin(); it != comp->getConnectionManager()->connections()->end(); it++) {
 				nextComp = (*it).second->component;
 				if (visited->find(nextComp) == visited->list()->end()) { // not visited yet
 					*drenoFound = false;
@@ -96,7 +96,7 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 		List<ModelComponent*>* visited = new List<ModelComponent*>();
 		List<ModelComponent*>* unconnected = new List<ModelComponent*>();
 		ModelComponent* comp;
-		for (std::list<ModelComponent*>::iterator it = _model->getComponents()->begin(); it != _model->getComponents()->end(); it++) {
+		for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); it++) {
 			comp = (*it);
 			plugin = pluginManager->find(comp->getClassname());
 			assert(plugin != nullptr);
@@ -109,7 +109,7 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 			}
 		}
 		// check if any component remains unconnected
-		for (std::list<ModelComponent*>::iterator it = _model->getComponents()->begin(); it != _model->getComponents()->end(); it++) {
+		for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); it++) {
 			comp = (*it);
 			if (visited->find(comp) == visited->list()->end()) { //not found
 				resultAll = false;
@@ -132,7 +132,7 @@ bool ModelCheckerDefaultImpl1::checkSymbols() {
 		Util::IncIndent();
 		{
 			//List<ModelComponent*>* components = _model->getComponents();
-			for (std::list<ModelComponent*>::iterator it = _model->getComponents()->begin(); it != _model->getComponents()->end(); it++) {
+			for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); it++) {
 				res &= (*it)->Check((*it));
 			}
 		}
@@ -200,12 +200,12 @@ bool ModelCheckerDefaultImpl1::checkLimits() {
 	_model->getTracer()->trace("Checking model limits", TraceManager::Level::L7_internal);
 	Util::IncIndent();
 	{
-		value = _model->getComponents()->getNumberOfComponents();
+		value = _model->getComponentManager()->getNumberOfComponents();
 		limit = licence->getModelComponentsLimit();
 		res &= value <= limit;
 		_model->getTracer()->trace("Model has " + std::to_string(value) + "/" + std::to_string(limit) + " components");
 		if (!res) {
-			text = "Model has " + std::to_string(_model->getComponents()->getNumberOfComponents()) + " components, exceding the limit of " + std::to_string(licence->getModelComponentsLimit()) + " components imposed by the current activation code";
+			text = "Model has " + std::to_string(_model->getComponentManager()->getNumberOfComponents()) + " components, exceding the limit of " + std::to_string(licence->getModelComponentsLimit()) + " components imposed by the current activation code";
 			//_model->getTraceManager()->trace(TraceManager::Level::errors, text);
 		} else {
 			value = _model->getDataManager()->getNumberOfDataDefinitions();
@@ -256,7 +256,7 @@ bool ModelCheckerDefaultImpl1::checkOrphaned() {
 			}
 		}
 		// ... by someone (ModelComponent).
-		for (ModelComponent* component : *_model->getComponents()->getAllComponents()) {
+		for (ModelComponent* component : *_model->getComponentManager()->getAllComponents()) {
 			for (std::pair<std::string, ModelDataDefinition*> pairInternal : *component->getInternalData()) {
 				mdd = pairInternal.second;
 				orphaned->remove(mdd);

@@ -251,7 +251,7 @@ void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		} else {
 			traceSimulation(this, "Entity \"" + representativeEnt->getName() + "\" id=" + std::to_string(groupIdKey) + " now represented the removed entities: " + txtEntsInGroup, TraceManager::Level::L7_internal);
 		}
-		this->_parentModel->sendEntityToComponent(representativeEnt, this->getConnections()->getFrontConnection());
+		this->_parentModel->sendEntityToComponent(representativeEnt, this->getConnectionManager()->getFrontConnection());
 	} else {
 		if (_rule == Batch::Rule::Any) {
 			traceSimulation(this, "Entity \"" + entity->getName() + "\" is waiting in the queue " + _queue->getName());

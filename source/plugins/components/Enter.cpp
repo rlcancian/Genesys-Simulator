@@ -76,7 +76,7 @@ void Enter::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_reportStatistics)
 		_numberIn->incCountValue();
 	_station->enter(entity);
-	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 bool Enter::_loadInstance(PersistenceRecord *fields) {

@@ -205,7 +205,7 @@ void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 		}
 	}
 	entity->setAttributeValue(_saveAttribute, bestStation->getId());
-	this->_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 bool PickStation::_loadInstance(PersistenceRecord *fields) {

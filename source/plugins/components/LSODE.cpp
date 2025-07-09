@@ -197,7 +197,7 @@ void LSODE::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_filename != "") {
 		savefile.close();
 	}
-	_parentModel->sendEntityToComponent(entity, getConnections()->getFrontConnection());
+	_parentModel->sendEntityToComponent(entity, getConnectionManager()->getFrontConnection());
 }
 
 bool LSODE::_loadInstance(PersistenceRecord *fields) {

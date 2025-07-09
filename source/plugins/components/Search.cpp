@@ -188,9 +188,9 @@ void Search::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	} else if (_searchInType == SearchInType::ENTITYGROUP) {
 	}
 	if (found) {
-		_parentModel->sendEntityToComponent(entity, this->getConnections()->getConnectionAtPort(1));
+		_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getConnectionAtPort(1));
 	} else {
-		_parentModel->sendEntityToComponent(entity, this->getConnections()->getConnectionAtPort(0));
+		_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getConnectionAtPort(0));
 	}
 }
 

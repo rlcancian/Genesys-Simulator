@@ -73,7 +73,7 @@ void Leave::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_reportStatistics)
 		_numberIn->incCountValue();
 	_station->leave(entity);
-	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 //void Leave::_initBetweenReplications() {}

@@ -101,7 +101,7 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	}
 	if (_reportStatistics)
 		_numberOut->incCountValue();
-	_parentModel->sendEntityToComponent(entity, this->getConnections()->getFrontConnection());
+	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 PluginInformation* Create::GetPluginInformation() {
