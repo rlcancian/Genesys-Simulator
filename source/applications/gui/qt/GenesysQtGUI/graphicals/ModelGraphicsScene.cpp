@@ -162,7 +162,7 @@ GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* 
     // adiciona na lista de componentes do modelo;
     _graphicalModelComponents->append(graphComp);
 
-    // adiciona o objeto criado na lista de componentes graficos para nao perder a referencia
+    // adiciona o objeto criado na lista de componentes graficos para nao perder a referencia   // TODO: WHY??
     _allGraphicalModelComponents.append(graphComp);
 
     // Seta o EntityType
@@ -198,10 +198,10 @@ GraphicalConnection* ModelGraphicsScene::addGraphicalConnection(GraphicalCompone
 
     _graphicalConnections->append(graphicconnection);
 
-    //para limpar referencias das conexoes no final
+    //para limpar referencias das conexoes no final  // TODO: Quem fez isso??
     _allGraphicalConnections.append(graphicconnection);
 
-    //notify graphical model change
+    //notify graphical model change // TODO: Quem fez isso?
     if (notify) {
         GraphicalModelEvent::EventType eventType = GraphicalModelEvent::EventType::CREATE;
         GraphicalModelEvent::EventObjectType eventObjectType = GraphicalModelEvent::EventObjectType::CONNECTION;

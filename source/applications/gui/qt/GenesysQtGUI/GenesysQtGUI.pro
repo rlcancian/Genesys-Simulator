@@ -220,6 +220,9 @@ SOURCES += \
     ../../../terminal/examples/teaching/OperatingSystem03.cpp \
     ../../../terminal/examples/teaching/Rectifier.cpp \
     codeeditor/CodeEditor.cpp \
+    mainwindow_controller_on.cpp \
+    mainwindow_scene.cpp \
+    mainwindow_simulator.cpp \
     propertyeditor/DataComponentProperty.cpp \
     graphicals/ModelGraphicsScene.cpp \
     graphicals/ModelGraphicsView.cpp \

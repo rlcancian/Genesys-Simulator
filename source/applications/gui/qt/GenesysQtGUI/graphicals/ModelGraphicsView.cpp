@@ -159,7 +159,7 @@ void ModelGraphicsView::notifySceneWheelOutEventHandler() {
 
 void ModelGraphicsView::notifySceneGraphicalModelEventHandler(GraphicalModelEvent* modelGraphicsEvent) {
 	if (_notifyGraphicalModelEventHandlers)
-		this->_sceneGraphicalModelEventHandler(modelGraphicsEvent);
+        this->_sceneGraphicalModelEventHandler(modelGraphicsEvent);
     /// @todo actualize property editor?
 }
 
