@@ -29,8 +29,8 @@
  * Created on 15 de fevereiro de 2022, 21:12
  */
 
-#include "ModelGraphicsView.h"
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsView.h"
+#include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "TraitsGUI.h"
 #include <Qt>

@@ -1,5 +1,5 @@
 #include "GroupUndoCommand.h"
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 
 GroupUndoCommand::GroupUndoCommand(QList<GraphicalModelComponent *> graphicalComponents, ModelGraphicsScene *scene, QUndoCommand *parent)
     :QUndoCommand(parent), _myGraphicalComponents(graphicalComponents), _group(new QGraphicsItemGroup()), _myGraphicsScene(scene){

@@ -2,7 +2,7 @@
 #define ADDUNDOCOMMAND_H
 
 #include <QUndoCommand>
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalModelComponent.h"
 

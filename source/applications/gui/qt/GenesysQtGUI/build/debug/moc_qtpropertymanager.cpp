@@ -7,7 +7,7 @@
 *****************************************************************************/
 
 #include <memory>
-#include "../../qtpropertybrowser/qtpropertymanager.h"
+#include "../../propertyeditor/qtpropertybrowser/qtpropertymanager.h"
 #include <QtCore/qmetatype.h>
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'qtpropertymanager.h' doesn't include <QObject>."

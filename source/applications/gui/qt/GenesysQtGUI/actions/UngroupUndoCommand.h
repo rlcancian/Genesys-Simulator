@@ -3,7 +3,7 @@
 
 
 #include <QUndoCommand>
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 
 class UngroupUndoCommand: public QUndoCommand {
 public:

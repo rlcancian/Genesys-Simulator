@@ -219,14 +219,14 @@ SOURCES += \
     ../../../terminal/examples/teaching/OperatingSystem02.cpp \
     ../../../terminal/examples/teaching/OperatingSystem03.cpp \
     ../../../terminal/examples/teaching/Rectifier.cpp \
-    CodeEditor.cpp \
-    DataComponentProperty.cpp \
-    ModelGraphicsScene.cpp \
-    ModelGraphicsView.cpp \
-    ObjectPropertyBrowser.cpp \
-    PropertyEditor.cpp \
-    DataComponentEditor.cpp \
-    ComboBoxEnum.cpp \
+    codeeditor/CodeEditor.cpp \
+    propertyeditor/DataComponentProperty.cpp \
+    graphicals/ModelGraphicsScene.cpp \
+    graphicals/ModelGraphicsView.cpp \
+    propertyeditor/ObjectPropertyBrowser.cpp \
+    propertyeditor/PropertyEditor.cpp \
+    propertyeditor/DataComponentEditor.cpp \
+    propertyeditor/ComboBoxEnum.cpp \
     actions/AddUndoCommand.cpp \
     actions/DeleteUndoCommand.cpp \
     actions/GroupUndoCommand.cpp \
@@ -257,14 +257,14 @@ SOURCES += \
     graphicals/GraphicalModelDataDefinition.cpp \
     main.cpp \
     mainwindow.cpp \
-    qtpropertybrowser/qtbuttonpropertybrowser.cpp \
-    qtpropertybrowser/qteditorfactory.cpp \
-    qtpropertybrowser/qtgroupboxpropertybrowser.cpp \
-    qtpropertybrowser/qtpropertybrowser.cpp \
-    qtpropertybrowser/qtpropertybrowserutils.cpp \
-    qtpropertybrowser/qtpropertymanager.cpp \
-    qtpropertybrowser/qttreepropertybrowser.cpp \
-    qtpropertybrowser/qtvariantproperty.cpp
+    propertyeditor/qtpropertybrowser/qtbuttonpropertybrowser.cpp \
+    propertyeditor/qtpropertybrowser/qteditorfactory.cpp \
+    propertyeditor/qtpropertybrowser/qtgroupboxpropertybrowser.cpp \
+    propertyeditor/qtpropertybrowser/qtpropertybrowser.cpp \
+    propertyeditor/qtpropertybrowser/qtpropertybrowserutils.cpp \
+    propertyeditor/qtpropertybrowser/qtpropertymanager.cpp \
+    propertyeditor/qtpropertybrowser/qttreepropertybrowser.cpp \
+    propertyeditor/qtpropertybrowser/qtvariantproperty.cpp
 
 HEADERS += \
     ../../../../kernel/TraitsKernel.h \
@@ -507,15 +507,15 @@ HEADERS += \
     ../../../terminal/examples/teaching/OperatingSystem02.h \
     ../../../terminal/examples/teaching/OperatingSystem03.h \
     ../../../terminal/examples/teaching/Rectifier.h \
-    CodeEditor.h \
-    LineNumberArea.h \
-    ModelGraphicsScene.h \
-    ModelGraphicsView.h \
-    ObjectPropertyBrowser.h \
-    PropertyEditor.h \
-    DataComponentProperty.h \
-    DataComponentEditor.h \
-    ComboBoxEnum.h \
+    codeeditor/CodeEditor.h \
+    codeeditor/LineNumberArea.h \
+    graphicals/ModelGraphicsScene.h \
+    graphicals/ModelGraphicsView.h \
+    propertyeditor/ObjectPropertyBrowser.h \
+    propertyeditor/PropertyEditor.h \
+    propertyeditor/DataComponentProperty.h \
+    propertyeditor/DataComponentEditor.h \
+    propertyeditor/ComboBoxEnum.h \
     TraitsGUI.h \
     UtilGUI.h \
     actions/AddUndoCommand.h \
@@ -547,63 +547,63 @@ HEADERS += \
     graphicals/GraphicalModelComponent.h \
     graphicals/GraphicalModelDataDefinition.h \
     mainwindow.h \
-    qtpropertybrowser/QtAbstractEditorFactoryBase \
-    qtpropertybrowser/QtAbstractPropertyBrowser \
-    qtpropertybrowser/QtAbstractPropertyManager \
-    qtpropertybrowser/QtBoolPropertyManager \
-    qtpropertybrowser/QtBrowserItem \
-    qtpropertybrowser/QtButtonPropertyBrowser \
-    qtpropertybrowser/QtCharEditorFactory \
-    qtpropertybrowser/QtCharPropertyManager \
-    qtpropertybrowser/QtCheckBoxFactory \
-    qtpropertybrowser/QtColorEditorFactory \
-    qtpropertybrowser/QtColorPropertyManager \
-    qtpropertybrowser/QtCursorEditorFactory \
-    qtpropertybrowser/QtCursorPropertyManager \
-    qtpropertybrowser/QtDateEditFactory \
-    qtpropertybrowser/QtDatePropertyManager \
-    qtpropertybrowser/QtDateTimeEditFactory \
-    qtpropertybrowser/QtDateTimePropertyManager \
-    qtpropertybrowser/QtDoublePropertyManager \
-    qtpropertybrowser/QtDoubleSpinBoxFactory \
-    qtpropertybrowser/QtEnumEditorFactory \
-    qtpropertybrowser/QtEnumPropertyManager \
-    qtpropertybrowser/QtFlagPropertyManager \
-    qtpropertybrowser/QtFontEditorFactory \
-    qtpropertybrowser/QtFontPropertyManager \
-    qtpropertybrowser/QtGroupBoxPropertyBrowser \
-    qtpropertybrowser/QtGroupPropertyManager \
-    qtpropertybrowser/QtIntPropertyManager \
-    qtpropertybrowser/QtKeySequenceEditorFactory \
-    qtpropertybrowser/QtKeySequencePropertyManager \
-    qtpropertybrowser/QtLineEditFactory \
-    qtpropertybrowser/QtLocalePropertyManager \
-    qtpropertybrowser/QtPointFPropertyManager \
-    qtpropertybrowser/QtPointPropertyManager \
-    qtpropertybrowser/QtProperty \
-    qtpropertybrowser/QtRectFPropertyManager \
-    qtpropertybrowser/QtRectPropertyManager \
-    qtpropertybrowser/QtScrollBarFactory \
-    qtpropertybrowser/QtSizeFPropertyManager \
-    qtpropertybrowser/QtSizePolicyPropertyManager \
-    qtpropertybrowser/QtSizePropertyManager \
-    qtpropertybrowser/QtSliderFactory \
-    qtpropertybrowser/QtSpinBoxFactory \
-    qtpropertybrowser/QtStringPropertyManager \
-    qtpropertybrowser/QtTimeEditFactory \
-    qtpropertybrowser/QtTimePropertyManager \
-    qtpropertybrowser/QtTreePropertyBrowser \
-    qtpropertybrowser/QtVariantEditorFactory \
-    qtpropertybrowser/QtVariantProperty \
-    qtpropertybrowser/QtVariantPropertyManager \
-    qtpropertybrowser/qtbuttonpropertybrowser.h \
-    qtpropertybrowser/qteditorfactory.h \
-    qtpropertybrowser/qtgroupboxpropertybrowser.h \
-    qtpropertybrowser/qtpropertybrowser.h \
-    qtpropertybrowser/qtpropertybrowserutils_p.h \
-    qtpropertybrowser/qtpropertymanager.h \
-    qtpropertybrowser/qttreepropertybrowser.h \
-    qtpropertybrowser/qtvariantproperty.h
+    propertyeditor/qtpropertybrowser/QtAbstractEditorFactoryBase \
+    propertyeditor/qtpropertybrowser/QtAbstractPropertyBrowser \
+    propertyeditor/qtpropertybrowser/QtAbstractPropertyManager \
+    propertyeditor/qtpropertybrowser/QtBoolPropertyManager \
+    propertyeditor/qtpropertybrowser/QtBrowserItem \
+    propertyeditor/qtpropertybrowser/QtButtonPropertyBrowser \
+    propertyeditor/qtpropertybrowser/QtCharEditorFactory \
+    propertyeditor/qtpropertybrowser/QtCharPropertyManager \
+    propertyeditor/qtpropertybrowser/QtCheckBoxFactory \
+    propertyeditor/qtpropertybrowser/QtColorEditorFactory \
+    propertyeditor/qtpropertybrowser/QtColorPropertyManager \
+    propertyeditor/qtpropertybrowser/QtCursorEditorFactory \
+    propertyeditor/qtpropertybrowser/QtCursorPropertyManager \
+    propertyeditor/qtpropertybrowser/QtDateEditFactory \
+    propertyeditor/qtpropertybrowser/QtDatePropertyManager \
+    propertyeditor/qtpropertybrowser/QtDateTimeEditFactory \
+    propertyeditor/qtpropertybrowser/QtDateTimePropertyManager \
+    propertyeditor/qtpropertybrowser/QtDoublePropertyManager \
+    propertyeditor/qtpropertybrowser/QtDoubleSpinBoxFactory \
+    propertyeditor/qtpropertybrowser/QtEnumEditorFactory \
+    propertyeditor/qtpropertybrowser/QtEnumPropertyManager \
+    propertyeditor/qtpropertybrowser/QtFlagPropertyManager \
+    propertyeditor/qtpropertybrowser/QtFontEditorFactory \
+    propertyeditor/qtpropertybrowser/QtFontPropertyManager \
+    propertyeditor/qtpropertybrowser/QtGroupBoxPropertyBrowser \
+    propertyeditor/qtpropertybrowser/QtGroupPropertyManager \
+    propertyeditor/qtpropertybrowser/QtIntPropertyManager \
+    propertyeditor/qtpropertybrowser/QtKeySequenceEditorFactory \
+    propertyeditor/qtpropertybrowser/QtKeySequencePropertyManager \
+    propertyeditor/qtpropertybrowser/QtLineEditFactory \
+    propertyeditor/qtpropertybrowser/QtLocalePropertyManager \
+    propertyeditor/qtpropertybrowser/QtPointFPropertyManager \
+    propertyeditor/qtpropertybrowser/QtPointPropertyManager \
+    propertyeditor/qtpropertybrowser/QtProperty \
+    propertyeditor/qtpropertybrowser/QtRectFPropertyManager \
+    propertyeditor/qtpropertybrowser/QtRectPropertyManager \
+    propertyeditor/qtpropertybrowser/QtScrollBarFactory \
+    propertyeditor/qtpropertybrowser/QtSizeFPropertyManager \
+    propertyeditor/qtpropertybrowser/QtSizePolicyPropertyManager \
+    propertyeditor/qtpropertybrowser/QtSizePropertyManager \
+    propertyeditor/qtpropertybrowser/QtSliderFactory \
+    propertyeditor/qtpropertybrowser/QtSpinBoxFactory \
+    propertyeditor/qtpropertybrowser/QtStringPropertyManager \
+    propertyeditor/qtpropertybrowser/QtTimeEditFactory \
+    propertyeditor/qtpropertybrowser/QtTimePropertyManager \
+    propertyeditor/qtpropertybrowser/QtTreePropertyBrowser \
+    propertyeditor/qtpropertybrowser/QtVariantEditorFactory \
+    propertyeditor/qtpropertybrowser/QtVariantProperty \
+    propertyeditor/qtpropertybrowser/QtVariantPropertyManager \
+    propertyeditor/qtpropertybrowser/qtbuttonpropertybrowser.h \
+    propertyeditor/qtpropertybrowser/qteditorfactory.h \
+    propertyeditor/qtpropertybrowser/qtgroupboxpropertybrowser.h \
+    propertyeditor/qtpropertybrowser/qtpropertybrowser.h \
+    propertyeditor/qtpropertybrowser/qtpropertybrowserutils_p.h \
+    propertyeditor/qtpropertybrowser/qtpropertymanager.h \
+    propertyeditor/qtpropertybrowser/qttreepropertybrowser.h \
+    propertyeditor/qtpropertybrowser/qtvariantproperty.h
 
 FORMS += \
     dialogs/DialogTimerConfigure.ui \
@@ -627,27 +627,27 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 DISTFILES += \
     ../../../../../autoloadplugins.txt \
     ../../../terminal/examples/arenaSmarts/Arrivals Element Stops Entities Arriving After a Set Time Modificado.doe \
-    qtpropertybrowser/CMakeLists.txt \
-    qtpropertybrowser/images/cursor-arrow.png \
-    qtpropertybrowser/images/cursor-busy.png \
-    qtpropertybrowser/images/cursor-closedhand.png \
-    qtpropertybrowser/images/cursor-cross.png \
-    qtpropertybrowser/images/cursor-forbidden.png \
-    qtpropertybrowser/images/cursor-hand.png \
-    qtpropertybrowser/images/cursor-hsplit.png \
-    qtpropertybrowser/images/cursor-ibeam.png \
-    qtpropertybrowser/images/cursor-openhand.png \
-    qtpropertybrowser/images/cursor-sizeall.png \
-    qtpropertybrowser/images/cursor-sizeb.png \
-    qtpropertybrowser/images/cursor-sizef.png \
-    qtpropertybrowser/images/cursor-sizeh.png \
-    qtpropertybrowser/images/cursor-sizev.png \
-    qtpropertybrowser/images/cursor-uparrow.png \
-    qtpropertybrowser/images/cursor-vsplit.png \
-    qtpropertybrowser/images/cursor-wait.png \
-    qtpropertybrowser/images/cursor-whatsthis.png
+    propertyeditor/qtpropertybrowser/CMakeLists.txt \
+    propertyeditor/qtpropertybrowser/images/cursor-arrow.png \
+    propertyeditor/qtpropertybrowser/images/cursor-busy.png \
+    propertyeditor/qtpropertybrowser/images/cursor-closedhand.png \
+    propertyeditor/qtpropertybrowser/images/cursor-cross.png \
+    propertyeditor/qtpropertybrowser/images/cursor-forbidden.png \
+    propertyeditor/qtpropertybrowser/images/cursor-hand.png \
+    propertyeditor/qtpropertybrowser/images/cursor-hsplit.png \
+    propertyeditor/qtpropertybrowser/images/cursor-ibeam.png \
+    propertyeditor/qtpropertybrowser/images/cursor-openhand.png \
+    propertyeditor/qtpropertybrowser/images/cursor-sizeall.png \
+    propertyeditor/qtpropertybrowser/images/cursor-sizeb.png \
+    propertyeditor/qtpropertybrowser/images/cursor-sizef.png \
+    propertyeditor/qtpropertybrowser/images/cursor-sizeh.png \
+    propertyeditor/qtpropertybrowser/images/cursor-sizev.png \
+    propertyeditor/qtpropertybrowser/images/cursor-uparrow.png \
+    propertyeditor/qtpropertybrowser/images/cursor-vsplit.png \
+    propertyeditor/qtpropertybrowser/images/cursor-wait.png \
+    propertyeditor/qtpropertybrowser/images/cursor-whatsthis.png
 
 RESOURCES += \
     GenesysQtGUI_resources.qrc \
-    qtpropertybrowser/qtpropertybrowser.qrc
+    propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
 

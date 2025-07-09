@@ -1,5 +1,5 @@
 #include "MoveUndoCommand.h"
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 
 MoveUndoCommand::MoveUndoCommand(QList<QGraphicsItem*> item, ModelGraphicsScene *scene, QList<QPointF> &oldPos, QList<QPointF> &newPos, QUndoCommand *parent)
     : QUndoCommand(parent), _myGraphicalItem(item), _myGraphicsScene(scene), _myOldPos(oldPos), _myNewPos(newPos) {

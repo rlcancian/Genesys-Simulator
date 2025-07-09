@@ -9,9 +9,6 @@
 #ifndef UI_MAINWINDOW_H
 #define UI_MAINWINDOW_H
 
-#include <CodeEditor.h>
-#include <ModelGraphicsView.h>
-#include <ObjectPropertyBrowser.h>
 #include <QtCore/QVariant>
 #include <QtGui/QAction>
 #include <QtGui/QIcon>
@@ -39,6 +36,9 @@
 #include <QtWidgets/QTreeWidget>
 #include <QtWidgets/QVBoxLayout>
 #include <QtWidgets/QWidget>
+#include "codeeditor/CodeEditor.h"
+#include "graphicals/ModelGraphicsView.h"
+#include "propertyeditor/ObjectPropertyBrowser.h"
 
 QT_BEGIN_NAMESPACE
 

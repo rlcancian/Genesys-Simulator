@@ -36,8 +36,8 @@
 #include <QUndoCommand>
 #include <string>
 #include <list>
-#include "ModelGraphicsScene.h"
-#include "ModelGraphicsView.h"
+#include "graphicals/ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsView.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalComponentPort.h"
 #include "graphicals/GraphicalConnection.h"
@@ -119,14 +119,14 @@ GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* 
             unsigned int maxOutputsOtherComp = otherGraphComp->getGraphicalOutputPorts().size();
 
             // verifica se ainda posso criar conexoes com aquele componente
-            if (otherGraphComp->getComponent()->getConnections()->connections()->size() < maxOutputsOtherComp) {
+            if (otherGraphComp->getComponent()->getConnectionManager()->connections()->size() < maxOutputsOtherComp) {
                 // caso tenha portas disponíveis, busca qual delas é
                 for (unsigned int numPort = 0; numPort < maxOutputsOtherComp; numPort++) {
                     // caso seja um ponteiro vazio, ele esta livre
-                    if (otherComp->getConnections()->getConnectionAtPort(numPort) == nullptr) {
+                    if (otherComp->getConnectionManager()->getConnectionAtPort(numPort) == nullptr) {
                         // create connection (both model and grapically, since model is being built
                         // model
-                        otherGraphComp->getComponent()->getConnections()->insertAtPort(numPort, new Connection({component, 0}));
+                        otherGraphComp->getComponent()->getConnectionManager()->insertAtPort(numPort, new Connection({component, 0}));
 
                         //graphically
                         GraphicalComponentPort* srcport = ((GraphicalModelComponent*) selectedItems().at(0))->getGraphicalOutputPorts().at(numPort);
@@ -148,7 +148,7 @@ GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* 
                     otherGraphComp = sourceGraphPort->graphicalComponent();
                     // create connection (both model and grapically, since model is being built (ALMOST REPEATED CODE -- REFACTOR)
                     // model
-                    otherGraphComp->getComponent()->getConnections()->insertAtPort(sourceGraphPort->portNum(), new Connection({component, 0}));
+                    otherGraphComp->getComponent()->getConnectionManager()->insertAtPort(sourceGraphPort->portNum(), new Connection({component, 0}));
                     //graphically
                     GraphicalComponentPort* destport = graphComp->getGraphicalInputPorts().at(0);
                     addGraphicalConnection(sourceGraphPort, destport, sourceGraphPort->portNum(), 0);
@@ -455,7 +455,7 @@ void ModelGraphicsScene::removeComponentInModel(GraphicalModelComponent* gmc) {
     // pega o modelo corrente
     Model* model = _simulator->getModelManager()->current();
     // remove o componente do modelo
-    model->getComponents()->remove(component);
+    model->getComponentManager()->remove(component);
 
     gmc->setEntityType(nullptr);
 }
@@ -604,7 +604,7 @@ void ModelGraphicsScene::removeGraphicalConnection(GraphicalConnection* graphica
 void ModelGraphicsScene::removeConnectionInModel(GraphicalConnection* graphicalConnection, GraphicalModelComponent *source) {
     unsigned int portNumber = graphicalConnection->getSource()->channel.portNumber;
 
-    source->getComponent()->getConnections()->removeAtPort(portNumber);
+    source->getComponent()->getConnectionManager()->removeAtPort(portNumber);
 }
 
 void ModelGraphicsScene::clearPorts(GraphicalConnection* connection, GraphicalModelComponent *source, GraphicalModelComponent *destination) {
@@ -666,7 +666,7 @@ bool ModelGraphicsScene::connectSource(GraphicalConnection* connection, Graphica
                 // adiciona o componente grafico nessa porta
                 port->addGraphicalConnection(connection);
                 // adiciona a conexao no modelo do componente de origem
-                src->getComponent()->getConnections()->insertAtPort(port->portNum(), connection->getDestination());
+                src->getComponent()->getConnectionManager()->insertAtPort(port->portNum(), connection->getDestination());
                 break;
             }
         }

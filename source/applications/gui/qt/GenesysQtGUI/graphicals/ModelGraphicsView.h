@@ -37,14 +37,14 @@
 #include <QColor>
 #include <QStyle>
 #include <QGraphicsSceneMouseEvent>
-#include "ModelGraphicsScene.h"
-#include "DataComponentProperty.h"
-#include "DataComponentEditor.h"
-#include "ComboBoxEnum.h"
+#include "graphicals/ModelGraphicsScene.h"
+#include "propertyeditor/DataComponentProperty.h"
+#include "propertyeditor/DataComponentEditor.h"
+#include "propertyeditor/ComboBoxEnum.h"
 #include "../../../../kernel/simulator/ModelComponent.h"
 #include "../../../../kernel/simulator/Simulator.h"
 #include "../../../../kernel/simulator/PropertyGenesys.h"
-#include "../../../../kernel/simulator/Plugin.h"
+//#include "../../../../kernel/simulator/Plugin.h"
 
 class ModelGraphicsView : public QGraphicsView {
 public:

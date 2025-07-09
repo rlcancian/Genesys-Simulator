@@ -2143,17 +2143,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <customwidget>
    <class>ModelGraphicsView</class>
    <extends>QGraphicsView</extends>
-   <header location="global">ModelGraphicsView.h</header>
+   <header>graphicals/ModelGraphicsView.h</header>
   </customwidget>
   <customwidget>
    <class>CodeEditor</class>
    <extends>QPlainTextEdit</extends>
-   <header location="global">CodeEditor.h</header>
+   <header>codeeditor/CodeEditor.h</header>
   </customwidget>
   <customwidget>
    <class>ObjectPropertyBrowser</class>
    <extends>QTreeView</extends>
-   <header location="global">ObjectPropertyBrowser.h</header>
+   <header>propertyeditor/ObjectPropertyBrowser.h</header>
   </customwidget>
  </customwidgets>
  <resources>

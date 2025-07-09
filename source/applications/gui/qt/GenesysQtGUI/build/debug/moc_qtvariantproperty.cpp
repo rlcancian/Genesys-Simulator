@@ -7,7 +7,7 @@
 *****************************************************************************/
 
 #include <memory>
-#include "../../qtpropertybrowser/qtvariantproperty.h"
+#include "../../propertyeditor/qtpropertybrowser/qtvariantproperty.h"
 #include <QtCore/qmetatype.h>
 #if !defined(Q_MOC_OUTPUT_REVISION)
 #error "The header file 'qtvariantproperty.h' doesn't include <QObject>."

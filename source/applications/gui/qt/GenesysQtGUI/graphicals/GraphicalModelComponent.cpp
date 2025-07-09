@@ -78,7 +78,7 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	// create input output ports
 	GraphicalComponentPort* port;
 	qreal px, py = 0;
-	unsigned int numInputPorts = std::max<unsigned int>(component->getConnections()->getCurrentInputConnectionsSize(), plugin->getPluginInfo()->getMinimumInputs());
+	unsigned int numInputPorts = std::max<unsigned int>(component->getConnectionManager()->getCurrentInputConnectionsSize(), plugin->getPluginInfo()->getMinimumInputs());
 	qreal step = (double) _height / (double) (numInputPorts+1);
 	for (unsigned int i = 0; i < numInputPorts; i++) {
 		port = new GraphicalComponentPort(this, true, i, parent);
@@ -89,7 +89,7 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 		this->_graphicalInputPorts.append(port);
 	}
 	py = 0;
-	unsigned int numOutputPorts = std::max<unsigned int>(component->getConnections()->getCurrentOutputConnectionsSize(), plugin->getPluginInfo()->getMinimumOutputs());
+	unsigned int numOutputPorts = std::max<unsigned int>(component->getConnectionManager()->getCurrentOutputConnectionsSize(), plugin->getPluginInfo()->getMinimumOutputs());
 	step = (double) _height / (double) (numOutputPorts+1);
 	for (unsigned int i = 0; i < numOutputPorts; i++) {
 		port = new GraphicalComponentPort(this, false, i, parent);

@@ -12,16 +12,16 @@
 #include "../../../../kernel/simulator/Attribute.h"
 #include "../../../TraitsApp.h"
 // GUI
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
 // PropEditor
-#include "qtpropertybrowser/qttreepropertybrowser.h"
+#include "propertyeditor/qtpropertybrowser/qttreepropertybrowser.h"
 // QT
 #include <string>
 #include <fstream>
 #include <sstream>
-#include <streambuf>
+//#include <streambuf>
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFileDialog>
@@ -466,7 +466,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
     QFile::remove(tempFile.fileName());
 
     if (model != nullptr) {
-        std::list<ModelComponent*> c = * model->getComponents()->getAllComponents();
+        std::list<ModelComponent*> c = * model->getComponentManager()->getAllComponents();
 
         _clearModelEditors();
 
@@ -563,7 +563,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
             Plugin* plugin = simulator->getPluginManager()->find(comp.toStdString());
 
             // Cria o componente no modelo
-            ModelComponent* component = simulator->getModelManager()->current()->getComponents()->find(id);
+            ModelComponent* component = simulator->getModelManager()->current()->getComponentManager()->find(id);
 
             if (!component) continue;
             // Desenha na tela
@@ -574,7 +574,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
 
         for (unsigned int i = 0; i < (unsigned int) graphicalComponents->size(); i++) {
             GraphicalModelComponent *source = dynamic_cast<GraphicalModelComponent *> (graphicalComponents->at(i));
-            std::map<unsigned int, Connection*> *connections = source->getComponent()->getConnections()->connections();
+            std::map<unsigned int, Connection*> *connections = source->getComponent()->getConnectionManager()->connections();
 
             for (auto it = connections->begin(); it != connections->end(); ++it) {
                 unsigned int portSource = it->first;
@@ -736,7 +736,7 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
     int xIni = *x;
     const int deltaY = TraitsGUI<GModelComponent>::width * TraitsGUI<GModelComponent>::heightProportion * 1.5;
     GraphicalComponentPort *sourceGraphicalPort, *destinyGraphicalPort;
-    for(auto connectionMap: *component->getConnections()->connections()) {
+    for(auto connectionMap: *component->getConnectionManager()->connections()) {
         ModelComponent* nextComp = connectionMap.second->component;
         if (visited->find(nextComp)==visited->list()->end()) { // nextComponent was not visited yet
             if (++sequenceInLine==6) {
@@ -770,7 +770,7 @@ void MainWindow::_generateGraphicalModelFromModel() {
         x=TraitsGUI<GView>::sceneCenter - TraitsGUI<GView>::sceneDistanceCenter*0.8; //ui->graphicsView->sceneRect().left();
         y=TraitsGUI<GView>::sceneCenter - TraitsGUI<GView>::sceneDistanceCenter*0.8; //ui->graphicsView->sceneRect().top();
         ymax=y;
-        ComponentManager* cm = m->getComponents();
+        ComponentManager* cm = m->getComponentManager();
         List<ModelComponent*>* visited = new List<ModelComponent*>();
         std::map<ModelComponent*,GraphicalModelComponent*>* map = new std::map<ModelComponent*,GraphicalModelComponent*>();
         for(SourceModelComponent* source: *cm->getSourceComponents()) {
@@ -1027,7 +1027,7 @@ void MainWindow::_actualizeModelComponents(bool force) {
     if (m == nullptr) {
         return;
     }
-    for (ModelComponent* comp : *m->getComponents()->getAllComponents()) {
+    for (ModelComponent* comp : *m->getComponentManager()->getAllComponents()) {
         QList<QTreeWidgetItem *> items = ui->treeWidgetComponents->findItems(QString::fromStdString(std::to_string(comp->getId())), Qt::MatchExactly | Qt::MatchRecursive, 0);
         if (items.size() == 0) {
             QTreeWidgetItem* treeComp = new QTreeWidgetItem(ui->treeWidgetComponents);
@@ -1281,7 +1281,7 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
     if (dynamic_cast<ModelComponent*> (componentOrData) != nullptr) {
         if (level != modellevel && !ui->checkBox_ShowLevels->isChecked()) {
             // do not show the component itself, but its parent on the model level
-            parentComponentSuperLevel = simulator->getModelManager()->current()->getComponents()->find(level);
+            parentComponentSuperLevel = simulator->getModelManager()->current()->getComponentManager()->find(level);
             assert(parentComponentSuperLevel != nullptr);
             visitedIt = std::find(visited->begin(), visited->end(), parentComponentSuperLevel);
             if (visitedIt == visited->end()) {
@@ -1349,8 +1349,8 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
     if (component != nullptr) {
         level = component->getLevel();
         Connection* connection;
-        for (unsigned short i = 0; i < component->getConnections()->size(); i++) {
-            connection = component->getConnections()->getConnectionAtPort(i);
+        for (unsigned short i = 0; i < component->getConnectionManager()->size(); i++) {
+            connection = component->getConnectionManager()->getConnectionAtPort(i);
             visitedIt = std::find(visited->begin(), visited->end(), connection->component);
             if (visitedIt == visited->end()) {
                 _recursiveCreateModelGraphicPicture(connection->component, visited, dotmap);
@@ -1387,7 +1387,7 @@ void MainWindow::_actualizeModelCppCode() {
         text = _addCppCodeLine("#include \"kernel/simulator/Simulator.h\"");
         text = _addCppCodeLine("#include \"kernel/simulator/PropertyGenesys.h\"");
         List<std::string>* included = new List<std::string>();
-        for (ModelComponent* comp : *m->getComponents()->getAllComponents()) {
+        for (ModelComponent* comp : *m->getComponentManager()->getAllComponents()) {
             name = comp->getClassname();
             if (included->find(name) == included->list()->end()) {
                 included->insert(name);
@@ -1436,7 +1436,7 @@ void MainWindow::_actualizeModelCppCode() {
         code->insert({"4datadef", text});
 
         text = _addCppCodeLine("// Create model components", tabs);
-        for (ModelComponent* comp : *m->getComponents()->getAllComponents()) {
+        for (ModelComponent* comp : *m->getComponentManager()->getAllComponents()) {
             name = comp->getName();
             if (name.find(".") == std::string::npos) {
                 text += _addCppCodeLine(comp->getClassname() + "* " + name + " = plugins->newInstance<" + comp->getClassname() + ">(model, \"" + name + "\");", tabs);
@@ -1446,10 +1446,10 @@ void MainWindow::_actualizeModelCppCode() {
 
         text = _addCppCodeLine("// Connect the components in the model", tabs);
         Connection* conn;
-        for (ModelComponent* comp : *m->getComponents()->getAllComponents()) {
+        for (ModelComponent* comp : *m->getComponentManager()->getAllComponents()) {
             name = comp->getName();
             if (name.find(".") == std::string::npos) {
-                for (std::pair<unsigned int, Connection*> pair : *comp->getConnections()->connections()) {//unsigned int i=0; i<comp->getConnections()->size(); i++) {
+                for (std::pair<unsigned int, Connection*> pair : *comp->getConnectionManager()->connections()) {//unsigned int i=0; i<comp->getConnections()->size(); i++) {
                     conn = pair.second; //comp->getConnections()->getConnectionAtPort(i);
                     text2 = conn->component->getName(); // + conn->second==0?"":","+std::to_string(conn->second);
                     text += _addCppCodeLine(name + "->getConnections()->insertAtPort(" + std::to_string(pair.first) + "," + text2 + ");", tabs);
@@ -1503,7 +1503,7 @@ bool MainWindow::_createModelImage() {
     dot += "  compound=true; rankdir=LR; \n";
     std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap = new std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>();
 
-    std::list<SourceModelComponent*>* sources = simulator->getModelManager()->current()->getComponents()->getSourceComponents();
+    std::list<SourceModelComponent*>* sources = simulator->getModelManager()->current()->getComponentManager()->getSourceComponents();
     std::list<ModelDataDefinition*>* visited = new std::list<ModelDataDefinition*>();
     std::list<ModelDataDefinition*>::iterator visitedIt;
     for (SourceModelComponent* source : *sources) {
@@ -1512,14 +1512,14 @@ bool MainWindow::_createModelImage() {
             _recursiveCreateModelGraphicPicture(source, visited, dotmap);
         }
     }
-    std::list<ModelComponent*>* transfers = simulator->getModelManager()->current()->getComponents()->getTransferInComponents();
+    std::list<ModelComponent*>* transfers = simulator->getModelManager()->current()->getComponentManager()->getTransferInComponents();
     for (ModelComponent* transfer : *transfers) {
         visitedIt = std::find(visited->begin(), visited->end(), transfer);
         if (visitedIt == visited->end()) {
             _recursiveCreateModelGraphicPicture(transfer, visited, dotmap);
         }
     }
-    std::list<ModelComponent*>* allComps = simulator->getModelManager()->current()->getComponents()->getAllComponents();
+    std::list<ModelComponent*>* allComps = simulator->getModelManager()->current()->getComponentManager()->getAllComponents();
     for (ModelComponent* comp : *allComps) {
         visitedIt = std::find(visited->begin(), visited->end(), comp);
         if (visitedIt == visited->end()) {
@@ -1547,7 +1547,7 @@ bool MainWindow::_createModelImage() {
         } else if (ui->checkBox_ShowLevels->isChecked()) {
             dot += "\n\n // submodel level  " + std::to_string(dotpair.first) + "\n";
             dot += " subgraph cluster_level_" + std::to_string(dotpair.first) + " {\n";
-            dot += "   graph[style=filled; fillcolor=mistyrose2] label=\"" + simulator->getModelManager()->current()->getComponents()->find(dotpair.first)->getName() + "\";\n";
+            dot += "   graph[style=filled; fillcolor=mistyrose2] label=\"" + simulator->getModelManager()->current()->getComponentManager()->find(dotpair.first)->getName() + "\";\n";
             for (std::pair<unsigned int, std::list<std::string>*> dotpair2 : *dotpair.second) {
                 dot += "  {\n";
                 if (dotpair2.first == 0)
@@ -1882,7 +1882,7 @@ void MainWindow::_initModelGraphicsView() {
 }
 
 void MainWindow::_setOnEventHandlers() {
-    OnEventManager* eventManager = simulator->getModelManager()->current()->getOnEvents();
+    OnEventManager* eventManager = simulator->getModelManager()->current()->getOnEventManager();
     eventManager->addOnAfterProcessEventHandler(this, &MainWindow::_onAfterProcessEvent);
     eventManager->addOnEntityCreateHandler(this, &MainWindow::_onEntityCreateHandler);
     eventManager->addOnEntityRemoveHandler(this, &MainWindow::_onEntityRemoveHandler);
@@ -2607,7 +2607,7 @@ void MainWindow::_helpCopy() {
         ModelComponent * previousComponent = gmc->getComponent();
 
         // Adiciona o componente no modelo
-        simulator->getModelManager()->current()->getComponents()->insert(previousComponent);
+        simulator->getModelManager()->current()->getComponentManager()->insert(previousComponent);
 
         // Nome do plugin para a copia do componente
         std::string pluginname = previousComponent->getClassname();
@@ -2653,7 +2653,7 @@ void MainWindow::_helpCopy() {
             ModelComponent * previousComponent = gmc->getComponent();
 
             // Adiciona o componente no modelo
-            simulator->getModelManager()->current()->getComponents()->insert(previousComponent);
+            simulator->getModelManager()->current()->getComponentManager()->insert(previousComponent);
 
             // Nome do plugin para a copia do componente
             std::string pluginname = previousComponent->getClassname();
@@ -3377,8 +3377,8 @@ void MainWindow::on_actionModelClose_triggered()
     ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
 
     // limpando tudo a que se refere ao modelo
-    simulator->getModelManager()->current()->getComponents()->getAllComponents()->clear();
-    simulator->getModelManager()->current()->getComponents()->clear();
+    simulator->getModelManager()->current()->getComponentManager()->getAllComponents()->clear();
+    simulator->getModelManager()->current()->getComponentManager()->clear();
     ui->progressBarSimulation->setValue(0); // Seta o progresso da simulação para zero
     simulator->getModelManager()->remove(simulator->getModelManager()->current());
 

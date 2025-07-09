@@ -12,8 +12,8 @@ GraphicalConnection::GraphicalConnection(GraphicalComponentPort* sourceGraphical
 	// connect graphically
 	_sourceGraphicalPort = sourceGraphicalPort;
     _destinationGraphicalPort = destinationGraphicalPort;
-	_sourceConnection = new Connection({sourceGraphicalPort->graphicalComponent()->getComponent(), {sourceGraphicalPort->portNum()}});
-    _destinationConnection = new Connection({_destinationGraphicalPort->graphicalComponent()->getComponent(), {_destinationGraphicalPort->portNum()}});
+    _sourceConnection = new Connection({sourceGraphicalPort->graphicalComponent()->getComponent(), {sourceGraphicalPort->portNum()}});
+    _destinationConnection = new Connection({destinationGraphicalPort->graphicalComponent()->getComponent(), {destinationGraphicalPort->portNum()}});
     _portSourceConnection = portSourceConnection;
     _portDestinationConnection = portDestinationConnection;
     _color = color;
@@ -33,7 +33,7 @@ GraphicalConnection::GraphicalConnection(const GraphicalConnection& orig) {
 }
 
 GraphicalConnection::~GraphicalConnection() {
-	_sourceConnection->component->getConnections()->remove(_destinationConnection);
+    _sourceConnection->component->getConnectionManager()->remove(_destinationConnection);
 	_sourceGraphicalPort->removeGraphicalConnection(this);
 	_destinationGraphicalPort->removeGraphicalConnection(this);
 }
@@ -165,7 +165,7 @@ Connection* GraphicalConnection::getDestination() const {
 }
 
 bool GraphicalConnection::sceneEvent(QEvent *event) {
-	QGraphicsObject::sceneEvent(event);
+    return QGraphicsObject::sceneEvent(event); // TODO: CRASH!
 }
 
 unsigned int GraphicalConnection::getPortSourceConnection() const {

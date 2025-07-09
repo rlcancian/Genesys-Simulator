@@ -3,7 +3,7 @@
 #include <QCoreApplication>
 
 #include "AnimationTransition.h"
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalImageAnimation.h"
 
 // Inicializando variáveis estáticas

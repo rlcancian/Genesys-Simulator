@@ -8,7 +8,7 @@
 #include <QPushButton>
 #include <QMessageBox>
 #include "../graphicals/GraphicalModelComponent.h"
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 #include <QGraphicsItem>
 #include <QList>
 

@@ -1,15 +1,3 @@
 digraph G {
   compound=true; rankdir=LR; 
-  // model level
-  {
-     rank=min  // 0
-     Create_1 [shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=bisque, label="Create|Create_1"];
-  }
-  {
-     rank=max  // 1
-     Dispose_1 [shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=bisque, label="Dispose|Dispose_1"];
-  }
-  {
-     Delay_1 [shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=bisque, label="Delay|Delay_1"];
-  }
 }

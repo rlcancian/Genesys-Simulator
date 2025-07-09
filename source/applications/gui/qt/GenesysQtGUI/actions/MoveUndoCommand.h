@@ -2,7 +2,7 @@
 #define MOVEUNDOCOMMAND_H
 
 #include <QUndoCommand>
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 
 class MoveUndoCommand : public QUndoCommand
 {

@@ -7,14 +7,14 @@
 #include <QGraphicsItem>
 #include <QUndoView>
 
-#include "DataComponentProperty.h"
-#include "DataComponentEditor.h"
-#include "ComboBoxEnum.h"
+#include "propertyeditor/DataComponentProperty.h"
+#include "propertyeditor/DataComponentEditor.h"
+#include "propertyeditor/ComboBoxEnum.h"
 
 #include "../../../../kernel/simulator/Simulator.h"
 #include "../../../../kernel/simulator/PropertyGenesys.h"
 #include "../../../../kernel/simulator/TraceManager.h"
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 
 QT_BEGIN_NAMESPACE
 		namespace Ui {

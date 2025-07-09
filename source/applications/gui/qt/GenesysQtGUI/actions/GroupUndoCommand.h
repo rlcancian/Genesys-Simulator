@@ -2,7 +2,7 @@
 #define GROUPUNDOCOMMAND_H
 
 #include <QUndoCommand>
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalModelComponent.h"
 
 class GroupUndoCommand: public QUndoCommand {

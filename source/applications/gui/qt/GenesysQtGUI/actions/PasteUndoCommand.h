@@ -3,7 +3,7 @@
 
 #include <QUndoCommand>
 #include "AddUndoCommand.h"
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalConnection.h"
 
 

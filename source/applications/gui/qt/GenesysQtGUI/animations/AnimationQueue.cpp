@@ -1,5 +1,5 @@
 #include "AnimationQueue.h"
-#include "ModelGraphicsScene.h"
+#include "graphicals/ModelGraphicsScene.h"
 
 // Contrutor
 AnimationQueue::AnimationQueue(ModelGraphicsScene* myScene, ModelComponent* graphicalComponent) :

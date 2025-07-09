@@ -1,5 +1,5 @@
 #include "AnimationTimer.h"
-#include "../ModelGraphicsScene.h"
+#include "../graphicals/ModelGraphicsScene.h"
 
 double AnimationTimer::_conversionFactorToSeconds = 1.0;
 
