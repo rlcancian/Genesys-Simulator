@@ -74,13 +74,13 @@ int Smart_ArrivalsElementStopsEntitiesArrivingAfterASetTime::main(int argc, char
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
 	// connect model components to create a "workflow"
-	create->getConnections()->insert(processTeller);
-	processTeller->getConnections()->insert(decide);
+	create->getConnectionManager()->insert(processTeller);
+	processTeller->getConnectionManager()->insert(decide);
 	// True
-	decide->getConnections()->insert(processSupervisor);
-	processSupervisor->getConnections()->insert(processTeller);
+	decide->getConnectionManager()->insert(processSupervisor);
+	processSupervisor->getConnectionManager()->insert(processTeller);
 	// False
-	decide->getConnections()->insert(dispose);
+	decide->getConnectionManager()->insert(dispose);
 
 	// set options, save and simulate
 	ModelSimulation* sim = model->getSimulation();

@@ -52,12 +52,12 @@ int Smart_BatchAndSeparate::main(int argc, char** argv) {
     
 	Dispose* di2 = plugins->newInstance<Dispose>(model);
 
-    cr1->getConnections()->insert(ba1);
-    ba1->getConnections()->insert(di1);
+    cr1->getConnectionManager()->insert(ba1);
+    ba1->getConnectionManager()->insert(di1);
     
-    cr2->getConnections()->insert(ba2);
-    ba2->getConnections()->insert(se2);
-    se2->getConnections()->insert(di2);
+    cr2->getConnectionManager()->insert(ba2);
+    ba2->getConnectionManager()->insert(se2);
+    se2->getConnectionManager()->insert(di2);
     
 	ModelSimulation* s = model->getSimulation();
     s->setNumberOfReplications(300);

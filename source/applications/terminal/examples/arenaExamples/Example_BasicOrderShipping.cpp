@@ -126,27 +126,27 @@ int Example_BasicOrderShipping::main(int argc, char** argv) {
 	//connections
 
 	//control
-	Create_2->getConnections()->insert(assignDay);
-	assignDay->getConnections()->insert(delay24);
-	delay24->getConnections()->insert(decide1);
-	decide1->getConnections()->insert(reset, 0); //; TODO two connections f t
-	decide1->getConnections()->insert(reset, 1);
-	reset->getConnections()->insert(decide1);
+	Create_2->getConnectionManager()->insert(assignDay);
+	assignDay->getConnectionManager()->insert(delay24);
+	delay24->getConnectionManager()->insert(decide1);
+	decide1->getConnectionManager()->insert(reset, 0); //; TODO two connections f t
+	decide1->getConnectionManager()->insert(reset, 1);
+	reset->getConnectionManager()->insert(decide1);
 	//
-	Create_1->getConnections()->insert(assign0);
-	assign0->getConnections()->insert(Process2);
-	Process2->getConnections()->insert(decide1);
-	decide1->getConnections()->insert(Process3, 0);
-	decide1->getConnections()->insert(assign1, 1);
-	assign1->getConnections()->insert(dispose3); //invalid Data
+	Create_1->getConnectionManager()->insert(assign0);
+	assign0->getConnectionManager()->insert(Process2);
+	Process2->getConnectionManager()->insert(decide1);
+	decide1->getConnectionManager()->insert(Process3, 0);
+	decide1->getConnectionManager()->insert(assign1, 1);
+	assign1->getConnectionManager()->insert(dispose3); //invalid Data
 
-	Process3->getConnections()->insert(decide2);
-	decide2->getConnections()->insert(record1, 0);
-	decide2->getConnections()->insert(record2, 1);
-	record1->getConnections()->insert(assign3);
-	record2->getConnections()->insert(assign2);
-	assign3->getConnections()->insert(dispose1); //Orders Shipping Success
-	assign2->getConnections()->insert(dispose2);
+	Process3->getConnectionManager()->insert(decide2);
+	decide2->getConnectionManager()->insert(record1, 0);
+	decide2->getConnectionManager()->insert(record2, 1);
+	record1->getConnectionManager()->insert(assign3);
+	record2->getConnectionManager()->insert(assign2);
+	assign3->getConnectionManager()->insert(dispose1); //Orders Shipping Success
+	assign2->getConnectionManager()->insert(dispose2);
 
 
 	// set options, save and simulate

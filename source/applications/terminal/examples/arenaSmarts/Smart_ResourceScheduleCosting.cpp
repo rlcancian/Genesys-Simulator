@@ -78,9 +78,9 @@ int Smart_ResourceScheduleCosting::main(int argc, char** argv) {
 	Dispose* Dispose_1 = plugins->newInstance<Dispose>(model, "Depart");
 
 	// connect model components
-	Create_2->getConnections()->insert(Process_3);
-	Process_3->getConnections()->insert(Process_4);
-	Process_4->getConnections()->insert(Dispose_1);
+	Create_2->getConnectionManager()->insert(Process_3);
+	Process_3->getConnectionManager()->insert(Process_4);
+	Process_4->getConnectionManager()->insert(Dispose_1);
 	
 	// set simulation parameters
 	ModelSimulation* sim = model->getSimulation();

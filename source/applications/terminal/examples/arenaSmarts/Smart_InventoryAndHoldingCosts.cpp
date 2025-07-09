@@ -63,9 +63,9 @@ int Smart_InventoryAndHoldingCosts::main(int argc, char** argv) {
         Dispose* Dispose_1 = plugins->newInstance<Dispose>(model, "DisposeOfEntity");
          
 	// connect model components
-        Create_2->getConnections()->insert(Process_3);
-        Process_3->getConnections()->insert(delay1);
-        delay1->getConnections()->insert(Dispose_1);
+        Create_2->getConnectionManager()->insert(Process_3);
+        Process_3->getConnectionManager()->insert(delay1);
+        delay1->getConnectionManager()->insert(Dispose_1);
 	
         // set simulation parameters
 	ModelSimulation* sim = model->getSimulation();

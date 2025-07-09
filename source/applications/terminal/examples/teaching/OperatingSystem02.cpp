@@ -58,7 +58,7 @@ int OperatingSystem02::main(int argc, char** argv) {
 	plugins->newInstance<Attribute>(model, "memoriaOcupada");
 	plugins->newInstance<Attribute>(model, "tempoExecucao");
 
-	createProc->getConnections()->insert(assignProc);
+	createProc->getConnectionManager()->insert(assignProc);
 	//
 	// SEIZE memoria
 	Resource* memoria = plugins->newInstance<Resource>(model, "memoria");
@@ -69,7 +69,7 @@ int OperatingSystem02::main(int argc, char** argv) {
 	seizeMem->setQueue(queueMem);
 	seizeMem->getSeizeRequests()->insert(new SeizableItem(memoria, "memoriaOcupada"));
 
-	assignProc->getConnections()->insert(seizeMem);
+	assignProc->getConnectionManager()->insert(seizeMem);
 	//
 	// ROUTE Processo é enviado para execução na CPU
 	Station* stationExecucao = plugins->newInstance<Station>(model, "Estacao_de_Execucao");
@@ -77,7 +77,7 @@ int OperatingSystem02::main(int argc, char** argv) {
 	routeExecucao1->setDescription("Processo é enviado para execução na CPU");
 	routeExecucao1->setStation(stationExecucao);
 
-	seizeMem->getConnections()->insert(routeExecucao1);
+	seizeMem->getConnectionManager()->insert(routeExecucao1);
 	//
 	// ENTER Processo chega para ser executado
 	Enter* enterStationExecucao = plugins->newInstance<Enter>(model);
@@ -92,14 +92,14 @@ int OperatingSystem02::main(int argc, char** argv) {
 	seizeCPU->setQueue(queueCPU);
 	seizeCPU->getSeizeRequests()->insert(new SeizableItem(cpu, "1"));
 
-	enterStationExecucao->getConnections()->insert(seizeCPU);
+	enterStationExecucao->getConnectionManager()->insert(seizeCPU);
 	//
 	// DECIDE Define tempo de execução da fatia de tempo atual
 	Decide* decideFatiaTempo = plugins->newInstance<Decide>(model);
 	decideFatiaTempo->setDescription("Define tempo de execução da fatia de tempo atual");
 	decideFatiaTempo->getConditions()->insert("tempoExecucao >= 1");
 
-	seizeCPU->getConnections()->insert(decideFatiaTempo);
+	seizeCPU->getConnectionManager()->insert(decideFatiaTempo);
 	//
 	// ASSIGN Define execucao por um quantum de tempo
 	Assign* assignExecFatia = plugins->newInstance<Assign>(model);
@@ -108,7 +108,7 @@ int OperatingSystem02::main(int argc, char** argv) {
 	assignExecFatia->getAssignments()->insert(new Assignment("tempoExecucao", "tempoExecucao-fatiaTempo"));
 	plugins->newInstance<Attribute>(model, "fatiaTempo");
 
-	decideFatiaTempo->getConnections()->insert(assignExecFatia);
+	decideFatiaTempo->getConnectionManager()->insert(assignExecFatia);
 	//
 	// ASSIGN Executa até o final
 	Assign* assignExecAteFinal = plugins->newInstance<Assign>(model);
@@ -116,7 +116,7 @@ int OperatingSystem02::main(int argc, char** argv) {
 	assignExecAteFinal->getAssignments()->insert(new Assignment("fatiaTempo", "tempoExecucao"));
 	assignExecAteFinal->getAssignments()->insert(new Assignment("tempoExecucao", "tempoExecucao - fatiaTempo"));
 
-	decideFatiaTempo->getConnections()->insert(assignExecAteFinal);
+	decideFatiaTempo->getConnectionManager()->insert(assignExecAteFinal);
 	//
 	// DELAY Processo executa na CPU
 	Delay* delayProcExecCPU = plugins->newInstance<Delay>(model);
@@ -124,36 +124,36 @@ int OperatingSystem02::main(int argc, char** argv) {
 	delayProcExecCPU->setDelayExpression("fatiaTempo");
 	delayProcExecCPU->setDelayTimeUnit(Util::TimeUnit::milisecond);
 
-	assignExecFatia->getConnections()->insert(delayProcExecCPU);
-	assignExecAteFinal->getConnections()->insert(delayProcExecCPU);
+	assignExecFatia->getConnectionManager()->insert(delayProcExecCPU);
+	assignExecAteFinal->getConnectionManager()->insert(delayProcExecCPU);
 	//
 	// RELEASE Processo libera CPU
 	Release* releaseCPU = plugins->newInstance<Release>(model);
 	releaseCPU->setDescription("Processo libera CPU");
 	releaseCPU->getReleaseRequests()->insert(new SeizableItem(cpu, "1"));
 
-	delayProcExecCPU->getConnections()->insert(releaseCPU);
+	delayProcExecCPU->getConnectionManager()->insert(releaseCPU);
 	//
 	// DECIDE Se processo ainda precisa executar então vai para estação de execução
 	Decide* decideAindaExec = plugins->newInstance<Decide>(model);
 	decideAindaExec->setDescription("Se processo ainda precisa executar então vai para estação de execução");
 	decideAindaExec->getConditions()->insert("tempoExecucao > 0");
 
-	releaseCPU->getConnections()->insert(decideAindaExec);
+	releaseCPU->getConnectionManager()->insert(decideAindaExec);
 	//
 	// ROUTE Processo é enviado de volta para execução
 	Route* routeExecucao2 = plugins->newInstance<Route>(model);
 	routeExecucao2->setDescription("Processo é enviado de volta para execução");
 	routeExecucao2->setStation(stationExecucao);
 
-	decideAindaExec->getConnections()->insert(routeExecucao2);
+	decideAindaExec->getConnectionManager()->insert(routeExecucao2);
 	// ROUTE Processo é enviado para liberar memória
 	Station* stationLiberaMem = plugins->newInstance<Station>(model, "Estacao_de_liberacao_de_memoria");
 	Route* routeLiberaMem = plugins->newInstance<Route>(model);
 	routeLiberaMem->setDescription("Processo é enviado para liberar memória");
 	routeLiberaMem->setStation(stationLiberaMem);
 
-	decideAindaExec->getConnections()->insert(routeLiberaMem);
+	decideAindaExec->getConnectionManager()->insert(routeLiberaMem);
 	//
 	// ENTER Processo chega para liberar memória
 	Enter* enterStationLibera = plugins->newInstance<Enter>(model);
@@ -165,13 +165,13 @@ int OperatingSystem02::main(int argc, char** argv) {
 	releaseMem->setDescription("Processo libera memória");
 	releaseMem->getReleaseRequests()->insert(new SeizableItem(memoria, "memoriaOcupada"));
 
-	enterStationLibera->getConnections()->insert(releaseMem);
+	enterStationLibera->getConnectionManager()->insert(releaseMem);
 	//
 	// DISPOSE Processo é encerrado
 	Dispose* disp1 = plugins->newInstance<Dispose>(model);
 	disp1->setDescription("Processo é encerrado");
 
-	releaseMem->getConnections()->insert(disp1);
+	releaseMem->getConnectionManager()->insert(disp1);
 
 	//
 	// AJUSTA EXPERIMENTO (MODEL SIMULATION)

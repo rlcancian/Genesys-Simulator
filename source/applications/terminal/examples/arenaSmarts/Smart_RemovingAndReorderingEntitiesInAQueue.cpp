@@ -83,18 +83,18 @@ int Smart_RemovingAndReorderingEntitiesInAQueue::main(int argc, char** argv) {
 	Dispose* disposeOfControlEntity = plugins->newInstance<Dispose>(model, "Dispose_of_Control_Entity");
 
 	// connect model components to create a "workflow"
-	entityCreate->getConnections()->insert(markTheTimeBeforeItEntersTheQueue);
-	markTheTimeBeforeItEntersTheQueue->getConnections()->insert(processingOnMachine);
-	processingOnMachine->getConnections()->insert(secondaryProcess);
-	secondaryProcess->getConnections()->insert(disposeEntity);
+	entityCreate->getConnectionManager()->insert(markTheTimeBeforeItEntersTheQueue);
+	markTheTimeBeforeItEntersTheQueue->getConnectionManager()->insert(processingOnMachine);
+	processingOnMachine->getConnectionManager()->insert(secondaryProcess);
+	secondaryProcess->getConnectionManager()->insert(disposeEntity);
 
-	createControlEntity->getConnections()->insert(assign1);
-	assign1->getConnections()->insert(searchQueueForEntitiesWaitingMoreThan20TimeUnits);
-	searchQueueForEntitiesWaitingMoreThan20TimeUnits->getConnections()->insert(removeEntityIfInQueueLongerThan20TimeUnits);
-	searchQueueForEntitiesWaitingMoreThan20TimeUnits->getConnections()->insert(disposeOfControlEntity);
-	removeEntityIfInQueueLongerThan20TimeUnits->getConnections()->insert(disposeOfControlEntity);
-	removeEntityIfInQueueLongerThan20TimeUnits->getConnections()->insert(reassignPicturePriorityAndAttributeWaitTime);
-	reassignPicturePriorityAndAttributeWaitTime->getConnections()->insert(processingOnMachine);
+	createControlEntity->getConnectionManager()->insert(assign1);
+	assign1->getConnectionManager()->insert(searchQueueForEntitiesWaitingMoreThan20TimeUnits);
+	searchQueueForEntitiesWaitingMoreThan20TimeUnits->getConnectionManager()->insert(removeEntityIfInQueueLongerThan20TimeUnits);
+	searchQueueForEntitiesWaitingMoreThan20TimeUnits->getConnectionManager()->insert(disposeOfControlEntity);
+	removeEntityIfInQueueLongerThan20TimeUnits->getConnectionManager()->insert(disposeOfControlEntity);
+	removeEntityIfInQueueLongerThan20TimeUnits->getConnectionManager()->insert(reassignPicturePriorityAndAttributeWaitTime);
+	reassignPicturePriorityAndAttributeWaitTime->getConnectionManager()->insert(processingOnMachine);
 
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(8, Util::TimeUnit::hour);

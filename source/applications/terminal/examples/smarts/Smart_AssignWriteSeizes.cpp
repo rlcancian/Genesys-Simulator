@@ -99,21 +99,21 @@ int Smart_AssignWriteSeizes::main(int argc, char** argv) {
 	release3->getReleaseRequests()->insert(new SeizableItem(machine3));
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(assign1);
-	assign1->getConnections()->insert(write1);
-	write1->getConnections()->insert(decide1);
-	decide1->getConnections()->insert(seize1);
-	decide1->getConnections()->insert(seize2);
-	decide1->getConnections()->insert(seize3);
-	seize1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(release1);
-	release1->getConnections()->insert(dispose1);
-	seize2->getConnections()->insert(delay2);
-	delay2->getConnections()->insert(release2);
-	release2->getConnections()->insert(dispose1);
-	seize3->getConnections()->insert(delay3);
-	delay3->getConnections()->insert(release3);
-	release3->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(assign1);
+	assign1->getConnectionManager()->insert(write1);
+	write1->getConnectionManager()->insert(decide1);
+	decide1->getConnectionManager()->insert(seize1);
+	decide1->getConnectionManager()->insert(seize2);
+	decide1->getConnectionManager()->insert(seize3);
+	seize1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(release1);
+	release1->getConnectionManager()->insert(dispose1);
+	seize2->getConnectionManager()->insert(delay2);
+	delay2->getConnectionManager()->insert(release2);
+	release2->getConnectionManager()->insert(dispose1);
+	seize3->getConnectionManager()->insert(delay3);
+	delay3->getConnectionManager()->insert(release3);
+	release3->getConnectionManager()->insert(dispose1);
 	// save and run
 	ModelSimulation* sim = model->getSimulation();
 	sim->setNumberOfReplications(5);

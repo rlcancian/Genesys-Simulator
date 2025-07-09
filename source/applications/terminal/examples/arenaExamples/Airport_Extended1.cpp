@@ -47,14 +47,14 @@ int Airport_Extended1::main(int argc, char** argv) {
         Release* releaseOfficer = plugins->newInstance<Release>(model);
         releaseOfficer->getReleaseRequests()->insert(new SeizableItem(officer, "1"));
         
-        create1->getConnections()->insert(seizeOfficer);
-        seizeOfficer->getConnections()->insert(delayOfficer);
-        delayOfficer->getConnections()->insert(releaseOfficer);
+        create1->getConnectionManager()->insert(seizeOfficer);
+        seizeOfficer->getConnectionManager()->insert(delayOfficer);
+        delayOfficer->getConnectionManager()->insert(releaseOfficer);
         
         Decide* decide1 = plugins->newInstance<Decide>(model);
 	decide1->getConditions()->insert("UNIF(0,1) > 0.04");
         
-        releaseOfficer->getConnections()->insert(decide1);
+        releaseOfficer->getConnectionManager()->insert(decide1);
         
         Resource* xray = plugins->newInstance<Resource>(model, "X-Ray Machine");
         xray->setCapacity(2);
@@ -68,17 +68,17 @@ int Airport_Extended1::main(int argc, char** argv) {
         Release* releaseXray = plugins->newInstance<Release>(model);
         releaseXray->getReleaseRequests()->insert(new SeizableItem(xray, "1"));
         
-        decide1->getConnections()->insert(seizeXray);
-        seizeXray->getConnections()->insert(delayXray);
-        delayXray->getConnections()->insert(releaseXray);
+        decide1->getConnectionManager()->insert(seizeXray);
+        seizeXray->getConnectionManager()->insert(delayXray);
+        delayXray->getConnectionManager()->insert(releaseXray);
         
         Dispose* dispose1 = plugins->newInstance<Dispose>(model, "Cleared");
         
-        releaseXray->getConnections()->insert(dispose1);
+        releaseXray->getConnectionManager()->insert(dispose1);
         
         Dispose* dispose2 = plugins->newInstance<Dispose>(model, "Denied");
         
-        decide1->getConnections()->insert(dispose2);
+        decide1->getConnectionManager()->insert(dispose2);
         
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(10, Util::TimeUnit::hour);

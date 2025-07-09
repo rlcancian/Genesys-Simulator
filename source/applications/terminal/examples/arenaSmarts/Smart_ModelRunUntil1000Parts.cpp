@@ -53,13 +53,13 @@ int Smart_ModelRunUntil1000Parts::main(int argc, char** argv) {
     Dispose* dispose_1 = plugins->newInstance<Dispose>(model, "Dispose_1");
 
     // Create 1
-    create_1->getConnections()->insert(process_1);
+    create_1->getConnectionManager()->insert(process_1);
     create_1->setEntityTypeName("Entity 1");
     create_1->setTimeBetweenCreationsExpression("EXPO(8)");
     create_1->setTimeUnit(Util::TimeUnit::minute);
 
     // Process 1
-    process_1->getConnections()->insert(record_1);
+    process_1->getConnectionManager()->insert(record_1);
     process_1->setDelayExpression("TRIA(4, 8, 10)");
     process_1->setDelayTimeUnit(Util::TimeUnit::minute);
 
@@ -71,7 +71,7 @@ int Smart_ModelRunUntil1000Parts::main(int argc, char** argv) {
     process_1->setQueueableItem(new QueueableItem(process1Queue));
 
     // Record
-    record_1->getConnections()->insert(dispose_1);
+    record_1->getConnectionManager()->insert(dispose_1);
     record_1->setName("Record_1");
     record_1->setExpressionName("How_Many");
 

@@ -58,8 +58,8 @@ int Smart_AddingResource::main(int argc, char** argv) {
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 
 	//connections
-	create1->getConnections()->insert(process1);
-	process1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(process1);
+	process1->getConnectionManager()->insert(dispose1);
 	// set options, save and simulate
 
 	model->getSimulation()->setNumberOfReplications(3);

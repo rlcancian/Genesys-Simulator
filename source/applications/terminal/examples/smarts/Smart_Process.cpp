@@ -46,8 +46,8 @@ int Smart_Process::main(int argc, char** argv) {
 	process->setDelayExpression("unif(0.7,1.5)");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create->getConnections()->insert(process);
-	process->getConnections()->insert(dispose);
+	create->getConnectionManager()->insert(process);
+	process->getConnectionManager()->insert(dispose);
 	// set options, save and simulate step-by-step (but no user interaction required)
 	model->getSimulation()->setReplicationLength(10);
 	model->getSimulation()->setNumberOfReplications(5);

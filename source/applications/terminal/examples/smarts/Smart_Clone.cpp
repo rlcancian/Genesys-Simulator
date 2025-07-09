@@ -44,9 +44,9 @@ int Smart_Clone::main(int argc, char** argv) {
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(clone1);
-	clone1->getConnections()->insert(dispose1);
-	clone1->getConnections()->insert(dispose2);
+	create1->getConnectionManager()->insert(clone1);
+	clone1->getConnectionManager()->insert(dispose1);
+	clone1->getConnectionManager()->insert(dispose2);
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(60, Util::TimeUnit::second);
 	model->save("./models/Smart_Clone.gen");

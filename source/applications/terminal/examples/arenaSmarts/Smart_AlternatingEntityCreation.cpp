@@ -71,12 +71,12 @@ int Smart_AlternatingEntityCreation::main(int argc, char** argv) {
 	Dispose* dipose2 = plugins->newInstance<Dispose>(model, "Dispose_2");
 
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(assign);
-	assign->getConnections()->insert(decide1);
-	decide1->getConnections()->insert(assign1);
-	decide1->getConnections()->insert(assign2);
-	assign1->getConnections()->insert(dipose1);
-	assign2->getConnections()->insert(dipose2);
+	create1->getConnectionManager()->insert(assign);
+	assign->getConnectionManager()->insert(decide1);
+	decide1->getConnectionManager()->insert(assign1);
+	decide1->getConnectionManager()->insert(assign2);
+	assign1->getConnectionManager()->insert(dipose1);
+	assign2->getConnectionManager()->insert(dipose2);
  
 	// set options, save and simulate
 	model->getSimulation()->setNumberOfReplications(3);

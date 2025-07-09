@@ -63,14 +63,14 @@ int Smart_HoldSearchRemove::main(int argc, char** argv) {
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 	Dispose* dispose3 = plugins->newInstance<Dispose>(model, "No entity will ever arrive here");
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(assign1);
-	assign1->getConnections()->insert(hold1);
-	hold1->getConnections()->insert(dispose3); // just because "Wait" is not a SinkComponent
-	create2->getConnections()->insert(search1);
-	search1->getConnections()->insert(dispose1);
-	search1->getConnections()->insert(remove1);
-	remove1->getConnections()->insert(dispose1);
-	remove1->getConnections()->insert(dispose2);
+	create1->getConnectionManager()->insert(assign1);
+	assign1->getConnectionManager()->insert(hold1);
+	hold1->getConnectionManager()->insert(dispose3); // just because "Wait" is not a SinkComponent
+	create2->getConnectionManager()->insert(search1);
+	search1->getConnectionManager()->insert(dispose1);
+	search1->getConnectionManager()->insert(remove1);
+	remove1->getConnectionManager()->insert(dispose1);
+	remove1->getConnectionManager()->insert(dispose2);
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(10, Util::TimeUnit::second);
 	model->save("./models/Smart_HoldSearchRemove.gen");

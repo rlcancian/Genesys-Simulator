@@ -205,34 +205,34 @@ int Example_PublicTransport::main(int argc, char** argv) {
 	// connect model components
 
 
-	Create_1->getConnections()->insert(assign1);
-	Create_2->getConnections()->insert(assign2);
-	Create_3->getConnections()->insert(assign3);
-	Create_4->getConnections()->insert(search1);
+	Create_1->getConnectionManager()->insert(assign1);
+	Create_2->getConnectionManager()->insert(assign2);
+	Create_3->getConnectionManager()->insert(assign3);
+	Create_4->getConnectionManager()->insert(search1);
 
-	assign1->getConnections()->insert(wait1);
-	assign2->getConnections()->insert(wait2);
-	assign3->getConnections()->insert(wait3);
+	assign1->getConnectionManager()->insert(wait1);
+	assign2->getConnectionManager()->insert(wait2);
+	assign3->getConnectionManager()->insert(wait3);
 
-	wait1->getConnections()->insert(wait1);
-	wait2->getConnections()->insert(wait2);
-	wait3->getConnections()->insert(wait3);
+	wait1->getConnectionManager()->insert(wait1);
+	wait2->getConnectionManager()->insert(wait2);
+	wait3->getConnectionManager()->insert(wait3);
 	//
-	enter1->getConnections()->insert(search1); //"InitialPoint");
-	enter2->getConnections()->insert(search2); //"Point2");
-	enter3->getConnections()->insert(search3); //"Point3");
+	enter1->getConnectionManager()->insert(search1); //"InitialPoint");
+	enter2->getConnectionManager()->insert(search2); //"Point2");
+	enter3->getConnectionManager()->insert(search3); //"Point3");
 
-	search1->getConnections()->insert(dropOff1); //"InitialPoint");
-	search2->getConnections()->insert(dropOff2); //"Point2");
-	search3->getConnections()->insert(dropOff3); //"Point3");
+	search1->getConnectionManager()->insert(dropOff1); //"InitialPoint");
+	search2->getConnectionManager()->insert(dropOff2); //"Point2");
+	search3->getConnectionManager()->insert(dropOff3); //"Point3");
 
-	dropOff1->getConnections()->insert(search1); //"InitialPoint");
-	dropOff2->getConnections()->insert(search2); //"Point2");
-	dropOff3->getConnections()->insert(search3); //"Point3");
+	dropOff1->getConnectionManager()->insert(search1); //"InitialPoint");
+	dropOff2->getConnectionManager()->insert(search2); //"Point2");
+	dropOff3->getConnectionManager()->insert(search3); //"Point3");
 
-	dropOff1->getConnections()->insert(route0); //"InitialPoint");
-	dropOff2->getConnections()->insert(route0); //"Point2");
-	dropOff3->getConnections()->insert(route0); //"Point3");
+	dropOff1->getConnectionManager()->insert(route0); //"InitialPoint");
+	dropOff2->getConnectionManager()->insert(route0); //"Point2");
+	dropOff3->getConnectionManager()->insert(route0); //"Point3");
 
 	/*
 	search1->getConnections()->insert(pickUp1); //"InitialPoint");
@@ -244,17 +244,17 @@ int Example_PublicTransport::main(int argc, char** argv) {
 	pickUp3->getConnections()->insert(delay3); //"Point3");
         
 	test workaround segfault*/
-	search1->getConnections()->insert(delay1); //"InitialPoint");
-	search2->getConnections()->insert(delay2); //"Point2");
-	search3->getConnections()->insert(delay3); //"Point3");
+	search1->getConnectionManager()->insert(delay1); //"InitialPoint");
+	search2->getConnectionManager()->insert(delay2); //"Point2");
+	search3->getConnectionManager()->insert(delay3); //"Point3");
 
 
-	delay1->getConnections()->insert(route2); // local "InitialPoint");
-	delay2->getConnections()->insert(route3); // local "Point2");
-	delay3->getConnections()->insert(route1); // local "Point3");
+	delay1->getConnectionManager()->insert(route2); // local "InitialPoint");
+	delay2->getConnectionManager()->insert(route3); // local "Point2");
+	delay3->getConnectionManager()->insert(route1); // local "Point3");
 
 
-	enter0->getConnections()->insert(dispose1);
+	enter0->getConnectionManager()->insert(dispose1);
 
 	// set options, save and simulate
 	ModelSimulation* sim = model->getSimulation();

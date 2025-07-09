@@ -147,40 +147,40 @@ int Example_PortModel::main(int argc, char** argv) {
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model, "Dispose_2");
 
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(enterArrivalStation);
-        enterArrivalStation->getConnections()->insert(routeToPierAlign);
+	create1->getConnectionManager()->insert(enterArrivalStation);
+        enterArrivalStation->getConnectionManager()->insert(routeToPierAlign);
         routeToPierAlign->setStation(stationPierAlign);
 
-        enterStationPierAlign->getConnections()->insert(seizeBufferResource);
-        seizeBufferResource->getConnections()->insert(tryPier1);
-        tryPier1->getConnections()->insert(release3);
-        tryPier1->getConnections()->insert(tryPier2);
+        enterStationPierAlign->getConnectionManager()->insert(seizeBufferResource);
+        seizeBufferResource->getConnectionManager()->insert(tryPier1);
+        tryPier1->getConnectionManager()->insert(release3);
+        tryPier1->getConnectionManager()->insert(tryPier2);
         
-        release3->getConnections()->insert(enterStationPier1Align);
-        enterStationPier1Align->getConnections()->insert(setPier1BusyFlag);
-        setPier1BusyFlag->getConnections()->insert(routePier1);
+        release3->getConnectionManager()->insert(enterStationPier1Align);
+        enterStationPier1Align->getConnectionManager()->insert(setPier1BusyFlag);
+        setPier1BusyFlag->getConnectionManager()->insert(routePier1);
         routePier1->setStation(stationPier1);
         
-        tryPier2->getConnections()->insert(release4);
-        release4->getConnections()->insert(enterStationPier2Align);
-        enterStationPier2Align->getConnections()->insert(setPier2BusyFlag);
-        setPier2BusyFlag->getConnections()->insert(routePier2);
+        tryPier2->getConnectionManager()->insert(release4);
+        release4->getConnectionManager()->insert(enterStationPier2Align);
+        enterStationPier2Align->getConnectionManager()->insert(setPier2BusyFlag);
+        setPier2BusyFlag->getConnectionManager()->insert(routePier2);
         routePier2->setStation(stationPier2);
-        tryPier2->getConnections()->insert(delay2);
-        delay2->getConnections()->insert(tryPier1);
+        tryPier2->getConnectionManager()->insert(delay2);
+        delay2->getConnectionManager()->insert(tryPier1);
         
-        enterStationPier1->getConnections()->insert(pier1LoadingOperation);
-        pier1LoadingOperation->getConnections()->insert(resetPier1BusyFlag);
-        resetPier1BusyFlag->getConnections()->insert(routeToDeparture);
+        enterStationPier1->getConnectionManager()->insert(pier1LoadingOperation);
+        pier1LoadingOperation->getConnectionManager()->insert(resetPier1BusyFlag);
+        resetPier1BusyFlag->getConnectionManager()->insert(routeToDeparture);
         
-        enterStationPier2->getConnections()->insert(pier2LoadingOperation);
-        pier2LoadingOperation->getConnections()->insert(resetPier2BusyFlag);
-        resetPier2BusyFlag->getConnections()->insert(routeToDeparture2);
+        enterStationPier2->getConnectionManager()->insert(pier2LoadingOperation);
+        pier2LoadingOperation->getConnectionManager()->insert(resetPier2BusyFlag);
+        resetPier2BusyFlag->getConnectionManager()->insert(routeToDeparture2);
         
         routeToDeparture->setStation(departureStation);
         routeToDeparture2->setStation(departureStation);
         
-        enterDepartureStation->getConnections()->insert(dispose2);
+        enterDepartureStation->getConnectionManager()->insert(dispose2);
         
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(12, Util::TimeUnit::hour);

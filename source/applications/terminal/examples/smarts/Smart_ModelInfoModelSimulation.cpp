@@ -50,8 +50,8 @@ int Smart_ModelInfoModelSimulation::main(int argc, char** argv) {
 	delay1->setDelayExpression("NORM(1,0.2)", Util::TimeUnit::minute);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(dispose1);
 	// set model simulation
 	ModelSimulation* sim = model->getSimulation();
 	sim->setReplicationLength(15, Util::TimeUnit::minute); // each replication will last 15 minutes (simulated time)

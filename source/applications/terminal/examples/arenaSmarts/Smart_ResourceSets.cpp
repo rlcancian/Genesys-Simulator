@@ -55,7 +55,7 @@ int Smart_ResourceSets::main(int argc, char** argv) {
     Dispose* disposeApplication = plugins->newInstance<Dispose>(model, "Dispose_of_Application");
 
     // Mail Loans Arrive
-    mailLoanArrives->getConnections()->insert(useLoanApproval);
+    mailLoanArrives->getConnectionManager()->insert(useLoanApproval);
     mailLoanArrives->setEntityTypeName("Mail Loan");
     mailLoanArrives->setTimeBetweenCreationsExpression("EXPO(20)");
     mailLoanArrives->setTimeUnit(Util::TimeUnit::minute);
@@ -63,7 +63,7 @@ int Smart_ResourceSets::main(int argc, char** argv) {
     mailLoanArrives->setFirstCreation(0.0);
 
     // Internet Loans Arrive
-    internetLoanArrives->getConnections()->insert(useLoanApproval);
+    internetLoanArrives->getConnectionManager()->insert(useLoanApproval);
     internetLoanArrives->setEntityTypeName("Internet Loan");
     internetLoanArrives->setTimeBetweenCreationsExpression("EXPO(2)");
     internetLoanArrives->setTimeUnit(Util::TimeUnit::hour);
@@ -71,7 +71,7 @@ int Smart_ResourceSets::main(int argc, char** argv) {
     internetLoanArrives->setFirstCreation(0.0);
 
     // Phone Loans Arrive
-    phoneLoanArrives->getConnections()->insert(useLoanApproval);
+    phoneLoanArrives->getConnectionManager()->insert(useLoanApproval);
     phoneLoanArrives->setEntityTypeName("Phone Loan");
     phoneLoanArrives->setTimeBetweenCreationsExpression("EXPO(1)");
     phoneLoanArrives->setTimeUnit(Util::TimeUnit::hour);
@@ -90,7 +90,7 @@ int Smart_ResourceSets::main(int argc, char** argv) {
     std::vector<Resource*> seniorResources = { seniorResource1, seniorResource2 };
 
     // Use Loan Approval Officer Set
-    useLoanApproval->getConnections()->insert(useSeniorApproval);
+    useLoanApproval->getConnectionManager()->insert(useSeniorApproval);
     useLoanApproval->setDelayTimeUnit(Util::TimeUnit::minute);
     useLoanApproval->setDelayExpression("NORM(7, 2)");
 
@@ -114,7 +114,7 @@ int Smart_ResourceSets::main(int argc, char** argv) {
     useLoanApproval->setQueueableItem(new QueueableItem(loanQueue));
     
     // Use Senior Approval Officer Set
-    useSeniorApproval->getConnections()->insert(decideLoan);
+    useSeniorApproval->getConnectionManager()->insert(decideLoan);
     useSeniorApproval->setDelayTimeUnit(Util::TimeUnit::hour);
     useSeniorApproval->setDelayExpression("TRIA(2, 3, 4)");
 
@@ -134,19 +134,19 @@ int Smart_ResourceSets::main(int argc, char** argv) {
     useSeniorApproval->setQueueableItem(new QueueableItem(seniorQueue));
 
     // Determine if loan is approved
-    decideLoan->getConnections()->insert(sendApproval);
-    decideLoan->getConnections()->insert(sendDenial);
+    decideLoan->getConnectionManager()->insert(sendApproval);
+    decideLoan->getConnectionManager()->insert(sendDenial);
     decideLoan->getConditions()->insert("UNIF(0, 1) < 0.8");
 
     // Send approval
     // As process_3 has only a Delay action, it uses the Delay component instead but we keep the name.
-    sendApproval->getConnections()->insert(fileLoan);
+    sendApproval->getConnectionManager()->insert(fileLoan);
     sendApproval->setDelayTimeUnit(Util::TimeUnit::minute);
     sendApproval->setDelayExpression("UNIF(0.5, 2.0)");
 
     // Send Denial
     // As process_4 has only a Delay action, it uses the Delay component instead but we keep the name.
-    sendDenial->getConnections()->insert(disposeApplication);
+    sendDenial->getConnectionManager()->insert(disposeApplication);
     sendDenial->setDelayTimeUnit(Util::TimeUnit::minute);
     sendDenial->setDelayExpression("TRIA(0.5, 1, 1.5)"); 
 

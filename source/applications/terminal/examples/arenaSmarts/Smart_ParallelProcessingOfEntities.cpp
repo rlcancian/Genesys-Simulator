@@ -55,7 +55,7 @@ int Smart_ParallelProcessingOfEntities::main(int argc, char** argv) {
     Assign* entitySerialNumber = plugins->newInstance<Assign>(model, "Assign serial number");
 
     // Create - Equipament Arrives
-    createEquipmentArrives->getConnections()->insert(entitySerialNumber);
+    createEquipmentArrives->getConnectionManager()->insert(entitySerialNumber);
     createEquipmentArrives->setEntityTypeName("Equipment");
     createEquipmentArrives->setTimeBetweenCreationsExpression("NORM(8,9)");
     createEquipmentArrives->setTimeUnit(Util::TimeUnit::minute);
@@ -67,24 +67,24 @@ int Smart_ParallelProcessingOfEntities::main(int argc, char** argv) {
     serial->setInitialValue(0);
     // Attribute* serialNumber = plugins->newInstance<Attribute>(model, "SerialNumber");
     
-    entitySerialNumber->getConnections()->insert(clone_1);
+    entitySerialNumber->getConnectionManager()->insert(clone_1);
 	entitySerialNumber->getAssignments()->insert(new Assignment(model, "Serial", "Serial + 1", false));
 	entitySerialNumber->getAssignments()->insert(new Assignment(model, "Entity.SerialNumber", "Serial", true));
 
     // Clone - Separate 1
-    clone_1->getConnections()->insert(processCleanEquipment);
-    clone_1->getConnections()->insert(clone_2);
+    clone_1->getConnectionManager()->insert(processCleanEquipment);
+    clone_1->getConnectionManager()->insert(clone_2);
     clone_1->setNumClonesExpression("1");
     clone_1->setReportStatistics(false);
     
     // Separate 2
-    clone_2->getConnections()->insert(processCertifyEquipment);
-    clone_2->getConnections()->insert(processTestEquipment);
+    clone_2->getConnectionManager()->insert(processCertifyEquipment);
+    clone_2->getConnectionManager()->insert(processTestEquipment);
     clone_2->setNumClonesExpression("1");
     clone_2->setReportStatistics(false);
 
     // Process - Clean Equipment
-    processCleanEquipment->getConnections()->insert(batchCombinePaperwork);
+    processCleanEquipment->getConnectionManager()->insert(batchCombinePaperwork);
     processCleanEquipment->setDelayExpression("UNIF(10,20)");
     processCleanEquipment->setDelayTimeUnit(Util::TimeUnit::minute);
 
@@ -95,7 +95,7 @@ int Smart_ParallelProcessingOfEntities::main(int argc, char** argv) {
     processCleanEquipment->setQueueableItem(new QueueableItem(plugins->newInstance<Queue>(model, "processCleanEquipmentQueue")));
 
     // Process - Test Equipment
-    processTestEquipment->getConnections()->insert(batchCombinePaperwork);
+    processTestEquipment->getConnectionManager()->insert(batchCombinePaperwork);
     processTestEquipment->setDelayExpression("UNIF(5,15)");
     processTestEquipment->setDelayTimeUnit(Util::TimeUnit::minute);
 
@@ -106,7 +106,7 @@ int Smart_ParallelProcessingOfEntities::main(int argc, char** argv) {
     processTestEquipment->setQueueableItem(new QueueableItem(plugins->newInstance<Queue>(model, "processTestEquipmentQueue")));
 
     // Process - Certify Equipment
-    processCertifyEquipment->getConnections()->insert(batchCombinePaperwork);
+    processCertifyEquipment->getConnectionManager()->insert(batchCombinePaperwork);
     processCertifyEquipment->setDelayExpression("UNIF(5,10)");
     processCertifyEquipment->setDelayTimeUnit(Util::TimeUnit::minute);
 
@@ -117,7 +117,7 @@ int Smart_ParallelProcessingOfEntities::main(int argc, char** argv) {
     processCertifyEquipment->setQueueableItem(new QueueableItem(plugins->newInstance<Queue>(model, "processCertifyEquipmentQueue")));
 
     // Batch - Combine Paperwork
-    batchCombinePaperwork->getConnections()->insert(disposeEquipmentPlacedInWarehouse);
+    batchCombinePaperwork->getConnectionManager()->insert(disposeEquipmentPlacedInWarehouse);
     batchCombinePaperwork->setBatchSize("3");
     batchCombinePaperwork->setRule(Batch::Rule::ByAttribute);
     batchCombinePaperwork->setGroupedAttributes(Batch::GroupedAttribs::LastEntity);

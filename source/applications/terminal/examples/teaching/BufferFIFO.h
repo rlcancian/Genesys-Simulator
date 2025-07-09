@@ -36,7 +36,7 @@ public:
 		Clone* clone1 = plugins->newInstance<Clone>(model);
 		clone1->setNumClonesExpression("1");
 
-		create1->getConnections()->insert(clone1);
+		create1->getConnectionManager()->insert(clone1);
 
 		SignalData* sigdata1 = plugins->newInstance<SignalData>(model);
 		Queue* queue1 = plugins->newInstance<Queue>(model, "waitingQueue");
@@ -45,29 +45,29 @@ public:
 		wait1->setSignalData(sigdata1);
 		wait1->setQueue(queue1);
 
-		clone1->getConnections()->insert(wait1);
+		clone1->getConnectionManager()->insert(wait1);
 
 		Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 
-		wait1->getConnections()->insert(dispose1);
+		wait1->getConnectionManager()->insert(dispose1);
 
 		Decide* decide1 =  plugins->newInstance<Decide>(model);
 		decide1->getConditions()->insert("nq(waitingQueue)<tamBuffer");
 		Variable* var1 = plugins->newInstance<Variable>(model, "tamBuffer");
 		var1->setInitialValue(5);
 
-		clone1->getConnections()->insert(decide1);
+		clone1->getConnectionManager()->insert(decide1);
 
 		Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 		dispose2->setReportStatistics(false);
 
-		decide1->getConnections()->insert(dispose2);
+		decide1->getConnectionManager()->insert(dispose2);
 
 		Signal* signal1 = plugins->newInstance<Signal>(model);
 		signal1->setSignalData(sigdata1);
 
-		decide1->getConnections()->insert(signal1);
-		signal1->getConnections()->insert(dispose2);
+		decide1->getConnectionManager()->insert(signal1);
+		signal1->getConnectionManager()->insert(dispose2);
 
 		ModelSimulation* sim = model->getSimulation();
 		sim->setReplicationLength(50, Util::TimeUnit::hour);

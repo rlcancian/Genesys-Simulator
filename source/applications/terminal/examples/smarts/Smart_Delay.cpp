@@ -44,8 +44,8 @@ int Smart_Delay::main(int argc, char** argv) {
 	delay1->setDelayExpression("unif(1,0.2)");
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(dispose1);
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(60);
 	model->getSimulation()->setTerminatingCondition("");

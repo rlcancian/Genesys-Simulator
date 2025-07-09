@@ -41,10 +41,10 @@ int AirportSecurityExample::main(int argc, char** argv) {
 	Dispose* disposeDenied = plugins->newInstance<Dispose>(model);
 	disposeDenied->setDescription("Denied");
 
-	create->getConnections()->insert(process);
-	process->getConnections()->insert(decide);
-	decide->getConnections()->insert(disposeCleared);
-	decide->getConnections()->insert(disposeDenied);
+	create->getConnectionManager()->insert(process);
+	process->getConnectionManager()->insert(decide);
+	decide->getConnectionManager()->insert(disposeCleared);
+	decide->getConnectionManager()->insert(disposeDenied);
 
 	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L5_event);
 	model->getSimulation()->setReplicationLength(12, Util::TimeUnit::hour);

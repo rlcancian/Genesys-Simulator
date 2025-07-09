@@ -61,12 +61,12 @@ int Smart_Buffer::main(int argc, char** argv) {
 	signal5->setSignalData(signalData);
 
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(buffer1);
-	buffer1->getConnections()->insert(dispose1);
-	create4->getConnections()->insert(buffer4);
-	buffer4->getConnections()->insert(dispose1);
-	create5->getConnections()->insert(signal5);
-	signal5->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(buffer1);
+	buffer1->getConnectionManager()->insert(dispose1);
+	create4->getConnectionManager()->insert(buffer4);
+	buffer4->getConnectionManager()->insert(dispose1);
+	create5->getConnectionManager()->insert(signal5);
+	signal5->getConnectionManager()->insert(dispose1);
 
 	// set options, save and simulate
 	model->getSimulation()->setNumberOfReplications(1);

@@ -55,8 +55,8 @@ int Smart_ProcessSet::main(int argc, char** argv) {
 	process->setQueueableItem(new QueueableItem(model, "myqueue"));
 	process->setDelayExpression("unif(0.6,1.4)");
 	// connect model components to create a "workflow"
-	create->getConnections()->insert(process);
-	process->getConnections()->insert(dispose);
+	create->getConnectionManager()->insert(process);
+	process->getConnectionManager()->insert(dispose);
 	// set options, save and simulate step-by-step (but no user interaction required)
 	model->getSimulation()->setReplicationLength(10);
 	model->save("./models/Smart_ProcessSet.gen");

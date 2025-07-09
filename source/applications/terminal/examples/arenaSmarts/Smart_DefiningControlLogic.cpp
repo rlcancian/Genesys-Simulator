@@ -95,15 +95,15 @@ int Smart_DefiningControlLogic::main(int argc, char** argv) {
     Dispose* dispose1 = plugins->newInstance<Dispose>(model, "Dispose_1");
 
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(seize1);
-	seize1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(release1);
-	release1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(seize1);
+	seize1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(release1);
+	release1->getConnectionManager()->insert(dispose1);
 
-	create2->getConnections()->insert(var_assign1);
-	var_assign1->getConnections()->insert(delay2);
-	delay2->getConnections()->insert(var_assign2);
-	var_assign2->getConnections()->insert(dispose2); 
+	create2->getConnectionManager()->insert(var_assign1);
+	var_assign1->getConnectionManager()->insert(delay2);
+	delay2->getConnectionManager()->insert(var_assign2);
+	var_assign2->getConnectionManager()->insert(dispose2); 
 
 	model->getSimulation()->setNumberOfReplications(3);
 	model->getSimulation()->setReplicationLength(60, Util::TimeUnit::minute);

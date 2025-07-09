@@ -35,9 +35,9 @@ int Smart_CppForG::main(int argc, char** argv) {
 	CppForG* cpp2 = plugins->newInstance<CppForG>(model);
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create->getConnections()->insert(cpp1);
-	cpp1->getConnections()->insert(cpp2);
-	cpp2->getConnections()->insert(dispose);
+	create->getConnectionManager()->insert(cpp1);
+	cpp1->getConnectionManager()->insert(cpp2);
+	cpp2->getConnectionManager()->insert(dispose);
 	// set parameters for cpp1 and cpp2 components
 	std::string includeCode = "\
 		#include \"../../../../kernel/simulator/ModelSimulation.h\"\n\

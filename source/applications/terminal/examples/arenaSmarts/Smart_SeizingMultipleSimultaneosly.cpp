@@ -97,15 +97,15 @@ int Smart_SeizingMultipleSimultaneosly::main(int argc, char** argv) {
         dispose_1->setReportStatistics(true);
         
 	// connect model components to create a "workflow"
-	create_1->getConnections()->insert(seize);
+	create_1->getConnectionManager()->insert(seize);
         
-        seize->getConnections()->insert(setup_machine);
-        setup_machine->getConnections()->insert(release_operator);
+        seize->getConnectionManager()->insert(setup_machine);
+        setup_machine->getConnectionManager()->insert(release_operator);
         
-        release_operator->getConnections()->insert(process_on_machine);
-        process_on_machine->getConnections()->insert(release_machine);
+        release_operator->getConnectionManager()->insert(process_on_machine);
+        process_on_machine->getConnectionManager()->insert(release_machine);
         
-        release_machine->getConnections()->insert(dispose_1);
+        release_machine->getConnectionManager()->insert(dispose_1);
         
         
 	// set options, save and simulate

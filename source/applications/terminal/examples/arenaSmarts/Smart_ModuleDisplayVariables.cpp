@@ -56,8 +56,8 @@ int Smart_ModuleDisplayVariables::main(int argc, char** argv) {
 	Dispose* dispose_1 = plugins->newInstance<Dispose>(model, "Dispose 1");
 
 	// connecting model components to create a "workflow"
-	create_1->getConnections()->insert(process_1);
-	process_1->getConnections()->insert(dispose_1);
+	create_1->getConnectionManager()->insert(process_1);
+	process_1->getConnectionManager()->insert(dispose_1);
 
 	// set options, save and simulate step-by-step (but no user interaction required)
 	double replicationLength = 1300; // duracao para alcancar ~1000 entidades saindo do sistema

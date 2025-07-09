@@ -17,8 +17,8 @@ void ContinuousModel::Simulate(Simulator* genesys, Model* model, PluginManager *
 	ode1->getEquations()->insert("x[3]^2 - 2*x[1]");
 	ode1->setFinalTime(10.0);
 	Dispose *dispose1 = plugins->newInstance<Dispose>(model);
-	create1->getConnections()->insert(ode1);
-	ode1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(ode1);
+	ode1->getConnectionManager()->insert(dispose1);
 
 	model->getSimulation()->start();
 }

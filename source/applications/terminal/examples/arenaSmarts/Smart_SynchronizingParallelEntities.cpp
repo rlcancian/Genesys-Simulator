@@ -114,16 +114,16 @@ int Smart_SynchronizingParallelEntities::main(int argc, char** argv) {
         deliver_order->setReportStatistics(true);
 	// connect model components to create a "workflow"
 	
-	orders_arrive->getConnections()->insert(assign_serial_number);
-	assign_serial_number->getConnections()->insert(duplicate_the_order_entity);
+	orders_arrive->getConnectionManager()->insert(assign_serial_number);
+	assign_serial_number->getConnectionManager()->insert(duplicate_the_order_entity);
         
-        duplicate_the_order_entity->getConnections()->insert(fill_order);
-	duplicate_the_order_entity->getConnections()->insert(process_billing_information);
+        duplicate_the_order_entity->getConnectionManager()->insert(fill_order);
+	duplicate_the_order_entity->getConnectionManager()->insert(process_billing_information);
         
-	fill_order->getConnections()->insert(attach_bill_to_order);
-	process_billing_information->getConnections()->insert(attach_bill_to_order);
+	fill_order->getConnectionManager()->insert(attach_bill_to_order);
+	process_billing_information->getConnectionManager()->insert(attach_bill_to_order);
         
-        attach_bill_to_order->getConnections()->insert(deliver_order);
+        attach_bill_to_order->getConnectionManager()->insert(deliver_order);
         
 	// set options, save and simulate
 	ModelSimulation* sim = model->getSimulation();

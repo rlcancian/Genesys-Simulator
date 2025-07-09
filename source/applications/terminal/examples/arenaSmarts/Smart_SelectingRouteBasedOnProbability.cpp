@@ -134,18 +134,18 @@ int Smart_SelectingRouteBasedOnProbability::main(int argc, char** argv) {
 	send_to_dryer_2->setReportStatistics(true);
         
         //
-	part_arrive->getConnections()->insert(part_arrival);
-	part_arrival->getConnections()->insert(route_to_decision);
+	part_arrive->getConnectionManager()->insert(part_arrival);
+	part_arrival->getConnectionManager()->insert(route_to_decision);
         
-	decision_area->getConnections()->insert(decide);
-	decide->getConnections()->insert(route_to_machine_1);
-	decide->getConnections()->insert(route_to_machine_2);
+	decision_area->getConnectionManager()->insert(decide);
+	decide->getConnectionManager()->insert(route_to_machine_1);
+	decide->getConnectionManager()->insert(route_to_machine_2);
         
-	machining_1->getConnections()->insert(machine_1_process);
-	machine_1_process->getConnections()->insert(send_to_dryer_1);
+	machining_1->getConnectionManager()->insert(machine_1_process);
+	machine_1_process->getConnectionManager()->insert(send_to_dryer_1);
         
-	machining_2->getConnections()->insert(machine_2_process);
-	machine_2_process->getConnections()->insert(send_to_dryer_2);
+	machining_2->getConnectionManager()->insert(machine_2_process);
+	machine_2_process->getConnectionManager()->insert(send_to_dryer_2);
         
         
 	// set options, save and simulate

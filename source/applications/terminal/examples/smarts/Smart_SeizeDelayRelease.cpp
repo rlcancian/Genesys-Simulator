@@ -60,10 +60,10 @@ int Smart_SeizeDelayRelease::main(int argc, char** argv) {
 	release1->getReleaseRequests()->insert(new SeizableItem(machine1, "1"));
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(seize1);
-	seize1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(release1);
-	release1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(seize1);
+	seize1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(release1);
+	release1->getConnectionManager()->insert(dispose1);
 	// set options, save and simulate
 	ModelSimulation* sim = model->getSimulation();
 	sim->setReplicationLength(1000, Util::TimeUnit::second);

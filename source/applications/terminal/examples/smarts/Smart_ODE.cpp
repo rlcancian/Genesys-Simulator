@@ -47,8 +47,8 @@ int Smart_ODE::main(int argc, char** argv) {
 	ode1->setStep(0.1);
 	ode1->setFilename("./temp/Smart_ODE.outputdatafile.txt"); // ODE results in a text tabular format
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(ode1);
-	ode1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(ode1);
+	ode1->getConnectionManager()->insert(dispose1);
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(2.0);
 	model->getSimulation()->setShowReportsAfterReplication(false);

@@ -69,14 +69,14 @@ int Smart_WaitSignal::main(int argc, char** argv) {
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 	//
-	create1->getConnections()->insert(wait1);
-	wait1->getConnections()->insert(dispose1);
-	create2->getConnections()->insert(wait2);
-	wait2->getConnections()->insert(dispose1);
-	create3->getConnections()->insert(signal1);
-	signal1->getConnections()->insert(dispose2);
-	create4->getConnections()->insert(signal2);
-	signal2->getConnections()->insert(dispose2);
+	create1->getConnectionManager()->insert(wait1);
+	wait1->getConnectionManager()->insert(dispose1);
+	create2->getConnectionManager()->insert(wait2);
+	wait2->getConnectionManager()->insert(dispose1);
+	create3->getConnectionManager()->insert(signal1);
+	signal1->getConnectionManager()->insert(dispose2);
+	create4->getConnectionManager()->insert(signal2);
+	signal2->getConnectionManager()->insert(dispose2);
 	//
 	ModelSimulation* simulation = model->getSimulation();
 	simulation->setReplicationLength(20);

@@ -53,10 +53,10 @@ int Smart_WaitScanCondition::main(int argc, char** argv) {
 	assign1->getAssignments()->insert(new Assignment(model, "var1", "var1+1", false));
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	//
-	create1->getConnections()->insert(wait1);
-	wait1->getConnections()->insert(dispose1);
-	create2->getConnections()->insert(assign1);
-	assign1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(wait1);
+	wait1->getConnectionManager()->insert(dispose1);
+	create2->getConnectionManager()->insert(assign1);
+	assign1->getConnectionManager()->insert(dispose1);
 	//
 	ModelSimulation* simulation = model->getSimulation();
 	simulation->setReplicationLength(20);

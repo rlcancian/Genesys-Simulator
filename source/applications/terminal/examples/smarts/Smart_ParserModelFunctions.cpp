@@ -68,10 +68,10 @@ int Smart_ParserModelFunctions::main(int argc, char** argv) {
 	Write* w = plugins->newInstance<Write>(model);
 	Dispose* d2 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	c1->getConnections()->insert(p1);
-	p1->getConnections()->insert(d1);
-	c2->getConnections()->insert(w);
-	w->getConnections()->insert(d2);
+	c1->getConnectionManager()->insert(p1);
+	p1->getConnectionManager()->insert(d1);
+	c2->getConnectionManager()->insert(w);
+	w->getConnectionManager()->insert(d2);
 	// insert several "run-time" expressions to be interpreted by the parser
 	w->insertText({"Simulation TNOW=", "@tnow", ", ", "@tfin", ", ", "@maxrep", ", ", "@numrep", ", ", "@ident"});
 	w->insertText({"Resouce_2 NR=", "@nr(Resource_2)", ", MR=", "@mr(Resource_2)", ", STATE=", "@state(Resource_2)"}); //, ", RESSEIZES=", "@ressizes(Resource_2)"});

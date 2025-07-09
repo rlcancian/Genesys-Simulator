@@ -81,14 +81,14 @@ int Smart_SelectingShorterQueue::main(int argc, char** argv) {
         Dispose* dispose1 = plugins->newInstance<Dispose>(model);
         
         // CONNECTIONS
-        create1->getConnections()->insert(decide1);
+        create1->getConnectionManager()->insert(decide1);
         // insere primeiro o machineOne para que o resultado da expressão vá para ele caso seja True
-        decide1->getConnections()->insert(process1);
+        decide1->getConnectionManager()->insert(process1);
         // se o resultado da expressão for false irá para Machine Two
-        decide1->getConnections()->insert(process2);
+        decide1->getConnectionManager()->insert(process2);
         
-        process1->getConnections()->insert(dispose1);
-        process2->getConnections()->insert(dispose1);
+        process1->getConnectionManager()->insert(dispose1);
+        process2->getConnectionManager()->insert(dispose1);
 	// set options, save and simulate
 	model->getSimulation()->setNumberOfReplications(300);
         model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::minute);

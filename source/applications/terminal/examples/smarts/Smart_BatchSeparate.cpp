@@ -49,11 +49,11 @@ int Smart_BatchSeparate::main(int argc, char** argv) {
 	Separate* se = plugins->newInstance<Separate>(model);
 	Dispose* di = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	cr->getConnections()->insert(as);
-	as->getConnections()->insert(ba);
-	ba->getConnections()->insert(de);
-	de->getConnections()->insert(se);
-	se->getConnections()->insert(di);
+	cr->getConnectionManager()->insert(as);
+	as->getConnectionManager()->insert(ba);
+	ba->getConnectionManager()->insert(de);
+	de->getConnectionManager()->insert(se);
+	se->getConnectionManager()->insert(di);
 	// save, trace specific modules and aimulate
 	ModelSimulation* sim = model->getSimulation();
 	sim->setReplicationLength(100);

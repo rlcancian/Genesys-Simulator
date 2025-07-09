@@ -64,18 +64,18 @@ int Smart_ArrivalsEntityTypeVsAttribute::main(int argc, char** argv) {
     
 	Dispose* di2 = plugins->newInstance<Dispose>(model);
 
-    cr1->getConnections()->insert(assignCR1);
-    cr2->getConnections()->insert(assignCR2);
+    cr1->getConnectionManager()->insert(assignCR1);
+    cr2->getConnectionManager()->insert(assignCR2);
    
-    assignCR1->getConnections()->insert(assign);
-    assignCR2->getConnections()->insert(assign);
+    assignCR1->getConnectionManager()->insert(assign);
+    assignCR2->getConnectionManager()->insert(assign);
     
-    assign->getConnections()->insert(process);
+    assign->getConnectionManager()->insert(process);
     
-    process->getConnections()->insert(decide);
+    process->getConnectionManager()->insert(decide);
     
-    decide->getConnections()->insert(di1);
-    decide->getConnections()->insert(di2);
+    decide->getConnectionManager()->insert(di1);
+    decide->getConnectionManager()->insert(di2);
     
 	ModelSimulation* s = model->getSimulation();
     s->setNumberOfReplications(3);

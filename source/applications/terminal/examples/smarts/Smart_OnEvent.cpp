@@ -89,7 +89,7 @@ int Smart_OnEvent::main(int argc, char** argv) {
 	// create model
 	model->getTracer()->setTraceLevel(TraceManager::Level::L0_noTraces); // NO TRACES. Genesys will show anything!
 	// set event handler to the previous methods. All outputs will come from these handlers
-	OnEventManager* oem = model->getOnEvents();
+	OnEventManager* oem = model->getOnEventManager();
 	oem->addOnBreakpointHandler(this, &Smart_OnEvent::onBreakpointHandler);
 	oem->addOnEntityCreateHandler(this, &Smart_OnEvent::onEntityCreateHandler);
 	oem->addOnEntityMoveHandler(this, &Smart_OnEvent::onEntityMoveHandler);
@@ -107,8 +107,8 @@ int Smart_OnEvent::main(int argc, char** argv) {
 	Delay* delay1 = plugins->newInstance<Delay>(model);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(dispose1);
 	// set options, save and simulate. It will pause every step and require to press ENTER
 	model->getSimulation()->setReplicationLength(10);
 	model->save("./models/Smart_OnEvent.gen");

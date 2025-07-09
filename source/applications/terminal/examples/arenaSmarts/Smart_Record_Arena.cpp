@@ -54,23 +54,23 @@ int Smart_Record_Arena::main(int argc, char** argv) {
     Assignment* assignment = new Assignment("timeIn", "tnow");
     assign->getAssignments()->insert(assignment);
     new Attribute(model, "timeIn");
-    create->getConnections()->insert(assign);
+    create->getConnectionManager()->insert(assign);
 
     Delay* delay = new Delay(model);
     delay->setDescription("Browse");
     delay->setDelayExpression("tria(3, 7, 11)");
     delay->setDelayTimeUnit(Util::TimeUnit::minute);
-    assign->getConnections()->insert(delay);
+    assign->getConnectionManager()->insert(delay);
 
     Record* record = new Record(model);
     record->setDescription("Time in Store");
     record->setExpression("timeIn");
     record->setExpressionName("Time in Store");
-    delay->getConnections()->insert(record);
+    delay->getConnectionManager()->insert(record);
 
     Dispose* dispose = new Dispose(model);
     dispose->setDescription("Leave Store");
-    record->getConnections()->insert(dispose);
+    record->getConnectionManager()->insert(dispose);
 
     ModelSimulation* simulation = model->getSimulation();
     simulation->setReplicationLength(10);

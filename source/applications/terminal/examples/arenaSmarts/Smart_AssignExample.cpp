@@ -63,12 +63,12 @@ int Smart_AssignExample::main(int argc, char** argv) {
     Dispose *dispose = plugins->newInstance<Dispose>(model);
     dispose->setName("Calls Finished");
 
-    create->getConnections()->insert(assign);
-    assign->getConnections()->insert(decide);
-    decide->getConnections()->insert(process1);
-    decide->getConnections()->insert(process2);
-    process1->getConnections()->insert(dispose);
-    process2->getConnections()->insert(dispose);
+    create->getConnectionManager()->insert(assign);
+    assign->getConnectionManager()->insert(decide);
+    decide->getConnectionManager()->insert(process1);
+    decide->getConnectionManager()->insert(process2);
+    process1->getConnectionManager()->insert(dispose);
+    process2->getConnectionManager()->insert(dispose);
     
     ModelSimulation *s = model->getSimulation();
     s->setNumberOfReplications(3);

@@ -60,13 +60,13 @@ int Assembly_Line::main(int argc, char** argv) {
 	assign1->getAssignments()->insert(new Assignment("a_time", "TNOW"));
 	assign1->getAssignments()->insert(new Assignment("v_WIP", "v_WIP+1"));
 
-	create1->getConnections()->insert(assign1);
+	create1->getConnectionManager()->insert(assign1);
 
 	Station* entranceStation = plugins->newInstance<Station>(model, "Estacao_de_Entrada");
 	Enter* enterEntranceStation = plugins->newInstance<Enter>(model);
 	enterEntranceStation->setStation(entranceStation);
 
-	assign1->getConnections()->insert(enterEntranceStation);
+	assign1->getConnectionManager()->insert(enterEntranceStation);
 
 	Station* station1 = plugins->newInstance<Station>(model, "Estacao_1");
 	Enter* enterStation1 = plugins->newInstance<Enter>(model);
@@ -76,7 +76,7 @@ int Assembly_Line::main(int argc, char** argv) {
 	route1->setRouteTimeExpression("30");
 	route1->setRouteTimeTimeUnit(Util::TimeUnit::second);
 
-	enterEntranceStation->getConnections()->insert(route1);
+	enterEntranceStation->getConnectionManager()->insert(route1);
 
 	Resource* operator1 = plugins->newInstance<Resource>(model, "operador_1");
 	operator1->setCapacity(1);
@@ -90,9 +90,9 @@ int Assembly_Line::main(int argc, char** argv) {
 	Release* releaseOperator1 = plugins->newInstance<Release>(model);
 	releaseOperator1->getReleaseRequests()->insert(new SeizableItem(operator1, "1"));
 
-	enterStation1->getConnections()->insert(seizeOperator1);
-	seizeOperator1->getConnections()->insert(delayOperator1);
-	delayOperator1->getConnections()->insert(releaseOperator1);
+	enterStation1->getConnectionManager()->insert(seizeOperator1);
+	seizeOperator1->getConnectionManager()->insert(delayOperator1);
+	delayOperator1->getConnectionManager()->insert(releaseOperator1);
 
 	Station* station2 = plugins->newInstance<Station>(model, "Estacao_2");
 	Enter* enterStation2 = plugins->newInstance<Enter>(model);
@@ -102,7 +102,7 @@ int Assembly_Line::main(int argc, char** argv) {
 	route2->setRouteTimeExpression("40");
 	route2->setRouteTimeTimeUnit(Util::TimeUnit::second);
 
-	releaseOperator1->getConnections()->insert(route2);
+	releaseOperator1->getConnectionManager()->insert(route2);
 
 	Resource* operator2 = plugins->newInstance<Resource>(model, "operador_2");
 	operator2->setCapacity(1);
@@ -116,9 +116,9 @@ int Assembly_Line::main(int argc, char** argv) {
 	Release* releaseOperator2 = plugins->newInstance<Release>(model);
 	releaseOperator2->getReleaseRequests()->insert(new SeizableItem(operator2, "1"));
 
-	enterStation2->getConnections()->insert(seizeOperator2);
-	seizeOperator2->getConnections()->insert(delayOperator2);
-	delayOperator2->getConnections()->insert(releaseOperator2);
+	enterStation2->getConnectionManager()->insert(seizeOperator2);
+	seizeOperator2->getConnectionManager()->insert(delayOperator2);
+	delayOperator2->getConnectionManager()->insert(releaseOperator2);
 
 	Station* station3 = plugins->newInstance<Station>(model, "Estacao_3");
 	Enter* enterStation3 = plugins->newInstance<Enter>(model);
@@ -128,7 +128,7 @@ int Assembly_Line::main(int argc, char** argv) {
 	route3->setRouteTimeExpression("60");
 	route3->setRouteTimeTimeUnit(Util::TimeUnit::second);
 
-	releaseOperator2->getConnections()->insert(route3);
+	releaseOperator2->getConnectionManager()->insert(route3);
 
 	Resource* operator3 = plugins->newInstance<Resource>(model, "operador_3");
 	operator3->setCapacity(1);
@@ -142,30 +142,30 @@ int Assembly_Line::main(int argc, char** argv) {
 	Release* releaseOperator3 = plugins->newInstance<Release>(model);
 	releaseOperator3->getReleaseRequests()->insert(new SeizableItem(operator3, "1"));
 
-	enterStation3->getConnections()->insert(seizeOperator3);
-	seizeOperator3->getConnections()->insert(delayOperator3);
-	delayOperator3->getConnections()->insert(releaseOperator3);
+	enterStation3->getConnectionManager()->insert(seizeOperator3);
+	seizeOperator3->getConnectionManager()->insert(delayOperator3);
+	delayOperator3->getConnectionManager()->insert(releaseOperator3);
 
 	Decide* decide1 = plugins->newInstance<Decide>(model);
 	decide1->getConditions()->insert("UNIF(0,1) < 0.11");
 
-	releaseOperator3->getConnections()->insert(decide1);
+	releaseOperator3->getConnectionManager()->insert(decide1);
 
 	// 10% de chance de seguir este caminho
 	Assign* assign2 = plugins->newInstance<Assign>(model);
 	assign2->getAssignments()->insert(new Assignment("v_WIP", "v_WIP-1"));
 	assign2->getAssignments()->insert(new Assignment("countProducts", "countProducts+1"));
 
-	decide1->getConnections()->insert(assign2);
+	decide1->getConnectionManager()->insert(assign2);
 
 	Record* record2 = plugins->newInstance<Record>(model, "Record_Cycle_Time1");
 	record2->setExpression("TNOW - a_time");
 
-	assign2->getConnections()->insert(record2);
+	assign2->getConnectionManager()->insert(record2);
 
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 
-	record2->getConnections()->insert(dispose1);
+	record2->getConnectionManager()->insert(dispose1);
 
 	//90% de chance de seguir este caminho
 	Station* station4 = plugins->newInstance<Station>(model, "Estacao_4");
@@ -176,7 +176,7 @@ int Assembly_Line::main(int argc, char** argv) {
 	route4->setRouteTimeExpression("40");
 	route4->setRouteTimeTimeUnit(Util::TimeUnit::second);
 
-	decide1->getConnections()->insert(route4);
+	decide1->getConnectionManager()->insert(route4);
 
 	Resource* operator4 = plugins->newInstance<Resource>(model, "operador_4");
 	operator4->setCapacity(1);
@@ -190,24 +190,24 @@ int Assembly_Line::main(int argc, char** argv) {
 	Release* releaseOperator4 = plugins->newInstance<Release>(model);
 	releaseOperator4->getReleaseRequests()->insert(new SeizableItem(operator4, "1"));
 
-	enterStation4->getConnections()->insert(seizeOperator4);
-	seizeOperator4->getConnections()->insert(delayOperator4);
-	delayOperator4->getConnections()->insert(releaseOperator4);
+	enterStation4->getConnectionManager()->insert(seizeOperator4);
+	seizeOperator4->getConnectionManager()->insert(delayOperator4);
+	delayOperator4->getConnectionManager()->insert(releaseOperator4);
 
 	Assign* assign3 = plugins->newInstance<Assign>(model);
 	assign3->getAssignments()->insert(new Assignment("v_WIP", "v_WIP-1"));
 	assign3->getAssignments()->insert(new Assignment("countProducts", "countProducts+1"));
 
-	releaseOperator4->getConnections()->insert(assign3);
+	releaseOperator4->getConnectionManager()->insert(assign3);
 
 	Record* record4 = plugins->newInstance<Record>(model, "Record_Cycle_Time2");
 	record4->setExpression("TNOW - a_time");
 
-	assign3->getConnections()->insert(record4);
+	assign3->getConnectionManager()->insert(record4);
 
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 
-	record4->getConnections()->insert(dispose2);
+	record4->getConnectionManager()->insert(dispose2);
 
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(60, Util::TimeUnit::hour);

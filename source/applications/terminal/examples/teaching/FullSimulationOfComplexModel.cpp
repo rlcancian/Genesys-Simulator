@@ -44,7 +44,7 @@ int FullSimulationOfComplexModel::main(int argc, char** argv) {
 	//
 	PluginManager* plugins = genesys->getPluginManager();
 	// get easy access to classes used to insert components and elements into a model
-	ComponentManager* components = model->getComponents();
+	ComponentManager* components = model->getComponentManager();
 	//
 	// build the simulation model
 	//
@@ -103,14 +103,14 @@ int FullSimulationOfComplexModel::main(int argc, char** argv) {
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 
 	// connect model components to create a "workflow" -- should always start from a SourceModelComponent and end at a SinkModelComponent (it will be checked)
-	create1->getConnections()->insert(assign1);
-	assign1->getConnections()->insert(decide1);
-	decide1->getConnections()->insert(seize1);
-	decide1->getConnections()->insert(dispose1);
-	seize1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(release1);
-	release1->getConnections()->insert(record1);
-	record1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(assign1);
+	assign1->getConnectionManager()->insert(decide1);
+	decide1->getConnectionManager()->insert(seize1);
+	decide1->getConnectionManager()->insert(dispose1);
+	seize1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(release1);
+	release1->getConnectionManager()->insert(record1);
+	record1->getConnectionManager()->insert(dispose1);
 	// then save the model into a text file
 	model->save("./models/AssignWrite3Seizes.gen");
 	// execute the simulation

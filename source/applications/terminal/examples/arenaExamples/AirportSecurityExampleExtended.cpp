@@ -88,18 +88,18 @@ int AirportSecurityExampleExtended::main(int argc, char** argv) {
 	Dispose* disposeClearedWithExtraCheck = plugins->newInstance<Dispose>(model);
 	disposeClearedWithExtraCheck->setDescription("Cleared with extra check");
 
-	create->getConnections()->insert(assignTimeIn);
-	assignTimeIn->getConnections()->insert(processIdentification);
-	processIdentification->getConnections()->insert(decidePassSecurity);
-	decidePassSecurity->getConnections()->insert(processXray);
-	processXray->getConnections()->insert(assignCounter);
-	assignCounter->getConnections()->insert(decideExtraScreening);
-	decideExtraScreening->getConnections()->insert(resetCounter);
-	resetCounter->getConnections()->insert(extraSecurityCheck);
-	extraSecurityCheck->getConnections()->insert(cycleTimeRecord);
-	cycleTimeRecord->getConnections()->insert(disposeClearedWithExtraCheck);
-	decideExtraScreening->getConnections()->insert(disposeCleared);
-	decidePassSecurity->getConnections()->insert(disposeDenied);
+	create->getConnectionManager()->insert(assignTimeIn);
+	assignTimeIn->getConnectionManager()->insert(processIdentification);
+	processIdentification->getConnectionManager()->insert(decidePassSecurity);
+	decidePassSecurity->getConnectionManager()->insert(processXray);
+	processXray->getConnectionManager()->insert(assignCounter);
+	assignCounter->getConnectionManager()->insert(decideExtraScreening);
+	decideExtraScreening->getConnectionManager()->insert(resetCounter);
+	resetCounter->getConnectionManager()->insert(extraSecurityCheck);
+	extraSecurityCheck->getConnectionManager()->insert(cycleTimeRecord);
+	cycleTimeRecord->getConnectionManager()->insert(disposeClearedWithExtraCheck);
+	decideExtraScreening->getConnectionManager()->insert(disposeCleared);
+	decidePassSecurity->getConnectionManager()->insert(disposeDenied);
 
 	//genesys->getTracer()->setTraceLevel(TraceManager::Level::L9_mostDetailed);
 	genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L2_results);

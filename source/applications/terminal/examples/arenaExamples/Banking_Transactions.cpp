@@ -83,13 +83,13 @@ int Banking_Transactions::main(int argc, char** argv) {
 	enterAtmArea->setStation(atmArea);
 	enterExitArea->setStation(exitArea);
 
-	create1->getConnections()->insert(enterEntranceStation);
-	enterEntranceStation->getConnections()->insert(route1);
-	enterAtmArea->getConnections()->insert(seizeAtm);
-	seizeAtm->getConnections()->insert(delayAtm);
-	delayAtm->getConnections()->insert(releaseAtm);
-	releaseAtm->getConnections()->insert(route2);
-	enterExitArea->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(enterEntranceStation);
+	enterEntranceStation->getConnectionManager()->insert(route1);
+	enterAtmArea->getConnectionManager()->insert(seizeAtm);
+	seizeAtm->getConnectionManager()->insert(delayAtm);
+	delayAtm->getConnectionManager()->insert(releaseAtm);
+	releaseAtm->getConnectionManager()->insert(route2);
+	enterExitArea->getConnectionManager()->insert(dispose1);
 
 
 
@@ -128,12 +128,12 @@ int Banking_Transactions::main(int argc, char** argv) {
 	route4->setStation(exitArea);
 	route4->setRouteTimeExpression("5", Util::TimeUnit::minute);
 
-	create2->getConnections()->insert(enterDoorStation);
-	enterDoorStation->getConnections()->insert(route3);
-	enterTellerStation->getConnections()->insert(seizeTeller);
-	seizeTeller->getConnections()->insert(delayTellers);
-	delayTellers->getConnections()->insert(releaseTellers);
-	releaseTellers->getConnections()->insert(route4);
+	create2->getConnectionManager()->insert(enterDoorStation);
+	enterDoorStation->getConnectionManager()->insert(route3);
+	enterTellerStation->getConnectionManager()->insert(seizeTeller);
+	seizeTeller->getConnectionManager()->insert(delayTellers);
+	delayTellers->getConnectionManager()->insert(releaseTellers);
+	releaseTellers->getConnectionManager()->insert(route4);
 
 
 
@@ -174,13 +174,13 @@ int Banking_Transactions::main(int argc, char** argv) {
 
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 
-	create3->getConnections()->insert(enterDriveStation);
-	enterDriveStation->getConnections()->insert(route5);
-	enterWindowStation->getConnections()->insert(seizeDrive);
-	seizeDrive->getConnections()->insert(delayDrive);
-	delayDrive->getConnections()->insert(releaseDrive);
-	releaseDrive->getConnections()->insert(route6);
-	enterDriveExitStation->getConnections()->insert(dispose2);
+	create3->getConnectionManager()->insert(enterDriveStation);
+	enterDriveStation->getConnectionManager()->insert(route5);
+	enterWindowStation->getConnectionManager()->insert(seizeDrive);
+	seizeDrive->getConnectionManager()->insert(delayDrive);
+	delayDrive->getConnectionManager()->insert(releaseDrive);
+	releaseDrive->getConnectionManager()->insert(route6);
+	enterDriveExitStation->getConnectionManager()->insert(dispose2);
 
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(8, Util::TimeUnit::hour);

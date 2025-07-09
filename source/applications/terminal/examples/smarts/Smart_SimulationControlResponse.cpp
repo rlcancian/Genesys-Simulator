@@ -41,8 +41,8 @@ int Smart_SimulationControlResponse::main(int argc, char** argv) {
 	//Delay* process1 = plugins->newInstance<Delay>(model);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(process1);
-	process1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(process1);
+	process1->getConnectionManager()->insert(dispose1);
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(60, Util::TimeUnit::second);
 	//model->save("./models/Smart_SimulationControlResponse.gen");

@@ -63,11 +63,11 @@ int Smart_Record::main(int argc, char** argv) {
 	record3->setFilename("recordBeta.txt");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create->getConnections()->insert(process);
-	process->getConnections()->insert(record1);
-	record1->getConnections()->insert(record2);
-	record2->getConnections()->insert(record3);
-	record3->getConnections()->insert(dispose);
+	create->getConnectionManager()->insert(process);
+	process->getConnectionManager()->insert(record1);
+	record1->getConnectionManager()->insert(record2);
+	record2->getConnectionManager()->insert(record3);
+	record3->getConnectionManager()->insert(dispose);
 	// set options, save and simulate step-by-step (but no user interaction required)
 	model->getSimulation()->setReplicationLength(1e3);
 	model->getSimulation()->setNumberOfReplications(30);

@@ -76,11 +76,11 @@ int Smart_DefiningResourceCapacity::main(int argc, char** argv) {
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 
 	// connect model components to create a "workflow"
-	create->getConnections()->insert(clone);
-	clone->getConnections()->insert(process1);
-	clone->getConnections()->insert(process2);
-	process1->getConnections()->insert(dispose1);
-	process2->getConnections()->insert(dispose2);
+	create->getConnectionManager()->insert(clone);
+	clone->getConnectionManager()->insert(process1);
+	clone->getConnectionManager()->insert(process2);
+	process1->getConnectionManager()->insert(dispose1);
+	process2->getConnectionManager()->insert(dispose2);
 
 	// set options, save and simulate
 	ModelSimulation* sim = model->getSimulation();

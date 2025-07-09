@@ -32,8 +32,8 @@ int Book_Cap02_Example01::main(int argc, char** argv) {
 	Delay* delay1 = plugins->newInstance<Delay>(model);
 	delay1->setDelayExpression("unif(3,7)");
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
-	create1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(dispose1);
 	model->getSimulation()->setReplicationLength(30, Util::TimeUnit::second);
 	model->getSimulation()->setNumberOfReplications(100);
 	model->getSimulation()->start();

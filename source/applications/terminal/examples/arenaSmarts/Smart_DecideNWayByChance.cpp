@@ -52,7 +52,7 @@ int Smart_DecideNWayByChance::main(int argc, char** argv) {
     Dispose* dispose_5 = plugins->newInstance<Dispose>(model, "Scrap");
     
     // Create 1
-    create_1->getConnections()->insert(process_1);
+    create_1->getConnectionManager()->insert(process_1);
     create_1->setEntityTypeName("Entity 1");
     create_1->setTimeBetweenCreationsExpression("EXPO(9)");
     create_1->setTimeUnit(Util::TimeUnit::minute);
@@ -60,24 +60,24 @@ int Smart_DecideNWayByChance::main(int argc, char** argv) {
     // Process 1
     // As the Process component on Genesys is a abstraction between Seize/Delay/Release
     // and Process on this model only use the delay, we switch for a Delay component.
-    process_1->getConnections()->insert(decide_1);
+    process_1->getConnectionManager()->insert(decide_1);
     process_1->setDelayExpression("TRIA(8, 10, 12)");
     process_1->setDelayTimeUnit(Util::TimeUnit::minute);
 
     // 5 way Decide By Chance
-    decide_1->getConnections()->insert(dispose_1);
+    decide_1->getConnectionManager()->insert(dispose_1);
     decide_1->getConditions()->insert("UNIF(0, 1) < 0.5");
 
-    decide_1->getConnections()->insert(dispose_2);
+    decide_1->getConnectionManager()->insert(dispose_2);
     decide_1->getConditions()->insert("UNIF(0, 1) < 0.1");
 
-    decide_1->getConnections()->insert(dispose_3);
+    decide_1->getConnectionManager()->insert(dispose_3);
     decide_1->getConditions()->insert("UNIF(0, 1) < 0.1");
 
-    decide_1->getConnections()->insert(dispose_4);
+    decide_1->getConnectionManager()->insert(dispose_4);
     decide_1->getConditions()->insert("UNIF(0, 1) < 0.1");
 
-    decide_1->getConnections()->insert(dispose_5);
+    decide_1->getConnectionManager()->insert(dispose_5);
 
 
     // Set options, save and run simulation.

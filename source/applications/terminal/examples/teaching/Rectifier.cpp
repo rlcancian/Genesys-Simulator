@@ -48,40 +48,40 @@ int Rectifier::main(int argc, char** argv) {
 	vpu1->setRunner(runner);
 	vpu1->setVoltage(12);
 	vpu1->setFreq(60);
-	vpu1->getConnections()->insertAtPort(0, new Connection({vdd, 0}));
-	vpu1->getConnections()->insertAtPort(1, new Connection({gnd, 0}));
+	vpu1->getConnectionManager()->insertAtPort(0, new Connection({vdd, 0}));
+	vpu1->getConnectionManager()->insertAtPort(1, new Connection({gnd, 0}));
 
 	Diode* d1 = plugins->newInstance<Diode>(model);
 	d1->setRunner(runner);
-	d1->getConnections()->insertAtPort(0, new Connection({vm, 0}));
-	d1->getConnections()->insertAtPort(1, new Connection({vdd, 0}));
+	d1->getConnectionManager()->insertAtPort(0, new Connection({vm, 0}));
+	d1->getConnectionManager()->insertAtPort(1, new Connection({vdd, 0}));
 
 	Diode* d2 = plugins->newInstance<Diode>(model);
 	d2->setRunner(runner);
-	d2->getConnections()->insertAtPort(0, new Connection({vm, 0}));
-	d2->getConnections()->insertAtPort(1, new Connection({gnd, 0}));
+	d2->getConnectionManager()->insertAtPort(0, new Connection({vm, 0}));
+	d2->getConnectionManager()->insertAtPort(1, new Connection({gnd, 0}));
 
 	Diode* d3 = plugins->newInstance<Diode>(model);
 	d3->setRunner(runner);
-	d3->getConnections()->insertAtPort(0, new Connection({vdd, 0}));
-	d3->getConnections()->insertAtPort(1, new Connection({vp, 0}));
+	d3->getConnectionManager()->insertAtPort(0, new Connection({vdd, 0}));
+	d3->getConnectionManager()->insertAtPort(1, new Connection({vp, 0}));
 
 	Diode* d4 = plugins->newInstance<Diode>(model);
 	d4->setRunner(runner);
-	d4->getConnections()->insertAtPort(0, new Connection({gnd, 0}));
-	d4->getConnections()->insertAtPort(1, new Connection({vm, 0}));
+	d4->getConnectionManager()->insertAtPort(0, new Connection({gnd, 0}));
+	d4->getConnectionManager()->insertAtPort(1, new Connection({vm, 0}));
 
 	Capacitor* c1 = plugins->newInstance<Capacitor>(model);
 	c1->setRunner(runner);
 	c1->setCapacitance(0.01);
-	c1->getConnections()->insertAtPort(0, new Connection({vp, 0}));
-	c1->getConnections()->insertAtPort(1, new Connection({vm, 0}));
+	c1->getConnectionManager()->insertAtPort(0, new Connection({vp, 0}));
+	c1->getConnectionManager()->insertAtPort(1, new Connection({vm, 0}));
 
 	Resistor* r1 = plugins->newInstance<Resistor>(model);
 	r1->setRunner(runner);
 	r1->setResistance(1000);
-	r1->getConnections()->insertAtPort(0, new Connection({vp, 0}));
-	r1->getConnections()->insertAtPort(1, new Connection({vm, 0}));
+	r1->getConnectionManager()->insertAtPort(0, new Connection({vp, 0}));
+	r1->getConnectionManager()->insertAtPort(1, new Connection({vm, 0}));
 
 	runner->PlotVRelative(vm->getNodeName(), vp->getNodeName());
 	runner->ConfigSim(sim_time, sim_step);

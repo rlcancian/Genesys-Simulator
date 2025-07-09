@@ -97,13 +97,13 @@ int Smart_EntitiesProcessedByPriority::main(int argc, char** argv) {
 	Dispose* dispose_1 = plugins->newInstance<Dispose>(model, "Dispose 1");
 
 	// connecting model components to create a "workflow"
-	create_1->getConnections()->insert(assign_1);
-	assign_1->getConnections()->insert(process_1);
-	process_1->getConnections()->insert(dispose_1);
+	create_1->getConnectionManager()->insert(assign_1);
+	assign_1->getConnectionManager()->insert(process_1);
+	process_1->getConnectionManager()->insert(dispose_1);
 
-	create_2->getConnections()->insert(assign_2);
-	assign_2->getConnections()->insert(process_2);
-	process_2->getConnections()->insert(dispose_1);
+	create_2->getConnectionManager()->insert(assign_2);
+	assign_2->getConnectionManager()->insert(process_2);
+	process_2->getConnectionManager()->insert(dispose_1);
 
 	// set options, save and simulate step-by-step (but no user interaction required)
 	double replicationLength = 240;

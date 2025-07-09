@@ -60,8 +60,8 @@ int Smart_AutomaticStatisticsCollection::main(int argc, char** argv) {
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
 	// connect model components to create a "workflow"
-	create->getConnections()->insert(process);
-	process->getConnections()->insert(dispose);
+	create->getConnectionManager()->insert(process);
+	process->getConnectionManager()->insert(dispose);
 
 	// set options, save and simulate
 	ModelSimulation* sim = model->getSimulation();

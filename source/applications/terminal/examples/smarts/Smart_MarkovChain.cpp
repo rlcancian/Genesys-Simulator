@@ -52,8 +52,8 @@ int Smart_MarkovChain::main(int argc, char** argv) {
 	markov1->setInitialDistribution(initialDistribution);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(markov1);
-	markov1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(markov1);
+	markov1->getConnectionManager()->insert(dispose1);
 	// set options, save and simulate
 	model->getSimulation()->setReplicationLength(60, Util::TimeUnit::second);
 	model->save("./models/Smart_MarkovChain.gen");

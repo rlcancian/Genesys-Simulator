@@ -95,15 +95,15 @@ int Smart_DelayBasedOnReplication::main(int argc, char** argv) {
     Dispose* dispose1 = plugins->newInstance<Dispose>(model, "Dispose_1");
 
 	// connect model components to create a "workflow"
-	create1->getConnections()->insert(seize1);
-	seize1->getConnections()->insert(delay1);
-	delay1->getConnections()->insert(release1);
-	release1->getConnections()->insert(dispose1);
+	create1->getConnectionManager()->insert(seize1);
+	seize1->getConnectionManager()->insert(delay1);
+	delay1->getConnectionManager()->insert(release1);
+	release1->getConnectionManager()->insert(dispose1);
 
 
 	// add replication start handler. Smart_DelayBasedOnReplication::TestEventHandler executes 
 	// when a replication starts
-	OnEventManager* oem = model->getOnEvents();
+	OnEventManager* oem = model->getOnEventManager();
 	oem->addOnReplicationStartHandler(this, &Smart_DelayBasedOnReplication::TestEventHandler);
 
 	// set options, save and simulate

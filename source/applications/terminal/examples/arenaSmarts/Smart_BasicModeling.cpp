@@ -36,8 +36,8 @@ int Smart_BasicModeling::main(int argc, char** argv) {
 
     Dispose *dispose = plugins->newInstance<Dispose>(model);
 
-    create->getConnections()->insert(process);
-    process->getConnections()->insert(dispose);
+    create->getConnectionManager()->insert(process);
+    process->getConnectionManager()->insert(dispose);
 
     ModelSimulation *s = model->getSimulation();
     s->setNumberOfReplications(300);
