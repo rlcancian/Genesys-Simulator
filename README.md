@@ -498,3 +498,7 @@ If you are interested in:
 this repository is worth reading closely.
 
 ---
+
+## Get More Information in the **GenESyS Wiki**
+
+https://github.com/rlcancian/Genesys-Simulator/wiki
