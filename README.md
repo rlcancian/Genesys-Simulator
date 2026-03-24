@@ -498,21 +498,3 @@ If you are interested in:
 this repository is worth reading closely.
 
 ---
-
-## 14. Current Repository Facts Used in This README Draft
-
-This draft was based on currently visible repository information such as:
-
-- repository title/description: **Generic and Expansible System Simulator**;
-- top-level folders: `docker`, `documentation`, `models`, `projects`, `source`, `temp`;
-- root file: `autoloadplugins.txt`;
-- kernel files including `Model.h`, `ModelSimulation.h`, `OnEventManager.h`, and `Parser_if.h`;
-- plugin file example `source/plugins/components/Create.cpp`;
-- GitHub language breakdown indicating **C++**, **Makefile**, **QMake**, **Shell**, and **Dockerfile** usage.
-
-If you want, I can also produce a **second version of this README** optimized for one of these styles:
-
-1. **research/academic README**,
-2. **developer onboarding README**,
-3. **user-facing README with installation-first structure**,
-4. or **bilingual README (English + Portuguese)**.
