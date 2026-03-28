@@ -17,11 +17,4 @@ message(STATUS "GENESYS_BUILD_GUI=${GENESYS_BUILD_GUI}")
 message(STATUS "GENESYS_BUILD_TESTS=${GENESYS_BUILD_TESTS}")
 message(STATUS "GENESYS_BUILD_PLUGINS=${GENESYS_BUILD_PLUGINS}")
 
-# Próxima etapa:
-# - add_subdirectory(source/kernel)
-# - add_subdirectory(source/parser)
-# - add_subdirectory(source/tools)
-# - add_subdirectory(source/applications/terminal)
-# - add_subdirectory(source/tests)
-# - add_subdirectory(source/applications/gui/qt/GenesysQtGUI)
-# - add_subdirectory(source/plugins)
+add_subdirectory(source/kernel/util)
