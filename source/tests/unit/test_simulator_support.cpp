@@ -5,6 +5,7 @@
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
 #include "kernel/simulator/ModelInfo.h"
+#include "kernel/simulator/ModelManager.h"
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -16,6 +17,27 @@ TraceManager* Simulator::getTraceManager() const {
     return nullptr;
 }
 
+
+
+namespace {
+int g_fake_model_construction_count = 0;
+}
+
+Model::Model(Simulator* simulator, unsigned int level) {
+    (void)simulator;
+    (void)level;
+    ++g_fake_model_construction_count;
+}
+
+bool Model::save(std::string filename) {
+    (void)filename;
+    return true;
+}
+
+bool Model::load(std::string filename) {
+    (void)filename;
+    return true;
+}
 
 class FakeModelPersistence : public ModelPersistence_if {
 public:
@@ -97,5 +119,34 @@ TEST(SimulatorSupportTest, ModelInfoSaveAndLoadRoundTrip) {
     EXPECT_EQ(loaded.getProjectTitle(), "Project_W");
     EXPECT_EQ(loaded.getVersion(), "2.5");
     EXPECT_FALSE(loaded.hasChanged());
+}
+
+TEST(SimulatorSupportTest, ModelManagerStartsWithoutCurrentModel) {
+    ModelManager manager(nullptr);
+    EXPECT_EQ(manager.current(), nullptr);
+    EXPECT_EQ(manager.size(), 0u);
+}
+
+TEST(SimulatorSupportTest, ModelManagerNewModelSetsCurrentWithoutInsertion) {
+    const int before = g_fake_model_construction_count;
+
+    ModelManager manager(nullptr);
+    Model* model = manager.newModel();
+
+    ASSERT_NE(model, nullptr);
+    EXPECT_EQ(manager.current(), model);
+    EXPECT_EQ(manager.size(), 0u);
+    EXPECT_EQ(g_fake_model_construction_count, before + 1);
+}
+
+TEST(SimulatorSupportTest, ModelManagerSaveModelWithoutCurrentReturnsFalse) {
+    ModelManager manager(nullptr);
+    EXPECT_FALSE(manager.saveModel("dummy.gen"));
+}
+
+TEST(SimulatorSupportTest, ModelManagerSaveModelUsesCurrentModel) {
+    ModelManager manager(nullptr);
+    manager.newModel();
+    EXPECT_TRUE(manager.saveModel("dummy.gen"));
 }
 
