@@ -289,9 +289,10 @@ private:
 };
 
 
-// TODO(genesys|property-system|arquitetura): Este alias de PropertyBase colide com a classe PropertyBase definida em Property.h.
-// A coexistencia dos dois mecanismos reflete a tentativa de unificar Property, SimulationControl e SimulationResponse.
-// Investigar unificacao ou renomeacao antes de ampliar o uso conjunto desses headers.
+// TODO(genesys|property-system|architecture): This PropertyBase alias conflicts with the
+// PropertyBase class defined in Property.h. The coexistence of both mechanisms reflects an attempt
+// to unify Property, SimulationControl and SimulationResponse. Investigate unification or renaming
+// before expanding the combined use of these headers.
 typedef SimulationControl PropertyBase;
 
 // -----------------------------------------------------------

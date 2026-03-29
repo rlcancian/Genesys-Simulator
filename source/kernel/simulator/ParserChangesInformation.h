@@ -23,9 +23,9 @@ public:
 	virtual ~ParserChangesInformation() = default;
 
 public: // gets and sets
-	// TODO(genesys|parser-api|nomenclatura): Revisar a consistencia dos nomes publicos desta classe.
-	// Existem metodos com padroes mistos, por exemplo getincludes() e getfunctionProdutions().
-	// A mudanca pode quebrar consumidores existentes, entao deve ser feita de forma planejada.
+	// TODO(genesys|parser-api|naming): Review the consistency of this class public API names.
+	// There are mixed naming patterns such as getincludes() and getfunctionProdutions().
+	// Any rename may break existing callers and should be planned carefully.
 	std::string getincludes() const;
 	void setIncludes(const std::string &newIncludes);
 
@@ -44,8 +44,8 @@ public: // gets and sets
 	std::string getassignments() const;
 	void setAssignments(const std::string &newAssignments);
 
-	// TODO(genesys|parser-api|typo): Confirmar se "Produtions" deveria ser "Productions".
-	// Nao renomear diretamente sem mapear impactos em chamadas existentes.
+	// TODO(genesys|parser-api|typo): Confirm whether "Produtions" should actually be "Productions".
+	// Do not rename it directly without mapping impacts on existing callers.
 	std::string getfunctionProdutions() const;
 	void setFunctionProdutions(const std::string &newFunctionProdutions);
 

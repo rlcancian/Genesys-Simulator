@@ -9,6 +9,7 @@
 #include "kernel/simulator/ExperimentManager.h"
 #include "kernel/simulator/ModelInfo.h"
 #include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/PropertyManager.h"
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
 
@@ -313,5 +314,10 @@ TEST(SimulatorSupportTest, ParserChangesInformationStoresAllConfiguredSections) 
     EXPECT_EQ(info.getexpressionProductions(), "prod");
     EXPECT_EQ(info.getassignments(), "assign");
     EXPECT_EQ(info.getfunctionProdutions(), "func");
+}
+
+TEST(SimulatorSupportTest, PropertyManagerCanBeConstructed) {
+    PropertyManager manager;
+    SUCCEED();
 }
 

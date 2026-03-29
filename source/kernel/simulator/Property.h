@@ -11,9 +11,10 @@ class QueueableItem;
 
 //---------------------------------------------------------------------------
 
-// TODO(genesys|property-system|arquitetura): Revisar a sobreposicao entre PropertyBase/PropertyT e SimulationControl/SimulationResponse.
-// Hoje este header define PropertyBase, enquanto SimulationControlAndResponse.h tambem expoe PropertyBase como alias.
-// Quando ambos sao incluidos na mesma unidade de traducao, ha conflito nominal. Investigar unificacao ou renomeacao.
+// TODO(genesys|property-system|architecture): Review the overlap between PropertyBase/PropertyT and
+// SimulationControl/SimulationResponse. This header defines PropertyBase, while
+// SimulationControlAndResponse.h also exposes PropertyBase as an alias. When both headers are included
+// in the same translation unit, a naming conflict occurs. Investigate unification or renaming.
 class PropertyBase {
 public:
 

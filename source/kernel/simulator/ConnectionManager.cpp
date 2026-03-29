@@ -51,7 +51,8 @@ void ConnectionManager::insertAtPort(unsigned int port, Connection* connection) 
 void ConnectionManager::remove(Connection* connection) {
 	for (std::map<unsigned int, Connection*>::iterator it = _nextConnections->begin(); it != _nextConnections->end(); it++) {
 		if ((*it).second == connection) {
-			// TODO(genesys|connection-manager|ownership): Confirmar a politica de ownership de Connection*. Se ConnectionManager for o owner, esta remocao deveria destruir o objeto para evitar leak.
+			// TODO(genesys|connection-manager|ownership): Confirm the ownership policy for Connection*.
+			// If ConnectionManager owns the connection, removal should also destroy the object to avoid leaks.
 			_nextConnections->erase(it);
 			return;
 		}
@@ -59,7 +60,8 @@ void ConnectionManager::remove(Connection* connection) {
 }
 
 void ConnectionManager::removeAtPort(unsigned int port) {
-	// TODO(genesys|connection-manager|ownership): Investigar se removeAtPort tambem deve destruir a Connection associada ao porto removido.
+		// TODO(genesys|connection-manager|ownership): Investigate whether removeAtPort should also destroy
+	// the Connection associated with the removed port.
 	_nextConnections->erase(port);
 }
 
