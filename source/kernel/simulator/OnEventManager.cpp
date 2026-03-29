@@ -23,6 +23,24 @@ void OnEventManager::_addOnHandler(List<simulationEventHandler>* list, simulatio
 		list->insert(EventHandler);
 }
 
+void OnEventManager::_addOnHandler(List<modelEventHandler>* list, modelEventHandler EventHandler) {
+	if (list->find(EventHandler) == list->list()->end())
+		list->insert(EventHandler);
+}
+
+void OnEventManager::addOnModelCheckSucessHandler(modelEventHandler EventHandler) {
+	_addOnHandler(_onModelCheckSuccessHandlers, EventHandler);
+}
+
+void OnEventManager::addOnModelLoadHandler(modelEventHandler EventHandler) {
+	_addOnHandler(_onModelLoadHandlers, EventHandler);
+}
+
+void OnEventManager::addOnModelSaveHandler(modelEventHandler EventHandler) {
+	_addOnHandler(_onModelSaveHandlers, EventHandler);
+}
+
+
 void OnEventManager::addOnReplicationStartHandler(simulationEventHandler EventHandler) {
 	_addOnHandler(_onReplicationStartHandlers, EventHandler);
 }
@@ -85,6 +103,35 @@ void OnEventManager::_NotifyHandlerMethods(List<simulationEventHandlerMethod>* l
 	for (std::list<simulationEventHandlerMethod>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
 		(*it)(se);
 	}
+}
+
+void OnEventManager::_NotifyHandlers(List<modelEventHandler>* list, ModelEvent* se) {
+	for (std::list<modelEventHandler>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
+		(*it)(se);
+	}
+}
+
+void OnEventManager::_NotifyHandlerMethods(List<modelEventHandlerMethod>* list, ModelEvent* se) {
+	for (std::list<modelEventHandlerMethod>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
+		(*it)(se);
+	}
+}
+
+
+
+void OnEventManager::NotifyModelCheckSuccessHandlers(ModelEvent* se) {
+	this->_NotifyHandlers(this->_onModelCheckSuccessHandlers, se);
+	this->_NotifyHandlerMethods(this->_onModelCheckSuccessHandlerMethods, se);
+}
+
+void OnEventManager::NotifyModelLoadHandlers(ModelEvent* se) {
+	this->_NotifyHandlers(this->_onModelLoadHandlers, se);
+	this->_NotifyHandlerMethods(this->_onModelLoadHandlerMethods, se);
+}
+
+void OnEventManager::NotifyModelSaveHandlers(ModelEvent* se) {
+	this->_NotifyHandlers(this->_onModelSaveHandlers, se);
+	this->_NotifyHandlerMethods(this->_onModelSaveHandlerMethods, se);
 }
 
 void OnEventManager::NotifyReplicationStartHandlers(SimulationEvent* se) {

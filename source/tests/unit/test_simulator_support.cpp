@@ -32,6 +32,24 @@ void CountReplicationStart(SimulationEvent*) {
     ++g_replication_start_calls;
 }
 
+
+namespace {
+int g_model_check_success_calls = 0;
+
+void CountModelCheckSuccess(ModelEvent*) {
+    ++g_model_check_success_calls;
+}
+
+struct ModelEventObserver {
+    int calls = 0;
+
+    void OnModelCheckSuccess(ModelEvent*) {
+        ++calls;
+    }
+};
+}
+
+
 struct SimulationEventObserver {
     int calls = 0;
 
@@ -187,6 +205,28 @@ TEST(SimulatorSupportTest, OnEventManagerInvokesMethodHandlers) {
 
     manager.addOnReplicationStartHandler(&observer, &SimulationEventObserver::OnReplicationStart);
     manager.NotifyReplicationStartHandlers(nullptr);
+
+    EXPECT_EQ(observer.calls, 1);
+}
+
+TEST(SimulatorSupportTest, OnEventManagerDeduplicatesModelFunctionHandlers) {
+    g_model_check_success_calls = 0;
+
+    OnEventManager manager;
+    manager.addOnModelCheckSucessHandler(&CountModelCheckSuccess);
+    manager.addOnModelCheckSucessHandler(&CountModelCheckSuccess);
+
+    manager.NotifyModelCheckSuccessHandlers(nullptr);
+
+    EXPECT_EQ(g_model_check_success_calls, 1);
+}
+
+TEST(SimulatorSupportTest, OnEventManagerInvokesModelMethodHandlers) {
+    OnEventManager manager;
+    ModelEventObserver observer;
+
+    manager.addOnModelCheckSuccessHandler(&observer, &ModelEventObserver::OnModelCheckSuccess);
+    manager.NotifyModelCheckSuccessHandlers(nullptr);
 
     EXPECT_EQ(observer.calls, 1);
 }
