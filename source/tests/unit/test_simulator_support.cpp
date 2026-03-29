@@ -12,6 +12,7 @@
 #include "kernel/simulator/ModelInfo.h"
 #include "kernel/simulator/ModelManager.h"
 #include "kernel/simulator/PropertyManager.h"
+#include "kernel/simulator/Property.h"
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationScenario.h"
@@ -732,5 +733,28 @@ TEST(SimulatorSupportTest, SimulationResponseDoubleIsNotAWritableControl) {
 
     SimulationResponse* base = &response;
     EXPECT_EQ(dynamic_cast<SimulationControl*>(base), nullptr);
+}
+
+TEST(SimulatorSupportTest, LegacyPropertyBaseCanCoexistWithKernelPropertyBaseAlias) {
+    PropertyT<int> property(
+        "LegacyPropertyClass",
+        "LegacyValue",
+        []() { return 7; },
+        [](int) {}
+    );
+
+    EXPECT_EQ(property.getClassname(), "LegacyPropertyClass");
+    EXPECT_EQ(property.getName(), "LegacyValue");
+
+    SimulationControlInt control(
+        []() { return 3; },
+        [](int) {},
+        "KernelControlClass",
+        "KernelElement",
+        "KernelValue"
+    );
+
+    SimulationResponse* response = &control;
+    EXPECT_NE(response, nullptr);
 }
 
