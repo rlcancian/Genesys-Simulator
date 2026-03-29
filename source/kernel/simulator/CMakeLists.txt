@@ -4,6 +4,8 @@ add_library(genesys_kernel_simulator_support STATIC
     TraceManager.cpp
     ExperimentManager.cpp
     SimulationExperiment.cpp
+    ModelInfo.cpp
+    ModelManager.cpp
 )
 
 target_include_directories(genesys_kernel_simulator_support

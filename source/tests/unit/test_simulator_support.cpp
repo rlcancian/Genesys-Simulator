@@ -4,6 +4,7 @@
 #include "kernel/simulator/ParserManager.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
+#include "kernel/simulator/ModelInfo.h"
 #include "kernel/simulator/Simulator.h"
 
 
@@ -45,5 +46,18 @@ TEST(SimulatorSupportTest, NewSimulationExperimentBecomesCurrent) {
     SimulationExperiment* exp = em.newSimulationExperiment();
     ASSERT_NE(exp, nullptr);
     EXPECT_EQ(em.current(), exp);
+}
+
+TEST(SimulatorSupportTest, ModelInfoStartsMarkedAsUnchanged) {
+    ModelInfo info;
+    EXPECT_FALSE(info.hasChanged());
+    EXPECT_FALSE(info.getName().empty());
+}
+
+TEST(SimulatorSupportTest, ModelInfoSettersMarkObjectAsChanged) {
+    ModelInfo info;
+    info.setAnalystName("Analyst");
+    EXPECT_TRUE(info.hasChanged());
+    EXPECT_EQ(info.getAnalystName(), "Analyst");
 }
 
