@@ -106,19 +106,37 @@ protected:
 };
 
 /**
+ * @brief Read-only kernel-side simulation response abstraction.
+ *
+ * This is the intended kernel-level base for generic getter-based access to
+ * observable model attributes, statistics and experiment responses.
+ */
+class SimulationResponse: public PropertyGenesysBase {
+public:
+    SimulationResponse(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false)
+        : PropertyGenesysBase(className, elementName, propertyName, whatsThis, isList, isClass, isEnum) {
+    }
+    virtual ~SimulationResponse() = default;
+public:
+	std::string show() const {
+		std::string msg = "classname="+_className+ ", elementName="+_elementName+", name=\"" + _propertyName + "\"";
+		msg += ", value="+getValue();
+		return msg;
+	}
+	virtual std::string getValue() const = 0;
+	virtual List<std::string>* getStrValues() { return nullptr; };
+};
+
+/**
  * @brief Read/write kernel-side simulation control abstraction.
  *
- * The long-term architectural intent is that a read-only SimulationResponse
- * concept should represent generic getter-based observation, while
- * SimulationControl should extend that capability with setter-based mutation.
- *
- * The current implementation still concentrates both concerns here and should
- * be treated as an intermediate kernel-level design.
+ * SimulationControl extends SimulationResponse with setter-based mutation and
+ * therefore represents writable kernel-side experiment controls.
  */
-class SimulationControl: public PropertyGenesysBase {
+class SimulationControl: public SimulationResponse {
 public:
     SimulationControl(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false,  bool isClass=false, bool isEnum=false)
-        : PropertyGenesysBase(className, elementName, propertyName, whatsThis, isList, isClass){
+        : SimulationResponse(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 	}
 	std::string show() const {
 		std::string msg = "classname="+_className+ ", elementName="+_elementName+", name=\""+_propertyName+"\"";
@@ -131,15 +149,28 @@ public:
 	}
 	bool isReadOnly() const { return _readonly; }
 public:
-	virtual std::string getValue() const  = 0;
     virtual void setValue(std::string value, bool remove=false) = 0;
     virtual List<SimulationControl*>* getProperties(int index=0) { return nullptr; };
-    virtual List<std::string>* getStrValues() { return nullptr; };
 protected:
-	bool _readonly;
+	bool _readonly = false;
 };
 
 // -----------------------------------------------------------
+
+template<typename Class, typename T>
+std::function<T()> DefineSimulationGetter(Class* object, T(Class::*function)() const) {
+	return std::bind(function, object);
+}
+
+template<typename Class, typename T>
+std::function<T()> DefineSimulationGetter(Class* object, T(Class::*function)()) {
+	return std::bind(function, object);
+}
+
+template<typename Class, typename T>
+std::function<void(T)> DefineSimulationSetter(Class* object, void (Class::*function)(T)) {
+	return std::bind(function, object, std::placeholders::_1);
+}
 
 typedef std::function<std::string()> GetterString;
 typedef std::function<void(std::string)> SetterString;
@@ -310,14 +341,9 @@ private:
 };
 
 
-// TODO(genesys|property-system|architecture): This PropertyBase alias conflicts with the
-// PropertyBase class defined in Property.h. The coexistence of both mechanisms reflects an attempt
-// to unify Property, SimulationControl and SimulationResponse. Investigate unification or renaming
-// before expanding the combined use of these headers.
-// TODO(genesys|kernel-controls|architecture): Formalize a read-only SimulationResponse base type
-// and make SimulationControl a read/write specialization on top of it.
-// This should remain a kernel concern, while Property*/property-editor abstractions
-// should migrate to the application layer.
+// TODO(genesys|kernel-controls|migration): This compatibility alias keeps the current
+// kernel API working while the codebase migrates from the legacy PropertyBase
+// naming toward explicit SimulationResponse/SimulationControl types.
 typedef SimulationControl PropertyBase;
 
 // -----------------------------------------------------------

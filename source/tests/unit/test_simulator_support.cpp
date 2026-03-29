@@ -15,6 +15,7 @@
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationScenario.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 
 
 // Test-only link shim:
@@ -122,6 +123,57 @@ PluginInformation* GetTestElementPluginInformation() {
 PluginInformation* ThrowingPluginInformationFactory() {
     throw 42;
 }
+
+
+class TestSimulationResponse : public SimulationResponse {
+public:
+    explicit TestSimulationResponse(std::function<std::string()> getter, bool isEnum = false)
+        : SimulationResponse("TestClass", "TestElement", "TestResponse", "", false, false, isEnum),
+          _getter(std::move(getter)) {
+    }
+
+    std::string getValue() const override {
+        return _getter();
+    }
+
+private:
+    std::function<std::string()> _getter;
+};
+
+class TestSimulationControl : public SimulationControl {
+public:
+    TestSimulationControl(std::function<std::string()> getter, std::function<void(std::string)> setter)
+        : SimulationControl("TestClass", "TestElement", "TestControl"),
+          _getter(std::move(getter)),
+          _setter(std::move(setter)) {
+        _readonly = !_setter;
+    }
+
+    std::string getValue() const override {
+        return _getter();
+    }
+
+    void setValue(std::string value, bool remove = false) override {
+        (void)remove;
+        _setter(value);
+    }
+
+private:
+    std::function<std::string()> _getter;
+    std::function<void(std::string)> _setter;
+};
+
+struct KernelAccessorProbe {
+    std::string name = "alpha";
+
+    std::string getName() const {
+        return name;
+    }
+
+    void setName(std::string newName) {
+        name = newName;
+    }
+};
 
 class FakeModelPersistence : public ModelPersistence_if {
 public:
@@ -605,5 +657,46 @@ TEST(SimulatorSupportTest, SimulationScenarioStartsWithInitializedResponseStorag
 TEST(SimulatorSupportTest, SimulationScenarioThrowsForMissingResponseValue) {
     SimulationScenario scenario;
     EXPECT_THROW(scenario.getResponseValue("missing"), std::invalid_argument);
+}
+
+TEST(SimulatorSupportTest, SimulationResponseProvidesReadOnlyKernelAccess) {
+    std::string value = "alpha";
+    TestSimulationResponse response([&]() { return value; }, true);
+
+    EXPECT_EQ(response.getValue(), "alpha");
+    EXPECT_TRUE(response.getIsEnum());
+    EXPECT_EQ(response.getName(), "TestResponse");
+}
+
+TEST(SimulatorSupportTest, SimulationControlInheritsReadPathAndAddsWritePath) {
+    std::string value = "alpha";
+    TestSimulationControl control(
+        [&]() { return value; },
+        [&](std::string newValue) { value = newValue; }
+    );
+
+    EXPECT_FALSE(control.isReadOnly());
+    EXPECT_EQ(control.getValue(), "alpha");
+
+    control.setValue("beta");
+
+    EXPECT_EQ(value, "beta");
+    EXPECT_EQ(control.getValue(), "beta");
+}
+
+TEST(SimulatorSupportTest, DefineSimulationGetterAndSetterBindKernelMethods) {
+    KernelAccessorProbe probe;
+
+    auto getter = DefineSimulationGetter(&probe, &KernelAccessorProbe::getName);
+    auto setter = DefineSimulationSetter(&probe, &KernelAccessorProbe::setName);
+
+    TestSimulationControl control(getter, setter);
+
+    EXPECT_EQ(control.getValue(), "alpha");
+
+    control.setValue("gamma");
+
+    EXPECT_EQ(probe.name, "gamma");
+    EXPECT_EQ(control.getValue(), "gamma");
 }
 
