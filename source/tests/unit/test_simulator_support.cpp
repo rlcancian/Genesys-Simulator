@@ -595,3 +595,15 @@ TEST(SimulatorSupportTest, ExperimentManagerSaveAndLoadRemainGracefullyUnimpleme
     EXPECT_FALSE(manager.loadSimulationExperiment("exp.gen"));
 }
 
+TEST(SimulatorSupportTest, SimulationScenarioStartsWithInitializedResponseStorage) {
+    SimulationScenario scenario;
+
+    ASSERT_NE(scenario.getResponseValues(), nullptr);
+    EXPECT_EQ(scenario.getResponseValues()->size(), 0u);
+}
+
+TEST(SimulatorSupportTest, SimulationScenarioThrowsForMissingResponseValue) {
+    SimulationScenario scenario;
+    EXPECT_THROW(scenario.getResponseValue("missing"), std::invalid_argument);
+}
+

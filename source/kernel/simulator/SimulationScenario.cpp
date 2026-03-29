@@ -6,7 +6,7 @@
 
 /* 
  * File:   SimulationScenario.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 10 de Outubro de 2018, 18:21
  */
@@ -16,6 +16,7 @@
 SimulationScenario::SimulationScenario() = default;
 
 bool SimulationScenario::startSimulation(Simulator *sim, std::string& errorMessage) {
+	/// @todo Implement scenario execution once experiment-layer control application is defined.
 	/// @todo Implement scenario execution once control/response application to a loaded model is defined.
 	// @TODO: To implement!
 	// *Simulator??????s
