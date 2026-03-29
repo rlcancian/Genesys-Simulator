@@ -18,3 +18,8 @@ TEST(SimulatorSupportTest, LicenceManagerCanBeConstructedWithoutSimulatorUse) {
     LicenceManager lm(nullptr);
     EXPECT_FALSE(lm.showLicence().empty());
 }
+
+TEST(SimulatorSupportTest, DefaultActivationCodeReportsNotFound) {
+    LicenceManager lm(nullptr);
+    EXPECT_EQ(lm.showActivationCode(), "ACTIVATION CODE: Not found.");
+}
