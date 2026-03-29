@@ -26,6 +26,8 @@ Plugin::Plugin(StaticGetPluginInformation getInformation) {
 		PluginInformation* infos = _StatMethodGetInformation();
 		this->_pluginInfo = infos;
 		this->_isValidPlugin = true;
+	// TODO(genesys|plugin|diagnostics): Review whether this broad catch should preserve
+	// diagnostic information. The current implementation only marks the plugin as invalid.
 	} catch (...) {
 		this->_isValidPlugin = false;
 	}
@@ -60,7 +62,9 @@ std::string Plugin::show() {
 		for (std::string depends : *_pluginInfo->getDynamicLibFilenameDependencies()) {
 			message += depends + ",";
 		}
-		message = message.substr(0, message.length() - 2);
+		/// @todo Keep Plugin focused on plugin metadata/wrapper duties. Connector-specific
+		/// responsibilities should remain in PluginConnector/PluginManager layers.
+		message = message.substr(0, message.length() - 1);
 		message += "] ";
 	}
 	if (_pluginInfo->getFields()->size() > 0) {
