@@ -5,6 +5,7 @@
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
 #include "kernel/simulator/ModelInfo.h"
+#include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
 
 
@@ -14,6 +15,18 @@
 TraceManager* Simulator::getTraceManager() const {
     return nullptr;
 }
+
+
+class FakeModelPersistence : public ModelPersistence_if {
+public:
+    bool save(std::string) override { return false; }
+    bool load(std::string) override { return false; }
+    bool hasChanged() override { return false; }
+    bool getOption(ModelPersistence_if::Options) override { return false; }
+    void setOption(ModelPersistence_if::Options, bool) override {}
+    std::string getFormatedField(PersistenceRecord*) override { return ""; }
+};
+
 
 
 TEST(SimulatorSupportTest, TraceManagerInitializesErrorMessagesList) {
@@ -59,5 +72,30 @@ TEST(SimulatorSupportTest, ModelInfoSettersMarkObjectAsChanged) {
     info.setAnalystName("Analyst");
     EXPECT_TRUE(info.hasChanged());
     EXPECT_EQ(info.getAnalystName(), "Analyst");
+}
+
+TEST(SimulatorSupportTest, ModelInfoSaveAndLoadRoundTrip) {
+    FakeModelPersistence persistence;
+    PersistenceRecord fields(persistence);
+
+    ModelInfo saved;
+    saved.setName("Model_X");
+    saved.setAnalystName("Analyst_Y");
+    saved.setDescription("Description_Z");
+    saved.setProjectTitle("Project_W");
+    saved.setVersion("2.5");
+
+    saved.saveInstance(&fields);
+    EXPECT_FALSE(saved.hasChanged());
+
+    ModelInfo loaded;
+    loaded.loadInstance(&fields);
+
+    EXPECT_EQ(loaded.getName(), "Model_X");
+    EXPECT_EQ(loaded.getAnalystName(), "Analyst_Y");
+    EXPECT_EQ(loaded.getDescription(), "Description_Z");
+    EXPECT_EQ(loaded.getProjectTitle(), "Project_W");
+    EXPECT_EQ(loaded.getVersion(), "2.5");
+    EXPECT_FALSE(loaded.hasChanged());
 }
 

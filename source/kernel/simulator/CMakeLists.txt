@@ -5,6 +5,7 @@ add_library(genesys_kernel_simulator_support STATIC
     ExperimentManager.cpp
     SimulationExperiment.cpp
     ModelInfo.cpp
+    Persistence.cpp
     ModelManager.cpp
 )
 
