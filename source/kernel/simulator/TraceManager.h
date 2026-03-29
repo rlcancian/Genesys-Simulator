@@ -231,6 +231,9 @@ public:
 		_e = e;
 	}
 
+	TraceErrorEvent(std::string text, TraceManager::Level level) : TraceEvent(text, level) {
+	}
+
 	std::exception getException() const {
 		return _e;
 	}

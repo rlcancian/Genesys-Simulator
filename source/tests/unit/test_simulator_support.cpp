@@ -34,6 +34,16 @@ void CountReplicationStart(SimulationEvent*) {
 
 
 namespace {
+TraceManager::Level g_last_trace_error_level = TraceManager::Level::L9_mostDetailed;
+
+void CaptureTraceErrorLevel(TraceErrorEvent e) {
+    g_last_trace_error_level = e.getTracelevel();
+}
+}
+
+
+
+namespace {
 int g_model_check_success_calls = 0;
 
 void CountModelCheckSuccess(ModelEvent*) {
@@ -229,5 +239,15 @@ TEST(SimulatorSupportTest, OnEventManagerInvokesModelMethodHandlers) {
     manager.NotifyModelCheckSuccessHandlers(nullptr);
 
     EXPECT_EQ(observer.calls, 1);
+}
+
+TEST(SimulatorSupportTest, TraceManagerTraceErrorPreservesExplicitLevel) {
+    TraceManager tm(nullptr);
+    tm.addTraceErrorHandler(&CaptureTraceErrorLevel);
+
+    g_last_trace_error_level = TraceManager::Level::L9_mostDetailed;
+    tm.traceError("fatal", TraceManager::Level::L1_errorFatal);
+
+    EXPECT_EQ(g_last_trace_error_level, TraceManager::Level::L1_errorFatal);
 }
 
