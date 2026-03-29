@@ -21,14 +21,20 @@
 class ParserManager {
 public:
 
+	/**
+	 * @brief Paths associated with a generated parser artifact set.
+	 */
 	struct NewParser {
 		std::string bisonFilename;
 		std::string flexFilename;
 		std::string compiledParserFilename;
 	};
 
+	/**
+	 * @brief Result bundle for parser generation requests.
+	 */
 	struct GenerateNewParserResult {
-		bool result;
+		bool result = false;
 		std::string bisonMessages;
 		std::string lexMessages;
 		std::string compilationMessages;
@@ -43,12 +49,14 @@ public:
 	 * \param changes
 	 * \return
 	 */
+	/// @todo Implement parser generation workflow and define the expected filesystem/toolchain contract.
 	ParserManager::GenerateNewParserResult generateNewParser(ParserChangesInformation* changes);
 	/*!
 	 * \brief connectNewParser
 	 * \param newParser
 	 * \return
 	 */
+	/// @todo Implement parser loading/activation and define ownership/lifetime rules for connected parsers.
 	bool connectNewParser(ParserManager::NewParser newParser);
 private:
 };
