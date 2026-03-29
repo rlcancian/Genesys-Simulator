@@ -10,6 +10,17 @@
 //namespace GenesysKernel {
 
 
+/**
+ * @brief Base metadata for kernel-side control/response abstractions.
+ *
+ * Historically, the experiment layer in GenESyS evolved from the basic
+ * ModelSimulation controls toward a more generic mechanism capable of exposing
+ * arbitrary getters and setters from model-related classes.
+ *
+ * Despite the legacy name, this base currently lives in the simulation kernel
+ * and supports kernel-side experiment/control abstractions rather than a
+ * user-interface property editor.
+ */
 class PropertyGenesysBase {
 public:
     PropertyGenesysBase(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false) {
@@ -94,6 +105,16 @@ protected:
 	bool _isSubProperty;
 };
 
+/**
+ * @brief Read/write kernel-side simulation control abstraction.
+ *
+ * The long-term architectural intent is that a read-only SimulationResponse
+ * concept should represent generic getter-based observation, while
+ * SimulationControl should extend that capability with setter-based mutation.
+ *
+ * The current implementation still concentrates both concerns here and should
+ * be treated as an intermediate kernel-level design.
+ */
 class SimulationControl: public PropertyGenesysBase {
 public:
     SimulationControl(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false,  bool isClass=false, bool isEnum=false)
@@ -293,6 +314,10 @@ private:
 // PropertyBase class defined in Property.h. The coexistence of both mechanisms reflects an attempt
 // to unify Property, SimulationControl and SimulationResponse. Investigate unification or renaming
 // before expanding the combined use of these headers.
+// TODO(genesys|kernel-controls|architecture): Formalize a read-only SimulationResponse base type
+// and make SimulationControl a read/write specialization on top of it.
+// This should remain a kernel concern, while Property*/property-editor abstractions
+// should migrate to the application layer.
 typedef SimulationControl PropertyBase;
 
 // -----------------------------------------------------------

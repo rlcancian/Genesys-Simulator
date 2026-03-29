@@ -15,6 +15,13 @@ class QueueableItem;
 // SimulationControl/SimulationResponse. This header defines PropertyBase, while
 // SimulationControlAndResponse.h also exposes PropertyBase as an alias. When both headers are included
 // in the same translation unit, a naming conflict occurs. Investigate unification or renaming.
+/**
+ * @brief PropertyBase/PropertyT currently represent a competing property abstraction.
+ *
+ * The current architectural direction is to treat Property* as an
+ * application-side/editor-facing concern, not as the canonical kernel
+ * mechanism for experiment controls and responses.
+ */
 class PropertyBase {
 public:
 

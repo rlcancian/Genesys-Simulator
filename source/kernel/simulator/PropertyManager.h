@@ -4,10 +4,12 @@
 #include "Property.h"
 
 /**
- * @brief PropertyManager is currently a placeholder for future property-system coordination.
+ * @brief PropertyManager is currently a placeholder for future application-side property coordination.
  *
- * It is expected to evolve together with the ongoing review of Property,
- * SimulationControl and SimulationResponse responsibilities.
+ * The intended direction is to keep SimulationResponse/SimulationControl as
+ * kernel-side abstractions for experiment/control access, while Property*
+ * evolves toward user-facing parameter editing and property-grid integration
+ * in the application layer.
  */
 class PropertyManager {
 public:
