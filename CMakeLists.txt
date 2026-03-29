@@ -18,6 +18,7 @@ message(STATUS "GENESYS_BUILD_TESTS=${GENESYS_BUILD_TESTS}")
 message(STATUS "GENESYS_BUILD_PLUGINS=${GENESYS_BUILD_PLUGINS}")
 
 add_subdirectory(source/kernel/util)
+add_subdirectory(source/kernel/simulator)
 
 if(GENESYS_BUILD_TESTS)
     find_package(GTest CONFIG REQUIRED)
