@@ -1,38 +1,27 @@
 /*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/testFiles/simpletest.cpp to edit this template
- */
-
-/* 
- * File:   testTerminalApps.cpp
- * Author: rlcancian
+ * Smoke tests for terminal applications.
  *
- * Created on 3 de agosto de 2022, 21:27
+ * These are not unit tests of the kernel.
+ * They exercise example terminal applications end-to-end enough
+ * to verify that the application entry path still works.
  */
 
-// based on https://micromouseonline.com/2016/02/08/googletest-with-netbeans/
-// https://micromouseonline.com/2016/02/12/tdd-with-googletest-and-netbeans/
+#include <gtest/gtest.h>
 
-// to create tests in the source: https://www.youtube.com/watch?v=TS2CTf11k1U (compile gtest as a library)
+#include "../../applications/terminal/examples/smarts/Smart_AssignWriteSeizes.h"
+#include "../../applications/terminal/examples/smarts/Smart_BatchSeparate.h"
+#include "../../applications/BaseGenesysTerminalApplication.h"
 
-#include <stdlib.h>
-#include <iostream>
-#include "../../source/gtest/gtest/gtest.h"
+TEST(TerminalApplicationSmokeTest, SmartsExamplesReturnZero) {
+    BaseGenesysTerminalApplication* app = nullptr;
 
-#include "../applications/terminal/examples/smarts/Smart_AssignWriteSeizes.h"
-#include "../applications/terminal/examples/smarts/Smart_BatchSeparate.h"
-#include "../applications/BaseGenesysTerminalApplication.h"
-using namespace std;
+    app = new Smart_AssignWriteSeizes();
+    EXPECT_EQ(app->main(0, nullptr), 0);
+    delete app;
+    app = nullptr;
 
-TEST(TerminalApplication, Smarts) {
-	BaseGenesysTerminalApplication *app;
-	app = new Smart_AssignWriteSeizes();
-	EXPECT_EQ(app->main(0, nullptr), 0);
-	app = new Smart_BatchSeparate();
-	EXPECT_EQ(app->main(0, nullptr), 0);
-}
-
-int main(int argc, char** argv) {
-	::testing::InitGoogleTest(&argc, argv);
-	return RUN_ALL_TESTS();
+    app = new Smart_BatchSeparate();
+    EXPECT_EQ(app->main(0, nullptr), 0);
+    delete app;
+    app = nullptr;
 }
