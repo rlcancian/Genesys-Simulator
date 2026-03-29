@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "kernel/simulator/TraceManager.h"
+#include "kernel/simulator/OnEventManager.h"
 #include "kernel/simulator/ParserManager.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
@@ -22,6 +23,24 @@ TraceManager* Simulator::getTraceManager() const {
 namespace {
 int g_fake_model_construction_count = 0;
 }
+
+
+namespace {
+int g_replication_start_calls = 0;
+
+void CountReplicationStart(SimulationEvent*) {
+    ++g_replication_start_calls;
+}
+
+struct SimulationEventObserver {
+    int calls = 0;
+
+    void OnReplicationStart(SimulationEvent*) {
+        ++calls;
+    }
+};
+}
+
 
 Model::Model(Simulator* simulator, unsigned int level) {
     (void)simulator;
@@ -148,5 +167,27 @@ TEST(SimulatorSupportTest, ModelManagerSaveModelUsesCurrentModel) {
     ModelManager manager(nullptr);
     manager.newModel();
     EXPECT_TRUE(manager.saveModel("dummy.gen"));
+}
+
+TEST(SimulatorSupportTest, OnEventManagerDeduplicatesFunctionHandlers) {
+    g_replication_start_calls = 0;
+
+    OnEventManager manager;
+    manager.addOnReplicationStartHandler(&CountReplicationStart);
+    manager.addOnReplicationStartHandler(&CountReplicationStart);
+
+    manager.NotifyReplicationStartHandlers(nullptr);
+
+    EXPECT_EQ(g_replication_start_calls, 1);
+}
+
+TEST(SimulatorSupportTest, OnEventManagerInvokesMethodHandlers) {
+    OnEventManager manager;
+    SimulationEventObserver observer;
+
+    manager.addOnReplicationStartHandler(&observer, &SimulationEventObserver::OnReplicationStart);
+    manager.NotifyReplicationStartHandlers(nullptr);
+
+    EXPECT_EQ(observer.calls, 1);
 }
 
