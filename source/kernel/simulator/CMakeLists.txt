@@ -2,6 +2,7 @@ add_library(genesys_kernel_simulator_support STATIC
     LicenceManager.cpp
     ParserManager.cpp
     ParserChangesInformation.cpp
+    PluginInformation.cpp
     TraceManager.cpp
     OnEventManager.cpp
     ConnectionManager.cpp

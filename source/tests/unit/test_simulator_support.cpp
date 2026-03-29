@@ -5,6 +5,7 @@
 #include "kernel/simulator/ConnectionManager.h"
 #include "kernel/simulator/ParserManager.h"
 #include "kernel/simulator/ParserChangesInformation.h"
+#include "kernel/simulator/PluginInformation.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
 #include "kernel/simulator/ModelInfo.h"
@@ -319,5 +320,66 @@ TEST(SimulatorSupportTest, ParserChangesInformationStoresAllConfiguredSections) 
 TEST(SimulatorSupportTest, PropertyManagerCanBeConstructed) {
     PropertyManager manager;
     SUCCEED();
+}
+
+TEST(SimulatorSupportTest, PluginInformationComponentConstructorConfiguresComponentMode) {
+    PluginInformation info("Create", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+
+    EXPECT_TRUE(info.isComponent());
+    EXPECT_EQ(info.getPluginTypename(), "Create");
+    EXPECT_EQ(info.GetComponentLoader(), nullptr);
+    EXPECT_EQ(info.getDataDefinitionLoader(), nullptr);
+    EXPECT_EQ(info.getDataDefinitionConstructor(), nullptr);
+}
+
+TEST(SimulatorSupportTest, PluginInformationDataDefinitionConstructorConfiguresElementMode) {
+    PluginInformation info("Queue", static_cast<StaticLoaderDataDefinitionInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+
+    EXPECT_FALSE(info.isComponent());
+    EXPECT_EQ(info.getPluginTypename(), "Queue");
+    EXPECT_EQ(info.GetComponentLoader(), nullptr);
+    EXPECT_EQ(info.getDataDefinitionLoader(), nullptr);
+    EXPECT_EQ(info.getDataDefinitionConstructor(), nullptr);
+}
+
+TEST(SimulatorSupportTest, PluginInformationStoresMetadataAndLimits) {
+    PluginInformation info("Delay", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+
+    info.setGenerateReport(true);
+    info.setSendTransfer(true);
+    info.setReceiveTransfer(true);
+    info.setSink(true);
+    info.setSource(true);
+    info.setObservation("obs");
+    info.setVersion("1.2.3");
+    info.setDate("2026-03-29");
+    info.setAuthor("author");
+    info.setMaximumOutputs(5);
+    info.setMinimumOutputs(2);
+    info.setMaximumInputs(4);
+    info.setMinimumInputs(1);
+    info.setDescriptionHelp("help");
+    info.setLanguageTemplate("template");
+    info.setCategory("category");
+    info.insertDynamicLibFileDependence("libA.so");
+
+    EXPECT_TRUE(info.isGenerateReport());
+    EXPECT_TRUE(info.isSendTransfer());
+    EXPECT_TRUE(info.isReceiveTransfer());
+    EXPECT_TRUE(info.isSink());
+    EXPECT_TRUE(info.isSource());
+    EXPECT_EQ(info.getObservation(), "obs");
+    EXPECT_EQ(info.getVersion(), "1.2.3");
+    EXPECT_EQ(info.getDate(), "2026-03-29");
+    EXPECT_EQ(info.getAuthor(), "author");
+    EXPECT_EQ(info.getMaximumOutputs(), 5u);
+    EXPECT_EQ(info.getMinimumOutputs(), 2u);
+    EXPECT_EQ(info.getMaximumInputs(), 4u);
+    EXPECT_EQ(info.getMinimumInputs(), 1u);
+    EXPECT_EQ(info.getDescriptionHelp(), "help");
+    EXPECT_EQ(info.getLanguageTemplate(), "template");
+    EXPECT_EQ(info.getCategory(), "category");
+    ASSERT_NE(info.getDynamicLibFilenameDependencies(), nullptr);
+    EXPECT_EQ(info.getDynamicLibFilenameDependencies()->size(), 1u);
 }
 
