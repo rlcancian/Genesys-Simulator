@@ -14,6 +14,7 @@
 #include "kernel/simulator/PropertyManager.h"
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/SimulationScenario.h"
 
 
 // Test-only link shim:
@@ -519,5 +520,49 @@ TEST(SimulatorSupportTest, ParserManagerNewParserStartsWithEmptyPaths) {
     EXPECT_EQ(parser.bisonFilename, "");
     EXPECT_EQ(parser.flexFilename, "");
     EXPECT_EQ(parser.compiledParserFilename, "");
+}
+
+TEST(SimulatorSupportTest, SimulationScenarioStartsWithEmptyNamesAndLists) {
+    SimulationScenario scenario;
+
+    EXPECT_EQ(scenario.getScenarioName(), "");
+    EXPECT_EQ(scenario.getScenarioDescription(), "");
+    EXPECT_EQ(scenario.getModelFilename(), "");
+    ASSERT_NE(scenario.getSelectedControls(), nullptr);
+    ASSERT_NE(scenario.getSelectedResponses(), nullptr);
+    ASSERT_NE(scenario.getControlValues(), nullptr);
+    EXPECT_EQ(scenario.getSelectedControls()->size(), 0u);
+    EXPECT_EQ(scenario.getSelectedResponses()->size(), 0u);
+    EXPECT_EQ(scenario.getControlValues()->size(), 0u);
+}
+
+TEST(SimulatorSupportTest, SimulationScenarioStoresControlValuesSafely) {
+    SimulationScenario scenario;
+
+    scenario.setControl("replications", 10.0);
+    scenario.setControl("length", 25.5);
+
+    ASSERT_NE(scenario.getControlValues(), nullptr);
+    EXPECT_EQ(scenario.getControlValues()->size(), 2u);
+    EXPECT_DOUBLE_EQ(scenario.getControlValue("replications"), 10.0);
+    EXPECT_DOUBLE_EQ(scenario.getControlValue("length"), 25.5);
+}
+
+TEST(SimulatorSupportTest, SimulationScenarioCopiesSelectedControlsList) {
+    SimulationScenario scenario;
+    auto* controls = new std::list<std::string>();
+    controls->push_back("a");
+    controls->push_back("b");
+
+    scenario.setSelectedControls(controls);
+    controls->push_back("c");
+
+    ASSERT_NE(scenario.getSelectedControls(), nullptr);
+    EXPECT_EQ(scenario.getSelectedControls()->size(), 2u);
+}
+
+TEST(SimulatorSupportTest, SimulationScenarioThrowsForMissingControlValue) {
+    SimulationScenario scenario;
+    EXPECT_THROW(scenario.getControlValue("missing"), std::invalid_argument);
 }
 

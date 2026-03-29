@@ -16,6 +16,7 @@
 SimulationScenario::SimulationScenario() = default;
 
 bool SimulationScenario::startSimulation(Simulator *sim, std::string& errorMessage) {
+	/// @todo Implement scenario execution once control/response application to a loaded model is defined.
 	// @TODO: To implement!
 	// *Simulator??????s
     errorMessage = ""; // just clean the error message

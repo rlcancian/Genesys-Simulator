@@ -3,6 +3,7 @@ add_library(genesys_kernel_simulator_support STATIC
     ParserManager.cpp
     ParserChangesInformation.cpp
     PluginInformation.cpp
+    Plugin.cpp
     TraceManager.cpp
     OnEventManager.cpp
     ConnectionManager.cpp
@@ -10,6 +11,7 @@ add_library(genesys_kernel_simulator_support STATIC
     PropertyManager.cpp
     ExperimentManager.cpp
     SimulationExperiment.cpp
+    SimulationScenario.cpp
     ModelInfo.cpp
     Persistence.cpp
     ModelManager.cpp
