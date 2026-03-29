@@ -6,7 +6,7 @@
 
 /*
  * File:   SimulationReporterDefaultImpl1.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 8 de Agosto de 2018, 10:59
  */
@@ -153,7 +153,7 @@ void SimulationReporterDefaultImpl1::showSimulationResponses() {
 	_model->getTracer()->traceReport("Simulation Responses:");
 	Util::IncIndent();
 	{
-		for (SimulationControl* response : *_model->getResponses()->list()) {
+		for (SimulationResponse* response : *_model->getResponses()->list()) {
 			_model->getTracer()->traceReport("("+response->getClassname() + ") "+ response->getElementName()+"." +response->getName() + ": " + response->getValue());
 		}
 	}
