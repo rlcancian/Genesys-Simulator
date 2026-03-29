@@ -2,6 +2,8 @@ add_library(genesys_kernel_simulator_support STATIC
     LicenceManager.cpp
     ParserManager.cpp
     TraceManager.cpp
+    ExperimentManager.cpp
+    SimulationExperiment.cpp
 )
 
 target_include_directories(genesys_kernel_simulator_support
