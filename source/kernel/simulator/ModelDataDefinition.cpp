@@ -293,7 +293,7 @@ void ModelDataDefinition::setName(std::string name) {
 			}
 		}
 
-		for (SimulationControl* response : *_parentModel->getResponses()->list()) {
+		for (SimulationResponse* response : *_parentModel->getResponses()->list()) {
 			stuffName = response->getName();
 			pos = stuffName.find(getName(), 0);
 			if (pos < stuffName.length()) {// != std::string::npos) {

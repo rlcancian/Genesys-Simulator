@@ -1,7 +1,9 @@
 #ifndef PROPERTYMANAGER_H
 #define PROPERTYMANAGER_H
 
-#include "Property.h"
+// PropertyManager is currently a placeholder only.
+// Do not include Property.h here, or this header may collide with the
+// transitional PropertyBase alias used by the kernel-side control API.
 
 /**
  * @brief PropertyManager is currently a placeholder for future application-side property coordination.

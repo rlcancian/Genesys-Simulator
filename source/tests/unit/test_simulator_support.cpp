@@ -707,3 +707,15 @@ TEST(SimulatorSupportTest, ModelDataDefinitionGetPropertiesNowReturnsSimulationC
     EXPECT_TRUE(is_expected);
 }
 
+TEST(SimulatorSupportTest, ModelGetResponsesNowReturnsSimulationResponseList) {
+    using ReturnType = decltype(std::declval<const Model*>()->getResponses());
+    constexpr bool is_expected = std::is_same_v<ReturnType, List<SimulationResponse*>*>;
+    EXPECT_TRUE(is_expected);
+}
+
+TEST(SimulatorSupportTest, ModelGetControlsStillReturnSimulationControlList) {
+    using ReturnType = decltype(std::declval<const Model*>()->getControls());
+    constexpr bool is_expected = std::is_same_v<ReturnType, List<SimulationControl*>*>;
+    EXPECT_TRUE(is_expected);
+}
+
