@@ -4,6 +4,7 @@ add_library(genesys_kernel_simulator_support STATIC
     TraceManager.cpp
     OnEventManager.cpp
     ConnectionManager.cpp
+    Event.cpp
     PropertyManager.cpp
     ExperimentManager.cpp
     SimulationExperiment.cpp
