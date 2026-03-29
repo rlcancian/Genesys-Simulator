@@ -16,6 +16,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationScenario.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include <type_traits>
 
 
 // Test-only link shim:
@@ -698,5 +699,11 @@ TEST(SimulatorSupportTest, DefineSimulationGetterAndSetterBindKernelMethods) {
 
     EXPECT_EQ(probe.name, "gamma");
     EXPECT_EQ(control.getValue(), "gamma");
+}
+
+TEST(SimulatorSupportTest, ModelDataDefinitionGetPropertiesNowReturnsSimulationControlList) {
+    using ReturnType = decltype(std::declval<const ModelDataDefinition*>()->getProperties());
+    constexpr bool is_expected = std::is_same_v<ReturnType, List<SimulationControl*>*>;
+    EXPECT_TRUE(is_expected);
 }
 

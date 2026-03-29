@@ -6,7 +6,7 @@
 
 /*
  * File:   ModelDataDefinition.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 21 de Junho de 2018, 19:40
  */
@@ -284,7 +284,7 @@ void ModelDataDefinition::setName(std::string name) {
 			}
 		}
 
-		for (/*PropertyBase**/PropertyBase* control : *_parentModel->getControls()->list()) {
+		for (SimulationControl* control : *_parentModel->getControls()->list()) {
 			stuffName = control->getName();
 			pos = stuffName.find(getName(), 0);
 			if (pos < stuffName.length()) { // != std::string::npos) {
@@ -384,7 +384,7 @@ void ModelDataDefinition::_createInternalAndAttachedData() {
 
 }
 
-void ModelDataDefinition::_addProperty(PropertyBase* property) {
+void ModelDataDefinition::_addProperty(SimulationControl* property) {
 	_properties->insert(property);
 }
 
@@ -398,7 +398,7 @@ void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
 }
 */
 
-List<PropertyBase*> *ModelDataDefinition::getProperties() const {
+List<SimulationControl*> *ModelDataDefinition::getProperties() const {
 	return _properties;
 }
 
