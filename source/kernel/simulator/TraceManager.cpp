@@ -19,6 +19,7 @@
 TraceManager::TraceManager(Simulator* simulator) {//(Model* model) {
 	_simulator = simulator;
 	_traceLevel = TraitsKernel<Simulator>::traceLevel;
+	_errorMessages = new List<std::string>();
 	//@TODO: Tracelevels should be based on the tracelevel of each "class" 
 }
 
