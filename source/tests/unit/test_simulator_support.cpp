@@ -2,6 +2,7 @@
 
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/OnEventManager.h"
+#include "kernel/simulator/ConnectionManager.h"
 #include "kernel/simulator/ParserManager.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
@@ -249,5 +250,35 @@ TEST(SimulatorSupportTest, TraceManagerTraceErrorPreservesExplicitLevel) {
     tm.traceError("fatal", TraceManager::Level::L1_errorFatal);
 
     EXPECT_EQ(g_last_trace_error_level, TraceManager::Level::L1_errorFatal);
+}
+
+TEST(SimulatorSupportTest, ConnectionManagerStartsEmpty) {
+    ConnectionManager manager;
+    EXPECT_EQ(manager.size(), 0u);
+    EXPECT_EQ(manager.getFrontConnection(), nullptr);
+    EXPECT_EQ(manager.getConnectionAtPort(0), nullptr);
+}
+
+TEST(SimulatorSupportTest, ConnectionManagerInsertCreatesConnectionAtPortZero) {
+    ConnectionManager manager;
+
+    manager.insert(nullptr, 3);
+
+    ASSERT_EQ(manager.size(), 1u);
+    Connection* conn = manager.getFrontConnection();
+    ASSERT_NE(conn, nullptr);
+    EXPECT_EQ(conn->component, nullptr);
+    EXPECT_EQ(conn->channel.portNumber, 3u);
+}
+
+TEST(SimulatorSupportTest, ConnectionManagerRemoveAtPortClearsInsertedConnection) {
+    ConnectionManager manager;
+    manager.insert(nullptr, 7);
+
+    ASSERT_EQ(manager.size(), 1u);
+    manager.removeAtPort(0);
+
+    EXPECT_EQ(manager.size(), 0u);
+    EXPECT_EQ(manager.getConnectionAtPort(0), nullptr);
 }
 
