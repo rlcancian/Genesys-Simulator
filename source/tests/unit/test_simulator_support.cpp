@@ -6,6 +6,7 @@
 #include "kernel/simulator/ParserManager.h"
 #include "kernel/simulator/ParserChangesInformation.h"
 #include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
 #include "kernel/simulator/ModelInfo.h"
@@ -88,6 +89,37 @@ bool Model::save(std::string filename) {
 bool Model::load(std::string filename) {
     (void)filename;
     return true;
+}
+
+
+PluginInformation* BuildTestComponentPluginInfo() {
+    auto* info = new PluginInformation("TestComponent", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+    info->setCategory("Test");
+    info->setSource(true);
+    info->setGenerateReport(true);
+    info->insertDynamicLibFileDependence("depA.so");
+    info->getFields()->insert({"fieldA", ""});
+    info->setLanguageTemplate("template-body ");
+    info->setDescriptionHelp("help-text");
+    return info;
+}
+
+PluginInformation* BuildTestElementPluginInfo() {
+    auto* info = new PluginInformation("TestElement", static_cast<StaticLoaderDataDefinitionInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+    info->setCategory("Test");
+    return info;
+}
+
+PluginInformation* GetTestComponentPluginInformation() {
+    return BuildTestComponentPluginInfo();
+}
+
+PluginInformation* GetTestElementPluginInformation() {
+    return BuildTestElementPluginInfo();
+}
+
+PluginInformation* ThrowingPluginInformationFactory() {
+    throw 42;
 }
 
 class FakeModelPersistence : public ModelPersistence_if {
@@ -381,5 +413,91 @@ TEST(SimulatorSupportTest, PluginInformationStoresMetadataAndLimits) {
     EXPECT_EQ(info.getCategory(), "category");
     ASSERT_NE(info.getDynamicLibFilenameDependencies(), nullptr);
     EXPECT_EQ(info.getDynamicLibFilenameDependencies()->size(), 1u);
+}
+
+TEST(SimulatorSupportTest, PluginConstructedFromFactoryCanExposePluginInformation) {
+    Plugin plugin(&GetTestComponentPluginInformation);
+
+    ASSERT_TRUE(plugin.isIsValidPlugin());
+    ASSERT_NE(plugin.getPluginInfo(), nullptr);
+    EXPECT_TRUE(plugin.getPluginInfo()->isComponent());
+    EXPECT_EQ(plugin.getPluginInfo()->getPluginTypename(), "TestComponent");
+}
+
+TEST(SimulatorSupportTest, PluginShowIncludesConfiguredMetadata) {
+    Plugin plugin(&GetTestComponentPluginInformation);
+
+    const std::string text = plugin.show();
+
+    EXPECT_NE(text.find("<Test>"), std::string::npos);
+    EXPECT_NE(text.find("Source"), std::string::npos);
+    EXPECT_NE(text.find("GenerateReport"), std::string::npos);
+    EXPECT_NE(text.find("\"TestComponent\""), std::string::npos);
+    EXPECT_NE(text.find("depA.so"), std::string::npos);
+    EXPECT_NE(text.find("fieldA"), std::string::npos);
+    EXPECT_NE(text.find("help-text"), std::string::npos);
+}
+
+TEST(SimulatorSupportTest, PluginCanRepresentElementPluginKind) {
+    Plugin plugin(&GetTestElementPluginInformation);
+
+    ASSERT_TRUE(plugin.isIsValidPlugin());
+    ASSERT_NE(plugin.getPluginInfo(), nullptr);
+    EXPECT_FALSE(plugin.getPluginInfo()->isComponent());
+}
+
+TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
+    Plugin plugin(&ThrowingPluginInformationFactory);
+
+    EXPECT_FALSE(plugin.isIsValidPlugin());
+}
+
+TEST(SimulatorSupportTest, PersistenceRecordSaveLoadAndEraseWorkflow) {
+    FakeModelPersistence persistence;
+    PersistenceRecord record(persistence);
+
+    record.saveField("name", std::string("alpha"));
+    record.saveField("count", 7u);
+    record.saveField("ratio", 2.5, 0.0, true);
+
+    EXPECT_EQ(record.size(), 3u);
+    EXPECT_EQ(record.loadField("name", std::string("fallback")), "alpha");
+    EXPECT_EQ(record.loadField("count", 0u), 7u);
+    EXPECT_DOUBLE_EQ(record.loadField("ratio", 0.0), 2.5);
+
+    record.erase("count");
+
+    EXPECT_EQ(record.size(), 2u);
+    EXPECT_EQ(record.loadField("count", 123u), 123u);
+}
+
+TEST(SimulatorSupportTest, PersistenceRecordInsertIteratorRangeCopiesEntries) {
+    FakeModelPersistence persistence;
+    PersistenceRecord source(persistence);
+    PersistenceRecord target(persistence);
+
+    source.saveField("a", std::string("one"));
+    source.saveField("b", 2u);
+
+    target.insert(source.begin(), source.end());
+
+    EXPECT_EQ(target.size(), 2u);
+    EXPECT_EQ(target.loadField("a", std::string("fallback")), "one");
+    EXPECT_EQ(target.loadField("b", 0u), 2u);
+}
+
+TEST(SimulatorSupportTest, PersistenceRecordClearRemovesAllEntries) {
+    FakeModelPersistence persistence;
+    PersistenceRecord record(persistence);
+
+    record.saveField("x", std::string("value"));
+    record.saveField("y", 9u);
+
+    ASSERT_EQ(record.size(), 2u);
+    record.clear();
+
+    EXPECT_EQ(record.size(), 0u);
+    EXPECT_EQ(record.loadField("x", std::string("missing")), "missing");
+    EXPECT_EQ(record.loadField("y", 77u), 77u);
 }
 
