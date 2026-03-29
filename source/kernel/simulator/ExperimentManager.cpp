@@ -6,7 +6,7 @@
 
 /* 
  * File:   ExperimentManager.cpp
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 4 de maio de 2021, 11:43
  */
@@ -31,7 +31,9 @@ SimulationExperiment* ExperimentManager::newSimulationExperiment() {
 void ExperimentManager::insert(SimulationExperiment* experiment) {
 	_experiments->insert(experiment);
 	this->_currentSimulationExperiment = experiment;
-	_simulator->getTraceManager()->trace("Experiment successfully inserted", TraceManager::Level::L2_results);
+	if (_simulator != nullptr) {
+		_simulator->getTraceManager()->trace("Experiment successfully inserted", TraceManager::Level::L2_results);
+	}
 }
 
 void ExperimentManager::remove(SimulationExperiment* experiment) {
@@ -40,7 +42,9 @@ void ExperimentManager::remove(SimulationExperiment* experiment) {
 		_currentSimulationExperiment = this->front();
 	}
 	delete experiment; //->~SimulationExperiment();
-	_simulator->getTraceManager()->trace("Experiment successfully removed",TraceManager::Level::L2_results);
+	if (_simulator != nullptr) {
+		_simulator->getTraceManager()->trace("Experiment successfully removed", TraceManager::Level::L2_results);
+	}
 }
 
 unsigned int ExperimentManager::size() {
@@ -48,6 +52,7 @@ unsigned int ExperimentManager::size() {
 }
 
 bool ExperimentManager::saveSimulationExperiment(std::string filename) {
+	/// @todo This method currently reflects the unfinished higher-level experiment layer.
 	// @TODO: implement
 	if (_currentSimulationExperiment != nullptr) {
 		filename = ""; // just to avoid not using it
@@ -57,16 +62,21 @@ bool ExperimentManager::saveSimulationExperiment(std::string filename) {
 }
 
 bool ExperimentManager::loadSimulationExperiment(std::string filename) {
+	/// @todo The higher-level experiment workflow is still under construction.
 	SimulationExperiment* experiment = new SimulationExperiment(); //_simulator);
 	// @TODO: not implemented yet!
 	filename = ""; // jut to avoid not using it
 	bool res = false; // = experiment->load(filename);
 	if (res) {
 		this->insert(experiment);
-		_simulator->getTraceManager()->trace("Experiment successfully loaded",TraceManager::Level::L2_results);
+		if (_simulator != nullptr) {
+			_simulator->getTraceManager()->trace("Experiment successfully loaded", TraceManager::Level::L2_results);
+		}
 	} else {
 		delete experiment; //->~SimulationExperiment();
-		_simulator->getTraceManager()->trace("Experiment coud not be loaded", TraceManager::Level::L2_results);
+		if (_simulator != nullptr) {
+			_simulator->getTraceManager()->trace("Experiment could not be loaded", TraceManager::Level::L2_results);
+		}
 	}
 	return res;
 }

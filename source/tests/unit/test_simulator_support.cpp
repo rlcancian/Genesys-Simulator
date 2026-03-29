@@ -566,3 +566,32 @@ TEST(SimulatorSupportTest, SimulationScenarioThrowsForMissingControlValue) {
     EXPECT_THROW(scenario.getControlValue("missing"), std::invalid_argument);
 }
 
+TEST(SimulatorSupportTest, ExperimentManagerInsertAndRemoveWorkWithoutSimulatorTrace) {
+    ExperimentManager manager(nullptr);
+
+    auto* first = new SimulationExperiment();
+    auto* second = new SimulationExperiment();
+
+    manager.insert(first);
+    manager.insert(second);
+
+    ASSERT_EQ(manager.size(), 2u);
+    EXPECT_EQ(manager.current(), second);
+    EXPECT_EQ(manager.front(), first);
+
+    manager.remove(second);
+
+    EXPECT_EQ(manager.size(), 1u);
+    EXPECT_EQ(manager.current(), first);
+
+    manager.remove(first);
+    EXPECT_EQ(manager.size(), 0u);
+}
+
+TEST(SimulatorSupportTest, ExperimentManagerSaveAndLoadRemainGracefullyUnimplemented) {
+    ExperimentManager manager(nullptr);
+
+    EXPECT_FALSE(manager.saveSimulationExperiment("exp.gen"));
+    EXPECT_FALSE(manager.loadSimulationExperiment("exp.gen"));
+}
+
