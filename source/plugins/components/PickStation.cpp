@@ -6,7 +6,7 @@
 
 /* 
  * File:   PickStation.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 11 de Setembro de 2019, 13:08
  */
@@ -266,7 +266,7 @@ void PickStation::_createInternalAndAttachedData() {
 	//}
 }
 
-void PickStation::_addProperty(PropertyBase* property) {
+void PickStation::_addProperty(SimulationControl* property) {
 	_properties->insert(property);
 }
 
