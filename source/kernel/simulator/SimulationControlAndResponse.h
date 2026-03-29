@@ -198,6 +198,20 @@ private:
 
 typedef std::function<double()> GetterDouble;
 typedef std::function<void(double)> SetterDouble;
+
+class SimulationResponseDouble: public SimulationResponse {
+public:
+    SimulationResponseDouble(GetterDouble getter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false)
+        : SimulationResponse(className, elementName, propertyName, whatsThis, isList, isClass, isEnum) {
+        _getter = getter;
+        _propertyType = Util::TypeOf<double>();
+    }
+public:
+    virtual std::string getValue() const override { return std::to_string(_getter()); }
+private:
+    GetterDouble _getter;
+};
+
 class SimulationControlDouble: public SimulationControl {
 public:
 //	SimulationControlDouble(GetterDouble getter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="") : SimulationControl(className, elementName, propertyName, whatsThis) {

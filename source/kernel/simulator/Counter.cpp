@@ -6,7 +6,7 @@
 
 /*
  * File:   CounterDefaultImpl1.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 29 de Maio de 2019, 11:24
  */
@@ -29,8 +29,8 @@ ModelDataDefinition* Counter::NewInstance(Model* model, std::string name) {
 
 Counter::Counter(Model* model, std::string name, ModelDataDefinition* parent) : ModelDataDefinition(model, Util::TypeOf<Counter>(), name) {
 	_parent = parent;
-	_parentModel->getResponses()->insert(new SimulationControlDouble(
-					 std::bind(&Counter::getCountValue, this), nullptr, this->getClassname(), getName(), "CountValue"));
+	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+					 std::bind(&Counter::getCountValue, this), this->getClassname(), getName(), "CountValue"));
 }
 
 std::string Counter::show() {

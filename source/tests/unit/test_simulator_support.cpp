@@ -719,3 +719,18 @@ TEST(SimulatorSupportTest, ModelGetControlsStillReturnSimulationControlList) {
     EXPECT_TRUE(is_expected);
 }
 
+TEST(SimulatorSupportTest, SimulationResponseDoubleIsNotAWritableControl) {
+    double value = 2.5;
+    SimulationResponseDouble response(
+        [&]() { return value; },
+        "TestClass",
+        "TestElement",
+        "Metric"
+    );
+
+    EXPECT_EQ(response.getValue(), std::to_string(2.5));
+
+    SimulationResponse* base = &response;
+    EXPECT_EQ(dynamic_cast<SimulationControl*>(base), nullptr);
+}
+
