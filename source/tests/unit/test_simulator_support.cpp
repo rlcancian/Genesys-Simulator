@@ -4,6 +4,7 @@
 #include "kernel/simulator/OnEventManager.h"
 #include "kernel/simulator/ConnectionManager.h"
 #include "kernel/simulator/ParserManager.h"
+#include "kernel/simulator/ParserChangesInformation.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "kernel/simulator/ExperimentManager.h"
 #include "kernel/simulator/ModelInfo.h"
@@ -280,5 +281,37 @@ TEST(SimulatorSupportTest, ConnectionManagerRemoveAtPortClearsInsertedConnection
 
     EXPECT_EQ(manager.size(), 0u);
     EXPECT_EQ(manager.getConnectionAtPort(0), nullptr);
+}
+
+TEST(SimulatorSupportTest, ParserChangesInformationStartsEmpty) {
+    ParserChangesInformation info;
+
+    EXPECT_EQ(info.getincludes(), "");
+    EXPECT_EQ(info.gettokens(), "");
+    EXPECT_EQ(info.gettypeObjs(), "");
+    EXPECT_EQ(info.getexpressions(), "");
+    EXPECT_EQ(info.getexpressionProductions(), "");
+    EXPECT_EQ(info.getassignments(), "");
+    EXPECT_EQ(info.getfunctionProdutions(), "");
+}
+
+TEST(SimulatorSupportTest, ParserChangesInformationStoresAllConfiguredSections) {
+    ParserChangesInformation info;
+
+    info.setIncludes("inc");
+    info.setTokens("tok");
+    info.setTypeObjs("types");
+    info.setExpressions("expr");
+    info.setExpressionProductions("prod");
+    info.setAssignments("assign");
+    info.setFunctionProdutions("func");
+
+    EXPECT_EQ(info.getincludes(), "inc");
+    EXPECT_EQ(info.gettokens(), "tok");
+    EXPECT_EQ(info.gettypeObjs(), "types");
+    EXPECT_EQ(info.getexpressions(), "expr");
+    EXPECT_EQ(info.getexpressionProductions(), "prod");
+    EXPECT_EQ(info.getassignments(), "assign");
+    EXPECT_EQ(info.getfunctionProdutions(), "func");
 }
 
