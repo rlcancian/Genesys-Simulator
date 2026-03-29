@@ -5,7 +5,7 @@
 
 /*
  * File:   PickableStationItem.h
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 1 de dezembro de 2022, 14:00
  */
@@ -38,8 +38,8 @@ public:
     void setStation(Station* _station);
 
     std::string getName();
-    void _addProperty(PropertyBase* property);
-    List<PropertyBase*>* getProperties() const;
+    void _addProperty(SimulationControl* property);
+    List<SimulationControl*>* getProperties() const;
 
     std::string getTypeDC() {return _typeDC;};
 private:
@@ -51,7 +51,7 @@ private:
     std::string _stationName = "";
 
     std::string _typeDC = Util::TypeOf<Station>();
-    List<PropertyBase*>* _properties = new List<PropertyBase*>();
+    List<SimulationControl*>* _properties = new List<SimulationControl*>();
 };
 
 #endif /* PICKABLESTATIONITEM_H */
