@@ -18,9 +18,28 @@ message(STATUS "GENESYS_BUILD_TESTS=${GENESYS_BUILD_TESTS}")
 message(STATUS "GENESYS_BUILD_PLUGINS=${GENESYS_BUILD_PLUGINS}")
 
 add_subdirectory(source/kernel/util)
+add_subdirectory(source/kernel/statistics)
+add_subdirectory(source/parser)
+add_subdirectory(source/plugins/data)
 add_subdirectory(source/kernel/simulator)
 
 if(GENESYS_BUILD_TESTS)
-    find_package(GTest CONFIG REQUIRED)
+    find_package(GTest CONFIG QUIET)
+    if(NOT GTest_FOUND)
+        message(STATUS "GTest package not found. Falling back to bundled source/gtest.")
+        add_library(gtest STATIC source/gtest/src/gtest-all.cc)
+        target_include_directories(gtest
+            PUBLIC
+                ${CMAKE_SOURCE_DIR}/source/gtest
+        )
+        target_compile_features(gtest PUBLIC cxx_std_20)
+
+        add_library(gtest_main STATIC source/gtest/src/gtest_main.cc)
+        target_link_libraries(gtest_main PUBLIC gtest)
+
+        add_library(GTest::gtest ALIAS gtest)
+        add_library(GTest::gtest_main ALIAS gtest_main)
+    endif()
+
     add_subdirectory(source/tests)
 endif()
