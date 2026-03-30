@@ -25,14 +25,27 @@ SamplerDefaultImpl1::SamplerDefaultImpl1() {
 	reset();
 }
 
+SamplerDefaultImpl1::~SamplerDefaultImpl1() {
+	if (_ownsParam) {
+		delete _param;
+	}
+	_param = nullptr;
+}
+
 void SamplerDefaultImpl1::reset() {
 	_xi = static_cast<DefaultImpl1RNG_Parameters*> (_param)->seed;
 	_normalflag = false;
 }
 
 void SamplerDefaultImpl1::setRNGparameters(Sampler_if::RNG_Parameters * param) {
-
+	if (_param == param) {
+		return;
+	}
+	if (_ownsParam) {
+		delete _param;
+	}
 	_param = param; // there is a better solution for this...
+	_ownsParam = false;
 }
 
 Sampler_if::RNG_Parameters * SamplerDefaultImpl1::getRNGparameters() const {
@@ -256,4 +269,3 @@ double SamplerDefaultImpl1::sampleBeta(double alpha, double beta) {
 	return x / (x + y);
 
 }
-

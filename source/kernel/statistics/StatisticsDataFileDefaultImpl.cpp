@@ -28,12 +28,34 @@ StatisticsDatafileDefaultImpl1::StatisticsDatafileDefaultImpl1() {
 	_z.insert(std::make_pair(0.995, 2.807));
 }
 
+StatisticsDatafileDefaultImpl1::~StatisticsDatafileDefaultImpl1() {
+	if (_ownsCollector) {
+		delete _collector;
+	}
+	if (_ownsCollectorSorted) {
+		delete _collectorSorted;
+	}
+	if (_ownsSort) {
+		delete sort;
+	}
+	_collector = nullptr;
+	_collectorSorted = nullptr;
+	sort = nullptr;
+}
+
 Collector_if* StatisticsDatafileDefaultImpl1::getCollector() const {
 	return this->_collector;
 }
 
 void StatisticsDatafileDefaultImpl1::setCollector(Collector_if* collector) {
+	if (_collector == collector) {
+		return;
+	}
+	if (_ownsCollector) {
+		delete _collector;
+	}
 	_collector = static_cast<CollectorDatafile_if*> (collector);
+	_ownsCollector = false;
 }
 
 bool StatisticsDatafileDefaultImpl1::_hasNewValue() {
