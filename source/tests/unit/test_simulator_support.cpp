@@ -29,60 +29,9 @@ TraceManager* Simulator::getTraceManager() const {
 
 
 
-namespace {
-int g_fake_model_construction_count = 0;
-}
-
-
-namespace {
-int g_replication_start_calls = 0;
-
-void CountReplicationStart(SimulationEvent*) {
-    ++g_replication_start_calls;
-}
-
-
-namespace {
-TraceManager::Level g_last_trace_error_level = TraceManager::Level::L9_mostDetailed;
-
-void CaptureTraceErrorLevel(TraceErrorEvent e) {
-    g_last_trace_error_level = e.getTracelevel();
-}
-}
-
-
-
-namespace {
-int g_model_check_success_calls = 0;
-
-void CountModelCheckSuccess(ModelEvent*) {
-    ++g_model_check_success_calls;
-}
-
-struct ModelEventObserver {
-    int calls = 0;
-
-    void OnModelCheckSuccess(ModelEvent*) {
-        ++calls;
-    }
-};
-}
-
-
-struct SimulationEventObserver {
-    int calls = 0;
-
-    void OnReplicationStart(SimulationEvent*) {
-        ++calls;
-    }
-};
-}
-
-
 Model::Model(Simulator* simulator, unsigned int level) {
     (void)simulator;
     (void)level;
-    ++g_fake_model_construction_count;
 }
 
 bool Model::save(std::string filename) {
@@ -189,10 +138,7 @@ public:
 
 
 
-TEST(SimulatorSupportTest, TraceManagerInitializesErrorMessagesList) {
-    TraceManager tm(nullptr);
-    ASSERT_NE(tm.errorMessages(), nullptr);
-}
+// TraceManager class-focused tests moved to test_support_tracemanager.cpp
 
 TEST(SimulatorSupportTest, ParserManagerCanBeConstructed) {
     ParserManager pm;
@@ -259,118 +205,11 @@ TEST(SimulatorSupportTest, ModelInfoSaveAndLoadRoundTrip) {
     EXPECT_FALSE(loaded.hasChanged());
 }
 
-TEST(SimulatorSupportTest, ModelManagerStartsWithoutCurrentModel) {
-    ModelManager manager(nullptr);
-    EXPECT_EQ(manager.current(), nullptr);
-    EXPECT_EQ(manager.size(), 0u);
-}
+// ModelManager class-focused tests moved to test_support_modelmanager.cpp
 
-TEST(SimulatorSupportTest, ModelManagerNewModelSetsCurrentWithoutInsertion) {
-    const int before = g_fake_model_construction_count;
+// OnEventManager class-focused tests moved to test_support_oneventmanager.cpp
 
-    ModelManager manager(nullptr);
-    Model* model = manager.newModel();
-
-    ASSERT_NE(model, nullptr);
-    EXPECT_EQ(manager.current(), model);
-    EXPECT_EQ(manager.size(), 0u);
-    EXPECT_EQ(g_fake_model_construction_count, before + 1);
-}
-
-TEST(SimulatorSupportTest, ModelManagerSaveModelWithoutCurrentReturnsFalse) {
-    ModelManager manager(nullptr);
-    EXPECT_FALSE(manager.saveModel("dummy.gen"));
-}
-
-TEST(SimulatorSupportTest, ModelManagerSaveModelUsesCurrentModel) {
-    ModelManager manager(nullptr);
-    manager.newModel();
-    EXPECT_TRUE(manager.saveModel("dummy.gen"));
-}
-
-TEST(SimulatorSupportTest, OnEventManagerDeduplicatesFunctionHandlers) {
-    g_replication_start_calls = 0;
-
-    OnEventManager manager;
-    manager.addOnReplicationStartHandler(&CountReplicationStart);
-    manager.addOnReplicationStartHandler(&CountReplicationStart);
-
-    manager.NotifyReplicationStartHandlers(nullptr);
-
-    EXPECT_EQ(g_replication_start_calls, 1);
-}
-
-TEST(SimulatorSupportTest, OnEventManagerInvokesMethodHandlers) {
-    OnEventManager manager;
-    SimulationEventObserver observer;
-
-    manager.addOnReplicationStartHandler(&observer, &SimulationEventObserver::OnReplicationStart);
-    manager.NotifyReplicationStartHandlers(nullptr);
-
-    EXPECT_EQ(observer.calls, 1);
-}
-
-TEST(SimulatorSupportTest, OnEventManagerDeduplicatesModelFunctionHandlers) {
-    g_model_check_success_calls = 0;
-
-    OnEventManager manager;
-    manager.addOnModelCheckSucessHandler(&CountModelCheckSuccess);
-    manager.addOnModelCheckSucessHandler(&CountModelCheckSuccess);
-
-    manager.NotifyModelCheckSuccessHandlers(nullptr);
-
-    EXPECT_EQ(g_model_check_success_calls, 1);
-}
-
-TEST(SimulatorSupportTest, OnEventManagerInvokesModelMethodHandlers) {
-    OnEventManager manager;
-    ModelEventObserver observer;
-
-    manager.addOnModelCheckSuccessHandler(&observer, &ModelEventObserver::OnModelCheckSuccess);
-    manager.NotifyModelCheckSuccessHandlers(nullptr);
-
-    EXPECT_EQ(observer.calls, 1);
-}
-
-TEST(SimulatorSupportTest, TraceManagerTraceErrorPreservesExplicitLevel) {
-    TraceManager tm(nullptr);
-    tm.addTraceErrorHandler(&CaptureTraceErrorLevel);
-
-    g_last_trace_error_level = TraceManager::Level::L9_mostDetailed;
-    tm.traceError("fatal", TraceManager::Level::L1_errorFatal);
-
-    EXPECT_EQ(g_last_trace_error_level, TraceManager::Level::L1_errorFatal);
-}
-
-TEST(SimulatorSupportTest, ConnectionManagerStartsEmpty) {
-    ConnectionManager manager;
-    EXPECT_EQ(manager.size(), 0u);
-    EXPECT_EQ(manager.getFrontConnection(), nullptr);
-    EXPECT_EQ(manager.getConnectionAtPort(0), nullptr);
-}
-
-TEST(SimulatorSupportTest, ConnectionManagerInsertCreatesConnectionAtPortZero) {
-    ConnectionManager manager;
-
-    manager.insert(nullptr, 3);
-
-    ASSERT_EQ(manager.size(), 1u);
-    Connection* conn = manager.getFrontConnection();
-    ASSERT_NE(conn, nullptr);
-    EXPECT_EQ(conn->component, nullptr);
-    EXPECT_EQ(conn->channel.portNumber, 3u);
-}
-
-TEST(SimulatorSupportTest, ConnectionManagerRemoveAtPortClearsInsertedConnection) {
-    ConnectionManager manager;
-    manager.insert(nullptr, 7);
-
-    ASSERT_EQ(manager.size(), 1u);
-    manager.removeAtPort(0);
-
-    EXPECT_EQ(manager.size(), 0u);
-    EXPECT_EQ(manager.getConnectionAtPort(0), nullptr);
-}
+// ConnectionManager class-focused tests moved to test_support_connectionmanager.cpp
 
 TEST(SimulatorSupportTest, ParserChangesInformationStartsEmpty) {
     ParserChangesInformation info;
@@ -507,74 +346,9 @@ TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
     EXPECT_FALSE(plugin.isIsValidPlugin());
 }
 
-TEST(SimulatorSupportTest, PersistenceRecordSaveLoadAndEraseWorkflow) {
-    FakeModelPersistence persistence;
-    PersistenceRecord record(persistence);
+// PersistenceRecord class-focused tests moved to test_support_persistence.cpp
 
-    record.saveField("name", std::string("alpha"));
-    record.saveField("count", 7u);
-    record.saveField("ratio", 2.5, 0.0, true);
-
-    EXPECT_EQ(record.size(), 3u);
-    EXPECT_EQ(record.loadField("name", std::string("fallback")), "alpha");
-    EXPECT_EQ(record.loadField("count", 0u), 7u);
-    EXPECT_DOUBLE_EQ(record.loadField("ratio", 0.0), 2.5);
-
-    record.erase("count");
-
-    EXPECT_EQ(record.size(), 2u);
-    EXPECT_EQ(record.loadField("count", 123u), 123u);
-}
-
-TEST(SimulatorSupportTest, PersistenceRecordInsertIteratorRangeCopiesEntries) {
-    FakeModelPersistence persistence;
-    PersistenceRecord source(persistence);
-    PersistenceRecord target(persistence);
-
-    source.saveField("a", std::string("one"));
-    source.saveField("b", 2u);
-
-    target.insert(source.begin(), source.end());
-
-    EXPECT_EQ(target.size(), 2u);
-    EXPECT_EQ(target.loadField("a", std::string("fallback")), "one");
-    EXPECT_EQ(target.loadField("b", 0u), 2u);
-}
-
-TEST(SimulatorSupportTest, PersistenceRecordClearRemovesAllEntries) {
-    FakeModelPersistence persistence;
-    PersistenceRecord record(persistence);
-
-    record.saveField("x", std::string("value"));
-    record.saveField("y", 9u);
-
-    ASSERT_EQ(record.size(), 2u);
-    record.clear();
-
-    EXPECT_EQ(record.size(), 0u);
-    EXPECT_EQ(record.loadField("x", std::string("missing")), "missing");
-    EXPECT_EQ(record.loadField("y", 77u), 77u);
-}
-
-TEST(SimulatorSupportTest, ParserManagerResultDefaultsToFailureAndEmptyArtifacts) {
-    ParserManager::GenerateNewParserResult result;
-
-    EXPECT_FALSE(result.result);
-    EXPECT_EQ(result.bisonMessages, "");
-    EXPECT_EQ(result.lexMessages, "");
-    EXPECT_EQ(result.compilationMessages, "");
-    EXPECT_EQ(result.newParser.bisonFilename, "");
-    EXPECT_EQ(result.newParser.flexFilename, "");
-    EXPECT_EQ(result.newParser.compiledParserFilename, "");
-}
-
-TEST(SimulatorSupportTest, ParserManagerNewParserStartsWithEmptyPaths) {
-    ParserManager::NewParser parser;
-
-    EXPECT_EQ(parser.bisonFilename, "");
-    EXPECT_EQ(parser.flexFilename, "");
-    EXPECT_EQ(parser.compiledParserFilename, "");
-}
+// ParserManager class-focused tests moved to test_support_parsermanager.cpp
 
 TEST(SimulatorSupportTest, SimulationScenarioStartsWithEmptyNamesAndLists) {
     SimulationScenario scenario;
