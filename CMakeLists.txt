@@ -5,6 +5,7 @@ project(GenesysSimulator LANGUAGES CXX)
 option(GENESYS_BUILD_GUI "Build Qt GUI application" OFF)
 option(GENESYS_BUILD_TESTS "Build tests" ON)
 option(GENESYS_BUILD_PLUGINS "Build plugins as shared libraries" OFF)
+option(GENESYS_TERMINAL_APPLICATION "Build terminal application target" ON)
 option(GENESYS_BOOTSTRAP_MINIMAL_RUNTIME "Use minimal runtime plugin connector during CMake bootstrap" ON)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -17,6 +18,7 @@ message(STATUS "Configuring GenesysSimulator")
 message(STATUS "GENESYS_BUILD_GUI=${GENESYS_BUILD_GUI}")
 message(STATUS "GENESYS_BUILD_TESTS=${GENESYS_BUILD_TESTS}")
 message(STATUS "GENESYS_BUILD_PLUGINS=${GENESYS_BUILD_PLUGINS}")
+message(STATUS "GENESYS_TERMINAL_APPLICATION=${GENESYS_TERMINAL_APPLICATION}")
 message(STATUS "GENESYS_BOOTSTRAP_MINIMAL_RUNTIME=${GENESYS_BOOTSTRAP_MINIMAL_RUNTIME}")
 
 add_subdirectory(source/kernel/util)
@@ -24,6 +26,10 @@ add_subdirectory(source/kernel/statistics)
 add_subdirectory(source/parser)
 add_subdirectory(source/plugins/data)
 add_subdirectory(source/kernel/simulator)
+
+if(GENESYS_TERMINAL_APPLICATION)
+    add_subdirectory(source/applications/terminal)
+endif()
 
 add_custom_target(genesys_kernel
     DEPENDS
@@ -39,8 +45,7 @@ if(GENESYS_BUILD_TESTS)
     find_package(GTest CONFIG QUIET)
     if(NOT GTest_FOUND)
         message(STATUS "GTest package not found. Falling back to bundled source/gtest.")
-        add_library(gtest STATIC source/gtest/src/gtest-all.cc
-                source/applications/terminal/main.cpp)
+        add_library(gtest STATIC source/gtest/src/gtest-all.cc)
         target_include_directories(gtest
             PUBLIC
                 ${CMAKE_SOURCE_DIR}/source/gtest
