@@ -15,6 +15,7 @@ set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     ModelInfo.cpp
     Persistence.cpp
     ModelManager.cpp
+        ../../plugins/PluginConnectorDummyImpl1.cpp
 )
 
 add_library(genesys_kernel_simulator_support STATIC

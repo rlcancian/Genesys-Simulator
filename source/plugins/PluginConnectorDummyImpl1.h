@@ -14,7 +14,7 @@
 #ifndef PLUGINCONNECTORDUMMYIMPL1_H
 #define PLUGINCONNECTORDUMMYIMPL1_H
 
-#include "PluginConnector_if.h"
+#include "../kernel/simulator/PluginConnector_if.h"
 //namespace GenesysKernel {
 
 class PluginConnectorDummyImpl1 : public PluginConnector_if {
