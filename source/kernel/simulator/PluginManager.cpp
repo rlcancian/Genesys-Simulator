@@ -151,19 +151,20 @@ bool PluginManager::check(std::string dynamicLibraryFilename) {
 }
 
 Plugin * PluginManager::insert(std::string dynamicLibraryFilename) {
-	Plugin* plugin;
+	Plugin* plugin = nullptr;
 	try {
 		plugin = _pluginConnector->connect(dynamicLibraryFilename);
-		if (plugin != nullptr)
-			_insert(plugin);
-		else {
+		if (plugin != nullptr) {
+			if (!_insert(plugin)) {
+				plugin = nullptr;
+			}
+		} else {
 			_simulator->getTraceManager()->traceError("Plugin from file \"" + dynamicLibraryFilename + "\" could not be loaded.", TraceManager::Level::L3_errorRecover);
 		}
 	} catch (...) {
-
 		return nullptr;
 	}
-	return plugin; //@TODO Use of memory after it is freed
+	return plugin;
 }
 
 bool PluginManager::remove(std::string dynamicLibraryFilename) {
@@ -224,4 +225,3 @@ ModelDataDefinition* PluginManager::newInstance(std::string pluginTypename, Mode
 	}
 	return nullptr;
 }
-
