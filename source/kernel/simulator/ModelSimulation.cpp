@@ -118,18 +118,18 @@ void ModelSimulation::_traceReplicationEnded() {
 }
 
 std::unique_ptr<SimulationEvent> ModelSimulation::_createSimulationEvent(void* thiscustomObject) {
-	auto se = std::make_unique<SimulationEvent>();
+	auto se = std::unique_ptr<SimulationEvent>(new SimulationEvent());
 	//	se->currentComponent = _currentComponent;
 	//	se->currentEntity = _currentEntity;
-	se.currentEvent = _currentEvent;
+	se->currentEvent = _currentEvent;
 	//	se->currentinputPortNumber = _currentinputPortNumber;
-	se.currentReplicationNumber = _currentReplicationNumber;
-	se.customObject = thiscustomObject;
-	se._isPaused = this->_isPaused;
-	se._isRunning = this->_isRunning;
-	se.pauseRequested = _pauseRequested;
-	se.simulatedTime = _simulatedTime;
-	se.stopRequested = _stopRequested;
+	se->currentReplicationNumber = _currentReplicationNumber;
+	se->customObject = thiscustomObject;
+	se->_isPaused = this->_isPaused;
+	se->_isRunning = this->_isRunning;
+	se->pauseRequested = _pauseRequested;
+	se->simulatedTime = _simulatedTime;
+	se->stopRequested = _stopRequested;
 	return se;
 }
 
