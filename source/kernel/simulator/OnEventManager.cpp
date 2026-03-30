@@ -94,26 +94,26 @@ void OnEventManager::addOnBreakpointHandler(simulationEventHandler EventHandler)
 }
 
 void OnEventManager::_NotifyHandlers(List<simulationEventHandler>* list, SimulationEvent* se) {
-	for (std::list<simulationEventHandler>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		(*it)(se);
+	for (auto handler : *list->list()) {
+		handler(se);
 	}
 }
 
 void OnEventManager::_NotifyHandlerMethods(List<simulationEventHandlerMethod>* list, SimulationEvent* se) {
-	for (std::list<simulationEventHandlerMethod>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		(*it)(se);
+	for (auto& handler : *list->list()) {
+		handler(se);
 	}
 }
 
 void OnEventManager::_NotifyHandlers(List<modelEventHandler>* list, ModelEvent* se) {
-	for (std::list<modelEventHandler>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		(*it)(se);
+	for (auto handler : *list->list()) {
+		handler(se);
 	}
 }
 
 void OnEventManager::_NotifyHandlerMethods(List<modelEventHandlerMethod>* list, ModelEvent* se) {
-	for (std::list<modelEventHandlerMethod>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		(*it)(se);
+	for (auto& handler : *list->list()) {
+		handler(se);
 	}
 }
 
