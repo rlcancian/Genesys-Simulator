@@ -57,3 +57,19 @@ O arquivo já utiliza algumas práticas modernas (ex.: vários *range-based for*
 
 ## Conclusão
 A base está parcialmente modernizada, e os principais usos legados de laços com iterador explícito e *cast* estilo C neste arquivo foram atualizados para um padrão mais consistente com C++ moderno e com direção compatível com C++23.
+
+## Verificação de erros conceituais e de programação
+
+Além dos padrões de estilo, foi identificada e tratada uma questão funcional importante:
+
+1. **Possível leak de memória em `SimulationEvent`**
+   - Contexto: `_createSimulationEvent()` alocava com `new` e retornava ponteiro cru, sem desalocação clara após notificações de evento.
+   - Correção aplicada: migração para `std::unique_ptr<SimulationEvent>` e uso de `se.get()` apenas no ponto de notificação síncrona.
+   - Resultado: ownership explícito e liberação automática ao final do escopo.
+
+2. **Inconsistência de unidade de tempo**
+   - Contexto: algumas comparações/atribuições usavam `_replicationLength` sem aplicar `_replicationTimeScaleFactorToBase`, enquanto outras partes aplicavam o fator.
+   - Correção aplicada:
+     - Ajuste da condição em `_traceReplicationEnded()`.
+     - Ajuste do avanço de `_simulatedTime` em `_stepSimulation()`.
+   - Resultado: comportamento coerente com o mesmo domínio de tempo usado no calendário de eventos.
