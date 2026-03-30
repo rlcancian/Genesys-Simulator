@@ -104,30 +104,3 @@ target_link_libraries(genesys_test_support_parsermanager
 )
 
 gtest_discover_tests(genesys_test_support_parsermanager)
-
-
-add_executable(genesys_test_support_tracemanager
-    test_support_tracemanager.cpp
-)
-
-target_link_libraries(genesys_test_support_tracemanager
-    PRIVATE
-        genesys_kernel_simulator_support
-        genesys_kernel_util
-        GTest::gtest_main
-)
-
-gtest_discover_tests(genesys_test_support_tracemanager)
-
-add_executable(genesys_test_support_connectionmanager
-    test_support_connectionmanager.cpp
-)
-
-target_link_libraries(genesys_test_support_connectionmanager
-    PRIVATE
-        genesys_kernel_simulator_support
-        genesys_kernel_util
-        GTest::gtest_main
-)
-
-gtest_discover_tests(genesys_test_support_connectionmanager)

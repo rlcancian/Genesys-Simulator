@@ -29,6 +29,24 @@ TraceManager* Simulator::getTraceManager() const {
 
 
 
+namespace {
+int g_replication_start_calls = 0;
+
+void CountReplicationStart(SimulationEvent*) {
+    ++g_replication_start_calls;
+}
+
+
+namespace {
+TraceManager::Level g_last_trace_error_level = TraceManager::Level::L9_mostDetailed;
+
+void CaptureTraceErrorLevel(TraceErrorEvent e) {
+    g_last_trace_error_level = e.getTracelevel();
+}
+}
+
+
+
 Model::Model(Simulator* simulator, unsigned int level) {
     (void)simulator;
     (void)level;
@@ -207,9 +225,71 @@ TEST(SimulatorSupportTest, ModelInfoSaveAndLoadRoundTrip) {
 
 // ModelManager class-focused tests moved to test_support_modelmanager.cpp
 
+TEST(SimulatorSupportTest, OnEventManagerDeduplicatesFunctionHandlers) {
+    g_replication_start_calls = 0;
+
+    OnEventManager manager;
+    manager.addOnReplicationStartHandler(&CountReplicationStart);
+    manager.addOnReplicationStartHandler(&CountReplicationStart);
+
+    manager.NotifyReplicationStartHandlers(nullptr);
+
+    EXPECT_EQ(g_replication_start_calls, 1);
+}
+
+TEST(SimulatorSupportTest, OnEventManagerInvokesMethodHandlers) {
+    OnEventManager manager;
+    SimulationEventObserver observer;
+
+    manager.addOnReplicationStartHandler(&observer, &SimulationEventObserver::OnReplicationStart);
+    manager.NotifyReplicationStartHandlers(nullptr);
+
 // OnEventManager class-focused tests moved to test_support_oneventmanager.cpp
 
-// ConnectionManager class-focused tests moved to test_support_connectionmanager.cpp
+TEST(SimulatorSupportTest, OnEventManagerDeduplicatesModelFunctionHandlers) {
+    g_model_check_success_calls = 0;
+
+// OnEventManager class-focused tests moved to test_support_oneventmanager.cpp
+
+TEST(SimulatorSupportTest, TraceManagerTraceErrorPreservesExplicitLevel) {
+    TraceManager tm(nullptr);
+    tm.addTraceErrorHandler(&CaptureTraceErrorLevel);
+
+    g_last_trace_error_level = TraceManager::Level::L9_mostDetailed;
+    tm.traceError("fatal", TraceManager::Level::L1_errorFatal);
+
+    EXPECT_EQ(g_last_trace_error_level, TraceManager::Level::L1_errorFatal);
+}
+
+TEST(SimulatorSupportTest, ConnectionManagerStartsEmpty) {
+    ConnectionManager manager;
+    EXPECT_EQ(manager.size(), 0u);
+    EXPECT_EQ(manager.getFrontConnection(), nullptr);
+    EXPECT_EQ(manager.getConnectionAtPort(0), nullptr);
+}
+
+TEST(SimulatorSupportTest, ConnectionManagerInsertCreatesConnectionAtPortZero) {
+    ConnectionManager manager;
+
+    manager.insert(nullptr, 3);
+
+    ASSERT_EQ(manager.size(), 1u);
+    Connection* conn = manager.getFrontConnection();
+    ASSERT_NE(conn, nullptr);
+    EXPECT_EQ(conn->component, nullptr);
+    EXPECT_EQ(conn->channel.portNumber, 3u);
+}
+
+TEST(SimulatorSupportTest, ConnectionManagerRemoveAtPortClearsInsertedConnection) {
+    ConnectionManager manager;
+    manager.insert(nullptr, 7);
+
+    ASSERT_EQ(manager.size(), 1u);
+    manager.removeAtPort(0);
+
+    EXPECT_EQ(manager.size(), 0u);
+    EXPECT_EQ(manager.getConnectionAtPort(0), nullptr);
+}
 
 TEST(SimulatorSupportTest, ParserChangesInformationStartsEmpty) {
     ParserChangesInformation info;
@@ -349,6 +429,25 @@ TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
 // PersistenceRecord class-focused tests moved to test_support_persistence.cpp
 
 // ParserManager class-focused tests moved to test_support_parsermanager.cpp
+TEST(SimulatorSupportTest, ParserManagerResultDefaultsToFailureAndEmptyArtifacts) {
+    ParserManager::GenerateNewParserResult result;
+
+    EXPECT_FALSE(result.result);
+    EXPECT_EQ(result.bisonMessages, "");
+    EXPECT_EQ(result.lexMessages, "");
+    EXPECT_EQ(result.compilationMessages, "");
+    EXPECT_EQ(result.newParser.bisonFilename, "");
+    EXPECT_EQ(result.newParser.flexFilename, "");
+    EXPECT_EQ(result.newParser.compiledParserFilename, "");
+}
+
+TEST(SimulatorSupportTest, ParserManagerNewParserStartsWithEmptyPaths) {
+    ParserManager::NewParser parser;
+
+    EXPECT_EQ(parser.bisonFilename, "");
+    EXPECT_EQ(parser.flexFilename, "");
+    EXPECT_EQ(parser.compiledParserFilename, "");
+}
 
 TEST(SimulatorSupportTest, SimulationScenarioStartsWithEmptyNamesAndLists) {
     SimulationScenario scenario;
