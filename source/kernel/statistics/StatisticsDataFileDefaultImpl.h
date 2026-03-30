@@ -24,7 +24,7 @@ typedef double valueType;
 class StatisticsDatafileDefaultImpl1 : public StatisticsDatafile_if {
 public:
 	StatisticsDatafileDefaultImpl1();
-	virtual ~StatisticsDatafileDefaultImpl1() = default;
+	virtual ~StatisticsDatafileDefaultImpl1();
 public:
 	virtual Collector_if* getCollector()  const override;
 	virtual void setCollector(Collector_if* collector) override;
@@ -56,9 +56,12 @@ private:
 	double _getNormalProbability(double confidenceLevel);
 private:
 	CollectorDatafile_if* _collector;
+	bool _ownsCollector = true;
 	CollectorDatafile_if* _collectorSorted;
+	bool _ownsCollectorSorted = true;
 	//CollectorDatafile_if* _collector;
 	SortFile * sort = new SortFile();
+	bool _ownsSort = true;
 	double _confidenceLevel = 0.95;
 	unsigned long _numElements = 0;
 	std::map<double, double> _z;
@@ -113,4 +116,3 @@ private:
 };
 
 #endif /* STATISTICSDATAFILEDEFAULTIMPL_H */
-

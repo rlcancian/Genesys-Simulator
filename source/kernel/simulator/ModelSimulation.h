@@ -45,7 +45,7 @@ class Model;
 class ModelSimulation { // 202104 to be subjected to SimulationScenario
 public:
 	ModelSimulation(Model* model);
-	virtual ~ModelSimulation() = default;
+	virtual ~ModelSimulation();
 public:
 	std::string show();
 // TODO(genesys|experiment-layer|architecture): Keep ModelSimulation as the stable
@@ -194,6 +194,7 @@ private:
 	Model* _model;
 	ModelInfo* _info;
 	SimulationReporter_if* _simulationReporter;
+	bool _ownsSimulationReporter = true;
 	//@TODO Change List below to a MAP, associating every CstatOuCounter in the replication to the equivalent in the simulation
 	List<ModelDataDefinition*>* _cstatsAndCountersSimulation = new List<ModelDataDefinition*>();
 	std::map<ModelDataDefinition*, ModelDataDefinition*>* _cstatsAndCountersMapSimulation = new std::map<ModelDataDefinition*, ModelDataDefinition*>();
@@ -205,4 +206,3 @@ private:
 };
 //namespace\\}
 #endif /* MODELSIMULATION_H */
-
