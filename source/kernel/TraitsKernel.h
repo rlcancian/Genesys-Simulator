@@ -20,7 +20,7 @@
 #include "simulator/SimulationReporterDefaultImpl1.h"
 #include "simulator/Counter.h"
 #include "simulator/ModelCheckerDefaultImpl1.h"
-#include "simulator/PluginConnectorDummyImpl1.h"
+#include "../plugins/PluginConnectorDummyImpl1.h"
 #include "simulator/ParserDefaultImpl2.h"
 #include "simulator/SimulationReporter_if.h"
 

@@ -29,9 +29,10 @@ PluginManager::PluginManager(Simulator* simulator) {
 	_insertDefaultKernelElements();
 }
 
-bool PluginManager::autoInsertPlugins(const std::string pluginsListFilename) {
+List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename) {
+	List<Plugin*>* loadedPlugins = new List<Plugin*>();
 	if (pluginsListFilename.empty())
-		return false;
+		return loadedPlugins;
 	std::string line;
 	std::string fullFilename;
 	if (pluginsListFilename[0] == Util::DirSeparator()) // absolute path
@@ -52,12 +53,11 @@ bool PluginManager::autoInsertPlugins(const std::string pluginsListFilename) {
 			}
 		}
 		file.close();
-		completePluginsFieldsAndTemplates();
+		loadedPlugins = completePluginsFieldsAndTemplates();
 	} else {
 		_simulator->getTraceManager()->traceError("Could not open file \""+pluginsListFilename+"\" (\""+fullFilename+"\")");
-		return false;
 	}
-	return true;
+	return loadedPlugins;
 }
 
 std::string PluginManager::show() {
@@ -82,7 +82,7 @@ void PluginManager::_insertDefaultKernelElements() {
 	_plugins->insert(new Plugin(GetInfo));
 }
 
-bool PluginManager::completePluginsFieldsAndTemplates() {
+List<Plugin*>* PluginManager::completePluginsFieldsAndTemplates() {
 	return _simulator->_completePluginsFieldsAndTemplate();
 }
 

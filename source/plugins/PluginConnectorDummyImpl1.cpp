@@ -11,74 +11,74 @@
  * Created on 9 de Setembro de 2019, 19:24
  */
 
-#include "PluginConnectorDummyImpl1.h"
+#include "../kernel/simulator/PluginConnectorDummyImpl1.h"
 
 // Model Components
 
-#include "../../plugins/components/Access.h"
-#include "../../plugins/components/Assign.h"
-#include "../../plugins/components/Batch.h"
-#include "../../plugins/components/Buffer.h"
-#include "../../plugins/components/Clone.h"
-#include "../../plugins/components/CppForG.h"
-#include "../../plugins/components/Create.h"
-#include "../../plugins/components/Decide.h"
-#include "../../plugins/components/DefaultModalModel.h"
-#include "../../plugins/components/Delay.h"
-#include "../../plugins/components/DiffEquations.h"
-#include "../../plugins/components/Dispose.h"
-#include "../../plugins/components/DropOff.h"
-#include "../../plugins/components/DummyComponent.h"
-#include "../../plugins/components/Enter.h"
-#include "../../plugins/components/Exit.h"
-#include "../../plugins/components/Leave.h"
-#include "../../plugins/components/Match.h"
-#include "../../plugins/components/MarkovChain.h"
+#include "components/Access.h"
+#include "components/Assign.h"
+#include "components/Batch.h"
+#include "components/Buffer.h"
+#include "components/Clone.h"
+#include "components/CppForG.h"
+#include "components/Create.h"
+#include "components/Decide.h"
+#include "components/DefaultModalModel.h"
+#include "components/Delay.h"
+#include "components/DiffEquations.h"
+#include "components/Dispose.h"
+#include "components/DropOff.h"
+#include "components/DummyComponent.h"
+#include "components/Enter.h"
+#include "components/Exit.h"
+#include "components/Leave.h"
+#include "components/Match.h"
+#include "components/MarkovChain.h"
 //#include "../../plugins/components/Octave.h"
-#include "../../plugins/components/PickStation.h"
-#include "../../plugins/components/PickUp.h"
-#include "../../plugins/components/Seize.h"
+#include "components/PickStation.h"
+#include "components/PickUp.h"
+#include "components/Seize.h"
 //#include "../../plugins/components/Read.h"
-#include "../../plugins/components/Release.h"
-#include "../../plugins/components/Remove.h"
-#include "../../plugins/components/Process.h"
-#include "../../plugins/components/Record.h"
-#include "../../plugins/components/Route.h"
-#include "../../plugins/components/Start.h"
-#include "../../plugins/components/Search.h"
-#include "../../plugins/components/Signal.h"
-#include "../../plugins/components/SPICECircuit.h"
-#include "../../plugins/components/SPICENode.h"
-#include "../../plugins/components/Stop.h"
-#include "../../plugins/components/Store.h"
-#include "../../plugins/components/Separate.h"
-#include "../../plugins/components/Submodel.h"
-#include "../../plugins/components/Unstore.h"
-#include "../../plugins/components/Wait.h"
-#include "../../plugins/components/Write.h"
-#include "../../plugins/components/LSODE.h"
+#include "components/Release.h"
+#include "components/Remove.h"
+#include "components/Process.h"
+#include "components/Record.h"
+#include "components/Route.h"
+#include "components/Start.h"
+#include "components/Search.h"
+#include "components/Signal.h"
+#include "components/SPICECircuit.h"
+#include "components/SPICENode.h"
+#include "components/Stop.h"
+#include "components/Store.h"
+#include "components/Separate.h"
+#include "components/Submodel.h"
+#include "components/Unstore.h"
+#include "components/Wait.h"
+#include "components/Write.h"
+#include "components/LSODE.h"
 
 
 // Model data definitions
-#include "../../plugins/data/CppCompiler.h"
-#include "../../plugins/data/EntityGroup.h"
-#include "../../plugins/data/Failure.h"
-#include "../../plugins/data/File.h"
-#include "../../plugins/data/Formula.h"
-#include "../../plugins/data/Label.h"
-#include "../../plugins/data/Schedule.h"
-#include "../../plugins/data/Sequence.h"
-#include "../../plugins/data/Set.h"
-#include "../../plugins/data/SignalData.h"
-#include "../../plugins/data/SPICERunner.h"
-#include "../../plugins/data/Station.h"
-#include "../../plugins/data/Storage.h"
-#include "../../plugins/data/Variable.h"
+#include "data/CppCompiler.h"
+#include "data/EntityGroup.h"
+#include "data/Failure.h"
+#include "data/File.h"
+#include "data/Formula.h"
+#include "data/Label.h"
+#include "data/Schedule.h"
+#include "data/Sequence.h"
+#include "data/Set.h"
+#include "data/SignalData.h"
+#include "data/SPICERunner.h"
+#include "data/Station.h"
+#include "data/Storage.h"
+#include "data/Variable.h"
 //#include "../../plugins/data/Expression.h"
 //#include "../../plugins/data/Conveyor.h"
 //#include "../../plugins/data/Segment.h"
 
-#include "../util/Util.h"
+#include "../kernel/util/Util.h"
 
 //namespace GenesysKernel {
 
@@ -230,8 +230,6 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectInputOutput(const 
     return GetInfo;
 }
 
-
-
 StaticGetPluginInformation PluginConnectorDummyImpl1::_connectTransfer(const std::string fn){
     StaticGetPluginInformation GetInfo = nullptr;
     if (fn == "access.so")
@@ -321,7 +319,6 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectElectronicDomain(c
         GetInfo = &XNOR::GetPluginInformation;
     return GetInfo;
 }
-
 
 StaticGetPluginInformation PluginConnectorDummyImpl1::_connectBiochemicalDomain(const std::string fn){
     StaticGetPluginInformation GetInfo = nullptr;
