@@ -50,6 +50,7 @@ list(REMOVE_ITEM GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
 
 add_library(genesys_kernel_simulator_runtime STATIC
     ${GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES}
+        ../../applications/terminal/main.cpp
 )
 
 target_include_directories(genesys_kernel_simulator_runtime

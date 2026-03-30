@@ -39,7 +39,8 @@ if(GENESYS_BUILD_TESTS)
     find_package(GTest CONFIG QUIET)
     if(NOT GTest_FOUND)
         message(STATUS "GTest package not found. Falling back to bundled source/gtest.")
-        add_library(gtest STATIC source/gtest/src/gtest-all.cc)
+        add_library(gtest STATIC source/gtest/src/gtest-all.cc
+                source/applications/terminal/main.cpp)
         target_include_directories(gtest
             PUBLIC
                 ${CMAKE_SOURCE_DIR}/source/gtest
