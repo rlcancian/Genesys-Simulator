@@ -155,17 +155,7 @@ TEST(SimulatorSupportTest, DefaultActivationCodeReportsNotFound) {
     EXPECT_EQ(lm.showActivationCode(), "ACTIVATION CODE: Not found.");
 }
 
-TEST(SimulatorSupportTest, ExperimentManagerStartsWithoutCurrentExperiment) {
-    ExperimentManager em(nullptr);
-    EXPECT_EQ(em.current(), nullptr);
-}
-
-TEST(SimulatorSupportTest, NewSimulationExperimentBecomesCurrent) {
-    ExperimentManager em(nullptr);
-    SimulationExperiment* exp = em.newSimulationExperiment();
-    ASSERT_NE(exp, nullptr);
-    EXPECT_EQ(em.current(), exp);
-}
+// ExperimentManager class-focused tests moved to test_support_experimentmanager.cpp
 
 TEST(SimulatorSupportTest, ModelInfoStartsMarkedAsUnchanged) {
     ModelInfo info;
@@ -350,90 +340,9 @@ TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
 
 // ParserManager class-focused tests moved to test_support_parsermanager.cpp
 
-TEST(SimulatorSupportTest, SimulationScenarioStartsWithEmptyNamesAndLists) {
-    SimulationScenario scenario;
+// SimulationScenario class-focused tests moved to test_support_simulationscenario.cpp
 
-    EXPECT_EQ(scenario.getScenarioName(), "");
-    EXPECT_EQ(scenario.getScenarioDescription(), "");
-    EXPECT_EQ(scenario.getModelFilename(), "");
-    ASSERT_NE(scenario.getSelectedControls(), nullptr);
-    ASSERT_NE(scenario.getSelectedResponses(), nullptr);
-    ASSERT_NE(scenario.getControlValues(), nullptr);
-    EXPECT_EQ(scenario.getSelectedControls()->size(), 0u);
-    EXPECT_EQ(scenario.getSelectedResponses()->size(), 0u);
-    EXPECT_EQ(scenario.getControlValues()->size(), 0u);
-}
-
-TEST(SimulatorSupportTest, SimulationScenarioStoresControlValuesSafely) {
-    SimulationScenario scenario;
-
-    scenario.setControl("replications", 10.0);
-    scenario.setControl("length", 25.5);
-
-    ASSERT_NE(scenario.getControlValues(), nullptr);
-    EXPECT_EQ(scenario.getControlValues()->size(), 2u);
-    EXPECT_DOUBLE_EQ(scenario.getControlValue("replications"), 10.0);
-    EXPECT_DOUBLE_EQ(scenario.getControlValue("length"), 25.5);
-}
-
-TEST(SimulatorSupportTest, SimulationScenarioCopiesSelectedControlsList) {
-    SimulationScenario scenario;
-    auto* controls = new std::list<std::string>();
-    controls->push_back("a");
-    controls->push_back("b");
-
-    scenario.setSelectedControls(controls);
-    controls->push_back("c");
-
-    ASSERT_NE(scenario.getSelectedControls(), nullptr);
-    EXPECT_EQ(scenario.getSelectedControls()->size(), 2u);
-}
-
-TEST(SimulatorSupportTest, SimulationScenarioThrowsForMissingControlValue) {
-    SimulationScenario scenario;
-    EXPECT_THROW(scenario.getControlValue("missing"), std::invalid_argument);
-}
-
-TEST(SimulatorSupportTest, ExperimentManagerInsertAndRemoveWorkWithoutSimulatorTrace) {
-    ExperimentManager manager(nullptr);
-
-    auto* first = new SimulationExperiment();
-    auto* second = new SimulationExperiment();
-
-    manager.insert(first);
-    manager.insert(second);
-
-    ASSERT_EQ(manager.size(), 2u);
-    EXPECT_EQ(manager.current(), second);
-    EXPECT_EQ(manager.front(), first);
-
-    manager.remove(second);
-
-    EXPECT_EQ(manager.size(), 1u);
-    EXPECT_EQ(manager.current(), first);
-
-    manager.remove(first);
-    EXPECT_EQ(manager.size(), 0u);
-}
-
-TEST(SimulatorSupportTest, ExperimentManagerSaveAndLoadRemainGracefullyUnimplemented) {
-    ExperimentManager manager(nullptr);
-
-    EXPECT_FALSE(manager.saveSimulationExperiment("exp.gen"));
-    EXPECT_FALSE(manager.loadSimulationExperiment("exp.gen"));
-}
-
-TEST(SimulatorSupportTest, SimulationScenarioStartsWithInitializedResponseStorage) {
-    SimulationScenario scenario;
-
-    ASSERT_NE(scenario.getResponseValues(), nullptr);
-    EXPECT_EQ(scenario.getResponseValues()->size(), 0u);
-}
-
-TEST(SimulatorSupportTest, SimulationScenarioThrowsForMissingResponseValue) {
-    SimulationScenario scenario;
-    EXPECT_THROW(scenario.getResponseValue("missing"), std::invalid_argument);
-}
+// ExperimentManager class-focused tests moved to test_support_experimentmanager.cpp
 
 TEST(SimulatorSupportTest, SimulationResponseProvidesReadOnlyKernelAccess) {
     std::string value = "alpha";

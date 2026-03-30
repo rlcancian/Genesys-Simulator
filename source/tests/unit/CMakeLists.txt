@@ -131,3 +131,30 @@ target_link_libraries(genesys_test_support_connectionmanager
 )
 
 gtest_discover_tests(genesys_test_support_connectionmanager)
+
+
+add_executable(genesys_test_support_simulationscenario
+    test_support_simulationscenario.cpp
+)
+
+target_link_libraries(genesys_test_support_simulationscenario
+    PRIVATE
+        genesys_kernel_simulator_support
+        genesys_kernel_util
+        GTest::gtest_main
+)
+
+gtest_discover_tests(genesys_test_support_simulationscenario)
+
+add_executable(genesys_test_support_experimentmanager
+    test_support_experimentmanager.cpp
+)
+
+target_link_libraries(genesys_test_support_experimentmanager
+    PRIVATE
+        genesys_kernel_simulator_support
+        genesys_kernel_util
+        GTest::gtest_main
+)
+
+gtest_discover_tests(genesys_test_support_experimentmanager)
