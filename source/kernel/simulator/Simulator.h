@@ -43,7 +43,7 @@ class Simulator {
 	typedef void (*eventHandler)();
 public:
 	Simulator();
-	virtual ~Simulator() = default;
+	virtual ~Simulator();
 public: // only get
 	/*!
 	 * \brief getVersion
