@@ -94,6 +94,7 @@ void TraceManager::trace(std::string text, TraceManager::Level level) {
 
 void TraceManager::traceError(std::string text, TraceManager::Level level) {
 	text = Util::Indent() + text;
+	_errorMessages->insert(text);
 	TraceErrorEvent exceptEvent = TraceErrorEvent(text, level);
 	for (std::list<traceErrorListener>::iterator it = this->_traceErrorHandlers->list()->begin(); it != _traceErrorHandlers->list()->end(); it++) {
 		(*it)(exceptEvent);
@@ -105,6 +106,7 @@ void TraceManager::traceError(std::string text, TraceManager::Level level) {
 
 void TraceManager::traceError(std::string text, std::exception e) {
 	text = Util::Indent() + text;
+	_errorMessages->insert(text);
 	TraceErrorEvent exceptEvent = TraceErrorEvent(text, e);
 	/*  @TODO:--: somewhere in future it should be interesting to use "auto" and c++17 at least */
 	for (std::list<traceErrorListener>::iterator it = this->_traceErrorHandlers->list()->begin(); it != _traceErrorHandlers->list()->end(); it++) {
