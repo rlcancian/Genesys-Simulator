@@ -136,7 +136,8 @@ void Failure::setCountExpression(std::string countExpression) {
 }
 
 std::string Failure::getCountExpression() const {
-	_countExpression;
+	// TODO(codex|kernel-review|2026-03-30): Confirm if expression needs normalization/validation before returning.
+	return _countExpression;
 }
 
 void Failure::setDownTimeTimeUnit(Util::TimeUnit downTimeTimeUnit) {
@@ -144,7 +145,8 @@ void Failure::setDownTimeTimeUnit(Util::TimeUnit downTimeTimeUnit) {
 }
 
 Util::TimeUnit Failure::getDownTimeTimeUnit() const {
-	_downTimeTimeUnit;
+	// TODO(codex|kernel-review|2026-03-30): Revisit semantic contract for down-time unit defaults/validation.
+	return _downTimeTimeUnit;
 }
 
 void Failure::setDownTimeExpression(std::string downTimeExpression) {
