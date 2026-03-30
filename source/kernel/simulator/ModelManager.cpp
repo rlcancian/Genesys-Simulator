@@ -27,6 +27,17 @@ ModelManager::ModelManager(Simulator* simulator) {
 	_currentModel = nullptr;
 }
 
+ModelManager::~ModelManager() {
+	if (_models != nullptr) {
+		for (Model* model : *_models->list()) {
+			delete model;
+		}
+		delete _models;
+		_models = nullptr;
+	}
+	_currentModel = nullptr;
+}
+
 Model* ModelManager::newModel() {
 	_currentModel = new Model(_simulator);
 	return _currentModel;

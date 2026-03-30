@@ -106,10 +106,10 @@ void Model::sendEntityToComponent(Entity* entity, Connection* connection, double
 }
 
 void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, double timeDelay, unsigned int componentinputPortNumber) {
-	SimulationEvent se = _simulation->_createSimulationEvent();
-	se.setDestinationComponent(component);
-	se.setEntityMoveTimeDelay(timeDelay);
-    this->getOnEventManager()->NotifyEntityMoveHandlers(&se); // it's my friend
+	auto se = _simulation->_createSimulationEvent();
+	se->setDestinationComponent(component);
+	se->setEntityMoveTimeDelay(timeDelay);
+    this->getOnEventManager()->NotifyEntityMoveHandlers(se.get()); // it's my friend
 	Event* newEvent = new Event(this->getSimulation()->getSimulatedTime()+timeDelay, entity, component, componentinputPortNumber);
 	this->getFutureEvents()->insert(newEvent);
 }
@@ -385,16 +385,16 @@ bool Model::check() {
 Entity*Model::createEntity(std::string name, bool insertIntoModel) {
 	// Entity is my FRIEND, therefore Model can access it
 	Entity* newEntity = new Entity(this, name, true);
-	SimulationEvent se = _simulation->_createSimulationEvent(); // it's my friend
-	se.setEntityCreated(newEntity);
+	auto se = _simulation->_createSimulationEvent(); // it's my friend
+	se->setEntityCreated(newEntity);
 	//getTracer()->traceSimulation(this, /*"Entity " + entId +*/entity->getName() + " was created");
-    getOnEventManager()->NotifyEntityCreateHandlers(&se);
+    getOnEventManager()->NotifyEntityCreateHandlers(se.get());
 	return newEntity;
 }
 
 void Model::removeEntity(Entity*entity) {//, bool collectStatistics) {
-	SimulationEvent se = _simulation->_createSimulationEvent(); // it's my friend
-	this->_eventManager->NotifyEntityRemoveHandlers(&se);
+	auto se = _simulation->_createSimulationEvent();
+	this->_eventManager->NotifyEntityRemoveHandlers(se.get()); // it's my friend
 	std::string entId = std::to_string(entity->entityNumber());
 	this->getDataManager()->remove(Util::TypeOf<Entity>(), entity);
 	getTracer()->traceSimulation(this, /*"Entity " + entId +*/entity->getName()+" was removed from the system");

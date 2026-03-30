@@ -31,9 +31,9 @@ double ProbabilityDistributionBase::chi2(double x, double degreeFreedom) {
 }
 
 double ProbabilityDistributionBase::erlang(double x, double shape, double scale) {
-	assert(x >= 0.0 && scale >= 0.0);
+	assert(x >= 0.0 && scale > 0.0 && shape > 0.0);
 	double x1 = pow(x, shape - 1) * pow(M_E, -x / scale);
-	double x2 = pow(scale, shape)*(shape - 1);
+	double x2 = pow(scale, shape) * _gammaFunction(shape);
 	return x1 / x2;
 } // int M
 
@@ -53,18 +53,27 @@ double ProbabilityDistributionBase::fisherSnedecor(double x, double d1, double d
 }
 
 double ProbabilityDistributionBase::gamma(double x, double shape, double scale) {
+	if (x < 0.0 || shape <= 0.0 || scale <= 0.0) {
+		return 0.0;
+	}
 	double x1 = pow(x, shape - 1) * pow(M_E, -x / scale);
 	double x2 = pow(scale, shape) * _gammaFunction(shape);
 	return x1 / x2;
 }
 
 double ProbabilityDistributionBase::logNormal(double x, double mean, double stddev) {
+	if (x <= 0.0 || stddev <= 0.0) {
+		return 0.0;
+	}
 	double x1 = 1 / (x * stddev * sqrt(2 * M_PI));
 	double x2 = exp(-pow(log(x) - mean, 2) / (2 * stddev * stddev));
 	return x1 * x2;
 }
 
 double ProbabilityDistributionBase::normal(double x, double mean, double stddev) {
+	if (stddev <= 0.0) {
+		return 0.0;
+	}
 	double x1 = 1 / (stddev * sqrt(2 * M_PI));
 	double x2 = -0.5 * pow((x - mean) / stddev, 2);
 	return x1 * pow(M_E, x2);
@@ -85,20 +94,27 @@ double ProbabilityDistributionBase::triangular(double x, double min, double mode
 	else if (x == mode)
 		return 2 / (max - min);
 	else
-		return 1 - pow(max - x, 2) / ((max - min)*(max - mode));
+		return 2 * (max - x) / ((max - min)*(max - mode));
 }
 
 double ProbabilityDistributionBase::tStudent(double x, double mean, double stddev, double degreeFreedom) {
+	if (stddev <= 0.0 || degreeFreedom <= 0.0) {
+		return 0.0;
+	}
+	const double z = (x - mean) / stddev;
 	if (degreeFreedom <= 341) { // threshold based on numeric tests for the gamma function to provide valid (not NaN) results
 		double x1 = _gammaFunction((degreeFreedom + 1) / 2) / (sqrt(degreeFreedom * M_PI) * _gammaFunction(degreeFreedom / 2));
-		double x2 = pow(1 + (x * x) / degreeFreedom, -(degreeFreedom + 1) / 2);
-		return x1*x2;
+		double x2 = pow(1 + (z * z) / degreeFreedom, -(degreeFreedom + 1) / 2);
+		return (x1 * x2) / stddev;
 	} else {
 		return normal(x, mean, stddev);
 	}
 }
 
 double ProbabilityDistributionBase::uniform(double x, double min, double max) {
+	if (x < min || x > max || min >= max) {
+		return 0.0;
+	}
 	return 1.0 / (max - min);
 }
 

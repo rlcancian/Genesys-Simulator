@@ -23,6 +23,19 @@ TraceManager::TraceManager(Simulator* simulator) {//(Model* model) {
 	//@TODO: Tracelevels should be based on the tracelevel of each "class" 
 }
 
+TraceManager::~TraceManager() {
+	delete _traceHandlers;
+	delete _traceErrorHandlers;
+	delete _traceReportHandlers;
+	delete _traceSimulationHandlers;
+	delete _traceHandlersMethod;
+	delete _traceErrorHandlersMethod;
+	delete _traceReportHandlersMethod;
+	delete _traceSimulationHandlersMethod;
+	delete _traceSimulationExceptionRule;
+	delete _errorMessages;
+}
+
 void TraceManager::setTraceLevel(TraceManager::Level _traceLevel) {
 	this->_traceLevel = _traceLevel;
 }

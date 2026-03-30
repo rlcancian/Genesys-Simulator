@@ -15,6 +15,7 @@
 #define MODELSIMULATION_H
 
 #include <chrono>
+#include <memory>
 #include "Event.h"
 #include "Entity.h"
 #include "ModelInfo.h"
@@ -45,7 +46,7 @@ class Model;
 class ModelSimulation { // 202104 to be subjected to SimulationScenario
 public:
 	ModelSimulation(Model* model);
-	virtual ~ModelSimulation() = default;
+	virtual ~ModelSimulation();
 public:
 	std::string show();
 // TODO(genesys|experiment-layer|architecture): Keep ModelSimulation as the stable
@@ -128,7 +129,7 @@ private:
 	void _showSimulationHeader(); //!<
 	void _traceReplicationEnded(); //!<
 private:
-	SimulationEvent _createSimulationEvent(void* thiscustomObject = nullptr); //!<
+	std::unique_ptr<SimulationEvent> _createSimulationEvent(void* thiscustomObject = nullptr); //!<
 	//friend Entity* Model::createEntity(std::string name, bool insertIntoModel); //@TODO: make it work (only friend functions, not the entire class)
 	//friend void Model::removeEntity(Entity* entity);
 	//friend void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, double timeDelay, unsigned int componentinputPortNumber);
@@ -194,6 +195,7 @@ private:
 	Model* _model;
 	ModelInfo* _info;
 	SimulationReporter_if* _simulationReporter;
+	bool _ownsSimulationReporter = true;
 	//@TODO Change List below to a MAP, associating every CstatOuCounter in the replication to the equivalent in the simulation
 	List<ModelDataDefinition*>* _cstatsAndCountersSimulation = new List<ModelDataDefinition*>();
 	std::map<ModelDataDefinition*, ModelDataDefinition*>* _cstatsAndCountersMapSimulation = new std::map<ModelDataDefinition*, ModelDataDefinition*>();

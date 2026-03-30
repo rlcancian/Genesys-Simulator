@@ -15,6 +15,29 @@
 
 SimulationScenario::SimulationScenario() = default;
 
+SimulationScenario::~SimulationScenario() {
+	if (_controlValues != nullptr) {
+		for (auto* controlValue : *_controlValues) {
+			delete controlValue;
+		}
+		delete _controlValues;
+		_controlValues = nullptr;
+	}
+
+	if (_responseValues != nullptr) {
+		for (auto* responseValue : *_responseValues) {
+			delete responseValue;
+		}
+		delete _responseValues;
+		_responseValues = nullptr;
+	}
+
+	delete _selectedControls;
+	_selectedControls = nullptr;
+	delete _selectedResponses;
+	_selectedResponses = nullptr;
+}
+
 bool SimulationScenario::startSimulation(Simulator *sim, std::string& errorMessage) {
 	/// @todo Implement scenario execution once experiment-layer control application is defined.
 	/// @todo Implement scenario execution once control/response application to a loaded model is defined.
@@ -90,5 +113,6 @@ void SimulationScenario::setControl(std::string name, double value) const {
 void SimulationScenario::setSelectedControls(std::list<std::string> *selectedControls) {
 	auto* controls = new std::list<std::string>();
 	std::copy(selectedControls->begin(), selectedControls->end(), std::back_inserter(*controls));
+	delete _selectedControls;
 	_selectedControls = controls;
 }
