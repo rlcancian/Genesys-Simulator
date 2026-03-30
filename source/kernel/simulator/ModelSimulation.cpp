@@ -84,7 +84,7 @@ void ModelSimulation::_traceReplicationEnded() {
 		causeTerminated = "event queue is empty";
 	} else if (_stopRequested) {
 		causeTerminated = "user requested to stop";
-	} else if (_model->getFutureEvents()->front()->getTime()>_replicationLength) {
+	} else if (_model->getFutureEvents()->front()->getTime()>_replicationLength * _replicationTimeScaleFactorToBase) {
 		causeTerminated = "replication length "+std::to_string(_replicationLength)+" "+Util::StrTimeUnitLong(_replicationLengthTimeUnit)+" was achieved";
 	} else if (_model->parseExpression(_terminatingCondition)) {
 		causeTerminated = "termination condition was achieved";
@@ -95,8 +95,8 @@ void ModelSimulation::_traceReplicationEnded() {
 	_model->getTracer()->traceSimulation(this, TraceManager::Level::L2_results, message);
 }
 
-SimulationEvent* ModelSimulation::_createSimulationEvent(void* thiscustomObject) {
-	SimulationEvent* se = new SimulationEvent();
+std::unique_ptr<SimulationEvent> ModelSimulation::_createSimulationEvent(void* thiscustomObject) {
+	auto se = std::make_unique<SimulationEvent>();
 	//	se->currentComponent = _currentComponent;
 	//	se->currentEntity = _currentEntity;
 	se->currentEvent = _currentEvent;
@@ -123,20 +123,23 @@ void ModelSimulation::start() {
 		}
 		_initSimulation();
 		_isRunning = true; // set it before notifying handlers
-		_model->getOnEventManager()->NotifySimulationStartHandlers(_createSimulationEvent());
+		auto simulationEvent = _createSimulationEvent();
+		_model->getOnEventManager()->NotifySimulationStartHandlers(simulationEvent.get());
 	}
 	_isRunning = true;
 	if (_isPaused) { // continue after a pause
 		_model->getTracer()->trace("Replication resumed", TraceManager::Level::L3_errorRecover);
 		_isPaused = false; // set it before notifying handlers
-		_model->getOnEventManager()->NotifySimulationResumeHandlers(_createSimulationEvent());
+		auto simulationEvent = _createSimulationEvent();
+		_model->getOnEventManager()->NotifySimulationResumeHandlers(simulationEvent.get());
 	}
 	bool replicationEnded;
 	do {
 		if (!_replicationIsInitiaded) {
 			Util::SetIndent(1);
 			_initReplication();
-			_model->getOnEventManager()->NotifyReplicationStartHandlers(_createSimulationEvent());
+			auto simulationEvent = _createSimulationEvent();
+			_model->getOnEventManager()->NotifyReplicationStartHandlers(simulationEvent.get());
 			_model->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, "Running Replication");
 		}
 		replicationEnded = _isReplicationEndCondition();
@@ -170,16 +173,19 @@ void ModelSimulation::start() {
 		_model->getTracer()->trace("Replication paused", TraceManager::Level::L3_errorRecover);
 		_pauseRequested = false; // set them before notifying handlers
 		_isPaused = true;
-		_model->getOnEventManager()->NotifySimulationPausedHandlers(_createSimulationEvent());
+		auto simulationEvent = _createSimulationEvent();
+		_model->getOnEventManager()->NotifySimulationPausedHandlers(simulationEvent.get());
 	}
 }
+
 
 void ModelSimulation::_simulationEnded() {
 	_simulationIsInitiated = false;
 	std::chrono::duration<double> duration = std::chrono::system_clock::now()-this->_startRealSimulationTimeSimulation;
 	Util::DecIndent();
 	_model->getTracer()->traceSimulation(this, "Simulation of model \""+_info->getName()+"\" has finished. Elapsed time "+std::to_string(duration.count())+" seconds.", TraceManager::Level::L5_event);
-	_model->getOnEventManager()->NotifySimulationEndHandlers(_createSimulationEvent());
+	auto simulationEvent = _createSimulationEvent();
+	_model->getOnEventManager()->NotifySimulationEndHandlers(simulationEvent.get());
 	if (this->_showReportsAfterSimulation)
 		_simulationReporter->showSimulationStatistics(); //_cStatsSimulation);
 	// clear current event
@@ -191,7 +197,8 @@ void ModelSimulation::_simulationEnded() {
 
 void ModelSimulation::_replicationEnded() {
 	_traceReplicationEnded();
-	_model->getOnEventManager()->NotifyReplicationEndHandlers(_createSimulationEvent());
+	auto simulationEvent = _createSimulationEvent();
+	_model->getOnEventManager()->NotifyReplicationEndHandlers(simulationEvent.get());
 	if (this->_showReportsAfterReplication)
 		_simulationReporter->showReplicationStatistics();
 	//_simulationReporter->showSimulationResponses();
@@ -392,7 +399,8 @@ void ModelSimulation::_stepSimulation() {
 	// "onReplicationStep" event is triggered before taking the event from the calendar, and
 	// "onProcessEvent" is triggered after the event is removed and turned into the current one, but before it is processed, and
 	// "onAfterProcessEvent" is triggered after the event is processed
-	_model->getOnEventManager()->NotifyReplicationStepHandlers(_createSimulationEvent());
+	auto simulationEvent = _createSimulationEvent();
+	_model->getOnEventManager()->NotifyReplicationStepHandlers(simulationEvent.get());
 	Event* nextEvent = _model->getFutureEvents()->front();
 	_model->getFutureEvents()->pop_front();
 	if (_warmUpPeriod>0.0)
@@ -410,22 +418,25 @@ void ModelSimulation::_stepSimulation() {
 			if (nextEvent->getTime()>=_simulatedTime) { // the philosophycal approach taken is: if the next event is in the past, lets just assume it's happening rigth now...
 				_simulatedTime = nextEvent->getTime();
 			}
-			_model->getOnEventManager()->NotifyProcessEventHandlers(_createSimulationEvent());
+			auto processEvent = _createSimulationEvent();
+			_model->getOnEventManager()->NotifyProcessEventHandlers(processEvent.get());
 			try {
 				_dispatchEvent(nextEvent);
 			} catch (std::exception &e) {
 				_model->getTracer()->traceError("Error on processing event ("+nextEvent->show()+")", e);
 			}
-			_model->getOnEventManager()->NotifyAfterProcessEventHandlers(_createSimulationEvent());
+			auto afterProcessEvent = _createSimulationEvent();
+			_model->getOnEventManager()->NotifyAfterProcessEventHandlers(afterProcessEvent.get());
 			if (_pauseOnEvent) {
 				_pauseRequested = true;
 			}
 			Util::DecIndent();
 		}
 	} else {
-		this->_simulatedTime = _replicationLength; ////nextEvent->getTime(); // just to advance time to beyond simulatedTime
+		this->_simulatedTime = _replicationLength * _replicationTimeScaleFactorToBase; ////nextEvent->getTime(); // just to advance time to beyond simulatedTime
 	}
 }
+
 
 void ModelSimulation::_dispatchEvent(Event* event) {
 	InternalEvent* intEvent = dynamic_cast<InternalEvent*> (event);
@@ -448,14 +459,14 @@ void ModelSimulation::_dispatchEvent(Event* event) {
 
 bool ModelSimulation::_checkBreakpointAt(Event* event) {
 	bool res = false;
-	SimulationEvent* se = _createSimulationEvent();
+	auto se = _createSimulationEvent();
 	if (dynamic_cast<InternalEvent*> (event)==nullptr) {
 		if (_breakpointsOnComponent->find(event->getComponent())!=_breakpointsOnComponent->list()->end()) {
 			if (_justTriggeredBreakpointsOnComponent==event->getComponent()) {
 				_justTriggeredBreakpointsOnComponent = nullptr;
 			} else {
 				_justTriggeredBreakpointsOnComponent = event->getComponent();
-				_model->getOnEventManager()->NotifyBreakpointHandlers(se);
+				_model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
 				_model->getTracer()->trace("Breakpoint found at component '"+event->getComponent()->getName()+"'. Replication is paused.", TraceManager::Level::L5_event);
 
 				res = true;
@@ -467,7 +478,7 @@ bool ModelSimulation::_checkBreakpointAt(Event* event) {
 			} else {
 				_justTriggeredBreakpointsOnEntity = event->getEntity();
 				_model->getTracer()->trace("Breakpoint found at entity '"+event->getEntity()->getName()+"'. Replication is paused.", TraceManager::Level::L5_event);
-				_model->getOnEventManager()->NotifyBreakpointHandlers(se);
+				_model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
 				res = true;
 			}
 		}
@@ -481,14 +492,15 @@ bool ModelSimulation::_checkBreakpointAt(Event* event) {
 			} else {
 				_justTriggeredBreakpointsOnTime = time;
 				_model->getTracer()->trace("Breakpoint found at time '"+std::to_string(event->getTime())+"'. Replication is paused.", TraceManager::Level::L5_event);
-				_model->getOnEventManager()->NotifyBreakpointHandlers(se);
+				_model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
 
 				return true;
 			}
 		}
 	}
-	return res; //@TODO: One more memory leak...
+	return res;
 }
+
 
 void ModelSimulation::pause() {
 	_pauseRequested = true;
