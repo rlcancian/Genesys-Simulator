@@ -537,6 +537,7 @@ namespace yy {
       // probFunction
       // userFunction
       // listaparm
+      // illegal
       // attribute
       // variable
       // formula
@@ -815,11 +816,12 @@ namespace yy {
         S_probFunction = 109,                    // probFunction
         S_userFunction = 110,                    // userFunction
         S_listaparm = 111,                       // listaparm
-        S_attribute = 112,                       // attribute
-        S_variable = 113,                        // variable
-        S_formula = 114,                         // formula
-        S_assigment = 115,                       // assigment
-        S_pluginFunction = 116                   // pluginFunction
+        S_illegal = 112,                         // illegal
+        S_attribute = 113,                       // attribute
+        S_variable = 114,                        // variable
+        S_formula = 115,                         // formula
+        S_assigment = 116,                       // assigment
+        S_pluginFunction = 117                   // pluginFunction
       };
     };
 
@@ -949,6 +951,7 @@ namespace yy {
       case symbol_kind::S_probFunction: // probFunction
       case symbol_kind::S_userFunction: // userFunction
       case symbol_kind::S_listaparm: // listaparm
+      case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
       case symbol_kind::S_variable: // variable
       case symbol_kind::S_formula: // formula
@@ -1111,6 +1114,7 @@ switch (yykind)
       case symbol_kind::S_probFunction: // probFunction
       case symbol_kind::S_userFunction: // userFunction
       case symbol_kind::S_listaparm: // listaparm
+      case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
       case symbol_kind::S_variable: // variable
       case symbol_kind::S_formula: // formula
@@ -3006,9 +3010,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 1804,     ///< Last index in yytable_.
-      yynnts_ = 23,  ///< Number of nonterminal symbols.
-      yyfinal_ = 127 ///< Termination state number.
+      yylast_ = 1896,     ///< Last index in yytable_.
+      yynnts_ = 24,  ///< Number of nonterminal symbols.
+      yyfinal_ = 129 ///< Termination state number.
     };
 
 
@@ -3176,6 +3180,7 @@ switch (yykind)
       case symbol_kind::S_probFunction: // probFunction
       case symbol_kind::S_userFunction: // userFunction
       case symbol_kind::S_listaparm: // listaparm
+      case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
       case symbol_kind::S_variable: // variable
       case symbol_kind::S_formula: // formula
@@ -3308,6 +3313,7 @@ switch (yykind)
       case symbol_kind::S_probFunction: // probFunction
       case symbol_kind::S_userFunction: // userFunction
       case symbol_kind::S_listaparm: // listaparm
+      case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
       case symbol_kind::S_variable: // variable
       case symbol_kind::S_formula: // formula
@@ -3382,7 +3388,7 @@ switch (yykind)
 
 
 } // yy
-#line 3386 "../GenesysParser.h"
+#line 3392 "../GenesysParser.h"
 
 
 

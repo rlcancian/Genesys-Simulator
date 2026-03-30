@@ -236,18 +236,19 @@
 /****end_TypeObj_plugins****/
 
 %left oAND oOR;
-%left oNOT;
-%left oLE oGE oEQ oNE LESS GREATER LBRACKET cELSE;
+%precedence oNOT;
+%left oLE oGE oEQ oNE LESS GREATER cELSE;
 %left MINUS PLUS;
 %left STAR SLASH;
+%right POWER;
 %precedence NEG;
-%left fROUND fMOD fTRUNC fFRAC fLOG fLN fSQRT;
 
 //%printer { yyoutput << $$; } <*>; //prints when something
 %%
 
 input: 
       expression    { driver.setResult($1.valor);}
+    | illegal
 //    | error '\n'        { yyerrok; }
     ;
 
@@ -348,7 +349,7 @@ kernelFunction:
 
 elementFunction:
     //| CSTAT		 { $$.valor = 0; }
-    | fTAVG  "(" CSTAT ")"     {
+      fTAVG  "(" CSTAT ")"     {
                     StatisticsCollector* cstat = ((StatisticsCollector*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<StatisticsCollector>(), $3.id)));
                     double value = cstat->getStatistics()->average();
                     $$.valor = value; }
