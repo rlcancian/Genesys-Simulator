@@ -31,6 +31,20 @@ double clampProbability(double value) {
 	return std::clamp(value, 0.0, 1.0);
 }
 
+double normalCdf(double z) {
+	return 0.5 * std::erfc(-z / std::sqrt(2.0));
+}
+
+double chi2CdfApproximation(double chi2, double degreesOfFreedom) {
+	// Wilson-Hilferty approximation
+	if (chi2 <= 0.0 || degreesOfFreedom <= 0.0) {
+		return 0.0;
+	}
+	const double k = degreesOfFreedom;
+	const double transformed = (std::cbrt(chi2 / k) - (1.0 - 2.0 / (9.0 * k))) / std::sqrt(2.0 / (9.0 * k));
+	return clampProbability(normalCdf(transformed));
+}
+
 }
 
 HypothesisTesterDefaultImpl1::HypothesisTesterDefaultImpl1() {
@@ -191,31 +205,81 @@ unsigned int HypothesisTesterDefaultImpl1::estimateSampleSize(double avg, double
 // one population
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(double avg, double stddev, unsigned int n, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+	if (n < 2 || stddev <= 0.0) {
+		throw std::invalid_argument("testAverage requires n >= 2 and stddev > 0");
+	}
 	double significanceLevel = (1.0 - confidenceLevel);
-	double acceptInfLimit = ProbabilityDistribution::inverseTStudent((comp == HypothesisTester_if::H1Comparition::GREATER_THAN) ? significanceLevel : significanceLevel / 2.0, 0.0, 1.0, n - 1);
-	double acceptSupLimit = ProbabilityDistribution::inverseTStudent((comp == HypothesisTester_if::H1Comparition::LESS_THAN) ? confidenceLevel : 1.0 - significanceLevel / 2.0, 0.0, 1.0, n - 1);
+	double acceptInfLimit = -std::numeric_limits<double>::infinity();
+	double acceptSupLimit = std::numeric_limits<double>::infinity();
+	if (comp == HypothesisTester_if::H1Comparition::DIFFERENT) {
+		acceptInfLimit = ProbabilityDistribution::inverseTStudent(significanceLevel / 2.0, 0.0, 1.0, n - 1);
+		acceptSupLimit = ProbabilityDistribution::inverseTStudent(1.0 - significanceLevel / 2.0, 0.0, 1.0, n - 1);
+	} else if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
+		acceptInfLimit = ProbabilityDistribution::inverseTStudent(significanceLevel, 0.0, 1.0, n - 1);
+	} else {
+		acceptSupLimit = ProbabilityDistribution::inverseTStudent(1.0 - significanceLevel, 0.0, 1.0, n - 1);
+	}
 	double testStat = (avgSample - avg) / (stddev / sqrt(n));
-	const double oneTail = 0.5 * std::erfc(std::abs(testStat) / std::sqrt(2.0)); // normal approximation
-	double pvalue = (comp == HypothesisTester_if::H1Comparition::DIFFERENT) ? 2.0 * oneTail : oneTail;
+	const double cdf = normalCdf(testStat); // normal approximation
+	double pvalue;
+	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
+		pvalue = cdf;
+	} else if (comp == HypothesisTester_if::H1Comparition::GREATER_THAN) {
+		pvalue = 1.0 - cdf;
+	} else {
+		pvalue = 2.0 * std::min(cdf, 1.0 - cdf);
+	}
 	return HypothesisTester_if::TestResult(clampProbability(pvalue), pvalue < significanceLevel, acceptInfLimit, acceptSupLimit, testStat);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(double prop, unsigned int n, double proptest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) prop;
-	(void) n;
-	(void) proptest;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	if (n < 2 || prop <= 0.0 || prop >= 1.0 || proptest < 0.0 || proptest > 1.0) {
+		throw std::invalid_argument("testProportion requires n >= 2, 0 < prop < 1 and 0 <= proptest <= 1");
+	}
+	const double significanceLevel = 1.0 - confidenceLevel;
+	const double standardError = std::sqrt(prop * (1.0 - prop) / n);
+	const double testStat = (proptest - prop) / standardError;
+	const double cdf = normalCdf(testStat);
+	double pValue;
+	double acceptInfLim = -std::numeric_limits<double>::infinity();
+	double acceptSupLim = std::numeric_limits<double>::infinity();
+	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
+		pValue = cdf;
+		acceptInfLim = ProbabilityDistribution::inverseNormal(significanceLevel, 0.0, 1.0);
+	} else if (comp == HypothesisTester_if::H1Comparition::GREATER_THAN) {
+		pValue = 1.0 - cdf;
+		acceptSupLim = ProbabilityDistribution::inverseNormal(1.0 - significanceLevel, 0.0, 1.0);
+	} else {
+		pValue = 2.0 * std::min(cdf, 1.0 - cdf);
+		acceptInfLim = ProbabilityDistribution::inverseNormal(significanceLevel / 2.0, 0.0, 1.0);
+		acceptSupLim = ProbabilityDistribution::inverseNormal(1.0 - significanceLevel / 2.0, 0.0, 1.0);
+	}
+	return HypothesisTester_if::TestResult(clampProbability(pValue), pValue < significanceLevel, acceptInfLim, acceptSupLim, testStat);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(double var, unsigned int n, double vartest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) var;
-	(void) n;
-	(void) vartest;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	if (n < 2 || var < 0.0 || vartest <= 0.0) {
+		throw std::invalid_argument("testVariance requires n >= 2, var >= 0 and vartest > 0");
+	}
+	const double significanceLevel = 1.0 - confidenceLevel;
+	const double dof = n - 1;
+	const double testStat = (dof * var) / vartest;
+	const double cdf = chi2CdfApproximation(testStat, dof);
+	double pValue;
+	double acceptInfLim = -std::numeric_limits<double>::infinity();
+	double acceptSupLim = std::numeric_limits<double>::infinity();
+	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
+		pValue = cdf;
+		acceptInfLim = ProbabilityDistribution::inverseChi2(significanceLevel, dof);
+	} else if (comp == HypothesisTester_if::H1Comparition::GREATER_THAN) {
+		pValue = 1.0 - cdf;
+		acceptSupLim = ProbabilityDistribution::inverseChi2(1.0 - significanceLevel, dof);
+	} else {
+		pValue = 2.0 * std::min(cdf, 1.0 - cdf);
+		acceptInfLim = ProbabilityDistribution::inverseChi2(significanceLevel / 2.0, dof);
+		acceptSupLim = ProbabilityDistribution::inverseChi2(1.0 - significanceLevel / 2.0, dof);
+	}
+	return HypothesisTester_if::TestResult(clampProbability(pValue), pValue < significanceLevel, acceptInfLim, acceptSupLim, testStat);
 }
 // two populations
 
@@ -253,28 +317,29 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(doubl
 // one population based on datafile
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(std::string sampleDataFilename, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) sampleDataFilename;
-	(void) avgSample;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
+	return testAverage(avgSample, stat->stddeviation(), stat->numElements(), stat->average(), confidenceLevel, comp);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(std::string sampleDataFilename, checkProportionFunction function, double proptest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) sampleDataFilename;
-	(void) function;
-	(void) proptest;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
+	unsigned long count = 0;
+	for (unsigned long i = 0; i < stat->numElements(); i++) {
+		const double value = static_cast<CollectorDatafile_if*> (stat->getCollector())->getValue(i);
+		if (function(value)) {
+			++count;
+		}
+	}
+	const double sampleProp = static_cast<double> (count) / stat->numElements();
+	return testProportion(proptest, stat->numElements(), sampleProp, confidenceLevel, comp);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(std::string sampleDataFilename, double vartest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) sampleDataFilename;
-	(void) vartest;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
+	return testVariance(stat->variance(), stat->numElements(), vartest, confidenceLevel, comp);
 }
 // two populations based on datafile
 
