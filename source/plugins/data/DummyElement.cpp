@@ -5,7 +5,7 @@
 
 /* 
  * File:   DummyElement.cpp
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 11 de janeiro de 2022, 22:26
  */
@@ -162,6 +162,6 @@ void DummyElementt::_createInternalAndAttachedData() {
 */
 
 /*
-void DummyElementt::_addProperty(PropertyBase* property) {
+void DummyElementt::_addProperty(SimulationControl* property) {
 }
 */
