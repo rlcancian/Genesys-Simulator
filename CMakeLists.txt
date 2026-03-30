@@ -7,7 +7,7 @@ option(GENESYS_BUILD_TESTS "Build tests" ON)
 option(GENESYS_BUILD_PLUGINS "Build plugins as shared libraries" OFF)
 option(GENESYS_BOOTSTRAP_MINIMAL_RUNTIME "Use minimal runtime plugin connector during CMake bootstrap" ON)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
