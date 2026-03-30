@@ -15,7 +15,6 @@ set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     ModelInfo.cpp
     Persistence.cpp
     ModelManager.cpp
-        ../../plugins/PluginConnectorDummyImpl1.cpp
 )
 
 add_library(genesys_kernel_simulator_support STATIC
@@ -38,8 +37,8 @@ file(GLOB GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
 
-list(REMOVE_ITEM GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
-    "../../plugins/PluginConnectorDummyImpl1.cpp"
+list(APPEND GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
+    "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorStaticImpl1.cpp"
 )
 
 add_library(genesys_kernel_simulator_runtime STATIC
