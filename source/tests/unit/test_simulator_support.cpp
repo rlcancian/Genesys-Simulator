@@ -47,33 +47,6 @@ void CaptureTraceErrorLevel(TraceErrorEvent e) {
 
 
 
-namespace {
-int g_model_check_success_calls = 0;
-
-void CountModelCheckSuccess(ModelEvent*) {
-    ++g_model_check_success_calls;
-}
-
-struct ModelEventObserver {
-    int calls = 0;
-
-    void OnModelCheckSuccess(ModelEvent*) {
-        ++calls;
-    }
-};
-}
-
-
-struct SimulationEventObserver {
-    int calls = 0;
-
-    void OnReplicationStart(SimulationEvent*) {
-        ++calls;
-    }
-};
-}
-
-
 Model::Model(Simulator* simulator, unsigned int level) {
     (void)simulator;
     (void)level;
@@ -280,24 +253,7 @@ TEST(SimulatorSupportTest, OnEventManagerInvokesMethodHandlers) {
 TEST(SimulatorSupportTest, OnEventManagerDeduplicatesModelFunctionHandlers) {
     g_model_check_success_calls = 0;
 
-    OnEventManager manager;
-    manager.addOnModelCheckSucessHandler(&CountModelCheckSuccess);
-    manager.addOnModelCheckSucessHandler(&CountModelCheckSuccess);
-
-    manager.NotifyModelCheckSuccessHandlers(nullptr);
-
-    EXPECT_EQ(g_model_check_success_calls, 1);
-}
-
-TEST(SimulatorSupportTest, OnEventManagerInvokesModelMethodHandlers) {
-    OnEventManager manager;
-    ModelEventObserver observer;
-
-    manager.addOnModelCheckSuccessHandler(&observer, &ModelEventObserver::OnModelCheckSuccess);
-    manager.NotifyModelCheckSuccessHandlers(nullptr);
-
-    EXPECT_EQ(observer.calls, 1);
-}
+// OnEventManager class-focused tests moved to test_support_oneventmanager.cpp
 
 TEST(SimulatorSupportTest, TraceManagerTraceErrorPreservesExplicitLevel) {
     TraceManager tm(nullptr);
@@ -476,6 +432,7 @@ TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
 
 // PersistenceRecord class-focused tests moved to test_support_persistence.cpp
 
+// ParserManager class-focused tests moved to test_support_parsermanager.cpp
 TEST(SimulatorSupportTest, ParserManagerResultDefaultsToFailureAndEmptyArtifacts) {
     ParserManager::GenerateNewParserResult result;
 
