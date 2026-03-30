@@ -61,7 +61,7 @@ public:
 	};
 public:
 	TraceManager(Simulator* simulator); //(Model* model);
-	virtual ~TraceManager() = default;
+	virtual ~TraceManager();
 public: // add trace handlers
 	// for handlers that are simple functions
 	/*!
@@ -282,4 +282,3 @@ public:
 
 //namespace\\}
 #endif /* TRACEMANAGER_H */
-

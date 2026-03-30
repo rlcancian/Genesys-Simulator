@@ -25,7 +25,7 @@
 class ModelManager {
 public:
 	ModelManager(Simulator* simulator);
-	virtual ~ModelManager() = default;
+	virtual ~ModelManager();
 public:
 	Model* newModel();
 	/*!
@@ -91,4 +91,3 @@ private:
 };
 //namespace\\}
 #endif /* MODELMANAGER_H */
-
