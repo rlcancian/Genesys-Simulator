@@ -6,7 +6,7 @@
 
 /* 
  * File:   DiffEquations.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on
  */
@@ -288,6 +288,6 @@ void DiffEquations::_createInternalAndAttachedData() {
 
 
 /*
-void DiffEquations::_addProperty(PropertyBase* property) {
+void DiffEquations::_addProperty(SimulationControl* property) {
 }
 */

@@ -173,7 +173,7 @@ private:
 	Simulator* _simulator;
 private:
 	TraceManager::Level _traceLevel; // = TraceManager::Level::L9_mostDetailed;
-	double _lastTimeTraceSimulation = -1.0;
+    double _lastTimeTraceSimulation = -1.0; // an invalid time
 	Util::identification _lastEntityTraceSimulation = 0;
 	Util::identification _lastModuleTraceSimulation = 0;
 	bool _traceSimulationRuleAllAllowed = true;
@@ -229,6 +229,9 @@ public:
 
 	TraceErrorEvent(std::string text, std::exception e) : TraceEvent(text, TraceManager::Level::L3_errorRecover) {
 		_e = e;
+	}
+
+	TraceErrorEvent(std::string text, TraceManager::Level level) : TraceEvent(text, level) {
 	}
 
 	std::exception getException() const {

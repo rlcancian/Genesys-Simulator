@@ -6,7 +6,7 @@
 
 /*
  * File:   ModelDataDefinition.h
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 21 de Junho de 2018, 19:40
  */
@@ -103,8 +103,12 @@ public:
 	/*!
 	 * \brief getProperties
 	 * \return
+	 *
+	 * Transitional kernel API: this class now exposes explicit SimulationControl
+	 * pointers while the broader migration away from the legacy PropertyBase
+	 * naming remains in progress.
 	 */
-	List<PropertyBase*> *getProperties() const;
+	List<SimulationControl*> *getProperties() const;
 
 public: // public static methods
 	/*! This class method receives a map of fields readed from a file (or somewhere else) creates an instace of the ModelDatas and inokes the protected method _loadInstance() of that instance, whch fills the field values. The instance can be automatticaly inserted into the simulation model if required*/
@@ -151,7 +155,7 @@ protected: //! could be overriden by derived classes
 	virtual void _initBetweenReplications();
 	/*! This method is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
 	virtual void _createInternalAndAttachedData(); /*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
-	virtual void _addProperty(PropertyBase* property);
+	virtual void _addProperty(SimulationControl* property);
 	//virtual void _addSimulationResponse(SimulationControl* response);
 	//virtual void _addSimulationControl(SimulationControl* control);
 
@@ -181,7 +185,10 @@ protected: //! just an easy access to trace manager
 protected:
 	//List<SimulationControl*>* _simulationResponses = new List<SimulationControl*>();
 	//List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
-	List<PropertyBase*>* _properties = new List<PropertyBase*>();
+	// Transitional compatibility store for kernel-side writable controls.
+	// The long-term direction is to use explicit SimulationResponse and
+	// SimulationControl collections throughout the kernel.
+	List<SimulationControl*>* _properties = new List<SimulationControl*>();
 	//PropertyListG* _propertiesG = new PropertyListG();
 };
 //namespace\\}

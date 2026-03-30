@@ -1,34 +1,42 @@
-# Prerequisites
-*.d
+# Build dirs
+/build/
+/out/
+/cmake-build-*/
 
-# Compiled Object files
-*.slo
-*.lo
+# CMake
+CMakeCache.txt
+CMakeFiles/
+CTestTestfile.cmake
+cmake_install.cmake
+compile_commands.json
+Testing/
+
+# Ninja
+.ninja_deps
+.ninja_log
+build.ninja
+
+# Qt Creator
+*.pro.user
+*.pro.user.*
+CMakeLists.txt.user
+.qtcreator/
+.qtc_clangd/
+
+# NetBeans legacy
+/projects/**/build/
+/projects/**/dist/
+/projects/**/nbproject/private/
+
+# Generic
 *.o
 *.obj
-
-# Precompiled Headers
-*.gch
-*.pch
-
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
-
-# Fortran module files
-*.mod
-*.smod
-
-# Compiled Static libraries
-*.lai
-*.la
 *.a
-*.lib
-
-# Executables
+*.so
+*.so.*
+*.dll
+*.dylib
 *.exe
-*.out
-*.app
-/build/
-/dist/
+
+# Logs
+*.log

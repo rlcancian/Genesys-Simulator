@@ -6,7 +6,7 @@
 
 /*
  * File:   SimulationScenario.h
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 10 de Outubro de 2018, 18:21
  */
@@ -21,6 +21,19 @@
 
 /*!
  * Represents a scenario where a specific model (defined my ModelFilename) will be simulated. To each scenario will be associated a set of SimulationControl and SimulationResponse, and their values are set to the scenario by the ProcessAnalyser.
+ */
+/**
+ * @brief Represents a candidate simulation scenario within the unfinished experiment layer.
+ *
+ * The original GenESyS execution flow relied on ModelSimulation for the basic
+ * experimental controls already supported by the kernel.
+ *
+ * SimulationScenario was introduced later to support richer scenario-based
+ * experimentation, potentially including alternative models, modified controls
+ * and future Process Analyzer-like workflows.
+ *
+ * This class is still under development and should currently be treated as an
+ * evolving kernel-side abstraction for experiment scenarios.
  */
 class SimulationScenario {
 public:
@@ -41,6 +54,8 @@ public: // gets and sets
 	std::list<std::string>* getSelectedControls() const; // access to the list to insert or remove controls
 	double getControlValue(const std::string& controlName);
 	std::list<std::string>* getSelectedResponses() const; // access to the list to insert or remove responses
+	// TODO(genesys|scenario|ownership): Clarify ownership and replacement semantics for selected controls.
+	// This setter currently allocates a new list and replaces the stored pointer.
 	void setSelectedControls(std::list<std::string>* selectedControls);
 	void setControl(std::string name, double value) const;
 private:
@@ -49,8 +64,9 @@ private:
 	std::string _modelFilename;
 	std::list<std::string>* _selectedControls = new std::list<std::string>(); /*!< a subset of SimulationControls available in the model (chosen by user)*/
 	std::list<std::string>* _selectedResponses = new std::list<std::string>(); /*!< a subset of SimulationResponses available in the model (chosen by user) */
-	std::list<std::pair<std::string, double>*>* _controlValues = reinterpret_cast<std::list<std::pair<std::string, double> *> *> (new std::list<std::pair<std::string, double>>());
-	std::list<std::pair<std::string, double>*>* _responseValues{}; /*!< stored values of the results returned by simulation <name of response, value returned>*/
+	std::list<std::pair<std::string, double>*>* _controlValues = new std::list<std::pair<std::string, double>*>();
+	// TODO(genesys|scenario|lifetime): Define initialization and ownership rules for response values.
+	std::list<std::pair<std::string, double>*>* _responseValues = new std::list<std::pair<std::string, double>*>(); /*!< stored values of the results returned by simulation <name of response, value returned>*/
 };
 
 #endif /* SIMULATIONSCENARIO_H */

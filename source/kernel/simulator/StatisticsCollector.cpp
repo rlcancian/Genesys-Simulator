@@ -6,7 +6,7 @@
 
 /*
  * File:   StatisticsCollector.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 30 de Agosto de 2018, 17:24
  */
@@ -32,20 +32,20 @@ StatisticsCollector::StatisticsCollector(Model* model, std::string name, ModelDa
 	StatisticsClass* statThis = static_cast<StatisticsClass*>(this->_statistics);
 	std::string classname = Util::TypeOf<StatisticsClass>();
 	// controls
-	_parentModel->getResponses()->insert(new SimulationControlDouble(
-				 std::bind(&StatisticsClass::average, statThis), nullptr,
+	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+				 std::bind(&StatisticsClass::average, statThis),
 				 classname, getName(), "Average"));
-	_parentModel->getResponses()->insert(new SimulationControlDouble(
-				 std::bind(&StatisticsClass::min, statThis), nullptr,
+	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+				 std::bind(&StatisticsClass::min, statThis),
 				 classname, getName(), "Minimum"));
-	_parentModel->getResponses()->insert(new SimulationControlDouble(
-				 std::bind(&StatisticsClass::max, statThis), nullptr,
+	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+				 std::bind(&StatisticsClass::max, statThis),
 				 classname, getName(), "Maximum"));
-	_parentModel->getResponses()->insert(new SimulationControlDouble(
-				 std::bind(&StatisticsClass::numElements, statThis), nullptr,
+	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+				 std::bind(&StatisticsClass::numElements, statThis),
 				 classname, getName(), "NumberOfElements"));
-	_parentModel->getResponses()->insert(new SimulationControlDouble(
-				 std::bind(&StatisticsClass::halfWidthConfidenceInterval, statThis), nullptr,
+	_parentModel->getResponses()->insert(new SimulationResponseDouble(
+				 std::bind(&StatisticsClass::halfWidthConfidenceInterval, statThis),
 				 classname, getName(), "HalfWidthConfidenceInterval"));
 }
 

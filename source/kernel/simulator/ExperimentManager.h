@@ -6,7 +6,7 @@
 
 /* 
  * File:   ExperimentManager.h
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 4 de maio de 2021, 11:43
  */
@@ -23,6 +23,21 @@
 
 class Simulator;
 
+/**
+ * @brief Manages higher-level simulation experiments.
+ *
+ * Historically, GenESyS initially supported only the basic experiment controls
+ * available through ModelSimulation, especially the number of replications and
+ * the replication length.
+ *
+ * This class represents a later attempt to move more advanced experiment design
+ * concerns into the simulation kernel, including higher-level experiment sets,
+ * scenario management and future Process Analyzer-like workflows.
+ *
+ * This layer is still under development and should be treated as an incomplete
+ * experimental abstraction on top of the already functional ModelSimulation
+ * mechanism.
+ */
 class ExperimentManager {// : PersistentObject_base {
 public:
 
@@ -61,7 +76,9 @@ public:
 	void insert(SimulationExperiment* experiment);
 	void remove(SimulationExperiment* experiment);
 	void setCurrent(SimulationExperiment* experiment);
+	/// @todo Implement persistence once SimulationExperiment serialization is defined.
 	bool saveSimulationExperiment(std::string filename);
+	/// @todo Implement loading once SimulationExperiment deserialization and scenario execution are defined.
 	bool loadSimulationExperiment(std::string filename);
 	unsigned int size();
 public:

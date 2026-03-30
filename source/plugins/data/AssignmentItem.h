@@ -24,7 +24,7 @@
 
 /* 
  * File:   AssignmentItem.h
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 2 de fevereiro de 2022, 14:12
  */
@@ -51,8 +51,8 @@ public:
 	// TODO: don't have name
 	std::string getName() const;
 
-	List<PropertyBase*>* getProperties() const;
-    void _addProperty(PropertyBase* property);
+	List<SimulationControl*>* getProperties() const;
+    void _addProperty(SimulationControl* property);
 
 	std::string getTypeDC() {return _typeDC;};
 public:
@@ -64,7 +64,7 @@ private:
 	bool _isAttributeNotVariable = true;
 	std::string _typeDC;
 
-	List<PropertyBase*>* _properties = new List<PropertyBase*>();
+	List<SimulationControl*>* _properties = new List<SimulationControl*>();
 };
 
 

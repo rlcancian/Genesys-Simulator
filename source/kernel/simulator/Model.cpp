@@ -6,7 +6,7 @@
 
 /*
  * File:   SimulationModel.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 21 de Junho de 2018, 15:01
  */
@@ -38,7 +38,7 @@ Model::Model(Simulator* simulator, unsigned int level) {
 	_parentSimulator = simulator; // a simulator is the "parent" of a model
 	_level = level;
 	// for process analyser (create this lists before other component add any contyrol or response
-	_responses = new List<SimulationControl*>();
+	_responses = new List<SimulationResponse*>();
 	_controls = new List<SimulationControl*>();
 	// 1:1 associations (no Traits)
 	_traceManager = simulator->getTraceManager(); // every model starts with the same tracer, unless a specific one is set
@@ -289,7 +289,7 @@ void Model::_showSimulationControls() const {
 void Model::_showSimulationResponses() const {
 	getTracer()->trace("Simulation Responses:", TraceManager::Level::L2_results);
 	Util::IncIndent();
-	for (SimulationControl* response : *_responses->list()) {
+	for (SimulationResponse* response : *_responses->list()) {
 		getTracer()->trace(response->show(), TraceManager::Level::L2_results); ////
 	}
 	Util::DecIndent();
@@ -357,7 +357,7 @@ List<SimulationControl*>* Model::getControls() const {
 	return _controls;
 }
 
-List<SimulationControl*>* Model::getResponses() const {
+List<SimulationResponse*>* Model::getResponses() const {
 	return _responses;
 }
 

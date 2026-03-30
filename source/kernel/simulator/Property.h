@@ -11,15 +11,26 @@ class QueueableItem;
 
 //---------------------------------------------------------------------------
 
-class PropertyBase {
+// TODO(genesys|property-system|architecture): Review the overlap between LegacyPropertyBase/PropertyT and
+// SimulationControl/SimulationResponse. This header defines a legacy application-side
+// property abstraction and must not collide with the kernel-side PropertyBase alias
+// exposed by SimulationControlAndResponse.h.
+/**
+ * @brief LegacyPropertyBase/PropertyT currently represent a competing property abstraction.
+ *
+ * The current architectural direction is to treat Property* as an
+ * application-side/editor-facing concern, not as the canonical kernel
+ * mechanism for experiment controls and responses.
+ */
+class LegacyPropertyBase {
 public:
 
-	PropertyBase(std::string classname, std::string name, std::string parentName = "") {
+	LegacyPropertyBase(std::string classname, std::string name, std::string parentName = "") {
 		_classename = classname;
 		_name = name;
 		_parentname = parentName;
 	}
-	virtual ~PropertyBase() = default;
+	virtual ~LegacyPropertyBase() = default;
 public:
 
 	std::string show() const {
@@ -87,10 +98,10 @@ typename Setter<T>::Member DefineSetter(Class * object, void (Class::*function)(
 }
 
 template<typename T>
-class PropertyT : public PropertyBase {
+class PropertyT : public LegacyPropertyBase {
 public:
 
-	PropertyT(std::string classname, std::string name, typename Getter<T>::Member getter, typename Setter<T>::Member setter, std::string parentName = "") : PropertyBase(classname, name, parentName) {
+	PropertyT(std::string classname, std::string name, typename Getter<T>::Member getter, typename Setter<T>::Member setter, std::string parentName = "") : LegacyPropertyBase(classname, name, parentName) {
 		_getter = getter;
 		_setter = setter;
 	};
@@ -115,9 +126,9 @@ protected:
 
 /*
 template<>
-class PropertyT<std::string>: public PropertyBase {
+class PropertyT<std::string>: public LegacyPropertyBase {
 public:
-	PropertyT(std::string classname, std::string name, typename Getter<std::string>::Member getter, typename Setter<std::string>::Member setter, std::string parentName=""):PropertyBase(classname,name, parentName) {
+	PropertyT(std::string classname, std::string name, typename Getter<std::string>::Member getter, typename Setter<std::string>::Member setter, std::string parentName=""):LegacyPropertyBase(classname,name, parentName) {
 		_getter = getter;
 		_setter = setter;
 	};
@@ -131,9 +142,9 @@ protected:
 	const std::string _type = Util::TypeOf<std::string>();
 };
 template<>
-class PropertyT<Util::TimeUnit>: public PropertyBase {
+class PropertyT<Util::TimeUnit>: public LegacyPropertyBase {
 public:
-	PropertyT(std::string classname, std::string name, typename Getter<Util::TimeUnit>::Member getter, typename Setter<Util::TimeUnit>::Member setter, std::string parentName=""):PropertyBase(classname,name, parentName) {
+	PropertyT(std::string classname, std::string name, typename Getter<Util::TimeUnit>::Member getter, typename Setter<Util::TimeUnit>::Member setter, std::string parentName=""):LegacyPropertyBase(classname,name, parentName) {
 		_getter = getter;
 		_setter = setter;
 	};

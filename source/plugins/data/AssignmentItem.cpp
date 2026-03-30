@@ -24,7 +24,7 @@
 
 /* 
  * File:   AssignmentItem.cpp
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 2 de fevereiro de 2022, 14:12
  */
@@ -114,11 +114,11 @@ bool Assignment::isAttributeNotVariable() const {
 	return _isAttributeNotVariable;
 }
 
-void Assignment::_addProperty(PropertyBase* property) {
+void Assignment::_addProperty(SimulationControl* property) {
     _properties->insert(property);
 }
 
-List<PropertyBase*>* Assignment::getProperties() const {
+List<SimulationControl*>* Assignment::getProperties() const {
     return _properties;
 }
 
