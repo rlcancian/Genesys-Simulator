@@ -3,6 +3,22 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
 
+namespace {
+struct SimulationStartObserver {
+    bool called = false;
+    bool running = false;
+    bool paused = true;
+    unsigned int replication = 0;
+
+    void OnSimulationStart(SimulationEvent* event) {
+        called = true;
+        running = event->isRunning();
+        paused = event->isPaused();
+        replication = event->getCurrentReplicationNumber();
+    }
+};
+}
+
 TEST(SimulatorRuntimeTest, CanConstructSimulatorAndAccessManagers) {
     Simulator simulator;
 
@@ -45,4 +61,20 @@ TEST(SimulatorRuntimeTest, ModelHasChangedReflectsNestedSubsystemUpdates) {
     model->getInfos()->setName("ChangedName");
 
     EXPECT_TRUE(model->hasChanged());
+}
+
+TEST(SimulatorRuntimeTest, SimulationStartHandlerReceivesInitializedStateSnapshot) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SimulationStartObserver observer;
+    model->getOnEventManager()->addOnSimulationStartHandler(&observer, &SimulationStartObserver::OnSimulationStart);
+
+    model->getSimulation()->start();
+
+    EXPECT_TRUE(observer.called);
+    EXPECT_TRUE(observer.running);
+    EXPECT_FALSE(observer.paused);
+    EXPECT_EQ(observer.replication, 1u);
 }

@@ -121,15 +121,15 @@ std::unique_ptr<SimulationEvent> ModelSimulation::_createSimulationEvent(void* t
 	auto se = std::make_unique<SimulationEvent>();
 	//	se->currentComponent = _currentComponent;
 	//	se->currentEntity = _currentEntity;
-	se->currentEvent = _currentEvent;
+	se.currentEvent = _currentEvent;
 	//	se->currentinputPortNumber = _currentinputPortNumber;
-	se->currentReplicationNumber = _currentReplicationNumber;
-	se->customObject = thiscustomObject;
-	se->_isPaused = this->_isPaused;
-	se->_isRunning = this->_isRunning;
-	se->pauseRequested = _pauseRequested;
-	se->simulatedTime = _simulatedTime;
-	se->stopRequested = _stopRequested;
+	se.currentReplicationNumber = _currentReplicationNumber;
+	se.customObject = thiscustomObject;
+	se._isPaused = this->_isPaused;
+	se._isRunning = this->_isRunning;
+	se.pauseRequested = _pauseRequested;
+	se.simulatedTime = _simulatedTime;
+	se.stopRequested = _stopRequested;
 	return se;
 }
 
