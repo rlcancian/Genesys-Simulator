@@ -54,6 +54,16 @@ Simulator::Simulator() {
     std::cout << '|' << '\t' << _licenceManager->showLimits() << std::endl;
 }
 
+
+Simulator::~Simulator() {
+	delete _experimentManager;
+	delete _parserManager;
+	delete _traceManager;
+	delete _modelManager;
+	delete _pluginManager;
+	delete _licenceManager;
+}
+
 PluginManager* Simulator::getPluginManager() const {
 	return _pluginManager;
 }
