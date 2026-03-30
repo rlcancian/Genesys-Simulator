@@ -39,6 +39,9 @@ HypothesisTesterDefaultImpl1::HypothesisTesterDefaultImpl1() {
 // confidence intervals
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageConfidenceInterval(double avg, double stddev, unsigned int n, double confidenceLevel) {
+	if (n < 2 || stddev < 0.0) {
+		throw std::invalid_argument("averageConfidenceInterval requires n >= 2 and stddev >= 0");
+	}
 	double correctConf = (1.0 - confidenceLevel) / 2.0;
 	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n - 1);
 	double e0 = critic * stddev / sqrt(n);
@@ -46,6 +49,9 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageCon
 }
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionConfidenceInterval(double prop, unsigned int n, double confidenceLevel) {
+	if (n < 2 || prop < 0.0 || prop > 1.0) {
+		throw std::invalid_argument("proportionConfidenceInterval requires n >= 2 and 0 <= prop <= 1");
+	}
 	double correctConf = (1.0 - confidenceLevel) / 2.0;
 	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n - 1);
 	double e0 = critic * sqrt(prop * (1 - prop) / n);
@@ -53,6 +59,9 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 }
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionConfidenceInterval(double prop, unsigned int n, int N, double confidenceLevel) {
+	if (N <= 1 || n < 2 || n > static_cast<unsigned int> (N) || prop < 0.0 || prop > 1.0) {
+		throw std::invalid_argument("proportionConfidenceInterval(population) requires N > 1, 2 <= n <= N and 0 <= prop <= 1");
+	}
 	double correctConf = (1.0 - confidenceLevel) / 2.0;
 	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n - 1);
 	double e0 = critic * sqrt(prop * (1 - prop) / n) * sqrt((N - n) / (N - 1));
@@ -60,6 +69,9 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 }
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceConfidenceInterval(double var, unsigned int n, double confidenceLevel) {
+	if (n < 2 || var < 0.0) {
+		throw std::invalid_argument("varianceConfidenceInterval requires n >= 2 and var >= 0");
+	}
 	const double alpha = 1.0 - confidenceLevel;
 	double il = (n - 1) * var / ProbabilityDistribution::inverseChi2(1.0 - alpha / 2.0, n - 1);
 	double sl = (n - 1) * var / ProbabilityDistribution::inverseChi2(alpha / 2.0, n - 1);
@@ -68,20 +80,31 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceCo
 }
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageDifferenceConfidenceInterval(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel) {
+	if (n1 < 2 || n2 < 2 || stddev1 < 0.0 || stddev2 < 0.0) {
+		throw std::invalid_argument("averageDifferenceConfidenceInterval requires n1,n2 >= 2 and stddev1,stddev2 >= 0");
+	}
 	double correctConf = (1.0 - confidenceLevel) / 2.0;
 	double e0;
 	HypothesisTester_if::ConfidenceInterval varIC = varianceRatioConfidenceInterval(pow(stddev1, 2), n1, pow(stddev2, 2), n2, confidenceLevel);
 	if ((varIC.inferiorLimit() <= 1.0 && varIC.superiorLimit() >= 1.0) || (varIC.inferiorLimit() >= 1.0 && varIC.superiorLimit() <= 1.0)) { // test variances ratio
 		// equal variances
-		e0 = -ProbabilityDistribution::tStudent(correctConf, 0.0, 1.0, n1 + n2 - 2) * sqrt(pow(stddev1, 2) * pow(stddev2, 2) * (1 / n1 + 1 / n2));
+		const double pooledVariance = (((n1 - 1) * stddev1 * stddev1) + ((n2 - 1) * stddev2 * stddev2)) / (n1 + n2 - 2);
+		const double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n1 + n2 - 2);
+		e0 = critic * sqrt(pooledVariance * (1.0 / n1 + 1.0 / n2));
 	} else { // different variances
-		double degreeFreedom = pow(pow(stddev1, 2) / n1 + pow(stddev2, 2) / n2, 2) / (pow(pow(stddev1, 2) / n1, 2) / (n1 + 1) + pow(pow(stddev2, 2) / n2, 2) / (n2 + 1)) - 2;
-		e0 = -ProbabilityDistribution::tStudent(correctConf, 0.0, 1.0, degreeFreedom) * sqrt(pow(stddev1, 2) / n1 + pow(stddev2, 2) / n2);
+		const double varianceTerm = (stddev1 * stddev1) / n1 + (stddev2 * stddev2) / n2;
+		const double degreeFreedom = (varianceTerm * varianceTerm) /
+				((pow((stddev1 * stddev1) / n1, 2) / (n1 - 1)) + (pow((stddev2 * stddev2) / n2, 2) / (n2 - 1)));
+		const double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, degreeFreedom);
+		e0 = critic * sqrt(varianceTerm);
 	}
 	return HypothesisTester_if::ConfidenceInterval(avg1 - avg2 - e0, avg1 - avg2 + e0, e0);
 }
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionDifferenceConfidenceInterval(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel) {
+	if (n1 < 2 || n2 < 2 || stddev1 < 0.0 || stddev2 < 0.0) {
+		throw std::invalid_argument("proportionDifferenceConfidenceInterval requires n1,n2 >= 2 and stddev1,stddev2 >= 0");
+	}
 	constexpr auto epsilon = std::numeric_limits<double>::epsilon();
 	const double denominator = std::sqrt((stddev1 * stddev1) / n1 + (stddev2 * stddev2) / n2);
 	if (denominator <= epsilon) {
@@ -94,10 +117,14 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 }
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceRatioConfidenceInterval(double var1, unsigned int n1, double var2, unsigned int n2, double confidenceLevel) {
+	if (n1 < 2 || n2 < 2 || var1 < 0.0 || var2 <= 0.0) {
+		throw std::invalid_argument("varianceRatioConfidenceInterval requires n1,n2 >= 2, var1 >= 0 and var2 > 0");
+	}
 	double ratio = var1 / var2;
-	double il = 1 / ProbabilityDistribution::inverseFFisherSnedecor((1.0 - confidenceLevel) / 2.0, n2 - 1, n1 - 1);
+	const double alpha = 1.0 - confidenceLevel;
+	double il = 1 / ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha / 2.0, n2 - 1, n1 - 1);
 	il *= ratio;
-	double sl = ProbabilityDistribution::inverseFFisherSnedecor(confidenceLevel / 2.0, n1 - 1, n2 - 1);
+	double sl = ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha / 2.0, n1 - 1, n2 - 1);
 	sl *= ratio;
 	double e0 = (sl - il) / 2.0;
 	return HypothesisTester_if::ConfidenceInterval(il, sl, e0);
@@ -150,7 +177,7 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceCo
 
 unsigned int HypothesisTesterDefaultImpl1::estimateSampleSize(double avg, double stddev, double desiredE0, double confidenceLevel) {
 	(void) avg;
-	if (desiredE0 <= 0.0) {
+	if (desiredE0 <= 0.0 || stddev < 0.0) {
 		return 0;
 	}
 	const double alphaHalf = (1.0 - confidenceLevel) / 2.0;
