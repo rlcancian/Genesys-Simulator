@@ -430,10 +430,10 @@ unsigned int Model::getLevel() const {
 
 bool Model::hasChanged() const {
 	bool changed = _hasChanged;
-	changed &= this->_componentManager->hasChanged();
-	changed &= this->_modeldataManager->hasChanged();
-	changed &= this->_modelInfo->hasChanged();
-	changed &= this->_modelPersistence->hasChanged();
+	changed = changed || this->_componentManager->hasChanged();
+	changed = changed || this->_modeldataManager->hasChanged();
+	changed = changed || this->_modelInfo->hasChanged();
+	changed = changed || this->_modelPersistence->hasChanged();
 	return changed;
 }
 

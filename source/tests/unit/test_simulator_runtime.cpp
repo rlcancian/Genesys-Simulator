@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
 
 TEST(SimulatorRuntimeTest, CanConstructSimulatorAndAccessManagers) {
     Simulator simulator;
@@ -30,4 +31,18 @@ TEST(SimulatorRuntimeTest, ConstructAndDestroySimulatorRepeatedly) {
         ASSERT_NE(simulator->getParserManager(), nullptr);
         ASSERT_NE(simulator->getExperimentManager(), nullptr);
     }
+}
+
+
+TEST(SimulatorRuntimeTest, ModelHasChangedReflectsNestedSubsystemUpdates) {
+    Simulator simulator;
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EXPECT_FALSE(model->hasChanged());
+
+    model->getInfos()->setName("ChangedName");
+
+    EXPECT_TRUE(model->hasChanged());
 }
