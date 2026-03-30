@@ -156,10 +156,7 @@ public:
 
 
 
-TEST(SimulatorSupportTest, TraceManagerInitializesErrorMessagesList) {
-    TraceManager tm(nullptr);
-    ASSERT_NE(tm.errorMessages(), nullptr);
-}
+// TraceManager class-focused tests moved to test_support_tracemanager.cpp
 
 TEST(SimulatorSupportTest, ParserManagerCanBeConstructed) {
     ParserManager pm;
@@ -247,8 +244,7 @@ TEST(SimulatorSupportTest, OnEventManagerInvokesMethodHandlers) {
     manager.addOnReplicationStartHandler(&observer, &SimulationEventObserver::OnReplicationStart);
     manager.NotifyReplicationStartHandlers(nullptr);
 
-    EXPECT_EQ(observer.calls, 1);
-}
+// OnEventManager class-focused tests moved to test_support_oneventmanager.cpp
 
 TEST(SimulatorSupportTest, OnEventManagerDeduplicatesModelFunctionHandlers) {
     g_model_check_success_calls = 0;
