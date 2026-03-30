@@ -7,4 +7,4 @@ target_include_directories(genesys_kernel_util
         ${CMAKE_SOURCE_DIR}/source
 )
 
-target_compile_features(genesys_kernel_util PUBLIC cxx_std_20)
+target_compile_features(genesys_kernel_util PUBLIC cxx_std_23)

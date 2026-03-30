@@ -11,7 +11,7 @@
  * Created on 9 de Setembro de 2019, 19:24
  */
 
-#include "../kernel/simulator/PluginConnectorDummyImpl1.h"
+#include "PluginConnectorDummyImpl1.h"
 
 // Model Components
 

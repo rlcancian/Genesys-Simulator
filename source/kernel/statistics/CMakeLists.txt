@@ -16,4 +16,9 @@ target_link_libraries(genesys_kernel_statistics
         genesys_kernel_util
 )
 
-target_compile_features(genesys_kernel_statistics PUBLIC cxx_std_20)
+target_sources(enesys_terminal_application
+        PRIVATE
+        $<TARGET_OBJECTS:genesys_plugins_connector>
+)
+
+target_compile_features(genesys_kernel_statistics PUBLIC cxx_std_23)

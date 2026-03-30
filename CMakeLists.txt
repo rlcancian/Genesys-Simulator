@@ -2,12 +2,14 @@ cmake_minimum_required(VERSION 3.24)
 
 project(GenesysSimulator LANGUAGES CXX)
 
-option(GENESYS_BUILD_GUI "Build Qt GUI application" OFF)
+option(GENESYS_TERMINAL_APPLICATION "Build terminal application target" ON)
+option(GENESYS_BUILD_GUI_APPLICATION "Build Qt GUI application" OFF)
+option(GENESYS_BUILD_WEB_APPLICATION "Build web webhook application" OFF)
 option(GENESYS_BUILD_TESTS "Build tests" ON)
 option(GENESYS_BUILD_PLUGINS "Build plugins as shared libraries" OFF)
-option(GENESYS_BUILD_WEB "Build web webhook application" OFF)
-option(GENESYS_TERMINAL_APPLICATION "Build terminal application target" ON)
-option(GENESYS_BOOTSTRAP_MINIMAL_RUNTIME "Use minimal runtime plugin connector during CMake bootstrap" ON)
+option(GENESYS_BUILD_KERNEL "Build kernel as shared libraries" OFF)
+option(GENESYS_BUILD_PARSER "Build parser as shared libraries" OFF)
+option(GENESYS_BUILD_TOOLS "Build tools as shared libraries" OFF)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -16,17 +18,16 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 include(CTest)
 
 message(STATUS "Configuring GenesysSimulator")
-message(STATUS "GENESYS_BUILD_GUI=${GENESYS_BUILD_GUI}")
+message(STATUS "GENESYS_BUILD_GUI=${GENESYS_BUILD_GUI_APPLICATION}")
 message(STATUS "GENESYS_BUILD_TESTS=${GENESYS_BUILD_TESTS}")
 message(STATUS "GENESYS_BUILD_PLUGINS=${GENESYS_BUILD_PLUGINS}")
-message(STATUS "GENESYS_BUILD_WEB=${GENESYS_BUILD_WEB}")
+message(STATUS "GENESYS_BUILD_WEB=${GENESYS_BUILD_WEB_APPLICATION}")
 message(STATUS "GENESYS_TERMINAL_APPLICATION=${GENESYS_TERMINAL_APPLICATION}")
-message(STATUS "GENESYS_BOOTSTRAP_MINIMAL_RUNTIME=${GENESYS_BOOTSTRAP_MINIMAL_RUNTIME}")
 
 add_subdirectory(source/kernel/util)
 add_subdirectory(source/kernel/statistics)
 add_subdirectory(source/parser)
-add_subdirectory(source/plugins/data)
+add_subdirectory(source/plugins)
 add_subdirectory(source/kernel/simulator)
 
 if(GENESYS_TERMINAL_APPLICATION)
@@ -43,7 +44,7 @@ add_custom_target(genesys_kernel
         genesys_kernel_simulator_runtime
 )
 
-if(GENESYS_BUILD_WEB)
+if(GENESYS_BUILD_WEB_APPLICATION)
     add_subdirectory(source/applications/web)
 endif()
 

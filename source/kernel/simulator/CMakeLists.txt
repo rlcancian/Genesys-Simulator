@@ -32,14 +32,7 @@ target_link_libraries(genesys_kernel_simulator_support
         genesys_kernel_util
 )
 
-target_compile_features(genesys_kernel_simulator_support PUBLIC cxx_std_20)
-
-if(NOT GENESYS_BOOTSTRAP_MINIMAL_RUNTIME)
-    message(FATAL_ERROR
-        "GENESYS_BOOTSTRAP_MINIMAL_RUNTIME=OFF is temporarily unsupported in the current CMake graph. "
-        "Enable it (ON) until plugin component targets are integrated into the runtime link path."
-    )
-endif()
+target_compile_features(genesys_kernel_simulator_support PUBLIC cxx_std_23)
 
 file(GLOB GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
@@ -66,4 +59,4 @@ target_link_libraries(genesys_kernel_simulator_runtime
         genesys_plugins_data
 )
 
-target_compile_features(genesys_kernel_simulator_runtime PUBLIC cxx_std_20)
+target_compile_features(genesys_kernel_simulator_runtime PUBLIC cxx_std_23)
