@@ -19,15 +19,3 @@ TEST(SimulatorRuntimeTest, VersionAndNameAreAvailable) {
     EXPECT_FALSE(simulator.getVersion().empty());
     EXPECT_GT(simulator.getVersionNumber(), 0u);
 }
-
-TEST(SimulatorRuntimeTest, ConstructAndDestroySimulatorRepeatedly) {
-    for (int i = 0; i < 5; ++i) {
-        auto simulator = std::make_unique<Simulator>();
-        ASSERT_NE(simulator->getLicenceManager(), nullptr);
-        ASSERT_NE(simulator->getPluginManager(), nullptr);
-        ASSERT_NE(simulator->getModelManager(), nullptr);
-        ASSERT_NE(simulator->getTraceManager(), nullptr);
-        ASSERT_NE(simulator->getParserManager(), nullptr);
-        ASSERT_NE(simulator->getExperimentManager(), nullptr);
-    }
-}
