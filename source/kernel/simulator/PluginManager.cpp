@@ -189,10 +189,9 @@ bool PluginManager::remove(Plugin * plugin) {
 }
 
 Plugin * PluginManager::find(std::string pluginTypeName) {
-	for (std::list<Plugin*>::iterator it = this->_plugins->list()->begin(); it != _plugins->list()->end(); it++) {
-		if ((*it)->getPluginInfo()->getPluginTypename() == pluginTypeName) {
-
-			return (*it);
+	for (Plugin* plugin : *this->_plugins->list()) {
+		if (plugin->getPluginInfo()->getPluginTypename() == pluginTypeName) {
+			return plugin;
 		}
 	}
 	return nullptr;
