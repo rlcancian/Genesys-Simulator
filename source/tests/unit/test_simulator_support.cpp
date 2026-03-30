@@ -30,6 +30,14 @@ TraceManager* Simulator::getTraceManager() const {
 
 
 namespace {
+int g_replication_start_calls = 0;
+
+void CountReplicationStart(SimulationEvent*) {
+    ++g_replication_start_calls;
+}
+
+
+namespace {
 TraceManager::Level g_last_trace_error_level = TraceManager::Level::L9_mostDetailed;
 
 void CaptureTraceErrorLevel(TraceErrorEvent e) {
@@ -220,6 +228,31 @@ TEST(SimulatorSupportTest, ModelInfoSaveAndLoadRoundTrip) {
 
 // ModelManager class-focused tests moved to test_support_modelmanager.cpp
 
+TEST(SimulatorSupportTest, OnEventManagerDeduplicatesFunctionHandlers) {
+    g_replication_start_calls = 0;
+
+    OnEventManager manager;
+    manager.addOnReplicationStartHandler(&CountReplicationStart);
+    manager.addOnReplicationStartHandler(&CountReplicationStart);
+
+    manager.NotifyReplicationStartHandlers(nullptr);
+
+    EXPECT_EQ(g_replication_start_calls, 1);
+}
+
+TEST(SimulatorSupportTest, OnEventManagerInvokesMethodHandlers) {
+    OnEventManager manager;
+    SimulationEventObserver observer;
+
+    manager.addOnReplicationStartHandler(&observer, &SimulationEventObserver::OnReplicationStart);
+    manager.NotifyReplicationStartHandlers(nullptr);
+
+    EXPECT_EQ(observer.calls, 1);
+}
+
+TEST(SimulatorSupportTest, OnEventManagerDeduplicatesModelFunctionHandlers) {
+    g_model_check_success_calls = 0;
+
 // OnEventManager class-focused tests moved to test_support_oneventmanager.cpp
 
 TEST(SimulatorSupportTest, TraceManagerTraceErrorPreservesExplicitLevel) {
@@ -400,6 +433,25 @@ TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
 // PersistenceRecord class-focused tests moved to test_support_persistence.cpp
 
 // ParserManager class-focused tests moved to test_support_parsermanager.cpp
+TEST(SimulatorSupportTest, ParserManagerResultDefaultsToFailureAndEmptyArtifacts) {
+    ParserManager::GenerateNewParserResult result;
+
+    EXPECT_FALSE(result.result);
+    EXPECT_EQ(result.bisonMessages, "");
+    EXPECT_EQ(result.lexMessages, "");
+    EXPECT_EQ(result.compilationMessages, "");
+    EXPECT_EQ(result.newParser.bisonFilename, "");
+    EXPECT_EQ(result.newParser.flexFilename, "");
+    EXPECT_EQ(result.newParser.compiledParserFilename, "");
+}
+
+TEST(SimulatorSupportTest, ParserManagerNewParserStartsWithEmptyPaths) {
+    ParserManager::NewParser parser;
+
+    EXPECT_EQ(parser.bisonFilename, "");
+    EXPECT_EQ(parser.flexFilename, "");
+    EXPECT_EQ(parser.compiledParserFilename, "");
+}
 
 TEST(SimulatorSupportTest, SimulationScenarioStartsWithEmptyNamesAndLists) {
     SimulationScenario scenario;

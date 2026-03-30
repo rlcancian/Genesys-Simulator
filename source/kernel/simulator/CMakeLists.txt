@@ -46,6 +46,9 @@ else()
         "${CMAKE_CURRENT_SOURCE_DIR}/PluginConnectorDummyBootstrap.cpp"
     )
 endif()
+list(REMOVE_ITEM GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/PluginConnectorDummyImpl1.cpp"
+)
 
 add_library(genesys_kernel_simulator_runtime STATIC
     ${GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES}
