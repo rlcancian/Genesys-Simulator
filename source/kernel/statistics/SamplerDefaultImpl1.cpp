@@ -12,12 +12,35 @@
  * 22/10/2019 old genesys code reinserted
  */
 
+#include <cassert>
 #include <cmath>
 #include <complex>
-#include <cassert>
 #include <random>
 
 #include "SamplerDefaultImpl1.h"
+
+namespace {
+
+constexpr double kTwoPi = 6.283185307179586476925286766559;
+
+SamplerDefaultImpl1::DefaultImpl1RNG_Parameters* asDefaultParams(Sampler_if::RNG_Parameters* base) {
+	return static_cast<SamplerDefaultImpl1::DefaultImpl1RNG_Parameters*> (base);
+}
+
+const SamplerDefaultImpl1::DefaultImpl1RNG_Parameters* asDefaultParams(const Sampler_if::RNG_Parameters* base) {
+	return static_cast<const SamplerDefaultImpl1::DefaultImpl1RNG_Parameters*> (base);
+}
+
+// Generate values in (0, 1) to avoid singularities in log/Box-Muller transforms.
+double randomOpen01(SamplerDefaultImpl1& sampler) {
+	double u;
+	do {
+		u = sampler.random();
+	} while (u <= 0.0 || u >= 1.0);
+	return u;
+}
+
+}
 
 //using namespace GenesysKernel;
 
@@ -33,12 +56,13 @@ SamplerDefaultImpl1::~SamplerDefaultImpl1() {
 }
 
 void SamplerDefaultImpl1::reset() {
-	_xi = static_cast<DefaultImpl1RNG_Parameters*> (_param)->seed;
+	const auto* params = asDefaultParams(_param);
+	_xi = params->seed;
 	_normalflag = false;
 }
 
 void SamplerDefaultImpl1::setRNGparameters(Sampler_if::RNG_Parameters * param) {
-	if (_param == param) {
+	if (_param == param || param == nullptr) {
 		return;
 	}
 	if (_ownsParam) {
@@ -46,6 +70,7 @@ void SamplerDefaultImpl1::setRNGparameters(Sampler_if::RNG_Parameters * param) {
 	}
 	_param = param; // there is a better solution for this...
 	_ownsParam = false;
+	reset();
 }
 
 Sampler_if::RNG_Parameters * SamplerDefaultImpl1::getRNGparameters() const {
@@ -53,65 +78,70 @@ Sampler_if::RNG_Parameters * SamplerDefaultImpl1::getRNGparameters() const {
 }
 
 double SamplerDefaultImpl1::random() {
-	unsigned long a = static_cast<DefaultImpl1RNG_Parameters*> (_param)->a;
-	unsigned long m = static_cast<DefaultImpl1RNG_Parameters*> (_param)->m;
-	_xi = (uint64_t) _xi * a % m; //@TODO: Check the target-architecture and choose 64 or 32 bits
-	//unsigned long c = static_cast<DefaultImpl1RNG_Parameters*> (_param)->c;
-	// _xi = ((uint64_t)_xi * a + c) % m;
-	return (double) (_xi) / (double) (m);
+	const auto* params = asDefaultParams(_param);
+	const uint32_t a = params->a;
+	const uint32_t m = params->m;
+	assert(m > 0);
+	_xi = static_cast<uint64_t> (_xi) * a % m;
+	return static_cast<double> (_xi) / static_cast<double> (m);
 }
 
 double SamplerDefaultImpl1::sampleUniform(double min, double max) {
+	assert(min <= max);
 	return min + (max - min) * random();
 }
 
 double SamplerDefaultImpl1::sampleExponential(double mean, double offset) {
-	return offset + mean * (-std::log(random()));
+	assert(mean >= 0.0);
+	return offset + mean * (-std::log(randomOpen01(*this)));
 }
 
 double SamplerDefaultImpl1::sampleErlang(double mean, int M, double offset) {
-	int i;
-	double P;
 	assert((mean >= 0.0) && (M > 0));
-	P = 1;
-	for (i = 1; i <= M; i++) {
-		P *= random();
+	double P = 1.0;
+	for (int i = 0; i < M; i++) {
+		P *= randomOpen01(*this);
 	}
-	return offset + (mean / M) * (-log(P));
+	return offset + (mean / M) * (-std::log(P));
 }
 
 double SamplerDefaultImpl1::sampleNormal(double mean, double stddev) {
+	assert(stddev >= 0.0);
 	double z;
 	if (_normalflag) {
 		z = _lastnormal;
 	} else {
-		double u1 = random(), u2 = random();
-		z = std::sqrt(-2 * std::log(u1)) * std::sin(2 * M_PI * u2);
-		_lastnormal = std::sqrt(-2 * std::log(u1)) * std::cos(2 * M_PI * u2);
+		const double u1 = randomOpen01(*this);
+		const double u2 = randomOpen01(*this);
+		const double r = std::sqrt(-2.0 * std::log(u1));
+		const double theta = kTwoPi * u2;
+		z = r * std::sin(theta);
+		_lastnormal = r * std::cos(theta);
 	}
 	_normalflag = !_normalflag;
-	return mean + stddev*z;
+	return mean + stddev * z;
 }
 
 double SamplerDefaultImpl1::sampleLogNormal(double mean, double stddev, double offset) {
-	double meanNorm, DispNorm;
-	//assert(!((mean <= 0.0) || (stddev <= 0.0)));
-	DispNorm = log((stddev * stddev) / (mean * mean) + 1.0);
-	meanNorm = log(mean) - 0.5 * DispNorm;
-	return offset + exp(sampleNormal(meanNorm, sqrt(DispNorm)));
+	assert(mean > 0.0);
+	assert(stddev >= 0.0);
+	const double dispersionNorm = std::log((stddev * stddev) / (mean * mean) + 1.0);
+	const double meanNorm = std::log(mean) - 0.5 * dispersionNorm;
+	return offset + std::exp(sampleNormal(meanNorm, std::sqrt(dispersionNorm)));
 }
 
 double SamplerDefaultImpl1::sampleTriangular(double min, double mode, double max) {
-	double Part1, Part2, Full, R;
 	assert(!((min > mode) || (max < mode) || (min > max)));
-	Part1 = mode - min;
-	Part2 = max - mode;
-	Full = max - min;
-	R = random();
-	if (R <= Part1 / Full)
-		return min + sqrt(Part1 * Full * R);
-	else
-		return max - sqrt(Part2 * Full * (1.0 - R));
+	const double part1 = mode - min;
+	const double part2 = max - mode;
+	const double full = max - min;
+	if (full == 0.0) {
+		return min;
+	}
+	const double r = random();
+	if (r <= part1 / full)
+		return min + std::sqrt(part1 * full * r);
+	return max - std::sqrt(part2 * full * (1.0 - r));
 }
 
 double SamplerDefaultImpl1::sampleDiscrete(double prob, double value, ...) {
@@ -120,9 +150,11 @@ double SamplerDefaultImpl1::sampleDiscrete(double prob, double value, ...) {
 }
 
 double SamplerDefaultImpl1::sampleDiscrete(double *prob, double *value, int size) {
-	double cdf = 0;
-	double x;
-	x = random();
+	assert(prob != nullptr);
+	assert(value != nullptr);
+	assert(size > 0);
+	double cdf = 0.0;
+	const double x = random();
 	for (int i = 0; i < size; i++) {
 		cdf += prob[i];
 		if (x <= cdf) {
@@ -185,53 +217,56 @@ double SamplerDefaultImpl1::sampleGamma(double mean, double alpha) {
  */
 
 double SamplerDefaultImpl1::sampleGamma(double alpha, double beta, double offset) {
-	double u, v, w, delta;
-	double eps;
-	double nt;
-	int n;
-	n = floor(alpha);
-	delta = alpha - n;
-	while (1) {
-		u = random();
-		v = random();
-		w = random();
-		if (u <= (M_E / (M_E + delta))) {
-			eps = pow(v, 1 / delta);
-			nt = w * pow(eps, delta - 1);
-		} else {
-			eps = 1 - log(v);
-			nt = w * exp(-eps);
-		}
-		if (nt > (pow(eps, delta - 1) * exp(-eps))) {
-			continue;
-		}
-		break;
+	assert(alpha > 0.0);
+	assert(beta > 0.0);
+
+	if (alpha < 1.0) {
+		const double g = sampleGamma(alpha + 1.0, beta);
+		const double u = randomOpen01(*this);
+		return offset + g * std::pow(u, 1.0 / alpha);
 	}
-	double gamma_n = 0;
-	for (int i = 0; i < n; i++) {
-		gamma_n += log(random());
+
+	const double d = alpha - 1.0 / 3.0;
+	const double c = 1.0 / std::sqrt(9.0 * d);
+
+	while (true) {
+		double x;
+		double v;
+		do {
+			x = sampleNormal(0.0, 1.0);
+			v = 1.0 + c * x;
+		} while (v <= 0.0);
+
+		v = v * v * v;
+		const double u = randomOpen01(*this);
+		const double x2 = x * x;
+		if (u < 1.0 - 0.0331 * x2 * x2) {
+			return offset + beta * d * v;
+		}
+		if (std::log(u) < 0.5 * x2 + d * (1.0 - v + std::log(v))) {
+			return offset + beta * d * v;
+		}
 	}
-	double gamma = beta * (eps - gamma_n);
-	return offset + gamma;
 }
 
 double SamplerDefaultImpl1::sampleBeta(double alpha, double beta, double infLimit, double supLimit) {
+	assert(infLimit <= supLimit);
 	double X = sampleBeta(alpha, beta);
 	return infLimit + (supLimit - infLimit) * X;
 }
 
 double SamplerDefaultImpl1::sampleWeibull(double alpha, double scale) {
 	assert(!((alpha <= 0.0) || (scale <= 0.0)));
-	return exp(log(scale * (-log(random()))) / alpha);
+	return std::exp(std::log(scale * (-std::log(randomOpen01(*this)))) / alpha);
 }
 
 double SamplerDefaultImpl1::sampleBinomial(int trials, double p) {
+	assert(trials >= 0);
+	assert(p >= 0.0 && p <= 1.0);
 	double binomial = 0.0;
-	double U;
 
 	for (int i = 0; i < trials; i++) {
-		U = random();
-		if (U < p) {
+		if (random() < p) {
 			binomial += 1.0;
 		}
 	}
@@ -240,32 +275,32 @@ double SamplerDefaultImpl1::sampleBinomial(int trials, double p) {
 }
 
 double SamplerDefaultImpl1::sampleBernoulli(double p) {
-	double U;
-
-	U = random();
-	if (U <= p) {
+	assert(p >= 0.0 && p <= 1.0);
+	if (random() <= p) {
 		return 1.0;
 	}
 	return 0.0;
 }
 
 double SamplerDefaultImpl1::sampleGeometric(double p) {
-	assert(p > 0 && p <= 1);
-	double rand = random();
-
-	return ceil(log(1 - rand) / log(1 - p));
+	assert(p > 0.0 && p <= 1.0);
+	if (p == 1.0) {
+		return 1.0;
+	}
+	const double u = randomOpen01(*this);
+	return std::ceil(std::log(1.0 - u) / std::log(1.0 - p));
 }
 
 double SamplerDefaultImpl1::sampleGumbell(double mode, double scale) {
-	double x;
-	x = random();
-	return mode - (scale * log(-log(x)));
+	assert(scale > 0.0);
+	const double x = randomOpen01(*this);
+	return mode - (scale * std::log(-std::log(x)));
 }
 
 double SamplerDefaultImpl1::sampleBeta(double alpha, double beta) {
-
-	double x = sampleGamma(alpha, 1);
-	double y = sampleGamma(beta, 1);
+	assert(alpha > 0.0);
+	assert(beta > 0.0);
+	const double x = sampleGamma(alpha, 1.0);
+	const double y = sampleGamma(beta, 1.0);
 	return x / (x + y);
-
 }
