@@ -30,11 +30,6 @@ TraceManager* Simulator::getTraceManager() const {
 
 
 namespace {
-int g_fake_model_construction_count = 0;
-}
-
-
-namespace {
 int g_replication_start_calls = 0;
 
 void CountReplicationStart(SimulationEvent*) {
@@ -82,7 +77,6 @@ struct SimulationEventObserver {
 Model::Model(Simulator* simulator, unsigned int level) {
     (void)simulator;
     (void)level;
-    ++g_fake_model_construction_count;
 }
 
 bool Model::save(std::string filename) {
@@ -259,34 +253,7 @@ TEST(SimulatorSupportTest, ModelInfoSaveAndLoadRoundTrip) {
     EXPECT_FALSE(loaded.hasChanged());
 }
 
-TEST(SimulatorSupportTest, ModelManagerStartsWithoutCurrentModel) {
-    ModelManager manager(nullptr);
-    EXPECT_EQ(manager.current(), nullptr);
-    EXPECT_EQ(manager.size(), 0u);
-}
-
-TEST(SimulatorSupportTest, ModelManagerNewModelSetsCurrentWithoutInsertion) {
-    const int before = g_fake_model_construction_count;
-
-    ModelManager manager(nullptr);
-    Model* model = manager.newModel();
-
-    ASSERT_NE(model, nullptr);
-    EXPECT_EQ(manager.current(), model);
-    EXPECT_EQ(manager.size(), 0u);
-    EXPECT_EQ(g_fake_model_construction_count, before + 1);
-}
-
-TEST(SimulatorSupportTest, ModelManagerSaveModelWithoutCurrentReturnsFalse) {
-    ModelManager manager(nullptr);
-    EXPECT_FALSE(manager.saveModel("dummy.gen"));
-}
-
-TEST(SimulatorSupportTest, ModelManagerSaveModelUsesCurrentModel) {
-    ModelManager manager(nullptr);
-    manager.newModel();
-    EXPECT_TRUE(manager.saveModel("dummy.gen"));
-}
+// ModelManager class-focused tests moved to test_support_modelmanager.cpp
 
 TEST(SimulatorSupportTest, OnEventManagerDeduplicatesFunctionHandlers) {
     g_replication_start_calls = 0;
@@ -507,54 +474,7 @@ TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
     EXPECT_FALSE(plugin.isIsValidPlugin());
 }
 
-TEST(SimulatorSupportTest, PersistenceRecordSaveLoadAndEraseWorkflow) {
-    FakeModelPersistence persistence;
-    PersistenceRecord record(persistence);
-
-    record.saveField("name", std::string("alpha"));
-    record.saveField("count", 7u);
-    record.saveField("ratio", 2.5, 0.0, true);
-
-    EXPECT_EQ(record.size(), 3u);
-    EXPECT_EQ(record.loadField("name", std::string("fallback")), "alpha");
-    EXPECT_EQ(record.loadField("count", 0u), 7u);
-    EXPECT_DOUBLE_EQ(record.loadField("ratio", 0.0), 2.5);
-
-    record.erase("count");
-
-    EXPECT_EQ(record.size(), 2u);
-    EXPECT_EQ(record.loadField("count", 123u), 123u);
-}
-
-TEST(SimulatorSupportTest, PersistenceRecordInsertIteratorRangeCopiesEntries) {
-    FakeModelPersistence persistence;
-    PersistenceRecord source(persistence);
-    PersistenceRecord target(persistence);
-
-    source.saveField("a", std::string("one"));
-    source.saveField("b", 2u);
-
-    target.insert(source.begin(), source.end());
-
-    EXPECT_EQ(target.size(), 2u);
-    EXPECT_EQ(target.loadField("a", std::string("fallback")), "one");
-    EXPECT_EQ(target.loadField("b", 0u), 2u);
-}
-
-TEST(SimulatorSupportTest, PersistenceRecordClearRemovesAllEntries) {
-    FakeModelPersistence persistence;
-    PersistenceRecord record(persistence);
-
-    record.saveField("x", std::string("value"));
-    record.saveField("y", 9u);
-
-    ASSERT_EQ(record.size(), 2u);
-    record.clear();
-
-    EXPECT_EQ(record.size(), 0u);
-    EXPECT_EQ(record.loadField("x", std::string("missing")), "missing");
-    EXPECT_EQ(record.loadField("y", 77u), 77u);
-}
+// PersistenceRecord class-focused tests moved to test_support_persistence.cpp
 
 TEST(SimulatorSupportTest, ParserManagerResultDefaultsToFailureAndEmptyArtifacts) {
     ParserManager::GenerateNewParserResult result;
