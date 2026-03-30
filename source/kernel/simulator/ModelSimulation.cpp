@@ -60,6 +60,28 @@ ModelSimulation::ModelSimulation(Model* model) {
 					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "TerminatingCondition"));
 }
 
+ModelSimulation::~ModelSimulation() {
+	if (_cstatsAndCountersSimulation != nullptr) {
+		for (ModelDataDefinition* data : *_cstatsAndCountersSimulation->list()) {
+			delete data;
+		}
+		delete _cstatsAndCountersSimulation;
+		_cstatsAndCountersSimulation = nullptr;
+	}
+	delete _cstatsAndCountersMapSimulation;
+	_cstatsAndCountersMapSimulation = nullptr;
+	delete _breakpointsOnTime;
+	_breakpointsOnTime = nullptr;
+	delete _breakpointsOnComponent;
+	_breakpointsOnComponent = nullptr;
+	delete _breakpointsOnEntity;
+	_breakpointsOnEntity = nullptr;
+	if (_ownsSimulationReporter) {
+		delete _simulationReporter;
+	}
+	_simulationReporter = nullptr;
+}
+
 std::string ModelSimulation::show() {
 	return "numberOfReplications="+std::to_string(_numberOfReplications)+
 			",replicationLength="+std::to_string(_replicationLength)+" "+Util::StrTimeUnitLong(this->_replicationLengthTimeUnit)+
@@ -578,7 +600,14 @@ unsigned int ModelSimulation::getCurrentReplicationNumber() const {
 //}
 
 void ModelSimulation::setReporter(SimulationReporter_if* _simulationReporter) {
+	if (this->_simulationReporter == _simulationReporter) {
+		return;
+	}
+	if (_ownsSimulationReporter) {
+		delete this->_simulationReporter;
+	}
 	this->_simulationReporter = _simulationReporter;
+	_ownsSimulationReporter = false;
 }
 
 SimulationReporter_if* ModelSimulation::getReporter() const {
