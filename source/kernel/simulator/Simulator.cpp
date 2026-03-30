@@ -47,10 +47,21 @@ Simulator::Simulator() {
 	_pluginManager = new PluginManager(this);
 	_modelManager = new ModelManager(this);
 	_traceManager = new TraceManager(this);
+	_parserManager = new ParserManager();
 	_experimentManager = new ExperimentManager(this);
 	std::cout << '|' << '\t' << _licenceManager->showLicence() << std::endl;
     std::cout << '|' << '\t' << _licenceManager->showActivationCode() << std::endl;
     std::cout << '|' << '\t' << _licenceManager->showLimits() << std::endl;
+}
+
+
+Simulator::~Simulator() {
+	delete _experimentManager;
+	delete _parserManager;
+	delete _traceManager;
+	delete _modelManager;
+	delete _pluginManager;
+	delete _licenceManager;
 }
 
 PluginManager* Simulator::getPluginManager() const {

@@ -306,7 +306,7 @@ char Util::DirSeparator() {
 #ifdef __linux__
     return '/';
 #elif _WIN32
-    return '\';
+    return '\\';
 #else
     return '/';
 #endif
@@ -393,5 +393,10 @@ bool Util::FileExists(const std::string& name) {
 //-------------------
 
 Util::CommandResult Util::ExecuteCommand(std::string command) {
+    (void)command;
 
+    CommandResult result;
+    result.success = false;
+    result.commandErrOutput = "Not implemented";
+    return result;
 }

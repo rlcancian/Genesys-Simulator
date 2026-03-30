@@ -6,7 +6,7 @@
 
 /*
  * File:   DefaultNode.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 01 de Julho de 2025, 14:26
  */
@@ -162,6 +162,6 @@ void DefaultNode::_createInternalAndAttachedData() {
 */
 
 /*
-void DefaultNode::_addProperty(PropertyBase* property) {
+void DefaultNode::_addProperty(SimulationControl* property) {
 }
 */

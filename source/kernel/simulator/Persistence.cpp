@@ -16,6 +16,7 @@ void PersistenceRecord::insert(PersistenceRecord::Entry entry) {
 }
 
 void PersistenceRecord::insert(Iterator it, Iterator end) {
+	/// Insert the raw entry payload from the source iterator range.
 	for (; it != end; ++it) insert(it->second);
 }
 

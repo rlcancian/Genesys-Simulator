@@ -6,7 +6,7 @@
 
 /*
  * File:   DefaultModalModel.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 01 de Julho de 2025, 14:26
  */
@@ -174,6 +174,6 @@ void DefaultModalModel::_createInternalAndAttachedData() {
 */
 
 /*
-void DefaultModalModel::_addProperty(PropertyBase* property) {
+void DefaultModalModel::_addProperty(SimulationControl* property) {
 }
 */

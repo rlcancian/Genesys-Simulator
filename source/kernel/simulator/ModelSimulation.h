@@ -6,7 +6,7 @@
 
 /*
  * File:   ModelSimulation.h
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 7 de Novembro de 2018, 18:04
  */
@@ -30,13 +30,30 @@ class Model;
  * The ModelSimulation controls the simulation of a model, alowing to start, pause, resume e stop a simulation, composed by
  * a set of replications.
  */
+/**
+ * @brief Controls the mature, currently functional simulation-execution layer of a model.
+ *
+ * Historically, this class has been the original and operational experiment
+ * mechanism in GenESyS. It already supports the core execution workflow based on
+ * replications, replication length, warm-up configuration and event processing.
+ *
+ * Later experiment-oriented classes such as SimulationExperiment and
+ * SimulationScenario were introduced as an attempt to move richer
+ * design-of-experiments concerns into the kernel. Those newer classes are still
+ * under development, while ModelSimulation remains the stable execution core.
+ */
 class ModelSimulation { // 202104 to be subjected to SimulationScenario
 public:
 	ModelSimulation(Model* model);
 	virtual ~ModelSimulation() = default;
 public:
 	std::string show();
+// TODO(genesys|experiment-layer|architecture): Keep ModelSimulation as the stable
+// execution core while the higher-level experiment abstractions mature.
+// Any migration of responsibilities to SimulationExperiment/SimulationScenario
+// should preserve the already functional replication-based workflow here.
 public: // simulation control
+	/// @todo Revisit how this class should interact with the unfinished higher-level experiment layer.
 	void start(); //!< Starts a sequential execution of a simulation, ie, a set of replications of this model.
 	void pause(); //!<
 	void step(); //!< Executes the processing of a single event, the next one in the future events list.
@@ -149,6 +166,8 @@ private:
 		const bool showReportsAfterSimulation = true;
 		const bool showReportsAfterReplication = true;
 		const bool showSimulationControlsInReport = true;
+	// TODO(genesys|model-simulation|naming): Review legacy spelling such as
+	// _showSimulationResposesInReport and rename carefully once all callers are mapped.
 		const bool showSimulationResposesInReport = false;
 	} DEFAULT;
 	unsigned int _numberOfReplications = DEFAULT.numberOfReplications;

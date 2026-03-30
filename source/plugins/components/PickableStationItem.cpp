@@ -5,7 +5,7 @@
 
 /*
  * File:   PickableStationItem.cpp
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 1 de dezembro de 2022, 14:00
  */
@@ -121,11 +121,11 @@ void PickableStationItem::setStation(Station* _station) {
     this->_station = _station;
 }
 
-void PickableStationItem::_addProperty(PropertyBase* property) {
+void PickableStationItem::_addProperty(SimulationControl* property) {
     _properties->insert(property);
 }
 
-List<PropertyBase*>* PickableStationItem::getProperties() const {
+List<SimulationControl*>* PickableStationItem::getProperties() const {
     return _properties;
 }
 

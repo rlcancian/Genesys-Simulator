@@ -52,19 +52,19 @@ const std::string LicenceManager::showLimits() const {
 
 const std::string LicenceManager::showActivationCode() const {
 	if (_activationCode == "")
-		return "ACTIVATION CODE: " + _activationCode;
-	else
 		return "ACTIVATION CODE: Not found.";
+	else
+		return "ACTIVATION CODE: " + _activationCode;
 }
 
 bool LicenceManager::lookforActivationCode() {
 	// @TODO: Not implemented yet
-	return false;
+    return true; // if not implemented then return true, as if found an activation code
 }
 
 bool LicenceManager::insertActivationCode() {
 	// @TODO: Not implemented yet
-	return false;
+    return false;
 }
 
 void LicenceManager::removeActivationCode() {

@@ -53,6 +53,8 @@ public:
 	std::string getPluginTypename() const;
 	// sets
 	void insertDynamicLibFileDependence(std::string filename);
+	// TODO(genesys|plugin-information|ownership): Clarify ownership for the incoming list pointer.
+	// This setter currently replaces the internal raw pointer without documenting transfer semantics.
 	void setDynamicLibFilenameDependencies(std::list<std::string>* dynamicLibFilenameDependencies);
 	std::list<std::string>* getDynamicLibFilenameDependencies() const;
 	void setGenerateReport(bool generateReport);
@@ -74,6 +76,8 @@ public:
 	unsigned short getMinimumInputs() const;
 	void setDescriptionHelp(std::string _descriptionHelp);
 	std::string getDescriptionHelp() const;
+	// TODO(genesys|plugin-information|ownership): Clarify ownership for the incoming fields map.
+	// This setter currently replaces the internal raw pointer without documenting lifetime expectations.
 	void setFields(std::map<std::string, std::string>* _fiewlds);
 	std::map<std::string, std::string>* getFields() const;
 	void setLanguageTemplate(std::string _languageTemplate);

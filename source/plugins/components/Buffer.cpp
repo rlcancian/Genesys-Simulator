@@ -6,7 +6,7 @@
 
 /*
  * File:   Buffer.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on
  */
@@ -197,7 +197,7 @@ void Buffer::_createInternalAndAttachedData() {
 	}
 }
 
-void Buffer::_addProperty(PropertyBase* property) {
+void Buffer::_addProperty(SimulationControl* property) {
 }
 
 

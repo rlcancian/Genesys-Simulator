@@ -5,7 +5,7 @@
 
 /* 
  * File:   Schedule.cpp
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 14 de dezembro de 2022, 04:24
  */
@@ -147,7 +147,7 @@ ParserChangesInformation* Schedule::_getParserChangesInformation() {
 	return changes;
 }
 
-void Schedule::_addProperty(PropertyBase* property) {
+void Schedule::_addProperty(SimulationControl* property) {
 
 }
 

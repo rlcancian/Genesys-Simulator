@@ -6,7 +6,7 @@
 
 /* 
  * File:   SimulationExperiment.cpp
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 4 de maio de 2021, 15:10
  */
@@ -14,6 +14,7 @@
 #include "SimulationExperiment.h"
 
 SimulationExperiment::SimulationExperiment() {
+	/// @todo Implement higher-level experiment composition and scenario orchestration here.
 }
 
 

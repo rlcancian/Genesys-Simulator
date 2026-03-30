@@ -5,7 +5,7 @@
 
 /*
  * File:   DummyElement.h
- * Author: rlcancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  *
  * Created on 11 de janeiro de 2022, 22:26
  */
@@ -46,7 +46,7 @@ protected: /// virtual protected methods that could be overriden by derived clas
 	/*! This method is called by ModelChecker and is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
 	// virtual void _createInternalAndAttachedData(); /*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
 	/*! This method is not used yet. It should be usefull for new UIs */
-	// virtual void _addProperty(PropertyBase* property);
+	// virtual void _addProperty(SimulationControl* property);
 
 private: /// new private user methods
 	// ...

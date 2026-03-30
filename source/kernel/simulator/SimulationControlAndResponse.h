@@ -10,6 +10,17 @@
 //namespace GenesysKernel {
 
 
+/**
+ * @brief Base metadata for kernel-side control/response abstractions.
+ *
+ * Historically, the experiment layer in GenESyS evolved from the basic
+ * ModelSimulation controls toward a more generic mechanism capable of exposing
+ * arbitrary getters and setters from model-related classes.
+ *
+ * Despite the legacy name, this base currently lives in the simulation kernel
+ * and supports kernel-side experiment/control abstractions rather than a
+ * user-interface property editor.
+ */
 class PropertyGenesysBase {
 public:
     PropertyGenesysBase(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false) {
@@ -94,10 +105,38 @@ protected:
 	bool _isSubProperty;
 };
 
-class SimulationControl: public PropertyGenesysBase {
+/**
+ * @brief Read-only kernel-side simulation response abstraction.
+ *
+ * This is the intended kernel-level base for generic getter-based access to
+ * observable model attributes, statistics and experiment responses.
+ */
+class SimulationResponse: public PropertyGenesysBase {
+public:
+    SimulationResponse(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false)
+        : PropertyGenesysBase(className, elementName, propertyName, whatsThis, isList, isClass, isEnum) {
+    }
+    virtual ~SimulationResponse() = default;
+public:
+	std::string show() const {
+		std::string msg = "classname="+_className+ ", elementName="+_elementName+", name=\"" + _propertyName + "\"";
+		msg += ", value="+getValue();
+		return msg;
+	}
+	virtual std::string getValue() const = 0;
+	virtual List<std::string>* getStrValues() { return nullptr; };
+};
+
+/**
+ * @brief Read/write kernel-side simulation control abstraction.
+ *
+ * SimulationControl extends SimulationResponse with setter-based mutation and
+ * therefore represents writable kernel-side experiment controls.
+ */
+class SimulationControl: public SimulationResponse {
 public:
     SimulationControl(std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false,  bool isClass=false, bool isEnum=false)
-        : PropertyGenesysBase(className, elementName, propertyName, whatsThis, isList, isClass){
+        : SimulationResponse(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 	}
 	std::string show() const {
 		std::string msg = "classname="+_className+ ", elementName="+_elementName+", name=\""+_propertyName+"\"";
@@ -110,15 +149,28 @@ public:
 	}
 	bool isReadOnly() const { return _readonly; }
 public:
-	virtual std::string getValue() const  = 0;
     virtual void setValue(std::string value, bool remove=false) = 0;
     virtual List<SimulationControl*>* getProperties(int index=0) { return nullptr; };
-    virtual List<std::string>* getStrValues() { return nullptr; };
 protected:
-	bool _readonly;
+	bool _readonly = false;
 };
 
 // -----------------------------------------------------------
+
+template<typename Class, typename T>
+std::function<T()> DefineSimulationGetter(Class* object, T(Class::*function)() const) {
+	return std::bind(function, object);
+}
+
+template<typename Class, typename T>
+std::function<T()> DefineSimulationGetter(Class* object, T(Class::*function)()) {
+	return std::bind(function, object);
+}
+
+template<typename Class, typename T>
+std::function<void(T)> DefineSimulationSetter(Class* object, void (Class::*function)(T)) {
+	return std::bind(function, object, std::placeholders::_1);
+}
 
 typedef std::function<std::string()> GetterString;
 typedef std::function<void(std::string)> SetterString;
@@ -146,6 +198,20 @@ private:
 
 typedef std::function<double()> GetterDouble;
 typedef std::function<void(double)> SetterDouble;
+
+class SimulationResponseDouble: public SimulationResponse {
+public:
+    SimulationResponseDouble(GetterDouble getter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false)
+        : SimulationResponse(className, elementName, propertyName, whatsThis, isList, isClass, isEnum) {
+        _getter = getter;
+        _propertyType = Util::TypeOf<double>();
+    }
+public:
+    virtual std::string getValue() const override { return std::to_string(_getter()); }
+private:
+    GetterDouble _getter;
+};
+
 class SimulationControlDouble: public SimulationControl {
 public:
 //	SimulationControlDouble(GetterDouble getter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="") : SimulationControl(className, elementName, propertyName, whatsThis) {
@@ -289,6 +355,9 @@ private:
 };
 
 
+// TODO(genesys|kernel-controls|migration): This compatibility alias keeps the current
+// kernel API working while the codebase migrates from the legacy PropertyBase
+// naming toward explicit SimulationResponse/SimulationControl types.
 typedef SimulationControl PropertyBase;
 
 // -----------------------------------------------------------

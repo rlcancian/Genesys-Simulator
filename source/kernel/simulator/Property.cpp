@@ -159,7 +159,7 @@ void PropertySetterBool::setValue(bool value)
 	_setter(value);
 }
 
-void PropertyBase::setName(const std::string&name)
+void LegacyPropertyBase::setName(const std::string&name)
 {
 	_name = name;
 }

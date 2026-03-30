@@ -6,7 +6,7 @@
 
 /* 
  * File:   Dummy.cpp
- * Author: rafael.luiz.cancian
+ * Author: Prof. Rafael Luiz Cancian, Dr. Eng.
  * 
  * Created on 22 de Maio de 2019, 18:41
  */
@@ -162,6 +162,6 @@ void DummyComponent::_createInternalAndAttachedData() {
 */
 
 /*
-void DummyComponent::_addProperty(PropertyBase* property) {
+void DummyComponent::_addProperty(SimulationControl* property) {
 }
 */
