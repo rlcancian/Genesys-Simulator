@@ -343,8 +343,8 @@ void ModelSimulation::_initReplication() {
 	{
 		Util::ResetIdOfType(Util::TypeOf<Entity>());
 		Util::ResetIdOfType(Util::TypeOf<Event>());
-		for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it!=_model->getComponentManager()->end(); it++) {
-			ModelComponent::InitBetweenReplications((*it));
+		for (auto it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); ++it) {
+			ModelComponent::InitBetweenReplications(*it);
 		}
 		// init all elements between replications
 		std::list<std::string>* elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
@@ -367,14 +367,14 @@ void ModelSimulation::_clearStatistics() {
 	//@Todo create a OnClearStatistics event handler
 	StatisticsCollector* cstat;
 	List<ModelDataDefinition*>* list = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());
-	for (std::list<ModelDataDefinition*>::iterator it = list->list()->begin(); it!=list->list()->end(); it++) {
-		cstat = (StatisticsCollector*) (*it);
+	for (ModelDataDefinition* modelData : *list->list()) {
+		cstat = static_cast<StatisticsCollector*>(modelData);
 		cstat->getStatistics()->getCollector()->clear();
 	}
 	Counter* counter;
 	list = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<Counter>());
-	for (std::list<ModelDataDefinition*>::iterator it = list->list()->begin(); it!=list->list()->end(); it++) {
-		counter = (Counter*) (*it);
+	for (ModelDataDefinition* modelData : *list->list()) {
+		counter = static_cast<Counter*>(modelData);
 		counter->clear();
 	}
 }
@@ -473,8 +473,8 @@ bool ModelSimulation::_checkBreakpointAt(Event* event) {
 		}
 	}
 	double time;
-	for (std::list<double>::iterator it = _breakpointsOnTime->list()->begin(); it!=_breakpointsOnTime->list()->end(); it++) {
-		time = (*it);
+	for (double breakpointTime : *_breakpointsOnTime->list()) {
+		time = breakpointTime;
 		if (_simulatedTime<time&&event->getTime()>=time) {
 			if (_justTriggeredBreakpointsOnTime==time) { // just trrigered this breakpoint
 				_justTriggeredBreakpointsOnTime = 0.0;
