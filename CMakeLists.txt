@@ -5,6 +5,7 @@ project(GenesysSimulator LANGUAGES CXX)
 option(GENESYS_BUILD_GUI "Build Qt GUI application" OFF)
 option(GENESYS_BUILD_TESTS "Build tests" ON)
 option(GENESYS_BUILD_PLUGINS "Build plugins as shared libraries" OFF)
+option(GENESYS_BUILD_WEB "Build web webhook application" OFF)
 option(GENESYS_BOOTSTRAP_MINIMAL_RUNTIME "Use minimal runtime plugin connector during CMake bootstrap" ON)
 
 set(CMAKE_CXX_STANDARD 23)
@@ -17,6 +18,7 @@ message(STATUS "Configuring GenesysSimulator")
 message(STATUS "GENESYS_BUILD_GUI=${GENESYS_BUILD_GUI}")
 message(STATUS "GENESYS_BUILD_TESTS=${GENESYS_BUILD_TESTS}")
 message(STATUS "GENESYS_BUILD_PLUGINS=${GENESYS_BUILD_PLUGINS}")
+message(STATUS "GENESYS_BUILD_WEB=${GENESYS_BUILD_WEB}")
 message(STATUS "GENESYS_BOOTSTRAP_MINIMAL_RUNTIME=${GENESYS_BOOTSTRAP_MINIMAL_RUNTIME}")
 
 add_subdirectory(source/kernel/util)
@@ -34,6 +36,10 @@ add_custom_target(genesys_kernel
         genesys_kernel_simulator_support
         genesys_kernel_simulator_runtime
 )
+
+if(GENESYS_BUILD_WEB)
+    add_subdirectory(source/applications/web)
+endif()
 
 if(GENESYS_BUILD_TESTS)
     find_package(GTest CONFIG QUIET)
