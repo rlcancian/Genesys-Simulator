@@ -25,6 +25,16 @@ add_subdirectory(source/parser)
 add_subdirectory(source/plugins/data)
 add_subdirectory(source/kernel/simulator)
 
+add_custom_target(genesys_kernel
+    DEPENDS
+        genesys_kernel_util
+        genesys_kernel_statistics
+        genesys_parser
+        genesys_plugins_data
+        genesys_kernel_simulator_support
+        genesys_kernel_simulator_runtime
+)
+
 if(GENESYS_BUILD_TESTS)
     find_package(GTest CONFIG QUIET)
     if(NOT GTest_FOUND)
@@ -44,4 +54,6 @@ if(GENESYS_BUILD_TESTS)
     endif()
 
     add_subdirectory(source/tests)
+
+    add_dependencies(genesys_tests genesys_kernel)
 endif()
