@@ -1,72 +1,60 @@
 cmake_minimum_required(VERSION 3.24)
 
-project(GenesysSimulator LANGUAGES CXX)
+project(GenesysTerminalSingleBuild LANGUAGES CXX)
 
-option(GENESYS_TERMINAL_APPLICATION "Build terminal application target" ON)
-option(GENESYS_BUILD_GUI_APPLICATION "Build Qt GUI application" OFF)
-option(GENESYS_BUILD_WEB_APPLICATION "Build web webhook application" OFF)
-option(GENESYS_BUILD_TESTS "Build tests" ON)
-option(GENESYS_BUILD_PLUGINS "Build plugins as shared libraries" OFF)
-option(GENESYS_BUILD_KERNEL "Build kernel as shared libraries" OFF)
-option(GENESYS_BUILD_PARSER "Build parser as shared libraries" OFF)
-option(GENESYS_BUILD_TOOLS "Build tools as shared libraries" OFF)
+option(GENESYS_BUILD_TERMINAL_MAIN "Build only source/applications/terminal/main.cpp executable" ON)
+
+if(NOT GENESYS_BUILD_TERMINAL_MAIN)
+    message(FATAL_ERROR "GENESYS_BUILD_TERMINAL_MAIN must remain ON in the emergency single-build setup")
+endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 
-include(CTest)
-
-message(STATUS "Configuring GenesysSimulator")
-message(STATUS "GENESYS_BUILD_GUI=${GENESYS_BUILD_GUI_APPLICATION}")
-message(STATUS "GENESYS_BUILD_TESTS=${GENESYS_BUILD_TESTS}")
-message(STATUS "GENESYS_BUILD_PLUGINS=${GENESYS_BUILD_PLUGINS}")
-message(STATUS "GENESYS_BUILD_WEB=${GENESYS_BUILD_WEB_APPLICATION}")
-message(STATUS "GENESYS_TERMINAL_APPLICATION=${GENESYS_TERMINAL_APPLICATION}")
-
-add_subdirectory(source/kernel/util)
-add_subdirectory(source/kernel/statistics)
-add_subdirectory(source/parser)
-add_subdirectory(source/plugins)
-add_subdirectory(source/kernel/simulator)
-
-if(GENESYS_TERMINAL_APPLICATION)
-    add_subdirectory(source/applications/terminal)
-endif()
-
-add_custom_target(genesys_kernel
-    DEPENDS
-        genesys_kernel_util
-        genesys_kernel_statistics
-        genesys_parser
-        genesys_plugins_data
-        genesys_kernel_simulator_support
-        genesys_kernel_simulator_runtime
+file(GLOB GENESYS_KERNEL_UTIL_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/source/kernel/util/*.cpp"
+)
+file(GLOB GENESYS_KERNEL_STATISTICS_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/source/kernel/statistics/*.cpp"
+)
+file(GLOB GENESYS_KERNEL_SIMULATOR_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/source/kernel/simulator/*.cpp"
+)
+file(GLOB GENESYS_PARSER_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/source/parser/*.cpp"
+)
+file(GLOB GENESYS_PLUGINS_DATA_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_SOURCE_DIR}/source/plugins/data/*.cpp"
 )
 
-if(GENESYS_BUILD_WEB_APPLICATION)
-    add_subdirectory(source/applications/web)
-endif()
+set(GENESYS_TERMINAL_ONLY_SOURCES
+    ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
+    ${CMAKE_SOURCE_DIR}/source/applications/terminal/main.cpp
+    ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
+    ${CMAKE_SOURCE_DIR}/source/applications/terminal/examples/smarts/Smart_SeizeDelayReleaseMany.cpp
+    ${CMAKE_SOURCE_DIR}/source/plugins/components/Create.cpp
+    ${CMAKE_SOURCE_DIR}/source/plugins/components/Dispose.cpp
+    ${CMAKE_SOURCE_DIR}/source/plugins/components/Seize.cpp
+    ${CMAKE_SOURCE_DIR}/source/plugins/components/SeizableItem.cpp
+    ${CMAKE_SOURCE_DIR}/source/plugins/components/QueueableItem.cpp
+    ${CMAKE_SOURCE_DIR}/source/plugins/components/Delay.cpp
+    ${CMAKE_SOURCE_DIR}/source/plugins/components/Release.cpp
+    ${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorStaticImpl1.cpp
+)
 
-if(GENESYS_BUILD_TESTS)
-    find_package(GTest CONFIG QUIET)
-    if(NOT GTest_FOUND)
-        message(STATUS "GTest package not found. Falling back to bundled source/gtest.")
-        add_library(gtest STATIC source/gtest/src/gtest-all.cc)
-        target_include_directories(gtest
-            PUBLIC
-                ${CMAKE_SOURCE_DIR}/source/gtest
-        )
-        target_compile_features(gtest PUBLIC cxx_std_20)
+add_executable(genesys_terminal_main
+    ${GENESYS_KERNEL_UTIL_SOURCES}
+    ${GENESYS_KERNEL_STATISTICS_SOURCES}
+    ${GENESYS_KERNEL_SIMULATOR_SOURCES}
+    ${GENESYS_PARSER_SOURCES}
+    ${GENESYS_PLUGINS_DATA_SOURCES}
+    ${GENESYS_TERMINAL_ONLY_SOURCES}
+)
 
-        add_library(gtest_main STATIC source/gtest/src/gtest_main.cc)
-        target_link_libraries(gtest_main PUBLIC gtest)
+target_include_directories(genesys_terminal_main
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+)
 
-        add_library(GTest::gtest ALIAS gtest)
-        add_library(GTest::gtest_main ALIAS gtest_main)
-    endif()
-
-    add_subdirectory(source/tests)
-
-    add_dependencies(genesys_tests genesys_kernel)
-endif()
+target_compile_features(genesys_terminal_main PRIVATE cxx_std_23)
