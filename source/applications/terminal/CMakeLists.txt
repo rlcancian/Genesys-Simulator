@@ -27,6 +27,11 @@ target_include_directories(genesys_terminal_application
         ${CMAKE_SOURCE_DIR}/source
 )
 
+target_compile_definitions(genesys_terminal_application
+    PRIVATE
+        GENESYS_TERMINAL_USE_TRAITS_APP=1
+)
+
 target_link_libraries(genesys_terminal_application
     PRIVATE
         genesys_kernel_util
