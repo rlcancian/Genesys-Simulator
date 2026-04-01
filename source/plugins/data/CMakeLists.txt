@@ -16,4 +16,4 @@ target_link_libraries(genesys_plugins_data
         genesys_kernel_util
 )
 
-target_compile_features(genesys_plugins_data PUBLIC cxx_std_20)
+target_compile_features(genesys_plugins_data PUBLIC cxx_std_23)
