@@ -11,7 +11,10 @@ function(genesys_add_unit_test test_target test_source)
             GTest::gtest_main
     )
 
-    gtest_discover_tests(${test_target})
+    gtest_discover_tests(${test_target}
+        PROPERTIES
+            LABELS "unit"
+    )
 
     set_property(TARGET ${test_target} PROPERTY FOLDER tests/unit)
 endfunction()

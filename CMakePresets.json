@@ -11,12 +11,15 @@
       "hidden": true,
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "20",
+        "CMAKE_CXX_STANDARD": "23",
         "CMAKE_CXX_STANDARD_REQUIRED": "ON",
         "CMAKE_CXX_EXTENSIONS": "OFF",
-        "GENESYS_BUILD_GUI": "OFF",
-        "GENESYS_BUILD_PLUGINS": "OFF",
-        "GENESYS_BOOTSTRAP_MINIMAL_RUNTIME": "ON"
+        "GENESYS_BUILD_GUI_APPLICATION": "OFF",
+        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_PLUGINS": "ON",
+        "GENESYS_BUILD_PARSER": "ON",
+        "GENESYS_BUILD_KERNEL": "ON",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
@@ -41,6 +44,38 @@
       "binaryDir": "${sourceDir}/build/debug-kernel",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "tests-unit",
+      "displayName": "Unit Tests Only (Debug)",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/tests-unit",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_SMOKE_TESTS": "OFF",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "terminal-app",
+      "displayName": "Terminal Application (Debug)",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/terminal-app",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_TERMINAL_APPLICATION": "ON"
+      }
+    },
+    {
+      "name": "tests-smoke",
+      "displayName": "Smoke Tests Only (Debug)",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/tests-smoke",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_SMOKE_TESTS": "ON",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
@@ -87,6 +122,27 @@
       ]
     },
     {
+      "name": "tests-unit",
+      "configurePreset": "tests-unit",
+      "targets": [
+        "genesys_kernel_unit_tests"
+      ]
+    },
+    {
+      "name": "terminal-app",
+      "configurePreset": "terminal-app",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "tests-smoke",
+      "configurePreset": "tests-smoke",
+      "targets": [
+        "genesys_smoke_tests"
+      ]
+    },
+    {
       "name": "release",
       "configurePreset": "release"
     },
@@ -110,6 +166,30 @@
     {
       "name": "asan",
       "configurePreset": "asan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tests-unit",
+      "configurePreset": "tests-unit",
+      "filter": {
+        "include": {
+          "label": "unit"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tests-smoke",
+      "configurePreset": "tests-smoke",
+      "filter": {
+        "include": {
+          "label": "smoke"
+        }
+      },
       "output": {
         "outputOnFailure": true
       }
