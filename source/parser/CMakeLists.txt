@@ -43,4 +43,4 @@ target_link_libraries(genesys_parser
         genesys_plugins_data
 )
 
-target_compile_features(genesys_parser PUBLIC cxx_std_20)
+target_compile_features(genesys_parser PUBLIC cxx_std_23)
