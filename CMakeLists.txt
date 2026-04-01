@@ -27,25 +27,36 @@ message(STATUS "GENESYS_BUILD_KERNEL=${GENESYS_BUILD_KERNEL} (STATIC)")
 message(STATUS "GENESYS_BUILD_PARSER=${GENESYS_BUILD_PARSER} (STATIC)")
 
 
-add_subdirectory(source/kernel/util)
-add_subdirectory(source/kernel/statistics)
-add_subdirectory(source/parser)
-add_subdirectory(source/plugins)
-add_subdirectory(source/kernel/simulator)
+if(GENESYS_BUILD_KERNEL)
+    add_subdirectory(source/kernel/util)
+    add_subdirectory(source/kernel/statistics)
+    add_subdirectory(source/kernel/simulator)
+endif()
+
+if(GENESYS_BUILD_PLUGINS)
+    add_subdirectory(source/plugins)
+endif()
+
+if(GENESYS_BUILD_PARSER)
+    add_subdirectory(source/parser)
+endif()
 
 if(GENESYS_TERMINAL_APPLICATION)
     add_subdirectory(source/applications/terminal)
 endif()
 
-add_custom_target(genesys_kernel
-    DEPENDS
-        genesys_kernel_util
-        genesys_kernel_statistics
-        genesys_parser
-        genesys_plugins_data
-        genesys_kernel_simulator_support
-        genesys_kernel_simulator_runtime
-)
+if(GENESYS_BUILD_KERNEL AND GENESYS_BUILD_PARSER AND GENESYS_BUILD_PLUGINS)
+    add_custom_target(genesys_kernel
+        DEPENDS
+            genesys_kernel_util
+            genesys_kernel_statistics
+            genesys_parser
+            genesys_plugins_data
+            genesys_plugins_components_minimal
+            genesys_kernel_simulator_support
+            genesys_kernel_simulator_runtime
+    )
+endif()
 
 if(GENESYS_BUILD_WEB_APPLICATION)
     add_subdirectory(source/applications/web)
@@ -60,7 +71,7 @@ if(GENESYS_BUILD_TESTS)
             PUBLIC
                 ${CMAKE_SOURCE_DIR}/source/gtest
         )
-        target_compile_features(gtest PUBLIC cxx_std_20)
+        target_compile_features(gtest PUBLIC cxx_std_23)
 
         add_library(gtest_main STATIC source/gtest/src/gtest_main.cc)
         target_link_libraries(gtest_main PUBLIC gtest)
@@ -71,5 +82,7 @@ if(GENESYS_BUILD_TESTS)
 
     add_subdirectory(source/tests)
 
-    add_dependencies(genesys_tests genesys_kernel)
+    if(TARGET genesys_kernel)
+        add_dependencies(genesys_tests genesys_kernel)
+    endif()
 endif()

@@ -1,16 +1,22 @@
-set(GENESYS_TERMINAL_APPLICATION_SOURCES
-    main.cpp
-    GenesysShell/GenesysShell.cpp
-    examples/smarts/Smart_SeizeDelayReleaseMany.cpp
-    ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
-    ${CMAKE_SOURCE_DIR}/source/plugins/components/Create.cpp
-    ${CMAKE_SOURCE_DIR}/source/plugins/components/Dispose.cpp
-    ${CMAKE_SOURCE_DIR}/source/plugins/components/Seize.cpp
-    ${CMAKE_SOURCE_DIR}/source/plugins/components/SeizableItem.cpp
-    ${CMAKE_SOURCE_DIR}/source/plugins/components/QueueableItem.cpp
-    ${CMAKE_SOURCE_DIR}/source/plugins/components/Delay.cpp
-    ${CMAKE_SOURCE_DIR}/source/plugins/components/Release.cpp
-)
+option(GENESYS_TERMINAL_BUILD_ALL_SOURCES "Build all terminal examples and sources recursively" OFF)
+
+if(GENESYS_TERMINAL_BUILD_ALL_SOURCES)
+    file(GLOB_RECURSE GENESYS_TERMINAL_APPLICATION_LOCAL_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+    )
+
+    set(GENESYS_TERMINAL_APPLICATION_SOURCES
+        ${GENESYS_TERMINAL_APPLICATION_LOCAL_SOURCES}
+        ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
+    )
+else()
+    set(GENESYS_TERMINAL_APPLICATION_SOURCES
+        main.cpp
+        GenesysShell/GenesysShell.cpp
+        examples/smarts/Smart_SeizeDelayReleaseMany.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
+    )
+endif()
 
 add_executable(genesys_terminal_application
     ${GENESYS_TERMINAL_APPLICATION_SOURCES}
@@ -27,6 +33,7 @@ target_link_libraries(genesys_terminal_application
         genesys_kernel_statistics
         genesys_parser
         genesys_plugins_data
+        genesys_plugins_components_minimal
         genesys_kernel_simulator_support
         genesys_kernel_simulator_runtime
 )
