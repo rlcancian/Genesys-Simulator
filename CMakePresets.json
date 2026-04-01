@@ -68,6 +68,17 @@
       }
     },
     {
+      "name": "tests-smoke",
+      "displayName": "Smoke Tests Only (Debug)",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/tests-smoke",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_SMOKE_TESTS": "ON",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
       "name": "release",
       "displayName": "Release",
       "inherits": "base",
@@ -125,6 +136,13 @@
       ]
     },
     {
+      "name": "tests-smoke",
+      "configurePreset": "tests-smoke",
+      "targets": [
+        "genesys_smoke_tests"
+      ]
+    },
+    {
       "name": "release",
       "configurePreset": "release"
     },
@@ -155,6 +173,23 @@
     {
       "name": "tests-unit",
       "configurePreset": "tests-unit",
+      "filter": {
+        "include": {
+          "label": "unit"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tests-smoke",
+      "configurePreset": "tests-smoke",
+      "filter": {
+        "include": {
+          "label": "smoke"
+        }
+      },
       "output": {
         "outputOnFailure": true
       }

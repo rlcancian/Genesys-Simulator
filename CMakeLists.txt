@@ -71,7 +71,7 @@ if(GENESYS_BUILD_TESTS)
             PUBLIC
                 ${CMAKE_SOURCE_DIR}/source/gtest
         )
-        target_compile_features(gtest PUBLIC cxx_std_20)
+        target_compile_features(gtest PUBLIC cxx_std_23)
 
         add_library(gtest_main STATIC source/gtest/src/gtest_main.cc)
         target_link_libraries(gtest_main PUBLIC gtest)
