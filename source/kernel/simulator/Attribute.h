@@ -61,6 +61,7 @@ system.
  */
 class Attribute : public ModelDataDefinition {
 public:
+	/*! \brief Creates an entity attribute definition in the model. */
 	Attribute(Model* model, std::string name = "");
 	virtual ~Attribute() = default;
 public:
@@ -79,4 +80,3 @@ private:
 };
 //namespace\\}
 #endif /* ATTRIBUTE_H */
-

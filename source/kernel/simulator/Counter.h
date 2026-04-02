@@ -20,10 +20,14 @@
 //namespace GenesysKernel {
 
 /*!
- The Counter modeldatum is used to count events, and its internal count value is added by a configurable amount, usually incremented by one.
+ * \brief Model datum used to accumulate event counts (or weighted counts).
+ *
+ * The counter value starts cleared for each replication (depending on model
+ * lifecycle hooks) and can be incremented by arbitrary amounts.
  */
 class Counter : public ModelDataDefinition {
 public:
+	/*! \brief Creates a counter model datum with optional parent relationship. */
 	Counter(Model* model, std::string name = "", ModelDataDefinition* parent = nullptr);
 	virtual ~Counter() = default;
 public:
@@ -35,21 +39,23 @@ public: // public static methods
 public:
 	/*!
 	 * \brief clear
+	 * \details Resets the internal count value to zero.
 	 */
 	void clear();
 	/*!
 	 * \brief incCountValue
 	 * \param value
+	 * \details Adds \p value to the internal count (default increment is 1).
 	 */
 	void incCountValue(/*int*/double value = 1.0);
 	/*!
 	 * \brief getCountValue
-	 * \return
+	 * \return Current accumulated count value.
 	 */
 	double /*unsigned long*/ getCountValue() const;
 	/*!
 	 * \brief getParent
-	 * \return
+	 * \return Parent model datum associated with this counter (if any).
 	 */
 	ModelDataDefinition* getParent() const;
 protected: //! must be overriden by derived classes
@@ -64,4 +70,3 @@ private:
 };
 //namespace\\}
 #endif /* COUNTERDEFAULTIMPL1_H */
-
