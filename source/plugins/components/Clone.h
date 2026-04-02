@@ -25,7 +25,7 @@ public: // constructors
 	Clone(Model* model, std::string name = "");
 	virtual ~Clone() = default;
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 public: // 
 	void setNumClonesExpression(std::string numClones);
 	std::string getNumClonesExpression() const;
@@ -34,13 +34,13 @@ public: // static
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 protected: // must be overriden 
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 protected: // could be overriden .
-	virtual bool _check(std::string& errorMessage);
-	virtual void _initBetweenReplications();
-	virtual void _createInternalAndAttachedData();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _initBetweenReplications() override;
+	virtual void _createInternalAndAttachedData() override;
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 private: // methods
 private: // attributes 1:1

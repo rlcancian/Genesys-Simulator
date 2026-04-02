@@ -13,7 +13,7 @@ class Rectifier : public BaseGenesysTerminalApplication {
 public:
 	Rectifier();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* HALF_ADDER_H */

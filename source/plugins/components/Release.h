@@ -66,7 +66,7 @@ public:
 	Release(Model* model, std::string name = "");
 	virtual ~Release() = default;
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 public: //static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -80,12 +80,12 @@ public: // gets
 	void removeReleaseRequests(SeizableItem* request);
 
 protected:
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _initBetweenReplications();
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual bool _check(std::string& errorMessage);
-	virtual void _createInternalAndAttachedData();
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _initBetweenReplications() override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
 private:
 	Resource* _getResourceFromSeizableItem(SeizableItem* seizable, Entity* entity);
 private:

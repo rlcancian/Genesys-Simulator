@@ -20,18 +20,18 @@ public:
 	SolverDefaultImpl1(double precision = 1e-6, unsigned int steps = 1e3);
 	virtual ~SolverDefaultImpl1() = default;
 public:
-	virtual void setPrecision(double e);
-	virtual double getPrecision();
-	virtual void setMaxSteps(double steps);
-	virtual double getMaxSteps();
-	virtual double integrate(double min, double max, double (*f)(double, double), double p2);
-	virtual double integrate(double min, double max, double (*f)(double, double, double), double p2, double p3);
-	virtual double integrate(double min, double max, double (*f)(double, double, double, double), double p2, double p3, double p4);
-	virtual double integrate(double min, double max, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5);
-	virtual double derivate(double initPoint, double initValue, double (*f)(double, double), double p2);
-	virtual double derivate(double initPoint, double initValue, double (*f)(double, double, double), double p2, double p3);
-	virtual double derivate(double initPoint, double initValue, double (*f)(double, double, double, double), double p2, double p3, double p4);
-	virtual double derivate(double initPoint, double initValue, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5);
+	virtual void setPrecision(double e) override;
+	virtual double getPrecision() override;
+	virtual void setMaxSteps(double steps) override;
+	virtual double getMaxSteps() override;
+	virtual double integrate(double min, double max, double (*f)(double, double), double p2) override;
+	virtual double integrate(double min, double max, double (*f)(double, double, double), double p2, double p3) override;
+	virtual double integrate(double min, double max, double (*f)(double, double, double, double), double p2, double p3, double p4) override;
+	virtual double integrate(double min, double max, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5) override;
+	virtual double derivate(double initPoint, double initValue, double (*f)(double, double), double p2) override;
+	virtual double derivate(double initPoint, double initValue, double (*f)(double, double, double), double p2, double p3) override;
+	virtual double derivate(double initPoint, double initValue, double (*f)(double, double, double, double), double p2, double p3, double p4) override;
+	virtual double derivate(double initPoint, double initValue, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5) override;
 private:
 	double _precision;
 	unsigned int _numSteps;

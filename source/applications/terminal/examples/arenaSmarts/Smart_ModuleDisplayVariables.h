@@ -20,7 +20,7 @@ class Smart_ModuleDisplayVariables : public BaseGenesysTerminalApplication {
 public:
 	Smart_ModuleDisplayVariables();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_MODULEDISPLAYVARIABLES_H */

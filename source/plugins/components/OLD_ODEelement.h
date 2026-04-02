@@ -35,7 +35,7 @@ public:
     OLD_ODEelement(Model* model, std::string name = "");
     virtual ~OLD_ODEelement() = default;
 public:
-    virtual std::string show();
+    virtual std::string show() override;
 public:
     static PluginInformation* GetPluginInformation();
     static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -50,9 +50,9 @@ public:
     void addODEfunction(ODEfunction* newFunction);
     void removeODEfunction(ODEfunction* function);
 protected: // must be overriden
-    virtual bool _loadInstance(PersistenceRecord *fields);
-    virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-    virtual bool _check(std::string& errorMessage);
+    virtual bool _loadInstance(PersistenceRecord *fields) override;
+    virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+    virtual bool _check(std::string& errorMessage) override;
 private:
 
 private:

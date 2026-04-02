@@ -43,54 +43,63 @@ struct Connection {
 };
 
 /*!
- * ConnectionManager defines how a ModelComponent is output connected to none, one or more following ModelComponents. It has a list of nextConnections, where each Connection is a pair, defining the next ModelComponent and an input port on that component (usefull only if the next component has more than one input). The number of the output conection is its rank in the nextConnections list. Min and max number of input and output connectons can be defined.
+ * \brief Maintains outgoing connections from a component to downstream components.
+ *
+ * A connection maps an output rank (port) to a destination component/input port.
+ * The manager also stores min/max input/output constraints used during validation.
  */
 class ConnectionManager {
 public:
+	/*! \brief Creates an empty connection manager with zero constraints. */
 	ConnectionManager();
 	virtual ~ConnectionManager() = default;
 public:
 	/*!
 	 * \brief size
-	 * \return
+	 * \return Number of configured output connections.
 	 */
 	unsigned int size();
 	/*!
 	 * \brief getFrontConnection
-	 * \return
+	 * \return Connection at the first available output rank.
 	 */
 	Connection* getFrontConnection();
 	/*!
 	 * \brief getConnectionAtPort
 	 * \param rank
-	 * \return
+	 * \return Connection bound to output rank \p rank.
 	 */
 	Connection* getConnectionAtPort(unsigned int rank);
 	/*!
 	 * \brief insert
 	 * \param component
 	 * \param inputPortNumber
+	 * \details Creates and inserts a connection to \p component at input port \p inputPortNumber.
 	 */
 	void insert(ModelComponent* component, unsigned int inputPortNumber = 0); /*!< Insert a new connection by specifying the destnation component and optionally an input port, if not 0*/
 	/*!
 	 * \brief insert
 	 * \param connection
+	 * \details Inserts a prebuilt connection object.
 	 */
 	void insert(Connection* connection);
 	/*!
 	 * \brief insertAtPort
 	 * \param port
 	 * \param connection
+	 * \details Forces insertion/replacement at a specific output port.
 	 */
 	void insertAtPort(unsigned int port, Connection* connection);
 	/*!
 	 * \brief remove
 	 * \param connection
+	 * \details Removes a connection by pointer match.
 	 */
 	void remove(Connection* connection);
 	/*!
 	 * \brief removeAtPort
 	 * \param port
+	 * \details Removes the connection associated with output port \p port.
 	 */
 	void removeAtPort(unsigned int port);
 	/*!
@@ -160,4 +169,3 @@ private:
 };
 //namespace\\}
 #endif /* CONNECTIONMANAGER_H */
-

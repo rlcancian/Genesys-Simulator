@@ -18,7 +18,7 @@
 class Book_Cap02_Example01 : public BaseGenesysTerminalApplication {
 public:
 	Book_Cap02_Example01();
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* BOOK_CAP02_EXAMPLE01_H */

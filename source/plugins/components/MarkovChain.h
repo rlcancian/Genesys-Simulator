@@ -23,7 +23,7 @@ public: // constructors
 	MarkovChain(Model* model, std::string name = "");
 	virtual ~MarkovChain() = default;
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -38,11 +38,11 @@ public: // get and set
 	bool isInitilized() const;
 	void setCurrentState(Variable* _currentState);
 protected: // virtual
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual void _initBetweenReplications();
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual bool _check(std::string& errorMessage);
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual void _initBetweenReplications() override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual bool _check(std::string& errorMessage) override;
 private: // methods
 private: // attributes 1:1
 	Variable* _transitionProbMatrix;

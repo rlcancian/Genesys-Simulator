@@ -20,7 +20,7 @@ class Smart_ResourceScheduleCosting : public BaseGenesysTerminalApplication {
 public:
 	Smart_ResourceScheduleCosting();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_RESOURCESCHEDULECOSTING_H */

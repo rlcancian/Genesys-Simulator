@@ -14,7 +14,7 @@ class Smart_DefiningAttributesAsStrings: public BaseGenesysTerminalApplication {
 public:
 	Smart_DefiningAttributesAsStrings();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_DEFININGATTRIBUTESASSTRINGS_H */

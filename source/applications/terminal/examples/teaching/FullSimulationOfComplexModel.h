@@ -20,7 +20,7 @@ class FullSimulationOfComplexModel : public BaseGenesysTerminalApplication {
 public:
 	FullSimulationOfComplexModel();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* COMPLEXMODEL01_H */

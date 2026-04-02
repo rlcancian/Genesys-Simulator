@@ -111,14 +111,14 @@ public: // get & set
 	 */
 	unsigned int getEntitiesPerCreation() const;
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 
 protected:
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _initBetweenReplications();
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-    virtual bool _check(std::string& errorMessage);
-	virtual void _createInternalAndAttachedData();
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _initBetweenReplications() override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+    virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
 protected: // get & set
 	EntityType* _entityType = nullptr;
 

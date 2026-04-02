@@ -17,23 +17,33 @@
 #include "../util/List.h"
 //#include "StatisticsCollector.h"
 
+/*!
+ * \brief Interface for reporting simulation results and experiment-facing outputs.
+ *
+ * Reporter implementations define how replication/simulation summaries, responses
+ * and controls are presented to users or external consumers.
+ */
 class SimulationReporter_if {
 public:
 	/*!
 	 * \brief showReplicationStatistics
 	 */
+	/*! \brief Shows detailed statistics for the current/finished replication. */
 	virtual void showReplicationStatistics() = 0;
 	/*!
 	 * \brief showSimulationStatistics
 	 */
+	/*! \brief Shows aggregated statistics for the full simulation. */
 	virtual void showSimulationStatistics() = 0;
 	/*!
 	 * \brief showSimulationResponses
 	 */
+	/*! \brief Shows configured simulation responses (outputs) for experimental analysis. */
 	virtual void showSimulationResponses() = 0;
 	/*!
 	 * \brief showSimulationControls
 	 */
+	/*! \brief Shows monitored/configurable simulation controls (inputs). */
 	virtual void showSimulationControls() = 0;
 	//virtual void setFormat(std::string format)=0;
 };

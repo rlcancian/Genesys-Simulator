@@ -20,7 +20,7 @@ class Smart_AlternatingEntityCreation : public BaseGenesysTerminalApplication {
 public:
 	Smart_AlternatingEntityCreation();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_ALTERNATINGENTITYCREATION_H */

@@ -13,7 +13,7 @@ class Loja01 : public BaseGenesysTerminalApplication {
 public:
     Loja01();
 public:
-    virtual int main(int argc, char** argv);
+    virtual int main(int argc, char** argv) override;
 };
 
 
