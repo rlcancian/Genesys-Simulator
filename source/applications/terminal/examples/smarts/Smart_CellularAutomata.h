@@ -20,7 +20,7 @@ class Smart_CellularAutomata : public BaseGenesysTerminalApplication {
 public:
 	Smart_CellularAutomata();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_CELLULARAUTOMATA_H */

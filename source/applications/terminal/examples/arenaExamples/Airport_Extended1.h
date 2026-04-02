@@ -7,7 +7,7 @@ class Airport_Extended1 : public BaseGenesysTerminalApplication {
 public:
 	Airport_Extended1();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif // SMART_FAILURES_H

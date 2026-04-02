@@ -20,7 +20,7 @@ class Smart_Delay : public BaseGenesysTerminalApplication {
 public:
 	Smart_Delay();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_DELAY_H */

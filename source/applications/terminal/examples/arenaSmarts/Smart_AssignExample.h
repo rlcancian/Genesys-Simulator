@@ -18,7 +18,7 @@
 class Smart_AssignExample : public BaseGenesysTerminalApplication {
     public:
         Smart_AssignExample();
-        virtual int main(int argc, char** argv);
+        virtual int main(int argc, char** argv) override;
 };
 
 

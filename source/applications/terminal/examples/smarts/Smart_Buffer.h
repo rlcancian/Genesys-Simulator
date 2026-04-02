@@ -20,7 +20,7 @@ class Smart_Buffer : public BaseGenesysTerminalApplication {
 public:
 	Smart_Buffer();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_BUFFER_H */

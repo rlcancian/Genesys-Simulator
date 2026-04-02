@@ -20,7 +20,7 @@ class Smart_ArrivalsElementStopsEntitiesArrivingAfterASetTime : public BaseGenes
 public:
 	Smart_ArrivalsElementStopsEntitiesArrivingAfterASetTime();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* Smart_ArrivalsElementStopsEntitiesArrivingAfterASetTime_H */

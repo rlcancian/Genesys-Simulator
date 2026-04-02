@@ -20,7 +20,7 @@ class Smart_Record_Arena : public BaseGenesysTerminalApplication {
 public:
 	Smart_Record_Arena();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* Smart_Record_Arena_ARENA_H */

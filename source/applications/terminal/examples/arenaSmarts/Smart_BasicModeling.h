@@ -18,7 +18,7 @@
 class Smart_BasicModeling : public BaseGenesysTerminalApplication {
     public:
         Smart_BasicModeling();
-        virtual int main(int argc, char** argv);
+        virtual int main(int argc, char** argv) override;
 };
 
 

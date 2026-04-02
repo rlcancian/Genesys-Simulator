@@ -19,7 +19,7 @@ class Smart_SimulationControlResponse : public BaseGenesysTerminalApplication {
 public:
 	Smart_SimulationControlResponse();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_SIMULATIONCONTROLRESPONSE_H */

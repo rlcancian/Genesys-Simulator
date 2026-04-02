@@ -25,12 +25,12 @@ public:
 	ModelCheckerDefaultImpl1(Model* model);
 	virtual ~ModelCheckerDefaultImpl1() = default;
 public:
-	virtual bool checkAll();
-	virtual bool checkConnected();
-	virtual bool checkSymbols();
-	virtual bool checkActivationCode();
-	virtual bool checkLimits();
-	virtual bool checkOrphaned();
+	virtual bool checkAll() override;
+	virtual bool checkConnected() override;
+	virtual bool checkSymbols() override;
+	virtual bool checkActivationCode() override;
+	virtual bool checkLimits() override;
+	virtual bool checkOrphaned() override;
 private:
 	void _recursiveConnectedTo(PluginManager* pluginManager, ModelComponent* comp, List<ModelComponent*>* visited, List<ModelComponent*>* unconnected, bool* drenoFound);
 	void _showResult(bool result, std::string checking);

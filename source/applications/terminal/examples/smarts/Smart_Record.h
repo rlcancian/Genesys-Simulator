@@ -19,7 +19,7 @@ class Smart_Record : public BaseGenesysTerminalApplication {
 public:
 	Smart_Record();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 

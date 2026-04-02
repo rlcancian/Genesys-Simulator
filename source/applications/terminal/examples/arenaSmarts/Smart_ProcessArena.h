@@ -20,7 +20,7 @@ class Smart_ProcessArena : public BaseGenesysTerminalApplication {
 public:
     Smart_ProcessArena();
 public:
-    virtual int main(int argc, char** argv);
+    virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_PROCESSARENA_H */

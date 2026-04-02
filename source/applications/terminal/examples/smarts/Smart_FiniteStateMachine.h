@@ -19,7 +19,7 @@ class Smart_FiniteStateMachine : public BaseGenesysTerminalApplication {
 public:
 	Smart_FiniteStateMachine();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_FINITSTATEMACHINE_H */

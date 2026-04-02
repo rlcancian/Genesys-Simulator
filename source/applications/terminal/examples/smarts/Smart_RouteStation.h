@@ -20,7 +20,7 @@ class Smart_RouteStation : public BaseGenesysTerminalApplication {
 public:
 	Smart_RouteStation();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_ROUTESTATION_H */

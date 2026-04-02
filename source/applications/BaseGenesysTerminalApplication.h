@@ -27,7 +27,7 @@ public:
 	BaseGenesysTerminalApplication();
 	virtual ~BaseGenesysTerminalApplication() = default;
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 	virtual void Simulate(Simulator* genesys, Model* model, PluginManager *plugins);
 public:
 	void setDefaultTraceHandlers(TraceManager* tm);
