@@ -14,6 +14,7 @@ else()
         main.cpp
         GenesysShell/GenesysShell.cpp
         examples/smarts/Smart_SeizeDelayReleaseMany.cpp
+        examples/teaching/AnElectronicAssemblyAndTestSystem.cpp
         ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
     )
 endif()
