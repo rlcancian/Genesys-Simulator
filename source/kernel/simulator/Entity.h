@@ -75,32 +75,36 @@ and stored in the report database for this entity type.
  */
 class Entity : public ModelDataDefinition {
 private: // no one can create or destry entities directlly. This can be done one throught friend class Model
+	/*! \brief Creates an entity instance (restricted to \c Model friend). */
 	Entity(Model* model, std::string name = "", bool insertIntoModel = true);
 	virtual ~Entity() = default;
 	// friend Entity* Model::createEntity(std::string name, bool insertIntoModel); // It would be better, but Model is not known at this point of compilaton
 	friend class Model;
 public:
+	/*! \brief Returns a string representation of this entity instance. */
 	virtual std::string show();
 
 public: // g & s
 	/*!
 	 * \brief setEntityTypeName
 	 * \param entityTypeName
+	 * \details Sets entity type by name (indirect lookup through model data manager).
 	 */
 	void setEntityTypeName(std::string entityTypeName); //*!< indirect access to EntityType
 	/*!
 	 * \brief getEntityTypeName
-	 * \return
+	 * \return Name of the associated entity type.
 	 */
 	std::string getEntityTypeName() const;
 	/*!
 	 * \brief setEntityType
 	 * \param entityType
+	 * \details Directly assigns the entity type pointer.
 	 */
 	void setEntityType(EntityType* entityType); //*!< direct access to EntityType
 	/*!
 	 * \brief getEntityType
-	 * \return
+	 * \return Pointer to the associated entity type.
 	 */
 	EntityType* getEntityType() const;
 public:
@@ -108,14 +112,14 @@ public:
 	 * \brief getAttributeValue
 	 * \param index
 	 * \param attributeName
-	 * \return
+	 * \return Current attribute value for the provided name/index.
 	 */
 	double getAttributeValue(std::string attributeName, std::string index="");
 	/*!
 	 * \brief getAttributeValue
 	 * \param index
 	 * \param attributeID
-	 * \return
+	 * \return Current attribute value for the provided id/index.
 	 */
 	double getAttributeValue(Util::identification attributeID, std::string index="");
 	/*!
@@ -124,6 +128,7 @@ public:
 	 * \param attributeName
 	 * \param value
 	 * \param createIfNotFound
+	 * \details Assigns an attribute value by name and optionally creates missing attributes.
 	 */
 	void setAttributeValue(std::string attributeName, double value, std::string index="", bool createIfNotFound=false);
 	/*!
@@ -131,11 +136,12 @@ public:
 	 * \param index
 	 * \param attributeID
 	 * \param value
+	 * \details Assigns an attribute value by attribute identifier.
 	 */
 	void setAttributeValue(Util::identification attributeID, double value, std::string index="");
 	/*!
 	 * \brief entityNumber
-	 * \return
+	 * \return Unique runtime identifier for this entity instance.
 	 */
 	Util::identification entityNumber() const;
 protected:
@@ -149,4 +155,3 @@ private:
 };
 //namespace\\}
 #endif /* ENTITY_H */
-
