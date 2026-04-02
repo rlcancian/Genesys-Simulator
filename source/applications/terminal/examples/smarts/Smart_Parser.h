@@ -20,7 +20,7 @@ class Smart_Parser : public BaseGenesysTerminalApplication {
 public:
 	Smart_Parser();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_PARSER_H */

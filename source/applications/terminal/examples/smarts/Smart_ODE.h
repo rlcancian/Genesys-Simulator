@@ -20,7 +20,7 @@ class Smart_ODE : public BaseGenesysTerminalApplication {
 public:
 	Smart_ODE();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_ODE_H */

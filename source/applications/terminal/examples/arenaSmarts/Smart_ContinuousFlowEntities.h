@@ -20,7 +20,7 @@ class Smart_ContinuousFlowEntities : public BaseGenesysTerminalApplication {
 public:
 	Smart_ContinuousFlowEntities();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_DUMMY_H */

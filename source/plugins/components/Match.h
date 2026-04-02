@@ -57,15 +57,15 @@ public: // constructors
 	Match(Model* model, std::string name = "");
 	virtual ~Match() = default;
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public: // virtual
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 public:
 	void setRule(Match::Rule _rule);
 	Match::Rule getRule() const;
@@ -77,8 +77,8 @@ public:
 	unsigned int getNumberOfQueues() const;
 protected: // virtual
 	//virtual void _initBetweenReplications();
-	virtual bool _check(std::string& errorMessage);
-	virtual void _createInternalAndAttachedData();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
 private: // methods
 private: // attributes 1:1
 

@@ -14,7 +14,7 @@ class Smart_OverlappingResources : public BaseGenesysTerminalApplication {
 public:
 	Smart_OverlappingResources();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_OVERLAPPINGRESOURCES_H */

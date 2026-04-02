@@ -18,7 +18,7 @@
 class Smart_ArrivalsEntityTypeVsAttribute : public BaseGenesysTerminalApplication {
     public:
         Smart_ArrivalsEntityTypeVsAttribute();
-        virtual int main(int argc, char** argv);
+        virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_ARRIVALSENTITYTYPEVSATTRIBUTE_H */

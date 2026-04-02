@@ -19,7 +19,7 @@ class Smart_SynchronizingParallelEntities : public BaseGenesysTerminalApplicatio
 public:
 	Smart_SynchronizingParallelEntities();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 #endif /* SMART_SYNCHRONIZINGPARALLELENTITIES_H */
 

@@ -40,7 +40,7 @@ public:
 	Write::WriteToType writeToType() const;
 
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 
 public: // static
 	static PluginInformation* GetPluginInformation();
@@ -48,13 +48,13 @@ public: // static
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected: // virtual
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 
 protected: // virtual
-	virtual bool _check(std::string& errorMessage);
-	virtual void _initBetweenReplications();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _initBetweenReplications() override;
 
 private: // methods
 private: // attributes 1:1
