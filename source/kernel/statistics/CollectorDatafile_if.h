@@ -40,11 +40,13 @@ public:
 	 * \brief getDataFilename
 	 * \return
 	 */
+	/*! \brief Returns the filename used to persist collected values. */
 	virtual std::string getDataFilename() = 0;
 	/*!
 	 * \brief setDataFilename
 	 * \param filename
 	 */
+	/*! \brief Sets/updates the filename used to store collected data. */
 	virtual void setDataFilename(std::string filename) = 0;
 };
 
