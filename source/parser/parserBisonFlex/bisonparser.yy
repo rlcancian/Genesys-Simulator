@@ -261,6 +261,7 @@ expression:
     | relacional                       {$$.valor = $1.valor;}
 	| LPAREN expression RPAREN          {$$.valor = $2.valor;}
     | attribute                         {$$.valor = $1.valor;}
+    | illegal                           {$$.valor = -1;}
 
 /****begin_Expression_plugins****/
 

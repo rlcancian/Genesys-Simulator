@@ -31,7 +31,7 @@ public:
 	};
 public:
 	SamplerDefaultImpl1();
-	virtual ~SamplerDefaultImpl1() = default;
+	virtual ~SamplerDefaultImpl1();
 public: // RNG
 	virtual double random();
 public: // continuous probability distributions
@@ -61,6 +61,7 @@ public:
 	virtual RNG_Parameters* getRNGparameters() const;
 private:
 	RNG_Parameters* _param = new DefaultImpl1RNG_Parameters();
+	bool _ownsParam = true;
 	uint32_t _xi;
 	bool _normalflag;
 	double _lastnormal;
@@ -496,4 +497,3 @@ end.
 
 //namespace\\}
 #endif /* SAMPLERDEFAULTIMPL1_H */
-

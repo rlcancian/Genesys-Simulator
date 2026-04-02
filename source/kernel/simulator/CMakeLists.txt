@@ -1,4 +1,4 @@
-add_library(genesys_kernel_simulator_support STATIC
+set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     LicenceManager.cpp
     ParserManager.cpp
     ParserChangesInformation.cpp
@@ -17,6 +17,10 @@ add_library(genesys_kernel_simulator_support STATIC
     ModelManager.cpp
 )
 
+add_library(genesys_kernel_simulator_support STATIC
+    ${GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES}
+)
+
 target_include_directories(genesys_kernel_simulator_support
     PUBLIC
         ${CMAKE_SOURCE_DIR}/source
@@ -27,4 +31,33 @@ target_link_libraries(genesys_kernel_simulator_support
         genesys_kernel_util
 )
 
-target_compile_features(genesys_kernel_simulator_support PUBLIC cxx_std_20)
+target_compile_features(genesys_kernel_simulator_support PUBLIC cxx_std_23)
+
+file(GLOB GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
+)
+
+list(APPEND GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
+        "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorStaticImpl1.cpp"
+        "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorDummyImpl1.cpp"
+)
+
+add_library(genesys_kernel_simulator_runtime STATIC
+    ${GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES}
+)
+
+target_include_directories(genesys_kernel_simulator_runtime
+    PUBLIC
+        ${CMAKE_SOURCE_DIR}/source
+)
+
+target_link_libraries(genesys_kernel_simulator_runtime
+    PUBLIC
+        genesys_kernel_util
+        genesys_kernel_statistics
+        genesys_parser
+        genesys_plugins_data
+        genesys_plugins_components_minimal
+)
+
+target_compile_features(genesys_kernel_simulator_runtime PUBLIC cxx_std_23)

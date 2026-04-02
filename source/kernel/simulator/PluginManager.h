@@ -29,14 +29,14 @@ public:
 public:
 	std::string show();
 public:
-	bool completePluginsFieldsAndTemplates();
+	List<Plugin*>* completePluginsFieldsAndTemplates();
 public:
 	bool check(const std::string dynamicLibraryFilename);
 	Plugin* insert(const std::string dynamicLibraryFilename);
 	bool remove(const std::string dynamicLibraryFilename);
 	bool remove(Plugin* plugin);
 	Plugin* find(std::string pluginTypeName);
-	bool autoInsertPlugins(const std::string pluginsListFilename);
+	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound = true);
 public:
 	Plugin* front();
 	Plugin* next();
@@ -67,6 +67,7 @@ public:
 private:
 	bool _insert(Plugin* plugin);
 	void _insertDefaultKernelElements();
+	List<Plugin*>* _autoFindPlugins();
 private:
 	List<Plugin*>* _plugins = new List<Plugin*>();
 	Simulator* _simulator;
@@ -74,4 +75,3 @@ private:
 };
 //namespace\\}
 #endif /* PLUGINMANAGER_H */
-

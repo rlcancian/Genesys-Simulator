@@ -132,7 +132,8 @@ bool LSODE::_doStep() {
 	if (res) { // if simulatedTime has not reached a single step, do not solve
 		halfStep = _step * 0.5;
 		for (i = 0; i < numEqs; i++) {//(std::list<std::string>::iterator it = eqs->begin(); it != eqs->end(); it++) {
-			expression = _diffEquations->getAtRank(i);
+			/* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
+			expression = "";///* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
 			valVar[i] = _variable->getValue(std::to_string(i));
 			eqResult = _parentModel->parseExpression(expression);
 			k1[i] = eqResult;
@@ -143,7 +144,9 @@ bool LSODE::_doStep() {
 			_variable->setValue(valVar[i] + k1[i] * halfStep, std::to_string(i));
 		}
 		for (i = 0; i < numEqs; i++) {
-			expression = _diffEquations->getAtRank(i);
+			/* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
+			//expression = _diffEquations->getAtRank(i);
+			expression = "";//_diffEquations->getAtRank(i);
 			eqResult = _parentModel->parseExpression(expression);
 			k2[i] = eqResult;
 		}
@@ -151,7 +154,9 @@ bool LSODE::_doStep() {
 			_variable->setValue(valVar[i] + k2[i] * halfStep, std::to_string(i));
 		}
 		for (i = 0; i < numEqs; i++) {
-			expression = _diffEquations->getAtRank(i);
+			/* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
+			//expression = _diffEquations->getAtRank(i);
+			expression = "";//_diffEquations->getAtRank(i);
 			eqResult = _parentModel->parseExpression(expression);
 			k3[i] = eqResult;
 		}
@@ -159,7 +164,9 @@ bool LSODE::_doStep() {
 			_variable->setValue(valVar[i] + k3[i] * halfStep, std::to_string(i));
 		}
 		for (i = 0; i < numEqs; i++) {
-			expression = _diffEquations->getAtRank(i);
+			/* TODO: Commented due to List<T> metaprogramming issue */ //_diffEquations->getAtRank(i);
+			//expression = _diffEquations->getAtRank(i);
+			expression = "";//_diffEquations->getAtRank(i);
 			eqResult = _parentModel->parseExpression(expression);
 			k4[i] = eqResult;
 		}

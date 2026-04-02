@@ -38,7 +38,7 @@
 class SimulationScenario {
 public:
 	SimulationScenario();
-	virtual ~SimulationScenario() = default;
+	virtual ~SimulationScenario();
 public: // results
 	bool startSimulation(Simulator *sim, std::string& errorMessage);
 	std::list<std::pair<std::string, double>*>* getResponseValues() const; /*!< The final result of the simulationScenario */
@@ -70,4 +70,3 @@ private:
 };
 
 #endif /* SIMULATIONSCENARIO_H */
-

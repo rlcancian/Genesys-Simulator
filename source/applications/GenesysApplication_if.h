@@ -20,4 +20,3 @@ public:
 };
 
 #endif /* GENESYSAPPLICATION_IF_H */
-

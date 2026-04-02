@@ -43,7 +43,7 @@ class Simulator {
 	typedef void (*eventHandler)();
 public:
 	Simulator();
-	virtual ~Simulator() = default;
+	virtual ~Simulator();
 public: // only get
 	/*!
 	 * \brief getVersion
@@ -92,7 +92,7 @@ public: // only get
     ExperimentManager* getExperimentManager() const;
 
 private:
-	bool _completePluginsFieldsAndTemplate();
+	List<Plugin*>* _completePluginsFieldsAndTemplate();
 	friend class PluginManager; //@TODO: should be only member function PluginManager::completePluginsFieldsAndTemplate()
 
 private: // attributes 1:1 objects
