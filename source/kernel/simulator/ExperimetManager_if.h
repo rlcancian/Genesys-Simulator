@@ -24,14 +24,19 @@
  */
 class ExperimentManager_if {
 public:
+	/*! \brief Returns the list of scenarios that compose the experiment. */
 	virtual List<SimulationScenario*>* getScenarios() const = 0;
 	//virtual List<PropertyBase*>* getControls() const = 0;
 	//virtual List<PropertyBase*>* getResponses() const = 0;
 	//virtual List<PropertyBase*>* extractControlsFromModel(std::string modelFilename) const = 0;
 	//virtual List<PropertyBase*>* extractResponsesFromModel(std::string modelFilename) const = 0;
+	/*! \brief Starts simulation for a specific scenario. */
 	virtual void startSimulationOfScenario(SimulationScenario* scenario) = 0;
+	/*! \brief Starts full experiment execution (all enabled scenarios). */
 	virtual void startExperiment() = 0;
+	/*! \brief Requests interruption of the currently running experiment. */
 	virtual void stopExperiment() = 0;
+	/*! \brief Registers a callback to receive simulation progress traces for the experiment. */
 	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) = 0;
 };
 

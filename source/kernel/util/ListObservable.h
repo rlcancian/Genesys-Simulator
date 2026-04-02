@@ -35,14 +35,20 @@ class ListObservable : public List {
 public:
 	using CompFunct = std::function<bool(const T, const T) >;
 public:
+	/*! \brief Initializes an empty observable list. */
 	ListObservable();
 	virtual ~ListObservable() = default;
 public: // direct access to list
+	/*! \brief Removes all elements from the observable list. */
 	void clear();
+	/*! \brief Removes the first element from the observable list. */
 	void pop_front();
 public: // improved (easier) methods
+	/*! \brief Inserts an element respecting the configured ordering. */
 	void insert(T element);
+	/*! \brief Removes an element from the observable list. */
 	void remove(T element);
+	/*! \brief Sets the element at a specific list index. */
 	void setAtRank(unsigned int rank, T element);
 };
 

@@ -26,51 +26,60 @@ public:
 	 * \brief mode
 	 * \return
 	 */
+	/*! \brief Returns the mode of the sample stored in file. */
 	virtual double mode() = 0;
 	/*!
 	 * \brief mediane
 	 * \return
 	 */
+	/*! \brief Returns the sample median. */
 	virtual double mediane() = 0;
 	/*!
 	 * \brief quartil
 	 * \param num
 	 * \return
 	 */
+	/*! \brief Returns the requested quartile (1 to 3). */
 	virtual double quartil(unsigned short num) = 0;
 	/*!
 	 * \brief decil
 	 * \param num
 	 * \return
 	 */
+	/*! \brief Returns the requested decile (1 to 9). */
 	virtual double decil(unsigned short num) = 0;
 	/*!
 	 * \brief centil
 	 * \param num
 	 * \return
 	 */
+	/*! \brief Returns the requested percentile (1 to 99). */
 	virtual double centil(unsigned short num) = 0;
 	/*!
 	 * \brief setHistogramNumClasses
 	 * \param num
 	 */
+	/*! \brief Sets the number of classes used in the histogram. */
 	virtual void setHistogramNumClasses(unsigned short num) = 0;
 	/*!
 	 * \brief histogramNumClasses
 	 * \return
 	 */
+	/*! \brief Returns the configured number of histogram classes. */
 	virtual unsigned short histogramNumClasses() = 0;
 	/*!
 	 * \brief histogramClassLowerLimit
 	 * \param classNum
 	 * \return
 	 */
+	/*! \brief Returns the lower bound of the histogram class at index \p classNum. */
 	virtual double histogramClassLowerLimit(unsigned short classNum) = 0;
 	/*!
 	 * \brief histogramClassFrequency
 	 * \param classNum
 	 * \return
 	 */
+	/*! \brief Returns the absolute frequency of the requested histogram class. */
 	virtual unsigned int histogramClassFrequency(unsigned short classNum) = 0;
 
 };
