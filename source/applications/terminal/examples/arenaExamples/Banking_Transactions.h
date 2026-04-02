@@ -20,7 +20,7 @@ class Banking_Transactions : public BaseGenesysTerminalApplication {
 public:
 	Banking_Transactions();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* BANKING_TRANSACTIONS_H*/

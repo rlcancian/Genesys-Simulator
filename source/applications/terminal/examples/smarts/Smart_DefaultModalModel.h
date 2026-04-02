@@ -13,7 +13,7 @@ class Smart_DefaultModalModel : public BaseGenesysTerminalApplication {
 public:
     Smart_DefaultModalModel();
 public:
-    virtual int main(int argc, char** argv);
+    virtual int main(int argc, char** argv) override;
 };
 
 

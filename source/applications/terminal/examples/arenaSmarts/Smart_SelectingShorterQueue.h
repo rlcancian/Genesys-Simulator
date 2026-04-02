@@ -14,7 +14,7 @@ class Smart_SelectingShorterQueue : public BaseGenesysTerminalApplication {
 public:
 	Smart_SelectingShorterQueue();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_SELECTINGSHORTERQUEUE_H */

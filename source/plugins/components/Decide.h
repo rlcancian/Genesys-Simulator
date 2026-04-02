@@ -80,19 +80,19 @@ public:
 	void addConditions(std::string newCondition);
     void removeConditions(std::string condition);
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 public:
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 protected:
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected:
 	//virtual void _initBetweenReplications();
-	virtual bool _check(std::string& errorMessage);
-	virtual void _createInternalAndAttachedData();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
 private:
 	List<std::string>* _conditions = new List<std::string>();
 	List<Counter*>* _numberOuts = nullptr;

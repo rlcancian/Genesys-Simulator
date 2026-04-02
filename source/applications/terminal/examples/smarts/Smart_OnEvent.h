@@ -20,7 +20,7 @@ class Smart_OnEvent : public BaseGenesysTerminalApplication {
 public:
 	Smart_OnEvent();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 public:
 	void onBreakpointHandler(SimulationEvent* re);
 	void onEntityCreateHandler(SimulationEvent* re);

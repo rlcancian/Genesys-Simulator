@@ -72,7 +72,7 @@ public:
 	Create(Model* model, std::string name = "");
 	virtual ~Create() = default;
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 public:
 	void setTimeBetweenCreationsFormula(Formula* _timeBetweenCreationsFormula);
 	Formula* getTimeBetweenCreationsFormula() const;
@@ -87,12 +87,12 @@ public: // static
 	void setTestePropertyCreateDouble(double newTestePropertyCreateDouble);
 
 protected:
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _initBetweenReplications();
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual bool _check(std::string& errorMessage);
-	virtual void _createInternalAndAttachedData();
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _initBetweenReplications() override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
 private:
 	double _lastArrival = -1.0;
 private: // internal elements

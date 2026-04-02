@@ -20,7 +20,7 @@ class Smart_PlacingEntitiesInQueueSets : public BaseGenesysTerminalApplication {
 public:
 	Smart_PlacingEntitiesInQueueSets();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_PLACINGENTITIESINQUEUESETS_H */

@@ -20,7 +20,7 @@ class Smart_ModelRunUntil1000Parts : public BaseGenesysTerminalApplication {
 public:
     Smart_ModelRunUntil1000Parts();
 public:
-    virtual int main(int argc, char** argv);
+    virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_MODELRUNUNTIL1000PARTS_H */

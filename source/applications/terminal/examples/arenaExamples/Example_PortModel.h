@@ -14,7 +14,7 @@ class Example_PortModel : public BaseGenesysTerminalApplication {
 public:
 	Example_PortModel();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* EXAMPLE_PORTMODEL_H */

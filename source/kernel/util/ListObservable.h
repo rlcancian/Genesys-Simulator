@@ -28,21 +28,30 @@
 #include "List.h"
 
 /*!
- * ListObservable corresponds to an extended version of the List that allows other classes to be notified when the list has changed.
+ * \brief Observable-oriented list variant used by kernel structures.
+ *
+ * This template specializes \c List behavior for contexts where list mutations are
+ * relevant to external observers/managers, while preserving familiar list helpers.
  */
 template <typename T>
 class ListObservable : public List {
 public:
 	using CompFunct = std::function<bool(const T, const T) >;
 public:
+	/*! \brief Initializes an empty observable list. */
 	ListObservable();
 	virtual ~ListObservable() = default;
 public: // direct access to list
+	/*! \brief Removes all elements from the observable list. */
 	void clear();
+	/*! \brief Removes the first element from the observable list. */
 	void pop_front();
 public: // improved (easier) methods
+	/*! \brief Inserts an element respecting the configured ordering. */
 	void insert(T element);
+	/*! \brief Removes an element from the observable list. */
 	void remove(T element);
+	/*! \brief Sets the element at a specific list index. */
 	void setAtRank(unsigned int rank, T element);
 };
 

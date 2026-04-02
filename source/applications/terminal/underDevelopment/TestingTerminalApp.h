@@ -8,7 +8,7 @@ public:
 	TestingTerminalApp();
 public:
 	//virtual int main(int argc, char** argv);
-	virtual void Simulate(Simulator* genesys, Model* model, PluginManager *plugins);
+	virtual void Simulate(Simulator* genesys, Model* model, PluginManager *plugins) override;
 };
 
 

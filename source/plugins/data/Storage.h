@@ -43,7 +43,7 @@ public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 	void setTotalArea(double _totalArea);
 	double getTotalArea() const;
     void setCapacity(unsigned int _capacity);
@@ -52,11 +52,11 @@ public:
     double getUnitsPerArea() const;
 
 protected: // must be overriden 
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: // could be overriden 
-	virtual bool _check(std::string& errorMessage);
-	virtual ParserChangesInformation* _getParserChangesInformation();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual ParserChangesInformation* _getParserChangesInformation() override;
 private:
 
 	const struct DEFAULT_VALUES {

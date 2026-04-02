@@ -28,10 +28,10 @@ public:
 	SimulationReporterDefaultImpl1(ModelSimulation* simulation, Model* model, List<ModelDataDefinition*>* statsCountersSimulation);
 	virtual ~SimulationReporterDefaultImpl1() = default;
 public:
-	virtual void showReplicationStatistics();
-	virtual void showSimulationStatistics();
-	virtual void showSimulationResponses();
-	virtual void showSimulationControls();
+	virtual void showReplicationStatistics() override;
+	virtual void showSimulationStatistics() override;
+	virtual void showSimulationResponses() override;
+	virtual void showSimulationControls() override;
 private:
 	ModelSimulation* _simulation;
 	Model* _model;

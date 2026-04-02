@@ -20,7 +20,7 @@ class Smart_DefiningResourceCapacity : public BaseGenesysTerminalApplication {
 public:
 	Smart_DefiningResourceCapacity();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* Smart_DefiningResourceCapacity_H */

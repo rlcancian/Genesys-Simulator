@@ -20,7 +20,7 @@ class Example_PublicTransport : public BaseGenesysTerminalApplication {
 public:
 	Example_PublicTransport();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
         
         
 };
