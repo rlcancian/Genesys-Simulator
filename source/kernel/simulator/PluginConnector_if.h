@@ -16,6 +16,7 @@
 
 #include<string>
 #include "Plugin.h"
+#include "../util/List.h"
 
 //namespace GenesysKernel {
 
@@ -34,9 +35,16 @@ public:
 	 */
 	virtual Plugin* connect(const std::string dynamicLibraryFilename) = 0;
 	/*!
+	 * \brief find dynamicLibraryFilenames
+	 * \param
+	 * \return List of dynamicLibraryFilenames
+	 */
+	virtual List<std::string>* find() = 0;
+
+	/*!
 	 * \brief disconnect
 	 * \param dynamicLibraryFilename
-	 * \return
+	 * \return List of all Plugins found and connected
 	 */
 	virtual bool disconnect(const std::string dynamicLibraryFilename) = 0;
 	/*!
@@ -48,4 +56,3 @@ public:
 };
 //namespace\\}
 #endif /* PLUGINCONNECTOR_IF_H */
-

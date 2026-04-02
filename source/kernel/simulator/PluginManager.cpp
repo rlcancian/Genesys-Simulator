@@ -29,10 +29,22 @@ PluginManager::PluginManager(Simulator* simulator) {
 	_insertDefaultKernelElements();
 }
 
-List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename) {
-	List<Plugin*>* loadedPlugins = new List<Plugin*>();
-	if (pluginsListFilename.empty())
+List<Plugin*>* PluginManager::_autoFindPlugins() {
+	List<std::string>* filenames = _pluginConnector->find();
+	for (std::string filename: *filenames->list()) {
+		insert(filename);
+	}
+	return  completePluginsFieldsAndTemplates();
+}
+
+List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)
+{
+	List<Plugin*>* loadedPlugins = nullptr;
+	if (pluginsListFilename.empty()) {
+		 if (lookForPluginsIfFilenameNotFound)
+		 	loadedPlugins = _autoFindPlugins();
 		return loadedPlugins;
+	}
 	std::string line;
 	std::string fullFilename;
 	if (pluginsListFilename[0] == Util::DirSeparator()) // absolute path
@@ -41,6 +53,7 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 		fullFilename = Util::RunningPath()+Util::DirSeparator()+pluginsListFilename;
 	std::ifstream file(fullFilename, std::ifstream::in);
 	if (file.is_open()) {
+		loadedPlugins = new List<Plugin*>();
 		while (std::getline(file, line)) {
 			if (line.length()>=1) {
                 // TODO 2500701 why [0-2] are special chars?
@@ -54,8 +67,12 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 		}
 		file.close();
 		loadedPlugins = completePluginsFieldsAndTemplates();
-	} else {
+	} else
+	{
 		_simulator->getTraceManager()->traceError("Could not open file \""+pluginsListFilename+"\" (\""+fullFilename+"\")");
+		if (lookForPluginsIfFilenameNotFound) {
+			loadedPlugins = _autoFindPlugins();
+		}
 	}
 	return loadedPlugins;
 }
@@ -124,7 +141,7 @@ bool PluginManager::_insert(Plugin * plugin) {
 			Util::IncIndent();
 			_simulator->getTraceManager()->trace("The plugin already exists and was not inserted again");
 			Util::DecIndent();
-			return false;
+			return true; // It already exists. It was NOT inserted again, BUT it has been inserted BEFORE, therefore returns TRUE
 		}
 		_plugins->insert(plugin);
 		Util::IncIndent();

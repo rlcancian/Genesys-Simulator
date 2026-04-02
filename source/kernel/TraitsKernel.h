@@ -20,7 +20,6 @@
 #include "simulator/SimulationReporterDefaultImpl1.h"
 #include "simulator/Counter.h"
 #include "simulator/ModelCheckerDefaultImpl1.h"
-#include "../plugins/PluginConnectorStaticImpl1.h"
 #include "simulator/ParserDefaultImpl2.h"
 #include "simulator/SimulationReporter_if.h"
 
@@ -29,6 +28,10 @@
 #include "statistics/StatisticsDefaultImpl1.h"
 #include "statistics/StatisticsDataFileDefaultImpl.h"
 #include "statistics/SamplerDefaultImpl1.h"
+
+#include "../plugins/PluginConnectorStaticImpl1.h"
+#include "../plugins/PluginConnectorDummyImpl1.h"
+
 
 //namespace GenesysKernel {
 
@@ -51,7 +54,8 @@ template <> struct TraitsKernel<SimulationReporter_if> {
 };
 
 template <> struct TraitsKernel<PluginConnector_if> {
-	typedef PluginConnectorStaticImpl1 Implementation;
+	//typedef PluginConnectorStaticImpl1 Implementation;
+	typedef PluginConnectorDummyImpl1 Implementation;
 	//typedef PluginConnectorDynamicLibraryLoader Implementation;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L4_warning;
 };
@@ -117,4 +121,3 @@ template <> struct TraitsKernel<Collector_if> {
 //namespace\\}
 
 #endif /* TRAITSKERNEL_H */
-

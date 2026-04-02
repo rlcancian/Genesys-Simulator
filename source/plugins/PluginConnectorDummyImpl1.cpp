@@ -12,6 +12,7 @@
  */
 
 #include "PluginConnectorDummyImpl1.h"
+#include "../kernel/simulator/Plugin.h"
 
 // Model Components
 
@@ -102,12 +103,101 @@ bool PluginConnectorDummyImpl1::disconnect(Plugin* plugin) {
 	return true;
 }
 
-//Plugin* PluginConnectorDummyImpl1::_connectModelDefinitions(const std::string dynamicLibraryFilename){
-//    StaticGetPluginInformation GetInfo = nullptr;
-//}
+List<std::string>* PluginConnectorDummyImpl1::find() {
+    List<std::string>* filenames = new List<std::string>();
+    filenames->insert("assign.so");
+    filenames->insert("buffer.so");
+    filenames->insert("create.so");
+    filenames->insert("dispose.so");
+    filenames->insert("dummy.so");
+    filenames->insert("entitygroup.so");
+    filenames->insert("failure.so");
+    filenames->insert("formula.so");
+    filenames->insert("label.so");
+    filenames->insert("queue.so");
+    filenames->insert("resource.so");
+    filenames->insert("variable.so");
+    filenames->insert("batch.so");
+    filenames->insert("clone.so");
+    filenames->insert("defaultmodalmodel.so");
+    filenames->insert("decide.so");
+    filenames->insert("delay.so");
+    filenames->insert("dropoff.so");
+    filenames->insert("hold.so");
+    filenames->insert("match.so");
+    filenames->insert("process.so");
+    filenames->insert("pickup.so");
+    filenames->insert("remove.so");
+    filenames->insert("record.so");
+    filenames->insert("release.so");
+    filenames->insert("storage.so");
+    filenames->insert("separate.so");
+    //filenames->insert("submodel.so");
+    filenames->insert("seize.so");
+    filenames->insert("search.so");
+    filenames->insert("signal.so");
+    filenames->insert("store.so");
+    filenames->insert("unstore.so");
+    filenames->insert("storage.so");
+    filenames->insert("set.so");
+    filenames->insert("schedule.so");
+    filenames->insert("signaldata.so");
+    filenames->insert("diffequations.so");
+    filenames->insert("lsode.so");
+    //filenames->insert("finiteelement.so");
+    //filenames->insert("finitevolume.so");
+    filenames->insert("cppcompiler.so");
+    filenames->insert("cppforg.so");
+    filenames->insert("spicecircuit.so");
+    filenames->insert("spicenode.so");
+    filenames->insert("spicerunner.so");
+    //filenames->insert("octave.so");
+    filenames->insert("file.so");
+    //filenames->insert("read.so");
+    filenames->insert("write.so");
+    filenames->insert("access.so");
+    filenames->insert("enter.so");
+    filenames->insert("exit.so");
+    filenames->insert("leave.so");
+    filenames->insert("pickstation.so");
+    filenames->insert("route.so");
+    filenames->insert("start.so");
+    filenames->insert("stop.so");
+    filenames->insert("station.so");
+    filenames->insert("sequence.so");
+    /*
+    if (fn == "cellularautomata.so");
+    filenames->insert("efsmData.so");
+    filenames->insert("efsm.so");
+    filenames->insert("fsm_state.so");
+    filenames->insert("fsm_transition.so");
+    filenames->insert("fsm_modalmodel.so");
+    */
+    filenames->insert("markovchain.so");
+    filenames->insert("resistor.so");
+    filenames->insert("vsource.so");
+    filenames->insert("vpulse.so");
+    filenames->insert("vsine.so");
+    filenames->insert("capacitor.so");
+    filenames->insert("diode.so");
+    filenames->insert("pmos.so");
+    filenames->insert("nmos.so");
+    filenames->insert("not.so");
+    filenames->insert("nor.so");
+    filenames->insert("nand.so");
+    filenames->insert("and.so");
+    filenames->insert("or.so");
+    filenames->insert("xor.so");
+    filenames->insert("xnor.so");
+    return filenames;
+}
 
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectBasic(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
+
+Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilename) {
+	std::string fn = Util::FilenameFromFullFilename(dynamicLibraryFilename);
+	StaticGetPluginInformation GetInfo = nullptr;
+    // @TODO: Dummy connections basically does nothing but give access to PluginInformation already compiled
+
     if (fn == "assign.so")
         GetInfo = &Assign::GetPluginInformation;
     else if (fn == "buffer.so")
@@ -132,11 +222,7 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectBasic(const std::s
         GetInfo = &Resource::GetPluginInformation;
     else if (fn == "variable.so")
         GetInfo = &Variable::GetPluginInformation;
-    return GetInfo;
-}
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectDiscrete(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
-    if (fn == "batch.so")
+    else if (fn == "batch.so")
         GetInfo = &Batch::GetPluginInformation;
     else if (fn == "clone.so")
         GetInfo = &Clone::GetPluginInformation;
@@ -186,12 +272,7 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectDiscrete(const std
         GetInfo = &Schedule::GetPluginInformation;
     else if (fn == "signaldata.so")
         GetInfo = &SignalData::GetPluginInformation;
-    return GetInfo;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectContinuos(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
-    if (fn == "diffequations.so")
+    else if (fn == "diffequations.so")
         GetInfo = &DiffEquations::GetPluginInformation;
     else if (fn == "lsode.so")
         GetInfo = &LSODE::GetPluginInformation;
@@ -199,12 +280,7 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectContinuos(const st
     //    GetInfo = &LSODE::GetPluginInformation;
     //else if (fn == "finitevolume.so")
     //    GetInfo = &LSODE::GetPluginInformation;
-    return GetInfo;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectIntegrations(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
-    if (fn == "cppcompiler.so")
+    else if (fn == "cppcompiler.so")
         GetInfo = &CppCompiler::GetPluginInformation;
     else if (fn == "cppforg.so")
         GetInfo = &CppForG::GetPluginInformation;
@@ -216,23 +292,13 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectIntegrations(const
         GetInfo = &SPICERunner::GetPluginInformation;
     //else if (fn == "octave.so")
     //	GetInfo = &Octave::GetPluginInformation;
-    return GetInfo;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectInputOutput(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
-    if (fn == "file.so")
+    else if (fn == "file.so")
         GetInfo = &File::GetPluginInformation;
     //else if (fn == "read.so")
     //    GetInfo = &Read::GetPluginInformation;
     else if (fn == "write.so")
         GetInfo = &Write::GetPluginInformation;
-    return GetInfo;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectTransfer(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
-    if (fn == "access.so")
+    else if (fn == "access.so")
         GetInfo = &Access::GetPluginInformation;
     else if (fn == "enter.so")
         GetInfo = &Enter::GetPluginInformation;
@@ -252,16 +318,10 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectTransfer(const std
         GetInfo = &Station::GetPluginInformation;
     else if (fn == "sequence.so")
         GetInfo = &Sequence::GetPluginInformation;
-    return GetInfo;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectNetwork(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
-    //if (fn == "cellularautomata.so")
-    //    GetInfo = &CellularAutomataComp::GetPluginInformation;
-    //else
     /*
-    if (fn == "efsmData.so")
+    if (fn == "cellularautomata.so")
+        GetInfo = &CellularAutomataComp::GetPluginInformation;
+    else if (fn == "efsmData.so")
         GetInfo = &ExtendedFSM::GetPluginInformation;
     else if (fn == "efsm.so")
         GetInfo = &OLD_FiniteStateMachine::GetPluginInformation;
@@ -273,21 +333,9 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectNetwork(const std:
         GetInfo = &FSM_ModalModel::GetPluginInformation;
     else
     */
-    if (fn == "markovchain.so")
+    else if (fn == "markovchain.so")
         GetInfo = &MarkovChain::GetPluginInformation;
-
-    // boolean networks
-
-    // petri nets
-
-    // finite elements
-
-    return GetInfo;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectElectronicDomain(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
-    if (fn == "resistor.so")
+    else if (fn == "resistor.so")
         GetInfo = &Resistor::GetPluginInformation;
     else if (fn == "vsource.so")
         GetInfo = &Vsource::GetPluginInformation;
@@ -317,45 +365,7 @@ StaticGetPluginInformation PluginConnectorDummyImpl1::_connectElectronicDomain(c
         GetInfo = &XOR::GetPluginInformation;
     else if (fn == "xnor.so")
         GetInfo = &XNOR::GetPluginInformation;
-    return GetInfo;
-}
 
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectBiochemicalDomain(const std::string fn){
-    StaticGetPluginInformation GetInfo = nullptr;
-
-    return GetInfo;
-}
-
-Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilename) {
-	std::string fn = Util::FilenameFromFullFilename(dynamicLibraryFilename);
-	StaticGetPluginInformation GetInfo = nullptr;
-    // @TODO: Dummy connections basically does nothing but give access to PluginInformation already compiled
-
-    GetInfo = this->_connectBasic(fn);
-    if (GetInfo==nullptr) {
-        GetInfo = this->_connectDiscrete(fn);
-    }
-    if (GetInfo==nullptr) {
-        GetInfo = this->_connectContinuos(fn);
-    }
-    if (GetInfo==nullptr) {
-        GetInfo = this->_connectTransfer(fn);
-    }
-    if (GetInfo==nullptr) {
-        GetInfo = this->_connectIntegrations(fn);
-    }
-    if (GetInfo==nullptr) {
-        GetInfo = this->_connectInputOutput(fn);
-    }
-    if (GetInfo==nullptr) {
-        GetInfo = this->_connectNetwork(fn);
-    }
-    if (GetInfo==nullptr) {
-        GetInfo = this->_connectElectronicDomain(fn);
-    }
-    if (GetInfo==nullptr) {
-        GetInfo = this->_connectBiochemicalDomain(fn);
-    }
 
     Plugin* pluginResult = nullptr;
     if (GetInfo != nullptr) {

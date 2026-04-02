@@ -30,7 +30,7 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 // public: /// constructors
 //
 
-DefaultNode::DefaultNode(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DefaultNode>(), name) {
+DefaultNode::DefaultNode(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DefaultNode>(), name), DEFAULT() {
 }
 
 

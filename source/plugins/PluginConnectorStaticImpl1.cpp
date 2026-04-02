@@ -1,4 +1,5 @@
 #include "PluginConnectorStaticImpl1.h"
+#include "kernel/util/List.h"
 
 Plugin* PluginConnectorStaticImpl1::check(const std::string dynamicLibraryFilename) {
     (void) dynamicLibraryFilename;
@@ -9,6 +10,11 @@ Plugin* PluginConnectorStaticImpl1::connect(const std::string dynamicLibraryFile
     (void) dynamicLibraryFilename;
     return nullptr;
 }
+
+List<std::string>* PluginConnectorStaticImpl1::find() {
+    return nullptr;
+}
+
 
 bool PluginConnectorStaticImpl1::disconnect(const std::string dynamicLibraryFilename) {
     (void) dynamicLibraryFilename;

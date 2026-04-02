@@ -38,7 +38,8 @@ file(GLOB GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES CONFIGURE_DEPENDS
 )
 
 list(APPEND GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
-    "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorStaticImpl1.cpp"
+        "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorStaticImpl1.cpp"
+        "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorDummyImpl1.cpp"
 )
 
 add_library(genesys_kernel_simulator_runtime STATIC
@@ -56,6 +57,7 @@ target_link_libraries(genesys_kernel_simulator_runtime
         genesys_kernel_statistics
         genesys_parser
         genesys_plugins_data
+        genesys_plugins_components_minimal
 )
 
 target_compile_features(genesys_kernel_simulator_runtime PUBLIC cxx_std_23)

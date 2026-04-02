@@ -1,13 +1,8 @@
 add_subdirectory(data)
+add_subdirectory(components)
 
-set(GENESYS_PLUGINS_COMPONENTS_MINIMAL_SOURCES
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/Create.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/Dispose.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/Seize.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/SeizableItem.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/QueueableItem.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/Delay.cpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/components/Release.cpp"
+file(GLOB_RECURSE GENESYS_PLUGINS_COMPONENTS_MINIMAL_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/components/*.cpp"
 )
 
 add_library(genesys_plugins_components_minimal STATIC

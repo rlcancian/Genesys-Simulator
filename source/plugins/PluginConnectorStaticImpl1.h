@@ -10,6 +10,7 @@ public:
 
     Plugin* check(const std::string dynamicLibraryFilename) override;
     Plugin* connect(const std::string dynamicLibraryFilename) override;
+    List<std::string>* find() override;
     bool disconnect(const std::string dynamicLibraryFilename) override;
     bool disconnect(Plugin* plugin) override;
 };

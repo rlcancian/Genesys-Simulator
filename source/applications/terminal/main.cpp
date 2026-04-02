@@ -2,6 +2,7 @@
 // Created by rafaelcancian on 30/03/2026.
 //
 
+#include <memory>
 #include "TraitsTerminalApp.h"
 
 #if defined(GENESYS_TERMINAL_USE_TRAITS_APP)
@@ -18,6 +19,6 @@ public:
 #endif
 
 int main(int argc, char *argv[]) {
-    GenesysApplication_if *app = new SelectedTerminalApplication();
+    auto app = std::make_unique<SelectedTerminalApplication>();
     return app->main(argc, argv);
 }
