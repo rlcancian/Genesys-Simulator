@@ -19,6 +19,13 @@
 
 class genesyspp_driver;
 
+/*!
+ * \brief Interface for evaluating model expressions and stochastic functions.
+ *
+ * Parser implementations are used by model components/data definitions to evaluate
+ * arithmetic/logical expressions, integrating deterministic symbols and stochastic
+ * calls backed by a \c Sampler_if instance.
+ */
 class Parser_if {
 public:
 	/*!

@@ -27,7 +27,10 @@
 //class Simulator;
 
 /*!
- * List corresponds to an extended version of the list that must guarantee the consistency of the elements that make up the simulation model.
+ * \brief Lightweight wrapper around \c std::list with convenience helpers used by the kernel.
+ *
+ * The class centralizes insertion/removal, rank-based access and iterator-like
+ * navigation patterns heavily used in simulator internals and plugin infrastructure.
  */
 template <typename T>
 class List {

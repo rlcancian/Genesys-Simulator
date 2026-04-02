@@ -28,7 +28,10 @@
 #include "List.h"
 
 /*!
- * ListObservable corresponds to an extended version of the List that allows other classes to be notified when the list has changed.
+ * \brief Observable-oriented list variant used by kernel structures.
+ *
+ * This template specializes \c List behavior for contexts where list mutations are
+ * relevant to external observers/managers, while preserving familiar list helpers.
  */
 template <typename T>
 class ListObservable : public List {

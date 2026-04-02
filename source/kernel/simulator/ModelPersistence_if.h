@@ -21,6 +21,13 @@
 // forward decl
 class PersistenceRecord;
 
+/*!
+ * \brief Interface for model serialization/deserialization services.
+ *
+ * Persistence implementations convert in-memory model structures to/from external
+ * representations (e.g., GEN/XML/JSON-like formats) and expose formatting/options
+ * hooks used by the kernel persistence pipeline.
+ */
 class ModelPersistence_if {
 public:
 

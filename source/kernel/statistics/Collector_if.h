@@ -34,7 +34,10 @@ CollectorClearHandler setCollectorClearHandler(void (Class::*function)(), Class 
 }
 
 /*!
- * Interface for collecting values of a single stochastic variable.  Values collected can be used as base for statistical analysis. 
+ * \brief Interface responsible for collecting observations of a stochastic variable.
+ *
+ * A collector stores values generated during simulation and optionally supports
+ * callbacks for integration with online statistics, tracing or UI updates.
  */
 class Collector_if {
 public:

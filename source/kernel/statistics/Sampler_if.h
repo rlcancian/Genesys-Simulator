@@ -15,13 +15,20 @@
 #define Sampler_IF_H
 
 /*!
- * Interface that describes the methods to be implemented by classes that generate random values ​​that follow a specific probability distribution.
+ * \brief Abstraction for random-number generation and probability-distribution sampling.
+ *
+ * Concrete implementations provide a base uniform pseudo-random generator and helper
+ * methods to sample supported continuous and discrete probability distributions used
+ * across the simulation kernel (e.g., parser functions and stochastic model logic).
  */
 class Sampler_if {
 public:
 
 	/*!
-	 * class that encapsulates attributes required to generate random numbers, which depends on the generation method used.
+	 * \brief Encapsulates generator-specific configuration/state parameters.
+	 *
+	 * Implementations may derive this struct to expose seed, multiplier and other
+	 * algorithm-specific controls required by a concrete RNG strategy.
 	 */
 	struct RNG_Parameters {
 		virtual ~RNG_Parameters() = default;

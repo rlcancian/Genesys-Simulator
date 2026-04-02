@@ -17,6 +17,12 @@
 #include "../util/List.h"
 //#include "StatisticsCollector.h"
 
+/*!
+ * \brief Interface for reporting simulation results and experiment-facing outputs.
+ *
+ * Reporter implementations define how replication/simulation summaries, responses
+ * and controls are presented to users or external consumers.
+ */
 class SimulationReporter_if {
 public:
 	/*!

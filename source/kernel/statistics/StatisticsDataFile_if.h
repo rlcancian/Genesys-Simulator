@@ -17,6 +17,12 @@
 #include "CollectorDatafile_if.h"
 #include "Statistics_if.h"
 
+/*!
+ * \brief Extension of \c Statistics_if for metrics that require full data access.
+ *
+ * This interface targets collector implementations backed by data files, enabling
+ * order-based measures (median, quantiles) and histogram-related operations.
+ */
 class StatisticsDatafile_if : public Statistics_if {
 	//public:
 	//    virtual CollectorDatafile_if* getCollector() = 0;

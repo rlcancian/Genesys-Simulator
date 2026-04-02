@@ -16,8 +16,11 @@
 
 #include "Collector_if.h"
 
-/**
- * Interface for collecting values of a stochastic variable that will be stores in a datafile. 
+/*!
+ * \brief Collector interface specialized in file-backed value storage.
+ *
+ * Besides standard collection operations, implementations provide sequential/random
+ * access to persisted samples and filename management for the underlying dataset.
  */
 class CollectorDatafile_if : public Collector_if {
 public:

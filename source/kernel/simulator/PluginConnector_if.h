@@ -20,6 +20,12 @@
 
 //namespace GenesysKernel {
 
+/*!
+ * \brief Interface for dynamic discovery/loading/unloading of plugin libraries.
+ *
+ * Connector implementations bridge OS-level dynamic library handling and the
+ * kernel plugin abstraction, validating candidates and managing plugin lifecycles.
+ */
 class PluginConnector_if {
 public:
 	/*!

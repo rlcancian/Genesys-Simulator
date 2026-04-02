@@ -20,7 +20,10 @@
 #include "TraceManager.h"
 
 /*!
- * The experiment manager allows to extract controls and responses from a model, include some of then as controls and responses for a set of scenarios to be simulated
+ * \brief Interface that coordinates execution of scenario-based simulation experiments.
+ *
+ * An experiment manager owns a set of scenarios, starts/stops scenario runs and
+ * exposes progress tracing hooks so higher-level tools can monitor experiment status.
  */
 class ExperimentManager_if {
 public:
