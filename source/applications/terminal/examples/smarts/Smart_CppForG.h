@@ -18,6 +18,6 @@ class Smart_CppForG : public BaseGenesysTerminalApplication {
 public:
 	Smart_CppForG();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 

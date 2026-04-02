@@ -20,7 +20,7 @@ class Smart_EvaluatingConditionsBeforeEnteringQueue : public BaseGenesysTerminal
 public:
 	Smart_EvaluatingConditionsBeforeEnteringQueue();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* Smart_EvaluatingConditionsBeforeEnteringQueue_H */

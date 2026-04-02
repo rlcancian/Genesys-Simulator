@@ -20,7 +20,7 @@ class Smart_SeizeDelayReleaseMany : public BaseGenesysTerminalApplication {
 public:
 	Smart_SeizeDelayReleaseMany();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* MODEL_SEIZEDELAYRELEASEMANY_H */

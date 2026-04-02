@@ -14,7 +14,7 @@ class Smart_AddingResource : public BaseGenesysTerminalApplication {
 public:
 	Smart_AddingResource();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* ADDINGRESOURCE_H */

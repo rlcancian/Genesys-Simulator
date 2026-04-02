@@ -22,7 +22,7 @@ class Smart_DefiningControlLogic : public BaseGenesysTerminalApplication {
 public:
 	Smart_DefiningControlLogic();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* Smart_DEFININGCONTROLLOGIC_H */

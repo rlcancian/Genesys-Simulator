@@ -20,7 +20,7 @@ class Smart_EntitiesProcessedByPriority : public BaseGenesysTerminalApplication 
 public:
 	Smart_EntitiesProcessedByPriority();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_ENTITIESPROCESSEDBYPRIORITY_H */

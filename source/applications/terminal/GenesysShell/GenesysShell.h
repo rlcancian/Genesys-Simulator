@@ -51,7 +51,7 @@ public:
 	GenesysShell(const GenesysShell& orig);
 	virtual ~GenesysShell() = default;
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 public: // commands
 	void cmdScript();
 	void cmdHelp();

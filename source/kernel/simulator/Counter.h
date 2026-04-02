@@ -27,7 +27,7 @@ public:
 	Counter(Model* model, std::string name = "", ModelDataDefinition* parent = nullptr);
 	virtual ~Counter() = default;
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 public: // public static methods
 	static PluginInformation* GetPluginInformation();
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -53,11 +53,11 @@ public:
 	 */
 	ModelDataDefinition* getParent() const;
 protected: //! must be overriden by derived classes
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: //! could be overriden by derived classes
-	virtual bool _check(std::string& errorMessage);
-	virtual void _initBetweenReplications();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _initBetweenReplications() override;
 private:
 	ModelDataDefinition* _parent;
 	double /*unsigned long*/ _count = 0;

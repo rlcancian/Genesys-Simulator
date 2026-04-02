@@ -19,7 +19,7 @@ class Smart_BatchSeparate : public BaseGenesysTerminalApplication {
 public:
 	Smart_BatchSeparate();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_BATCHSEPARATE_H */

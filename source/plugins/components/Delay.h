@@ -53,7 +53,7 @@ public:
     void setAllocation(Util::AllocationType allocation);
     Util::AllocationType getAllocation() const;
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 public:
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -63,13 +63,13 @@ public:
 	//decl_property(DelayExpression, decl_get(std::string){return delayExpression();} void decl_set(std::string val){setDelayExpression(val);});
 
 protected:
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected:
 	//virtual void _initBetweenReplications();
-	virtual bool _check(std::string& errorMessage);
-	virtual void _createInternalAndAttachedData();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
 public:
 	const struct DEFAULT_VALUES {
 		const std::string delayExpression = "1.0";

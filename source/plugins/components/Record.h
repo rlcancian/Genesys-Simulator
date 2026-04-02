@@ -76,7 +76,7 @@ public:
 	void setTimeDependent(bool timeDependent);
 
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 
 public:
 	static PluginInformation* GetPluginInformation();
@@ -84,14 +84,14 @@ public:
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected:
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 
 protected:
-	virtual void _initBetweenReplications();
-	virtual bool _check(std::string& errorMessage);
-	virtual void _createInternalAndAttachedData();
+	virtual void _initBetweenReplications() override;
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
 
 private:
 	const struct DEFAULT_VALUES {
