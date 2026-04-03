@@ -21,17 +21,21 @@
 //class Model;
 
 /*!
- * ComponentManager allows to insert, access, find, remove and over Models
+ * \brief Owns and organizes the set of \c ModelComponent objects in a model.
+ *
+ * Provides insertion/removal, lookup and iteration helpers while tracking
+ * structural changes relevant to model validation/persistence workflows.
  */
 class ComponentManager {
 public:
+	/*! \brief Creates a component manager attached to a model. */
 	ComponentManager(Model* model);
 	virtual ~ComponentManager() = default;
 public:
 	/*!
 	 * \brief insert
 	 * \param comp
-	 * \return
+	 * \return True when insertion succeeds.
 	 */
 	bool insert(ModelComponent* comp);
 	/*!
@@ -42,43 +46,44 @@ public:
 	/*!
 	 * \brief find
 	 * \param name
-	 * \return
+	 * \return Pointer to the component, or \c nullptr when not found.
 	 */
 	ModelComponent* find(std::string name);
 	/*!
 	 * \brief find
 	 * \param id
-	 * \return
+	 * \return Pointer to the component, or \c nullptr when not found.
 	 */
 	ModelComponent* find(Util::identification id);
 	/*!
 	 * \brief clear
+	 * \details Removes all managed components from the model.
 	*/
 	void clear();
 public:
 	/*!
 	 * \brief getNumberOfComponents
-	 * \return
+	 * \return Number of managed components.
 	 */
 	unsigned int getNumberOfComponents();
 	/*!
 	 * \brief begin
-	 * \return
+	 * \return Iterator to the first component.
 	 */
 	std::list<ModelComponent*>::iterator begin();
 	/*!
 	 * \brief end
-	 * \return
+	 * \return Iterator past the last component.
 	 */
 	std::list<ModelComponent*>::iterator end();
 	/*!
 	 * \brief front
-	 * \return
+	 * \return First component in iteration order.
 	 */
 	ModelComponent* front();
 	/*!
 	 * \brief next
-	 * \return
+	 * \return Next component in iteration order.
 	 */
 	ModelComponent* next();
 	/*!
@@ -115,4 +120,3 @@ private:
 };
 //namespace\\}
 #endif /* COMPONENTMANAGER_H */
-
