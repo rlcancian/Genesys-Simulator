@@ -88,15 +88,10 @@ std::string PluginManager::show() {
 }
 
 void PluginManager::_insertDefaultKernelElements() {
-	StaticGetPluginInformation GetInfo;
-	GetInfo = &EntityType::GetPluginInformation;
-	_plugins->insert(new Plugin(GetInfo));
-	GetInfo = &Attribute::GetPluginInformation;
-	_plugins->insert(new Plugin(GetInfo));
-	GetInfo = &Counter::GetPluginInformation;
-	_plugins->insert(new Plugin(GetInfo));
-	GetInfo = &StatisticsCollector::GetPluginInformation;
-	_plugins->insert(new Plugin(GetInfo));
+	_plugins->insert(new Plugin(&EntityType::GetPluginInformation));
+	_plugins->insert(new Plugin(&Attribute::GetPluginInformation));
+	_plugins->insert(new Plugin(&Counter::GetPluginInformation));
+	_plugins->insert(new Plugin(&StatisticsCollector::GetPluginInformation));
 }
 
 List<Plugin*>* PluginManager::completePluginsFieldsAndTemplates() {

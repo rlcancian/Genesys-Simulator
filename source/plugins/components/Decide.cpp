@@ -31,7 +31,7 @@ Decide::Decide(Model* model, std::string name) : ModelComponent(model, Util::Typ
 									_parentModel,
                                     std::bind(&Decide::getConditions, this), std::bind(&Decide::addConditions, this, std::placeholders::_1), std::bind(&Decide::removeConditions, this, std::placeholders::_1),
 									Util::TypeOf<Decide>(), getName(), "Conditions", "");
-	
+
 	_parentModel->getControls()->insert(propConditions);
 
 	_addProperty(propConditions);

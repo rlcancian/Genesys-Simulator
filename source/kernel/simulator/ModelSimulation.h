@@ -166,9 +166,7 @@ private:
 		const bool initializeSystem = true;
 		const bool showReportsAfterSimulation = true;
 		const bool showReportsAfterReplication = true;
-		const bool showSimulationControlsInReport = true;
-	// TODO(genesys|model-simulation|naming): Review legacy spelling such as
-	// _showSimulationResposesInReport and rename carefully once all callers are mapped.
+		const bool showSimulationControlsInReport = false;
 		const bool showSimulationResposesInReport = false;
 	} DEFAULT;
 	unsigned int _numberOfReplications = DEFAULT.numberOfReplications;

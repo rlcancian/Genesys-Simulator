@@ -28,8 +28,8 @@ public:
 	SequenceStep(Model* model, std::string stationOrLabelName, bool isStation = true, std::list<Assignment*>* assignments = nullptr);
 public: // virtual
 
-	virtual bool _loadInstance(PersistenceRecord *fields, unsigned int parentIndex) override;
-	virtual void _saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues) override;
+	virtual bool _loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
+	virtual void _saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues);
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 
@@ -102,4 +102,3 @@ private:
 };
 
 #endif /* SEQUENCE_H */
-
