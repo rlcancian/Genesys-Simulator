@@ -4,6 +4,7 @@
 #include <sstream>
 #include <functional>
 #include <list>
+#include <memory>
 #include "../util/Util.h"
 #include "../util/List.h"
 
@@ -248,7 +249,15 @@ public:
 	}
 public:
 	virtual std::string getValue() const override { return std::to_string(_getter()); }
-    virtual void setValue(std::string value, bool remove=false) override { _setter(std::stoi(value)); };
+    virtual void setValue(std::string value, bool remove=false) override {
+		std::istringstream auxStr(value);
+		auxStr >> std::boolalpha;
+		bool boolVal = false;
+		if (!(auxStr >> boolVal)) {
+			boolVal = std::stoi(value) != 0;
+		}
+		_setter(boolVal);
+	};
 private:
 	GetterBool _getter;
 	SetterBool _setter;
@@ -287,12 +296,12 @@ public:
 //	SimulationControlUShort(GetterUShort getter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="") : SimulationControl(className, elementName, propertyName, whatsThis) {
 //		SimulationControlUShort(getter, nullptr, className, propertyName, whatsThis);
 //	}
-    SimulationControlUShort(GetterUShort getter, SetterUShort setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
-		_getter= getter;
-		_setter = setter;
-		_readonly = setter == nullptr;
-		_propertyType = Util::TypeOf<unsigned int>();
-	}
+	    SimulationControlUShort(GetterUShort getter, SetterUShort setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+			_getter= getter;
+			_setter = setter;
+			_readonly = setter == nullptr;
+			_propertyType = Util::TypeOf<unsigned short>();
+		}
 public:
 	virtual std::string getValue() const override { return std::to_string(_getter()); }
     virtual void setValue(std::string value, bool remove=false) override { _setter(std::stoul(value)); };
@@ -311,12 +320,12 @@ public:
 //	SimulationControlInt(GetterInt getter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="") : SimulationControl(className, elementName, propertyName, whatsThis) {
 //		SimulationControlInt(getter, nullptr, className, propertyName, whatsThis);
 //	}
-    SimulationControlInt(GetterInt getter, SetterInt setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
-		_getter= getter;
-		_setter = setter;
-		_readonly = setter == nullptr;
-		_propertyType = Util::TypeOf<unsigned int>();
-	}
+	    SimulationControlInt(GetterInt getter, SetterInt setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+			_getter= getter;
+			_setter = setter;
+			_readonly = setter == nullptr;
+			_propertyType = Util::TypeOf<int>();
+		}
 public:
 	virtual std::string getValue() const override { return std::to_string(_getter()); }
     virtual void setValue(std::string value, bool remove=false) override { _setter(std::stoi(value)); };
@@ -418,16 +427,16 @@ public:
 	}
 public:
 	virtual std::string getValue() const override {
-		int intVal = static_cast<int>(_getter());
+			int intVal = static_cast<int>(_getter());
 
-        // get string value of enum
-        // TODO: call the function getStrValues
-        List<std::string>* strOptions = new List<std::string>();
-        int max_i = static_cast<int>(T::num_elements);;
-        for (int i=0; i<max_i; i++) {
-            std::string value = E::convertEnumToStr((T)i);
-            strOptions->insert(value);
-        }
+	        // get string value of enum
+	        // TODO: call the function getStrValues
+	        std::unique_ptr<List<std::string>> strOptions = std::make_unique<List<std::string>>();
+	        int max_i = static_cast<int>(T::num_elements);;
+	        for (int i=0; i<max_i; i++) {
+	            std::string value = E::convertEnumToStr((T)i);
+	            strOptions->insert(value);
+	        }
 
         int current_index = 0;
         for (auto element : *strOptions->list()){
@@ -439,7 +448,7 @@ public:
         return "";
 	}
 
-    virtual void setValue(std::string value, bool remove=false) override {
+	    virtual void setValue(std::string value, bool remove=false) override {
 		int intVal = std::stoul(value);
 		_setter(static_cast<T>(intVal));
 	};
@@ -599,16 +608,17 @@ public:
         auxStr >> newVal;
         newVal = static_cast<T>(newVal);
 
-        if (remove) {
-            _remover(newVal);
-        } else {
-            bool exists = false;
-            for (auto element : *getStrValues()->list()) {
-                if (value == element) {
-                    exists = true;
-                    break;
-                }
-            }
+	        if (remove) {
+	            _remover(newVal);
+	        } else {
+	            bool exists = false;
+				std::unique_ptr<List<std::string>> strValues(getStrValues());
+	            for (auto element : *strValues->list()) {
+	                if (value == element) {
+	                    exists = true;
+	                    break;
+	                }
+	            }
 
             if (!exists) {
                 _adder(newVal);
@@ -657,20 +667,21 @@ public:
         return strVal;
     }
 
-    virtual void setValue(std::string value, bool remove=false) override {
+	    virtual void setValue(std::string value, bool remove=false) override {
         T newVal;
         newVal = new C(_model, value);
 
-        if (remove) {
-            _remover(newVal);
-        } else {
-            bool exists = false;
-            for (auto element : *getStrValues()->list()) {
-                if (value == element) {
-                    exists = true;
-                    break;
-                }
-            }
+	        if (remove) {
+	            _remover(newVal);
+	        } else {
+	            bool exists = false;
+				std::unique_ptr<List<std::string>> strValues(getStrValues());
+	            for (auto element : *strValues->list()) {
+	                if (value == element) {
+	                    exists = true;
+	                    break;
+	                }
+	            }
 
             if (!exists) {
                 _adder(newVal);
@@ -678,9 +689,9 @@ public:
         }
     };
 
-    virtual List<SimulationControl*>* getProperties(int index=0) override {
-        List<T>* tVal = static_cast<List<T>*>(_getter());
-        T selectedElement;
+	    virtual List<SimulationControl*>* getProperties(int index=0) override {
+	        List<T>* tVal = static_cast<List<T>*>(_getter());
+	        T selectedElement = nullptr;
 
         int current_index = 0;
         for (auto element : *tVal->list()) {
