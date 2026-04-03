@@ -28,12 +28,12 @@ SimulationReporterDefaultImpl1::SimulationReporterDefaultImpl1(ModelSimulation* 
 void SimulationReporterDefaultImpl1::showSimulationControls() {
 	_model->getTracer()->traceReport("Simulation Controls:");
 	Util::IncIndent();
-// 	{
-// 		for (SimulationControl* control : *_model->getControls()->list()) {
-// //			_model->getTracer()->traceReport(control->getClassname() + "." +control->getName() + ": " + control->getValue());
-// 			_model->getTracer()->traceReport("("+control->getClassname() + ") "+ control->getElementName()+"." +control->getName() + ": " + control->getValue());
-// 		}
-// 	}
+ 	{
+ 		for (SimulationControl* control : *_model->getControls()->list()) {
+ 			_model->getTracer()->traceReport(control->getClassname() + "." +control->getName() + ": " + control->getValue());
+ 			_model->getTracer()->traceReport("("+control->getClassname() + ") "+ control->getElementName()+"." +control->getName() + ": " + control->getValue());
+ 		}
+ 	}
 	Util::DecIndent();
 }
 
@@ -48,6 +48,10 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 	const std::string UtilTypeOfCounter = Util::TypeOf<Counter>();
 	// runs over all elements and list the statistics for each one, and then the statistics with no parent
 	Util::IncIndent();
+
+	if (_simulation->isShowSimulationControlsInReport())
+		this->showSimulationControls(); // assumed the controls are the same for all replications, show them only for the whole simulation
+
 	// copy the list of statistics and counters into a single new list
 	std::list<ModelDataDefinition*>* statisticsAndCounters = new std::list<ModelDataDefinition*>(*(_model->getDataManager()->getDataDefinitionList(UtilTypeOfStatisticsCollector)->list()));
 	std::list<ModelDataDefinition*>* counters = new std::list<ModelDataDefinition*>(*(_model->getDataManager()->getDataDefinitionList(UtilTypeOfCounter)->list()));
