@@ -57,7 +57,7 @@ public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 public: // gets & sets
 	void setSourceFilename(std::string sourceFilename);
 	std::string getSourceFilename() const;
@@ -90,13 +90,13 @@ public: // new methods
 	void* getDynamicLibraryHandler() const;
 
 protected: // must be overriden
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: // could be overriden
-	virtual bool _check(std::string& errorMessage);
+	virtual bool _check(std::string& errorMessage) override;
 	// virtual ParserChangesInformation* _getParserChangesInformation();
-	virtual void _initBetweenReplications();
-	virtual void _createInternalAndAttachedData();
+	virtual void _initBetweenReplications() override;
+	virtual void _createInternalAndAttachedData() override;
 protected:
 	CompilationResult _invokeCompiler(std::string command);  //system(command.c_str());
 	std::string _read(std::string filename);

@@ -23,7 +23,7 @@ public:
 	Smart_DelayBasedOnReplication();
 	void TestEventHandler(SimulationEvent *re);
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 	Delay* delay;
 	int *proctimes;
 };

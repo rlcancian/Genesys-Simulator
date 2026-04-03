@@ -26,7 +26,7 @@ public: // constructors
 	LSODE(Model* model, std::string name = "");
 	virtual ~LSODE() = default;
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -44,12 +44,12 @@ public: // g&s
 	void setFilename(std::string filename);
 	std::string getFileName() const;
 protected: // virtual
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: // virtual
 	//virtual void _initBetweenReplications();
-	virtual bool _check(std::string& errorMessage);
+	virtual bool _check(std::string& errorMessage) override;
 	//virtual void _createInternalAndAttachedData();
 private: // methods
 	bool _doStep();

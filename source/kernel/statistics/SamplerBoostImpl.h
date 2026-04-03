@@ -74,10 +74,8 @@ public:
 	/*! \brief Reinitializes RNG state so the pseudo-random sequence restarts. */
 	void reset();
 public:
-	/*! \brief Applies implementation-specific RNG parameters. */
-	virtual void setRNGparameters(Sampler_if::RNG_Parameters* param);
-	/*! \brief Returns current implementation-specific RNG parameters. */
-	virtual RNG_Parameters* getRNGparameters() const;
+	virtual void setRNGparameters(Sampler_if::RNG_Parameters* param) override;
+	virtual RNG_Parameters* getRNGparameters() const override;
 private:
 	//boost::random::mt19937 _gen;
 };

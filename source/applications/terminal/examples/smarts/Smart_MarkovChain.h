@@ -20,7 +20,7 @@ class Smart_MarkovChain : public BaseGenesysTerminalApplication {
 public:
 	Smart_MarkovChain();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_MARKOVCHAIN_H */

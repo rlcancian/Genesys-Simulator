@@ -65,7 +65,7 @@ public: //! new public user methods for this component
 	// ...
 
 public: //! virtual public methods
-	virtual std::string show();
+	virtual std::string show() override;
 
 public: //! static public methods that must have implementations (Load and New just the same. GetInformation must provide specific infos for the new component
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -76,8 +76,8 @@ public: //! static public methods that must have implementations (Load and New j
 	static void DispatchEvent(Event* event); //!< This method triggers the simulation of the behavior of the component. It is invoked when an event (corresponding to this component) is taken from the list of future events or when an entity arrives at this component by connection.
 
 protected: //! virtual protected method that must be overriden
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	// new virtual methods for all ModelComponents
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) = 0; //!< This method is only for ModelComponents, not ModelDataElements
 

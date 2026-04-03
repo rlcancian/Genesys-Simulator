@@ -81,8 +81,7 @@ private: // no one can create or destry entities directlly. This can be done one
 	// friend Entity* Model::createEntity(std::string name, bool insertIntoModel); // It would be better, but Model is not known at this point of compilaton
 	friend class Model;
 public:
-	/*! \brief Returns a string representation of this entity instance. */
-	virtual std::string show();
+	virtual std::string show() override;
 
 public: // g & s
 	/*!
@@ -145,9 +144,9 @@ public:
 	 */
 	Util::identification entityNumber() const;
 protected:
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual bool _check(std::string& errorMessage);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual bool _check(std::string& errorMessage) override;
 private:
 	Util::identification _entityNumber;
 	EntityType* _entityType = nullptr;

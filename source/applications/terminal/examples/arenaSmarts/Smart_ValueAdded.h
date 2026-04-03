@@ -20,7 +20,7 @@ class Smart_ValueAdded : public BaseGenesysTerminalApplication {
 public:
 	Smart_ValueAdded();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_VALUEADDED_H */

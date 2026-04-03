@@ -22,15 +22,15 @@ public:
 	ExperimentManagerDefaultImpl1();
 	virtual ~ExperimentManagerDefaultImpl1() = default;
 public:
-	virtual List<SimulationScenario*>* getScenarios() const;
+	virtual List<SimulationScenario*>* getScenarios() const override;
 	//virtual List<PropertyBase*>* getControls() const;
 	//virtual List<PropertyBase*>* getResponses() const;
 	//virtual List<PropertyBase*>* extractControlsFromModel(std::string modelFilename) const;
 	//virtual List<PropertyBase*>* extractResponsesFromModel(std::string modelFilename) const;
-	virtual void startSimulationOfScenario(SimulationScenario* scenario);
-	virtual void startExperiment();
-	virtual void stopExperiment();
-	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener);
+	virtual void startSimulationOfScenario(SimulationScenario* scenario) override;
+	virtual void startExperiment() override;
+	virtual void stopExperiment() override;
+	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) override;
 private:
 	//List<PropertyBase*>* _controls = new List<PropertyBase*>();
 };

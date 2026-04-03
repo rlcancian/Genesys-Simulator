@@ -20,7 +20,7 @@ class Smart_HoldSearchRemove : public BaseGenesysTerminalApplication {
 public:
 	Smart_HoldSearchRemove();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_HOLDSEARCHREMOVE_H */

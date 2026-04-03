@@ -19,7 +19,7 @@ class AnElectronicAssemblyAndTestSystem : public BaseGenesysTerminalApplication 
 public:
 	AnElectronicAssemblyAndTestSystem();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 
 };
 

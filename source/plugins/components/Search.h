@@ -63,7 +63,7 @@ public: // constructors
 	Search(Model* model, std::string name = "");
 	virtual ~Search() = default;
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 public:
 	void setSaveFounRankAttribute(std::string _saveFounRankAttribute);
 	std::string getSaveFounRankAttribute() const;
@@ -85,11 +85,11 @@ public: // static
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected: // must be overriden 
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 protected: // could be overriden by derived classes
-	virtual bool _check(std::string& errorMessage);
+	virtual bool _check(std::string& errorMessage) override;
 	/*! This method returns all changes in the parser that are needed by plugins of this ModelDatas. When connecting a new plugin, ParserChangesInformation are used to change parser source code, whch is after compiled and dinamically linked to to simulator kernel to reflect the changes */
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 	//virtual void _initBetweenReplications();

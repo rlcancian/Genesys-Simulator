@@ -20,7 +20,7 @@ class Smart_ModelInfoModelSimulation : public BaseGenesysTerminalApplication {
 public:
 	Smart_ModelInfoModelSimulation();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_MODELINFOMODELSIMULATION_H */

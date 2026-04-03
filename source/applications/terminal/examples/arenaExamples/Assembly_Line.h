@@ -20,7 +20,7 @@ class Assembly_Line : public BaseGenesysTerminalApplication {
 public:
 	Assembly_Line();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_DELAY_H */

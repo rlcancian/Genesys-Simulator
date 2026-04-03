@@ -28,11 +28,11 @@ public:
 	virtual ~SinkModelComponent() = default;
 public:
 protected:
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected:
 	//virtual void _initBetweenReplications();
-	virtual bool _check(std::string& errorMessage);
+	virtual bool _check(std::string& errorMessage) override;
 private:
 };
 //namespace\\}

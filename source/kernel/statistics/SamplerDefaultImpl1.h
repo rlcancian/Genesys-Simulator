@@ -88,10 +88,8 @@ public:
 	/*! \brief Reinitializes RNG state so the pseudo-random sequence restarts. */
 	void reset();
 public:
-	/*! \brief Applies external RNG parameter object (takes ownership rules into account). */
-	virtual void setRNGparameters(RNG_Parameters* param);
-	/*! \brief Returns current RNG parameter object. */
-	virtual RNG_Parameters* getRNGparameters() const;
+	virtual void setRNGparameters(RNG_Parameters* param) override;
+	virtual RNG_Parameters* getRNGparameters() const override;
 private:
 	RNG_Parameters* _param = new DefaultImpl1RNG_Parameters();
 	bool _ownsParam = true;

@@ -5,5 +5,5 @@
 class AirportSecurityExample : public BaseGenesysTerminalApplication {
 public:
 	AirportSecurityExample();
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
