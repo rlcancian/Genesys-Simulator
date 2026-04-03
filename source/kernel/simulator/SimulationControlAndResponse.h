@@ -4,7 +4,8 @@
 #include <sstream>
 #include <functional>
 #include <list>
-#include <memory>
+#include <stdexcept>
+#include <type_traits>
 #include "../util/Util.h"
 #include "../util/List.h"
 
@@ -153,6 +154,11 @@ public:
     virtual void setValue(std::string value, bool remove=false) = 0;
     virtual List<SimulationControl*>* getProperties(int index=0) { return nullptr; };
 protected:
+	void _ensureWritable(const char* operation) const {
+		if (_readonly) {
+			throw std::logic_error(std::string("Cannot ") + operation + " readonly SimulationControl \"" + _propertyName + "\"");
+		}
+	}
 	bool _readonly = false;
 };
 
@@ -188,7 +194,13 @@ public:
 	}
 public:
 	virtual std::string getValue() const override { return _getter(); }
-    virtual void setValue(std::string value, bool remove=false) override { _setter(value); };
+    virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlString setter is not defined");
+		}
+		_setter(value);
+	};
 private:
 	GetterString _getter;
 	SetterString _setter;
@@ -226,7 +238,13 @@ public:
 	}
 public:
 	virtual std::string getValue() const override { return std::to_string(_getter()); }
-    virtual void setValue(std::string value, bool remove=false) override { _setter(std::stod(value)); };
+    virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlDouble setter is not defined");
+		}
+		_setter(std::stod(value));
+	};
 private:
 	GetterDouble _getter;
 	SetterDouble _setter;
@@ -250,6 +268,10 @@ public:
 public:
 	virtual std::string getValue() const override { return std::to_string(_getter()); }
     virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlBool setter is not defined");
+		}
 		std::istringstream auxStr(value);
 		auxStr >> std::boolalpha;
 		bool boolVal = false;
@@ -281,7 +303,13 @@ public:
 	}
 public:
 	virtual std::string getValue() const override { return std::to_string(_getter()); }
-    virtual void setValue(std::string value, bool remove=false) override { _setter(std::stoul(value)); };
+    virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlUInt setter is not defined");
+		}
+		_setter(std::stoul(value));
+	};
 private:
 	GetterUInt _getter;
 	SetterUInt _setter;
@@ -304,7 +332,13 @@ public:
 		}
 public:
 	virtual std::string getValue() const override { return std::to_string(_getter()); }
-    virtual void setValue(std::string value, bool remove=false) override { _setter(std::stoul(value)); };
+    virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlUShort setter is not defined");
+		}
+		_setter(std::stoul(value));
+	};
 private:
 	GetterUShort _getter;
 	SetterUShort _setter;
@@ -328,7 +362,13 @@ public:
 		}
 public:
 	virtual std::string getValue() const override { return std::to_string(_getter()); }
-    virtual void setValue(std::string value, bool remove=false) override { _setter(std::stoi(value)); };
+    virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlInt setter is not defined");
+		}
+		_setter(std::stoi(value));
+	};
 private:
 	GetterInt _getter;
 	SetterInt _setter;
@@ -355,6 +395,10 @@ public:
 		return std::to_string(intVal);
 	}
     virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlTimeUnit setter is not defined");
+		}
 		int intVal = std::stoul(value);
 		_setter(static_cast<Util::TimeUnit>(intVal));
     };
@@ -402,6 +446,10 @@ public:
 	}
 
     virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlGeneric setter is not defined");
+		}
 		std::istringstream auxStr(value);
 		T tVal;
 		auxStr >> tVal;
@@ -419,6 +467,7 @@ template <typename T, typename E>
 class SimulationControlGenericEnum: public SimulationControl {
 public:
     SimulationControlGenericEnum(GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=true) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+		static_assert(std::is_enum<T>::value, "SimulationControlGenericEnum requires T to be an enum");
 		_getter= getter;
 		_setter = setter;
 		_readonly = setter == nullptr;
@@ -427,28 +476,19 @@ public:
 	}
 public:
 	virtual std::string getValue() const override {
-			int intVal = static_cast<int>(_getter());
-
-	        // get string value of enum
-	        // TODO: call the function getStrValues
-	        std::unique_ptr<List<std::string>> strOptions = std::make_unique<List<std::string>>();
-	        int max_i = static_cast<int>(T::num_elements);;
-	        for (int i=0; i<max_i; i++) {
-	            std::string value = E::convertEnumToStr((T)i);
-	            strOptions->insert(value);
-	        }
-
-        int current_index = 0;
-        for (auto element : *strOptions->list()){
-            if (current_index == intVal) {
-                return element;
-            }
-            current_index++;
-        }
-        return "";
+		int intVal = static_cast<int>(_getter());
+		int max_i = static_cast<int>(T::num_elements);
+		if (intVal < 0 || intVal >= max_i) {
+			return "";
+		}
+		return E::convertEnumToStr(static_cast<T>(intVal));
 	}
 
 	    virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlGenericEnum setter is not defined");
+		}
 		int intVal = std::stoul(value);
 		_setter(static_cast<T>(intVal));
 	};
@@ -473,6 +513,7 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericClass: public SimulationControl {
 public:
     SimulationControlGenericClass(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+		static_assert(std::is_pointer<T>::value, "SimulationControlGenericClass requires pointer type T");
 		_model = model;
 		_getter= getter;
 		_setter = setter;
@@ -494,6 +535,10 @@ public:
 	}
 
     virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlGenericClass setter is not defined");
+		}
 		bool exists = false;
         // value.pop_back();
 		T newVal;
@@ -535,6 +580,7 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericClassNotDC: public SimulationControl {
 public:
     SimulationControlGenericClassNotDC(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+		static_assert(std::is_pointer<T>::value, "SimulationControlGenericClassNotDC requires pointer type T");
         _model = model;
         _getter= getter;
         _setter = setter;
@@ -556,8 +602,10 @@ public:
     }
 
     virtual void setValue(std::string value, bool remove=false) override {
-        bool exists = false;
-        // value.pop_back();
+		_ensureWritable("set value of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlGenericClassNotDC setter is not defined");
+		}
         T newVal;
 
         // TODO: criar apenas se já não estiver definido?
@@ -602,6 +650,7 @@ public:
 	}
 
     virtual void setValue(std::string value, bool remove=false) override {
+		_ensureWritable(remove ? "remove value from" : "add value to");
         T newVal;
 
         std::istringstream auxStr(value);
@@ -609,12 +658,20 @@ public:
         newVal = static_cast<T>(newVal);
 
 	        if (remove) {
+				if (!_remover) {
+					throw std::logic_error("SimulationControlGenericList remover is not defined");
+				}
 	            _remover(newVal);
 	        } else {
+				if (!_adder) {
+					throw std::logic_error("SimulationControlGenericList adder is not defined");
+				}
 	            bool exists = false;
-				std::unique_ptr<List<std::string>> strValues(getStrValues());
-	            for (auto element : *strValues->list()) {
-	                if (value == element) {
+				List<T>* tVal = static_cast<List<T>*>(_getter());
+	            for (auto element : *tVal->list()) {
+					std::ostringstream auxElement;
+					auxElement << element;
+	                if (value == auxElement.str()) {
 	                    exists = true;
 	                    break;
 	                }
@@ -652,6 +709,7 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericListPointer: public SimulationControl {
 public:
     SimulationControlGenericListPointer(M model, GetterGeneric<List<T>*> getter, AdderGeneric<T> adder, RemoverGeneric<T> remover, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=true, bool isClass=true, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+		static_assert(std::is_pointer<T>::value, "SimulationControlGenericListPointer requires pointer type T");
         _model = model;
         _getter= getter;
         _adder = adder;
@@ -668,23 +726,30 @@ public:
     }
 
 	    virtual void setValue(std::string value, bool remove=false) override {
-        T newVal;
-        newVal = new C(_model, value);
+		_ensureWritable(remove ? "remove value from" : "add value to");
+		List<T>* tVal = static_cast<List<T>*>(_getter());
+		T existingVal = nullptr;
+		for (auto element : *tVal->list()) {
+			if (element != nullptr && element->getName() == value) {
+				existingVal = element;
+				break;
+			}
+		}
 
 	        if (remove) {
-	            _remover(newVal);
+				if (!_remover) {
+					throw std::logic_error("SimulationControlGenericListPointer remover is not defined");
+				}
+				if (existingVal != nullptr) {
+					_remover(existingVal);
+				}
 	        } else {
-	            bool exists = false;
-				std::unique_ptr<List<std::string>> strValues(getStrValues());
-	            for (auto element : *strValues->list()) {
-	                if (value == element) {
-	                    exists = true;
-	                    break;
-	                }
-	            }
-
-            if (!exists) {
-                _adder(newVal);
+				if (!_adder) {
+					throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
+				}
+	            if (existingVal == nullptr) {
+					T newVal = new C(_model, value);
+	                _adder(newVal);
             }
         }
     };
