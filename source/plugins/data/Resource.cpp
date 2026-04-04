@@ -358,9 +358,19 @@ void Resource::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) 
 }
 
 bool Resource::_check(std::string& errorMessage) {
-    //@TODO CHECK!
-    errorMessage += "";
-    return true;
+    /*!
+     * \brief Validate resource basic semantic constraints.
+     */
+    bool resultAll = true;
+    if (_capacity == 0) {
+        errorMessage += "Resource capacity must be greater than zero. ";
+        resultAll = false;
+    }
+    if (_costBusyTimeUnit < 0 || _costIdleTimeUnit < 0 || _costPerUse < 0) {
+        errorMessage += "Resource costs must be non-negative. ";
+        resultAll = false;
+    }
+    return resultAll;
 }
 
 void Resource::_onReplicationEnd(SimulationEvent* se) {

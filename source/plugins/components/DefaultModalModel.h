@@ -24,11 +24,16 @@ public: /// constructors
     virtual ~    DefaultModalModel() = default;
 
 public: /// new public user methods for this component
-    virtual void addNode(DefaultNode* node);
-    virtual void removeNode(DefaultNode* node);
-    virtual void addTransition(DefaultNodeTransition* transition);
-    virtual void removeTransition(DefaultNodeTransition* transition);
-    // ...
+	virtual void addNode(DefaultNode* node);
+	virtual void removeNode(DefaultNode* node);
+	virtual void addTransition(DefaultNodeTransition* transition);
+	virtual void removeTransition(DefaultNodeTransition* transition);
+	virtual List<DefaultNode*>* getNodes() const;
+	virtual List<DefaultNodeTransition*>* getTransitions() const;
+	virtual void setEntryNode(DefaultNode* entryNode);
+	virtual DefaultNode* getEntryNode() const;
+	virtual void setMaxTransitionsPerDispatch(unsigned int maxTransitionsPerDispatch);
+	virtual unsigned int getMaxTransitionsPerDispatch() const;
 
 public: /// virtual public methods
 	virtual std::string show() override;
@@ -63,19 +68,18 @@ private: /// Attributes that should be loaded or saved with this component (Pers
 
 	/// Default values for the attributes. Used on initing, loading and saving
 	const struct DEFAULT_VALUES {
-		const std::string someString = "Test";
-		const unsigned int someUint = 1;
+			const std::string entryNodeName = "";
+			const unsigned int maxTransitionsPerDispatch = 64;
 	} DEFAULT;
-	std::string _someString = DEFAULT.someString;
-	unsigned int _someUint = DEFAULT.someUint;
+	std::string _entryNodeName = DEFAULT.entryNodeName;
+	unsigned int _maxTransitionsPerDispatch = DEFAULT.maxTransitionsPerDispatch;
 
 private: /// internal COMPONENTS (since it's a modal model / network) (Composition)
-    List<DefaultNode*>* _nodes = new List<DefaultNode*>();
-    List<DefaultNodeTransition*>* _transitions = new List<DefaultNodeTransition*>();
+	List<DefaultNode*>* _nodes = new List<DefaultNode*>();
+	List<DefaultNodeTransition*>* _transitions = new List<DefaultNodeTransition*>();
 
 private: /// internal DataElements (Composition)
     // ...
 private: /// attached DataElements (Agrregation)
 	// ...
 };
-

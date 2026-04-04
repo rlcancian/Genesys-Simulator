@@ -100,6 +100,12 @@ bool Storage::_loadInstance(PersistenceRecord *fields) {
 
 void Storage::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	/*!
+	 * \brief Persist Storage parameters using symmetric keys from _loadInstance.
+	 */
+	fields->saveField("capacity", _capacity, DEFAULT.capacity, saveDefaultValues);
+	fields->saveField("totalArea", _totalArea, DEFAULT.totalArea, saveDefaultValues);
+	fields->saveField("unitPerArea", _unitsPerArea, DEFAULT.unitsPerArea, saveDefaultValues);
 }
 
 bool Storage::_check(std::string& errorMessage) {
@@ -115,4 +121,3 @@ ParserChangesInformation* Storage::_getParserChangesInformation() {
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
 }
-
