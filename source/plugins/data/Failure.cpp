@@ -182,9 +182,9 @@ Failure::FailureRule Failure::getFailureRule() const {
 }
 
 PluginInformation* Failure::GetPluginInformation() {
-	//@TODO not implemented yet
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Failure>(), &Failure::LoadInstance, &Failure::NewInstance);
 	//info->insertDynamicLibFileDependence("resource.so"); -- Circular dependence!! Do not add it
+	info->setDescriptionHelp("Defines failure behavior (time-based or count-based) that can be attached to one or more Resources.");
 	return info;
 }
 
@@ -202,7 +202,21 @@ bool Failure::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			//@TODO not implemented yet
+			/*!
+			 * \brief Load Failure persistence fields.
+			 *
+			 * This method mirrors \ref _saveInstance field names to preserve a
+			 * deterministic serialization contract.
+			 */
+			_failureType = static_cast<FailureType>(fields->loadField("failureType", static_cast<int>(DEFAULT.failureType)));
+			_failureRule = static_cast<FailureRule>(fields->loadField("failureRule", static_cast<int>(DEFAULT.failureRule)));
+			_countExpression = fields->loadField("countExpression", DEFAULT.countExpression);
+			_upTimeExpression = fields->loadField("upTimeExpression", DEFAULT.upTimeExpression);
+			_upTimeTimeUnit = static_cast<Util::TimeUnit>(fields->loadField("upTimeTimeUnit", static_cast<int>(DEFAULT.upTimeTimeUnit)));
+			_downTimeExpression = fields->loadField("downTimeExpression", DEFAULT.downTimeExpression);
+			_downTimeTimeUnit = static_cast<Util::TimeUnit>(fields->loadField("downTimeTimeUnit", static_cast<int>(DEFAULT.downTimeTimeUnit)));
+			// Possible extension for attached resources:
+			// unsigned int numResources = fields->loadField("failingResources", 0u);
 		} catch (...) {
 		}
 	}
@@ -211,14 +225,34 @@ bool Failure::_loadInstance(PersistenceRecord *fields) {
 
 void Failure::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	//@TODO not implemented yet
+	/*!
+	 * \brief Persist Failure configuration fields.
+	 */
+	fields->saveField("failureType", static_cast<int>(_failureType), static_cast<int>(DEFAULT.failureType), saveDefaultValues);
+	fields->saveField("failureRule", static_cast<int>(_failureRule), static_cast<int>(DEFAULT.failureRule), saveDefaultValues);
+	fields->saveField("countExpression", _countExpression, DEFAULT.countExpression, saveDefaultValues);
+	fields->saveField("upTimeExpression", _upTimeExpression, DEFAULT.upTimeExpression, saveDefaultValues);
+	fields->saveField("upTimeTimeUnit", static_cast<int>(_upTimeTimeUnit), static_cast<int>(DEFAULT.upTimeTimeUnit), saveDefaultValues);
+	fields->saveField("downTimeExpression", _downTimeExpression, DEFAULT.downTimeExpression, saveDefaultValues);
+	fields->saveField("downTimeTimeUnit", static_cast<int>(_downTimeTimeUnit), static_cast<int>(DEFAULT.downTimeTimeUnit), saveDefaultValues);
+	// Possible extension for attached resources:
+	// fields->saveField("failingResources", _falingResources->size(), 0u, saveDefaultValues);
 }
 
 bool Failure::_check(std::string& errorMessage) {
+	/*!
+	 * \brief Validate failure expressions according to selected failure mode.
+	 */
 	bool resultAll = true;
-	//@TODO not implemented yet
-	// resultAll |= ...
-	errorMessage += "";
+	if (_failureType == FailureType::COUNT) {
+		resultAll &= _parentModel->checkExpression(_countExpression, getName() + ".CountExpression", errorMessage);
+	}
+	resultAll &= _parentModel->checkExpression(_downTimeExpression, getName() + ".DownTimeExpression", errorMessage);
+	if (_failureType == FailureType::TIME) {
+		resultAll &= _parentModel->checkExpression(_upTimeExpression, getName() + ".UpTimeExpression", errorMessage);
+	}
+	// Optional semantic checks:
+	// resultAll &= (_falingResources->size() > 0);
 	return resultAll;
 }
 
@@ -272,5 +306,4 @@ void Failure::_onFailureFailEventHandler(void* resourcePtr){
 	// schedule next resource activation
 	_scheduleActivation(resource);
 }
-
 
