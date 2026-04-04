@@ -93,11 +93,36 @@ ModelDataDefinition* Formula::LoadInstance(Model* model, PersistenceRecord *fiel
 }
 
 bool Formula::_loadInstance(PersistenceRecord *fields) {
-	return ModelDataDefinition::_loadInstance(fields);
+	bool res = ModelDataDefinition::_loadInstance(fields);
+	if (res) {
+		/*!
+		 * \brief Load formula expressions map.
+		 */
+		_formulaExpressions->clear();
+		unsigned int expressions = fields->loadField("expressions", 0u);
+		for (unsigned int i = 0; i < expressions; i++) {
+			std::string suffix = Util::StrIndex(i);
+			std::string index = fields->loadField("exprIndex" + suffix, "");
+			std::string expression = fields->loadField("exprValue" + suffix, "");
+			_formulaExpressions->insert({index, expression});
+		}
+	}
+	return res;
 }
 
 void Formula::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
+	/*!
+	 * \brief Persist formula expressions map.
+	 */
+	fields->saveField("expressions", _formulaExpressions->size(), 0u, saveDefaultValues);
+	unsigned int i = 0;
+	for (const auto& pair : *_formulaExpressions) {
+		std::string suffix = Util::StrIndex(i);
+		fields->saveField("exprIndex" + suffix, pair.first, "", saveDefaultValues);
+		fields->saveField("exprValue" + suffix, pair.second, "", saveDefaultValues);
+		i++;
+	}
 }
 
 bool Formula::_check(std::string& errorMessage) {

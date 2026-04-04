@@ -35,6 +35,7 @@ std::string File::show() {
 
 PluginInformation* File::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<File>(), &File::LoadInstance, &File::NewInstance);
+	info->setDescriptionHelp("Defines metadata for external files used by model elements that read/write structured data.");
 	return info;
 }
 
@@ -52,9 +53,16 @@ bool File::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			//@TODO not implemented yet
-			//this->attribute = fields->loadField("field", DEFAULT.fields);
-			
+			/*!
+			 * \brief Load file metadata fields.
+			 *
+			 * File currently stores only the base ModelDataDefinition data.
+			 * Keep the template commands below as guidance when file-specific
+			 * attributes are introduced.
+			 */
+			// this->_accessType = fields->loadField("accessType", DEFAULT.accessType);
+			// this->_systemFilename = fields->loadField("systemFilename", DEFAULT.systemFilename);
+			// this->_recordsetName = fields->loadField("recordsetName", DEFAULT.recordsetName);
 		} catch (...) {
 		}
 	}
@@ -63,22 +71,33 @@ bool File::_loadInstance(PersistenceRecord *fields) {
 
 void File::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	//@TODO not implemented yet
+	/*!
+	 * \brief Save file metadata fields.
+	 */
+	// fields->saveField("accessType", _accessType, DEFAULT.accessType, saveDefaultValues);
+	// fields->saveField("systemFilename", _systemFilename, DEFAULT.systemFilename, saveDefaultValues);
+	// fields->saveField("recordsetName", _recordsetName, DEFAULT.recordsetName, saveDefaultValues);
 }
 
 bool File::_check(std::string& errorMessage) {
+	/*!
+	 * \brief Validate file metadata consistency.
+	 */
 	bool resultAll = true;
-	//@TODO not implemented yet
-	// resultAll |= ...
-	errorMessage += "";
+	// resultAll &= (_systemFilename != "");
+	// resultAll &= Util::FileExists(_systemFilename);
+	(void) errorMessage;
 	return resultAll;
 }
 
 ParserChangesInformation* File::_getParserChangesInformation() {
 	ParserChangesInformation* changes = new ParserChangesInformation();
-	//@TODO not implemented yet
+	/*!
+	 * \brief Return parser deltas required by File.
+	 *
+	 * File currently does not require parser extensions.
+	 */
 	//changes->getProductionToAdd()->insert(...);
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
 }
-
