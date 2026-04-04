@@ -50,28 +50,44 @@ void Store::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Store::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		/*!
+		 * \brief Load Store-specific persistent fields.
+		 *
+		 * Store currently has no extra persisted attributes beyond ModelComponent.
+		 * Keep the template commands below as a guide for future extensions.
+		 */
+		// _storageName = fields->loadField("storageName", DEFAULT.storageName);
+		// _quantityExpression = fields->loadField("quantityExpression", DEFAULT.quantityExpression);
 	}
 	return res;
 }
 
 void Store::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	/*!
+	 * \brief Save Store-specific persistent fields.
+	 */
+	// fields->saveField("storageName", _storageName, DEFAULT.storageName, saveDefaultValues);
+	// fields->saveField("quantityExpression", _quantityExpression, DEFAULT.quantityExpression, saveDefaultValues);
 }
 
 bool Store::_check(std::string& errorMessage) {
+	/*!
+	 * \brief Validate minimal consistency for a pass-through Store component.
+	 */
 	bool resultAll = true;
-	// @TODO: not implemented yet
-	errorMessage += "";
+	resultAll &= this->getConnectionManager()->size() >= 1;
+	if (!resultAll) {
+		errorMessage += "Store must have at least one output connection.";
+	}
 	return resultAll;
 }
 
 PluginInformation* Store::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Store>(), &Store::LoadInstance, &Store::NewInstance);
 	info->setCategory("Material Handling");
+	info->setDescriptionHelp("The Store component is a placeholder for storage-oriented flows. In the current implementation it forwards the entity to the next connected component.");
 	// ...
 	return info;
 }
-
 
