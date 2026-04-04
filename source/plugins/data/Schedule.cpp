@@ -80,7 +80,7 @@ ModelDataDefinition* Schedule::LoadInstance(Model* model, PersistenceRecord *fie
 
 PluginInformation* Schedule::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Schedule>(), &Schedule::LoadInstance, &Schedule::NewInstance);
-	info->setDescriptionHelp("//@TODO");
+	info->setDescriptionHelp("Defines a repeating or finite list of expression-duration items that can be queried by simulated time.");
 	//info->setDescriptionHelp("");
 	//info->setObservation("");
 	//info->setMinimumOutputs();
@@ -98,8 +98,19 @@ bool Schedule::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			//this->_someString = fields->loadField("someString", DEFAULT.someString);
-			//this->_someUint = fields->loadField("someUint", DEFAULT.someUint);
+			/*!
+			 * \brief Load schedulable items and repeat behavior.
+			 */
+			_repeatAfterLast = fields->loadField("repeatAfterLast", DEFAULT.repeatAfterLast);
+			unsigned int items = fields->loadField("items", 0u);
+			_schedulableItems->clear();
+			for (unsigned int i = 0; i < items; i++) {
+				std::string suffix = Util::StrIndex(i);
+				std::string expression = fields->loadField("itemExpression" + suffix, "");
+				double duration = fields->loadField("itemDuration" + suffix, 0.0);
+				SchedulableItem::Rule rule = static_cast<SchedulableItem::Rule>(fields->loadField("itemRule" + suffix, static_cast<int>(SchedulableItem::Rule::IGNORE)));
+				_schedulableItems->insert(new SchedulableItem(expression, duration, rule));
+			}
 		} catch (...) {
 		}
 	}
@@ -108,8 +119,19 @@ bool Schedule::_loadInstance(PersistenceRecord *fields) {
 
 void Schedule::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	//fields->saveField("someUint", _someUint, DEFAULT.someUint);
-	//fields->saveField("someString", _someString, DEFAULT.someString);
+	/*!
+	 * \brief Persist schedule items and repeat behavior.
+	 */
+	fields->saveField("repeatAfterLast", _repeatAfterLast, DEFAULT.repeatAfterLast, saveDefaultValues);
+	fields->saveField("items", _schedulableItems->size(), 0u, saveDefaultValues);
+	unsigned int i = 0;
+	for (SchedulableItem* item : *_schedulableItems->list()) {
+		std::string suffix = Util::StrIndex(i);
+		fields->saveField("itemExpression" + suffix, item->getExpression(), "", saveDefaultValues);
+		fields->saveField("itemDuration" + suffix, item->getDuration(), 0.0, saveDefaultValues);
+		fields->saveField("itemRule" + suffix, static_cast<int>(item->getRule()), static_cast<int>(SchedulableItem::Rule::IGNORE), saveDefaultValues);
+		i++;
+	}
 }
 
 //
@@ -117,9 +139,21 @@ void Schedule::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) 
 //
 
 bool Schedule::_check(std::string& errorMessage) {
+	/*!
+	 * \brief Validate that schedule has items and non-negative durations.
+	 */
 	bool resultAll = true;
-	//resultAll &= _someString != "";
-	//resultAll &= _someUint > 0;
+	if (_schedulableItems->size() == 0) {
+		errorMessage += "Schedule has no schedulable items. ";
+		resultAll = false;
+	}
+	for (SchedulableItem* item : *_schedulableItems->list()) {
+		if (item->getDuration() < 0.0) {
+			errorMessage += "Schedule item duration must be >= 0. ";
+			resultAll = false;
+		}
+		resultAll &= _parentModel->checkExpression(item->getExpression(), getName() + ".ItemExpression", errorMessage);
+	}
 	return resultAll;
 }
 
@@ -141,14 +175,21 @@ void Schedule::_createInternalAndAttachedData() {
 
 ParserChangesInformation* Schedule::_getParserChangesInformation() {
 	ParserChangesInformation* changes = new ParserChangesInformation();
-	//@TODO not implemented yet
+	/*!
+	 * \brief Return parser changes required by Schedule.
+	 *
+	 * No parser customization is currently necessary.
+	 */
 	//changes->getProductionToAdd()->insert(...);
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
 }
 
 void Schedule::_addProperty(SimulationControl* property) {
-
+	/*!
+	 * \brief Keep local property mirror aligned with controls registered in model.
+	 */
+	_properties->insert(property);
 }
 
 //
