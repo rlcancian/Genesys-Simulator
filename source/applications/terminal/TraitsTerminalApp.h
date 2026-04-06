@@ -90,7 +90,7 @@ template <> struct TraitsTerminalApp<GenesysApplication_if> {
 	//typedef Smart_Expression Application;
 	//typedef Smart_InventoryAndHoldingCosts Application;
 	//typedef Smart_MaxArrivalsField Application;
-	typedef Smart_ModalModelFSM Application;
+	//typedef Smart_ModalModelFSM Application;
 	//typedef Smart_ModelRunUntil1000Parts Application;
 	//typedef Smart_ModuleDisplayVariables Application;
 	//typedef Smart_OverlappingResources Application;
@@ -125,7 +125,7 @@ template <> struct TraitsTerminalApp<GenesysApplication_if> {
 	//typedef Half_Adder Application;
 
     // TEACHING
-    //typedef AnElectronicAssemblyAndTestSystem Application;
+    typedef AnElectronicAssemblyAndTestSystem Application;
     //typedef OperatingSystem01 Application;
     //typedef OperatingSystem02 Application;
     //typedef OperatingSystem03 Application;
