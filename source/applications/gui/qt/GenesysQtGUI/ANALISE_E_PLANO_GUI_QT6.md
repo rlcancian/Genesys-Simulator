@@ -300,3 +300,12 @@ Foi melhorada a destruição de `GraphicalConnection`:
 - remoções agora são defensivas com `nullptr` checks;
 - objetos auxiliares `Connection` alocados no construtor são liberados no destrutor;
 - reduz vazamento de memória em ciclos de criar/remover conexão.
+
+### Andamento adicional (documentação detalhada por blocos)
+
+Foi iniciada documentação “linha de raciocínio por bloco” em código existente:
+
+- `GraphicalConnection` recebeu comentários em blocos críticos (construção, update de geometria, paint e destruição);
+- `mainwindow_scene.cpp` recebeu documentação doxygen em handlers/slots e blocos funcionais de atualização de UI.
+
+@ToDo: continuar essa estratégia de documentação detalhada nos demais arquivos centrais (`mainwindow_controller.cpp`, `ModelGraphicsScene.cpp`, `propertyeditor/*`).
