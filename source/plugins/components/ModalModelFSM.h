@@ -6,6 +6,7 @@ class ModalModelFSM : public ModalModelDefault {
 public:
 	ModalModelFSM(Model* model, std::string name = "");
 	virtual ~ModalModelFSM() = default;
+public:
 
 public: // static
 	static PluginInformation* GetPluginInformation();
