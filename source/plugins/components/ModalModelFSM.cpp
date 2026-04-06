@@ -7,13 +7,13 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
-ModalModelFSM::ModalModelFSM(Model* model, std::string name) : DefaultModalModel(model, name) {
+ModalModelFSM::ModalModelFSM(Model* model, std::string name) : ModalModelDefault(model, name) {
 }
 
 PluginInformation* ModalModelFSM::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<ModalModelFSM>(), &ModalModelFSM::LoadInstance, &ModalModelFSM::NewInstance);
 	info->setCategory("Network");
-	info->setDescriptionHelp("Specialization of DefaultModalModel for finite-state machine style models.");
+	info->setDescriptionHelp("Specialization of ModalModelDefault for finite-state machine style models.");
 	return info;
 }
 
@@ -29,6 +29,7 @@ ModelDataDefinition* ModalModelFSM::NewInstance(Model* model, std::string name) 
 
 bool ModalModelFSM::_check(std::string& errorMessage) {
 	bool resultAll = true;
+	resultAll &= ModalModelDefault::_check(errorMessage);
 	resultAll &= getNodes()->size() > 0;
 	if (!resultAll) {
 		errorMessage += "ModalModelFSM requires at least one state node.";

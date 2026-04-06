@@ -7,6 +7,7 @@
 #include "../../../../plugins/components/network/FSMState.h"
 #include "../../../../plugins/components/network/DefaultTransitionExtensions.h"
 #include "../../../TraitsApp.h"
+#include "plugins/data/Variable.h"
 
 Smart_ModalModelFSM::Smart_ModalModelFSM() {
 }
@@ -20,11 +21,13 @@ int Smart_ModalModelFSM::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 
 	Create* create = plugins->newInstance<Create>(model);
+	create->setMaxCreations(1);
 	ModalModelFSM* fsm = new ModalModelFSM(model, "TrafficFSM");
+	fsm->setTimeDelayExpressionPerDispatch("1.0");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
-	FSMState* red = new FSMState(model, "Red");
-	FSMState* green = new FSMState(model, "Green");
+	FSMState* red = plugins->newInstance<FSMState>(model, "Red");
+	FSMState* green = plugins->newInstance<FSMState>(model, "Green");
 	red->setInitialNode(true);
 	red->setEntryActionExpression("signal=0");
 	green->setEntryActionExpression("signal=1");
@@ -32,11 +35,13 @@ int Smart_ModalModelFSM::main(int argc, char** argv) {
 	fsm->addNode(green);
 	fsm->setEntryNode(red);
 
+
 	EFSMTransition* r2g = new EFSMTransition(red, green, "RedToGreen");
 	r2g->setGuardExpression("1");
 	r2g->setOutputExpression("switches=switches+1");
 	r2g->setPriority(0);
 	fsm->addTransition(r2g);
+	fsm->addOutputExpressionReference(plugins->newInstance<Variable>(model, "switches"));
 
 	EFSMTransition* g2r = new EFSMTransition(green, red, "GreenToRed");
 	g2r->setGuardExpression("1");
@@ -45,7 +50,8 @@ int Smart_ModalModelFSM::main(int argc, char** argv) {
 	fsm->addTransition(g2r);
 
 	create->getConnectionManager()->insert(fsm);
-	fsm->getConnectionManager()->insert(dispose);
+	fsm->getConnectionManager()->insert(fsm); // outputConnection[0] = normal output
+	fsm->getConnectionManager()->insert(dispose); // outputConnection[1] = finishing output
 
 	model->getSimulation()->setReplicationLength(30, Util::TimeUnit::second);
 	model->save("./models/Smart_ModalModelFSM.gen");

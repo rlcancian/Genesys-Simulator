@@ -1,8 +1,8 @@
 #pragma once
 
-#include "DefaultModalModel.h"
+#include "ModalModelDefault.h"
 
-class ModalModelPetriNet : public DefaultModalModel {
+class ModalModelPetriNet : public ModalModelDefault {
 public:
 	ModalModelPetriNet(Model* model, std::string name = "");
 	virtual ~ModalModelPetriNet() = default;

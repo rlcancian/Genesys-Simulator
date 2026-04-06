@@ -1,11 +1,11 @@
-#ifndef SMART_EFSM2_H
-#define SMART_EFSM2_H
+#ifndef SMART_EFSM1_H
+#define SMART_EFSM1_H
 
 #include "../../../BaseGenesysTerminalApplication.h"
 
-class Smart_EFSM2 : public BaseGenesysTerminalApplication {
+class Smart_Old_EFSM1 : public BaseGenesysTerminalApplication {
 public:
-	Smart_EFSM2();
+	Smart_Old_EFSM1();
 public:
 	virtual int main(int argc, char** argv) override;
 };

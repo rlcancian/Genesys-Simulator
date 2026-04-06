@@ -1,6 +1,6 @@
 #include "PetriPlace.h"
 
-PetriPlace::PetriPlace(Model* model, std::string name) : DefaultNode(model, name) {
+PetriPlace::PetriPlace(Model* model, std::string name) : DefaultNode(model, Util::TypeOf<PetriPlace>(), name) {
 }
 
 unsigned int PetriPlace::getTokens(std::string color) const {
@@ -32,6 +32,8 @@ PluginInformation* PetriPlace::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<PetriPlace>(), &PetriPlace::LoadInstance, &PetriPlace::NewInstance);
 	info->setCategory("Network");
 	info->setDescriptionHelp("Petri net place with colored tokens.");
+	info->setReceiveTransfer(true); // Petri paces do not need to form a process flow
+	info->setSendTransfer(true);
 	return info;
 }
 

@@ -1,4 +1,4 @@
-#include "Smart_EFSM2.h"
+#include "Smart_Old_EFSM2.h"
 
 // you have to included need libs
 
@@ -20,14 +20,14 @@
 
 #include "../../../TraitsApp.h"
 
-Smart_EFSM2::Smart_EFSM2() {
+Smart_Old_EFSM2::Smart_Old_EFSM2() {
 }
 
 /**
  * This is the main function of the application. 
  * It instanciates the simulator, builds a simulation model and then simulate that model.
  */
-int Smart_EFSM2::main(int argc, char** argv) {
+int Smart_Old_EFSM2::main(int argc, char** argv) {
 	// instantiate simulator
 	Simulator* genesys = new Simulator();
 	genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);

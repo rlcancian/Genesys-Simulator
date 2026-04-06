@@ -3,7 +3,7 @@
 #include "../../../../kernel/simulator/Simulator.h"
 #include "../../../../plugins/components/Create.h"
 #include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/DefaultModalModel.h"
+#include "../../../../plugins/components/ModalModelDefault.h"
 #include "../../../../plugins/components/network/DefaultNode.h"
 #include "../../../TraitsApp.h"
 
@@ -19,7 +19,7 @@ int Smart_ModalModelDefaultNetwork::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 
 	Create* create = plugins->newInstance<Create>(model);
-	DefaultModalModel* modal = new DefaultModalModel(model, "ModalDefault");
+	ModalModelDefault* modal = new ModalModelDefault(model, "ModalDefault");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
 
 	DefaultNode* n1 = new DefaultNode(model, "NodeA");

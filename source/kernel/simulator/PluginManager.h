@@ -18,6 +18,7 @@
 //#include "Simulator.h"
 #include "Plugin.h"
 #include "PluginConnector_if.h"
+#include "Simulator.h"
 
 //namespace GenesysKernel {
 class Simulator;
@@ -83,7 +84,7 @@ public:
 			}
 		}
 		// innvalid use of incomplete class
-		///_simulator->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Error: Could not find any plugin with Typename \"" + pluginTypename + "\"");
+		_simulator->getTraceManager()->traceError("Error: Could not find any plugin with Typename \"" + pluginTypename + "\"",TraceManager::Level::L1_errorFatal);
 		return nullptr;
 	}
 private:

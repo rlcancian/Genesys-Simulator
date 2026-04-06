@@ -7,13 +7,13 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
-ModalModelPetriNet::ModalModelPetriNet(Model* model, std::string name) : DefaultModalModel(model, name) {
+ModalModelPetriNet::ModalModelPetriNet(Model* model, std::string name) : ModalModelDefault(model, name) {
 }
 
 PluginInformation* ModalModelPetriNet::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<ModalModelPetriNet>(), &ModalModelPetriNet::LoadInstance, &ModalModelPetriNet::NewInstance);
 	info->setCategory("Network");
-	info->setDescriptionHelp("Specialization of DefaultModalModel for colored Petri net style models.");
+	info->setDescriptionHelp("Specialization of ModalModelDefault for colored Petri net style models.");
 	return info;
 }
 

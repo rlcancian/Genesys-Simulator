@@ -13,6 +13,7 @@ else()
     set(GENESYS_TERMINAL_APPLICATION_SOURCES
         main.cpp
         GenesysShell/GenesysShell.cpp
+        examples/smarts/Smart_ModalModelFSM.cpp
         examples/smarts/Smart_SeizeDelayReleaseMany.cpp
         examples/teaching/AnElectronicAssemblyAndTestSystem.cpp
         ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp

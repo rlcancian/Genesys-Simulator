@@ -124,6 +124,9 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 // public: /// constructors
 //
 
+DefaultNode::DefaultNode(Model* model, std::string componentTypename, std::string name) : ModelComponent(model, componentTypename, name), DEFAULT() {
+}
+
 DefaultNode::DefaultNode(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DefaultNode>(), name), DEFAULT() {
 }
 
