@@ -216,6 +216,8 @@ private: // Similar to QGraphicsScene Slots
 	void sceneGraphicalModelChanged();
 private: // simulator related
 	void _setOnEventHandlers();
+    bool _ensureSimulationReady(bool checkModel = true);
+    bool _hasCurrentModelSimulation() const;
 	void _insertPluginUI(Plugin* plugin);
 	void _insertFakePlugins();
 	bool _setSimulationModelBasedOnText();
