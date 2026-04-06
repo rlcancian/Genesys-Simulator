@@ -1,4 +1,5 @@
 include(GoogleTest)
+find_package(Python3 COMPONENTS Interpreter REQUIRED)
 
 function(genesys_add_unit_test test_target test_source)
     add_executable(${test_target}
@@ -105,3 +106,45 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_simulationscenario
         genesys_test_support_experimentmanager
 )
+
+set(GENESYS_KERNEL_SIMULATOR_HEADERS_DIR "${CMAKE_SOURCE_DIR}/source/kernel/simulator")
+set(GENESYS_GENERATED_UNIT_TESTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated")
+set(GENESYS_METHOD_INVENTORY_TEST "${GENESYS_GENERATED_UNIT_TESTS_DIR}/test_kernel_simulator_method_inventory.generated.cpp")
+set(GENESYS_METHOD_INVENTORY_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/tools/generate_kernel_simulator_test_stubs.py")
+
+add_custom_command(
+    OUTPUT "${GENESYS_METHOD_INVENTORY_TEST}"
+    COMMAND ${CMAKE_COMMAND} -E make_directory "${GENESYS_GENERATED_UNIT_TESTS_DIR}"
+    COMMAND ${Python3_EXECUTABLE} "${GENESYS_METHOD_INVENTORY_SCRIPT}"
+            --headers-dir "${GENESYS_KERNEL_SIMULATOR_HEADERS_DIR}"
+            --output "${GENESYS_METHOD_INVENTORY_TEST}"
+    DEPENDS "${GENESYS_METHOD_INVENTORY_SCRIPT}"
+    COMMENT "Generating kernel simulator method inventory tests"
+    VERBATIM
+)
+
+add_custom_target(genesys_generate_kernel_simulator_method_tests
+    DEPENDS "${GENESYS_METHOD_INVENTORY_TEST}"
+)
+
+add_executable(genesys_test_kernel_simulator_method_inventory
+    "${GENESYS_METHOD_INVENTORY_TEST}"
+)
+
+add_dependencies(genesys_test_kernel_simulator_method_inventory
+    genesys_generate_kernel_simulator_method_tests
+)
+
+target_link_libraries(genesys_test_kernel_simulator_method_inventory
+    PRIVATE
+        GTest::gtest_main
+)
+
+gtest_discover_tests(genesys_test_kernel_simulator_method_inventory
+    PROPERTIES
+        LABELS "unit;autogen"
+)
+
+set_property(TARGET genesys_test_kernel_simulator_method_inventory PROPERTY FOLDER tests/unit)
+
+add_dependencies(genesys_kernel_unit_tests genesys_test_kernel_simulator_method_inventory)
