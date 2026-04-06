@@ -146,20 +146,28 @@ void ModelGraphicsView::setEnabled(bool enabled) {
 //---------------------------------------------------------
 
 void ModelGraphicsView::notifySceneMouseEventHandler(QGraphicsSceneMouseEvent* mouseEvent) {
-	this->_sceneMouseEventHandler(mouseEvent);
+	if (this->_sceneMouseEventHandler) {
+		this->_sceneMouseEventHandler(mouseEvent);
+	}
 }
 
 void ModelGraphicsView::notifySceneWheelInEventHandler() {
-    this->_sceneWheelInEventHandler();
+    if (this->_sceneWheelInEventHandler) {
+        this->_sceneWheelInEventHandler();
+    }
 }
 
 void ModelGraphicsView::notifySceneWheelOutEventHandler() {
-    this->_sceneWheelOutEventHandler();
+    if (this->_sceneWheelOutEventHandler) {
+        this->_sceneWheelOutEventHandler();
+    }
 }
 
 void ModelGraphicsView::notifySceneGraphicalModelEventHandler(GraphicalModelEvent* modelGraphicsEvent) {
-	if (_notifyGraphicalModelEventHandlers)
+	if (_notifyGraphicalModelEventHandlers && this->_sceneGraphicalModelEventHandler) {
         this->_sceneGraphicalModelEventHandler(modelGraphicsEvent);
+    }
+    delete modelGraphicsEvent;
     /// @todo actualize property editor?
 }
 
@@ -240,4 +248,3 @@ void ModelGraphicsView::selectionChanged() {
 QList<QGraphicsItem *> ModelGraphicsView::selectedItems() {
 	return ((ModelGraphicsScene*) scene())->selectedItems();
 }
-

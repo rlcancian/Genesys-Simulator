@@ -240,3 +240,28 @@ A estratégia deve ser **incremental, com “gates” de build e rollback fácil
 - Correções do Property Editor com baixo risco.
 - Evolução para Qt6 sustentável (e não apenas “compatível”).
 - Base mais apropriada para colaboração via PRs pequenos e seguros.
+
+---
+
+## 6) Execução inicial do plano (primeira etapa já iniciada)
+
+Nesta primeira execução prática (fase inicial de estabilização), as seguintes melhorias de baixo risco foram iniciadas no código:
+
+1. **Defesa de notificações da cena**:
+   - verificação de `views().isEmpty()` e `dynamic_cast` para evitar acesso inválido ao encaminhar eventos gráficos.
+
+2. **Defesa de handlers opcionais na view**:
+   - chamadas de callback agora validam se o handler foi configurado antes de invocar.
+
+3. **Correção de ciclo de vida de evento gráfico**:
+   - `GraphicalModelEvent` passou a ser liberado após notificação na view para evitar vazamento.
+
+4. **Remoção de `try/catch` frágil em evento gráfico**:
+   - simplificação de `sceneEvent` em `GraphicalConnection` para evitar mascarar falhas.
+
+5. **Melhoria de desalocação no fechamento da janela principal**:
+   - destrutor da `MainWindow` passou a liberar estruturas alocadas dinamicamente que antes não eram explicitamente liberadas.
+
+### Próximo passo imediato
+
+Na sequência, o próximo passo seguro será extrair um primeiro controlador fino para lógica de simulação (`SimulationController`) sem alterar comportamento funcional, mantendo PR pequeno e com validação incremental.
