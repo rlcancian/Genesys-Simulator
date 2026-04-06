@@ -33,18 +33,27 @@ GraphicalConnection::GraphicalConnection(const GraphicalConnection& orig) {
 }
 
 GraphicalConnection::~GraphicalConnection() {
-    _sourceConnection->component->getConnectionManager()->remove(_destinationConnection);
-	_sourceGraphicalPort->removeGraphicalConnection(this);
-	_destinationGraphicalPort->removeGraphicalConnection(this);
-}
-
-QColor GraphicalConnection::myrgba(uint64_t color) {
-	uint8_t r, g, b, a;
-	r = (color&0xFF000000)>>24;
-	g = (color&0x00FF0000)>>16;
-	b = (color&0x0000FF00)>>8;
-	a = (color&0x000000FF);
-	return QColor(r, g, b, a);
+    /**
+     * @brief Desfaz vínculo modelo<->gráfico da conexão.
+     *
+     * Ordem adotada:
+     * 1) remove relação no ConnectionManager do componente de origem;
+     * 2) remove ponteiros desta conexão nas portas gráficas;
+     * 3) libera objetos Connection auxiliares alocados neste item gráfico.
+     *
+     * @todo Avaliar migração de `_sourceConnection/_destinationConnection` para smart pointers.
+     */
+    if (_sourceConnection != nullptr && _sourceConnection->component != nullptr) {
+        _sourceConnection->component->getConnectionManager()->remove(_destinationConnection);
+    }
+    if (_sourceGraphicalPort != nullptr) {
+	    _sourceGraphicalPort->removeGraphicalConnection(this);
+    }
+    if (_destinationGraphicalPort != nullptr) {
+	    _destinationGraphicalPort->removeGraphicalConnection(this);
+    }
+    delete _destinationConnection;
+    delete _sourceConnection;
 }
 
 GraphicalConnection::ConnectionType GraphicalConnection::connectionType() const
@@ -165,14 +174,7 @@ Connection* GraphicalConnection::getDestination() const {
 }
 
 bool GraphicalConnection::sceneEvent(QEvent *event) {
-    bool result;
-    try{
-        result = QGraphicsObject::sceneEvent(event); // TODO: CRASH!
-        return result;
-    } catch (std::exception e) {
-        result = false; //@TODO
-        return false;
-    }
+    return QGraphicsObject::sceneEvent(event);
 }
 
 unsigned int GraphicalConnection::getPortSourceConnection() const {
