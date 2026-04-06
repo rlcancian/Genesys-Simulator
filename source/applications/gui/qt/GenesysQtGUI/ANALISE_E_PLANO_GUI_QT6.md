@@ -284,3 +284,19 @@ Foi iniciada a extração de responsabilidade de simulação para uma classe ded
 - documentação doxygen adicionada na nova classe e nos handlers principais.
 
 @ToDo: ampliar documentação doxygen para todas as classes/métodos restantes da GUI de forma incremental por módulo (`graphicals`, `dialogs`, `propertyeditor`), mantendo PRs pequenos e seguros.
+
+### Andamento adicional (ownership de eventos gráficos)
+
+Foi eliminada a alocação dinâmica de `GraphicalModelEvent` no caminho Scene->View:
+
+- evento agora é criado na stack em `ModelGraphicsScene::notifyGraphicalModelChange`;
+- encaminhamento ocorre por referência constante (`const GraphicalModelEvent&`);
+- reduz risco de vazamento/uso indevido de ponteiros e simplifica ownership.
+
+### Andamento adicional (higiene de memória em conexão gráfica)
+
+Foi melhorada a destruição de `GraphicalConnection`:
+
+- remoções agora são defensivas com `nullptr` checks;
+- objetos auxiliares `Connection` alocados no construtor são liberados no destrutor;
+- reduz vazamento de memória em ciclos de criar/remover conexão.

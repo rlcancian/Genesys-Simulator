@@ -18,7 +18,7 @@ void MainWindow::_onSceneWheelOutEvent() {
     ui->horizontalSlider_ZoomGraphical->setValue(value - TraitsGUI<GMainWindow>::zoomButtonChange);
 }
 
-void MainWindow::_onSceneGraphicalModelEvent(GraphicalModelEvent* event) {
+void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*/) {
     _actualizeTabPanes();
 }
 

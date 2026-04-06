@@ -155,11 +155,16 @@ void ModelGraphicsView::notifySceneWheelOutEventHandler() {
     }
 }
 
-void ModelGraphicsView::notifySceneGraphicalModelEventHandler(GraphicalModelEvent* modelGraphicsEvent) {
+/**
+ * @brief Dispatches graphical model change event to registered callback.
+ * @param modelGraphicsEvent Event payload from scene.
+ *
+ * @todo Replace callback with signal/slot to improve composability.
+ */
+void ModelGraphicsView::notifySceneGraphicalModelEventHandler(const GraphicalModelEvent& modelGraphicsEvent) {
 	if (_notifyGraphicalModelEventHandlers && this->_sceneGraphicalModelEventHandler) {
         this->_sceneGraphicalModelEventHandler(modelGraphicsEvent);
     }
-    delete modelGraphicsEvent;
     /// @todo actualize property editor?
 }
 

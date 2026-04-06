@@ -206,7 +206,7 @@ private: // model Graphics View handlers
     void _onSceneMouseEvent(QGraphicsSceneMouseEvent* mouseEvent);
     void _onSceneWheelInEvent();
     void _onSceneWheelOutEvent();
-    void _onSceneGraphicalModelEvent(GraphicalModelEvent* event);
+    void _onSceneGraphicalModelEvent(const GraphicalModelEvent& event);
 private: // QGraphicsScene Slots
 	void sceneChanged(const QList<QRectF> &region);
 	void sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsItem *oldFocusItem, Qt::FocusReason reason);

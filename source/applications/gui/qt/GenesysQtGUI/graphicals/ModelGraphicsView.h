@@ -81,7 +81,7 @@ public: // events and notifications
 		this->_sceneMouseEventHandler = handlerMethod;
 	}
 
-    template<typename Class> void setGraphicalModelEventHandler(Class * object, void (Class::*function)(GraphicalModelEvent*)) {
+    template<typename Class> void setGraphicalModelEventHandler(Class * object, void (Class::*function)(const GraphicalModelEvent&)) {
 		sceneGraphicalModelEventHandlerMethod handlerMethod = std::bind(function, object, std::placeholders::_1);
 		this->_sceneGraphicalModelEventHandler = handlerMethod;
     }
@@ -99,7 +99,7 @@ public: // events and notifications
     void notifySceneMouseEventHandler(QGraphicsSceneMouseEvent* mouseEvent);
     void notifySceneWheelInEventHandler();
     void notifySceneWheelOutEventHandler();
-    void notifySceneGraphicalModelEventHandler(GraphicalModelEvent* modelGraphicsEvent);
+    void notifySceneGraphicalModelEventHandler(const GraphicalModelEvent& modelGraphicsEvent);
     void setCanNotifyGraphicalModelEventHandlers(bool can);
     void setParentWidget(QWidget *parentWidget);
 protected:// slots:
@@ -133,7 +133,7 @@ protected: // virtual functions
 private:
 	typedef std::function<void(QGraphicsSceneMouseEvent*) > sceneMouseEventHandlerMethod;
     typedef std::function<void()> sceneWheelEventHandlerMethod;
-    typedef std::function<void(GraphicalModelEvent*) > sceneGraphicalModelEventHandlerMethod;
+    typedef std::function<void(const GraphicalModelEvent&)> sceneGraphicalModelEventHandlerMethod;
     sceneMouseEventHandlerMethod _sceneMouseEventHandler;
     sceneWheelEventHandlerMethod _sceneWheelInEventHandler;
     sceneWheelEventHandlerMethod _sceneWheelOutEventHandler;

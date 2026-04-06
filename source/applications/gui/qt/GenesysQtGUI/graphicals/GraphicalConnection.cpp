@@ -33,9 +33,27 @@ GraphicalConnection::GraphicalConnection(const GraphicalConnection& orig) {
 }
 
 GraphicalConnection::~GraphicalConnection() {
-    _sourceConnection->component->getConnectionManager()->remove(_destinationConnection);
-	_sourceGraphicalPort->removeGraphicalConnection(this);
-	_destinationGraphicalPort->removeGraphicalConnection(this);
+    /**
+     * @brief Desfaz vínculo modelo<->gráfico da conexão.
+     *
+     * Ordem adotada:
+     * 1) remove relação no ConnectionManager do componente de origem;
+     * 2) remove ponteiros desta conexão nas portas gráficas;
+     * 3) libera objetos Connection auxiliares alocados neste item gráfico.
+     *
+     * @todo Avaliar migração de `_sourceConnection/_destinationConnection` para smart pointers.
+     */
+    if (_sourceConnection != nullptr && _sourceConnection->component != nullptr) {
+        _sourceConnection->component->getConnectionManager()->remove(_destinationConnection);
+    }
+    if (_sourceGraphicalPort != nullptr) {
+	    _sourceGraphicalPort->removeGraphicalConnection(this);
+    }
+    if (_destinationGraphicalPort != nullptr) {
+	    _destinationGraphicalPort->removeGraphicalConnection(this);
+    }
+    delete _destinationConnection;
+    delete _sourceConnection;
 }
 
 GraphicalConnection::ConnectionType GraphicalConnection::connectionType() const
