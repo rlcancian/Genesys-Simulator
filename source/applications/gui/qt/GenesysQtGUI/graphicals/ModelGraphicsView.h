@@ -131,8 +131,6 @@ protected: // virtual functions
     //virtual bool viewportEvent(QEvent *event) override;
     virtual void wheelEvent(QWheelEvent *event) override;
 private:
-    QColor myrgba(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
-private:
 	typedef std::function<void(QGraphicsSceneMouseEvent*) > sceneMouseEventHandlerMethod;
     typedef std::function<void()> sceneWheelEventHandlerMethod;
     typedef std::function<void(GraphicalModelEvent*) > sceneGraphicalModelEventHandlerMethod;
@@ -150,4 +148,3 @@ private:
 };
 
 #endif /* QMODELGRAPHICVIEW_H */
-
