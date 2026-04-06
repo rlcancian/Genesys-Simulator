@@ -47,43 +47,43 @@ public:
 	virtual ~SamplerDefaultImpl1();
 public: // RNG
 	/*! \brief Generates one base uniform pseudo-random number in [0,1). */
-	virtual double random();
+	virtual double random() override;
 public: // continuous probability distributions
 	/*! \brief Samples Beta in arbitrary interval \p [infLimit, supLimit]. */
-	virtual double sampleBeta(double alpha, double beta, double infLimit, double supLimit);
+	virtual double sampleBeta(double alpha, double beta, double infLimit, double supLimit) override;
 	/*! \brief Samples standard Beta in \p [0,1]. */
-	virtual double sampleBeta(double alpha, double beta);
+	virtual double sampleBeta(double alpha, double beta) override;
 	/*! \brief Samples Erlang distribution. */
-	virtual double sampleErlang(double mean, int M, double offset = 0.0);
+	virtual double sampleErlang(double mean, int M, double offset = 0.0) override;
 	/*! \brief Samples Exponential distribution. */
-	virtual double sampleExponential(double mean, double offset = 0.0);
+	virtual double sampleExponential(double mean, double offset = 0.0) override;
 	//virtual double sampleGamma(double mean, double alpha, double offset=0.0);
 	/*! \brief Samples Gamma distribution. */
-	virtual double sampleGamma(double alpha, double beta, double offset = 0.0);
+	virtual double sampleGamma(double alpha, double beta, double offset = 0.0) override;
 	/*! \brief Samples Gumbel distribution. */
-	virtual double sampleGumbell(double mode, double scale);
+	virtual double sampleGumbell(double mode, double scale) override;
 	/*! \brief Samples Lognormal distribution. */
-	virtual double sampleLogNormal(double mean, double stddev, double offset = 0.0);
+	virtual double sampleLogNormal(double mean, double stddev, double offset = 0.0) override;
 	/*! \brief Samples Normal distribution. */
-	virtual double sampleNormal(double mean, double stddev);
+	virtual double sampleNormal(double mean, double stddev) override;
 	/*! \brief Samples Triangular distribution. */
-	virtual double sampleTriangular(double min, double mode, double max);
+	virtual double sampleTriangular(double min, double mode, double max) override;
 	/*! \brief Samples Uniform distribution in \p [min,max]. */
-	virtual double sampleUniform(double min, double max);
+	virtual double sampleUniform(double min, double max) override;
 	/*! \brief Samples Weibull distribution. */
-	virtual double sampleWeibull(double alpha, double scale);
+	virtual double sampleWeibull(double alpha, double scale) override;
 public: // discrete probability distributions
 	//TODO: Poisson, si vous plait!!!!
 	/*! \brief Samples Binomial distribution. */
-	virtual double sampleBinomial(int trials, double p);
+	virtual double sampleBinomial(int trials, double p) override;
 	/*! \brief Samples Bernoulli distribution. */
-	virtual double sampleBernoulli(double p);
+	virtual double sampleBernoulli(double p) override;
 	/*! \brief Samples arbitrary discrete distribution (variadic interface). */
-	virtual double sampleDiscrete(double prob, double value, ...);
+	virtual double sampleDiscrete(double prob, double value, ...) override;
 	/*! \brief Samples arbitrary discrete distribution (array interface). */
-	virtual double sampleDiscrete(double *prob, double *value, int size);
+	virtual double sampleDiscrete(double *prob, double *value, int size) override;
 	/*! \brief Samples Geometric distribution. */
-	virtual double sampleGeometric(double p);
+	virtual double sampleGeometric(double p) override;
 public:
 	/*! \brief Reinitializes RNG state so the pseudo-random sequence restarts. */
 	void reset();

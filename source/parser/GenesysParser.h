@@ -522,10 +522,17 @@ namespace yy {
       // fATRGR
       // input
       // expression
+      // logicalOr
+      // logicalXor
+      // logicalAnd
+      // logicalNot
+      // relational
+      // additive
+      // multiplicative
+      // power
+      // unary
+      // primary
       // number
-      // arithmetic
-      // logical
-      // relacional
       // command
       // commandIF
       // commandFOR
@@ -684,8 +691,7 @@ namespace yy {
     LESS = 343,                    // "<"
     GREATER = 344,                 // ">"
     ASSIGN = 345,                  // "="
-    COMMA = 346,                   // ","
-    NEG = 347                      // NEG
+    COMMA = 346                    // ","
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -702,7 +708,7 @@ namespace yy {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 94, ///< Number of tokens.
+        YYNTOKENS = 93, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // "end of file"
         S_YYerror = 1,                           // error
@@ -796,32 +802,38 @@ namespace yy {
         S_GREATER = 89,                          // ">"
         S_ASSIGN = 90,                           // "="
         S_COMMA = 91,                            // ","
-        S_NEG = 92,                              // NEG
-        S_93_USER_ = 93,                         // "USER"
-        S_YYACCEPT = 94,                         // $accept
-        S_input = 95,                            // input
-        S_expression = 96,                       // expression
-        S_number = 97,                           // number
-        S_arithmetic = 98,                       // arithmetic
-        S_logical = 99,                          // logical
-        S_relacional = 100,                      // relacional
-        S_command = 101,                         // command
-        S_commandIF = 102,                       // commandIF
-        S_commandFOR = 103,                      // commandFOR
-        S_function = 104,                        // function
-        S_kernelFunction = 105,                  // kernelFunction
-        S_elementFunction = 106,                 // elementFunction
-        S_trigonFunction = 107,                  // trigonFunction
-        S_mathFunction = 108,                    // mathFunction
-        S_probFunction = 109,                    // probFunction
-        S_userFunction = 110,                    // userFunction
-        S_listaparm = 111,                       // listaparm
-        S_illegal = 112,                         // illegal
-        S_attribute = 113,                       // attribute
-        S_variable = 114,                        // variable
-        S_formula = 115,                         // formula
-        S_assigment = 116,                       // assigment
-        S_pluginFunction = 117                   // pluginFunction
+        S_92_USER_ = 92,                         // "USER"
+        S_YYACCEPT = 93,                         // $accept
+        S_input = 94,                            // input
+        S_expression = 95,                       // expression
+        S_logicalOr = 96,                        // logicalOr
+        S_logicalXor = 97,                       // logicalXor
+        S_logicalAnd = 98,                       // logicalAnd
+        S_logicalNot = 99,                       // logicalNot
+        S_relational = 100,                      // relational
+        S_additive = 101,                        // additive
+        S_multiplicative = 102,                  // multiplicative
+        S_power = 103,                           // power
+        S_unary = 104,                           // unary
+        S_primary = 105,                         // primary
+        S_number = 106,                          // number
+        S_command = 107,                         // command
+        S_commandIF = 108,                       // commandIF
+        S_commandFOR = 109,                      // commandFOR
+        S_function = 110,                        // function
+        S_kernelFunction = 111,                  // kernelFunction
+        S_elementFunction = 112,                 // elementFunction
+        S_trigonFunction = 113,                  // trigonFunction
+        S_mathFunction = 114,                    // mathFunction
+        S_probFunction = 115,                    // probFunction
+        S_userFunction = 116,                    // userFunction
+        S_listaparm = 117,                       // listaparm
+        S_illegal = 118,                         // illegal
+        S_attribute = 119,                       // attribute
+        S_variable = 120,                        // variable
+        S_formula = 121,                         // formula
+        S_assigment = 122,                       // assigment
+        S_pluginFunction = 123                   // pluginFunction
       };
     };
 
@@ -936,10 +948,17 @@ namespace yy {
       case symbol_kind::S_fATRGR: // fATRGR
       case symbol_kind::S_input: // input
       case symbol_kind::S_expression: // expression
+      case symbol_kind::S_logicalOr: // logicalOr
+      case symbol_kind::S_logicalXor: // logicalXor
+      case symbol_kind::S_logicalAnd: // logicalAnd
+      case symbol_kind::S_logicalNot: // logicalNot
+      case symbol_kind::S_relational: // relational
+      case symbol_kind::S_additive: // additive
+      case symbol_kind::S_multiplicative: // multiplicative
+      case symbol_kind::S_power: // power
+      case symbol_kind::S_unary: // unary
+      case symbol_kind::S_primary: // primary
       case symbol_kind::S_number: // number
-      case symbol_kind::S_arithmetic: // arithmetic
-      case symbol_kind::S_logical: // logical
-      case symbol_kind::S_relacional: // relacional
       case symbol_kind::S_command: // command
       case symbol_kind::S_commandIF: // commandIF
       case symbol_kind::S_commandFOR: // commandFOR
@@ -1099,10 +1118,17 @@ switch (yykind)
       case symbol_kind::S_fATRGR: // fATRGR
       case symbol_kind::S_input: // input
       case symbol_kind::S_expression: // expression
+      case symbol_kind::S_logicalOr: // logicalOr
+      case symbol_kind::S_logicalXor: // logicalXor
+      case symbol_kind::S_logicalAnd: // logicalAnd
+      case symbol_kind::S_logicalNot: // logicalNot
+      case symbol_kind::S_relational: // relational
+      case symbol_kind::S_additive: // additive
+      case symbol_kind::S_multiplicative: // multiplicative
+      case symbol_kind::S_power: // power
+      case symbol_kind::S_unary: // unary
+      case symbol_kind::S_primary: // primary
       case symbol_kind::S_number: // number
-      case symbol_kind::S_arithmetic: // arithmetic
-      case symbol_kind::S_logical: // logical
-      case symbol_kind::S_relacional: // relacional
       case symbol_kind::S_command: // command
       case symbol_kind::S_commandIF: // commandIF
       case symbol_kind::S_commandFOR: // commandFOR
@@ -1222,7 +1248,7 @@ switch (yykind)
 #if !defined _MSC_VER || defined __clang__
         YY_ASSERT (tok == token::END
                    || (token::YYerror <= tok && tok <= token::YYUNDEF)
-                   || (token::LPAREN <= tok && tok <= 348));
+                   || (token::LPAREN <= tok && tok <= 347));
 #endif
       }
 #if 201103L <= YY_CPLUSPLUS
@@ -2665,21 +2691,6 @@ switch (yykind)
         return symbol_type (token::COMMA, l);
       }
 #endif
-#if 201103L <= YY_CPLUSPLUS
-      static
-      symbol_type
-      make_NEG (location_type l)
-      {
-        return symbol_type (token::NEG, std::move (l));
-      }
-#else
-      static
-      symbol_type
-      make_NEG (const location_type& l)
-      {
-        return symbol_type (token::NEG, l);
-      }
-#endif
 
 
     class context
@@ -3010,9 +3021,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 1806,     ///< Last index in yytable_.
-      yynnts_ = 24,  ///< Number of nonterminal symbols.
-      yyfinal_ = 129 ///< Termination state number.
+      yylast_ = 569,     ///< Last index in yytable_.
+      yynnts_ = 31,  ///< Number of nonterminal symbols.
+      yyfinal_ = 138 ///< Termination state number.
     };
 
 
@@ -3065,10 +3076,10 @@ switch (yykind)
       55,    56,    57,    58,    59,    60,    61,    62,    63,    64,
       65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
       75,    76,    77,    78,    79,    80,    81,    82,    83,    84,
-      85,    86,    87,    88,    89,    90,    91,    92,    93
+      85,    86,    87,    88,    89,    90,    91,    92
     };
     // Last valid token kind.
-    const int code_max = 348;
+    const int code_max = 347;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -3165,10 +3176,17 @@ switch (yykind)
       case symbol_kind::S_fATRGR: // fATRGR
       case symbol_kind::S_input: // input
       case symbol_kind::S_expression: // expression
+      case symbol_kind::S_logicalOr: // logicalOr
+      case symbol_kind::S_logicalXor: // logicalXor
+      case symbol_kind::S_logicalAnd: // logicalAnd
+      case symbol_kind::S_logicalNot: // logicalNot
+      case symbol_kind::S_relational: // relational
+      case symbol_kind::S_additive: // additive
+      case symbol_kind::S_multiplicative: // multiplicative
+      case symbol_kind::S_power: // power
+      case symbol_kind::S_unary: // unary
+      case symbol_kind::S_primary: // primary
       case symbol_kind::S_number: // number
-      case symbol_kind::S_arithmetic: // arithmetic
-      case symbol_kind::S_logical: // logical
-      case symbol_kind::S_relacional: // relacional
       case symbol_kind::S_command: // command
       case symbol_kind::S_commandIF: // commandIF
       case symbol_kind::S_commandFOR: // commandFOR
@@ -3298,10 +3316,17 @@ switch (yykind)
       case symbol_kind::S_fATRGR: // fATRGR
       case symbol_kind::S_input: // input
       case symbol_kind::S_expression: // expression
+      case symbol_kind::S_logicalOr: // logicalOr
+      case symbol_kind::S_logicalXor: // logicalXor
+      case symbol_kind::S_logicalAnd: // logicalAnd
+      case symbol_kind::S_logicalNot: // logicalNot
+      case symbol_kind::S_relational: // relational
+      case symbol_kind::S_additive: // additive
+      case symbol_kind::S_multiplicative: // multiplicative
+      case symbol_kind::S_power: // power
+      case symbol_kind::S_unary: // unary
+      case symbol_kind::S_primary: // primary
       case symbol_kind::S_number: // number
-      case symbol_kind::S_arithmetic: // arithmetic
-      case symbol_kind::S_logical: // logical
-      case symbol_kind::S_relacional: // relacional
       case symbol_kind::S_command: // command
       case symbol_kind::S_commandIF: // commandIF
       case symbol_kind::S_commandFOR: // commandFOR
@@ -3388,7 +3413,7 @@ switch (yykind)
 
 
 } // yy
-#line 3392 "../GenesysParser.h"
+#line 3417 "../GenesysParser.h"
 
 
 
