@@ -14,11 +14,14 @@
 #ifndef PLUGINMANAGER_H
 #define PLUGINMANAGER_H
 
+#include <string>
 #include "../util/List.h"
-//#include "Simulator.h"
+#include "../util/Util.h"
 #include "Plugin.h"
 #include "PluginConnector_if.h"
-#include "Simulator.h"
+
+class Simulator;
+class Model;
 
 //namespace GenesysKernel {
 
@@ -82,8 +85,7 @@ public:
 				return instance;
 			}
 		}
-		// innvalid use of incomplete class
-		_simulator->getTraceManager()->traceError("Error: Could not find any plugin with Typename \"" + pluginTypename + "\"",TraceManager::Level::L1_errorFatal);
+		// Keep this header free of Simulator implementation details to avoid include cycles.
 		return nullptr;
 	}
 private:
