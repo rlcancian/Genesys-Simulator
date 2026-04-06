@@ -62,6 +62,10 @@ if(GENESYS_BUILD_WEB_APPLICATION)
     add_subdirectory(source/applications/web)
 endif()
 
+if(GENESYS_BUILD_GUI_APPLICATION)
+    add_subdirectory(source/applications/gui/qt/GenesysQtGUI)
+endif()
+
 if(GENESYS_BUILD_TESTS)
     find_package(GTest CONFIG QUIET)
     if(NOT GTest_FOUND)
