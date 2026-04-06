@@ -3,13 +3,10 @@
 #include <QPainter>
 
 GraphicalConnection::GraphicalConnection(GraphicalComponentPort* sourceGraphicalPort, GraphicalComponentPort* destinationGraphicalPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, QColor color, QGraphicsItem *parent) : QGraphicsObject(parent) {
-	//// connect in the model
-	//ModelComponent* sourceComponent = sourceGraphicalPort->graphicalComponent()->getComponent();
-	//ModelComponent* destComponent=destinationGraphicalPort->graphicalComponent()->getComponent();
-	//_sourceConnection = new Connection({sourceComponent,sourceGraphicalPort->portNum()});
-	//_destinationConnection = new Connection({destComponent,destinationGraphicalPort->portNum()});
-	//sourceComponent->getConnections()->insertAtRank(sourceGraphicalPort->portNum(), _destinationConnection);
-	// connect graphically
+	/**
+	 * Bloco 1: inicialização de metadados de conexão.
+	 * Mantemos wrappers de Connection para facilitar sincronização com kernel.
+	 */
 	_sourceGraphicalPort = sourceGraphicalPort;
     _destinationGraphicalPort = destinationGraphicalPort;
     _sourceConnection = new Connection({sourceGraphicalPort->graphicalComponent()->getComponent(), {sourceGraphicalPort->portNum()}});
@@ -17,13 +14,23 @@ GraphicalConnection::GraphicalConnection(GraphicalComponentPort* sourceGraphical
     _portSourceConnection = portSourceConnection;
     _portDestinationConnection = portDestinationConnection;
     _color = color;
+    /**
+     * Bloco 2: configuração visual/interativa do item.
+     */
     setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable);
     setAcceptHoverEvents(true);
 	setAcceptTouchEvents(true);
 	setActive(true);
 	setSelected(false);
+    /**
+     * Bloco 3: cálculo inicial de geometria da conexão.
+     */
 	updateDimensionsAndPosition();
-	//update source and dest PORTS
+	/**
+	 * Bloco 4: registro bidirecional nas portas para atualização quando houver movimento.
+	 *
+	 * @todo Extrair para método dedicado `_bindPorts()` para legibilidade.
+	 */
 	sourceGraphicalPort->addGraphicalConnection(this); // to update connection on port position change
 	destinationGraphicalPort->addGraphicalConnection(this);
 }
@@ -67,6 +74,9 @@ void GraphicalConnection::setConnectionType(GraphicalConnection::ConnectionType 
 }
 
 void GraphicalConnection::updateDimensionsAndPosition() {
+	/**
+	 * Bloco 1: coleta de geometria absoluta de portas.
+	 */
 	qreal x1, x2, y1, y2, w1, w2, h1, h2;
 	x1 = _sourceGraphicalPort->scenePos().x();
 	x2 = _destinationGraphicalPort->scenePos().x();
@@ -76,10 +86,18 @@ void GraphicalConnection::updateDimensionsAndPosition() {
 	h1 = _sourceGraphicalPort->height();
 	w2 = _destinationGraphicalPort->width();
 	h2 = _destinationGraphicalPort->height();
+	/**
+	 * Bloco 2: projeta esta conexão para um sistema de coordenadas local mínimo.
+	 */
 	setPos((x1 < x2 ? x1 + w1 : x2 + w2) - 2/*penwidth*/, y1 < y2 ? y1 : y2);
 	//setPos((x1 < x2 ? x1 + w1 : x2 + w2) - 2/*penwidth*/, y1 < y2 ? y1 : y2);
 	_width = abs(x2 - x1)-(x1 < x2 ? w2 : w1);
 	_height = abs(y2 - y1)+(y1 < y2 ? h2 : h1);
+	/**
+	 * Bloco 3: solicita repaint.
+	 *
+	 * @todo Evitar update() em caminho quente de paint para reduzir jitter.
+	 */
 	update(); //@TODO SHould not call it here
 }
 
@@ -91,6 +109,9 @@ QRectF GraphicalConnection::boundingRect() const {
 }
 
 void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+	/**
+	 * Bloco 1: recalcula dimensões para refletir movimentação dos componentes.
+	 */
 	updateDimensionsAndPosition();
 	QPen pen = QPen(_color);
 	pen.setWidth(2);
@@ -99,6 +120,9 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	QPointF inipos;
 	QPointF endpos;
 
+	/**
+	 * Bloco 2: normaliza coordenadas locais considerando orientação relativa.
+	 */
 	qreal x1, x2, y1, y2; // x1 < x2
 	if (_sourceGraphicalPort->scenePos().x() < _destinationGraphicalPort->scenePos().x()) {
 		x1 = 0-_sourceGraphicalPort->width()/2;
@@ -117,6 +141,9 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	}
 	inipos = QPointF(x1, y1); //QPointF(_sourceGraphicalPort->pos());//_sourceGraphicalPort->pos().x()+_sourceGraphicalPort->width()/2.0, _sourceGraphicalPort->pos().y()+_sourceGraphicalPort->height()/2.0
 	endpos = QPointF(x2, y2); //QPointF(_destinationGraphicalPort->pos());// _destinationGraphicalPort->pos().x()+_destinationGraphicalPort->width()/2.0, _destinationGraphicalPort->pos().y()+_destinationGraphicalPort->height()/2.0
+	/**
+	 * Bloco 3: gera path de desenho com base no tipo de roteamento.
+	 */
 	path.moveTo(inipos);
 	switch (_connectionType) {
 		case ConnectionType::HORIZONTAL:
@@ -138,9 +165,15 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 			//@TODO: draw intermediate points
 			break;
 	}
+	/**
+	 * Bloco 4: renderiza o path final da conexão.
+	 */
 	path.lineTo(endpos);
 	painter->drawPath(path);
 	//
+	/**
+	 * Bloco 5: desenha “handles” quando selecionado.
+	 */
 	if (isSelected()) {
 		pen = QPen(Qt::black);
 		pen.setWidth(1);

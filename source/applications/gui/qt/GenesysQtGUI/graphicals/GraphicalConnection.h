@@ -12,6 +12,14 @@
 //#include "../../../../kernel/simulator/Plugin.h"
 #include "../../../../kernel/simulator/ConnectionManager.h"
 
+/**
+ * @brief Graphical edge that represents model-level component connections.
+ *
+ * `GraphicalConnection` links two `GraphicalComponentPort` objects and keeps
+ * auxiliary `Connection` metadata synchronized with the simulator model.
+ *
+ * @todo Evaluate decoupling model metadata from this item to keep this class purely visual.
+ */
 class GraphicalConnection : public QGraphicsObject {
 public:
 	enum class ConnectionType : int {
@@ -19,21 +27,34 @@ public:
 	};
 
 public:
+    /** @brief Creates a graphical connection between source and destination ports. */
     GraphicalConnection(GraphicalComponentPort* sourceGraphicalPort, GraphicalComponentPort* destinationGraphicalPort, unsigned int portSourceConnection = 0, unsigned int portDestinationConnection = 0, QColor color = Qt::black, QGraphicsItem *parent = nullptr);
 	GraphicalConnection(const GraphicalConnection& orig);
 	virtual ~GraphicalConnection();
 public:
+	/** @brief Returns item bounding rectangle for Qt painting system. */
 	QRectF boundingRect() const override;
+    /** @brief Paints connection path and selection handles. */
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
+    /** @brief Returns auxiliary source Connection metadata. */
 	Connection* getSource() const;
+    /** @brief Returns auxiliary destination Connection metadata. */
 	Connection* getDestination() const;
+    /** @brief Returns source graphical port. */
     GraphicalComponentPort* getSourceGraphicalPort();
+    /** @brief Returns destination graphical port. */
     GraphicalComponentPort* getDestinationGraphicalPort();
+    /** @brief Recomputes local geometry based on current port positions. */
 	void updateDimensionsAndPosition();
+	/** @brief Returns configured connection routing type. */
 	GraphicalConnection::ConnectionType connectionType() const;
+    /** @brief Returns source output port index associated with model connection. */
     unsigned int getPortSourceConnection() const;
+    /** @brief Returns destination input port index associated with model connection. */
     unsigned int getPortDestinationConnection() const;
+	/** @brief Sets routing type used during painting. */
 	void setConnectionType(GraphicalConnection::ConnectionType newConnectionType);
+    /** @brief Returns sampled scene points used for serialization/inspection. */
     QList<QPointF> getPoints() const;
 
 protected: // virtual
