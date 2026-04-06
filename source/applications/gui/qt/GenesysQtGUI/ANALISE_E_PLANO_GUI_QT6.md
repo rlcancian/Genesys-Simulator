@@ -265,3 +265,22 @@ Nesta primeira execução prática (fase inicial de estabilização), as seguint
 ### Próximo passo imediato
 
 Na sequência, o próximo passo seguro será extrair um primeiro controlador fino para lógica de simulação (`SimulationController`) sem alterar comportamento funcional, mantendo PR pequeno e com validação incremental.
+
+### Andamento adicional (passo seguinte iniciado)
+
+Como evolução incremental, parte da lógica repetida dos comandos de simulação foi centralizada em helpers de `MainWindow`:
+
+- `_hasCurrentModelSimulation()` para validar pré-condições de execução;
+- `_ensureSimulationReady()` para consolidar check + sincronização do modelo antes de start/step/resume.
+
+Isso reduz duplicação e risco de `null dereference` nos handlers de simulação.
+
+### Andamento adicional (extração inicial de controlador)
+
+Foi iniciada a extração de responsabilidade de simulação para uma classe dedicada `SimulationController`:
+
+- validação centralizada de pré-condições (`hasCurrentModelSimulation`, `ensureReady`);
+- uso dessa validação nos comandos start/step/pause/resume/stop;
+- documentação doxygen adicionada na nova classe e nos handlers principais.
+
+@ToDo: ampliar documentação doxygen para todas as classes/métodos restantes da GUI de forma incremental por módulo (`graphicals`, `dialogs`, `propertyeditor`), mantendo PRs pequenos e seguros.
