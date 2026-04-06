@@ -21,7 +21,6 @@
 #include "Simulator.h"
 
 //namespace GenesysKernel {
-class Simulator;
 
 /*!
  * \brief Manages discovery, loading, lookup and instantiation of simulation plugins.

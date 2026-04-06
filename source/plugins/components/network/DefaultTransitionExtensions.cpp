@@ -40,7 +40,7 @@ void EFSMTransition::execute(Model* model, Entity* entity) const {
 
 PetriTransition::PetriTransition(DefaultNode* source, DefaultNode* destination, std::string name)
 	: DefaultNodeTransition(source, destination, name) {
-	setTransitionKind(TransitionKind::PETRI);
+	//setTransitionKind(TransitionKind::PETRI);
 }
 
 void PetriTransition::setInputArcWeight(std::string color, unsigned int weight) {

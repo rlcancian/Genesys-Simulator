@@ -24,7 +24,7 @@ class Entity;
 
 class DefaultNodeTransition {
 public:
-	enum class TransitionKind : int { DETERMINISTIC = 0, PROBABILISTIC = 1, PETRI = 2 };
+	enum class TransitionKind : int { DETERMINISTIC = 0, PROBABILISTIC = 1 };
 
 public:
 	DefaultNodeTransition(DefaultNode* source, DefaultNode* destination, std::string name = "");
