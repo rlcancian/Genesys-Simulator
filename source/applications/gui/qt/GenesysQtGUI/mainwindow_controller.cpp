@@ -47,8 +47,36 @@
 //  menu actions
 // -------------------------------------------------
 
+bool MainWindow::_hasCurrentModelSimulation() const {
+    return simulator != nullptr
+            && simulator->getModelManager() != nullptr
+            && simulator->getModelManager()->current() != nullptr
+            && simulator->getModelManager()->current()->getSimulation() != nullptr;
+}
+
+bool MainWindow::_ensureSimulationReady(bool checkModel) {
+    if (!_hasCurrentModelSimulation()) {
+        QMessageBox::warning(this, "Simulation", "No model is loaded to run simulation.");
+        return false;
+    }
+
+    bool res = true;
+    if (checkModel && !_modelCheked) {
+        res = _check(false);
+    }
+
+    if (!res) {
+        return false;
+    }
+
+    return _setSimulationModelBasedOnText() && _hasCurrentModelSimulation();
+}
 
 void MainWindow::on_actionSimulationStop_triggered() {
+    if (!_hasCurrentModelSimulation()) {
+        return;
+    }
+
     AnimationTransition::setRunning(false);
     AnimationTransition::setPause(false);
 
@@ -60,42 +88,32 @@ void MainWindow::on_actionSimulationStop_triggered() {
 }
 
 void MainWindow::on_actionSimulationStart_triggered() {
+    if (!_ensureSimulationReady(true)) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
-
-    bool res = true;
-
-    // Checha o modelo antes de começar
-    if (!_modelCheked) {
-        res = _check(false);
-    }
-
-    if (res) {
-        _insertCommandInConsole("start");
-        if (_setSimulationModelBasedOnText())
-            simulator->getModelManager()->current()->getSimulation()->start();
-    }
+    _insertCommandInConsole("start");
+    simulator->getModelManager()->current()->getSimulation()->start();
 }
 
 void MainWindow::on_actionSimulationStep_triggered() {
+    if (!_ensureSimulationReady(true)) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
-
-    bool res = true;
-
-    if (!_modelCheked) {
-        res = _check(false);
-    }
-
-    if (res) {
-        _insertCommandInConsole("step");
-
-        if (_setSimulationModelBasedOnText())
-            simulator->getModelManager()->current()->getSimulation()->step();
-    }
+    _insertCommandInConsole("step");
+    simulator->getModelManager()->current()->getSimulation()->step();
 }
 
 void MainWindow::on_actionSimulationPause_triggered() {
+    if (!_hasCurrentModelSimulation()) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(true);
 
@@ -104,13 +122,15 @@ void MainWindow::on_actionSimulationPause_triggered() {
 }
 
 void MainWindow::on_actionSimulationResume_triggered() {
+    if (!_ensureSimulationReady(false)) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
 
     _insertCommandInConsole("resume");
-
-    if (_setSimulationModelBasedOnText())
-        simulator->getModelManager()->current()->getSimulation()->start();
+    simulator->getModelManager()->current()->getSimulation()->start();
 }
 
 

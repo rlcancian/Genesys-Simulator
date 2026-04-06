@@ -204,6 +204,8 @@ private: // Similar to QGraphicsScene Slots
 	void sceneGraphicalModelChanged();
 private: // simulator related
 	void _setOnEventHandlers();
+    bool _ensureSimulationReady(bool checkModel = true);
+    bool _hasCurrentModelSimulation() const;
 	void _insertPluginUI(Plugin* plugin);
 	void _insertFakePlugins();
 	bool _setSimulationModelBasedOnText();
@@ -260,8 +262,6 @@ private: // misc useful
     bool _checkItemsScene();
 	QString _modelfilename;
 	std::map<std::string /*category*/,QColor>* _pluginCategoryColor = new std::map<std::string,QColor>();
-	QColor myrgba(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
-    static std::string dotColor(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
     // TODO 1: Faz parte do mecanismo de restaurar dataDefinitions deletados do modelo e que são restaurados com um Control Z
     // Caso: Ao adicionar um Create no modelo e dar um check() o EntityType será criado,
     // mas ao deletar o Create, dar outro check() e em sequida dar um Control Z (voltando o Create no modelo) e checar novamente, o EntityType não é restaurado
