@@ -81,17 +81,23 @@ ModelGraphicsScene::~ModelGraphicsScene() {}
 
 //-----------------------------------------------------------------------
 
+/**
+ * @brief Notifies view-level handlers about changes in graphical model.
+ *
+ * Event object is stack-allocated and forwarded by const-reference to avoid
+ * heap ownership ambiguity.
+ *
+ * @todo Consider broadcasting to all attached views when multi-view editing is supported.
+ */
 void ModelGraphicsScene::notifyGraphicalModelChange(GraphicalModelEvent::EventType eventType, GraphicalModelEvent::EventObjectType eventObjectType, QGraphicsItem *item) {
-    GraphicalModelEvent* modelGraphicsEvent = new GraphicalModelEvent(eventType, eventObjectType, item);
     if (views().isEmpty()) {
-        delete modelGraphicsEvent;
         return;
     }
     ModelGraphicsView* view = dynamic_cast<ModelGraphicsView*> (views().at(0));
     if (view == nullptr) {
-        delete modelGraphicsEvent;
         return;
     }
+    GraphicalModelEvent modelGraphicsEvent(eventType, eventObjectType, item);
     view->notifySceneGraphicalModelEventHandler(modelGraphicsEvent);
 }
 
