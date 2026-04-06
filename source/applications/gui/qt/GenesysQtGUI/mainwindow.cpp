@@ -186,6 +186,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 MainWindow::~MainWindow() {
     delete ui;
+    delete simulator;
+    delete propertyGenesys;
+    delete propertyList;
+    delete propertyEditorUI;
+    delete propertyBox;
+    delete _pluginCategoryColor;
+    delete _gmc_copies;
+    delete _ports_copies;
+    delete _draw_copy;
+    delete _group_copy;
+    delete undoView;
 }
 
 ModelGraphicsScene* MainWindow::myScene() const {
@@ -920,6 +931,4 @@ void MainWindow::_actualizeUndo() {
     undoView->setVisible(false);
     undoView->setAttribute(Qt::WA_QuitOnClose, false);
 }
-
-
 

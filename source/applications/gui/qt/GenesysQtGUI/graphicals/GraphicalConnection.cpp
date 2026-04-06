@@ -165,14 +165,7 @@ Connection* GraphicalConnection::getDestination() const {
 }
 
 bool GraphicalConnection::sceneEvent(QEvent *event) {
-    bool result;
-    try{
-        result = QGraphicsObject::sceneEvent(event); // TODO: CRASH!
-        return result;
-    } catch (std::exception e) {
-        result = false; //@TODO
-        return false;
-    }
+    return QGraphicsObject::sceneEvent(event);
 }
 
 unsigned int GraphicalConnection::getPortSourceConnection() const {

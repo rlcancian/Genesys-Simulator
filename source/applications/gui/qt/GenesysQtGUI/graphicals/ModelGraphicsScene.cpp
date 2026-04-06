@@ -83,7 +83,16 @@ ModelGraphicsScene::~ModelGraphicsScene() {}
 
 void ModelGraphicsScene::notifyGraphicalModelChange(GraphicalModelEvent::EventType eventType, GraphicalModelEvent::EventObjectType eventObjectType, QGraphicsItem *item) {
     GraphicalModelEvent* modelGraphicsEvent = new GraphicalModelEvent(eventType, eventObjectType, item);
-    dynamic_cast<ModelGraphicsView*> (views().at(0))->notifySceneGraphicalModelEventHandler(modelGraphicsEvent);
+    if (views().isEmpty()) {
+        delete modelGraphicsEvent;
+        return;
+    }
+    ModelGraphicsView* view = dynamic_cast<ModelGraphicsView*> (views().at(0));
+    if (view == nullptr) {
+        delete modelGraphicsEvent;
+        return;
+    }
+    view->notifySceneGraphicalModelEventHandler(modelGraphicsEvent);
 }
 
 GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color, bool notify) {
@@ -2546,4 +2555,3 @@ void ModelGraphicsScene::setVariables() {
 //------------------------
 // Private
 //------------------------
-
