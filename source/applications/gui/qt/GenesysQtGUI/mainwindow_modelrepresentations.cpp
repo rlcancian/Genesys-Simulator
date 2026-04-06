@@ -151,9 +151,9 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
     const struct DOT_STYLES {
         std::string nodeComponent = "shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=bisque";
         //std::string nodeComponentOtherLevel = "shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=goldenrod3";
-        std::string edgeComponent = "style=solid, arrowhead=\"normal\" color=black, fontcolor=black, fontsize=7";
-        std::string nodeDataDefInternal = "shape=record, fontsize=8, color=gray50, fontcolor=gray50, style=filled, fillcolor=#d9ebbd";
-        std::string nodeDataDefAttached = "shape=record, fontsize=10, color=gray50, fontcolor=gray50, style=filled, fillcolor=#a2cd5a";
+        std::string edgeComponent = "style=solid, arrowhead=\"normal\", color=black, fontcolor=black, fontsize=7";
+        std::string nodeDataDefInternal = "shape=record, fontsize=8, color=gray50, fontcolor=gray50, style=filled, fillcolor=\"#d9ebbd\"";
+        std::string nodeDataDefAttached = "shape=record, fontsize=10, color=gray50, fontcolor=gray50, style=filled, fillcolor=\"#a2cd5a\"";
         std::string edgeDataDefInternal = "style=dashed, arrowhead=\"diamond\", color=gray55, fontcolor=gray55, fontsize=7";
         std::string edgeDataDefAttached = "style=dashed, arrowhead=\"ediamond\", color=gray50, fontcolor=gray50, fontsize=7";
         unsigned int rankSource = 0;
