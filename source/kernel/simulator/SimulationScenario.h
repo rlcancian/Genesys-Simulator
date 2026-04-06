@@ -16,8 +16,8 @@
 
 #include <string>
 #include <list>
-#include "Simulator.h"
-#include "PropertyGenesys.h"
+
+class Simulator;
 
 /*!
  * Represents a scenario where a specific model (defined my ModelFilename) will be simulated. To each scenario will be associated a set of SimulationControl and SimulationResponse, and their values are set to the scenario by the ProcessAnalyser.
