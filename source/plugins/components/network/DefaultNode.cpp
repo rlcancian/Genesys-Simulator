@@ -13,8 +13,102 @@
 
 #include "DefaultNode.h"
 #include "../../../kernel/simulator/Model.h"
+#include <algorithm>
 //#include "../../kernel/simulator/Simulator.h"
 //#include "../../kernel/simulator/PluginManager.h"
+
+DefaultNodeTransition::DefaultNodeTransition(DefaultNode* source, DefaultNode* destination, std::string name) {
+	_source = source;
+	_destination = destination;
+	_name = name;
+}
+
+void DefaultNodeTransition::setSource(DefaultNode* source) {
+	_source = source;
+}
+
+DefaultNode* DefaultNodeTransition::getSource() const {
+	return _source;
+}
+
+void DefaultNodeTransition::setDestination(DefaultNode* destination) {
+	_destination = destination;
+}
+
+DefaultNode* DefaultNodeTransition::getDestination() const {
+	return _destination;
+}
+
+void DefaultNodeTransition::setName(std::string name) {
+	_name = name;
+}
+
+std::string DefaultNodeTransition::getName() const {
+	return _name;
+}
+
+void DefaultNodeTransition::setGuardExpression(std::string guardExpression) {
+	_guardExpression = guardExpression;
+}
+
+std::string DefaultNodeTransition::getGuardExpression() const {
+	return _guardExpression;
+}
+
+void DefaultNodeTransition::setOutputExpression(std::string outputExpression) {
+	_outputExpression = outputExpression;
+}
+
+std::string DefaultNodeTransition::getOutputExpression() const {
+	return _outputExpression;
+}
+
+void DefaultNodeTransition::setInputEvent(std::string inputEvent) {
+	_inputEvent = inputEvent;
+}
+
+std::string DefaultNodeTransition::getInputEvent() const {
+	return _inputEvent;
+}
+
+void DefaultNodeTransition::setPriority(unsigned int priority) {
+	_priority = priority;
+}
+
+unsigned int DefaultNodeTransition::getPriority() const {
+	return _priority;
+}
+
+void DefaultNodeTransition::setProbability(double probability) {
+	_probability = probability;
+}
+
+double DefaultNodeTransition::getProbability() const {
+	return _probability;
+}
+
+void DefaultNodeTransition::setTransitionKind(TransitionKind transitionKind) {
+	_transitionKind = transitionKind;
+}
+
+DefaultNodeTransition::TransitionKind DefaultNodeTransition::getTransitionKind() const {
+	return _transitionKind;
+}
+
+bool DefaultNodeTransition::canFire(Model* model, Entity* entity) const {
+	(void) entity;
+	if (_guardExpression == "") {
+		return true;
+	}
+	return model->parseExpression(_guardExpression) != 0.0;
+}
+
+void DefaultNodeTransition::execute(Model* model, Entity* entity) const {
+	(void) entity;
+	if (_outputExpression != "") {
+		model->parseExpression(_outputExpression);
+	}
+}
 
 
 
@@ -30,6 +124,9 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 // public: /// constructors
 //
 
+DefaultNode::DefaultNode(Model* model, std::string componentTypename, std::string name) : ModelComponent(model, componentTypename, name), DEFAULT() {
+}
+
 DefaultNode::DefaultNode(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DefaultNode>(), name), DEFAULT() {
 }
 
@@ -38,7 +135,35 @@ DefaultNode::DefaultNode(Model* model, std::string name) : ModelComponent(model,
 // public: /// new public user methods for this component
 //
 
-// ...
+void DefaultNode::addTransition(DefaultNodeTransition* transition) {
+	if (transition != nullptr) {
+		_transitions->insert(transition);
+	}
+}
+
+void DefaultNode::removeTransition(DefaultNodeTransition* transition) {
+	_transitions->remove(transition);
+}
+
+List<DefaultNodeTransition*>* DefaultNode::getTransitions() const {
+	return _transitions;
+}
+
+void DefaultNode::setInitialNode(bool initialNode) {
+	_initialNode = initialNode;
+}
+
+bool DefaultNode::isInitialNode() const {
+	return _initialNode;
+}
+
+void DefaultNode::setFinalNode(bool finalNode) {
+	_finalNode = finalNode;
+}
+
+bool DefaultNode::isFinalNode() const {
+	return _finalNode;
+}
 
 
 //
@@ -94,14 +219,16 @@ ModelDataDefinition* DefaultNode::NewInstance(Model* model, std::string name) {
 bool DefaultNode::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_initialNode = fields->loadField("initialNode", DEFAULT.initialNode);
+		_finalNode = fields->loadField("finalNode", DEFAULT.finalNode);
 	}
 	return res;
 }
 
 void DefaultNode::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("initialNode", _initialNode, DEFAULT.initialNode, saveDefaultValues);
+	fields->saveField("finalNode", _finalNode, DEFAULT.finalNode, saveDefaultValues);
 }
 
 void DefaultNode::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {

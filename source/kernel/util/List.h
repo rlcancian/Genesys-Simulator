@@ -21,10 +21,7 @@
 #include <iterator>
 #include <functional>
 #include <algorithm>
-#include "Util.h"
-//#include "../simulator/ModelDataDefinition.h"
 
-//class Simulator;
 
 /*!
  * \brief Lightweight wrapper around \c std::list with convenience helpers used by the kernel.

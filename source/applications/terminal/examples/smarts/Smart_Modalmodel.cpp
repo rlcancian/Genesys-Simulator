@@ -21,7 +21,7 @@
 
 // Model Components
 #include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/DefaultModalModel.h"
+#include "../../../../plugins/components/ModalModelDefault.h"
 #include "../../../../plugins/components/Dispose.h"
 #include "../../../TraitsApp.h"
 
@@ -42,7 +42,7 @@ int Smart_ModalModel::main(int argc, char** argv) {
     Model* model = genesys->getModelManager()->newModel();
     // create model
     Create* create1 = plugins->newInstance<Create>(model);
-    DefaultModalModel* modalmodel1 = plugins->newInstance<DefaultModalModel>(model);
+    ModalModelDefault* modalmodel1 = plugins->newInstance<ModalModelDefault>(model);
     Dispose* dispose1 = plugins->newInstance<Dispose>(model);
     // connect model components to create a "workflow"
     create1->getConnectionManager()->insert(modalmodel1);
@@ -55,4 +55,3 @@ int Smart_ModalModel::main(int argc, char** argv) {
     delete genesys;
     return 0;
 };
-

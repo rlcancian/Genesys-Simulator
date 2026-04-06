@@ -23,8 +23,6 @@
 #include "Util.h"
 #include "../simulator/ModelElement.h"
 
-//class Simulator;
-
 #include "List.h"
 
 /*!
@@ -241,4 +239,3 @@ void ListObservable<T>::sort(Compare comp) {
 }
 
 #endif /* LISTOBSERVABLE_H */
-

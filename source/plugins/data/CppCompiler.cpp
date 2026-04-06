@@ -126,7 +126,7 @@ ModelDataDefinition* CppCompiler::LoadInstance(Model* model, PersistenceRecord *
 
 PluginInformation* CppCompiler::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<CppCompiler>(), &CppCompiler::LoadInstance, &CppCompiler::NewInstance);
-	info->setDescriptionHelp("//@TODO");
+	info->setDescriptionHelp("Compiles C/C++ source files into executables or libraries and optionally loads the generated dynamic library at runtime.");
 	//info->setObservation("");
 	//info->setMinimumOutputs();
 	//info->setDynamicLibFilenameDependencies();
@@ -153,21 +153,67 @@ std::string CppCompiler::getSourceFilename() const {
 bool CppCompiler::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		/*!
+		 * \brief Load persisted compiler configuration.
+		 *
+		 * The structure intentionally follows the same pattern used by other
+		 * ModelDataDefinition implementations to simplify future maintenance.
+		 */
+		_sourceFilename = fields->loadField("sourceFilename", DEFAULT.sourceFilename);
+		_tempDir = fields->loadField("tempDir", DEFAULT.tempDir);
+		_outputDir = fields->loadField("outputDir", DEFAULT.outputDir);
+		_outputFilename = fields->loadField("outputFilename", DEFAULT.outputFilename);
+		_compilerCommand = fields->loadField("compilerCommand", DEFAULT.compiler);
+		_flagsGeneral = fields->loadField("flagsGeneral", DEFAULT.flagsGeneral);
+		_flagsDynamicLibrary = fields->loadField("flagsDynamicLibrary", DEFAULT.flagsDynamicLibrary);
+		_flagsStaticLibrary = fields->loadField("flagsStaticLibrary", DEFAULT.flagsStaticLibrary);
+		_flagsExecutable = fields->loadField("flagsExecutable", DEFAULT.flagsExecutable);
+		_objectFiles = fields->loadField("objectFiles", DEFAULT.objectFiles);
+		_libraryLoaded = fields->loadField("libraryLoaded", false);
+		// Example extension point:
+		// _compiledToDynamicLibrary = fields->loadField("compiledToDynamicLibrary", false);
 	}
 	return res;
 }
 
 void CppCompiler::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	/*!
+	 * \brief Persist compiler configuration.
+	 *
+	 * Keep field names symmetric to \ref _loadInstance for predictable
+	 * serialization behavior and easier backward-compatible migrations.
+	 */
+	fields->saveField("sourceFilename", _sourceFilename, DEFAULT.sourceFilename, saveDefaultValues);
+	fields->saveField("tempDir", _tempDir, DEFAULT.tempDir, saveDefaultValues);
+	fields->saveField("outputDir", _outputDir, DEFAULT.outputDir, saveDefaultValues);
+	fields->saveField("outputFilename", _outputFilename, DEFAULT.outputFilename, saveDefaultValues);
+	fields->saveField("compilerCommand", _compilerCommand, DEFAULT.compiler, saveDefaultValues);
+	fields->saveField("flagsGeneral", _flagsGeneral, DEFAULT.flagsGeneral, saveDefaultValues);
+	fields->saveField("flagsDynamicLibrary", _flagsDynamicLibrary, DEFAULT.flagsDynamicLibrary, saveDefaultValues);
+	fields->saveField("flagsStaticLibrary", _flagsStaticLibrary, DEFAULT.flagsStaticLibrary, saveDefaultValues);
+	fields->saveField("flagsExecutable", _flagsExecutable, DEFAULT.flagsExecutable, saveDefaultValues);
+	fields->saveField("objectFiles", _objectFiles, DEFAULT.objectFiles, saveDefaultValues);
+	fields->saveField("libraryLoaded", _libraryLoaded, false, saveDefaultValues);
+	// Example extension point:
+	// fields->saveField("compiledToDynamicLibrary", _compiledToDynamicLibrary, false, saveDefaultValues);
 }
 
 // could be overriden
 
 bool CppCompiler::_check(std::string& errorMessage) {
-	//@ TODO check if compiler command exists
-	return true;
+	/*!
+	 * \brief Validate minimal compiler configuration before use.
+	 */
+	bool resultAll = true;
+	if (_compilerCommand == "") {
+		errorMessage += "CompilerCommand must not be empty. ";
+		resultAll = false;
+	}
+	// Optional strict checks that can be enabled later:
+	// resultAll &= Util::FileExists(_compilerCommand);
+	// resultAll &= (_sourceFilename != "");
+	return resultAll;
 }
 
 void CppCompiler::_createInternalAndAttachedData() {

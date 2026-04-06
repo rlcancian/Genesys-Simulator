@@ -14,7 +14,7 @@
 
 // Model Components
 #include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/DefaultModalModel.h"
+#include "../../../../plugins/components/ModalModelDefault.h"
 #include "../../../../plugins/components/Dispose.h"
 #include "../../../TraitsApp.h"
 
@@ -35,7 +35,7 @@ int Smart_DefaultModalModel::main(int argc, char** argv) {
     // create model
     Create* create1 = plugins->newInstance<Create>(model);
     create1->setTimeBetweenCreationsExpression("1", Util::TimeUnit::microsecond);
-    DefaultModalModel* dmm1 = plugins->newInstance<DefaultModalModel>(model);
+    ModalModelDefault* dmm1 = plugins->newInstance<ModalModelDefault>(model);
     DefaultNode* node1 = plugins->newInstance<DefaultNode>(model);
     DefaultNode* node2 = plugins->newInstance<DefaultNode>(model);
     DefaultNode* node3 = plugins->newInstance<DefaultNode>(model);
@@ -65,4 +65,3 @@ int Smart_DefaultModalModel::main(int argc, char** argv) {
     delete genesys;
     return 0;
 };
-

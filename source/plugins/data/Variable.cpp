@@ -173,6 +173,14 @@ void Variable::_initBetweenReplications() {
 	this->_values = this->_initialValues;
 }
 
+ModelDataDefinition* Variable::get_scope() {
+	return scope;
+}
+
+void Variable::set_scope(ModelDataDefinition* const scope) {
+	this->scope = scope;
+}
+
 std::map<std::string, double> *Variable::getValues() const {
 	return _values;
 }

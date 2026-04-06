@@ -106,6 +106,9 @@ public:
 	void insertDimentionSize(unsigned int size);
 	std::list<unsigned int>* getDimensionSizes() const;
 	std::map<std::string, double> *getValues() const;
+	ModelDataDefinition* get_scope();
+	void set_scope(ModelDataDefinition* const scope);
+
 	//double getValue();
 	//void setValue(double value);
 	//void setValue(std::string index, double value);
@@ -123,7 +126,7 @@ private:
 	std::list<unsigned int>* _dimensionSizes = new std::list<unsigned int>();
     std::map<std::string, double>* _values = new std::map<std::string, double>();
     std::map<std::string, double>* _initialValues = new std::map<std::string, double>();
+	ModelDataDefinition* scope = nullptr; // not used so far
 };
 
 #endif /* VARIABLE_H */
-

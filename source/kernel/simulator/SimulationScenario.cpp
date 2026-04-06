@@ -12,6 +12,8 @@
  */
 
 #include "SimulationScenario.h"
+#include <algorithm>
+#include <stdexcept>
 
 SimulationScenario::SimulationScenario() = default;
 

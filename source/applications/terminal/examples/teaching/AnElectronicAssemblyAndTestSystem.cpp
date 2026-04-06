@@ -137,7 +137,7 @@ int AnElectronicAssemblyAndTestSystem::main(int argc, char** argv) {
 	model->getInfos()->setDescription("B14 Chap 04 Modeling Basic Operations ans Inputs. Example section 4.1");
 	//setting simulation parameters
 	ModelSimulation* sim = model->getSimulation();
-	sim->setNumberOfReplications(30);
+	sim->setNumberOfReplications(10);
 	sim->setReplicationLength(8);
 	sim->setReplicationLengthTimeUnit(Util::TimeUnit::hour);
 	sim->setWarmUpPeriod(1);

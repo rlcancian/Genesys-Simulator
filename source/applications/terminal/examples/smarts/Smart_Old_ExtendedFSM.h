@@ -10,17 +10,17 @@
  * Created on 7 de agosto de 2022, 12:26
  */
 
-#ifndef SMART_FINITSTATEMACHINE_H
-#define SMART_FINITSTATEMACHINE_H
+#ifndef SMART_EXTENDEDFSM_H
+#define SMART_EXTENDEDFSM_H
 
 #include "../../../BaseGenesysTerminalApplication.h"
 
-class Smart_FiniteStateMachine : public BaseGenesysTerminalApplication {
+class Smart_Old_ExtendedFSM : public BaseGenesysTerminalApplication {
 public:
-	Smart_FiniteStateMachine();
+	Smart_Old_ExtendedFSM();
 public:
 	virtual int main(int argc, char** argv) override;
 };
 
-#endif /* SMART_FINITSTATEMACHINE_H */
+#endif /* SMART_EXTENDEDFSM_H */
 

@@ -14,13 +14,16 @@
 #ifndef PLUGINMANAGER_H
 #define PLUGINMANAGER_H
 
+#include <string>
 #include "../util/List.h"
-//#include "Simulator.h"
+#include "../util/Util.h"
 #include "Plugin.h"
 #include "PluginConnector_if.h"
 
-//namespace GenesysKernel {
 class Simulator;
+class Model;
+
+//namespace GenesysKernel {
 
 /*!
  * \brief Manages discovery, loading, lookup and instantiation of simulation plugins.
@@ -82,8 +85,7 @@ public:
 				return instance;
 			}
 		}
-		// innvalid use of incomplete class
-		///_simulator->getTracer()->traceError(TraceManager::Level::L1_errorFatal, "Error: Could not find any plugin with Typename \"" + pluginTypename + "\"");
+		// Keep this header free of Simulator implementation details to avoid include cycles.
 		return nullptr;
 	}
 private:

@@ -15,6 +15,7 @@
 #define TRACEMANAGER_H
 
 #include "../util/List.h"
+#include "../util/Util.h"
 #include <functional>
 //namespace GenesysKernel {
 class Model;

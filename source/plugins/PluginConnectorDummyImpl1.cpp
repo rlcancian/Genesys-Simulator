@@ -24,7 +24,7 @@
 #include "components/CppForG.h"
 #include "components/Create.h"
 #include "components/Decide.h"
-#include "components/DefaultModalModel.h"
+#include "components/ModalModelDefault.h"
 #include "components/Delay.h"
 #include "components/DiffEquations.h"
 #include "components/Dispose.h"
@@ -39,6 +39,8 @@
 #include "components/PickStation.h"
 #include "components/PickUp.h"
 #include "components/Seize.h"
+#include "components/ModalModelFSM.h"
+#include "components/ModalModelPetriNet.h"
 //#include "../../plugins/components/Read.h"
 #include "components/Release.h"
 #include "components/Remove.h"
@@ -80,6 +82,7 @@
 //#include "../../plugins/data/Segment.h"
 
 #include "../kernel/util/Util.h"
+#include "components/network/FSMState.h"
 
 //namespace GenesysKernel {
 
@@ -119,7 +122,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("variable.so");
     filenames->insert("batch.so");
     filenames->insert("clone.so");
-    filenames->insert("defaultmodalmodel.so");
+    filenames->insert("ModalModelDefault.so");
     filenames->insert("decide.so");
     filenames->insert("delay.so");
     filenames->insert("dropoff.so");
@@ -145,6 +148,9 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("diffequations.so");
     filenames->insert("lsode.so");
     //filenames->insert("finiteelement.so");
+    filenames->insert("modalmodelfsm.so");
+    filenames->insert("fsmstate.so");
+    filenames->insert("modalmodelpetrinet.so");
     //filenames->insert("finitevolume.so");
     filenames->insert("cppcompiler.so");
     filenames->insert("cppforg.so");
@@ -166,7 +172,8 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("station.so");
     filenames->insert("sequence.so");
     /*
-    if (fn == "cellularautomata.so");
+    if (fn == "cellularautomata.so");"modalmodelfsm.so");
+    filenames->insert(("modalmodelpetrinet.so"
     filenames->insert("efsmData.so");
     filenames->insert("efsm.so");
     filenames->insert("fsm_state.so");
@@ -226,8 +233,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Batch::GetPluginInformation;
     else if (fn == "clone.so")
         GetInfo = &Clone::GetPluginInformation;
-    else if (fn == "defaultmodalmodel.so")
-        GetInfo = &DefaultModalModel::GetPluginInformation;
+    else if (fn == "ModalModelDefault.so")
+        GetInfo = &ModalModelDefault::GetPluginInformation;
     else if (fn == "decide.so")
         GetInfo = &Decide::GetPluginInformation;
     else if (fn == "delay.so")
@@ -277,6 +284,12 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
     else if (fn == "lsode.so")
         GetInfo = &LSODE::GetPluginInformation;
     //else if (fn == "finiteelement.so")
+    else if (fn == "modalmodelfsm.so")
+        GetInfo = &ModalModelFSM::GetPluginInformation;
+    else if (fn == "fsmstate.so")
+        GetInfo = &FSMState::GetPluginInformation;
+    else if (fn == "modalmodelpetrinet.so")
+        GetInfo = &ModalModelPetriNet::GetPluginInformation;
     //    GetInfo = &LSODE::GetPluginInformation;
     //else if (fn == "finitevolume.so")
     //    GetInfo = &LSODE::GetPluginInformation;

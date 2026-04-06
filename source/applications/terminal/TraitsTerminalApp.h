@@ -14,6 +14,7 @@
 #pragma once
 
 #include "GenesysShell/GenesysShell.h"
+#include "examples/smarts/Smart_ModalModelFSM.h"
 #include "examples/smarts/Smart_DefaultModalModel.h"
 #include "examples/smarts/Smart_SeizeDelayRelease.h"
 #include "examples/smarts/Smart_SeizeDelayReleaseMany.h"
@@ -89,6 +90,7 @@ template <> struct TraitsTerminalApp<GenesysApplication_if> {
 	//typedef Smart_Expression Application;
 	//typedef Smart_InventoryAndHoldingCosts Application;
 	//typedef Smart_MaxArrivalsField Application;
+	//typedef Smart_ModalModelFSM Application;
 	//typedef Smart_ModelRunUntil1000Parts Application;
 	//typedef Smart_ModuleDisplayVariables Application;
 	//typedef Smart_OverlappingResources Application;
