@@ -309,3 +309,11 @@ Foi iniciada documentação “linha de raciocínio por bloco” em código exis
 - `mainwindow_scene.cpp` recebeu documentação doxygen em handlers/slots e blocos funcionais de atualização de UI.
 
 @ToDo: continuar essa estratégia de documentação detalhada nos demais arquivos centrais (`mainwindow_controller.cpp`, `ModelGraphicsScene.cpp`, `propertyeditor/*`).
+
+### Andamento adicional (consistência e limpeza de código)
+
+Após verificar a versão atual dos arquivos, foram aplicadas limpezas seguras:
+
+- remoção de retorno inalcançável em `GraphicalConnection::boundingRect`;
+- boundingRect agora trata porta nula defensivamente;
+- marcação explícita de parâmetros não utilizados em `mainwindow_scene.cpp` (`Q_UNUSED`) para reduzir warnings e deixar intenção clara.

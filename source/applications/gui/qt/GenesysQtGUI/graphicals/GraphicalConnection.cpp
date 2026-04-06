@@ -102,10 +102,15 @@ void GraphicalConnection::updateDimensionsAndPosition() {
 }
 
 QRectF GraphicalConnection::boundingRect() const {
-	int portWidth = _sourceGraphicalPort->width(); //@TODO REMOVE. Did not solve redraw issue
-	int portHeight = _sourceGraphicalPort->height();
-	return QRectF(0-portWidth, 0-portHeight, _width+portWidth, _height+portHeight); //@TODO add port dimensions
-	return QRectF(0, 0, _width, _height); //@TODO add port dimensions
+	/**
+	 * Bloco 1: calcula margem extra baseada na porta para reduzir clipping visual.
+	 */
+	int portWidth = _sourceGraphicalPort != nullptr ? _sourceGraphicalPort->width() : 0;
+	int portHeight = _sourceGraphicalPort != nullptr ? _sourceGraphicalPort->height() : 0;
+	/**
+	 * Bloco 2: retorna retângulo local com margem.
+	 */
+	return QRectF(0 - portWidth, 0 - portHeight, _width + portWidth, _height + portHeight);
 }
 
 void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {

@@ -45,6 +45,7 @@ void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*
  * @param region Regiões invalidadas da cena.
  */
 void MainWindow::sceneChanged(const QList<QRectF> &region) {
+    Q_UNUSED(region);
     /**
      * Bloco 1: sincroniza estado de undo/redo e flags de alteração textual.
      */
@@ -106,6 +107,9 @@ bool MainWindow::_checkItemsScene() {
     return res;
 }
 void MainWindow::sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsItem *oldFocusItem, Qt::FocusReason reason) {
+    Q_UNUSED(newFocusItem);
+    Q_UNUSED(oldFocusItem);
+    Q_UNUSED(reason);
     // int a = 0;
 }
 //void sceneRectChanged(const QRectF &rect){}
