@@ -99,6 +99,10 @@ L      [A-Za-z0-9_.]+
 [>][=]   { return (yy::genesyspp_parser::make_oGE(obj_t(0, std::string(yytext)), loc));}
 [=][=]   { return (yy::genesyspp_parser::make_oEQ(obj_t(0, std::string(yytext)), loc));}
 [<][>]   { return (yy::genesyspp_parser::make_oNE(obj_t(0, std::string(yytext)), loc));}
+[!][=]   { return (yy::genesyspp_parser::make_oNE(obj_t(0, std::string(yytext)), loc));}
+[&][&]   { return (yy::genesyspp_parser::make_oAND(obj_t(0, std::string(yytext)), loc));}
+[|][|]   { return (yy::genesyspp_parser::make_oOR(obj_t(0, std::string(yytext)), loc));}
+[!]      { return (yy::genesyspp_parser::make_oNOT(obj_t(0, std::string(yytext)), loc));}
 [<] {return yy::genesyspp_parser::make_LESS(loc);}
 [>] {return yy::genesyspp_parser::make_GREATER(loc);}
 [(] {return yy::genesyspp_parser::make_LPAREN(loc);}
