@@ -105,7 +105,7 @@ public:
 		id = counter++;
 		build = [this]() {this->Build();};
 	}
-	void Build();
+	void Build() override;
 	void setResistance(float resistance);
 
 	static PluginInformation* GetPluginInformation();
@@ -130,7 +130,7 @@ private:
 class Vsource : public SPICECircuit {
 public:
 	Vsource(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setVoltage(float voltage);
 
 	static PluginInformation* GetPluginInformation();
@@ -155,7 +155,7 @@ private:
 class Vpulse : public SPICECircuit {
 public:
 	Vpulse(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setVoltage(float voltage);
 	void setFreq(float freq);
 	void setSlope(float slope);
@@ -186,7 +186,7 @@ private:
 class Vsine : public SPICECircuit {
 public:
 	Vsine(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setVoltage(float voltage);
 	void setFreq(float freq);
 
@@ -215,7 +215,7 @@ class Capacitor : public SPICECircuit {
 public:
 	Capacitor(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
 	void setCapacitance(float capacitance);
-	void Build();
+	void Build() override;
 
 	static PluginInformation* GetPluginInformation();
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -241,7 +241,7 @@ public:
 	Diode(Model* model, std::string name = ""): SPICECircuit(model, name) {
 		id = counter++; build = [this]() {this->Build();};
 	}
-	void Build();
+	void Build() override;
 	void setElectricalModel(std::string electricalModel);
 
 	static PluginInformation* GetPluginInformation();
@@ -266,7 +266,7 @@ private:
 class PMOS: public SPICECircuit {
 public:
 	PMOS(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setWidth(float width);
 	void setLength(float length);
 	void setElectricalModel(std::string electricalModel);
@@ -297,7 +297,7 @@ private:
 class NMOS: public SPICECircuit {
 public:
 	NMOS(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setWidth(float width);
 	void setLength(float length);
 	void setElectricalModel(std::string electricalModel);
@@ -328,7 +328,7 @@ private:
 class NOT : public SPICECircuit {
 public:
 	NOT(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setPMOSWidth(float PMOSWidth);
 	void setPMOSLength(float length);
 	void setNMOSWidth(float NMOSWidth);
@@ -365,7 +365,7 @@ private:
 class NAND : public SPICECircuit {
 public:
 	NAND(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setPMOSWidth(float PMOSWidth);
 	void setPMOSLength(float length);
 	void setNMOSWidth(float NMOSWidth);
@@ -402,7 +402,7 @@ private:
 class AND : public SPICECircuit {
 public:
 	AND(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setPMOSWidth(float PMOSWidth);
 	void setPMOSLength(float length);
 	void setNMOSWidth(float NMOSWidth);
@@ -439,7 +439,7 @@ private:
 class NOR : public SPICECircuit {
 public:
 	NOR(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setPMOSWidth(float PMOSWidth);
 	void setPMOSLength(float length);
 	void setNMOSWidth(float NMOSWidth);
@@ -476,7 +476,7 @@ private:
 class OR : public SPICECircuit {
 public:
 	OR(Model* model, std::string name = ""): SPICECircuit(model, name)  { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setPMOSWidth(float PMOSWidth);
 	void setPMOSLength(float length);
 	void setNMOSWidth(float NMOSWidth);
@@ -513,7 +513,7 @@ private:
 class XOR : public SPICECircuit {
 public:
 	XOR(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setPMOSWidth(float PMOSWidth);
 	void setPMOSLength(float length);
 	void setNMOSWidth(float NMOSWidth);
@@ -550,7 +550,7 @@ private:
 class XNOR : public SPICECircuit {
 public:
 	XNOR(Model* model, std::string name = ""): SPICECircuit(model, name) { id = counter++; build = [this]() {this->Build();};}
-	void Build();
+	void Build() override;
 	void setPMOSWidth(float PMOSWidth);
 	void setPMOSLength(float length);
 	void setNMOSWidth(float NMOSWidth);
