@@ -38,6 +38,7 @@
 #include <QDebug>
 #include <QRegularExpression>
 #include <QRandomGenerator>
+#include "../../../../kernel/simulator/ModelSimulation.h"
 
 
 //-------------------------
@@ -59,13 +60,17 @@ void MainWindow::on_actionSimulationStop_triggered() {
     if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
         return;
     }
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
 
     AnimationTransition::setRunning(false);
     AnimationTransition::setPause(false);
 
     _insertCommandInConsole("stop");
 
-    simulator->getModelManager()->current()->getSimulation()->stop();
+    simulation->stop();
 
     _actualizeActions();
 }
@@ -89,10 +94,15 @@ void MainWindow::on_actionSimulationStart_triggered() {
         return;
     }
 
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
     _insertCommandInConsole("start");
-    simulator->getModelManager()->current()->getSimulation()->start();
+    simulation->start();
 }
 
 /**
@@ -111,10 +121,15 @@ void MainWindow::on_actionSimulationStep_triggered() {
         return;
     }
 
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
     _insertCommandInConsole("step");
-    simulator->getModelManager()->current()->getSimulation()->step();
+    simulation->step();
 }
 
 /**
@@ -127,11 +142,16 @@ void MainWindow::on_actionSimulationPause_triggered() {
         return;
     }
 
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(true);
 
     _insertCommandInConsole("pause");
-    simulator->getModelManager()->current()->getSimulation()->pause();
+    simulation->pause();
 }
 
 /**
@@ -149,11 +169,16 @@ void MainWindow::on_actionSimulationResume_triggered() {
         return;
     }
 
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
 
     _insertCommandInConsole("resume");
-    simulator->getModelManager()->current()->getSimulation()->start();
+    simulation->start();
 }
 
 

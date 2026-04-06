@@ -292,3 +292,11 @@ Foi eliminada a alocação dinâmica de `GraphicalModelEvent` no caminho Scene->
 - evento agora é criado na stack em `ModelGraphicsScene::notifyGraphicalModelChange`;
 - encaminhamento ocorre por referência constante (`const GraphicalModelEvent&`);
 - reduz risco de vazamento/uso indevido de ponteiros e simplifica ownership.
+
+### Andamento adicional (higiene de memória em conexão gráfica)
+
+Foi melhorada a destruição de `GraphicalConnection`:
+
+- remoções agora são defensivas com `nullptr` checks;
+- objetos auxiliares `Connection` alocados no construtor são liberados no destrutor;
+- reduz vazamento de memória em ciclos de criar/remover conexão.
