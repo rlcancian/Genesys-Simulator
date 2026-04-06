@@ -20,7 +20,7 @@ class Smart_ProcessSet : public BaseGenesysTerminalApplication {
 public:
 	Smart_ProcessSet();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_PROCESSSET_H */

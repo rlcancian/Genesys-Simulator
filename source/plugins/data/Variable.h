@@ -92,7 +92,7 @@ public:
     Variable(Model* model, std::string name = "");
     virtual ~Variable() = default;
 public:
-    virtual std::string show();
+    virtual std::string show() override;
 public: //static
     static PluginInformation* GetPluginInformation();
     static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -106,6 +106,9 @@ public:
 	void insertDimentionSize(unsigned int size);
 	std::list<unsigned int>* getDimensionSizes() const;
 	std::map<std::string, double> *getValues() const;
+	ModelDataDefinition* get_scope();
+	void set_scope(ModelDataDefinition* const scope);
+
 	//double getValue();
 	//void setValue(double value);
 	//void setValue(std::string index, double value);
@@ -113,17 +116,17 @@ public:
 	//void setInitialValue(double value);
 
 protected:
-    virtual bool _loadInstance(PersistenceRecord *fields);
-    virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-    virtual bool _check(std::string& errorMessage);
-    virtual void _initBetweenReplications();
+    virtual bool _loadInstance(PersistenceRecord *fields) override;
+    virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+    virtual bool _check(std::string& errorMessage) override;
+    virtual void _initBetweenReplications() override;
 
 private:
     //const struct DEFAULT_VALUES {	} DEFAULT;
 	std::list<unsigned int>* _dimensionSizes = new std::list<unsigned int>();
     std::map<std::string, double>* _values = new std::map<std::string, double>();
     std::map<std::string, double>* _initialValues = new std::map<std::string, double>();
+	ModelDataDefinition* scope = nullptr; // not used so far
 };
 
 #endif /* VARIABLE_H */
-

@@ -20,7 +20,7 @@ class Example_BasicOrderShipping : public BaseGenesysTerminalApplication {
 public:
 	Example_BasicOrderShipping();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
         
         
 };

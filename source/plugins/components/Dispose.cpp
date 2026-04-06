@@ -51,12 +51,10 @@ void Dispose::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 }
 
 bool Dispose::_loadInstance(PersistenceRecord *fields) {
-
 	return ModelComponent::_loadInstance(fields);
 }
 
 void Dispose::_initBetweenReplications() {
-
 	SinkModelComponent::_initBetweenReplications();
 }
 

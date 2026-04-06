@@ -7,50 +7,116 @@
   },
   "configurePresets": [
     {
-      "name": "debug",
-      "displayName": "Debug",
+      "name": "base",
+      "hidden": true,
       "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_STANDARD": "23",
+        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
+        "CMAKE_CXX_EXTENSIONS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "OFF",
+        "GENESYS_BUILD_WEB_APPLICATION": "OFF",
+        "GENESYS_BUILD_PLUGINS": "ON",
+        "GENESYS_BUILD_PARSER": "ON",
+        "GENESYS_BUILD_KERNEL": "ON",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "debug-base",
+      "hidden": true,
+      "inherits": "base",
       "binaryDir": "${sourceDir}/build/debug",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
-        "GENESYS_BUILD_GUI": "OFF",
+        "GENESYS_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "debug",
+      "displayName": "Debug",
+      "inherits": "debug-base"
+    },
+    {
+      "name": "debug-kernel",
+      "displayName": "Debug Kernel Only",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/debug-kernel",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF"
+      }
+    },
+    {
+      "name": "tests-unit",
+      "displayName": "Unit Tests Only (Debug)",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/tests-unit",
+      "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
-        "GENESYS_BUILD_PLUGINS": "OFF"
+        "GENESYS_BUILD_SMOKE_TESTS": "OFF",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "tests-kernel-unit",
+      "displayName": "Kernel Unit Tests (Debug)",
+      "inherits": "tests-unit",
+      "binaryDir": "${sourceDir}/build/tests-kernel-unit",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_SMOKE_TESTS": "OFF",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "terminal-app",
+      "displayName": "Terminal Application (Debug)",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/terminal-app",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_TERMINAL_APPLICATION": "ON"
+      }
+    },
+    {
+      "name": "tests-smoke",
+      "displayName": "Smoke Tests Only (Debug)",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/tests-smoke",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_SMOKE_TESTS": "ON",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
       "name": "release",
       "displayName": "Release",
-      "generator": "Ninja",
+      "inherits": "base",
       "binaryDir": "${sourceDir}/build/release",
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Release",
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
-        "GENESYS_BUILD_GUI": "OFF",
-        "GENESYS_BUILD_TESTS": "ON",
-        "GENESYS_BUILD_PLUGINS": "OFF"
+        "GENESYS_BUILD_TESTS": "ON"
       }
     },
     {
       "name": "asan",
       "displayName": "AddressSanitizer",
-      "generator": "Ninja",
+      "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/asan",
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_CXX_STANDARD": "20",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_CXX_EXTENSIONS": "OFF",
         "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g3 -fsanitize=address,undefined -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=address,undefined",
-        "GENESYS_BUILD_GUI": "OFF",
-        "GENESYS_BUILD_TESTS": "ON",
-        "GENESYS_BUILD_PLUGINS": "OFF"
+        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=address,undefined"
+      }
+    },
+    {
+      "name": "ubsan",
+      "displayName": "UndefinedBehaviorSanitizer",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/ubsan",
+      "cacheVariables": {
+        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g3 -fsanitize=undefined -fno-omit-frame-pointer",
+        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=undefined"
       }
     }
   ],
@@ -60,12 +126,51 @@
       "configurePreset": "debug"
     },
     {
+      "name": "debug-kernel",
+      "configurePreset": "debug-kernel",
+      "targets": [
+        "genesys_kernel"
+      ]
+    },
+    {
+      "name": "tests-unit",
+      "configurePreset": "tests-unit",
+      "targets": [
+        "genesys_kernel_unit_tests"
+      ]
+    },
+    {
+      "name": "tests-kernel-unit-run",
+      "configurePreset": "tests-kernel-unit",
+      "targets": [
+        "genesys_kernel_unit_tests_run"
+      ]
+    },
+    {
+      "name": "terminal-app",
+      "configurePreset": "terminal-app",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "tests-smoke",
+      "configurePreset": "tests-smoke",
+      "targets": [
+        "genesys_smoke_tests"
+      ]
+    },
+    {
       "name": "release",
       "configurePreset": "release"
     },
     {
       "name": "asan",
       "configurePreset": "asan"
+    },
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan"
     }
   ],
   "testPresets": [
@@ -79,6 +184,44 @@
     {
       "name": "asan",
       "configurePreset": "asan",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tests-unit",
+      "configurePreset": "tests-unit",
+      "filter": {
+        "include": {
+          "label": "unit"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tests-kernel-unit",
+      "configurePreset": "tests-kernel-unit",
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tests-smoke",
+      "configurePreset": "tests-smoke",
+      "filter": {
+        "include": {
+          "label": "smoke"
+        }
+      },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "ubsan",
+      "configurePreset": "ubsan",
       "output": {
         "outputOnFailure": true
       }

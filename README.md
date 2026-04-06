@@ -4,6 +4,10 @@ GenESyS (**Ge**neric and E**xp**ansible **S**ystem Simulator) is an open-source 
 
 This repository contains the source code of a simulator designed to support **multiple modeling paradigms**, **plugin-based extensibility**, and **research/teaching use cases** in simulation, systems engineering, computer systems, cyber-physical systems, and related domains.
 
+For Kernel Simulator unit-test build/run instructions (including CLion preset workflow), see:
+
+- `source/tests/unit/KERNEL_UNIT_TESTS.md`
+
 At its core, GenESyS combines:
 
 - a **simulation kernel**;

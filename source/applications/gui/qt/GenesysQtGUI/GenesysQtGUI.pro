@@ -53,7 +53,6 @@ SOURCES += \
     ../../../../kernel/simulator/ParserManager.cpp \
     ../../../../kernel/simulator/Persistence.cpp \
     ../../../../kernel/simulator/Plugin.cpp \
-    ../../../../kernel/simulator/PluginConnectorDummyImpl1.cpp \
     ../../../../kernel/simulator/PluginInformation.cpp \
     ../../../../kernel/simulator/PluginManager.cpp \
     ../../../../kernel/simulator/SimulationExperiment.cpp \
@@ -77,6 +76,7 @@ SOURCES += \
     ../../../../parser/Genesys++-scanner.cpp \
     ../../../../parser/GenesysParser.cpp \
     ../../../../parser/obj_t.cpp \
+    ../../../../plugins/PluginConnectorDummyImpl1.cpp \
     ../../../../plugins/components/Access.cpp \
     ../../../../plugins/components/Assign.cpp \
     ../../../../plugins/components/Batch.cpp \
@@ -85,7 +85,6 @@ SOURCES += \
     ../../../../plugins/components/CppForG.cpp \
     ../../../../plugins/components/Create.cpp \
     ../../../../plugins/components/Decide.cpp \
-    ../../../../plugins/components/DefaultModalModel.cpp \
     ../../../../plugins/components/Delay.cpp \
     ../../../../plugins/components/DiffEquations.cpp \
     ../../../../plugins/components/Dispose.cpp \
@@ -93,6 +92,9 @@ SOURCES += \
     ../../../../plugins/components/DummyComponent.cpp \
     ../../../../plugins/components/Enter.cpp \
     ../../../../plugins/components/Exit.cpp \
+    ../../../../plugins/components/ModalModelDefault.cpp \
+    ../../../../plugins/components/ModalModelFSM.cpp \
+    ../../../../plugins/components/ModalModelPetriNet.cpp \
     ../../../../plugins/components/PickableStationItem.cpp \
     ../../../../plugins/components/SPICECircuit.cpp \
     ../../../../plugins/components/SPICENode.cpp \
@@ -122,6 +124,9 @@ SOURCES += \
     ../../../../plugins/components/Unstore.cpp \
     ../../../../plugins/components/Write.cpp \
     ../../../../plugins/components/network/DefaultNode.cpp \
+    ../../../../plugins/components/network/DefaultTransitionExtensions.cpp \
+    ../../../../plugins/components/network/FSMState.cpp \
+    ../../../../plugins/components/network/PetriPlace.cpp \
     ../../../../plugins/data/AssignmentItem.cpp \
     ../../../../plugins/data/CppCompiler.cpp \
     ../../../../plugins/data/DummyElement.cpp \
@@ -233,6 +238,7 @@ SOURCES += \
     ../../../terminal/examples/teaching/OperatingSystem03.cpp \
     ../../../terminal/examples/teaching/Rectifier.cpp \
     codeeditor/CodeEditor.cpp \
+    controllers/SimulationController.cpp \
     mainwindow_controller.cpp \
     mainwindow_modelrepresentations.cpp \
     mainwindow_scene.cpp \
@@ -320,7 +326,6 @@ HEADERS += \
     ../../../../kernel/simulator/Parser_if.h \
     ../../../../kernel/simulator/Persistence.h \
     ../../../../kernel/simulator/Plugin.h \
-    ../../../../kernel/simulator/PluginConnectorDummyImpl1.h \
     ../../../../kernel/simulator/PluginConnector_if.h \
     ../../../../kernel/simulator/PluginInformation.h \
     ../../../../kernel/simulator/PluginManager.h \
@@ -361,6 +366,7 @@ HEADERS += \
     ../../../../parser/parserBisonFlex/lexerparser.ll \
     ../../../../parser/position.hh \
     ../../../../parser/stack.hh \
+    ../../../../plugins/PluginConnectorDummyImpl1.h \
     ../../../../plugins/components/Access.h \
     ../../../../plugins/components/Assign.h \
     ../../../../plugins/components/Batch.h \
@@ -369,7 +375,6 @@ HEADERS += \
     ../../../../plugins/components/CppForG.h \
     ../../../../plugins/components/Create.h \
     ../../../../plugins/components/Decide.h \
-    ../../../../plugins/components/DefaultModalModel.h \
     ../../../../plugins/components/Delay.h \
     ../../../../plugins/components/DiffEquations.h \
     ../../../../plugins/components/Dispose.h \
@@ -377,6 +382,9 @@ HEADERS += \
     ../../../../plugins/components/DummyComponent.h \
     ../../../../plugins/components/Enter.h \
     ../../../../plugins/components/Exit.h \
+    ../../../../plugins/components/ModalModelDefault.h \
+    ../../../../plugins/components/ModalModelFSM.h \
+    ../../../../plugins/components/ModalModelPetriNet.h \
     ../../../../plugins/components/PickableStationItem.h \
     ../../../../plugins/components/SPICECircuit.h \
     ../../../../plugins/components/SPICENode.h \
@@ -406,6 +414,9 @@ HEADERS += \
     ../../../../plugins/components/Unstore.h \
     ../../../../plugins/components/Write.h \
     ../../../../plugins/components/network/DefaultNode.h \
+    ../../../../plugins/components/network/DefaultTransitionExtensions.h \
+    ../../../../plugins/components/network/FSMState.h \
+    ../../../../plugins/components/network/PetriPlace.h \
     ../../../../plugins/data/AssignmentItem.h \
     ../../../../plugins/data/CppCompiler.h \
     ../../../../plugins/data/DummyElement.h \
@@ -492,7 +503,6 @@ HEADERS += \
     ../../../terminal/examples/smarts/Smart_Buffer.h \
     ../../../terminal/examples/smarts/Smart_Clone.h \
     ../../../terminal/examples/smarts/Smart_CppForG.h \
-    ../../../terminal/examples/smarts/Smart_DefaultModalModel.h \
     ../../../terminal/examples/smarts/Smart_Delay.h \
     ../../../terminal/examples/smarts/Smart_Dummy.h \
     ../../../terminal/examples/smarts/Smart_Failures.h \
@@ -537,6 +547,7 @@ HEADERS += \
     propertyeditor/ComboBoxEnum.h \
     TraitsGUI.h \
     UtilGUI.h \
+    controllers/SimulationController.h \
     actions/AddUndoCommand.h \
     actions/DeleteUndoCommand.h \
     actions/GroupUndoCommand.h \

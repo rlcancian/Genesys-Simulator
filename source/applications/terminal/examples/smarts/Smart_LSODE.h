@@ -20,7 +20,7 @@ class Smart_LSODE : public BaseGenesysTerminalApplication {
 public:
 	Smart_LSODE();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_LSODE_H */

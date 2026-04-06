@@ -30,8 +30,8 @@ public: // virtual
 
 	virtual bool _loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
 	virtual void _saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues);
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 
 public:
 
@@ -86,7 +86,7 @@ public:
 	Sequence(Model* model, std::string name = "");
 	virtual ~Sequence() = default;
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 public: // static 
 	static PluginInformation* GetPluginInformation();
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
@@ -94,12 +94,11 @@ public: // static
 public:
 	List<SequenceStep*>* getSteps() const;
 protected:
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual bool _check(std::string& errorMessage);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual bool _check(std::string& errorMessage) override;
 private:
 	List<SequenceStep*>* _steps = new List<SequenceStep*>();
 };
 
 #endif /* SEQUENCE_H */
-

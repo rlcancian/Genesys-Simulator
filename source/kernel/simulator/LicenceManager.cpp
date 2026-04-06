@@ -59,7 +59,7 @@ const std::string LicenceManager::showActivationCode() const {
 
 bool LicenceManager::lookforActivationCode() {
 	// @TODO: Not implemented yet
-    return true; // if not implemented then return true, as if found an activation code
+    return false;
 }
 
 bool LicenceManager::insertActivationCode() {

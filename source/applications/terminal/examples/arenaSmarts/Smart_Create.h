@@ -20,7 +20,7 @@ class Smart_Create : public BaseGenesysTerminalApplication {
 public:
     Smart_Create();
 public:
-    virtual int main(int argc, char** argv);
+    virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_CREATE_H */

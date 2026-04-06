@@ -61,22 +61,22 @@ system.
  */
 class Attribute : public ModelDataDefinition {
 public:
+	/*! \brief Creates an entity attribute definition in the model. */
 	Attribute(Model* model, std::string name = "");
 	virtual ~Attribute() = default;
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 public: // public static methods
 	static PluginInformation* GetPluginInformation();
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 protected: //! must be overriden by derived classes
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: //! could be overriden by derived classes
-	virtual bool _check(std::string& errorMessage);
+	virtual bool _check(std::string& errorMessage) override;
 private:
 	//List<unsigned int>* _dimensionSizes = new List<unsigned int>();
 };
 //namespace\\}
 #endif /* ATTRIBUTE_H */
-

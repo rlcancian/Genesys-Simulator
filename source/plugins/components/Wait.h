@@ -87,7 +87,7 @@ public: // constructors
 	Wait(Model* model, std::string name = "");
 	virtual ~Wait() = default;
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 public: //
 	void setSignalData(SignalData* signal);
 	void setWaitType(WaitType _watType);
@@ -104,13 +104,13 @@ public: // static
 	void setLimitExpression(const std::string &newLimitExpression);
 
 protected: // must be overriden
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 protected: // could be overriden .
-	virtual bool _check(std::string& errorMessage);
-	virtual void _initBetweenReplications();
-	virtual void _createInternalAndAttachedData();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _initBetweenReplications() override;
+	virtual void _createInternalAndAttachedData() override;
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 private: // methods
 	unsigned int _handlerForSignalDataEvent(SignalData* signalData);

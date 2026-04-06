@@ -71,7 +71,9 @@ L      [A-Za-z0-9_.]+
 	//std::string text("Found Hexadecimal: ");
 	//text += yytext;
 	//driver.getModel()->getTraceManager()->trace(TraceManager::Level::L9_mostDetailed, text);
-	return yy::genesyspp_parser::make_NUMH(obj_t(atof(yytext), std::string("Hexadecimal")),loc);
+	char* endPtr = nullptr;
+	long long value = std::strtoll(yytext, &endPtr, 16);
+	return yy::genesyspp_parser::make_NUMH(obj_t(static_cast<double>(value), std::string("Hexadecimal")),loc);
       }
 
 {RR}  {
@@ -97,6 +99,10 @@ L      [A-Za-z0-9_.]+
 [>][=]   { return (yy::genesyspp_parser::make_oGE(obj_t(0, std::string(yytext)), loc));}
 [=][=]   { return (yy::genesyspp_parser::make_oEQ(obj_t(0, std::string(yytext)), loc));}
 [<][>]   { return (yy::genesyspp_parser::make_oNE(obj_t(0, std::string(yytext)), loc));}
+[!][=]   { return (yy::genesyspp_parser::make_oNE(obj_t(0, std::string(yytext)), loc));}
+[&][&]   { return (yy::genesyspp_parser::make_oAND(obj_t(0, std::string(yytext)), loc));}
+[|][|]   { return (yy::genesyspp_parser::make_oOR(obj_t(0, std::string(yytext)), loc));}
+[!]      { return (yy::genesyspp_parser::make_oNOT(obj_t(0, std::string(yytext)), loc));}
 [<] {return yy::genesyspp_parser::make_LESS(loc);}
 [>] {return yy::genesyspp_parser::make_GREATER(loc);}
 [(] {return yy::genesyspp_parser::make_LPAREN(loc);}
@@ -142,8 +148,8 @@ L      [A-Za-z0-9_.]+
 [sS][qQ][rR][tT]      {return yy::genesyspp_parser::make_fSQRT(obj_t(0, std::string(yytext)), loc);}
 [lL][oO][gG]          {return yy::genesyspp_parser::make_fLOG(obj_t(0, std::string(yytext)), loc);}
 [lL][nN]              {return yy::genesyspp_parser::make_fLN(obj_t(0, std::string(yytext)), loc);}
-[mM][iI][nN]		  {return yy::genesyspp_parser::make_mathMAX(obj_t(0, std::string(yytext)), loc);}
-[mM][aA][xX]          {return yy::genesyspp_parser::make_mathMIN(obj_t(0, std::string(yytext)), loc);}
+[mM][iI][nN]		  {return yy::genesyspp_parser::make_mathMIN(obj_t(0, std::string(yytext)), loc);}
+[mM][aA][xX]          {return yy::genesyspp_parser::make_mathMAX(obj_t(0, std::string(yytext)), loc);}
 
 %{// string functions %}
 [vV][aA][lL]          {return yy::genesyspp_parser::make_fVAL(obj_t(0, std::string(yytext)), loc);}
@@ -169,7 +175,7 @@ L      [A-Za-z0-9_.]+
 [mM][aA][xX][rR][eE][pP]  {return yy::genesyspp_parser::make_fMAXREP(obj_t(0, std::string(yytext)), loc);}
 [nN][uU][mM][rR][eE][pP]  {return yy::genesyspp_parser::make_fNUMREP(obj_t(0, std::string(yytext)), loc);}
 [iI][dD][eE][nN][tT]      {return yy::genesyspp_parser::make_fIDENT(obj_t(0, std::string(yytext)), loc);}
-[EntitiesWIP]             {return yy::genesyspp_parser::make_simulEntitiesWIP(obj_t(0, std::string(yytext)), loc);}
+[eE][nN][tT][iI][tT][iI][eE][sS][wW][iI][pP]   {return yy::genesyspp_parser::make_simulEntitiesWIP(obj_t(0, std::string(yytext)), loc);}
 
 %{// Kernel elements, Counters and Statistic Collectors %}
 [tT][aA][vV][gG]          {return yy::genesyspp_parser::make_fTAVG(obj_t(0, std::string(yytext)), loc);}
@@ -214,7 +220,6 @@ L      [A-Za-z0-9_.]+
 
 
 [ \t\n]        ;
-T
 
 {L}   {
         ModelDataDefinition* datadef; 

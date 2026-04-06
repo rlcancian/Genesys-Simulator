@@ -203,9 +203,16 @@
 
 %type <obj_t> input
 %type <obj_t> expression
-%type <obj_t> arithmetic
-%type <obj_t> logical
-%type <obj_t> relacional
+%type <obj_t> primary
+%type <obj_t> unary
+%type <obj_t> power
+%type <obj_t> multiplicative
+%type <obj_t> additive
+%type <obj_t> relational
+%type <obj_t> logicalNot
+%type <obj_t> logicalAnd
+%type <obj_t> logicalXor
+%type <obj_t> logicalOr
 %type <obj_t> command
 %type <obj_t> commandIF
 %type <obj_t> commandFOR
@@ -235,14 +242,6 @@
 
 /****end_TypeObj_plugins****/
 
-%left oAND oOR;
-%left oNOT;
-%left oLE oGE oEQ oNE LESS GREATER LBRACKET cELSE;
-%left MINUS PLUS;
-%left STAR SLASH;
-%precedence NEG;
-%left fROUND fMOD fTRUNC fFRAC fLOG fLN fSQRT;
-
 //%printer { yyoutput << $$; } <*>; //prints when something
 %%
 
@@ -252,63 +251,88 @@ input:
     ;
 
 expression:
-      number                           {$$.valor = $1.valor;}
-    | function                         {$$.valor = $1.valor;}
+      assigment                        {$$.valor = $1.valor;}
     | command                          {$$.valor = $1.valor;}
-    | assigment                       {$$.valor = $1.valor;}
-	| arithmetic                       {$$.valor = $1.valor;}
-    | logical                           {$$.valor = $1.valor;}
-    | relacional                       {$$.valor = $1.valor;}
-	| LPAREN expression RPAREN          {$$.valor = $2.valor;}
-    | attribute                         {$$.valor = $1.valor;}
+    | logicalOr                        {$$.valor = $1.valor;}
+    | illegal                           {$$.valor = -1;}
+    ;
+
+logicalOr:
+      logicalOr oOR logicalXor          { $$.valor = (int)$1.valor || (int)$3.valor; }
+    | logicalXor                        { $$.valor = $1.valor; }
+    ;
+
+logicalXor:
+      logicalXor oXOR logicalAnd        { $$.valor = (!(int)$1.valor && (int)$3.valor) || ((int)$1.valor && !(int)$3.valor); }
+    | logicalAnd                        { $$.valor = $1.valor; }
+    ;
+
+logicalAnd:
+      logicalAnd oAND logicalNot        { $$.valor = (int)$1.valor && (int)$3.valor; }
+    | logicalAnd oNAND logicalNot       { $$.valor = !((int)$1.valor && (int)$3.valor); }
+    | logicalNot                        { $$.valor = $1.valor; }
+    ;
+
+logicalNot:
+      oNOT logicalNot                   { $$.valor = !(int)$2.valor; }
+    | relational                        { $$.valor = $1.valor; }
+    ;
+
+relational:
+      relational LESS additive          { $$.valor = $1.valor < $3.valor ? 1 : 0; }
+    | relational GREATER additive       { $$.valor = $1.valor > $3.valor ? 1 : 0; }
+    | relational oLE additive           { $$.valor = $1.valor <= $3.valor ? 1 : 0; }
+    | relational oGE additive           { $$.valor = $1.valor >= $3.valor ? 1 : 0; }
+    | relational oEQ additive           { $$.valor = $1.valor == $3.valor ? 1 : 0; }
+    | relational oNE additive           { $$.valor = $1.valor != $3.valor ? 1 : 0; }
+    | additive                          { $$.valor = $1.valor; }
+    ;
+
+additive:
+      additive PLUS multiplicative      { $$.valor = $1.valor + $3.valor; }
+    | additive MINUS multiplicative     { $$.valor = $1.valor - $3.valor; }
+    | multiplicative                    { $$.valor = $1.valor; }
+    ;
+
+multiplicative:
+      multiplicative STAR power         { $$.valor = $1.valor * $3.valor; }
+    | multiplicative SLASH power        { $$.valor = $1.valor / $3.valor; }
+    | power                             { $$.valor = $1.valor; }
+    ;
+
+power:
+      unary POWER power                 { $$.valor = pow($1.valor, $3.valor); }
+    | unary                             { $$.valor = $1.valor; }
+    ;
+
+unary:
+      MINUS unary                        { $$.valor = -$2.valor; }
+    | PLUS unary                         { $$.valor = +$2.valor; }
+    | primary                            { $$.valor = $1.valor; }
+    ;
+
+primary:
+      number                             {$$.valor = $1.valor;}
+    | function                           {$$.valor = $1.valor;}
+    | LPAREN expression RPAREN           {$$.valor = $2.valor;}
+    | attribute                          {$$.valor = $1.valor;}
 
 /****begin_Expression_plugins****/
 
 	/**begin_Expression:Variable**/
-		| variable                         {$$.valor = $1.valor;}
+	| variable                            {$$.valor = $1.valor;}
 	/**end_Expression:Variable**/
 
 	/**begin_Expression:Formula**/
-		| formula                          {$$.valor = $1.valor;}
+	| formula                             {$$.valor = $1.valor;}
 	/**end_Expression:Formula**/
 
 /****end_Expression_plugins****/
     ;
 
 number:
-     NUMD     { $$.valor = $1.valor;}
-    | NUMH    { $$.valor = $1.valor;}
-    ;
-
-arithmetic:
-     expression PLUS expression      { $$.valor = $1.valor + $3.valor;}
-    | expression MINUS expression    { $$.valor = $1.valor - $3.valor;}
-    | expression SLASH expression    { $$.valor = $1.valor / $3.valor;}
-    | expression STAR expression     { $$.valor = $1.valor * $3.valor;}
-    | expression POWER expression    { $$.valor = pow($1.valor,$3.valor);}
-    | MINUS expression %prec NEG     { $$.valor = -$2.valor;}
-
-
-	| mathMIN LPAREN expression "," expression RPAREN   {std::cout <<"MIN(" << $3.valor << "," << $5.valor <<")"<< std::endl;
-														 $$.valor = std::min($3.valor,$5.valor);}
-	| mathMAX LPAREN expression "," expression RPAREN   { $$.valor = std::max($3.valor,$5.valor);}
-    ;
-
-logical:
-      expression oAND expression    { $$.valor = (int) $1.valor && (int) $3.valor;}
-    | expression oOR  expression    { $$.valor = (int) $1.valor || (int) $3.valor;}
-    | expression oNAND expression   { $$.valor = !((int) $1.valor && (int) $3.valor);}
-    | expression oXOR  expression   { $$.valor = (!(int) $1.valor && (int) $3.valor) || ((int) $1.valor && !(int) $3.valor);}
-    | oNOT expression               { $$.valor = !(int) $2.valor;}
-	;
-
-relacional:
-      expression LESS  expression        { $$.valor = $1.valor < $3.valor ? 1 : 0;}
-    | expression GREATER expression      { $$.valor = $1.valor > $3.valor ? 1 : 0;}
-    | expression oLE  expression         { $$.valor = $1.valor <= $3.valor ? 1 : 0;}
-    | expression oGE  expression         { $$.valor = $1.valor >= $3.valor ? 1 : 0;}
-    | expression oEQ  expression         { $$.valor = $1.valor == $3.valor ? 1 : 0;}
-    | expression oNE  expression         { $$.valor = $1.valor != $3.valor ? 1 : 0;}
+      NUMD                               { $$.valor = $1.valor;}
+    | NUMH                               { $$.valor = $1.valor;}
     ;
 
 command:
@@ -317,8 +341,8 @@ command:
     ;
 
 commandIF:
-      cIF expression expression cELSE expression   { $$.valor = $2.valor != 0 ? $3.valor : $5.valor; }
-    | cIF expression expression                   { $$.valor = $2.valor != 0 ? $3.valor : 0;}
+      cIF "(" expression "," expression "," expression ")" { $$.valor = $3.valor != 0 ? $5.valor : $7.valor; }
+    | cIF "(" expression "," expression ")"                 { $$.valor = $3.valor != 0 ? $5.valor : 0; }
     ;
 
 // \todo: check for function/need, for now will let cout (these should be commands for program, not expression
@@ -348,7 +372,7 @@ kernelFunction:
 
 elementFunction:
     //| CSTAT		 { $$.valor = 0; }
-    | fTAVG  "(" CSTAT ")"     {
+      fTAVG  "(" CSTAT ")"     {
                     StatisticsCollector* cstat = ((StatisticsCollector*)(driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<StatisticsCollector>(), $3.id)));
                     double value = cstat->getStatistics()->average();
                     $$.valor = value; }
@@ -372,6 +396,8 @@ mathFunction:
     | fLOG "(" expression ")"	    { $$.valor = log10($3.valor);}
     | fLN "(" expression ")"	    { $$.valor = log($3.valor);}
     | fMOD   "(" expression "," expression ")" { $$.valor = (int) $3.valor % (int) $5.valor; }
+    | mathMIN "(" expression "," expression ")" { $$.valor = std::min($3.valor, $5.valor); }
+    | mathMAX "(" expression "," expression ")" { $$.valor = std::max($3.valor, $5.valor); }
     ;
 
 probFunction:

@@ -46,7 +46,7 @@ public: // constructors
 	Remove(Model* model, std::string name = "");
 	virtual ~Remove() = default;
 public: // virtual
-	virtual std::string show();
+	virtual std::string show() override;
 public:
 	void setRemoveStartRank(std::string _removeFromRank);
 	std::string getRemoveStartRank() const;
@@ -62,16 +62,16 @@ public: // static
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 protected: // must be overriden 
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 protected: // could be overriden by derived classes
-	virtual bool _check(std::string& errorMessage);
+	virtual bool _check(std::string& errorMessage) override;
 	/*! This method returns all changes in the parser that are needed by plugins of this ModelDatas. When connecting a new plugin, ParserChangesInformation are used to change parser source code, whch is after compiled and dinamically linked to to simulator kernel to reflect the changes */
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 	//virtual void _initBetweenReplications();
 	/*! This method is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
-	virtual void _createInternalAndAttachedData(); /*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
+	virtual void _createInternalAndAttachedData() override; /*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
 	//virtual void _addProperty(PropertyBase* property);
 private: // methods
 private: // attributes 1:1
@@ -92,4 +92,3 @@ private: // attributes 1:n
 
 
 #endif /* REMOVE_H */
-

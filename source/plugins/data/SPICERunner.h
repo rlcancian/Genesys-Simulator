@@ -60,7 +60,7 @@ public: /// new public user methods for this component
 	void ParseOutput();
 
 public: /// virtual public methods
-	virtual std::string show();
+	virtual std::string show() override;
 
 public: /// static public methods that must have implementations (Load and New just the same. GetInformation must provide specific infos for the new component
 	static PluginInformation* GetPluginInformation();
@@ -70,8 +70,8 @@ public: /// static public methods that must have implementations (Load and New j
 	static std::vector<std::string> split(std::string word, char split_char);
 
 protected: /// virtual protected method that must be overriden
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 
 protected: /// virtual protected methods that could be overriden by derived classes, if needed
 	/*! This method is called by ModelChecker during model check. The component should check itself to verify if user parameters are ok (ex: correct syntax for the parser) and everithing in its parameters allow the model too run without errors in this component */

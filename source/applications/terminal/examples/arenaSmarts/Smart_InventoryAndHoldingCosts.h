@@ -20,7 +20,7 @@ class Smart_InventoryAndHoldingCosts : public BaseGenesysTerminalApplication {
 public:
 	Smart_InventoryAndHoldingCosts();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_INVENTORYANDHOLDINGCOSTS_H */

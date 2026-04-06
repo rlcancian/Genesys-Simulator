@@ -86,7 +86,7 @@ public: // static
 	static PluginInformation* GetPluginInformation();
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
-	virtual std::string show();
+	virtual std::string show() override;
 	void checkIsGoingToFailByCount(Resource* resource);
 public: // gets & sets
 	void setFailureType(FailureType _failureType);
@@ -109,11 +109,11 @@ public: // gets & sets
 	void removeResource(Resource* resource);
 
 protected: // must be overriden
-	virtual bool _loadInstance(PersistenceRecord *fields);
-	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
+	virtual bool _loadInstance(PersistenceRecord *fields) override;
+	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: // could be overriden .
-	virtual bool _check(std::string& errorMessage);
-	virtual void _initBetweenReplications();
+	virtual bool _check(std::string& errorMessage) override;
+	virtual void _initBetweenReplications() override;
 	//virtual void _createInternalAndAttachedData();
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 

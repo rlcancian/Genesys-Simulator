@@ -20,7 +20,7 @@ class Smart_AutomaticStatisticsCollection : public BaseGenesysTerminalApplicatio
 public:
 	Smart_AutomaticStatisticsCollection();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* Smart_AutomaticStatisticsCollection_H */

@@ -100,11 +100,13 @@ LicenceManager* Simulator::getLicenceManager() const {
 	return _licenceManager;
 }
 
-bool Simulator::_completePluginsFieldsAndTemplate() {
+List<Plugin*>* Simulator::_completePluginsFieldsAndTemplate() {
+	//* TODO: NOT THRE RIGHT PLACE TO BE *//
 	TraceManager::Level savedTraceLevel = _traceManager->getTraceLevel();
 	// this crap stuff should not been shown
 	_traceManager->trace("Completing plugins and templates", TraceManager::Level::L8_detailed);
 	_traceManager->setTraceLevel(TraceManager::Level::L0_noTraces); // this crap stuff should not been shown
+	List<Plugin*>* completedPlugins = new List<Plugin*>();
 	Model* tempModel = new Model(this);
 	tempModel->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
 	auto fields = std::make_unique<PersistenceRecord>(*tempModel->getPersistence());
@@ -147,12 +149,12 @@ bool Simulator::_completePluginsFieldsAndTemplate() {
 					std::string templateLanguage = tempModel->getPersistence()->getFormatedField(fields.get());
 					info->setLanguageTemplate(templateLanguage);
 				}
+				completedPlugins->insert(plugin);
 			}
 		} catch (...) {
-			result = false;
 		}
 	}
 	Util::ResetAllIds();
 	_traceManager->setTraceLevel(savedTraceLevel);
-	return result;
+	return completedPlugins;
 }

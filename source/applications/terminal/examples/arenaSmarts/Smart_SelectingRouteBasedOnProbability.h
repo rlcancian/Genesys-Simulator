@@ -20,7 +20,7 @@ class Smart_SelectingRouteBasedOnProbability : public BaseGenesysTerminalApplica
 public:
 	Smart_SelectingRouteBasedOnProbability();
 public:
-	virtual int main(int argc, char** argv);
+	virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_SELECTINGROUTEBASEDONPROBABILITY_H */

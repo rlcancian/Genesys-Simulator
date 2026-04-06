@@ -112,18 +112,18 @@ void ModelDataManager::show() {
 	List<ModelDataDefinition*>* list;
 	Util::IncIndent();
 	{
-		for (std::map<std::string, List<ModelDataDefinition*>*>::iterator infraIt = _datadefinitions->begin(); infraIt != _datadefinitions->end(); infraIt++) {
-			key = (*infraIt).first;
-			list = (*infraIt).second;
-			_parentModel->getTracer()->trace(key + ": (" + std::to_string(list->size()) + ")");
-			Util::IncIndent();
-			{
-				for (std::list<ModelDataDefinition*>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-					_parentModel->getTracer()->trace((*it)->show());
+			for (const auto& [typenameKey, definitions] : *_datadefinitions) {
+				key = typenameKey;
+				list = definitions;
+				_parentModel->getTracer()->trace(key + ": (" + std::to_string(list->size()) + ")");
+				Util::IncIndent();
+				{
+					for (ModelDataDefinition* modeldatum : *list->list()) {
+						_parentModel->getTracer()->trace(modeldatum->show());
+					}
 				}
+				Util::DecIndent();
 			}
-			Util::DecIndent();
-		}
 	}
 	Util::DecIndent();
 }
@@ -167,11 +167,11 @@ List<ModelDataDefinition*>* ModelDataManager::getDataDefinitionList(std::string 
 	return infras;
 }
 
-ModelDataDefinition * ModelDataManager::getDataDefinition(std::string datadefinitionTypename, Util::identification id) {
+	ModelDataDefinition * ModelDataManager::getDataDefinition(std::string datadefinitionTypename, Util::identification id) {
 	List<ModelDataDefinition*>* list = getDataDefinitionList(datadefinitionTypename);
-	for (std::list<ModelDataDefinition*>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		if ((*it)->getId() == id) { // found
-			return (*it);
+	for (ModelDataDefinition* modeldatum : *list->list()) {
+		if (modeldatum->getId() == id) { // found
+			return modeldatum;
 		}
 	}
 	return nullptr;
@@ -180,8 +180,8 @@ ModelDataDefinition * ModelDataManager::getDataDefinition(std::string datadefini
 int ModelDataManager::getRankOf(std::string datadefinitionTypename, std::string name) {
 	int rank = 0;
 	List<ModelDataDefinition*>* list = getDataDefinitionList(datadefinitionTypename);
-	for (std::list<ModelDataDefinition*>::iterator it = list->list()->begin(); it != list->list()->end(); it++) {
-		if ((*it)->getName() == name) { // found
+	for (ModelDataDefinition* modeldatum : *list->list()) {
+		if (modeldatum->getName() == name) { // found
 			return rank;
 		} else {
 			rank++;

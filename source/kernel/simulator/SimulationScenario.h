@@ -16,8 +16,8 @@
 
 #include <string>
 #include <list>
-#include "Simulator.h"
-#include "PropertyGenesys.h"
+
+class Simulator;
 
 /*!
  * Represents a scenario where a specific model (defined my ModelFilename) will be simulated. To each scenario will be associated a set of SimulationControl and SimulationResponse, and their values are set to the scenario by the ProcessAnalyser.
@@ -38,7 +38,7 @@
 class SimulationScenario {
 public:
 	SimulationScenario();
-	virtual ~SimulationScenario() = default;
+	virtual ~SimulationScenario();
 public: // results
 	bool startSimulation(Simulator *sim, std::string& errorMessage);
 	std::list<std::pair<std::string, double>*>* getResponseValues() const; /*!< The final result of the simulationScenario */
@@ -70,4 +70,3 @@ private:
 };
 
 #endif /* SIMULATIONSCENARIO_H */
-

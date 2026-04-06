@@ -6,6 +6,7 @@
 #include <QTreeWidgetItem>
 #include <QGraphicsItem>
 #include <QUndoView>
+#include <memory>
 
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
@@ -23,6 +24,13 @@ QT_BEGIN_NAMESPACE
 
 QT_END_NAMESPACE
 
+/**
+ * @brief Main Qt window of Genesys GUI.
+ *
+ * Aggregates user interactions, graphical model edition and kernel integration.
+ *
+ * @todo Continue decomposing this class into dedicated controllers to reduce coupling.
+ */
 class MainWindow : public QMainWindow {
 	Q_OBJECT
 
@@ -81,9 +89,13 @@ private slots:
 	void on_actionAnimatePlot_triggered();
 
 	void on_actionSimulationStop_triggered();
+    /** @brief Starts full simulation run after precondition validation. */
 	void on_actionSimulationStart_triggered();
+    /** @brief Runs a single simulation step after precondition validation. */
 	void on_actionSimulationStep_triggered();
+    /** @brief Pauses current simulation run when available. */
 	void on_actionSimulationPause_triggered();
+    /** @brief Resumes paused simulation when available. */
 	void on_actionSimulationResume_triggered();
 	void on_actionSimulationConfigure_triggered();
 
@@ -194,7 +206,7 @@ private: // model Graphics View handlers
     void _onSceneMouseEvent(QGraphicsSceneMouseEvent* mouseEvent);
     void _onSceneWheelInEvent();
     void _onSceneWheelOutEvent();
-    void _onSceneGraphicalModelEvent(GraphicalModelEvent* event);
+    void _onSceneGraphicalModelEvent(const GraphicalModelEvent& event);
 private: // QGraphicsScene Slots
 	void sceneChanged(const QList<QRectF> &region);
 	void sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsItem *oldFocusItem, Qt::FocusReason reason);
@@ -204,6 +216,8 @@ private: // Similar to QGraphicsScene Slots
 	void sceneGraphicalModelChanged();
 private: // simulator related
 	void _setOnEventHandlers();
+    bool _ensureSimulationReady(bool checkModel = true);
+    bool _hasCurrentModelSimulation() const;
 	void _insertPluginUI(Plugin* plugin);
 	void _insertFakePlugins();
 	bool _setSimulationModelBasedOnText();
@@ -245,6 +259,7 @@ private: //???
 private: // interface and model main elements to join
 	Ui::MainWindow *ui;
 	Simulator* simulator;
+    std::unique_ptr<class SimulationController> _simulationController;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;
@@ -260,8 +275,6 @@ private: // misc useful
     bool _checkItemsScene();
 	QString _modelfilename;
 	std::map<std::string /*category*/,QColor>* _pluginCategoryColor = new std::map<std::string,QColor>();
-	QColor myrgba(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
-    static std::string dotColor(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
     // TODO 1: Faz parte do mecanismo de restaurar dataDefinitions deletados do modelo e que são restaurados com um Control Z
     // Caso: Ao adicionar um Create no modelo e dar um check() o EntityType será criado,
     // mas ao deletar o Create, dar outro check() e em sequida dar um Control Z (voltando o Create no modelo) e checar novamente, o EntityType não é restaurado

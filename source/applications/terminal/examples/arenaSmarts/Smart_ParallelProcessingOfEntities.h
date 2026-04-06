@@ -20,7 +20,7 @@ class Smart_ParallelProcessingOfEntities : public BaseGenesysTerminalApplication
 public:
     Smart_ParallelProcessingOfEntities();
 public:
-    virtual int main(int argc, char** argv);
+    virtual int main(int argc, char** argv) override;
 };
 
 #endif /* SMART_PARALLEL_PROCESSING_OF_ENTITIES_H */
