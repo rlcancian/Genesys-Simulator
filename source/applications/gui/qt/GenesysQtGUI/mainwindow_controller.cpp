@@ -7,6 +7,7 @@
 #include "dialogs/dialogpluginmanager.h"
 #include "dialogs/dialogsystempreferences.h"
 #include "dialogs/DialogFind.h"
+#include "controllers/SimulationController.h"
 
 #include "actions/DeleteUndoCommand.h"
 #include "actions/PasteUndoCommand.h"
@@ -37,6 +38,7 @@
 #include <QDebug>
 #include <QRegularExpression>
 #include <QRandomGenerator>
+#include "../../../../kernel/simulator/ModelSimulation.h"
 
 
 //-------------------------
@@ -47,70 +49,136 @@
 //  menu actions
 // -------------------------------------------------
 
-
+/**
+ * @brief Stops the active simulation execution.
+ *
+ * Guarded by SimulationController to avoid dereferencing null model/simulation.
+ *
+ * @todo Move command execution details (animation flags + console command) into SimulationController.
+ */
 void MainWindow::on_actionSimulationStop_triggered() {
+    if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
+        return;
+    }
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(false);
     AnimationTransition::setPause(false);
 
     _insertCommandInConsole("stop");
 
-    simulator->getModelManager()->current()->getSimulation()->stop();
+    simulation->stop();
 
     _actualizeActions();
 }
 
+/**
+ * @brief Starts simulation after readiness validation.
+ *
+ * Preconditions:
+ * - Current model/simulation must exist;
+ * - Model may be checked when needed;
+ * - Textual model representation must be synchronized.
+ *
+ * @todo Replace lambda callbacks by explicit command objects for better unit testing.
+ */
 void MainWindow::on_actionSimulationStart_triggered() {
+    if (!_simulationController || !_simulationController->ensureReady(
+            true,
+            _modelCheked,
+            [this]() { return _check(false); },
+            [this]() { return _setSimulationModelBasedOnText(); })) {
+        return;
+    }
+
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
-
-    bool res = true;
-
-    // Checha o modelo antes de começar
-    if (!_modelCheked) {
-        res = _check(false);
-    }
-
-    if (res) {
-        _insertCommandInConsole("start");
-        if (_setSimulationModelBasedOnText())
-            simulator->getModelManager()->current()->getSimulation()->start();
-    }
+    _insertCommandInConsole("start");
+    simulation->start();
 }
 
+/**
+ * @brief Executes one simulation step after readiness validation.
+ *
+ * Uses the same precondition pipeline as start command.
+ *
+ * @todo Consolidate duplicated animation-toggle code between start and step.
+ */
 void MainWindow::on_actionSimulationStep_triggered() {
+    if (!_simulationController || !_simulationController->ensureReady(
+            true,
+            _modelCheked,
+            [this]() { return _check(false); },
+            [this]() { return _setSimulationModelBasedOnText(); })) {
+        return;
+    }
+
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
-
-    bool res = true;
-
-    if (!_modelCheked) {
-        res = _check(false);
-    }
-
-    if (res) {
-        _insertCommandInConsole("step");
-
-        if (_setSimulationModelBasedOnText())
-            simulator->getModelManager()->current()->getSimulation()->step();
-    }
+    _insertCommandInConsole("step");
+    simulation->step();
 }
 
+/**
+ * @brief Pauses running simulation.
+ *
+ * @todo Add explicit feedback when pause is requested in invalid state.
+ */
 void MainWindow::on_actionSimulationPause_triggered() {
+    if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
+        return;
+    }
+
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(true);
 
     _insertCommandInConsole("pause");
-    simulator->getModelManager()->current()->getSimulation()->pause();
+    simulation->pause();
 }
 
+/**
+ * @brief Resumes simulation execution after readiness validation.
+ *
+ * @todo Introduce a dedicated `resume()` API in kernel side when available
+ *       to avoid semantic coupling with `start()`.
+ */
 void MainWindow::on_actionSimulationResume_triggered() {
+    if (!_simulationController || !_simulationController->ensureReady(
+            false,
+            _modelCheked,
+            [this]() { return _check(false); },
+            [this]() { return _setSimulationModelBasedOnText(); })) {
+        return;
+    }
+
+    ModelSimulation* simulation = _simulationController->currentSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
 
     _insertCommandInConsole("resume");
-
-    if (_setSimulationModelBasedOnText())
-        simulator->getModelManager()->current()->getSimulation()->start();
+    simulation->start();
 }
 
 

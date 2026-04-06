@@ -3,28 +3,52 @@
 
 //-----------------------------------------
 
+/**
+ * @brief Atualiza label de coordenadas com posição atual do mouse na cena.
+ * @param mouseEvent Evento de mouse recebido da cena gráfica.
+ */
 void MainWindow::_onSceneMouseEvent(QGraphicsSceneMouseEvent* mouseEvent) {
     QPointF pos = mouseEvent->scenePos();
     ui->labelMousePos->setText(QString::fromStdString("<" + std::to_string((int) pos.x()) + "," + std::to_string((int) pos.y()) + ">"));
 }
 
+/**
+ * @brief Aumenta zoom da visualização gráfica via slider principal.
+ */
 void MainWindow::_onSceneWheelInEvent() {
     int value = ui->horizontalSlider_ZoomGraphical->value();
     ui->horizontalSlider_ZoomGraphical->setValue(value + TraitsGUI<GMainWindow>::zoomButtonChange);
 }
 
+/**
+ * @brief Reduz zoom da visualização gráfica via slider principal.
+ */
 void MainWindow::_onSceneWheelOutEvent() {
     int value = ui->horizontalSlider_ZoomGraphical->value();
     ui->horizontalSlider_ZoomGraphical->setValue(value - TraitsGUI<GMainWindow>::zoomButtonChange);
 }
 
-void MainWindow::_onSceneGraphicalModelEvent(GraphicalModelEvent* event) {
+/**
+ * @brief Atualiza painéis dependentes quando o modelo gráfico muda.
+ * @param event Evento de alteração gráfica (não utilizado diretamente neste handler).
+ *
+ * @todo Evoluir para atualização incremental por tipo de evento para reduzir custo.
+ */
+void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*/) {
     _actualizeTabPanes();
 }
 
 //-----------------------------------------
 
+/**
+ * @brief Slot de notificação de alteração da cena (redo/undo e ações de edição).
+ * @param region Regiões invalidadas da cena.
+ */
 void MainWindow::sceneChanged(const QList<QRectF> &region) {
+    Q_UNUSED(region);
+    /**
+     * Bloco 1: sincroniza estado de undo/redo e flags de alteração textual.
+     */
     bool canUndo = ui->graphicsView->getScene()->getUndoStack()->canUndo();
     bool canRedo = ui->graphicsView->getScene()->getUndoStack()->canRedo();
 
@@ -35,6 +59,9 @@ void MainWindow::sceneChanged(const QList<QRectF> &region) {
 
     ui->graphicsView->scene()->update();
 
+    /**
+     * Bloco 2: habilita/desabilita ações de edição conforme itens/copias disponíveis.
+     */
     bool res = _checkItemsScene();
 
     if (res) {
@@ -51,12 +78,19 @@ void MainWindow::sceneChanged(const QList<QRectF> &region) {
         ui->actionEditPaste->setEnabled(false);
     }
 
+    /**
+     * Bloco 3: atualiza estado visual final da cena.
+     */
     if (ui->graphicsView->getScene()->connectingStep() == 0)
         ui->actionGModelShowConnect->setChecked(false);
 
     ui->graphicsView->scene()->update();
 }
 
+/**
+ * @brief Verifica se há itens relevantes na cena para habilitar operações de edição.
+ * @return true se houver componentes/desenhos/animações no modelo gráfico.
+ */
 bool MainWindow::_checkItemsScene() {
     bool res = false;
 
@@ -73,10 +107,18 @@ bool MainWindow::_checkItemsScene() {
     return res;
 }
 void MainWindow::sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsItem *oldFocusItem, Qt::FocusReason reason) {
+    Q_UNUSED(newFocusItem);
+    Q_UNUSED(oldFocusItem);
+    Q_UNUSED(reason);
     // int a = 0;
 }
 //void sceneRectChanged(const QRectF &rect){}
 
+/**
+ * @brief Slot quando seleção de itens da cena muda.
+ *
+ * Atualiza o Property Editor para um único componente selecionado e limpa em caso contrário.
+ */
 void MainWindow::sceneSelectionChanged() {
     QGraphicsItem * item;
     GraphicalModelComponent* gmc;
