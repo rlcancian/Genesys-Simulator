@@ -32,6 +32,7 @@
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalModelComponent.h"
+#include "UtilGUI.h"
 #include "TraitsGUI.h"
 #include <Qt>
 #include <QTreeWidget>
@@ -117,15 +118,6 @@ void ModelGraphicsView::setComboBox(std::map<SimulationControl*, ComboBoxEnum*>*
     ((ModelGraphicsScene*) scene())->setComboBox(propBox);
 }
 
-QColor ModelGraphicsView::myrgba(uint64_t color) {
-	uint8_t r, g, b, a;
-	r = (color&0xFF000000)>>24;
-	g = (color&0x00FF0000)>>16;
-	b = (color&0x0000FF00)>>8;
-	a = (color&0x000000FF);
-	return QColor(r, g, b, a);
-}
-
 void ModelGraphicsView::setEnabled(bool enabled) {
 	QGraphicsView::setEnabled(enabled);
 	QBrush background;
@@ -133,11 +125,11 @@ void ModelGraphicsView::setEnabled(bool enabled) {
 		// background
 		//unsigned int colorVal1 = 255 * 13.0 / 16.0;
 		//unsigned int colorVal2 = 255 * 15.0 / 16.0;
-		background = QColor(myrgba(TraitsGUI<GView>::backgroundEnabledColor));//255, 255, 128, 64);
+		background = QColor(UtilGUI::rgbaFromPacked(TraitsGUI<GView>::backgroundEnabledColor));//255, 255, 128, 64);
 		//getScene()->showGrid();
 	} else {
 		// background
-		background = myrgba(TraitsGUI<GView>::backgroundDisabledColor);//Qt::lightGray;
+		background = UtilGUI::rgbaFromPacked(TraitsGUI<GView>::backgroundDisabledColor);//Qt::lightGray;
 	}
 	background.setStyle(Qt::SolidPattern);
 	setBackgroundBrush(background);

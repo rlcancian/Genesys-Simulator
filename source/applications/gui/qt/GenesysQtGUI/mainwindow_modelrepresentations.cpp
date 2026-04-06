@@ -383,12 +383,6 @@ void MainWindow::_actualizeModelCppCode() {
     }
 }
 
-std::string MainWindow::dotColor(uint64_t color) {
-    std::stringstream stream;
-    stream << std::hex << "#" << color;
-    return stream.str();
-}
-
 bool MainWindow::graphicalModelHasChanged() const {
     return _graphicalModelHasChanged;
 }
