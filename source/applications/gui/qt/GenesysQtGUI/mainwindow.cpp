@@ -10,6 +10,7 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
+#include "controllers/SimulationController.h"
 #include "UtilGUI.h"
 // PropEditor
 #include "propertyeditor/qtpropertybrowser/qttreepropertybrowser.h"
@@ -50,6 +51,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // Genesys Simulator
     simulator = new Simulator();
+    _simulationController = std::make_unique<SimulationController>(this, simulator);
     simulator->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
     simulator->getTraceManager()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);
     simulator->getTraceManager()->addTraceErrorHandler<MainWindow>(this, &MainWindow::_simulatorTraceErrorHandler);

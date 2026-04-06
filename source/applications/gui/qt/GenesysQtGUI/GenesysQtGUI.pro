@@ -233,6 +233,7 @@ SOURCES += \
     ../../../terminal/examples/teaching/OperatingSystem03.cpp \
     ../../../terminal/examples/teaching/Rectifier.cpp \
     codeeditor/CodeEditor.cpp \
+    controllers/SimulationController.cpp \
     mainwindow_controller.cpp \
     mainwindow_modelrepresentations.cpp \
     mainwindow_scene.cpp \
@@ -537,6 +538,7 @@ HEADERS += \
     propertyeditor/ComboBoxEnum.h \
     TraitsGUI.h \
     UtilGUI.h \
+    controllers/SimulationController.h \
     actions/AddUndoCommand.h \
     actions/DeleteUndoCommand.h \
     actions/GroupUndoCommand.h \

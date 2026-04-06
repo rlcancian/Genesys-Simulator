@@ -7,6 +7,7 @@
 #include "dialogs/dialogpluginmanager.h"
 #include "dialogs/dialogsystempreferences.h"
 #include "dialogs/DialogFind.h"
+#include "controllers/SimulationController.h"
 
 #include "actions/DeleteUndoCommand.h"
 #include "actions/PasteUndoCommand.h"
@@ -47,33 +48,15 @@
 //  menu actions
 // -------------------------------------------------
 
-bool MainWindow::_hasCurrentModelSimulation() const {
-    return simulator != nullptr
-            && simulator->getModelManager() != nullptr
-            && simulator->getModelManager()->current() != nullptr
-            && simulator->getModelManager()->current()->getSimulation() != nullptr;
-}
-
-bool MainWindow::_ensureSimulationReady(bool checkModel) {
-    if (!_hasCurrentModelSimulation()) {
-        QMessageBox::warning(this, "Simulation", "No model is loaded to run simulation.");
-        return false;
-    }
-
-    bool res = true;
-    if (checkModel && !_modelCheked) {
-        res = _check(false);
-    }
-
-    if (!res) {
-        return false;
-    }
-
-    return _setSimulationModelBasedOnText() && _hasCurrentModelSimulation();
-}
-
+/**
+ * @brief Stops the active simulation execution.
+ *
+ * Guarded by SimulationController to avoid dereferencing null model/simulation.
+ *
+ * @todo Move command execution details (animation flags + console command) into SimulationController.
+ */
 void MainWindow::on_actionSimulationStop_triggered() {
-    if (!_hasCurrentModelSimulation()) {
+    if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
         return;
     }
 
@@ -87,8 +70,22 @@ void MainWindow::on_actionSimulationStop_triggered() {
     _actualizeActions();
 }
 
+/**
+ * @brief Starts simulation after readiness validation.
+ *
+ * Preconditions:
+ * - Current model/simulation must exist;
+ * - Model may be checked when needed;
+ * - Textual model representation must be synchronized.
+ *
+ * @todo Replace lambda callbacks by explicit command objects for better unit testing.
+ */
 void MainWindow::on_actionSimulationStart_triggered() {
-    if (!_ensureSimulationReady(true)) {
+    if (!_simulationController || !_simulationController->ensureReady(
+            true,
+            _modelCheked,
+            [this]() { return _check(false); },
+            [this]() { return _setSimulationModelBasedOnText(); })) {
         return;
     }
 
@@ -98,8 +95,19 @@ void MainWindow::on_actionSimulationStart_triggered() {
     simulator->getModelManager()->current()->getSimulation()->start();
 }
 
+/**
+ * @brief Executes one simulation step after readiness validation.
+ *
+ * Uses the same precondition pipeline as start command.
+ *
+ * @todo Consolidate duplicated animation-toggle code between start and step.
+ */
 void MainWindow::on_actionSimulationStep_triggered() {
-    if (!_ensureSimulationReady(true)) {
+    if (!_simulationController || !_simulationController->ensureReady(
+            true,
+            _modelCheked,
+            [this]() { return _check(false); },
+            [this]() { return _setSimulationModelBasedOnText(); })) {
         return;
     }
 
@@ -109,8 +117,13 @@ void MainWindow::on_actionSimulationStep_triggered() {
     simulator->getModelManager()->current()->getSimulation()->step();
 }
 
+/**
+ * @brief Pauses running simulation.
+ *
+ * @todo Add explicit feedback when pause is requested in invalid state.
+ */
 void MainWindow::on_actionSimulationPause_triggered() {
-    if (!_hasCurrentModelSimulation()) {
+    if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
         return;
     }
 
@@ -121,8 +134,18 @@ void MainWindow::on_actionSimulationPause_triggered() {
     simulator->getModelManager()->current()->getSimulation()->pause();
 }
 
+/**
+ * @brief Resumes simulation execution after readiness validation.
+ *
+ * @todo Introduce a dedicated `resume()` API in kernel side when available
+ *       to avoid semantic coupling with `start()`.
+ */
 void MainWindow::on_actionSimulationResume_triggered() {
-    if (!_ensureSimulationReady(false)) {
+    if (!_simulationController || !_simulationController->ensureReady(
+            false,
+            _modelCheked,
+            [this]() { return _check(false); },
+            [this]() { return _setSimulationModelBasedOnText(); })) {
         return;
     }
 
