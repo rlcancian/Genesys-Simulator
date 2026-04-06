@@ -10,6 +10,7 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
+#include "UtilGUI.h"
 // PropEditor
 #include "propertyeditor/qtpropertybrowser/qttreepropertybrowser.h"
 #include "animations/AnimationVariable.h"
@@ -186,6 +187,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
 MainWindow::~MainWindow() {
     delete ui;
+    delete simulator;
+    delete propertyGenesys;
+    delete propertyList;
+    delete propertyEditorUI;
+    delete propertyBox;
+    delete _pluginCategoryColor;
+    delete _gmc_copies;
+    delete _ports_copies;
+    delete _draw_copy;
+    delete _group_copy;
+    delete undoView;
 }
 
 ModelGraphicsScene* MainWindow::myScene() const {
@@ -451,7 +463,7 @@ void MainWindow::_actualizeDebugBreakpoints(bool force) {
 
 
 void MainWindow::_insertCommandInConsole(std::string text) {
-    ui->textEdit_Console->setTextColor(myrgba(TraitsGUI<GMainWindow>::consoleTextColor));
+    ui->textEdit_Console->setTextColor(UtilGUI::rgbaFromPacked(TraitsGUI<GMainWindow>::consoleTextColor));
     QFont font(ui->textEdit_Console->font());
     font.setBold(true);
     ui->textEdit_Console->setFont(font);
@@ -460,19 +472,6 @@ void MainWindow::_insertCommandInConsole(std::string text) {
     font.setBold(false);
     ui->textEdit_Console->setFont(font);
 }
-
-
-QColor MainWindow::myrgba(uint64_t color) {
-    uint8_t r, g, b, a;
-    r = (color&0xFF000000)>>24;
-    g = (color&0x00FF0000)>>16;
-    b = (color&0x0000FF00)>>8;
-    a = (color&0x000000FF);
-    return QColor(r, g, b, a);
-}
-
-
-
 
 
 //-------------
@@ -920,6 +919,3 @@ void MainWindow::_actualizeUndo() {
     undoView->setVisible(false);
     undoView->setAttribute(Qt::WA_QuitOnClose, false);
 }
-
-
-

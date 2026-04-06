@@ -51,9 +51,6 @@ protected: // virtual
 	//virtual void mousePressEvent(QGraphicsSceneMouseEvent * event);
 	//virtual void	mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 private:
-	QColor myrgba(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
-	//TraitsGUI<GConnection>::foreColor
-private:
 	qreal _width;
 	qreal _height;
 	unsigned int _margin = TraitsGUI<GConnection>::margin;//2;
