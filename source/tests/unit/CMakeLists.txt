@@ -35,6 +35,8 @@ genesys_add_unit_test(genesys_test_simulator_runtime
     test_simulator_runtime.cpp
     genesys_kernel_simulator_runtime
     genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
 )
 
 genesys_add_unit_test(genesys_test_support_modelmanager
@@ -53,6 +55,8 @@ genesys_add_unit_test(genesys_test_runtime_pluginmanager
     test_runtime_pluginmanager.cpp
     genesys_kernel_simulator_runtime
     genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
 )
 
 genesys_add_unit_test(genesys_test_support_oneventmanager
@@ -148,3 +152,24 @@ gtest_discover_tests(genesys_test_kernel_simulator_method_inventory
 set_property(TARGET genesys_test_kernel_simulator_method_inventory PROPERTY FOLDER tests/unit)
 
 add_dependencies(genesys_kernel_unit_tests genesys_test_kernel_simulator_method_inventory)
+
+add_custom_target(genesys_kernel_unit_tests_run
+    COMMAND $<TARGET_FILE:genesys_test_util>
+    COMMAND $<TARGET_FILE:genesys_test_simulator_support>
+    COMMAND $<TARGET_FILE:genesys_test_simulator_runtime>
+    COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
+    COMMAND $<TARGET_FILE:genesys_test_support_persistence>
+    COMMAND $<TARGET_FILE:genesys_test_runtime_pluginmanager>
+    COMMAND $<TARGET_FILE:genesys_test_support_oneventmanager>
+    COMMAND $<TARGET_FILE:genesys_test_support_parsermanager>
+    COMMAND $<TARGET_FILE:genesys_test_support_tracemanager>
+    COMMAND $<TARGET_FILE:genesys_test_support_connectionmanager>
+    COMMAND $<TARGET_FILE:genesys_test_support_simulationscenario>
+    COMMAND $<TARGET_FILE:genesys_test_support_experimentmanager>
+    COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
+    DEPENDS
+        genesys_kernel_unit_tests
+    USES_TERMINAL
+)
+
+set_property(TARGET genesys_kernel_unit_tests_run PROPERTY FOLDER tests/unit)

@@ -58,6 +58,17 @@
       }
     },
     {
+      "name": "tests-kernel-unit",
+      "displayName": "Kernel Unit Tests (Debug)",
+      "inherits": "tests-unit",
+      "binaryDir": "${sourceDir}/build/tests-kernel-unit",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_SMOKE_TESTS": "OFF",
+        "GENESYS_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
       "name": "terminal-app",
       "displayName": "Terminal Application (Debug)",
       "inherits": "debug-base",
@@ -129,6 +140,13 @@
       ]
     },
     {
+      "name": "tests-kernel-unit-run",
+      "configurePreset": "tests-kernel-unit",
+      "targets": [
+        "genesys_kernel_unit_tests_run"
+      ]
+    },
+    {
       "name": "terminal-app",
       "configurePreset": "terminal-app",
       "targets": [
@@ -178,6 +196,13 @@
           "label": "unit"
         }
       },
+      "output": {
+        "outputOnFailure": true
+      }
+    },
+    {
+      "name": "tests-kernel-unit",
+      "configurePreset": "tests-kernel-unit",
       "output": {
         "outputOnFailure": true
       }
