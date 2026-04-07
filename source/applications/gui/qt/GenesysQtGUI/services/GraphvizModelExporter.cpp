@@ -26,6 +26,8 @@
 #include <cstdlib>
 #include <cstdio>
 #include <fstream>
+// This include provides std::move used to store constructor callbacks.
+#include <utility>
 
 // This helper keeps legacy label escaping semantics for Graphviz output.
 static std::string _escapeDotLabelText(const std::string& text) {
@@ -57,13 +59,16 @@ GraphvizModelExporter::GraphvizModelExporter(Simulator* simulator,
                                              QCheckBox* showInternals,
                                              QCheckBox* showElements,
                                              QCheckBox* showRecursive,
-                                             QCheckBox* showLevels)
+                                             QCheckBox* showLevels,
+                                             std::function<bool()> ensureModelSynchronized)
     : _simulator(simulator)
     , _modelGraphicLabel(modelGraphicLabel)
     , _showInternals(showInternals)
     , _showElements(showElements)
     , _showRecursive(showRecursive)
-    , _showLevels(showLevels) {
+    , _showLevels(showLevels)
+    // Keep model-text synchronization callback local to this service dependency set.
+    , _ensureModelSynchronized(std::move(ensureModelSynchronized)) {
 }
 std::string GraphvizModelExporter::adjustDotName(std::string name) const {
     // This block preserves identifier normalization behavior used by current DOT output.
@@ -212,9 +217,9 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(ModelDataDefiniti
     }
 }
 
-bool GraphvizModelExporter::createModelImage(const std::function<bool()>& setSimulationModelBasedOnText) const {
+bool GraphvizModelExporter::createModelImage() const {
     // This block preserves model synchronization precondition prior to DOT generation.
-    bool res = setSimulationModelBasedOnText ? setSimulationModelBasedOnText() : false;
+    bool res = _ensureModelSynchronized ? _ensureModelSynchronized() : false;
     if (!res || _simulator == nullptr || _modelGraphicLabel == nullptr || _showInternals == nullptr || _showElements == nullptr || _showRecursive == nullptr || _showLevels == nullptr || _simulator->getModelManager()->current() == nullptr) {
         return false;
     }
