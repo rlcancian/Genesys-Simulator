@@ -31,6 +31,7 @@
 #include <QRegularExpression>
 #include <QRandomGenerator>
 #include <QScrollBar>
+#include <QTimer>
 #include <QUrl>
 
 static QString _encodeGuiText(const QString& text) {
@@ -913,6 +914,11 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
         _clearModelEditors();
 
         bool firstLine = true;
+        // Armazena o estado da view para aplicar no final do load, após reconstrução da cena.
+        bool hasPersistedViewState = false;
+        int restoredViewpointX = 0;
+        int restoredViewpointY = 0;
+        bool restoredDiagrams = false;
 
         QHash<int, QGraphicsItem*> persistedItems;
 
@@ -954,21 +960,31 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
                         viewpointY = viewpointMatch.captured(2).toInt();
                     }
 
-                    ui->actionShowGrid->setChecked(grid);
-                    myScene()->showGrid();
-                    ui->actionShowSnap->setChecked(snap);
-                    myScene()->setSnapToGrid(snap);
-                    ui->actionShowRule->setChecked(rule);
-                    ui->actionShowGuides->setChecked(guides);
-                    ui->actionShowInternalElements->setChecked(internals);
-                    ui->actionShowAttachedElements->setChecked(attached);
-                    ui->actionDiagrams->setChecked(diagrams);
+                    // Restaura o estado visual do grid sem usar toggle implícito.
+                    ui->actionShowGrid->setChecked(grid != 0);
+                    myScene()->setGridVisible(grid != 0);
+                    // Restaura o snap de forma determinística e sincronizada com a action.
+                    ui->actionShowSnap->setChecked(snap != 0);
+                    myScene()->setSnapToGrid(snap != 0);
+                    // Restaura flags de view ainda sem backend visual completo apenas no estado da action.
+                    ui->actionShowRule->setChecked(rule != 0);
+                    ui->actionShowGuides->setChecked(guides != 0);
+                    // Reaplica internals/attached acionando o mesmo fluxo usado pela interface.
+                    ui->actionShowInternalElements->setChecked(internals != 0);
+                    on_actionShowInternalElements_triggered();
+                    ui->actionShowAttachedElements->setChecked(attached != 0);
+                    on_actionShowAttachedElements_triggered();
+                    // Armazena a flag de diagramas para aplicar após reconstrução dos itens.
+                    restoredDiagrams = (diagrams != 0);
+                    ui->actionDiagrams->setChecked(restoredDiagrams);
 
                     if (zoom > 0) {
                         ui->horizontalSlider_ZoomGraphical->setValue(zoom + TraitsGUI<GMainWindow>::zoomButtonChange);
                     }
-                    ui->graphicsView->horizontalScrollBar()->setValue(viewpointX);
-                    ui->graphicsView->verticalScrollBar()->setValue(viewpointY);
+                    // Adia a restauração do viewpoint para o final do load.
+                    hasPersistedViewState = true;
+                    restoredViewpointX = viewpointX;
+                    restoredViewpointY = viewpointY;
                 }
                 firstLine = false;
                 continue;
@@ -1347,19 +1363,51 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
                 }
 
                 if (groupItems.size() > 1) {
+                    // Reconstrói grupo somente com itens ainda não agrupados para evitar inconsistências.
+                    bool canCreateGroup = true;
+                    for (QGraphicsItem* item : groupItems) {
+                        if (item == nullptr || item->group() != nullptr) {
+                            canCreateGroup = false;
+                            break;
+                        }
+                    }
+                    if (!canCreateGroup) {
+                        continue;
+                    }
+
+                    // Cria o grupo e reestabelece flags/estruturas internas usadas por group/ungroup.
                     QGraphicsItemGroup* group = new QGraphicsItemGroup();
                     for (QGraphicsItem* item : groupItems) {
                         group->addToGroup(item);
                     }
+                    group->setHandlesChildEvents(false);
                     group->setFlag(QGraphicsItem::ItemIsSelectable, true);
                     group->setFlag(QGraphicsItem::ItemIsMovable, true);
                     myScene()->addItem(group);
                     myScene()->getGraphicalGroups()->append(group);
+                    myScene()->insertOldPositionItem(group, group->pos());
+                    for (QGraphicsItem* child : group->childItems()) {
+                        myScene()->insertOldPositionItem(child, child->pos());
+                        child->setSelected(false);
+                    }
+                    group->setSelected(false);
                     if (!groupComponents.isEmpty()) {
                         myScene()->insertComponentGroup(group, groupComponents);
                     }
                 }
             }
+        }
+
+        // Reaplica o estado de diagramas após reconstrução dos componentes/geometrias/grupos.
+        on_actionDiagrams_triggered();
+        // Reaplica o viewpoint no ciclo de eventos seguinte para garantir ranges válidos de scrollbar.
+        if (hasPersistedViewState) {
+            QTimer::singleShot(0, this, [this, restoredViewpointX, restoredViewpointY]() {
+                QScrollBar* hBar = ui->graphicsView->horizontalScrollBar();
+                QScrollBar* vBar = ui->graphicsView->verticalScrollBar();
+                hBar->setValue(qBound(hBar->minimum(), restoredViewpointX, hBar->maximum()));
+                vBar->setValue(qBound(vBar->minimum(), restoredViewpointY, vBar->maximum()));
+            });
         }
 
         ui->textEdit_Console->append("\n");

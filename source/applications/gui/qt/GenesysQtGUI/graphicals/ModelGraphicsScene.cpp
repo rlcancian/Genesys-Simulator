@@ -975,6 +975,21 @@ void ModelGraphicsScene::showGrid()
     _grid.visible = !_grid.visible;
 }
 
+// Ajusta visibilidade do grid sem depender da semântica de toggle de showGrid().
+void ModelGraphicsScene::setGridVisible(bool visible) {
+    if (_grid.visible != visible) {
+        showGrid();
+    } else if (_grid.visible && _grid.lines->empty()) {
+        showGrid();
+        showGrid();
+    }
+}
+
+// Retorna o estado visual corrente do grid para persistência/restauração.
+bool ModelGraphicsScene::isGridVisible() const {
+    return _grid.visible;
+}
+
 void ModelGraphicsScene::createDiagrams()
 {
     Model * m = _simulator->getModelManager()->current();

@@ -547,7 +547,8 @@ void MainWindow::on_actionEditPaste_triggered() {
 
 
 void MainWindow::on_actionShowGrid_triggered() {
-    ui->graphicsView->getScene()->showGrid();
+    // Aplica o estado de grid da action diretamente na cena para evitar inversão por toggle.
+    ui->graphicsView->getScene()->setGridVisible(ui->actionShowGrid->isChecked());
 }
 
 
@@ -1148,11 +1149,8 @@ void MainWindow::on_treeWidgetDataDefnitions_itemChanged(QTreeWidgetItem *item, 
 void MainWindow::on_actionShowSnap_triggered()
 {
     ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    if (scene->getSnapToGrid()) {
-        scene->setSnapToGrid(false);
-    } else {
-        scene->setSnapToGrid(true);
-    }
+    // Sincroniza o snap com o estado checkado da action de forma determinística.
+    scene->setSnapToGrid(ui->actionShowSnap->isChecked());
 }
 
 void MainWindow::on_actionViewGroup_triggered()
