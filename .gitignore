@@ -2,6 +2,7 @@
 /build/
 /out/
 /cmake-build-*/
+build/
 
 # CMake
 CMakeCache.txt
@@ -23,11 +24,6 @@ CMakeLists.txt.user
 .qtcreator/
 .qtc_clangd/
 
-# NetBeans legacy
-/projects/**/build/
-/projects/**/dist/
-/projects/**/nbproject/private/
-
 # Generic
 *.o
 *.obj
@@ -37,6 +33,9 @@ CMakeLists.txt.user
 *.dll
 *.dylib
 *.exe
+*.tmp
+temp*
+.temp*
 
 # Logs
 *.log
