@@ -6,7 +6,7 @@
 class QPlainTextEdit;
 class Simulator;
 
-// This service encapsulates generation of C++ model code shown in the GUI editor.
+// This Phase-1 service encapsulates generation of C++ model code shown in the GUI editor.
 class CppModelExporter {
 public:
     // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.

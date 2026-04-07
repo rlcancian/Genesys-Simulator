@@ -11,7 +11,7 @@ class QCheckBox;
 class Simulator;
 class ModelDataDefinition;
 
-// This service encapsulates Graphviz DOT generation and PNG rendering for model representation.
+// This Phase-1 service encapsulates Graphviz DOT generation and PNG rendering for model representation.
 class GraphvizModelExporter {
 public:
     // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.

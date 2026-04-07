@@ -273,8 +273,11 @@ private: // interface and model main elements to join
 	Simulator* simulator;
     std::unique_ptr<class SimulationController> _simulationController;
     // Phase-1 services keep model-representation logic outside MainWindow while wrappers remain stable.
+    // Synchronize textual model language with the kernel model manager.
     std::unique_ptr<ModelLanguageSynchronizer> _modelLanguageSynchronizer;
+    // Generate Graphviz DOT and rendered model images for the GUI pane.
     std::unique_ptr<GraphvizModelExporter> _graphvizModelExporter;
+    // Generate C++ model representation text for the code viewer pane.
     std::unique_ptr<CppModelExporter> _cppModelExporter;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;

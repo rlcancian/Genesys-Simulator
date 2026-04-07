@@ -37,10 +37,12 @@
 #include <QTimer>
 #include <QUrl>
 
+// Encode free-form GUI text safely for persistence records.
 static QString _encodeGuiText(const QString& text) {
     return QString::fromUtf8(QUrl::toPercentEncoding(text));
 }
 
+// Decode persisted GUI text back to plain UTF-8 text.
 static QString _decodeGuiText(const QString& text) {
     return QUrl::fromPercentEncoding(text.toUtf8());
 }
