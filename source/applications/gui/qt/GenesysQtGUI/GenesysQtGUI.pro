@@ -242,6 +242,9 @@ SOURCES += \
     controllers/SimulationController.cpp \
     # Phase-3 GUI refactor controller for model-inspector responsibilities.
     controllers/ModelInspectorController.cpp \
+    # Phase-4 GUI refactor controllers for trace and simulation-event responsibilities.
+    controllers/TraceConsoleController.cpp \
+    controllers/SimulationEventController.cpp \
     # Phase-1 GUI refactor services for model representations.
     services/ModelLanguageSynchronizer.cpp \
     services/GraphvizModelExporter.cpp \
@@ -560,6 +563,9 @@ HEADERS += \
     controllers/SimulationController.h \
     # Phase-3 GUI refactor controller header for model-inspector responsibilities.
     controllers/ModelInspectorController.h \
+    # Phase-4 GUI refactor controller headers for trace and simulation-event responsibilities.
+    controllers/TraceConsoleController.h \
+    controllers/SimulationEventController.h \
     # Phase-1 GUI refactor service headers.
     services/ModelLanguageSynchronizer.h \
     services/GraphvizModelExporter.h \

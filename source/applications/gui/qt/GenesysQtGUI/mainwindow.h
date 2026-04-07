@@ -31,6 +31,8 @@ class CppModelExporter;
 class GraphicalModelSerializer;
 class GraphicalModelBuilder;
 class ModelInspectorController;
+class TraceConsoleController;
+class SimulationEventController;
 
 /**
  * @brief Main Qt window of Genesys GUI.
@@ -41,6 +43,9 @@ class ModelInspectorController;
  */
 class MainWindow : public QMainWindow {
 	Q_OBJECT
+
+    // Allow the Phase 4 event controller to register private compatibility handlers.
+    friend class SimulationEventController;
 
 public:
 	MainWindow(QWidget *parent = nullptr);
@@ -288,6 +293,10 @@ private: // interface and model main elements to join
     std::unique_ptr<GraphicalModelBuilder> _graphicalModelBuilder;
     // Add the Phase 3 model-inspector controller owned by MainWindow.
     std::unique_ptr<ModelInspectorController> _modelInspectorController;
+    // Add the Phase 4 trace controller owned by MainWindow.
+    std::unique_ptr<TraceConsoleController> _traceConsoleController;
+    // Add the Phase 4 simulation-event controller owned by MainWindow.
+    std::unique_ptr<SimulationEventController> _simulationEventController;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;
