@@ -1,9 +1,0 @@
-setCollectorAddValueHandler call:[bind] noreturn:[bind]
-setCollectorClearHandler call:[bind] noreturn:[bind]
-CollectorDefaultImpl1
-clear call:[_clearHandler] noreturn:[_clearHandler]
-addValue call:[_addValueHandler] noreturn:[_addValueHandler]
-getLastValue
-numElements
-setAddValueHandler
-setClearHandler

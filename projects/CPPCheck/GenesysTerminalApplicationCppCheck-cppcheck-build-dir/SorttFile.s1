@@ -1,8 +1,0 @@
-SortFile
-sort call:[run]
-setDataFilename call:[open,seekg,sizeof,tellg] noreturn:[sizeof]
-run call:[partition,run] noreturn:[run]
-swap call:[addValue,getValue] noreturn:[addValue]
-partition call:[getValue,swap] noreturn:[swap]
-getValue call:[close,open,read,seekg,sizeof] noreturn:[close]
-addValue call:[close,file,seekp,sizeof,write] noreturn:[close]
