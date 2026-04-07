@@ -10,6 +10,7 @@
 #include <fstream>
 #include <string>
 
+// Store explicit dependencies once to keep wrapper calls thin.
 ModelLanguageSynchronizer::ModelLanguageSynchronizer(Simulator* simulator,
                                                      QPlainTextEdit* modelTextEditor,
                                                      bool* textModelHasChangedFlag,

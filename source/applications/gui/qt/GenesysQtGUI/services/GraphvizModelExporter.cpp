@@ -51,6 +51,7 @@ static std::string _escapeDotLabelText(const std::string& text) {
 }
 
 
+// Capture only Graphviz-related UI controls required by the exporter.
 GraphvizModelExporter::GraphvizModelExporter(Simulator* simulator,
                                              QLabel* modelGraphicLabel,
                                              QCheckBox* showInternals,

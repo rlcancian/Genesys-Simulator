@@ -20,6 +20,7 @@
 #include <utility>
 
 
+// Store simulator and output editor used by C++ export rendering.
 CppModelExporter::CppModelExporter(Simulator* simulator, QPlainTextEdit* cppCodeEditor)
     : _simulator(simulator)
     , _cppCodeEditor(cppCodeEditor) {
