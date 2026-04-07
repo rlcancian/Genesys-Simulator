@@ -182,6 +182,9 @@ public:
     }
     virtual List<SimulationControl*>* getEditableProperties(int index=0) {
         if (supportsInlineExpansion() && !hasObjectInstance()) {
+            if (!supportsObjectCreation()) {
+                return nullptr;
+            }
             if (!ensureObjectInstance()) {
                 return nullptr;
             }
@@ -658,12 +661,14 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericClassNotDC: public SimulationControl {
 public:
     using Creator = std::function<T(M)>;
-    SimulationControlGenericClassNotDC(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+    using NamedCreator = std::function<T(M, const std::string&)>;
+    SimulationControlGenericClassNotDC(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr, NamedCreator namedCreator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 		static_assert(std::is_pointer<T>::value, "SimulationControlGenericClassNotDC requires pointer type T");
         _model = model;
         _getter= getter;
         _setter = setter;
         _creator = creator;
+        _namedCreator = namedCreator;
         _readonly = setter == nullptr;
         _propertyType = Util::TypeOf<C>();
     }
@@ -686,10 +691,7 @@ public:
 		if (!_setter) {
 			throw std::logic_error("SimulationControlGenericClassNotDC setter is not defined");
 		}
-        T newVal;
-
-        // TODO: criar apenas se já não estiver definido?
-        newVal = new C(_model, value);
+        T newVal = _createNewInstance(value);
 
         _setter(newVal);
     };
@@ -716,11 +718,7 @@ public:
         }
 
         T newVal;
-        if (_creator != nullptr) {
-            newVal = _creator(_model);
-        } else {
-            newVal = new C(_model, "");
-        }
+        newVal = _createNewInstance("");
         _setter(newVal);
         return static_cast<T>(_getter()) != nullptr;
     }
@@ -744,10 +742,22 @@ public:
     }
 
 private:
+    T _createNewInstance(const std::string& value) const {
+        if (_namedCreator != nullptr) {
+            return _namedCreator(_model, value);
+        }
+        if (_creator != nullptr) {
+            return _creator(_model);
+        }
+        return new C(_model, value);
+    }
+
+private:
     M _model;
     GetterGeneric<T> _getter;
     SetterGeneric<T> _setter;
     Creator _creator;
+    NamedCreator _namedCreator;
 };
 
 template <typename T, typename M, typename C>
@@ -890,14 +900,7 @@ public:
         if (!_adder) {
             throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
         }
-        T newVal = nullptr;
-        if (value.empty() && _typedCreator != nullptr) {
-            newVal = _typedCreator(_model);
-        } else if (_creator != nullptr) {
-            newVal = _creator(_model, value);
-        } else {
-            newVal = new C(_model, value);
-        }
+        T newVal = _createElement(value);
         if (newVal == nullptr) {
             return false;
         }
@@ -939,6 +942,17 @@ public:
             strOptions->insert(strVal);
         }
         return strOptions;
+    }
+
+private:
+    T _createElement(const std::string& value) const {
+        if (_typedCreator != nullptr) {
+            return _typedCreator(_model);
+        }
+        if (_creator != nullptr) {
+            return _creator(_model, value);
+        }
+        return new C(_model, value);
     }
 
 private:

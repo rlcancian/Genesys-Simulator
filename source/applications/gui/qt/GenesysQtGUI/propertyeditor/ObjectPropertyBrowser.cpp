@@ -401,6 +401,35 @@ bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
     return _openSpecializedEditor(item->property());
 }
 
+bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        return false;
+    }
+
+    const Binding binding = it.value();
+    if (binding.control == nullptr) {
+        return false;
+    }
+    if (!binding.descriptor.supportsObjectCreation || binding.control->hasObjectInstance()) {
+        return false;
+    }
+
+    bool created = false;
+    try {
+        created = binding.control->createObjectInstance();
+    } catch (...) {
+        created = false;
+    }
+
+    if (!created) {
+        return false;
+    }
+
+    _notifyModelChangeApplied();
+    return true;
+}
+
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
@@ -511,18 +540,31 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     }
 
     auto it = _bindings.find(item->property());
-    // This block exposes context-menu list editing through explicit list-editor support metadata.
-    if (it == _bindings.end() || !it.value().descriptor.supportsListEditor) {
+    if (it == _bindings.end()) {
         QtTreePropertyBrowser::contextMenuEvent(event);
         return;
     }
 
+    const Binding binding = it.value();
     QMenu menu(this);
-    QAction* editAction = menu.addAction("Edit list...");
+    QAction* editAction = nullptr;
+    QAction* createAction = nullptr;
+    if (binding.descriptor.supportsListEditor) {
+        editAction = menu.addAction("Edit list...");
+    }
+    if (binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
+        createAction = menu.addAction("Create object");
+    }
+    if (editAction == nullptr && createAction == nullptr) {
+        QtTreePropertyBrowser::contextMenuEvent(event);
+        return;
+    }
     QAction* chosen = menu.exec(event->globalPos());
 
-    if (chosen == editAction) {
+    if (chosen == editAction && editAction != nullptr) {
         _openSpecializedEditor(item->property());
+    } else if (chosen == createAction && createAction != nullptr) {
+        _createObjectForProperty(item->property());
     }
 }
 

@@ -73,6 +73,7 @@ private:
 
     bool _openSpecializedEditorForCurrentItem();
     bool _openSpecializedEditor(QtProperty* property);
+    bool _createObjectForProperty(QtProperty* property);
 
 protected:
     void keyPressEvent(QKeyEvent* event) override;
