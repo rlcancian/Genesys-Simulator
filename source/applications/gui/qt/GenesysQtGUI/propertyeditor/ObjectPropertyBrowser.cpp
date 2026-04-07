@@ -287,7 +287,7 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     auto refresh = [this]() {
-        this->objectUpdated();
+        this->_notifyModelChangeApplied();
     };
 
     if (control->getIsList()) {
@@ -316,6 +316,22 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         } else {
             auto* editor = new DataComponentEditor(_propertyEditor, control, refresh);
             editor->open_window(control);
+        }
+        return true;
+    }
+
+    if (binding.descriptor.kind == GenesysPropertyKind::Enum
+        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit
+        || control->getIsEnum()) {
+        if (_propertyBox != nullptr) {
+            auto found = _propertyBox->find(control);
+            if (found == _propertyBox->end() || found->second == nullptr) {
+                (*_propertyBox)[control] = new ComboBoxEnum(_propertyEditor, control, refresh);
+            }
+            (*_propertyBox)[control]->open_box();
+        } else {
+            auto* box = new ComboBoxEnum(_propertyEditor, control, refresh);
+            box->open_box();
         }
         return true;
     }
@@ -350,6 +366,9 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
     }
 
     const std::string newValue = _fromVariant(binding.descriptor, value);
+    if (newValue == binding.descriptor.currentValue) {
+        return;
+    }
 
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
@@ -364,7 +383,7 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
         return;
     }
 
-    objectUpdated();
+    _notifyModelChangeApplied();
 }
 
 void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
@@ -375,6 +394,10 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 
     const Binding binding = it.value();
     if (binding.control == nullptr) {
+        return;
+    }
+
+    if (value == _enumIndexFor(binding.descriptor)) {
         return;
     }
 
@@ -391,7 +414,12 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         return;
     }
 
+    _notifyModelChangeApplied();
+}
+
+void ObjectPropertyBrowser::_notifyModelChangeApplied() {
     objectUpdated();
+    emit modelPropertiesChanged();
 }
 
 void ObjectPropertyBrowser::objectUpdated() {
@@ -457,7 +485,13 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     }
 
     const Binding binding = it.value();
-    if (!(binding.descriptor.isList || binding.descriptor.isClass)) {
+    const bool specializedProperty =
+        binding.descriptor.isList
+        || binding.descriptor.isClass
+        || binding.descriptor.kind == GenesysPropertyKind::Enum
+        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit;
+
+    if (!specializedProperty) {
         QtTreePropertyBrowser::contextMenuEvent(event);
         return;
     }
