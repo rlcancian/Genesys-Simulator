@@ -34,6 +34,8 @@ struct GenesysPropertyDescriptor {
     bool isList = false;
     bool isClass = false;
     bool isEnum = false;
+    bool isInlineObject = false;
+    bool isModelDataDefinitionReference = false;
 
     std::string currentValue;
     std::vector<std::string> choices;

@@ -155,6 +155,7 @@ public:
     virtual List<SimulationControl*>* getProperties(int index=0) { return nullptr; };
     virtual bool hasObjectInstance() const { return true; }
     virtual bool ensureObjectInstance() { return hasObjectInstance(); }
+    virtual bool isModelDataDefinitionReference() const { return false; }
     virtual List<SimulationControl*>* getEditableProperties(int index=0) {
         if (getIsClass() && !hasObjectInstance()) {
             if (!ensureObjectInstance()) {
@@ -568,6 +569,18 @@ public:
 
 		_setter(newVal);
 	};
+
+    virtual bool isModelDataDefinitionReference() const override { return true; }
+
+    virtual List<std::string>* getStrValues() override {
+        List<std::string>* strOptions = new List<std::string>();
+        for (auto modeldata : *_model->getDataManager()->getDataDefinitionList(_propertyType)->list()) {
+            if (modeldata != nullptr) {
+                strOptions->insert(modeldata->getName());
+            }
+        }
+        return strOptions;
+    }
 
     virtual List<SimulationControl*>* getProperties(int index=0) override {
         T tVal = static_cast<T>(_getter());
