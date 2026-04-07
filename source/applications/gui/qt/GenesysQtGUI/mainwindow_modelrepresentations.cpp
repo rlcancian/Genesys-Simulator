@@ -966,9 +966,11 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
                     // Restaura o snap de forma determinística e sincronizada com a action.
                     ui->actionShowSnap->setChecked(snap != 0);
                     myScene()->setSnapToGrid(snap != 0);
-                    // Restaura flags de view ainda sem backend visual completo apenas no estado da action.
+                    // Restores overlay action states and immediately applies them to the graphics view.
                     ui->actionShowRule->setChecked(rule != 0);
                     ui->actionShowGuides->setChecked(guides != 0);
+                    ui->graphicsView->setRuleVisible(rule != 0);
+                    ui->graphicsView->setGuidesVisible(guides != 0);
                     // Reaplica internals/attached acionando o mesmo fluxo usado pela interface.
                     ui->actionShowInternalElements->setChecked(internals != 0);
                     on_actionShowInternalElements_triggered();
@@ -1591,11 +1593,16 @@ void MainWindow::_generateGraphicalModelFromModel() {
 //-----------------------------------------
 
 void MainWindow::_initModelGraphicsView() {
+    // Registers scene/view callbacks used by MainWindow controllers.
     ((ModelGraphicsView*) (ui->graphicsView))->setSceneMouseEventHandler(this, &MainWindow::_onSceneMouseEvent);
     ((ModelGraphicsView *)(ui->graphicsView))->setSceneWheelInEventHandler(this, &MainWindow::_onSceneWheelInEvent);
     ((ModelGraphicsView *)(ui->graphicsView))->setSceneWheelOutEventHandler(this, &MainWindow::_onSceneWheelOutEvent);
     ((ModelGraphicsView*) (ui->graphicsView))->setGraphicalModelEventHandler(this, &MainWindow::_onSceneGraphicalModelEvent);
     _connectSceneSignals();
+
+    // Applies persisted overlay states to the graphics view when initializing a scene.
+    ui->graphicsView->setRuleVisible(ui->actionShowRule->isChecked());
+    ui->graphicsView->setGuidesVisible(ui->actionShowGuides->isChecked());
 
     // Cria uma stack undo/redo
     ui->graphicsView->getScene()->setUndoStack(new QUndoStack(this));

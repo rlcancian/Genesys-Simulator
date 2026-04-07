@@ -39,6 +39,7 @@
 #include <QTreeWidgetItem>
 #include <fstream>
 #include <streambuf>
+#include <cmath>
 
 ModelGraphicsView::ModelGraphicsView(QWidget *parent) : QGraphicsView(parent) {
 	setInteractive(true);
@@ -229,6 +230,28 @@ void ModelGraphicsView::setParentWidget(QWidget *parentWidget) {
 	((ModelGraphicsScene*) scene())->setParentWidget(parentWidget);
 }
 
+// Stores ruler visibility and refreshes the viewport overlays.
+void ModelGraphicsView::setRuleVisible(bool visible) {
+    _ruleVisible = visible;
+    viewport()->update();
+}
+
+// Returns current ruler visibility used by the view menu state.
+bool ModelGraphicsView::isRuleVisible() const {
+    return _ruleVisible;
+}
+
+// Stores guide visibility and refreshes the viewport overlays.
+void ModelGraphicsView::setGuidesVisible(bool visible) {
+    _guidesVisible = visible;
+    viewport()->update();
+}
+
+// Returns current guide visibility used by the view menu state.
+bool ModelGraphicsView::isGuidesVisible() const {
+    return _guidesVisible;
+}
+
 //------------------------------------------------------
 
 void ModelGraphicsView::changed(const QList<QRectF> &region) {
@@ -245,6 +268,48 @@ void ModelGraphicsView::sceneRectChanged(const QRectF &rect) {
 
 void ModelGraphicsView::selectionChanged() {
 	int i = 0;
+}
+
+//------------------------------------------------------
+
+// Draws lightweight rulers and center guides on top of scene content when enabled.
+void ModelGraphicsView::drawForeground(QPainter *painter, const QRectF &rect) {
+    QGraphicsView::drawForeground(painter, rect);
+    const QRectF visibleRect = mapToScene(viewport()->rect()).boundingRect();
+    if (!visibleRect.isValid()) {
+        return;
+    }
+
+    if (_ruleVisible) {
+        painter->save();
+        QPen rulerPen(QColor(90, 90, 90, 180));
+        painter->setPen(rulerPen);
+        const qreal tickStep = 100.0;
+        const qreal majorTick = 12.0;
+        const qreal minorTick = 6.0;
+        painter->drawLine(QPointF(visibleRect.left(), visibleRect.top()), QPointF(visibleRect.right(), visibleRect.top()));
+        painter->drawLine(QPointF(visibleRect.left(), visibleRect.top()), QPointF(visibleRect.left(), visibleRect.bottom()));
+        for (qreal x = std::floor(visibleRect.left() / tickStep) * tickStep; x <= visibleRect.right(); x += tickStep) {
+            painter->drawLine(QPointF(x, visibleRect.top()), QPointF(x, visibleRect.top() + majorTick));
+            painter->drawText(QPointF(x + 2.0, visibleRect.top() + 24.0), QString::number(static_cast<int>(x)));
+        }
+        for (qreal y = std::floor(visibleRect.top() / tickStep) * tickStep; y <= visibleRect.bottom(); y += tickStep) {
+            painter->drawLine(QPointF(visibleRect.left(), y), QPointF(visibleRect.left() + minorTick, y));
+            painter->drawText(QPointF(visibleRect.left() + 8.0, y - 2.0), QString::number(static_cast<int>(y)));
+        }
+        painter->restore();
+    }
+
+    if (_guidesVisible) {
+        painter->save();
+        QPen guidesPen(QColor(0, 120, 215, 150));
+        guidesPen.setStyle(Qt::DashLine);
+        painter->setPen(guidesPen);
+        const QPointF center = visibleRect.center();
+        painter->drawLine(QPointF(visibleRect.left(), center.y()), QPointF(visibleRect.right(), center.y()));
+        painter->drawLine(QPointF(center.x(), visibleRect.top()), QPointF(center.x(), visibleRect.bottom()));
+        painter->restore();
+    }
 }
 
 //------------------------------------------------------

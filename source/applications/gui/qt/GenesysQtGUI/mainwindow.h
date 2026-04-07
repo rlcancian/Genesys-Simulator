@@ -339,6 +339,13 @@ private:
     bool _modelCheked = false;
     bool _loaded = false;
     bool _shuttingDown = false;
+    // Persists lightweight tool settings introduced in Phase 5 dialogs.
+    double _optimizerPrecision = 1e-6;
+    unsigned int _optimizerMaxSteps = 1000;
+    // Persists minimal parallel execution preferences configured in GUI.
+    bool _parallelizationEnabled = false;
+    int _parallelizationThreads = 1;
+    int _parallelizationBatchSize = 100;
     QMetaObject::Connection _sceneChangedConnection;
     QMetaObject::Connection _sceneFocusItemChangedConnection;
     QMetaObject::Connection _sceneSelectionChangedConnection;
