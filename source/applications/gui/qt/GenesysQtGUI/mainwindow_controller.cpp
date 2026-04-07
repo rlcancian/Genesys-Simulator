@@ -10,6 +10,8 @@
 #include "controllers/SimulationCommandController.h"
 // Include the Phase 9 controller interface required by edit-command compatibility wrappers.
 #include "controllers/EditCommandController.h"
+// Include the Phase 10 controller interface required by scene-tool compatibility wrappers.
+#include "controllers/SceneToolController.h"
 
 #include "dialogs/dialogBreakpoint.h"
 #include "dialogs/Dialogmodelinformation.h"
@@ -366,127 +368,87 @@ void MainWindow::on_actionEditPaste_triggered() {
 
 
 void MainWindow::on_actionShowGrid_triggered() {
-    // Aplica o estado de grid da action diretamente na cena para evitar inversão por toggle.
-    ui->graphicsView->getScene()->setGridVisible(ui->actionShowGrid->isChecked());
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowGridTriggered();
+    }
 }
 
 
 void MainWindow::on_actionShowRule_triggered() {
-    // Applies the requested ruler state and then mirrors the effective backend state into the QAction.
-    const bool requestedVisible = ui->actionShowRule->isChecked();
-    ui->graphicsView->setRuleVisible(requestedVisible);
-    ui->actionShowRule->setChecked(ui->graphicsView->isRuleVisible());
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowRuleTriggered();
+    }
 }
 
 
 void MainWindow::on_actionShowGuides_triggered() {
-    // Applies the requested guides state and then mirrors the effective backend state into the QAction.
-    const bool requestedVisible = ui->actionShowGuides->isChecked();
-    ui->graphicsView->setGuidesVisible(requestedVisible);
-    ui->actionShowGuides->setChecked(ui->graphicsView->isGuidesVisible());
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowGuidesTriggered();
+    }
 }
 
 
 void MainWindow::on_actionZoom_In_triggered() {
-    int value = ui->horizontalSlider_ZoomGraphical->value();
-    ui->horizontalSlider_ZoomGraphical->setValue(value+TraitsGUI<GMainWindow>::zoomButtonChange);
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionZoomInTriggered();
+    }
 }
 
 
 void MainWindow::on_actionZoom_Out_triggered() {
-    int value = ui->horizontalSlider_ZoomGraphical->value();
-    ui->horizontalSlider_ZoomGraphical->setValue(value-TraitsGUI<GMainWindow>::zoomButtonChange);
-
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionZoomOutTriggered();
+    }
 }
 
 
 void MainWindow::on_actionZoom_All_triggered() {
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (scene == nullptr || scene->items().isEmpty()) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionZoomAllTriggered();
     }
-
-    const QRectF bounds = scene->itemsBoundingRect();
-    if (!bounds.isValid() || bounds.isEmpty()) {
-        return;
-    }
-
-    ui->graphicsView->resetTransform();
-    ui->graphicsView->fitInView(bounds.adjusted(-20.0, -20.0, 20.0, 20.0), Qt::KeepAspectRatio);
-    {
-        QSignalBlocker blocker(ui->horizontalSlider_ZoomGraphical);
-        _zoomValue = ui->horizontalSlider_ZoomGraphical->maximum() / 2;
-        ui->horizontalSlider_ZoomGraphical->setValue(_zoomValue);
-    }
-    ui->graphicsView->centerOn(bounds.center());
 }
 
 
 void MainWindow::on_actionDrawLine_triggered() {
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!checkSelectedDrawIcons() && ui->actionDrawLine->isChecked()) {
-        ui->graphicsView->setCursor(Qt::SizeHorCursor);
-        ui->actionDrawLine->setChecked(true);
-        // Ative a ferramenta de desenho de linha
-        scene->setAction(ui->actionDrawLine);
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::LINE); // Enumeração que representa o modo de desenho de linha
-    } else {
-        unselectDrawIcons();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawLineTriggered();
     }
 }
 
 
 void MainWindow::on_actionDrawRectangle_triggered() {
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    // Ative a ferramenta de desenho de retangulo
-    if (!checkSelectedDrawIcons() && ui->actionDrawRectangle->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        ui->actionDrawRectangle->setChecked(true);
-        scene->setAction(ui->actionDrawRectangle);
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::RECTANGLE);
-    } else {
-        unselectDrawIcons();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawRectangleTriggered();
     }
 }
 
 
 void MainWindow::on_actionDrawEllipse_triggered() {
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    // Ative a ferramenta de desenho de ellipse
-    if (!checkSelectedDrawIcons() && ui->actionDrawEllipse->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        ui->actionDrawEllipse->setChecked(true);
-        scene->setAction(ui->actionDrawEllipse);
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::ELLIPSE);
-    } else {
-        unselectDrawIcons();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawEllipseTriggered();
     }
 }
 
-void MainWindow::on_actionDrawText_triggered()
-{
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!checkSelectedDrawIcons() && ui->actionDrawText->isChecked()) {
-        ui->actionDrawText->setChecked(true);
-        scene->setAction(ui->actionDrawText);
-        // Ative a ferramenta de desenho do texto
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::TEXT);
-    } else {
-        unselectDrawIcons();
+void MainWindow::on_actionDrawText_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawTextTriggered();
     }
 }
 
-void MainWindow::on_actionDrawPoligon_triggered()
-{
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!checkSelectedDrawIcons() && ui->actionDrawPoligon->isChecked()) {
-        ui->graphicsView->setCursor(Qt::ArrowCursor);
-        ui->actionDrawPoligon->setChecked(true);
-        scene->setAction(ui->actionDrawPoligon);
-        // Ative a ferramenta de desenho do polygon
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::POLYGON);
-    } else {
-        unselectDrawIcons();
+void MainWindow::on_actionDrawPoligon_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawPoligonTriggered();
     }
 }
 
@@ -563,35 +525,24 @@ void MainWindow::on_actionAlignLeft_triggered()
     _showMessageNotImplemented();
 }
 
-void MainWindow::on_actionAnimateCounter_triggered()
-{
-    if (!checkSelectedDrawIcons() && ui->actionAnimateCounter->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        myScene()->setAction(ui->actionAnimateCounter);
-        myScene()->drawingCounter();
-    } else {
-        unselectDrawIcons();
+void MainWindow::on_actionAnimateCounter_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateCounterTriggered();
     }
 }
 
 void MainWindow::on_actionAnimateVariable_triggered() {
-    if (!checkSelectedDrawIcons() && ui->actionAnimateVariable->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        myScene()->setAction(ui->actionAnimateVariable);
-        myScene()->drawingVariable();
-    } else {
-        unselectDrawIcons();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateVariableTriggered();
     }
 }
 
-void MainWindow::on_actionAnimateSimulatedTime_triggered()
-{
-    if (!checkSelectedDrawIcons() && ui->actionAnimateSimulatedTime->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        myScene()->setAction(ui->actionAnimateSimulatedTime);
-        myScene()->drawingTimer();
-    } else {
-        unselectDrawIcons();
+void MainWindow::on_actionAnimateSimulatedTime_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateSimulatedTimeTriggered();
     }
 }
 
@@ -1005,11 +956,11 @@ void MainWindow::on_treeWidgetDataDefnitions_itemChanged(QTreeWidgetItem *item, 
 }
 
 
-void MainWindow::on_actionShowSnap_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    // Sincroniza o snap com o estado checkado da action de forma determinística.
-    scene->setSnapToGrid(ui->actionShowSnap->isChecked());
+void MainWindow::on_actionShowSnap_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowSnapTriggered();
+    }
 }
 
 void MainWindow::on_actionViewGroup_triggered()
@@ -1029,57 +980,57 @@ void MainWindow::on_actionViewUngroup_triggered()
     }
 }
 
-void MainWindow::on_actionArranjeLeft_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(0);
+void MainWindow::on_actionArranjeLeft_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeLeftTriggered();
+    }
 }
 
 
-void MainWindow::on_actionArranjeCenter_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(4);
+void MainWindow::on_actionArranjeCenter_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeCenterTriggered();
+    }
 }
 
 
-void MainWindow::on_actionArranjeRight_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(1);
+void MainWindow::on_actionArranjeRight_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeRightTriggered();
+    }
 }
 
 
-void MainWindow::on_actionArranjeTop_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(2);
+void MainWindow::on_actionArranjeTop_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeTopTriggered();
+    }
 }
 
 
-void MainWindow::on_actionArranjeMiddle_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(5);
+void MainWindow::on_actionArranjeMiddle_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeMiddleTriggered();
+    }
 }
 
 
-void MainWindow::on_actionArranjeBototm_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(3);
+void MainWindow::on_actionArranjeBototm_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeBototmTriggered();
+    }
 }
 
-void MainWindow::on_actionGModelShowConnect_triggered()
-{
-    if (!ui->actionGModelShowConnect->isChecked() && !_firstClickShowConnection) {
-        ui->actionGModelShowConnect->setChecked(false);
-        ui->graphicsView->getScene()->setConnectingStep(0);
-        ui->graphicsView->setCursor(Qt::ArrowCursor);
-    } else {
-        ui->actionGModelShowConnect->setChecked(true);
-        ui->graphicsView->getScene()->setConnectingStep(1);
-        _firstClickShowConnection = false;
+void MainWindow::on_actionGModelShowConnect_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionGModelShowConnectTriggered();
     }
 }
 
@@ -1095,63 +1046,34 @@ void MainWindow::on_actionSimulatorsPluginManager_triggered()
 //}
 
 
-void MainWindow::on_actionActivateGraphicalSimulation_triggered()
-{
-    bool visivible = true;
-
-    if (!ui->actionActivateGraphicalSimulation->isChecked()) {
-        AnimationTransition::setRunning(false);
-        visivible = false;
-    } else {
-        AnimationTransition::setRunning(true);
-    }
-
-    // Esconde ou exibe animação de fila
-    QList<QGraphicsItem *> *componentes = myScene()->getGraphicalModelComponents();
-
-    for (QGraphicsItem* item : *componentes) {
-        if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *>(item)) {
-            component->visivibleImageQueue(visivible);
-        }
+void MainWindow::on_actionActivateGraphicalSimulation_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionActivateGraphicalSimulationTriggered();
     }
 }
 
 
-void MainWindow::on_horizontalSliderAnimationSpeed_valueChanged(int value)
-{
-    double newValue = ((double) value) / 2;
-
-    AnimationTransition::setTimeExecution(newValue);
-}
-
-
-void MainWindow::on_actionDiagrams_triggered()
-{
-    // Uses the active scene as the single source of truth for persisted diagram state.
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    if (ui->actionDiagrams->isChecked()) {
-        // Creates diagram structures on demand when load restored diagrams=1 but none exist yet.
-        if (!scene->existDiagram()) scene->createDiagrams();
-        // Shows diagrams only after creation to fully restore persisted visibility.
-        scene->showDiagrams();
-    } else {
-        // Hides diagrams only when they already exist to avoid side effects during load.
-        if (scene->existDiagram()) scene->hideDiagrams();
-    }
-    // Re-syncs QAction with effective visibility to keep UI and scene flags coherent.
-    const bool diagramsVisible = scene->existDiagram() && scene->visibleDiagram();
-    if (ui->actionDiagrams->isChecked() != diagramsVisible) {
-        ui->actionDiagrams->setChecked(diagramsVisible);
+void MainWindow::on_horizontalSliderAnimationSpeed_valueChanged(int value) {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onHorizontalSliderAnimationSpeedValueChanged(value);
     }
 }
 
 
-void MainWindow::on_actionSelectAll_triggered()
-{
-    QList<QGraphicsItem *> itensToScene = myScene()->items();
+void MainWindow::on_actionDiagrams_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDiagramsTriggered();
+    }
+}
 
-    foreach (QGraphicsItem* item, itensToScene) {
-        item->setSelected(true);
+
+void MainWindow::on_actionSelectAll_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionSelectAllTriggered();
     }
 }
 
@@ -1215,13 +1137,17 @@ void MainWindow::on_tabWidget_Model_tabBarClicked(int index) {
 }
 
 void MainWindow::on_checkBox_ShowElements_stateChanged(int arg1) {
-    ui->actionShowAttachedElements->setChecked(arg1 == Qt::Checked);
-    bool result = _createModelImage();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowElementsStateChanged(arg1);
+    }
 }
 
 void MainWindow::on_checkBox_ShowInternals_stateChanged(int arg1) {
-    ui->actionShowInternalElements->setChecked(arg1 == Qt::Checked);
-    bool result = _createModelImage();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowInternalsStateChanged(arg1);
+    }
 }
 
 void MainWindow::on_horizontalSlider_Zoom_valueChanged(int value) {
@@ -1243,11 +1169,17 @@ void MainWindow::on_horizontalSlider_Zoom_valueChanged(int value) {
 }
 
 void MainWindow::on_checkBox_ShowRecursive_stateChanged(int arg1) {
-    bool result = _createModelImage();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowRecursiveStateChanged(arg1);
+    }
 }
 
 void MainWindow::on_checkBox_ShowLevels_stateChanged(int arg1) {
-    bool result = _createModelImage();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowLevelsStateChanged(arg1);
+    }
 }
 
 void MainWindow::on_tabWidget_Debug_currentChanged(int index) {
@@ -1374,13 +1306,17 @@ void MainWindow::on_graphicsView_rubberBandChanged(const QRect &viewportRect, co
 }
 
 void MainWindow::on_horizontalSlider_ZoomGraphical_valueChanged(int value) {
-    double factor = (value - _zoomValue)*0.002;
-    _zoomValue = value;
-    _gentle_zoom(1.0 + factor);
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onHorizontalSliderZoomGraphicalValueChanged(value);
+    }
 }
 
 void MainWindow::on_actionConnect_triggered() {
-    ((ModelGraphicsView*) ui->graphicsView)->beginConnection();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionConnectTriggered();
+    }
 }
 
 void MainWindow::on_pushButton_Export_clicked() {
@@ -1469,20 +1405,16 @@ void MainWindow::on_actionGModelComponentBreakpoint_triggered() {
 }
 
 void MainWindow::on_actionShowInternalElements_triggered() {
-    const bool checked = ui->actionShowInternalElements->isChecked();
-    if (ui->checkBox_ShowInternals->isChecked() != checked) {
-        ui->checkBox_ShowInternals->setChecked(checked);
-    } else {
-        _createModelImage();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowInternalElementsTriggered();
     }
 }
 
 void MainWindow::on_actionShowAttachedElements_triggered() {
-    const bool checked = ui->actionShowAttachedElements->isChecked();
-    if (ui->checkBox_ShowElements->isChecked() != checked) {
-        ui->checkBox_ShowElements->setChecked(checked);
-    } else {
-        _createModelImage();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowAttachedElementsTriggered();
     }
 }
 
