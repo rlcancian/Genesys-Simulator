@@ -195,7 +195,7 @@ void MainWindow::on_actionAboutLicence_triggered() {
 }
 
 void MainWindow::on_actionAboutGetInvolved_triggered() {
-    QMessageBox::about(this, "Get Inveolved", "Genesys is a free open-source simulator (and tools) available at 'https://github.com/rlcancian/Genesys-Simulator'. Help us by submiting your pull requests containing code improvements. Contact: rafael.cancian@ufsc.br");
+    QMessageBox::about(this, "Get Involved", "Genesys is a free open-source simulator (and tools) available at 'https://github.com/rlcancian/Genesys-Simulator'. Help us by submiting your pull requests containing code improvements. Contact: rafael.cancian@ufsc.br");
 }
 
 void MainWindow::on_actionEditUndo_triggered() {

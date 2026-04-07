@@ -1,24 +1,38 @@
 #ifndef DATACOMPONENTEDITOR_H
 #define DATACOMPONENTEDITOR_H
 
+#include <functional>
 #include <iostream>
 
+#include <QObject>
 #include <QWidget>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
 #include <QPushButton>
 #include <QInputDialog>
 
-#include "DataComponentProperty.h"
-
 #include "../../../../kernel/simulator/PropertyGenesys.h"
 
+class DataComponentProperty;
+class ComboBoxEnum;
 
 class DataComponentEditor : public QObject {
 public:
-    DataComponentEditor(PropertyEditorGenesys* editor, SimulationControl* property);
-    DataComponentEditor(PropertyEditorGenesys* editor, List<SimulationControl*>* properties);
-    ~DataComponentEditor();
+    using AfterChange = std::function<void()>;
+
+    DataComponentEditor(
+        PropertyEditorGenesys* editor,
+        SimulationControl* property,
+        AfterChange afterChange = {}
+        );
+
+    DataComponentEditor(
+        PropertyEditorGenesys* editor,
+        List<SimulationControl*>* properties,
+        AfterChange afterChange = {}
+        );
+
+    ~DataComponentEditor() override = default;
 
 public:
     void open_window(SimulationControl* property);
@@ -27,14 +41,20 @@ public:
     void configure_properties(SimulationControl* property);
     void configure_properties(List<SimulationControl*>* properties);
 
-    void editProperty(PropertyEditorGenesys* editor, SimulationControl* property);
-    void editProperty(PropertyEditorGenesys* editor, List<SimulationControl*>* properties);
+private:
+    void _notifyChanged();
+
+    void editProperty(SimulationControl* property);
+    void editProperty(List<SimulationControl*>* properties);
 
 private:
-    QWidget* _window;
-    QTreeWidget* _view;
-    QPushButton* _edit;
-    QInputDialog* _newValue;
+    QWidget* _window = nullptr;
+    QTreeWidget* _view = nullptr;
+    QPushButton* _edit = nullptr;
+    QInputDialog* _newValue = nullptr;
+
+    PropertyEditorGenesys* _editor = nullptr;
+    AfterChange _afterChange;
 };
 
 #endif // DATACOMPONENTEDITOR_H

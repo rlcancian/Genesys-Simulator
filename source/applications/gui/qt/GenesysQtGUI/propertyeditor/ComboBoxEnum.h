@@ -1,29 +1,58 @@
-#ifndef COMBOBOXENUM_H
-#define COMBOBOXENUM_H
+#include "ComboBoxEnum.h"
 
-#include <iostream>
+#include <utility>
 
-#include <QWidget>
-#include <QComboBox>
+ComboBoxEnum::ComboBoxEnum(
+    PropertyEditorGenesys* editor,
+    SimulationControl* property,
+    AfterChange afterChange
+    ) : _editor(editor), _property(property), _afterChange(std::move(afterChange)) {
 
-#include "../../../../kernel/simulator/PropertyGenesys.h"
+    _window = new QWidget;
+    _comboBox = new QComboBox(_window);
 
+    configure_options(property);
+    if (property != nullptr) {
+        _comboBox->setCurrentText(QString::fromStdString(property->getValue()));
+    }
 
-class ComboBoxEnum : public QObject {
-public:
-    ComboBoxEnum(PropertyEditorGenesys* editor, SimulationControl* property);
-    ~ComboBoxEnum();
+    _window->setFixedSize(160, 28);
 
-public:
-    void open_box();
-    void configure_options(SimulationControl* property);
+    QObject::connect(
+        _comboBox,
+        static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+        this,
+        &ComboBoxEnum::changeValue
+        );
+}
 
-private Q_SLOTS:
-    void changeValue(PropertyEditorGenesys* editor, SimulationControl* property);
+void ComboBoxEnum::open_box() {
+    _window->show();
+    _window->raise();
+    _window->activateWindow();
+    _comboBox->showPopup();
+}
 
-private:
-    QWidget* _window;
-    QComboBox* _comboBox;
-};
+void ComboBoxEnum::configure_options(SimulationControl* property) {
+    _comboBox->clear();
+    if (property == nullptr || property->getStrValues() == nullptr) {
+        return;
+    }
 
-#endif // COMBOBOXENUM_H
+    List<std::string>* values = property->getStrValues();
+    for (const std::string& item : *values->list()) {
+        _comboBox->addItem(QString::fromStdString(item));
+    }
+    delete values;
+}
+
+void ComboBoxEnum::changeValue() {
+    if (_editor == nullptr || _property == nullptr) {
+        return;
+    }
+
+    _editor->changeProperty(_property, std::to_string(_comboBox->currentIndex()));
+    if (_afterChange) {
+        _afterChange();
+    }
+}
