@@ -25,6 +25,7 @@ typedef bool (*checkProportionFunction)(double value);
  */
 class HypothesisTester_if {
 public:
+	virtual ~HypothesisTester_if() = default;
 
 	class ConfidenceInterval {
 	public:
@@ -152,4 +153,3 @@ public:
 };
 
 #endif /* HYPOTHESISTESTER_IF_H */
-

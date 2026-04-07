@@ -24,6 +24,7 @@
  */
 class CollectorDatafile_if : public Collector_if {
 public:
+	virtual ~CollectorDatafile_if() = default;
 	/*!
 	 * \brief getValue
 	 * \param rank
@@ -54,4 +55,3 @@ public:
 };
 
 #endif /* COLLECTORDATAFILE_IF_H */
-
