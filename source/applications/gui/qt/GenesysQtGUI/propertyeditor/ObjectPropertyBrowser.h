@@ -49,6 +49,7 @@ private:
     };
 
 private:
+    void _notifyModelChangeApplied();
     void _clearAll();
     void _populateKernelProperties(ModelDataDefinition* mdd);
     QtProperty* _createProperty(const GenesysPropertyDescriptor& desc);
@@ -90,6 +91,9 @@ private slots:
 
 public slots:
     void objectUpdated();
+
+signals:
+    void modelPropertiesChanged();
 };
 
 #endif // OBJECTPROPERTYBROWSER_H
