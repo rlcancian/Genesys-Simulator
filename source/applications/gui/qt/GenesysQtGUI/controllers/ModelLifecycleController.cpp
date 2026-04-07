@@ -1,6 +1,7 @@
 #include "ModelLifecycleController.h"
 
-#include "../ui_mainwindow.h"
+// Use the generated UI header through the project include path for portability across build folders.
+#include "ui_mainwindow.h"
 #include "../dialogs/Dialogmodelinformation.h"
 #include "../dialogs/dialogsimulationconfigure.h"
 #include "../graphicals/ModelGraphicsScene.h"
