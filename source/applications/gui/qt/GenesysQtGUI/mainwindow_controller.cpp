@@ -870,7 +870,7 @@ void MainWindow::on_actionToolsParserGrammarChecker_triggered()
             resultLabel->setText(QObject::tr("Parse success. Evaluated value: %1").arg(value));
             QMessageBox::information(this, QObject::tr("Parser Grammar Checker"), QObject::tr("Expression is valid.\nEvaluated value: %1").arg(value));
         } else {
-            const QString errorText = QString::fromStdString(errorMessage.isEmpty() ? std::string("Unknown parser error.") : errorMessage);
+            const QString errorText = QString::fromStdString(errorMessage.empty() ? std::string("Unknown parser error.") : errorMessage);
             resultLabel->setText(QObject::tr("Parse failed: %1").arg(errorText));
             QMessageBox::warning(this, QObject::tr("Parser Grammar Checker"), QObject::tr("Expression is invalid.\nError: %1").arg(errorText));
         }
