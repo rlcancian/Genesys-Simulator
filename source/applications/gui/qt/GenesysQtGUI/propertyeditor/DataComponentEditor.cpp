@@ -70,11 +70,21 @@ void DataComponentEditor::open_window(List<SimulationControl*>* properties) {
 }
 
 void DataComponentEditor::configure_properties(SimulationControl* property) {
-    if (property == nullptr || property->getProperties() == nullptr) {
+    if (property == nullptr) {
         return;
     }
 
-    for (auto prop : *property->getProperties()->list()) {
+    List<SimulationControl*>* nestedProperties = nullptr;
+    try {
+        nestedProperties = property->getEditableProperties();
+    } catch (...) {
+        return;
+    }
+    if (nestedProperties == nullptr) {
+        return;
+    }
+
+    for (auto prop : *nestedProperties->list()) {
         auto* item = new QTreeWidgetItem(_view);
         item->setText(0, QString::fromStdString(prop->getName()));
         item->setText(1, QString::fromStdString(prop->getValue()));
@@ -96,7 +106,17 @@ void DataComponentEditor::configure_properties(List<SimulationControl*>* propert
 }
 
 void DataComponentEditor::editProperty(SimulationControl* property) {
-    if (property == nullptr || property->getProperties() == nullptr) {
+    if (property == nullptr) {
+        return;
+    }
+
+    List<SimulationControl*>* nestedProperties = nullptr;
+    try {
+        nestedProperties = property->getEditableProperties();
+    } catch (...) {
+        return;
+    }
+    if (nestedProperties == nullptr) {
         return;
     }
 
@@ -106,7 +126,7 @@ void DataComponentEditor::editProperty(SimulationControl* property) {
     }
 
     int index = 0;
-    for (auto prop : *property->getProperties()->list()) {
+    for (auto prop : *nestedProperties->list()) {
         if (index == selectedRow) {
             if (prop->getIsList()) {
                 auto* newList = new DataComponentProperty(_editor, prop, true, _afterChange);

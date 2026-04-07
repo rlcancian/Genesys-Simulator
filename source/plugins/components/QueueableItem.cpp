@@ -82,11 +82,15 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 			if (_queueableType == QueueableItem::QueueableType::QUEUE) {
 				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Queue>(), _queueableName);
 			} else if (_queueableType == QueueableItem::QueueableType::SET) {
-				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Queue>(), _queueableName);
+				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _queueableName);
 			}
 			if (_queueOrSet == nullptr) {
 				auto model = _modeldataManager->getParentModel();
-				_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, _queueableName);
+				if (_queueableType == QueueableItem::QueueableType::SET) {
+					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Set>(model, _queueableName);
+				} else {
+					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, _queueableName);
+				}
 			}
 		}
 		assert(_queueOrSet != nullptr);
@@ -98,12 +102,12 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 
 void QueueableItem::saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	fields->saveField("queueableType", static_cast<int> (_queueableType), static_cast<int> (DEFAULT.queueableType), saveDefaultValues);
-	fields->saveField("queueable", _queueOrSet->getName());
+	fields->saveField("queueable", _queueOrSet != nullptr ? _queueOrSet->getName() : "");
 	fields->saveField("index", _index, DEFAULT.index, saveDefaultValues);
 }
 
 std::string QueueableItem::show() {
-	return "queueType=" + std::to_string(static_cast<int> (_queueableType)) + ",queue=\"" + _queueOrSet->getName() + "\",index=\"" + _index + "\"";
+	return "queueType=" + std::to_string(static_cast<int> (_queueableType)) + ",queue=\"" + (_queueOrSet != nullptr ? _queueOrSet->getName() : "") + "\",index=\"" + _index + "\"";
 }
 
 void QueueableItem::_addProperty(PropertyBase* property) {
@@ -132,7 +136,7 @@ std::string QueueableItem::getName() const {
 
 void QueueableItem::setQueue(Queue* queue) {
 	this->_queueOrSet = queue;
-	_queueableName = queue->getName();
+	_queueableName = queue != nullptr ? queue->getName() : "";
 }
 
 Queue* QueueableItem::getQueue() const {
@@ -141,7 +145,7 @@ Queue* QueueableItem::getQueue() const {
 
 void QueueableItem::setSet(Set* set) {
 	this->_queueOrSet = set;
-	_queueableName = set->getName();
+	_queueableName = set != nullptr ? set->getName() : "";
 }
 
 Set* QueueableItem::getSet() const {

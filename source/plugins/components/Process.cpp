@@ -45,7 +45,8 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 	SimulationControlGenericClassNotDC<QueueableItem*, Model*, QueueableItem>* propQueueableItem = new SimulationControlGenericClassNotDC<QueueableItem*, Model*, QueueableItem>(
 									_parentModel,
 									std::bind(&Process::getQueueableItem, this), std::bind(&Process::setQueueableItem, this, std::placeholders::_1),
-									Util::TypeOf<Process>(), getName(), "QueueableItem", "");
+									Util::TypeOf<Process>(), getName(), "QueueableItem", "", false, true, false,
+									[](Model* model) { return new QueueableItem(model, ""); });
 	// SimulationControlGeneric<std::string>* propdelayExpression = new SimulationControlGeneric<std::string>(
 	// 								std::bind(&Process::delayExpression, this), std::bind(&Process::setDelayExpression, this, std::placeholders::_1),
 	// 								Util::TypeOf<Process>(), getName(), "DelayExpression", "");
