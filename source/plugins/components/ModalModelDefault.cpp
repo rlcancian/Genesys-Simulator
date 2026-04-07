@@ -13,8 +13,12 @@
 
 #include "ModalModelDefault.h"
 #include "../../kernel/simulator/Model.h"
+#include "../../kernel/simulator/Simulator.h"
+#include "../../kernel/simulator/PluginManager.h"
 #include <algorithm>
 #include <cstdlib>
+#include <memory>
+#include <unordered_map>
 
 #include "network/FSMState.h"
 //#include "../../kernel/simulator/Simulator.h"
@@ -151,6 +155,83 @@ bool ModalModelDefault::_loadInstance(PersistenceRecord* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		_maxTransitionsPerDispatch = fields->loadField("maxTransitionsPerDispatch", DEFAULT.maxTransitionsPerDispatch);
+		_timeDelayExpressionPerDispatch = fields->loadField("timeDelayExpressionPerDispatch", DEFAULT.timeDelayExpressionPerDispatch);
+		_timeDelayPerDispatchTimeUnit = fields->loadField("timeDelayPerDispatchTimeUnit", DEFAULT.timeDelayPerDispatchTimeUnit);
+
+		_nodes->clear();
+		_transitions->clear();
+		_entryNode = nullptr;
+		_currentNode = nullptr;
+
+		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
+		std::unordered_map<std::string, DefaultNode*> nodesByName;
+		unsigned int nodesSize = fields->loadField("nodesSize", 0u);
+		for (unsigned int i = 0; i < nodesSize; i++) {
+			const std::string prefix = "node" + Util::StrIndex(i) + ".";
+			auto nodeFields = std::unique_ptr<PersistenceRecord>(fields->newInstance());
+			for (auto it = fields->begin(); it != fields->end(); ++it) {
+				if (it->first.rfind(prefix, 0) == 0) {
+					PersistenceRecord::Entry entry = it->second;
+					entry.first = it->first.substr(prefix.size());
+					nodeFields->insert(entry);
+				}
+			}
+			if (nodeFields->size() == 0) {
+				continue;
+			}
+
+			std::string nodeType = nodeFields->loadField("typename", Util::TypeOf<DefaultNode>());
+			Plugin* nodePlugin = plugins->find(nodeType);
+			if (nodePlugin == nullptr) {
+				traceError("Could not load node plugin \"" + nodeType + "\" while loading ModalModelDefault \"" + getName() + "\"");
+				continue;
+			}
+
+			ModelDataDefinition* loaded = nodePlugin->loadNew(_parentModel, nodeFields.get());
+			DefaultNode* node = dynamic_cast<DefaultNode*>(loaded);
+			if (node == nullptr) {
+				traceError("Loaded modal node is not a DefaultNode for typename \"" + nodeType + "\"");
+				continue;
+			}
+			node->setModelLevel(_id);
+			addNode(node);
+			nodesByName[node->getName()] = node;
+		}
+
+		unsigned int transitionsSize = fields->loadField("transitionsSize", 0u);
+		for (unsigned int i = 0; i < transitionsSize; i++) {
+			const std::string suffix = Util::StrIndex(i);
+			std::string sourceName = fields->loadField("transitionSource" + suffix, "");
+			std::string destinationName = fields->loadField("transitionDestination" + suffix, "");
+			auto sourceIt = nodesByName.find(sourceName);
+			auto destinationIt = nodesByName.find(destinationName);
+			if (sourceIt == nodesByName.end() || destinationIt == nodesByName.end()) {
+				traceError("Skipping modal transition with unknown source/destination while loading \"" + getName() + "\"");
+				continue;
+			}
+			DefaultNodeTransition* transition = new DefaultNodeTransition(sourceIt->second, destinationIt->second,
+				fields->loadField("transitionName" + suffix, "T" + suffix));
+			transition->setGuardExpression(fields->loadField("transitionGuard" + suffix, ""));
+			transition->setOutputExpression(fields->loadField("transitionOutput" + suffix, ""));
+			transition->setInputEvent(fields->loadField("transitionInputEvent" + suffix, ""));
+			transition->setPriority(fields->loadField("transitionPriority" + suffix, 0u));
+			transition->setProbability(fields->loadField("transitionProbability" + suffix, 1.0));
+			transition->setTransitionKind(static_cast<DefaultNodeTransition::TransitionKind>(
+				fields->loadField("transitionKind" + suffix, static_cast<int>(DefaultNodeTransition::TransitionKind::DETERMINISTIC))));
+			addTransition(transition);
+		}
+
+		std::string entryNodeName = fields->loadField("entryNode", "");
+		if (entryNodeName != "") {
+			auto entryIt = nodesByName.find(entryNodeName);
+			if (entryIt != nodesByName.end()) {
+				_entryNode = entryIt->second;
+			}
+		}
+		if (_entryNode == nullptr && _nodes->size() > 0) {
+			_entryNode = _nodes->front();
+		}
+		_currentNode = _entryNode;
 	}
 	return res;
 }
@@ -159,6 +240,48 @@ void ModalModelDefault::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("maxTransitionsPerDispatch", _maxTransitionsPerDispatch, DEFAULT.maxTransitionsPerDispatch,
 	                  saveDefaultValues);
+	fields->saveField("timeDelayExpressionPerDispatch", _timeDelayExpressionPerDispatch,
+	                  DEFAULT.timeDelayExpressionPerDispatch, saveDefaultValues);
+	fields->saveField("timeDelayPerDispatchTimeUnit", _timeDelayPerDispatchTimeUnit,
+	                  DEFAULT.timeDelayPerDispatchTimeUnit, saveDefaultValues);
+	if (_entryNode != nullptr) {
+		fields->saveField("entryNode", _entryNode->getName(), "", saveDefaultValues);
+	}
+
+	fields->saveField("nodesSize", _nodes->size(), 0u, saveDefaultValues);
+	unsigned int i = 0;
+	for (DefaultNode* node : *_nodes->list()) {
+		const std::string prefix = "node" + Util::StrIndex(i) + ".";
+		auto nodeFields = std::unique_ptr<PersistenceRecord>(fields->newInstance());
+		ModelComponent::SaveInstance(nodeFields.get(), node);
+		for (auto it = nodeFields->begin(); it != nodeFields->end(); ++it) {
+			PersistenceRecord::Entry entry = it->second;
+			entry.first = prefix + it->first;
+			fields->insert(entry);
+		}
+		i++;
+	}
+
+	fields->saveField("transitionsSize", _transitions->size(), 0u, saveDefaultValues);
+	i = 0;
+	for (DefaultNodeTransition* transition : *_transitions->list()) {
+		const std::string suffix = Util::StrIndex(i);
+		if (transition->getSource() != nullptr) {
+			fields->saveField("transitionSource" + suffix, transition->getSource()->getName(), "", saveDefaultValues);
+		}
+		if (transition->getDestination() != nullptr) {
+			fields->saveField("transitionDestination" + suffix, transition->getDestination()->getName(), "", saveDefaultValues);
+		}
+		fields->saveField("transitionName" + suffix, transition->getName(), "", saveDefaultValues);
+		fields->saveField("transitionGuard" + suffix, transition->getGuardExpression(), "", saveDefaultValues);
+		fields->saveField("transitionOutput" + suffix, transition->getOutputExpression(), "", saveDefaultValues);
+		fields->saveField("transitionInputEvent" + suffix, transition->getInputEvent(), "", saveDefaultValues);
+		fields->saveField("transitionPriority" + suffix, transition->getPriority(), 0u, saveDefaultValues);
+		fields->saveField("transitionProbability" + suffix, transition->getProbability(), 1.0, saveDefaultValues);
+		fields->saveField("transitionKind" + suffix, static_cast<int>(transition->getTransitionKind()),
+		                  static_cast<int>(DefaultNodeTransition::TransitionKind::DETERMINISTIC), saveDefaultValues);
+		i++;
+	}
 }
 
 bool ModalModelDefault::_check(std::string& errorMessage) {

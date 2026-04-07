@@ -211,14 +211,60 @@ void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 bool PickStation::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_testCondition = static_cast<TestCondition>(fields->loadField("testCondition", static_cast<int>(DEFAULT.testCondition)));
+		_saveAttribute = fields->loadField("saveAttribute", DEFAULT.saveAttribute);
+		_pickConditionExpression = fields->loadField("pickConditionExpression", DEFAULT.pickConditionExpression);
+		_pickConditionNumberInQueue = fields->loadField("pickConditionNumberInQueue", DEFAULT.pickConditionNumberInQueue);
+		_pickConditionNumberBusyResource = fields->loadField("pickConditionNumberBusyResource", DEFAULT.pickConditionNumberBusyResource);
+
+		unsigned int numItems = fields->loadField("pickableStationItems", 0u);
+		for (unsigned int i = 0; i < numItems; i++) {
+			const std::string suffix = Util::StrIndex(i);
+			std::string stationName = fields->loadField("stationName" + suffix, "");
+			if (stationName == "") {
+				continue;
+			}
+			Station* station = dynamic_cast<Station*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
+			PickableStationItem* item = new PickableStationItem(station, std::string(""));
+			std::string queueName = fields->loadField("queueName" + suffix, "");
+			if (queueName != "") {
+				item->setQueue(dynamic_cast<Queue*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queueName)));
+			}
+			std::string resourceName = fields->loadField("resourceName" + suffix, "");
+			if (resourceName != "") {
+				item->setResource(dynamic_cast<Resource*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), resourceName)));
+			}
+			item->setExpression(fields->loadField("expression" + suffix, ""));
+			_pickableStationItens->insert(item);
+		}
 	}
 	return res;
 }
 
 void PickStation::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("testCondition", static_cast<int>(_testCondition), static_cast<int>(DEFAULT.testCondition), saveDefaultValues);
+	fields->saveField("saveAttribute", _saveAttribute, DEFAULT.saveAttribute, saveDefaultValues);
+	fields->saveField("pickConditionExpression", _pickConditionExpression, DEFAULT.pickConditionExpression, saveDefaultValues);
+	fields->saveField("pickConditionNumberInQueue", _pickConditionNumberInQueue, DEFAULT.pickConditionNumberInQueue, saveDefaultValues);
+	fields->saveField("pickConditionNumberBusyResource", _pickConditionNumberBusyResource, DEFAULT.pickConditionNumberBusyResource, saveDefaultValues);
+	fields->saveField("pickableStationItems", _pickableStationItens->size(), 0u, saveDefaultValues);
+
+	unsigned int i = 0;
+	for (PickableStationItem* item : *_pickableStationItens->list()) {
+		const std::string suffix = Util::StrIndex(i);
+		if (item->getStation() != nullptr) {
+			fields->saveField("stationName" + suffix, item->getStation()->getName(), "", saveDefaultValues);
+		}
+		if (item->getQueue() != nullptr) {
+			fields->saveField("queueName" + suffix, item->getQueue()->getName(), "", saveDefaultValues);
+		}
+		if (item->getResource() != nullptr) {
+			fields->saveField("resourceName" + suffix, item->getResource()->getName(), "", saveDefaultValues);
+		}
+		fields->saveField("expression" + suffix, item->getExpression(), "", saveDefaultValues);
+		i++;
+	}
 }
 
 
@@ -269,6 +315,4 @@ void PickStation::_createInternalAndAttachedData() {
 void PickStation::_addProperty(SimulationControl* property) {
 	_properties->insert(property);
 }
-
-
 

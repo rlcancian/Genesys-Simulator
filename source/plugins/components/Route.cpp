@@ -234,7 +234,7 @@ bool Route::_loadInstance(PersistenceRecord *fields) {
 		}
 		if (_routeDestinationType == DestinationType::Label) {
 			std::string stationName = fields->loadField("label", "");
-			Label* label = dynamic_cast<Label*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Station>(), stationName));
+			Label* label = dynamic_cast<Label*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Label>(), stationName));
 			this->_label = label;
 		}
 	}
