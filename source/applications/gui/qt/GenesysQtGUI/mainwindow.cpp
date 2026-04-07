@@ -27,6 +27,8 @@
 #include "controllers/EditCommandController.h"
 // Add Phase 10 controller include for scene/view/drawing command orchestration.
 #include "controllers/SceneToolController.h"
+// Add Phase 11 controller include for dialog/utility orchestration.
+#include "controllers/DialogUtilityController.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -315,6 +317,25 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         [this]() { _actualizeTabPanes(); },
         _zoomValue,
         _firstClickShowConnection);
+
+    // Initialize the Phase 11 dialog-utility controller after UI/simulator dependencies and callbacks are ready.
+    _dialogUtilityController = std::make_unique<DialogUtilityController>(
+        this,
+        simulator,
+        ui,
+        ui->graphicsView,
+        [this]() { _showMessageNotImplemented(); },
+        [this](bool force) { _actualizeDebugBreakpoints(force); },
+        [this]() { return _createModelImage(); },
+        [this]() { _actualizeActions(); },
+        [this]() { _actualizeTabPanes(); },
+        [this]() { return myScene(); },
+        _optimizerPrecision,
+        _optimizerMaxSteps,
+        _parallelizationEnabled,
+        _parallelizationThreads,
+        _parallelizationBatchSize,
+        _lastDataAnalyzerPath);
 
     // Initialize the Phase 7 model-lifecycle controller after simulator/UI/callback dependencies are ready.
     _modelLifecycleController = std::make_unique<ModelLifecycleController>(

@@ -12,6 +12,8 @@
 #include "controllers/EditCommandController.h"
 // Include the Phase 10 controller interface required by scene-tool compatibility wrappers.
 #include "controllers/SceneToolController.h"
+// Include the Phase 11 controller interface required by dialog-utility compatibility wrappers.
+#include "controllers/DialogUtilityController.h"
 
 #include "dialogs/dialogBreakpoint.h"
 #include "dialogs/Dialogmodelinformation.h"
@@ -153,20 +155,28 @@ void MainWindow::on_actionSimulationResume_triggered() {
 
 
 void MainWindow::on_actionAboutAbout_triggered() {
-    QMessageBox::about(this, "About Genesys", "Genesys is a result of teaching and research activities of Professor Dr. Ing Rafael Luiz Cancian. It began in early 2002 as a way to teach students the basics and simulation techniques of systems implemented by other comercial simulation tools, such as Arena. In Genesys development he replicated all the SIMAN language, used by Arena software, and Genesys has become a clone of that tool, including its graphical interface. Genesys allowed the inclusion of new simulation components through dynamic link libraries and also the parallel execution of simulation models in a distributed environment. The development of Genesys continued until 2009, when the professor stopped teaching systems simulation classes. Ten years later the professor starts again to teach systems simulation classes and to carry out scientific research in the area. So in 2019 Genesys is reborn, with new language and programming techniques, and even more ambitious goals.");
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionAboutAboutTriggered();
+    }
 }
+
 
 void MainWindow::on_actionAboutLicence_triggered() {
-    LicenceManager* licman = simulator->getLicenceManager();
-    std::string text = licman->showLicence() + "\n";
-    text += licman->showLimits() + "\n";
-    text += licman->showActivationCode();
-    QMessageBox::about(this, "About Licence", QString::fromStdString(text));
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionAboutLicenceTriggered();
+    }
 }
 
+
 void MainWindow::on_actionAboutGetInvolved_triggered() {
-    QMessageBox::about(this, "Get Involved", "Genesys is a free open-source simulator (and tools) available at 'https://github.com/rlcancian/Genesys-Simulator'. Help us by submiting your pull requests containing code improvements. Contact: rafael.cancian@ufsc.br");
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionAboutGetInvolvedTriggered();
+    }
 }
+
 
 void MainWindow::on_actionEditUndo_triggered() {
     // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
@@ -185,164 +195,24 @@ void MainWindow::on_actionEditRedo_triggered() {
 
 
 void MainWindow::on_actionEditFind_triggered() {
-    // Cria um novo diálogo para Buscar componentes
-    DialogFind *find = new DialogFind(this, ui->graphicsView->getScene());
-
-    // Mostra esse dialogo na tela
-    find->show();
-
-    if (find->exec() == QDialog::Accepted) find->setFocus();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionEditFindTriggered();
+    }
 }
+
 
 
 // void MainWindow::on_actionReplace_triggered() {
 //     _showMessageNotImplemented();
 // }
 void MainWindow::on_actionEditReplace_triggered() {
-    if (ui->TextCodeEditor == nullptr) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionEditReplaceTriggered();
     }
-
-    auto* editor = ui->TextCodeEditor;
-
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Replace"));
-    dialog.setModal(false);
-
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* formLayout = new QFormLayout();
-    auto* findLine = new QLineEdit(&dialog);
-    auto* replaceLine = new QLineEdit(&dialog);
-    auto* caseSensitive = new QCheckBox(tr("Case sensitive"), &dialog);
-    auto* statusLabel = new QLabel(&dialog);
-    statusLabel->setWordWrap(true);
-    statusLabel->setText(tr("Ready."));
-
-    static QString lastFindText;
-    static QString lastReplaceText;
-    findLine->setText(lastFindText);
-    replaceLine->setText(lastReplaceText);
-
-    formLayout->addRow(tr("Find:"), findLine);
-    formLayout->addRow(tr("Replace with:"), replaceLine);
-
-    auto* buttonFindNext = new QPushButton(tr("Find Next"), &dialog);
-    auto* buttonReplace = new QPushButton(tr("Replace"), &dialog);
-    auto* buttonReplaceAll = new QPushButton(tr("Replace All"), &dialog);
-    auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
-
-    auto* actionLayout = new QHBoxLayout();
-    actionLayout->addWidget(buttonFindNext);
-    actionLayout->addWidget(buttonReplace);
-    actionLayout->addWidget(buttonReplaceAll);
-
-    layout->addLayout(formLayout);
-    layout->addWidget(caseSensitive);
-    layout->addLayout(actionLayout);
-    layout->addWidget(statusLabel);
-    layout->addWidget(buttonBox);
-
-    auto findNext = [&]() -> bool {
-        const QString findText = findLine->text();
-        if (findText.isEmpty()) {
-            statusLabel->setText(tr("Enter text to find."));
-            return false;
-        }
-
-        QTextDocument::FindFlags flags;
-        if (caseSensitive->isChecked()) {
-            flags |= QTextDocument::FindCaseSensitively;
-        }
-
-        bool found = editor->find(findText, flags);
-        if (!found) {
-            QTextCursor cursor = editor->textCursor();
-            cursor.movePosition(QTextCursor::Start);
-            editor->setTextCursor(cursor);
-            found = editor->find(findText, flags);
-        }
-
-        if (found) {
-            statusLabel->setText(tr("Occurrence selected."));
-            lastFindText = findText;
-            lastReplaceText = replaceLine->text();
-            return true;
-        }
-
-        statusLabel->setText(tr("No occurrences found."));
-        return false;
-    };
-
-    connect(buttonFindNext, &QPushButton::clicked, &dialog, [&]() {
-        findNext();
-    });
-
-    connect(buttonReplace, &QPushButton::clicked, &dialog, [&]() {
-        const QString findText = findLine->text();
-        if (findText.isEmpty()) {
-            statusLabel->setText(tr("Enter text to find."));
-            return;
-        }
-
-        QTextCursor cursor = editor->textCursor();
-        const bool matchesSelection = cursor.hasSelection() &&
-                ((caseSensitive->isChecked() && cursor.selectedText() == findText) ||
-                 (!caseSensitive->isChecked() && cursor.selectedText().compare(findText, Qt::CaseInsensitive) == 0));
-
-        if (!matchesSelection && !findNext()) {
-            return;
-        }
-
-        cursor = editor->textCursor();
-        if (cursor.hasSelection()) {
-            cursor.insertText(replaceLine->text());
-            editor->setTextCursor(cursor);
-            statusLabel->setText(tr("Occurrence replaced."));
-            lastFindText = findText;
-            lastReplaceText = replaceLine->text();
-            findNext();
-        }
-    });
-
-    connect(buttonReplaceAll, &QPushButton::clicked, &dialog, [&]() {
-        const QString findText = findLine->text();
-        if (findText.isEmpty()) {
-            statusLabel->setText(tr("Enter text to find."));
-            return;
-        }
-
-        QTextDocument::FindFlags flags;
-        if (caseSensitive->isChecked()) {
-            flags |= QTextDocument::FindCaseSensitively;
-        }
-
-        QTextCursor scanCursor(editor->document());
-        scanCursor.movePosition(QTextCursor::Start);
-        int replacements = 0;
-
-        scanCursor.beginEditBlock();
-        while (true) {
-            QTextCursor found = editor->document()->find(findText, scanCursor, flags);
-            if (found.isNull()) {
-                break;
-            }
-            found.insertText(replaceLine->text());
-            scanCursor = found;
-            replacements++;
-        }
-        scanCursor.endEditBlock();
-
-        editor->setFocus();
-        lastFindText = findText;
-        lastReplaceText = replaceLine->text();
-        statusLabel->setText(tr("%1 occurrence(s) replaced.").arg(replacements));
-    });
-
-    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-    findLine->setFocus();
-    dialog.exec();
 }
+
 
 
 void MainWindow::on_actionEditCut_triggered() {
@@ -484,11 +354,13 @@ void MainWindow::on_actionEditDelete_triggered()
 }
 
 
-void MainWindow::on_actionSimulatorPreferences_triggered()
-{
-    DialogSystemPreferences* dialog = new DialogSystemPreferences(this);
-    dialog->show();
+void MainWindow::on_actionSimulatorPreferences_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionSimulatorPreferencesTriggered();
+    }
 }
+
 
 
 void MainWindow::on_actionAlignMiddle_triggered()
@@ -588,60 +460,13 @@ void MainWindow::on_actionEditUngroup_triggered()
 }
 
 
-void MainWindow::on_actionToolsParserGrammarChecker_triggered()
-{
-    // Opens a parser checker dialog and validates expressions through the model parser integration.
-    Model* model = simulator->getModelManager()->current();
-    if (model == nullptr) {
-        QMessageBox::information(this, tr("Parser Grammar Checker"), tr("Open or create a model before checking parser expressions."));
-        return;
+void MainWindow::on_actionToolsParserGrammarChecker_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionToolsParserGrammarCheckerTriggered();
     }
-
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Parser Grammar Checker"));
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* expressionEditor = new QPlainTextEdit(&dialog);
-    expressionEditor->setPlaceholderText(tr("Type an expression to validate, e.g. UNIF(1,5) + 2."));
-    if (ui->TextCodeEditor != nullptr) {
-        const QString selectedText = ui->TextCodeEditor->textCursor().selectedText().trimmed();
-        if (!selectedText.isEmpty()) {
-            expressionEditor->setPlainText(selectedText);
-        }
-    }
-    auto* resultLabel = new QLabel(tr("Provide an expression and click Check."), &dialog);
-    resultLabel->setWordWrap(true);
-    auto* checkButton = new QPushButton(tr("Check"), &dialog);
-    auto* closeButtons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
-
-    layout->addWidget(new QLabel(tr("Expression:"), &dialog));
-    layout->addWidget(expressionEditor);
-    layout->addWidget(resultLabel);
-    layout->addWidget(checkButton);
-    layout->addWidget(closeButtons);
-
-    // Executes parser validation and reports success/failure without closing the checker dialog.
-    connect(checkButton, &QPushButton::clicked, &dialog, [this, model, expressionEditor, resultLabel]() {
-        const std::string expression = expressionEditor->toPlainText().trimmed().toStdString();
-        if (expression.empty()) {
-            resultLabel->setText(QObject::tr("Please enter an expression before checking."));
-            return;
-        }
-        bool success = false;
-        std::string errorMessage;
-        const double value = model->parseExpression(expression, success, errorMessage);
-        if (success) {
-            resultLabel->setText(QObject::tr("Parse success. Evaluated value: %1").arg(value));
-            QMessageBox::information(this, QObject::tr("Parser Grammar Checker"), QObject::tr("Expression is valid.\nEvaluated value: %1").arg(value));
-        } else {
-            const QString errorText = QString::fromStdString(errorMessage.empty() ? std::string("Unknown parser error.") : errorMessage);
-            resultLabel->setText(QObject::tr("Parse failed: %1").arg(errorText));
-            QMessageBox::warning(this, QObject::tr("Parser Grammar Checker"), QObject::tr("Expression is invalid.\nError: %1").arg(errorText));
-        }
-    });
-    connect(closeButtons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-    dialog.exec();
 }
+
 
 
 void MainWindow::on_actionToolsExperimentation_triggered()
@@ -651,166 +476,22 @@ void MainWindow::on_actionToolsExperimentation_triggered()
 }
 
 
-void MainWindow::on_actionToolsOptimizator_triggered()
-{
-    // Provides a minimal optimization preparation dialog based on numeric solver parameters.
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Optimizator"));
-    auto* layout = new QFormLayout(&dialog);
-    auto* precisionInput = new QDoubleSpinBox(&dialog);
-    precisionInput->setDecimals(10);
-    precisionInput->setRange(1e-10, 1.0);
-    precisionInput->setValue(_optimizerPrecision);
-    auto* maxStepsInput = new QSpinBox(&dialog);
-    maxStepsInput->setRange(10, 10000000);
-    maxStepsInput->setValue(static_cast<int>(_optimizerMaxSteps));
-    auto* minInput = new QDoubleSpinBox(&dialog);
-    minInput->setRange(-1e6, 1e6);
-    minInput->setValue(0.0);
-    auto* maxInput = new QDoubleSpinBox(&dialog);
-    maxInput->setRange(-1e6, 1e6);
-    maxInput->setValue(1.0);
-    auto* resultLabel = new QLabel(tr("Run to evaluate ∫x² dx in the informed interval."), &dialog);
-    resultLabel->setWordWrap(true);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-
-    layout->addRow(tr("Precision"), precisionInput);
-    layout->addRow(tr("Max steps"), maxStepsInput);
-    layout->addRow(tr("Integral min"), minInput);
-    layout->addRow(tr("Integral max"), maxInput);
-    layout->addRow(resultLabel);
-    layout->addRow(buttons);
-
-    // Persists optimizer parameters and runs a sample numeric integration to validate the configured setup.
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, precisionInput, maxStepsInput, minInput, maxInput, resultLabel]() {
-        if (maxInput->value() <= minInput->value()) {
-            resultLabel->setText(QObject::tr("Integral max must be greater than min."));
-            return;
-        }
-        _optimizerPrecision = precisionInput->value();
-        _optimizerMaxSteps = static_cast<unsigned int>(maxStepsInput->value());
-        SolverDefaultImpl1 solver(_optimizerPrecision, _optimizerMaxSteps);
-        auto quadratic = [](double x, double) { return x * x; };
-        const double result = solver.integrate(minInput->value(), maxInput->value(), quadratic, 0.0);
-        resultLabel->setText(QObject::tr("Configuration saved. Integral result: %1").arg(result));
-    });
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-
-    dialog.exec();
+void MainWindow::on_actionToolsOptimizator_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionToolsOptimizatorTriggered();
+    }
 }
 
 
-void MainWindow::on_actionToolsDataAnalyzer_triggered()
-{
-    // Opens a dataset workflow that loads numeric values and reports descriptive statistics with summary export.
-    const QString initialPath = _lastDataAnalyzerPath.isEmpty() ? QDir::currentPath() : _lastDataAnalyzerPath;
-    const QString fileName = QFileDialog::getOpenFileName(
-        this,
-        tr("Open Dataset"),
-        initialPath,
-        tr("Data files (*.csv *.txt *.dat);;All files (*.*)"),
-        nullptr,
-        QFileDialog::DontUseNativeDialog);
-    if (fileName.isEmpty()) {
-        return;
+
+void MainWindow::on_actionToolsDataAnalyzer_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionToolsDataAnalyzerTriggered();
     }
-    // Persists the last visited dataset folder for the next analyzer execution.
-    _lastDataAnalyzerPath = QFileInfo(fileName).absolutePath();
-
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        QMessageBox::warning(this, tr("Data Analyzer"), tr("Could not open selected file."));
-        return;
-    }
-
-    QTextStream stream(&file);
-    QList<double> numericValues;
-    QStringList previewLines;
-    while (!stream.atEnd()) {
-        const QString line = stream.readLine();
-        if (previewLines.size() < 10) {
-            previewLines << line;
-        }
-        const QStringList tokens = line.split(QRegularExpression("[,;\\s]+"), Qt::SkipEmptyParts);
-        for (const QString& token : tokens) {
-            bool ok = false;
-            const double value = token.toDouble(&ok);
-            if (ok) {
-                numericValues << value;
-            }
-        }
-    }
-    file.close();
-
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Data Analyzer"));
-    auto* layout = new QVBoxLayout(&dialog);
-    auto* summaryLabel = new QLabel(&dialog);
-    summaryLabel->setWordWrap(true);
-    auto* preview = new QTextEdit(&dialog);
-    preview->setReadOnly(true);
-    auto* closeButtons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
-    auto* exportSummaryButton = new QPushButton(tr("Save Summary"), &dialog);
-
-    if (numericValues.isEmpty()) {
-        summaryLabel->setText(tr("No numeric values were detected in the selected file."));
-    } else {
-        double minValue = numericValues.first();
-        double maxValue = numericValues.first();
-        double sum = 0.0;
-        for (double value : numericValues) {
-            minValue = std::min(minValue, value);
-            maxValue = std::max(maxValue, value);
-            sum += value;
-        }
-        const double mean = sum / static_cast<double>(numericValues.size());
-        // Computes variance and standard deviation to provide a concrete analysis output.
-        double squaredDiffSum = 0.0;
-        for (double value : numericValues) {
-            const double diff = value - mean;
-            squaredDiffSum += diff * diff;
-        }
-        const double standardDeviation = std::sqrt(squaredDiffSum / static_cast<double>(numericValues.size()));
-        summaryLabel->setText(tr("File: %1\nNumeric samples: %2\nMin: %3\nMax: %4\nMean: %5\nStd Dev: %6")
-                              .arg(fileName)
-                              .arg(numericValues.size())
-                              .arg(minValue)
-                              .arg(maxValue)
-                              .arg(mean)
-                              .arg(standardDeviation));
-    }
-    preview->setPlainText(previewLines.join("\n"));
-
-    layout->addWidget(summaryLabel);
-    layout->addWidget(new QLabel(tr("Preview (first 10 lines):"), &dialog));
-    layout->addWidget(preview);
-    layout->addWidget(exportSummaryButton);
-    layout->addWidget(closeButtons);
-    // Saves the current analysis summary into a text file selected by the user.
-    connect(exportSummaryButton, &QPushButton::clicked, &dialog, [this, summaryLabel]() {
-        const QString exportPath = QFileDialog::getSaveFileName(
-            this,
-            tr("Save Data Analyzer Summary"),
-            QDir::currentPath() + "/data-analyzer-summary.txt",
-            tr("Text files (*.txt);;All files (*.*)"),
-            nullptr,
-            QFileDialog::DontUseNativeDialog);
-        if (exportPath.isEmpty()) {
-            return;
-        }
-        QFile outputFile(exportPath);
-        if (!outputFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
-            QMessageBox::warning(this, tr("Data Analyzer"), tr("Could not save summary file."));
-            return;
-        }
-        QTextStream out(&outputFile);
-        out << summaryLabel->text() << "\n";
-        outputFile.close();
-        statusBar()->showMessage(tr("Data analysis summary saved to %1").arg(exportPath), 4000);
-    });
-    connect(closeButtons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    dialog.exec();
 }
+
 
 
 void MainWindow::on_actionAnimatePlot_triggered()
@@ -819,58 +500,13 @@ void MainWindow::on_actionAnimatePlot_triggered()
 }
 
 
-void MainWindow::on_actionViewConfigure_triggered()
-{
-    // Opens a compact view configuration dialog initialized from the effective scene and view backend states.
-    ModelGraphicsScene* scene = myScene();
-    if (scene == nullptr) {
-        return;
+void MainWindow::on_actionViewConfigure_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionViewConfigureTriggered();
     }
-
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Configure View"));
-    auto* layout = new QFormLayout(&dialog);
-    auto* showGrid = new QCheckBox(tr("Show grid"), &dialog);
-    auto* showRule = new QCheckBox(tr("Show ruler"), &dialog);
-    auto* showGuides = new QCheckBox(tr("Show guides"), &dialog);
-    auto* snapToGrid = new QCheckBox(tr("Snap to grid"), &dialog);
-    auto* gridInterval = new QSpinBox(&dialog);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-
-    showGrid->setChecked(scene->isGridVisible());
-    showRule->setChecked(ui->graphicsView->isRuleVisible());
-    showGuides->setChecked(ui->graphicsView->isGuidesVisible());
-    snapToGrid->setChecked(ui->actionShowSnap->isChecked());
-    gridInterval->setRange(5, 200);
-    gridInterval->setValue(static_cast<int>(scene->grid()->interval));
-
-    layout->addRow(showGrid);
-    layout->addRow(showRule);
-    layout->addRow(showGuides);
-    layout->addRow(snapToGrid);
-    layout->addRow(tr("Grid interval"), gridInterval);
-    layout->addRow(buttons);
-
-    // Applies each configured option through existing action/back-end paths to keep menu and view synchronized.
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, scene, showGrid, showRule, showGuides, snapToGrid, gridInterval, &dialog]() {
-        scene->grid()->interval = static_cast<unsigned int>(gridInterval->value());
-        if (scene->isGridVisible()) {
-            scene->setGridVisible(false);
-            scene->setGridVisible(true);
-        }
-        ui->actionShowGrid->setChecked(showGrid->isChecked());
-        on_actionShowGrid_triggered();
-        ui->actionShowRule->setChecked(showRule->isChecked());
-        on_actionShowRule_triggered();
-        ui->actionShowGuides->setChecked(showGuides->isChecked());
-        on_actionShowGuides_triggered();
-        ui->actionShowSnap->setChecked(snapToGrid->isChecked());
-        scene->setSnapToGrid(snapToGrid->isChecked());
-        dialog.accept();
-    });
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    dialog.exec();
 }
+
 
 //void MainWindow::on_actionConfigure_triggered() {//?????????????????????????
 //}
@@ -1034,11 +670,13 @@ void MainWindow::on_actionGModelShowConnect_triggered() {
     }
 }
 
-void MainWindow::on_actionSimulatorsPluginManager_triggered()
-{
-    DialogPluginManager* dialog = new DialogPluginManager(this);
-    dialog->show();
+void MainWindow::on_actionSimulatorsPluginManager_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionSimulatorsPluginManagerTriggered();
+    }
 }
+
 
 //void MainWindow::on_actionteste_triggered()
 //{
@@ -1077,49 +715,13 @@ void MainWindow::on_actionSelectAll_triggered() {
     }
 }
 
-void MainWindow::on_actionParallelization_triggered()
-{
-    // Opens a minimal parallelization configuration flow persisted in the GUI session.
-    QDialog dialog(this);
-    dialog.setWindowTitle(tr("Parallelization"));
-    auto* layout = new QFormLayout(&dialog);
-    auto* enabled = new QCheckBox(tr("Enable parallel execution preparation"), &dialog);
-    auto* threads = new QSpinBox(&dialog);
-    auto* batchSize = new QSpinBox(&dialog);
-    auto* statusLabel = new QLabel(&dialog);
-    statusLabel->setWordWrap(true);
-    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
-
-    enabled->setChecked(_parallelizationEnabled);
-    threads->setRange(1, 256);
-    threads->setValue(_parallelizationThreads);
-    batchSize->setRange(1, 1000000);
-    batchSize->setValue(_parallelizationBatchSize);
-
-    layout->addRow(enabled);
-    layout->addRow(tr("Worker threads"), threads);
-    layout->addRow(tr("Batch size"), batchSize);
-    layout->addRow(statusLabel);
-    layout->addRow(buttons);
-
-    // Persists parallelization preparation settings and publishes the applied values in the status bar.
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, enabled, threads, batchSize, statusLabel, &dialog]() {
-        _parallelizationEnabled = enabled->isChecked();
-        _parallelizationThreads = threads->value();
-        _parallelizationBatchSize = batchSize->value();
-        statusLabel->setText(QObject::tr("Configuration saved: enabled=%1, threads=%2, batch size=%3")
-                             .arg(_parallelizationEnabled ? QObject::tr("true") : QObject::tr("false"))
-                             .arg(_parallelizationThreads)
-                             .arg(_parallelizationBatchSize));
-        statusBar()->showMessage(QObject::tr("Parallelization prepared: enabled=%1, threads=%2, batch size=%3")
-                                 .arg(_parallelizationEnabled ? QObject::tr("true") : QObject::tr("false"))
-                                 .arg(_parallelizationThreads)
-                                 .arg(_parallelizationBatchSize), 5000);
-        dialog.accept();
-    });
-    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
-    dialog.exec();
+void MainWindow::on_actionParallelization_triggered() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionParallelizationTriggered();
+    }
 }
+
 
 void MainWindow::on_horizontalSlider_ZoomGraphical_actionTriggered(int action)
 {
@@ -1187,93 +789,20 @@ void MainWindow::on_tabWidget_Debug_currentChanged(int index) {
 }
 
 void MainWindow::on_pushButton_Breakpoint_Insert_clicked() {
-    Model* model = simulator->getModelManager()->current();
-    if (model == nullptr) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onPushButtonBreakpointInsertClicked();
     }
-    ModelSimulation* sim = model->getSimulation();
-    if (sim == nullptr) {
-        return;
-    }
-
-    dialogBreakpoint dialog;
-    dialog.setModal(true);
-    dialog.setMVCModel(simulator);
-    if (dialog.exec() != QDialog::Accepted) {
-        return;
-    }
-
-    std::unique_ptr<dialogBreakpoint::MVCResult> result(dialog.getMVCResult());
-    if (!result) {
-        return;
-    }
-
-    if (result->type == "Time") {
-        const double onTime = QString::fromStdString(result->on).toDouble();
-        if (sim->getBreakpointsOnTime()->find(onTime) == sim->getBreakpointsOnTime()->list()->end()) {
-            sim->getBreakpointsOnTime()->insert(onTime);
-        }
-    } else if (result->type == "Entity") {
-        ModelDataDefinition* dataDef = model->getDataManager()->getDataDefinition(Util::TypeOf<Entity>(), result->on);
-        Entity* entity = dynamic_cast<Entity*> (dataDef);
-        if (entity != nullptr && sim->getBreakpointsOnEntity()->find(entity) == sim->getBreakpointsOnEntity()->list()->end()) {
-            sim->getBreakpointsOnEntity()->insert(entity);
-        }
-    } else if (result->type == "Component") {
-        ModelComponent* comp = model->getComponentManager()->find(result->on);
-        if (comp != nullptr && sim->getBreakpointsOnComponent()->find(comp) == sim->getBreakpointsOnComponent()->list()->end()) {
-            sim->getBreakpointsOnComponent()->insert(comp);
-        }
-    }
-
-    _actualizeDebugBreakpoints(true);
 }
+
 
 void MainWindow::on_pushButton_Breakpoint_Remove_clicked() {
-    Model* model = simulator->getModelManager()->current();
-    if (model == nullptr) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onPushButtonBreakpointRemoveClicked();
     }
-    ModelSimulation* sim = model->getSimulation();
-    if (sim == nullptr) {
-        return;
-    }
-
-    int row = ui->tableWidget_Breakpoints->currentRow();
-    if (row < 0 && ui->tableWidget_Breakpoints->selectionModel() != nullptr) {
-        const QModelIndexList selectedRows = ui->tableWidget_Breakpoints->selectionModel()->selectedRows();
-        if (!selectedRows.isEmpty()) {
-            row = selectedRows.first().row();
-        }
-    }
-    if (row < 0) {
-        return;
-    }
-    QTableWidgetItem* typeItem = ui->tableWidget_Breakpoints->item(row, 1);
-    QTableWidgetItem* onItem = ui->tableWidget_Breakpoints->item(row, 2);
-    if (typeItem == nullptr || onItem == nullptr) {
-        return;
-    }
-
-    const std::string type = typeItem->text().toStdString();
-    const std::string on = onItem->text().toStdString();
-    if (type == "Time") {
-        sim->getBreakpointsOnTime()->remove(QString::fromStdString(on).toDouble());
-    } else if (type == "Entity") {
-        ModelDataDefinition* dataDef = model->getDataManager()->getDataDefinition(Util::TypeOf<Entity>(), on);
-        Entity* entity = dynamic_cast<Entity*> (dataDef);
-        if (entity != nullptr) {
-            sim->getBreakpointsOnEntity()->remove(entity);
-        }
-    } else if (type == "Component") {
-        ModelComponent* comp = model->getComponentManager()->find(on);
-        if (comp != nullptr) {
-            sim->getBreakpointsOnComponent()->remove(comp);
-        }
-    }
-
-    _actualizeDebugBreakpoints(true);
 }
+
 
 void MainWindow::on_tabWidgetCentral_currentChanged(int index) {
     _actualizeTabPanes();
@@ -1320,61 +849,12 @@ void MainWindow::on_actionConnect_triggered() {
 }
 
 void MainWindow::on_pushButton_Export_clicked() {
-    QPixmap modelPixmap = ui->label_ModelGraphic->pixmap();
-    if (modelPixmap.isNull()) {
-        _createModelImage();
-        modelPixmap = ui->label_ModelGraphic->pixmap();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onPushButtonExportClicked();
     }
-
-    if (modelPixmap.isNull()) {
-        ModelGraphicsScene* scene = ui->graphicsView->getScene();
-        if (scene == nullptr || scene->items().isEmpty()) {
-            QMessageBox::information(this, tr("Export Diagram"), tr("There is no diagram/image available to export."));
-            return;
-        }
-
-        QRectF bounds = scene->itemsBoundingRect();
-        if (!bounds.isValid() || bounds.isEmpty()) {
-            QMessageBox::information(this, tr("Export Diagram"), tr("There is no diagram/image available to export."));
-            return;
-        }
-
-        QImage image(bounds.size().toSize() + QSize(20, 20), QImage::Format_ARGB32_Premultiplied);
-        image.fill(Qt::white);
-        QPainter painter(&image);
-        painter.setRenderHint(QPainter::Antialiasing, true);
-        painter.translate(-bounds.topLeft() + QPointF(10.0, 10.0));
-        scene->render(&painter);
-        painter.end();
-        modelPixmap = QPixmap::fromImage(image);
-    }
-
-    const QString defaultName = QDir::currentPath() + "/model-diagram.png";
-    const QString filters = tr("PNG Image (*.png);;JPEG Image (*.jpg *.jpeg);;Bitmap Image (*.bmp)");
-    QString selectedFilter;
-    QString fileName = QFileDialog::getSaveFileName(this, tr("Export Diagram"), defaultName, filters, &selectedFilter, QFileDialog::DontUseNativeDialog);
-    if (fileName.isEmpty()) {
-        return;
-    }
-
-    QString format = "PNG";
-    if (selectedFilter.contains("*.jpg") || selectedFilter.contains("*.jpeg")) {
-        format = "JPG";
-    } else if (selectedFilter.contains("*.bmp")) {
-        format = "BMP";
-    }
-
-    if (QFileInfo(fileName).suffix().isEmpty()) {
-        fileName += "." + format.toLower();
-    }
-
-    if (!modelPixmap.save(fileName, format.toStdString().c_str())) {
-        QMessageBox::warning(this, tr("Export Diagram"), tr("Could not export diagram to file."));
-        return;
-    }
-
-    QMessageBox::information(this, tr("Export Diagram"), tr("Diagram exported successfully."));
 }
+
 
 void MainWindow::on_tabWidgetModelLanguages_currentChanged(int index) {
     if (index == CONST.TabModelSimLangIndex) {
