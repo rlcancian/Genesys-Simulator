@@ -46,7 +46,8 @@ Seize::Seize(Model* model, std::string name) : ModelComponent(model, Util::TypeO
     SimulationControlGenericClassNotDC<QueueableItem*, Model*, QueueableItem>* propQueueableItem = new SimulationControlGenericClassNotDC<QueueableItem*, Model*, QueueableItem>(
                                     _parentModel,
                                     std::bind(&Seize::getQueueableItem, this), std::bind(&Seize::setQueueableItem, this, std::placeholders::_1),
-                                    Util::TypeOf<Seize>(), getName(), "QueueableItem", "");
+                                    Util::TypeOf<Seize>(), getName(), "QueueableItem", "", false, true, false,
+                                    [](Model* model) { return new QueueableItem(model, ""); });
     SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem>* propRequests = new SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem> (
 									_parentModel,
 									std::bind(&Seize::getSeizeRequests, this), std::bind(&Seize::addRequest, this, std::placeholders::_1), std::bind(&Seize::removeRequest, this, std::placeholders::_1),

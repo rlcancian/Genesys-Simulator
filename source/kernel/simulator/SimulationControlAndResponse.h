@@ -153,6 +153,16 @@ public:
 public:
     virtual void setValue(std::string value, bool remove=false) = 0;
     virtual List<SimulationControl*>* getProperties(int index=0) { return nullptr; };
+    virtual bool hasObjectInstance() const { return true; }
+    virtual bool ensureObjectInstance() { return hasObjectInstance(); }
+    virtual List<SimulationControl*>* getEditableProperties(int index=0) {
+        if (getIsClass() && !hasObjectInstance()) {
+            if (!ensureObjectInstance()) {
+                return nullptr;
+            }
+        }
+        return getProperties(index);
+    }
 protected:
 	void _ensureWritable(const char* operation) const {
 		if (_readonly) {
@@ -579,11 +589,13 @@ private:
 template <typename T, typename M, typename C>
 class SimulationControlGenericClassNotDC: public SimulationControl {
 public:
-    SimulationControlGenericClassNotDC(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+    using Creator = std::function<T(M)>;
+    SimulationControlGenericClassNotDC(M model, GetterGeneric<T> getter, SetterGeneric<T> setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=true, bool isEnum=false, Creator creator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 		static_assert(std::is_pointer<T>::value, "SimulationControlGenericClassNotDC requires pointer type T");
         _model = model;
         _getter= getter;
         _setter = setter;
+        _creator = creator;
         _readonly = setter == nullptr;
         _propertyType = Util::TypeOf<C>();
     }
@@ -614,6 +626,31 @@ public:
         _setter(newVal);
     };
 
+    virtual bool hasObjectInstance() const override {
+        return static_cast<T>(_getter()) != nullptr;
+    }
+
+    virtual bool ensureObjectInstance() override {
+		_ensureWritable("ensure instance of");
+		if (!_setter) {
+			throw std::logic_error("SimulationControlGenericClassNotDC setter is not defined");
+		}
+
+        T current = static_cast<T>(_getter());
+        if (current != nullptr) {
+            return true;
+        }
+
+        T newVal;
+        if (_creator != nullptr) {
+            newVal = _creator(_model);
+        } else {
+            newVal = new C(_model, "");
+        }
+        _setter(newVal);
+        return static_cast<T>(_getter()) != nullptr;
+    }
+
     virtual List<SimulationControl*>* getProperties(int index=0) override {
         T tVal = static_cast<T>(_getter());
 
@@ -628,6 +665,7 @@ private:
     M _model;
     GetterGeneric<T> _getter;
     SetterGeneric<T> _setter;
+    Creator _creator;
 };
 
 template <typename T, typename M, typename C>

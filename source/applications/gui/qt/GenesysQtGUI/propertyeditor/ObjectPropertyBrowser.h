@@ -58,6 +58,7 @@ private:
     QtProperty* _createProperty(const GenesysPropertyDescriptor& desc);
     QVariant _toVariant(const GenesysPropertyDescriptor& desc) const;
     std::string _fromVariant(const GenesysPropertyDescriptor& desc, const QVariant& value) const;
+    QString _objectSummary(const GenesysPropertyDescriptor& desc) const;
     int _enumIndexFor(const GenesysPropertyDescriptor& desc) const;
     QStringList _toQStringList(const std::vector<std::string>& values) const;
 
@@ -87,6 +88,7 @@ private:
 
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
+    QMap<QtProperty*, QtVariantProperty*> _objectSummaryProperties;
     ModelChangedCallback _modelChangedCallback;
 
 private slots:
