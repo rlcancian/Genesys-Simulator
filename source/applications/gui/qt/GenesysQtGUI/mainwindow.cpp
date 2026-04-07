@@ -49,6 +49,11 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    // Keep plugins tree as drag source only (never a drop target).
+    ui->treeWidget_Plugins->setDragDropMode(QAbstractItemView::DragOnly);
+    ui->treeWidget_Plugins->setAcceptDrops(false);
+    ui->treeWidget_Plugins->viewport()->setAcceptDrops(false);
+    ui->treeWidget_Plugins->setDropIndicatorShown(false);
     //
     // Genesys Simulator
     simulator = new Simulator();
