@@ -149,14 +149,32 @@ void Wait::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Wait::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_waitType = static_cast<Wait::WaitType>(fields->loadField("waitType", static_cast<int>(DEFAULT.waitType)));
+		_condition = fields->loadField("condition", DEFAULT.condition);
+		limitExpression = fields->loadField("limitExpression", DEFAULT.limitExpression);
+		std::string queueName = fields->loadField("queue", "");
+		if (queueName != "") {
+			_queue = dynamic_cast<Queue*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queueName));
+		}
+		std::string signalName = fields->loadField("signalData", "");
+		if (signalName != "") {
+			_signalData = dynamic_cast<SignalData*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<SignalData>(), signalName));
+		}
 	}
 	return res;
 }
 
 void Wait::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("waitType", static_cast<int>(_waitType), static_cast<int>(DEFAULT.waitType), saveDefaultValues);
+	fields->saveField("condition", _condition, DEFAULT.condition, saveDefaultValues);
+	fields->saveField("limitExpression", limitExpression, DEFAULT.limitExpression, saveDefaultValues);
+	if (_queue != nullptr) {
+		fields->saveField("queue", _queue->getName(), "", saveDefaultValues);
+	}
+	if (_waitType == WaitType::WaitForSignal && _signalData != nullptr) {
+		fields->saveField("signalData", _signalData->getName(), "", saveDefaultValues);
+	}
 }
 
 // protected virtual could override
