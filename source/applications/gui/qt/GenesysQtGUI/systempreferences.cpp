@@ -3,7 +3,7 @@
 bool SystemPreferences::_startMaximized = true;
 bool SystemPreferences::_autoLoadPlugins = true;
 bool SystemPreferences::_checkSystemPackagesAtStart = true;
-unsigned short int SystemPreferences::_openModelAtStart = 2;
+unsigned short int SystemPreferences::_openModelAtStart = 1;
 std::string SystemPreferences::_modelfilenameToOpen = "";
 
 bool SystemPreferences::load()
