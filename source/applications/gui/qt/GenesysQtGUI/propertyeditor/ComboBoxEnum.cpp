@@ -1,5 +1,7 @@
 #include "ComboBoxEnum.h"
 
+#include <utility>
+
 ComboBoxEnum::ComboBoxEnum(
     PropertyEditorGenesys* editor,
     SimulationControl* property,
@@ -49,8 +51,9 @@ void ComboBoxEnum::changeValue() {
         return;
     }
 
+    const std::string oldValue = _property->getValue();
     _editor->changeProperty(_property, std::to_string(_comboBox->currentIndex()));
-    if (_afterChange) {
+    if (_afterChange && _property->getValue() != oldValue) {
         _afterChange();
     }
 }

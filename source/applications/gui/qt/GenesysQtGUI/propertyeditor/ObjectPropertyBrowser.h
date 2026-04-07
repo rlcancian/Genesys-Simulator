@@ -3,6 +3,7 @@
 
 #include <map>
 #include <vector>
+#include <functional>
 
 #include <QObject>
 #include <QMap>
@@ -29,6 +30,7 @@ class ObjectPropertyBrowser : public QtTreePropertyBrowser {
 
 public:
     explicit ObjectPropertyBrowser(QWidget* parent = nullptr);
+    using ModelChangedCallback = std::function<void()>;
 
     void setActiveObject(
         QObject *obj,
@@ -40,6 +42,7 @@ public:
         );
 
     void clearCurrentlyConnectedObject();
+    void setModelChangedCallback(ModelChangedCallback callback);
 
 private:
     struct Binding {
@@ -49,6 +52,7 @@ private:
     };
 
 private:
+    void _notifyModelChangeApplied();
     void _clearAll();
     void _populateKernelProperties(ModelDataDefinition* mdd);
     QtProperty* _createProperty(const GenesysPropertyDescriptor& desc);
@@ -83,6 +87,7 @@ private:
 
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
+    ModelChangedCallback _modelChangedCallback;
 
 private slots:
     void valueChanged(QtProperty *property, const QVariant &value);
