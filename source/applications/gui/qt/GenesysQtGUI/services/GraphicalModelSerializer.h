@@ -1,0 +1,77 @@
+#ifndef GRAPHICALMODELSERIALIZER_H
+#define GRAPHICALMODELSERIALIZER_H
+
+#include <functional>
+#include <string>
+
+class Simulator;
+class Model;
+class QWidget;
+class QFile;
+class QString;
+class QPlainTextEdit;
+class QTextEdit;
+class QSlider;
+class QAction;
+class ModelGraphicsView;
+
+// Persist and restore graphical-model state for Phase 2 extraction.
+class GraphicalModelSerializer {
+public:
+    // Capture only the narrow GUI/kernel dependencies required for persistence behavior.
+    GraphicalModelSerializer(Simulator* simulator,
+                             QWidget* ownerWidget,
+                             QPlainTextEdit* modelTextEditor,
+                             ModelGraphicsView* graphicsView,
+                             QSlider* zoomSlider,
+                             QAction* actionShowGrid,
+                             QAction* actionShowRule,
+                             QAction* actionShowSnap,
+                             QAction* actionShowGuides,
+                             QAction* actionShowInternalElements,
+                             QAction* actionShowAttachedElements,
+                             QAction* actionDiagrams,
+                             QTextEdit* console,
+                             QString* modelFilename,
+                             std::function<void()> clearModelEditors,
+                             std::function<void()> rebuildGraphicalModelFromModel,
+                             std::function<void()> applyShowInternalElements,
+                             std::function<void()> applyShowAttachedElements,
+                             std::function<void()> applyDiagramsVisibility);
+
+    // Save textual model representation using the existing line-by-line format.
+    bool saveTextModel(QFile* saveFile, const QString& data) const;
+    // Save full .gui persistence sections without altering file compatibility.
+    bool saveGraphicalModel(const QString& filename) const;
+    // Load .gui/.gen files and restore persisted graphical state.
+    Model* loadGraphicalModel(const std::string& filename) const;
+
+private:
+    // Encode free text fields into a tab-safe persisted value.
+    static QString encodeGuiText(const QString& text);
+    // Decode tab-safe persisted text into original UTF-8 value.
+    static QString decodeGuiText(const QString& text);
+
+private:
+    Simulator* _simulator;
+    QWidget* _ownerWidget;
+    QPlainTextEdit* _modelTextEditor;
+    ModelGraphicsView* _graphicsView;
+    QSlider* _zoomSlider;
+    QAction* _actionShowGrid;
+    QAction* _actionShowRule;
+    QAction* _actionShowSnap;
+    QAction* _actionShowGuides;
+    QAction* _actionShowInternalElements;
+    QAction* _actionShowAttachedElements;
+    QAction* _actionDiagrams;
+    QTextEdit* _console;
+    QString* _modelFilename;
+    std::function<void()> _clearModelEditors;
+    std::function<void()> _rebuildGraphicalModelFromModel;
+    std::function<void()> _applyShowInternalElements;
+    std::function<void()> _applyShowAttachedElements;
+    std::function<void()> _applyDiagramsVisibility;
+};
+
+#endif // GRAPHICALMODELSERIALIZER_H

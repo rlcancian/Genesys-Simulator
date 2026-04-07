@@ -244,6 +244,8 @@ SOURCES += \
     services/ModelLanguageSynchronizer.cpp \
     services/GraphvizModelExporter.cpp \
     services/CppModelExporter.cpp \
+    services/GraphicalModelSerializer.cpp \
+    services/GraphicalModelBuilder.cpp \
     mainwindow_controller.cpp \
     mainwindow_modelrepresentations.cpp \
     mainwindow_scene.cpp \
@@ -558,6 +560,8 @@ HEADERS += \
     services/ModelLanguageSynchronizer.h \
     services/GraphvizModelExporter.h \
     services/CppModelExporter.h \
+    services/GraphicalModelSerializer.h \
+    services/GraphicalModelBuilder.h \
     actions/AddUndoCommand.h \
     actions/DeleteUndoCommand.h \
     actions/GroupUndoCommand.h \
