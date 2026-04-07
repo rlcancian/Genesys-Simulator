@@ -30,6 +30,7 @@ class GraphvizModelExporter;
 class CppModelExporter;
 class GraphicalModelSerializer;
 class GraphicalModelBuilder;
+class ModelInspectorController;
 
 /**
  * @brief Main Qt window of Genesys GUI.
@@ -285,6 +286,8 @@ private: // interface and model main elements to join
     std::unique_ptr<GraphicalModelSerializer> _graphicalModelSerializer;
     // Rebuild graphical components and links through the Phase 2 builder service.
     std::unique_ptr<GraphicalModelBuilder> _graphicalModelBuilder;
+    // Add the Phase 3 model-inspector controller owned by MainWindow.
+    std::unique_ptr<ModelInspectorController> _modelInspectorController;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;

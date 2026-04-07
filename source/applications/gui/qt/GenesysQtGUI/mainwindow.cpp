@@ -11,6 +11,7 @@
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
 #include "controllers/SimulationController.h"
+#include "controllers/ModelInspectorController.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -184,6 +185,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // graphicsView
     _initModelGraphicsView();
+    // Initialize the Phase 3 model-inspector controller after view and simulator dependencies are ready.
+    _modelInspectorController = std::make_unique<ModelInspectorController>(simulator,
+                                                                           ui->treeWidgetComponents,
+                                                                           ui->treeWidgetDataDefnitions,
+                                                                           ui->graphicsView);
     // Initialize Phase 2 services using narrow dependencies and compatibility callbacks.
     _graphicalModelBuilder = std::make_unique<GraphicalModelBuilder>(simulator,
                                                                       ui->graphicsView,
