@@ -50,7 +50,8 @@ private slots:
 	void on_actionEditUndo_triggered();
 	void on_actionEditRedo_triggered();
 	void on_actionEditFind_triggered();
-	void on_actionReplace_triggered();
+	// void on_actionReplace_triggered(); // old name (without menu namespace)
+	void on_actionEditReplace_triggered();
 	void on_actionEditCut_triggered();
 	void on_actionEditCopy_triggered();
 	void on_actionEditPaste_triggered();

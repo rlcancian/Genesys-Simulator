@@ -223,7 +223,10 @@ void MainWindow::on_actionEditFind_triggered() {
 }
 
 
-void MainWindow::on_actionReplace_triggered() {
+// void MainWindow::on_actionReplace_triggered() {
+//     _showMessageNotImplemented();
+// }
+void MainWindow::on_actionEditReplace_triggered() {
     _showMessageNotImplemented();
 }
 
