@@ -20,6 +20,12 @@
 #include <map>
 #include <utility>
 
+
+CppModelExporter::CppModelExporter(Simulator* simulator, Ui::MainWindow* ui)
+    : _simulator(simulator)
+    , _ui(ui) {
+}
+
 std::string CppModelExporter::addCppCodeLine(const std::string& line, unsigned int indent) const {
     // This block preserves tab-indentation semantics used by existing generated output.
     std::string text;
@@ -30,14 +36,14 @@ std::string CppModelExporter::addCppCodeLine(const std::string& line, unsigned i
     return text;
 }
 
-void CppModelExporter::actualizeModelCppCode(Simulator* simulator, Ui::MainWindow* ui) const {
+void CppModelExporter::actualizeModelCppCode() const {
     // This guard preserves safety when dependencies are missing.
-    if (simulator == nullptr || ui == nullptr) {
+    if (_simulator == nullptr || _ui == nullptr) {
         return;
     }
 
     // This block preserves generation flow only when a model is currently loaded.
-    Model* m = simulator->getModelManager()->current();
+    Model* m = _simulator->getModelManager()->current();
     if (m != nullptr) {
         unsigned short tabs = 0;
         std::string text;
@@ -150,9 +156,9 @@ void CppModelExporter::actualizeModelCppCode(Simulator* simulator, Ui::MainWindo
         code->insert({"8end", text});
 
         // This block preserves final rendering order into the C++ code editor pane.
-        ui->plainTextEditCppCode->clear();
+        _ui->plainTextEditCppCode->clear();
         for (std::pair<std::string, std::string> codeSection : *code) {
-            ui->plainTextEditCppCode->appendPlainText(QString::fromStdString(codeSection.second));
+            _ui->plainTextEditCppCode->appendPlainText(QString::fromStdString(codeSection.second));
         }
     }
 }

@@ -50,6 +50,11 @@ static std::string _escapeDotLabelText(const std::string& text) {
     return escaped;
 }
 
+
+GraphvizModelExporter::GraphvizModelExporter(Simulator* simulator, Ui::MainWindow* ui)
+    : _simulator(simulator)
+    , _ui(ui) {
+}
 std::string GraphvizModelExporter::adjustDotName(std::string name) const {
     // This block preserves identifier normalization behavior used by current DOT output.
     std::string text = Util::StrReplace(name, "[", "_");
@@ -87,9 +92,7 @@ void GraphvizModelExporter::insertTextInDot(std::string text,
     }
 }
 
-void GraphvizModelExporter::recursiveCreateModelGraphicPicture(Simulator* simulator,
-                                                               Ui::MainWindow* ui,
-                                                               ModelDataDefinition* componentOrData,
+void GraphvizModelExporter::recursiveCreateModelGraphicPicture(ModelDataDefinition* componentOrData,
                                                                std::list<ModelDataDefinition*>* visited,
                                                                std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap) const {
     // This local style bundle preserves the existing visual styling and ranking semantics.
@@ -112,15 +115,15 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(Simulator* simula
     // This block preserves traversal bookkeeping to avoid duplicate DOT generation.
     visited->insert(visited->end(), componentOrData);
     std::string text;
-    unsigned int modellevel = simulator->getModelManager()->current()->getLevel();
+    unsigned int modellevel = _simulator->getModelManager()->current()->getLevel();
     std::list<ModelDataDefinition*>::iterator visitedIt;
     ModelComponent* parentComponentSuperLevel = nullptr;
     unsigned int level = componentOrData->getLevel();
 
     // This block emits model component nodes according to level visibility flags.
     if (dynamic_cast<ModelComponent*> (componentOrData) != nullptr) {
-        if (level != modellevel && !ui->checkBox_ShowLevels->isChecked()) {
-            parentComponentSuperLevel = simulator->getModelManager()->current()->getComponentManager()->find(level);
+        if (level != modellevel && !_ui->checkBox_ShowLevels->isChecked()) {
+            parentComponentSuperLevel = _simulator->getModelManager()->current()->getComponentManager()->find(level);
             assert(parentComponentSuperLevel != nullptr);
             visitedIt = std::find(visited->begin(), visited->end(), parentComponentSuperLevel);
             if (visitedIt == visited->end()) {
@@ -142,7 +145,7 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(Simulator* simula
     // This block emits attached/internal data definitions and related edges.
     std::string dataname;
     std::string componentName = parentComponentSuperLevel != nullptr ? parentComponentSuperLevel->getName() : componentOrData->getName();
-    if (ui->checkBox_ShowInternals->isChecked()) {
+    if (_ui->checkBox_ShowInternals->isChecked()) {
         for (std::pair<std::string, ModelDataDefinition*> dataPair : *componentOrData->getInternalData()) {
             dataname = adjustDotName(dataPair.second->getName());
             level = dataPair.second->getLevel();
@@ -151,18 +154,18 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(Simulator* simula
                 if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
                     text = "  " + dataname + " [" + DOT.nodeDataDefInternal + ", label=\"" + _escapeDotLabelText(dataPair.second->getClassname()) + "|" + _escapeDotLabelText(dataPair.second->getName()) + "\"]" + ";\n";
                     insertTextInDot(text, level, DOT.rankDataDefInternal, dotmap, true);
-                    if (ui->checkBox_ShowRecursive->isChecked()) {
-                        recursiveCreateModelGraphicPicture(simulator, ui, dataPair.second, visited, dotmap);
+                    if (_ui->checkBox_ShowRecursive->isChecked()) {
+                        recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
                     }
                 }
             }
-            if (dataPair.second->getLevel() == modellevel || ui->checkBox_ShowLevels->isChecked()) {
+            if (dataPair.second->getLevel() == modellevel || _ui->checkBox_ShowLevels->isChecked()) {
                 text = "    " + dataname + "->" + adjustDotName(componentName) + " [" + DOT.edgeDataDefInternal + ", label=\"" + _escapeDotLabelText(dataPair.first) + "\"];\n";
                 insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
             }
         }
     }
-    if (ui->checkBox_ShowElements->isChecked()) {
+    if (_ui->checkBox_ShowElements->isChecked()) {
         for (std::pair<std::string, ModelDataDefinition*> dataPair : *componentOrData->getAttachedData()) {
             dataname = adjustDotName(dataPair.second->getName());
             level = dataPair.second->getLevel();
@@ -172,8 +175,8 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(Simulator* simula
                     text = "  " + dataname + " [" + DOT.nodeDataDefAttached + ", label=\"" + _escapeDotLabelText(dataPair.second->getClassname()) + "|" + _escapeDotLabelText(dataPair.second->getName()) + "\"]" + ";\n";
                     insertTextInDot(text, level, DOT.rankDataDefAttached, dotmap, true);
                 }
-                if (ui->checkBox_ShowRecursive->isChecked()) {
-                    recursiveCreateModelGraphicPicture(simulator, ui, dataPair.second, visited, dotmap);
+                if (_ui->checkBox_ShowRecursive->isChecked()) {
+                    recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
                 }
             }
             text = "    " + dataname + "->" + adjustDotName(componentName) + " [" + DOT.edgeDataDefAttached + ", label=\"" + _escapeDotLabelText(dataPair.first) + "\"];\n";
@@ -189,9 +192,9 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(Simulator* simula
             Connection* connection = component->getConnectionManager()->getConnectionAtPort(i);
             visitedIt = std::find(visited->begin(), visited->end(), connection->component);
             if (visitedIt == visited->end()) {
-                recursiveCreateModelGraphicPicture(simulator, ui, connection->component, visited, dotmap);
+                recursiveCreateModelGraphicPicture(connection->component, visited, dotmap);
             }
-            if (connection->component->getLevel() == modellevel || ui->checkBox_ShowLevels->isChecked()) {
+            if (connection->component->getLevel() == modellevel || _ui->checkBox_ShowLevels->isChecked()) {
                 text = "    " + adjustDotName(componentName) + "->" + adjustDotName(connection->component->getName()) + "[" + DOT.edgeComponent + "];\n";
                 insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
             }
@@ -199,12 +202,10 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(Simulator* simula
     }
 }
 
-bool GraphvizModelExporter::createModelImage(Simulator* simulator,
-                                             Ui::MainWindow* ui,
-                                             const std::function<bool()>& setSimulationModelBasedOnText) const {
+bool GraphvizModelExporter::createModelImage(const std::function<bool()>& setSimulationModelBasedOnText) const {
     // This block preserves model synchronization precondition prior to DOT generation.
     bool res = setSimulationModelBasedOnText ? setSimulationModelBasedOnText() : false;
-    if (!res || simulator == nullptr || ui == nullptr || simulator->getModelManager()->current() == nullptr) {
+    if (!res || _simulator == nullptr || _ui == nullptr || _simulator->getModelManager()->current() == nullptr) {
         return false;
     }
 
@@ -214,24 +215,24 @@ bool GraphvizModelExporter::createModelImage(Simulator* simulator,
     std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap = new std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>();
 
     std::list<ModelDataDefinition*>* visited = new std::list<ModelDataDefinition*>();
-    for (SourceModelComponent* source : *simulator->getModelManager()->current()->getComponentManager()->getSourceComponents()) {
+    for (SourceModelComponent* source : *_simulator->getModelManager()->current()->getComponentManager()->getSourceComponents()) {
         if (std::find(visited->begin(), visited->end(), source) == visited->end()) {
-            recursiveCreateModelGraphicPicture(simulator, ui, source, visited, dotmap);
+            recursiveCreateModelGraphicPicture(source, visited, dotmap);
         }
     }
-    for (ModelComponent* transfer : *simulator->getModelManager()->current()->getComponentManager()->getTransferInComponents()) {
+    for (ModelComponent* transfer : *_simulator->getModelManager()->current()->getComponentManager()->getTransferInComponents()) {
         if (std::find(visited->begin(), visited->end(), transfer) == visited->end()) {
-            recursiveCreateModelGraphicPicture(simulator, ui, transfer, visited, dotmap);
+            recursiveCreateModelGraphicPicture(transfer, visited, dotmap);
         }
     }
-    for (ModelComponent* comp : *simulator->getModelManager()->current()->getComponentManager()->getAllComponents()) {
+    for (ModelComponent* comp : *_simulator->getModelManager()->current()->getComponentManager()->getAllComponents()) {
         if (std::find(visited->begin(), visited->end(), comp) == visited->end()) {
-            recursiveCreateModelGraphicPicture(simulator, ui, comp, visited, dotmap);
+            recursiveCreateModelGraphicPicture(comp, visited, dotmap);
         }
     }
 
     // This block preserves aggregation of level subgraphs into final DOT content.
-    unsigned int modelLevel = simulator->getModelManager()->current()->getLevel();
+    unsigned int modelLevel = _simulator->getModelManager()->current()->getLevel();
     for (std::pair<unsigned int, std::map<unsigned int, std::list<std::string>*>*> dotpair : *dotmap) {
         if (dotpair.first == modelLevel) {
             dot += "\n  // model level\n";
@@ -245,10 +246,10 @@ bool GraphvizModelExporter::createModelImage(Simulator* simulator,
                 }
                 dot += "  }\n";
             }
-        } else if (ui->checkBox_ShowLevels->isChecked()) {
+        } else if (_ui->checkBox_ShowLevels->isChecked()) {
             dot += "\n\n // submodel level  " + std::to_string(dotpair.first) + "\n";
             dot += " subgraph cluster_level_" + std::to_string(dotpair.first) + " {\n";
-            dot += "   graph[style=filled; fillcolor=mistyrose2] label=\"" + simulator->getModelManager()->current()->getComponentManager()->find(dotpair.first)->getName() + "\";\n";
+            dot += "   graph[style=filled; fillcolor=mistyrose2] label=\"" + _simulator->getModelManager()->current()->getComponentManager()->find(dotpair.first)->getName() + "\";\n";
             for (std::pair<unsigned int, std::list<std::string>*> dotpair2 : *dotpair.second) {
                 dot += "  {\n";
                 if (dotpair2.first == 0) dot += "     rank=min  // " + std::to_string(dotpair2.first) + "\n";
@@ -286,8 +287,8 @@ bool GraphvizModelExporter::createModelImage(Simulator* simulator,
             std::string command = "dot -Tpng " + dotfilename + " -o " + pngfilename;
             system(command.c_str());
             QPixmap pm(QString::fromStdString(pngfilename));
-            ui->label_ModelGraphic->setPixmap(pm);
-            ui->label_ModelGraphic->setScaledContents(false);
+            _ui->label_ModelGraphic->setPixmap(pm);
+            _ui->label_ModelGraphic->setScaledContents(false);
             return true;
         } catch (...) {
         }
