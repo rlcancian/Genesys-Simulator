@@ -7,6 +7,7 @@
 #include <functional>
 
 #include <QObject>
+#include <QPointer>
 #include <QMap>
 #include <QStringList>
 #include <QContextMenuEvent>
@@ -81,7 +82,22 @@ protected:
     void mouseDoubleClickEvent(QMouseEvent* event) override;
 
 private:
-    QObject* _graphicalObject = nullptr;
+    // Guard against reentrant callback chains during property rebuild and notification.
+    bool _isRebuildingProperties = false;
+    // Guard against nested model-change notifications triggered by editor callbacks.
+    bool _isNotifyingModelChange = false;
+    // Keep track of pending rebuild requests raised during guarded execution.
+    bool _pendingRebuild = false;
+
+private:
+    // Execute property rebuild with reentrancy suppression and deferred retry support.
+    void _rebuildPropertiesGuarded();
+    // Check whether active editor bindings are currently valid before mutating model state.
+    bool _hasValidActiveBindingContext() const;
+
+private:
+    // Track the selected graphical object safely in case Qt destroys it during callbacks.
+    QPointer<QObject> _graphicalObject = nullptr;
     ModelDataDefinition* _modelObject = nullptr;
     PropertyEditorGenesys* _propertyEditor = nullptr;
 

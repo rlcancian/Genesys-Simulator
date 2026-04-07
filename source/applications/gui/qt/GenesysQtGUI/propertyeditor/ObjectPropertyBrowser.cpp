@@ -10,6 +10,7 @@
 #include <QString>
 #include <QVariant>
 #include <QMenu>
+#include <QDebug>
 
 ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
     : QtTreePropertyBrowser(parent) {
@@ -67,9 +68,11 @@ void ObjectPropertyBrowser::_clearAll() {
 }
 
 void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
+    // Fully detach object/editor pointers before clearing UI bindings.
     _graphicalObject = nullptr;
     _modelObject = nullptr;
     _propertyEditor = nullptr;
+    _pendingRebuild = false;
     _clearAll();
 }
 
@@ -85,6 +88,10 @@ void ObjectPropertyBrowser::setActiveObject(
     std::map<SimulationControl*, DataComponentEditor*>* peUI,
     std::map<SimulationControl*, ComboBoxEnum*>* pb
     ) {
+    // Always detach stale bindings first to avoid stale-pointer use during rebinding.
+    clearCurrentlyConnectedObject();
+
+    // Bind the new active object and editor dependencies for the next safe rebuild.
     _graphicalObject = obj;
     _modelObject = mdd;
     _propertyEditor = peg;
@@ -92,13 +99,42 @@ void ObjectPropertyBrowser::setActiveObject(
     _propertyEditorUI = peUI;
     _propertyBox = pb;
 
-    _rebuildProperties();
+    // Rebuild once with guard logic so nested signals cannot recurse unsafely.
+    _rebuildPropertiesGuarded();
+}
+
+// Rebuild properties with explicit suppression of nested recursive rebuild execution.
+void ObjectPropertyBrowser::_rebuildPropertiesGuarded() {
+    if (_isRebuildingProperties) {
+        _pendingRebuild = true;
+        return;
+    }
+
+    _isRebuildingProperties = true;
+    do {
+        _pendingRebuild = false;
+        _rebuildProperties();
+    } while (_pendingRebuild);
+    _isRebuildingProperties = false;
+}
+
+// Validate that active objects are still attached before applying property edits.
+bool ObjectPropertyBrowser::_hasValidActiveBindingContext() const {
+    if (_modelObject == nullptr) {
+        return false;
+    }
+    if (_graphicalObject.isNull()) {
+        return false;
+    }
+    return true;
 }
 
 void ObjectPropertyBrowser::_rebuildProperties() {
+    // Clear existing browser state first so stale bindings cannot survive across rebuilds.
     _clearAll();
 
     if (_modelObject == nullptr) {
+        qInfo() << "Skipping property rebuild because model object is null";
         return;
     }
 
@@ -431,6 +467,11 @@ bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
 }
 
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
+    // Drop edits while a guarded rebuild is in progress to avoid reentrant mutation.
+    if (_isRebuildingProperties) {
+        return;
+    }
+
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
         return;
@@ -438,6 +479,10 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
 
     const Binding binding = it.value();
     if (binding.control == nullptr) {
+        return;
+    }
+    if (!_hasValidActiveBindingContext()) {
+        qWarning() << "Ignoring valueChanged because active binding context became invalid";
         return;
     }
 
@@ -462,7 +507,8 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
         );
 
     if (!ok) {
-        _rebuildProperties();
+        // Rebuild safely after failed setValue to restore editor consistency.
+        _rebuildPropertiesGuarded();
         return;
     }
 
@@ -470,6 +516,11 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
 }
 
 void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
+    // Drop enum edits while a guarded rebuild is in progress to avoid reentrant mutation.
+    if (_isRebuildingProperties) {
+        return;
+    }
+
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
         return;
@@ -477,6 +528,10 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 
     const Binding binding = it.value();
     if (binding.control == nullptr) {
+        return;
+    }
+    if (!_hasValidActiveBindingContext()) {
+        qWarning() << "Ignoring enumValueChanged because active binding context became invalid";
         return;
     }
 
@@ -503,7 +558,8 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         );
 
     if (!ok) {
-        _rebuildProperties();
+        // Rebuild safely after failed enum update to restore editor consistency.
+        _rebuildPropertiesGuarded();
         return;
     }
 
@@ -511,14 +567,28 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 }
 
 void ObjectPropertyBrowser::_notifyModelChangeApplied() {
-    _rebuildProperties();
+    // Suppress nested notification loops when model callbacks trigger additional edits.
+    if (_isNotifyingModelChange) {
+        _pendingRebuild = true;
+        return;
+    }
+
+    _isNotifyingModelChange = true;
+    _rebuildPropertiesGuarded();
     if (_modelChangedCallback) {
         _modelChangedCallback();
+    }
+    _isNotifyingModelChange = false;
+
+    // Process deferred rebuild requests emitted during guarded callback execution.
+    if (_pendingRebuild) {
+        _rebuildPropertiesGuarded();
     }
 }
 
 void ObjectPropertyBrowser::objectUpdated() {
-    _rebuildProperties();
+    // Route external updates through the guarded rebuild path to avoid recursive crashes.
+    _rebuildPropertiesGuarded();
 }
 
 void ObjectPropertyBrowser::keyPressEvent(QKeyEvent* event) {
