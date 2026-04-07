@@ -15,6 +15,7 @@
 // std
 #include <string>
 #include <fstream>
+#include <memory>
 //#include <sstream>
 #include <cstdlib>
 //#include <streambuf>
@@ -38,6 +39,7 @@
 #include <QDebug>
 #include <QRegularExpression>
 #include <QRandomGenerator>
+#include <QSignalBlocker>
 #include "../../../../kernel/simulator/ModelSimulation.h"
 
 
@@ -418,7 +420,23 @@ void MainWindow::on_actionZoom_Out_triggered() {
 
 
 void MainWindow::on_actionZoom_All_triggered() {
-    _showMessageNotImplemented();
+    ModelGraphicsScene* scene = ui->graphicsView->getScene();
+    if (scene == nullptr || scene->items().isEmpty()) {
+        return;
+    }
+
+    const QRectF bounds = scene->itemsBoundingRect();
+    if (!bounds.isValid() || bounds.isEmpty()) {
+        return;
+    }
+
+    ui->graphicsView->fitInView(bounds, Qt::KeepAspectRatio);
+    {
+        QSignalBlocker blocker(ui->horizontalSlider_ZoomGraphical);
+        _zoomValue = ui->horizontalSlider_ZoomGraphical->maximum() / 2;
+        ui->horizontalSlider_ZoomGraphical->setValue(_zoomValue);
+    }
+    ui->graphicsView->centerOn(bounds.center());
 }
 
 
@@ -515,7 +533,15 @@ void MainWindow::on_actionAnimateStation_triggered() {
 
 void MainWindow::on_actionEditDelete_triggered()
 {
-    _showMessageNotImplemented();
+    QList<QGraphicsItem *> selecteds = ui->graphicsView->scene()->selectedItems();
+    if (selecteds.isEmpty()) {
+        return;
+    }
+
+    ModelGraphicsScene *scene = ui->graphicsView->getScene();
+    QUndoCommand *deleteUndoCommand = new DeleteUndoCommand(selecteds, scene);
+    scene->getUndoStack()->push(deleteUndoCommand);
+    _actualizeActions();
 }
 
 
@@ -1120,28 +1146,88 @@ void MainWindow::on_tabWidget_Debug_currentChanged(int index) {
 }
 
 void MainWindow::on_pushButton_Breakpoint_Insert_clicked() {
-    //ModelSimulation* sim = simulator->getModels()->current()->getSimulation();
-    dialogBreakpoint* dialog = new dialogBreakpoint();
-    dialog->setMVCModel(simulator);
-    dialog->show();
-    dialog->raise();
-    dialog->activateWindow();
-    std::string type, on;
-    dialogBreakpoint::MVCResult* result = dialog->getMVCResult();
-    if (result->type == "Time") {
-
-    } else if (result->type == "Entity") {
-
-    } else if (result->type == "Component") {
-
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr) {
+        return;
+    }
+    ModelSimulation* sim = model->getSimulation();
+    if (sim == nullptr) {
+        return;
     }
 
-    dialog->~dialogBreakpoint();
+    dialogBreakpoint dialog;
+    dialog.setModal(true);
+    dialog.setMVCModel(simulator);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    std::unique_ptr<dialogBreakpoint::MVCResult> result(dialog.getMVCResult());
+    if (!result) {
+        return;
+    }
+
+    if (result->type == "Time") {
+        const double onTime = std::stod(result->on);
+        if (sim->getBreakpointsOnTime()->find(onTime) == sim->getBreakpointsOnTime()->list()->end()) {
+            sim->getBreakpointsOnTime()->insert(onTime);
+        }
+    } else if (result->type == "Entity") {
+        ModelDataDefinition* dataDef = model->getDataManager()->getDataDefinition(Util::TypeOf<Entity>(), result->on);
+        Entity* entity = dynamic_cast<Entity*> (dataDef);
+        if (entity != nullptr && sim->getBreakpointsOnEntity()->find(entity) == sim->getBreakpointsOnEntity()->list()->end()) {
+            sim->getBreakpointsOnEntity()->insert(entity);
+        }
+    } else if (result->type == "Component") {
+        ModelComponent* comp = model->getComponentManager()->find(result->on);
+        if (comp != nullptr && sim->getBreakpointsOnComponent()->find(comp) == sim->getBreakpointsOnComponent()->list()->end()) {
+            sim->getBreakpointsOnComponent()->insert(comp);
+        }
+    }
+
     _actualizeDebugBreakpoints(true);
 }
 
 void MainWindow::on_pushButton_Breakpoint_Remove_clicked() {
-    ModelSimulation* sim = simulator->getModelManager()->current()->getSimulation();
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr) {
+        return;
+    }
+    ModelSimulation* sim = model->getSimulation();
+    if (sim == nullptr) {
+        return;
+    }
+
+    const QModelIndexList selectedRows = ui->tableWidget_Breakpoints->selectionModel()->selectedRows();
+    if (selectedRows.isEmpty()) {
+        return;
+    }
+
+    const int row = selectedRows.first().row();
+    QTableWidgetItem* typeItem = ui->tableWidget_Breakpoints->item(row, 1);
+    QTableWidgetItem* onItem = ui->tableWidget_Breakpoints->item(row, 2);
+    if (typeItem == nullptr || onItem == nullptr) {
+        return;
+    }
+
+    const std::string type = typeItem->text().toStdString();
+    const std::string on = onItem->text().toStdString();
+    if (type == "Time") {
+        sim->getBreakpointsOnTime()->remove(std::stod(on));
+    } else if (type == "Entity") {
+        ModelDataDefinition* dataDef = model->getDataManager()->getDataDefinition(Util::TypeOf<Entity>(), on);
+        Entity* entity = dynamic_cast<Entity*> (dataDef);
+        if (entity != nullptr) {
+            sim->getBreakpointsOnEntity()->remove(entity);
+        }
+    } else if (type == "Component") {
+        ModelComponent* comp = model->getComponentManager()->find(on);
+        if (comp != nullptr) {
+            sim->getBreakpointsOnComponent()->remove(comp);
+        }
+    }
+
+    _actualizeDebugBreakpoints(true);
 }
 
 void MainWindow::on_tabWidgetCentral_currentChanged(int index) {
@@ -1250,7 +1336,31 @@ void MainWindow::on_actionShowAttachedElements_triggered() {
 }
 
 void MainWindow::on_treeWidgetComponents_itemSelectionChanged() {
-    _showMessageNotImplemented();
+    QList<QTreeWidgetItem*> selectedItems = ui->treeWidgetComponents->selectedItems();
+    if (selectedItems.isEmpty()) {
+        return;
+    }
+
+    bool ok = false;
+    const Util::identification compId = selectedItems.first()->text(0).toULongLong(&ok);
+    if (!ok) {
+        return;
+    }
+
+    ModelGraphicsScene* scene = ui->graphicsView->getScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    GraphicalModelComponent* gmc = scene->findGraphicalModelComponent(compId);
+    if (gmc == nullptr) {
+        return;
+    }
+
+    scene->clearSelection();
+    gmc->setSelected(true);
+    ui->graphicsView->ensureVisible(gmc);
+    ui->graphicsView->centerOn(gmc);
 }
 
 void MainWindow::on_treeWidget_Plugins_itemClicked(QTreeWidgetItem *item, int column) {
