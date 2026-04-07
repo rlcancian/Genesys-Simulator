@@ -4,24 +4,28 @@
 #include <functional>
 
 class QWidget;
+class QPlainTextEdit;
 class Simulator;
-
-namespace Ui {
-class MainWindow;
-}
 
 // This service encapsulates synchronization between the textual model editor and kernel model state.
 class ModelLanguageSynchronizer {
 public:
-    // This method refreshes the textual model editor from the current kernel model serialization.
-    void actualizeModelSimLanguage(Simulator* simulator, Ui::MainWindow* ui, bool* textModelHasChangedFlag) const;
+    // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.
+    ModelLanguageSynchronizer(Simulator* simulator,
+                              QPlainTextEdit* modelTextEditor,
+                              bool* textModelHasChangedFlag,
+                              QWidget* ownerWidget,
+                              std::function<void()> onModelCreatedOrLoaded);
 
-    // This method creates or refreshes the simulation model from text while preserving the current behavior.
-    bool setSimulationModelBasedOnText(QWidget* ownerWidget,
-                                       Simulator* simulator,
-                                       Ui::MainWindow* ui,
-                                       bool textModelHasChanged,
-                                       const std::function<void()>& setOnEventHandlers) const;
+    void actualizeModelSimLanguage() const;
+    bool setSimulationModelBasedOnText() const;
+
+private:
+    Simulator* _simulator;
+    QPlainTextEdit* _modelTextEditor;
+    bool* _textModelHasChangedFlag;
+    QWidget* _ownerWidget;
+    std::function<void()> _onModelCreatedOrLoaded;
 };
 
 #endif // MODELLANGUAGESYNCHRONIZER_H
