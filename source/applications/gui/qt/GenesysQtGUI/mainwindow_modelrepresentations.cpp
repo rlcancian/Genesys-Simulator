@@ -8,6 +8,7 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include <cctype>
 //#include <streambuf>
 
 // QT
@@ -29,6 +30,28 @@
 #include <QDebug>
 #include <QRegularExpression>
 #include <QRandomGenerator>
+
+static std::string _escapeDotLabel(const std::string& text) {
+    std::string escaped;
+    escaped.reserve(text.size());
+    for (char c : text) {
+        switch (c) {
+            case '\\':
+                escaped += "\\\\";
+                break;
+            case '"':
+                escaped += "\\\"";
+                break;
+            case '\n':
+            case '\r':
+                escaped += " ";
+                break;
+            default:
+                escaped += c;
+        }
+    }
+    return escaped;
+}
 
 
 void MainWindow::_actualizeModelSimLanguage() {
@@ -85,7 +108,16 @@ bool MainWindow::_setSimulationModelBasedOnText() {
 std::string MainWindow::_adjustDotName(std::string name) {
     std::string text = Util::StrReplace(name, "[", "_");
     text = Util::StrReplace(text, "]", "");
-    return Util::StrReplace(text, ".", "_");
+    text = Util::StrReplace(text, ".", "_");
+    for (char& c : text) {
+        if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) {
+            c = '_';
+        }
+    }
+    if (!text.empty() && std::isdigit(static_cast<unsigned char>(text.front()))) {
+        text = "_" + text;
+    }
+    return text;
 }
 
 void MainWindow::_insertTextInDot(std::string text, unsigned int compLevel, unsigned int compRank, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap, bool isNode) {
@@ -149,13 +181,13 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
     } DOT;
     */
     const struct DOT_STYLES {
-        std::string nodeComponent = "shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=bisque";
+        std::string nodeComponent = "shape=Mrecord, fontsize=11, fontname=\"Helvetica\", fontcolor=\"#1f2937\", color=\"#334155\", penwidth=1.2, style=\"rounded,filled\", fillcolor=\"#f8fafc\"";
         //std::string nodeComponentOtherLevel = "shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=goldenrod3";
-        std::string edgeComponent = "style=solid, arrowhead=\"normal\", color=black, fontcolor=black, fontsize=7";
-        std::string nodeDataDefInternal = "shape=record, fontsize=8, color=gray50, fontcolor=gray50, style=filled, fillcolor=\"#d9ebbd\"";
-        std::string nodeDataDefAttached = "shape=record, fontsize=10, color=gray50, fontcolor=gray50, style=filled, fillcolor=\"#a2cd5a\"";
-        std::string edgeDataDefInternal = "style=dashed, arrowhead=\"diamond\", color=gray55, fontcolor=gray55, fontsize=7";
-        std::string edgeDataDefAttached = "style=dashed, arrowhead=\"ediamond\", color=gray50, fontcolor=gray50, fontsize=7";
+        std::string edgeComponent = "style=solid, arrowhead=\"vee\", color=\"#334155\", fontcolor=\"#334155\", fontsize=8, penwidth=1.1";
+        std::string nodeDataDefInternal = "shape=Mrecord, fontsize=9, fontname=\"Helvetica\", color=\"#64748b\", fontcolor=\"#334155\", style=\"rounded,filled\", fillcolor=\"#e2e8f0\"";
+        std::string nodeDataDefAttached = "shape=Mrecord, fontsize=9, fontname=\"Helvetica\", color=\"#475569\", fontcolor=\"#1e293b\", style=\"rounded,filled\", fillcolor=\"#dcfce7\"";
+        std::string edgeDataDefInternal = "style=dashed, arrowhead=\"diamond\", color=\"#64748b\", fontcolor=\"#64748b\", fontsize=7";
+        std::string edgeDataDefAttached = "style=dashed, arrowhead=\"odiamond\", color=\"#475569\", fontcolor=\"#475569\", fontsize=7";
         unsigned int rankSource = 0;
         unsigned int rankSink = 1;
         unsigned int rankComponent = 99;
@@ -180,11 +212,11 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
             assert(parentComponentSuperLevel != nullptr);
             visitedIt = std::find(visited->begin(), visited->end(), parentComponentSuperLevel);
             if (visitedIt == visited->end()) {
-                text = "  " + _adjustDotName(parentComponentSuperLevel->getName()) + " [" + DOT.nodeComponent + ", label=\"" + parentComponentSuperLevel->getClassname() + "|" + parentComponentSuperLevel->getName() + "\"]" + ";\n";
+                text = "  " + _adjustDotName(parentComponentSuperLevel->getName()) + " [" + DOT.nodeComponent + ", label=\"" + _escapeDotLabel(parentComponentSuperLevel->getClassname()) + "|" + _escapeDotLabel(parentComponentSuperLevel->getName()) + "\"]" + ";\n";
                 _insertTextInDot(text, level, DOT.rankComponentOtherLevel, dotmap, true);
             }
         } else {
-            text = "  " + _adjustDotName(componentOrData->getName()) + " [" + DOT.nodeComponent + ", label=\"" + componentOrData->getClassname() + "|" + componentOrData->getName() + "\"]" + ";\n";
+            text = "  " + _adjustDotName(componentOrData->getName()) + " [" + DOT.nodeComponent + ", label=\"" + _escapeDotLabel(componentOrData->getClassname()) + "|" + _escapeDotLabel(componentOrData->getName()) + "\"]" + ";\n";
             if (dynamic_cast<SourceModelComponent*> (componentOrData) != nullptr) {
                 _insertTextInDot(text, level, DOT.rankSource, dotmap, true);
             } else if (dynamic_cast<SinkModelComponent*> (componentOrData) != nullptr) {
@@ -209,7 +241,7 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
             visitedIt = std::find(visited->begin(), visited->end(), dataPair.second);
             if (visitedIt == visited->end()) {
                 if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
-                    text = "  " + dataname + " [" + DOT.nodeDataDefInternal + ", label=\"" + dataPair.second->getClassname() + "|" + dataPair.second->getName() + "\"]" + ";\n";
+                    text = "  " + dataname + " [" + DOT.nodeDataDefInternal + ", label=\"" + _escapeDotLabel(dataPair.second->getClassname()) + "|" + _escapeDotLabel(dataPair.second->getName()) + "\"]" + ";\n";
                     _insertTextInDot(text, level, DOT.rankDataDefInternal, dotmap, true);
                     if (ui->checkBox_ShowRecursive->isChecked()) {
                         _recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
@@ -217,7 +249,7 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
                 }
             }
             if (dataPair.second->getLevel() == modellevel || ui->checkBox_ShowLevels->isChecked()) {
-                text = "    " + dataname + "->" + _adjustDotName(componentName) + " [" + DOT.edgeDataDefInternal + ", label=\"" + dataPair.first + "\"];\n";
+                text = "    " + dataname + "->" + _adjustDotName(componentName) + " [" + DOT.edgeDataDefInternal + ", label=\"" + _escapeDotLabel(dataPair.first) + "\"];\n";
                 _insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
             }
         }
@@ -229,14 +261,14 @@ void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* compon
             visitedIt = std::find(visited->begin(), visited->end(), dataPair.second);
             if (visitedIt == visited->end()) {
                 if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
-                    text = "  " + dataname + " [" + DOT.nodeDataDefAttached + ", label=\"" + dataPair.second->getClassname() + "|" + dataPair.second->getName() + "\"]" + ";\n";
+                    text = "  " + dataname + " [" + DOT.nodeDataDefAttached + ", label=\"" + _escapeDotLabel(dataPair.second->getClassname()) + "|" + _escapeDotLabel(dataPair.second->getName()) + "\"]" + ";\n";
                     _insertTextInDot(text, level, DOT.rankDataDefAttached, dotmap, true);
                 }
                 if (ui->checkBox_ShowRecursive->isChecked()) {
                     _recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
                 }
             }
-            text = "    " + dataname + "->" + _adjustDotName(componentName) + " [" + DOT.edgeDataDefAttached + ", label=\"" + dataPair.first + "\"];\n";
+            text = "    " + dataname + "->" + _adjustDotName(componentName) + " [" + DOT.edgeDataDefAttached + ", label=\"" + _escapeDotLabel(dataPair.first) + "\"];\n";
             _insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
         }
     }
@@ -394,6 +426,9 @@ void MainWindow::setGraphicalModelHasChanged(bool graphicalModelHasChanged) {
 
 bool MainWindow::_createModelImage() {
     bool res = this->_setSimulationModelBasedOnText();
+    if (!res || simulator->getModelManager()->current() == nullptr) {
+        return false;
+    }
     std::string dot = "digraph G {\n";
     dot += "  compound=true; rankdir=LR; \n";
     std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap = new std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>();
@@ -820,6 +855,9 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
             }
 
             QStringList split = line.split("\t");
+            if (split.size() < 5) {
+                continue;
+            }
 
             Util::identification id = split[0].toULong();
 
@@ -870,6 +908,11 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
 
             // Pega o Plugin
             Plugin* plugin = simulator->getPluginManager()->find(comp.toStdString());
+            if (plugin == nullptr) {
+                ui->textEdit_Console->append(QString("Warning: Could not find plugin \"%1\" while loading GUI item id=%2. Item ignored.")
+                                             .arg(comp).arg(id));
+                continue;
+            }
 
             // Cria o componente no modelo
             ModelComponent* component = simulator->getModelManager()->current()->getComponentManager()->find(id);
@@ -883,14 +926,32 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
 
         for (unsigned int i = 0; i < (unsigned int) graphicalComponents->size(); i++) {
             GraphicalModelComponent *source = dynamic_cast<GraphicalModelComponent *> (graphicalComponents->at(i));
+            if (source == nullptr || source->getComponent() == nullptr) {
+                continue;
+            }
             std::map<unsigned int, Connection*> *connections = source->getComponent()->getConnectionManager()->connections();
+            if (connections == nullptr) {
+                continue;
+            }
 
             for (auto it = connections->begin(); it != connections->end(); ++it) {
                 unsigned int portSource = it->first;
                 Connection* connection = it->second;
+                if (connection == nullptr || connection->component == nullptr) {
+                    continue;
+                }
 
                 GraphicalModelComponent* destination = ui->graphicsView->getScene()->findGraphicalModelComponent(connection->component->getId());
+                if (destination == nullptr || destination->getGraphicalInputPorts().empty()) {
+                    continue;
+                }
                 unsigned int portDestination = destination->getGraphicalInputPorts().at(0)->portNum();
+                if (portSource >= source->getGraphicalOutputPorts().size()) {
+                    continue;
+                }
+                if (portDestination >= destination->getGraphicalInputPorts().size()) {
+                    continue;
+                }
 
                 source->setOcupiedOutputPorts(source->getOcupiedOutputPorts() + 1);
                 destination->setOcupiedInputPorts(destination->getOcupiedInputPorts() + 1);
@@ -1029,10 +1090,26 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
     GraphicalModelComponent *gmc;
     ModelGraphicsScene* scene = ui->graphicsView->getScene();
     Plugin* plugin = pm->find(component->getClassname());
-    assert(plugin!=nullptr);
+    if (plugin == nullptr) {
+        ui->textEdit_Console->append(QString::fromStdString(
+            "Warning: Skipping component \"" + component->getName() + "\" (id="
+            + std::to_string(component->getId()) + ") because plugin \""
+            + component->getClassname() + "\" is unavailable."));
+        return;
+    }
     // get color from category
-    QColor color = _pluginCategoryColor->at(plugin->getPluginInfo()->getCategory());
+    QColor color = Qt::white;
+    auto colorIt = _pluginCategoryColor->find(plugin->getPluginInfo()->getCategory());
+    if (colorIt != _pluginCategoryColor->end()) {
+        color = colorIt->second;
+    }
     gmc = scene->addGraphicalModelComponent(plugin, component, QPoint(*x, *y), color);
+    if (gmc == nullptr) {
+        ui->textEdit_Console->append(QString::fromStdString(
+            "Warning: Failed to draw component \"" + component->getName() + "\" (id="
+            + std::to_string(component->getId()) + ")."));
+        return;
+    }
     map->insert({component,gmc});
     visited->insert(component);
     int yIni = *y;
@@ -1040,6 +1117,9 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
     const int deltaY = TraitsGUI<GModelComponent>::width * TraitsGUI<GModelComponent>::heightProportion * 1.5;
     GraphicalComponentPort *sourceGraphicalPort, *destinyGraphicalPort;
     for(auto connectionMap: *component->getConnectionManager()->connections()) {
+        if (connectionMap.second == nullptr || connectionMap.second->component == nullptr) {
+            continue;
+        }
         ModelComponent* nextComp = connectionMap.second->component;
         if (visited->find(nextComp)==visited->list()->end()) { // nextComponent was not visited yet
             if (++sequenceInLine==6) {
@@ -1052,10 +1132,16 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
             if (*y > *ymax)
                 *ymax = *y;
             _recursivalyGenerateGraphicalModelFromModel(nextComp, visited, map, x, y, ymax, sequenceInLine);
-            GraphicalModelComponent *destinyGmc = map->at(nextComp);
-            sourceGraphicalPort = gmc->getGraphicalOutputPorts().at(connectionMap.first);
-            destinyGraphicalPort = destinyGmc->getGraphicalInputPorts().at(connectionMap.second->channel.portNumber);
-            scene->addGraphicalConnection(sourceGraphicalPort, destinyGraphicalPort, connectionMap.first, connectionMap.second->channel.portNumber);
+            auto destinyIt = map->find(nextComp);
+            if (destinyIt != map->end()) {
+                GraphicalModelComponent *destinyGmc = destinyIt->second;
+                if (connectionMap.first < gmc->getGraphicalOutputPorts().size()
+                        && connectionMap.second->channel.portNumber < destinyGmc->getGraphicalInputPorts().size()) {
+                    sourceGraphicalPort = gmc->getGraphicalOutputPorts().at(connectionMap.first);
+                    destinyGraphicalPort = destinyGmc->getGraphicalInputPorts().at(connectionMap.second->channel.portNumber);
+                    scene->addGraphicalConnection(sourceGraphicalPort, destinyGraphicalPort, connectionMap.first, connectionMap.second->channel.portNumber);
+                }
+            }
             *x = xIni;
             *y+= deltaY;
             sequenceInLine--;
@@ -1141,6 +1227,10 @@ void MainWindow::_generateGraphicalModelFromModel() {
         y=TraitsGUI<GView>::sceneCenter - TraitsGUI<GView>::sceneDistanceCenter*0.8; //ui->graphicsView->sceneRect().top();
         ymax=y;
         ComponentManager* cm = m->getComponentManager();
+        if (cm == nullptr) {
+            ui->graphicsView->setCanNotifyGraphicalModelEventHandlers(true);
+            return;
+        }
         List<ModelComponent*>* visited = new List<ModelComponent*>();
         std::map<ModelComponent*,GraphicalModelComponent*>* map = new std::map<ModelComponent*,GraphicalModelComponent*>();
         for(SourceModelComponent* source: *cm->getSourceComponents()) {

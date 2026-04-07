@@ -29,6 +29,7 @@ ModelDataDefinition* ModalModelPetriNet::NewInstance(Model* model, std::string n
 
 bool ModalModelPetriNet::_check(std::string& errorMessage) {
 	bool resultAll = true;
+	resultAll &= ModalModelDefault::_check(errorMessage);
 	resultAll &= getNodes()->size() > 0;
 	if (!resultAll) {
 		errorMessage += "ModalModelPetriNet requires at least one place/transition node.";
