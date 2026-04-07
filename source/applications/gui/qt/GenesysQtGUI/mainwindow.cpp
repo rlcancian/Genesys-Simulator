@@ -72,7 +72,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                                                      ui->checkBox_ShowInternals,
                                                                      ui->checkBox_ShowElements,
                                                                      ui->checkBox_ShowRecursive,
-                                                                     ui->checkBox_ShowLevels);
+                                                                     ui->checkBox_ShowLevels,
+                                                                     // Keep synchronization behavior unchanged via a narrow callback dependency.
+                                                                     [this]() { return this->_setSimulationModelBasedOnText(); });
     _cppModelExporter = std::make_unique<CppModelExporter>(simulator, ui->plainTextEditCppCode);
     simulator->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
     simulator->getTraceManager()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);

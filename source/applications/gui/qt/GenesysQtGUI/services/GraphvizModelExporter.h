@@ -15,12 +15,14 @@ class ModelDataDefinition;
 class GraphvizModelExporter {
 public:
     // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.
+    // Receive a narrow callback to preserve text-to-model sync precondition before image export.
     GraphvizModelExporter(Simulator* simulator,
                           QLabel* modelGraphicLabel,
                           QCheckBox* showInternals,
                           QCheckBox* showElements,
                           QCheckBox* showRecursive,
-                          QCheckBox* showLevels);
+                          QCheckBox* showLevels,
+                          std::function<bool()> ensureModelSynchronized);
 
     std::string adjustDotName(std::string name) const;
     void insertTextInDot(std::string text,
@@ -31,7 +33,8 @@ public:
     void recursiveCreateModelGraphicPicture(ModelDataDefinition* componentOrData,
                                             std::list<ModelDataDefinition*>* visited,
                                             std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap) const;
-    bool createModelImage(const std::function<bool()>& setSimulationModelBasedOnText) const;
+    // Keep image generation API wrapper-friendly while internally invoking synchronization callback.
+    bool createModelImage() const;
 
 private:
     Simulator* _simulator;
@@ -40,6 +43,8 @@ private:
     QCheckBox* _showElements;
     QCheckBox* _showRecursive;
     QCheckBox* _showLevels;
+    // Keep synchronization dependency narrow and explicit.
+    std::function<bool()> _ensureModelSynchronized;
 };
 
 #endif // GRAPHVIZMODELEXPORTER_H

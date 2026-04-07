@@ -103,10 +103,7 @@ void MainWindow::setGraphicalModelHasChanged(bool graphicalModelHasChanged) {
 
 bool MainWindow::_createModelImage() {
     // This wrapper delegates model diagram image creation to the phase-1 Graphviz service.
-    return _graphvizModelExporter->createModelImage([this]() {
-        // This callback preserves MainWindow-controlled text-to-model synchronization flow.
-        return this->_setSimulationModelBasedOnText();
-    });
+    return _graphvizModelExporter->createModelImage();
 }
 
 //-----------------------------------------------------------------
