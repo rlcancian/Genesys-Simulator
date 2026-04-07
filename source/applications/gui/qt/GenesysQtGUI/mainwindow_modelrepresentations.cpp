@@ -855,6 +855,9 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
             }
 
             QStringList split = line.split("\t");
+            if (split.size() < 5) {
+                continue;
+            }
 
             Util::identification id = split[0].toULong();
 
@@ -905,6 +908,11 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
 
             // Pega o Plugin
             Plugin* plugin = simulator->getPluginManager()->find(comp.toStdString());
+            if (plugin == nullptr) {
+                ui->textEdit_Console->append(QString("Warning: Could not find plugin \"%1\" while loading GUI item id=%2. Item ignored.")
+                                             .arg(comp).arg(id));
+                continue;
+            }
 
             // Cria o componente no modelo
             ModelComponent* component = simulator->getModelManager()->current()->getComponentManager()->find(id);
@@ -923,9 +931,18 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
             for (auto it = connections->begin(); it != connections->end(); ++it) {
                 unsigned int portSource = it->first;
                 Connection* connection = it->second;
+                if (connection == nullptr || connection->component == nullptr) {
+                    continue;
+                }
 
                 GraphicalModelComponent* destination = ui->graphicsView->getScene()->findGraphicalModelComponent(connection->component->getId());
+                if (destination == nullptr || destination->getGraphicalInputPorts().empty()) {
+                    continue;
+                }
                 unsigned int portDestination = destination->getGraphicalInputPorts().at(0)->portNum();
+                if (portSource >= source->getGraphicalOutputPorts().size()) {
+                    continue;
+                }
 
                 source->setOcupiedOutputPorts(source->getOcupiedOutputPorts() + 1);
                 destination->setOcupiedInputPorts(destination->getOcupiedInputPorts() + 1);
@@ -1064,10 +1081,26 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
     GraphicalModelComponent *gmc;
     ModelGraphicsScene* scene = ui->graphicsView->getScene();
     Plugin* plugin = pm->find(component->getClassname());
-    assert(plugin!=nullptr);
+    if (plugin == nullptr) {
+        ui->textEdit_Console->append(QString::fromStdString(
+            "Warning: Skipping component \"" + component->getName() + "\" (id="
+            + std::to_string(component->getId()) + ") because plugin \""
+            + component->getClassname() + "\" is unavailable."));
+        return;
+    }
     // get color from category
-    QColor color = _pluginCategoryColor->at(plugin->getPluginInfo()->getCategory());
+    QColor color = Qt::white;
+    auto colorIt = _pluginCategoryColor->find(plugin->getPluginInfo()->getCategory());
+    if (colorIt != _pluginCategoryColor->end()) {
+        color = colorIt->second;
+    }
     gmc = scene->addGraphicalModelComponent(plugin, component, QPoint(*x, *y), color);
+    if (gmc == nullptr) {
+        ui->textEdit_Console->append(QString::fromStdString(
+            "Warning: Failed to draw component \"" + component->getName() + "\" (id="
+            + std::to_string(component->getId()) + ")."));
+        return;
+    }
     map->insert({component,gmc});
     visited->insert(component);
     int yIni = *y;
@@ -1087,10 +1120,16 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
             if (*y > *ymax)
                 *ymax = *y;
             _recursivalyGenerateGraphicalModelFromModel(nextComp, visited, map, x, y, ymax, sequenceInLine);
-            GraphicalModelComponent *destinyGmc = map->at(nextComp);
-            sourceGraphicalPort = gmc->getGraphicalOutputPorts().at(connectionMap.first);
-            destinyGraphicalPort = destinyGmc->getGraphicalInputPorts().at(connectionMap.second->channel.portNumber);
-            scene->addGraphicalConnection(sourceGraphicalPort, destinyGraphicalPort, connectionMap.first, connectionMap.second->channel.portNumber);
+            auto destinyIt = map->find(nextComp);
+            if (destinyIt != map->end()) {
+                GraphicalModelComponent *destinyGmc = destinyIt->second;
+                if (connectionMap.first < gmc->getGraphicalOutputPorts().size()
+                        && connectionMap.second->channel.portNumber < destinyGmc->getGraphicalInputPorts().size()) {
+                    sourceGraphicalPort = gmc->getGraphicalOutputPorts().at(connectionMap.first);
+                    destinyGraphicalPort = destinyGmc->getGraphicalInputPorts().at(connectionMap.second->channel.portNumber);
+                    scene->addGraphicalConnection(sourceGraphicalPort, destinyGraphicalPort, connectionMap.first, connectionMap.second->channel.portNumber);
+                }
+            }
             *x = xIni;
             *y+= deltaY;
             sequenceInLine--;
