@@ -374,7 +374,7 @@ void MainWindow::_actualizeActions() {
     ui->actionEditCut->setEnabled(canCutCopyDelete && !running);
     ui->actionEditDelete->setEnabled(canCutCopyDelete && !running);
     ui->actionEditPaste->setEnabled(canPaste && !running);
-    ui->actionConnect->setEnabled(opened && canConnect && !running);
+    ui->actionGModelShowConnect->setEnabled(opened && canConnect && !running);
     ui->actionViewGroup->setEnabled(opened && canGroup && !running);
     ui->actionEditGroup->setEnabled(opened && canGroup && !running);
     ui->actionViewUngroup->setEnabled(opened && canUngroup && !running);
