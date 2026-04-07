@@ -25,6 +25,7 @@
  */
 class SimulationReporter_if {
 public:
+	virtual ~SimulationReporter_if() = default;
 	/*!
 	 * \brief showReplicationStatistics
 	 */
@@ -49,4 +50,3 @@ public:
 };
 
 #endif /* SIMULATIONREPORTER_IF_H */
-
