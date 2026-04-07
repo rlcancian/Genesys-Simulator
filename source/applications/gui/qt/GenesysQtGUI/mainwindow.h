@@ -37,6 +37,7 @@ class PluginCatalogController;
 class PropertyEditorController;
 class ModelLifecycleController;
 class SimulationCommandController;
+class EditCommandController;
 
 /**
  * @brief Main Qt window of Genesys GUI.
@@ -284,6 +285,8 @@ private: // interface and model main elements to join
 	Ui::MainWindow *ui;
 	Simulator* simulator;
     std::unique_ptr<class SimulationController> _simulationController;
+    // Add the Phase 9 edit-command controller owned by MainWindow.
+    std::unique_ptr<EditCommandController> _editCommandController;
     // Add the Phase 8 simulation-command controller owned by MainWindow.
     std::unique_ptr<SimulationCommandController> _simulationCommandController;
     // Phase-1 services keep model-representation logic outside MainWindow while wrappers remain stable.

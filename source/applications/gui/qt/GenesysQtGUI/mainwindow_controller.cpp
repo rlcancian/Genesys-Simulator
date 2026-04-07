@@ -8,6 +8,8 @@
 #include "controllers/ModelLifecycleController.h"
 // Include the Phase 8 controller interface required by simulation-command compatibility wrappers.
 #include "controllers/SimulationCommandController.h"
+// Include the Phase 9 controller interface required by edit-command compatibility wrappers.
+#include "controllers/EditCommandController.h"
 
 #include "dialogs/dialogBreakpoint.h"
 #include "dialogs/Dialogmodelinformation.h"
@@ -16,9 +18,6 @@
 #include "dialogs/dialogsystempreferences.h"
 #include "dialogs/DialogFind.h"
 #include "controllers/SimulationController.h"
-
-#include "actions/DeleteUndoCommand.h"
-#include "actions/PasteUndoCommand.h"
 
 // std
 #include <string>
@@ -168,15 +167,17 @@ void MainWindow::on_actionAboutGetInvolved_triggered() {
 }
 
 void MainWindow::on_actionEditUndo_triggered() {
-    if (ui->graphicsView->getScene()->getUndoStack()) {
-        ui->graphicsView->getScene()->getUndoStack()->undo();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditUndoTriggered();
     }
 }
 
 
 void MainWindow::on_actionEditRedo_triggered() {
-    if (ui->graphicsView->getScene()->getUndoStack()) {
-        ui->graphicsView->getScene()->getUndoStack()->redo();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditRedoTriggered();
     }
 }
 
@@ -343,159 +344,23 @@ void MainWindow::on_actionEditReplace_triggered() {
 
 
 void MainWindow::on_actionEditCut_triggered() {
-    _gmc_copies->clear();
-    _ports_copies->clear();
-    _group_copy->clear();
-    _draw_copy->clear();
-
-    QList<QGraphicsItem *> selecteds =  ui->graphicsView->scene()->selectedItems();
-
-    // Verifica se tem itens selecionados
-    if (selecteds.size() > 0) {
-
-        // Pega a cena
-        ModelGraphicsScene *scene = (ModelGraphicsScene *)(ui->graphicsView->getScene());
-
-        // Seta o cut
-        _cut = true;
-
-        // Adiciona na lista de cópias (conexões, componentes e desenhos)
-        foreach (QGraphicsItem *item , ui->graphicsView->scene()->selectedItems()) {
-            QList<GraphicalModelComponent*> groupComponents  = QList<GraphicalModelComponent*>();
-            QList<GraphicalConnection*> * connGroup = new QList<GraphicalConnection*>();
-
-            // Tenta transformar em um componente gráfico de modelo
-            if (GraphicalModelComponent *gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
-                // Adiciona em uma lista de cópias de componentes
-                _gmc_copies->append(gmc);
-            }
-            else if (QGraphicsItemGroup *group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                for (int i = 0; i < group->childItems().size(); i++) {
-                    GraphicalModelComponent * component = dynamic_cast<GraphicalModelComponent *>(group->childItems().at(i));
-
-                    if (!component->getGraphicalInputPorts().empty() && !component->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
-                        for (int j = 0; j < component->getGraphicalInputPorts().at(0)->getConnections()->size(); ++j) {
-                            connGroup->append(component->getGraphicalInputPorts().at(0)->getConnections()->at(j));
-                        }
-                    }
-
-                    for (int j = 0; j < component->getGraphicalOutputPorts().size(); ++j) {
-                        GraphicalComponentPort *port = component->getGraphicalOutputPorts().at(j);
-
-                        if (!port->getConnections()->empty()) {
-                            connGroup->append(port->getConnections()->at(0));
-                        }
-                    }
-
-                    _gmc_copies->append(component);
-                    groupComponents.append(component);
-                }
-                saveItemForCopy(&groupComponents, connGroup);
-
-                _group_copy->append(group);
-                ui->graphicsView->getScene()->insertComponentGroup(group, groupComponents);
-                for (unsigned int k = 0; k < (unsigned int) connGroup->size(); k++) {
-                    _ports_copies->append(connGroup->at(k));
-                }
-            } else if (GraphicalConnection *port = dynamic_cast<GraphicalConnection*>(item)) {
-                _ports_copies->append(port);
-            } else {
-                _draw_copy->append(item);
-            }
-
-            delete connGroup;
-        }
-
-        // Removendo as conexoes do modelo e graficamente
-        // Só não é removido a conexão quando todos os itens estão selecionados
-        // (2x componentes e a conexão (similar ao arena)
-        saveItemForCopy(_gmc_copies, _ports_copies);
-
-        QUndoCommand *deleteUndoCommand = new DeleteUndoCommand(selecteds, scene);
-        scene->getUndoStack()->push(deleteUndoCommand);
-
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditCutTriggered();
     }
 }
 
 void MainWindow::on_actionEditCopy_triggered() {
-    _gmc_copies->clear();
-    _ports_copies->clear();
-    _group_copy->clear();
-    _draw_copy->clear();
-
-    QList<QGraphicsItem*> selected = ui->graphicsView->scene()->selectedItems();
-    QList<GraphicalModelComponent *> gmc_copies_copy = QList<GraphicalModelComponent *>();
-
-    // verifica se tem itens selecionados
-    if (selected.size() > 0) {
-
-        // seta o cut
-        _cut = false;
-
-        // adiciona na lista de cópias (conexões, componentes e desenhos)
-        foreach (QGraphicsItem *item , ui->graphicsView->scene()->selectedItems()) {
-            // verifica se é um componente gráfico
-            if (GraphicalModelComponent *gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
-                // Adiciona em uma lista de cópias de componentes
-                gmc->setSelected(false);
-                _gmc_copies->append(gmc);
-                gmc_copies_copy.append(gmc);
-            }
-            // verifica se é uma conexão gráfica
-            else if (GraphicalConnection *conn = dynamic_cast<GraphicalConnection*>(item)) {
-                conn->setSelected(false);
-                _ports_copies->append(conn);
-            }
-            // verifica se é um grupo
-            else if (QGraphicsItemGroup *group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                group->setSelected(false);
-                _group_copy->append(group);
-
-                for (int i = 0; i < group->childItems().size(); i++) {
-                    GraphicalModelComponent * component = dynamic_cast<GraphicalModelComponent *>(group->childItems().at(i));
-
-                    gmc_copies_copy.append(component);
-                }
-            }
-            // se não for nenhum deles é um desenho na tela
-            else {
-                item->setSelected(false);
-                _draw_copy->append(item);
-            }
-        }
-
-        // removendo as conexões em que os seus componentes não foram selecionados
-        saveItemForCopy(&gmc_copies_copy, _ports_copies);
-
-        // limpa a lista auxiliar
-        gmc_copies_copy.clear();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditCopyTriggered();
     }
-
 }
 
 void MainWindow::on_actionEditPaste_triggered() {
-
-    // se tiver componente copiados
-    if (_gmc_copies->size() > 0 || _draw_copy->size() > 0 || _group_copy->size() > 0) {
-
-        // pega a cena
-        ModelGraphicsScene *scene = (ModelGraphicsScene *)(ui->graphicsView->getScene());
-
-        // se não for ação de recorte chama o auxiliar do copy
-        if (!_cut) {
-            _helpCopy();
-        }
-
-        // cola na cena o que foi copiado
-        QUndoCommand *pasteUndoCommand = new PasteUndoCommand(_gmc_copies, _ports_copies, _group_copy, _draw_copy, scene);
-        scene->getUndoStack()->push(pasteUndoCommand);
-
-        // limpa todas as listas
-        _gmc_copies->clear();
-        _ports_copies->clear();
-        _draw_copy->clear();
-        _group_copy->clear();
-        _cut = false;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditPasteTriggered();
     }
 }
 
@@ -650,15 +515,10 @@ void MainWindow::on_actionAnimateStation_triggered() {
 
 void MainWindow::on_actionEditDelete_triggered()
 {
-    QList<QGraphicsItem *> selecteds = ui->graphicsView->scene()->selectedItems();
-    if (selecteds.isEmpty()) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditDeleteTriggered();
     }
-
-    ModelGraphicsScene *scene = ui->graphicsView->getScene();
-    QUndoCommand *deleteUndoCommand = new DeleteUndoCommand(selecteds, scene);
-    scene->getUndoStack()->push(deleteUndoCommand);
-    _actualizeActions();
 }
 
 
@@ -761,13 +621,19 @@ void MainWindow::on_actionAnimateStatistics_triggered()
 
 void MainWindow::on_actionEditGroup_triggered()
 {
-    on_actionViewGroup_triggered();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditGroupTriggered();
+    }
 }
 
 
 void MainWindow::on_actionEditUngroup_triggered()
 {
-    on_actionViewUngroup_triggered();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditUngroupTriggered();
+    }
 }
 
 
@@ -1148,15 +1014,19 @@ void MainWindow::on_actionShowSnap_triggered()
 
 void MainWindow::on_actionViewGroup_triggered()
 {
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->groupComponents(false);
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionViewGroupTriggered();
+    }
 }
 
 
 void MainWindow::on_actionViewUngroup_triggered()
 {
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->ungroupComponents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionViewUngroupTriggered();
+    }
 }
 
 void MainWindow::on_actionArranjeLeft_triggered()
