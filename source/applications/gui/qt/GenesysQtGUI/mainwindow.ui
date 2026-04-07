@@ -870,7 +870,6 @@
     <addaction name="actionEditDelete"/>
     <addaction name="separator"/>
     <addaction name="actionEditFind"/>
-    <!-- <addaction name="actionReplace"/> -->
     <addaction name="actionEditReplace"/>
     <addaction name="separator"/>
    </widget>
@@ -1548,7 +1547,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Ctrl+F</string>
    </property>
   </action>
-  <!-- <action name="actionReplace"> -->
   <action name="actionEditReplace">
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
