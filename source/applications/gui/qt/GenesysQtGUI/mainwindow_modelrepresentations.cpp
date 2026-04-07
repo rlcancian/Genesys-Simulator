@@ -926,7 +926,13 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
 
         for (unsigned int i = 0; i < (unsigned int) graphicalComponents->size(); i++) {
             GraphicalModelComponent *source = dynamic_cast<GraphicalModelComponent *> (graphicalComponents->at(i));
+            if (source == nullptr || source->getComponent() == nullptr) {
+                continue;
+            }
             std::map<unsigned int, Connection*> *connections = source->getComponent()->getConnectionManager()->connections();
+            if (connections == nullptr) {
+                continue;
+            }
 
             for (auto it = connections->begin(); it != connections->end(); ++it) {
                 unsigned int portSource = it->first;
@@ -941,6 +947,9 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
                 }
                 unsigned int portDestination = destination->getGraphicalInputPorts().at(0)->portNum();
                 if (portSource >= source->getGraphicalOutputPorts().size()) {
+                    continue;
+                }
+                if (portDestination >= destination->getGraphicalInputPorts().size()) {
                     continue;
                 }
 
@@ -1108,6 +1117,9 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
     const int deltaY = TraitsGUI<GModelComponent>::width * TraitsGUI<GModelComponent>::heightProportion * 1.5;
     GraphicalComponentPort *sourceGraphicalPort, *destinyGraphicalPort;
     for(auto connectionMap: *component->getConnectionManager()->connections()) {
+        if (connectionMap.second == nullptr || connectionMap.second->component == nullptr) {
+            continue;
+        }
         ModelComponent* nextComp = connectionMap.second->component;
         if (visited->find(nextComp)==visited->list()->end()) { // nextComponent was not visited yet
             if (++sequenceInLine==6) {
@@ -1215,6 +1227,10 @@ void MainWindow::_generateGraphicalModelFromModel() {
         y=TraitsGUI<GView>::sceneCenter - TraitsGUI<GView>::sceneDistanceCenter*0.8; //ui->graphicsView->sceneRect().top();
         ymax=y;
         ComponentManager* cm = m->getComponentManager();
+        if (cm == nullptr) {
+            ui->graphicsView->setCanNotifyGraphicalModelEventHandlers(true);
+            return;
+        }
         List<ModelComponent*>* visited = new List<ModelComponent*>();
         std::map<ModelComponent*,GraphicalModelComponent*>* map = new std::map<ModelComponent*,GraphicalModelComponent*>();
         for(SourceModelComponent* source: *cm->getSourceComponents()) {
