@@ -6,6 +6,8 @@
 #include "controllers/PluginCatalogController.h"
 // Include the Phase 7 controller interface required by lifecycle compatibility wrappers.
 #include "controllers/ModelLifecycleController.h"
+// Include the Phase 8 controller interface required by simulation-command compatibility wrappers.
+#include "controllers/SimulationCommandController.h"
 
 #include "dialogs/dialogBreakpoint.h"
 #include "dialogs/Dialogmodelinformation.h"
@@ -86,22 +88,10 @@
  * @todo Move command execution details (animation flags + console command) into SimulationController.
  */
 void MainWindow::on_actionSimulationStop_triggered() {
-    if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 8 refactor.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationStopTriggered();
     }
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(false);
-    AnimationTransition::setPause(false);
-
-    _insertCommandInConsole("stop");
-
-    simulation->stop();
-
-    _actualizeActions();
 }
 
 /**
@@ -115,23 +105,10 @@ void MainWindow::on_actionSimulationStop_triggered() {
  * @todo Replace lambda callbacks by explicit command objects for better unit testing.
  */
 void MainWindow::on_actionSimulationStart_triggered() {
-    if (!_simulationController || !_simulationController->ensureReady(
-            true,
-            _modelCheked,
-            [this]() { return _check(false); },
-            [this]() { return _setSimulationModelBasedOnText(); })) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 8 refactor.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationStartTriggered(_modelCheked);
     }
-
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(true);
-    AnimationTransition::setPause(false);
-    _insertCommandInConsole("start");
-    simulation->start();
 }
 
 /**
@@ -142,23 +119,10 @@ void MainWindow::on_actionSimulationStart_triggered() {
  * @todo Consolidate duplicated animation-toggle code between start and step.
  */
 void MainWindow::on_actionSimulationStep_triggered() {
-    if (!_simulationController || !_simulationController->ensureReady(
-            true,
-            _modelCheked,
-            [this]() { return _check(false); },
-            [this]() { return _setSimulationModelBasedOnText(); })) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 8 refactor.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationStepTriggered(_modelCheked);
     }
-
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(true);
-    AnimationTransition::setPause(false);
-    _insertCommandInConsole("step");
-    simulation->step();
 }
 
 /**
@@ -167,20 +131,10 @@ void MainWindow::on_actionSimulationStep_triggered() {
  * @todo Add explicit feedback when pause is requested in invalid state.
  */
 void MainWindow::on_actionSimulationPause_triggered() {
-    if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 8 refactor.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationPauseTriggered();
     }
-
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(true);
-    AnimationTransition::setPause(true);
-
-    _insertCommandInConsole("pause");
-    simulation->pause();
 }
 
 /**
@@ -190,24 +144,10 @@ void MainWindow::on_actionSimulationPause_triggered() {
  *       to avoid semantic coupling with `start()`.
  */
 void MainWindow::on_actionSimulationResume_triggered() {
-    if (!_simulationController || !_simulationController->ensureReady(
-            false,
-            _modelCheked,
-            [this]() { return _check(false); },
-            [this]() { return _setSimulationModelBasedOnText(); })) {
-        return;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 8 refactor.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationResumeTriggered(_modelCheked);
     }
-
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(true);
-    AnimationTransition::setPause(false);
-
-    _insertCommandInConsole("resume");
-    simulation->start();
 }
 
 

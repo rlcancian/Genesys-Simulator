@@ -21,6 +21,8 @@
 #include "controllers/PropertyEditorController.h"
 // Add Phase 7 controller include for model/application lifecycle orchestration.
 #include "controllers/ModelLifecycleController.h"
+// Add Phase 8 controller include for simulation-command orchestration.
+#include "controllers/SimulationCommandController.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -278,6 +280,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->treeViewPropertyEditor->setModelChangedCallback([this]() {
         this->_onPropertyEditorModelChanged();
     });
+    // Initialize the Phase 8 simulation-command controller after simulation controller and callbacks are available.
+    _simulationCommandController = std::make_unique<SimulationCommandController>(
+        _simulationController.get(),
+        [this](const std::string& command) { _insertCommandInConsole(command); },
+        [this]() { _actualizeActions(); },
+        [this]() { return _check(false); },
+        [this]() { return _setSimulationModelBasedOnText(); });
+
     // Initialize the Phase 7 model-lifecycle controller after simulator/UI/callback dependencies are ready.
     _modelLifecycleController = std::make_unique<ModelLifecycleController>(
         this,
