@@ -17,6 +17,7 @@
 #include <fstream>
 #include <memory>
 #include <algorithm>
+#include <cmath>
 //#include <sstream>
 #include <cstdlib>
 //#include <streambuf>
@@ -560,15 +561,17 @@ void MainWindow::on_actionShowGrid_triggered() {
 
 
 void MainWindow::on_actionShowRule_triggered() {
-    // Applies ruler visibility through the graphics view backend and mirrors the effective state back to the action.
-    ui->graphicsView->setRuleVisible(ui->actionShowRule->isChecked());
+    // Applies the requested ruler state and then mirrors the effective backend state into the QAction.
+    const bool requestedVisible = ui->actionShowRule->isChecked();
+    ui->graphicsView->setRuleVisible(requestedVisible);
     ui->actionShowRule->setChecked(ui->graphicsView->isRuleVisible());
 }
 
 
 void MainWindow::on_actionShowGuides_triggered() {
-    // Applies guide visibility through the graphics view backend and mirrors the effective state back to the action.
-    ui->graphicsView->setGuidesVisible(ui->actionShowGuides->isChecked());
+    // Applies the requested guides state and then mirrors the effective backend state into the QAction.
+    const bool requestedVisible = ui->actionShowGuides->isChecked();
+    ui->graphicsView->setGuidesVisible(requestedVisible);
     ui->actionShowGuides->setChecked(ui->graphicsView->isGuidesVisible());
 }
 
@@ -936,17 +939,20 @@ void MainWindow::on_actionToolsOptimizator_triggered()
 
 void MainWindow::on_actionToolsDataAnalyzer_triggered()
 {
-    // Opens a dataset workflow that loads numeric values and reports basic descriptive statistics.
+    // Opens a dataset workflow that loads numeric values and reports descriptive statistics with summary export.
+    const QString initialPath = _lastDataAnalyzerPath.isEmpty() ? QDir::currentPath() : _lastDataAnalyzerPath;
     const QString fileName = QFileDialog::getOpenFileName(
         this,
         tr("Open Dataset"),
-        QDir::currentPath(),
+        initialPath,
         tr("Data files (*.csv *.txt *.dat);;All files (*.*)"),
         nullptr,
         QFileDialog::DontUseNativeDialog);
     if (fileName.isEmpty()) {
         return;
     }
+    // Persists the last visited dataset folder for the next analyzer execution.
+    _lastDataAnalyzerPath = QFileInfo(fileName).absolutePath();
 
     QFile file(fileName);
     if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -981,6 +987,7 @@ void MainWindow::on_actionToolsDataAnalyzer_triggered()
     auto* preview = new QTextEdit(&dialog);
     preview->setReadOnly(true);
     auto* closeButtons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+    auto* exportSummaryButton = new QPushButton(tr("Save Summary"), &dialog);
 
     if (numericValues.isEmpty()) {
         summaryLabel->setText(tr("No numeric values were detected in the selected file."));
@@ -994,19 +1001,50 @@ void MainWindow::on_actionToolsDataAnalyzer_triggered()
             sum += value;
         }
         const double mean = sum / static_cast<double>(numericValues.size());
-        summaryLabel->setText(tr("File: %1\nNumeric samples: %2\nMin: %3\nMax: %4\nMean: %5")
+        // Computes variance and standard deviation to provide a concrete analysis output.
+        double squaredDiffSum = 0.0;
+        for (double value : numericValues) {
+            const double diff = value - mean;
+            squaredDiffSum += diff * diff;
+        }
+        const double standardDeviation = std::sqrt(squaredDiffSum / static_cast<double>(numericValues.size()));
+        summaryLabel->setText(tr("File: %1\nNumeric samples: %2\nMin: %3\nMax: %4\nMean: %5\nStd Dev: %6")
                               .arg(fileName)
                               .arg(numericValues.size())
                               .arg(minValue)
                               .arg(maxValue)
-                              .arg(mean));
+                              .arg(mean)
+                              .arg(standardDeviation));
     }
     preview->setPlainText(previewLines.join("\n"));
 
     layout->addWidget(summaryLabel);
     layout->addWidget(new QLabel(tr("Preview (first 10 lines):"), &dialog));
     layout->addWidget(preview);
+    layout->addWidget(exportSummaryButton);
     layout->addWidget(closeButtons);
+    // Saves the current analysis summary into a text file selected by the user.
+    connect(exportSummaryButton, &QPushButton::clicked, &dialog, [this, summaryLabel]() {
+        const QString exportPath = QFileDialog::getSaveFileName(
+            this,
+            tr("Save Data Analyzer Summary"),
+            QDir::currentPath() + "/data-analyzer-summary.txt",
+            tr("Text files (*.txt);;All files (*.*)"),
+            nullptr,
+            QFileDialog::DontUseNativeDialog);
+        if (exportPath.isEmpty()) {
+            return;
+        }
+        QFile outputFile(exportPath);
+        if (!outputFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QMessageBox::warning(this, tr("Data Analyzer"), tr("Could not save summary file."));
+            return;
+        }
+        QTextStream out(&outputFile);
+        out << summaryLabel->text() << "\n";
+        outputFile.close();
+        statusBar()->showMessage(tr("Data analysis summary saved to %1").arg(exportPath), 4000);
+    });
     connect(closeButtons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
     dialog.exec();
 }
@@ -1020,7 +1058,7 @@ void MainWindow::on_actionAnimatePlot_triggered()
 
 void MainWindow::on_actionViewConfigure_triggered()
 {
-    // Opens a compact view configuration dialog that updates current scene/view flags.
+    // Opens a compact view configuration dialog initialized from the effective scene and view backend states.
     ModelGraphicsScene* scene = myScene();
     if (scene == nullptr) {
         return;
@@ -1036,9 +1074,9 @@ void MainWindow::on_actionViewConfigure_triggered()
     auto* gridInterval = new QSpinBox(&dialog);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
 
-    showGrid->setChecked(ui->actionShowGrid->isChecked());
-    showRule->setChecked(ui->actionShowRule->isChecked());
-    showGuides->setChecked(ui->actionShowGuides->isChecked());
+    showGrid->setChecked(scene->isGridVisible());
+    showRule->setChecked(ui->graphicsView->isRuleVisible());
+    showGuides->setChecked(ui->graphicsView->isGuidesVisible());
     snapToGrid->setChecked(ui->actionShowSnap->isChecked());
     gridInterval->setRange(5, 200);
     gridInterval->setValue(static_cast<int>(scene->grid()->interval));
@@ -1050,6 +1088,7 @@ void MainWindow::on_actionViewConfigure_triggered()
     layout->addRow(tr("Grid interval"), gridInterval);
     layout->addRow(buttons);
 
+    // Applies each configured option through existing action/back-end paths to keep menu and view synchronized.
     connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, scene, showGrid, showRule, showGuides, snapToGrid, gridInterval, &dialog]() {
         scene->grid()->interval = static_cast<unsigned int>(gridInterval->value());
         if (scene->isGridVisible()) {
@@ -1057,11 +1096,11 @@ void MainWindow::on_actionViewConfigure_triggered()
             scene->setGridVisible(true);
         }
         ui->actionShowGrid->setChecked(showGrid->isChecked());
-        scene->setGridVisible(showGrid->isChecked());
+        on_actionShowGrid_triggered();
         ui->actionShowRule->setChecked(showRule->isChecked());
-        ui->graphicsView->setRuleVisible(showRule->isChecked());
+        on_actionShowRule_triggered();
         ui->actionShowGuides->setChecked(showGuides->isChecked());
-        ui->graphicsView->setGuidesVisible(showGuides->isChecked());
+        on_actionShowGuides_triggered();
         ui->actionShowSnap->setChecked(snapToGrid->isChecked());
         scene->setSnapToGrid(snapToGrid->isChecked());
         dialog.accept();
@@ -1746,6 +1785,9 @@ void MainWindow::on_treeWidget_Plugins_itemDoubleClicked(QTreeWidgetItem *item, 
 
 void MainWindow::on_graphicsView_rubberBandChanged(const QRect &viewportRect, const QPointF &fromScenePoint, const QPointF &toScenePoint) {
     // Reports rubber-band geometry during drag and final selected-item count when selection is completed.
+    if (ui->graphicsView->scene() == nullptr) {
+        return;
+    }
     if (viewportRect.isNull()) {
         const int selectedCount = ui->graphicsView->scene()->selectedItems().size();
         statusBar()->showMessage(tr("Selection completed: %1 item(s) selected").arg(selectedCount), 3000);

@@ -346,6 +346,8 @@ private:
     bool _parallelizationEnabled = false;
     int _parallelizationThreads = 1;
     int _parallelizationBatchSize = 100;
+    // Remembers the last dataset location used by the data analyzer workflow.
+    QString _lastDataAnalyzerPath;
     QMetaObject::Connection _sceneChangedConnection;
     QMetaObject::Connection _sceneFocusItemChangedConnection;
     QMetaObject::Connection _sceneSelectionChangedConnection;
