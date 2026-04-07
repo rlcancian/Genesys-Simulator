@@ -220,14 +220,17 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
     QtVariantProperty* property = _variantManager->addProperty(variantType, name);
     property->setValue(_toVariant(desc));
 
+    // This block enables direct inline editing only for scalar-like properties handled by variant editors.
     const bool editableInline =
         !desc.readOnly &&
-        !desc.isList &&
+        !desc.supportsListEditor &&
+        !desc.supportsInlineExpansion &&
         !(desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit);
 
     property->setEnabled(editableInline);
 
-    if (desc.isList) {
+    // This block configures the list-editor hint based on explicit contract metadata instead of heuristics.
+    if (desc.supportsListEditor) {
         property->setToolTip("List property. Use double click, Enter or context menu to open list editor.");
         property->setStatusTip("List editor");
     }
@@ -253,7 +256,8 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
 
     GenesysPropertyDescriptor desc = GenesysPropertyIntrospection::describe(control);
 
-    if (!desc.isClass) {
+    // This block uses explicit inline-expansion support metadata to decide recursion.
+    if (!desc.supportsInlineExpansion) {
         QtProperty* leaf = _createLeafProperty(desc);
         if (leaf != nullptr) {
             parent->addSubProperty(leaf);
@@ -286,7 +290,8 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
         return;
     }
 
-    if (desc.isModelDataDefinitionReference && !desc.choices.empty()) {
+    // This block renders object selection when the contract declares selection among existing objects.
+    if (desc.supportsExistingObjectSelection && !desc.choices.empty()) {
         QtProperty* refProperty = _enumManager->addProperty("Reference");
         _enumNames[refProperty] = _toQStringList(desc.choices);
         _enumManager->setEnumNames(refProperty, _enumNames[refProperty]);
@@ -365,7 +370,8 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         this->_notifyModelChangeApplied();
     };
 
-    if (control->getIsList()) {
+    // This block opens the specialized list editor only when the explicit list-editor contract is enabled.
+    if (binding.descriptor.supportsListEditor) {
         if (_propertyList != nullptr) {
             auto found = _propertyList->find(control);
             if (found == _propertyList->end() || found->second == nullptr) {
@@ -402,7 +408,8 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
         return;
     }
 
-    if (binding.descriptor.isClass || binding.descriptor.isList
+    // This block filters out properties whose edits are handled by specialized editors or enum handlers.
+    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor
         || binding.descriptor.kind == GenesysPropertyKind::Enum
         || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
         return;
@@ -500,7 +507,8 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     }
 
     auto it = _bindings.find(item->property());
-    if (it == _bindings.end() || !it.value().descriptor.isList) {
+    // This block exposes context-menu list editing through explicit list-editor support metadata.
+    if (it == _bindings.end() || !it.value().descriptor.supportsListEditor) {
         QtTreePropertyBrowser::contextMenuEvent(event);
         return;
     }
