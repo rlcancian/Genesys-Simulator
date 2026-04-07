@@ -48,17 +48,7 @@ void _appendLogLine(const QString& line) {
 }
 
 void _qtMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
-    const QString now = QDateTime::currentDateTime().toString(Qt::ISODateWithMs);
-    QString level;
-    switch (type) {
-        case QtDebugMsg: level = "DEBUG"; break;
-        case QtInfoMsg: level = "INFO"; break;
-        case QtWarningMsg: level = "WARN"; break;
-        case QtCriticalMsg: level = "CRITICAL"; break;
-        case QtFatalMsg: level = "FATAL"; break;
-    }
-    QString where = QString("%1:%2").arg(context.file ? context.file : "unknown").arg(context.line);
-    QString line = QString("[%1] [%2] [%3] %4").arg(now, level, where, msg);
+    const QString line = qFormatLogMessage(type, context, msg);
     _appendLogLine(line);
     std::cerr << line.toStdString() << std::endl;
     if (type == QtFatalMsg) {
@@ -96,6 +86,7 @@ void _signalHandler(int signalNumber) {
 }
 
 void _installCrashAndLogHandlers() {
+    qSetMessagePattern("[%{time yyyy-MM-ddTHH:mm:ss.zzz}] [%{if-debug}DEBUG%{endif}%{if-info}INFO%{endif}%{if-warning}WARN%{endif}%{if-critical}CRITICAL%{endif}%{if-fatal}FATAL%{endif}] [tid:%{threadid}] [%{file}:%{line}] [%{function}] %{message}");
     _logPath = _defaultLogPath();
     _appendLogLine(QString("[%1] [INFO] Logging started at %2")
                    .arg(QDateTime::currentDateTime().toString(Qt::ISODateWithMs), _logPath));

@@ -6,6 +6,7 @@
 #include <QTreeWidgetItem>
 #include <QGraphicsItem>
 #include <QUndoView>
+#include <QMetaObject>
 #include <memory>
 
 #include "propertyeditor/DataComponentProperty.h"
@@ -234,6 +235,8 @@ private: // simulator related
 	std::string _addCppCodeLine(std::string line, unsigned int indent = 0);
 private: // view
 	void _initModelGraphicsView();
+    void _connectSceneSignals();
+    void _disconnectSceneSignals(const char* context);
 	void _initUiForNewModel(Model* m);
 	void _actualizeActions();
     void _actualizeUndo();
@@ -331,6 +334,10 @@ private:
     bool _graphicalSimulation = false;
     bool _modelCheked = false;
     bool _loaded = false;
+    bool _shuttingDown = false;
+    QMetaObject::Connection _sceneChangedConnection;
+    QMetaObject::Connection _sceneFocusItemChangedConnection;
+    QMetaObject::Connection _sceneSelectionChangedConnection;
 	//CodeEditor* textCodeEdit_Model;
 };
 #endif // MAINWINDOW_H

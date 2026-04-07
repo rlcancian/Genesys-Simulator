@@ -932,6 +932,13 @@ void MainWindow::on_actionModelOpen_triggered()
 
 void MainWindow::on_actionModelSave_triggered()
 {
+    QObject* triggerSender = sender();
+    qInfo() << "on_actionModelSave_triggered sender="
+            << (triggerSender ? triggerSender->metaObject()->className() : "nullptr")
+            << " objectName=" << (triggerSender ? triggerSender->objectName() : QString())
+            << " senderPtr=" << triggerSender
+            << " scenePtr=" << (ui && ui->graphicsView ? ui->graphicsView->scene() : nullptr)
+            << " modelPtr=" << simulator->getModelManager()->current();
     QString fileName = QFileDialog::getSaveFileName(this,
                                                     tr("Save Model"), _modelfilename,
                                                     tr("Genesys Model (*.gen)"), nullptr, QFileDialog::DontUseNativeDialog);
@@ -966,6 +973,10 @@ void MainWindow::on_actionModelSave_triggered()
 
 void MainWindow::on_actionModelClose_triggered()
 {
+    qInfo() << "on_actionModelClose_triggered scenePtr="
+            << (ui && ui->graphicsView ? ui->graphicsView->scene() : nullptr)
+            << " modelPtr=" << simulator->getModelManager()->current();
+    _disconnectSceneSignals("on_actionModelClose_triggered(begin)");
     if (_textModelHasChanged || simulator->getModelManager()->current()->hasChanged()) {
         QMessageBox msgBox;
         msgBox.setIcon(QMessageBox::Question);
@@ -1010,6 +1021,7 @@ void MainWindow::on_actionModelClose_triggered()
 
     _clearModelEditors();
 
+    _connectSceneSignals();
     _actualizeActions();
     _actualizeTabPanes();
     //QMessageBox::information(this, "Close Model", "Model successfully closed");

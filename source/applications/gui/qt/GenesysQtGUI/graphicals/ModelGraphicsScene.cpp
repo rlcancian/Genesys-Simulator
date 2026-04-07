@@ -2287,6 +2287,10 @@ void ModelGraphicsScene::focusOutEvent(QFocusEvent *focusEvent) {
 }
 
 void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent *event) {
+    qInfo() << "ModelGraphicsScene::dropEvent scene=" << this
+            << " draggedItem=" << _objectBeingDragged
+            << " simulator=" << _simulator
+            << " currentModel=" << (_simulator ? _simulator->getModelManager()->current() : nullptr);
     if (checkIgnoreEvent()) {
         event->ignore();
         return;
