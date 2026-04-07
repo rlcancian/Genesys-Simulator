@@ -158,6 +158,7 @@ void ObjectPropertyBrowser::_clearAll() {
     clear();
     _bindings.clear();
     _enumNames.clear();
+    _objectSummaryProperties.clear();
 
     delete _variantFactory;
     delete _enumFactory;
@@ -304,6 +305,14 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
     }
 }
 
+QString ObjectPropertyBrowser::_objectSummary(const GenesysPropertyDescriptor& desc) const {
+    const QString currentValue = QString::fromStdString(desc.currentValue);
+    if (currentValue.isEmpty()) {
+        return "<Object not initialized - double-click to create/edit>";
+    }
+    return currentValue + " (double-click to edit)";
+}
+
 QtProperty* ObjectPropertyBrowser::_createProperty(const GenesysPropertyDescriptor& desc) {
     const QString name = QString::fromStdString(desc.displayName);
 
@@ -323,6 +332,27 @@ QtProperty* ObjectPropertyBrowser::_createProperty(const GenesysPropertyDescript
         _bindings[property] = binding;
 
         return property;
+    }
+
+    if (desc.isClass) {
+        QtProperty* group = _groupManager->addProperty(name);
+        group->setToolTip("Nested object property. Double-click, Enter or context menu to edit.");
+        group->setStatusTip("Nested object editor");
+
+        QtVariantProperty* summary = _variantManager->addProperty(QVariant::String, "Value");
+        summary->setValue(_objectSummary(desc));
+        summary->setEnabled(false);
+        group->addSubProperty(summary);
+
+        Binding binding;
+        binding.owner = _modelObject;
+        binding.control = desc.control;
+        binding.descriptor = desc;
+        _bindings[group] = binding;
+        _bindings[summary] = binding;
+
+        _objectSummaryProperties[group] = summary;
+        return group;
     }
 
     int variantType = QVariant::String;
@@ -353,7 +383,7 @@ QtProperty* ObjectPropertyBrowser::_createProperty(const GenesysPropertyDescript
     QtVariantProperty* property = _variantManager->addProperty(variantType, name);
     property->setValue(_toVariant(desc));
 
-    const bool complexProperty = desc.isList || desc.isClass;
+    const bool complexProperty = desc.isList;
 
     const bool editableInline =
         !desc.readOnly &&
@@ -599,6 +629,20 @@ void ObjectPropertyBrowser::objectUpdated() {
             _enumManager->setValue(key, _enumIndexFor(fresh));
 
         } else {
+            if (fresh.isClass) {
+                auto summaryIt = _objectSummaryProperties.find(key);
+                if (summaryIt != _objectSummaryProperties.end() && summaryIt.value() != nullptr) {
+                    summaryIt.value()->setValue(_objectSummary(fresh));
+                } else {
+                    QtVariantProperty* variantProperty =
+                        dynamic_cast<QtVariantProperty*>(key);
+                    if (variantProperty != nullptr) {
+                        variantProperty->setValue(_objectSummary(fresh));
+                    }
+                }
+                continue;
+            }
+
             QtVariantProperty* variantProperty =
                 dynamic_cast<QtVariantProperty*>(key);
             if (variantProperty != nullptr) {
