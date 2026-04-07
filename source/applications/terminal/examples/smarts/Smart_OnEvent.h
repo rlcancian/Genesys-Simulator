@@ -22,19 +22,18 @@ public:
 public:
 	virtual int main(int argc, char** argv) override;
 public:
-	void onBreakpointHandler(SimulationEvent* re);
-	void onEntityCreateHandler(SimulationEvent* re);
-	void onEntityMoveHandler(SimulationEvent* re);
-	void onSimulationStartHandler(SimulationEvent* re);
-	void onReplicationStartHandler(SimulationEvent* re);
-	void onReplicationStepHandler(SimulationEvent* re);
-	void onProcessEventHandler(SimulationEvent* re);
-	void onReplicationEndHandler(SimulationEvent* re);
-	void onSimulationEndHandler(SimulationEvent* re);
-	void onSimulationPausedHandler(SimulationEvent* re);
-	void onSimulationResumeHandler(SimulationEvent* re);
-	void onEntityRemoveHandler(SimulationEvent* re);
+	virtual void onBreakpointHandler(SimulationEvent* re) override;
+	virtual void onEntityCreateHandler(SimulationEvent* re) override;
+	virtual void onEntityMoveHandler(SimulationEvent* re) override;
+	virtual void onSimulationStartHandler(SimulationEvent* re) override;
+	virtual void onReplicationStartHandler(SimulationEvent* re) override;
+	virtual void onReplicationStepHandler(SimulationEvent* re) override;
+	virtual void onProcessEventHandler(SimulationEvent* re) override;
+	virtual void onReplicationEndHandler(SimulationEvent* re) override;
+	virtual void onSimulationEndHandler(SimulationEvent* re) override;
+	virtual void onSimulationPausedHandler(SimulationEvent* re) override;
+	virtual void onSimulationResumeHandler(SimulationEvent* re) override;
+	virtual void onEntityRemoveHandler(SimulationEvent* re) override;
 };
 
 #endif /* SMART_ONEVENT_H */
-

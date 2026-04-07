@@ -144,6 +144,7 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 				trace("Member index " + std::to_string(index) + " was specifically choosen", TraceManager::Level::L9_mostDetailed);
 				break;
 			case SeizableItem::SelectionRule::PREFEREDORDER:
+			{
 				bestValue = 0;
 				index = 0;
 				unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
@@ -186,6 +187,10 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 					}
 					index = bestIndex;
 				}
+				break;
+			}
+			case SeizableItem::SelectionRule::num_elements:
+				traceError("Invalid SelectionRule enum value: num_elements");
 				break;
 		}
 		trace("Member of set " + set->getName() + " chosen index " + std::to_string(index), TraceManager::Level::L8_detailed);

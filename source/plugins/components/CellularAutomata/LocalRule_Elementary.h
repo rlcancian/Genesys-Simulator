@@ -14,7 +14,7 @@ public:
     LocalRule_Elementary(const LocalRule_Elementary& orig): LocalRule(orig) { }
     virtual ~LocalRule_Elementary()=default;
 public:
-    virtual void applyRule(Cell* cell) {
+    virtual void applyRule(Cell* cell) override {
 		long number = 0;
         int bit, power = 2;
         for (Cell* neigh : cell->getNeighbors()) {
