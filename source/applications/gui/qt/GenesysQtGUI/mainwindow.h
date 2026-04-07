@@ -272,6 +272,7 @@ private: // interface and model main elements to join
 	Ui::MainWindow *ui;
 	Simulator* simulator;
     std::unique_ptr<class SimulationController> _simulationController;
+    // Phase-1 services keep model-representation logic outside MainWindow while wrappers remain stable.
     std::unique_ptr<ModelLanguageSynchronizer> _modelLanguageSynchronizer;
     std::unique_ptr<GraphvizModelExporter> _graphvizModelExporter;
     std::unique_ptr<CppModelExporter> _cppModelExporter;

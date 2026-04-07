@@ -1,8 +1,6 @@
 #include "services/CppModelExporter.h"
 
 // This include gives access to generated Qt widgets where generated C++ text is displayed.
-#include "ui_mainwindow.h"
-
 // These includes provide kernel model APIs used by C++ code generation.
 #include "../../../../kernel/simulator/Simulator.h"
 #include "../../../../kernel/simulator/Model.h"
@@ -14,11 +12,19 @@
 #include "../../../../kernel/util/Util.h"
 
 // This include provides QString conversion APIs used by the target text widget.
+#include <QPlainTextEdit>
 #include <QString>
 
 // These includes provide STL containers and utilities used by code assembly.
 #include <map>
 #include <utility>
+
+
+// Store simulator and output editor used by C++ export rendering.
+CppModelExporter::CppModelExporter(Simulator* simulator, QPlainTextEdit* cppCodeEditor)
+    : _simulator(simulator)
+    , _cppCodeEditor(cppCodeEditor) {
+}
 
 std::string CppModelExporter::addCppCodeLine(const std::string& line, unsigned int indent) const {
     // This block preserves tab-indentation semantics used by existing generated output.
@@ -30,14 +36,14 @@ std::string CppModelExporter::addCppCodeLine(const std::string& line, unsigned i
     return text;
 }
 
-void CppModelExporter::actualizeModelCppCode(Simulator* simulator, Ui::MainWindow* ui) const {
+void CppModelExporter::actualizeModelCppCode() const {
     // This guard preserves safety when dependencies are missing.
-    if (simulator == nullptr || ui == nullptr) {
+    if (_simulator == nullptr || _cppCodeEditor == nullptr) {
         return;
     }
 
     // This block preserves generation flow only when a model is currently loaded.
-    Model* m = simulator->getModelManager()->current();
+    Model* m = _simulator->getModelManager()->current();
     if (m != nullptr) {
         unsigned short tabs = 0;
         std::string text;
@@ -150,9 +156,9 @@ void CppModelExporter::actualizeModelCppCode(Simulator* simulator, Ui::MainWindo
         code->insert({"8end", text});
 
         // This block preserves final rendering order into the C++ code editor pane.
-        ui->plainTextEditCppCode->clear();
+        _cppCodeEditor->clear();
         for (std::pair<std::string, std::string> codeSection : *code) {
-            ui->plainTextEditCppCode->appendPlainText(QString::fromStdString(codeSection.second));
+            _cppCodeEditor->appendPlainText(QString::fromStdString(codeSection.second));
         }
     }
 }
