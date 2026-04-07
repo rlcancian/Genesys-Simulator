@@ -62,21 +62,7 @@ void MainWindow::sceneChanged(const QList<QRectF> &region) {
     /**
      * Bloco 2: habilita/desabilita ações de edição conforme itens/copias disponíveis.
      */
-    bool res = _checkItemsScene();
-
-    if (res) {
-        ui->actionEditCut->setEnabled(true);
-        ui->actionEditCopy->setEnabled(true);
-    } else {
-        ui->actionEditCut->setEnabled(false);
-        ui->actionEditCopy->setEnabled(false);
-    }
-
-    if (!_draw_copy->empty() || !_gmc_copies->empty() || !_group_copy->empty() || !_ports_copies->empty()) {
-        ui->actionEditPaste->setEnabled(true);
-    } else {
-        ui->actionEditPaste->setEnabled(false);
-    }
+    _actualizeActions();
 
     /**
      * Bloco 3: atualiza estado visual final da cena.
@@ -135,6 +121,7 @@ void MainWindow::sceneSelectionChanged() {
     }
     // Se nenhum item estiver selecionado ou se mais de um item estiver selecionado
     ui->treeViewPropertyEditor->clear();
+    _actualizeActions();
 }
 
 //-----------------------------------------

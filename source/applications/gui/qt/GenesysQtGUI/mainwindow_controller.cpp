@@ -40,6 +40,18 @@
 #include <QRegularExpression>
 #include <QRandomGenerator>
 #include <QSignalBlocker>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QDialogButtonBox>
+#include <QLabel>
+#include <QCheckBox>
+#include <QImage>
+#include <QPainter>
+#include <QFileInfo>
 #include "../../../../kernel/simulator/ModelSimulation.h"
 
 
@@ -229,7 +241,149 @@ void MainWindow::on_actionEditFind_triggered() {
 //     _showMessageNotImplemented();
 // }
 void MainWindow::on_actionEditReplace_triggered() {
-    _showMessageNotImplemented();
+    if (ui->TextCodeEditor == nullptr) {
+        return;
+    }
+
+    auto* editor = ui->TextCodeEditor;
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Replace"));
+    dialog.setModal(false);
+
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* formLayout = new QFormLayout();
+    auto* findLine = new QLineEdit(&dialog);
+    auto* replaceLine = new QLineEdit(&dialog);
+    auto* caseSensitive = new QCheckBox(tr("Case sensitive"), &dialog);
+    auto* statusLabel = new QLabel(&dialog);
+    statusLabel->setWordWrap(true);
+    statusLabel->setText(tr("Ready."));
+
+    static QString lastFindText;
+    static QString lastReplaceText;
+    findLine->setText(lastFindText);
+    replaceLine->setText(lastReplaceText);
+
+    formLayout->addRow(tr("Find:"), findLine);
+    formLayout->addRow(tr("Replace with:"), replaceLine);
+
+    auto* buttonFindNext = new QPushButton(tr("Find Next"), &dialog);
+    auto* buttonReplace = new QPushButton(tr("Replace"), &dialog);
+    auto* buttonReplaceAll = new QPushButton(tr("Replace All"), &dialog);
+    auto* buttonBox = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+
+    auto* actionLayout = new QHBoxLayout();
+    actionLayout->addWidget(buttonFindNext);
+    actionLayout->addWidget(buttonReplace);
+    actionLayout->addWidget(buttonReplaceAll);
+
+    layout->addLayout(formLayout);
+    layout->addWidget(caseSensitive);
+    layout->addLayout(actionLayout);
+    layout->addWidget(statusLabel);
+    layout->addWidget(buttonBox);
+
+    auto findNext = [&]() -> bool {
+        const QString findText = findLine->text();
+        if (findText.isEmpty()) {
+            statusLabel->setText(tr("Enter text to find."));
+            return false;
+        }
+
+        QTextDocument::FindFlags flags;
+        if (caseSensitive->isChecked()) {
+            flags |= QTextDocument::FindCaseSensitively;
+        }
+
+        bool found = editor->find(findText, flags);
+        if (!found) {
+            QTextCursor cursor = editor->textCursor();
+            cursor.movePosition(QTextCursor::Start);
+            editor->setTextCursor(cursor);
+            found = editor->find(findText, flags);
+        }
+
+        if (found) {
+            statusLabel->setText(tr("Occurrence selected."));
+            lastFindText = findText;
+            lastReplaceText = replaceLine->text();
+            return true;
+        }
+
+        statusLabel->setText(tr("No occurrences found."));
+        return false;
+    };
+
+    connect(buttonFindNext, &QPushButton::clicked, &dialog, [&]() {
+        findNext();
+    });
+
+    connect(buttonReplace, &QPushButton::clicked, &dialog, [&]() {
+        const QString findText = findLine->text();
+        if (findText.isEmpty()) {
+            statusLabel->setText(tr("Enter text to find."));
+            return;
+        }
+
+        QTextCursor cursor = editor->textCursor();
+        const bool matchesSelection = cursor.hasSelection() &&
+                ((caseSensitive->isChecked() && cursor.selectedText() == findText) ||
+                 (!caseSensitive->isChecked() && cursor.selectedText().compare(findText, Qt::CaseInsensitive) == 0));
+
+        if (!matchesSelection && !findNext()) {
+            return;
+        }
+
+        cursor = editor->textCursor();
+        if (cursor.hasSelection()) {
+            cursor.insertText(replaceLine->text());
+            editor->setTextCursor(cursor);
+            statusLabel->setText(tr("Occurrence replaced."));
+            lastFindText = findText;
+            lastReplaceText = replaceLine->text();
+            findNext();
+        }
+    });
+
+    connect(buttonReplaceAll, &QPushButton::clicked, &dialog, [&]() {
+        const QString findText = findLine->text();
+        if (findText.isEmpty()) {
+            statusLabel->setText(tr("Enter text to find."));
+            return;
+        }
+
+        QTextDocument::FindFlags flags;
+        if (caseSensitive->isChecked()) {
+            flags |= QTextDocument::FindCaseSensitively;
+        }
+
+        QTextCursor scanCursor(editor->document());
+        scanCursor.movePosition(QTextCursor::Start);
+        int replacements = 0;
+
+        scanCursor.beginEditBlock();
+        while (true) {
+            QTextCursor found = editor->document()->find(findText, scanCursor, flags);
+            if (found.isNull()) {
+                break;
+            }
+            found.insertText(replaceLine->text());
+            scanCursor = found;
+            replacements++;
+        }
+        scanCursor.endEditBlock();
+
+        editor->setFocus();
+        lastFindText = findText;
+        lastReplaceText = replaceLine->text();
+        statusLabel->setText(tr("%1 occurrence(s) replaced.").arg(replacements));
+    });
+
+    connect(buttonBox, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    findLine->setFocus();
+    dialog.exec();
 }
 
 
@@ -645,13 +799,13 @@ void MainWindow::on_actionAnimateStatistics_triggered()
 
 void MainWindow::on_actionEditGroup_triggered()
 {
-    _showMessageNotImplemented();
+    on_actionViewGroup_triggered();
 }
 
 
 void MainWindow::on_actionEditUngroup_triggered()
 {
-    _showMessageNotImplemented();
+    on_actionViewUngroup_triggered();
 }
 
 
@@ -1291,7 +1445,60 @@ void MainWindow::on_actionConnect_triggered() {
 }
 
 void MainWindow::on_pushButton_Export_clicked() {
-    _showMessageNotImplemented();
+    QPixmap modelPixmap = ui->label_ModelGraphic->pixmap();
+    if (modelPixmap.isNull()) {
+        _createModelImage();
+        modelPixmap = ui->label_ModelGraphic->pixmap();
+    }
+
+    if (modelPixmap.isNull()) {
+        ModelGraphicsScene* scene = ui->graphicsView->getScene();
+        if (scene == nullptr || scene->items().isEmpty()) {
+            QMessageBox::information(this, tr("Export Diagram"), tr("There is no diagram/image available to export."));
+            return;
+        }
+
+        QRectF bounds = scene->itemsBoundingRect();
+        if (!bounds.isValid() || bounds.isEmpty()) {
+            QMessageBox::information(this, tr("Export Diagram"), tr("There is no diagram/image available to export."));
+            return;
+        }
+
+        QImage image(bounds.size().toSize() + QSize(20, 20), QImage::Format_ARGB32_Premultiplied);
+        image.fill(Qt::white);
+        QPainter painter(&image);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.translate(-bounds.topLeft() + QPointF(10.0, 10.0));
+        scene->render(&painter);
+        painter.end();
+        modelPixmap = QPixmap::fromImage(image);
+    }
+
+    const QString defaultName = QDir::currentPath() + "/model-diagram.png";
+    const QString filters = tr("PNG Image (*.png);;JPEG Image (*.jpg *.jpeg);;Bitmap Image (*.bmp)");
+    QString selectedFilter;
+    QString fileName = QFileDialog::getSaveFileName(this, tr("Export Diagram"), defaultName, filters, &selectedFilter, QFileDialog::DontUseNativeDialog);
+    if (fileName.isEmpty()) {
+        return;
+    }
+
+    QString format = "PNG";
+    if (selectedFilter.contains("*.jpg") || selectedFilter.contains("*.jpeg")) {
+        format = "JPG";
+    } else if (selectedFilter.contains("*.bmp")) {
+        format = "BMP";
+    }
+
+    if (QFileInfo(fileName).suffix().isEmpty()) {
+        fileName += "." + format.toLower();
+    }
+
+    if (!modelPixmap.save(fileName, format.toStdString().c_str())) {
+        QMessageBox::warning(this, tr("Export Diagram"), tr("Could not export diagram to file."));
+        return;
+    }
+
+    QMessageBox::information(this, tr("Export Diagram"), tr("Diagram exported successfully."));
 }
 
 void MainWindow::on_tabWidgetModelLanguages_currentChanged(int index) {
