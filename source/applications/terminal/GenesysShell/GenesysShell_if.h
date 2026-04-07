@@ -19,6 +19,7 @@
 
 class GenesysShell_if : public GenesysApplication_if {
 public:
+	virtual ~GenesysShell_if() = default;
 	virtual void openModel(std::string filename) = 0;
 	virtual void saveModelAs(std::string filename) = 0;
 	virtual void saveModel() = 0;
@@ -53,4 +54,3 @@ public:
 };
 
 #endif /* GENESYSSHELL_IF_H */
-

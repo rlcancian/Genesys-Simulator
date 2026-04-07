@@ -21,6 +21,7 @@
 
 class DataAnalyser_if {
 public:
+	virtual ~DataAnalyser_if() = default;
 	virtual bool loadDataSet(std::string datafilename) = 0;
 	virtual bool saveDataSet(std::string datasetname) = 0;
 	virtual void newDataSet(std::string datasetname, std::string datafilename) = 0;
@@ -32,4 +33,3 @@ public:
 
 
 #endif /* DATAANALYSERIF_H */
-
