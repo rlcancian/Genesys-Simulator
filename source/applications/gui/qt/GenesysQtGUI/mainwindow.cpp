@@ -14,6 +14,8 @@
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
+#include "services/GraphicalModelSerializer.h"
+#include "services/GraphicalModelBuilder.h"
 #include "UtilGUI.h"
 // PropEditor
 #include "propertyeditor/qtpropertybrowser/qttreepropertybrowser.h"
@@ -182,6 +184,32 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // graphicsView
     _initModelGraphicsView();
+    // Initialize Phase 2 services using narrow dependencies and compatibility callbacks.
+    _graphicalModelBuilder = std::make_unique<GraphicalModelBuilder>(simulator,
+                                                                      ui->graphicsView,
+                                                                      ui->graphicsView->getScene(),
+                                                                      _pluginCategoryColor,
+                                                                      ui->textEdit_Console);
+    // Keep MainWindow wrappers while delegating persistence and loading logic to Phase 2 service.
+    _graphicalModelSerializer = std::make_unique<GraphicalModelSerializer>(simulator,
+                                                                            this,
+                                                                            ui->TextCodeEditor,
+                                                                            ui->graphicsView,
+                                                                            ui->horizontalSlider_ZoomGraphical,
+                                                                            ui->actionShowGrid,
+                                                                            ui->actionShowRule,
+                                                                            ui->actionShowSnap,
+                                                                            ui->actionShowGuides,
+                                                                            ui->actionShowInternalElements,
+                                                                            ui->actionShowAttachedElements,
+                                                                            ui->actionDiagrams,
+                                                                            ui->textEdit_Console,
+                                                                            &_modelfilename,
+                                                                            [this]() { _clearModelEditors(); },
+                                                                            [this]() { _generateGraphicalModelFromModel(); },
+                                                                            [this]() { on_actionShowInternalElements_triggered(); },
+                                                                            [this]() { on_actionShowAttachedElements_triggered(); },
+                                                                            [this]() { on_actionDiagrams_triggered(); });
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);

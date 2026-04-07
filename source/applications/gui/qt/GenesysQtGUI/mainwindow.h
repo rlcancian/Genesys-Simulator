@@ -28,6 +28,8 @@ QT_END_NAMESPACE
 class ModelLanguageSynchronizer;
 class GraphvizModelExporter;
 class CppModelExporter;
+class GraphicalModelSerializer;
+class GraphicalModelBuilder;
 
 /**
  * @brief Main Qt window of Genesys GUI.
@@ -279,6 +281,10 @@ private: // interface and model main elements to join
     std::unique_ptr<GraphvizModelExporter> _graphvizModelExporter;
     // Generate C++ model representation text for the code viewer pane.
     std::unique_ptr<CppModelExporter> _cppModelExporter;
+    // Persist and restore graphical .gui state through the Phase 2 serializer service.
+    std::unique_ptr<GraphicalModelSerializer> _graphicalModelSerializer;
+    // Rebuild graphical components and links through the Phase 2 builder service.
+    std::unique_ptr<GraphicalModelBuilder> _graphicalModelBuilder;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;
