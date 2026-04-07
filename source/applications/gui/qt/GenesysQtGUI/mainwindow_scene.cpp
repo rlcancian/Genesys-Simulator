@@ -109,25 +109,11 @@ void MainWindow::sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsIte
  * Atualiza o Property Editor para um único componente selecionado e limpa em caso contrário.
  */
 void MainWindow::sceneSelectionChanged() {
-    if (_shuttingDown || ui == nullptr || ui->graphicsView == nullptr) {
+    // Keep this wrapper for compatibility during the incremental Phase 6 refactor.
+    if (_shuttingDown || _propertyEditorController == nullptr) {
         return;
     }
-    QGraphicsItem * item;
-    GraphicalModelComponent* gmc;
-
-    if (!ui->graphicsView->selectedItems().isEmpty()) {
-        if (ui->graphicsView->selectedItems().size() == 1) {
-            item = ui->graphicsView->selectedItems().at(0);
-            gmc = dynamic_cast<GraphicalModelComponent*> (item);
-            if (gmc != nullptr) {
-                ui->treeViewPropertyEditor->setActiveObject(gmc, gmc->getComponent(), propertyGenesys, propertyList, propertyEditorUI, propertyBox);
-                return;
-            }
-        }
-    }
-    // Se nenhum item estiver selecionado ou se mais de um item estiver selecionado
-    ui->treeViewPropertyEditor->clear();
-    _actualizeActions();
+    _propertyEditorController->sceneSelectionChanged();
 }
 
 //-----------------------------------------

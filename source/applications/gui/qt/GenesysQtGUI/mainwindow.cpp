@@ -17,6 +17,8 @@
 #include "controllers/SimulationEventController.h"
 // Add Phase 5 controller include for plugin-catalog responsibilities.
 #include "controllers/PluginCatalogController.h"
+// Add Phase 6 controller include for property-editor and scene-selection orchestration.
+#include "controllers/PropertyEditorController.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -255,6 +257,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);
+    // Initialize the Phase 6 property-editor controller after view/editor dependencies are available.
+    _propertyEditorController = std::make_unique<PropertyEditorController>(
+        ui->treeViewPropertyEditor,
+        ui->graphicsView,
+        propertyGenesys,
+        propertyList,
+        propertyEditorUI,
+        propertyBox,
+        [this]() { _actualizeModelSimLanguage(); },
+        [this](bool force) { _actualizeModelComponents(force); },
+        [this](bool force) { _actualizeModelDataDefinitions(force); },
+        [this]() { _actualizeModelCppCode(); },
+        [this]() { return _createModelImage(); },
+        [this]() { _actualizeTabPanes(); },
+        [this]() { _actualizeActions(); });
+    // Keep callback wiring in MainWindow while delegating behavior to the Phase 6 controller.
     ui->treeViewPropertyEditor->setModelChangedCallback([this]() {
         this->_onPropertyEditorModelChanged();
     });
@@ -353,30 +371,9 @@ ModelGraphicsScene* MainWindow::myScene() const {
 }
 
 void MainWindow::_onPropertyEditorModelChanged() {
-    _actualizeModelSimLanguage();
-    _actualizeModelComponents(true);
-    _actualizeModelDataDefinitions(true);
-    _actualizeModelCppCode();
-    _createModelImage();
-    _actualizeTabPanes();
-
-    ModelGraphicsScene* scene = myScene();
-    if (scene == nullptr) {
-        return;
-    }
-
-    scene->actualizeDiagramArrows();
-    scene->update();
-
-    if (scene->existDiagram()) {
-        const bool wasVisible = scene->visibleDiagram();
-        scene->destroyDiagram();
-        scene->createDiagrams();
-        if (wasVisible) {
-            scene->showDiagrams();
-        } else {
-            scene->hideDiagrams();
-        }
+    // Keep this wrapper for compatibility during the incremental Phase 6 refactor.
+    if (_propertyEditorController != nullptr) {
+        _propertyEditorController->onPropertyEditorModelChanged();
     }
 }
 
