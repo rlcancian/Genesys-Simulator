@@ -36,7 +36,7 @@ public:
 	virtual ~WaitingResource() = default;
 public:
 
-	virtual std::string show() {
+	virtual std::string show() override {
 		return Waiting::show() +
 				",quantity=" + std::to_string(this->_quantity);
 	}
@@ -180,4 +180,3 @@ private:
 };
 
 #endif /* SEIZE_H */
-

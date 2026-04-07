@@ -18,6 +18,7 @@
 
 class Fitter_if {
 public:
+	virtual ~Fitter_if() = default;
 	virtual bool isNormalDistributed(double confidencelevel) = 0;
 	virtual void fitUniform(double *sqrerror, double *min, double *max) = 0;
 	virtual void fitTriangular(double *sqrerror, double *min, double *mo, double *max) = 0;
@@ -33,4 +34,3 @@ public:
 };
 
 #endif /* FITTER_IF_H */
-

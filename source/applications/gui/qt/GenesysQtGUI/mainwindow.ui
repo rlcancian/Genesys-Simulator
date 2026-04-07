@@ -1559,6 +1559,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Ctrl+R</string>
    </property>
   </action>
+  <!-- </action> -->
   <action name="actionEditCut">
    <property name="enabled">
     <bool>false</bool>

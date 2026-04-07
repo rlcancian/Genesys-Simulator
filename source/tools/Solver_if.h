@@ -21,6 +21,7 @@
  */
 class Solver_if {
 public:
+	virtual ~Solver_if() = default;
 	virtual void setPrecision(double e) = 0;
 	virtual double getPrecision() = 0;
 	virtual void setMaxSteps(double steps) = 0;
@@ -36,4 +37,3 @@ public:
 };
 
 #endif /* SOLVER_IF_H */
-

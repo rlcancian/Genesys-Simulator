@@ -28,6 +28,7 @@
  */
 class PluginConnector_if {
 public:
+	virtual ~PluginConnector_if() = default;
 	/*!
 	 * \brief check
 	 * \param dynamicLibraryFilename
