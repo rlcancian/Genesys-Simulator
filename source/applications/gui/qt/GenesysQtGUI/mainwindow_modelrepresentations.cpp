@@ -138,50 +138,9 @@ void MainWindow::_insertTextInDot(std::string text, unsigned int compLevel, unsi
 }
 
 void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* componentOrData, std::list<ModelDataDefinition*>* visited, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap) {
-
-    /*
     const struct DOT_STYLES {
-        std::string nodeComponent = std::string("shape=record")+
-                                    std::string(", fontsize=")+std::to_string(TraitsGUI<GModelGraphicPic>::nodeComponentFontSize)+
-                                    std::string(", fontcolor=")+dotColor(TraitsGUI<GModelGraphicPic>::nodeComponentFontColor)+
-                                    std::string(", style=filled")+
-                                    std::string(", fillcolor=")+dotColor(TraitsGUI<GModelGraphicPic>::nodeComponentFillColor); //fillcolor=goldenrod3
-        std::string edgeComponent = std::string("style=solid")+
-                                    std::string(", arrowhead=\"normal\" color=")+dotColor(TraitsGUI<GModelGraphicPic>::edgeComponentEdgeColor)+
-                                    std::string(", fontcolor=")+dotColor(TraitsGUI<GModelGraphicPic>::edgeComponentFontColor)+
-                                    std::string(", fontsize=")+dotColor(TraitsGUI<GModelGraphicPic>::edgeComponentFontSize);
-        std::string nodeDataDefInternal = std::string("shape=record")+
-                                          std::string(", fontsize=")+std::to_string(TraitsGUI<GModelGraphicPic>::nodeDatadefInternalFontSize)+
-                                          std::string(", color=")+dotColor(TraitsGUI<GModelGraphicPic>::nodeDatadefInternalColor)+
-                                          std::string(", fontcolor=")+dotColor(TraitsGUI<GModelGraphicPic>::nodeDatadefInternalFontColor);
-        std::string nodeDataDefAttached = std::string("shape=record")+
-                                          std::string(", fontsize=10")+ //@TODO Continue replacing fized styles by TraitsGUI...
-                                          std::string(", color=gray50")+
-                                          std::string(", fontcolor=gray50")+
-                                          std::string(", style=filled")+
-                                          std::string(", fillcolor=darkolivegreen3");
-        std::string edgeDataDefInternal = std::string("style=dashed")+
-                                          std::string(", arrowhead=\"diamond\"")+
-                                          std::string(", color=gray55")+
-                                          std::string(", fontcolor=gray55")+
-                                          std::string(", fontsize=7");
-        std::string edgeDataDefAttached = std::string("style=dashed")+
-                                          std::string(", arrowhead=\"ediamond\"")+
-                                          std::string(", color=gray50")+
-                                          std::string(", fontcolor=gray50")+
-                                          std::string(", fontsize=7");
-        unsigned int rankSource = 0;
-        unsigned int rankSink = 1;
-        unsigned int rankComponent = 99;
-        unsigned int rankComponentOtherLevel = 99;
-        unsigned int rankDataDefInternal = 99;
-        unsigned int rankDataDefAttached = 99;
-        unsigned int rankDataDefRecursive = 99;
-        unsigned int rankEdge = 99;
-    } DOT;
-    */
-    const struct DOT_STYLES {
-        std::string nodeComponent = "shape=Mrecord, fontsize=11, fontname=\"Helvetica\", fontcolor=\"#1f2937\", color=\"#334155\", penwidth=1.2, style=\"rounded,filled\", fillcolor=\"#f8fafc\"";
+        //std::string nodeComponent = "shape=Mrecord, fontsize=11, fontname=\"Helvetica\", fontcolor=\"#1f2937\", color=\"#334155\", penwidth=1.2, style=\"rounded,filled\", fillcolor=\"#f8fafc\"";
+        std::string nodeComponent = "shape=Mrecord, fontsize=11, fontname=\"Helvetica\", fontcolor=\"#1f2937\", color=\"#334155\", penwidth=1.2, style=\"rounded,filled\", fillcolor=\"bisque\"";
         //std::string nodeComponentOtherLevel = "shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=goldenrod3";
         std::string edgeComponent = "style=solid, arrowhead=\"vee\", color=\"#334155\", fontcolor=\"#334155\", fontsize=8, penwidth=1.1";
         std::string nodeDataDefInternal = "shape=Mrecord, fontsize=9, fontname=\"Helvetica\", color=\"#64748b\", fontcolor=\"#334155\", style=\"rounded,filled\", fillcolor=\"#e2e8f0\"";
