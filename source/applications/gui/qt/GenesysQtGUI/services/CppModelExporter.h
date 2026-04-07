@@ -3,24 +3,21 @@
 
 #include <string>
 
+class QPlainTextEdit;
 class Simulator;
-
-namespace Ui {
-class MainWindow;
-}
 
 // This service encapsulates generation of C++ model code shown in the GUI editor.
 class CppModelExporter {
 public:
     // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.
-    CppModelExporter(Simulator* simulator, Ui::MainWindow* ui);
+    CppModelExporter(Simulator* simulator, QPlainTextEdit* cppCodeEditor);
 
     std::string addCppCodeLine(const std::string& line, unsigned int indent = 0) const;
     void actualizeModelCppCode() const;
 
 private:
     Simulator* _simulator;
-    Ui::MainWindow* _ui;
+    QPlainTextEdit* _cppCodeEditor;
 };
 
 #endif // CPPMODELEXPORTER_H

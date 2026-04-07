@@ -1,8 +1,6 @@
 #include "services/CppModelExporter.h"
 
 // This include gives access to generated Qt widgets where generated C++ text is displayed.
-#include "ui_mainwindow.h"
-
 // These includes provide kernel model APIs used by C++ code generation.
 #include "../../../../kernel/simulator/Simulator.h"
 #include "../../../../kernel/simulator/Model.h"
@@ -14,6 +12,7 @@
 #include "../../../../kernel/util/Util.h"
 
 // This include provides QString conversion APIs used by the target text widget.
+#include <QPlainTextEdit>
 #include <QString>
 
 // These includes provide STL containers and utilities used by code assembly.
@@ -21,9 +20,9 @@
 #include <utility>
 
 
-CppModelExporter::CppModelExporter(Simulator* simulator, Ui::MainWindow* ui)
+CppModelExporter::CppModelExporter(Simulator* simulator, QPlainTextEdit* cppCodeEditor)
     : _simulator(simulator)
-    , _ui(ui) {
+    , _cppCodeEditor(cppCodeEditor) {
 }
 
 std::string CppModelExporter::addCppCodeLine(const std::string& line, unsigned int indent) const {
@@ -38,7 +37,7 @@ std::string CppModelExporter::addCppCodeLine(const std::string& line, unsigned i
 
 void CppModelExporter::actualizeModelCppCode() const {
     // This guard preserves safety when dependencies are missing.
-    if (_simulator == nullptr || _ui == nullptr) {
+    if (_simulator == nullptr || _cppCodeEditor == nullptr) {
         return;
     }
 
@@ -156,9 +155,9 @@ void CppModelExporter::actualizeModelCppCode() const {
         code->insert({"8end", text});
 
         // This block preserves final rendering order into the C++ code editor pane.
-        _ui->plainTextEditCppCode->clear();
+        _cppCodeEditor->clear();
         for (std::pair<std::string, std::string> codeSection : *code) {
-            _ui->plainTextEditCppCode->appendPlainText(QString::fromStdString(codeSection.second));
+            _cppCodeEditor->appendPlainText(QString::fromStdString(codeSection.second));
         }
     }
 }

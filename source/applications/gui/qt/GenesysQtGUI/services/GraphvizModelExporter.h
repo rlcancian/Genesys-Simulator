@@ -6,18 +6,21 @@
 #include <map>
 #include <string>
 
+class QLabel;
+class QCheckBox;
 class Simulator;
 class ModelDataDefinition;
-
-namespace Ui {
-class MainWindow;
-}
 
 // This service encapsulates Graphviz DOT generation and PNG rendering for model representation.
 class GraphvizModelExporter {
 public:
     // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.
-    GraphvizModelExporter(Simulator* simulator, Ui::MainWindow* ui);
+    GraphvizModelExporter(Simulator* simulator,
+                          QLabel* modelGraphicLabel,
+                          QCheckBox* showInternals,
+                          QCheckBox* showElements,
+                          QCheckBox* showRecursive,
+                          QCheckBox* showLevels);
 
     std::string adjustDotName(std::string name) const;
     void insertTextInDot(std::string text,
@@ -32,7 +35,11 @@ public:
 
 private:
     Simulator* _simulator;
-    Ui::MainWindow* _ui;
+    QLabel* _modelGraphicLabel;
+    QCheckBox* _showInternals;
+    QCheckBox* _showElements;
+    QCheckBox* _showRecursive;
+    QCheckBox* _showLevels;
 };
 
 #endif // GRAPHVIZMODELEXPORTER_H

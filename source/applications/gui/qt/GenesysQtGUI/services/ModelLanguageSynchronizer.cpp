@@ -1,30 +1,29 @@
 #include "services/ModelLanguageSynchronizer.h"
 
-#include "ui_mainwindow.h"
-
 #include "../../../../kernel/simulator/Simulator.h"
 #include "../../../../kernel/simulator/Model.h"
 #include "../../../../kernel/simulator/ModelPersistence_if.h"
 
 #include <QMessageBox>
+#include <QPlainTextEdit>
 
 #include <fstream>
 #include <string>
 
 ModelLanguageSynchronizer::ModelLanguageSynchronizer(Simulator* simulator,
-                                                     Ui::MainWindow* ui,
+                                                     QPlainTextEdit* modelTextEditor,
                                                      bool* textModelHasChangedFlag,
                                                      QWidget* ownerWidget,
-                                                     std::function<void()> setOnEventHandlers)
+                                                     std::function<void()> onModelCreatedOrLoaded)
     : _simulator(simulator)
-    , _ui(ui)
+    , _modelTextEditor(modelTextEditor)
     , _textModelHasChangedFlag(textModelHasChangedFlag)
     , _ownerWidget(ownerWidget)
-    , _setOnEventHandlers(std::move(setOnEventHandlers)) {
+    , _onModelCreatedOrLoaded(std::move(onModelCreatedOrLoaded)) {
 }
 
 void ModelLanguageSynchronizer::actualizeModelSimLanguage() const {
-    if (_simulator == nullptr || _ui == nullptr || _textModelHasChangedFlag == nullptr) {
+    if (_simulator == nullptr || _modelTextEditor == nullptr || _textModelHasChangedFlag == nullptr) {
         return;
     }
 
@@ -38,9 +37,9 @@ void ModelLanguageSynchronizer::actualizeModelSimLanguage() const {
         std::string line;
         std::ifstream file(tempFilename);
         if (file.is_open()) {
-            _ui->TextCodeEditor->clear();
+            _modelTextEditor->clear();
             while (std::getline(file, line)) {
-                _ui->TextCodeEditor->appendPlainText(QString::fromStdString(line));
+                _modelTextEditor->appendPlainText(QString::fromStdString(line));
             }
             file.close();
             *_textModelHasChangedFlag = false;
@@ -49,7 +48,7 @@ void ModelLanguageSynchronizer::actualizeModelSimLanguage() const {
 }
 
 bool ModelLanguageSynchronizer::setSimulationModelBasedOnText() const {
-    if (_simulator == nullptr || _ui == nullptr) {
+    if (_simulator == nullptr || _modelTextEditor == nullptr) {
         return false;
     }
 
@@ -61,13 +60,13 @@ bool ModelLanguageSynchronizer::setSimulationModelBasedOnText() const {
     }
 
     if (model == nullptr) {
-        QString modelLanguage = _ui->TextCodeEditor->toPlainText();
+        QString modelLanguage = _modelTextEditor->toPlainText();
         if (!_simulator->getModelManager()->createFromLanguage(modelLanguage.toStdString())) {
             QMessageBox::critical(_ownerWidget, "Check Model", "Error in the model text. See console for more information.");
         }
         model = _simulator->getModelManager()->current();
-        if (model != nullptr && _setOnEventHandlers) {
-            _setOnEventHandlers();
+        if (model != nullptr && _onModelCreatedOrLoaded) {
+            _onModelCreatedOrLoaded();
         }
     }
 
