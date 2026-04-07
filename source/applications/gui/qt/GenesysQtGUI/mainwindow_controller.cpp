@@ -16,6 +16,7 @@
 #include <string>
 #include <fstream>
 #include <memory>
+#include <algorithm>
 //#include <sstream>
 #include <cstdlib>
 //#include <streambuf>
@@ -49,11 +50,17 @@
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QCheckBox>
+#include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <QPlainTextEdit>
+#include <QTextEdit>
+#include <QStatusBar>
 #include <QImage>
 #include <QPainter>
 #include <QFileInfo>
 #include <QCoreApplication>
 #include "../../../../kernel/simulator/ModelSimulation.h"
+#include "../../../../tools/SolverDefaultImpl1.h"
 
 
 //-------------------------
@@ -553,12 +560,14 @@ void MainWindow::on_actionShowGrid_triggered() {
 
 
 void MainWindow::on_actionShowRule_triggered() {
-    _showMessageNotImplemented();
+    // Applies rule visibility directly in the graphics view overlay.
+    ui->graphicsView->setRuleVisible(ui->actionShowRule->isChecked());
 }
 
 
 void MainWindow::on_actionShowGuides_triggered() {
-    _showMessageNotImplemented();
+    // Applies guides visibility directly in the graphics view overlay.
+    ui->graphicsView->setGuidesVisible(ui->actionShowGuides->isChecked());
 }
 
 
@@ -813,7 +822,53 @@ void MainWindow::on_actionEditUngroup_triggered()
 
 void MainWindow::on_actionToolsParserGrammarChecker_triggered()
 {
-    _showMessageNotImplemented();
+    // Opens a parser checker dialog and validates expressions against the current model parser.
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr) {
+        QMessageBox::information(this, tr("Parser Grammar Checker"), tr("Open or create a model before checking parser expressions."));
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Parser Grammar Checker"));
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* expressionEditor = new QPlainTextEdit(&dialog);
+    expressionEditor->setPlaceholderText(tr("Type an expression to validate, e.g. UNIF(1,5) + 2."));
+    if (ui->TextCodeEditor != nullptr) {
+        const QString selectedText = ui->TextCodeEditor->textCursor().selectedText().trimmed();
+        if (!selectedText.isEmpty()) {
+            expressionEditor->setPlainText(selectedText);
+        }
+    }
+    auto* resultLabel = new QLabel(tr("Provide an expression and click Check."), &dialog);
+    resultLabel->setWordWrap(true);
+    auto* checkButton = new QPushButton(tr("Check"), &dialog);
+    auto* closeButtons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+
+    layout->addWidget(new QLabel(tr("Expression:"), &dialog));
+    layout->addWidget(expressionEditor);
+    layout->addWidget(resultLabel);
+    layout->addWidget(checkButton);
+    layout->addWidget(closeButtons);
+
+    connect(checkButton, &QPushButton::clicked, &dialog, [model, expressionEditor, resultLabel]() {
+        const std::string expression = expressionEditor->toPlainText().trimmed().toStdString();
+        if (expression.empty()) {
+            resultLabel->setText(QObject::tr("Please enter an expression before checking."));
+            return;
+        }
+        bool success = false;
+        std::string errorMessage;
+        const double value = model->parseExpression(expression, success, errorMessage);
+        if (success) {
+            resultLabel->setText(QObject::tr("Parse success. Evaluated value: %1").arg(value));
+        } else {
+            resultLabel->setText(QObject::tr("Parse failed: %1").arg(QString::fromStdString(errorMessage)));
+        }
+    });
+    connect(closeButtons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    dialog.exec();
 }
 
 
@@ -826,13 +881,128 @@ void MainWindow::on_actionToolsExperimentation_triggered()
 
 void MainWindow::on_actionToolsOptimizator_triggered()
 {
-    _showMessageNotImplemented();
+    // Provides a minimal optimization preparation dialog based on numeric solver parameters.
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Optimizator"));
+    auto* layout = new QFormLayout(&dialog);
+    auto* precisionInput = new QDoubleSpinBox(&dialog);
+    precisionInput->setDecimals(10);
+    precisionInput->setRange(1e-10, 1.0);
+    precisionInput->setValue(_optimizerPrecision);
+    auto* maxStepsInput = new QSpinBox(&dialog);
+    maxStepsInput->setRange(10, 10000000);
+    maxStepsInput->setValue(static_cast<int>(_optimizerMaxSteps));
+    auto* minInput = new QDoubleSpinBox(&dialog);
+    minInput->setRange(-1e6, 1e6);
+    minInput->setValue(0.0);
+    auto* maxInput = new QDoubleSpinBox(&dialog);
+    maxInput->setRange(-1e6, 1e6);
+    maxInput->setValue(1.0);
+    auto* resultLabel = new QLabel(tr("Run to evaluate ∫x² dx in the informed interval."), &dialog);
+    resultLabel->setWordWrap(true);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+
+    layout->addRow(tr("Precision"), precisionInput);
+    layout->addRow(tr("Max steps"), maxStepsInput);
+    layout->addRow(tr("Integral min"), minInput);
+    layout->addRow(tr("Integral max"), maxInput);
+    layout->addRow(resultLabel);
+    layout->addRow(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, precisionInput, maxStepsInput, minInput, maxInput, resultLabel, &dialog]() {
+        if (maxInput->value() <= minInput->value()) {
+            resultLabel->setText(QObject::tr("Integral max must be greater than min."));
+            return;
+        }
+        _optimizerPrecision = precisionInput->value();
+        _optimizerMaxSteps = static_cast<unsigned int>(maxStepsInput->value());
+        SolverDefaultImpl1 solver(_optimizerPrecision, _optimizerMaxSteps);
+        auto quadratic = [](double x, double) { return x * x; };
+        const double result = solver.integrate(minInput->value(), maxInput->value(), quadratic, 0.0);
+        resultLabel->setText(QObject::tr("Configuration saved. Integral result: %1").arg(result));
+        dialog.accept();
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    dialog.exec();
 }
 
 
 void MainWindow::on_actionToolsDataAnalyzer_triggered()
 {
-    _showMessageNotImplemented();
+    // Opens a dataset workflow that loads numeric values and reports basic descriptive statistics.
+    const QString fileName = QFileDialog::getOpenFileName(
+        this,
+        tr("Open Dataset"),
+        QDir::currentPath(),
+        tr("Data files (*.csv *.txt *.dat);;All files (*.*)"),
+        nullptr,
+        QFileDialog::DontUseNativeDialog);
+    if (fileName.isEmpty()) {
+        return;
+    }
+
+    QFile file(fileName);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("Data Analyzer"), tr("Could not open selected file."));
+        return;
+    }
+
+    QTextStream stream(&file);
+    QList<double> numericValues;
+    QStringList previewLines;
+    while (!stream.atEnd()) {
+        const QString line = stream.readLine();
+        if (previewLines.size() < 10) {
+            previewLines << line;
+        }
+        const QStringList tokens = line.split(QRegularExpression("[,;\\s]+"), Qt::SkipEmptyParts);
+        for (const QString& token : tokens) {
+            bool ok = false;
+            const double value = token.toDouble(&ok);
+            if (ok) {
+                numericValues << value;
+            }
+        }
+    }
+    file.close();
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Data Analyzer"));
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* summaryLabel = new QLabel(&dialog);
+    summaryLabel->setWordWrap(true);
+    auto* preview = new QTextEdit(&dialog);
+    preview->setReadOnly(true);
+    auto* closeButtons = new QDialogButtonBox(QDialogButtonBox::Close, &dialog);
+
+    if (numericValues.isEmpty()) {
+        summaryLabel->setText(tr("No numeric values were detected in the selected file."));
+    } else {
+        double minValue = numericValues.first();
+        double maxValue = numericValues.first();
+        double sum = 0.0;
+        for (double value : numericValues) {
+            minValue = std::min(minValue, value);
+            maxValue = std::max(maxValue, value);
+            sum += value;
+        }
+        const double mean = sum / static_cast<double>(numericValues.size());
+        summaryLabel->setText(tr("File: %1\nNumeric samples: %2\nMin: %3\nMax: %4\nMean: %5")
+                              .arg(fileName)
+                              .arg(numericValues.size())
+                              .arg(minValue)
+                              .arg(maxValue)
+                              .arg(mean));
+    }
+    preview->setPlainText(previewLines.join("\n"));
+
+    layout->addWidget(summaryLabel);
+    layout->addWidget(new QLabel(tr("Preview (first 10 lines):"), &dialog));
+    layout->addWidget(preview);
+    layout->addWidget(closeButtons);
+    connect(closeButtons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    dialog.exec();
 }
 
 
@@ -844,7 +1014,54 @@ void MainWindow::on_actionAnimatePlot_triggered()
 
 void MainWindow::on_actionViewConfigure_triggered()
 {
-    _showMessageNotImplemented();
+    // Opens a compact view configuration dialog that updates current scene/view flags.
+    ModelGraphicsScene* scene = myScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Configure View"));
+    auto* layout = new QFormLayout(&dialog);
+    auto* showGrid = new QCheckBox(tr("Show grid"), &dialog);
+    auto* showRule = new QCheckBox(tr("Show ruler"), &dialog);
+    auto* showGuides = new QCheckBox(tr("Show guides"), &dialog);
+    auto* snapToGrid = new QCheckBox(tr("Snap to grid"), &dialog);
+    auto* gridInterval = new QSpinBox(&dialog);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+
+    showGrid->setChecked(ui->actionShowGrid->isChecked());
+    showRule->setChecked(ui->actionShowRule->isChecked());
+    showGuides->setChecked(ui->actionShowGuides->isChecked());
+    snapToGrid->setChecked(ui->actionShowSnap->isChecked());
+    gridInterval->setRange(5, 200);
+    gridInterval->setValue(static_cast<int>(scene->grid()->interval));
+
+    layout->addRow(showGrid);
+    layout->addRow(showRule);
+    layout->addRow(showGuides);
+    layout->addRow(snapToGrid);
+    layout->addRow(tr("Grid interval"), gridInterval);
+    layout->addRow(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, scene, showGrid, showRule, showGuides, snapToGrid, gridInterval, &dialog]() {
+        scene->grid()->interval = static_cast<unsigned int>(gridInterval->value());
+        if (scene->isGridVisible()) {
+            scene->setGridVisible(false);
+            scene->setGridVisible(true);
+        }
+        ui->actionShowGrid->setChecked(showGrid->isChecked());
+        scene->setGridVisible(showGrid->isChecked());
+        ui->actionShowRule->setChecked(showRule->isChecked());
+        ui->graphicsView->setRuleVisible(showRule->isChecked());
+        ui->actionShowGuides->setChecked(showGuides->isChecked());
+        ui->graphicsView->setGuidesVisible(showGuides->isChecked());
+        ui->actionShowSnap->setChecked(snapToGrid->isChecked());
+        scene->setSnapToGrid(snapToGrid->isChecked());
+        dialog.accept();
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    dialog.exec();
 }
 
 //void MainWindow::on_actionConfigure_triggered() {//?????????????????????????
@@ -1294,7 +1511,41 @@ void MainWindow::on_actionSelectAll_triggered()
 
 void MainWindow::on_actionParallelization_triggered()
 {
-    _showMessageNotImplemented();
+    // Opens a minimal parallelization configuration flow persisted in the GUI session.
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Parallelization"));
+    auto* layout = new QFormLayout(&dialog);
+    auto* enabled = new QCheckBox(tr("Enable parallel execution preparation"), &dialog);
+    auto* threads = new QSpinBox(&dialog);
+    auto* batchSize = new QSpinBox(&dialog);
+    auto* statusLabel = new QLabel(&dialog);
+    statusLabel->setWordWrap(true);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+
+    enabled->setChecked(_parallelizationEnabled);
+    threads->setRange(1, 256);
+    threads->setValue(_parallelizationThreads);
+    batchSize->setRange(1, 1000000);
+    batchSize->setValue(_parallelizationBatchSize);
+
+    layout->addRow(enabled);
+    layout->addRow(tr("Worker threads"), threads);
+    layout->addRow(tr("Batch size"), batchSize);
+    layout->addRow(statusLabel);
+    layout->addRow(buttons);
+
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, enabled, threads, batchSize, statusLabel, &dialog]() {
+        _parallelizationEnabled = enabled->isChecked();
+        _parallelizationThreads = threads->value();
+        _parallelizationBatchSize = batchSize->value();
+        statusLabel->setText(QObject::tr("Configuration saved: enabled=%1, threads=%2, batch size=%3")
+                             .arg(_parallelizationEnabled ? QObject::tr("true") : QObject::tr("false"))
+                             .arg(_parallelizationThreads)
+                             .arg(_parallelizationBatchSize));
+        dialog.accept();
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    dialog.exec();
 }
 
 void MainWindow::on_horizontalSlider_ZoomGraphical_actionTriggered(int action)
@@ -1483,7 +1734,17 @@ void MainWindow::on_treeWidget_Plugins_itemDoubleClicked(QTreeWidgetItem *item, 
 }
 
 void MainWindow::on_graphicsView_rubberBandChanged(const QRect &viewportRect, const QPointF &fromScenePoint, const QPointF &toScenePoint) {
-    _showMessageNotImplemented();
+    // Reports current rubber-band selection geometry in the status bar for user feedback.
+    if (viewportRect.isNull()) {
+        statusBar()->clearMessage();
+        return;
+    }
+    const QRectF sceneRect = QRectF(fromScenePoint, toScenePoint).normalized();
+    statusBar()->showMessage(tr("Selection area: %1 x %2 | Scene origin: (%3, %4)")
+                             .arg(viewportRect.width())
+                             .arg(viewportRect.height())
+                             .arg(sceneRect.left(), 0, 'f', 1)
+                             .arg(sceneRect.top(), 0, 'f', 1));
 }
 
 void MainWindow::on_horizontalSlider_ZoomGraphical_valueChanged(int value) {
