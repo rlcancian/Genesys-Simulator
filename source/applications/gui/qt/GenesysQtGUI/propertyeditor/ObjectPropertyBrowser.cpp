@@ -443,6 +443,16 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     if (control->getIsClass()) {
+        List<SimulationControl*>* children = nullptr;
+        try {
+            children = control->getEditableProperties();
+        } catch (...) {
+            return false;
+        }
+        if (children == nullptr) {
+            return false;
+        }
+
         if (_propertyEditorUI != nullptr) {
             auto found = _propertyEditorUI->find(control);
             if (found == _propertyEditorUI->end() || found->second == nullptr) {
