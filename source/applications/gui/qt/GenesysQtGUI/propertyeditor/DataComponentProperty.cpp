@@ -8,6 +8,7 @@
 #include <QLabel>
 
 #include "DataComponentEditor.h"
+#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
 
 DataComponentProperty::DataComponentProperty(
     PropertyEditorGenesys* editor,
@@ -116,6 +117,24 @@ void DataComponentProperty::addElement() {
         return;
     }
 
+    // This block routes Add to explicit typed-creation support when the list control provides it.
+    GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(_property);
+    if (descriptor.supportsNewListElementCreation) {
+        std::string errorMessage;
+        const bool ok = GenesysPropertyIntrospection::setValue(
+            _property,
+            "",
+            false,
+            &errorMessage
+            );
+        if (ok) {
+            config_values();
+            _notifyChanged();
+        }
+        return;
+    }
+
+    // This block preserves the legacy textual fallback path for lists without typed creation support.
     const QString prompt = _property->getIsClass() ? "Enter the new item name:" : "Enter the value:";
     QString newValue = _confirmation->getText(_confirmation, "Add Item", prompt);
     if (newValue.isEmpty()) {

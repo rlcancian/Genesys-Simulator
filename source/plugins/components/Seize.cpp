@@ -48,10 +48,12 @@ Seize::Seize(Model* model, std::string name) : ModelComponent(model, Util::TypeO
                                     std::bind(&Seize::getQueueableItem, this), std::bind(&Seize::setQueueableItem, this, std::placeholders::_1),
                                     Util::TypeOf<Seize>(), getName(), "QueueableItem", "", false, true, false,
                                     [](Model* model) { return new QueueableItem(model, ""); });
+    // This block enables explicit typed creation for request list elements while preserving existing list semantics.
     SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem>* propRequests = new SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem> (
 									_parentModel,
 									std::bind(&Seize::getSeizeRequests, this), std::bind(&Seize::addRequest, this, std::placeholders::_1), std::bind(&Seize::removeRequest, this, std::placeholders::_1),
-									Util::TypeOf<Seize>(), getName(), "Requests", "");
+									Util::TypeOf<Seize>(), getName(), "Requests", "", true, true, false,
+                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });
 
     _parentModel->getControls()->insert(propAlloc);
 	_parentModel->getControls()->insert(propPriority);
