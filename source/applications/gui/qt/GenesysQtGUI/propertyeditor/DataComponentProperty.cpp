@@ -101,9 +101,29 @@ void DataComponentProperty::addElement() {
     }
 
     if (!isInList(newValue.toStdString())) {
+        List<std::string>* oldValues = _property->getStrValues();
+        const unsigned int oldSize = oldValues != nullptr ? oldValues->size() : 0;
+        delete oldValues;
+
         _editor->changeProperty(_property, newValue.toStdString(), false);
         config_values();
-        _notifyChanged();
+
+        List<std::string>* newValues = _property->getStrValues();
+        const unsigned int newSize = newValues != nullptr ? newValues->size() : 0;
+        bool changed = false;
+        if (newValues != nullptr) {
+            for (const std::string& value : *newValues->list()) {
+                if (value == newValue.toStdString()) {
+                    changed = true;
+                    break;
+                }
+            }
+        }
+        delete newValues;
+
+        if (changed || newSize != oldSize) {
+            _notifyChanged();
+        }
     }
 }
 
@@ -118,9 +138,29 @@ void DataComponentProperty::removeElement() {
     }
 
     const QString itemValue = selectedItem->text(0);
+    List<std::string>* oldValues = _property->getStrValues();
+    const unsigned int oldSize = oldValues != nullptr ? oldValues->size() : 0;
+    delete oldValues;
+
     _editor->changeProperty(_property, itemValue.toStdString(), true);
     config_values();
-    _notifyChanged();
+
+    List<std::string>* newValues = _property->getStrValues();
+    const unsigned int newSize = newValues != nullptr ? newValues->size() : 0;
+    bool removed = true;
+    if (newValues != nullptr) {
+        for (const std::string& value : *newValues->list()) {
+            if (value == itemValue.toStdString()) {
+                removed = false;
+                break;
+            }
+        }
+    }
+    delete newValues;
+
+    if (removed || newSize != oldSize) {
+        _notifyChanged();
+    }
 }
 
 void DataComponentProperty::editProperty() {

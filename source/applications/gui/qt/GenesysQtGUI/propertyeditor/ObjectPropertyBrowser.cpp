@@ -2,11 +2,143 @@
 
 #include <map>
 #include <sstream>
+#include <exception>
 
 #include <QSignalBlocker>
 #include <QString>
 #include <QVariant>
 #include <QMenu>
+
+namespace {
+
+static std::vector<std::string> _copyStringList(List<std::string>* list) {
+    std::vector<std::string> result;
+    if (list == nullptr) {
+        return result;
+    }
+
+    for (const std::string& value : *list->list()) {
+        result.push_back(value);
+    }
+
+    delete list;
+    return result;
+}
+
+static GenesysPropertyKind _deduceKind(const SimulationControl* control) {
+    if (control == nullptr) {
+        return GenesysPropertyKind::Unknown;
+    }
+
+    if (control->getIsList()) {
+        return GenesysPropertyKind::List;
+    }
+    if (control->getIsClass()) {
+        return GenesysPropertyKind::Object;
+    }
+
+    const std::string typeName = control->propertyType();
+
+    if (typeName == Util::TypeOf<Util::TimeUnit>()) {
+        return GenesysPropertyKind::TimeUnit;
+    }
+    if (control->getIsEnum()) {
+        return GenesysPropertyKind::Enum;
+    }
+    if (typeName == Util::TypeOf<bool>()) {
+        return GenesysPropertyKind::Boolean;
+    }
+    if (typeName == Util::TypeOf<int>()) {
+        return GenesysPropertyKind::Integer;
+    }
+    if (typeName == Util::TypeOf<unsigned int>()) {
+        return GenesysPropertyKind::UnsignedInteger;
+    }
+    if (typeName == Util::TypeOf<unsigned short>()) {
+        return GenesysPropertyKind::UnsignedShort;
+    }
+    if (typeName == Util::TypeOf<double>()) {
+        return GenesysPropertyKind::Double;
+    }
+    if (typeName == Util::TypeOf<std::string>()) {
+        return GenesysPropertyKind::String;
+    }
+
+    return GenesysPropertyKind::Unknown;
+}
+
+static GenesysPropertyDescriptor _describeControl(SimulationControl* control) {
+    GenesysPropertyDescriptor desc;
+    if (control == nullptr) {
+        return desc;
+    }
+
+    desc.control = control;
+    desc.ownerClassName = control->getClassname();
+    desc.ownerElementName = control->getElementName();
+    desc.displayName = control->getName();
+    desc.technicalTypeName = control->propertyType();
+    desc.kind = _deduceKind(control);
+    desc.readOnly = control->isReadOnly();
+    desc.isList = control->getIsList();
+    desc.isClass = control->getIsClass();
+    desc.isEnum = control->getIsEnum();
+    desc.currentValue = control->getValue();
+
+    desc.choices = _copyStringList(control->getStrValues());
+
+    if (desc.kind == GenesysPropertyKind::TimeUnit && desc.choices.empty()) {
+        for (int i = 0; i < static_cast<int>(Util::TimeUnit::num_elements); ++i) {
+            desc.choices.push_back(Util::convertEnumToStr(static_cast<Util::TimeUnit>(i)));
+        }
+    }
+
+    return desc;
+}
+
+static std::vector<GenesysPropertyDescriptor> _describeControls(List<SimulationControl*>* controls) {
+    std::vector<GenesysPropertyDescriptor> result;
+    if (controls == nullptr) {
+        return result;
+    }
+
+    for (SimulationControl* control : *controls->list()) {
+        result.push_back(_describeControl(control));
+    }
+
+    return result;
+}
+
+static bool _setControlValue(
+    SimulationControl* control,
+    const std::string& value,
+    bool remove,
+    std::string* errorMessage
+    ) {
+    if (control == nullptr) {
+        if (errorMessage != nullptr) {
+            *errorMessage = "SimulationControl nulo";
+        }
+        return false;
+    }
+
+    try {
+        control->setValue(value, remove);
+        return true;
+    } catch (const std::exception& e) {
+        if (errorMessage != nullptr) {
+            *errorMessage = e.what();
+        }
+        return false;
+    } catch (...) {
+        if (errorMessage != nullptr) {
+            *errorMessage = "Erro desconhecido ao alterar propriedade";
+        }
+        return false;
+    }
+}
+
+} // namespace
 
 ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
     : QtTreePropertyBrowser(parent) {
@@ -249,7 +381,7 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
     }
 
     const std::vector<GenesysPropertyDescriptor> properties =
-        GenesysPropertyIntrospection::describe(mdd->getProperties());
+        _describeControls(mdd->getProperties());
 
     std::map<std::string, QtProperty*> groups;
 
@@ -287,7 +419,7 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     auto refresh = [this]() {
-        this->objectUpdated();
+        this->_notifyModelChangeApplied();
     };
 
     if (control->getIsList()) {
@@ -316,6 +448,22 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         } else {
             auto* editor = new DataComponentEditor(_propertyEditor, control, refresh);
             editor->open_window(control);
+        }
+        return true;
+    }
+
+    if (binding.descriptor.kind == GenesysPropertyKind::Enum
+        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit
+        || control->getIsEnum()) {
+        if (_propertyBox != nullptr) {
+            auto found = _propertyBox->find(control);
+            if (found == _propertyBox->end() || found->second == nullptr) {
+                (*_propertyBox)[control] = new ComboBoxEnum(_propertyEditor, control, refresh);
+            }
+            (*_propertyBox)[control]->open_box();
+        } else {
+            auto* box = new ComboBoxEnum(_propertyEditor, control, refresh);
+            box->open_box();
         }
         return true;
     }
@@ -350,9 +498,12 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
     }
 
     const std::string newValue = _fromVariant(binding.descriptor, value);
+    if (newValue == binding.descriptor.currentValue) {
+        return;
+    }
 
     std::string errorMessage;
-    const bool ok = GenesysPropertyIntrospection::setValue(
+    const bool ok = _setControlValue(
         binding.control,
         newValue,
         false,
@@ -364,7 +515,7 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
         return;
     }
 
-    objectUpdated();
+    _notifyModelChangeApplied();
 }
 
 void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
@@ -378,8 +529,12 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         return;
     }
 
+    if (value == _enumIndexFor(binding.descriptor)) {
+        return;
+    }
+
     std::string errorMessage;
-    const bool ok = GenesysPropertyIntrospection::setValue(
+    const bool ok = _setControlValue(
         binding.control,
         std::to_string(value),
         false,
@@ -391,7 +546,12 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         return;
     }
 
+    _notifyModelChangeApplied();
+}
+
+void ObjectPropertyBrowser::_notifyModelChangeApplied() {
     objectUpdated();
+    emit modelPropertiesChanged();
 }
 
 void ObjectPropertyBrowser::objectUpdated() {
@@ -409,8 +569,7 @@ void ObjectPropertyBrowser::objectUpdated() {
             continue;
         }
 
-        GenesysPropertyDescriptor fresh =
-            GenesysPropertyIntrospection::describe(binding.control);
+        GenesysPropertyDescriptor fresh = _describeControl(binding.control);
 
         binding.descriptor = fresh;
         _bindings[key] = binding;
@@ -457,7 +616,13 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     }
 
     const Binding binding = it.value();
-    if (!(binding.descriptor.isList || binding.descriptor.isClass)) {
+    const bool specializedProperty =
+        binding.descriptor.isList
+        || binding.descriptor.isClass
+        || binding.descriptor.kind == GenesysPropertyKind::Enum
+        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit;
+
+    if (!specializedProperty) {
         QtTreePropertyBrowser::contextMenuEvent(event);
         return;
     }

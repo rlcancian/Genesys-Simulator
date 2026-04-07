@@ -179,6 +179,7 @@ private slots:
     void on_actionParallelization_triggered();
 
     void on_horizontalSlider_ZoomGraphical_actionTriggered(int action);
+    void _onPropertyEditorModelChanged();
 
 protected:
     void closeEvent(QCloseEvent *event) override;
