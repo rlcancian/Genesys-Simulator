@@ -257,6 +257,8 @@ SOURCES += \
     controllers/EditCommandController.cpp \
     # Phase-10 GUI refactor controller for scene/view/drawing responsibilities.
     controllers/SceneToolController.cpp \
+    # Phase-11 GUI refactor controller for dialog/utility responsibilities.
+    controllers/DialogUtilityController.cpp \
     # Phase-1 GUI refactor services for model representations.
     services/ModelLanguageSynchronizer.cpp \
     services/GraphvizModelExporter.cpp \
@@ -590,6 +592,8 @@ HEADERS += \
     controllers/EditCommandController.h \
     # Phase-10 GUI refactor controller header for scene/view/drawing responsibilities.
     controllers/SceneToolController.h \
+    # Phase-11 GUI refactor controller header for dialog/utility responsibilities.
+    controllers/DialogUtilityController.h \
     # Phase-1 GUI refactor service headers.
     services/ModelLanguageSynchronizer.h \
     services/GraphvizModelExporter.h \
