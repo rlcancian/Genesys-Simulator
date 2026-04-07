@@ -34,6 +34,7 @@ SOURCES += \
     ../../../../kernel/simulator/ExperimentManager.cpp \
     ../../../../kernel/simulator/ExperimentManagerDefaultImpl1.cpp \
     ../../../../kernel/simulator/GenSerializer.cpp \
+    ../../../../kernel/simulator/GenesysPropertyIntrospection.cpp \
     ../../../../kernel/simulator/JsonSerializer.cpp \
     ../../../../kernel/simulator/LicenceManager.cpp \
     ../../../../kernel/simulator/Model.cpp \
@@ -305,6 +306,7 @@ HEADERS += \
     ../../../../kernel/simulator/ExperimentManagerDefaultImpl1.h \
     ../../../../kernel/simulator/ExperimetManager_if.h \
     ../../../../kernel/simulator/GenSerializer.h \
+    ../../../../kernel/simulator/GenesysPropertyIntrospection.h \
     ../../../../kernel/simulator/JsonSerializer.h \
     ../../../../kernel/simulator/LicenceManager.h \
     ../../../../kernel/simulator/Model.h \
