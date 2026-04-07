@@ -240,6 +240,8 @@ SOURCES += \
     ../../../terminal/examples/teaching/Rectifier.cpp \
     codeeditor/CodeEditor.cpp \
     controllers/SimulationController.cpp \
+    # Phase-3 GUI refactor controller for model-inspector responsibilities.
+    controllers/ModelInspectorController.cpp \
     # Phase-1 GUI refactor services for model representations.
     services/ModelLanguageSynchronizer.cpp \
     services/GraphvizModelExporter.cpp \
@@ -556,6 +558,8 @@ HEADERS += \
     TraitsGUI.h \
     UtilGUI.h \
     controllers/SimulationController.h \
+    # Phase-3 GUI refactor controller header for model-inspector responsibilities.
+    controllers/ModelInspectorController.h \
     # Phase-1 GUI refactor service headers.
     services/ModelLanguageSynchronizer.h \
     services/GraphvizModelExporter.h \

@@ -124,29 +124,8 @@ void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* com
 }
 
 void MainWindow::_actualizeModelComponents(bool force) {
-    Model* m = simulator->getModelManager()->current();
-    ui->treeWidgetComponents->clear();
-    if (m == nullptr) {
-        return;
-    }
-    for (ModelComponent* comp : *m->getComponentManager()->getAllComponents()) {
-        QList<QTreeWidgetItem *> items = ui->treeWidgetComponents->findItems(QString::fromStdString(std::to_string(comp->getId())), Qt::MatchExactly | Qt::MatchRecursive, 0);
-        if (items.size() == 0) {
-            QTreeWidgetItem* treeComp = new QTreeWidgetItem(ui->treeWidgetComponents);
-            treeComp->setText(0, QString::fromStdString(std::to_string(comp->getId())));
-            treeComp->setText(1, QString::fromStdString(comp->getClassname()));
-            treeComp->setText(2, QString::fromStdString(comp->getName()));
-            std::string properties = "";
-            for (auto prop : *comp->getProperties()->list()) {
-                properties += prop->getName() + ":" + prop->getValue() + ", ";
-            }
-            properties = properties.substr(0, properties.length() - 2);
-            treeComp->setText(3, QString::fromStdString(properties));
-        }
-    }
-    ui->treeWidgetComponents->resizeColumnToContents(0);
-    ui->treeWidgetComponents->resizeColumnToContents(1);
-    ui->treeWidgetComponents->resizeColumnToContents(2);
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 3 refactor.
+    _modelInspectorController->actualizeModelComponents(force);
 }
 
 void MainWindow::_actualizeModelTextHasChanged(bool hasChanged) {
@@ -156,31 +135,8 @@ void MainWindow::_actualizeModelTextHasChanged(bool hasChanged) {
 }
 
 void MainWindow::_actualizeModelDataDefinitions(bool force) {
-    Model* m = simulator->getModelManager()->current();
-    ui->treeWidgetDataDefnitions->clear();
-    if (m == nullptr) {
-        return;
-    }
-    for (std::string dataTypename : *m->getDataManager()->getDataDefinitionClassnames()) {
-        for (ModelDataDefinition* comp : *m->getDataManager()->getDataDefinitionList(dataTypename)->list()) {
-            QList<QTreeWidgetItem *> items = ui->treeWidgetDataDefnitions->findItems(QString::fromStdString(std::to_string(comp->getId())), Qt::MatchExactly | Qt::MatchRecursive, 0);
-            if (items.size() == 0) {
-                QTreeWidgetItem* treeComp = new QTreeWidgetItem(ui->treeWidgetDataDefnitions);
-                treeComp->setText(0, QString::fromStdString(std::to_string(comp->getId())));
-                treeComp->setText(1, QString::fromStdString(comp->getClassname()));
-                treeComp->setText(2, QString::fromStdString(comp->getName()));
-                std::string properties = "";
-                for (auto prop : *comp->getProperties()->list()) {
-                    properties += prop->getName() + ":" + prop->getValue() + ", ";
-                }
-                properties = properties.substr(0, properties.length() - 2);
-                treeComp->setText(3, QString::fromStdString(properties));
-            }
-        }
-    }
-    ui->treeWidgetDataDefnitions->resizeColumnToContents(0);
-    ui->treeWidgetDataDefnitions->resizeColumnToContents(1);
-    ui->treeWidgetDataDefnitions->resizeColumnToContents(2);
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 3 refactor.
+    _modelInspectorController->actualizeModelDataDefinitions(force);
 }
 
 void MainWindow::_actualizeGraphicalModel(SimulationEvent * re) {

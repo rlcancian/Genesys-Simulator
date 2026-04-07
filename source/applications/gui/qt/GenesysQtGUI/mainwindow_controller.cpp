@@ -1366,45 +1366,14 @@ void MainWindow::on_actionSimulationConfigure_triggered()
 
 void MainWindow::on_treeWidgetDataDefnitions_itemDoubleClicked(QTreeWidgetItem *item, int column)
 {
-
-    // Check if the column index is 2 (Name column)
-    if (column == 2) {
-
-        // Set the Qt::ItemIsEditable flag to enable editing for the specific item
-        // It's required to set the flag here because otherwise all the other fields could changed too.
-        item->setFlags(item->flags() | Qt::ItemIsEditable);
-
-        // Initiate the editing of the specified item in the specified column in the QTreeWidget
-        ui->treeWidgetDataDefnitions->editItem(item, column);
-
-        // Reset the Qt::ItemIsEditable flag to disable further editing after the edit operation
-        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-
-    }
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 3 refactor.
+    _modelInspectorController->beginDataDefinitionNameEdit(item, column);
 }
 
 void MainWindow::on_treeWidgetDataDefnitions_itemChanged(QTreeWidgetItem *item, int column)
 {
-
-    // Check if the column index is 2 (Name column)
-    if (column == 2) {
-
-        // Get the changes
-        QString after = item->text(column);
-        Model * m = simulator->getModelManager()->current();
-
-        // Save in the model
-        for (std::string dataTypename : *m->getDataManager()->getDataDefinitionClassnames()) {
-            for (ModelDataDefinition* comp : *m->getDataManager()->getDataDefinitionList(dataTypename)->list()) {
-
-                QString id = QString::fromStdString(Util::StrIndex(comp->getId()));
-
-                if (id.contains(item->text(0)))
-                    comp->setName(after.toStdString());
-            }
-        }
-    }
-
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 3 refactor.
+    _modelInspectorController->applyDataDefinitionNameChange(item, column);
 }
 
 
@@ -1915,36 +1884,8 @@ void MainWindow::on_actionShowAttachedElements_triggered() {
 }
 
 void MainWindow::on_treeWidgetComponents_itemSelectionChanged() {
-    QList<QTreeWidgetItem*> selectedItems = ui->treeWidgetComponents->selectedItems();
-    if (selectedItems.isEmpty()) {
-        return;
-    }
-
-    bool ok = false;
-    const Util::identification compId = selectedItems.first()->text(0).toULongLong(&ok);
-    if (!ok) {
-        return;
-    }
-
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (scene == nullptr) {
-        return;
-    }
-
-    GraphicalModelComponent* gmc = scene->findGraphicalModelComponent(compId);
-    if (gmc == nullptr) {
-        return;
-    }
-
-    if (scene->selectedItems().size() == 1 && scene->selectedItems().first() == gmc) {
-        ui->graphicsView->ensureVisible(gmc);
-        return;
-    }
-
-    scene->clearSelection();
-    gmc->setSelected(true);
-    ui->graphicsView->ensureVisible(gmc);
-    ui->graphicsView->centerOn(gmc);
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 3 refactor.
+    _modelInspectorController->syncSelectedComponentTreeItemToScene();
 }
 
 void MainWindow::on_treeWidget_Plugins_itemClicked(QTreeWidgetItem *item, int column) {
