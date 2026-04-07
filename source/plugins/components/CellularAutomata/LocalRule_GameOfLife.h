@@ -11,7 +11,7 @@ public:
     LocalRule_GameOfLife(const LocalRule_GameOfLife& orig): LocalRule(orig) { }
     virtual ~LocalRule_GameOfLife()=default;
 public:
-    virtual void applyRule(Cell* cell) {
+    virtual void applyRule(Cell* cell) override {
         unsigned int living = 0;
         for (Cell* neigh : cell->getNeighbors()) {
 			living += neigh->getCurrentState().getValue();
