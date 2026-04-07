@@ -295,13 +295,37 @@ void MainWindow::_actualizeActions() {
     bool opened = simulator->getModelManager()->current() != nullptr;
     bool running = false;
     bool paused = false;
-    unsigned int numSelectedGraphicals = 0;
+    bool canCutCopyDelete = false;
+    bool canPaste = false;
+    bool canGroup = false;
+    bool canUngroup = false;
+    bool canConnect = false;
     unsigned int actualCommandundoRedo = 0; //@TODO
     unsigned int maxCommandundoRedo = 0; //@TODO
     if (opened) {
         running = simulator->getModelManager()->current()->getSimulation()->isRunning();
         paused = simulator->getModelManager()->current()->getSimulation()->isPaused();
-        numSelectedGraphicals = 0;//@TODO get total of selected graphical objects (this should br on another "actualize", I think
+
+        ModelGraphicsScene* scene = ui->graphicsView->getScene();
+        if (scene != nullptr) {
+            const QList<QGraphicsItem*> selectedItems = scene->selectedItems();
+            canCutCopyDelete = !selectedItems.isEmpty();
+            canPaste = !_draw_copy->empty() || !_gmc_copies->empty() || !_group_copy->empty() || !_ports_copies->empty();
+
+            int selectedComponents = 0;
+            bool selectedGroup = false;
+            for (QGraphicsItem* item : selectedItems) {
+                if (dynamic_cast<GraphicalModelComponent*>(item) != nullptr) {
+                    selectedComponents++;
+                } else if (dynamic_cast<QGraphicsItemGroup*>(item) != nullptr) {
+                    selectedGroup = true;
+                }
+            }
+
+            canGroup = selectedComponents >= 2 && !selectedGroup;
+            canUngroup = selectedItems.size() == 1 && selectedGroup;
+            canConnect = scene->connectingStep() == 0;
+        }
     }
 
     //
@@ -346,11 +370,16 @@ void MainWindow::_actualizeActions() {
 
     // based on SELECTED GRAPHICAL OBJECTS or on COMMANDS DONE (UNDO/REDO)
     ui->toolBarArranje->setEnabled(opened && !running);
-    // TODO: MUDAR, ESTÁ HARDCODED, DEVERIA SER DISPONIBILIZADO COM UM COMPONENENTE FOSSE
-    // TODO: SELECIONADO
-    ui->actionEditCopy->setEnabled(0 && !running);
-    ui->actionEditCut->setEnabled(0 && !running);
-    ui->actionEditDelete->setEnabled((numSelectedGraphicals>0) && !running);
+    ui->actionEditCopy->setEnabled(canCutCopyDelete && !running);
+    ui->actionEditCut->setEnabled(canCutCopyDelete && !running);
+    ui->actionEditDelete->setEnabled(canCutCopyDelete && !running);
+    ui->actionEditPaste->setEnabled(canPaste && !running);
+    ui->actionGModelShowConnect->setEnabled(opened && canConnect && !running);
+    ui->actionViewGroup->setEnabled(opened && canGroup && !running);
+    ui->actionEditGroup->setEnabled(opened && canGroup && !running);
+    ui->actionViewUngroup->setEnabled(opened && canUngroup && !running);
+    ui->actionEditUngroup->setEnabled(opened && canUngroup && !running);
+    ui->actionEditReplace->setEnabled(opened && !running);
 
     // sliders
     ui->horizontalSlider_ZoomGraphical->setEnabled(opened && !running);

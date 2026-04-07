@@ -869,6 +869,9 @@
     <addaction name="actionEditPaste"/>
     <addaction name="actionEditDelete"/>
     <addaction name="separator"/>
+    <addaction name="actionEditGroup"/>
+    <addaction name="actionEditUngroup"/>
+    <addaction name="separator"/>
     <addaction name="actionEditFind"/>
     <addaction name="actionEditReplace"/>
     <addaction name="separator"/>
@@ -2069,6 +2072,24 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionViewUngroup">
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/ungroup.gif</normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/ungroup.gif</iconset>
+   </property>
+   <property name="text">
+    <string>Ungroup</string>
+   </property>
+  </action>
+  <action name="actionEditGroup">
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/group.gif</normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/group.gif</iconset>
+   </property>
+   <property name="text">
+    <string>Group</string>
+   </property>
+  </action>
+  <action name="actionEditUngroup">
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/ungroup.gif</normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/ungroup.gif</iconset>
