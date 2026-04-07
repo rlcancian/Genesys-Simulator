@@ -101,6 +101,7 @@ public: // events and notifications
     void notifySceneWheelOutEventHandler();
     void notifySceneGraphicalModelEventHandler(const GraphicalModelEvent& modelGraphicsEvent);
     void setCanNotifyGraphicalModelEventHandlers(bool can);
+    void clearEventHandlers();
     void setParentWidget(QWidget *parentWidget);
 protected:// slots:
     void changed(const QList<QRectF> &region);

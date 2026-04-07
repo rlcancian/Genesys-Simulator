@@ -45,6 +45,9 @@ void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*
  * @param region Regiões invalidadas da cena.
  */
 void MainWindow::sceneChanged(const QList<QRectF> &region) {
+    if (_shuttingDown || ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr) {
+        return;
+    }
     Q_UNUSED(region);
     /**
      * Bloco 1: sincroniza estado de undo/redo e flags de alteração textual.
@@ -106,6 +109,9 @@ void MainWindow::sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsIte
  * Atualiza o Property Editor para um único componente selecionado e limpa em caso contrário.
  */
 void MainWindow::sceneSelectionChanged() {
+    if (_shuttingDown || ui == nullptr || ui->graphicsView == nullptr) {
+        return;
+    }
     QGraphicsItem * item;
     GraphicalModelComponent* gmc;
 

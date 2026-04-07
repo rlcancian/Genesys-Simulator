@@ -209,6 +209,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 }
 
 MainWindow::~MainWindow() {
+    _shuttingDown = true;
+    _disconnectSceneSignals("~MainWindow");
+    disconnect();
+    if (ui != nullptr && ui->graphicsView != nullptr) {
+        ui->graphicsView->clearEventHandlers();
+    }
     delete ui;
     delete simulator;
     delete propertyGenesys;
@@ -221,6 +227,37 @@ MainWindow::~MainWindow() {
     delete _draw_copy;
     delete _group_copy;
     delete undoView;
+}
+
+void MainWindow::_disconnectSceneSignals(const char* context) {
+    if (_sceneChangedConnection) {
+        QObject::disconnect(_sceneChangedConnection);
+        _sceneChangedConnection = QMetaObject::Connection();
+    }
+    if (_sceneFocusItemChangedConnection) {
+        QObject::disconnect(_sceneFocusItemChangedConnection);
+        _sceneFocusItemChangedConnection = QMetaObject::Connection();
+    }
+    if (_sceneSelectionChangedConnection) {
+        QObject::disconnect(_sceneSelectionChangedConnection);
+        _sceneSelectionChangedConnection = QMetaObject::Connection();
+    }
+    QObject* sceneObject = (ui != nullptr && ui->graphicsView != nullptr) ? ui->graphicsView->scene() : nullptr;
+    qInfo() << "Scene/MainWindow signal connections disconnected. context=" << context
+            << " scene=" << sceneObject << " mainWindow=" << this;
+}
+
+void MainWindow::_connectSceneSignals() {
+    _disconnectSceneSignals("_connectSceneSignals");
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->scene() == nullptr) {
+        qWarning() << "Skipping scene connection because ui/graphicsView/scene is null";
+        return;
+    }
+    _sceneChangedConnection = connect(ui->graphicsView->scene(), &QGraphicsScene::changed, this, &MainWindow::sceneChanged);
+    _sceneFocusItemChangedConnection = connect(ui->graphicsView->scene(), &QGraphicsScene::focusItemChanged, this, &MainWindow::sceneFocusItemChanged);
+    _sceneSelectionChangedConnection = connect(ui->graphicsView->scene(), &QGraphicsScene::selectionChanged, this, &MainWindow::sceneSelectionChanged);
+    qInfo() << "Scene/MainWindow signal connections attached. scene=" << ui->graphicsView->scene()
+            << " mainWindow=" << this;
 }
 
 ModelGraphicsScene* MainWindow::myScene() const {

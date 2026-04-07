@@ -172,6 +172,13 @@ void ModelGraphicsView::setCanNotifyGraphicalModelEventHandlers(bool can) {
 	_notifyGraphicalModelEventHandlers = can;
 }
 
+void ModelGraphicsView::clearEventHandlers() {
+    _sceneMouseEventHandler = nullptr;
+    _sceneWheelInEventHandler = nullptr;
+    _sceneWheelOutEventHandler = nullptr;
+    _sceneGraphicalModelEventHandler = nullptr;
+}
+
 //---------------------------------------------------------
 
 void ModelGraphicsView::contextMenuEvent(QContextMenuEvent *event) {
