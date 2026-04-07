@@ -870,6 +870,7 @@
     <addaction name="actionEditDelete"/>
     <addaction name="separator"/>
     <addaction name="actionEditFind"/>
+    <addaction name="actionEditReplace"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuTools">
@@ -1546,7 +1547,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Ctrl+F</string>
    </property>
   </action>
-  <action name="actionReplace">
+  <action name="actionEditReplace">
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/find.ico</normaloff>:/icons3/resources/icons/pack3/ico/find.ico</iconset>
