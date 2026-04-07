@@ -1,41 +1,58 @@
-#ifndef COMBOBOXENUM_H
-#define COMBOBOXENUM_H
+#include "ComboBoxEnum.h"
 
-#include <functional>
-#include <iostream>
+#include <utility>
 
-#include <QObject>
-#include <QWidget>
-#include <QComboBox>
+ComboBoxEnum::ComboBoxEnum(
+    PropertyEditorGenesys* editor,
+    SimulationControl* property,
+    AfterChange afterChange
+    ) : _editor(editor), _property(property), _afterChange(std::move(afterChange)) {
 
-#include "../../../../kernel/simulator/PropertyGenesys.h"
+    _window = new QWidget;
+    _comboBox = new QComboBox(_window);
 
-class ComboBoxEnum : public QObject {
-public:
-    using AfterChange = std::function<void()>;
+    configure_options(property);
+    if (property != nullptr) {
+        _comboBox->setCurrentText(QString::fromStdString(property->getValue()));
+    }
 
-    ComboBoxEnum(
-        PropertyEditorGenesys* editor,
-        SimulationControl* property,
-        AfterChange afterChange = {}
+    _window->setFixedSize(160, 28);
+
+    QObject::connect(
+        _comboBox,
+        static_cast<void(QComboBox::*)(int)>(&QComboBox::currentIndexChanged),
+        this,
+        &ComboBoxEnum::changeValue
         );
+}
 
-    ~ComboBoxEnum() override = default;
+void ComboBoxEnum::open_box() {
+    _window->show();
+    _window->raise();
+    _window->activateWindow();
+    _comboBox->showPopup();
+}
 
-public:
-    void open_box();
-    void configure_options(SimulationControl* property);
+void ComboBoxEnum::configure_options(SimulationControl* property) {
+    _comboBox->clear();
+    if (property == nullptr || property->getStrValues() == nullptr) {
+        return;
+    }
 
-private Q_SLOTS:
-    void changeValue();
+    List<std::string>* values = property->getStrValues();
+    for (const std::string& item : *values->list()) {
+        _comboBox->addItem(QString::fromStdString(item));
+    }
+    delete values;
+}
 
-private:
-    QWidget* _window = nullptr;
-    QComboBox* _comboBox = nullptr;
+void ComboBoxEnum::changeValue() {
+    if (_editor == nullptr || _property == nullptr) {
+        return;
+    }
 
-    PropertyEditorGenesys* _editor = nullptr;
-    SimulationControl* _property = nullptr;
-    AfterChange _afterChange;
-};
-
-#endif // COMBOBOXENUM_H
+    _editor->changeProperty(_property, std::to_string(_comboBox->currentIndex()));
+    if (_afterChange) {
+        _afterChange();
+    }
+}

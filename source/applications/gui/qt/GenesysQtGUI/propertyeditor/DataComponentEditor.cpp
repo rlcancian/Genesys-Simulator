@@ -1,5 +1,7 @@
 #include "DataComponentEditor.h"
 
+#include <utility>
+
 #include "DataComponentProperty.h"
 #include "ComboBoxEnum.h"
 

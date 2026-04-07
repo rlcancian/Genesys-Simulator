@@ -1,5 +1,7 @@
 #include "DataComponentProperty.h"
 
+#include <utility>
+
 #include "DataComponentEditor.h"
 
 DataComponentProperty::DataComponentProperty(
