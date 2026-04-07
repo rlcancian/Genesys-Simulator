@@ -216,8 +216,8 @@ bool Seize::_loadInstance(PersistenceRecord *fields) {
 void Seize::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("allocationType", static_cast<int> (_allocationType), static_cast<int> (DEFAULT.allocationType), saveDefaultValues);
-	fields->saveField("priority=", _priority, DEFAULT.priority, saveDefaultValues);
-	fields->saveField("priorityExpression=", _priorityExpression, DEFAULT.priorityExpression, saveDefaultValues);
+	fields->saveField("priority", _priority, DEFAULT.priority, saveDefaultValues);
+	fields->saveField("priorityExpression", _priorityExpression, DEFAULT.priorityExpression, saveDefaultValues);
 	if (_queueableItem != nullptr) {
 		_queueableItem->saveInstance(fields, saveDefaultValues);
 	}

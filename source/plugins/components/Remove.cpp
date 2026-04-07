@@ -147,14 +147,29 @@ void Remove::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Remove::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_removeFromType = static_cast<RemoveFromType>(fields->loadField("removeFromType", static_cast<int>(DEFAULT.removeFromType)));
+		_removeStartRank = fields->loadField("removeStartRank", DEFAULT.removeStartRank);
+		_removeEndRank = fields->loadField("removeEndRank", DEFAULT.removeEndRank);
+		std::string removeFromName = fields->loadField("removeFrom", "");
+		if (removeFromName != "") {
+			if (_removeFromType == RemoveFromType::QUEUE) {
+				_removeFrom = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), removeFromName);
+			} else if (_removeFromType == RemoveFromType::ENTITYGROUP) {
+				_removeFrom = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), removeFromName);
+			}
+		}
 	}
 	return res;
 }
 
 void Remove::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("removeFromType", static_cast<int>(_removeFromType), static_cast<int>(DEFAULT.removeFromType), saveDefaultValues);
+	fields->saveField("removeStartRank", _removeStartRank, DEFAULT.removeStartRank, saveDefaultValues);
+	fields->saveField("removeEndRank", _removeEndRank, DEFAULT.removeEndRank, saveDefaultValues);
+	if (_removeFrom != nullptr) {
+		fields->saveField("removeFrom", _removeFrom->getName(), "", saveDefaultValues);
+	}
 }
 
 bool Remove::_check(std::string& errorMessage) {
