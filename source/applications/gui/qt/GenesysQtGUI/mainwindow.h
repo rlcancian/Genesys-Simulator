@@ -50,6 +50,7 @@ private slots:
 	void on_actionEditUndo_triggered();
 	void on_actionEditRedo_triggered();
 	void on_actionEditFind_triggered();
+	// void on_actionReplace_triggered(); // old name (without menu namespace)
 	void on_actionEditReplace_triggered();
 	void on_actionEditCut_triggered();
 	void on_actionEditCopy_triggered();
@@ -110,6 +111,7 @@ private slots:
 	void on_actionAlignLeft_triggered();
 
 	void on_actionToolsParserGrammarChecker_triggered();
+	// Legacy slot: there is no matching QAction in mainwindow.ui at this moment.
 	void on_actionToolsExperimentation_triggered();
 	void on_actionToolsOptimizator_triggered();
 	void on_actionToolsDataAnalyzer_triggered();
@@ -126,7 +128,9 @@ private slots:
 	void on_actionModelCheck_triggered();
 
 	void on_actionConnect_triggered();
-	void on_actionComponent_Breakpoint_triggered();
+	void on_actionGModelComponentBreakpoint_triggered();
+	void on_actionShowInternalElements_triggered();
+	void on_actionShowAttachedElements_triggered();
 
 
     // widget events
