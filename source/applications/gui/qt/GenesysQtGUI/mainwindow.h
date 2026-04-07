@@ -25,6 +25,10 @@ QT_BEGIN_NAMESPACE
 
 QT_END_NAMESPACE
 
+class ModelLanguageSynchronizer;
+class GraphvizModelExporter;
+class CppModelExporter;
+
 /**
  * @brief Main Qt window of Genesys GUI.
  *
@@ -268,6 +272,9 @@ private: // interface and model main elements to join
 	Ui::MainWindow *ui;
 	Simulator* simulator;
     std::unique_ptr<class SimulationController> _simulationController;
+    std::unique_ptr<ModelLanguageSynchronizer> _modelLanguageSynchronizer;
+    std::unique_ptr<GraphvizModelExporter> _graphvizModelExporter;
+    std::unique_ptr<CppModelExporter> _cppModelExporter;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;

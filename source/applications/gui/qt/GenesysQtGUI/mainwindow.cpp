@@ -11,6 +11,9 @@
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
 #include "controllers/SimulationController.h"
+#include "services/ModelLanguageSynchronizer.h"
+#include "services/GraphvizModelExporter.h"
+#include "services/CppModelExporter.h"
 #include "UtilGUI.h"
 // PropEditor
 #include "propertyeditor/qtpropertybrowser/qttreepropertybrowser.h"
@@ -58,6 +61,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     // Genesys Simulator
     simulator = new Simulator();
     _simulationController = std::make_unique<SimulationController>(this, simulator);
+    // This block initializes phase-1 service objects used for progressive delegation from MainWindow.
+    _modelLanguageSynchronizer = std::make_unique<ModelLanguageSynchronizer>();
+    _graphvizModelExporter = std::make_unique<GraphvizModelExporter>();
+    _cppModelExporter = std::make_unique<CppModelExporter>();
     simulator->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
     simulator->getTraceManager()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);
     simulator->getTraceManager()->addTraceErrorHandler<MainWindow>(this, &MainWindow::_simulatorTraceErrorHandler);
