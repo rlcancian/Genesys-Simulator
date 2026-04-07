@@ -4,6 +4,8 @@
 #include "controllers/ModelInspectorController.h"
 // Include the Phase 5 controller interface required by plugin-tree wrappers.
 #include "controllers/PluginCatalogController.h"
+// Include the Phase 7 controller interface required by lifecycle compatibility wrappers.
+#include "controllers/ModelLifecycleController.h"
 
 #include "dialogs/dialogBreakpoint.h"
 #include "dialogs/Dialogmodelinformation.h"
@@ -1121,250 +1123,66 @@ void MainWindow::on_actionViewConfigure_triggered()
 
 
 void MainWindow::on_actionModelNew_triggered() {
-    Model* m;
-    if ((m = simulator->getModelManager()->current()) != nullptr) {
-        QMessageBox::StandardButton reply = QMessageBox::question(this, "New Model", "There is a model already oppened. Do you want to close it and to create new model?", QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::No) {
-            return;
-        } else {
-            this->on_actionModelClose_triggered();
-            //return; //@TODO Ceck if needed (since will remove bellow)
-        }
-    }
-    _insertCommandInConsole("new");
-    if (m != nullptr) {
-        simulator->getModelManager()->remove(m);
-    }
-    m = simulator->getModelManager()->newModel();
-    _initUiForNewModel(m);
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    _modelLifecycleController->onActionModelNewTriggered();
 }
 
 void MainWindow::on_actionModelOpen_triggered()
 {
-    Model *m;
-    if ((m = simulator->getModelManager()->current()) != nullptr) {
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setWindowTitle("New Model");
-        msgBox.setText("There is a model already opened. Do you want to close it and create a new model?");
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        int reply = msgBox.exec();
-
-        if (reply == QMessageBox::No) return;
-        else on_actionModelClose_triggered();
-    }
-
-    // Obtém o diretório atual
-    QString currentDirectory = QDir::currentPath();
-
-    // Navega para o diretório desejado
-    QDir parentDir(currentDirectory);
-
-    // Sobe 5 pastas
-    parentDir.cdUp();
-    parentDir.cdUp();
-    parentDir.cdUp();
-    parentDir.cdUp();
-    parentDir.cdUp();
-
-    // Entra na pasta models
-    parentDir.cd("models");
-
-    // Define o diretório inicial como a pasta "models"
-    QString initialDirectory = parentDir.absolutePath();
-
-    QString fileName = QFileDialog::getOpenFileName(
-        this, "Open Model", initialDirectory,
-        tr("Genesys Model (*.gen);;Genesys Graphical User Interface (*.gui);;XML Files (*.xml);;JSON Files (*.json);;C++ Files (*.cpp)"), nullptr, QFileDialog::DontUseNativeDialog);
-    if (fileName == "") {
-        return;
-    }
-    _insertCommandInConsole("load " + fileName.toStdString());
-    // load Model (in the simulator)
-    Model *model = this->_loadGraphicalModel(fileName.toStdString());
-    if (model != nullptr) {
-        _loaded = true;
-        _initUiForNewModel(model);
-
-        QMessageBox::information(this, "Open Model", "Model successfully oppened");
-    } else {
-        QMessageBox::warning(this, "Open Model", "Error while opening model");
-        _actualizeActions();
-        _actualizeTabPanes();
-    }
-    ui->graphicsView->getScene()->getUndoStack()->clear();
-
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    _modelLifecycleController->onActionModelOpenTriggered();
 }
 
 
 void MainWindow::on_actionModelSave_triggered()
 {
-    QObject* triggerSender = sender();
-    qInfo() << "on_actionModelSave_triggered sender="
-            << (triggerSender ? triggerSender->metaObject()->className() : "nullptr")
-            << " objectName=" << (triggerSender ? triggerSender->objectName() : QString())
-            << " senderPtr=" << triggerSender
-            << " scenePtr=" << (ui && ui->graphicsView ? ui->graphicsView->scene() : nullptr)
-            << " modelPtr=" << simulator->getModelManager()->current();
-    QString fileName = QFileDialog::getSaveFileName(this,
-                                                    tr("Save Model"), _modelfilename,
-                                                    tr("Genesys Model (*.gen)"), nullptr, QFileDialog::DontUseNativeDialog);
-    if (fileName.isEmpty())
-        return;
-    else {
-        _insertCommandInConsole("save " + fileName.toStdString());
-        QString finalFileName = fileName + ".gen";
-        QFile saveFile(finalFileName);
-
-        if (!saveFile.open(QIODevice::WriteOnly)) {
-            QMessageBox::information(this, tr("Unable to access file to save"),
-                                     saveFile.errorString());
-            return;
-        } else {
-            _saveTextModel(&saveFile, ui->TextCodeEditor->toPlainText());
-            saveFile.close();
-        }
-        _saveGraphicalModel(fileName + ".gui");
-        _modelfilename = fileName;
-        QMessageBox::information(this, "Save Model", "Model successfully saved");
-        // convert text info Model
-        _setSimulationModelBasedOnText();
-        //
-        _actualizeModelTextHasChanged(false);
-    }
-    _actualizeActions();
-    ui->graphicsView->getScene()->getUndoStack()->clear();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    _modelLifecycleController->onActionModelSaveTriggered();
 }
 
 
 
 void MainWindow::on_actionModelClose_triggered()
 {
-    qInfo() << "on_actionModelClose_triggered scenePtr="
-            << (ui && ui->graphicsView ? ui->graphicsView->scene() : nullptr)
-            << " modelPtr=" << simulator->getModelManager()->current();
-    _disconnectSceneSignals("on_actionModelClose_triggered(begin)");
-    if (_textModelHasChanged || simulator->getModelManager()->current()->hasChanged()) {
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setWindowTitle("Close ModelSyS");
-        msgBox.setText("Model has changed. Do you want to save it?");
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::Yes);
-        int reply = msgBox.exec();
-
-        if (reply == QMessageBox::Yes) {
-            this->on_actionModelSave_triggered();
-        }
-    }
-    _insertCommandInConsole("close");
-
-    // quando a cena é fechada, limpo o grid associado a ela
-    ui->graphicsView->getScene()->grid()->clear();
-    // volto o botao de grid para "não clicado"
-    ui->actionShowGrid->setChecked(false);
-
-    // limpando tudo a que se refere à cena
-    ui->graphicsView->getScene()->getUndoStack()->clear();
-    ui->graphicsView->getScene()->clearAnimationsQueue();
-    ui->graphicsView->getScene()->getGraphicalModelComponents()->clear();
-    ui->graphicsView->getScene()->getGraphicalConnections()->clear();
-    ui->graphicsView->getScene()->getAllComponents()->clear();
-    ui->graphicsView->getScene()->getAllConnections()->clear();
-    ui->graphicsView->getScene()->clearAnimations();
-    ui->graphicsView->getScene()->clear();
-    ui->graphicsView->clear();
-
-    // limpando referencia do ultimo elemento selecionado em property editor
-    ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
-
-    // limpando tudo a que se refere ao modelo
-    simulator->getModelManager()->current()->getComponentManager()->getAllComponents()->clear();
-    simulator->getModelManager()->current()->getComponentManager()->clear();
-    ui->progressBarSimulation->setValue(0); // Seta o progresso da simulação para zero
-    simulator->getModelManager()->remove(simulator->getModelManager()->current());
-
-    ui->actionActivateGraphicalSimulation->setChecked(false);
-
-    _clearModelEditors();
-
-    _connectSceneSignals();
-    _actualizeActions();
-    _actualizeTabPanes();
-    //QMessageBox::information(this, "Close Model", "Model successfully closed");
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    _modelLifecycleController->onActionModelCloseTriggered();
 }
 
 
 void MainWindow::on_actionModelInformation_triggered()
 {
-    DialogModelInformation* diag = new DialogModelInformation(this);
-    diag->show();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    _modelLifecycleController->onActionModelInformationTriggered();
 }
 
 
 void MainWindow::on_actionModelCheck_triggered()
 {
-    _check();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    _modelLifecycleController->onActionModelCheckTriggered();
 }
 
 void MainWindow::on_actionSimulatorExit_triggered()
 {
-    if (!_confirmApplicationExit()) {
-        return;
-    }
-
-    _closingApproved = true;
-    QCoreApplication::quit();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    _modelLifecycleController->onActionSimulatorExitTriggered();
 }
 
 bool MainWindow::_hasPendingModelChanges() const {
-    Model* currentModel = simulator->getModelManager()->current();
-    if (currentModel == nullptr) {
-        return false;
-    }
-
-    return _textModelHasChanged || currentModel->hasChanged();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    return _modelLifecycleController->hasPendingModelChanges();
 }
 
 bool MainWindow::_confirmApplicationExit() {
-    if (_hasPendingModelChanges()) {
-        QMessageBox::StandardButton saveReply = QMessageBox::question(
-                this,
-                "Exit GenESyS",
-                "Model has changed. Do you want to save it?",
-                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-                QMessageBox::Yes);
-
-        if (saveReply == QMessageBox::Cancel) {
-            return false;
-        }
-
-        if (saveReply == QMessageBox::Yes) {
-            this->on_actionModelSave_triggered();
-            if (_hasPendingModelChanges()) {
-                return false;
-            }
-        }
-    }
-
-    QMessageBox::StandardButton exitReply = QMessageBox::question(
-            this,
-            "Exit GenESyS",
-            "Do you want to exit GenESyS?",
-            QMessageBox::Yes | QMessageBox::No,
-            QMessageBox::No);
-    return exitReply == QMessageBox::Yes;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    return _modelLifecycleController->confirmApplicationExit();
 }
 
 
 void MainWindow::on_actionSimulationConfigure_triggered()
 {
-    DialogSimulationConfigure * dialog = new DialogSimulationConfigure(this);
-    dialog->setSimulator(simulator);
-    dialog->previousConfiguration();
-    dialog->show();
-
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 7 refactor.
+    _modelLifecycleController->onActionSimulationConfigureTriggered();
 }
 
 

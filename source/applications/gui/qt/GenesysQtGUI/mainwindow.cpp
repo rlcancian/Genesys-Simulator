@@ -19,6 +19,8 @@
 #include "controllers/PluginCatalogController.h"
 // Add Phase 6 controller include for property-editor and scene-selection orchestration.
 #include "controllers/PropertyEditorController.h"
+// Add Phase 7 controller include for model/application lifecycle orchestration.
+#include "controllers/ModelLifecycleController.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -276,6 +278,29 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->treeViewPropertyEditor->setModelChangedCallback([this]() {
         this->_onPropertyEditorModelChanged();
     });
+    // Initialize the Phase 7 model-lifecycle controller after simulator/UI/callback dependencies are ready.
+    _modelLifecycleController = std::make_unique<ModelLifecycleController>(
+        this,
+        simulator,
+        ui,
+        &_modelfilename,
+        &_textModelHasChanged,
+        &_closingApproved,
+        &_loaded,
+        ModelLifecycleController::Callbacks{
+            [this](const std::string& command) { _insertCommandInConsole(command); },
+            [this](Model* model) { _initUiForNewModel(model); },
+            [this]() { _actualizeActions(); },
+            [this]() { _actualizeTabPanes(); },
+            [this](bool hasChanged) { _actualizeModelTextHasChanged(hasChanged); },
+            [this]() { return _check(); },
+            [this]() { return _setSimulationModelBasedOnText(); },
+            [this]() { _clearModelEditors(); },
+            [this](QString filename) { return _saveGraphicalModel(filename); },
+            [this](QFile* file, QString data) { return _saveTextModel(file, data); },
+            [this](std::string filename) { return _loadGraphicalModel(filename); },
+            [this]() { _connectSceneSignals(); },
+            [this](const char* context) { _disconnectSceneSignals(context); }});
 
     // system preferences
     SystemPreferences::load();

@@ -249,6 +249,8 @@ SOURCES += \
     controllers/PluginCatalogController.cpp \
     # Phase-6 GUI refactor controller for property-editor responsibilities.
     controllers/PropertyEditorController.cpp \
+    # Phase-7 GUI refactor controller for model/application lifecycle responsibilities.
+    controllers/ModelLifecycleController.cpp \
     # Phase-1 GUI refactor services for model representations.
     services/ModelLanguageSynchronizer.cpp \
     services/GraphvizModelExporter.cpp \
@@ -574,6 +576,8 @@ HEADERS += \
     controllers/PluginCatalogController.h \
     # Phase-6 GUI refactor controller header for property-editor responsibilities.
     controllers/PropertyEditorController.h \
+    # Phase-7 GUI refactor controller header for model/application lifecycle responsibilities.
+    controllers/ModelLifecycleController.h \
     # Phase-1 GUI refactor service headers.
     services/ModelLanguageSynchronizer.h \
     services/GraphvizModelExporter.h \
