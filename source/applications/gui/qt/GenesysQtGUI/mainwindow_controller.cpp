@@ -52,6 +52,7 @@
 #include <QImage>
 #include <QPainter>
 #include <QFileInfo>
+#include <QCoreApplication>
 #include "../../../../kernel/simulator/ModelSimulation.h"
 
 
@@ -1030,20 +1031,51 @@ void MainWindow::on_actionModelCheck_triggered()
 
 void MainWindow::on_actionSimulatorExit_triggered()
 {
-    QMessageBox::StandardButton res;
-    if (this->_textModelHasChanged) {
-        res = QMessageBox::question(this, "Exit GenESyS", "Model has changed. Do you want to save it?", QMessageBox::Yes | QMessageBox::No);
-        if (res == QMessageBox::Yes) {
+    if (!_confirmApplicationExit()) {
+        return;
+    }
+
+    _closingApproved = true;
+    QCoreApplication::quit();
+}
+
+bool MainWindow::_hasPendingModelChanges() const {
+    Model* currentModel = simulator->getModelManager()->current();
+    if (currentModel == nullptr) {
+        return false;
+    }
+
+    return _textModelHasChanged || currentModel->hasChanged();
+}
+
+bool MainWindow::_confirmApplicationExit() {
+    if (_hasPendingModelChanges()) {
+        QMessageBox::StandardButton saveReply = QMessageBox::question(
+                this,
+                "Exit GenESyS",
+                "Model has changed. Do you want to save it?",
+                QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+                QMessageBox::Yes);
+
+        if (saveReply == QMessageBox::Cancel) {
+            return false;
+        }
+
+        if (saveReply == QMessageBox::Yes) {
             this->on_actionModelSave_triggered();
-            return;
+            if (_hasPendingModelChanges()) {
+                return false;
+            }
         }
     }
-    res = QMessageBox::question(this, "Exit GenESyS", "Do you want to exit GenESyS?", QMessageBox::Yes | QMessageBox::No);
-    if (res == QMessageBox::Yes) {
-        std::exit(EXIT_SUCCESS);
-    } else {
-        // it does not quit, but the window is closed. Check it. @TODO
-    }
+
+    QMessageBox::StandardButton exitReply = QMessageBox::question(
+            this,
+            "Exit GenESyS",
+            "Do you want to exit GenESyS?",
+            QMessageBox::Yes | QMessageBox::No,
+            QMessageBox::No);
+    return exitReply == QMessageBox::Yes;
 }
 
 

@@ -273,9 +273,13 @@ private: // attributes to be saved and loaded withing the graphical model
 	int _zoomValue; // todo should be set for each open graphical model, such as view rect, etc
 private: // misc useful
     bool _check(bool success = true);
+	bool _hasPendingModelChanges() const;
+	bool _confirmApplicationExit();
 	bool _textModelHasChanged = false;
 	bool _graphicalModelHasChanged = false;
 	bool _modelWasOpened = false;
+	// Avoids duplicated prompts when exit is approved and Qt emits close events during shutdown.
+	bool _closingApproved = false;
 	QString _autoLoadPluginsFilename = "autoloadplugins.txt";
     bool _checkItemsScene();
 	QString _modelfilename;
