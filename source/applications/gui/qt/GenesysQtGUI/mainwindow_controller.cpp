@@ -560,14 +560,16 @@ void MainWindow::on_actionShowGrid_triggered() {
 
 
 void MainWindow::on_actionShowRule_triggered() {
-    // Applies rule visibility directly in the graphics view overlay.
+    // Applies ruler visibility through the graphics view backend and mirrors the effective state back to the action.
     ui->graphicsView->setRuleVisible(ui->actionShowRule->isChecked());
+    ui->actionShowRule->setChecked(ui->graphicsView->isRuleVisible());
 }
 
 
 void MainWindow::on_actionShowGuides_triggered() {
-    // Applies guides visibility directly in the graphics view overlay.
+    // Applies guide visibility through the graphics view backend and mirrors the effective state back to the action.
     ui->graphicsView->setGuidesVisible(ui->actionShowGuides->isChecked());
+    ui->actionShowGuides->setChecked(ui->graphicsView->isGuidesVisible());
 }
 
 
@@ -822,7 +824,7 @@ void MainWindow::on_actionEditUngroup_triggered()
 
 void MainWindow::on_actionToolsParserGrammarChecker_triggered()
 {
-    // Opens a parser checker dialog and validates expressions against the current model parser.
+    // Opens a parser checker dialog and validates expressions through the model parser integration.
     Model* model = simulator->getModelManager()->current();
     if (model == nullptr) {
         QMessageBox::information(this, tr("Parser Grammar Checker"), tr("Open or create a model before checking parser expressions."));
@@ -851,7 +853,8 @@ void MainWindow::on_actionToolsParserGrammarChecker_triggered()
     layout->addWidget(checkButton);
     layout->addWidget(closeButtons);
 
-    connect(checkButton, &QPushButton::clicked, &dialog, [model, expressionEditor, resultLabel]() {
+    // Executes parser validation and reports success/failure without closing the checker dialog.
+    connect(checkButton, &QPushButton::clicked, &dialog, [this, model, expressionEditor, resultLabel]() {
         const std::string expression = expressionEditor->toPlainText().trimmed().toStdString();
         if (expression.empty()) {
             resultLabel->setText(QObject::tr("Please enter an expression before checking."));
@@ -862,8 +865,11 @@ void MainWindow::on_actionToolsParserGrammarChecker_triggered()
         const double value = model->parseExpression(expression, success, errorMessage);
         if (success) {
             resultLabel->setText(QObject::tr("Parse success. Evaluated value: %1").arg(value));
+            QMessageBox::information(this, QObject::tr("Parser Grammar Checker"), QObject::tr("Expression is valid.\nEvaluated value: %1").arg(value));
         } else {
-            resultLabel->setText(QObject::tr("Parse failed: %1").arg(QString::fromStdString(errorMessage)));
+            const QString errorText = QString::fromStdString(errorMessage.isEmpty() ? std::string("Unknown parser error.") : errorMessage);
+            resultLabel->setText(QObject::tr("Parse failed: %1").arg(errorText));
+            QMessageBox::warning(this, QObject::tr("Parser Grammar Checker"), QObject::tr("Expression is invalid.\nError: %1").arg(errorText));
         }
     });
     connect(closeButtons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -909,7 +915,8 @@ void MainWindow::on_actionToolsOptimizator_triggered()
     layout->addRow(resultLabel);
     layout->addRow(buttons);
 
-    connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, precisionInput, maxStepsInput, minInput, maxInput, resultLabel, &dialog]() {
+    // Persists optimizer parameters and runs a sample numeric integration to validate the configured setup.
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, precisionInput, maxStepsInput, minInput, maxInput, resultLabel]() {
         if (maxInput->value() <= minInput->value()) {
             resultLabel->setText(QObject::tr("Integral max must be greater than min."));
             return;
@@ -920,7 +927,6 @@ void MainWindow::on_actionToolsOptimizator_triggered()
         auto quadratic = [](double x, double) { return x * x; };
         const double result = solver.integrate(minInput->value(), maxInput->value(), quadratic, 0.0);
         resultLabel->setText(QObject::tr("Configuration saved. Integral result: %1").arg(result));
-        dialog.accept();
     });
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
 
@@ -1534,6 +1540,7 @@ void MainWindow::on_actionParallelization_triggered()
     layout->addRow(statusLabel);
     layout->addRow(buttons);
 
+    // Persists parallelization preparation settings and publishes the applied values in the status bar.
     connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, enabled, threads, batchSize, statusLabel, &dialog]() {
         _parallelizationEnabled = enabled->isChecked();
         _parallelizationThreads = threads->value();
@@ -1542,6 +1549,10 @@ void MainWindow::on_actionParallelization_triggered()
                              .arg(_parallelizationEnabled ? QObject::tr("true") : QObject::tr("false"))
                              .arg(_parallelizationThreads)
                              .arg(_parallelizationBatchSize));
+        statusBar()->showMessage(QObject::tr("Parallelization prepared: enabled=%1, threads=%2, batch size=%3")
+                                 .arg(_parallelizationEnabled ? QObject::tr("true") : QObject::tr("false"))
+                                 .arg(_parallelizationThreads)
+                                 .arg(_parallelizationBatchSize), 5000);
         dialog.accept();
     });
     connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -1734,9 +1745,10 @@ void MainWindow::on_treeWidget_Plugins_itemDoubleClicked(QTreeWidgetItem *item, 
 }
 
 void MainWindow::on_graphicsView_rubberBandChanged(const QRect &viewportRect, const QPointF &fromScenePoint, const QPointF &toScenePoint) {
-    // Reports current rubber-band selection geometry in the status bar for user feedback.
+    // Reports rubber-band geometry during drag and final selected-item count when selection is completed.
     if (viewportRect.isNull()) {
-        statusBar()->clearMessage();
+        const int selectedCount = ui->graphicsView->scene()->selectedItems().size();
+        statusBar()->showMessage(tr("Selection completed: %1 item(s) selected").arg(selectedCount), 3000);
         return;
     }
     const QRectF sceneRect = QRectF(fromScenePoint, toScenePoint).normalized();
