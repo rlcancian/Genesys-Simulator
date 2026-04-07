@@ -3,6 +3,8 @@
 // Include dedicated Phase 4 controllers used by simulator compatibility wrappers.
 #include "controllers/TraceConsoleController.h"
 #include "controllers/SimulationEventController.h"
+// Include the Phase 5 controller used by plugin-catalog compatibility wrappers.
+#include "controllers/PluginCatalogController.h"
 
 
 //-------------------------
@@ -100,110 +102,11 @@ void MainWindow::_setOnEventHandlers() {
 //-------------------------
 
 void MainWindow::_insertPluginUI(Plugin * plugin) {
-    if (plugin != nullptr) {
-        if (plugin->isIsValidPlugin()) {
-            QTreeWidgetItem *treeItemChild = new QTreeWidgetItem();
-            //QTreeWidgetItem *treeItem = new QTreeWidgetItem; //(ui->treeWidget_Plugins);
-            std::string plugtextAdds = "[" + plugin->getPluginInfo()->getCategory() + "]: ";
-            QBrush brush;
-            if (plugin->getPluginInfo()->isComponent()) {
-                plugtextAdds += " Component";
-                //brush.setColor(Qt::white);
-                //treeItemChild->setBackground(brush);
-                //treeItemChild->setBackgroundColor(Qt::white);
-                treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/component.ico"));
-            } else {
-                plugtextAdds += " DataDefinition";
-                //brush.setColor(Qt::lightGray);
-                //treeItemChild->setBackground(brush);
-                //treeItemChild->setBackgroundColor(Qt::lightGray);
-                treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/calendarred.ico"));
-                //treeItemChild->setFont(QFont::Style::StyleItalic);
-            }
-            if (plugin->getPluginInfo()->isSink()) {
-                plugtextAdds += ", Sink";
-                treeItemChild->setForeground(0, Qt::blue); //setTextColor(0, Qt::blue);
-                treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/loadinv.ico"));
-            }
-            if (plugin->getPluginInfo()->isSource()) {
-                plugtextAdds += ", Source";
-                treeItemChild->setForeground(0, Qt::blue); //setTextColor(0, Qt::blue);
-                treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/load.ico"));
-            }
-            if (plugin->getPluginInfo()->isReceiveTransfer()) {
-                plugtextAdds += ", ReceiveTransfer";
-                treeItemChild->setForeground(0, Qt::blue); //setTextColor(0, Qt::blue);
-                treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/load.ico"));
-            }
-            if (plugin->getPluginInfo()->isSendTransfer()) {
-                plugtextAdds += ", SendTransfer";
-                treeItemChild->setForeground(0, Qt::blue); //setTextColor(0, Qt::blue);
-                treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/loadinv.ico"));
-            }
-            //treeItem->setText(0,QString::fromStdString(plugtextAdds));
-            plugtextAdds += "\n\nDescrption: " + plugin->getPluginInfo()->getDescriptionHelp();
-            plugtextAdds += "\n\nTemplate: " + plugin->getPluginInfo()->getLanguageTemplate() + " (double click to add to model)";
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 5 refactor.
+    _pluginCatalogController->insertPluginUI(plugin);
+}
 
-            QTreeWidgetItem *treeRootItem;
-            QString category;
-            if (plugin->getPluginInfo()->isComponent())
-                category = QString::fromStdString(plugin->getPluginInfo()->getCategory());
-            else
-                category = "Data Definition";
-            QList<QTreeWidgetItem*> founds = ui->treeWidget_Plugins->findItems(category, Qt::MatchContains);
-            if (founds.size() == 0) {
-                QFont font("Nimbus Sans", 12, QFont::Bold);
-                treeRootItem = new QTreeWidgetItem(ui->treeWidget_Plugins);
-                treeRootItem->setText(0, category);
-                QBrush bforeground(Qt::white);
-                treeRootItem->setForeground(0, bforeground);
-                QBrush bbackground(Qt::black);
-                if (category == "Data Definition") {
-                    bbackground.setColor(Qt::darkRed);
-                } else if (category == "Discrete Processing") {
-                    bbackground.setColor(Qt::darkGreen);
-                } else if (category == "Decisions") {
-                    bbackground.setColor(Qt::darkYellow);
-                } else if (category == "Grouping") {
-                    bbackground.setColor(Qt::magenta);
-                } else if (category == "Input Output") {
-                    bbackground.setColor(Qt::darkCyan);
-                } else if (category == "Material Handling") {
-                    bbackground.setColor(Qt::darkBlue);
-                }
-                treeRootItem->setBackground(0, bbackground);
-                treeRootItem->setFont(0, font);
-                treeRootItem->setExpanded(false); //(true);
-                //treeRootItem->sortChildren(0, Qt::AscendingOrder);
-                if (plugin->getPluginInfo()->getCategory() == category.toStdString()) {
-                    _pluginCategoryColor->insert({plugin->getPluginInfo()->getCategory(), bbackground.color()});
-                }
-            } else {
-                treeRootItem = *founds.begin();
-            }
-            if (plugin->getPluginInfo()->isComponent() && !plugin->getPluginInfo()->isSendTransfer() && !plugin->getPluginInfo()->isReceiveTransfer() && !plugin->getPluginInfo()->isSink() && !plugin->getPluginInfo()->isSource()) {
-                if (treeRootItem->background(0).color().blue() < 32 && treeRootItem->background(0).color().green() < 32 && treeRootItem->background(0).color().red() < 32) {
-                    treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/componentblack.ico"));
-                } else if (treeRootItem->background(0).color().red() >= treeRootItem->background(0).color().blue() &&
-                           treeRootItem->background(0).color().red() > treeRootItem->background(0).color().green()) {
-                    treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/componentred.ico"));
-                } else if (treeRootItem->background(0).color().blue() > treeRootItem->background(0).color().red() &&
-                           treeRootItem->background(0).color().blue() > treeRootItem->background(0).color().green()) {
-                    treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/componentblue.ico"));
-                } else if (treeRootItem->background(0).color().red() > treeRootItem->background(0).color().blue() &&
-                           treeRootItem->background(0).color().green() > treeRootItem->background(0).color().blue()) {
-                    treeItemChild->setIcon(0, QIcon(":/icons3/resources/icons/pack3/ico/componentyellow.ico"));
-                }
-            }
-            treeItemChild->setWhatsThis(0, QString::fromStdString(plugin->getPluginInfo()->getPluginTypename()));
-            /* TODO: Qt6 has no more setTextColor */
-            //treeItemChild->setTextColor(0, treeRootItem->background(0).color());
-            //treeItemChild->setTextColor(0, treeRootItem->backgroundColor(0));
-            treeItemChild->setText(0, QString::fromStdString(plugin->getPluginInfo()->getPluginTypename()));
-            treeItemChild->setToolTip(0, QString::fromStdString(plugtextAdds));
-            treeItemChild->setStatusTip(0, QString::fromStdString(plugin->getPluginInfo()->getLanguageTemplate()));
-            //treeItemChild->setFlags(Qt::ItemIsSelectable | Qt::ItemIsDragEnabled | Qt::ItemNeverHasChildren);
-            treeRootItem->addChild(treeItemChild);
-        }
-    }
+void MainWindow::_insertFakePlugins() {
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 5 refactor.
+    _pluginCatalogController->insertFakePlugins();
 }

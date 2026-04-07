@@ -2,6 +2,8 @@
 #include "ui_mainwindow.h"
 // Include the Phase 3 controller interface required by compatibility wrappers.
 #include "controllers/ModelInspectorController.h"
+// Include the Phase 5 controller interface required by plugin-tree wrappers.
+#include "controllers/PluginCatalogController.h"
 
 #include "dialogs/dialogBreakpoint.h"
 #include "dialogs/Dialogmodelinformation.h"
@@ -1721,37 +1723,8 @@ void MainWindow::on_tabWidgetCentral_tabBarClicked(int index) {
 }
 
 void MainWindow::on_treeWidget_Plugins_itemDoubleClicked(QTreeWidgetItem *item, int column) {
-    if (ui->TextCodeEditor->isEnabled()) { // add text to modelsimulation
-        /*
-        if (item->toolTip(0).contains("DataDefinition")) {
-            QTextCursor cursor = ui->TextCodeEditor->textCursor();
-            QTextCursor cursorSaved = cursor;
-            cursor.movePosition(QTextCursor::Start);
-            ui->TextCodeEditor->setTextCursor(cursor);
-            if (ui->TextCodeEditor->find("# Model Components")) {
-                ui->TextCodeEditor->moveCursor(QTextCursor::MoveOperation::Left, QTextCursor::MoveMode::MoveAnchor);
-                ui->TextCodeEditor->moveCursor(QTextCursor::MoveOperation::Up, QTextCursor::MoveMode::MoveAnchor);
-                ui->TextCodeEditor->insertPlainText(item->statusTip(0) + "\n");
-            } else {
-                ui->TextCodeEditor->appendPlainText(item->statusTip(0));
-            }
-        } else {
-            ui->TextCodeEditor->appendPlainText(item->statusTip(0));
-        }
-         */
-    } else {
-        // treeRoot? Always?
-        for (int i = 0; i < ui->treeWidget_Plugins->topLevelItemCount(); i++) {
-            //if (ui->treeWidget_Plugins->topLevelItem(i) != item) {
-            ui->treeWidget_Plugins->topLevelItem(i)->setExpanded(false);
-            //} else {
-            //	ui->treeWidget_Plugins->expandItem(item);
-            //	//ui->treeWidget_Plugins->topLevelItem(i)->setExpanded(true);
-            //}
-        }
-        //ui->treeWidget_Plugins->setAnimated(true);
-        ui->treeWidget_Plugins->expandItem(item);
-    }
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 5 refactor.
+    _pluginCatalogController->handlePluginItemDoubleClicked(item, column);
 }
 
 void MainWindow::on_graphicsView_rubberBandChanged(const QRect &viewportRect, const QPointF &fromScenePoint, const QPointF &toScenePoint) {
@@ -1891,7 +1864,8 @@ void MainWindow::on_treeWidgetComponents_itemSelectionChanged() {
 }
 
 void MainWindow::on_treeWidget_Plugins_itemClicked(QTreeWidgetItem *item, int column) {
-    //showMessageNotImplemented();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 5 refactor.
+    _pluginCatalogController->handlePluginItemClicked(item, column);
 }
 
 void MainWindow::on_TextCodeEditor_textChanged() {
