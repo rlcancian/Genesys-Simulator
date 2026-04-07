@@ -25,6 +25,8 @@
 #include "controllers/SimulationCommandController.h"
 // Add Phase 9 controller include for edit-command orchestration.
 #include "controllers/EditCommandController.h"
+// Add Phase 10 controller include for scene/view/drawing command orchestration.
+#include "controllers/SceneToolController.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -299,6 +301,20 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         &_ports_copies,
         &_draw_copy,
         &_group_copy);
+
+    // Initialize the Phase 10 scene-tool controller after scene/view widgets and callbacks are ready.
+    _sceneToolController = std::make_unique<SceneToolController>(
+        ui->graphicsView,
+        ui,
+        [this]() { return ui->graphicsView->getScene(); },
+        [this]() { return _createModelImage(); },
+        [this]() { unselectDrawIcons(); },
+        [this]() { return checkSelectedDrawIcons(); },
+        [this](double factor) { _gentle_zoom(factor); },
+        [this]() { _actualizeActions(); },
+        [this]() { _actualizeTabPanes(); },
+        _zoomValue,
+        _firstClickShowConnection);
 
     // Initialize the Phase 7 model-lifecycle controller after simulator/UI/callback dependencies are ready.
     _modelLifecycleController = std::make_unique<ModelLifecycleController>(
