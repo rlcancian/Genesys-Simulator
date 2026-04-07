@@ -3,6 +3,7 @@
 
 #include <map>
 #include <vector>
+#include <set>
 #include <functional>
 
 #include <QObject>
@@ -49,16 +50,24 @@ private:
         ModelDataDefinition* owner = nullptr;
         SimulationControl* control = nullptr;
         GenesysPropertyDescriptor descriptor;
+        bool isObjectSelector = false;
     };
 
 private:
     void _notifyModelChangeApplied();
     void _clearAll();
+    void _rebuildProperties();
     void _populateKernelProperties(ModelDataDefinition* mdd);
-    QtProperty* _createProperty(const GenesysPropertyDescriptor& desc);
+    void _appendDescriptorRecursively(
+        QtProperty* parent,
+        SimulationControl* control,
+        std::set<const SimulationControl*>& recursionPath,
+        int depth = 0
+        );
+
+    QtProperty* _createLeafProperty(const GenesysPropertyDescriptor& desc);
     QVariant _toVariant(const GenesysPropertyDescriptor& desc) const;
     std::string _fromVariant(const GenesysPropertyDescriptor& desc, const QVariant& value) const;
-    QString _objectSummary(const GenesysPropertyDescriptor& desc) const;
     int _enumIndexFor(const GenesysPropertyDescriptor& desc) const;
     QStringList _toQStringList(const std::vector<std::string>& values) const;
 
@@ -88,7 +97,6 @@ private:
 
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
-    QMap<QtProperty*, QtVariantProperty*> _objectSummaryProperties;
     ModelChangedCallback _modelChangedCallback;
 
 private slots:

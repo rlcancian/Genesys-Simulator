@@ -91,6 +91,8 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.isList = control->getIsList();
     desc.isClass = control->getIsClass();
     desc.isEnum = control->getIsEnum();
+    desc.isInlineObject = desc.isClass && !desc.isList;
+    desc.isModelDataDefinitionReference = control->isModelDataDefinitionReference();
     desc.currentValue = control->getValue();
 
     desc.choices = _copyStringList(control->getStrValues());

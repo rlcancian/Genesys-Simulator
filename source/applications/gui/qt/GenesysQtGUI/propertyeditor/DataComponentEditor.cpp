@@ -2,6 +2,10 @@
 
 #include <utility>
 
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QHeaderView>
+
 #include "DataComponentProperty.h"
 #include "ComboBoxEnum.h"
 
@@ -12,14 +16,27 @@ DataComponentEditor::DataComponentEditor(
     ) : _editor(editor), _afterChange(std::move(afterChange)) {
 
     _window = new QWidget;
+    _window->setWindowTitle("List Item Editor");
+    auto* rootLayout = new QVBoxLayout(_window);
+
     _view = new QTreeWidget(_window);
     _edit = new QPushButton("Edit", _window);
     _newValue = new QInputDialog(_window);
 
     _view->setColumnCount(2);
     _view->setHeaderLabels({"Property", "Value"});
-    _edit->move(270, 15);
-    _window->setFixedSize(400, 220);
+    _view->header()->setStretchLastSection(true);
+
+    auto* lineLayout = new QHBoxLayout();
+    lineLayout->addWidget(_view, 1);
+
+    auto* buttons = new QVBoxLayout();
+    buttons->addWidget(_edit);
+    buttons->addStretch(1);
+    lineLayout->addLayout(buttons);
+
+    rootLayout->addLayout(lineLayout);
+    _window->setMinimumSize(520, 300);
 
     QObject::connect(_edit, &QPushButton::clicked, this, [this, property]() {
         editProperty(property);
@@ -33,14 +50,27 @@ DataComponentEditor::DataComponentEditor(
     ) : _editor(editor), _afterChange(std::move(afterChange)) {
 
     _window = new QWidget;
+    _window->setWindowTitle("List Item Editor");
+    auto* rootLayout = new QVBoxLayout(_window);
+
     _view = new QTreeWidget(_window);
     _edit = new QPushButton("Edit", _window);
     _newValue = new QInputDialog(_window);
 
     _view->setColumnCount(2);
     _view->setHeaderLabels({"Property", "Value"});
-    _edit->move(270, 15);
-    _window->setFixedSize(400, 220);
+    _view->header()->setStretchLastSection(true);
+
+    auto* lineLayout = new QHBoxLayout();
+    lineLayout->addWidget(_view, 1);
+
+    auto* buttons = new QVBoxLayout();
+    buttons->addWidget(_edit);
+    buttons->addStretch(1);
+    lineLayout->addLayout(buttons);
+
+    rootLayout->addLayout(lineLayout);
+    _window->setMinimumSize(520, 300);
 
     QObject::connect(_edit, &QPushButton::clicked, this, [this, properties]() {
         editProperty(properties);
@@ -74,12 +104,7 @@ void DataComponentEditor::configure_properties(SimulationControl* property) {
         return;
     }
 
-    List<SimulationControl*>* nestedProperties = nullptr;
-    try {
-        nestedProperties = property->getEditableProperties();
-    } catch (...) {
-        return;
-    }
+    List<SimulationControl*>* nestedProperties = property->getEditableProperties();
     if (nestedProperties == nullptr) {
         return;
     }
@@ -110,12 +135,7 @@ void DataComponentEditor::editProperty(SimulationControl* property) {
         return;
     }
 
-    List<SimulationControl*>* nestedProperties = nullptr;
-    try {
-        nestedProperties = property->getEditableProperties();
-    } catch (...) {
-        return;
-    }
+    List<SimulationControl*>* nestedProperties = property->getEditableProperties();
     if (nestedProperties == nullptr) {
         return;
     }
