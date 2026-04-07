@@ -53,7 +53,8 @@ Seize::Seize(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 									_parentModel,
 									std::bind(&Seize::getSeizeRequests, this), std::bind(&Seize::addRequest, this, std::placeholders::_1), std::bind(&Seize::removeRequest, this, std::placeholders::_1),
 									Util::TypeOf<Seize>(), getName(), "Requests", "", true, true, false,
-                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });
+                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); },
+                                    [](Model* model) { return new SeizableItem(model, "", "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });
 
     _parentModel->getControls()->insert(propAlloc);
 	_parentModel->getControls()->insert(propPriority);

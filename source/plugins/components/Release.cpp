@@ -40,7 +40,8 @@ Release::Release(Model* model, std::string name) : ModelComponent(model, Util::T
 									_parentModel,
                                     std::bind(&Release::getReleaseRequests, this), std::bind(&Release::addReleaseRequests, this, std::placeholders::_1), std::bind(&Release::removeReleaseRequests, this, std::placeholders::_1),
 									Util::TypeOf<Release>(), getName(), "ReleaseRequests", "", true, true, false,
-                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });	
+                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); },
+                                    [](Model* model) { return new SeizableItem(model, "", "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });	
 
 	_parentModel->getControls()->insert(propPriority);
 	_parentModel->getControls()->insert(propReleaseRequests);

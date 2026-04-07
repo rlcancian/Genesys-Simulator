@@ -120,18 +120,15 @@ void DataComponentProperty::addElement() {
     // This block routes Add to explicit typed-creation support when the list control provides it.
     GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(_property);
     if (descriptor.supportsNewListElementCreation) {
-        std::string errorMessage;
-        const bool ok = GenesysPropertyIntrospection::setValue(
-            _property,
-            "",
-            false,
-            &errorMessage
-            );
-        if (ok) {
-            config_values();
-            _notifyChanged();
+        try {
+            if (_property->createNewListElement()) {
+                config_values();
+                _notifyChanged();
+                return;
+            }
+        } catch (...) {
+            // This block intentionally falls back to the legacy textual flow below.
         }
-        return;
     }
 
     // This block preserves the legacy textual fallback path for lists without typed creation support.

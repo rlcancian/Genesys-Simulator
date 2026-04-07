@@ -308,7 +308,11 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
     if (childrenList == nullptr) {
         QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
         emptyNode->setEnabled(false);
-        emptyNode->setValue(desc.readOnly ? "Read-only object" : "Object not available");
+        if (desc.supportsObjectCreation && !desc.readOnly) {
+            emptyNode->setValue("Object not available yet. Select or create an object reference to continue.");
+        } else {
+            emptyNode->setValue(desc.readOnly ? "Read-only object" : "Object not available");
+        }
         group->addSubProperty(emptyNode);
         return;
     }
