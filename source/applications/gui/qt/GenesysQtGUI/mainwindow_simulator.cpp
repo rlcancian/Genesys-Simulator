@@ -1,5 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+// Include dedicated Phase 4 controllers used by simulator compatibility wrappers.
+#include "controllers/TraceConsoleController.h"
+#include "controllers/SimulationEventController.h"
 
 
 //-------------------------
@@ -7,53 +10,23 @@
 //-------------------------
 
 void MainWindow::_simulatorTraceHandler(TraceEvent e) {
-    std::cout << e.getText() << std::endl;
-    // set color based on Trace Level
-    if (e.getTracelevel() == TraceManager::Level::L1_errorFatal)
-        ui->textEdit_Console->setTextColor(QColor::fromRgb(255, 0, 0));
-    else if (e.getTracelevel() == TraceManager::Level::L2_results)
-        ui->textEdit_Console->setTextColor(QColor::fromRgb(0, 0, 255));
-    else if (e.getTracelevel() == TraceManager::Level::L3_errorRecover)
-        ui->textEdit_Console->setTextColor(QColor::fromRgb(223, 0, 0));
-    else if (e.getTracelevel() == TraceManager::Level::L4_warning)
-        ui->textEdit_Console->setTextColor(QColor::fromRgb(128, 0, 0));
-    else {
-        unsigned short grayVal = 20 * (static_cast<unsigned int> (e.getTracelevel()) - 5);
-        ui->textEdit_Console->setTextColor(QColor::fromRgb(grayVal, grayVal, grayVal));
-    }
-    // set color based on words
-    // error, ... could not, unknown, ...
-    // show
-    ui->textEdit_Console->append(QString::fromStdString(e.getText()));
-    ui->textEdit_Console->moveCursor(QTextCursor::MoveOperation::End, QTextCursor::MoveMode::MoveAnchor);
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _traceConsoleController->simulatorTraceHandler(e);
 }
 
 void MainWindow::_simulatorTraceErrorHandler(TraceErrorEvent e) {
-
-    std::cout << e.getText() << std::endl;
-    ui->textEdit_Console->setTextColor(QColor::fromRgb(255, 0, 0));
-    ui->textEdit_Console->append(QString::fromStdString(e.getText()));
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _traceConsoleController->simulatorTraceErrorHandler(e);
 }
 
 void MainWindow::_simulatorTraceSimulationHandler(TraceSimulationEvent e) {
-    std::cout << e.getText() << std::endl;
-    if (e.getText().find("Event {time=") != std::string::npos) {
-        ui->textEdit_Simulation->setTextColor(QColor::fromRgb(0, 0, 128));
-    } else {
-        unsigned short grayVal = 20 * (static_cast<unsigned int> (e.getTracelevel()) - 5);
-        ui->textEdit_Simulation->setTextColor(QColor::fromRgb(grayVal, grayVal, grayVal));
-    }
-    ui->textEdit_Simulation->append(QString::fromStdString(e.getText()));
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _traceConsoleController->simulatorTraceSimulationHandler(e);
 }
 
 void MainWindow::_simulatorTraceReportsHandler(TraceEvent e) {
-
-    std::cout << e.getText() << std::endl;
-    ui->textEdit_Reports->append(QString::fromStdString(e.getText()));
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _traceConsoleController->simulatorTraceReportsHandler(e);
 }
 
 //
@@ -61,150 +34,64 @@ void MainWindow::_simulatorTraceReportsHandler(TraceEvent e) {
 //
 
 void MainWindow::_onModelCheckSuccessHandler(ModelEvent* re) {
-    // create (and positione and draw) or remove GraphicalModelDataDefinitions based on what actually exists on the model
-    Model* model = simulator->getModelManager()->current();
-    if (simulator->getModelManager()->current() == re->getModel()) { // the current model is the one changed
-        ModelDataManager* dm = model->getDataManager();
-        ModelGraphicsView* modelGraphView = ((ModelGraphicsView*)(ui->graphicsView));
-        for(auto elemclassname: *dm->getDataDefinitionClassnames()) {
-            for (ModelDataDefinition* elem: *dm->getDataDefinitionList(elemclassname)->list()) {
-                Util::identification id = elem->getId();
-                //modelGraphView->;
-            }
-        }
-    }
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onModelCheckSuccessHandler(re);
 }
 
 void MainWindow::_onReplicationStartHandler(SimulationEvent * re) {
-
-    ModelSimulation* sim = simulator->getModelManager()->current()->getSimulation();
-    QString text = QString::fromStdString(std::to_string(sim->getCurrentReplicationNumber())) + "/" + QString::fromStdString(std::to_string(sim->getNumberOfReplications()));
-    ui->label_ReplicationNum->setText(text);
-    int row = ui->tableWidget_Simulation_Event->rowCount();
-    ui->tableWidget_Simulation_Event->setRowCount(row + 1);
-    QTableWidgetItem* newItem;
-    newItem = new QTableWidgetItem(QString::fromStdString("Replication " + std::to_string(re->getCurrentReplicationNumber())));
-    ui->tableWidget_Simulation_Event->setItem(row, 2, newItem);
-
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onReplicationStartHandler(re);
 }
 
 void MainWindow::_onSimulationStartHandler(SimulationEvent * re) {
-    _actualizeActions();
-    ui->progressBarSimulation->setMaximum(simulator->getModelManager()->current()->getSimulation()->getReplicationLength());
-    ui->tableWidget_Simulation_Event->setRowCount(0);
-    ui->tableWidget_Entities->setRowCount(0);
-    ui->tableWidget_Variables->setRowCount(0);
-    ui->textEdit_Simulation->clear();
-    ui->textEdit_Reports->clear();
-
-    // Fator de conversão para segundos
-    Util::TimeUnit replicationBaseTimeUnit = simulator->getModelManager()->current()->getSimulation()->getReplicationBaseTimeUnit();
-    double conversionFactorToSeconds = Util::TimeUnitConvert(replicationBaseTimeUnit, Util::TimeUnit(5));
-    AnimationTimer::setConversionFactorToSeconds(conversionFactorToSeconds);
-
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onSimulationStartHandler(re);
 }
 
 void MainWindow::_onSimulationPausedHandler(SimulationEvent * re) {
-    _actualizeActions();
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onSimulationPausedHandler(re);
 }
 
 void MainWindow::_onSimulationResumeHandler(SimulationEvent * re) {
-    _actualizeActions();
-
-    if (myScene()->getAnimationPaused()) {
-        if (!myScene()->getAnimationPaused()->empty()) {
-            QList<AnimationTransition *> *animationPaused = myScene()->getAnimationPaused()->value(re->getCurrentEvent());
-
-            if (animationPaused) {
-                if (!animationPaused->empty()) {
-                    for (AnimationTransition *animation : *animationPaused) {
-                        myScene()->runAnimateTransition(animation, re->getCurrentEvent(), true);
-                    }
-                    animationPaused->clear();
-                }
-            }
-            myScene()->getAnimationPaused()->clear();
-        }
-    }
-
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onSimulationResumeHandler(re);
 }
 
 void MainWindow::_onSimulationEndHandler(SimulationEvent * re) {
-    myScene()->getAnimationPaused()->clear();
-    _actualizeActions();
-    ui->tabWidgetCentral->setCurrentIndex(CONST.TabCentralReportsIndex);
-    for (unsigned int i = 0; i < 50; i++) {
-        QCoreApplication::processEvents();
-    }
-
-    myScene()->clearAnimationsQueue();
-
-    _modelCheked = false;
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onSimulationEndHandler(re);
 }
 
 void MainWindow::_onProcessEventHandler(SimulationEvent * re) {
-    ui->progressBarSimulation->setValue(simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
-    _actualizeSimulationEvents(re);
-    _actualizeDebugEntities(false);
-    _actualizeDebugVariables(false);
-    _actualizeGraphicalModel(re);
-    QCoreApplication::processEvents();
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onProcessEventHandler(re);
 }
 
 void MainWindow::_onEntityCreateHandler(SimulationEvent* re) {
-
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onEntityCreateHandler(re);
 }
 
 void MainWindow::_onEntityRemoveHandler(SimulationEvent* re) {
-
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onEntityRemoveHandler(re);
 }
 
 void MainWindow::_onMoveEntityEvent(SimulationEvent *re) {
-    // Cria as animações de contadores, variáveis e tempo
-    myScene()->animateCounter();
-    myScene()->animateVariable();
-
-    // Cria a animação de transição
-    if (re) {
-        if (re->getCurrentEvent()) {
-            if (re->getCurrentEvent()->getComponent()) {
-                ModelComponent *source = re->getCurrentEvent()->getComponent();
-                ModelComponent *destination = re->getDestinationComponent();
-
-                // Remove animação de fila se for o caso
-                myScene()->animateQueueRemove(source);
-
-                myScene()->animateTransition(source, destination, ui->actionActivateGraphicalSimulation->isChecked(), re->getCurrentEvent());
-            }
-        }
-    }
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onMoveEntityEvent(re);
 }
 
 void MainWindow::_onAfterProcessEvent(SimulationEvent *re) {
-    // Cria as animações de contadores, variáveis e tempo (atualiza assim que termina)
-    myScene()->animateCounter();
-    myScene()->animateVariable();
-    myScene()->animateTimer(simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->onAfterProcessEvent(re);
 }
 
 
 void MainWindow::_setOnEventHandlers() {
-    OnEventManager* eventManager = simulator->getModelManager()->current()->getOnEventManager();
-    eventManager->addOnAfterProcessEventHandler(this, &MainWindow::_onAfterProcessEvent);
-    eventManager->addOnEntityCreateHandler(this, &MainWindow::_onEntityCreateHandler);
-    eventManager->addOnEntityRemoveHandler(this, &MainWindow::_onEntityRemoveHandler);
-    eventManager->addOnEntityMoveHandler(this, &MainWindow::_onMoveEntityEvent);
-    eventManager->addOnProcessEventHandler(this, &MainWindow::_onProcessEventHandler);
-    eventManager->addOnReplicationStartHandler(this, &MainWindow::_onReplicationStartHandler);
-    eventManager->addOnSimulationStartHandler(this, &MainWindow::_onSimulationStartHandler);
-    eventManager->addOnSimulationPausedHandler(this, &MainWindow::_onSimulationPausedHandler);
-    eventManager->addOnSimulationResumeHandler(this, &MainWindow::_onSimulationResumeHandler);
-    eventManager->addOnSimulationEndHandler(this, &MainWindow::_onSimulationEndHandler);
-    //@Todo: Check for new events that were created later
+    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
+    _simulationEventController->setOnEventHandlers(this);
 }
 
 

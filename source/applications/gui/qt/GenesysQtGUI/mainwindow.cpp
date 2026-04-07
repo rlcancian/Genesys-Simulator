@@ -11,6 +11,10 @@
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
 #include "controllers/SimulationController.h"
+// Add dedicated controllers progressively during incremental GUI refactors.
+#include "controllers/ModelInspectorController.h"
+#include "controllers/TraceConsoleController.h"
+#include "controllers/SimulationEventController.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -184,6 +188,37 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // graphicsView
     _initModelGraphicsView();
+    // Initialize the Phase 3 model-inspector controller after view and simulator dependencies are ready.
+    _modelInspectorController = std::make_unique<ModelInspectorController>(simulator,
+                                                                           ui->treeWidgetComponents,
+                                                                           ui->treeWidgetDataDefnitions,
+                                                                           ui->graphicsView);
+    // Initialize the Phase 4 trace controller after trace output widgets are available.
+    _traceConsoleController = std::make_unique<TraceConsoleController>(ui->textEdit_Console,
+                                                                        ui->textEdit_Simulation,
+                                                                        ui->textEdit_Reports);
+    // Initialize the Phase 4 simulation-event controller after simulator and scene dependencies are available.
+    _simulationEventController = std::make_unique<SimulationEventController>(
+        simulator,
+        ui->graphicsView->getScene(),
+        ui->graphicsView,
+        ui->label_ReplicationNum,
+        ui->progressBarSimulation,
+        ui->tableWidget_Simulation_Event,
+        ui->tableWidget_Entities,
+        ui->tableWidget_Variables,
+        ui->textEdit_Simulation,
+        ui->textEdit_Reports,
+        ui->tabWidgetCentral,
+        ui->actionActivateGraphicalSimulation,
+        &_modelCheked,
+        CONST.TabCentralReportsIndex,
+        SimulationEventController::Callbacks{
+            [this]() { _actualizeActions(); },
+            [this](SimulationEvent* re) { _actualizeSimulationEvents(re); },
+            [this](bool force) { _actualizeDebugEntities(force); },
+            [this](bool force) { _actualizeDebugVariables(force); },
+            [this](SimulationEvent* re) { _actualizeGraphicalModel(re); }});
     // Initialize Phase 2 services using narrow dependencies and compatibility callbacks.
     _graphicalModelBuilder = std::make_unique<GraphicalModelBuilder>(simulator,
                                                                       ui->graphicsView,
