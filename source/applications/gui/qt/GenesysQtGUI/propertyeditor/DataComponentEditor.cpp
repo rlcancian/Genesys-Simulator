@@ -120,10 +120,13 @@ void DataComponentEditor::editProperty(SimulationControl* property) {
             } else {
                 const QString valueToChange = _newValue->getText(_newValue, "Item", "Enter the value:");
                 if (!valueToChange.isNull()) {
+                    const std::string oldValue = prop->getValue();
                     _editor->changeProperty(prop, valueToChange.toStdString());
                     _view->clear();
                     configure_properties(property);
-                    _notifyChanged();
+                    if (prop->getValue() != oldValue) {
+                        _notifyChanged();
+                    }
                 }
             }
             return;
@@ -157,10 +160,13 @@ void DataComponentEditor::editProperty(List<SimulationControl*>* properties) {
             } else {
                 const QString valueToChange = _newValue->getText(_newValue, "Item", "Enter the value:");
                 if (!valueToChange.isNull()) {
+                    const std::string oldValue = prop->getValue();
                     _editor->changeProperty(prop, valueToChange.toStdString());
                     _view->clear();
                     configure_properties(properties);
-                    _notifyChanged();
+                    if (prop->getValue() != oldValue) {
+                        _notifyChanged();
+                    }
                 }
             }
             return;

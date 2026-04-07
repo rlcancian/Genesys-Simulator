@@ -162,6 +162,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);
+    ui->treeViewPropertyEditor->setModelChangedCallback([this]() {
+        this->_onPropertyEditorModelChanged();
+    });
 
     // system preferences
     SystemPreferences::load();
@@ -217,6 +220,34 @@ MainWindow::~MainWindow() {
 
 ModelGraphicsScene* MainWindow::myScene() const {
     return ui->graphicsView->getScene();
+}
+
+void MainWindow::_onPropertyEditorModelChanged() {
+    _actualizeModelSimLanguage();
+    _actualizeModelComponents(true);
+    _actualizeModelDataDefinitions(true);
+    _actualizeModelCppCode();
+    _createModelImage();
+    _actualizeTabPanes();
+
+    ModelGraphicsScene* scene = myScene();
+    if (scene == nullptr) {
+        return;
+    }
+
+    scene->actualizeDiagramArrows();
+    scene->update();
+
+    if (scene->existDiagram()) {
+        const bool wasVisible = scene->visibleDiagram();
+        scene->destroyDiagram();
+        scene->createDiagrams();
+        if (wasVisible) {
+            scene->showDiagrams();
+        } else {
+            scene->hideDiagrams();
+        }
+    }
 }
 
 
