@@ -870,6 +870,7 @@
     <addaction name="actionEditDelete"/>
     <addaction name="separator"/>
     <addaction name="actionEditFind"/>
+    <addaction name="actionReplace"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuTools">

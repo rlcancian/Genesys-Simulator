@@ -223,7 +223,7 @@ void MainWindow::on_actionEditFind_triggered() {
 }
 
 
-void MainWindow::on_actionEditReplace_triggered() {
+void MainWindow::on_actionReplace_triggered() {
     _showMessageNotImplemented();
 }
 
@@ -525,30 +525,35 @@ void MainWindow::on_actionSimulatorPreferences_triggered()
 
 void MainWindow::on_actionAlignMiddle_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
 
 void MainWindow::on_actionAlignTop_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
 
 void MainWindow::on_actionAlignRight_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
 
 void MainWindow::on_actionAlignCenter_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
 
 void MainWindow::on_actionAlignLeft_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
@@ -628,6 +633,7 @@ void MainWindow::on_actionToolsParserGrammarChecker_triggered()
 
 void MainWindow::on_actionToolsExperimentation_triggered()
 {
+    // Legacy slot: action is not exposed in current mainwindow.ui.
     _showMessageNotImplemented();
 }
 
@@ -1071,10 +1077,12 @@ void MainWindow::on_tabWidget_Model_tabBarClicked(int index) {
 }
 
 void MainWindow::on_checkBox_ShowElements_stateChanged(int arg1) {
+    ui->actionShowAttachedElements->setChecked(arg1 == Qt::Checked);
     bool result = _createModelImage();
 }
 
 void MainWindow::on_checkBox_ShowInternals_stateChanged(int arg1) {
+    ui->actionShowInternalElements->setChecked(arg1 == Qt::Checked);
     bool result = _createModelImage();
 }
 
@@ -1203,7 +1211,7 @@ void MainWindow::on_tabWidgetModelLanguages_currentChanged(int index) {
     _actualizeActions();
 }
 
-void MainWindow::on_actionComponent_Breakpoint_triggered() {
+void MainWindow::on_actionGModelComponentBreakpoint_triggered() {
     if (ui->graphicsView->selectedItems().size() == 1) {
         QGraphicsItem* gi = ui->graphicsView->selectedItems().at(0);
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*> (gi);
@@ -1217,6 +1225,24 @@ void MainWindow::on_actionComponent_Breakpoint_triggered() {
             }
         }
         _actualizeDebugBreakpoints(false);
+    }
+}
+
+void MainWindow::on_actionShowInternalElements_triggered() {
+    const bool checked = ui->actionShowInternalElements->isChecked();
+    if (ui->checkBox_ShowInternals->isChecked() != checked) {
+        ui->checkBox_ShowInternals->setChecked(checked);
+    } else {
+        _createModelImage();
+    }
+}
+
+void MainWindow::on_actionShowAttachedElements_triggered() {
+    const bool checked = ui->actionShowAttachedElements->isChecked();
+    if (ui->checkBox_ShowElements->isChecked() != checked) {
+        ui->checkBox_ShowElements->setChecked(checked);
+    } else {
+        _createModelImage();
     }
 }
 
