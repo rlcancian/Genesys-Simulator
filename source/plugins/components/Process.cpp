@@ -58,7 +58,8 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 									_parentModel,
                                     std::bind(&Process::getSeizeRequests, this), std::bind(&Process::addSeizeRequest, this, std::placeholders::_1), std::bind(&Process::removeSeizeRequest, this, std::placeholders::_1),
 									Util::TypeOf<Process>(), getName(), "SeizeRequests", "", true, true, false,
-                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });					
+                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); },
+                                    [](Model* model) { return new SeizableItem(model, "", "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });					
 
 	_parentModel->getControls()->insert(propPriority);
 	_parentModel->getControls()->insert(propPriorityExpression);

@@ -831,13 +831,15 @@ template <typename T, typename M, typename C>
 class SimulationControlGenericListPointer: public SimulationControl {
 public:
     using Creator = std::function<T(M, const std::string&)>;
-    SimulationControlGenericListPointer(M model, GetterGeneric<List<T>*> getter, AdderGeneric<T> adder, RemoverGeneric<T> remover, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=true, bool isClass=true, bool isEnum=false, Creator creator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+    using TypedCreator = std::function<T(M)>;
+    SimulationControlGenericListPointer(M model, GetterGeneric<List<T>*> getter, AdderGeneric<T> adder, RemoverGeneric<T> remover, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=true, bool isClass=true, bool isEnum=false, Creator creator=nullptr, TypedCreator typedCreator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 		static_assert(std::is_pointer<T>::value, "SimulationControlGenericListPointer requires pointer type T");
         _model = model;
         _getter= getter;
         _adder = adder;
         _remover = remover;
         _creator = creator;
+        _typedCreator = typedCreator;
         _readonly = adder == nullptr;
         _propertyType = Util::TypeOf<C>();
     }
@@ -889,7 +891,9 @@ public:
             throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
         }
         T newVal = nullptr;
-        if (_creator != nullptr) {
+        if (value.empty() && _typedCreator != nullptr) {
+            newVal = _typedCreator(_model);
+        } else if (_creator != nullptr) {
             newVal = _creator(_model, value);
         } else {
             newVal = new C(_model, value);
@@ -943,6 +947,7 @@ private:
     AdderGeneric<T> _adder;
     RemoverGeneric<T> _remover;
     Creator _creator;
+    TypedCreator _typedCreator;
 };
 
 //namespace\\}
