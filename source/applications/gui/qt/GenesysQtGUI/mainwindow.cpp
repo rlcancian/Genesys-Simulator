@@ -45,6 +45,7 @@
 #include <QDebug>
 #include <QRegularExpression>
 #include <QRandomGenerator>
+#include <QAction>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -182,6 +183,18 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     } else  if (SystemPreferences::modelAtStart() == 2) { // LOAD MODEL (should be enum
         this->_loadGraphicalModel(SystemPreferences::modelfilename());
     }
+
+    for (QAction* action : this->findChildren<QAction*>()) {
+        if (action == nullptr || !action->objectName().startsWith("action")) {
+            continue;
+        }
+        connect(action, &QAction::triggered, this, [action](bool checked) {
+            qInfo().noquote() << QString("GUI action triggered: %1 (%2) checked=%3")
+                                     .arg(action->objectName(), action->text())
+                                     .arg(checked);
+        });
+    }
+
     // finally
     _actualizeActions();
     //_actualizeTabPanes();

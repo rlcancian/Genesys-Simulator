@@ -75,11 +75,12 @@ Model* ModelManager::loadModel(std::string filename) {
 	if (res) {
 		this->insert(model);
 		_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Model successfully loaded");
+		return model;
 	} else {
 		delete model; //->~Model();
 		_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Model coud not be loaded");
+		return nullptr;
 	}
-	return model;
 }
 
 Model* ModelManager::createFromLanguage(std::string modelSpecification) {
