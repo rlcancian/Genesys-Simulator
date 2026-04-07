@@ -7,7 +7,7 @@ class QWidget;
 class QPlainTextEdit;
 class Simulator;
 
-// This service encapsulates synchronization between the textual model editor and kernel model state.
+// This Phase-1 service encapsulates synchronization between the textual model editor and kernel model state.
 class ModelLanguageSynchronizer {
 public:
     // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.

@@ -66,7 +66,13 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         // Keep event-handler ownership in MainWindow while delegating model-language synchronization.
         _setOnEventHandlers();
     });
-    _graphvizModelExporter = std::make_unique<GraphvizModelExporter>(simulator, ui->label_ModelGraphic, ui->checkBox_ShowInternals, ui->checkBox_ShowElements, ui->checkBox_ShowRecursive, ui->checkBox_ShowLevels);
+    // Keep Graphviz exporter dependencies explicit to avoid broad MainWindow coupling.
+    _graphvizModelExporter = std::make_unique<GraphvizModelExporter>(simulator,
+                                                                     ui->label_ModelGraphic,
+                                                                     ui->checkBox_ShowInternals,
+                                                                     ui->checkBox_ShowElements,
+                                                                     ui->checkBox_ShowRecursive,
+                                                                     ui->checkBox_ShowLevels);
     _cppModelExporter = std::make_unique<CppModelExporter>(simulator, ui->plainTextEditCppCode);
     simulator->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
     simulator->getTraceManager()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);
