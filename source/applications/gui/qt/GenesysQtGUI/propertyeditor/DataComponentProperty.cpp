@@ -130,7 +130,6 @@ void DataComponentProperty::addElement() {
             config_values();
             _notifyChanged();
         }
-        return;
     }
 
     // This block preserves the legacy textual fallback path for lists without typed creation support.

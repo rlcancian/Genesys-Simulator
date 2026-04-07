@@ -39,6 +39,10 @@ Assign::Assign(Model* model, std::string name) : ModelComponent(model, Util::Typ
                                     [](Model* model, const std::string& name) {
                                         (void)model;
                                         return new Assignment(name, "");
+                                    },
+                                    [](Model* model) {
+                                        (void)model;
+                                        return new Assignment("", "");
                                     });
 
 	_parentModel->getControls()->insert(propAssignments);
