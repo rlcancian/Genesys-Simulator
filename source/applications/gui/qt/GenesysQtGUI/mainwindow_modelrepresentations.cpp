@@ -1,5 +1,8 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "services/ModelLanguageSynchronizer.h"
+#include "services/GraphvizModelExporter.h"
+#include "services/CppModelExporter.h"
 
 // Kernel
 #include "../../../../kernel/simulator/SinkModelComponent.h"
@@ -42,47 +45,9 @@ static QString _decodeGuiText(const QString& text) {
     return QUrl::fromPercentEncoding(text.toUtf8());
 }
 
-static std::string _escapeDotLabel(const std::string& text) {
-    std::string escaped;
-    escaped.reserve(text.size());
-    for (char c : text) {
-        switch (c) {
-            case '\\':
-                escaped += "\\\\";
-                break;
-            case '"':
-                escaped += "\\\"";
-                break;
-            case '\n':
-            case '\r':
-                escaped += " ";
-                break;
-            default:
-                escaped += c;
-        }
-    }
-    return escaped;
-}
-
-
 void MainWindow::_actualizeModelSimLanguage() {
-    Model* m = simulator->getModelManager()->current();
-    if (m != nullptr) {
-        m->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
-        std::string tempFilename = "./temp.tmp";
-        m->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, false);
-        bool res = m->save(tempFilename);
-        std::string line;
-        std::ifstream file(tempFilename);
-        if (file.is_open()) {
-            ui->TextCodeEditor->clear();
-            while (std::getline(file, line)) {
-                ui->TextCodeEditor->appendPlainText(QString::fromStdString(line));
-            }
-            file.close();
-            _textModelHasChanged = false;
-        }
-    }
+    // This wrapper delegates model-language synchronization to a dedicated phase-1 service.
+    _modelLanguageSynchronizer->actualizeModelSimLanguage(simulator, ui, &_textModelHasChanged);
 }
 
 void MainWindow::_clearModelEditors() {
@@ -96,293 +61,36 @@ void MainWindow::_clearModelEditors() {
 }
 
 bool MainWindow::_setSimulationModelBasedOnText() {
-    Model* model = simulator->getModelManager()->current();
-    if (this->_textModelHasChanged) {
-        //@TODO !!!!!!!!!!!!!!
-        // simulator->getModels()->remove(model);
-        // model = nullptr;
-    }
-    if (model == nullptr) { // only model text written in UI
-        QString modelLanguage = ui->TextCodeEditor->toPlainText();
-        if (!simulator->getModelManager()->createFromLanguage(modelLanguage.toStdString())) {
-            QMessageBox::critical(this, "Check Model", "Error in the model text. See console for more information.");
-        }
-        model = simulator->getModelManager()->current();
-        if (model != nullptr) {
-
-            _setOnEventHandlers();
-        }
-    }
-    return simulator->getModelManager()->current() != nullptr;
+    // This wrapper delegates text-to-model synchronization while keeping MainWindow as temporary API surface.
+    return _modelLanguageSynchronizer->setSimulationModelBasedOnText(this, simulator, ui, _textModelHasChanged, [this]() {
+        // This callback preserves existing event-handler wiring behavior after model creation.
+        _setOnEventHandlers();
+    });
 }
 
 std::string MainWindow::_adjustDotName(std::string name) {
-    std::string text = Util::StrReplace(name, "[", "_");
-    text = Util::StrReplace(text, "]", "");
-    text = Util::StrReplace(text, ".", "_");
-    for (char& c : text) {
-        if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_')) {
-            c = '_';
-        }
-    }
-    if (!text.empty() && std::isdigit(static_cast<unsigned char>(text.front()))) {
-        text = "_" + text;
-    }
-    return text;
+    // This wrapper delegates DOT-name normalization to the phase-1 Graphviz service.
+    return _graphvizModelExporter->adjustDotName(std::move(name));
 }
 
 void MainWindow::_insertTextInDot(std::string text, unsigned int compLevel, unsigned int compRank, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap, bool isNode) {
-    if (dotmap->find(compLevel) == dotmap->end()) {
-        dotmap->insert({compLevel, new std::map<unsigned int, std::list<std::string>*>()});
-    }
-    std::pair<unsigned int, std::map<unsigned int, std::list<std::string>*>*> dotPair = (*dotmap->find(compLevel));
-    if (dotPair.second->find(compRank) == dotPair.second->end()) {
-        dotPair.second->insert({compRank, new std::list<std::string>()});
-    }
-    std::pair<unsigned int, std::list<std::string>*> dotPair2 = *(dotPair.second->find(compRank));
-    if (isNode) {
-        dotPair2.second->insert(dotPair2.second->begin(), text);
-    } else {
-
-        dotPair2.second->insert(dotPair2.second->end(), text);
-    }
+    // This wrapper delegates ranked DOT insertion to the phase-1 Graphviz service.
+    _graphvizModelExporter->insertTextInDot(std::move(text), compLevel, compRank, dotmap, isNode);
 }
 
 void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* componentOrData, std::list<ModelDataDefinition*>* visited, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap) {
-    const struct DOT_STYLES {
-        //std::string nodeComponent = "shape=Mrecord, fontsize=11, fontname=\"Helvetica\", fontcolor=\"#1f2937\", color=\"#334155\", penwidth=1.2, style=\"rounded,filled\", fillcolor=\"#f8fafc\"";
-        std::string nodeComponent = "shape=Mrecord, fontsize=11, fontname=\"Helvetica\", fontcolor=\"#1f2937\", color=\"#334155\", penwidth=1.2, style=\"rounded,filled\", fillcolor=\"bisque\"";
-        //std::string nodeComponentOtherLevel = "shape=record, fontsize=12, fontcolor=black, style=filled, fillcolor=goldenrod3";
-        std::string edgeComponent = "style=solid, arrowhead=\"vee\", color=\"#334155\", fontcolor=\"#334155\", fontsize=8, penwidth=1.1";
-        std::string nodeDataDefInternal = "shape=Mrecord, fontsize=9, fontname=\"Helvetica\", color=\"#64748b\", fontcolor=\"#334155\", style=\"rounded,filled\", fillcolor=\"#e2e8f0\"";
-        std::string nodeDataDefAttached = "shape=Mrecord, fontsize=9, fontname=\"Helvetica\", color=\"#475569\", fontcolor=\"#1e293b\", style=\"rounded,filled\", fillcolor=\"#dcfce7\"";
-        std::string edgeDataDefInternal = "style=dashed, arrowhead=\"diamond\", color=\"#64748b\", fontcolor=\"#64748b\", fontsize=7";
-        std::string edgeDataDefAttached = "style=dashed, arrowhead=\"odiamond\", color=\"#475569\", fontcolor=\"#475569\", fontsize=7";
-        unsigned int rankSource = 0;
-        unsigned int rankSink = 1;
-        unsigned int rankComponent = 99;
-        unsigned int rankComponentOtherLevel = 99;
-        unsigned int rankDataDefInternal = 99;
-        unsigned int rankDataDefAttached = 99;
-        unsigned int rankDataDefRecursive = 99;
-        unsigned int rankEdge = 99;
-    } DOT;
-
-
-    visited->insert(visited->end(), componentOrData);
-    std::string text;
-    unsigned int modellevel = simulator->getModelManager()->current()->getLevel();
-    std::list<ModelDataDefinition*>::iterator visitedIt;
-    ModelComponent* parentComponentSuperLevel = nullptr;
-    unsigned int level = componentOrData->getLevel();
-    if (dynamic_cast<ModelComponent*> (componentOrData) != nullptr) {
-        if (level != modellevel && !ui->checkBox_ShowLevels->isChecked()) {
-            // do not show the component itself, but its parent on the model level
-            parentComponentSuperLevel = simulator->getModelManager()->current()->getComponentManager()->find(level);
-            assert(parentComponentSuperLevel != nullptr);
-            visitedIt = std::find(visited->begin(), visited->end(), parentComponentSuperLevel);
-            if (visitedIt == visited->end()) {
-                text = "  " + _adjustDotName(parentComponentSuperLevel->getName()) + " [" + DOT.nodeComponent + ", label=\"" + _escapeDotLabel(parentComponentSuperLevel->getClassname()) + "|" + _escapeDotLabel(parentComponentSuperLevel->getName()) + "\"]" + ";\n";
-                _insertTextInDot(text, level, DOT.rankComponentOtherLevel, dotmap, true);
-            }
-        } else {
-            text = "  " + _adjustDotName(componentOrData->getName()) + " [" + DOT.nodeComponent + ", label=\"" + _escapeDotLabel(componentOrData->getClassname()) + "|" + _escapeDotLabel(componentOrData->getName()) + "\"]" + ";\n";
-            if (dynamic_cast<SourceModelComponent*> (componentOrData) != nullptr) {
-                _insertTextInDot(text, level, DOT.rankSource, dotmap, true);
-            } else if (dynamic_cast<SinkModelComponent*> (componentOrData) != nullptr) {
-                _insertTextInDot(text, level, DOT.rankSink, dotmap, true);
-            } else {
-                _insertTextInDot(text, level, DOT.rankComponent, dotmap, true);
-            }
-        }
-    }
-    //
-    ModelDataDefinition* data;
-    std::string dataname, componentName;
-    if (parentComponentSuperLevel != nullptr) {
-        componentName = parentComponentSuperLevel->getName();
-    } else {
-        componentName = componentOrData->getName();
-    }
-    if (ui->checkBox_ShowInternals->isChecked()) {
-        for (std::pair<std::string, ModelDataDefinition*> dataPair : *componentOrData->getInternalData()) {
-            dataname = _adjustDotName(dataPair.second->getName());
-            level = dataPair.second->getLevel();
-            visitedIt = std::find(visited->begin(), visited->end(), dataPair.second);
-            if (visitedIt == visited->end()) {
-                if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
-                    text = "  " + dataname + " [" + DOT.nodeDataDefInternal + ", label=\"" + _escapeDotLabel(dataPair.second->getClassname()) + "|" + _escapeDotLabel(dataPair.second->getName()) + "\"]" + ";\n";
-                    _insertTextInDot(text, level, DOT.rankDataDefInternal, dotmap, true);
-                    if (ui->checkBox_ShowRecursive->isChecked()) {
-                        _recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
-                    }
-                }
-            }
-            if (dataPair.second->getLevel() == modellevel || ui->checkBox_ShowLevels->isChecked()) {
-                text = "    " + dataname + "->" + _adjustDotName(componentName) + " [" + DOT.edgeDataDefInternal + ", label=\"" + _escapeDotLabel(dataPair.first) + "\"];\n";
-                _insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
-            }
-        }
-    }
-    if (ui->checkBox_ShowElements->isChecked()) {
-        for (std::pair<std::string, ModelDataDefinition*> dataPair : *componentOrData->getAttachedData()) {
-            dataname = _adjustDotName(dataPair.second->getName());
-            level = dataPair.second->getLevel();
-            visitedIt = std::find(visited->begin(), visited->end(), dataPair.second);
-            if (visitedIt == visited->end()) {
-                if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
-                    text = "  " + dataname + " [" + DOT.nodeDataDefAttached + ", label=\"" + _escapeDotLabel(dataPair.second->getClassname()) + "|" + _escapeDotLabel(dataPair.second->getName()) + "\"]" + ";\n";
-                    _insertTextInDot(text, level, DOT.rankDataDefAttached, dotmap, true);
-                }
-                if (ui->checkBox_ShowRecursive->isChecked()) {
-                    _recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
-                }
-            }
-            text = "    " + dataname + "->" + _adjustDotName(componentName) + " [" + DOT.edgeDataDefAttached + ", label=\"" + _escapeDotLabel(dataPair.first) + "\"];\n";
-            _insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
-        }
-    }
-    ModelComponent* component = dynamic_cast<ModelComponent*> (componentOrData);
-    if (component != nullptr) {
-        level = component->getLevel();
-        Connection* connection;
-        for (unsigned short i = 0; i < component->getConnectionManager()->size(); i++) {
-            connection = component->getConnectionManager()->getConnectionAtPort(i);
-            visitedIt = std::find(visited->begin(), visited->end(), connection->component);
-            if (visitedIt == visited->end()) {
-                _recursiveCreateModelGraphicPicture(connection->component, visited, dotmap);
-            }
-            if (connection->component->getLevel() == modellevel || ui->checkBox_ShowLevels->isChecked()) {
-
-                text = "    " + _adjustDotName(componentName) + "->" + _adjustDotName(connection->component->getName()) + "[" + DOT.edgeComponent + "];\n";
-                _insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
-            }
-        }
-    }
+    // This wrapper delegates recursive DOT generation to the phase-1 Graphviz service.
+    _graphvizModelExporter->recursiveCreateModelGraphicPicture(simulator, ui, componentOrData, visited, dotmap);
 }
 
 std::string MainWindow::_addCppCodeLine(std::string line, unsigned int indent) {
-    std::string text = "";
-    for (unsigned int i = 0; i < indent; i++) {
-        text += "\t";
-    }
-    text += line + "\n";
-    return text;
+    // This wrapper delegates C++ line formatting to the phase-1 exporter service.
+    return _cppModelExporter->addCppCodeLine(line, indent);
 }
 
 void MainWindow::_actualizeModelCppCode() {
-    Model* m = simulator->getModelManager()->current();
-    if (m != nullptr) {
-        unsigned short tabs = 0;
-        std::string text, text2, name;
-        std::map<std::string, std::string>* code = new std::map<std::string, std::string>();
-        text = _addCppCodeLine("/*");
-        text += _addCppCodeLine(" * This C++ source code was automatically generated by GenESyS");
-        text += _addCppCodeLine(" */");
-        code->insert({"1begin", text});
-
-        text = _addCppCodeLine("#include \"kernel/simulator/Simulator.h\"");
-        text = _addCppCodeLine("#include \"kernel/simulator/PropertyGenesys.h\"");
-        List<std::string>* included = new List<std::string>();
-        for (ModelComponent* comp : *m->getComponentManager()->getAllComponents()) {
-            name = comp->getClassname();
-            if (included->find(name) == included->list()->end()) {
-                included->insert(name);
-                text += _addCppCodeLine("#include \"plugins/components/" + name + ".h\"");
-            }
-        }
-        for (std::string ddClassname : *m->getDataManager()->getDataDefinitionClassnames()) {
-            text += _addCppCodeLine("#include \"plugins/data/" + ddClassname + ".h\"");
-            for (ModelDataDefinition* modeldata : *m->getDataManager()->getDataDefinitionList(ddClassname)->list()) {
-                name = modeldata->getName();
-                if (name.find(".") == std::string::npos) {
-                    if (included->find(name) == included->list()->end()) {
-                        included->insert(ddClassname);
-                        text += _addCppCodeLine("#include \"plugins/data/" + ddClassname + "\"");
-                    }
-                }
-            }
-        }
-        code->insert({"2include", text});
-
-        text = _addCppCodeLine("\nint main(int argc, char** argv) {");
-        tabs++;
-        text += _addCppCodeLine("// Create simulator, a property editor, a model and get acess to plugins", tabs);
-        text += _addCppCodeLine("Simulator* genesys = new Simulator();", tabs);
-        text += _addCppCodeLine("PropertyEditorGenesys* propertyEditor = new PropertyEditorGenesys();", tabs);
-        text += _addCppCodeLine("Model* model = genesys->getModels()->newModel();", tabs);
-        text += _addCppCodeLine("PluginManager* plugins = genesys->getPlugins();", tabs);
-        text += _addCppCodeLine("model->getTracer()->setTraceLevel(TraceManager::TraceLevel::L9_mostDetailed);", tabs);
-        code->insert({"3main", text});
-
-        text = _addCppCodeLine("// Create model components and setting properties", tabs);
-        for (std::string ddClassname : *m->getDataManager()->getDataDefinitionClassnames()) {
-            for (ModelDataDefinition* modeldata : *m->getDataManager()->getDataDefinitionList(ddClassname)->list()) {
-                name = modeldata->getName();
-                if (name.find(".") == std::string::npos) {
-                    text += _addCppCodeLine(ddClassname + "* " + name + " = plugins->newInstance<" + ddClassname + ">(model, \"" + name + "\");", tabs);
-                }
-                for (auto prop : *modeldata->getProperties()->list()) {
-                    // Fazer um loop até encontrar propriedade não alterável?
-                    text += _addCppCodeLine("SimulationControl* property = propertyEditor->findProperty(" + std::to_string(modeldata->getId()) + ", " + prop->getName() + ");", tabs);
-                    text += _addCppCodeLine("propertyEditor->changeProperty(property, " + prop->getValue() + ", false);", tabs);
-                };
-                text += _addCppCodeLine("", tabs);
-            }
-        }
-        code->insert({"4datadef", text});
-
-        text = _addCppCodeLine("// Create model components", tabs);
-        for (ModelComponent* comp : *m->getComponentManager()->getAllComponents()) {
-            name = comp->getName();
-            if (name.find(".") == std::string::npos) {
-                text += _addCppCodeLine(comp->getClassname() + "* " + name + " = plugins->newInstance<" + comp->getClassname() + ">(model, \"" + name + "\");", tabs);
-            }
-        }
-        code->insert({"5modelcompdef", text});
-
-        text = _addCppCodeLine("// Connect the components in the model", tabs);
-        Connection* conn;
-        for (ModelComponent* comp : *m->getComponentManager()->getAllComponents()) {
-            name = comp->getName();
-            if (name.find(".") == std::string::npos) {
-                for (std::pair<unsigned int, Connection*> pair : *comp->getConnectionManager()->connections()) {//unsigned int i=0; i<comp->getConnections()->size(); i++) {
-                    conn = pair.second; //comp->getConnections()->getConnectionAtPort(i);
-                    text2 = conn->component->getName(); // + conn->second==0?"":","+std::to_string(conn->second);
-                    text += _addCppCodeLine(name + "->getConnections()->insertAtPort(" + std::to_string(pair.first) + "," + text2 + ");", tabs);
-                }
-            }
-        }
-        code->insert({"6modelconnect", text});
-
-        ModelSimulation* sim = m->getSimulation();
-        text = _addCppCodeLine("// Define simulation options", tabs);
-        text += _addCppCodeLine("ModelSimulation* sim = model->getSimulation();", tabs);
-        text += _addCppCodeLine("sim->setReplicationLength(" + std::to_string(sim->getReplicationLength()) + ")", tabs);
-        text += _addCppCodeLine("sim->setReplicationLengthTimeUnit(Util::TimeUnit::" + Util::StrTimeUnitLong(sim->getReplicationLengthTimeUnit()) + ");", tabs);
-        text += _addCppCodeLine("sim->setWarmUpPeriod(" + std::to_string(sim->getWarmUpPeriod()) + ");", tabs);
-        text += _addCppCodeLine("sim->setWarmUpPeriodTimeUnit(Util::TimeUnit::" + Util::StrTimeUnitLong(sim->getWarmUpPeriodTimeUnit()) + ");", tabs);
-        text += _addCppCodeLine("sim->setReplicationReportBaseTimeUnit(Util::TimeUnit::" + Util::StrTimeUnitLong(sim->getReplicationBaseTimeUnit()) + ");", tabs);
-        text2 = sim->isShowReportsAfterSimulation()?"true":"false";
-        text += _addCppCodeLine("sim->setsetShowReportsAfterSimulation("+text2+");", tabs);
-        code->insert({"7simulation", text});
-
-        text = _addCppCodeLine("// simulate and show report", tabs);
-        text += _addCppCodeLine("sim->start();", tabs);
-        text += _addCppCodeLine("return 0;", tabs);
-        tabs--;
-        text += _addCppCodeLine("}", tabs);
-        code->insert({"8end", text});
-
-        // Show
-        ui->plainTextEditCppCode->clear();
-        for (std::pair<std::string, std::string> codeSection : *code) {
-            //ui->plainTextEditCppCode->appendPlainText(QString::fromStdString("// " + codeSection.first+"\n"));
-            ui->plainTextEditCppCode->appendPlainText(QString::fromStdString(codeSection.second));
-        }
-    } else {
-
-    }
+    // This wrapper delegates full C++ code export rendering to the phase-1 exporter service.
+    _cppModelExporter->actualizeModelCppCode(simulator, ui);
 }
 
 bool MainWindow::graphicalModelHasChanged() const {
@@ -395,115 +103,11 @@ void MainWindow::setGraphicalModelHasChanged(bool graphicalModelHasChanged) {
 }
 
 bool MainWindow::_createModelImage() {
-    bool res = this->_setSimulationModelBasedOnText();
-    if (!res || simulator->getModelManager()->current() == nullptr) {
-        return false;
-    }
-    std::string dot = "digraph G {\n";
-    dot += "  compound=true; rankdir=LR; \n";
-    std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap = new std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>();
-
-    std::list<SourceModelComponent*>* sources = simulator->getModelManager()->current()->getComponentManager()->getSourceComponents();
-    std::list<ModelDataDefinition*>* visited = new std::list<ModelDataDefinition*>();
-    std::list<ModelDataDefinition*>::iterator visitedIt;
-    for (SourceModelComponent* source : *sources) {
-        visitedIt = std::find(visited->begin(), visited->end(), source);
-        if (visitedIt == visited->end()) {
-            _recursiveCreateModelGraphicPicture(source, visited, dotmap);
-        }
-    }
-    std::list<ModelComponent*>* transfers = simulator->getModelManager()->current()->getComponentManager()->getTransferInComponents();
-    for (ModelComponent* transfer : *transfers) {
-        visitedIt = std::find(visited->begin(), visited->end(), transfer);
-        if (visitedIt == visited->end()) {
-            _recursiveCreateModelGraphicPicture(transfer, visited, dotmap);
-        }
-    }
-    std::list<ModelComponent*>* allComps = simulator->getModelManager()->current()->getComponentManager()->getAllComponents();
-    for (ModelComponent* comp : *allComps) {
-        visitedIt = std::find(visited->begin(), visited->end(), comp);
-        if (visitedIt == visited->end()) {
-            _recursiveCreateModelGraphicPicture(comp, visited, dotmap);
-        }
-    }
-    // combine all level subgraphs
-    unsigned int modelLevel = simulator->getModelManager()->current()->getLevel();
-    for (std::pair<unsigned int, std::map<unsigned int, std::list<std::string>*>*> dotpair : *dotmap) {
-        if (dotpair.first == modelLevel) {
-            dot += "\n  // model level\n";
-            for (std::pair<unsigned int, std::list<std::string>*> dotpair2 : *dotpair.second) {
-                dot += "  {\n";
-                if (dotpair2.first == 0)
-                    dot += "     rank=min  // " + std::to_string(dotpair2.first) + "\n";
-                else if (dotpair2.first == 1)
-                    dot += "     rank=max  // " + std::to_string(dotpair2.first) + "\n";
-                else if (dotpair2.first < 10)
-                    dot += "     rank=same  // " + std::to_string(dotpair2.first) + "\n";
-                for (std::string str : *dotpair2.second) {
-                    dot += "   " + str;
-                }
-                dot += "  }\n";
-            }
-        } else if (ui->checkBox_ShowLevels->isChecked()) {
-            dot += "\n\n // submodel level  " + std::to_string(dotpair.first) + "\n";
-            dot += " subgraph cluster_level_" + std::to_string(dotpair.first) + " {\n";
-            dot += "   graph[style=filled; fillcolor=mistyrose2] label=\"" + simulator->getModelManager()->current()->getComponentManager()->find(dotpair.first)->getName() + "\";\n";
-            for (std::pair<unsigned int, std::list<std::string>*> dotpair2 : *dotpair.second) {
-                dot += "  {\n";
-                if (dotpair2.first == 0)
-                    dot += "     rank=min  // " + std::to_string(dotpair2.first) + "\n";
-                else if (dotpair2.first == 1)
-                    dot += "     rank=max  // " + std::to_string(dotpair2.first) + "\n";
-                else if (dotpair2.first < 10)
-                    dot += "     rank=same  // " + std::to_string(dotpair2.first) + "\n";
-                for (std::string str : *dotpair2.second) {
-                    dot += "   " + str;
-                }
-                dot += "  }\n";
-            }
-            dot += "\n }\n";
-        }
-    }
-    dot += "}\n";
-    visited->clear();
-    std::string basefilename = "./.tempFixedGraphicalModelRepresentation";
-    std::string dotfilename = basefilename + ".dot";
-    std::string pngfilename = basefilename + ".png";
-    try {
-        std::ofstream savefile;
-        savefile.open(dotfilename, std::ofstream::out);
-        QString data = QString::fromStdString(dot);
-        QStringList strList = data.split(QRegularExpression("[\n]"), Qt::SkipEmptyParts); //data.split(QRegExp("[\n]"), QString::SkipEmptyParts);
-        for (unsigned int i = 0; i < strList.size(); i++) {
-            savefile << strList.at(i).toStdString() << std::endl;
-        }
-        savefile.close();
-        try {
-            std::remove(pngfilename.c_str());
-        } catch (...) {
-
-        }
-        try {
-            std::string command = "dot -Tpng " + dotfilename + " -o " + pngfilename;
-            system(command.c_str());
-            QPixmap pm(QString::fromStdString(pngfilename)); // <- path to image file
-            //int w = ui->label_ModelGraphic->width();
-            //int h = ui->label_ModelGraphic->height();
-            ui->label_ModelGraphic->setPixmap(pm); //.scaled(w, h, Qt::IgnoreAspectRatio));
-            ui->label_ModelGraphic->setScaledContents(false);
-            try {
-                //std::remove(dotfilename.c_str());
-                //std::remove(pngfilename.c_str());
-            } catch (...) {
-
-            }
-            return true;
-        } catch (...) {
-        }
-    } catch (...) {
-    }
-
-    return false;
+    // This wrapper delegates model diagram image creation to the phase-1 Graphviz service.
+    return _graphvizModelExporter->createModelImage(simulator, ui, [this]() {
+        // This callback preserves MainWindow-controlled text-to-model synchronization flow.
+        return this->_setSimulationModelBasedOnText();
+    });
 }
 
 //-----------------------------------------------------------------

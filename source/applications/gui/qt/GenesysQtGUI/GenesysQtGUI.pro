@@ -240,6 +240,9 @@ SOURCES += \
     ../../../terminal/examples/teaching/Rectifier.cpp \
     codeeditor/CodeEditor.cpp \
     controllers/SimulationController.cpp \
+    services/ModelLanguageSynchronizer.cpp \
+    services/GraphvizModelExporter.cpp \
+    services/CppModelExporter.cpp \
     mainwindow_controller.cpp \
     mainwindow_modelrepresentations.cpp \
     mainwindow_scene.cpp \
@@ -550,6 +553,9 @@ HEADERS += \
     TraitsGUI.h \
     UtilGUI.h \
     controllers/SimulationController.h \
+    services/ModelLanguageSynchronizer.h \
+    services/GraphvizModelExporter.h \
+    services/CppModelExporter.h \
     actions/AddUndoCommand.h \
     actions/DeleteUndoCommand.h \
     actions/GroupUndoCommand.h \
