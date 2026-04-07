@@ -992,6 +992,11 @@ bool ModelGraphicsScene::isGridVisible() const {
 
 void ModelGraphicsScene::createDiagrams()
 {
+    // Prevents duplicate diagram nodes and edges when diagram creation is requested more than once.
+    if (_diagram) {
+        return;
+    }
+
     Model * m = _simulator->getModelManager()->current();
     ModelDataManager* dataManager = m->getDataManager();
 
