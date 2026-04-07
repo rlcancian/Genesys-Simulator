@@ -1264,18 +1264,18 @@ void MainWindow::on_horizontalSliderAnimationSpeed_valueChanged(int value)
 
 void MainWindow::on_actionDiagrams_triggered()
 {
-    // Obtém a cena gráfica ativa para sincronizar a QAction com o estado real dos diagramas.
+    // Uses the active scene as the single source of truth for persisted diagram state.
     ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
     if (ui->actionDiagrams->isChecked()) {
-        // Cria o diagrama sob demanda quando a ação está marcada e a cena ainda não possui estrutura de diagrama.
+        // Creates diagram structures on demand when load restored diagrams=1 but none exist yet.
         if (!scene->existDiagram()) scene->createDiagrams();
-        // Exibe o diagrama após garantir que sua estrutura existe na cena.
+        // Shows diagrams only after creation to fully restore persisted visibility.
         scene->showDiagrams();
     } else {
-        // Oculta o diagrama apenas quando ele já existe para preservar o estado interno da cena.
+        // Hides diagrams only when they already exist to avoid side effects during load.
         if (scene->existDiagram()) scene->hideDiagrams();
     }
-    // Realinha o estado da QAction com a visibilidade efetiva para evitar divergência após load/toggle.
+    // Re-syncs QAction with effective visibility to keep UI and scene flags coherent.
     const bool diagramsVisible = scene->existDiagram() && scene->visibleDiagram();
     if (ui->actionDiagrams->isChecked() != diagramsVisible) {
         ui->actionDiagrams->setChecked(diagramsVisible);
