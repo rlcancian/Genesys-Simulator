@@ -953,10 +953,14 @@ void MainWindow::unselectDrawIcons() {
 }
 
 void MainWindow::closeEvent(QCloseEvent *event) {
-    // limpando referencia do ultimo elemento selecionado em property editor
-    ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
-
-    QMainWindow::closeEvent(event);
+    if (_closingApproved || _confirmApplicationExit()) {
+        _closingApproved = true;
+        // limpando referencia do ultimo elemento selecionado em property editor
+        ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
+        event->accept();
+        return;
+    }
+    event->ignore();
 }
 
 void MainWindow::_initUiForNewModel(Model* m) {
