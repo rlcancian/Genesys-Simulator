@@ -31,10 +31,15 @@ ModelDataDefinition* Assign::NewInstance(Model* model, std::string name) {
 }
 
 Assign::Assign(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Assign>(), name) {
+	// This block enables explicit typed creation for Assignment list elements.
 	SimulationControlGenericListPointer<Assignment*, Model*, Assignment>* propAssignments = new SimulationControlGenericListPointer<Assignment*, Model*, Assignment> (
 									_parentModel,
                                     std::bind(&Assign::getAssignments, this), std::bind(&Assign::addAssignment, this, std::placeholders::_1), std::bind(&Assign::removeAssignment, this, std::placeholders::_1),
-									Util::TypeOf<Assign>(), getName(), "Assignments", "");
+									Util::TypeOf<Assign>(), getName(), "Assignments", "", true, true, false,
+                                    [](Model* model, const std::string& name) {
+                                        (void)model;
+                                        return new Assignment(name, "");
+                                    });
 
 	_parentModel->getControls()->insert(propAssignments);
 
