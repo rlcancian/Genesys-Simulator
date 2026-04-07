@@ -1,5 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+// Include the Phase 6 controller type so member calls compile with a complete class definition.
+#include "controllers/PropertyEditorController.h"
 
 //-----------------------------------------
 

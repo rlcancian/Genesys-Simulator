@@ -251,6 +251,8 @@ SOURCES += \
     controllers/PropertyEditorController.cpp \
     # Phase-7 GUI refactor controller for model/application lifecycle responsibilities.
     controllers/ModelLifecycleController.cpp \
+    # Phase-8 GUI refactor controller for simulation-command responsibilities.
+    controllers/SimulationCommandController.cpp \
     # Phase-1 GUI refactor services for model representations.
     services/ModelLanguageSynchronizer.cpp \
     services/GraphvizModelExporter.cpp \
@@ -578,6 +580,8 @@ HEADERS += \
     controllers/PropertyEditorController.h \
     # Phase-7 GUI refactor controller header for model/application lifecycle responsibilities.
     controllers/ModelLifecycleController.h \
+    # Phase-8 GUI refactor controller header for simulation-command responsibilities.
+    controllers/SimulationCommandController.h \
     # Phase-1 GUI refactor service headers.
     services/ModelLanguageSynchronizer.h \
     services/GraphvizModelExporter.h \
