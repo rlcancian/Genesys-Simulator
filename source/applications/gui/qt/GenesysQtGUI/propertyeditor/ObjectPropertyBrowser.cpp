@@ -3,6 +3,7 @@
 #include <map>
 #include <sstream>
 #include <exception>
+#include <utility>
 
 #include <QSignalBlocker>
 #include <QString>
@@ -200,6 +201,10 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
     _modelObject = nullptr;
     _propertyEditor = nullptr;
     _clearAll();
+}
+
+void ObjectPropertyBrowser::setModelChangedCallback(ModelChangedCallback callback) {
+    _modelChangedCallback = std::move(callback);
 }
 
 void ObjectPropertyBrowser::setActiveObject(
@@ -551,7 +556,9 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 
 void ObjectPropertyBrowser::_notifyModelChangeApplied() {
     objectUpdated();
-    emit modelPropertiesChanged();
+    if (_modelChangedCallback) {
+        _modelChangedCallback();
+    }
 }
 
 void ObjectPropertyBrowser::objectUpdated() {

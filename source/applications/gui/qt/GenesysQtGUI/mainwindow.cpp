@@ -162,12 +162,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);
-    connect(
-        ui->treeViewPropertyEditor,
-        &ObjectPropertyBrowser::modelPropertiesChanged,
-        this,
-        &MainWindow::_onPropertyEditorModelChanged
-        );
+    ui->treeViewPropertyEditor->setModelChangedCallback([this]() {
+        this->_onPropertyEditorModelChanged();
+    });
 
     // system preferences
     SystemPreferences::load();
