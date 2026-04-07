@@ -430,7 +430,8 @@ void MainWindow::on_actionZoom_All_triggered() {
         return;
     }
 
-    ui->graphicsView->fitInView(bounds, Qt::KeepAspectRatio);
+    ui->graphicsView->resetTransform();
+    ui->graphicsView->fitInView(bounds.adjusted(-20.0, -20.0, 20.0, 20.0), Qt::KeepAspectRatio);
     {
         QSignalBlocker blocker(ui->horizontalSlider_ZoomGraphical);
         _zoomValue = ui->horizontalSlider_ZoomGraphical->maximum() / 2;
@@ -1168,7 +1169,7 @@ void MainWindow::on_pushButton_Breakpoint_Insert_clicked() {
     }
 
     if (result->type == "Time") {
-        const double onTime = std::stod(result->on);
+        const double onTime = QString::fromStdString(result->on).toDouble();
         if (sim->getBreakpointsOnTime()->find(onTime) == sim->getBreakpointsOnTime()->list()->end()) {
             sim->getBreakpointsOnTime()->insert(onTime);
         }
@@ -1198,12 +1199,16 @@ void MainWindow::on_pushButton_Breakpoint_Remove_clicked() {
         return;
     }
 
-    const QModelIndexList selectedRows = ui->tableWidget_Breakpoints->selectionModel()->selectedRows();
-    if (selectedRows.isEmpty()) {
+    int row = ui->tableWidget_Breakpoints->currentRow();
+    if (row < 0 && ui->tableWidget_Breakpoints->selectionModel() != nullptr) {
+        const QModelIndexList selectedRows = ui->tableWidget_Breakpoints->selectionModel()->selectedRows();
+        if (!selectedRows.isEmpty()) {
+            row = selectedRows.first().row();
+        }
+    }
+    if (row < 0) {
         return;
     }
-
-    const int row = selectedRows.first().row();
     QTableWidgetItem* typeItem = ui->tableWidget_Breakpoints->item(row, 1);
     QTableWidgetItem* onItem = ui->tableWidget_Breakpoints->item(row, 2);
     if (typeItem == nullptr || onItem == nullptr) {
@@ -1213,7 +1218,7 @@ void MainWindow::on_pushButton_Breakpoint_Remove_clicked() {
     const std::string type = typeItem->text().toStdString();
     const std::string on = onItem->text().toStdString();
     if (type == "Time") {
-        sim->getBreakpointsOnTime()->remove(std::stod(on));
+        sim->getBreakpointsOnTime()->remove(QString::fromStdString(on).toDouble());
     } else if (type == "Entity") {
         ModelDataDefinition* dataDef = model->getDataManager()->getDataDefinition(Util::TypeOf<Entity>(), on);
         Entity* entity = dynamic_cast<Entity*> (dataDef);
@@ -1354,6 +1359,11 @@ void MainWindow::on_treeWidgetComponents_itemSelectionChanged() {
 
     GraphicalModelComponent* gmc = scene->findGraphicalModelComponent(compId);
     if (gmc == nullptr) {
+        return;
+    }
+
+    if (scene->selectedItems().size() == 1 && scene->selectedItems().first() == gmc) {
+        ui->graphicsView->ensureVisible(gmc);
         return;
     }
 

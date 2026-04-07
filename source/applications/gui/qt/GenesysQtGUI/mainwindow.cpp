@@ -489,20 +489,26 @@ void MainWindow::_actualizeDebugBreakpoints(bool force) {
             row++;
         }
         for (Entity* entity : *sim->getBreakpointsOnEntity()->list()) {
-            ui->tableWidget_Breakpoints->setRowCount(++row);
+            ui->tableWidget_Breakpoints->setRowCount(row + 1);
             QTableWidgetItem* newItem;
+            newItem = new QTableWidgetItem("True");
+            ui->tableWidget_Breakpoints->setItem(row, 0, newItem);
             newItem = new QTableWidgetItem("Entity");
             ui->tableWidget_Breakpoints->setItem(row, 1, newItem);
             newItem = new QTableWidgetItem(QString::fromStdString(entity->getName()));
             ui->tableWidget_Breakpoints->setItem(row, 2, newItem);
+            row++;
         }
         for (double time : *sim->getBreakpointsOnTime()->list()) {
-            ui->tableWidget_Breakpoints->setRowCount(++row);
+            ui->tableWidget_Breakpoints->setRowCount(row + 1);
             QTableWidgetItem* newItem;
+            newItem = new QTableWidgetItem("True");
+            ui->tableWidget_Breakpoints->setItem(row, 0, newItem);
             newItem = new QTableWidgetItem("Time");
             ui->tableWidget_Breakpoints->setItem(row, 1, newItem);
             newItem = new QTableWidgetItem(QString::fromStdString(std::to_string(time)));
             ui->tableWidget_Breakpoints->setItem(row, 2, newItem);
+            row++;
         }
     }
 }
