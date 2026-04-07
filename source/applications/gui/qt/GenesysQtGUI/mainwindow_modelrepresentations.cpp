@@ -47,7 +47,7 @@ static QString _decodeGuiText(const QString& text) {
 
 void MainWindow::_actualizeModelSimLanguage() {
     // This wrapper delegates model-language synchronization to a dedicated phase-1 service.
-    _modelLanguageSynchronizer->actualizeModelSimLanguage(simulator, ui, &_textModelHasChanged);
+    _modelLanguageSynchronizer->actualizeModelSimLanguage();
 }
 
 void MainWindow::_clearModelEditors() {
@@ -62,10 +62,7 @@ void MainWindow::_clearModelEditors() {
 
 bool MainWindow::_setSimulationModelBasedOnText() {
     // This wrapper delegates text-to-model synchronization while keeping MainWindow as temporary API surface.
-    return _modelLanguageSynchronizer->setSimulationModelBasedOnText(this, simulator, ui, _textModelHasChanged, [this]() {
-        // This callback preserves existing event-handler wiring behavior after model creation.
-        _setOnEventHandlers();
-    });
+    return _modelLanguageSynchronizer->setSimulationModelBasedOnText();
 }
 
 std::string MainWindow::_adjustDotName(std::string name) {
@@ -80,7 +77,7 @@ void MainWindow::_insertTextInDot(std::string text, unsigned int compLevel, unsi
 
 void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* componentOrData, std::list<ModelDataDefinition*>* visited, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap) {
     // This wrapper delegates recursive DOT generation to the phase-1 Graphviz service.
-    _graphvizModelExporter->recursiveCreateModelGraphicPicture(simulator, ui, componentOrData, visited, dotmap);
+    _graphvizModelExporter->recursiveCreateModelGraphicPicture(componentOrData, visited, dotmap);
 }
 
 std::string MainWindow::_addCppCodeLine(std::string line, unsigned int indent) {
@@ -90,7 +87,7 @@ std::string MainWindow::_addCppCodeLine(std::string line, unsigned int indent) {
 
 void MainWindow::_actualizeModelCppCode() {
     // This wrapper delegates full C++ code export rendering to the phase-1 exporter service.
-    _cppModelExporter->actualizeModelCppCode(simulator, ui);
+    _cppModelExporter->actualizeModelCppCode();
 }
 
 bool MainWindow::graphicalModelHasChanged() const {
@@ -104,7 +101,7 @@ void MainWindow::setGraphicalModelHasChanged(bool graphicalModelHasChanged) {
 
 bool MainWindow::_createModelImage() {
     // This wrapper delegates model diagram image creation to the phase-1 Graphviz service.
-    return _graphvizModelExporter->createModelImage(simulator, ui, [this]() {
+    return _graphvizModelExporter->createModelImage([this]() {
         // This callback preserves MainWindow-controlled text-to-model synchronization flow.
         return this->_setSimulationModelBasedOnText();
     });

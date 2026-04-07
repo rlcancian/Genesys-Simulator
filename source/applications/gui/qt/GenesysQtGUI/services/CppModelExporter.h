@@ -12,11 +12,15 @@ class MainWindow;
 // This service encapsulates generation of C++ model code shown in the GUI editor.
 class CppModelExporter {
 public:
-    // This method preserves legacy indentation formatting for generated C++ lines.
-    std::string addCppCodeLine(const std::string& line, unsigned int indent = 0) const;
+    // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.
+    CppModelExporter(Simulator* simulator, Ui::MainWindow* ui);
 
-    // This method regenerates and displays the C++ representation for the current model.
-    void actualizeModelCppCode(Simulator* simulator, Ui::MainWindow* ui) const;
+    std::string addCppCodeLine(const std::string& line, unsigned int indent = 0) const;
+    void actualizeModelCppCode() const;
+
+private:
+    Simulator* _simulator;
+    Ui::MainWindow* _ui;
 };
 
 #endif // CPPMODELEXPORTER_H
