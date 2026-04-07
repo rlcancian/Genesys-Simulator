@@ -133,14 +133,25 @@ void Buffer::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Buffer::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_arrivalOnFullBufferRule = static_cast<ArrivalOnFullBufferRule>(fields->loadField("arrivalOnFullBufferRule", static_cast<int>(DEFAULT.arrivalOnFullBufferRule)));
+		_advanceOn = static_cast<AdvanceOn>(fields->loadField("advanceOn", static_cast<int>(DEFAULT.advanceOn)));
+		_capacity = fields->loadField("capacity", DEFAULT.capacity);
+		std::string signalName = fields->loadField("signalData", "");
+		if (signalName != "") {
+			_attachedSignal = dynamic_cast<SignalData*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<SignalData>(), signalName));
+		}
 	}
 	return res;
 }
 
 void Buffer::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("arrivalOnFullBufferRule", static_cast<int>(_arrivalOnFullBufferRule), static_cast<int>(DEFAULT.arrivalOnFullBufferRule), saveDefaultValues);
+	fields->saveField("advanceOn", static_cast<int>(_advanceOn), static_cast<int>(DEFAULT.advanceOn), saveDefaultValues);
+	fields->saveField("capacity", _capacity, DEFAULT.capacity, saveDefaultValues);
+	if (_attachedSignal != nullptr) {
+		fields->saveField("signalData", _attachedSignal->getName(), "", saveDefaultValues);
+	}
 }
 
 
