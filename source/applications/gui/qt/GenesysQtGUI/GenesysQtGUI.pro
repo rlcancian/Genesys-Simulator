@@ -245,6 +245,8 @@ SOURCES += \
     # Phase-4 GUI refactor controllers for trace and simulation-event responsibilities.
     controllers/TraceConsoleController.cpp \
     controllers/SimulationEventController.cpp \
+    # Phase-5 GUI refactor controller for plugin-catalog responsibilities.
+    controllers/PluginCatalogController.cpp \
     # Phase-1 GUI refactor services for model representations.
     services/ModelLanguageSynchronizer.cpp \
     services/GraphvizModelExporter.cpp \
@@ -566,6 +568,8 @@ HEADERS += \
     # Phase-4 GUI refactor controller headers for trace and simulation-event responsibilities.
     controllers/TraceConsoleController.h \
     controllers/SimulationEventController.h \
+    # Phase-5 GUI refactor controller header for plugin-catalog responsibilities.
+    controllers/PluginCatalogController.h \
     # Phase-1 GUI refactor service headers.
     services/ModelLanguageSynchronizer.h \
     services/GraphvizModelExporter.h \
@@ -705,4 +709,3 @@ DISTFILES += \
 RESOURCES += \
     GenesysQtGUI_resources.qrc \
     propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
-

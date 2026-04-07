@@ -33,6 +33,7 @@ class GraphicalModelBuilder;
 class ModelInspectorController;
 class TraceConsoleController;
 class SimulationEventController;
+class PluginCatalogController;
 
 /**
  * @brief Main Qt window of Genesys GUI.
@@ -297,6 +298,8 @@ private: // interface and model main elements to join
     std::unique_ptr<TraceConsoleController> _traceConsoleController;
     // Add the Phase 4 simulation-event controller owned by MainWindow.
     std::unique_ptr<SimulationEventController> _simulationEventController;
+    // Add the Phase 5 plugin-catalog controller owned by MainWindow.
+    std::unique_ptr<PluginCatalogController> _pluginCatalogController;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;

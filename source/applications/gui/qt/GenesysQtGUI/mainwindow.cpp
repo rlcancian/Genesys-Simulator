@@ -15,6 +15,8 @@
 #include "controllers/ModelInspectorController.h"
 #include "controllers/TraceConsoleController.h"
 #include "controllers/SimulationEventController.h"
+// Add Phase 5 controller include for plugin-catalog responsibilities.
+#include "controllers/PluginCatalogController.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -219,6 +221,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             [this](bool force) { _actualizeDebugEntities(force); },
             [this](bool force) { _actualizeDebugVariables(force); },
             [this](SimulationEvent* re) { _actualizeGraphicalModel(re); }});
+    // Initialize the Phase 5 plugin-catalog controller after simulator and plugin-tree dependencies are ready.
+    _pluginCatalogController = std::make_unique<PluginCatalogController>(simulator,
+                                                                         ui->treeWidget_Plugins,
+                                                                         ui->TextCodeEditor,
+                                                                         _pluginCategoryColor);
     // Initialize Phase 2 services using narrow dependencies and compatibility callbacks.
     _graphicalModelBuilder = std::make_unique<GraphicalModelBuilder>(simulator,
                                                                       ui->graphicsView,
