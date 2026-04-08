@@ -17,7 +17,7 @@
 #include "../../../../../kernel/simulator/ModelDataManager.h"
 #include "../../../../../kernel/simulator/ModelComponent.h"
 #include "../../../../../kernel/simulator/LicenceManager.h"
-#include "../../../../../plugins/data/Entity.h"
+#include "../../../../../kernel/simulator/Entity.h"
 #include "../../../../../tools/SolverDefaultImpl1.h"
 
 #include <QCheckBox>
