@@ -12,6 +12,48 @@
 #include <QMenu>
 #include <QDebug>
 #include <QMetaObject>
+#include <QLineEdit>
+#include <QAbstractSpinBox>
+
+namespace {
+class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
+public:
+    using CommitCallback = std::function<void(QtProperty*)>;
+
+    explicit CommitAwareVariantEditorFactory(QObject* parent = nullptr)
+        : QtVariantEditorFactory(parent) {}
+
+    void setCommitCallback(CommitCallback callback) {
+        _commitCallback = std::move(callback);
+    }
+
+protected:
+    QWidget* createEditor(QtVariantPropertyManager* manager, QtProperty* property, QWidget* parent) override {
+        QWidget* editor = QtVariantEditorFactory::createEditor(manager, property, parent);
+        if (editor == nullptr || _commitCallback == nullptr) {
+            return editor;
+        }
+
+        if (QLineEdit* lineEdit = editor->findChild<QLineEdit*>()) {
+            QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [callback = _commitCallback, property]() {
+                callback(property);
+            });
+            return editor;
+        }
+
+        if (QAbstractSpinBox* spinBox = editor->findChild<QAbstractSpinBox*>()) {
+            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [callback = _commitCallback, property]() {
+                callback(property);
+            });
+        }
+
+        return editor;
+    }
+
+private:
+    CommitCallback _commitCallback;
+};
+} // namespace
 
 ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
     : QtTreePropertyBrowser(parent) {
@@ -30,6 +72,7 @@ void ObjectPropertyBrowser::_clearAll() {
     clear();
     _bindings.clear();
     _enumNames.clear();
+    _pendingCommittedProperties.clear();
 
     delete _variantFactory;
     delete _enumFactory;
@@ -47,7 +90,11 @@ void ObjectPropertyBrowser::_clearAll() {
     _groupManager = new QtGroupPropertyManager(this);
     _enumManager = new QtEnumPropertyManager(this);
 
-    _variantFactory = new QtVariantEditorFactory(this);
+    auto* commitFactory = new CommitAwareVariantEditorFactory(this);
+    commitFactory->setCommitCallback([this](QtProperty* property) {
+        onVariantEditorCommitted(property);
+    });
+    _variantFactory = commitFactory;
     _enumFactory = new QtEnumEditorFactory(this);
 
     setFactoryForManager(_variantManager, _variantFactory);
@@ -547,6 +594,107 @@ bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
     return true;
 }
 
+
+bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) const {
+    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor) {
+        return false;
+    }
+
+    if (binding.descriptor.kind == GenesysPropertyKind::Enum
+        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit
+        || binding.descriptor.kind == GenesysPropertyKind::Boolean) {
+        return false;
+    }
+
+    return binding.descriptor.kind == GenesysPropertyKind::String
+        || binding.descriptor.kind == GenesysPropertyKind::Integer
+        || binding.descriptor.kind == GenesysPropertyKind::UnsignedInteger
+        || binding.descriptor.kind == GenesysPropertyKind::UnsignedShort
+        || binding.descriptor.kind == GenesysPropertyKind::Double
+        || binding.descriptor.kind == GenesysPropertyKind::Unknown;
+}
+
+bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVariant& value, bool committed) {
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        qInfo() << "[PropertyEditor] variant apply ignored due to missing binding";
+        return false;
+    }
+
+    Binding& binding = it.value();
+    if (binding.control == nullptr) {
+        qWarning() << "[PropertyEditor] variant apply ignored due to null binding control";
+        return false;
+    }
+
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "Ignoring variant apply because active binding context became invalid";
+        return false;
+    }
+
+    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor
+        || binding.descriptor.kind == GenesysPropertyKind::Enum
+        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
+        return false;
+    }
+
+    if (_requiresCommitConfirmation(binding) && !committed) {
+        qInfo() << "[PropertyEditor] transient value change captured for" << property->propertyName();
+        return false;
+    }
+
+    const std::string newValue = _fromVariant(binding.descriptor, value);
+    if (newValue == binding.descriptor.currentValue) {
+        qInfo() << "[PropertyEditor] variant apply ignored because value did not change";
+        return false;
+    }
+
+    std::string errorMessage;
+    const bool ok = GenesysPropertyIntrospection::setValue(
+        binding.control,
+        newValue,
+        false,
+        &errorMessage
+        );
+
+    if (!ok) {
+        _scheduleDeferredRebuild();
+        qWarning() << "[PropertyEditor] variant apply failed to apply value. Scheduled deferred rebuild";
+        return false;
+    }
+
+    binding.descriptor.currentValue = newValue;
+    qInfo() << "[PropertyEditor] applied committed variant change for" << property->propertyName();
+    _notifyModelChangeApplied();
+    return true;
+}
+
+void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
+    if (property == nullptr) {
+        return;
+    }
+
+    if (_isRebuildingProperties) {
+        qInfo() << "[PropertyEditor] editor commit ignored because rebuild is active";
+        return;
+    }
+
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        return;
+    }
+
+    const Binding& binding = it.value();
+    if (!_requiresCommitConfirmation(binding)) {
+        return;
+    }
+
+    _pendingCommittedProperties.insert(property);
+    qInfo() << "[PropertyEditor] editor commit received for" << property->propertyName();
+    _applyVariantChange(property, _variantManager->value(property), true);
+    _pendingCommittedProperties.remove(property);
+}
+
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
     qInfo() << "[PropertyEditor] valueChanged enter";
     // Drop edits while a guarded rebuild is in progress to avoid reentrant mutation.
@@ -561,45 +709,19 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
         return;
     }
 
-    const Binding binding = it.value();
-    if (binding.control == nullptr) {
-        qWarning() << "[PropertyEditor] valueChanged ignored due to null binding control";
-        return;
-    }
-    if (!_hasValidActiveBindingContext(property)) {
-        qWarning() << "Ignoring valueChanged because active binding context became invalid";
-        return;
-    }
+    const Binding& binding = it.value();
+    const bool requiresCommit = _requiresCommitConfirmation(binding);
+    const bool committed = _pendingCommittedProperties.contains(property);
 
-    // This block filters out properties whose edits are handled by specialized editors or enum handlers.
-    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor
-        || binding.descriptor.kind == GenesysPropertyKind::Enum
-        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
+    if (requiresCommit && !committed) {
+        qInfo() << "[PropertyEditor] valueChanged treated as transient for" << property->propertyName();
         return;
     }
 
-    const std::string newValue = _fromVariant(binding.descriptor, value);
-    if (newValue == binding.descriptor.currentValue) {
-        qInfo() << "[PropertyEditor] valueChanged ignored because value did not change";
-        return;
+    _applyVariantChange(property, value, committed || !requiresCommit);
+    if (committed) {
+        _pendingCommittedProperties.remove(property);
     }
-
-    std::string errorMessage;
-    const bool ok = GenesysPropertyIntrospection::setValue(
-        binding.control,
-        newValue,
-        false,
-        &errorMessage
-        );
-
-    if (!ok) {
-        // Rebuild safely after failed setValue to restore editor consistency.
-        _scheduleDeferredRebuild();
-        qWarning() << "[PropertyEditor] valueChanged failed to apply value. Scheduled deferred rebuild";
-        return;
-    }
-
-    _notifyModelChangeApplied();
     qInfo() << "[PropertyEditor] valueChanged exit";
 }
 

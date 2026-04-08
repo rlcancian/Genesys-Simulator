@@ -9,6 +9,7 @@
 #include <QObject>
 #include <QPointer>
 #include <QMap>
+#include <QSet>
 #include <QStringList>
 #include <QContextMenuEvent>
 #include <QKeyEvent>
@@ -122,11 +123,17 @@ private:
 
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
+    QSet<QtProperty*> _pendingCommittedProperties;
     ModelChangedCallback _modelChangedCallback;
+
+private:
+    bool _requiresCommitConfirmation(const Binding& binding) const;
+    bool _applyVariantChange(QtProperty* property, const QVariant& value, bool committed);
 
 private slots:
     void valueChanged(QtProperty *property, const QVariant &value);
     void enumValueChanged(QtProperty *property, int value);
+    void onVariantEditorCommitted(QtProperty* property);
 
 public slots:
     void objectUpdated();
