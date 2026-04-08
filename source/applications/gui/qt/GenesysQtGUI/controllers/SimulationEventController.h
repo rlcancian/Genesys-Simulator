@@ -3,9 +3,9 @@
 
 #include <functional>
 
-#include "../../../../kernel/simulator/ModelSimulation.h"
-#include "../../../../kernel/simulator/OnEventManager.h"
-#include "../../../../kernel/simulator/Simulator.h"
+#include "../../../../../kernel/simulator/ModelSimulation.h"
+#include "../../../../../kernel/simulator/OnEventManager.h"
+#include "../../../../../kernel/simulator/Simulator.h"
 
 class MainWindow;
 class ModelGraphicsScene;

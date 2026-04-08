@@ -2,15 +2,15 @@
 
 #include "graphicals/ModelGraphicsView.h"
 
-#include "../../../../kernel/simulator/Model.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/simulator/ModelDataManager.h"
+#include "../../../../../kernel/simulator/Model.h"
+#include "../../../../../kernel/simulator/ModelComponent.h"
+#include "../../../../../kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../kernel/simulator/ModelDataManager.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalModelComponent.h"
-#include "../../../../kernel/simulator/ModelManager.h"
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/util/Util.h"
+#include "../../../../../kernel/simulator/ModelManager.h"
+#include "../../../../../kernel/simulator/Simulator.h"
+#include "../../../../../kernel/util/Util.h"
 
 #include <Qt>
 
