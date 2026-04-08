@@ -9,17 +9,16 @@
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/Model.h"
-#include "../../../../kernel/simulator/ModelManager.h"
-#include "../../../../kernel/simulator/ModelSimulation.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ModelComponentManager.h"
-#include "../../../../kernel/simulator/LicenceManager.h"
-#include "../../../../plugins/data/Entity.h"
-#include "../../../../tools/SolverDefaultImpl1.h"
+#include "../../../../../kernel/simulator/Simulator.h"
+#include "../../../../../kernel/simulator/Model.h"
+#include "../../../../../kernel/simulator/ModelManager.h"
+#include "../../../../../kernel/simulator/ModelSimulation.h"
+#include "../../../../../kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../kernel/simulator/ModelDataManager.h"
+#include "../../../../../kernel/simulator/ModelComponent.h"
+#include "../../../../../kernel/simulator/LicenceManager.h"
+#include "../../../../../kernel/simulator/Entity.h"
+#include "../../../../../tools/SolverDefaultImpl1.h"
 
 #include <QCheckBox>
 #include <QDialog>

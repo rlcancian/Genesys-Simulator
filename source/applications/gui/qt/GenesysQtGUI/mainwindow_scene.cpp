@@ -113,7 +113,15 @@ void MainWindow::sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsIte
 void MainWindow::sceneSelectionChanged() {
     qInfo() << "[MainWindow] sceneSelectionChanged enter";
     // Keep this wrapper for compatibility during the incremental Phase 6 refactor.
-    if (_shuttingDown || _propertyEditorController == nullptr) {
+    if (_shuttingDown) {
+        qInfo() << "[MainWindow] sceneSelectionChanged exit early due to shutdown";
+        return;
+    }
+    if (_propertyEditorController == nullptr) {
+        if (ui != nullptr && ui->treeViewPropertyEditor != nullptr) {
+            qWarning() << "[MainWindow] sceneSelectionChanged without controller. Clearing property editor directly";
+            ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
+        }
         qInfo() << "[MainWindow] sceneSelectionChanged exit early";
         return;
     }

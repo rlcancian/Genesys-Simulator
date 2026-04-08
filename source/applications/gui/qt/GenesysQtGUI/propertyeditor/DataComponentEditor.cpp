@@ -6,6 +6,8 @@
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QDebug>
+#include <QMetaObject>
+#include <Qt>
 
 #include "DataComponentProperty.h"
 #include "ComboBoxEnum.h"
@@ -80,7 +82,10 @@ DataComponentEditor::DataComponentEditor(
 
 void DataComponentEditor::_notifyChanged() {
     if (_afterChange) {
-        _afterChange();
+        qInfo() << "[DataComponentEditor] scheduling deferred afterChange callback";
+        QMetaObject::invokeMethod(_window, [callback = _afterChange]() {
+            callback();
+        }, Qt::QueuedConnection);
     }
 }
 
