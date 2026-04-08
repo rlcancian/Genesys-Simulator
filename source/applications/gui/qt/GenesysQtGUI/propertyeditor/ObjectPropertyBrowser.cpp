@@ -73,6 +73,7 @@ void ObjectPropertyBrowser::_clearAll() {
     _bindings.clear();
     _enumNames.clear();
     _pendingCommittedProperties.clear();
+    _pendingCommittedValues.clear();
 
     delete _variantFactory;
     delete _enumFactory;
@@ -130,6 +131,15 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
 
 void ObjectPropertyBrowser::setModelChangedCallback(ModelChangedCallback callback) {
     _modelChangedCallback = std::move(callback);
+}
+
+bool ObjectPropertyBrowser::isCommitPipelineBusy() const {
+    return _isRebuildingProperties
+        || _isNotifyingModelChange
+        || _pendingRebuild
+        || _isDeferredRebuildScheduled
+        || _isDeferredModelChangedScheduled
+        || !_pendingCommittedProperties.isEmpty();
 }
 
 void ObjectPropertyBrowser::setActiveObject(
@@ -205,15 +215,30 @@ void ObjectPropertyBrowser::_scheduleDeferredModelChangedCallback() {
 
     _isDeferredModelChangedScheduled = true;
     QMetaObject::invokeMethod(this, [this]() {
-        qInfo() << "[PropertyEditor] executing deferred model-changed callback";
+        qInfo() << "[PropertyEditor] executing deferred model-changed callback. rebuildScheduled="
+                << _isDeferredRebuildScheduled << " rebuilding=" << _isRebuildingProperties
+                << " pendingRebuild=" << _pendingRebuild;
         _isDeferredModelChangedScheduled = false;
+        if (_isRebuildingProperties || _pendingRebuild || _isDeferredRebuildScheduled) {
+            qInfo() << "[PropertyEditor] deferring model-changed callback until rebuild stabilizes";
+            _scheduleDeferredModelChangedCallback();
+            return;
+        }
         if (!_hasValidActiveBindingContext()) {
             qWarning() << "[PropertyEditor] Deferred model-changed callback canceled due to invalid binding context";
             return;
         }
-        if (_modelChangedCallback) {
-            _modelChangedCallback();
-        }
+        QMetaObject::invokeMethod(this, [this]() {
+            if (_isRebuildingProperties || _pendingRebuild || _isDeferredRebuildScheduled) {
+                qInfo() << "[PropertyEditor] model-changed callback postponed one more turn due to pending rebuild";
+                _scheduleDeferredModelChangedCallback();
+                return;
+            }
+            if (_modelChangedCallback) {
+                qInfo() << "[PropertyEditor] invoking model-changed callback after local rebuild stabilization";
+                _modelChangedCallback();
+            }
+        }, Qt::QueuedConnection);
     }, Qt::QueuedConnection);
 }
 
@@ -615,6 +640,9 @@ bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) 
 }
 
 bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVariant& value, bool committed) {
+    qInfo() << "[PropertyEditor] _applyVariantChange property="
+            << (property != nullptr ? property->propertyName() : QString("<null>"))
+            << " committed=" << committed;
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
         qInfo() << "[PropertyEditor] variant apply ignored due to missing binding";
@@ -689,10 +717,26 @@ void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
         return;
     }
 
+    const QVariant pendingValue = _variantManager->value(property);
     _pendingCommittedProperties.insert(property);
+    _pendingCommittedValues.insert(property, pendingValue);
     qInfo() << "[PropertyEditor] editor commit received for" << property->propertyName();
-    _applyVariantChange(property, _variantManager->value(property), true);
-    _pendingCommittedProperties.remove(property);
+    QMetaObject::invokeMethod(this, [this, property]() {
+        if (!_pendingCommittedProperties.contains(property)) {
+            return;
+        }
+        if (!_hasValidActiveBindingContext(property)) {
+            qWarning() << "[PropertyEditor] queued commit aborted due to invalid binding context";
+            _pendingCommittedProperties.remove(property);
+            _pendingCommittedValues.remove(property);
+            return;
+        }
+        const QVariant committedValue = _pendingCommittedValues.value(property, _variantManager->value(property));
+        qInfo() << "[PropertyEditor] queued commit apply for" << property->propertyName();
+        _pendingCommittedProperties.remove(property);
+        _pendingCommittedValues.remove(property);
+        _applyVariantChange(property, committedValue, true);
+    }, Qt::QueuedConnection);
 }
 
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
@@ -718,10 +762,17 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
         return;
     }
 
-    _applyVariantChange(property, value, committed || !requiresCommit);
     if (committed) {
+        const QVariant pendingValue = _pendingCommittedValues.value(property);
+        if (pendingValue.isValid() && pendingValue != value) {
+            qInfo() << "[PropertyEditor] valueChanged waiting for committed value for" << property->propertyName();
+            return;
+        }
         _pendingCommittedProperties.remove(property);
+        _pendingCommittedValues.remove(property);
     }
+
+    _applyVariantChange(property, value, committed || !requiresCommit);
     qInfo() << "[PropertyEditor] valueChanged exit";
 }
 
