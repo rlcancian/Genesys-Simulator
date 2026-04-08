@@ -455,11 +455,15 @@ ModelGraphicsScene* MainWindow::myScene() const {
 void MainWindow::_onPropertyEditorModelChanged() {
     qInfo() << "[MainWindow] _onPropertyEditorModelChanged enter";
     // Keep this wrapper for compatibility during the incremental Phase 6 refactor.
-    if (_propertyEditorController != nullptr) {
+    if (_propertyEditorController != nullptr && !_isDeferredPropertyEditorModelChangedScheduled) {
+        _isDeferredPropertyEditorModelChangedScheduled = true;
+        qInfo() << "[MainWindow] scheduling deferred property-editor model-changed handling";
         QMetaObject::invokeMethod(this, [this]() {
+            _isDeferredPropertyEditorModelChangedScheduled = false;
             if (_propertyEditorController == nullptr) {
                 return;
             }
+            qInfo() << "[MainWindow] executing deferred property-editor model-changed handling";
             _propertyEditorController->onPropertyEditorModelChanged();
         }, Qt::QueuedConnection);
     }

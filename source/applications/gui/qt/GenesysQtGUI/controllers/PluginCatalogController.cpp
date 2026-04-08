@@ -1,8 +1,8 @@
 #include "PluginCatalogController.h"
 
-#include "../../../../kernel/simulator/Plugin.h"
-#include "../../../../kernel/simulator/PluginInformation.h"
-#include "../../../../kernel/simulator/Simulator.h"
+#include "../../../../../kernel/simulator/Plugin.h"
+#include "../../../../../kernel/simulator/PluginInformation.h"
+#include "../../../../../kernel/simulator/Simulator.h"
 
 #include <QBrush>
 #include <QFont>
