@@ -1,5 +1,19 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+// Include the Phase 3 controller interface required by compatibility wrappers.
+#include "controllers/ModelInspectorController.h"
+// Include the Phase 5 controller interface required by plugin-tree wrappers.
+#include "controllers/PluginCatalogController.h"
+// Include the Phase 7 controller interface required by lifecycle compatibility wrappers.
+#include "controllers/ModelLifecycleController.h"
+// Include the Phase 8 controller interface required by simulation-command compatibility wrappers.
+#include "controllers/SimulationCommandController.h"
+// Include the Phase 9 controller interface required by edit-command compatibility wrappers.
+#include "controllers/EditCommandController.h"
+// Include the Phase 10 controller interface required by scene-tool compatibility wrappers.
+#include "controllers/SceneToolController.h"
+// Include the Phase 11 controller interface required by dialog-utility compatibility wrappers.
+#include "controllers/DialogUtilityController.h"
 
 #include "dialogs/dialogBreakpoint.h"
 #include "dialogs/Dialogmodelinformation.h"
@@ -9,12 +23,12 @@
 #include "dialogs/DialogFind.h"
 #include "controllers/SimulationController.h"
 
-#include "actions/DeleteUndoCommand.h"
-#include "actions/PasteUndoCommand.h"
-
 // std
 #include <string>
 #include <fstream>
+#include <memory>
+#include <algorithm>
+#include <cmath>
 //#include <sstream>
 #include <cstdlib>
 //#include <streambuf>
@@ -32,13 +46,32 @@
 #include <QPropertyAnimation>
 // #include <qt5/QtWidgets/qgraphicsitem.h>
 #include <QtWidgets/qgraphicsitem.h>
-#include <QGraphicsScene>
 //#include <QDesktopWidget> //removed from qt6
 #include <QScreen>
 #include <QDebug>
 #include <QRegularExpression>
 #include <QRandomGenerator>
+#include <QSignalBlocker>
+#include <QDialog>
+#include <QVBoxLayout>
+#include <QHBoxLayout>
+#include <QFormLayout>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QDialogButtonBox>
+#include <QLabel>
+#include <QCheckBox>
+#include <QSpinBox>
+#include <QDoubleSpinBox>
+#include <QPlainTextEdit>
+#include <QTextEdit>
+#include <QStatusBar>
+#include <QImage>
+#include <QPainter>
+#include <QFileInfo>
+#include <QCoreApplication>
 #include "../../../../kernel/simulator/ModelSimulation.h"
+#include "../../../../tools/SolverDefaultImpl1.h"
 
 
 //-------------------------
@@ -49,441 +82,227 @@
 //  menu actions
 // -------------------------------------------------
 
+// Keep this slot documentation aligned with the final wrapper-only architecture.
 /**
- * @brief Stops the active simulation execution.
- *
- * Guarded by SimulationController to avoid dereferencing null model/simulation.
- *
- * @todo Move command execution details (animation flags + console command) into SimulationController.
+ * @brief Stops the active simulation execution through the simulation command controller.
  */
 void MainWindow::on_actionSimulationStop_triggered() {
-    if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
-        return;
+    // Keep this wrapper as part of the final compatibility façade.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationStopTriggered();
     }
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(false);
-    AnimationTransition::setPause(false);
-
-    _insertCommandInConsole("stop");
-
-    simulation->stop();
-
-    _actualizeActions();
 }
 
+// Keep this slot documentation aligned with the final wrapper-only architecture.
 /**
- * @brief Starts simulation after readiness validation.
- *
- * Preconditions:
- * - Current model/simulation must exist;
- * - Model may be checked when needed;
- * - Textual model representation must be synchronized.
- *
- * @todo Replace lambda callbacks by explicit command objects for better unit testing.
+ * @brief Starts simulation after readiness validation through the simulation command controller.
  */
 void MainWindow::on_actionSimulationStart_triggered() {
-    if (!_simulationController || !_simulationController->ensureReady(
-            true,
-            _modelCheked,
-            [this]() { return _check(false); },
-            [this]() { return _setSimulationModelBasedOnText(); })) {
-        return;
+    // Keep this wrapper as part of the final compatibility façade.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationStartTriggered(_modelCheked);
     }
-
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(true);
-    AnimationTransition::setPause(false);
-    _insertCommandInConsole("start");
-    simulation->start();
 }
 
+// Keep this slot documentation aligned with the final wrapper-only architecture.
 /**
- * @brief Executes one simulation step after readiness validation.
- *
- * Uses the same precondition pipeline as start command.
- *
- * @todo Consolidate duplicated animation-toggle code between start and step.
+ * @brief Executes one simulation step after readiness validation through the simulation command controller.
  */
 void MainWindow::on_actionSimulationStep_triggered() {
-    if (!_simulationController || !_simulationController->ensureReady(
-            true,
-            _modelCheked,
-            [this]() { return _check(false); },
-            [this]() { return _setSimulationModelBasedOnText(); })) {
-        return;
+    // Keep this wrapper as part of the final compatibility façade.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationStepTriggered(_modelCheked);
     }
-
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(true);
-    AnimationTransition::setPause(false);
-    _insertCommandInConsole("step");
-    simulation->step();
 }
 
+// Keep this slot documentation aligned with the final wrapper-only architecture.
 /**
- * @brief Pauses running simulation.
- *
- * @todo Add explicit feedback when pause is requested in invalid state.
+ * @brief Pauses running simulation through the simulation command controller.
  */
 void MainWindow::on_actionSimulationPause_triggered() {
-    if (!_simulationController || !_simulationController->hasCurrentModelSimulation()) {
-        return;
+    // Keep this wrapper as part of the final compatibility façade.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationPauseTriggered();
     }
-
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(true);
-    AnimationTransition::setPause(true);
-
-    _insertCommandInConsole("pause");
-    simulation->pause();
 }
 
+// Keep this slot documentation aligned with the final wrapper-only architecture.
 /**
- * @brief Resumes simulation execution after readiness validation.
- *
- * @todo Introduce a dedicated `resume()` API in kernel side when available
- *       to avoid semantic coupling with `start()`.
+ * @brief Resumes simulation execution after readiness validation through the simulation command controller.
  */
 void MainWindow::on_actionSimulationResume_triggered() {
-    if (!_simulationController || !_simulationController->ensureReady(
-            false,
-            _modelCheked,
-            [this]() { return _check(false); },
-            [this]() { return _setSimulationModelBasedOnText(); })) {
-        return;
+    // Keep this wrapper as part of the final compatibility façade.
+    if (_simulationCommandController != nullptr) {
+        _simulationCommandController->onActionSimulationResumeTriggered(_modelCheked);
     }
-
-    ModelSimulation* simulation = _simulationController->currentSimulation();
-    if (simulation == nullptr) {
-        return;
-    }
-
-    AnimationTransition::setRunning(true);
-    AnimationTransition::setPause(false);
-
-    _insertCommandInConsole("resume");
-    simulation->start();
 }
 
 
 void MainWindow::on_actionAboutAbout_triggered() {
-    QMessageBox::about(this, "About Genesys", "Genesys is a result of teaching and research activities of Professor Dr. Ing Rafael Luiz Cancian. It began in early 2002 as a way to teach students the basics and simulation techniques of systems implemented by other comercial simulation tools, such as Arena. In Genesys development he replicated all the SIMAN language, used by Arena software, and Genesys has become a clone of that tool, including its graphical interface. Genesys allowed the inclusion of new simulation components through dynamic link libraries and also the parallel execution of simulation models in a distributed environment. The development of Genesys continued until 2009, when the professor stopped teaching systems simulation classes. Ten years later the professor starts again to teach systems simulation classes and to carry out scientific research in the area. So in 2019 Genesys is reborn, with new language and programming techniques, and even more ambitious goals.");
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionAboutAboutTriggered();
+    }
 }
+
 
 void MainWindow::on_actionAboutLicence_triggered() {
-    LicenceManager* licman = simulator->getLicenceManager();
-    std::string text = licman->showLicence() + "\n";
-    text += licman->showLimits() + "\n";
-    text += licman->showActivationCode();
-    QMessageBox::about(this, "About Licence", QString::fromStdString(text));
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionAboutLicenceTriggered();
+    }
 }
+
 
 void MainWindow::on_actionAboutGetInvolved_triggered() {
-    QMessageBox::about(this, "Get Involved", "Genesys is a free open-source simulator (and tools) available at 'https://github.com/rlcancian/Genesys-Simulator'. Help us by submiting your pull requests containing code improvements. Contact: rafael.cancian@ufsc.br");
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionAboutGetInvolvedTriggered();
+    }
 }
 
+
 void MainWindow::on_actionEditUndo_triggered() {
-    if (ui->graphicsView->getScene()->getUndoStack()) {
-        ui->graphicsView->getScene()->getUndoStack()->undo();
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditUndoTriggered();
     }
 }
 
 
 void MainWindow::on_actionEditRedo_triggered() {
-    if (ui->graphicsView->getScene()->getUndoStack()) {
-        ui->graphicsView->getScene()->getUndoStack()->redo();
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditRedoTriggered();
     }
 }
 
 
 void MainWindow::on_actionEditFind_triggered() {
-    // Cria um novo diálogo para Buscar componentes
-    DialogFind *find = new DialogFind(this, ui->graphicsView->getScene());
-
-    // Mostra esse dialogo na tela
-    find->show();
-
-    if (find->exec() == QDialog::Accepted) find->setFocus();
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionEditFindTriggered();
+    }
 }
 
 
+
+// void MainWindow::on_actionReplace_triggered() {
+//     _showMessageNotImplemented();
+// }
 void MainWindow::on_actionEditReplace_triggered() {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionEditReplaceTriggered();
+    }
 }
+
 
 
 void MainWindow::on_actionEditCut_triggered() {
-    _gmc_copies->clear();
-    _ports_copies->clear();
-    _group_copy->clear();
-    _draw_copy->clear();
-
-    QList<QGraphicsItem *> selecteds =  ui->graphicsView->scene()->selectedItems();
-
-    // Verifica se tem itens selecionados
-    if (selecteds.size() > 0) {
-
-        // Pega a cena
-        ModelGraphicsScene *scene = (ModelGraphicsScene *)(ui->graphicsView->getScene());
-
-        // Seta o cut
-        _cut = true;
-
-        // Adiciona na lista de cópias (conexões, componentes e desenhos)
-        foreach (QGraphicsItem *item , ui->graphicsView->scene()->selectedItems()) {
-            QList<GraphicalModelComponent*> groupComponents  = QList<GraphicalModelComponent*>();
-            QList<GraphicalConnection*> * connGroup = new QList<GraphicalConnection*>();
-
-            // Tenta transformar em um componente gráfico de modelo
-            if (GraphicalModelComponent *gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
-                // Adiciona em uma lista de cópias de componentes
-                _gmc_copies->append(gmc);
-            }
-            else if (QGraphicsItemGroup *group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                for (int i = 0; i < group->childItems().size(); i++) {
-                    GraphicalModelComponent * component = dynamic_cast<GraphicalModelComponent *>(group->childItems().at(i));
-
-                    if (!component->getGraphicalInputPorts().empty() && !component->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
-                        for (int j = 0; j < component->getGraphicalInputPorts().at(0)->getConnections()->size(); ++j) {
-                            connGroup->append(component->getGraphicalInputPorts().at(0)->getConnections()->at(j));
-                        }
-                    }
-
-                    for (int j = 0; j < component->getGraphicalOutputPorts().size(); ++j) {
-                        GraphicalComponentPort *port = component->getGraphicalOutputPorts().at(j);
-
-                        if (!port->getConnections()->empty()) {
-                            connGroup->append(port->getConnections()->at(0));
-                        }
-                    }
-
-                    _gmc_copies->append(component);
-                    groupComponents.append(component);
-                }
-                saveItemForCopy(&groupComponents, connGroup);
-
-                _group_copy->append(group);
-                ui->graphicsView->getScene()->insertComponentGroup(group, groupComponents);
-                for (unsigned int k = 0; k < (unsigned int) connGroup->size(); k++) {
-                    _ports_copies->append(connGroup->at(k));
-                }
-            } else if (GraphicalConnection *port = dynamic_cast<GraphicalConnection*>(item)) {
-                _ports_copies->append(port);
-            } else {
-                _draw_copy->append(item);
-            }
-
-            delete connGroup;
-        }
-
-        // Removendo as conexoes do modelo e graficamente
-        // Só não é removido a conexão quando todos os itens estão selecionados
-        // (2x componentes e a conexão (similar ao arena)
-        saveItemForCopy(_gmc_copies, _ports_copies);
-
-        QUndoCommand *deleteUndoCommand = new DeleteUndoCommand(selecteds, scene);
-        scene->getUndoStack()->push(deleteUndoCommand);
-
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditCutTriggered();
     }
 }
 
 void MainWindow::on_actionEditCopy_triggered() {
-    _gmc_copies->clear();
-    _ports_copies->clear();
-    _group_copy->clear();
-    _draw_copy->clear();
-
-    QList<QGraphicsItem*> selected = ui->graphicsView->scene()->selectedItems();
-    QList<GraphicalModelComponent *> gmc_copies_copy = QList<GraphicalModelComponent *>();
-
-    // verifica se tem itens selecionados
-    if (selected.size() > 0) {
-
-        // seta o cut
-        _cut = false;
-
-        // adiciona na lista de cópias (conexões, componentes e desenhos)
-        foreach (QGraphicsItem *item , ui->graphicsView->scene()->selectedItems()) {
-            // verifica se é um componente gráfico
-            if (GraphicalModelComponent *gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
-                // Adiciona em uma lista de cópias de componentes
-                gmc->setSelected(false);
-                _gmc_copies->append(gmc);
-                gmc_copies_copy.append(gmc);
-            }
-            // verifica se é uma conexão gráfica
-            else if (GraphicalConnection *conn = dynamic_cast<GraphicalConnection*>(item)) {
-                conn->setSelected(false);
-                _ports_copies->append(conn);
-            }
-            // verifica se é um grupo
-            else if (QGraphicsItemGroup *group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                group->setSelected(false);
-                _group_copy->append(group);
-
-                for (int i = 0; i < group->childItems().size(); i++) {
-                    GraphicalModelComponent * component = dynamic_cast<GraphicalModelComponent *>(group->childItems().at(i));
-
-                    gmc_copies_copy.append(component);
-                }
-            }
-            // se não for nenhum deles é um desenho na tela
-            else {
-                item->setSelected(false);
-                _draw_copy->append(item);
-            }
-        }
-
-        // removendo as conexões em que os seus componentes não foram selecionados
-        saveItemForCopy(&gmc_copies_copy, _ports_copies);
-
-        // limpa a lista auxiliar
-        gmc_copies_copy.clear();
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditCopyTriggered();
     }
-
 }
 
 void MainWindow::on_actionEditPaste_triggered() {
-
-    // se tiver componente copiados
-    if (_gmc_copies->size() > 0 || _draw_copy->size() > 0 || _group_copy->size() > 0) {
-
-        // pega a cena
-        ModelGraphicsScene *scene = (ModelGraphicsScene *)(ui->graphicsView->getScene());
-
-        // se não for ação de recorte chama o auxiliar do copy
-        if (!_cut) {
-            _helpCopy();
-        }
-
-        // cola na cena o que foi copiado
-        QUndoCommand *pasteUndoCommand = new PasteUndoCommand(_gmc_copies, _ports_copies, _group_copy, _draw_copy, scene);
-        scene->getUndoStack()->push(pasteUndoCommand);
-
-        // limpa todas as listas
-        _gmc_copies->clear();
-        _ports_copies->clear();
-        _draw_copy->clear();
-        _group_copy->clear();
-        _cut = false;
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditPasteTriggered();
     }
 }
 
 
 void MainWindow::on_actionShowGrid_triggered() {
-    ui->graphicsView->getScene()->showGrid();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowGridTriggered();
+    }
 }
 
 
 void MainWindow::on_actionShowRule_triggered() {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowRuleTriggered();
+    }
 }
 
 
 void MainWindow::on_actionShowGuides_triggered() {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowGuidesTriggered();
+    }
 }
 
 
 void MainWindow::on_actionZoom_In_triggered() {
-    int value = ui->horizontalSlider_ZoomGraphical->value();
-    ui->horizontalSlider_ZoomGraphical->setValue(value+TraitsGUI<GMainWindow>::zoomButtonChange);
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionZoomInTriggered();
+    }
 }
 
 
 void MainWindow::on_actionZoom_Out_triggered() {
-    int value = ui->horizontalSlider_ZoomGraphical->value();
-    ui->horizontalSlider_ZoomGraphical->setValue(value-TraitsGUI<GMainWindow>::zoomButtonChange);
-
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionZoomOutTriggered();
+    }
 }
 
 
 void MainWindow::on_actionZoom_All_triggered() {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionZoomAllTriggered();
+    }
 }
 
 
 void MainWindow::on_actionDrawLine_triggered() {
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!checkSelectedDrawIcons() && ui->actionDrawLine->isChecked()) {
-        ui->graphicsView->setCursor(Qt::SizeHorCursor);
-        ui->actionDrawLine->setChecked(true);
-        // Ative a ferramenta de desenho de linha
-        scene->setAction(ui->actionDrawLine);
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::LINE); // Enumeração que representa o modo de desenho de linha
-    } else {
-        unselectDrawIcons();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawLineTriggered();
     }
 }
 
 
 void MainWindow::on_actionDrawRectangle_triggered() {
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    // Ative a ferramenta de desenho de retangulo
-    if (!checkSelectedDrawIcons() && ui->actionDrawRectangle->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        ui->actionDrawRectangle->setChecked(true);
-        scene->setAction(ui->actionDrawRectangle);
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::RECTANGLE);
-    } else {
-        unselectDrawIcons();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawRectangleTriggered();
     }
 }
 
 
 void MainWindow::on_actionDrawEllipse_triggered() {
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    // Ative a ferramenta de desenho de ellipse
-    if (!checkSelectedDrawIcons() && ui->actionDrawEllipse->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        ui->actionDrawEllipse->setChecked(true);
-        scene->setAction(ui->actionDrawEllipse);
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::ELLIPSE);
-    } else {
-        unselectDrawIcons();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawEllipseTriggered();
     }
 }
 
-void MainWindow::on_actionDrawText_triggered()
-{
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!checkSelectedDrawIcons() && ui->actionDrawText->isChecked()) {
-        ui->actionDrawText->setChecked(true);
-        scene->setAction(ui->actionDrawText);
-        // Ative a ferramenta de desenho do texto
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::TEXT);
-    } else {
-        unselectDrawIcons();
+void MainWindow::on_actionDrawText_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawTextTriggered();
     }
 }
 
-void MainWindow::on_actionDrawPoligon_triggered()
-{
-    ModelGraphicsScene* scene = ui->graphicsView->getScene();
-    if (!checkSelectedDrawIcons() && ui->actionDrawPoligon->isChecked()) {
-        ui->graphicsView->setCursor(Qt::ArrowCursor);
-        ui->actionDrawPoligon->setChecked(true);
-        scene->setAction(ui->actionDrawPoligon);
-        // Ative a ferramenta de desenho do polygon
-        scene->setDrawingMode(ModelGraphicsScene::DrawingMode::POLYGON);
-    } else {
-        unselectDrawIcons();
+void MainWindow::on_actionDrawPoligon_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDrawPoligonTriggered();
     }
 }
 
@@ -512,75 +331,74 @@ void MainWindow::on_actionAnimateStation_triggered() {
 
 void MainWindow::on_actionEditDelete_triggered()
 {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditDeleteTriggered();
+    }
 }
 
 
-void MainWindow::on_actionSimulatorPreferences_triggered()
-{
-    DialogSystemPreferences* dialog = new DialogSystemPreferences(this);
-    dialog->show();
+void MainWindow::on_actionSimulatorPreferences_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionSimulatorPreferencesTriggered();
+    }
 }
+
 
 
 void MainWindow::on_actionAlignMiddle_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
 
 void MainWindow::on_actionAlignTop_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
 
 void MainWindow::on_actionAlignRight_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
 
 void MainWindow::on_actionAlignCenter_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
 
 void MainWindow::on_actionAlignLeft_triggered()
 {
+    // Legacy slot kept for compatibility with old .ui action names.
     _showMessageNotImplemented();
 }
 
-void MainWindow::on_actionAnimateCounter_triggered()
-{
-    if (!checkSelectedDrawIcons() && ui->actionAnimateCounter->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        myScene()->setAction(ui->actionAnimateCounter);
-        myScene()->drawingCounter();
-    } else {
-        unselectDrawIcons();
+void MainWindow::on_actionAnimateCounter_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateCounterTriggered();
     }
 }
 
 void MainWindow::on_actionAnimateVariable_triggered() {
-    if (!checkSelectedDrawIcons() && ui->actionAnimateVariable->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        myScene()->setAction(ui->actionAnimateVariable);
-        myScene()->drawingVariable();
-    } else {
-        unselectDrawIcons();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateVariableTriggered();
     }
 }
 
-void MainWindow::on_actionAnimateSimulatedTime_triggered()
-{
-    if (!checkSelectedDrawIcons() && ui->actionAnimateSimulatedTime->isChecked()) {
-        ui->graphicsView->setCursor(Qt::CrossCursor);
-        myScene()->setAction(ui->actionAnimateSimulatedTime);
-        myScene()->drawingTimer();
-    } else {
-        unselectDrawIcons();
+void MainWindow::on_actionAnimateSimulatedTime_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateSimulatedTimeTriggered();
     }
 }
 
@@ -610,38 +428,54 @@ void MainWindow::on_actionAnimateStatistics_triggered()
 
 void MainWindow::on_actionEditGroup_triggered()
 {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditGroupTriggered();
+    }
 }
 
 
 void MainWindow::on_actionEditUngroup_triggered()
 {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionEditUngroupTriggered();
+    }
 }
 
 
-void MainWindow::on_actionToolsParserGrammarChecker_triggered()
-{
-    _showMessageNotImplemented();
+void MainWindow::on_actionToolsParserGrammarChecker_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionToolsParserGrammarCheckerTriggered();
+    }
 }
+
 
 
 void MainWindow::on_actionToolsExperimentation_triggered()
 {
+    // Legacy slot: action is not exposed in current mainwindow.ui.
     _showMessageNotImplemented();
 }
 
 
-void MainWindow::on_actionToolsOptimizator_triggered()
-{
-    _showMessageNotImplemented();
+void MainWindow::on_actionToolsOptimizator_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionToolsOptimizatorTriggered();
+    }
 }
 
 
-void MainWindow::on_actionToolsDataAnalyzer_triggered()
-{
-    _showMessageNotImplemented();
+
+void MainWindow::on_actionToolsDataAnalyzer_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionToolsDataAnalyzerTriggered();
+    }
 }
+
 
 
 void MainWindow::on_actionAnimatePlot_triggered()
@@ -650,10 +484,13 @@ void MainWindow::on_actionAnimatePlot_triggered()
 }
 
 
-void MainWindow::on_actionViewConfigure_triggered()
-{
-    _showMessageNotImplemented();
+void MainWindow::on_actionViewConfigure_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionViewConfigureTriggered();
+    }
 }
+
 
 //void MainWindow::on_actionConfigure_triggered() {//?????????????????????????
 //}
@@ -663,336 +500,167 @@ void MainWindow::on_actionViewConfigure_triggered()
 
 
 void MainWindow::on_actionModelNew_triggered() {
-    Model* m;
-    if ((m = simulator->getModelManager()->current()) != nullptr) {
-        QMessageBox::StandardButton reply = QMessageBox::question(this, "New Model", "There is a model already oppened. Do you want to close it and to create new model?", QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::No) {
-            return;
-        } else {
-            this->on_actionModelClose_triggered();
-            //return; //@TODO Ceck if needed (since will remove bellow)
-        }
-    }
-    _insertCommandInConsole("new");
-    if (m != nullptr) {
-        simulator->getModelManager()->remove(m);
-    }
-    m = simulator->getModelManager()->newModel();
-    _initUiForNewModel(m);
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    _modelLifecycleController->onActionModelNewTriggered();
 }
 
 void MainWindow::on_actionModelOpen_triggered()
 {
-    Model *m;
-    if ((m = simulator->getModelManager()->current()) != nullptr) {
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setWindowTitle("New Model");
-        msgBox.setText("There is a model already opened. Do you want to close it and create a new model?");
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        int reply = msgBox.exec();
-
-        if (reply == QMessageBox::No) return;
-        else on_actionModelClose_triggered();
-    }
-
-    // Obtém o diretório atual
-    QString currentDirectory = QDir::currentPath();
-
-    // Navega para o diretório desejado
-    QDir parentDir(currentDirectory);
-
-    // Sobe 5 pastas
-    parentDir.cdUp();
-    parentDir.cdUp();
-    parentDir.cdUp();
-    parentDir.cdUp();
-    parentDir.cdUp();
-
-    // Entra na pasta models
-    parentDir.cd("models");
-
-    // Define o diretório inicial como a pasta "models"
-    QString initialDirectory = parentDir.absolutePath();
-
-    QString fileName = QFileDialog::getOpenFileName(
-        this, "Open Model", initialDirectory,
-        tr("Genesys Model (*.gen);;Genesys Graphical User Interface (*.gui);;XML Files (*.xml);;JSON Files (*.json);;C++ Files (*.cpp)"), nullptr, QFileDialog::DontUseNativeDialog);
-    if (fileName == "") {
-        return;
-    }
-    _insertCommandInConsole("load " + fileName.toStdString());
-    // load Model (in the simulator)
-    Model *model = this->_loadGraphicalModel(fileName.toStdString());
-    if (model != nullptr) {
-        _loaded = true;
-        _initUiForNewModel(model);
-
-        QMessageBox::information(this, "Open Model", "Model successfully oppened");
-    } else {
-        QMessageBox::warning(this, "Open Model", "Error while opening model");
-        _actualizeActions();
-        _actualizeTabPanes();
-    }
-    ui->graphicsView->getScene()->getUndoStack()->clear();
-
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    _modelLifecycleController->onActionModelOpenTriggered();
 }
 
 
 void MainWindow::on_actionModelSave_triggered()
 {
-    QString fileName = QFileDialog::getSaveFileName(this,
-                                                    tr("Save Model"), _modelfilename,
-                                                    tr("Genesys Model (*.gen)"), nullptr, QFileDialog::DontUseNativeDialog);
-    if (fileName.isEmpty())
-        return;
-    else {
-        _insertCommandInConsole("save " + fileName.toStdString());
-        QString finalFileName = fileName + ".gen";
-        QFile saveFile(finalFileName);
-
-        if (!saveFile.open(QIODevice::WriteOnly)) {
-            QMessageBox::information(this, tr("Unable to access file to save"),
-                                     saveFile.errorString());
-            return;
-        } else {
-            _saveTextModel(&saveFile, ui->TextCodeEditor->toPlainText());
-            saveFile.close();
-        }
-        _saveGraphicalModel(fileName + ".gui");
-        _modelfilename = fileName;
-        QMessageBox::information(this, "Save Model", "Model successfully saved");
-        // convert text info Model
-        _setSimulationModelBasedOnText();
-        //
-        _actualizeModelTextHasChanged(false);
-    }
-    _actualizeActions();
-    ui->graphicsView->getScene()->getUndoStack()->clear();
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    _modelLifecycleController->onActionModelSaveTriggered();
 }
 
 
 
 void MainWindow::on_actionModelClose_triggered()
 {
-    if (_textModelHasChanged || simulator->getModelManager()->current()->hasChanged()) {
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setWindowTitle("Close ModelSyS");
-        msgBox.setText("Model has changed. Do you want to save it?");
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::Yes);
-        int reply = msgBox.exec();
-
-        if (reply == QMessageBox::Yes) {
-            this->on_actionModelSave_triggered();
-        }
-    }
-    _insertCommandInConsole("close");
-
-    // quando a cena é fechada, limpo o grid associado a ela
-    ui->graphicsView->getScene()->grid()->clear();
-    // volto o botao de grid para "não clicado"
-    ui->actionShowGrid->setChecked(false);
-
-    // limpando tudo a que se refere à cena
-    ui->graphicsView->getScene()->getUndoStack()->clear();
-    ui->graphicsView->getScene()->clearAnimationsQueue();
-    ui->graphicsView->getScene()->getGraphicalModelComponents()->clear();
-    ui->graphicsView->getScene()->getGraphicalConnections()->clear();
-    ui->graphicsView->getScene()->getAllComponents()->clear();
-    ui->graphicsView->getScene()->getAllConnections()->clear();
-    ui->graphicsView->getScene()->clearAnimations();
-    ui->graphicsView->getScene()->clear();
-    ui->graphicsView->clear();
-
-    // limpando referencia do ultimo elemento selecionado em property editor
-    ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
-
-    // limpando tudo a que se refere ao modelo
-    simulator->getModelManager()->current()->getComponentManager()->getAllComponents()->clear();
-    simulator->getModelManager()->current()->getComponentManager()->clear();
-    ui->progressBarSimulation->setValue(0); // Seta o progresso da simulação para zero
-    simulator->getModelManager()->remove(simulator->getModelManager()->current());
-
-    ui->actionActivateGraphicalSimulation->setChecked(false);
-
-    _clearModelEditors();
-
-    _actualizeActions();
-    _actualizeTabPanes();
-    //QMessageBox::information(this, "Close Model", "Model successfully closed");
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    _modelLifecycleController->onActionModelCloseTriggered();
 }
 
 
 void MainWindow::on_actionModelInformation_triggered()
 {
-    DialogModelInformation* diag = new DialogModelInformation(this);
-    diag->show();
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    _modelLifecycleController->onActionModelInformationTriggered();
 }
 
 
 void MainWindow::on_actionModelCheck_triggered()
 {
-    _check();
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    _modelLifecycleController->onActionModelCheckTriggered();
 }
 
 void MainWindow::on_actionSimulatorExit_triggered()
 {
-    QMessageBox::StandardButton res;
-    if (this->_textModelHasChanged) {
-        res = QMessageBox::question(this, "Exit GenESyS", "Model has changed. Do you want to save it?", QMessageBox::Yes | QMessageBox::No);
-        if (res == QMessageBox::Yes) {
-            this->on_actionModelSave_triggered();
-            return;
-        }
-    }
-    res = QMessageBox::question(this, "Exit GenESyS", "Do you want to exit GenESyS?", QMessageBox::Yes | QMessageBox::No);
-    if (res == QMessageBox::Yes) {
-        std::exit(EXIT_SUCCESS);
-    } else {
-        // it does not quit, but the window is closed. Check it. @TODO
-    }
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    _modelLifecycleController->onActionSimulatorExitTriggered();
+}
+
+bool MainWindow::_hasPendingModelChanges() const {
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    return _modelLifecycleController->hasPendingModelChanges();
+}
+
+bool MainWindow::_confirmApplicationExit() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    return _modelLifecycleController->confirmApplicationExit();
 }
 
 
 void MainWindow::on_actionSimulationConfigure_triggered()
 {
-    DialogSimulationConfigure * dialog = new DialogSimulationConfigure(this);
-    dialog->setSimulator(simulator);
-    dialog->previousConfiguration();
-    dialog->show();
-
+    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
+    _modelLifecycleController->onActionSimulationConfigureTriggered();
 }
 
 
 void MainWindow::on_treeWidgetDataDefnitions_itemDoubleClicked(QTreeWidgetItem *item, int column)
 {
-
-    // Check if the column index is 2 (Name column)
-    if (column == 2) {
-
-        // Set the Qt::ItemIsEditable flag to enable editing for the specific item
-        // It's required to set the flag here because otherwise all the other fields could changed too.
-        item->setFlags(item->flags() | Qt::ItemIsEditable);
-
-        // Initiate the editing of the specified item in the specified column in the QTreeWidget
-        ui->treeWidgetDataDefnitions->editItem(item, column);
-
-        // Reset the Qt::ItemIsEditable flag to disable further editing after the edit operation
-        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-
-    }
+    // Keep this wrapper as part of the final compatibility façade from Phase 3 refactor.
+    _modelInspectorController->beginDataDefinitionNameEdit(item, column);
 }
 
 void MainWindow::on_treeWidgetDataDefnitions_itemChanged(QTreeWidgetItem *item, int column)
 {
-
-    // Check if the column index is 2 (Name column)
-    if (column == 2) {
-
-        // Get the changes
-        QString after = item->text(column);
-        Model * m = simulator->getModelManager()->current();
-
-        // Save in the model
-        for (std::string dataTypename : *m->getDataManager()->getDataDefinitionClassnames()) {
-            for (ModelDataDefinition* comp : *m->getDataManager()->getDataDefinitionList(dataTypename)->list()) {
-
-                QString id = QString::fromStdString(Util::StrIndex(comp->getId()));
-
-                if (id.contains(item->text(0)))
-                    comp->setName(after.toStdString());
-            }
-        }
-    }
-
+    // Keep this wrapper as part of the final compatibility façade from Phase 3 refactor.
+    _modelInspectorController->applyDataDefinitionNameChange(item, column);
 }
 
 
-void MainWindow::on_actionShowSnap_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    if (scene->getSnapToGrid()) {
-        scene->setSnapToGrid(false);
-    } else {
-        scene->setSnapToGrid(true);
+void MainWindow::on_actionShowSnap_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowSnapTriggered();
     }
 }
 
 void MainWindow::on_actionViewGroup_triggered()
 {
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->groupComponents(false);
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionViewGroupTriggered();
+    }
 }
 
 
 void MainWindow::on_actionViewUngroup_triggered()
 {
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->ungroupComponents();
-}
-
-void MainWindow::on_actionArranjeLeft_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(0);
-}
-
-
-void MainWindow::on_actionArranjeCenter_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(4);
-}
-
-
-void MainWindow::on_actionArranjeRight_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(1);
-}
-
-
-void MainWindow::on_actionArranjeTop_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(2);
-}
-
-
-void MainWindow::on_actionArranjeMiddle_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(5);
-}
-
-
-void MainWindow::on_actionArranjeBototm_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    scene->arranjeModels(3);
-}
-
-void MainWindow::on_actionGModelShowConnect_triggered()
-{
-    if (!ui->actionGModelShowConnect->isChecked() && !_firstClickShowConnection) {
-        ui->actionGModelShowConnect->setChecked(false);
-        ui->graphicsView->getScene()->setConnectingStep(0);
-        ui->graphicsView->setCursor(Qt::ArrowCursor);
-    } else {
-        ui->actionGModelShowConnect->setChecked(true);
-        ui->graphicsView->getScene()->setConnectingStep(1);
-        _firstClickShowConnection = false;
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
+    if (_editCommandController != nullptr) {
+        _editCommandController->onActionViewUngroupTriggered();
     }
 }
 
-void MainWindow::on_actionSimulatorsPluginManager_triggered()
-{
-    DialogPluginManager* dialog = new DialogPluginManager(this);
-    dialog->show();
+void MainWindow::on_actionArranjeLeft_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeLeftTriggered();
+    }
 }
+
+
+void MainWindow::on_actionArranjeCenter_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeCenterTriggered();
+    }
+}
+
+
+void MainWindow::on_actionArranjeRight_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeRightTriggered();
+    }
+}
+
+
+void MainWindow::on_actionArranjeTop_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeTopTriggered();
+    }
+}
+
+
+void MainWindow::on_actionArranjeMiddle_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeMiddleTriggered();
+    }
+}
+
+
+void MainWindow::on_actionArranjeBototm_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionArranjeBototmTriggered();
+    }
+}
+
+void MainWindow::on_actionGModelShowConnect_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionGModelShowConnectTriggered();
+    }
+}
+
+void MainWindow::on_actionSimulatorsPluginManager_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionSimulatorsPluginManagerTriggered();
+    }
+}
+
 
 //void MainWindow::on_actionteste_triggered()
 //{
@@ -1000,60 +668,44 @@ void MainWindow::on_actionSimulatorsPluginManager_triggered()
 //}
 
 
-void MainWindow::on_actionActivateGraphicalSimulation_triggered()
-{
-    bool visivible = true;
-
-    if (!ui->actionActivateGraphicalSimulation->isChecked()) {
-        AnimationTransition::setRunning(false);
-        visivible = false;
-    } else {
-        AnimationTransition::setRunning(true);
-    }
-
-    // Esconde ou exibe animação de fila
-    QList<QGraphicsItem *> *componentes = myScene()->getGraphicalModelComponents();
-
-    for (QGraphicsItem* item : *componentes) {
-        if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *>(item)) {
-            component->visivibleImageQueue(visivible);
-        }
+void MainWindow::on_actionActivateGraphicalSimulation_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionActivateGraphicalSimulationTriggered();
     }
 }
 
 
-void MainWindow::on_horizontalSliderAnimationSpeed_valueChanged(int value)
-{
-    double newValue = ((double) value) / 2;
-
-    AnimationTransition::setTimeExecution(newValue);
-}
-
-
-void MainWindow::on_actionDiagrams_triggered()
-{
-    ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
-    if (ui->actionDiagrams->isChecked()) {
-        if (scene->existDiagram()) scene->showDiagrams();
-    } else {
-        if (scene->existDiagram()) scene->hideDiagrams();
+void MainWindow::on_horizontalSliderAnimationSpeed_valueChanged(int value) {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onHorizontalSliderAnimationSpeedValueChanged(value);
     }
 }
 
 
-void MainWindow::on_actionSelectAll_triggered()
-{
-    QList<QGraphicsItem *> itensToScene = myScene()->items();
-
-    foreach (QGraphicsItem* item, itensToScene) {
-        item->setSelected(true);
+void MainWindow::on_actionDiagrams_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionDiagramsTriggered();
     }
 }
 
-void MainWindow::on_actionParallelization_triggered()
-{
-    _showMessageNotImplemented();
+
+void MainWindow::on_actionSelectAll_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionSelectAllTriggered();
+    }
 }
+
+void MainWindow::on_actionParallelization_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionParallelizationTriggered();
+    }
+}
+
 
 void MainWindow::on_horizontalSlider_ZoomGraphical_actionTriggered(int action)
 {
@@ -1071,11 +723,17 @@ void MainWindow::on_tabWidget_Model_tabBarClicked(int index) {
 }
 
 void MainWindow::on_checkBox_ShowElements_stateChanged(int arg1) {
-    bool result = _createModelImage();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowElementsStateChanged(arg1);
+    }
 }
 
 void MainWindow::on_checkBox_ShowInternals_stateChanged(int arg1) {
-    bool result = _createModelImage();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowInternalsStateChanged(arg1);
+    }
 }
 
 void MainWindow::on_horizontalSlider_Zoom_valueChanged(int value) {
@@ -1097,11 +755,17 @@ void MainWindow::on_horizontalSlider_Zoom_valueChanged(int value) {
 }
 
 void MainWindow::on_checkBox_ShowRecursive_stateChanged(int arg1) {
-    bool result = _createModelImage();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowRecursiveStateChanged(arg1);
+    }
 }
 
 void MainWindow::on_checkBox_ShowLevels_stateChanged(int arg1) {
-    bool result = _createModelImage();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowLevelsStateChanged(arg1);
+    }
 }
 
 void MainWindow::on_tabWidget_Debug_currentChanged(int index) {
@@ -1109,29 +773,20 @@ void MainWindow::on_tabWidget_Debug_currentChanged(int index) {
 }
 
 void MainWindow::on_pushButton_Breakpoint_Insert_clicked() {
-    //ModelSimulation* sim = simulator->getModels()->current()->getSimulation();
-    dialogBreakpoint* dialog = new dialogBreakpoint();
-    dialog->setMVCModel(simulator);
-    dialog->show();
-    dialog->raise();
-    dialog->activateWindow();
-    std::string type, on;
-    dialogBreakpoint::MVCResult* result = dialog->getMVCResult();
-    if (result->type == "Time") {
-
-    } else if (result->type == "Entity") {
-
-    } else if (result->type == "Component") {
-
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onPushButtonBreakpointInsertClicked();
     }
-
-    dialog->~dialogBreakpoint();
-    _actualizeDebugBreakpoints(true);
 }
+
 
 void MainWindow::on_pushButton_Breakpoint_Remove_clicked() {
-    ModelSimulation* sim = simulator->getModelManager()->current()->getSimulation();
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onPushButtonBreakpointRemoveClicked();
+    }
 }
+
 
 void MainWindow::on_tabWidgetCentral_currentChanged(int index) {
     _actualizeTabPanes();
@@ -1141,56 +796,49 @@ void MainWindow::on_tabWidgetCentral_tabBarClicked(int index) {
 }
 
 void MainWindow::on_treeWidget_Plugins_itemDoubleClicked(QTreeWidgetItem *item, int column) {
-    if (ui->TextCodeEditor->isEnabled()) { // add text to modelsimulation
-        /*
-        if (item->toolTip(0).contains("DataDefinition")) {
-            QTextCursor cursor = ui->TextCodeEditor->textCursor();
-            QTextCursor cursorSaved = cursor;
-            cursor.movePosition(QTextCursor::Start);
-            ui->TextCodeEditor->setTextCursor(cursor);
-            if (ui->TextCodeEditor->find("# Model Components")) {
-                ui->TextCodeEditor->moveCursor(QTextCursor::MoveOperation::Left, QTextCursor::MoveMode::MoveAnchor);
-                ui->TextCodeEditor->moveCursor(QTextCursor::MoveOperation::Up, QTextCursor::MoveMode::MoveAnchor);
-                ui->TextCodeEditor->insertPlainText(item->statusTip(0) + "\n");
-            } else {
-                ui->TextCodeEditor->appendPlainText(item->statusTip(0));
-            }
-        } else {
-            ui->TextCodeEditor->appendPlainText(item->statusTip(0));
-        }
-         */
-    } else {
-        // treeRoot? Always?
-        for (int i = 0; i < ui->treeWidget_Plugins->topLevelItemCount(); i++) {
-            //if (ui->treeWidget_Plugins->topLevelItem(i) != item) {
-            ui->treeWidget_Plugins->topLevelItem(i)->setExpanded(false);
-            //} else {
-            //	ui->treeWidget_Plugins->expandItem(item);
-            //	//ui->treeWidget_Plugins->topLevelItem(i)->setExpanded(true);
-            //}
-        }
-        //ui->treeWidget_Plugins->setAnimated(true);
-        ui->treeWidget_Plugins->expandItem(item);
-    }
+    // Keep this wrapper as part of the final compatibility façade from Phase 5 refactor.
+    _pluginCatalogController->handlePluginItemDoubleClicked(item, column);
 }
 
 void MainWindow::on_graphicsView_rubberBandChanged(const QRect &viewportRect, const QPointF &fromScenePoint, const QPointF &toScenePoint) {
-    _showMessageNotImplemented();
+    // Reports rubber-band geometry during drag and final selected-item count when selection is completed.
+    if (ui->graphicsView->scene() == nullptr) {
+        return;
+    }
+    if (viewportRect.isNull()) {
+        const int selectedCount = ui->graphicsView->scene()->selectedItems().size();
+        statusBar()->showMessage(tr("Selection completed: %1 item(s) selected").arg(selectedCount), 3000);
+        return;
+    }
+    const QRectF sceneRect = QRectF(fromScenePoint, toScenePoint).normalized();
+    statusBar()->showMessage(tr("Selection area: %1 x %2 | Scene origin: (%3, %4)")
+                             .arg(viewportRect.width())
+                             .arg(viewportRect.height())
+                             .arg(sceneRect.left(), 0, 'f', 1)
+                             .arg(sceneRect.top(), 0, 'f', 1));
 }
 
 void MainWindow::on_horizontalSlider_ZoomGraphical_valueChanged(int value) {
-    double factor = (value - _zoomValue)*0.002;
-    _zoomValue = value;
-    _gentle_zoom(1.0 + factor);
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onHorizontalSliderZoomGraphicalValueChanged(value);
+    }
 }
 
 void MainWindow::on_actionConnect_triggered() {
-    ((ModelGraphicsView*) ui->graphicsView)->beginConnection();
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionConnectTriggered();
+    }
 }
 
 void MainWindow::on_pushButton_Export_clicked() {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onPushButtonExportClicked();
+    }
 }
+
 
 void MainWindow::on_tabWidgetModelLanguages_currentChanged(int index) {
     if (index == CONST.TabModelSimLangIndex) {
@@ -1203,7 +851,7 @@ void MainWindow::on_tabWidgetModelLanguages_currentChanged(int index) {
     _actualizeActions();
 }
 
-void MainWindow::on_actionComponent_Breakpoint_triggered() {
+void MainWindow::on_actionGModelComponentBreakpoint_triggered() {
     if (ui->graphicsView->selectedItems().size() == 1) {
         QGraphicsItem* gi = ui->graphicsView->selectedItems().at(0);
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*> (gi);
@@ -1220,12 +868,28 @@ void MainWindow::on_actionComponent_Breakpoint_triggered() {
     }
 }
 
+void MainWindow::on_actionShowInternalElements_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowInternalElementsTriggered();
+    }
+}
+
+void MainWindow::on_actionShowAttachedElements_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowAttachedElementsTriggered();
+    }
+}
+
 void MainWindow::on_treeWidgetComponents_itemSelectionChanged() {
-    _showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 3 refactor.
+    _modelInspectorController->syncSelectedComponentTreeItemToScene();
 }
 
 void MainWindow::on_treeWidget_Plugins_itemClicked(QTreeWidgetItem *item, int column) {
-    //showMessageNotImplemented();
+    // Keep this wrapper as part of the final compatibility façade from Phase 5 refactor.
+    _pluginCatalogController->handlePluginItemClicked(item, column);
 }
 
 void MainWindow::on_TextCodeEditor_textChanged() {

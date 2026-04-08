@@ -41,6 +41,7 @@ CollectorClearHandler setCollectorClearHandler(void (Class::*function)(), Class 
  */
 class Collector_if {
 public:
+	virtual ~Collector_if() = default;
 	/*!
 	 * \brief clear
 	 */
@@ -81,4 +82,3 @@ public:
 };
 
 #endif /* COLLECTOR_IF_H */
-

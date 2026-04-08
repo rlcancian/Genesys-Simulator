@@ -46,11 +46,15 @@ Seize::Seize(Model* model, std::string name) : ModelComponent(model, Util::TypeO
     SimulationControlGenericClassNotDC<QueueableItem*, Model*, QueueableItem>* propQueueableItem = new SimulationControlGenericClassNotDC<QueueableItem*, Model*, QueueableItem>(
                                     _parentModel,
                                     std::bind(&Seize::getQueueableItem, this), std::bind(&Seize::setQueueableItem, this, std::placeholders::_1),
-                                    Util::TypeOf<Seize>(), getName(), "QueueableItem", "");
+                                    Util::TypeOf<Seize>(), getName(), "QueueableItem", "", false, true, false,
+                                    [](Model* model) { return new QueueableItem(model, ""); });
+    // This block enables explicit typed creation for request list elements while preserving existing list semantics.
     SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem>* propRequests = new SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem> (
 									_parentModel,
 									std::bind(&Seize::getSeizeRequests, this), std::bind(&Seize::addRequest, this, std::placeholders::_1), std::bind(&Seize::removeRequest, this, std::placeholders::_1),
-									Util::TypeOf<Seize>(), getName(), "Requests", "");
+									Util::TypeOf<Seize>(), getName(), "Requests", "", true, true, false,
+                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); },
+                                    [](Model* model) { return new SeizableItem(model, "", "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });
 
     _parentModel->getControls()->insert(propAlloc);
 	_parentModel->getControls()->insert(propPriority);
@@ -433,6 +437,7 @@ Resource* Seize::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* en
 				trace("Member index " + std::to_string(index) + " was specifically choosen", TraceManager::Level::L9_mostDetailed);
 				break;
 			case SeizableItem::SelectionRule::PREFEREDORDER:
+			{
 				bestValue = 0;
 				index = 0;
 				unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
@@ -475,6 +480,10 @@ Resource* Seize::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* en
 					}
 					index = bestIndex;
 				}
+				break;
+			}
+			case SeizableItem::SelectionRule::num_elements:
+				traceError("Invalid SelectionRule enum value: num_elements");
 				break;
 		}
 		trace("Member of set " + set->getName() + " chosen index " + std::to_string(index), TraceManager::Level::L8_detailed);

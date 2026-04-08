@@ -45,17 +45,21 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 	SimulationControlGenericClassNotDC<QueueableItem*, Model*, QueueableItem>* propQueueableItem = new SimulationControlGenericClassNotDC<QueueableItem*, Model*, QueueableItem>(
 									_parentModel,
 									std::bind(&Process::getQueueableItem, this), std::bind(&Process::setQueueableItem, this, std::placeholders::_1),
-									Util::TypeOf<Process>(), getName(), "QueueableItem", "");
+									Util::TypeOf<Process>(), getName(), "QueueableItem", "", false, true, false,
+									[](Model* model) { return new QueueableItem(model, ""); });
 	// SimulationControlGeneric<std::string>* propdelayExpression = new SimulationControlGeneric<std::string>(
 	// 								std::bind(&Process::delayExpression, this), std::bind(&Process::setDelayExpression, this, std::placeholders::_1),
 	// 								Util::TypeOf<Process>(), getName(), "DelayExpression", "");
     SimulationControlGenericEnum<Util::TimeUnit, Util>* propdelayTimeUnit = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
 									std::bind(&Process::delayTimeUnit, this), std::bind(&Process::setDelayTimeUnit, this, std::placeholders::_1),
 									Util::TypeOf<Process>(), getName(), "DelayTimeUnit", "");	
+	// This block enables explicit typed creation for Process seize-request list elements.
 	SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem>* propSeizeRequests = new SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem> (
 									_parentModel,
                                     std::bind(&Process::getSeizeRequests, this), std::bind(&Process::addSeizeRequest, this, std::placeholders::_1), std::bind(&Process::removeSeizeRequest, this, std::placeholders::_1),
-									Util::TypeOf<Process>(), getName(), "SeizeRequests", "");					
+									Util::TypeOf<Process>(), getName(), "SeizeRequests", "", true, true, false,
+                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); },
+                                    [](Model* model) { return new SeizableItem(model, "", "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });					
 
 	_parentModel->getControls()->insert(propPriority);
 	_parentModel->getControls()->insert(propPriorityExpression);

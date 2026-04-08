@@ -91,6 +91,14 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.isList = control->getIsList();
     desc.isClass = control->getIsClass();
     desc.isEnum = control->getIsEnum();
+    // This block maps the explicit kernel contract flags into GUI-facing descriptor metadata.
+    desc.supportsInlineExpansion = control->supportsInlineExpansion();
+    desc.supportsListEditor = control->supportsListEditor();
+    desc.supportsExistingObjectSelection = control->supportsExistingObjectSelection();
+    desc.supportsObjectCreation = control->supportsObjectCreation();
+    desc.supportsNewListElementCreation = control->supportsNewListElementCreation();
+    desc.isInlineObject = control->isInlineObjectProperty();
+    desc.isModelDataDefinitionReference = control->isModelDataDefinitionReference();
     desc.currentValue = control->getValue();
 
     desc.choices = _copyStringList(control->getStrValues());

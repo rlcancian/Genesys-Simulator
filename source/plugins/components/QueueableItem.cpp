@@ -35,11 +35,15 @@ QueueableItem::QueueableItem(ModelDataDefinition* queueOrSet, QueueableItem::Que
 
 QueueableItem::QueueableItem(Model* model, std::string queueName = "") {
 	_queueableType = QueueableItem::QueueableType::QUEUE;
-	ModelDataDefinition* data = model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queueName);
-	if (data != nullptr) {
-		_queueOrSet = dynamic_cast<Queue*> (data);
+	if (!queueName.empty()) {
+		ModelDataDefinition* data = model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), queueName);
+		if (data != nullptr) {
+			_queueOrSet = dynamic_cast<Queue*> (data);
+		} else {
+			_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, queueName);
+		}
 	} else {
-		_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, queueName);
+		_queueOrSet = nullptr;
 	}
 	_index = "0";
     _queueableName = queueName;
@@ -82,11 +86,15 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 			if (_queueableType == QueueableItem::QueueableType::QUEUE) {
 				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Queue>(), _queueableName);
 			} else if (_queueableType == QueueableItem::QueueableType::SET) {
-				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Queue>(), _queueableName);
+				_queueOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _queueableName);
 			}
 			if (_queueOrSet == nullptr) {
 				auto model = _modeldataManager->getParentModel();
-				_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, _queueableName);
+				if (_queueableType == QueueableItem::QueueableType::SET) {
+					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Set>(model, _queueableName);
+				} else {
+					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, _queueableName);
+				}
 			}
 		}
 		assert(_queueOrSet != nullptr);
@@ -98,12 +106,12 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 
 void QueueableItem::saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	fields->saveField("queueableType", static_cast<int> (_queueableType), static_cast<int> (DEFAULT.queueableType), saveDefaultValues);
-	fields->saveField("queueable", _queueOrSet->getName());
+	fields->saveField("queueable", _queueOrSet != nullptr ? _queueOrSet->getName() : "");
 	fields->saveField("index", _index, DEFAULT.index, saveDefaultValues);
 }
 
 std::string QueueableItem::show() {
-	return "queueType=" + std::to_string(static_cast<int> (_queueableType)) + ",queue=\"" + _queueOrSet->getName() + "\",index=\"" + _index + "\"";
+	return "queueType=" + std::to_string(static_cast<int> (_queueableType)) + ",queue=\"" + (_queueOrSet != nullptr ? _queueOrSet->getName() : "") + "\",index=\"" + _index + "\"";
 }
 
 void QueueableItem::_addProperty(PropertyBase* property) {
@@ -127,29 +135,36 @@ std::string QueueableItem::getQueueableName() const {
 }
 
 std::string QueueableItem::getName() const {
-    return _queueableName;
+    return _queueableName.empty() ? "<none>" : _queueableName;
 }
 
 void QueueableItem::setQueue(Queue* queue) {
 	this->_queueOrSet = queue;
-	_queueableName = queue->getName();
+	_queueableType = QueueableType::QUEUE;
+	_queueableName = queue != nullptr ? queue->getName() : "";
 }
 
 Queue* QueueableItem::getQueue() const {
-	return static_cast<Queue*> (_queueOrSet);
+	return dynamic_cast<Queue*> (_queueOrSet);
 }
 
 void QueueableItem::setSet(Set* set) {
 	this->_queueOrSet = set;
-	_queueableName = set->getName();
+	_queueableType = QueueableType::SET;
+	_queueableName = set != nullptr ? set->getName() : "";
 }
 
 Set* QueueableItem::getSet() const {
-	return static_cast<Set*> (_queueOrSet);
+	return dynamic_cast<Set*> (_queueOrSet);
 }
 
 void QueueableItem::setQueueableType(QueueableItem::QueueableType queueableType) {
 	this->_queueableType = queueableType;
+	if ((_queueableType == QueueableType::QUEUE && dynamic_cast<Queue*>(_queueOrSet) == nullptr)
+		|| (_queueableType == QueueableType::SET && dynamic_cast<Set*>(_queueOrSet) == nullptr)) {
+		_queueOrSet = nullptr;
+		_queueableName = "";
+	}
 }
 
 QueueableItem::QueueableType QueueableItem::getQueueableType() const {

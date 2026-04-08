@@ -240,6 +240,31 @@ SOURCES += \
     ../../../terminal/examples/teaching/Rectifier.cpp \
     codeeditor/CodeEditor.cpp \
     controllers/SimulationController.cpp \
+    # Phase-3 GUI refactor controller for model-inspector responsibilities.
+    controllers/ModelInspectorController.cpp \
+    # Phase-4 GUI refactor controllers for trace and simulation-event responsibilities.
+    controllers/TraceConsoleController.cpp \
+    controllers/SimulationEventController.cpp \
+    # Phase-5 GUI refactor controller for plugin-catalog responsibilities.
+    controllers/PluginCatalogController.cpp \
+    # Phase-6 GUI refactor controller for property-editor responsibilities.
+    controllers/PropertyEditorController.cpp \
+    # Phase-7 GUI refactor controller for model/application lifecycle responsibilities.
+    controllers/ModelLifecycleController.cpp \
+    # Phase-8 GUI refactor controller for simulation-command responsibilities.
+    controllers/SimulationCommandController.cpp \
+    # Phase-9 GUI refactor controller for edit-command responsibilities.
+    controllers/EditCommandController.cpp \
+    # Phase-10 GUI refactor controller for scene/view/drawing responsibilities.
+    controllers/SceneToolController.cpp \
+    # Phase-11 GUI refactor controller for dialog/utility responsibilities.
+    controllers/DialogUtilityController.cpp \
+    # Phase-1 GUI refactor services for model representations.
+    services/ModelLanguageSynchronizer.cpp \
+    services/GraphvizModelExporter.cpp \
+    services/CppModelExporter.cpp \
+    services/GraphicalModelSerializer.cpp \
+    services/GraphicalModelBuilder.cpp \
     mainwindow_controller.cpp \
     mainwindow_modelrepresentations.cpp \
     mainwindow_scene.cpp \
@@ -550,6 +575,31 @@ HEADERS += \
     TraitsGUI.h \
     UtilGUI.h \
     controllers/SimulationController.h \
+    # Phase-3 GUI refactor controller header for model-inspector responsibilities.
+    controllers/ModelInspectorController.h \
+    # Phase-4 GUI refactor controller headers for trace and simulation-event responsibilities.
+    controllers/TraceConsoleController.h \
+    controllers/SimulationEventController.h \
+    # Phase-5 GUI refactor controller header for plugin-catalog responsibilities.
+    controllers/PluginCatalogController.h \
+    # Phase-6 GUI refactor controller header for property-editor responsibilities.
+    controllers/PropertyEditorController.h \
+    # Phase-7 GUI refactor controller header for model/application lifecycle responsibilities.
+    controllers/ModelLifecycleController.h \
+    # Phase-8 GUI refactor controller header for simulation-command responsibilities.
+    controllers/SimulationCommandController.h \
+    # Phase-9 GUI refactor controller header for edit-command responsibilities.
+    controllers/EditCommandController.h \
+    # Phase-10 GUI refactor controller header for scene/view/drawing responsibilities.
+    controllers/SceneToolController.h \
+    # Phase-11 GUI refactor controller header for dialog/utility responsibilities.
+    controllers/DialogUtilityController.h \
+    # Phase-1 GUI refactor service headers.
+    services/ModelLanguageSynchronizer.h \
+    services/GraphvizModelExporter.h \
+    services/CppModelExporter.h \
+    services/GraphicalModelSerializer.h \
+    services/GraphicalModelBuilder.h \
     actions/AddUndoCommand.h \
     actions/DeleteUndoCommand.h \
     actions/GroupUndoCommand.h \
@@ -683,4 +733,3 @@ DISTFILES += \
 RESOURCES += \
     GenesysQtGUI_resources.qrc \
     propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
-

@@ -27,6 +27,7 @@
  */
 class ExperimentManager_if {
 public:
+	virtual ~ExperimentManager_if() = default;
 	/*! \brief Returns the list of scenarios that compose the experiment. */
 	virtual List<SimulationScenario*>* getScenarios() const = 0;
 	//virtual List<PropertyBase*>* getControls() const = 0;
@@ -44,4 +45,3 @@ public:
 };
 
 #endif /* EXPERIMENTMANAGER_IF_H */
-

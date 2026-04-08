@@ -148,6 +148,10 @@ public:
     };
     GRID *grid();
     void showGrid();
+    // Aplica o estado visual do grid de forma determinística sem alternância implícita.
+    void setGridVisible(bool visible);
+    // Informa o estado visual atual do grid para sincronização com QAction.
+    bool isGridVisible() const;
     void snapItemsToGrid();
     void actualizeDiagramArrows();
     void showDiagrams();
@@ -310,4 +314,3 @@ private:
 };
 
 #endif /* MODELGRAPHICSSCENE_H */
-
