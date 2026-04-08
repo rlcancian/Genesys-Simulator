@@ -73,6 +73,8 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
     _graphicalObject = nullptr;
     _modelObject = nullptr;
     _propertyEditor = nullptr;
+    _isRebuildingProperties = false;
+    _isNotifyingModelChange = false;
     _pendingRebuild = false;
     _isDeferredRebuildScheduled = false;
     _isDeferredModelChangedScheduled = false;
@@ -126,13 +128,18 @@ void ObjectPropertyBrowser::_rebuildPropertiesGuarded() {
 }
 
 void ObjectPropertyBrowser::_scheduleDeferredRebuild() {
-    if (_isDeferredRebuildScheduled) {
+    qInfo() << "[PropertyEditor] schedule deferred rebuild request. alreadyScheduled=" << _isDeferredRebuildScheduled
+            << " rebuilding=" << _isRebuildingProperties << " notifying=" << _isNotifyingModelChange;
+    if (_isRebuildingProperties || _isNotifyingModelChange) {
         _pendingRebuild = true;
+    }
+    if (_isDeferredRebuildScheduled) {
         return;
     }
 
     _isDeferredRebuildScheduled = true;
     QMetaObject::invokeMethod(this, [this]() {
+        qInfo() << "[PropertyEditor] executing deferred rebuild";
         _isDeferredRebuildScheduled = false;
         if (!_hasValidActiveBindingContext()) {
             qWarning() << "[PropertyEditor] Deferred rebuild canceled due to invalid binding context";
@@ -143,12 +150,15 @@ void ObjectPropertyBrowser::_scheduleDeferredRebuild() {
 }
 
 void ObjectPropertyBrowser::_scheduleDeferredModelChangedCallback() {
+    qInfo() << "[PropertyEditor] schedule deferred model-changed callback. alreadyScheduled="
+            << _isDeferredModelChangedScheduled;
     if (_isDeferredModelChangedScheduled) {
         return;
     }
 
     _isDeferredModelChangedScheduled = true;
     QMetaObject::invokeMethod(this, [this]() {
+        qInfo() << "[PropertyEditor] executing deferred model-changed callback";
         _isDeferredModelChangedScheduled = false;
         if (!_hasValidActiveBindingContext()) {
             qWarning() << "[PropertyEditor] Deferred model-changed callback canceled due to invalid binding context";
@@ -452,6 +462,11 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
 }
 
 bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] openSpecializedEditor aborted due to invalid binding context";
+        return false;
+    }
+
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
         return false;
@@ -489,6 +504,10 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
 bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
     QtBrowserItem* item = currentItem();
     if (item == nullptr || item->property() == nullptr) {
+        return false;
+    }
+    if (!_hasValidActiveBindingContext(item->property())) {
+        qWarning() << "[PropertyEditor] openSpecializedEditorForCurrentItem aborted due to invalid binding context";
         return false;
     }
     return _openSpecializedEditor(item->property());
@@ -688,6 +707,10 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     }
 
     const Binding binding = it.value();
+    if (binding.control == nullptr) {
+        QtTreePropertyBrowser::contextMenuEvent(event);
+        return;
+    }
     QMenu menu(this);
     QAction* editAction = nullptr;
     QAction* createAction = nullptr;
@@ -712,5 +735,7 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
 
 void ObjectPropertyBrowser::mouseDoubleClickEvent(QMouseEvent* event) {
     QtTreePropertyBrowser::mouseDoubleClickEvent(event);
-    _openSpecializedEditorForCurrentItem();
+    if (!_isRebuildingProperties) {
+        _openSpecializedEditorForCurrentItem();
+    }
 }

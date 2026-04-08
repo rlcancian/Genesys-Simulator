@@ -1,6 +1,6 @@
 #include "SceneToolController.h"
 
-#include "../ui_mainwindow.h"
+#include "ui_mainwindow.h"
 #include "../TraitsGUI.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"

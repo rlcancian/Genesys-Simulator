@@ -60,6 +60,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
         QGraphicsItem* item = selectedItems.at(0);
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(item);
         if (gmc != nullptr) {
+            qInfo() << "[PropertyEditorController] sceneSelectionChanged binding single GraphicalModelComponent";
             _propertyBrowser->setActiveObject(
                 gmc,
                 gmc->getComponent(),
@@ -72,6 +73,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
     }
 
     // Clear bindings when none or multiple scene items are selected.
+    qInfo() << "[PropertyEditorController] sceneSelectionChanged clearing context for non-single or non-component selection";
     clearPropertyEditorSelection();
     if (_actualizeActions) {
         _actualizeActions();

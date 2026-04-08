@@ -7,6 +7,8 @@
 #include <QHeaderView>
 #include <QLabel>
 #include <QDebug>
+#include <QMetaObject>
+#include <Qt>
 
 #include "DataComponentEditor.h"
 #include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
@@ -59,7 +61,10 @@ DataComponentProperty::DataComponentProperty(
 
 void DataComponentProperty::_notifyChanged() {
     if (_afterChange) {
-        _afterChange();
+        qInfo() << "[DataComponentProperty] scheduling deferred afterChange callback";
+        QMetaObject::invokeMethod(_window, [callback = _afterChange]() {
+            callback();
+        }, Qt::QueuedConnection);
     }
 }
 
