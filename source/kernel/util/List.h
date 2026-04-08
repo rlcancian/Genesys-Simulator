@@ -37,8 +37,9 @@ public:
 	/*! \brief Creates an empty list and positions the internal iterator at the beginning. */
 	List();
 	/*! \brief Creates a copy of the source list. */
-	List(List<T> &origin);
-	virtual ~List() = default;
+	List(const List<T>& origin);
+	List<T>& operator=(const List<T>& origin);
+	virtual ~List();
 public: // direct access to list
 	/*! \brief Returns the number of stored elements. */
 	unsigned int size();
@@ -104,9 +105,25 @@ List<T>::List() {
 }
 
 template <typename T>
-List<T>::List(List<T> &origin) {
-	_list = new std::list<T>(origin);
-	_it = _list->begin(); // todo: check. end()? 2210
+List<T>::List(const List<T>& origin) {
+	_list = new std::list<T>(*origin._list);
+	_sortFunc = origin._sortFunc;
+	_it = _list->begin();
+}
+
+template <typename T>
+List<T>& List<T>::operator=(const List<T>& origin) {
+	if (this != &origin) {
+		*_list = *origin._list;
+		_sortFunc = origin._sortFunc;
+		_it = _list->begin();
+	}
+	return *this;
+}
+
+template <typename T>
+List<T>::~List() {
+	delete _list;
 }
 
 template <typename T>
