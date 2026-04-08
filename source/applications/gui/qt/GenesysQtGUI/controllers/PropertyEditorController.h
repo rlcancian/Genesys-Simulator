@@ -36,6 +36,8 @@ public:
     void onPropertyEditorModelChanged() const;
     // Clear property editor selection and bindings defensively.
     void clearPropertyEditorSelection() const;
+    // Report whether post-commit stabilization/refresh is still running or queued.
+    bool isPostCommitPipelineActive() const;
 
 private:
     // Keep direct access to the property browser used by this controller.
@@ -56,6 +58,15 @@ private:
     std::function<bool()> _createModelImage;
     std::function<void()> _actualizeTabPanes;
     std::function<void()> _actualizeActions;
+
+    // Coalesce and serialize heavy refresh requests after property commits.
+    mutable bool _isGlobalRefreshQueued = false;
+    mutable bool _isGlobalRefreshRunning = false;
+    mutable bool _pendingGlobalRefresh = false;
+    // Coalesce deferred selection synchronization while commit/refresh is active.
+    mutable bool _isDeferredSelectionSyncScheduled = false;
+
+    void _runGlobalRefresh() const;
 };
 
 #endif // PROPERTYEDITORCONTROLLER_H

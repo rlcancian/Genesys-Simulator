@@ -463,6 +463,8 @@ void MainWindow::_onPropertyEditorModelChanged() {
             if (_propertyEditorController == nullptr) {
                 return;
             }
+            qInfo() << "[MainWindow] property-editor pipeline active before controller callback="
+                    << _propertyEditorController->isPostCommitPipelineActive();
             qInfo() << "[MainWindow] executing deferred property-editor model-changed handling";
             _propertyEditorController->onPropertyEditorModelChanged();
         }, Qt::QueuedConnection);

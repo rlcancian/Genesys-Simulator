@@ -46,6 +46,7 @@ public:
 
     void clearCurrentlyConnectedObject();
     void setModelChangedCallback(ModelChangedCallback callback);
+    bool isCommitPipelineBusy() const;
 
 private:
     struct Binding {
@@ -124,6 +125,7 @@ private:
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
     QSet<QtProperty*> _pendingCommittedProperties;
+    QMap<QtProperty*, QVariant> _pendingCommittedValues;
     ModelChangedCallback _modelChangedCallback;
 
 private:

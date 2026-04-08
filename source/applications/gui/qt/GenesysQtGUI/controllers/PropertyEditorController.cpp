@@ -7,6 +7,8 @@
 
 #include <QGraphicsItem>
 #include <QDebug>
+#include <QTimer>
+#include <QPointer>
 
 // Build the Phase 6 controller with narrow dependencies for property-editor orchestration.
 PropertyEditorController::PropertyEditorController(
@@ -48,9 +50,26 @@ void PropertyEditorController::clearPropertyEditorSelection() const {
     _propertyBrowser->clearCurrentlyConnectedObject();
 }
 
+bool PropertyEditorController::isPostCommitPipelineActive() const {
+    const bool propertyEditorBusy = (_propertyBrowser != nullptr) && _propertyBrowser->isCommitPipelineBusy();
+    return propertyEditorBusy || _isGlobalRefreshQueued || _isGlobalRefreshRunning || _pendingGlobalRefresh;
+}
+
 // Preserve legacy single-selection behavior while moving orchestration out of MainWindow.
 void PropertyEditorController::sceneSelectionChanged() const {
     if (_graphicsView == nullptr || _propertyBrowser == nullptr) {
+        return;
+    }
+
+    if (isPostCommitPipelineActive()) {
+        qInfo() << "[PropertyEditorController] sceneSelectionChanged deferred because post-commit pipeline is active";
+        if (!_isDeferredSelectionSyncScheduled) {
+            _isDeferredSelectionSyncScheduled = true;
+            QTimer::singleShot(0, [this]() {
+                _isDeferredSelectionSyncScheduled = false;
+                this->sceneSelectionChanged();
+            });
+        }
         return;
     }
 
@@ -82,44 +101,88 @@ void PropertyEditorController::sceneSelectionChanged() const {
 
 // Preserve the existing post-edit cascade while preventing stale scene pointer reuse.
 void PropertyEditorController::onPropertyEditorModelChanged() const {
-    qInfo() << "[PropertyEditorController] onPropertyEditorModelChanged enter";
-    if (_actualizeModelSimLanguage) {
-        _actualizeModelSimLanguage();
-    }
-    if (_actualizeModelComponents) {
-        _actualizeModelComponents(true);
-    }
-    if (_actualizeModelDataDefinitions) {
-        _actualizeModelDataDefinitions(true);
-    }
-    if (_actualizeModelCppCode) {
-        _actualizeModelCppCode();
-    }
-    if (_createModelImage) {
-        _createModelImage();
-    }
-    if (_actualizeTabPanes) {
-        _actualizeTabPanes();
-    }
-
-    ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;
-    if (scene == nullptr) {
-        qWarning() << "Skipping property-editor scene refresh because scene is null";
+    qInfo() << "[PropertyEditorController] onPropertyEditorModelChanged request. queued=" << _isGlobalRefreshQueued
+            << " running=" << _isGlobalRefreshRunning << " pending=" << _pendingGlobalRefresh;
+    _pendingGlobalRefresh = true;
+    if (_isGlobalRefreshRunning || _isGlobalRefreshQueued) {
         return;
     }
 
-    scene->actualizeDiagramArrows();
-    scene->update();
+    _isGlobalRefreshQueued = true;
+    QTimer::singleShot(0, [this]() {
+        _isGlobalRefreshQueued = false;
+        _runGlobalRefresh();
+    });
+}
 
-    if (scene->existDiagram()) {
-        const bool wasVisible = scene->visibleDiagram();
-        scene->destroyDiagram();
-        scene->createDiagrams();
-        if (wasVisible) {
-            scene->showDiagrams();
-        } else {
-            scene->hideDiagrams();
-        }
+void PropertyEditorController::_runGlobalRefresh() const {
+    if (_isGlobalRefreshRunning) {
+        _pendingGlobalRefresh = true;
+        qInfo() << "[PropertyEditorController] _runGlobalRefresh skipped because refresh is already running";
+        return;
     }
-    qInfo() << "[PropertyEditorController] onPropertyEditorModelChanged exit";
+
+    if (_propertyBrowser != nullptr && _propertyBrowser->isCommitPipelineBusy()) {
+        qInfo() << "[PropertyEditorController] _runGlobalRefresh deferred because property editor is still stabilizing";
+        if (!_isGlobalRefreshQueued) {
+            _isGlobalRefreshQueued = true;
+            QTimer::singleShot(0, [this]() {
+                _isGlobalRefreshQueued = false;
+                _runGlobalRefresh();
+            });
+        }
+        return;
+    }
+
+    _isGlobalRefreshRunning = true;
+    do {
+        _pendingGlobalRefresh = false;
+        qInfo() << "[PropertyEditorController] _runGlobalRefresh enter";
+
+        if (_actualizeModelSimLanguage) {
+            _actualizeModelSimLanguage();
+        }
+        if (_actualizeModelComponents) {
+            _actualizeModelComponents(true);
+        }
+        if (_actualizeModelDataDefinitions) {
+            _actualizeModelDataDefinitions(true);
+        }
+        if (_actualizeModelCppCode) {
+            _actualizeModelCppCode();
+        }
+        if (_createModelImage) {
+            _createModelImage();
+        }
+        if (_actualizeTabPanes) {
+            _actualizeTabPanes();
+        }
+
+        ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;
+        if (scene == nullptr) {
+            qWarning() << "[PropertyEditorController] Skipping scene refresh because scene is null";
+        } else {
+            scene->actualizeDiagramArrows();
+            scene->update();
+
+            if (scene->existDiagram()) {
+                const bool wasVisible = scene->visibleDiagram();
+                QPointer<ModelGraphicsScene> guardedScene(scene);
+                QTimer::singleShot(0, [guardedScene, wasVisible]() {
+                    if (guardedScene.isNull()) {
+                        return;
+                    }
+                    guardedScene->destroyDiagram();
+                    guardedScene->createDiagrams();
+                    if (wasVisible) {
+                        guardedScene->showDiagrams();
+                    } else {
+                        guardedScene->hideDiagrams();
+                    }
+                });
+            }
+        }
+        qInfo() << "[PropertyEditorController] _runGlobalRefresh exit";
+    } while (_pendingGlobalRefresh);
+    _isGlobalRefreshRunning = false;
 }
