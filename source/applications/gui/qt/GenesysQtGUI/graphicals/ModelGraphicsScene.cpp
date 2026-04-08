@@ -720,7 +720,7 @@ bool ModelGraphicsScene::connectDestination(GraphicalConnection* connection, Gra
         }
 
         // diz que o componente de destino tem mais uma porta de saida ocupada
-        dst->setOcupiedInputPorts(dst->getOcupiedOutputPorts() + 1);
+        dst->setOcupiedInputPorts(dst->getOcupiedInputPorts() + 1);
 
         return true;
     }
@@ -840,7 +840,7 @@ void ModelGraphicsScene::addDrawing(QGraphicsItem * item, bool notify) {
     isAnimation = addDrawingAnimation(item);
 
     if (!isAnimation)
-        isGeometry = removeDrawingGeometry(item);
+        isGeometry = addDrawingGeometry(item);
 
     if (isAnimation || isGeometry) {
         addItem(item);
@@ -1798,13 +1798,26 @@ void ModelGraphicsScene::arranjeModels(int direction) {
 //-------------------------
 
 bool ModelGraphicsScene::checkIgnoreEvent() {
-    if (_simulator->getModelManager()->current()->getSimulation()) {
-        if (_simulator->getModelManager()->current()->getSimulation()->isRunning()) {
-            return true;
-        } else {
-            return false;
-        }
+    if (_simulator == nullptr) {
+        return false;
     }
+
+    auto* modelManager = _simulator->getModelManager();
+    if (modelManager == nullptr) {
+        return false;
+    }
+
+    auto* currentModel = modelManager->current();
+    if (currentModel == nullptr) {
+        return false;
+    }
+
+    auto* simulation = currentModel->getSimulation();
+    if (simulation == nullptr) {
+        return false;
+    }
+
+    return simulation->isRunning();
 }
 void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent *mouseEvent) {
     if (checkIgnoreEvent()) {
