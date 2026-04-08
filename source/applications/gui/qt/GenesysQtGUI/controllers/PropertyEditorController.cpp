@@ -44,8 +44,8 @@ void PropertyEditorController::clearPropertyEditorSelection() const {
         return;
     }
 
+    qInfo() << "[PropertyEditorController] Clearing property editor selection and context";
     _propertyBrowser->clearCurrentlyConnectedObject();
-    _propertyBrowser->clear();
 }
 
 // Preserve legacy single-selection behavior while moving orchestration out of MainWindow.
@@ -55,6 +55,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
     }
 
     const QList<QGraphicsItem*> selectedItems = _graphicsView->selectedItems();
+    qInfo() << "[PropertyEditorController] sceneSelectionChanged selectedItems=" << selectedItems.size();
     if (selectedItems.size() == 1) {
         QGraphicsItem* item = selectedItems.at(0);
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(item);
@@ -79,6 +80,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
 
 // Preserve the existing post-edit cascade while preventing stale scene pointer reuse.
 void PropertyEditorController::onPropertyEditorModelChanged() const {
+    qInfo() << "[PropertyEditorController] onPropertyEditorModelChanged enter";
     if (_actualizeModelSimLanguage) {
         _actualizeModelSimLanguage();
     }
@@ -117,4 +119,5 @@ void PropertyEditorController::onPropertyEditorModelChanged() const {
             scene->hideDiagrams();
         }
     }
+    qInfo() << "[PropertyEditorController] onPropertyEditorModelChanged exit";
 }

@@ -453,10 +453,17 @@ ModelGraphicsScene* MainWindow::myScene() const {
 }
 
 void MainWindow::_onPropertyEditorModelChanged() {
+    qInfo() << "[MainWindow] _onPropertyEditorModelChanged enter";
     // Keep this wrapper for compatibility during the incremental Phase 6 refactor.
     if (_propertyEditorController != nullptr) {
-        _propertyEditorController->onPropertyEditorModelChanged();
+        QMetaObject::invokeMethod(this, [this]() {
+            if (_propertyEditorController == nullptr) {
+                return;
+            }
+            _propertyEditorController->onPropertyEditorModelChanged();
+        }, Qt::QueuedConnection);
     }
+    qInfo() << "[MainWindow] _onPropertyEditorModelChanged exit";
 }
 
 
