@@ -11,6 +11,7 @@
 #include <QVariant>
 #include <QMenu>
 #include <QDebug>
+#include <QMetaObject>
 
 ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
     : QtTreePropertyBrowser(parent) {
@@ -73,6 +74,8 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
     _modelObject = nullptr;
     _propertyEditor = nullptr;
     _pendingRebuild = false;
+    _isDeferredRebuildScheduled = false;
+    _isDeferredModelChangedScheduled = false;
     _clearAll();
 }
 
@@ -100,13 +103,16 @@ void ObjectPropertyBrowser::setActiveObject(
     _propertyBox = pb;
 
     // Rebuild once with guard logic so nested signals cannot recurse unsafely.
-    _rebuildPropertiesGuarded();
+    _scheduleDeferredRebuild();
 }
 
 // Rebuild properties with explicit suppression of nested recursive rebuild execution.
 void ObjectPropertyBrowser::_rebuildPropertiesGuarded() {
+    qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded enter. rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange << " pending=" << _pendingRebuild;
     if (_isRebuildingProperties) {
         _pendingRebuild = true;
+        qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded deferred due to active rebuild";
         return;
     }
 
@@ -116,20 +122,70 @@ void ObjectPropertyBrowser::_rebuildPropertiesGuarded() {
         _rebuildProperties();
     } while (_pendingRebuild);
     _isRebuildingProperties = false;
+    qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded exit";
+}
+
+void ObjectPropertyBrowser::_scheduleDeferredRebuild() {
+    if (_isDeferredRebuildScheduled) {
+        _pendingRebuild = true;
+        return;
+    }
+
+    _isDeferredRebuildScheduled = true;
+    QMetaObject::invokeMethod(this, [this]() {
+        _isDeferredRebuildScheduled = false;
+        if (!_hasValidActiveBindingContext()) {
+            qWarning() << "[PropertyEditor] Deferred rebuild canceled due to invalid binding context";
+            return;
+        }
+        _rebuildPropertiesGuarded();
+    }, Qt::QueuedConnection);
+}
+
+void ObjectPropertyBrowser::_scheduleDeferredModelChangedCallback() {
+    if (_isDeferredModelChangedScheduled) {
+        return;
+    }
+
+    _isDeferredModelChangedScheduled = true;
+    QMetaObject::invokeMethod(this, [this]() {
+        _isDeferredModelChangedScheduled = false;
+        if (!_hasValidActiveBindingContext()) {
+            qWarning() << "[PropertyEditor] Deferred model-changed callback canceled due to invalid binding context";
+            return;
+        }
+        if (_modelChangedCallback) {
+            _modelChangedCallback();
+        }
+    }, Qt::QueuedConnection);
 }
 
 // Validate that active objects are still attached before applying property edits.
-bool ObjectPropertyBrowser::_hasValidActiveBindingContext() const {
+bool ObjectPropertyBrowser::_hasValidActiveBindingContext(QtProperty* property) const {
     if (_modelObject == nullptr) {
         return false;
     }
     if (_graphicalObject.isNull()) {
         return false;
     }
+    if (property != nullptr) {
+        auto it = _bindings.constFind(property);
+        if (it == _bindings.constEnd()) {
+            return false;
+        }
+        const Binding& binding = it.value();
+        if (binding.control == nullptr) {
+            return false;
+        }
+        if (binding.owner != _modelObject) {
+            return false;
+        }
+    }
     return true;
 }
 
 void ObjectPropertyBrowser::_rebuildProperties() {
+    qInfo() << "[PropertyEditor] _rebuildProperties enter";
     // Clear existing browser state first so stale bindings cannot survive across rebuilds.
     _clearAll();
 
@@ -139,6 +195,7 @@ void ObjectPropertyBrowser::_rebuildProperties() {
     }
 
     _populateKernelProperties(_modelObject);
+    qInfo() << "[PropertyEditor] _rebuildProperties exit";
 }
 
 QStringList ObjectPropertyBrowser::_toQStringList(const std::vector<std::string>& values) const {
@@ -438,6 +495,11 @@ bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
 }
 
 bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] createObjectForProperty aborted due to invalid binding context";
+        return false;
+    }
+
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
         return false;
@@ -467,21 +529,25 @@ bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
 }
 
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
+    qInfo() << "[PropertyEditor] valueChanged enter";
     // Drop edits while a guarded rebuild is in progress to avoid reentrant mutation.
     if (_isRebuildingProperties) {
+        qInfo() << "[PropertyEditor] valueChanged ignored because rebuild is active";
         return;
     }
 
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
+        qInfo() << "[PropertyEditor] valueChanged ignored due to missing binding";
         return;
     }
 
     const Binding binding = it.value();
     if (binding.control == nullptr) {
+        qWarning() << "[PropertyEditor] valueChanged ignored due to null binding control";
         return;
     }
-    if (!_hasValidActiveBindingContext()) {
+    if (!_hasValidActiveBindingContext(property)) {
         qWarning() << "Ignoring valueChanged because active binding context became invalid";
         return;
     }
@@ -495,6 +561,7 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
 
     const std::string newValue = _fromVariant(binding.descriptor, value);
     if (newValue == binding.descriptor.currentValue) {
+        qInfo() << "[PropertyEditor] valueChanged ignored because value did not change";
         return;
     }
 
@@ -508,29 +575,35 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
 
     if (!ok) {
         // Rebuild safely after failed setValue to restore editor consistency.
-        _rebuildPropertiesGuarded();
+        _scheduleDeferredRebuild();
+        qWarning() << "[PropertyEditor] valueChanged failed to apply value. Scheduled deferred rebuild";
         return;
     }
 
     _notifyModelChangeApplied();
+    qInfo() << "[PropertyEditor] valueChanged exit";
 }
 
 void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
+    qInfo() << "[PropertyEditor] enumValueChanged enter";
     // Drop enum edits while a guarded rebuild is in progress to avoid reentrant mutation.
     if (_isRebuildingProperties) {
+        qInfo() << "[PropertyEditor] enumValueChanged ignored because rebuild is active";
         return;
     }
 
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
+        qInfo() << "[PropertyEditor] enumValueChanged ignored due to missing binding";
         return;
     }
 
     const Binding binding = it.value();
     if (binding.control == nullptr) {
+        qWarning() << "[PropertyEditor] enumValueChanged ignored due to null binding control";
         return;
     }
-    if (!_hasValidActiveBindingContext()) {
+    if (!_hasValidActiveBindingContext(property)) {
         qWarning() << "Ignoring enumValueChanged because active binding context became invalid";
         return;
     }
@@ -559,36 +632,35 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 
     if (!ok) {
         // Rebuild safely after failed enum update to restore editor consistency.
-        _rebuildPropertiesGuarded();
+        _scheduleDeferredRebuild();
+        qWarning() << "[PropertyEditor] enumValueChanged failed to apply value. Scheduled deferred rebuild";
         return;
     }
 
     _notifyModelChangeApplied();
+    qInfo() << "[PropertyEditor] enumValueChanged exit";
 }
 
 void ObjectPropertyBrowser::_notifyModelChangeApplied() {
+    qInfo() << "[PropertyEditor] _notifyModelChangeApplied enter";
     // Suppress nested notification loops when model callbacks trigger additional edits.
     if (_isNotifyingModelChange) {
         _pendingRebuild = true;
+        qInfo() << "[PropertyEditor] _notifyModelChangeApplied detected nested notification";
         return;
     }
 
     _isNotifyingModelChange = true;
-    _rebuildPropertiesGuarded();
-    if (_modelChangedCallback) {
-        _modelChangedCallback();
-    }
+    _scheduleDeferredRebuild();
+    _scheduleDeferredModelChangedCallback();
     _isNotifyingModelChange = false;
 
-    // Process deferred rebuild requests emitted during guarded callback execution.
-    if (_pendingRebuild) {
-        _rebuildPropertiesGuarded();
-    }
+    qInfo() << "[PropertyEditor] _notifyModelChangeApplied exit";
 }
 
 void ObjectPropertyBrowser::objectUpdated() {
     // Route external updates through the guarded rebuild path to avoid recursive crashes.
-    _rebuildPropertiesGuarded();
+    _scheduleDeferredRebuild();
 }
 
 void ObjectPropertyBrowser::keyPressEvent(QKeyEvent* event) {

@@ -6,6 +6,7 @@
 #include <QVBoxLayout>
 #include <QHeaderView>
 #include <QLabel>
+#include <QDebug>
 
 #include "DataComponentEditor.h"
 #include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
@@ -113,7 +114,9 @@ bool DataComponentProperty::isInList(const std::string& value) const {
 }
 
 void DataComponentProperty::addElement() {
+    qInfo() << "[DataComponentProperty] addElement enter";
     if (_editor == nullptr || _property == nullptr) {
+        qWarning() << "[DataComponentProperty] addElement aborted due to invalid editor/property";
         return;
     }
 
@@ -129,6 +132,8 @@ void DataComponentProperty::addElement() {
         if (ok) {
             config_values();
             _notifyChanged();
+            qInfo() << "[DataComponentProperty] addElement used typed creation path";
+            return;
         }
     }
 
@@ -144,9 +149,11 @@ void DataComponentProperty::addElement() {
         config_values();
         _notifyChanged();
     }
+    qInfo() << "[DataComponentProperty] addElement exit";
 }
 
 void DataComponentProperty::removeElement() {
+    qInfo() << "[DataComponentProperty] removeElement enter";
     if (_editor == nullptr || _property == nullptr) {
         return;
     }
@@ -160,9 +167,11 @@ void DataComponentProperty::removeElement() {
     _editor->changeProperty(_property, itemValue.toStdString(), true);
     config_values();
     _notifyChanged();
+    qInfo() << "[DataComponentProperty] removeElement exit";
 }
 
 void DataComponentProperty::editProperty() {
+    qInfo() << "[DataComponentProperty] editProperty enter";
     if (_property == nullptr || !_property->getIsClass()) {
         return;
     }
@@ -179,4 +188,5 @@ void DataComponentProperty::editProperty() {
 
     auto* propertyEditor = new DataComponentEditor(_editor, propertiesElement, _afterChange);
     propertyEditor->open_window(propertiesElement);
+    qInfo() << "[DataComponentProperty] editProperty exit";
 }

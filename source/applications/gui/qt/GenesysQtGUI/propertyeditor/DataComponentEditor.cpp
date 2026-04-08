@@ -5,6 +5,7 @@
 #include <QHBoxLayout>
 #include <QVBoxLayout>
 #include <QHeaderView>
+#include <QDebug>
 
 #include "DataComponentProperty.h"
 #include "ComboBoxEnum.h"
@@ -131,6 +132,7 @@ void DataComponentEditor::configure_properties(List<SimulationControl*>* propert
 }
 
 void DataComponentEditor::editProperty(SimulationControl* property) {
+    qInfo() << "[DataComponentEditor] editProperty(SimulationControl*) enter";
     if (property == nullptr) {
         return;
     }
@@ -173,9 +175,11 @@ void DataComponentEditor::editProperty(SimulationControl* property) {
         }
         ++index;
     }
+    qInfo() << "[DataComponentEditor] editProperty(SimulationControl*) exit";
 }
 
 void DataComponentEditor::editProperty(List<SimulationControl*>* properties) {
+    qInfo() << "[DataComponentEditor] editProperty(List*) enter";
     if (properties == nullptr) {
         return;
     }
@@ -213,4 +217,5 @@ void DataComponentEditor::editProperty(List<SimulationControl*>* properties) {
         }
         ++index;
     }
+    qInfo() << "[DataComponentEditor] editProperty(List*) exit";
 }

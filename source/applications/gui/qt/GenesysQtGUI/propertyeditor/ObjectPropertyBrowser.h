@@ -88,12 +88,20 @@ private:
     bool _isNotifyingModelChange = false;
     // Keep track of pending rebuild requests raised during guarded execution.
     bool _pendingRebuild = false;
+    // Coalesce queued rebuild dispatches while one deferred rebuild request is already scheduled.
+    bool _isDeferredRebuildScheduled = false;
+    // Coalesce queued model-change callbacks while one deferred dispatch is already scheduled.
+    bool _isDeferredModelChangedScheduled = false;
 
 private:
     // Execute property rebuild with reentrancy suppression and deferred retry support.
     void _rebuildPropertiesGuarded();
+    // Request a deferred rebuild after current signal/slot stack finishes.
+    void _scheduleDeferredRebuild();
+    // Request a deferred model-changed callback after current signal/slot stack finishes.
+    void _scheduleDeferredModelChangedCallback();
     // Check whether active editor bindings are currently valid before mutating model state.
-    bool _hasValidActiveBindingContext() const;
+    bool _hasValidActiveBindingContext(QtProperty* property = nullptr) const;
 
 private:
     // Track the selected graphical object safely in case Qt destroys it during callbacks.
