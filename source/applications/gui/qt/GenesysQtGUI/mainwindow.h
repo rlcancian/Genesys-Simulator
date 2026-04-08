@@ -6,6 +6,7 @@
 #include <QTreeWidgetItem>
 #include <QGraphicsItem>
 #include <QUndoView>
+#include <QMetaObject>
 #include <memory>
 
 #include "propertyeditor/DataComponentProperty.h"
@@ -24,15 +25,32 @@ QT_BEGIN_NAMESPACE
 
 QT_END_NAMESPACE
 
+class ModelLanguageSynchronizer;
+class GraphvizModelExporter;
+class CppModelExporter;
+class GraphicalModelSerializer;
+class GraphicalModelBuilder;
+class ModelInspectorController;
+class TraceConsoleController;
+class SimulationEventController;
+class PluginCatalogController;
+class PropertyEditorController;
+class ModelLifecycleController;
+class SimulationCommandController;
+class EditCommandController;
+class SceneToolController;
+class DialogUtilityController;
+
 /**
  * @brief Main Qt window of Genesys GUI.
  *
- * Aggregates user interactions, graphical model edition and kernel integration.
- *
- * @todo Continue decomposing this class into dedicated controllers to reduce coupling.
+ * Acts as the final composition root and compatibility façade for extracted controllers/services.
  */
 class MainWindow : public QMainWindow {
 	Q_OBJECT
+
+    // Allow the Phase 4 event controller to register private compatibility handlers.
+    friend class SimulationEventController;
 
 public:
 	MainWindow(QWidget *parent = nullptr);
@@ -50,6 +68,7 @@ private slots:
 	void on_actionEditUndo_triggered();
 	void on_actionEditRedo_triggered();
 	void on_actionEditFind_triggered();
+	// void on_actionReplace_triggered(); // old name (without menu namespace)
 	void on_actionEditReplace_triggered();
 	void on_actionEditCut_triggered();
 	void on_actionEditCopy_triggered();
@@ -110,6 +129,7 @@ private slots:
 	void on_actionAlignLeft_triggered();
 
 	void on_actionToolsParserGrammarChecker_triggered();
+	// Legacy slot: there is no matching QAction in mainwindow.ui at this moment.
 	void on_actionToolsExperimentation_triggered();
 	void on_actionToolsOptimizator_triggered();
 	void on_actionToolsDataAnalyzer_triggered();
@@ -126,7 +146,9 @@ private slots:
 	void on_actionModelCheck_triggered();
 
 	void on_actionConnect_triggered();
-	void on_actionComponent_Breakpoint_triggered();
+	void on_actionGModelComponentBreakpoint_triggered();
+	void on_actionShowInternalElements_triggered();
+	void on_actionShowAttachedElements_triggered();
 
 
     // widget events
@@ -230,6 +252,8 @@ private: // simulator related
 	std::string _addCppCodeLine(std::string line, unsigned int indent = 0);
 private: // view
 	void _initModelGraphicsView();
+    void _connectSceneSignals();
+    void _disconnectSceneSignals(const char* context);
 	void _initUiForNewModel(Model* m);
 	void _actualizeActions();
     void _actualizeUndo();
@@ -260,7 +284,40 @@ private: //???
 private: // interface and model main elements to join
 	Ui::MainWindow *ui;
 	Simulator* simulator;
+    // Keep core simulation command gateway owned by MainWindow composition root.
     std::unique_ptr<class SimulationController> _simulationController;
+    // Keep phase-ordered services to make composition dependencies explicit in Phase 12.
+    // Synchronize textual model language with the kernel model manager.
+    std::unique_ptr<ModelLanguageSynchronizer> _modelLanguageSynchronizer;
+    // Generate Graphviz DOT and rendered model images for the GUI pane.
+    std::unique_ptr<GraphvizModelExporter> _graphvizModelExporter;
+    // Generate C++ model representation text for the code viewer pane.
+    std::unique_ptr<CppModelExporter> _cppModelExporter;
+    // Persist and restore graphical .gui state through the Phase 2 serializer service.
+    std::unique_ptr<GraphicalModelSerializer> _graphicalModelSerializer;
+    // Rebuild graphical components and links through the Phase 2 builder service.
+    std::unique_ptr<GraphicalModelBuilder> _graphicalModelBuilder;
+    // Keep phase-ordered controllers to preserve the final compatibility façade surface.
+    // Add the Phase 3 model-inspector controller owned by MainWindow.
+    std::unique_ptr<ModelInspectorController> _modelInspectorController;
+    // Add the Phase 4 trace controller owned by MainWindow.
+    std::unique_ptr<TraceConsoleController> _traceConsoleController;
+    // Add the Phase 4 simulation-event controller owned by MainWindow.
+    std::unique_ptr<SimulationEventController> _simulationEventController;
+    // Add the Phase 5 plugin-catalog controller owned by MainWindow.
+    std::unique_ptr<PluginCatalogController> _pluginCatalogController;
+    // Add the Phase 6 property-editor controller owned by MainWindow.
+    std::unique_ptr<PropertyEditorController> _propertyEditorController;
+    // Add the Phase 7 model-lifecycle controller owned by MainWindow.
+    std::unique_ptr<ModelLifecycleController> _modelLifecycleController;
+    // Add the Phase 8 simulation-command controller owned by MainWindow.
+    std::unique_ptr<SimulationCommandController> _simulationCommandController;
+    // Add the Phase 9 edit-command controller owned by MainWindow.
+    std::unique_ptr<EditCommandController> _editCommandController;
+    // Add the Phase 10 scene-tool controller owned by MainWindow.
+    std::unique_ptr<SceneToolController> _sceneToolController;
+    // Add the Phase 11 dialog-utility controller owned by MainWindow.
+    std::unique_ptr<DialogUtilityController> _dialogUtilityController;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;
@@ -269,9 +326,13 @@ private: // attributes to be saved and loaded withing the graphical model
 	int _zoomValue; // todo should be set for each open graphical model, such as view rect, etc
 private: // misc useful
     bool _check(bool success = true);
+	bool _hasPendingModelChanges() const;
+	bool _confirmApplicationExit();
 	bool _textModelHasChanged = false;
 	bool _graphicalModelHasChanged = false;
 	bool _modelWasOpened = false;
+	// Avoids duplicated prompts when exit is approved and Qt emits close events during shutdown.
+	bool _closingApproved = false;
 	QString _autoLoadPluginsFilename = "autoloadplugins.txt";
     bool _checkItemsScene();
 	QString _modelfilename;
@@ -327,6 +388,20 @@ private:
     bool _graphicalSimulation = false;
     bool _modelCheked = false;
     bool _loaded = false;
+    bool _shuttingDown = false;
+    // Persists lightweight tool settings introduced in Phase 5 dialogs.
+    double _optimizerPrecision = 1e-6;
+    unsigned int _optimizerMaxSteps = 1000;
+    // Persists minimal parallel execution preferences configured in GUI.
+    bool _parallelizationEnabled = false;
+    int _parallelizationThreads = 1;
+    int _parallelizationBatchSize = 100;
+    // Remembers the last dataset location used by the data analyzer workflow.
+    QString _lastDataAnalyzerPath;
+    QMetaObject::Connection _sceneChangedConnection;
+    QMetaObject::Connection _sceneFocusItemChangedConnection;
+    QMetaObject::Connection _sceneSelectionChangedConnection;
+    bool _isDeferredPropertyEditorModelChangedScheduled = false;
 	//CodeEditor* textCodeEdit_Model;
 };
 #endif // MAINWINDOW_H

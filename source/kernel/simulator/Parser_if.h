@@ -28,6 +28,7 @@ class genesyspp_driver;
  */
 class Parser_if {
 public:
+	virtual ~Parser_if() = default;
 	/*!
 	 * \brief parse
 	 * \param expression
@@ -72,4 +73,3 @@ public:
 };
 
 #endif /* PARSER_IF_H */
-

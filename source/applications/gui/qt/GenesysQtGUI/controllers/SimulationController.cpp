@@ -1,8 +1,8 @@
 #include "controllers/SimulationController.h"
 
 #include <QMessageBox>
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/ModelSimulation.h"
+#include "../../../../../kernel/simulator/Simulator.h"
+#include "../../../../../kernel/simulator/ModelSimulation.h"
 
 SimulationController::SimulationController(QWidget* ownerWidget, Simulator* simulator)
     : _ownerWidget(ownerWidget), _simulator(simulator) {

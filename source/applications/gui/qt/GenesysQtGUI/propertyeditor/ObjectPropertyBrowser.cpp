@@ -1,6 +1,7 @@
 #include "ObjectPropertyBrowser.h"
 
 #include <map>
+#include <set>
 #include <sstream>
 #include <exception>
 #include <utility>
@@ -9,136 +10,49 @@
 #include <QString>
 #include <QVariant>
 #include <QMenu>
+#include <QDebug>
+#include <QMetaObject>
+#include <QLineEdit>
+#include <QAbstractSpinBox>
 
 namespace {
+class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
+public:
+    using CommitCallback = std::function<void(QtProperty*)>;
 
-static std::vector<std::string> _copyStringList(List<std::string>* list) {
-    std::vector<std::string> result;
-    if (list == nullptr) {
-        return result;
-    }
+    explicit CommitAwareVariantEditorFactory(QObject* parent = nullptr)
+        : QtVariantEditorFactory(parent) {}
 
-    for (const std::string& value : *list->list()) {
-        result.push_back(value);
-    }
-
-    delete list;
-    return result;
-}
-
-static GenesysPropertyKind _deduceKind(const SimulationControl* control) {
-    if (control == nullptr) {
-        return GenesysPropertyKind::Unknown;
+    void setCommitCallback(CommitCallback callback) {
+        _commitCallback = std::move(callback);
     }
 
-    if (control->getIsList()) {
-        return GenesysPropertyKind::List;
-    }
-    if (control->getIsClass()) {
-        return GenesysPropertyKind::Object;
-    }
-
-    const std::string typeName = control->propertyType();
-
-    if (typeName == Util::TypeOf<Util::TimeUnit>()) {
-        return GenesysPropertyKind::TimeUnit;
-    }
-    if (control->getIsEnum()) {
-        return GenesysPropertyKind::Enum;
-    }
-    if (typeName == Util::TypeOf<bool>()) {
-        return GenesysPropertyKind::Boolean;
-    }
-    if (typeName == Util::TypeOf<int>()) {
-        return GenesysPropertyKind::Integer;
-    }
-    if (typeName == Util::TypeOf<unsigned int>()) {
-        return GenesysPropertyKind::UnsignedInteger;
-    }
-    if (typeName == Util::TypeOf<unsigned short>()) {
-        return GenesysPropertyKind::UnsignedShort;
-    }
-    if (typeName == Util::TypeOf<double>()) {
-        return GenesysPropertyKind::Double;
-    }
-    if (typeName == Util::TypeOf<std::string>()) {
-        return GenesysPropertyKind::String;
-    }
-
-    return GenesysPropertyKind::Unknown;
-}
-
-static GenesysPropertyDescriptor _describeControl(SimulationControl* control) {
-    GenesysPropertyDescriptor desc;
-    if (control == nullptr) {
-        return desc;
-    }
-
-    desc.control = control;
-    desc.ownerClassName = control->getClassname();
-    desc.ownerElementName = control->getElementName();
-    desc.displayName = control->getName();
-    desc.technicalTypeName = control->propertyType();
-    desc.kind = _deduceKind(control);
-    desc.readOnly = control->isReadOnly();
-    desc.isList = control->getIsList();
-    desc.isClass = control->getIsClass();
-    desc.isEnum = control->getIsEnum();
-    desc.currentValue = control->getValue();
-
-    desc.choices = _copyStringList(control->getStrValues());
-
-    if (desc.kind == GenesysPropertyKind::TimeUnit && desc.choices.empty()) {
-        for (int i = 0; i < static_cast<int>(Util::TimeUnit::num_elements); ++i) {
-            desc.choices.push_back(Util::convertEnumToStr(static_cast<Util::TimeUnit>(i)));
+protected:
+    QWidget* createEditor(QtVariantPropertyManager* manager, QtProperty* property, QWidget* parent) override {
+        QWidget* editor = QtVariantEditorFactory::createEditor(manager, property, parent);
+        if (editor == nullptr || _commitCallback == nullptr) {
+            return editor;
         }
-    }
 
-    return desc;
-}
-
-static std::vector<GenesysPropertyDescriptor> _describeControls(List<SimulationControl*>* controls) {
-    std::vector<GenesysPropertyDescriptor> result;
-    if (controls == nullptr) {
-        return result;
-    }
-
-    for (SimulationControl* control : *controls->list()) {
-        result.push_back(_describeControl(control));
-    }
-
-    return result;
-}
-
-static bool _setControlValue(
-    SimulationControl* control,
-    const std::string& value,
-    bool remove,
-    std::string* errorMessage
-    ) {
-    if (control == nullptr) {
-        if (errorMessage != nullptr) {
-            *errorMessage = "SimulationControl nulo";
+        if (QLineEdit* lineEdit = editor->findChild<QLineEdit*>()) {
+            QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [callback = _commitCallback, property]() {
+                callback(property);
+            });
+            return editor;
         }
-        return false;
+
+        if (QAbstractSpinBox* spinBox = editor->findChild<QAbstractSpinBox*>()) {
+            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [callback = _commitCallback, property]() {
+                callback(property);
+            });
+        }
+
+        return editor;
     }
 
-    try {
-        control->setValue(value, remove);
-        return true;
-    } catch (const std::exception& e) {
-        if (errorMessage != nullptr) {
-            *errorMessage = e.what();
-        }
-        return false;
-    } catch (...) {
-        if (errorMessage != nullptr) {
-            *errorMessage = "Erro desconhecido ao alterar propriedade";
-        }
-        return false;
-    }
-}
-
+private:
+    CommitCallback _commitCallback;
+};
 } // namespace
 
 ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
@@ -158,6 +72,8 @@ void ObjectPropertyBrowser::_clearAll() {
     clear();
     _bindings.clear();
     _enumNames.clear();
+    _pendingCommittedProperties.clear();
+    _pendingCommittedValues.clear();
 
     delete _variantFactory;
     delete _enumFactory;
@@ -175,7 +91,11 @@ void ObjectPropertyBrowser::_clearAll() {
     _groupManager = new QtGroupPropertyManager(this);
     _enumManager = new QtEnumPropertyManager(this);
 
-    _variantFactory = new QtVariantEditorFactory(this);
+    auto* commitFactory = new CommitAwareVariantEditorFactory(this);
+    commitFactory->setCommitCallback([this](QtProperty* property) {
+        onVariantEditorCommitted(property);
+    });
+    _variantFactory = commitFactory;
     _enumFactory = new QtEnumEditorFactory(this);
 
     setFactoryForManager(_variantManager, _variantFactory);
@@ -197,14 +117,29 @@ void ObjectPropertyBrowser::_clearAll() {
 }
 
 void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
+    // Fully detach object/editor pointers before clearing UI bindings.
     _graphicalObject = nullptr;
     _modelObject = nullptr;
     _propertyEditor = nullptr;
+    _isRebuildingProperties = false;
+    _isNotifyingModelChange = false;
+    _pendingRebuild = false;
+    _isDeferredRebuildScheduled = false;
+    _isDeferredModelChangedScheduled = false;
     _clearAll();
 }
 
 void ObjectPropertyBrowser::setModelChangedCallback(ModelChangedCallback callback) {
     _modelChangedCallback = std::move(callback);
+}
+
+bool ObjectPropertyBrowser::isCommitPipelineBusy() const {
+    return _isRebuildingProperties
+        || _isNotifyingModelChange
+        || _pendingRebuild
+        || _isDeferredRebuildScheduled
+        || _isDeferredModelChangedScheduled
+        || !_pendingCommittedProperties.isEmpty();
 }
 
 void ObjectPropertyBrowser::setActiveObject(
@@ -215,6 +150,10 @@ void ObjectPropertyBrowser::setActiveObject(
     std::map<SimulationControl*, DataComponentEditor*>* peUI,
     std::map<SimulationControl*, ComboBoxEnum*>* pb
     ) {
+    // Always detach stale bindings first to avoid stale-pointer use during rebinding.
+    clearCurrentlyConnectedObject();
+
+    // Bind the new active object and editor dependencies for the next safe rebuild.
     _graphicalObject = obj;
     _modelObject = mdd;
     _propertyEditor = peg;
@@ -222,14 +161,123 @@ void ObjectPropertyBrowser::setActiveObject(
     _propertyEditorUI = peUI;
     _propertyBox = pb;
 
+    // Rebuild once with guard logic so nested signals cannot recurse unsafely.
+    _scheduleDeferredRebuild();
+}
+
+// Rebuild properties with explicit suppression of nested recursive rebuild execution.
+void ObjectPropertyBrowser::_rebuildPropertiesGuarded() {
+    qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded enter. rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange << " pending=" << _pendingRebuild;
+    if (_isRebuildingProperties) {
+        _pendingRebuild = true;
+        qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded deferred due to active rebuild";
+        return;
+    }
+
+    _isRebuildingProperties = true;
+    do {
+        _pendingRebuild = false;
+        _rebuildProperties();
+    } while (_pendingRebuild);
+    _isRebuildingProperties = false;
+    qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded exit";
+}
+
+void ObjectPropertyBrowser::_scheduleDeferredRebuild() {
+    qInfo() << "[PropertyEditor] schedule deferred rebuild request. alreadyScheduled=" << _isDeferredRebuildScheduled
+            << " rebuilding=" << _isRebuildingProperties << " notifying=" << _isNotifyingModelChange;
+    if (_isRebuildingProperties || _isNotifyingModelChange) {
+        _pendingRebuild = true;
+    }
+    if (_isDeferredRebuildScheduled) {
+        return;
+    }
+
+    _isDeferredRebuildScheduled = true;
+    QMetaObject::invokeMethod(this, [this]() {
+        qInfo() << "[PropertyEditor] executing deferred rebuild";
+        _isDeferredRebuildScheduled = false;
+        if (!_hasValidActiveBindingContext()) {
+            qWarning() << "[PropertyEditor] Deferred rebuild canceled due to invalid binding context";
+            return;
+        }
+        _rebuildPropertiesGuarded();
+    }, Qt::QueuedConnection);
+}
+
+void ObjectPropertyBrowser::_scheduleDeferredModelChangedCallback() {
+    qInfo() << "[PropertyEditor] schedule deferred model-changed callback. alreadyScheduled="
+            << _isDeferredModelChangedScheduled;
+    if (_isDeferredModelChangedScheduled) {
+        return;
+    }
+
+    _isDeferredModelChangedScheduled = true;
+    QMetaObject::invokeMethod(this, [this]() {
+        qInfo() << "[PropertyEditor] executing deferred model-changed callback. rebuildScheduled="
+                << _isDeferredRebuildScheduled << " rebuilding=" << _isRebuildingProperties
+                << " pendingRebuild=" << _pendingRebuild;
+        _isDeferredModelChangedScheduled = false;
+        if (_isRebuildingProperties || _pendingRebuild || _isDeferredRebuildScheduled) {
+            qInfo() << "[PropertyEditor] deferring model-changed callback until rebuild stabilizes";
+            _scheduleDeferredModelChangedCallback();
+            return;
+        }
+        if (!_hasValidActiveBindingContext()) {
+            qWarning() << "[PropertyEditor] Deferred model-changed callback canceled due to invalid binding context";
+            return;
+        }
+        QMetaObject::invokeMethod(this, [this]() {
+            if (_isRebuildingProperties || _pendingRebuild || _isDeferredRebuildScheduled) {
+                qInfo() << "[PropertyEditor] model-changed callback postponed one more turn due to pending rebuild";
+                _scheduleDeferredModelChangedCallback();
+                return;
+            }
+            if (_modelChangedCallback) {
+                qInfo() << "[PropertyEditor] invoking model-changed callback after local rebuild stabilization";
+                _modelChangedCallback();
+            }
+        }, Qt::QueuedConnection);
+    }, Qt::QueuedConnection);
+}
+
+// Validate that active objects are still attached before applying property edits.
+bool ObjectPropertyBrowser::_hasValidActiveBindingContext(QtProperty* property) const {
+    if (_modelObject == nullptr) {
+        return false;
+    }
+    if (_graphicalObject.isNull()) {
+        return false;
+    }
+    if (property != nullptr) {
+        auto it = _bindings.constFind(property);
+        if (it == _bindings.constEnd()) {
+            return false;
+        }
+        const Binding& binding = it.value();
+        if (binding.control == nullptr) {
+            return false;
+        }
+        if (binding.owner != _modelObject) {
+            return false;
+        }
+    }
+    return true;
+}
+
+void ObjectPropertyBrowser::_rebuildProperties() {
+    qInfo() << "[PropertyEditor] _rebuildProperties enter";
+    // Clear existing browser state first so stale bindings cannot survive across rebuilds.
     _clearAll();
 
     if (_modelObject == nullptr) {
+        qInfo() << "Skipping property rebuild because model object is null";
         return;
     }
 
     _populateKernelProperties(_modelObject);
-    objectUpdated();
+    qInfo() << "[PropertyEditor] _rebuildProperties exit";
 }
 
 QStringList ObjectPropertyBrowser::_toQStringList(const std::vector<std::string>& values) const {
@@ -304,7 +352,7 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
     }
 }
 
-QtProperty* ObjectPropertyBrowser::_createProperty(const GenesysPropertyDescriptor& desc) {
+QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDescriptor& desc) {
     const QString name = QString::fromStdString(desc.displayName);
 
     if ((desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit)
@@ -339,12 +387,6 @@ QtProperty* ObjectPropertyBrowser::_createProperty(const GenesysPropertyDescript
     case GenesysPropertyKind::Double:
         variantType = QVariant::Double;
         break;
-    case GenesysPropertyKind::String:
-    case GenesysPropertyKind::Object:
-    case GenesysPropertyKind::List:
-    case GenesysPropertyKind::Unknown:
-    case GenesysPropertyKind::Enum:
-    case GenesysPropertyKind::TimeUnit:
     default:
         variantType = QVariant::String;
         break;
@@ -353,22 +395,19 @@ QtProperty* ObjectPropertyBrowser::_createProperty(const GenesysPropertyDescript
     QtVariantProperty* property = _variantManager->addProperty(variantType, name);
     property->setValue(_toVariant(desc));
 
-    const bool complexProperty = desc.isList || desc.isClass;
-
+    // This block enables direct inline editing only for scalar-like properties handled by variant editors.
     const bool editableInline =
         !desc.readOnly &&
-        !complexProperty &&
+        !desc.supportsListEditor &&
+        !desc.supportsInlineExpansion &&
         !(desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit);
 
-    property->setEnabled(true);
+    property->setEnabled(editableInline);
 
-    if (editableInline) {
-        property->setValue(_toVariant(desc));
-    }
-
-    if (complexProperty) {
-        property->setToolTip("Use duplo clique, Enter ou menu de contexto para editar.");
-        property->setStatusTip("Complex property editor");
+    // This block configures the list-editor hint based on explicit contract metadata instead of heuristics.
+    if (desc.supportsListEditor) {
+        property->setToolTip("List property. Use double click, Enter or context menu to open list editor.");
+        property->setStatusTip("List editor");
     }
 
     Binding binding;
@@ -380,13 +419,98 @@ QtProperty* ObjectPropertyBrowser::_createProperty(const GenesysPropertyDescript
     return property;
 }
 
+void ObjectPropertyBrowser::_appendDescriptorRecursively(
+    QtProperty* parent,
+    SimulationControl* control,
+    std::set<const SimulationControl*>& recursionPath,
+    int depth
+    ) {
+    if (parent == nullptr || control == nullptr) {
+        return;
+    }
+
+    GenesysPropertyDescriptor desc = GenesysPropertyIntrospection::describe(control);
+
+    // This block uses explicit inline-expansion support metadata to decide recursion.
+    if (!desc.supportsInlineExpansion) {
+        QtProperty* leaf = _createLeafProperty(desc);
+        if (leaf != nullptr) {
+            parent->addSubProperty(leaf);
+        }
+        return;
+    }
+
+    QtProperty* group = _groupManager->addProperty(QString::fromStdString(desc.displayName));
+    parent->addSubProperty(group);
+
+    Binding groupBinding;
+    groupBinding.owner = _modelObject;
+    groupBinding.control = control;
+    groupBinding.descriptor = desc;
+    _bindings[group] = groupBinding;
+
+    if (recursionPath.find(control) != recursionPath.end()) {
+        QtVariantProperty* cycleNode = _variantManager->addProperty(QVariant::String, "Cycle");
+        cycleNode->setEnabled(false);
+        cycleNode->setValue("Recursion stopped: object already visited in this branch");
+        group->addSubProperty(cycleNode);
+        return;
+    }
+
+    if (depth > 10) {
+        QtVariantProperty* depthNode = _variantManager->addProperty(QVariant::String, "Depth");
+        depthNode->setEnabled(false);
+        depthNode->setValue("Recursion depth limit reached");
+        group->addSubProperty(depthNode);
+        return;
+    }
+
+    // This block renders object selection when the contract declares selection among existing objects.
+    if (desc.supportsExistingObjectSelection && !desc.choices.empty()) {
+        QtProperty* refProperty = _enumManager->addProperty("Reference");
+        _enumNames[refProperty] = _toQStringList(desc.choices);
+        _enumManager->setEnumNames(refProperty, _enumNames[refProperty]);
+        _enumManager->setValue(refProperty, _enumIndexFor(desc));
+        refProperty->setEnabled(!desc.readOnly);
+
+        Binding refBinding = groupBinding;
+        refBinding.isObjectSelector = true;
+        _bindings[refProperty] = refBinding;
+        group->addSubProperty(refProperty);
+    }
+
+    List<SimulationControl*>* childrenList = control->getEditableProperties();
+    if (childrenList == nullptr) {
+        QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
+        emptyNode->setEnabled(false);
+        if (desc.supportsObjectCreation && !desc.readOnly) {
+            emptyNode->setValue("Object not available yet. Select or create an object reference to continue.");
+        } else {
+            emptyNode->setValue(desc.readOnly ? "Read-only object" : "Object not available");
+        }
+        group->addSubProperty(emptyNode);
+        return;
+    }
+
+    std::vector<SimulationControl*> children;
+    for (SimulationControl* child : *childrenList->list()) {
+        children.push_back(child);
+    }
+
+    recursionPath.insert(control);
+    for (SimulationControl* child : children) {
+        _appendDescriptorRecursively(group, child, recursionPath, depth + 1);
+    }
+    recursionPath.erase(control);
+}
+
 void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) {
     if (mdd == nullptr) {
         return;
     }
 
     const std::vector<GenesysPropertyDescriptor> properties =
-        _describeControls(mdd->getProperties());
+        GenesysPropertyIntrospection::describe(mdd->getProperties());
 
     std::map<std::string, QtProperty*> groups;
 
@@ -404,14 +528,17 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
             group = found->second;
         }
 
-        QtProperty* leaf = _createProperty(desc);
-        if (group != nullptr && leaf != nullptr) {
-            group->addSubProperty(leaf);
-        }
+        std::set<const SimulationControl*> recursionPath;
+        _appendDescriptorRecursively(group, desc.control, recursionPath);
     }
 }
 
 bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] openSpecializedEditor aborted due to invalid binding context";
+        return false;
+    }
+
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
         return false;
@@ -427,7 +554,8 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         this->_notifyModelChangeApplied();
     };
 
-    if (control->getIsList()) {
+    // This block opens the specialized list editor only when the explicit list-editor contract is enabled.
+    if (binding.descriptor.supportsListEditor) {
         if (_propertyList != nullptr) {
             auto found = _propertyList->find(control);
             if (found == _propertyList->end() || found->second == nullptr) {
@@ -442,37 +570,6 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         return true;
     }
 
-    if (control->getIsClass()) {
-        if (_propertyEditorUI != nullptr) {
-            auto found = _propertyEditorUI->find(control);
-            if (found == _propertyEditorUI->end() || found->second == nullptr) {
-                (*_propertyEditorUI)[control] =
-                    new DataComponentEditor(_propertyEditor, control, refresh);
-            }
-            (*_propertyEditorUI)[control]->open_window(control);
-        } else {
-            auto* editor = new DataComponentEditor(_propertyEditor, control, refresh);
-            editor->open_window(control);
-        }
-        return true;
-    }
-
-    if (binding.descriptor.kind == GenesysPropertyKind::Enum
-        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit
-        || control->getIsEnum()) {
-        if (_propertyBox != nullptr) {
-            auto found = _propertyBox->find(control);
-            if (found == _propertyBox->end() || found->second == nullptr) {
-                (*_propertyBox)[control] = new ComboBoxEnum(_propertyEditor, control, refresh);
-            }
-            (*_propertyBox)[control]->open_box();
-        } else {
-            auto* box = new ComboBoxEnum(_propertyEditor, control, refresh);
-            box->open_box();
-        }
-        return true;
-    }
-
     return false;
 }
 
@@ -481,34 +578,107 @@ bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
     if (item == nullptr || item->property() == nullptr) {
         return false;
     }
+    if (!_hasValidActiveBindingContext(item->property())) {
+        qWarning() << "[PropertyEditor] openSpecializedEditorForCurrentItem aborted due to invalid binding context";
+        return false;
+    }
     return _openSpecializedEditor(item->property());
 }
 
-void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
+bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] createObjectForProperty aborted due to invalid binding context";
+        return false;
+    }
+
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
-        return;
+        return false;
     }
 
     const Binding binding = it.value();
     if (binding.control == nullptr) {
-        return;
+        return false;
+    }
+    if (!binding.descriptor.supportsObjectCreation || binding.control->hasObjectInstance()) {
+        return false;
+    }
+
+    bool created = false;
+    try {
+        created = binding.control->createObjectInstance();
+    } catch (...) {
+        created = false;
+    }
+
+    if (!created) {
+        return false;
+    }
+
+    _notifyModelChangeApplied();
+    return true;
+}
+
+
+bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) const {
+    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor) {
+        return false;
     }
 
     if (binding.descriptor.kind == GenesysPropertyKind::Enum
         || binding.descriptor.kind == GenesysPropertyKind::TimeUnit
-        || binding.descriptor.kind == GenesysPropertyKind::Object
-        || binding.descriptor.kind == GenesysPropertyKind::List) {
-        return;
+        || binding.descriptor.kind == GenesysPropertyKind::Boolean) {
+        return false;
+    }
+
+    return binding.descriptor.kind == GenesysPropertyKind::String
+        || binding.descriptor.kind == GenesysPropertyKind::Integer
+        || binding.descriptor.kind == GenesysPropertyKind::UnsignedInteger
+        || binding.descriptor.kind == GenesysPropertyKind::UnsignedShort
+        || binding.descriptor.kind == GenesysPropertyKind::Double
+        || binding.descriptor.kind == GenesysPropertyKind::Unknown;
+}
+
+bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVariant& value, bool committed) {
+    qInfo() << "[PropertyEditor] _applyVariantChange property="
+            << (property != nullptr ? property->propertyName() : QString("<null>"))
+            << " committed=" << committed;
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        qInfo() << "[PropertyEditor] variant apply ignored due to missing binding";
+        return false;
+    }
+
+    Binding& binding = it.value();
+    if (binding.control == nullptr) {
+        qWarning() << "[PropertyEditor] variant apply ignored due to null binding control";
+        return false;
+    }
+
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "Ignoring variant apply because active binding context became invalid";
+        return false;
+    }
+
+    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor
+        || binding.descriptor.kind == GenesysPropertyKind::Enum
+        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
+        return false;
+    }
+
+    if (_requiresCommitConfirmation(binding) && !committed) {
+        qInfo() << "[PropertyEditor] transient value change captured for" << property->propertyName();
+        return false;
     }
 
     const std::string newValue = _fromVariant(binding.descriptor, value);
     if (newValue == binding.descriptor.currentValue) {
-        return;
+        qInfo() << "[PropertyEditor] variant apply ignored because value did not change";
+        return false;
     }
 
     std::string errorMessage;
-    const bool ok = _setControlValue(
+    const bool ok = GenesysPropertyIntrospection::setValue(
         binding.control,
         newValue,
         false,
@@ -516,86 +686,173 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
         );
 
     if (!ok) {
-        objectUpdated();
+        _scheduleDeferredRebuild();
+        qWarning() << "[PropertyEditor] variant apply failed to apply value. Scheduled deferred rebuild";
+        return false;
+    }
+
+    binding.descriptor.currentValue = newValue;
+    qInfo() << "[PropertyEditor] applied committed variant change for" << property->propertyName();
+    _notifyModelChangeApplied();
+    return true;
+}
+
+void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
+    if (property == nullptr) {
         return;
     }
 
-    _notifyModelChangeApplied();
-}
+    if (_isRebuildingProperties) {
+        qInfo() << "[PropertyEditor] editor commit ignored because rebuild is active";
+        return;
+    }
 
-void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
         return;
     }
 
-    const Binding binding = it.value();
-    if (binding.control == nullptr) {
+    const Binding& binding = it.value();
+    if (!_requiresCommitConfirmation(binding)) {
         return;
     }
 
-    if (value == _enumIndexFor(binding.descriptor)) {
+    const QVariant pendingValue = _variantManager->value(property);
+    _pendingCommittedProperties.insert(property);
+    _pendingCommittedValues.insert(property, pendingValue);
+    qInfo() << "[PropertyEditor] editor commit received for" << property->propertyName();
+    QMetaObject::invokeMethod(this, [this, property]() {
+        if (!_pendingCommittedProperties.contains(property)) {
+            return;
+        }
+        if (!_hasValidActiveBindingContext(property)) {
+            qWarning() << "[PropertyEditor] queued commit aborted due to invalid binding context";
+            _pendingCommittedProperties.remove(property);
+            _pendingCommittedValues.remove(property);
+            return;
+        }
+        const QVariant committedValue = _pendingCommittedValues.value(property, _variantManager->value(property));
+        qInfo() << "[PropertyEditor] queued commit apply for" << property->propertyName();
+        _pendingCommittedProperties.remove(property);
+        _pendingCommittedValues.remove(property);
+        _applyVariantChange(property, committedValue, true);
+    }, Qt::QueuedConnection);
+}
+
+void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
+    qInfo() << "[PropertyEditor] valueChanged enter";
+    // Drop edits while a guarded rebuild is in progress to avoid reentrant mutation.
+    if (_isRebuildingProperties) {
+        qInfo() << "[PropertyEditor] valueChanged ignored because rebuild is active";
+        return;
+    }
+
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        qInfo() << "[PropertyEditor] valueChanged ignored due to missing binding";
+        return;
+    }
+
+    const Binding& binding = it.value();
+    const bool requiresCommit = _requiresCommitConfirmation(binding);
+    const bool committed = _pendingCommittedProperties.contains(property);
+
+    if (requiresCommit && !committed) {
+        qInfo() << "[PropertyEditor] valueChanged treated as transient for" << property->propertyName();
+        return;
+    }
+
+    if (committed) {
+        const QVariant pendingValue = _pendingCommittedValues.value(property);
+        if (pendingValue.isValid() && pendingValue != value) {
+            qInfo() << "[PropertyEditor] valueChanged waiting for committed value for" << property->propertyName();
+            return;
+        }
+        _pendingCommittedProperties.remove(property);
+        _pendingCommittedValues.remove(property);
+    }
+
+    _applyVariantChange(property, value, committed || !requiresCommit);
+    qInfo() << "[PropertyEditor] valueChanged exit";
+}
+
+void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
+    qInfo() << "[PropertyEditor] enumValueChanged enter";
+    // Drop enum edits while a guarded rebuild is in progress to avoid reentrant mutation.
+    if (_isRebuildingProperties) {
+        qInfo() << "[PropertyEditor] enumValueChanged ignored because rebuild is active";
+        return;
+    }
+
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        qInfo() << "[PropertyEditor] enumValueChanged ignored due to missing binding";
+        return;
+    }
+
+    const Binding binding = it.value();
+    if (binding.control == nullptr) {
+        qWarning() << "[PropertyEditor] enumValueChanged ignored due to null binding control";
+        return;
+    }
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "Ignoring enumValueChanged because active binding context became invalid";
+        return;
+    }
+
+    if (value < 0 || value >= static_cast<int>(binding.descriptor.choices.size())) {
+        return;
+    }
+
+    std::string newValue;
+    if (binding.isObjectSelector || binding.descriptor.isModelDataDefinitionReference) {
+        newValue = binding.descriptor.choices[static_cast<std::size_t>(value)];
+    } else if (binding.descriptor.kind == GenesysPropertyKind::Enum
+               || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
+        newValue = std::to_string(value);
+    } else {
         return;
     }
 
     std::string errorMessage;
-    const bool ok = _setControlValue(
+    const bool ok = GenesysPropertyIntrospection::setValue(
         binding.control,
-        std::to_string(value),
+        newValue,
         false,
         &errorMessage
         );
 
     if (!ok) {
-        objectUpdated();
+        // Rebuild safely after failed enum update to restore editor consistency.
+        _scheduleDeferredRebuild();
+        qWarning() << "[PropertyEditor] enumValueChanged failed to apply value. Scheduled deferred rebuild";
         return;
     }
 
     _notifyModelChangeApplied();
+    qInfo() << "[PropertyEditor] enumValueChanged exit";
 }
 
 void ObjectPropertyBrowser::_notifyModelChangeApplied() {
-    objectUpdated();
-    if (_modelChangedCallback) {
-        _modelChangedCallback();
-    }
-}
-
-void ObjectPropertyBrowser::objectUpdated() {
-    if (_modelObject == nullptr) {
+    qInfo() << "[PropertyEditor] _notifyModelChangeApplied enter";
+    // Suppress nested notification loops when model callbacks trigger additional edits.
+    if (_isNotifyingModelChange) {
+        _pendingRebuild = true;
+        qInfo() << "[PropertyEditor] _notifyModelChangeApplied detected nested notification";
         return;
     }
 
-    QSignalBlocker blockerVariant(_variantManager);
-    QSignalBlocker blockerEnum(_enumManager);
+    _isNotifyingModelChange = true;
+    _scheduleDeferredRebuild();
+    _scheduleDeferredModelChangedCallback();
+    _isNotifyingModelChange = false;
 
-    const QList<QtProperty*> keys = _bindings.keys();
-    for (QtProperty* key : keys) {
-        Binding binding = _bindings.value(key);
-        if (binding.control == nullptr) {
-            continue;
-        }
+    qInfo() << "[PropertyEditor] _notifyModelChangeApplied exit";
+}
 
-        GenesysPropertyDescriptor fresh = _describeControl(binding.control);
-
-        binding.descriptor = fresh;
-        _bindings[key] = binding;
-
-        if ((fresh.kind == GenesysPropertyKind::Enum || fresh.kind == GenesysPropertyKind::TimeUnit)
-            && !fresh.choices.empty()) {
-
-            _enumNames[key] = _toQStringList(fresh.choices);
-            _enumManager->setEnumNames(key, _enumNames[key]);
-            _enumManager->setValue(key, _enumIndexFor(fresh));
-
-        } else {
-            QtVariantProperty* variantProperty =
-                dynamic_cast<QtVariantProperty*>(key);
-            if (variantProperty != nullptr) {
-                variantProperty->setValue(_toVariant(fresh));
-            }
-        }
-    }
+void ObjectPropertyBrowser::objectUpdated() {
+    // Route external updates through the guarded rebuild path to avoid recursive crashes.
+    _scheduleDeferredRebuild();
 }
 
 void ObjectPropertyBrowser::keyPressEvent(QKeyEvent* event) {
@@ -623,27 +880,35 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     }
 
     const Binding binding = it.value();
-    const bool specializedProperty =
-        binding.descriptor.isList
-        || binding.descriptor.isClass
-        || binding.descriptor.kind == GenesysPropertyKind::Enum
-        || binding.descriptor.kind == GenesysPropertyKind::TimeUnit;
-
-    if (!specializedProperty) {
+    if (binding.control == nullptr) {
         QtTreePropertyBrowser::contextMenuEvent(event);
         return;
     }
-
     QMenu menu(this);
-    QAction* editAction = menu.addAction("Edit...");
+    QAction* editAction = nullptr;
+    QAction* createAction = nullptr;
+    if (binding.descriptor.supportsListEditor) {
+        editAction = menu.addAction("Edit list...");
+    }
+    if (binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
+        createAction = menu.addAction("Create object");
+    }
+    if (editAction == nullptr && createAction == nullptr) {
+        QtTreePropertyBrowser::contextMenuEvent(event);
+        return;
+    }
     QAction* chosen = menu.exec(event->globalPos());
 
-    if (chosen == editAction) {
+    if (chosen == editAction && editAction != nullptr) {
         _openSpecializedEditor(item->property());
+    } else if (chosen == createAction && createAction != nullptr) {
+        _createObjectForProperty(item->property());
     }
 }
 
 void ObjectPropertyBrowser::mouseDoubleClickEvent(QMouseEvent* event) {
     QtTreePropertyBrowser::mouseDoubleClickEvent(event);
-    _openSpecializedEditorForCurrentItem();
+    if (!_isRebuildingProperties) {
+        _openSpecializedEditorForCurrentItem();
+    }
 }

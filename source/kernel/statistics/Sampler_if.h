@@ -23,6 +23,7 @@
  */
 class Sampler_if {
 public:
+	virtual ~Sampler_if() = default;
 
 	/*!
 	 * \brief Encapsulates generator-specific configuration/state parameters.
@@ -90,4 +91,3 @@ public:
 };
 
 #endif /* Sampler_IF_H */
-

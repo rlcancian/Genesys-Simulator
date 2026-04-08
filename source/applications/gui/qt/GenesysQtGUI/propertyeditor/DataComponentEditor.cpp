@@ -2,6 +2,13 @@
 
 #include <utility>
 
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QHeaderView>
+#include <QDebug>
+#include <QMetaObject>
+#include <Qt>
+
 #include "DataComponentProperty.h"
 #include "ComboBoxEnum.h"
 
@@ -12,14 +19,27 @@ DataComponentEditor::DataComponentEditor(
     ) : _editor(editor), _afterChange(std::move(afterChange)) {
 
     _window = new QWidget;
+    _window->setWindowTitle("List Item Editor");
+    auto* rootLayout = new QVBoxLayout(_window);
+
     _view = new QTreeWidget(_window);
     _edit = new QPushButton("Edit", _window);
     _newValue = new QInputDialog(_window);
 
     _view->setColumnCount(2);
     _view->setHeaderLabels({"Property", "Value"});
-    _edit->move(270, 15);
-    _window->setFixedSize(400, 220);
+    _view->header()->setStretchLastSection(true);
+
+    auto* lineLayout = new QHBoxLayout();
+    lineLayout->addWidget(_view, 1);
+
+    auto* buttons = new QVBoxLayout();
+    buttons->addWidget(_edit);
+    buttons->addStretch(1);
+    lineLayout->addLayout(buttons);
+
+    rootLayout->addLayout(lineLayout);
+    _window->setMinimumSize(520, 300);
 
     QObject::connect(_edit, &QPushButton::clicked, this, [this, property]() {
         editProperty(property);
@@ -33,14 +53,27 @@ DataComponentEditor::DataComponentEditor(
     ) : _editor(editor), _afterChange(std::move(afterChange)) {
 
     _window = new QWidget;
+    _window->setWindowTitle("List Item Editor");
+    auto* rootLayout = new QVBoxLayout(_window);
+
     _view = new QTreeWidget(_window);
     _edit = new QPushButton("Edit", _window);
     _newValue = new QInputDialog(_window);
 
     _view->setColumnCount(2);
     _view->setHeaderLabels({"Property", "Value"});
-    _edit->move(270, 15);
-    _window->setFixedSize(400, 220);
+    _view->header()->setStretchLastSection(true);
+
+    auto* lineLayout = new QHBoxLayout();
+    lineLayout->addWidget(_view, 1);
+
+    auto* buttons = new QVBoxLayout();
+    buttons->addWidget(_edit);
+    buttons->addStretch(1);
+    lineLayout->addLayout(buttons);
+
+    rootLayout->addLayout(lineLayout);
+    _window->setMinimumSize(520, 300);
 
     QObject::connect(_edit, &QPushButton::clicked, this, [this, properties]() {
         editProperty(properties);
@@ -49,7 +82,10 @@ DataComponentEditor::DataComponentEditor(
 
 void DataComponentEditor::_notifyChanged() {
     if (_afterChange) {
-        _afterChange();
+        qInfo() << "[DataComponentEditor] scheduling deferred afterChange callback";
+        QMetaObject::invokeMethod(_window, [callback = _afterChange]() {
+            callback();
+        }, Qt::QueuedConnection);
     }
 }
 
@@ -70,11 +106,16 @@ void DataComponentEditor::open_window(List<SimulationControl*>* properties) {
 }
 
 void DataComponentEditor::configure_properties(SimulationControl* property) {
-    if (property == nullptr || property->getProperties() == nullptr) {
+    if (property == nullptr) {
         return;
     }
 
-    for (auto prop : *property->getProperties()->list()) {
+    List<SimulationControl*>* nestedProperties = property->getEditableProperties();
+    if (nestedProperties == nullptr) {
+        return;
+    }
+
+    for (auto prop : *nestedProperties->list()) {
         auto* item = new QTreeWidgetItem(_view);
         item->setText(0, QString::fromStdString(prop->getName()));
         item->setText(1, QString::fromStdString(prop->getValue()));
@@ -96,7 +137,13 @@ void DataComponentEditor::configure_properties(List<SimulationControl*>* propert
 }
 
 void DataComponentEditor::editProperty(SimulationControl* property) {
-    if (property == nullptr || property->getProperties() == nullptr) {
+    qInfo() << "[DataComponentEditor] editProperty(SimulationControl*) enter";
+    if (property == nullptr) {
+        return;
+    }
+
+    List<SimulationControl*>* nestedProperties = property->getEditableProperties();
+    if (nestedProperties == nullptr) {
         return;
     }
 
@@ -106,7 +153,7 @@ void DataComponentEditor::editProperty(SimulationControl* property) {
     }
 
     int index = 0;
-    for (auto prop : *property->getProperties()->list()) {
+    for (auto prop : *nestedProperties->list()) {
         if (index == selectedRow) {
             if (prop->getIsList()) {
                 auto* newList = new DataComponentProperty(_editor, prop, true, _afterChange);
@@ -133,9 +180,11 @@ void DataComponentEditor::editProperty(SimulationControl* property) {
         }
         ++index;
     }
+    qInfo() << "[DataComponentEditor] editProperty(SimulationControl*) exit";
 }
 
 void DataComponentEditor::editProperty(List<SimulationControl*>* properties) {
+    qInfo() << "[DataComponentEditor] editProperty(List*) enter";
     if (properties == nullptr) {
         return;
     }
@@ -173,4 +222,5 @@ void DataComponentEditor::editProperty(List<SimulationControl*>* properties) {
         }
         ++index;
     }
+    qInfo() << "[DataComponentEditor] editProperty(List*) exit";
 }

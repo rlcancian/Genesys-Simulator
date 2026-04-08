@@ -70,15 +70,18 @@ void dialogBreakpoint::on_comboBox_Type_activated(const QString &arg1) {
 	widget.doubleSpinBox_OnTme->setSingleStep(sim->getReplicationLength() / 200.0);
 	if (!isOnTime) {
 		widget.comboBox_On->clear();
-		List<ModelDataDefinition*>* datadefs;
+		QStringList items;
 		if (arg1 == "Entity") {
-			datadefs = model->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
+			List<ModelDataDefinition*>* datadefs = model->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
+			for (ModelDataDefinition* dataDef : *datadefs->list()) {
+				items << QString::fromStdString(dataDef->getName());
+			}
 		} else if (arg1 == "Component") {
-			datadefs = model->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
+			for (ModelComponent* comp : *model->getComponentManager()->getAllComponents()) {
+				items << QString::fromStdString(comp->getName());
+			}
 		}
-		for (ModelDataDefinition* dataDef : *datadefs->list()) {
-			widget.comboBox_On->addItem(QString::fromStdString(dataDef->getName()));
-		}
+		widget.comboBox_On->addItems(items);
 	}
 }
 

@@ -869,7 +869,11 @@
     <addaction name="actionEditPaste"/>
     <addaction name="actionEditDelete"/>
     <addaction name="separator"/>
+    <addaction name="actionEditGroup"/>
+    <addaction name="actionEditUngroup"/>
+    <addaction name="separator"/>
     <addaction name="actionEditFind"/>
+    <addaction name="actionEditReplace"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuTools">
@@ -1025,7 +1029,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
         <bool>true</bool>
        </property>
        <property name="dragDropMode">
-        <enum>QAbstractItemView::DragDrop</enum>
+        <enum>QAbstractItemView::DragOnly</enum>
        </property>
        <property name="defaultDropAction">
         <enum>Qt::CopyAction</enum>
@@ -1546,7 +1550,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Ctrl+F</string>
    </property>
   </action>
-  <action name="actionReplace">
+  <action name="actionEditReplace">
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/find.ico</normaloff>:/icons3/resources/icons/pack3/ico/find.ico</iconset>
@@ -1558,6 +1562,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Ctrl+R</string>
    </property>
   </action>
+  <!-- </action> -->
   <action name="actionEditCut">
    <property name="enabled">
     <bool>false</bool>
@@ -2067,6 +2072,24 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionViewUngroup">
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/ungroup.gif</normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/ungroup.gif</iconset>
+   </property>
+   <property name="text">
+    <string>Ungroup</string>
+   </property>
+  </action>
+  <action name="actionEditGroup">
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/group.gif</normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/group.gif</iconset>
+   </property>
+   <property name="text">
+    <string>Group</string>
+   </property>
+  </action>
+  <action name="actionEditUngroup">
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/ungroup.gif</normaloff>:/mxgraph/resources/icons/pack4/iconsMxGraph/ungroup.gif</iconset>

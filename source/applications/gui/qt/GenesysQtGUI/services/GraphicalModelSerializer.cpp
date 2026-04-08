@@ -1,0 +1,816 @@
+#include "GraphicalModelSerializer.h"
+
+#include "../TraitsGUI.h"
+#include "../graphicals/ModelGraphicsView.h"
+#include "../graphicals/ModelGraphicsScene.h"
+#include "../graphicals/GraphicalModelComponent.h"
+#include "../animations/AnimationCounter.h"
+#include "../animations/AnimationVariable.h"
+#include "../animations/AnimationTimer.h"
+#include "../../../../../kernel/simulator/Simulator.h"
+#include "../../../../../kernel/simulator/PluginManager.h"
+#include "../../../../../kernel/simulator/ModelManager.h"
+#include "../../../../../kernel/simulator/ComponentManager.h"
+#include "../../../../../kernel/simulator/ConnectionManager.h"
+
+#include <QAction>
+#include <QDateTime>
+#include <QDir>
+#include <QFile>
+#include <QFileInfo>
+#include <QGraphicsEllipseItem>
+#include <QGraphicsItemGroup>
+#include <QGraphicsLineItem>
+#include <QGraphicsPolygonItem>
+#include <QGraphicsRectItem>
+#include <QGraphicsTextItem>
+#include <QMessageBox>
+#include <QPlainTextEdit>
+#include <QRegularExpression>
+#include <QScrollBar>
+#include <QSlider>
+#include <QTextEdit>
+#include <QTextStream>
+#include <QTimer>
+#include <QUrl>
+
+// Build the serializer with explicit, narrow dependencies from MainWindow.
+GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
+                                                   QWidget* ownerWidget,
+                                                   QPlainTextEdit* modelTextEditor,
+                                                   ModelGraphicsView* graphicsView,
+                                                   QSlider* zoomSlider,
+                                                   QAction* actionShowGrid,
+                                                   QAction* actionShowRule,
+                                                   QAction* actionShowSnap,
+                                                   QAction* actionShowGuides,
+                                                   QAction* actionShowInternalElements,
+                                                   QAction* actionShowAttachedElements,
+                                                   QAction* actionDiagrams,
+                                                   QTextEdit* console,
+                                                   QString* modelFilename,
+                                                   std::function<void()> clearModelEditors,
+                                                   std::function<void()> rebuildGraphicalModelFromModel,
+                                                   std::function<void()> applyShowInternalElements,
+                                                   std::function<void()> applyShowAttachedElements,
+                                                   std::function<void()> applyDiagramsVisibility)
+    : _simulator(simulator),
+      _ownerWidget(ownerWidget),
+      _modelTextEditor(modelTextEditor),
+      _graphicsView(graphicsView),
+      _zoomSlider(zoomSlider),
+      _actionShowGrid(actionShowGrid),
+      _actionShowRule(actionShowRule),
+      _actionShowSnap(actionShowSnap),
+      _actionShowGuides(actionShowGuides),
+      _actionShowInternalElements(actionShowInternalElements),
+      _actionShowAttachedElements(actionShowAttachedElements),
+      _actionDiagrams(actionDiagrams),
+      _console(console),
+      _modelFilename(modelFilename),
+      _clearModelEditors(std::move(clearModelEditors)),
+      _rebuildGraphicalModelFromModel(std::move(rebuildGraphicalModelFromModel)),
+      _applyShowInternalElements(std::move(applyShowInternalElements)),
+      _applyShowAttachedElements(std::move(applyShowAttachedElements)),
+      _applyDiagramsVisibility(std::move(applyDiagramsVisibility)) {}
+
+// Encode free-form GUI text safely for persistence records.
+QString GraphicalModelSerializer::encodeGuiText(const QString& text) {
+    return QString::fromUtf8(QUrl::toPercentEncoding(text));
+}
+
+// Decode persisted GUI text back to plain UTF-8 text.
+QString GraphicalModelSerializer::decodeGuiText(const QString& text) {
+    return QUrl::fromPercentEncoding(text.toUtf8());
+}
+
+// Preserve the existing text persistence format line-by-line.
+bool GraphicalModelSerializer::saveTextModel(QFile* saveFile, const QString& data) const {
+    QTextStream out(saveFile);
+
+    try {
+        static const QRegularExpression regex("[\n]");
+        QStringList strList = data.split(regex);
+        for (const QString& line : strList) {
+            out << line << Qt::endl;
+        }
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+// Persist the complete graphical model, including view options and overlays.
+bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const {
+    QFile saveFile(filename);
+
+    try {
+        if (!saveFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+            QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
+                                     saveFile.errorString());
+            return false;
+        }
+
+        saveTextModel(&saveFile, _modelTextEditor->toPlainText());
+
+        QTextStream out(&saveFile);
+        out << "#Genegys Graphic Model" << Qt::endl;
+        QString line = "0\tView\t";
+        line += "zoom=" + QString::number(_zoomSlider->value());
+        line += ", grid=" + QString::number(_actionShowGrid->isChecked());
+        line += ", rule=" + QString::number(_actionShowRule->isChecked());
+        line += ", snap=" + QString::number(_actionShowSnap->isChecked());
+        line += ", guides=" + QString::number(_actionShowGuides->isChecked());
+        line += ", internals=" + QString::number(_actionShowInternalElements->isChecked());
+        line += ", attached=" + QString::number(_actionShowAttachedElements->isChecked());
+        line += ", diagrams=" + QString::number(_actionDiagrams->isChecked());
+        line += ", viewpoint=(" + QString::number(_graphicsView->horizontalScrollBar()->value()) + "," + QString::number(_graphicsView->verticalScrollBar()->value()) + ")";
+        out << line << Qt::endl;
+
+        ModelGraphicsScene* scene = static_cast<ModelGraphicsScene*>(_graphicsView->getScene());
+
+        if (scene) {
+            QHash<QGraphicsItem*, int> persistedItemIds;
+            int nextPersistedItemId = 1;
+
+            for (QGraphicsItem* item : *scene->getGraphicalModelComponents()) {
+                GraphicalModelComponent* gmc = static_cast<GraphicalModelComponent*>(item);
+                if (gmc) {
+                    int persistedId = nextPersistedItemId++;
+                    persistedItemIds.insert(gmc, persistedId);
+                    line = QString::fromStdString(std::to_string(gmc->getComponent()->getId()) + "\t" + gmc->getComponent()->getClassname() + "\t" + gmc->getComponent()->getName() + "\t" + "color=" + gmc->getColor().name().toStdString() + "\t" + "position=(" + std::to_string(gmc->scenePos().x()) + "," + std::to_string(gmc->scenePos().y() + gmc->getHeight()/2) + ")");
+                    line += "\titemid=" + QString::number(persistedId);
+                    out << line << Qt::endl;
+                }
+            }
+
+            QList<QGraphicsItem*>* geometries = scene->getGraphicalGeometries();
+            if (geometries && !geometries->isEmpty()) {
+                out << Qt::endl;
+                out << "#Geometries" << Qt::endl;
+
+                for (QGraphicsItem* item : *geometries) {
+                    if (item == nullptr) {
+                        continue;
+                    }
+                    int persistedId = nextPersistedItemId++;
+                    persistedItemIds.insert(item, persistedId);
+
+                    if (QGraphicsLineItem* lineItem = dynamic_cast<QGraphicsLineItem*>(item)) {
+                        const QLineF l = lineItem->line();
+                        line = QString("Geometry \t id=%1 \t type=line \t line=(%2,%3,%4,%5) \t pos=(%6,%7)")
+                                   .arg(persistedId)
+                                   .arg(l.x1(), 0, 'f', 4).arg(l.y1(), 0, 'f', 4)
+                                   .arg(l.x2(), 0, 'f', 4).arg(l.y2(), 0, 'f', 4)
+                                   .arg(lineItem->pos().x(), 0, 'f', 4).arg(lineItem->pos().y(), 0, 'f', 4);
+                        out << line << Qt::endl;
+                    } else if (QGraphicsRectItem* rectItem = dynamic_cast<QGraphicsRectItem*>(item)) {
+                        QRectF r = rectItem->rect().normalized();
+                        line = QString("Geometry \t id=%1 \t type=rect \t rect=(%2,%3,%4,%5) \t pos=(%6,%7)")
+                                   .arg(persistedId)
+                                   .arg(r.x(), 0, 'f', 4).arg(r.y(), 0, 'f', 4)
+                                   .arg(r.width(), 0, 'f', 4).arg(r.height(), 0, 'f', 4)
+                                   .arg(rectItem->pos().x(), 0, 'f', 4).arg(rectItem->pos().y(), 0, 'f', 4);
+                        out << line << Qt::endl;
+                    } else if (QGraphicsEllipseItem* ellipseItem = dynamic_cast<QGraphicsEllipseItem*>(item)) {
+                        QRectF r = ellipseItem->rect().normalized();
+                        line = QString("Geometry \t id=%1 \t type=ellipse \t rect=(%2,%3,%4,%5) \t pos=(%6,%7)")
+                                   .arg(persistedId)
+                                   .arg(r.x(), 0, 'f', 4).arg(r.y(), 0, 'f', 4)
+                                   .arg(r.width(), 0, 'f', 4).arg(r.height(), 0, 'f', 4)
+                                   .arg(ellipseItem->pos().x(), 0, 'f', 4).arg(ellipseItem->pos().y(), 0, 'f', 4);
+                        out << line << Qt::endl;
+                    } else if (QGraphicsPolygonItem* polygonItem = dynamic_cast<QGraphicsPolygonItem*>(item)) {
+                        QStringList points;
+                        const QPolygonF polygon = polygonItem->polygon();
+                        for (const QPointF& p : polygon) {
+                            points << QString("%1,%2").arg(p.x(), 0, 'f', 4).arg(p.y(), 0, 'f', 4);
+                        }
+                        line = QString("Geometry \t id=%1 \t type=polygon \t points=%2 \t pos=(%3,%4)")
+                                   .arg(persistedId)
+                                   .arg(points.join(";"))
+                                   .arg(polygonItem->pos().x(), 0, 'f', 4).arg(polygonItem->pos().y(), 0, 'f', 4);
+                        out << line << Qt::endl;
+                    } else if (QGraphicsTextItem* textItem = dynamic_cast<QGraphicsTextItem*>(item)) {
+                        line = QString("Text \t id=%1 \t value=%2 \t pos=(%3,%4)")
+                                   .arg(persistedId)
+                                   .arg(encodeGuiText(textItem->toPlainText()))
+                                   .arg(textItem->pos().x(), 0, 'f', 4).arg(textItem->pos().y(), 0, 'f', 4);
+                        out << line << Qt::endl;
+                    }
+                }
+            }
+
+            QList<QGraphicsItemGroup*>* groups = scene->getGraphicalGroups();
+            if (groups && !groups->isEmpty()) {
+                out << Qt::endl;
+                out << "#Groups" << Qt::endl;
+
+                int groupId = 0;
+                for (QGraphicsItemGroup* group : *groups) {
+                    if (group == nullptr) {
+                        continue;
+                    }
+                    QStringList members;
+                    for (QGraphicsItem* child : group->childItems()) {
+                        if (persistedItemIds.contains(child)) {
+                            members << QString::number(persistedItemIds.value(child));
+                        }
+                    }
+                    if (!members.isEmpty()) {
+                        line = QString("Group_%1 \t members=%2").arg(groupId++).arg(members.join(","));
+                        out << line << Qt::endl;
+                    }
+                }
+            }
+
+            QList<AnimationCounter*>* counters = scene->getAnimationsCounter();
+            if (counters && !counters->empty()) {
+                out << Qt::endl;
+                out << "#Counters" << Qt::endl;
+                int id = 0;
+                for (AnimationCounter* counter : *counters) {
+                    int idCounter = -1;
+                    if (counter->getCounter() != nullptr) {
+                        idCounter = counter->getCounter()->getId();
+                    }
+                    line = QString("Counter_%1 \t id=%2 \t position=(%3,%4) \t width=%5 \t height=%6")
+                               .arg(id)
+                               .arg(idCounter)
+                               .arg(counter->scenePos().x(), 0, 'f', 2)
+                               .arg(counter->scenePos().y(), 0, 'f', 2)
+                               .arg(counter->boundingRect().width(), 0, 'f', 2)
+                               .arg(counter->boundingRect().height(), 0, 'f', 2);
+                    out << line << Qt::endl;
+                    id++;
+                }
+            }
+
+            QList<AnimationVariable*>* variables = scene->getAnimationsVariable();
+            if (variables && !variables->empty()) {
+                out << Qt::endl;
+                out << "#Variables" << Qt::endl;
+                int id = 0;
+                for (AnimationVariable* variable : *variables) {
+                    int idVariable = -1;
+                    if (variable->getVariable() != nullptr) {
+                        idVariable = variable->getVariable()->getId();
+                    }
+                    line = QString("Variable_%1 \t id=%2 \t position=(%3,%4) \t width=%5 \t height=%6")
+                               .arg(id)
+                               .arg(idVariable)
+                               .arg(variable->scenePos().x(), 0, 'f', 2)
+                               .arg(variable->scenePos().y(), 0, 'f', 2)
+                               .arg(variable->boundingRect().width(), 0, 'f', 2)
+                               .arg(variable->boundingRect().height(), 0, 'f', 2);
+                    out << line << Qt::endl;
+                    id++;
+                }
+            }
+
+            QList<AnimationTimer*>* timers = scene->getAnimationsTimer();
+            if (timers && !timers->empty()) {
+                out << Qt::endl;
+                out << "#Timers" << Qt::endl;
+                int id = 0;
+                for (AnimationTimer* timer : *timers) {
+                    line = QString("Timer_%1 \t hour=%2 \t minute=%3 \t second=%4 \t format=%5 \t position=(%6,%7) \t width=%8 \t height=%9")
+                               .arg(id)
+                               .arg(timer->getInitialHours())
+                               .arg(timer->getInitialMinutes())
+                               .arg(timer->getInitialSeconds())
+                               .arg(static_cast<unsigned int>(timer->getTimeFormat()))
+                               .arg(timer->scenePos().x(), 0, 'f', 2)
+                               .arg(timer->scenePos().y(), 0, 'f', 2)
+                               .arg(timer->boundingRect().width(), 0, 'f', 2)
+                               .arg(timer->boundingRect().height(), 0, 'f', 2);
+                    out << line << Qt::endl;
+                    id++;
+                }
+            }
+        }
+
+        saveFile.close();
+        return true;
+    } catch (const std::exception&) {
+        return false;
+    }
+}
+
+// Restore model text and GUI state from .gui or defer to .gen loading flow.
+Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename) const {
+    QFile file(QString::fromStdString(filename));
+
+    Model* model = nullptr;
+
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
+                                 file.errorString());
+        return nullptr;
+    }
+
+    QFileInfo fileInfo(file.fileName());
+    QString extension = fileInfo.suffix();
+
+    if (extension != "gui") {
+        model = _simulator->getModelManager()->loadModel(file.fileName().toStdString());
+        if (model != nullptr) {
+            _rebuildGraphicalModelFromModel();
+        }
+        return model;
+    }
+
+    QString content = file.readAll();
+    file.close();
+
+    QStringList lines = content.split("\n");
+    QStringList simulLang;
+    QStringList gui;
+    QStringList counters;
+    QStringList variables;
+    QStringList timers;
+    QStringList geometries;
+    QStringList groups;
+
+    bool guiFlag = false;
+    bool counterFlag = false;
+    bool variableFlag = false;
+    bool timerFlag = false;
+    bool geometryFlag = false;
+    bool groupFlag = false;
+
+    for (const QString& line : lines) {
+        if (line.startsWith("#Genegys Graphic Model")) {
+            guiFlag = true;
+            counterFlag = false;
+            variableFlag = false;
+            timerFlag = false;
+            continue;
+        }
+        if (line.startsWith("#Counters")) {
+            counterFlag = true;
+            guiFlag = false;
+            variableFlag = false;
+            timerFlag = false;
+            geometryFlag = false;
+            groupFlag = false;
+            continue;
+        }
+        if (line.startsWith("#Variables")) {
+            variableFlag = true;
+            guiFlag = false;
+            counterFlag = false;
+            timerFlag = false;
+            geometryFlag = false;
+            groupFlag = false;
+            continue;
+        }
+        if (line.startsWith("#Timers")) {
+            timerFlag = true;
+            guiFlag = false;
+            counterFlag = false;
+            variableFlag = false;
+            geometryFlag = false;
+            groupFlag = false;
+            continue;
+        }
+        if (line.startsWith("#Geometries")) {
+            geometryFlag = true;
+            guiFlag = false;
+            counterFlag = false;
+            variableFlag = false;
+            timerFlag = false;
+            groupFlag = false;
+            continue;
+        }
+        if (line.startsWith("#Groups")) {
+            groupFlag = true;
+            guiFlag = false;
+            counterFlag = false;
+            variableFlag = false;
+            timerFlag = false;
+            geometryFlag = false;
+            continue;
+        }
+
+        if (!guiFlag && !timerFlag && !counterFlag && !variableFlag && !geometryFlag && !groupFlag) {
+            simulLang.append(line);
+        } else if (counterFlag) {
+            counters.append(line);
+        } else if (variableFlag) {
+            variables.append(line);
+        } else if (timerFlag) {
+            timers.append(line);
+        } else if (geometryFlag) {
+            geometries.append(line);
+        } else if (groupFlag) {
+            groups.append(line);
+        } else {
+            gui.append(line);
+        }
+    }
+
+    QDateTime currentDateTime = QDateTime::currentDateTime();
+    QString newFilename = QString("/tempFile-%1.gen").arg(currentDateTime.toString("yyyy-MM-dd-hh-mm-ss"));
+    QString filePath = QDir::tempPath() + newFilename;
+    QFile tempFile(filePath);
+    tempFile.open(QIODevice::ReadWrite | QIODevice::Text);
+
+    QTextStream outStream(&tempFile);
+    for (const QString& line : simulLang) {
+        outStream << line << Qt::endl;
+    }
+    outStream.flush();
+
+    model = _simulator->getModelManager()->loadModel(tempFile.fileName().toStdString());
+    tempFile.close();
+    QFile::remove(tempFile.fileName());
+
+    if (model != nullptr) {
+        _clearModelEditors();
+
+        bool firstLine = true;
+        bool hasPersistedViewState = false;
+        int restoredViewpointX = 0;
+        int restoredViewpointY = 0;
+        QHash<int, QGraphicsItem*> persistedItems;
+
+        for (const QString& line : gui) {
+            if (line.trimmed().isEmpty()) {
+                continue;
+            }
+            if (firstLine) {
+                QRegularExpression regex("(\\d+)\\s*View\\s*(.*)");
+                QRegularExpressionMatch match = regex.match(line);
+                if (match.hasMatch()) {
+                    const QString attributes = match.captured(2);
+                    const int zoom = QRegularExpression("zoom=(-?\\d+)").match(attributes).captured(1).toInt();
+                    const int grid = QRegularExpression("grid=(\\d+)").match(attributes).captured(1).toInt();
+                    const int rule = QRegularExpression("rule=(\\d+)").match(attributes).captured(1).toInt();
+                    const int snap = QRegularExpression("snap=(\\d+)").match(attributes).captured(1).toInt();
+                    const int guides = QRegularExpression("guides=(\\d+)").match(attributes).captured(1).toInt();
+                    const int internals = QRegularExpression("internals=(\\d+)").match(attributes).captured(1).toInt();
+                    const int attached = QRegularExpression("attached=(\\d+)").match(attributes).captured(1).toInt();
+                    const int diagrams = QRegularExpression("diagrams=(\\d+)").match(attributes).captured(1).toInt();
+                    QRegularExpressionMatch viewpointMatch = QRegularExpression("viewpoint=\\(([-+]?\\d+\\.?\\d*),([-+]?\\d+\\.?\\d*)\\)").match(attributes);
+                    int viewpointX = 0;
+                    int viewpointY = 0;
+                    if (viewpointMatch.hasMatch()) {
+                        viewpointX = viewpointMatch.captured(1).toInt();
+                        viewpointY = viewpointMatch.captured(2).toInt();
+                    }
+
+                    _actionShowGrid->setChecked(grid != 0);
+                    _graphicsView->getScene()->setGridVisible(grid != 0);
+                    _actionShowSnap->setChecked(snap != 0);
+                    _graphicsView->getScene()->setSnapToGrid(snap != 0);
+                    _actionShowRule->setChecked(rule != 0);
+                    _actionShowGuides->setChecked(guides != 0);
+                    _graphicsView->setRuleVisible(rule != 0);
+                    _graphicsView->setGuidesVisible(guides != 0);
+                    _actionShowInternalElements->setChecked(internals != 0);
+                    _applyShowInternalElements();
+                    _actionShowAttachedElements->setChecked(attached != 0);
+                    _applyShowAttachedElements();
+                    _actionDiagrams->setChecked(diagrams != 0);
+
+                    if (zoom > 0) {
+                        _zoomSlider->setValue(zoom + TraitsGUI<GMainWindow>::zoomButtonChange);
+                    }
+
+                    hasPersistedViewState = true;
+                    restoredViewpointX = viewpointX;
+                    restoredViewpointY = viewpointY;
+                }
+                firstLine = false;
+                continue;
+            }
+
+            QStringList split = line.split("\t");
+            if (split.size() < 5) {
+                continue;
+            }
+
+            Util::identification id = split[0].toULong();
+            QString comp = split[1];
+            QString col = split[3];
+            QString pos = split[4];
+
+            QRegularExpressionMatch colorMatch = QRegularExpression("color=#([0-9A-Fa-f]{6})").match(col);
+            QColor color("#" + (colorMatch.hasMatch() ? colorMatch.captured(1) : QString()));
+
+            QPoint position;
+            QRegularExpressionMatch posMatch = QRegularExpression("position=\\((-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*)\\)").match(pos);
+            if (posMatch.hasMatch()) {
+                position.setX(posMatch.captured(1).toDouble());
+                position.setY(posMatch.captured(2).toDouble());
+            } else {
+                QRegularExpressionMatch legacyPosMatch = QRegularExpression("position=\\((-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*)\\)").match(pos);
+                if (legacyPosMatch.hasMatch()) {
+                    position.setX(legacyPosMatch.captured(1).toDouble());
+                    position.setY(legacyPosMatch.captured(3).toDouble());
+                }
+            }
+
+            Plugin* plugin = _simulator->getPluginManager()->find(comp.toStdString());
+            if (plugin == nullptr) {
+                _console->append(QString("Warning: Could not find plugin \"%1\" while loading GUI item id=%2. Item ignored.")
+                                     .arg(comp).arg(id));
+                continue;
+            }
+
+            ModelComponent* component = _simulator->getModelManager()->current()->getComponentManager()->find(id);
+            if (!component) {
+                continue;
+            }
+
+            GraphicalModelComponent* loadedComponent = _graphicsView->getScene()->addGraphicalModelComponent(plugin, component, position, color);
+            if (loadedComponent != nullptr && split.size() >= 6) {
+                QRegularExpressionMatch itemIdMatch = QRegularExpression("itemid=(\\d+)").match(split[5]);
+                if (itemIdMatch.hasMatch()) {
+                    persistedItems.insert(itemIdMatch.captured(1).toInt(), loadedComponent);
+                }
+            }
+        }
+
+        QList<QGraphicsItem*>* graphicalComponents = _graphicsView->getScene()->getGraphicalModelComponents();
+        for (unsigned int i = 0; i < static_cast<unsigned int>(graphicalComponents->size()); i++) {
+            GraphicalModelComponent* source = dynamic_cast<GraphicalModelComponent*>(graphicalComponents->at(i));
+            if (source == nullptr || source->getComponent() == nullptr) {
+                continue;
+            }
+            std::map<unsigned int, Connection*>* connections = source->getComponent()->getConnectionManager()->connections();
+            if (connections == nullptr) {
+                continue;
+            }
+            for (auto it = connections->begin(); it != connections->end(); ++it) {
+                unsigned int portSource = it->first;
+                Connection* connection = it->second;
+                if (connection == nullptr || connection->component == nullptr) {
+                    continue;
+                }
+                GraphicalModelComponent* destination = _graphicsView->getScene()->findGraphicalModelComponent(connection->component->getId());
+                if (destination == nullptr || destination->getGraphicalInputPorts().empty()) {
+                    continue;
+                }
+                unsigned int portDestination = destination->getGraphicalInputPorts().at(0)->portNum();
+                if (portSource >= source->getGraphicalOutputPorts().size() || portDestination >= destination->getGraphicalInputPorts().size()) {
+                    continue;
+                }
+
+                source->setOcupiedOutputPorts(source->getOcupiedOutputPorts() + 1);
+                destination->setOcupiedInputPorts(destination->getOcupiedInputPorts() + 1);
+                _graphicsView->getScene()->addGraphicalConnection(source->getGraphicalOutputPorts().at(portSource),
+                                                                  destination->getGraphicalInputPorts().at(portDestination),
+                                                                  portSource,
+                                                                  portDestination);
+            }
+        }
+
+        if (!counters.empty()) {
+            QRegularExpression regex("Counter_(\\d+) \\t id=(-?\\d+) \\t position=\\(([^,]+),([^\\)]+)\\) \\t width=([^\\t]+) \\t height=([^\\t]+)");
+            for (const QString& line : counters) {
+                if (line.trimmed().isEmpty()) {
+                    continue;
+                }
+                AnimationCounter* counter = new AnimationCounter();
+                QRegularExpressionMatch match = regex.match(line);
+                if (match.hasMatch()) {
+                    counter->setIdCounter(match.captured(2).toInt());
+                    counter->setRect(QRectF(0, 0, match.captured(5).toDouble(), match.captured(6).toDouble()).normalized());
+                    counter->setPos(QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
+                    _graphicsView->getScene()->getAnimationsCounter()->append(counter);
+                    _graphicsView->getScene()->addItem(counter);
+                } else {
+                    delete counter;
+                }
+            }
+        }
+
+        if (!variables.empty()) {
+            QRegularExpression regex("Variable_(\\d+) \\t id=(-?\\d+) \\t position=\\(([^,]+),([^\\)]+)\\) \\t width=([^\\t]+) \\t height=([^\\t]+)");
+            for (const QString& line : variables) {
+                if (line.trimmed().isEmpty()) {
+                    continue;
+                }
+                AnimationVariable* variable = new AnimationVariable();
+                QRegularExpressionMatch match = regex.match(line);
+                if (match.hasMatch()) {
+                    variable->setIdVariable(match.captured(2).toInt());
+                    variable->setRect(QRectF(0, 0, match.captured(5).toDouble(), match.captured(6).toDouble()).normalized());
+                    variable->setPos(QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
+                    _graphicsView->getScene()->getAnimationsVariable()->append(variable);
+                    _graphicsView->getScene()->addItem(variable);
+                } else {
+                    delete variable;
+                }
+            }
+        }
+
+        if (!timers.empty()) {
+            QRegularExpression regex("Timer_(\\d+) \\s* hour=(\\d+) \\s* minute=(\\d+) \\s* second=(\\d+) \\s* format=(\\d+) \\s* position=\\(([^,]+),([^\\)]+)\\) \\s* width=([^\\t]+) \\s* height=([^\\t]+)");
+            for (const QString& line : timers) {
+                if (line.trimmed().isEmpty()) {
+                    continue;
+                }
+                AnimationTimer* timer = new AnimationTimer(_graphicsView->getScene());
+                QRegularExpressionMatch match = regex.match(line);
+                if (match.hasMatch()) {
+                    timer->setInitialHours(match.captured(2).toInt());
+                    timer->setInitialMinutes(match.captured(3).toInt());
+                    timer->setInitialSeconds(match.captured(4).toInt());
+                    timer->setTimeFormat(Util::TimeFormat(match.captured(5).toInt()));
+                    timer->setTime(0.0);
+                    timer->setRect(QRectF(0, 0, match.captured(8).toDouble(), match.captured(9).toDouble()).normalized());
+                    timer->setPos(QPointF(match.captured(6).toDouble(), match.captured(7).toDouble()));
+                    _graphicsView->getScene()->getAnimationsTimer()->append(timer);
+                    _graphicsView->getScene()->addItem(timer);
+                } else {
+                    delete timer;
+                }
+            }
+        }
+
+        if (!geometries.empty()) {
+            QRegularExpression regexPos("\\s*pos=\\(([^,]+),([^\\)]+)\\)");
+            QRegularExpression regexId("\\s*id=(\\d+)");
+            QRegularExpression regexLine("\\s*line=\\(([^,]+),([^,]+),([^,]+),([^\\)]+)\\)");
+            QRegularExpression regexRect("\\s*rect=\\(([^,]+),([^,]+),([^,]+),([^\\)]+)\\)");
+            QRegularExpression regexPoints("\\s*points=([^\\t]+)");
+            QRegularExpression regexText("\\s*value=([^\\t]+)");
+
+            for (const QString& rawLine : geometries) {
+                if (rawLine.trimmed().isEmpty()) {
+                    continue;
+                }
+                QStringList tokens = rawLine.split("\t");
+                if (tokens.size() < 4) {
+                    continue;
+                }
+
+                QGraphicsItem* loadedItem = nullptr;
+                QString type = tokens[2].trimmed();
+                type.remove("type=");
+
+                QRegularExpressionMatch idMatch = regexId.match(tokens[1]);
+                int persistedId = idMatch.hasMatch() ? idMatch.captured(1).toInt() : -1;
+                QRegularExpressionMatch posMatch = regexPos.match(tokens.last());
+                QPointF itemPos(0.0, 0.0);
+                if (posMatch.hasMatch()) {
+                    itemPos.setX(posMatch.captured(1).toDouble());
+                    itemPos.setY(posMatch.captured(2).toDouble());
+                }
+
+                if (type == "line") {
+                    QRegularExpressionMatch m = regexLine.match(tokens[3]);
+                    if (m.hasMatch()) {
+                        QGraphicsLineItem* lineItem = new QGraphicsLineItem(m.captured(1).toDouble(), m.captured(2).toDouble(), m.captured(3).toDouble(), m.captured(4).toDouble());
+                        lineItem->setPos(itemPos);
+                        lineItem->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                        lineItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                        _graphicsView->getScene()->addItem(lineItem);
+                        _graphicsView->getScene()->addDrawingGeometry(lineItem);
+                        loadedItem = lineItem;
+                    }
+                } else if (type == "rect" || type == "ellipse") {
+                    QRegularExpressionMatch m = regexRect.match(tokens[3]);
+                    if (m.hasMatch()) {
+                        const QRectF rect(m.captured(1).toDouble(), m.captured(2).toDouble(), m.captured(3).toDouble(), m.captured(4).toDouble());
+                        if (type == "rect") {
+                            QGraphicsRectItem* rectItem = new QGraphicsRectItem(rect.normalized());
+                            rectItem->setPos(itemPos);
+                            rectItem->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                            rectItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                            _graphicsView->getScene()->addItem(rectItem);
+                            _graphicsView->getScene()->addDrawingGeometry(rectItem);
+                            loadedItem = rectItem;
+                        } else {
+                            QGraphicsEllipseItem* ellipseItem = new QGraphicsEllipseItem(rect.normalized());
+                            ellipseItem->setPos(itemPos);
+                            ellipseItem->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                            ellipseItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                            _graphicsView->getScene()->addItem(ellipseItem);
+                            _graphicsView->getScene()->addDrawingGeometry(ellipseItem);
+                            loadedItem = ellipseItem;
+                        }
+                    }
+                } else if (type == "polygon") {
+                    QRegularExpressionMatch m = regexPoints.match(tokens[3]);
+                    if (m.hasMatch()) {
+                        QStringList pointsTokens = m.captured(1).split(";", Qt::SkipEmptyParts);
+                        QPolygonF polygon;
+                        for (const QString& pointToken : pointsTokens) {
+                            QStringList coord = pointToken.split(",");
+                            if (coord.size() == 2) {
+                                polygon << QPointF(coord[0].toDouble(), coord[1].toDouble());
+                            }
+                        }
+                        if (!polygon.isEmpty()) {
+                            QGraphicsPolygonItem* polygonItem = new QGraphicsPolygonItem(polygon);
+                            polygonItem->setPos(itemPos);
+                            polygonItem->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                            polygonItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                            _graphicsView->getScene()->addItem(polygonItem);
+                            _graphicsView->getScene()->addDrawingGeometry(polygonItem);
+                            loadedItem = polygonItem;
+                        }
+                    }
+                } else if (tokens[0].trimmed() == "Text") {
+                    QRegularExpressionMatch m = regexText.match(tokens[2]);
+                    if (m.hasMatch()) {
+                        QGraphicsTextItem* textItem = new QGraphicsTextItem(decodeGuiText(m.captured(1)));
+                        textItem->setPos(itemPos);
+                        textItem->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                        textItem->setFlag(QGraphicsItem::ItemIsMovable, true);
+                        textItem->setTextInteractionFlags(Qt::NoTextInteraction);
+                        _graphicsView->getScene()->addItem(textItem);
+                        _graphicsView->getScene()->addDrawingGeometry(textItem);
+                        loadedItem = textItem;
+                    }
+                }
+
+                if (persistedId > 0 && loadedItem != nullptr) {
+                    persistedItems.insert(persistedId, loadedItem);
+                }
+            }
+        }
+
+        if (!groups.empty()) {
+            QRegularExpression regexMembers("members=([^\\t]+)");
+            for (const QString& rawLine : groups) {
+                if (rawLine.trimmed().isEmpty()) {
+                    continue;
+                }
+                QStringList tokens = rawLine.split("\t");
+                if (tokens.size() < 2) {
+                    continue;
+                }
+                QRegularExpressionMatch membersMatch = regexMembers.match(tokens[1]);
+                if (!membersMatch.hasMatch()) {
+                    continue;
+                }
+
+                QStringList members = membersMatch.captured(1).split(",", Qt::SkipEmptyParts);
+                QList<QGraphicsItem*> groupItems;
+                QList<GraphicalModelComponent*> groupComponents;
+                for (const QString& idStr : members) {
+                    int memberId = idStr.toInt();
+                    if (persistedItems.contains(memberId)) {
+                        QGraphicsItem* item = persistedItems.value(memberId);
+                        groupItems.append(item);
+                        if (GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(item)) {
+                            groupComponents.append(component);
+                        }
+                    }
+                }
+
+                if (groupItems.size() > 1) {
+                    bool canCreateGroup = true;
+                    for (QGraphicsItem* item : groupItems) {
+                        if (item == nullptr || item->group() != nullptr) {
+                            canCreateGroup = false;
+                            break;
+                        }
+                    }
+                    if (!canCreateGroup) {
+                        continue;
+                    }
+
+                    QGraphicsItemGroup* group = new QGraphicsItemGroup();
+                    for (QGraphicsItem* item : groupItems) {
+                        group->addToGroup(item);
+                    }
+                    group->setHandlesChildEvents(false);
+                    group->setFlag(QGraphicsItem::ItemIsSelectable, true);
+                    group->setFlag(QGraphicsItem::ItemIsMovable, true);
+                    _graphicsView->getScene()->addItem(group);
+                    _graphicsView->getScene()->getGraphicalGroups()->append(group);
+                    _graphicsView->getScene()->insertOldPositionItem(group, group->pos());
+                    for (QGraphicsItem* child : group->childItems()) {
+                        _graphicsView->getScene()->insertOldPositionItem(child, child->pos());
+                        child->setSelected(false);
+                    }
+                    group->setSelected(false);
+                    if (!groupComponents.isEmpty()) {
+                        _graphicsView->getScene()->insertComponentGroup(group, groupComponents);
+                    }
+                }
+            }
+        }
+
+        _applyDiagramsVisibility();
+        if (hasPersistedViewState) {
+            QTimer::singleShot(0, _ownerWidget, [this, restoredViewpointX, restoredViewpointY]() {
+                QScrollBar* hBar = _graphicsView->horizontalScrollBar();
+                QScrollBar* vBar = _graphicsView->verticalScrollBar();
+                hBar->setValue(qBound(hBar->minimum(), restoredViewpointX, hBar->maximum()));
+                vBar->setValue(qBound(vBar->minimum(), restoredViewpointY, vBar->maximum()));
+            });
+        }
+
+        _console->append("\n");
+        *_modelFilename = QString::fromStdString(filename);
+    }
+
+    return model;
+}

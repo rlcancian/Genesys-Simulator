@@ -25,6 +25,7 @@
  */
 class ModelChecker_if {
 public:
+	virtual ~ModelChecker_if() = default;
 	/*!
 	 * \brief checkAll
 	 * \return
@@ -58,4 +59,3 @@ public:
 };
 
 #endif /* MODELCHECKER_IF_H */
-

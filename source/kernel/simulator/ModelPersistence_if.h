@@ -30,6 +30,7 @@ class PersistenceRecord;
  */
 class ModelPersistence_if {
 public:
+	virtual ~ModelPersistence_if() = default;
 
 	enum class Options : int {
 		SAVEDEFAULTS = 1, HIDEIDKEY = 2, HIDETYPEKEY = 4, HIDENAMEKEY = 8, SORTALPHLY = 16
@@ -54,4 +55,3 @@ public:
 };
 
 #endif /* MODELPERSISTENCE_IF_H */
-

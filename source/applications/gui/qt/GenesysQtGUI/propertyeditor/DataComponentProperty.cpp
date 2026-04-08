@@ -2,7 +2,16 @@
 
 #include <utility>
 
+#include <QHBoxLayout>
+#include <QVBoxLayout>
+#include <QHeaderView>
+#include <QLabel>
+#include <QDebug>
+#include <QMetaObject>
+#include <Qt>
+
 #include "DataComponentEditor.h"
+#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
 
 DataComponentProperty::DataComponentProperty(
     PropertyEditorGenesys* editor,
@@ -12,18 +21,34 @@ DataComponentProperty::DataComponentProperty(
     ) : _editor(editor), _property(property), _afterChange(std::move(afterChange)) {
 
     _window = new QWidget;
+    _window->setWindowTitle("List Editor");
+
+    auto* rootLayout = new QVBoxLayout(_window);
+    auto* title = new QLabel("Manage list items (Arena style)", _window);
+    rootLayout->addWidget(title);
+
+    auto* contentLayout = new QHBoxLayout();
     _view = new QTreeWidget(_window);
     _add = new QPushButton("Add", _window);
     _remove = new QPushButton("Remove", _window);
     _edit = new QPushButton("Edit", _window);
     _confirmation = new QInputDialog(_window);
 
-    _add->move(270, 15);
-    _remove->move(270, 50);
-    _edit->move(270, 85);
-
     _view->setHeaderLabels({"Element"});
-    _window->setFixedSize(360, 200);
+    _view->header()->setStretchLastSection(true);
+
+    auto* buttonsLayout = new QVBoxLayout();
+    buttonsLayout->addWidget(_add);
+    buttonsLayout->addWidget(_remove);
+    buttonsLayout->addWidget(_edit);
+    buttonsLayout->addStretch(1);
+
+    contentLayout->addWidget(_view, 1);
+    contentLayout->addLayout(buttonsLayout);
+    rootLayout->addLayout(contentLayout);
+
+    _window->setLayout(rootLayout);
+    _window->setMinimumSize(460, 280);
 
     if (necessaryConfig) {
         config_values();
@@ -36,7 +61,10 @@ DataComponentProperty::DataComponentProperty(
 
 void DataComponentProperty::_notifyChanged() {
     if (_afterChange) {
-        _afterChange();
+        qInfo() << "[DataComponentProperty] scheduling deferred afterChange callback";
+        QMetaObject::invokeMethod(_window, [callback = _afterChange]() {
+            callback();
+        }, Qt::QueuedConnection);
     }
 }
 
@@ -60,7 +88,7 @@ void DataComponentProperty::config_values() {
     }
 
     for (const std::string& value : *values->list()) {
-        QTreeWidgetItem* newItem = new QTreeWidgetItem(_view);
+        auto* newItem = new QTreeWidgetItem(_view);
         newItem->setText(0, QString::fromStdString(value));
         _view->addTopLevelItem(newItem);
     }
@@ -91,43 +119,46 @@ bool DataComponentProperty::isInList(const std::string& value) const {
 }
 
 void DataComponentProperty::addElement() {
+    qInfo() << "[DataComponentProperty] addElement enter";
     if (_editor == nullptr || _property == nullptr) {
+        qWarning() << "[DataComponentProperty] addElement aborted due to invalid editor/property";
         return;
     }
 
-    QString newValue = _confirmation->getText(_confirmation, "Item", "Enter the value:");
+    // This block routes Add to explicit typed-creation support when the list control provides it.
+    GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(_property);
+    if (descriptor.supportsNewListElementCreation) {
+        bool ok = false;
+        try {
+            ok = _property->createNewListElement();
+        } catch (...) {
+            ok = false;
+        }
+        if (ok) {
+            config_values();
+            _notifyChanged();
+            qInfo() << "[DataComponentProperty] addElement used typed creation path";
+            return;
+        }
+    }
+
+    // This block preserves the legacy textual fallback path for lists without typed creation support.
+    const QString prompt = _property->getIsClass() ? "Enter the new item name:" : "Enter the value:";
+    QString newValue = _confirmation->getText(_confirmation, "Add Item", prompt);
     if (newValue.isEmpty()) {
         return;
     }
 
     if (!isInList(newValue.toStdString())) {
-        List<std::string>* oldValues = _property->getStrValues();
-        const unsigned int oldSize = oldValues != nullptr ? oldValues->size() : 0;
-        delete oldValues;
-
         _editor->changeProperty(_property, newValue.toStdString(), false);
         config_values();
-
-        List<std::string>* newValues = _property->getStrValues();
-        const unsigned int newSize = newValues != nullptr ? newValues->size() : 0;
-        bool changed = false;
-        if (newValues != nullptr) {
-            for (const std::string& value : *newValues->list()) {
-                if (value == newValue.toStdString()) {
-                    changed = true;
-                    break;
-                }
-            }
-        }
-        delete newValues;
-
-        if (changed || newSize != oldSize) {
-            _notifyChanged();
-        }
+        _notifyChanged();
     }
+    qInfo() << "[DataComponentProperty] addElement exit";
 }
 
 void DataComponentProperty::removeElement() {
+    qInfo() << "[DataComponentProperty] removeElement enter";
     if (_editor == nullptr || _property == nullptr) {
         return;
     }
@@ -138,32 +169,14 @@ void DataComponentProperty::removeElement() {
     }
 
     const QString itemValue = selectedItem->text(0);
-    List<std::string>* oldValues = _property->getStrValues();
-    const unsigned int oldSize = oldValues != nullptr ? oldValues->size() : 0;
-    delete oldValues;
-
     _editor->changeProperty(_property, itemValue.toStdString(), true);
     config_values();
-
-    List<std::string>* newValues = _property->getStrValues();
-    const unsigned int newSize = newValues != nullptr ? newValues->size() : 0;
-    bool removed = true;
-    if (newValues != nullptr) {
-        for (const std::string& value : *newValues->list()) {
-            if (value == itemValue.toStdString()) {
-                removed = false;
-                break;
-            }
-        }
-    }
-    delete newValues;
-
-    if (removed || newSize != oldSize) {
-        _notifyChanged();
-    }
+    _notifyChanged();
+    qInfo() << "[DataComponentProperty] removeElement exit";
 }
 
 void DataComponentProperty::editProperty() {
+    qInfo() << "[DataComponentProperty] editProperty enter";
     if (_property == nullptr || !_property->getIsClass()) {
         return;
     }
@@ -180,4 +193,5 @@ void DataComponentProperty::editProperty() {
 
     auto* propertyEditor = new DataComponentEditor(_editor, propertiesElement, _afterChange);
     propertyEditor->open_window(propertiesElement);
+    qInfo() << "[DataComponentProperty] editProperty exit";
 }

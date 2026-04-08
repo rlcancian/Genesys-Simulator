@@ -35,10 +35,13 @@ Release::Release(Model* model, std::string name) : ModelComponent(model, Util::T
 	SimulationControlGeneric<unsigned short>* propPriority = new SimulationControlGeneric<unsigned short>(
 									std::bind(&Release::priority, this), std::bind(&Release::setPriority, this, std::placeholders::_1),
 									Util::TypeOf<Release>(), getName(), "Priority", "");
+	// This block enables explicit typed creation for Release request list elements.
 	SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem>* propReleaseRequests = new SimulationControlGenericListPointer<SeizableItem*, Model*, SeizableItem> (
 									_parentModel,
                                     std::bind(&Release::getReleaseRequests, this), std::bind(&Release::addReleaseRequests, this, std::placeholders::_1), std::bind(&Release::removeReleaseRequests, this, std::placeholders::_1),
-									Util::TypeOf<Release>(), getName(), "ReleaseRequests", "");	
+									Util::TypeOf<Release>(), getName(), "ReleaseRequests", "", true, true, false,
+                                    [](Model* model, const std::string& name) { return new SeizableItem(model, name, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); },
+                                    [](Model* model) { return new SeizableItem(model, "", "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY); });	
 
 	_parentModel->getControls()->insert(propPriority);
 	_parentModel->getControls()->insert(propReleaseRequests);
@@ -144,6 +147,7 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 				trace("Member index " + std::to_string(index) + " was specifically choosen", TraceManager::Level::L9_mostDetailed);
 				break;
 			case SeizableItem::SelectionRule::PREFEREDORDER:
+			{
 				bestValue = 0;
 				index = 0;
 				unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
@@ -186,6 +190,10 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 					}
 					index = bestIndex;
 				}
+				break;
+			}
+			case SeizableItem::SelectionRule::num_elements:
+				traceError("Invalid SelectionRule enum value: num_elements");
 				break;
 		}
 		trace("Member of set " + set->getName() + " chosen index " + std::to_string(index), TraceManager::Level::L8_detailed);

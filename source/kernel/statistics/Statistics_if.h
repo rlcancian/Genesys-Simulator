@@ -25,6 +25,7 @@
  */
 class Statistics_if {
 public:
+	virtual ~Statistics_if() = default;
 	/*! \brief Returns the data collector associated with these statistics. */
 	virtual Collector_if* getCollector() const = 0;
 	/*! \brief Sets the collector used as source for statistical calculations. */
@@ -100,4 +101,3 @@ public:
 };
 
 #endif /* STATISTICS_IF_H */
-

@@ -118,10 +118,15 @@ void Buffer::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 					_parentModel->sendEntityToComponent(entity, _connections->getConnectionAtPort(1));
 					break;
 				case ArrivalOnFullBufferRule::ReplaceLastPosition:
+				{
 					Entity* replaced = _buffer->at(_capacity-1);
 					traceSimulation(this, "Entity "+entity->getName()+" will replace entity "+replaced->getName()+" on the buffer");
 					traceSimulation(this, "Disposing replaced entity "+entity->getName());
 					_parentModel->removeEntity(replaced);
+					break;
+				}
+				case ArrivalOnFullBufferRule::num_elements:
+					traceError("Invalid ArrivalOnFullBufferRule enum value: num_elements");
 					break;
 			}
 		} else { // insert

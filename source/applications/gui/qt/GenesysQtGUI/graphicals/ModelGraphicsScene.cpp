@@ -975,8 +975,28 @@ void ModelGraphicsScene::showGrid()
     _grid.visible = !_grid.visible;
 }
 
+// Ajusta visibilidade do grid sem depender da semântica de toggle de showGrid().
+void ModelGraphicsScene::setGridVisible(bool visible) {
+    if (_grid.visible != visible) {
+        showGrid();
+    } else if (_grid.visible && _grid.lines->empty()) {
+        showGrid();
+        showGrid();
+    }
+}
+
+// Retorna o estado visual corrente do grid para persistência/restauração.
+bool ModelGraphicsScene::isGridVisible() const {
+    return _grid.visible;
+}
+
 void ModelGraphicsScene::createDiagrams()
 {
+    // Prevents duplicate diagram nodes and edges when diagram creation is requested more than once.
+    if (_diagram) {
+        return;
+    }
+
     Model * m = _simulator->getModelManager()->current();
     ModelDataManager* dataManager = m->getDataManager();
 
@@ -2287,6 +2307,10 @@ void ModelGraphicsScene::focusOutEvent(QFocusEvent *focusEvent) {
 }
 
 void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent *event) {
+    qInfo() << "ModelGraphicsScene::dropEvent scene=" << this
+            << " draggedItem=" << _objectBeingDragged
+            << " simulator=" << _simulator
+            << " currentModel=" << (_simulator ? _simulator->getModelManager()->current() : nullptr);
     if (checkIgnoreEvent()) {
         event->ignore();
         return;

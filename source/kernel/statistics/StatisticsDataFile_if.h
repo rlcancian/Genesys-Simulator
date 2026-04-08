@@ -28,6 +28,7 @@ class StatisticsDatafile_if : public Statistics_if {
 	//    virtual CollectorDatafile_if* getCollector() = 0;
 	//    virtual void setCollector(Collector_if* collector) = 0;
 public:
+	virtual ~StatisticsDatafile_if() = default;
 	/*!
 	 * \brief mode
 	 * \return
@@ -91,4 +92,3 @@ public:
 };
 
 #endif /* STATISTICSDATAFILE_IF_H */
-
