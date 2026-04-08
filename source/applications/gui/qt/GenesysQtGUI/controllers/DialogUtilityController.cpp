@@ -16,7 +16,6 @@
 #include "../../../../../kernel/simulator/ModelDataDefinition.h"
 #include "../../../../../kernel/simulator/ModelDataManager.h"
 #include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/ModelComponentManager.h"
 #include "../../../../../kernel/simulator/LicenceManager.h"
 #include "../../../../../plugins/data/Entity.h"
 #include "../../../../../tools/SolverDefaultImpl1.h"
