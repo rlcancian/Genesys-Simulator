@@ -12,23 +12,31 @@
 //-------------------------
 
 void MainWindow::_simulatorTraceHandler(TraceEvent e) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _traceConsoleController->simulatorTraceHandler(e);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_traceConsoleController != nullptr) {
+        _traceConsoleController->simulatorTraceHandler(e);
+    }
 }
 
 void MainWindow::_simulatorTraceErrorHandler(TraceErrorEvent e) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _traceConsoleController->simulatorTraceErrorHandler(e);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_traceConsoleController != nullptr) {
+        _traceConsoleController->simulatorTraceErrorHandler(e);
+    }
 }
 
 void MainWindow::_simulatorTraceSimulationHandler(TraceSimulationEvent e) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _traceConsoleController->simulatorTraceSimulationHandler(e);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_traceConsoleController != nullptr) {
+        _traceConsoleController->simulatorTraceSimulationHandler(e);
+    }
 }
 
 void MainWindow::_simulatorTraceReportsHandler(TraceEvent e) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _traceConsoleController->simulatorTraceReportsHandler(e);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_traceConsoleController != nullptr) {
+        _traceConsoleController->simulatorTraceReportsHandler(e);
+    }
 }
 
 //
@@ -36,64 +44,88 @@ void MainWindow::_simulatorTraceReportsHandler(TraceEvent e) {
 //
 
 void MainWindow::_onModelCheckSuccessHandler(ModelEvent* re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onModelCheckSuccessHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onModelCheckSuccessHandler(re);
+    }
 }
 
 void MainWindow::_onReplicationStartHandler(SimulationEvent * re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onReplicationStartHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onReplicationStartHandler(re);
+    }
 }
 
 void MainWindow::_onSimulationStartHandler(SimulationEvent * re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onSimulationStartHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onSimulationStartHandler(re);
+    }
 }
 
 void MainWindow::_onSimulationPausedHandler(SimulationEvent * re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onSimulationPausedHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onSimulationPausedHandler(re);
+    }
 }
 
 void MainWindow::_onSimulationResumeHandler(SimulationEvent * re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onSimulationResumeHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onSimulationResumeHandler(re);
+    }
 }
 
 void MainWindow::_onSimulationEndHandler(SimulationEvent * re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onSimulationEndHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onSimulationEndHandler(re);
+    }
 }
 
 void MainWindow::_onProcessEventHandler(SimulationEvent * re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onProcessEventHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onProcessEventHandler(re);
+    }
 }
 
 void MainWindow::_onEntityCreateHandler(SimulationEvent* re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onEntityCreateHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onEntityCreateHandler(re);
+    }
 }
 
 void MainWindow::_onEntityRemoveHandler(SimulationEvent* re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onEntityRemoveHandler(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onEntityRemoveHandler(re);
+    }
 }
 
 void MainWindow::_onMoveEntityEvent(SimulationEvent *re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onMoveEntityEvent(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onMoveEntityEvent(re);
+    }
 }
 
 void MainWindow::_onAfterProcessEvent(SimulationEvent *re) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->onAfterProcessEvent(re);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onAfterProcessEvent(re);
+    }
 }
 
 
 void MainWindow::_setOnEventHandlers() {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 4 refactor.
-    _simulationEventController->setOnEventHandlers(this);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->setOnEventHandlers(this);
+    }
 }
 
 
@@ -102,11 +134,15 @@ void MainWindow::_setOnEventHandlers() {
 //-------------------------
 
 void MainWindow::_insertPluginUI(Plugin * plugin) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 5 refactor.
-    _pluginCatalogController->insertPluginUI(plugin);
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_pluginCatalogController != nullptr) {
+        _pluginCatalogController->insertPluginUI(plugin);
+    }
 }
 
 void MainWindow::_insertFakePlugins() {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 5 refactor.
-    _pluginCatalogController->insertFakePlugins();
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_pluginCatalogController != nullptr) {
+        _pluginCatalogController->insertFakePlugins();
+    }
 }

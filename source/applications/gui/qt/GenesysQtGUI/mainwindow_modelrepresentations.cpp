@@ -22,7 +22,6 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFileDialog>
-#include <QGraphicsScene>
 #include <QDateTime>
 #include <QEventLoop>
 #include <QTemporaryFile>
@@ -31,7 +30,6 @@
 #include <QPropertyAnimation>
 // #include <qt5/QtWidgets/qgraphicsitem.h>
 #include <QtWidgets/qgraphicsitem.h>
-#include <QGraphicsScene>
 //#include <QDesktopWidget> //removed from qt6
 #include <QScreen>
 #include <QDebug>
@@ -42,7 +40,7 @@
 #include <QUrl>
 
 void MainWindow::_actualizeModelSimLanguage() {
-    // This wrapper delegates model-language synchronization to a dedicated phase-1 service.
+    // Keep this wrapper as part of the final compatibility façade for model-language synchronization.
     _modelLanguageSynchronizer->actualizeModelSimLanguage();
 }
 
@@ -57,32 +55,32 @@ void MainWindow::_clearModelEditors() {
 }
 
 bool MainWindow::_setSimulationModelBasedOnText() {
-    // This wrapper delegates text-to-model synchronization while keeping MainWindow as temporary API surface.
+    // Keep this wrapper as part of the final compatibility façade for text-to-model synchronization.
     return _modelLanguageSynchronizer->setSimulationModelBasedOnText();
 }
 
 std::string MainWindow::_adjustDotName(std::string name) {
-    // This wrapper delegates DOT-name normalization to the phase-1 Graphviz service.
+    // Keep this wrapper as part of the final compatibility façade for Graphviz naming.
     return _graphvizModelExporter->adjustDotName(std::move(name));
 }
 
 void MainWindow::_insertTextInDot(std::string text, unsigned int compLevel, unsigned int compRank, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap, bool isNode) {
-    // This wrapper delegates ranked DOT insertion to the phase-1 Graphviz service.
+    // Keep this wrapper as part of the final compatibility façade for Graphviz dot insertion.
     _graphvizModelExporter->insertTextInDot(std::move(text), compLevel, compRank, dotmap, isNode);
 }
 
 void MainWindow::_recursiveCreateModelGraphicPicture(ModelDataDefinition* componentOrData, std::list<ModelDataDefinition*>* visited, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap) {
-    // This wrapper delegates recursive DOT generation to the phase-1 Graphviz service.
+    // Keep this wrapper as part of the final compatibility façade for recursive Graphviz generation.
     _graphvizModelExporter->recursiveCreateModelGraphicPicture(componentOrData, visited, dotmap);
 }
 
 std::string MainWindow::_addCppCodeLine(std::string line, unsigned int indent) {
-    // This wrapper delegates C++ line formatting to the phase-1 exporter service.
+    // Keep this wrapper as part of the final compatibility façade for C++ code formatting.
     return _cppModelExporter->addCppCodeLine(line, indent);
 }
 
 void MainWindow::_actualizeModelCppCode() {
-    // This wrapper delegates full C++ code export rendering to the phase-1 exporter service.
+    // Keep this wrapper as part of the final compatibility façade for C++ code export.
     _cppModelExporter->actualizeModelCppCode();
 }
 
@@ -96,7 +94,7 @@ void MainWindow::setGraphicalModelHasChanged(bool graphicalModelHasChanged) {
 }
 
 bool MainWindow::_createModelImage() {
-    // This wrapper delegates model diagram image creation to the phase-1 Graphviz service.
+    // Keep this wrapper as part of the final compatibility façade for model image creation.
     return _graphvizModelExporter->createModelImage();
 }
 
@@ -104,29 +102,29 @@ bool MainWindow::_createModelImage() {
 
 bool MainWindow::_saveTextModel(QFile *saveFile, QString data)
 {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 2 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
     return _graphicalModelSerializer->saveTextModel(saveFile, data);
 }
 
 bool MainWindow::_saveGraphicalModel(QString filename)
 {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 2 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
     return _graphicalModelSerializer->saveGraphicalModel(filename);
 }
 
 Model *MainWindow::_loadGraphicalModel(std::string filename) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 2 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
     return _graphicalModelSerializer->loadGraphicalModel(filename);
 }
 
 
 void MainWindow::_recursivalyGenerateGraphicalModelFromModel(ModelComponent* component, List<ModelComponent*>* visited, std::map<ModelComponent*,GraphicalModelComponent*>* map, int *x, int *y, int *ymax, int sequenceInLine) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 2 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
     _graphicalModelBuilder->recursivalyGenerateGraphicalModelFromModel(component, visited, map, x, y, ymax, sequenceInLine);
 }
 
 void MainWindow::_actualizeModelComponents(bool force) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 3 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 3 refactor.
     _modelInspectorController->actualizeModelComponents(force);
 }
 
@@ -137,7 +135,7 @@ void MainWindow::_actualizeModelTextHasChanged(bool hasChanged) {
 }
 
 void MainWindow::_actualizeModelDataDefinitions(bool force) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 3 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 3 refactor.
     _modelInspectorController->actualizeModelDataDefinitions(force);
 }
 
@@ -149,7 +147,7 @@ void MainWindow::_actualizeGraphicalModel(SimulationEvent * re) {
 }
 
 void MainWindow::_generateGraphicalModelFromModel() {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 2 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
     _graphicalModelBuilder->generateGraphicalModelFromModel();
 }
 

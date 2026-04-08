@@ -11,7 +11,7 @@
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
 #include "controllers/SimulationController.h"
-// Add dedicated controllers progressively during incremental GUI refactors.
+// Keep explicit controller includes to make MainWindow composition-root wiring clear.
 #include "controllers/ModelInspectorController.h"
 #include "controllers/TraceConsoleController.h"
 #include "controllers/SimulationEventController.h"
@@ -53,7 +53,6 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFileDialog>
-#include <QGraphicsScene>
 #include <QDateTime>
 #include <QEventLoop>
 #include <QTemporaryFile>
@@ -62,7 +61,6 @@
 #include <QPropertyAnimation>
 // #include <qt5/QtWidgets/qgraphicsitem.h>
 #include <QtWidgets/qgraphicsitem.h>
-#include <QGraphicsScene>
 //#include <QDesktopWidget> //removed from qt6
 #include <QScreen>
 #include <QDebug>
@@ -466,7 +464,7 @@ void MainWindow::_onPropertyEditorModelChanged() {
 
 
 void::MainWindow::saveItemForCopy(QList<GraphicalModelComponent*> * gmcList, QList<GraphicalConnection*> * connList) {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
     if (_editCommandController != nullptr) {
         _editCommandController->saveItemForCopy(gmcList, connList);
     }
@@ -765,7 +763,7 @@ void MainWindow::_showMessageNotImplemented(){
 
 
 void MainWindow::_helpCopy() {
-    // Keep this wrapper temporarily for compatibility during the incremental Phase 9 refactor.
+    // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.
     if (_editCommandController != nullptr) {
         _editCommandController->helpCopy();
     }

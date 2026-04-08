@@ -5,36 +5,38 @@
 
 //-----------------------------------------
 
+// Keep this scene callback local to MainWindow because it updates direct UI status widgets.
 /**
- * @brief Atualiza label de coordenadas com posição atual do mouse na cena.
- * @param mouseEvent Evento de mouse recebido da cena gráfica.
+ * @brief Updates the coordinate label with the current scene mouse position.
+ * @param mouseEvent Mouse event received from the graphical scene.
  */
 void MainWindow::_onSceneMouseEvent(QGraphicsSceneMouseEvent* mouseEvent) {
     QPointF pos = mouseEvent->scenePos();
     ui->labelMousePos->setText(QString::fromStdString("<" + std::to_string((int) pos.x()) + "," + std::to_string((int) pos.y()) + ">"));
 }
 
+// Keep this scene callback local to MainWindow because it bridges wheel events to existing slider state.
 /**
- * @brief Aumenta zoom da visualização gráfica via slider principal.
+ * @brief Increases graphical view zoom through the main slider.
  */
 void MainWindow::_onSceneWheelInEvent() {
     int value = ui->horizontalSlider_ZoomGraphical->value();
     ui->horizontalSlider_ZoomGraphical->setValue(value + TraitsGUI<GMainWindow>::zoomButtonChange);
 }
 
+// Keep this scene callback local to MainWindow because it bridges wheel events to existing slider state.
 /**
- * @brief Reduz zoom da visualização gráfica via slider principal.
+ * @brief Decreases graphical view zoom through the main slider.
  */
 void MainWindow::_onSceneWheelOutEvent() {
     int value = ui->horizontalSlider_ZoomGraphical->value();
     ui->horizontalSlider_ZoomGraphical->setValue(value - TraitsGUI<GMainWindow>::zoomButtonChange);
 }
 
+// Keep this scene callback as a compatibility façade entry-point for tab updates.
 /**
- * @brief Atualiza painéis dependentes quando o modelo gráfico muda.
- * @param event Evento de alteração gráfica (não utilizado diretamente neste handler).
- *
- * @todo Evoluir para atualização incremental por tipo de evento para reduzir custo.
+ * @brief Refreshes dependent panes when the graphical model changes.
+ * @param event Graphical change event (currently unused by this compatibility wrapper).
  */
 void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*/) {
     _actualizeTabPanes();
@@ -42,18 +44,17 @@ void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*
 
 //-----------------------------------------
 
+// Keep this slot in MainWindow because it centralizes action-state synchronization.
 /**
- * @brief Slot de notificação de alteração da cena (redo/undo e ações de edição).
- * @param region Regiões invalidadas da cena.
+ * @brief Scene-change notification slot (undo/redo and edit action synchronization).
+ * @param region Invalidated scene regions.
  */
 void MainWindow::sceneChanged(const QList<QRectF> &region) {
     if (_shuttingDown || ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr) {
         return;
     }
     Q_UNUSED(region);
-    /**
-     * Bloco 1: sincroniza estado de undo/redo e flags de alteração textual.
-     */
+    // Synchronize undo/redo state and textual model dirty flag.
     bool canUndo = ui->graphicsView->getScene()->getUndoStack()->canUndo();
     bool canRedo = ui->graphicsView->getScene()->getUndoStack()->canRedo();
 
@@ -64,23 +65,20 @@ void MainWindow::sceneChanged(const QList<QRectF> &region) {
 
     ui->graphicsView->scene()->update();
 
-    /**
-     * Bloco 2: habilita/desabilita ações de edição conforme itens/copias disponíveis.
-     */
+    // Refresh edit-action enablement based on current selection and copy buffers.
     _actualizeActions();
 
-    /**
-     * Bloco 3: atualiza estado visual final da cena.
-     */
+    // Finalize visual state refresh for connection tool and scene update.
     if (ui->graphicsView->getScene()->connectingStep() == 0)
         ui->actionGModelShowConnect->setChecked(false);
 
     ui->graphicsView->scene()->update();
 }
 
+// Keep this helper local to MainWindow because it contributes to centralized action-state logic.
 /**
- * @brief Verifica se há itens relevantes na cena para habilitar operações de edição.
- * @return true se houver componentes/desenhos/animações no modelo gráfico.
+ * @brief Checks whether the scene has relevant items to enable edit operations.
+ * @return true when components/drawings/animations exist in the graphical model.
  */
 bool MainWindow::_checkItemsScene() {
     bool res = false;
@@ -105,10 +103,11 @@ void MainWindow::sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsIte
 }
 //void sceneRectChanged(const QRectF &rect){}
 
+// Keep this wrapper as part of the final compatibility façade for property editor synchronization.
 /**
- * @brief Slot quando seleção de itens da cena muda.
+ * @brief Slot called when scene selection changes.
  *
- * Atualiza o Property Editor para um único componente selecionado e limpa em caso contrário.
+ * Updates property editor state according to current selection.
  */
 void MainWindow::sceneSelectionChanged() {
     // Keep this wrapper for compatibility during the incremental Phase 6 refactor.

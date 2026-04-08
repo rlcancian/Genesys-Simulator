@@ -44,9 +44,7 @@ class DialogUtilityController;
 /**
  * @brief Main Qt window of Genesys GUI.
  *
- * Aggregates user interactions, graphical model edition and kernel integration.
- *
- * @todo Continue decomposing this class into dedicated controllers to reduce coupling.
+ * Acts as the final composition root and compatibility façade for extracted controllers/services.
  */
 class MainWindow : public QMainWindow {
 	Q_OBJECT
@@ -286,16 +284,9 @@ private: //???
 private: // interface and model main elements to join
 	Ui::MainWindow *ui;
 	Simulator* simulator;
+    // Keep core simulation command gateway owned by MainWindow composition root.
     std::unique_ptr<class SimulationController> _simulationController;
-    // Add the Phase 9 edit-command controller owned by MainWindow.
-    std::unique_ptr<EditCommandController> _editCommandController;
-    // Add the Phase 10 scene-tool controller owned by MainWindow.
-    std::unique_ptr<SceneToolController> _sceneToolController;
-    // Add the Phase 11 dialog-utility controller owned by MainWindow.
-    std::unique_ptr<DialogUtilityController> _dialogUtilityController;
-    // Add the Phase 8 simulation-command controller owned by MainWindow.
-    std::unique_ptr<SimulationCommandController> _simulationCommandController;
-    // Phase-1 services keep model-representation logic outside MainWindow while wrappers remain stable.
+    // Keep phase-ordered services to make composition dependencies explicit in Phase 12.
     // Synchronize textual model language with the kernel model manager.
     std::unique_ptr<ModelLanguageSynchronizer> _modelLanguageSynchronizer;
     // Generate Graphviz DOT and rendered model images for the GUI pane.
@@ -306,6 +297,7 @@ private: // interface and model main elements to join
     std::unique_ptr<GraphicalModelSerializer> _graphicalModelSerializer;
     // Rebuild graphical components and links through the Phase 2 builder service.
     std::unique_ptr<GraphicalModelBuilder> _graphicalModelBuilder;
+    // Keep phase-ordered controllers to preserve the final compatibility façade surface.
     // Add the Phase 3 model-inspector controller owned by MainWindow.
     std::unique_ptr<ModelInspectorController> _modelInspectorController;
     // Add the Phase 4 trace controller owned by MainWindow.
@@ -318,6 +310,14 @@ private: // interface and model main elements to join
     std::unique_ptr<PropertyEditorController> _propertyEditorController;
     // Add the Phase 7 model-lifecycle controller owned by MainWindow.
     std::unique_ptr<ModelLifecycleController> _modelLifecycleController;
+    // Add the Phase 8 simulation-command controller owned by MainWindow.
+    std::unique_ptr<SimulationCommandController> _simulationCommandController;
+    // Add the Phase 9 edit-command controller owned by MainWindow.
+    std::unique_ptr<EditCommandController> _editCommandController;
+    // Add the Phase 10 scene-tool controller owned by MainWindow.
+    std::unique_ptr<SceneToolController> _sceneToolController;
+    // Add the Phase 11 dialog-utility controller owned by MainWindow.
+    std::unique_ptr<DialogUtilityController> _dialogUtilityController;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;
