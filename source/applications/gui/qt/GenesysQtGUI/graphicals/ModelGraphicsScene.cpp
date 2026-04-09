@@ -55,6 +55,24 @@
 #include <QCoreApplication>
 #include <QThread>
 
+namespace {
+// Safely cast the scene parent to a generic graphics view.
+QGraphicsView* sceneParentGraphicsView(ModelGraphicsScene* scene) {
+    if (scene == nullptr) {
+        return nullptr;
+    }
+    return qobject_cast<QGraphicsView*>(scene->parent());
+}
+
+// Safely cast the scene parent to the specialized model graphics view.
+ModelGraphicsView* sceneParentModelGraphicsView(ModelGraphicsScene* scene) {
+    if (scene == nullptr) {
+        return nullptr;
+    }
+    return qobject_cast<ModelGraphicsView*>(scene->parent());
+}
+}
+
 ModelGraphicsScene::ModelGraphicsScene(qreal x, qreal y, qreal width, qreal height, QObject *parent) : QGraphicsScene(x, y, width, height, parent) {
     // grid
     _grid.interval = TraitsGUI<GScene>::gridInterval; // 20;
@@ -1636,7 +1654,11 @@ void ModelGraphicsScene::setUndoStack(QUndoStack* undo) {
 
 void ModelGraphicsScene::beginConnection() {
     _connectingStep = 1;
-    ((QGraphicsView*)this->parent())->setCursor(Qt::CrossCursor);
+    // Set the connection cursor only when a valid parent view is available.
+    QGraphicsView* parentView = sceneParentGraphicsView(this);
+    if (parentView != nullptr) {
+        parentView->setCursor(Qt::CrossCursor);
+    }
 }
 
 void ModelGraphicsScene::groupComponents(bool notify) {
@@ -2064,7 +2086,11 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent *mouseEvent) {
 
                         addItem(graphicconnection);
 
-                        ((ModelGraphicsView *) (this->parent()))->unsetCursor();
+                        // Reset cursor only when the parent model view exists.
+                        ModelGraphicsView* parentView = sceneParentModelGraphicsView(this);
+                        if (parentView != nullptr) {
+                            parentView->unsetCursor();
+                        }
                         _connectingStep = 0;
 
                         _sourceGraphicalComponentPort = nullptr;
@@ -2083,7 +2109,11 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent *mouseEvent) {
 
                         addItem(graphicconnection);
 
-                        ((ModelGraphicsView *) (this->parent()))->unsetCursor();
+                        // Reset cursor only when the parent model view exists.
+                        ModelGraphicsView* parentView = sceneParentModelGraphicsView(this);
+                        if (parentView != nullptr) {
+                            parentView->unsetCursor();
+                        }
                         _connectingStep = 0;
 
                         _sourceGraphicalComponentPort = nullptr;
@@ -2095,7 +2125,11 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent *mouseEvent) {
                 _connectingStep = 0;
                 _sourceGraphicalComponentPort = nullptr;
                 _destinationGraphicalComponentPort = nullptr;
-                ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::ArrowCursor);
+                // Restore default cursor only when the parent model view exists.
+                ModelGraphicsView* parentView = sceneParentModelGraphicsView(this);
+                if (parentView != nullptr) {
+                    parentView->setCursor(Qt::ArrowCursor);
+                }
             }
         } else if (_drawingMode != NONE) {
             // Capturar o ponto de início do desenho
@@ -2209,7 +2243,11 @@ void ModelGraphicsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent *mouseEvent)
             //Adicionar desenho a tela
             addGeometry(drawingEndPoint, false);
         }
-        ((ModelGraphicsView *) (this->parent()))->unsetCursor();
+        // Reset cursor only when the parent model view exists.
+        ModelGraphicsView* parentView = sceneParentModelGraphicsView(this);
+        if (parentView != nullptr) {
+            parentView->unsetCursor();
+        }
     } else if (_drawingMode == NONE && _currentPolygon != nullptr) {
         removeItem(_currentPolygon);
         _currentPolygon = nullptr;
@@ -2294,11 +2332,17 @@ void ModelGraphicsScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent *mouseEv
 void ModelGraphicsScene::wheelEvent(QGraphicsSceneWheelEvent *wheelEvent) {
     QGraphicsScene::wheelEvent(wheelEvent);
     if (_controlIsPressed){
+        // Forward wheel zoom notifications only when the parent model view exists.
+        ModelGraphicsView* parentView = sceneParentModelGraphicsView(this);
         if (wheelEvent->delta() > 0){
-            ((ModelGraphicsView *)(this->parent()))->notifySceneWheelInEventHandler();
+            if (parentView != nullptr) {
+                parentView->notifySceneWheelInEventHandler();
+            }
         }
         else{
-            ((ModelGraphicsView *)(this->parent()))->notifySceneWheelOutEventHandler();
+            if (parentView != nullptr) {
+                parentView->notifySceneWheelOutEventHandler();
+            }
         }
         wheelEvent->accept();
     }
@@ -2452,7 +2496,11 @@ void ModelGraphicsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *mouseEvent) {
 
     QGraphicsScene::mouseMoveEvent(mouseEvent);
 
-    ((ModelGraphicsView *) (this->parent()))->notifySceneMouseEventHandler(mouseEvent); // to show coords
+    // Forward mouse coordinates only when the parent model view exists.
+    ModelGraphicsView* parentView = sceneParentModelGraphicsView(this);
+    if (parentView != nullptr) {
+        parentView->notifySceneMouseEventHandler(mouseEvent); // to show coords
+    }
     if (_connectingStep > 0) {
         QGraphicsItem* item = this->itemAt(mouseEvent->scenePos(), QTransform());
         if (item != nullptr) {
@@ -2464,37 +2512,67 @@ void ModelGraphicsScene::mouseMoveEvent(QGraphicsSceneMouseEvent *mouseEvent) {
                     teste->getComponent();
                 }
                 if (_connectingStep == 1 && port->isInputPort()) {
-                    ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::PointingHandCursor);
+                    // Show pointing cursor only when the parent model view exists.
+                    if (parentView != nullptr) {
+                        parentView->setCursor(Qt::PointingHandCursor);
+                    }
                 } else if (_connectingStep == 1 && !port->isInputPort() && port->getConnections()->empty()) {
-                    ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::PointingHandCursor);
+                    // Show pointing cursor only when the parent model view exists.
+                    if (parentView != nullptr) {
+                        parentView->setCursor(Qt::PointingHandCursor);
+                    }
                 } else if (_connectingStep == 2 && port->isInputPort()) {
-                    ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::PointingHandCursor);
+                    // Show pointing cursor only when the parent model view exists.
+                    if (parentView != nullptr) {
+                        parentView->setCursor(Qt::PointingHandCursor);
+                    }
                 } else if (_connectingStep == 3 && !port->isInputPort() && port->getConnections()->empty()) {
-                    ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::PointingHandCursor);
+                    // Show pointing cursor only when the parent model view exists.
+                    if (parentView != nullptr) {
+                        parentView->setCursor(Qt::PointingHandCursor);
+                    }
                 }
                 return;
             }
         }
         if (_connectingStep > 1) {
-            ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::ClosedHandCursor);
+            // Show closed-hand cursor only when the parent model view exists.
+            if (parentView != nullptr) {
+                parentView->setCursor(Qt::ClosedHandCursor);
+            }
         } else if (_connectingStep == 1){
-            ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::CrossCursor);
+            // Show cross cursor only when the parent model view exists.
+            if (parentView != nullptr) {
+                parentView->setCursor(Qt::CrossCursor);
+            }
         }
     }  else if (_drawingMode != NONE && _drawing){
         if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER) {
             continueAnimationDrawing(mouseEvent);
-            ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::CrossCursor);
+            // Keep drawing cursor only when the parent model view exists.
+            if (parentView != nullptr) {
+                parentView->setCursor(Qt::CrossCursor);
+            }
         } else {
             //mostrar desenho se formando
             QPointF currentPoint = mouseEvent->scenePos();
             addGeometry(currentPoint, true);
 
             if (_drawingMode == LINE) {
-                ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::SizeHorCursor);
+                // Show line-resize cursor only when the parent model view exists.
+                if (parentView != nullptr) {
+                    parentView->setCursor(Qt::SizeHorCursor);
+                }
             } else if (_drawingMode == POLYGON || _drawingMode == POLYGON_POINTS) {
-                ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::ArrowCursor);
+                // Show arrow cursor only when the parent model view exists.
+                if (parentView != nullptr) {
+                    parentView->setCursor(Qt::ArrowCursor);
+                }
             } else {
-                ((ModelGraphicsView *) (this->parent()))->setCursor(Qt::CrossCursor);
+                // Show cross cursor only when the parent model view exists.
+                if (parentView != nullptr) {
+                    parentView->setCursor(Qt::CrossCursor);
+                }
             }
         }
 
@@ -2704,7 +2782,11 @@ void ModelGraphicsScene::clearDrawingMode() {
     }
 
     _drawingMode = ModelGraphicsScene::NONE;
-    ((QGraphicsView*)this->parent())->setCursor(Qt::ArrowCursor);
+    // Restore default cursor only when a valid parent view is available.
+    QGraphicsView* parentView = sceneParentGraphicsView(this);
+    if (parentView != nullptr) {
+        parentView->setCursor(Qt::ArrowCursor);
+    }
 }
 // Build and return a temporary component list by value.
 QList<GraphicalModelComponent*> ModelGraphicsScene::graphicalModelComponentItems(){
