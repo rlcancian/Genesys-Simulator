@@ -284,6 +284,7 @@ void Model::_showElements() const {
 	{
 		std::string elementType;
 		ModelDataDefinition* modeldatum;
+		// Release the temporary class-name list returned by the manager after iterating through it.
 		std::list<std::string>* elementTypes = getDataManager()->getDataDefinitionClassnames();
 		for (std::list<std::string>::iterator typeIt = elementTypes->begin(); typeIt!=elementTypes->end(); typeIt++) {
 			elementType = (*typeIt);
@@ -298,6 +299,7 @@ void Model::_showElements() const {
 			}
 			Util::DecIndent();
 		}
+		delete elementTypes;
 	}
 	Util::DecIndent();
 }
@@ -431,10 +433,11 @@ void Model::_createModelInternalElements() {
 		}
 
 		std::list<ModelDataDefinition*>* modelElements;
-		unsigned int originalSize = getDataManager()->getDataDefinitionClassnames()->size(), pos = 1;
-		//for (std::list<std::string>::iterator itty = elements()->elementClassnames()->begin(); itty != elements()->elementClassnames()->end(); itty++) {
-		std::list<std::string>::iterator itty = getDataManager()->getDataDefinitionClassnames()->begin();
-		while (itty!=getDataManager()->getDataDefinitionClassnames()->end()&&pos<=originalSize) {
+		// Cache and explicitly free temporary class-name snapshots while handling possible dynamic type insertions.
+		std::list<std::string>* elementTypes = getDataManager()->getDataDefinitionClassnames();
+		unsigned int originalSize = elementTypes->size(), pos = 1;
+		std::list<std::string>::iterator itty = elementTypes->begin();
+		while (itty!=elementTypes->end()&&pos<=originalSize) {
 			//try {
 			modelElements = getDataManager()->getDataDefinitionList((*itty))->list();
 			//} catch (const std::exception& e) {
@@ -450,16 +453,24 @@ void Model::_createModelInternalElements() {
 				ModelDataDefinition::CreateInternalData((*itel));
 				Util::DecIndent();
 			}
-			if (originalSize==getDataManager()->getDataDefinitionClassnames()->size()) {
+			// Compare against a fresh snapshot size and free it immediately to avoid leaking manager-owned temporaries.
+			std::list<std::string>* currentTypes = getDataManager()->getDataDefinitionClassnames();
+			unsigned int currentSize = currentTypes->size();
+			delete currentTypes;
+			if (originalSize==currentSize) {
 				itty++;
 				pos++;
 			} else {
-				originalSize = getDataManager()->getDataDefinitionClassnames()->size();
-				itty = getDataManager()->getDataDefinitionClassnames()->begin();
+				// Refresh the cached snapshot after dynamic insertions so iteration restarts from a coherent list.
+				delete elementTypes;
+				elementTypes = getDataManager()->getDataDefinitionClassnames();
+				originalSize = elementTypes->size();
+				itty = elementTypes->begin();
 				pos = 1;
 				getTracer()->trace("Restarting to create internal elements (due to previous creations)", TraceManager::Level::L7_internal);
 			}
 		}
+		delete elementTypes;
 		Util::DecIndent();
 	}
 }

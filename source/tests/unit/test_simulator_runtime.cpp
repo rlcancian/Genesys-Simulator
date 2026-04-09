@@ -2,6 +2,7 @@
 
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelDataDefinition.h"
 
 namespace {
 struct SimulationStartObserver {
@@ -15,6 +16,21 @@ struct SimulationStartObserver {
         running = event->isRunning();
         paused = event->isPaused();
         replication = event->getCurrentReplicationNumber();
+    }
+};
+
+// Exposes protected attached-data hooks so unit tests can verify non-owning attachment semantics directly.
+class AttachedDataAccessProbe : public ModelDataDefinition {
+public:
+    AttachedDataAccessProbe(Model* model, const std::string& name)
+        : ModelDataDefinition(model, "AttachedDataAccessProbe", name, true) {}
+
+    void Attach(std::string key, ModelDataDefinition* data) {
+        _attachedDataInsert(key, data);
+    }
+
+    void Detach(std::string key) {
+        _attachedDataRemove(key);
     }
 };
 }
@@ -104,4 +120,22 @@ TEST(SimulatorRuntimeTest, ModelClearPreservesBaseSimulationControlsCount) {
     model->clear();
 
     EXPECT_EQ(model->getControls()->size(), controlsBefore);
+}
+
+TEST(SimulatorRuntimeTest, AttachedDataRemoveOnlyDetachesRegistryEntry) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    // Creates two managed model data objects and links one as a non-owning attachment of the other.
+    auto* owner = new AttachedDataAccessProbe(model, "Owner");
+    auto* attached = new AttachedDataAccessProbe(model, "Attached");
+    owner->Attach("Ref", attached);
+
+    // Detaches only the attachment mapping and verifies the attached object remains registered in the manager.
+    owner->Detach("Ref");
+    EXPECT_NE(model->getDataManager()->getDataDefinition("AttachedDataAccessProbe", "Attached"), nullptr);
+
+    delete owner;
+    delete attached;
 }
