@@ -17,7 +17,7 @@
 #include "SolverDefaultImpl1.h"
 #include "HypothesisTesterDefaultImpl1.h"
 #include "HypothesisTester_if.h"
-#include "FitterDummyImpl.h"
+#include "FitterDefaultImpl.h"
 #include "Fitter_if.h"
 
 /**
@@ -59,7 +59,7 @@ template <> struct TraitsTools<HypothesisTester_if> {
  *  Configure the Fitter to be used
  */
 template <> struct TraitsTools<Fitter_if> {
-	typedef FitterDummyImpl Implementation;
+	typedef FitterDefaultImpl Implementation;
 };
 
 #endif /* TRAITSTOOLS_H */
