@@ -263,7 +263,8 @@ private:
     std::map<SimulationControl*, DataComponentEditor*>* _propertyEditorUI = nullptr;
     std::map<SimulationControl*, ComboBoxEnum*>* _propertyBox = nullptr;
     QTreeWidgetItem* _objectBeingDragged = nullptr;
-    QWidget* _parentWidget;
+    // Initialize the parent widget pointer to a known null state.
+    QWidget* _parentWidget = nullptr;
     QList<GraphicalModelComponent*> _allGraphicalModelComponents;
     QList<GraphicalConnection*> _allGraphicalConnections;
     QList<GraphicalModelDataDefinition*> _allGraphicalModelDataDefinitions;
@@ -288,11 +289,16 @@ private:
     unsigned short _connectingStep = 0; //0:nothing, 1:waiting click on source or destination, 2: click on source, 3: click on destination
     bool _controlIsPressed = false;
     bool _snapToGrid = false;
-    GraphicalComponentPort* _sourceGraphicalComponentPort;
-    GraphicalComponentPort* _destinationGraphicalComponentPort;
-    AnimationCounter *_currentCounter;
-    AnimationVariable *_currentVariable;
-    AnimationTimer *_currentTimer;
+    // Initialize the source port pointer before connection drawing starts.
+    GraphicalComponentPort* _sourceGraphicalComponentPort = nullptr;
+    // Initialize the destination port pointer before connection drawing starts.
+    GraphicalComponentPort* _destinationGraphicalComponentPort = nullptr;
+    // Initialize the current counter drawing pointer to avoid indeterminate access.
+    AnimationCounter *_currentCounter = nullptr;
+    // Initialize the current variable drawing pointer to avoid indeterminate access.
+    AnimationVariable *_currentVariable = nullptr;
+    // Initialize the current timer drawing pointer to avoid indeterminate access.
+    AnimationTimer *_currentTimer = nullptr;
     QMap<Event *, QList<AnimationTransition *> *> *_animationPaused = new QMap<Event *, QList<AnimationTransition *> *>();
 
 private:
