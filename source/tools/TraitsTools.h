@@ -3,7 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/file.h to edit this template
  */
 
-/* 
+/*
  * File:   TraitsTools.h
  * Author: rlcancian
  *
@@ -20,6 +20,20 @@
 #include "FitterDummyImpl.h"
 #include "Fitter_if.h"
 
+/**
+ * @brief Registry-like traits to bind abstractions to concrete tools classes.
+ *
+ * Architectural role:
+ * - Central selection point for concrete implementations used by this package.
+ *
+ * Implementation status:
+ * - Currently covers only a subset of tool abstractions.
+ *
+ * Planned evolution:
+ * - Extend bindings as new stable interfaces receive concrete implementations.
+ * - New abstractions without safe concrete implementations should remain
+ *   documented-only for now to avoid build instability.
+ */
 template <typename T>
 struct TraitsTools {
 };
@@ -49,4 +63,3 @@ template <> struct TraitsTools<Fitter_if> {
 };
 
 #endif /* TRAITSTOOLS_H */
-
