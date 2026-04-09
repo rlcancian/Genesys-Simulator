@@ -1242,15 +1242,21 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
 
     // Cria um loop de eventos para aguardar a conclusão da animação
     QEventLoop loop;
-    connect(animationTransition, &AnimationTransition::finished, &loop, &QEventLoop::quit);
+    // Store temporary finished connection to disconnect it after this loop execution.
+    QMetaObject::Connection finishedConnection = connect(animationTransition, &AnimationTransition::finished, &loop, &QEventLoop::quit);
 
     // Conecta o sinal de stateChanged para sair do loop quando a animação for pausada
-    connect(animationTransition, &QAbstractAnimation::stateChanged, [this, &loop, event, animationTransition](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
+    // Store temporary stateChanged connection to avoid callback accumulation across resumes.
+    QMetaObject::Connection stateChangedConnection = connect(animationTransition, &QAbstractAnimation::stateChanged, [this, &loop, event, animationTransition](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
         handleAnimationStateChanged(newState, &loop, event, animationTransition);
     });
 
     // Aguarda a conclusão da animação sem bloquear o restante do código
     loop.exec();
+
+    // Explicitly disconnect temporary local connections created for this run only.
+    QObject::disconnect(finishedConnection);
+    QObject::disconnect(stateChangedConnection);
 
     _animationsTransition->removeOne(animationTransition);
 
