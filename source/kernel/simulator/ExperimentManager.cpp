@@ -19,6 +19,14 @@ ExperimentManager::ExperimentManager(Simulator* simulator) {
 	_currentSimulationExperiment = nullptr;
 }
 
+// Delete stored experiments and release the manager-owned list container.
+ExperimentManager::~ExperimentManager() {
+	for (SimulationExperiment* experiment : *_experiments->list()) {
+		delete experiment;
+	}
+	delete _experiments;
+}
+
 List<SimulationExperiment*>* ExperimentManager::getExperiments() const {
 	return _experiments;
 }
@@ -96,4 +104,3 @@ SimulationExperiment* ExperimentManager::front() {
 SimulationExperiment* ExperimentManager::next() {
 	return _experiments->next();
 }
-

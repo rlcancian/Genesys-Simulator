@@ -31,6 +31,12 @@ PluginInformation::PluginInformation(std::string pluginTypename, StaticLoaderDat
 	this->_pluginTypename = pluginTypename;
 }
 
+// Free dependency and field containers owned by plugin metadata instances.
+PluginInformation::~PluginInformation() {
+	delete _dynamicLibFilenameDependencies;
+	delete _fields;
+}
+
 StaticConstructorDataDefinitionInstance PluginInformation::getDataDefinitionConstructor() const {
 	return _elementConstructor;
 }
@@ -198,5 +204,4 @@ void PluginInformation::setCategory(std::string _category) {
 std::string PluginInformation::getCategory() const {
 	return _category;
 }
-
 

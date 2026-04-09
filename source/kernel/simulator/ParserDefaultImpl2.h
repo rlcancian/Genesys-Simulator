@@ -25,7 +25,8 @@
 class ParserDefaultImpl2 : public Parser_if {
 public:
 	ParserDefaultImpl2(Model* model, Sampler_if* sampler, bool throws = false);
-	virtual ~ParserDefaultImpl2() = default;
+	// Release parser-owned sampler instance created for expression evaluation.
+	virtual ~ParserDefaultImpl2();
 public:
 	virtual double parse(const std::string expression) override; // may throw exception
     virtual double parse(const std::string expression, bool& success, std::string& errorMessage) override;
@@ -39,4 +40,3 @@ private:
 };
 //namespace\\}
 #endif /* PARSERDEFAULTIMPL2_H */
-

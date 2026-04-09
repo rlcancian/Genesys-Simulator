@@ -15,9 +15,14 @@
 
 //using namespace GenesysKernel;
 
-ParserDefaultImpl2::ParserDefaultImpl2(Model* model, Sampler_if* sampler, bool throws) {
-	_model = model;
-	_wrapper = genesyspp_driver(_model, sampler, throws);
+// Construct parser wrapper in-place to avoid copying partially initialized driver state.
+ParserDefaultImpl2::ParserDefaultImpl2(Model* model, Sampler_if* sampler, bool throws)
+	: _model(model), _wrapper(model, sampler, throws) {}
+
+// Delete the sampler owned by this parser wrapper to avoid leaking per-model parser state.
+ParserDefaultImpl2::~ParserDefaultImpl2() {
+	delete _wrapper.getSampler();
+	_wrapper.setSampler(nullptr);
 }
 
 double ParserDefaultImpl2::parse(const std::string expression) { // may throw exception
