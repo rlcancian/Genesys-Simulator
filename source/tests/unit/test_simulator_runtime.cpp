@@ -78,3 +78,17 @@ TEST(SimulatorRuntimeTest, SimulationStartHandlerReceivesInitializedStateSnapsho
     EXPECT_FALSE(observer.paused);
     EXPECT_EQ(observer.replication, 1u);
 }
+
+// Ensures creating a new current model repeatedly keeps runtime usable and updates current() consistently.
+TEST(SimulatorRuntimeTest, NewModelCanBeCalledMultipleTimesAndUpdatesCurrentModel) {
+    Simulator simulator;
+
+    Model* first = simulator.getModelManager()->newModel();
+    ASSERT_NE(first, nullptr);
+
+    Model* second = simulator.getModelManager()->newModel();
+    ASSERT_NE(second, nullptr);
+
+    EXPECT_EQ(simulator.getModelManager()->current(), second);
+    EXPECT_NO_THROW(second->getSimulation()->start());
+}

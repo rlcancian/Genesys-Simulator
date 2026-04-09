@@ -187,7 +187,7 @@ typedef std::function<void(SimulationEvent*) > simulationEventHandlerMethod;
 class OnEventManager {
 public:
 	OnEventManager();
-	virtual ~OnEventManager() = default;
+	virtual ~OnEventManager();
 public: // event listeners (handlers)
 	void addOnModelCheckSucessHandler(modelEventHandler EventHandler);
 	void addOnModelLoadHandler(modelEventHandler EventHandler);
@@ -412,4 +412,3 @@ Private Sub VBA_Block_1_Fire()
 
 //namespace\\}
 #endif /* ONEVENTMANAGER_H */
-

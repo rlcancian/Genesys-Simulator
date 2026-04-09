@@ -19,6 +19,9 @@ Model::Model(Simulator* simulator, unsigned int level) {
     ++g_model_constructions;
 }
 
+// Provides a trivial out-of-line destructor for the test double after Model gained an explicit virtual destructor.
+Model::~Model() = default;
+
 bool Model::save(std::string filename) {
     (void)filename;
     ++g_model_saves;

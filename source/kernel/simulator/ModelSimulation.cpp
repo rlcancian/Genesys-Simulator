@@ -362,8 +362,24 @@ void ModelSimulation::_initReplication() {
 	TraceManager* tm = _model->getTracer();
 	tm->traceSimulation(this, TraceManager::Level::L5_event, ""); //@TODO L5 and L2??
 	tm->traceSimulation(this, TraceManager::Level::L2_results, "Replication "+std::to_string(_currentReplicationNumber)+" of "+std::to_string(_numberOfReplications)+" is starting.");
-	_model->getFutureEvents()->clear();
-	_model->getDataManager()->getDataDefinitionList("Entity")->clear();
+	// Destroys pending events before resetting replication state to avoid leaking queued heap events.
+	while (!_model->getFutureEvents()->empty()) {
+		Event* event = _model->getFutureEvents()->front();
+		_model->getFutureEvents()->pop_front();
+		delete event;
+	}
+	// Destroys transient entities before clearing per-replication runtime data.
+	List<ModelDataDefinition*>* entities = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
+	while (!entities->empty()) {
+		ModelDataDefinition* data = entities->front();
+		Entity* entity = dynamic_cast<Entity*>(data);
+		if (entity == nullptr) {
+			entities->pop_front();
+			continue;
+		}
+		// Delegates entity release to Model because Entity destruction is restricted to model ownership paths.
+		_model->removeEntity(entity);
+	}
 	_simulatedTime = 0.0;
 	// init all components between replications
 	Util::IncIndent();
@@ -424,13 +440,15 @@ void ModelSimulation::_stepSimulation() {
 	auto simulationEvent = _createSimulationEvent();
 	_model->getOnEventManager()->NotifyReplicationStepHandlers(simulationEvent.get());
 	Event* nextEvent = _model->getFutureEvents()->front();
-	_model->getFutureEvents()->pop_front();
 	if (_warmUpPeriod>0.0)
 		_checkWarmUpTime(nextEvent);
 	if (nextEvent->getTime()<=_replicationLength*_replicationTimeScaleFactorToBase) {
 		if (_checkBreakpointAt(nextEvent)) {
+			// Keeps the event in the queue when a breakpoint pauses execution before processing.
 			this->_pauseRequested = true;
 		} else {
+			// Removes the event from the queue only when it will actually be processed.
+			_model->getFutureEvents()->pop_front();
 			if (nextEvent->getTime()>_simulatedTime)
 				_model->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, "");
 			_model->getTracer()->traceSimulation(this, TraceManager::Level::L5_event, "Event {"+nextEvent->show()+"}");
@@ -449,12 +467,18 @@ void ModelSimulation::_stepSimulation() {
 			}
 			auto afterProcessEvent = _createSimulationEvent();
 			_model->getOnEventManager()->NotifyAfterProcessEventHandlers(afterProcessEvent.get());
+			// Deletes processed events only after after-process notifications to preserve observer access.
+			delete nextEvent;
+			_currentEvent = nullptr;
 			if (_pauseOnEvent) {
 				_pauseRequested = true;
 			}
 			Util::DecIndent();
 		}
 	} else {
+		// Removes and destroys out-of-window events to keep event lifecycle ownership consistent.
+		_model->getFutureEvents()->pop_front();
+		delete nextEvent;
 		this->_simulatedTime = _replicationLength * _replicationTimeScaleFactorToBase; ////nextEvent->getTime(); // just to advance time to beyond simulatedTime
 	}
 }

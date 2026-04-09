@@ -32,7 +32,7 @@ class ModelDataManager {
 public:
 	/*! \brief Creates a data manager attached to \p model. */
 	ModelDataManager(Model* model);
-	virtual ~ModelDataManager() = default;
+	virtual ~ModelDataManager();
 public:
 	/*!
 	 * \brief insert

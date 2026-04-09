@@ -30,7 +30,7 @@ class ComponentManager {
 public:
 	/*! \brief Creates a component manager attached to a model. */
 	ComponentManager(Model* model);
-	virtual ~ComponentManager() = default;
+	virtual ~ComponentManager();
 public:
 	/*!
 	 * \brief insert
