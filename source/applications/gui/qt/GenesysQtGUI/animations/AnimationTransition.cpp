@@ -16,8 +16,13 @@ bool AnimationTransition::_running = true; // Define um valor inicial para o run
 
 AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelComponent* graphicalStartComponent, ModelComponent* graphicalEndComponent, bool viewSimulation) :
     _myScene(myScene),
+    // Initialize potentially deferred members to safe defaults for early-return paths.
+    _graphicalStartComponent(nullptr),
     _graphicalEndComponent(nullptr),
+    _graphicalConnection(nullptr),
     _imageAnimation(nullptr),
+    _portNumber(0),
+    _currentProgress(0.0),
     _viewSimulation(viewSimulation){
 
     // Pega o componente gráfico de início e fim da animação
@@ -128,8 +133,15 @@ void AnimationTransition::setRunning(bool running) {
 
 // Outros
 void AnimationTransition::startAnimation() {
-    // Adiciona a imagem na cena
-    _myScene->addItem(_imageAnimation);
+    // Guard against partially constructed transitions before interacting with scene/image pointers.
+    if (_myScene == nullptr || _imageAnimation == nullptr) {
+        return;
+    }
+
+    // Add the animation image only if it is not already in this scene.
+    if (_imageAnimation->scene() != _myScene) {
+        _myScene->addItem(_imageAnimation);
+    }
 
     // Atualiza a cena
     _myScene->update();
@@ -139,20 +151,24 @@ void AnimationTransition::startAnimation() {
 }
 
 void AnimationTransition::stopAnimation() {
-    // Remove a imagem na cena
-    _myScene->removeItem(_imageAnimation);
+    // Stop only when running/paused and cleanup scene state without simulating normal completion.
+    if (state() != QAbstractAnimation::Stopped) {
+        stop();
+    }
 
-    // Para a animação
-    stop();
-
-    // Atualiza a cena
-    _myScene->update();
-
-    // Emite o sinal de encerramento de animação (caso opte por encerrar por essa função)
-    emit finished();
+    // Remove image only when both pointers are valid and image belongs to this scene.
+    if (_myScene != nullptr && _imageAnimation != nullptr && _imageAnimation->scene() == _myScene) {
+        _myScene->removeItem(_imageAnimation);
+        _myScene->update();
+    }
 }
 
 void AnimationTransition::restartAnimation() {
+    // Guard resume against missing image or invalid animation duration.
+    if (_imageAnimation == nullptr || duration() <= 0) {
+        return;
+    }
+
     // Configura o progresso
     setCurrentTime(_currentProgress * duration());
 
@@ -256,13 +272,17 @@ void AnimationTransition::connectFinishedSignal() {
 }
 
 void AnimationTransition::onAnimationFinished() {
-    // Adiciona animação de fila se for o caso
-    if(_graphicalEndComponent != nullptr)
+    // Only notify queue insertion when both scene and destination component are valid.
+    if (_myScene != nullptr && _graphicalEndComponent != nullptr)
         _myScene->animateQueueInsert(_graphicalEndComponent->getComponent(), _viewSimulation);
 
-    // Remove o item da cena
-    _myScene->removeItem(_imageAnimation);
+    // Remove image only when it is valid and still attached to this scene.
+    if (_myScene != nullptr && _imageAnimation != nullptr && _imageAnimation->scene() == _myScene) {
+        _myScene->removeItem(_imageAnimation);
+    }
 
-    // Atualiza a cena
-    _myScene->update();
+    // Update scene only when scene pointer is valid.
+    if (_myScene != nullptr) {
+        _myScene->update();
+    }
 }
