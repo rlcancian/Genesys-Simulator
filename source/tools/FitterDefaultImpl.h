@@ -2,6 +2,8 @@
 #define FITTERDEFAULTIMPL_H
 
 #include "Fitter_if.h"
+#include "ProbabilityDistributionBase.h"
+#include "SolverDefaultImpl1.h"
 
 #include <algorithm>
 #include <cmath>
@@ -13,13 +15,13 @@
 #include <vector>
 
 /**
- * @brief Baseline functional implementation of Fitter_if (phase FITTER-1).
+ * @brief Functional implementation of Fitter_if consolidated through FITTER-2.
  *
  * Current scope:
  * - Supports real dataset loading from binary file with raw sequential doubles
  *   (compatible with CollectorDatafileDefaultImpl1 persistence format).
- * - Implements fitting for Uniform, Triangular, Normal, Exponential and Erlang.
- * - Keeps Beta and Weibull as controlled "not consolidated" paths in this phase.
+ * - Implements fitting for Uniform, Triangular, Normal, Exponential, Erlang,
+ *   Beta (scaled) and Weibull.
  *
  * Error metric:
  * - Uses SSE between empirical CDF points p_i = (i+0.5)/n and fitted model CDF.
@@ -204,11 +206,63 @@ public:
 	}
 
 	virtual void fitBeta(double *sqrerror, double *alpha, double *beta, double *infLimit, double *supLimit) override {
-		_setFailure5(sqrerror, alpha, beta, infLimit, supLimit);
+		double fittedAlpha = _nan();
+		double fittedBeta = _nan();
+		double fittedInf = _nan();
+		double fittedSup = _nan();
+		if (!_estimateScaledBetaMoments(&fittedAlpha, &fittedBeta, &fittedInf, &fittedSup)) {
+			_setFailure5(sqrerror, alpha, beta, infLimit, supLimit);
+			return;
+		}
+
+		if (alpha != nullptr) {
+			*alpha = fittedAlpha;
+		}
+		if (beta != nullptr) {
+			*beta = fittedBeta;
+		}
+		if (infLimit != nullptr) {
+			*infLimit = fittedInf;
+		}
+		if (supLimit != nullptr) {
+			*supLimit = fittedSup;
+		}
+
+		_setSse(sqrerror, [this, fittedAlpha, fittedBeta, fittedInf, fittedSup](double x) {
+			return _betaCdfScaled(x, fittedAlpha, fittedBeta, fittedInf, fittedSup);
+		});
 	}
 
 	virtual void fitWeibull(double *sqrerror, double *alpha, double *scale) override {
-		_setFailure3(sqrerror, alpha, scale);
+		if (!_ensureDataLoaded() || _count < 2 || _hasNegativeData || !(_sampleMean > 0.0) || !(_sampleVariance > 0.0)) {
+			_setFailure3(sqrerror, alpha, scale);
+			return;
+		}
+
+		const double cv = _sampleStddev / _sampleMean;
+		double fittedShape = _nan();
+		if (!_estimateWeibullShapeFromCv(cv, &fittedShape)) {
+			_setFailure3(sqrerror, alpha, scale);
+			return;
+		}
+
+		const double gammaTerm = std::tgamma(1.0 + 1.0 / fittedShape);
+		const double fittedScale = _sampleMean / gammaTerm;
+		if (!_isFinitePositive(fittedShape) || !_isFinitePositive(fittedScale)) {
+			_setFailure3(sqrerror, alpha, scale);
+			return;
+		}
+
+		if (alpha != nullptr) {
+			*alpha = fittedShape;
+		}
+		if (scale != nullptr) {
+			*scale = fittedScale;
+		}
+
+		_setSse(sqrerror, [this, fittedShape, fittedScale](double x) {
+			return _weibullCdf(x, fittedShape, fittedScale);
+		});
 	}
 
 	virtual void fitAll(double *sqrerror, std::string *name) override {
@@ -379,6 +433,177 @@ private:
 			sse += d * d;
 		}
 		*sqrerror = sse;
+	}
+
+	static double _clampUnitInterval(double value) {
+		return std::max(0.0, std::min(1.0, value));
+	}
+
+	static bool _isFinitePositive(double value) {
+		return std::isfinite(value) && value > 0.0;
+	}
+
+	static double _betaPdfSafe(double x, double alpha, double beta) {
+		if (!(_isFinitePositive(alpha) && _isFinitePositive(beta))) {
+			return std::numeric_limits<double>::quiet_NaN();
+		}
+		const double eps = 1e-12;
+		const double xc = std::max(eps, std::min(1.0 - eps, x));
+		const double pdf = ProbabilityDistributionBase::beta(xc, alpha, beta);
+		if (!std::isfinite(pdf) || pdf < 0.0) {
+			return std::numeric_limits<double>::quiet_NaN();
+		}
+		return pdf;
+	}
+
+	double _betaCdfScaled(double x, double alpha, double beta, double infLimit, double supLimit) const {
+		if (!(_isFinitePositive(alpha) && _isFinitePositive(beta))) {
+			return _nan();
+		}
+		if (!std::isfinite(infLimit) || !std::isfinite(supLimit) || !(supLimit > infLimit)) {
+			return _nan();
+		}
+		if (x <= infLimit) {
+			return 0.0;
+		}
+		if (x >= supLimit) {
+			return 1.0;
+		}
+		const double y = (x - infLimit) / (supLimit - infLimit);
+		if (y <= 0.0) {
+			return 0.0;
+		}
+		if (y >= 1.0) {
+			return 1.0;
+		}
+		SolverDefaultImpl1 solver(1e-5, 2000);
+		const double cdf = solver.integrate(0.0, y, &_betaPdfSafe, alpha, beta);
+		if (!std::isfinite(cdf)) {
+			return _nan();
+		}
+		return _clampUnitInterval(cdf);
+	}
+
+	double _weibullCdf(double x, double alpha, double scale) const {
+		if (!(_isFinitePositive(alpha) && _isFinitePositive(scale))) {
+			return _nan();
+		}
+		if (x < 0.0) {
+			return 0.0;
+		}
+		const double ratio = x / scale;
+		const double p = std::pow(ratio, alpha);
+		if (!std::isfinite(p)) {
+			return _nan();
+		}
+		return _clampUnitInterval(1.0 - std::exp(-p));
+	}
+
+	bool _estimateScaledBetaMoments(double* alpha, double* beta, double* infLimit, double* supLimit) {
+		if (!_ensureDataLoaded() || _count < 2 || !(_sampleMax > _sampleMin) || !(_sampleVariance > 0.0)) {
+			return false;
+		}
+
+		const double a = _sampleMin;
+		const double b = _sampleMax;
+		const double range = b - a;
+		if (!(range > 0.0) || !std::isfinite(range)) {
+			return false;
+		}
+
+		const double eps = 1e-12;
+		double sum = 0.0;
+		for (double x : _data) {
+			const double y = (x - a) / range;
+			const double yc = std::max(eps, std::min(1.0 - eps, y));
+			sum += yc;
+		}
+		const double n = static_cast<double>(_data.size());
+		const double m = sum / n;
+		if (!(m > 0.0 && m < 1.0) || !std::isfinite(m)) {
+			return false;
+		}
+
+		double varSum = 0.0;
+		for (double x : _data) {
+			const double y = (x - a) / range;
+			const double yc = std::max(eps, std::min(1.0 - eps, y));
+			const double d = yc - m;
+			varSum += d * d;
+		}
+		const double v = varSum / static_cast<double>(_data.size() - 1U);
+		if (!(v > 0.0) || !std::isfinite(v)) {
+			return false;
+		}
+
+		const double common = (m * (1.0 - m) / v) - 1.0;
+		const double aShape = m * common;
+		const double bShape = (1.0 - m) * common;
+		if (!(common > 0.0) || !_isFinitePositive(aShape) || !_isFinitePositive(bShape)) {
+			return false;
+		}
+
+		if (alpha != nullptr) {
+			*alpha = aShape;
+		}
+		if (beta != nullptr) {
+			*beta = bShape;
+		}
+		if (infLimit != nullptr) {
+			*infLimit = a;
+		}
+		if (supLimit != nullptr) {
+			*supLimit = b;
+		}
+		return true;
+	}
+
+	bool _estimateWeibullShapeFromCv(double cv, double* shape) const {
+		if (!(cv > 0.0) || !std::isfinite(cv) || shape == nullptr) {
+			return false;
+		}
+		const double cv2 = cv * cv;
+		auto g = [cv2](double k) {
+			const double g1 = std::tgamma(1.0 + 1.0 / k);
+			const double g2 = std::tgamma(1.0 + 2.0 / k);
+			if (!(std::isfinite(g1) && std::isfinite(g2) && g1 > 0.0)) {
+				return std::numeric_limits<double>::quiet_NaN();
+			}
+			return (g2 / (g1 * g1)) - 1.0 - cv2;
+		};
+
+		double lo = 0.1;
+		double hi = 100.0;
+		double flo = g(lo);
+		double fhi = g(hi);
+		if (!(std::isfinite(flo) && std::isfinite(fhi))) {
+			return false;
+		}
+		if (flo * fhi > 0.0) {
+			return false;
+		}
+
+		for (int i = 0; i < 100; ++i) {
+			const double mid = 0.5 * (lo + hi);
+			const double fmid = g(mid);
+			if (!std::isfinite(fmid)) {
+				return false;
+			}
+			if (std::abs(fmid) < 1e-10 || (hi - lo) < 1e-8) {
+				*shape = mid;
+				return true;
+			}
+			if (flo * fmid > 0.0) {
+				lo = mid;
+				flo = fmid;
+			} else {
+				hi = mid;
+				fhi = fmid;
+			}
+		}
+
+		*shape = 0.5 * (lo + hi);
+		return _isFinitePositive(*shape);
 	}
 
 	static double _nan() {

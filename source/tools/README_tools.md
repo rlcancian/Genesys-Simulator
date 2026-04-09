@@ -15,7 +15,8 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 
 ## 3. Current limitations
 
-- Fitting now has a functional baseline implementation in `FitterDefaultImpl` (FITTER-1), while traits still keep `FitterDummyImpl` as the default binding in this phase.
+- Fitting baseline was expanded in FITTER-2: `FitterDefaultImpl` now also provides functional Beta (scaled) and Weibull fitting, still preserving controlled-failure behavior when constraints are not met.
+- Traits still keep `FitterDummyImpl` as the default binding in this phase for compatibility.
 - Some hypothesis-testing paths, especially two-population paths, remain partially consolidated.
 - Distribution APIs are static utilities, not yet an OO hierarchy with reusable distribution objects.
 - Solver abstraction conflates quadrature and ODE-like concerns.
@@ -33,7 +34,7 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 
 ## 6. Current status by topic
 
-- **Fitting**: interface defined; `FitterDefaultImpl` is functional for baseline families (uniform/triangular/normal/exponential/erlang) with binary dataset loading and SSE-CDF comparison, but production trait binding remains on `FitterDummyImpl`.
+- **Fitting**: interface defined; `FitterDefaultImpl` is functional for uniform/triangular/normal/exponential/erlang/beta/weibull with binary dataset loading and SSE-CDF comparison, but production trait binding remains on `FitterDummyImpl`.
 - **Hypothesis testing**: functional baseline exists in `HypothesisTesterDefaultImpl1`, with known partial areas.
 - **Probability distributions**: mathematical static base and inverse façade available, with internal numeric dependencies.
 - **Numerical solvers**: legacy `Solver_if` + `SolverDefaultImpl1` remain the compatible baseline.
