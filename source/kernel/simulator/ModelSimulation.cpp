@@ -32,35 +32,55 @@ ModelSimulation::ModelSimulation(Model* model) {
 		return a->getId()<b->getId();
 	});
 	_simulationReporter = new TraitsKernel<SimulationReporter_if>::Implementation(this, model, this->_cstatsAndCountersSimulation);
-	// controls
-	//@TODO Add ReplicationLength, getReplicationLengthTimeUnit, getReplicationBaseTimeUnit, warmUpPeriod, ...
-	_model->getControls()->insert(new SimulationControlTimeUnit(
-					 std::bind(&ModelSimulation::getReplicationBaseTimeUnit, this),
-					 std::bind(&ModelSimulation::setReplicationReportBaseTimeUnit, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "ReplicationBaseTimeUnit"));
-	_model->getControls()->insert(new SimulationControlTimeUnit(
-					 std::bind(&ModelSimulation::getReplicationLengthTimeUnit, this),
-					 std::bind(&ModelSimulation::setReplicationLengthTimeUnit, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "ReplicationLengthTimeUnit"));
-	_model->getControls()->insert(new SimulationControlTimeUnit(
-					 std::bind(&ModelSimulation::getWarmUpPeriodTimeUnit, this),
-					 std::bind(&ModelSimulation::setWarmUpPeriodTimeUnit, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "WarmUpPeriodTimeUnit"));
-	_model->getControls()->insert(new SimulationControlDouble(
-					 std::bind(&ModelSimulation::getWarmUpPeriod, this),
-					 std::bind(&ModelSimulation::setWarmUpPeriod, this, std::placeholders::_1, Util::TimeUnit::unknown),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "WarmUpPeriod"));
-	_model->getControls()->insert(new SimulationControlUInt(
-					 std::bind(&ModelSimulation::getNumberOfReplications, this),
-					 std::bind(&ModelSimulation::setNumberOfReplications, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "NumberOfReplications"));
-	_model->getControls()->insert(new SimulationControlString(
-					 std::bind(&ModelSimulation::getTerminatingCondition, this),
-					 std::bind(&ModelSimulation::setTerminatingCondition, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "TerminatingCondition"));
+	// Create and register the base simulation controls while tracking their ownership locally.
+	SimulationControl* replicationBaseTimeUnit = new SimulationControlTimeUnit(
+			 std::bind(&ModelSimulation::getReplicationBaseTimeUnit, this),
+			 std::bind(&ModelSimulation::setReplicationReportBaseTimeUnit, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "ReplicationBaseTimeUnit");
+	_model->getControls()->insert(replicationBaseTimeUnit);
+	_ownedControls->insert(replicationBaseTimeUnit);
+	SimulationControl* replicationLengthTimeUnit = new SimulationControlTimeUnit(
+			 std::bind(&ModelSimulation::getReplicationLengthTimeUnit, this),
+			 std::bind(&ModelSimulation::setReplicationLengthTimeUnit, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "ReplicationLengthTimeUnit");
+	_model->getControls()->insert(replicationLengthTimeUnit);
+	_ownedControls->insert(replicationLengthTimeUnit);
+	SimulationControl* warmUpPeriodTimeUnit = new SimulationControlTimeUnit(
+			 std::bind(&ModelSimulation::getWarmUpPeriodTimeUnit, this),
+			 std::bind(&ModelSimulation::setWarmUpPeriodTimeUnit, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "WarmUpPeriodTimeUnit");
+	_model->getControls()->insert(warmUpPeriodTimeUnit);
+	_ownedControls->insert(warmUpPeriodTimeUnit);
+	SimulationControl* warmUpPeriod = new SimulationControlDouble(
+			 std::bind(&ModelSimulation::getWarmUpPeriod, this),
+			 std::bind(&ModelSimulation::setWarmUpPeriod, this, std::placeholders::_1, Util::TimeUnit::unknown),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "WarmUpPeriod");
+	_model->getControls()->insert(warmUpPeriod);
+	_ownedControls->insert(warmUpPeriod);
+	SimulationControl* numberOfReplications = new SimulationControlUInt(
+			 std::bind(&ModelSimulation::getNumberOfReplications, this),
+			 std::bind(&ModelSimulation::setNumberOfReplications, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "NumberOfReplications");
+	_model->getControls()->insert(numberOfReplications);
+	_ownedControls->insert(numberOfReplications);
+	SimulationControl* terminatingCondition = new SimulationControlString(
+			 std::bind(&ModelSimulation::getTerminatingCondition, this),
+			 std::bind(&ModelSimulation::setTerminatingCondition, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "TerminatingCondition");
+	_model->getControls()->insert(terminatingCondition);
+	_ownedControls->insert(terminatingCondition);
 }
 
 ModelSimulation::~ModelSimulation() {
+	// Remove and destroy only the base controls explicitly created by this simulation object.
+	if (_ownedControls != nullptr) {
+		for (SimulationControl* control : *_ownedControls->list()) {
+			_model->getControls()->remove(control);
+			delete control;
+		}
+		delete _ownedControls;
+		_ownedControls = nullptr;
+	}
 	if (_cstatsAndCountersSimulation != nullptr) {
 		for (ModelDataDefinition* data : *_cstatsAndCountersSimulation->list()) {
 			delete data;
@@ -362,8 +382,24 @@ void ModelSimulation::_initReplication() {
 	TraceManager* tm = _model->getTracer();
 	tm->traceSimulation(this, TraceManager::Level::L5_event, ""); //@TODO L5 and L2??
 	tm->traceSimulation(this, TraceManager::Level::L2_results, "Replication "+std::to_string(_currentReplicationNumber)+" of "+std::to_string(_numberOfReplications)+" is starting.");
-	_model->getFutureEvents()->clear();
-	_model->getDataManager()->getDataDefinitionList("Entity")->clear();
+	// Destroys pending events before resetting replication state to avoid leaking queued heap events.
+	while (!_model->getFutureEvents()->empty()) {
+		Event* event = _model->getFutureEvents()->front();
+		_model->getFutureEvents()->pop_front();
+		delete event;
+	}
+	// Destroys transient entities before clearing per-replication runtime data.
+	List<ModelDataDefinition*>* entities = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
+	while (!entities->empty()) {
+		ModelDataDefinition* data = entities->front();
+		Entity* entity = dynamic_cast<Entity*>(data);
+		if (entity == nullptr) {
+			entities->pop_front();
+			continue;
+		}
+		// Delegates entity release to Model because Entity destruction is restricted to model ownership paths.
+		_model->removeEntity(entity);
+	}
 	_simulatedTime = 0.0;
 	// init all components between replications
 	Util::IncIndent();
@@ -376,8 +412,9 @@ void ModelSimulation::_initReplication() {
 			ModelComponent::InitBetweenReplications(*it);
 		}
 		// init all elements between replications
-		std::list<std::string>* elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
-		for (std::string elementType : *elementTypes) {//std::list<std::string>::iterator typeIt = elementTypes->begin(); typeIt != elementTypes->end(); typeIt++) {
+		// Iterate over a value snapshot of class names so replication init does not depend on manual deletes.
+		std::list<std::string> elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
+		for (std::string elementType : elementTypes) {//std::list<std::string>::iterator typeIt = elementTypes->begin(); typeIt != elementTypes->end(); typeIt++) {
 			List<ModelDataDefinition*>* elements = _model->getDataManager()->getDataDefinitionList(elementType);
 			for (ModelDataDefinition* modeldatum : *elements->list()) {//std::list<ModelDataDefinition*>::iterator it = elements->list()->begin(); it != elements->list()->end(); it++) {
 				ModelDataDefinition::InitBetweenReplications(modeldatum);
@@ -424,13 +461,15 @@ void ModelSimulation::_stepSimulation() {
 	auto simulationEvent = _createSimulationEvent();
 	_model->getOnEventManager()->NotifyReplicationStepHandlers(simulationEvent.get());
 	Event* nextEvent = _model->getFutureEvents()->front();
-	_model->getFutureEvents()->pop_front();
 	if (_warmUpPeriod>0.0)
 		_checkWarmUpTime(nextEvent);
 	if (nextEvent->getTime()<=_replicationLength*_replicationTimeScaleFactorToBase) {
 		if (_checkBreakpointAt(nextEvent)) {
+			// Keeps the event in the queue when a breakpoint pauses execution before processing.
 			this->_pauseRequested = true;
 		} else {
+			// Removes the event from the queue only when it will actually be processed.
+			_model->getFutureEvents()->pop_front();
 			if (nextEvent->getTime()>_simulatedTime)
 				_model->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, "");
 			_model->getTracer()->traceSimulation(this, TraceManager::Level::L5_event, "Event {"+nextEvent->show()+"}");
@@ -449,12 +488,18 @@ void ModelSimulation::_stepSimulation() {
 			}
 			auto afterProcessEvent = _createSimulationEvent();
 			_model->getOnEventManager()->NotifyAfterProcessEventHandlers(afterProcessEvent.get());
+			// Deletes processed events only after after-process notifications to preserve observer access.
+			delete nextEvent;
+			_currentEvent = nullptr;
 			if (_pauseOnEvent) {
 				_pauseRequested = true;
 			}
 			Util::DecIndent();
 		}
 	} else {
+		// Removes and destroys out-of-window events to keep event lifecycle ownership consistent.
+		_model->getFutureEvents()->pop_front();
+		delete nextEvent;
 		this->_simulatedTime = _replicationLength * _replicationTimeScaleFactorToBase; ////nextEvent->getTime(); // just to advance time to beyond simulatedTime
 	}
 }

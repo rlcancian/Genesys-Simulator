@@ -22,6 +22,18 @@ ModelDataManager::ModelDataManager(Model* model) {
 	_datadefinitions = new std::map<std::string, List<ModelDataDefinition*>*>();
 }
 
+// Releases per-type list containers and the map container itself; Model owns pointed data objects lifecycle.
+ModelDataManager::~ModelDataManager() {
+	if (_datadefinitions == nullptr) {
+		return;
+	}
+	for (auto& pair : *_datadefinitions) {
+		delete pair.second;
+	}
+	delete _datadefinitions;
+	_datadefinitions = nullptr;
+}
+
 bool ModelDataManager::insert(ModelDataDefinition * anElement) {
 	std::string datadefinitionTypename = anElement->getClassname();
 	return insert(datadefinitionTypename, anElement);
@@ -89,6 +101,10 @@ bool ModelDataManager::check(std::string datadefinitionTypename, ModelDataDefini
 
 void ModelDataManager::clear() {
 	_hasChanged = true;
+	// Deletes list containers before clearing the map to avoid leaking heap-allocated per-type lists.
+	for (auto& pair : *this->_datadefinitions) {
+		delete pair.second;
+	}
 	this->_datadefinitions->clear();
 }
 
@@ -190,10 +206,11 @@ int ModelDataManager::getRankOf(std::string datadefinitionTypename, std::string 
 	return -1;
 }
 
-std::list<std::string>* ModelDataManager::getDataDefinitionClassnames() const {
-	std::list<std::string>* keys = new std::list<std::string>();
-	for (std::map<std::string, List<ModelDataDefinition*>*>::iterator it = _datadefinitions->begin(); it != _datadefinitions->end(); it++) {
-		keys->insert(keys->end(), (*it).first);
+std::list<std::string> ModelDataManager::getDataDefinitionClassnames() const {
+	// Build and return a value snapshot with current class names, avoiding manual ownership by callers.
+	std::list<std::string> keys;
+	for (const auto& pair : *_datadefinitions) {
+		keys.push_back(pair.first);
 	}
 	return keys;
 }

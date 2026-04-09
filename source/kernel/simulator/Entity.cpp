@@ -28,6 +28,16 @@ Entity::Entity(Model* model, std::string name, bool insertIntoModel) : ModelData
 	}
 }
 
+Entity::~Entity() {
+	// Release each per-attribute value map owned by this entity instance.
+	for (std::map<std::string, double>* attributeMap : *_attributeValues->list()) {
+		delete attributeMap;
+	}
+	// Release the container that tracks all attribute maps created for this entity.
+	delete _attributeValues;
+	_attributeValues = nullptr;
+}
+
 void Entity::setEntityTypeName(std::string entityTypeName) {
 	EntityType* entitytype = dynamic_cast<EntityType*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityType>(), entityTypeName));
 	if (entitytype != nullptr) {

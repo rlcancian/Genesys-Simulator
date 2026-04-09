@@ -52,7 +52,9 @@ bool CppSerializer::dump(std::ostream& output) {
 
 	// do includes and separate defs/components
 	std::set<std::string> includes;
-	for (auto& klass : *_model->getDataManager()->getDataDefinitionClassnames()) {
+	// Iterate over a value snapshot of class names to collect include dependencies for persisted data definitions.
+	std::list<std::string> dataDefinitionClassnames = _model->getDataManager()->getDataDefinitionClassnames();
+	for (auto& klass : dataDefinitionClassnames) {
 		if (!typenames.count(klass)) continue;
 		datadefs.insert(klass);
 		includes.insert("plugins/data/" + klass + ".h");

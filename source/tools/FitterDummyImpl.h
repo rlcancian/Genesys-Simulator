@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-/* 
+/*
  * File:   FitterDummyImpl.h
  * Author: cancian
  *
@@ -16,6 +16,20 @@
 
 #include "Fitter_if.h"
 
+/**
+ * @brief Placeholder implementation of Fitter_if.
+ *
+ * Purpose:
+ * - Keep binary/source compatibility while a functional fitter implementation
+ *   is not fully available.
+ *
+ * Implementation status:
+ * - Dummy/stub component; not a functional fitting engine.
+ *
+ * Planned evolution:
+ * - To be replaced as default by FitterDefaultImpl when fitting logic is
+ *   consolidated.
+ */
 class FitterDummyImpl : public Fitter_if {
 public:
 	FitterDummyImpl();
@@ -39,4 +53,3 @@ private:
 };
 
 #endif /* FITTERDUMMYIMPL_H */
-

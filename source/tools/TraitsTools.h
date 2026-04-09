@@ -3,7 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/file.h to edit this template
  */
 
-/* 
+/*
  * File:   TraitsTools.h
  * Author: rlcancian
  *
@@ -17,9 +17,23 @@
 #include "SolverDefaultImpl1.h"
 #include "HypothesisTesterDefaultImpl1.h"
 #include "HypothesisTester_if.h"
-#include "FitterDummyImpl.h"
+#include "FitterDefaultImpl.h"
 #include "Fitter_if.h"
 
+/**
+ * @brief Registry-like traits to bind abstractions to concrete tools classes.
+ *
+ * Architectural role:
+ * - Central selection point for concrete implementations used by this package.
+ *
+ * Implementation status:
+ * - Currently covers only a subset of tool abstractions.
+ *
+ * Planned evolution:
+ * - Extend bindings as new stable interfaces receive concrete implementations.
+ * - New abstractions without safe concrete implementations should remain
+ *   documented-only for now to avoid build instability.
+ */
 template <typename T>
 struct TraitsTools {
 };
@@ -45,8 +59,7 @@ template <> struct TraitsTools<HypothesisTester_if> {
  *  Configure the Fitter to be used
  */
 template <> struct TraitsTools<Fitter_if> {
-	typedef FitterDummyImpl Implementation;
+	typedef FitterDefaultImpl Implementation;
 };
 
 #endif /* TRAITSTOOLS_H */
-
