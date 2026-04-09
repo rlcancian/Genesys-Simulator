@@ -74,6 +74,10 @@ private:
     unsigned int _portNumber;
     qreal _currentProgress;
     bool _viewSimulation;
+    // Track terminal lifecycle paths to keep cleanup idempotent.
+    bool _isStopping;
+    // Track whether finished callback was already handled.
+    bool _isFinishedHandled;
 };
 
 #endif // ANIMATIONTRANSITION_H
