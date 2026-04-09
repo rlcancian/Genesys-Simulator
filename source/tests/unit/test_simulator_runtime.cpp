@@ -322,6 +322,26 @@ TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorDeletesOwnedInternalData
     EXPECT_EQ(g_countingChildProbeDestructorCount, 1u);
 }
 
+TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorDeletesMultipleOwnedInternalDataChildren) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    g_countingChildProbeDestructorCount = 0;
+
+    auto* owner = new LifecycleModelDataDefinitionProbe(model, "OwnerWithMultipleChildren");
+    auto* childA = new CountingChildDataDefinitionProbe(model, "OwnedChildA");
+    auto* childB = new CountingChildDataDefinitionProbe(model, "OwnedChildB");
+
+    // Declares two owned internal data children so owner teardown must delete both instances.
+    owner->AttachInternalData("childA", childA);
+    owner->AttachInternalData("childB", childB);
+
+    delete owner;
+
+    EXPECT_EQ(g_countingChildProbeDestructorCount, 2u);
+}
+
 TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorDoesNotDeleteAttachedDataTarget) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -338,4 +358,33 @@ TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorDoesNotDeleteAttachedDat
     EXPECT_NE(model->getDataManager()->getDataDefinition("LifecycleModelDataDefinitionProbe", "AttachedTarget"), nullptr);
 
     delete attached;
+}
+
+TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorRemovesOwnedPropertyAlsoRegisteredAsResponse) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    g_countingControlProbeDestructorCount = 0;
+    const unsigned int controlsBefore = model->getControls()->size();
+    const unsigned int responsesBefore = model->getResponses()->size();
+
+    auto* owner = new LifecycleModelDataDefinitionProbe(model, "OwnerControlAndResponse");
+    const unsigned int controlsAfterOwnerConstruction = model->getControls()->size();
+    const unsigned int responsesAfterOwnerConstruction = model->getResponses()->size();
+
+    auto* ownedProperty = new CountingSimulationControlProbe(owner->getName(), "OwnedControlAndResponse");
+    // Registers the same owned property in controls and responses so destructor cleanup must remove both references.
+    model->getControls()->insert(ownedProperty);
+    model->getResponses()->insert(static_cast<SimulationResponse*>(ownedProperty));
+    owner->AttachOwnedProperty(ownedProperty);
+
+    EXPECT_EQ(model->getControls()->size(), controlsAfterOwnerConstruction + 1);
+    EXPECT_EQ(model->getResponses()->size(), responsesAfterOwnerConstruction + 1);
+
+    delete owner;
+
+    EXPECT_EQ(model->getControls()->size(), controlsBefore);
+    EXPECT_EQ(model->getResponses()->size(), responsesBefore);
+    EXPECT_EQ(g_countingControlProbeDestructorCount, 1u);
 }
