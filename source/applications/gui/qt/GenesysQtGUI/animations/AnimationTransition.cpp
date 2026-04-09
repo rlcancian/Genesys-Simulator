@@ -23,7 +23,10 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
     _imageAnimation(nullptr),
     _portNumber(0),
     _currentProgress(0.0),
-    _viewSimulation(viewSimulation){
+    _viewSimulation(viewSimulation),
+    // Initialize lifecycle flags for idempotent terminal cleanup paths.
+    _isStopping(false),
+    _isFinishedHandled(false){
 
     // Abort construction when required input pointers are missing.
     if (_myScene == nullptr || graphicalStartComponent == nullptr || graphicalEndComponent == nullptr) {
@@ -171,7 +174,15 @@ void AnimationTransition::startAnimation() {
 }
 
 void AnimationTransition::stopAnimation() {
-    // Stop only when running/paused and cleanup scene state without simulating normal completion.
+    // Return immediately when stop cleanup is already in progress.
+    if (_isStopping) {
+        return;
+    }
+
+    // Mark terminal stop path to keep cleanup idempotent across callbacks/destructor.
+    _isStopping = true;
+
+    // Stop only when animation is not already stopped.
     if (state() != QAbstractAnimation::Stopped) {
         stop();
     }
@@ -179,6 +190,16 @@ void AnimationTransition::stopAnimation() {
     // Remove image only when both pointers are valid and image belongs to this scene.
     if (_myScene != nullptr && _imageAnimation != nullptr && _imageAnimation->scene() == _myScene) {
         _myScene->removeItem(_imageAnimation);
+    }
+
+    // Delete the owned image item explicitly on terminal stop cleanup.
+    if (_imageAnimation != nullptr) {
+        delete _imageAnimation;
+        _imageAnimation = nullptr;
+    }
+
+    // Update scene only when scene pointer is valid.
+    if (_myScene != nullptr) {
         _myScene->update();
     }
 }
@@ -237,11 +258,21 @@ void AnimationTransition::connectValueChangedSignal() {
 
 
 void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
-    if (_running == false)
+    // Stop and exit immediately when simulation runtime is no longer running.
+    if (_running == false) {
         stopAnimation();
+        return;
+    }
 
+    // Pause and exit immediately to avoid running animation logic while paused.
     if (_pause == true) {
         pause();
+        return;
+    }
+
+    // Validate mandatory runtime pointers and geometry before processing interpolation.
+    if (_myScene == nullptr || _imageAnimation == nullptr || _pointsForAnimation.size() < 2) {
+        return;
     }
 
     updateDurationIfNeeded();
@@ -249,41 +280,44 @@ void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
     // Progresso atual da animação (valor entre startValue e endValue)
     _currentProgress = value.toReal();
 
-    // Se há pontos a serem percorridos, entra na condição
-    if (!_pointsForAnimation.isEmpty()) {
-        // Número de segmentos, ou seja, quantas linhas serão percorridas
-        int numSegments = _pointsForAnimation.size() - 1;
-
-        // Distância total a ser percorrida pela animação
-        qreal totalDistance = 0.0;
-
-        // Calcula a distância total entre os pontos
-        for (int i = 0; i < numSegments; ++i) {
-            totalDistance += QLineF(_pointsForAnimation[i], _pointsForAnimation[i + 1]).length();
-        }
-
-        qreal distanceCovered = _currentProgress * totalDistance;
-        qreal currentDistance = 0.0;
-
-        // Encontra o segmento onde a imagem está atualmente
-        int currentSegment = 0;
-        while (currentSegment < numSegments && currentDistance + QLineF(_pointsForAnimation[currentSegment], _pointsForAnimation[currentSegment + 1]).length() < distanceCovered) {
-            currentDistance += QLineF(_pointsForAnimation[currentSegment], _pointsForAnimation[currentSegment + 1]).length();
-            ++currentSegment;
-        }
-
-        // Calcula a posição interpolada dentro do segmento atual
-        qreal segmentProgress = (distanceCovered - currentDistance) / QLineF(_pointsForAnimation[currentSegment], _pointsForAnimation[currentSegment + 1]).length();
-        QPointF start = _pointsForAnimation[currentSegment];
-        QPointF end = _pointsForAnimation[currentSegment + 1];
-        QPointF imagePosition = start * (1 - segmentProgress) + end * segmentProgress;
-
-        // Nova posição da imagem
-        _imageAnimation->setPos(imagePosition);
-
-        // Atualiza a cena
-        _myScene->update();
+    // Compute total path distance and exit on degenerate geometry.
+    int numSegments = _pointsForAnimation.size() - 1;
+    qreal totalDistance = 0.0;
+    for (int i = 0; i < numSegments; ++i) {
+        totalDistance += QLineF(_pointsForAnimation[i], _pointsForAnimation[i + 1]).length();
     }
+    if (totalDistance <= 0.0) {
+        return;
+    }
+
+    qreal distanceCovered = _currentProgress * totalDistance;
+    qreal currentDistance = 0.0;
+
+    // Find the active segment while keeping segment index inside valid bounds.
+    int currentSegment = 0;
+    while (currentSegment < numSegments &&
+           currentDistance + QLineF(_pointsForAnimation[currentSegment], _pointsForAnimation[currentSegment + 1]).length() < distanceCovered) {
+        currentDistance += QLineF(_pointsForAnimation[currentSegment], _pointsForAnimation[currentSegment + 1]).length();
+        ++currentSegment;
+    }
+    if (currentSegment < 0 || currentSegment >= numSegments) {
+        return;
+    }
+
+    // Guard segment interpolation against zero-length segments before dividing.
+    qreal segmentLength = QLineF(_pointsForAnimation[currentSegment], _pointsForAnimation[currentSegment + 1]).length();
+    if (segmentLength <= 0.0) {
+        return;
+    }
+
+    qreal segmentProgress = (distanceCovered - currentDistance) / segmentLength;
+    QPointF start = _pointsForAnimation[currentSegment];
+    QPointF end = _pointsForAnimation[currentSegment + 1];
+    QPointF imagePosition = start * (1 - segmentProgress) + end * segmentProgress;
+
+    // Apply interpolated position and refresh the scene in validated runtime path.
+    _imageAnimation->setPos(imagePosition);
+    _myScene->update();
 }
 
 void AnimationTransition::connectFinishedSignal() {
@@ -292,13 +326,28 @@ void AnimationTransition::connectFinishedSignal() {
 }
 
 void AnimationTransition::onAnimationFinished() {
+    // Return when finished callback cleanup already ran before.
+    if (_isFinishedHandled) {
+        return;
+    }
+
+    // Mark finished callback as handled for idempotent terminal cleanup.
+    _isFinishedHandled = true;
+
     // Only notify queue insertion when both scene and destination component are valid.
-    if (_myScene != nullptr && _graphicalEndComponent != nullptr)
+    if (_myScene != nullptr && _graphicalEndComponent != nullptr) {
         _myScene->animateQueueInsert(_graphicalEndComponent->getComponent(), _viewSimulation);
+    }
 
     // Remove image only when it is valid and still attached to this scene.
     if (_myScene != nullptr && _imageAnimation != nullptr && _imageAnimation->scene() == _myScene) {
         _myScene->removeItem(_imageAnimation);
+    }
+
+    // Delete the owned image item explicitly after animation completion.
+    if (_imageAnimation != nullptr) {
+        delete _imageAnimation;
+        _imageAnimation = nullptr;
     }
 
     // Update scene only when scene pointer is valid.
