@@ -76,7 +76,137 @@ ModelGraphicsScene::ModelGraphicsScene(qreal x, qreal y, qreal width, qreal heig
 ModelGraphicsScene::ModelGraphicsScene(const ModelGraphicsScene& orig) { // : QGraphicsScene(orig) {
 }
 
-ModelGraphicsScene::~ModelGraphicsScene() {}
+ModelGraphicsScene::~ModelGraphicsScene() {
+    // Release transient drawing items that may still be detached from normal commit flow.
+    if (_currentRectangle != nullptr) {
+        if (_currentRectangle->scene() == this) {
+            removeItem(_currentRectangle);
+        }
+        delete _currentRectangle;
+        _currentRectangle = nullptr;
+    }
+    if (_currentLine != nullptr) {
+        if (_currentLine->scene() == this) {
+            removeItem(_currentLine);
+        }
+        delete _currentLine;
+        _currentLine = nullptr;
+    }
+    if (_currentEllipse != nullptr) {
+        if (_currentEllipse->scene() == this) {
+            removeItem(_currentEllipse);
+        }
+        delete _currentEllipse;
+        _currentEllipse = nullptr;
+    }
+    if (_currentPolygon != nullptr) {
+        if (_currentPolygon->scene() == this) {
+            removeItem(_currentPolygon);
+        }
+        delete _currentPolygon;
+        _currentPolygon = nullptr;
+    }
+    if (_currentCounter != nullptr) {
+        if (_currentCounter->scene() == this) {
+            removeItem(_currentCounter);
+        }
+        delete _currentCounter;
+        _currentCounter = nullptr;
+    }
+    if (_currentVariable != nullptr) {
+        if (_currentVariable->scene() == this) {
+            removeItem(_currentVariable);
+        }
+        delete _currentVariable;
+        _currentVariable = nullptr;
+    }
+    if (_currentTimer != nullptr) {
+        if (_currentTimer->scene() == this) {
+            removeItem(_currentTimer);
+        }
+        delete _currentTimer;
+        _currentTimer = nullptr;
+    }
+
+    // Reuse the existing animation cleanup sequence before destroying animation containers.
+    clearAnimations();
+
+    // Clear and destroy grid line resources before releasing the grid container.
+    _grid.clear();
+    delete _grid.lines;
+    _grid.lines = nullptr;
+
+    // Reset lightweight auxiliary lists without forcing ownership deletion of scene-managed items.
+    if (_counters != nullptr) {
+        _counters->clear();
+    }
+    if (_variables != nullptr) {
+        _variables->clear();
+    }
+    if (_graphicalModelComponents != nullptr) {
+        _graphicalModelComponents->clear();
+    }
+    if (_graphicalModelDataDefinitions != nullptr) {
+        _graphicalModelDataDefinitions->clear();
+    }
+    if (_graphicalConnections != nullptr) {
+        _graphicalConnections->clear();
+    }
+    if (_graphicalDiagramConnections != nullptr) {
+        _graphicalDiagramConnections->clear();
+    }
+    if (_graphicalAssociations != nullptr) {
+        _graphicalAssociations->clear();
+    }
+    if (_graphicalGeometries != nullptr) {
+        _graphicalGeometries->clear();
+    }
+    if (_graphicalAnimations != nullptr) {
+        _graphicalAnimations->clear();
+    }
+    if (_graphicalEntities != nullptr) {
+        _graphicalEntities->clear();
+    }
+    if (_graphicalGroups != nullptr) {
+        _graphicalGroups->clear();
+    }
+
+    // Destroy heap-owning containers allocated by this scene and nullify their pointers.
+    delete _counters;
+    _counters = nullptr;
+    delete _variables;
+    _variables = nullptr;
+    delete _animationPaused;
+    _animationPaused = nullptr;
+    delete _imagesAnimation;
+    _imagesAnimation = nullptr;
+    delete _animationsTransition;
+    _animationsTransition = nullptr;
+    delete _animationsCounter;
+    _animationsCounter = nullptr;
+    delete _animationsVariable;
+    _animationsVariable = nullptr;
+    delete _animationsTimer;
+    _animationsTimer = nullptr;
+    delete _graphicalModelComponents;
+    _graphicalModelComponents = nullptr;
+    delete _graphicalModelDataDefinitions;
+    _graphicalModelDataDefinitions = nullptr;
+    delete _graphicalConnections;
+    _graphicalConnections = nullptr;
+    delete _graphicalDiagramConnections;
+    _graphicalDiagramConnections = nullptr;
+    delete _graphicalAssociations;
+    _graphicalAssociations = nullptr;
+    delete _graphicalGeometries;
+    _graphicalGeometries = nullptr;
+    delete _graphicalAnimations;
+    _graphicalAnimations = nullptr;
+    delete _graphicalEntities;
+    _graphicalEntities = nullptr;
+    delete _graphicalGroups;
+    _graphicalGroups = nullptr;
+}
 
 
 //-----------------------------------------------------------------------
