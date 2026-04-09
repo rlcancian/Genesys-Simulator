@@ -92,7 +92,10 @@ public:
 class ModelGraphicsScene : public QGraphicsScene {
 public:
     ModelGraphicsScene(qreal x, qreal y, qreal width, qreal height, QObject *parent = nullptr);
-    ModelGraphicsScene(const ModelGraphicsScene& orig);
+    // Disable copy construction to keep scene ownership state unique.
+    ModelGraphicsScene(const ModelGraphicsScene& orig) = delete;
+    // Disable copy assignment to prevent shallow copies of GUI-owned resources.
+    ModelGraphicsScene& operator=(const ModelGraphicsScene& other) = delete;
     virtual ~ModelGraphicsScene();
 public: // editing graphic model
     enum DrawingMode{
