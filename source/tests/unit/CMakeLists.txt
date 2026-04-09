@@ -120,6 +120,15 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_experimentmanager
 )
 
+if(GENESYS_BUILD_WEB_APPLICATION)
+    genesys_add_unit_test(genesys_test_web_api_router
+        test_web_api_router.cpp
+        genesys_web_core
+    )
+
+    add_dependencies(genesys_kernel_unit_tests genesys_test_web_api_router)
+endif()
+
 set(GENESYS_KERNEL_SIMULATOR_HEADERS_DIR "${CMAKE_SOURCE_DIR}/source/kernel/simulator")
 set(GENESYS_GENERATED_UNIT_TESTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/generated")
 set(GENESYS_METHOD_INVENTORY_TEST "${GENESYS_GENERATED_UNIT_TESTS_DIR}/test_kernel_simulator_method_inventory.generated.cpp")
@@ -181,5 +190,12 @@ add_custom_target(genesys_kernel_unit_tests_run
         genesys_kernel_unit_tests
     USES_TERMINAL
 )
+
+if(GENESYS_BUILD_WEB_APPLICATION)
+    add_custom_command(TARGET genesys_kernel_unit_tests_run
+        POST_BUILD
+        COMMAND $<TARGET_FILE:genesys_test_web_api_router>
+    )
+endif()
 
 set_property(TARGET genesys_kernel_unit_tests_run PROPERTY FOLDER tests/unit)
