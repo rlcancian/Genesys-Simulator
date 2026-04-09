@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 
+#include <algorithm>
+
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataDefinition.h"
@@ -32,6 +34,13 @@ public:
     void Detach(std::string key) {
         _attachedDataRemove(key);
     }
+};
+
+// Provides a minimal concrete data definition type to exercise manager class-name snapshot semantics.
+class DataDefinitionSnapshotProbe : public ModelDataDefinition {
+public:
+    DataDefinitionSnapshotProbe(Model* model, const std::string& name)
+        : ModelDataDefinition(model, "DataDefinitionSnapshotProbe", name, true) {}
 };
 }
 
@@ -120,6 +129,54 @@ TEST(SimulatorRuntimeTest, ModelClearPreservesBaseSimulationControlsCount) {
     model->clear();
 
     EXPECT_EQ(model->getControls()->size(), controlsBefore);
+}
+
+TEST(SimulatorRuntimeTest, ModelClearIsIdempotentAndKeepsRuntimeUsable) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    // Captures baseline simulation controls and validates clear() can run twice without invalidating core runtime managers.
+    const unsigned int controlsBefore = model->getControls()->size();
+    ASSERT_GT(controlsBefore, 0u);
+
+    model->clear();
+    model->clear();
+
+    EXPECT_EQ(model->getControls()->size(), controlsBefore);
+    EXPECT_NE(model->getSimulation(), nullptr);
+    EXPECT_NE(model->getDataManager(), nullptr);
+    EXPECT_NE(model->getComponentManager(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DataDefinitionClassnamesSnapshotIsReturnedByValue) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    // Creates managed data definitions so the manager registry exposes at least one class name for snapshot checks.
+    auto* first = new DataDefinitionSnapshotProbe(model, "SnapshotA");
+    auto* second = new DataDefinitionSnapshotProbe(model, "SnapshotB");
+    (void)second;
+
+    // Captures independent snapshots and verifies mutating one local copy does not affect manager state or another snapshot.
+    auto names1 = model->getDataManager()->getDataDefinitionClassnames();
+    auto names2 = model->getDataManager()->getDataDefinitionClassnames();
+    ASSERT_FALSE(names1.empty());
+    ASSERT_FALSE(names2.empty());
+    EXPECT_NE(std::find(names1.begin(), names1.end(), "DataDefinitionSnapshotProbe"), names1.end());
+    EXPECT_NE(std::find(names2.begin(), names2.end(), "DataDefinitionSnapshotProbe"), names2.end());
+
+    names1.remove("DataDefinitionSnapshotProbe");
+
+    EXPECT_EQ(std::find(names1.begin(), names1.end(), "DataDefinitionSnapshotProbe"), names1.end());
+    EXPECT_NE(std::find(names2.begin(), names2.end(), "DataDefinitionSnapshotProbe"), names2.end());
+    auto names3 = model->getDataManager()->getDataDefinitionClassnames();
+    EXPECT_NE(std::find(names3.begin(), names3.end(), "DataDefinitionSnapshotProbe"), names3.end());
+
+    // Explicitly releases test-owned instances to keep teardown deterministic inside this test body.
+    delete first;
+    delete second;
 }
 
 TEST(SimulatorRuntimeTest, AttachedDataRemoveOnlyDetachesRegistryEntry) {
