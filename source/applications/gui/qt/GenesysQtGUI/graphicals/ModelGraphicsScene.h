@@ -136,7 +136,8 @@ public: // editing graphic model
     void ungroupComponents(bool notify = false);
     void ungroupModelComponents(QGraphicsItemGroup *group);
     void notifyGraphicalModelChange(GraphicalModelEvent::EventType eventType, GraphicalModelEvent::EventObjectType eventObjectType, QGraphicsItem *item);
-    QList<GraphicalModelComponent*>* graphicalModelComponentItems();
+    // Return model component items by value to avoid heap ownership transfer.
+    QList<GraphicalModelComponent*> graphicalModelComponentItems();
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
 public:
     struct GRID {

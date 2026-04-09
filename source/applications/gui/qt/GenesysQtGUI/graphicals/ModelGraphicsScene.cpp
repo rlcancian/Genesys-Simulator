@@ -507,13 +507,13 @@ void ModelGraphicsScene::startTextEditing() {
 
 // limpa todo o modelo
 void ModelGraphicsScene::clearGraphicalModelComponents() {
-    // Own and automatically release the temporary component list returned by the scene query.
-    auto componentsInModel = std::unique_ptr<QList<GraphicalModelComponent*>>(this->graphicalModelComponentItems());
+    // Get model components by value to avoid temporary heap ownership.
+    QList<GraphicalModelComponent*> componentsInModel = this->graphicalModelComponentItems();
     GraphicalModelComponent *source;
     GraphicalModelComponent *destination;
 
-    for (unsigned int x = 0; x < (unsigned int) componentsInModel->size(); x++){
-        GraphicalModelComponent *gmc = componentsInModel->at(x);
+    for (unsigned int x = 0; x < (unsigned int) componentsInModel.size(); x++){
+        GraphicalModelComponent *gmc = componentsInModel.at(x);
         removeComponentInModel(gmc);
     }
 
@@ -883,10 +883,10 @@ void ModelGraphicsScene::redoConnections(GraphicalModelComponent *graphicalCompo
 
 
 void ModelGraphicsScene::saveDataDefinitions() {
-    // Own and automatically release the temporary component list returned by the scene query.
-    auto components = std::unique_ptr<QList<GraphicalModelComponent*>>(this->graphicalModelComponentItems());
+    // Get model components by value to avoid temporary heap ownership.
+    QList<GraphicalModelComponent*> components = this->graphicalModelComponentItems();
 
-    for (GraphicalModelComponent* component : *components) {
+    for (GraphicalModelComponent* component : components) {
         component->verifyQueue();
 
         if (component->getInternalData()->empty() || component->getAttachedData()->empty()) {
@@ -921,13 +921,13 @@ void ModelGraphicsScene::saveDataDefinitions() {
 }
 
 void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
-    // Own and automatically release the temporary component list returned by the scene query.
-    auto components = std::unique_ptr<QList<GraphicalModelComponent*>>(this->graphicalModelComponentItems());
+    // Get model components by value to avoid temporary heap ownership.
+    QList<GraphicalModelComponent*> components = this->graphicalModelComponentItems();
     QList<GraphicalModelComponent*> *allComponentes = this->getAllComponents();
 
     if (!allComponentes->empty()) {
         for (GraphicalModelComponent* component : *allComponentes) {
-            if (!components->contains(component)) {
+            if (!components.contains(component)) {
                 if (component->getEntityType() == nullptr) {
                     SourceModelComponent *isSrc = dynamic_cast<SourceModelComponent *>(component->getComponent());
 
@@ -941,8 +941,8 @@ void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
         }
     }
 
-    if (!components->empty()) {
-        for (GraphicalModelComponent* component : *components) {
+    if (!components.empty()) {
+        for (GraphicalModelComponent* component : components) {
             for (ModelDataDefinition* dataInternal : *component->getInternalData()) {
                 _simulator->getModelManager()->current()->getDataManager()->insert(dataInternal);
             }
@@ -2709,12 +2709,13 @@ void ModelGraphicsScene::clearDrawingMode() {
     _drawingMode = ModelGraphicsScene::NONE;
     ((QGraphicsView*)this->parent())->setCursor(Qt::ArrowCursor);
 }
-QList<GraphicalModelComponent*>* ModelGraphicsScene::graphicalModelComponentItems(){
-    QList<GraphicalModelComponent*>* list = new QList<GraphicalModelComponent*>();
+// Build and return a temporary component list by value.
+QList<GraphicalModelComponent*> ModelGraphicsScene::graphicalModelComponentItems(){
+    QList<GraphicalModelComponent*> list;
     for(QGraphicsItem* item: this->items()) {
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(item);
         if (gmc != nullptr) {
-            list->append(gmc);
+            list.append(gmc);
         }
     }
     return list;
