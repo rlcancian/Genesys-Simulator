@@ -12,6 +12,7 @@
 
 #include "HypothesisTesterDefaultImpl1.h"
 #include "ProbabilityDistribution.h"
+#include "SolverDefaultImpl1.h"
 #include "../kernel/statistics/StatisticsDataFile_if.h"
 #include "../kernel/TraitsKernel.h"
 #include <algorithm>
@@ -19,13 +20,9 @@
 #include <limits>
 #include <memory>
 #include <stdexcept>
-#include <string_view>
 
 namespace {
 
-[[noreturn]] void throwUnimplemented(std::string_view methodName) {
-	throw std::logic_error("Method not implemented yet: " + std::string(methodName));
-}
 
 double clampProbability(double value) {
 	return std::clamp(value, 0.0, 1.0);
@@ -43,6 +40,48 @@ double chi2CdfApproximation(double chi2, double degreesOfFreedom) {
 	const double k = degreesOfFreedom;
 	const double transformed = (std::cbrt(chi2 / k) - (1.0 - 2.0 / (9.0 * k))) / std::sqrt(2.0 / (9.0 * k));
 	return clampProbability(normalCdf(transformed));
+}
+
+void validateConfidenceLevel(double confidenceLevel) {
+	if (!(confidenceLevel > 0.0 && confidenceLevel < 1.0)) {
+		throw std::invalid_argument("confidenceLevel must be in (0,1)");
+	}
+}
+
+double studentTCdf(double t, double degreesOfFreedom) {
+	if (degreesOfFreedom <= 0.0 || !std::isfinite(degreesOfFreedom)) {
+		throw std::invalid_argument("studentTCdf requires positive finite degreesOfFreedom");
+	}
+	if (t == 0.0) {
+		return 0.5;
+	}
+	SolverDefaultImpl1 integrator(1e-6, 10000);
+	const double absT = std::fabs(t);
+	const double integral = integrator.integrate(0.0, absT, ProbabilityDistributionBase::tStudent, 0.0, 1.0, degreesOfFreedom);
+	const double cdf = (t > 0.0) ? (0.5 + integral) : (0.5 - integral);
+	return clampProbability(cdf);
+}
+
+double fisherSnedecorCdf(double f, double d1, double d2) {
+	if (f <= 0.0) {
+		return 0.0;
+	}
+	if (d1 <= 0.0 || d2 <= 0.0 || !std::isfinite(d1) || !std::isfinite(d2)) {
+		throw std::invalid_argument("fisherSnedecorCdf requires positive finite degrees of freedom");
+	}
+	SolverDefaultImpl1 integrator(1e-6, 10000);
+	const double integral = integrator.integrate(0.0, f, ProbabilityDistributionBase::fisherSnedecor, d1, d2);
+	return clampProbability(integral);
+}
+
+double pValueFromCdf(double cdf, HypothesisTester_if::H1Comparition comp) {
+	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
+		return clampProbability(cdf);
+	}
+	if (comp == HypothesisTester_if::H1Comparition::GREATER_THAN) {
+		return clampProbability(1.0 - cdf);
+	}
+	return clampProbability(2.0 * std::min(cdf, 1.0 - cdf));
 }
 
 }
@@ -284,35 +323,107 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(doubl
 // two populations
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) avg1;
-	(void) stddev1;
-	(void) n1;
-	(void) avg2;
-	(void) stddev2;
-	(void) n2;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	if (n1 < 2 || n2 < 2 || stddev1 < 0.0 || stddev2 < 0.0) {
+		throw std::invalid_argument("testAverage(2pop) requires n1,n2 >= 2 and stddev1,stddev2 >= 0");
+	}
+	validateConfidenceLevel(confidenceLevel);
+	const double alpha = 1.0 - confidenceLevel;
+	const double var1 = stddev1 * stddev1;
+	const double var2 = stddev2 * stddev2;
+	HypothesisTester_if::ConfidenceInterval varIC = varianceRatioConfidenceInterval(var1, n1, var2, n2, confidenceLevel);
+	const bool equalVariances = (varIC.inferiorLimit() <= 1.0 && varIC.superiorLimit() >= 1.0);
+	const double diff = avg1 - avg2;
+	double testStat;
+	double degreeFreedom;
+	if (equalVariances) {
+		const double pooledVariance = (((n1 - 1) * var1) + ((n2 - 1) * var2)) / (n1 + n2 - 2);
+		const double denominator = std::sqrt(pooledVariance * (1.0 / n1 + 1.0 / n2));
+		if (!(denominator > 0.0) || !std::isfinite(denominator)) {
+			throw std::invalid_argument("testAverage(2pop) pooled denominator must be positive and finite");
+		}
+		testStat = diff / denominator;
+		degreeFreedom = n1 + n2 - 2;
+	} else {
+		const double varianceTerm = var1 / n1 + var2 / n2;
+		const double denominator = std::sqrt(varianceTerm);
+		if (!(denominator > 0.0) || !std::isfinite(denominator)) {
+			throw std::invalid_argument("testAverage(2pop) Welch denominator must be positive and finite");
+		}
+		testStat = diff / denominator;
+		degreeFreedom = (varianceTerm * varianceTerm) /
+				((std::pow(var1 / n1, 2) / (n1 - 1)) + (std::pow(var2 / n2, 2) / (n2 - 1)));
+	}
+	if (!(degreeFreedom > 0.0) || !std::isfinite(degreeFreedom)) {
+		throw std::invalid_argument("testAverage(2pop) requires positive finite degrees of freedom");
+	}
+
+	double acceptInfLimit = -std::numeric_limits<double>::infinity();
+	double acceptSupLimit = std::numeric_limits<double>::infinity();
+	if (comp == HypothesisTester_if::H1Comparition::DIFFERENT) {
+		acceptInfLimit = ProbabilityDistribution::inverseTStudent(alpha / 2.0, 0.0, 1.0, degreeFreedom);
+		acceptSupLimit = ProbabilityDistribution::inverseTStudent(1.0 - alpha / 2.0, 0.0, 1.0, degreeFreedom);
+	} else if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
+		acceptInfLimit = ProbabilityDistribution::inverseTStudent(alpha, 0.0, 1.0, degreeFreedom);
+	} else {
+		acceptSupLimit = ProbabilityDistribution::inverseTStudent(1.0 - alpha, 0.0, 1.0, degreeFreedom);
+	}
+
+	const double cdf = studentTCdf(testStat, degreeFreedom);
+	const double pvalue = pValueFromCdf(cdf, comp);
+	return HypothesisTester_if::TestResult(pvalue, pvalue < alpha, acceptInfLimit, acceptSupLimit, testStat);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(double prop1, unsigned int n1, double prop2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) prop1;
-	(void) n1;
-	(void) prop2;
-	(void) n2;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	if (n1 < 2 || n2 < 2 || prop1 < 0.0 || prop1 > 1.0 || prop2 < 0.0 || prop2 > 1.0) {
+		throw std::invalid_argument("testProportion(2pop) requires n1,n2 >= 2 and 0 <= prop1,prop2 <= 1");
+	}
+	validateConfidenceLevel(confidenceLevel);
+	const double alpha = 1.0 - confidenceLevel;
+	const double x = prop1 * n1;
+	const double y = prop2 * n2;
+	const double pbar = (x + y) / (n1 + n2);
+	const double denominator = std::sqrt(pbar * (1.0 - pbar) * (1.0 / n1 + 1.0 / n2));
+	if (!(denominator > 0.0) || !std::isfinite(denominator)) {
+		throw std::invalid_argument("testProportion(2pop) denominator must be positive and finite");
+	}
+	const double testStat = (prop1 - prop2) / denominator;
+	const double cdf = normalCdf(testStat);
+	const double pValue = pValueFromCdf(cdf, comp);
+	double acceptInfLim = -std::numeric_limits<double>::infinity();
+	double acceptSupLim = std::numeric_limits<double>::infinity();
+	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
+		acceptInfLim = ProbabilityDistribution::inverseNormal(alpha, 0.0, 1.0);
+	} else if (comp == HypothesisTester_if::H1Comparition::GREATER_THAN) {
+		acceptSupLim = ProbabilityDistribution::inverseNormal(1.0 - alpha, 0.0, 1.0);
+	} else {
+		acceptInfLim = ProbabilityDistribution::inverseNormal(alpha / 2.0, 0.0, 1.0);
+		acceptSupLim = ProbabilityDistribution::inverseNormal(1.0 - alpha / 2.0, 0.0, 1.0);
+	}
+	return HypothesisTester_if::TestResult(pValue, pValue < alpha, acceptInfLim, acceptSupLim, testStat);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(double var1, unsigned int n1, double var2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) var1;
-	(void) n1;
-	(void) var2;
-	(void) n2;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	if (n1 < 2 || n2 < 2 || !(var1 > 0.0) || !(var2 > 0.0)) {
+		throw std::invalid_argument("testVariance(2pop) requires n1,n2 >= 2 and var1,var2 > 0");
+	}
+	validateConfidenceLevel(confidenceLevel);
+	const double alpha = 1.0 - confidenceLevel;
+	const double d1 = n1 - 1;
+	const double d2 = n2 - 1;
+	const double testStat = var1 / var2;
+	const double cdf = fisherSnedecorCdf(testStat, d1, d2);
+	const double pValue = pValueFromCdf(cdf, comp);
+	double acceptInfLim = -std::numeric_limits<double>::infinity();
+	double acceptSupLim = std::numeric_limits<double>::infinity();
+	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
+		acceptInfLim = ProbabilityDistribution::inverseFFisherSnedecor(alpha, d1, d2);
+	} else if (comp == HypothesisTester_if::H1Comparition::GREATER_THAN) {
+		acceptSupLim = ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha, d1, d2);
+	} else {
+		acceptInfLim = ProbabilityDistribution::inverseFFisherSnedecor(alpha / 2.0, d1, d2);
+		acceptSupLim = ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha / 2.0, d1, d2);
+	}
+	return HypothesisTester_if::TestResult(pValue, pValue < alpha, acceptInfLim, acceptSupLim, testStat);
 }
 // one population based on datafile
 
@@ -344,27 +455,42 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(std::
 // two populations based on datafile
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) firstSampleDataFilename;
-	(void) secondSampleDataFilename;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	auto first = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	auto second = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	static_cast<CollectorDatafile_if*> (first->getCollector())->setDataFilename(firstSampleDataFilename);
+	static_cast<CollectorDatafile_if*> (second->getCollector())->setDataFilename(secondSampleDataFilename);
+	return testAverage(first->average(), first->stddeviation(), first->numElements(), second->average(), second->stddeviation(), second->numElements(), confidenceLevel, comp);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(std::string firstSampleDataFilename, std::string secondSampleDataFilename, checkProportionFunction function, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) firstSampleDataFilename;
-	(void) secondSampleDataFilename;
-	(void) function;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	auto first = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	auto second = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	static_cast<CollectorDatafile_if*> (first->getCollector())->setDataFilename(firstSampleDataFilename);
+	static_cast<CollectorDatafile_if*> (second->getCollector())->setDataFilename(secondSampleDataFilename);
+	unsigned long firstCount = 0;
+	for (unsigned long i = 0; i < first->numElements(); ++i) {
+		const double value = static_cast<CollectorDatafile_if*> (first->getCollector())->getValue(i);
+		if (function(value)) {
+			++firstCount;
+		}
+	}
+	unsigned long secondCount = 0;
+	for (unsigned long i = 0; i < second->numElements(); ++i) {
+		const double value = static_cast<CollectorDatafile_if*> (second->getCollector())->getValue(i);
+		if (function(value)) {
+			++secondCount;
+		}
+	}
+	const double firstProp = static_cast<double> (firstCount) / first->numElements();
+	const double secondProp = static_cast<double> (secondCount) / second->numElements();
+	return testProportion(firstProp, first->numElements(), secondProp, second->numElements(), confidenceLevel, comp);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	(void) firstSampleDataFilename;
-	(void) secondSampleDataFilename;
-	(void) confidenceLevel;
-	(void) comp;
-	throwUnimplemented(__func__);
+	auto first = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	auto second = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
+	static_cast<CollectorDatafile_if*> (first->getCollector())->setDataFilename(firstSampleDataFilename);
+	static_cast<CollectorDatafile_if*> (second->getCollector())->setDataFilename(secondSampleDataFilename);
+	return testVariance(first->variance(), first->numElements(), second->variance(), second->numElements(), confidenceLevel, comp);
 }
 // @TODO: Add interface for non-parametrical tests, such as chi-square (based on values and on datafile)
