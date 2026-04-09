@@ -52,15 +52,15 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 	if (_simulation->isShowSimulationControlsInReport())
 		this->showSimulationControls(); // assumed the controls are the same for all replications, show them only for the whole simulation
 
-	// copy the list of statistics and counters into a single new list
-	std::list<ModelDataDefinition*>* statisticsAndCounters = new std::list<ModelDataDefinition*>(*(_model->getDataManager()->getDataDefinitionList(UtilTypeOfStatisticsCollector)->list()));
-	std::list<ModelDataDefinition*>* counters = new std::list<ModelDataDefinition*>(*(_model->getDataManager()->getDataDefinitionList(UtilTypeOfCounter)->list()));
-	statisticsAndCounters->merge(*counters);
+	// Combine stats and counters in local temporary lists without heap allocation.
+	std::list<ModelDataDefinition*> statisticsAndCounters(*(_model->getDataManager()->getDataDefinitionList(UtilTypeOfStatisticsCollector)->list()));
+	std::list<ModelDataDefinition*> counters(*(_model->getDataManager()->getDataDefinitionList(UtilTypeOfCounter)->list()));
+	statisticsAndCounters.merge(counters);
 	//statisticsAndCounters->insert(counters->list()->begin(), counters->list()->end());
-	// organizes statistics into a map of maps
-	std::map< std::string, std::map<std::string, std::list<ModelDataDefinition*>*>* >* mapMapTypeStat = new std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*>*>*>();
+	// Group report items by parent type and parent name with automatic storage containers.
+	std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*> > > mapMapTypeStat;
 
-	for (ModelDataDefinition* cstatOrCounter : *statisticsAndCounters) {
+	for (ModelDataDefinition* cstatOrCounter : statisticsAndCounters) {
 		std::string parentName, parentTypename;
 		//std::cout << statOrCnt->getName() << ": " << statOrCnt->getTypename() << std::endl;
 		if (cstatOrCounter->getClassname() == UtilTypeOfStatisticsCollector) {
@@ -76,26 +76,9 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 			}
 		}
 		// look for key=parentTypename
-		std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*>*>*>::iterator mapMapIt = mapMapTypeStat->find(parentTypename);
-		if (mapMapIt == mapMapTypeStat->end()) { // parentTypename does not exists in map. Include it.
-			std::pair< std::string, std::map<std::string, std::list<ModelDataDefinition*>*>* >* newPair = new std::pair<std::string, std::map<std::string, std::list<ModelDataDefinition*>*>*>(parentTypename, new std::map<std::string, std::list<ModelDataDefinition*>*>());
-			mapMapTypeStat->insert(*newPair);
-			mapMapIt = mapMapTypeStat->find(parentTypename); // find again. Now it will.
-		}
-		//assert(mapMapIt != mapMapTypeStat->end());
-		std::map<std::string, std::list<ModelDataDefinition*>*>* mapTypeStat = (*mapMapIt).second;
-		assert(mapTypeStat != nullptr);
-		// look for key=parentName
-		std::map<std::string, std::list<ModelDataDefinition*>*>::iterator mapIt = mapTypeStat->find(parentName);
-		if (mapIt == mapTypeStat->end()) { // parentTypename does not exists in map. Include it.
-			std::pair< std::string, std::list<ModelDataDefinition*>* >* newPair = new std::pair<std::string, std::list<ModelDataDefinition*>*>(parentName, new std::list<ModelDataDefinition*>());
-			mapTypeStat->insert(*newPair);
-			mapIt = mapTypeStat->find(parentName); // find again. Now it will.
-		}
-		// get the list and insert the stat in that list
-		std::list<ModelDataDefinition*>* listStatAndCount = (*mapIt).second;
-		assert(listStatAndCount != nullptr);
-		listStatAndCount->insert(listStatAndCount->end(), cstatOrCounter);
+		// Insert into nested maps/lists via references to avoid heap-allocated pairs and lists.
+		std::list<ModelDataDefinition*>& listStatAndCount = mapMapTypeStat[parentTypename][parentName];
+		listStatAndCount.insert(listStatAndCount.end(), cstatOrCounter);
 		//_model->getTraceManager()->traceReport(parentTypename + " -> " + parentName + " -> " + stat->show());
 	}
 	//
@@ -107,16 +90,16 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 	Util::DecIndent();
 	Util::DecIndent();
 	const unsigned short _w1 = _w - 1;
-	for (auto mapmapItem : *mapMapTypeStat) {
+	for (const auto& mapmapItem : mapMapTypeStat) {
 		_model->getTracer()->traceReport("Statistics for " + mapmapItem.first + ":");
 		Util::IncIndent();
 		{
-			for (auto mapItem : *(mapmapItem.second)) {
+			for (const auto& mapItem : mapmapItem.second) {
 				_model->getTracer()->traceReport(mapItem.first + ":");
 				Util::IncIndent();
 				{
 					//					_model->getTracer()->traceReport(Util::SetW("name", _nameW) + Util::SetW("elems", _w) + Util::SetW("min", _w) + Util::SetW("max", _w) + Util::SetW("average", _w) + Util::SetW("variance", _w) + Util::SetW("stddev", _w) + Util::SetW("varCoef", _w) + Util::SetW("confInterv", _w) + Util::SetW("confLevel", _w));
-					for (ModelDataDefinition * const item : *(mapItem.second)) {
+					for (ModelDataDefinition* const item : mapItem.second) {
 						if (item->getClassname() == UtilTypeOfStatisticsCollector) {
 							Statistics_if* stat = dynamic_cast<StatisticsCollector*> (item)->getStatistics();
 							_model->getTracer()->traceReport(
@@ -175,8 +158,8 @@ void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<Statisti
 	// runs over all elements and list the statistics for each one, and then the statistics with no parent
 	// COPY the list of statistics and counters into a single new list
 	//std::list<ModelDataDefinition*>* statisticsAndCounters = //new std::list<ModelDataDefinition*>(*(this->_statsCountersSimulation->list()));
-	// organizes statistics into a map of maps
-	std::map< std::string, std::map<std::string, std::list<ModelDataDefinition*>*>* >* mapMapTypeStat = new std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*>*>*>();
+	// Group simulation-level stats and counters in local containers without heap-allocated nodes.
+	std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*> > > mapMapTypeStat;
 
 	for (std::list<ModelDataDefinition*>::iterator it = _statsCountersSimulation->list()->begin(); it != _statsCountersSimulation->list()->end(); it++) {
 		std::string parentName, parentTypename;
@@ -195,25 +178,9 @@ void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<Statisti
 			}
 		}
 		// look for key=parentTypename
-		std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*>*>*>::iterator mapMapIt = mapMapTypeStat->find(parentTypename);
-		if (mapMapIt == mapMapTypeStat->end()) { // parentTypename does not exists in map. Include it.
-			std::pair< std::string, std::map<std::string, std::list<ModelDataDefinition*>*>* >* newPair = new std::pair<std::string, std::map<std::string, std::list<ModelDataDefinition*>*>*>(parentTypename, new std::map<std::string, std::list<ModelDataDefinition*>*>());
-			mapMapTypeStat->insert(*newPair);
-			mapMapIt = mapMapTypeStat->find(parentTypename); // find again. Now it will.
-		}
-		assert(mapMapIt != mapMapTypeStat->end());
-		std::map<std::string, std::list<ModelDataDefinition*>*>* mapTypeStat = (*mapMapIt).second;
-		assert(mapTypeStat != nullptr);
-		// look for key=parentName
-		std::map<std::string, std::list<ModelDataDefinition*>*>::iterator mapIt = mapTypeStat->find(parentName);
-		if (mapIt == mapTypeStat->end()) { // parentTypename does not exists in map. Include it.
-			std::pair< std::string, std::list<ModelDataDefinition*>* >* newPair = new std::pair<std::string, std::list<ModelDataDefinition*>*>(parentName, new std::list<ModelDataDefinition*>());
-			mapTypeStat->insert(*newPair);
-			mapIt = mapTypeStat->find(parentName); // find again. Now it will.
-		}
-		// get the list and insert the stat in that list
-		std::list<ModelDataDefinition*>* listStat = (*mapIt).second;
-		listStat->insert(listStat->end(), statOrCnt);
+		// Insert into grouped lists using map references to avoid manual heap lifecycle.
+		std::list<ModelDataDefinition*>& listStat = mapMapTypeStat[parentTypename][parentName];
+		listStat.insert(listStat.end(), statOrCnt);
 		//_model->getTraceManager()->traceReport(parentTypename + " -> " + parentName + " -> " + stat->show());
 	}
 	// now runs over that map of maps showing the statistics
@@ -225,15 +192,15 @@ void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<Statisti
 	Util::DecIndent();
 	// @TODO: USE REFERENCE TO MAPITEM TO AVOID COPY
 	const unsigned short _w1 = _w - 1;
-	for (auto mapmapItem : *mapMapTypeStat) {
+	for (const auto& mapmapItem : mapMapTypeStat) {
 		_model->getTracer()->traceReport("Statistics for " + mapmapItem.first + ":");
 		Util::IncIndent();
 		{
-			for (auto mapItem : *(mapmapItem.second)) {
+			for (const auto& mapItem : mapmapItem.second) {
 				_model->getTracer()->traceReport(mapItem.first + ":");
 				Util::IncIndent();
 				{
-					for (ModelDataDefinition * const item : *(mapItem.second)) {
+					for (ModelDataDefinition* const item : mapItem.second) {
 						if (item->getClassname() == UtilTypeOfStatisticsCollector) {
 							Statistics_if* stat = dynamic_cast<StatisticsCollector*> (item)->getStatistics();
 							_model->getTracer()->traceReport(
