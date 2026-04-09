@@ -1391,6 +1391,9 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
     // Store temporary finished connection to disconnect it after this loop execution.
     QMetaObject::Connection finishedConnection = connect(animationTransition, &AnimationTransition::finished, &loop, &QEventLoop::quit);
 
+    // Ensure the local loop exits if the transition is destroyed during execution.
+    QMetaObject::Connection destroyedConnection = connect(animationTransition, &QObject::destroyed, &loop, &QEventLoop::quit);
+
     // Connect state changes before start/restart so pause transitions are observed from the beginning.
     QMetaObject::Connection stateChangedConnection = connect(animationTransition, &QAbstractAnimation::stateChanged, [this, &loop, event, animationTransition](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
         handleAnimationStateChanged(newState, &loop, event, animationTransition);
@@ -1407,13 +1410,14 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
 
     // Explicitly disconnect temporary local connections created for this run only.
     QObject::disconnect(finishedConnection);
+    QObject::disconnect(destroyedConnection);
     QObject::disconnect(stateChangedConnection);
 
     _animationsTransition->removeOne(animationTransition);
 
-    // Keep paused transitions alive for resume flow; cleanup all others.
+    // Destroy non-paused transitions immediately after loop completion and list removal.
     if (animationTransition->state() != QAbstractAnimation::Paused) {
-        animationTransition->deleteLater();
+        delete animationTransition;
     }
 }
 
@@ -1531,11 +1535,12 @@ void ModelGraphicsScene::clearAnimationsTransition() {
         for (auto it = _animationPaused->begin(); it != _animationPaused->end(); ++it) {
             QList<AnimationTransition*>* pausedAnimations = it.value();
             if (pausedAnimations) {
-                // Stop each paused transition and defer QObject deletion through Qt.
+                // Stop each paused transition before terminal destruction.
                 for (AnimationTransition* animation : *pausedAnimations) {
                     if (animation) {
                         animation->stopAnimation();
-                        animation->deleteLater();
+                        // Destroy paused transitions deterministically during terminal scene cleanup.
+                        delete animation;
                     }
                 }
                 pausedAnimations->clear();
