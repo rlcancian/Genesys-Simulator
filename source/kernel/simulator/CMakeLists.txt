@@ -37,6 +37,10 @@ file(GLOB GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES CONFIGURE_DEPENDS
     "${CMAKE_CURRENT_SOURCE_DIR}/*.cpp"
 )
 
+list(REMOVE_ITEM GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/PluginConnectorDummyBootstrap.cpp"
+)
+
 list(APPEND GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
         "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorStaticImpl1.cpp"
         "${CMAKE_SOURCE_DIR}/source/plugins/PluginConnectorDummyImpl1.cpp"
