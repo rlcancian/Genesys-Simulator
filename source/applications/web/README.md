@@ -1,35 +1,25 @@
 # Genesys Web Application
 
-Primeira implementação funcional do tipo de aplicação **Web** do GenESyS.
+First functional implementation of the **Web** application type for GenESyS.
 
-## O que já existe
-- Executável CMake: `genesys_webhook` (habilitado com `-DGENESYS_BUILD_WEB=ON`).
-- Servidor HTTP simples baseado em socket TCP.
-- Endpoints iniciais:
+## Current Stage 1 scope
+- CMake executable: `genesys_webhook` (enabled with `-DGENESYS_BUILD_WEB_APPLICATION=ON`).
+- Layered architecture for HTTP transport, API routing, session/token, and simulator service.
+- Endpoints:
   - `GET /health`
-  - `GET /api/v1/simulator/info`
+  - `POST /api/v1/auth/session`
+  - `GET /api/v1/simulator/info` (requires `Authorization: Bearer <token>`)
 
-## Como executar
+## How to run
 ```bash
-cmake --preset debug -DGENESYS_BUILD_WEB=ON
-cmake --build --preset debug --target genesys_webhook
-./build/debug/source/applications/web/genesys_webhook --port 8080
+cmake -S . -B build/web-debug -G Ninja -DGENESYS_BUILD_WEB_APPLICATION=ON
+cmake --build build/web-debug --target genesys_webhook
+./build/web-debug/source/applications/web/genesys_webhook --port 8080
 ```
 
-Parâmetros opcionais:
-- `--port <N>`: porta HTTP (default 8080).
-- `--max-requests <N>`: encerra após N requisições (útil para testes automatizados).
+Optional parameters:
+- `--port <N>`: HTTP port (default 8080).
+- `--max-requests <N>`: exit after N requests (useful for scripted smoke tests).
 
-## Próximos incrementos
-- Rotas `POST` para `PluginManager` e `ModelManager`.
-- Tratamento de payload JSON.
-- Autenticação por token.
-- Endpoints de controle de simulação.
-# Genesys Web Application (proposta)
-
-Este diretório está reservado para o novo tipo de aplicação **Web** do GenESyS.
-
-Objetivo inicial (v1): executar um processo HTTP que converta requisições em chamadas de API para o kernel (`Simulator`, `PluginManager`, `ModelManager`).
-
-Consulte o roadmap técnico em:
-- `documentation/web-application-roadmap-2026-03-30.md`
+## Security notice
+Session creation in Stage 1 is provisional and stateful in memory. Generated tokens are opaque random strings and **not** production-grade authentication.
