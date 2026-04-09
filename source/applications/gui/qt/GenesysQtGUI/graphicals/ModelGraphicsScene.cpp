@@ -1373,7 +1373,11 @@ void ModelGraphicsScene::animateTransition(ModelComponent *source, ModelComponen
     // Cria a animação
     AnimationTransition *animationTransition = new AnimationTransition(this, source, destination, viewSimulation);
 
-    if (animationTransition->getGraphicalStartComponent() != nullptr && animationTransition->getGraphicalEndComponent() != nullptr && viewSimulation) {
+    // Forward transition to local loop only when GUI endpoints and animation runtime are valid.
+    if (animationTransition->getGraphicalStartComponent() != nullptr
+            && animationTransition->getGraphicalEndComponent() != nullptr
+            && animationTransition->isReadyToRun()
+            && viewSimulation) {
         runAnimateTransition(animationTransition, event);
     } else {
         // Ensure invalid/non-visible transition is fully cleaned up to avoid leaks.
@@ -1384,6 +1388,15 @@ void ModelGraphicsScene::animateTransition(ModelComponent *source, ModelComponen
 }
 
 void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTransition, Event *event, bool restart) {
+    // Exit before local event loop when transition pointer is invalid or not runnable.
+    if (animationTransition == nullptr || !animationTransition->isReadyToRun()) {
+        if (animationTransition != nullptr) {
+            animationTransition->stopAnimation();
+            delete animationTransition;
+        }
+        return;
+    }
+
     // Track transition lifetime across nested event loop execution.
     QPointer<AnimationTransition> guardedTransition(animationTransition);
 

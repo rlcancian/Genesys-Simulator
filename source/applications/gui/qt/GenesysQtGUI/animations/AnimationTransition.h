@@ -32,6 +32,8 @@ public:
     QList<QPointF> getPointsForAnimation() const;
     GraphicalImageAnimation* getImageAnimation() const;
     unsigned int getPortNumber() const;
+    // Expose whether transition has all runtime prerequisites to safely animate.
+    bool isReadyToRun() const;
 
     // Setters
     void setImageAnimation(GraphicalImageAnimation* imageAnimation);
