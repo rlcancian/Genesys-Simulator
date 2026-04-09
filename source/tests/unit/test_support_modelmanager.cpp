@@ -4,6 +4,9 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/TraceManager.h"
 
+// Provide an out-of-line virtual destructor definition so RTTI symbols are available when linking support-only tests.
+Simulator::~Simulator() = default;
+
 TraceManager* Simulator::getTraceManager() const {
     return nullptr;
 }
