@@ -6,12 +6,46 @@
 //using namespace GenesysKernel;
 
 genesyspp_driver::genesyspp_driver() {
+	_model = nullptr;
+	_sampler = nullptr;
 }
 
 genesyspp_driver::genesyspp_driver(/*GenesysKernel::*/Model* model, Sampler_if* sampler, bool throws) {
 	_model = model;
 	_sampler = sampler;
 	throwsException = throws;
+}
+
+genesyspp_driver::genesyspp_driver(const genesyspp_driver& other) {
+	_model = other._model;
+	_sampler = other._sampler;
+	_isRegisterReferedDataElements = other._isRegisterReferedDataElements;
+	result = other.result;
+	file = other.file;
+	str_to_parse = other.str_to_parse;
+	throwsException = other.throwsException;
+	errorMessage = other.errorMessage;
+	_copyReferedDataElementsFrom(other);
+}
+
+genesyspp_driver& genesyspp_driver::operator=(const genesyspp_driver& other) {
+	if (this != &other) {
+		_destroyReferedDataElements();
+		_model = other._model;
+		_sampler = other._sampler;
+		_isRegisterReferedDataElements = other._isRegisterReferedDataElements;
+		result = other.result;
+		file = other.file;
+		str_to_parse = other.str_to_parse;
+		throwsException = other.throwsException;
+		errorMessage = other.errorMessage;
+		_copyReferedDataElementsFrom(other);
+	}
+	return *this;
+}
+
+genesyspp_driver::~genesyspp_driver() {
+	_destroyReferedDataElements();
 }
 
 /*
@@ -176,6 +210,9 @@ std::map<std::string, std::list<std::string>*>* genesyspp_driver::getReferedData
 	return _referedDataElements;
 }
 void genesyspp_driver::clearReferedDataElements() {
+	for (auto& dataElementEntry : *_referedDataElements) {
+		delete dataElementEntry.second;
+	}
 	_referedDataElements->clear();
 }
 
@@ -215,4 +252,23 @@ void
 genesyspp_driver::error(const std::string& m) {
 	setErrorMessage(m);
 	setResult(-1);
+}
+
+void genesyspp_driver::_destroyReferedDataElements() {
+	if (_referedDataElements != nullptr) {
+		clearReferedDataElements();
+		delete _referedDataElements;
+		_referedDataElements = nullptr;
+	}
+}
+
+void genesyspp_driver::_copyReferedDataElementsFrom(const genesyspp_driver& other) {
+	_referedDataElements = new std::map<std::string, std::list<std::string>*>();
+	for (const auto& dataElementEntry : *other._referedDataElements) {
+		if (dataElementEntry.second != nullptr) {
+			(*_referedDataElements)[dataElementEntry.first] = new std::list<std::string>(*dataElementEntry.second);
+		} else {
+			(*_referedDataElements)[dataElementEntry.first] = nullptr;
+		}
+	}
 }

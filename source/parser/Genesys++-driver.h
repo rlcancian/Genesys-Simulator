@@ -26,7 +26,9 @@ class genesyspp_driver {
 public:
 	genesyspp_driver();
 	genesyspp_driver(/*GenesysKernel::*/Model* model, Sampler_if* sampler, bool throws = false);
-	virtual ~genesyspp_driver() = default;
+	genesyspp_driver(const genesyspp_driver& other);
+	genesyspp_driver& operator=(const genesyspp_driver& other);
+	virtual ~genesyspp_driver();
 public:
 	// Handling the scanner.
 	void scan_begin_file();
@@ -73,10 +75,13 @@ public: // trying to get infos about ModelDataElements refered in expressions (s
 	void addRefered(std::pair<std::string,std::string> referedElement);
 
 private:
+	void _destroyReferedDataElements();
+	void _copyReferedDataElementsFrom(const genesyspp_driver& other);
+private:
 	/*GenesysKernel::*/Model* _model;
 	Sampler_if* _sampler;
 	std::map<std::string, std::list<std::string>*>* _referedDataElements = new std::map<std::string, std::list<std::string>*>(); // maps each dataelement class referenced to a list of referenced names
-	bool _isRegisterReferedDataElements;
+	bool _isRegisterReferedDataElements = false;
 private:
 	double result = 0;
 	std::string file;
