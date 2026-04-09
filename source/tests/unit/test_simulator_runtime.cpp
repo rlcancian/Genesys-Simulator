@@ -92,3 +92,16 @@ TEST(SimulatorRuntimeTest, NewModelCanBeCalledMultipleTimesAndUpdatesCurrentMode
     EXPECT_EQ(simulator.getModelManager()->current(), second);
     EXPECT_NO_THROW(second->getSimulation()->start());
 }
+
+TEST(SimulatorRuntimeTest, ModelClearPreservesBaseSimulationControlsCount) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+    // Capture the baseline controls created by ModelSimulation and ensure clear() keeps them available.
+    const unsigned int controlsBefore = model->getControls()->size();
+    ASSERT_GT(controlsBefore, 0u);
+
+    model->clear();
+
+    EXPECT_EQ(model->getControls()->size(), controlsBefore);
+}

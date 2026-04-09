@@ -32,35 +32,55 @@ ModelSimulation::ModelSimulation(Model* model) {
 		return a->getId()<b->getId();
 	});
 	_simulationReporter = new TraitsKernel<SimulationReporter_if>::Implementation(this, model, this->_cstatsAndCountersSimulation);
-	// controls
-	//@TODO Add ReplicationLength, getReplicationLengthTimeUnit, getReplicationBaseTimeUnit, warmUpPeriod, ...
-	_model->getControls()->insert(new SimulationControlTimeUnit(
-					 std::bind(&ModelSimulation::getReplicationBaseTimeUnit, this),
-					 std::bind(&ModelSimulation::setReplicationReportBaseTimeUnit, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "ReplicationBaseTimeUnit"));
-	_model->getControls()->insert(new SimulationControlTimeUnit(
-					 std::bind(&ModelSimulation::getReplicationLengthTimeUnit, this),
-					 std::bind(&ModelSimulation::setReplicationLengthTimeUnit, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "ReplicationLengthTimeUnit"));
-	_model->getControls()->insert(new SimulationControlTimeUnit(
-					 std::bind(&ModelSimulation::getWarmUpPeriodTimeUnit, this),
-					 std::bind(&ModelSimulation::setWarmUpPeriodTimeUnit, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "WarmUpPeriodTimeUnit"));
-	_model->getControls()->insert(new SimulationControlDouble(
-					 std::bind(&ModelSimulation::getWarmUpPeriod, this),
-					 std::bind(&ModelSimulation::setWarmUpPeriod, this, std::placeholders::_1, Util::TimeUnit::unknown),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "WarmUpPeriod"));
-	_model->getControls()->insert(new SimulationControlUInt(
-					 std::bind(&ModelSimulation::getNumberOfReplications, this),
-					 std::bind(&ModelSimulation::setNumberOfReplications, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "NumberOfReplications"));
-	_model->getControls()->insert(new SimulationControlString(
-					 std::bind(&ModelSimulation::getTerminatingCondition, this),
-					 std::bind(&ModelSimulation::setTerminatingCondition, this, std::placeholders::_1),
-					 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "TerminatingCondition"));
+	// Create and register the base simulation controls while tracking their ownership locally.
+	SimulationControl* replicationBaseTimeUnit = new SimulationControlTimeUnit(
+			 std::bind(&ModelSimulation::getReplicationBaseTimeUnit, this),
+			 std::bind(&ModelSimulation::setReplicationReportBaseTimeUnit, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "ReplicationBaseTimeUnit");
+	_model->getControls()->insert(replicationBaseTimeUnit);
+	_ownedControls->insert(replicationBaseTimeUnit);
+	SimulationControl* replicationLengthTimeUnit = new SimulationControlTimeUnit(
+			 std::bind(&ModelSimulation::getReplicationLengthTimeUnit, this),
+			 std::bind(&ModelSimulation::setReplicationLengthTimeUnit, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "ReplicationLengthTimeUnit");
+	_model->getControls()->insert(replicationLengthTimeUnit);
+	_ownedControls->insert(replicationLengthTimeUnit);
+	SimulationControl* warmUpPeriodTimeUnit = new SimulationControlTimeUnit(
+			 std::bind(&ModelSimulation::getWarmUpPeriodTimeUnit, this),
+			 std::bind(&ModelSimulation::setWarmUpPeriodTimeUnit, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "WarmUpPeriodTimeUnit");
+	_model->getControls()->insert(warmUpPeriodTimeUnit);
+	_ownedControls->insert(warmUpPeriodTimeUnit);
+	SimulationControl* warmUpPeriod = new SimulationControlDouble(
+			 std::bind(&ModelSimulation::getWarmUpPeriod, this),
+			 std::bind(&ModelSimulation::setWarmUpPeriod, this, std::placeholders::_1, Util::TimeUnit::unknown),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "WarmUpPeriod");
+	_model->getControls()->insert(warmUpPeriod);
+	_ownedControls->insert(warmUpPeriod);
+	SimulationControl* numberOfReplications = new SimulationControlUInt(
+			 std::bind(&ModelSimulation::getNumberOfReplications, this),
+			 std::bind(&ModelSimulation::setNumberOfReplications, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "NumberOfReplications");
+	_model->getControls()->insert(numberOfReplications);
+	_ownedControls->insert(numberOfReplications);
+	SimulationControl* terminatingCondition = new SimulationControlString(
+			 std::bind(&ModelSimulation::getTerminatingCondition, this),
+			 std::bind(&ModelSimulation::setTerminatingCondition, this, std::placeholders::_1),
+			 Util::TypeOf<ModelSimulation>(), "ModelSimulation", "TerminatingCondition");
+	_model->getControls()->insert(terminatingCondition);
+	_ownedControls->insert(terminatingCondition);
 }
 
 ModelSimulation::~ModelSimulation() {
+	// Remove and destroy only the base controls explicitly created by this simulation object.
+	if (_ownedControls != nullptr) {
+		for (SimulationControl* control : *_ownedControls->list()) {
+			_model->getControls()->remove(control);
+			delete control;
+		}
+		delete _ownedControls;
+		_ownedControls = nullptr;
+	}
 	if (_cstatsAndCountersSimulation != nullptr) {
 		for (ModelDataDefinition* data : *_cstatsAndCountersSimulation->list()) {
 			delete data;
