@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-/* 
+/*
  * File:   Integrator_if.h
  * Author: rafael.luiz.cancian
  *
@@ -14,10 +14,26 @@
 #ifndef SOLVER_IF_H
 #define SOLVER_IF_H
 
-/*!
- * Interface used by classes that perform the numerical integration and derivation of functions with from one up to four parameters.
- * It is mainly used for calculating the probability of theoretical distributions, from its probability distribution functions.
- * p1 is the value where function is being evaluated and p2, ... are the function parameters
+/**
+ * @brief Legacy compatibility interface for numerical routines.
+ *
+ * Architectural role:
+ * - Historically groups two responsibilities:
+ *   1) Numerical quadrature/integration.
+ *   2) Numerical advancement/derivation for ODE-like flows.
+ *
+ * Mathematical meaning:
+ * - Function signatures use the first functional parameter as time @c t.
+ * - Parameters p2..p5 represent model parameters passed through old-style
+ *   function pointers.
+ *
+ * Limitations:
+ * - The p2/p3/p4/p5 model reflects a historical constraint and is not the
+ *   preferred long-term abstraction.
+ *
+ * Planned evolution:
+ * - Split into focused interfaces (quadrature, root finding, ODE systems and
+ *   ODE solvers) while preserving this API for backward compatibility.
  */
 class Solver_if {
 public:

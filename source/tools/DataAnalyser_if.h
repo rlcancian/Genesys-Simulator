@@ -3,7 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/file.h to edit this template
  */
 
-/* 
+/*
  * File:   DataAnalyser.h
  * Author: rlcancian
  *
@@ -19,6 +19,26 @@
 #include "../kernel/statistics/Sampler_if.h"
 #include "../kernel/simulator/ExperimetManager_if.h"
 
+/**
+ * @brief High-level façade for applied statistical analysis over datasets.
+ *
+ * Purpose:
+ * - Coordinate dataset lifecycle and analysis services in a single entry point.
+ *
+ * Architectural role:
+ * - Facade that orchestrates fitting, sampling, experiment execution and
+ *   hypothesis testing.
+ *
+ * Ownership/lifetime:
+ * - The returned pointers from fitter(), sampler(), experimenter() and tester()
+ *   are non-owning views. Concrete implementations must document whether those
+ *   services are internally owned singletons, members, or externally injected
+ *   objects.
+ *
+ * Implementation status:
+ * - Interface contract is stable and legacy-compatible.
+ * - A consolidated default concrete implementation is still pending.
+ */
 class DataAnalyser_if {
 public:
 	virtual ~DataAnalyser_if() = default;

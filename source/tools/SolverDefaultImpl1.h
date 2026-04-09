@@ -3,7 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/class.h to edit this template
  */
 
-/* 
+/*
  * File:   IntegratorDefaultImpl1.h
  * Author: rlcancian
  *
@@ -15,6 +15,18 @@
 
 #include "Solver_if.h"
 
+/**
+ * @brief Legacy default implementation of Solver_if.
+ *
+ * Implementation status:
+ * - Current quadrature implementation is based on Simpson 1/3 rule.
+ * - Derivation/advancement methods exist but are only partially consolidated as
+ *   a broader ODE-solving strategy.
+ *
+ * Planned evolution:
+ * - Candidate to be conceptually split between quadrature and ODE-focused
+ *   implementations.
+ */
 class SolverDefaultImpl1 : public Solver_if {
 public:
 	SolverDefaultImpl1(double precision = 1e-6, unsigned int steps = 1e3);
@@ -36,9 +48,6 @@ private:
 	double _precision;
 	unsigned int _numSteps;
 	double _stepSize;
-	//Variable* _variables;
-	//Variable* _timeVariable;
 };
 
 #endif /* SOLVERDEFAULTIMPL1_IF_H */
-
