@@ -55,6 +55,7 @@
 #include <QCoreApplication>
 #include <QThread>
 #include <QPointer>
+#include <QTimer>
 
 namespace {
 // Safely cast the scene parent to a generic graphics view.
@@ -1405,11 +1406,24 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
     // Create the local event loop before starting the animation to avoid missing early signals.
     QEventLoop loop;
 
+    // Use a local single-shot timer as a fail-safe to guarantee loop termination.
+    QTimer timeoutTimer;
+    timeoutTimer.setSingleShot(true);
+
+    // Track when the local loop exits due to timeout instead of animation signals.
+    bool exitedByTimeout = false;
+
     // Store temporary finished connection to disconnect it after this loop execution.
     QMetaObject::Connection finishedConnection = connect(animationTransition, &AnimationTransition::finished, &loop, &QEventLoop::quit);
 
     // Ensure the local loop exits if the transition is destroyed during execution.
     QMetaObject::Connection destroyedConnection = connect(animationTransition, &QObject::destroyed, &loop, &QEventLoop::quit);
+
+    // Quit the local loop and mark timeout when the fail-safe timer expires.
+    QMetaObject::Connection timeoutConnection = connect(&timeoutTimer, &QTimer::timeout, [&loop, &exitedByTimeout]() {
+        exitedByTimeout = true;
+        loop.quit();
+    });
 
     // Connect state changes before start/restart so pause transitions are observed from the beginning.
     QMetaObject::Connection stateChangedConnection = connect(animationTransition, &QAbstractAnimation::stateChanged, [this, &loop, event, animationTransition](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
@@ -1422,8 +1436,21 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
     else
         animationTransition->startAnimation();
 
+    // Start the fail-safe timer with an additional margin over animation duration.
+    int timeoutMs = animationTransition->duration() + 1000;
+    if (timeoutMs < 1000) {
+        timeoutMs = 1000;
+    }
+    timeoutTimer.start(timeoutMs);
+
     // Aguarda a conclusão da animação sem bloquear o restante do código
     loop.exec();
+
+    // Stop and disconnect timer resources after leaving the local event loop.
+    if (timeoutTimer.isActive()) {
+        timeoutTimer.stop();
+    }
+    QObject::disconnect(timeoutConnection);
 
     // Explicitly disconnect temporary local connections created for this run only.
     QObject::disconnect(finishedConnection);
@@ -1438,6 +1465,14 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
 
     // Resolve the guarded pointer before any post-loop state checks or deletion.
     AnimationTransition* transitionPtr = guardedTransition.data();
+
+    // Perform terminal cleanup when loop exit happened through timeout.
+    if (exitedByTimeout && transitionPtr != nullptr) {
+        transitionPtr->stopAnimation();
+        _animationsTransition->removeOne(transitionPtr);
+        delete transitionPtr;
+        return;
+    }
 
     // Remove and delete only when the guarded transition is still valid.
     if (transitionPtr != nullptr) {
