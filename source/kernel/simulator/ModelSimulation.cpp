@@ -412,15 +412,14 @@ void ModelSimulation::_initReplication() {
 			ModelComponent::InitBetweenReplications(*it);
 		}
 		// init all elements between replications
-		// Free the temporary list of data-definition class names once initialization across all types is done.
-		std::list<std::string>* elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
-		for (std::string elementType : *elementTypes) {//std::list<std::string>::iterator typeIt = elementTypes->begin(); typeIt != elementTypes->end(); typeIt++) {
+		// Iterate over a value snapshot of class names so replication init does not depend on manual deletes.
+		std::list<std::string> elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
+		for (std::string elementType : elementTypes) {//std::list<std::string>::iterator typeIt = elementTypes->begin(); typeIt != elementTypes->end(); typeIt++) {
 			List<ModelDataDefinition*>* elements = _model->getDataManager()->getDataDefinitionList(elementType);
 			for (ModelDataDefinition* modeldatum : *elements->list()) {//std::list<ModelDataDefinition*>::iterator it = elements->list()->begin(); it != elements->list()->end(); it++) {
 				ModelDataDefinition::InitBetweenReplications(modeldatum);
 			}
 		}
-		delete elementTypes;
 		//}
 		if (this->_initializeStatisticsBetweenReplications) {
 			_clearStatistics();

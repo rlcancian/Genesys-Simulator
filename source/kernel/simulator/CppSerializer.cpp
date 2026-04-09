@@ -52,14 +52,13 @@ bool CppSerializer::dump(std::ostream& output) {
 
 	// do includes and separate defs/components
 	std::set<std::string> includes;
-	// Free the temporary class-name snapshot after collecting include dependencies for persisted data definitions.
-	std::list<std::string>* dataDefinitionClassnames = _model->getDataManager()->getDataDefinitionClassnames();
-	for (auto& klass : *dataDefinitionClassnames) {
+	// Iterate over a value snapshot of class names to collect include dependencies for persisted data definitions.
+	std::list<std::string> dataDefinitionClassnames = _model->getDataManager()->getDataDefinitionClassnames();
+	for (auto& klass : dataDefinitionClassnames) {
 		if (!typenames.count(klass)) continue;
 		datadefs.insert(klass);
 		includes.insert("plugins/data/" + klass + ".h");
 	}
-	delete dataDefinitionClassnames;
 	for (auto& comp : *_model->getComponentManager()->getAllComponents()) {
 		if (!typenames.count(comp->getClassname())) continue;
 		components.insert(comp->getClassname());

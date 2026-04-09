@@ -284,9 +284,9 @@ void Model::_showElements() const {
 	{
 		std::string elementType;
 		ModelDataDefinition* modeldatum;
-		// Release the temporary class-name list returned by the manager after iterating through it.
-		std::list<std::string>* elementTypes = getDataManager()->getDataDefinitionClassnames();
-		for (std::list<std::string>::iterator typeIt = elementTypes->begin(); typeIt!=elementTypes->end(); typeIt++) {
+		// Iterate over a value snapshot of class names to avoid manual delete semantics.
+		std::list<std::string> elementTypes = getDataManager()->getDataDefinitionClassnames();
+		for (std::list<std::string>::iterator typeIt = elementTypes.begin(); typeIt!=elementTypes.end(); typeIt++) {
 			elementType = (*typeIt);
 			List<ModelDataDefinition*>* em = getDataManager()->getDataDefinitionList(elementType);
 			getTracer()->trace(elementType+":", TraceManager::Level::L2_results);
@@ -299,7 +299,6 @@ void Model::_showElements() const {
 			}
 			Util::DecIndent();
 		}
-		delete elementTypes;
 	}
 	Util::DecIndent();
 }
@@ -401,8 +400,9 @@ void Model::_destroyModelDataDefinitions() {
 	bool hasPendingNonEntity = true;
 	while (hasPendingNonEntity) {
 		hasPendingNonEntity = false;
-		std::list<std::string>* types = _modeldataManager->getDataDefinitionClassnames();
-		for (const std::string& type : *types) {
+		// Re-evaluate the current class-name snapshot each pass while deleting non-entity data definitions.
+		std::list<std::string> types = _modeldataManager->getDataDefinitionClassnames();
+		for (const std::string& type : types) {
 			if (type == Util::TypeOf<Entity>()) {
 				continue;
 			}
@@ -414,7 +414,6 @@ void Model::_destroyModelDataDefinitions() {
 				break;
 			}
 		}
-		delete types;
 	}
 }
 
@@ -433,11 +432,11 @@ void Model::_createModelInternalElements() {
 		}
 
 		std::list<ModelDataDefinition*>* modelElements;
-		// Cache and explicitly free temporary class-name snapshots while handling possible dynamic type insertions.
-		std::list<std::string>* elementTypes = getDataManager()->getDataDefinitionClassnames();
-		unsigned int originalSize = elementTypes->size(), pos = 1;
-		std::list<std::string>::iterator itty = elementTypes->begin();
-		while (itty!=elementTypes->end()&&pos<=originalSize) {
+		// Cache a value snapshot of class names and refresh it when dynamic insertions change the type registry.
+		std::list<std::string> elementTypes = getDataManager()->getDataDefinitionClassnames();
+		unsigned int originalSize = elementTypes.size(), pos = 1;
+		std::list<std::string>::iterator itty = elementTypes.begin();
+		while (itty!=elementTypes.end()&&pos<=originalSize) {
 			//try {
 			modelElements = getDataManager()->getDataDefinitionList((*itty))->list();
 			//} catch (const std::exception& e) {
@@ -453,24 +452,21 @@ void Model::_createModelInternalElements() {
 				ModelDataDefinition::CreateInternalData((*itel));
 				Util::DecIndent();
 			}
-			// Compare against a fresh snapshot size and free it immediately to avoid leaking manager-owned temporaries.
-			std::list<std::string>* currentTypes = getDataManager()->getDataDefinitionClassnames();
-			unsigned int currentSize = currentTypes->size();
-			delete currentTypes;
+			// Compare against a fresh value snapshot size to detect registry growth during internal-data creation.
+			std::list<std::string> currentTypes = getDataManager()->getDataDefinitionClassnames();
+			unsigned int currentSize = currentTypes.size();
 			if (originalSize==currentSize) {
 				itty++;
 				pos++;
 			} else {
 				// Refresh the cached snapshot after dynamic insertions so iteration restarts from a coherent list.
-				delete elementTypes;
 				elementTypes = getDataManager()->getDataDefinitionClassnames();
-				originalSize = elementTypes->size();
-				itty = elementTypes->begin();
+				originalSize = elementTypes.size();
+				itty = elementTypes.begin();
 				pos = 1;
 				getTracer()->trace("Restarting to create internal elements (due to previous creations)", TraceManager::Level::L7_internal);
 			}
 		}
-		delete elementTypes;
 		Util::DecIndent();
 	}
 }
