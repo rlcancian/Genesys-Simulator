@@ -1,4 +1,5 @@
 #include <string>
+#include <exception>
 #include "Genesys++-driver.h"
 //#include "../Traits.h"
 
@@ -37,7 +38,36 @@ int genesyspp_driver::parse_file(const std::string &f) {
 	setErrorMessage("");
 	scan_begin_file();
 	yy::genesyspp_parser parser(*this);
-	int res = parser.parse();
+	int res = -1;
+	try {
+		res = parser.parse();
+	} catch (const std::string& e) {
+		setErrorMessage(e);
+		setResult(-1);
+		scan_end_file();
+		if (throwsException) {
+			throw std::string(e);
+		}
+		return res;
+	} catch (const std::exception& e) {
+		const std::string message = e.what();
+		setErrorMessage(message);
+		setResult(-1);
+		scan_end_file();
+		if (throwsException) {
+			throw std::string(message);
+		}
+		return res;
+	} catch (...) {
+		const std::string message = "Unknown parser error";
+		setErrorMessage(message);
+		setResult(-1);
+		scan_end_file();
+		if (throwsException) {
+			throw std::string(message);
+		}
+		return res;
+	}
 	scan_end_file();
 	return res;
 }
@@ -48,7 +78,36 @@ int genesyspp_driver::parse_str(const std::string &str) {
 	setErrorMessage("");
 	scan_begin_str();
 	yy::genesyspp_parser parser(*this);
-	int res = parser.parse();
+	int res = -1;
+	try {
+		res = parser.parse();
+	} catch (const std::string& e) {
+		setErrorMessage(e);
+		setResult(-1);
+		scan_end_str();
+		if (throwsException) {
+			throw std::string(e);
+		}
+		return res;
+	} catch (const std::exception& e) {
+		const std::string message = e.what();
+		setErrorMessage(message);
+		setResult(-1);
+		scan_end_str();
+		if (throwsException) {
+			throw std::string(message);
+		}
+		return res;
+	} catch (...) {
+		const std::string message = "Unknown parser error";
+		setErrorMessage(message);
+		setResult(-1);
+		scan_end_str();
+		if (throwsException) {
+			throw std::string(message);
+		}
+		return res;
+	}
 	scan_end_str();
 	return res;
 }

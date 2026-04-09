@@ -12,6 +12,7 @@
  */
 
 #include "ParserDefaultImpl2.h"
+#include <exception>
 
 //using namespace GenesysKernel;
 
@@ -27,10 +28,28 @@ double ParserDefaultImpl2::parse(const std::string expression) { // may throw ex
 		if (res == 0) {
 			return _wrapper.getResult();
 		} else {
-			throw std::string("Error parsing expression \"" + expression + "\"");
+			std::string msg = _wrapper.getErrorMessage();
+			if (msg.empty()) {
+				msg = "Error parsing expression \"" + expression + "\"";
+			}
+			throw std::string(msg);
 		}
-	} catch (std::string e) {
+	} catch (const std::string& e) {
 		_model->getTracer()->traceError(e);
+		return _wrapper.getResult();
+	} catch (const std::exception& e) {
+		std::string msg = _wrapper.getErrorMessage();
+		if (msg.empty()) {
+			msg = e.what();
+		}
+		_model->getTracer()->traceError(msg);
+		return _wrapper.getResult();
+	} catch (...) {
+		std::string msg = _wrapper.getErrorMessage();
+		if (msg.empty()) {
+			msg = "Unknown parser error";
+		}
+		_model->getTracer()->traceError(msg);
 		return _wrapper.getResult();
 	}
 }
@@ -45,7 +64,14 @@ double ParserDefaultImpl2::parse(const std::string expression, bool& success, st
 	int res = -1;
 	try {
 		res = _wrapper.parse_str(expression);
+	} catch (const std::string& e) {
+		errorMessage = !_wrapper.getErrorMessage().empty() ? _wrapper.getErrorMessage() : e;
+		res = -1;
+	} catch (const std::exception& e) {
+		errorMessage = !_wrapper.getErrorMessage().empty() ? _wrapper.getErrorMessage() : std::string(e.what());
+		res = -1;
 	} catch (...) {
+		errorMessage = !_wrapper.getErrorMessage().empty() ? _wrapper.getErrorMessage() : "Unknown parser error";
 		res = -1;
 	}
 	if (res == 0) {
@@ -53,7 +79,12 @@ double ParserDefaultImpl2::parse(const std::string expression, bool& success, st
 		return _wrapper.getResult();
 	} else {
         success = false;
-        errorMessage = _wrapper.getErrorMessage();
+        if (errorMessage.empty()) {
+        	errorMessage = _wrapper.getErrorMessage();
+        }
+        if (errorMessage.empty()) {
+        	errorMessage = "Error parsing expression \"" + expression + "\"";
+        }
 		return _wrapper.getResult();
 	}
 }
