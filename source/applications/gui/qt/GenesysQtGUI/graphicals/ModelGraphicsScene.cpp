@@ -1219,7 +1219,10 @@ void ModelGraphicsScene::animateTransition(ModelComponent *source, ModelComponen
     if (animationTransition->getGraphicalStartComponent() != nullptr && animationTransition->getGraphicalEndComponent() != nullptr && viewSimulation) {
         runAnimateTransition(animationTransition, event);
     } else {
+        // Ensure invalid/non-visible transition is fully cleaned up to avoid leaks.
         animationTransition->stopAnimation();
+        delete animationTransition;
+        return;
     }
 }
 
@@ -1245,6 +1248,11 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
     loop.exec();
 
     _animationsTransition->removeOne(animationTransition);
+
+    // Keep paused transitions alive for resume flow; cleanup all others.
+    if (animationTransition->state() != QAbstractAnimation::Paused) {
+        animationTransition->deleteLater();
+    }
 }
 
 void ModelGraphicsScene::handleAnimationStateChanged(QAbstractAnimation::State newState, QEventLoop* loop, Event* event, AnimationTransition* animationTransition) {
