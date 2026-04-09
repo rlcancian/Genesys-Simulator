@@ -32,10 +32,11 @@ static void cleanupPausedAnimationList(QList<AnimationTransition*>* pausedAnimat
     }
 
     if (destroyAnimations) {
+        // Stop each paused transition and schedule Qt-safe destruction.
         for (AnimationTransition* animation : *pausedAnimations) {
             if (animation) {
                 animation->stopAnimation();
-                delete animation;
+                animation->deleteLater();
             }
         }
     }
@@ -154,22 +155,19 @@ void SimulationEventController::onSimulationPausedHandler(SimulationEvent* re) c
 void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) const {
     _callbacks.actualizeActions();
 
-    // Resume only the current-event paused animations and release that owned list.
+    // Detach the current-event paused list before resuming to isolate re-paused animations.
     QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap = _scene->getAnimationPaused();
     Event* currentEvent = re ? re->getCurrentEvent() : nullptr;
     if (pausedAnimationsMap && !pausedAnimationsMap->empty() && currentEvent) {
-        auto it = pausedAnimationsMap->find(currentEvent);
-        if (it != pausedAnimationsMap->end()) {
-            QList<AnimationTransition*>* pausedAnimations = it.value();
-            if (pausedAnimations) {
-                for (AnimationTransition* animation : *pausedAnimations) {
-                    if (animation) {
-                        _scene->runAnimateTransition(animation, currentEvent, true);
-                    }
+        QList<AnimationTransition*>* pausedAnimations = pausedAnimationsMap->take(currentEvent);
+        if (pausedAnimations) {
+            // Resume each detached transition using the same event context.
+            for (AnimationTransition* animation : *pausedAnimations) {
+                if (animation) {
+                    _scene->runAnimateTransition(animation, currentEvent, true);
                 }
             }
             cleanupPausedAnimationList(pausedAnimations, false);
-            pausedAnimationsMap->remove(currentEvent);
         }
     }
 

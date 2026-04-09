@@ -1348,10 +1348,11 @@ void ModelGraphicsScene::clearAnimationsTransition() {
         for (auto it = _animationPaused->begin(); it != _animationPaused->end(); ++it) {
             QList<AnimationTransition*>* pausedAnimations = it.value();
             if (pausedAnimations) {
+                // Stop each paused transition and defer QObject deletion through Qt.
                 for (AnimationTransition* animation : *pausedAnimations) {
                     if (animation) {
                         animation->stopAnimation();
-                        delete animation;
+                        animation->deleteLater();
                     }
                 }
                 pausedAnimations->clear();
