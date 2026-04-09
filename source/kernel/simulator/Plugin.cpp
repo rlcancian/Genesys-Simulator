@@ -33,6 +33,11 @@ Plugin::Plugin(StaticGetPluginInformation getInformation) {
 	}
 }
 
+// Release metadata allocated by the plugin information factory while tearing down plugin wrappers.
+Plugin::~Plugin() {
+	delete _pluginInfo;
+}
+
 std::string Plugin::show() {
 
 	std::string message = "<" + _pluginInfo->getCategory() + "> ";

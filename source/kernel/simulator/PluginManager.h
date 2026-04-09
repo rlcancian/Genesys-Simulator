@@ -36,7 +36,8 @@ class PluginManager {
 public:
 	/*! \brief Creates a plugin manager bound to a simulator instance. */
 	PluginManager(Simulator* simulator);
-	virtual ~PluginManager() = default;
+	/*! \brief Destroys owned plugin wrappers and connector resources. */
+	virtual ~PluginManager();
 public:
 	/*! \brief Returns a human-readable summary of currently connected plugins. */
 	std::string show();
