@@ -42,3 +42,30 @@ TEST(SupportConnectionManagerClassTest, InsertAtPortReplacesExistingConnectionWi
     EXPECT_EQ(manager.size(), 1u);
     EXPECT_EQ(manager.getConnectionAtPort(0), second);
 }
+
+TEST(SupportConnectionManagerClassTest, RemovingUnknownConnectionKeepsStateUnchanged) {
+    ConnectionManager manager;
+    Connection* inserted = new Connection{nullptr, {0, ""}};
+    Connection* neverInserted = new Connection{nullptr, {1, ""}};
+
+    // Inserts one connection and validates that removing an unknown pointer keeps the existing mapping intact.
+    manager.insertAtPort(0, inserted);
+    manager.remove(neverInserted);
+
+    EXPECT_EQ(manager.size(), 1u);
+    EXPECT_EQ(manager.getConnectionAtPort(0), inserted);
+
+    delete neverInserted;
+}
+
+TEST(SupportConnectionManagerClassTest, ReplaceSamePointerDoesNotChangeSize) {
+    ConnectionManager manager;
+    Connection* reused = new Connection{nullptr, {0, ""}};
+
+    // Reinserts the same pointer in the same port to validate the defensive no-growth replace path.
+    manager.insertAtPort(0, reused);
+    manager.insertAtPort(0, reused);
+
+    EXPECT_EQ(manager.size(), 1u);
+    EXPECT_EQ(manager.getConnectionAtPort(0), reused);
+}
