@@ -25,9 +25,19 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
     _currentProgress(0.0),
     _viewSimulation(viewSimulation){
 
+    // Abort construction when required input pointers are missing.
+    if (_myScene == nullptr || graphicalStartComponent == nullptr || graphicalEndComponent == nullptr) {
+        return;
+    }
+
     // Pega o componente gráfico de início e fim da animação
     _graphicalStartComponent = _myScene->findGraphicalModelComponent(graphicalStartComponent->getId());
     _graphicalEndComponent = _myScene->findGraphicalModelComponent(graphicalEndComponent->getId());
+
+    // Stop setup when either graphical endpoint is not present in the scene.
+    if (_graphicalStartComponent == nullptr || _graphicalEndComponent == nullptr) {
+        return;
+    }
 
     if (_graphicalStartComponent && !_graphicalStartComponent->getGraphicalOutputPorts().empty()) {
         QList<GraphicalComponentPort *> startComponentOutputPorts = _graphicalStartComponent->getGraphicalOutputPorts();
@@ -38,24 +48,34 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
             if (!startComponentOutputPorts.at(i)->getConnections()->empty()) {
                 if (startComponentOutputPorts.at(i)->getConnections()->at(0)->getDestination()->component->getId() == _graphicalEndComponent->getComponent()->getId()) {
                     connection = startComponentOutputPorts.at(i)->getConnections()->at(0);
+                    _graphicalConnection = connection;
                     _portNumber = i;
                     break;
                 }
             }
         }
 
-        // Pega o componente de destino do evento/animação de transição
-        ModelComponent *destinationComponent;
+        // Abort when no matching graphical connection is found for this transition.
         if (connection == nullptr) {
             _graphicalEndComponent = nullptr;
+            _graphicalConnection = nullptr;
             return;
         }
 
+        // Pega o componente de destino do evento/animação de transição
+        ModelComponent *destinationComponent;
         destinationComponent = connection->getDestination()->component;
         _graphicalEndComponent = _myScene->findGraphicalModelComponent(destinationComponent->getId());
 
         // Pega os pontos na tela em que a animação deve ocorrer
         QList<QPointF> pointsConnection = connection->getPoints();
+
+        // Abort transition setup when the connection geometry does not provide the required points.
+        if (pointsConnection.size() < 4) {
+            _graphicalEndComponent = nullptr;
+            _graphicalConnection = nullptr;
+            return;
+        }
 
         // Tamanho para imagem
         const int imageWidth = 50;

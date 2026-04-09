@@ -1213,6 +1213,11 @@ bool ModelGraphicsScene::getSnapToGrid() {
 }
 
 void ModelGraphicsScene::animateTransition(ModelComponent *source, ModelComponent *destination, bool viewSimulation, Event *event) {
+    // Skip transition creation when source or destination is missing.
+    if (source == nullptr || destination == nullptr) {
+        return;
+    }
+
     // Cria a animação
     AnimationTransition *animationTransition = new AnimationTransition(this, source, destination, viewSimulation);
 
