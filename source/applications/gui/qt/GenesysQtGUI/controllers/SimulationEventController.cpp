@@ -53,11 +53,12 @@ static void cleanupPausedAnimationList(QList<AnimationTransition*>* pausedAnimat
     }
 
     if (destroyAnimations) {
-        // Stop each paused transition and schedule Qt-safe destruction.
+        // Stop each paused transition before deterministic terminal destruction.
         for (AnimationTransition* animation : *pausedAnimations) {
             if (animation) {
                 animation->stopAnimation();
-                animation->deleteLater();
+                // Destroy paused transitions immediately in terminal cleanup paths.
+                delete animation;
             }
         }
     }
