@@ -65,6 +65,52 @@ TEST_F(ParserExpressionsTest, ProbabilisticFunctionsValidExpressionsWithThrowsEx
     EXPECT_TRUE(errorMessage.empty());
     EXPECT_TRUE(std::isfinite(expoValue));
     EXPECT_GE(expoValue, 0.0);
+
+    errorMessage.clear();
+    const double weibValue = model->parseExpression("weib(2,3)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(weibValue));
+    EXPECT_GE(weibValue, 0.0);
+}
+
+TEST_F(ParserExpressionsTest, AdditionalProbabilisticFunctionsValidExpressionsWithThrowsExceptionTrue) {
+    bool success = false;
+    std::string errorMessage;
+
+    const double normValue = model->parseExpression("norm(0,1)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(normValue));
+
+    errorMessage.clear();
+    const double lognValue = model->parseExpression("logn(2,0.5)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(lognValue));
+    EXPECT_GE(lognValue, 0.0);
+
+    errorMessage.clear();
+    const double gammValue = model->parseExpression("gamm(2,3)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(gammValue));
+    EXPECT_GE(gammValue, 0.0);
+
+    errorMessage.clear();
+    const double erlaValue = model->parseExpression("erla(4,2)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(erlaValue));
+    EXPECT_GE(erlaValue, 0.0);
+
+    errorMessage.clear();
+    const double betaValue = model->parseExpression("beta(2,3,0,1)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(betaValue));
+    EXPECT_GE(betaValue, 0.0);
+    EXPECT_LE(betaValue, 1.0);
 }
 
 TEST_F(ParserExpressionsTest, ProbabilisticFunctionsInvalidExpressionsAreRecoverableWithThrowsExceptionTrue) {
@@ -87,6 +133,46 @@ TEST_F(ParserExpressionsTest, ProbabilisticFunctionsInvalidExpressionsAreRecover
     EXPECT_FALSE(success);
     EXPECT_FALSE(errorMessage.empty());
     EXPECT_NE(errorMessage.find("weib"), std::string::npos);
+}
+
+TEST_F(ParserExpressionsTest, AdditionalProbabilisticFunctionsInvalidExpressionsAreRecoverableWithThrowsExceptionTrue) {
+    bool success = true;
+    std::string errorMessage;
+
+    (void) model->parseExpression("norm(0,-1)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("norm"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("logn(0,0.5)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("logn"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("logn(2,-0.5)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("logn"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("gamm(2,0)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("gamm"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("erla(4,0)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("erla"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("beta(2,3,1,0)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("beta"), std::string::npos);
 }
 
 TEST(ParserDriverThrowsFalseTest, ProbabilisticFunctionsRecoverWithoutThrowing) {
@@ -128,5 +214,14 @@ TEST(ParserDriverThrowsFalseTest, ProbabilisticFunctionsRecoverWithoutThrowing) 
         const std::string message = driver.getErrorMessage();
         EXPECT_FALSE(message.empty());
         EXPECT_NE(message.find("weib"), std::string::npos);
+    });
+
+    EXPECT_NO_THROW({
+        const int parseResult = driver.parse_str("logn(2,-0.5)");
+        EXPECT_NE(parseResult, 0);
+        EXPECT_EQ(driver.getResult(), -1.0);
+        const std::string message = driver.getErrorMessage();
+        EXPECT_FALSE(message.empty());
+        EXPECT_NE(message.find("logn"), std::string::npos);
     });
 }
