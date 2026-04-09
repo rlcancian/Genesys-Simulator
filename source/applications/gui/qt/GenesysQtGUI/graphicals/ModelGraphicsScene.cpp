@@ -1335,12 +1335,30 @@ void ModelGraphicsScene::clearAnimations() {
 }
 
 void ModelGraphicsScene::clearAnimationsTransition() {
-    // Limpa lista de animações de transição
+    // Keep cleaning active transition animations owned by the transition list.
     if (_animationsTransition) {
         for (unsigned int i = 0; i < (unsigned int) _animationsTransition->size(); i++) {
             delete _animationsTransition->at(i);
         }
         _animationsTransition->clear();
+    }
+
+    // Release paused transition lists and destroy remaining paused animations.
+    if (_animationPaused) {
+        for (auto it = _animationPaused->begin(); it != _animationPaused->end(); ++it) {
+            QList<AnimationTransition*>* pausedAnimations = it.value();
+            if (pausedAnimations) {
+                for (AnimationTransition* animation : *pausedAnimations) {
+                    if (animation) {
+                        animation->stopAnimation();
+                        delete animation;
+                    }
+                }
+                pausedAnimations->clear();
+                delete pausedAnimations;
+            }
+        }
+        _animationPaused->clear();
     }
 }
 

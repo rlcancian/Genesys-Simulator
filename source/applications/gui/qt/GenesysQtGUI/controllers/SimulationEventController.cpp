@@ -24,6 +24,41 @@
 #include <string>
 #include <utility>
 
+namespace {
+// Release one paused-animation list and optionally destroy its animations.
+static void cleanupPausedAnimationList(QList<AnimationTransition*>* pausedAnimations, bool destroyAnimations) {
+    if (!pausedAnimations) {
+        return;
+    }
+
+    if (destroyAnimations) {
+        for (AnimationTransition* animation : *pausedAnimations) {
+            if (animation) {
+                animation->stopAnimation();
+                delete animation;
+            }
+        }
+    }
+
+    pausedAnimations->clear();
+    delete pausedAnimations;
+}
+
+// Release all paused-animation lists in the map and then clear the map keys.
+static void cleanupPausedAnimationMap(QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap,
+                                      bool destroyAnimations) {
+    if (!pausedAnimationsMap) {
+        return;
+    }
+
+    for (auto it = pausedAnimationsMap->begin(); it != pausedAnimationsMap->end(); ++it) {
+        cleanupPausedAnimationList(it.value(), destroyAnimations);
+    }
+
+    pausedAnimationsMap->clear();
+}
+} // namespace
+
 // Build the simulation-event controller with narrow simulator/view/widget dependencies.
 SimulationEventController::SimulationEventController(Simulator* simulator,
                                                      ModelGraphicsScene* scene,
@@ -119,20 +154,22 @@ void SimulationEventController::onSimulationPausedHandler(SimulationEvent* re) c
 void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) const {
     _callbacks.actualizeActions();
 
-    if (_scene->getAnimationPaused()) {
-        if (!_scene->getAnimationPaused()->empty()) {
-            QList<AnimationTransition*>* animationPaused =
-                _scene->getAnimationPaused()->value(re->getCurrentEvent());
-
-            if (animationPaused) {
-                if (!animationPaused->empty()) {
-                    for (AnimationTransition* animation : *animationPaused) {
-                        _scene->runAnimateTransition(animation, re->getCurrentEvent(), true);
+    // Resume only the current-event paused animations and release that owned list.
+    QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap = _scene->getAnimationPaused();
+    Event* currentEvent = re ? re->getCurrentEvent() : nullptr;
+    if (pausedAnimationsMap && !pausedAnimationsMap->empty() && currentEvent) {
+        auto it = pausedAnimationsMap->find(currentEvent);
+        if (it != pausedAnimationsMap->end()) {
+            QList<AnimationTransition*>* pausedAnimations = it.value();
+            if (pausedAnimations) {
+                for (AnimationTransition* animation : *pausedAnimations) {
+                    if (animation) {
+                        _scene->runAnimateTransition(animation, currentEvent, true);
                     }
-                    animationPaused->clear();
                 }
             }
-            _scene->getAnimationPaused()->clear();
+            cleanupPausedAnimationList(pausedAnimations, false);
+            pausedAnimationsMap->remove(currentEvent);
         }
     }
 
@@ -142,7 +179,8 @@ void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) c
 // Preserve simulation-end cleanup, tab switch and model-check flag reset behavior.
 void SimulationEventController::onSimulationEndHandler(SimulationEvent* re) const {
     Q_UNUSED(re)
-    _scene->getAnimationPaused()->clear();
+    // Destroy all paused-animation lists and remaining paused animations before ending.
+    cleanupPausedAnimationMap(_scene->getAnimationPaused(), true);
     _callbacks.actualizeActions();
     _centralTabWidget->setCurrentIndex(_tabCentralReportsIndex);
     for (unsigned int i = 0; i < 50; i++) {
