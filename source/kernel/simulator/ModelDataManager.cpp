@@ -207,6 +207,7 @@ int ModelDataManager::getRankOf(std::string datadefinitionTypename, std::string 
 }
 
 std::list<std::string>* ModelDataManager::getDataDefinitionClassnames() const {
+	// Build a heap snapshot of registered class names so callers can iterate safely over a stable copy.
 	std::list<std::string>* keys = new std::list<std::string>();
 	for (std::map<std::string, List<ModelDataDefinition*>*>::iterator it = _datadefinitions->begin(); it != _datadefinitions->end(); it++) {
 		keys->insert(keys->end(), (*it).first);

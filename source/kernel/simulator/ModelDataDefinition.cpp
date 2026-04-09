@@ -179,12 +179,10 @@ void ModelDataDefinition::_attachedDataInsert(std::string key, ModelDataDefiniti
 }
 
 void ModelDataDefinition::_attachedDataRemove(std::string key) {
-	//for (std::map<std::string, ModelDataDefinition*>::iterator it = _internelElements->begin(); it != _internelElements->end(); it++) {
+	// Remove only the non-owning attachment registry entry and keep the referenced object lifetime untouched.
 	std::map<std::string, ModelDataDefinition*>::iterator it = _attachedData->begin();
 	while (it != _attachedData->end()) {
 		if ((*it).first == key) {
-			this->_parentModel->getDataManager()->remove((*it).second);
-			delete ((*it).second); //->~ModelDataDefinition();
 			_attachedData->erase(it);
 			it = _attachedData->begin();
 		} else {

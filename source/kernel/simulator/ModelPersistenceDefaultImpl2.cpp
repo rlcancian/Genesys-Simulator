@@ -67,7 +67,9 @@ bool ModelPersistenceDefaultImpl2::save(std::string filename) {
 	// gather data definitions
 	const std::string counter = Util::TypeOf<Counter>();
 	const std::string statsCollector = Util::TypeOf<StatisticsCollector>();
-	for (auto& type : *_model->getDataManager()->getDataDefinitionClassnames()) {
+	// Release the temporary class-name snapshot allocated by the manager after serializing all eligible data definitions.
+	std::list<std::string>* dataDefinitionClassnames = _model->getDataManager()->getDataDefinitionClassnames();
+	for (auto& type : *dataDefinitionClassnames) {
 		if (type == statsCollector || type == counter) continue; // these don't need to be saved
 		_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing elements of type \"" + type + "\":");
 		Util::IncIndent();
@@ -82,6 +84,7 @@ bool ModelPersistenceDefaultImpl2::save(std::string filename) {
 		}
 		Util::DecIndent();
 	}
+	delete dataDefinitionClassnames;
 
 	// gather model components
 	_model->getTracer()->trace(TraceManager::Level::L9_mostDetailed, "Writing components:");
