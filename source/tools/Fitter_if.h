@@ -4,7 +4,7 @@
  * and open the template in the editor.
  */
 
-/* 
+/*
  * File:   Fitter_if.h
  * Author: cancian
  *
@@ -16,6 +16,38 @@
 
 #include <string>
 
+/**
+ * @brief Interface for fitting theoretical distributions to real datasets.
+ *
+ * Purpose:
+ * - Infer parameters of candidate probability distributions from sample data.
+ *
+ * Architectural role:
+ * - Core fitting abstraction consumed by analysis workflows.
+ *
+ * Mathematical meaning:
+ * - Each fit* method estimates family parameters and writes an adherence/error
+ *   measure in @p sqrerror (typically squared-error-like criterion).
+ * - fitAll() selects the best candidate according to implementation-defined
+ *   criterion.
+ * - isNormalDistributed() should be interpreted as a normality adherence check
+ *   under the given confidence level.
+ *
+ * Preconditions:
+ * - Output pointers must be valid non-null addresses.
+ * - Data source must be configured through setDataFilename() before fitting.
+ *
+ * Postconditions:
+ * - Output pointers are filled with estimated values when operation succeeds.
+ *
+ * Failure modes:
+ * - Concrete implementations may return conservative defaults and/or report
+ *   failure when insufficient data or unsupported models are provided.
+ *
+ * Legacy compatibility:
+ * - The pointer-based output API is intentionally preserved as a legacy public
+ *   contract; it is not necessarily the final long-term shape.
+ */
 class Fitter_if {
 public:
 	virtual ~Fitter_if() = default;
@@ -29,7 +61,13 @@ public:
 	virtual void fitWeibull(double *sqrerror, double *alpha, double *scale) = 0;
 	virtual void fitAll(double *sqrerror, std::string *name) = 0;
 public:
+	/**
+	 * @brief Defines the dataset source filename used by fitting operations.
+	 */
 	virtual void setDataFilename(std::string dataFilename) = 0;
+	/**
+	 * @brief Retrieves the currently configured dataset source filename.
+	 */
 	virtual std::string getDataFilename() = 0;
 };
 

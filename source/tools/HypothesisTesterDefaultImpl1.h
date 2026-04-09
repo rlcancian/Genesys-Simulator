@@ -15,14 +15,27 @@
 
 #include "HypothesisTester_if.h"
 
+/**
+ * @brief Current default implementation of HypothesisTester_if.
+ *
+ * Architectural role:
+ * - Best available legacy implementation in the tools package.
+ *
+ * Implementation status:
+ * - Partially consolidated. One-population methods are mostly available;
+ *   two-population routines still require theoretical and implementation
+ *   alignment.
+ *
+ * Planned evolution:
+ * - Continue converging to a fully consistent implementation based on formal
+ *   classical hypothesis-testing theory.
+ */
 class HypothesisTesterDefaultImpl1 : public HypothesisTester_if {
 public:
 	HypothesisTesterDefaultImpl1();
 	~HypothesisTesterDefaultImpl1() = default;
 public:
-	//
 	// confidence intervals of parameters
-	//
 	HypothesisTester_if::ConfidenceInterval averageConfidenceInterval(double avg, double stddev, unsigned int n, double confidenceLevel) override;
 	HypothesisTester_if::ConfidenceInterval proportionConfidenceInterval(double prop, unsigned int n, double confidenceLevel) override;
 	HypothesisTester_if::ConfidenceInterval proportionConfidenceInterval(double prop, unsigned int n, int N, double confidenceLevel) override;
@@ -36,16 +49,8 @@ public:
 	HypothesisTester_if::ConfidenceInterval proportionConfidenceInterval(std::string sampleDataFilename, checkProportionFunction function, double confidenceLevel) override;
 	HypothesisTester_if::ConfidenceInterval proportionConfidenceInterval(std::string sampleDataFilename, checkProportionFunction function, double N, double confidenceLevel) override;
 	HypothesisTester_if::ConfidenceInterval varianceConfidenceInterval(std::string sampleDataFilename, double confidenceLevel) override;
-	// confidence intervals based on StatisticsCollector
-	//virtual HypothesisTester_if::ConfidenceInterval averageConfidenceInterval(StatisticsDataFile_if* cstat, double confidenceLevel);
-	//virtual HypothesisTester_if::ConfidenceInterval proportionConfidenceInterval(StatisticsDataFile_if* cstat, checkProportionFunction function, double confidenceLevel);
-	//virtual HypothesisTester_if::ConfidenceInterval proportionConfidenceInterval(StatisticsDataFile_if* cstat, checkProportionFunction function, double N, double confidenceLevel);
-	//virtual HypothesisTester_if::ConfidenceInterval varianceConfidenceInterval(StatisticsDataFile_if* cstat, double confidenceLevel);
 	// determine sample size based on confidence interval
 	unsigned int estimateSampleSize(double avg, double stddev, double desiredE0, double confidenceLevel) override;
-	//
-	// parametric tests
-	//
 	// one population
 	HypothesisTester_if::TestResult testAverage(double avg, double stddev, unsigned int n, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
 	HypothesisTester_if::TestResult testProportion(double prop, unsigned int n, double proptest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
@@ -62,10 +67,6 @@ public:
 	HypothesisTester_if::TestResult testAverage(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
 	HypothesisTester_if::TestResult testProportion(std::string firstSampleDataFilename, std::string secondSampleDataFilename, checkProportionFunction function, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
 	HypothesisTester_if::TestResult testVariance(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
-	//
-	// non parametric tests
-	//private:
-
 };
 
 #endif /* HYPOTHESISTESTERDEFAULTIMPL1_H */

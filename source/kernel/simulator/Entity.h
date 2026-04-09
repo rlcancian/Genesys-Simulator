@@ -77,7 +77,7 @@ class Entity : public ModelDataDefinition {
 private: // no one can create or destry entities directlly. This can be done one throught friend class Model
 	/*! \brief Creates an entity instance (restricted to \c Model friend). */
 	Entity(Model* model, std::string name = "", bool insertIntoModel = true);
-	virtual ~Entity() = default;
+	virtual ~Entity();
 	// friend Entity* Model::createEntity(std::string name, bool insertIntoModel); // It would be better, but Model is not known at this point of compilaton
 	friend class Model;
 public:

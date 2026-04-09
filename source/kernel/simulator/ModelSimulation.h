@@ -16,6 +16,7 @@
 
 #include <chrono>
 #include <memory>
+#include "SimulationControlAndResponse.h"
 #include "Event.h"
 #include "Entity.h"
 #include "ModelInfo.h"
@@ -194,6 +195,7 @@ private:
 	ModelInfo* _info;
 	SimulationReporter_if* _simulationReporter;
 	bool _ownsSimulationReporter = true;
+	List<SimulationControl*>* _ownedControls = new List<SimulationControl*>();
 	//@TODO Change List below to a MAP, associating every CstatOuCounter in the replication to the equivalent in the simulation
 	List<ModelDataDefinition*>* _cstatsAndCountersSimulation = new List<ModelDataDefinition*>();
 	std::map<ModelDataDefinition*, ModelDataDefinition*>* _cstatsAndCountersMapSimulation = new std::map<ModelDataDefinition*, ModelDataDefinition*>();

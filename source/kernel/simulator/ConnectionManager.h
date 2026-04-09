@@ -52,7 +52,7 @@ class ConnectionManager {
 public:
 	/*! \brief Creates an empty connection manager with zero constraints. */
 	ConnectionManager();
-	virtual ~ConnectionManager() = default;
+	virtual ~ConnectionManager();
 public:
 	/*!
 	 * \brief size

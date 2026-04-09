@@ -73,9 +73,35 @@ void ModelDataDefinition::setModelLevel(unsigned int _modelLevel) {
 //}
 
 ModelDataDefinition::~ModelDataDefinition() {
-	////trace(TraceManager::Level::L9_mostDetailed, "Removing Element \"" + this->_name + "\" from the model");
+	// Release all owned internal modeldata definitions registered by this model element.
 	_internalDataClear();
+	// Keep model registry consistent by removing this modeldata from the manager first.
 	_parentModel->getDataManager()->remove(this);
+	// Detach and destroy owned SimulationControl properties tracked by this model element.
+	if (_properties != nullptr) {
+		for (SimulationControl* property : *_properties->list()) {
+			if (property == nullptr) {
+				continue;
+			}
+			_parentModel->getControls()->remove(property);
+			SimulationResponse* response = dynamic_cast<SimulationResponse*>(property);
+			if (response != nullptr) {
+				_parentModel->getResponses()->remove(response);
+			}
+			delete property;
+		}
+		delete _properties;
+		_properties = nullptr;
+	}
+	// Destroy the internal-data registry container after its owned contents are cleared.
+	delete _internalData;
+	_internalData = nullptr;
+	// Clear and destroy the attached-data registry without deleting referenced external objects.
+	if (_attachedData != nullptr) {
+		_attachedData->clear();
+		delete _attachedData;
+		_attachedData = nullptr;
+	}
 }
 
 void ModelDataDefinition::_internalDataClear() {
@@ -153,12 +179,10 @@ void ModelDataDefinition::_attachedDataInsert(std::string key, ModelDataDefiniti
 }
 
 void ModelDataDefinition::_attachedDataRemove(std::string key) {
-	//for (std::map<std::string, ModelDataDefinition*>::iterator it = _internelElements->begin(); it != _internelElements->end(); it++) {
+	// Remove only the non-owning attachment registry entry and keep the referenced object lifetime untouched.
 	std::map<std::string, ModelDataDefinition*>::iterator it = _attachedData->begin();
 	while (it != _attachedData->end()) {
 		if ((*it).first == key) {
-			this->_parentModel->getDataManager()->remove((*it).second);
-			delete ((*it).second); //->~ModelDataDefinition();
 			_attachedData->erase(it);
 			it = _attachedData->begin();
 		} else {
