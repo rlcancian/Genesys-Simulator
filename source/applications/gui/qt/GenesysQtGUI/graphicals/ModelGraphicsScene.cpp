@@ -54,6 +54,7 @@
 #include "animations/AnimationQueue.h"
 #include <QCoreApplication>
 #include <QThread>
+#include <QPointer>
 
 namespace {
 // Safely cast the scene parent to a generic graphics view.
@@ -1383,6 +1384,9 @@ void ModelGraphicsScene::animateTransition(ModelComponent *source, ModelComponen
 }
 
 void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTransition, Event *event, bool restart) {
+    // Track transition lifetime across nested event loop execution.
+    QPointer<AnimationTransition> guardedTransition(animationTransition);
+
     _animationsTransition->append(animationTransition);
 
     // Create the local event loop before starting the animation to avoid missing early signals.
@@ -1413,11 +1417,19 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
     QObject::disconnect(destroyedConnection);
     QObject::disconnect(stateChangedConnection);
 
-    _animationsTransition->removeOne(animationTransition);
+    // Stop post-loop processing when the transition was destroyed during loop execution.
+    if (guardedTransition.isNull()) {
+        _animationsTransition->removeOne(animationTransition);
+        return;
+    }
 
-    // Destroy non-paused transitions immediately after loop completion and list removal.
-    if (animationTransition->state() != QAbstractAnimation::Paused) {
-        delete animationTransition;
+    // Use the guarded pointer for safe list cleanup and optional deletion.
+    AnimationTransition* transitionPtr = guardedTransition.data();
+    _animationsTransition->removeOne(transitionPtr);
+
+    // Destroy non-paused transitions only while the guarded object is still alive.
+    if (transitionPtr->state() != QAbstractAnimation::Paused) {
+        delete transitionPtr;
     }
 }
 
