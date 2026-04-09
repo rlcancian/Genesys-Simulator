@@ -1,4 +1,5 @@
 #include <gtest/gtest.h>
+#include <algorithm>
 
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
@@ -32,6 +33,12 @@ public:
     void Detach(std::string key) {
         _attachedDataRemove(key);
     }
+};
+
+class SnapshotDataDefinitionProbe : public ModelDataDefinition {
+public:
+    SnapshotDataDefinitionProbe(Model* model, const std::string& name)
+        : ModelDataDefinition(model, "SnapshotDataDefinitionProbe", name, true) {}
 };
 }
 
@@ -120,6 +127,51 @@ TEST(SimulatorRuntimeTest, ModelClearPreservesBaseSimulationControlsCount) {
     model->clear();
 
     EXPECT_EQ(model->getControls()->size(), controlsBefore);
+}
+
+TEST(SimulatorRuntimeTest, ModelClearIsIdempotentAndKeepsRuntimeUsable) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    // Captures the runtime control baseline and validates clear() can run repeatedly without breaking infrastructure.
+    const unsigned int controlsBefore = model->getControls()->size();
+    ASSERT_GT(controlsBefore, 0u);
+
+    model->clear();
+    model->clear();
+
+    EXPECT_EQ(model->getControls()->size(), controlsBefore);
+    EXPECT_NE(model->getSimulation(), nullptr);
+    EXPECT_NE(model->getDataManager(), nullptr);
+    EXPECT_NE(model->getComponentManager(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DataDefinitionClassnamesSnapshotIsReturnedByValue) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* first = new SnapshotDataDefinitionProbe(model, "First");
+    auto* second = new SnapshotDataDefinitionProbe(model, "Second");
+
+    // Takes two independent snapshots and verifies local mutations never affect manager state or another snapshot instance.
+    auto names1 = model->getDataManager()->getDataDefinitionClassnames();
+    auto names2 = model->getDataManager()->getDataDefinitionClassnames();
+
+    const std::string expectedType = "SnapshotDataDefinitionProbe";
+    EXPECT_NE(std::find(names1.begin(), names1.end(), expectedType), names1.end());
+    EXPECT_NE(std::find(names2.begin(), names2.end(), expectedType), names2.end());
+
+    names1.clear();
+    EXPECT_TRUE(names1.empty());
+    EXPECT_NE(std::find(names2.begin(), names2.end(), expectedType), names2.end());
+
+    const auto namesFromManager = model->getDataManager()->getDataDefinitionClassnames();
+    EXPECT_NE(std::find(namesFromManager.begin(), namesFromManager.end(), expectedType), namesFromManager.end());
+
+    delete first;
+    delete second;
 }
 
 TEST(SimulatorRuntimeTest, AttachedDataRemoveOnlyDetachesRegistryEntry) {
