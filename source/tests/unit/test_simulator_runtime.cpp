@@ -4,6 +4,8 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/Entity.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 
 namespace {
 struct SimulationStartObserver {
@@ -39,6 +41,59 @@ class SnapshotDataDefinitionProbe : public ModelDataDefinition {
 public:
     SnapshotDataDefinitionProbe(Model* model, const std::string& name)
         : ModelDataDefinition(model, "SnapshotDataDefinitionProbe", name, true) {}
+};
+
+static unsigned int g_countingControlProbeDestructorCount = 0;
+static unsigned int g_countingChildProbeDestructorCount = 0;
+
+// Tracks owned-property deletion through ModelDataDefinition teardown.
+class CountingSimulationControlProbe : public SimulationControl {
+public:
+    CountingSimulationControlProbe(const std::string& elementName, const std::string& propertyName)
+        : SimulationControl("CountingSimulationControlProbe", elementName, propertyName, "") {}
+
+    ~CountingSimulationControlProbe() override {
+        ++g_countingControlProbeDestructorCount;
+    }
+
+    std::string getValue() const override {
+        return "fixed-value";
+    }
+
+    void setValue(std::string value, bool remove = false) override {
+        (void)value;
+        (void)remove;
+    }
+};
+
+// Exposes protected lifecycle APIs to build focused ownership/teardown tests.
+class LifecycleModelDataDefinitionProbe : public ModelDataDefinition {
+public:
+    LifecycleModelDataDefinitionProbe(Model* model, const std::string& name)
+        : ModelDataDefinition(model, "LifecycleModelDataDefinitionProbe", name, true) {}
+
+    void AttachInternalData(const std::string& key, ModelDataDefinition* child) {
+        _internalDataInsert(key, child);
+    }
+
+    void AttachOwnedProperty(SimulationControl* property) {
+        _addProperty(property);
+    }
+
+    void AttachData(const std::string& key, ModelDataDefinition* data) {
+        _attachedDataInsert(key, data);
+    }
+};
+
+// Tracks owned-internal-data deletion triggered by owner destruction.
+class CountingChildDataDefinitionProbe : public ModelDataDefinition {
+public:
+    CountingChildDataDefinitionProbe(Model* model, const std::string& name)
+        : ModelDataDefinition(model, "CountingChildDataDefinitionProbe", name, true) {}
+
+    ~CountingChildDataDefinitionProbe() override {
+        ++g_countingChildProbeDestructorCount;
+    }
 };
 }
 
@@ -189,5 +244,98 @@ TEST(SimulatorRuntimeTest, AttachedDataRemoveOnlyDetachesRegistryEntry) {
     EXPECT_NE(model->getDataManager()->getDataDefinition("AttachedDataAccessProbe", "Attached"), nullptr);
 
     delete owner;
+    delete attached;
+}
+
+TEST(SimulatorRuntimeTest, EntityAttributeValuesRoundTripByNameAndIndex) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Entity* entity = model->createEntity("EntityA", true);
+    ASSERT_NE(entity, nullptr);
+
+    // Writes both scalar and indexed attribute values, creating missing attributes on demand.
+    entity->setAttributeValue("AttrScalar", 42.5, "", true);
+    entity->setAttributeValue("AttrIndexed", 7.25, "idx", true);
+
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("AttrScalar", ""), 42.5);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("AttrIndexed", "idx"), 7.25);
+
+    model->removeEntity(entity);
+}
+
+TEST(SimulatorRuntimeTest, RemovingEntityRemovesItFromDataManagerRegistry) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const unsigned int entitiesBefore = model->getDataManager()->getNumberOfDataDefinitions("Entity");
+
+    Entity* entity = model->createEntity("EntityB", true);
+    ASSERT_NE(entity, nullptr);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions("Entity"), entitiesBefore + 1);
+
+    model->removeEntity(entity);
+    EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions("Entity"), entitiesBefore);
+}
+
+TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorRemovesOwnedPropertyFromModelControls) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    g_countingControlProbeDestructorCount = 0;
+    const unsigned int controlsBefore = model->getControls()->size();
+
+    auto* owner = new LifecycleModelDataDefinitionProbe(model, "OwnerLifecycle");
+    const unsigned int controlsAfterOwnerConstruction = model->getControls()->size();
+
+    auto* ownedProperty = new CountingSimulationControlProbe(owner->getName(), "OwnedProperty");
+    // Registers the owned property in the model controls and owner property list so destructor cleanup is observable.
+    model->getControls()->insert(ownedProperty);
+    owner->AttachOwnedProperty(ownedProperty);
+
+    EXPECT_EQ(model->getControls()->size(), controlsAfterOwnerConstruction + 1);
+
+    delete owner;
+
+    EXPECT_EQ(model->getControls()->size(), controlsBefore);
+    EXPECT_EQ(g_countingControlProbeDestructorCount, 1u);
+}
+
+TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorDeletesOwnedInternalData) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    g_countingChildProbeDestructorCount = 0;
+
+    auto* owner = new LifecycleModelDataDefinitionProbe(model, "OwnerWithChild");
+    auto* child = new CountingChildDataDefinitionProbe(model, "OwnedChild");
+
+    // Declares child as owned internal data so owner teardown must delete it.
+    owner->AttachInternalData("child", child);
+
+    delete owner;
+
+    EXPECT_EQ(g_countingChildProbeDestructorCount, 1u);
+}
+
+TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorDoesNotDeleteAttachedDataTarget) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* owner = new LifecycleModelDataDefinitionProbe(model, "OwnerAttached");
+    auto* attached = new LifecycleModelDataDefinitionProbe(model, "AttachedTarget");
+
+    // Registers a non-owning attachment that must survive owner destruction.
+    owner->AttachData("attached", attached);
+
+    delete owner;
+
+    EXPECT_NE(model->getDataManager()->getDataDefinition("LifecycleModelDataDefinitionProbe", "AttachedTarget"), nullptr);
+
     delete attached;
 }
