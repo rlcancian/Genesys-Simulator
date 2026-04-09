@@ -74,9 +74,6 @@ ModelGraphicsScene::ModelGraphicsScene(qreal x, qreal y, qreal width, qreal heig
     _imagesAnimation->append("default.png");
 }
 
-ModelGraphicsScene::ModelGraphicsScene(const ModelGraphicsScene& orig) { // : QGraphicsScene(orig) {
-}
-
 ModelGraphicsScene::~ModelGraphicsScene() {
     // Release transient drawing items that may still be detached from normal commit flow.
     if (_currentRectangle != nullptr) {
