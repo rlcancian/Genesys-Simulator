@@ -21,7 +21,7 @@ The `tools` package provides domain-support services for statistical analysis an
 
 ### Fitting
 - Preserve legacy fitting API.
-- Transition from dummy implementation to a concrete default implementation in phased manner (FITTER-1 delivered baseline behavior, and FITTER-2 added functional Beta and Weibull fitting in `FitterDefaultImpl`, still without changing default trait binding).
+- Transition from dummy implementation to a concrete default implementation in phased manner (FITTER-1 delivered baseline behavior, FITTER-2 added functional Beta and Weibull fitting in `FitterDefaultImpl`, and FITTER-3 promotes `TraitsTools<Fitter_if>` to `FitterDefaultImpl`).
 
 ### Hypothesis testing
 - Maintain current contract and refine implementation completeness, especially two-population methods.
@@ -44,7 +44,7 @@ The `tools` package provides domain-support services for statistical analysis an
 ## 4. Legacy compatibility strategy
 
 - Do not break existing public signatures in this phase.
-- Preserve current trait selections to avoid runtime and build regressions.
+- Preserve compatibility by keeping legacy classes available while promoting only validated trait selections.
 - Add new abstractions as header-only contracts until implementations are mature.
 
 ## 5. Planned migration order
@@ -57,7 +57,8 @@ The `tools` package provides domain-support services for statistical analysis an
 
 ## 6. Stability notes and non-goals for this phase
 
-- FITTER-2 consolidates additional fitting algorithms in `FitterDefaultImpl` (beta and weibull) on top of FITTER-1 families, while keeping trait defaults unchanged (`TraitsTools<Fitter_if>` still points to `FitterDummyImpl`).
+- FITTER-2 consolidated additional fitting algorithms in `FitterDefaultImpl` (beta and weibull) on top of FITTER-1 families; FITTER-3 now switches the default trait binding so `TraitsTools<Fitter_if>` points to `FitterDefaultImpl`.
+- `FitterDummyImpl` is intentionally preserved as a legacy/documental placeholder and is no longer the default fitter binding.
 - No full completion of hypothesis-testing theory coverage.
 - No numerical refactor of legacy solver internals.
 - No cross-package behavior changes outside `source/tools`.

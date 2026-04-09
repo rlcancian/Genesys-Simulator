@@ -16,7 +16,7 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 ## 3. Current limitations
 
 - Fitting baseline was expanded in FITTER-2: `FitterDefaultImpl` now also provides functional Beta (scaled) and Weibull fitting, still preserving controlled-failure behavior when constraints are not met.
-- Traits still keep `FitterDummyImpl` as the default binding in this phase for compatibility.
+- `FitterDummyImpl` is preserved as a legacy placeholder/documental implementation, but it is no longer the default trait binding after FITTER-3.
 - Some hypothesis-testing paths, especially two-population paths, remain partially consolidated.
 - Distribution APIs are static utilities, not yet an OO hierarchy with reusable distribution objects.
 - Solver abstraction conflates quadrature and ODE-like concerns.
@@ -24,7 +24,7 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 ## 4. Planned evolution
 
 - Introduce cohesive interfaces for dataset, distributions, quadrature, root finding, and ODE solving.
-- Promote `FitterDefaultImpl` from structural placeholder to complete fitting implementation.
+- Continue hardening `FitterDefaultImpl` as the promoted default fitting implementation.
 - Evolve traits coverage to include newly stabilized abstractions.
 - Keep legacy interfaces during migration to avoid behavior breaks.
 
@@ -34,7 +34,7 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 
 ## 6. Current status by topic
 
-- **Fitting**: interface defined; `FitterDefaultImpl` is functional for uniform/triangular/normal/exponential/erlang/beta/weibull with binary dataset loading and SSE-CDF comparison, but production trait binding remains on `FitterDummyImpl`.
+- **Fitting**: interface defined; `FitterDefaultImpl` is functional for uniform/triangular/normal/exponential/erlang/beta/weibull with binary dataset loading and SSE-CDF comparison and is now the default `TraitsTools<Fitter_if>` binding (FITTER-3). `FitterDummyImpl` remains available as legacy placeholder.
 - **Hypothesis testing**: functional baseline exists in `HypothesisTesterDefaultImpl1`, with known partial areas.
 - **Probability distributions**: mathematical static base and inverse façade available, with internal numeric dependencies.
 - **Numerical solvers**: legacy `Solver_if` + `SolverDefaultImpl1` remain the compatible baseline.
