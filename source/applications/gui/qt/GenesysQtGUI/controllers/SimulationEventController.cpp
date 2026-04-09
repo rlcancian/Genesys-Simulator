@@ -25,6 +25,27 @@
 #include <utility>
 
 namespace {
+// Select and detach the paused-animation list that can be safely resumed.
+static QList<AnimationTransition*>* takePausedAnimationListForResume(
+    QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap,
+    Event* currentEvent) {
+    if (!pausedAnimationsMap || pausedAnimationsMap->empty()) {
+        return nullptr;
+    }
+
+    if (currentEvent && pausedAnimationsMap->contains(currentEvent)) {
+        return pausedAnimationsMap->take(currentEvent);
+    }
+
+    if (pausedAnimationsMap->size() == 1) {
+        auto it = pausedAnimationsMap->begin();
+        Event* onlyKey = it.key();
+        return pausedAnimationsMap->take(onlyKey);
+    }
+
+    return nullptr;
+}
+
 // Release one paused-animation list and optionally destroy its animations.
 static void cleanupPausedAnimationList(QList<AnimationTransition*>* pausedAnimations, bool destroyAnimations) {
     if (!pausedAnimations) {
@@ -155,20 +176,19 @@ void SimulationEventController::onSimulationPausedHandler(SimulationEvent* re) c
 void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) const {
     _callbacks.actualizeActions();
 
-    // Detach the current-event paused list before resuming to isolate re-paused animations.
+    // Resume only a deterministically selected paused list detached from the map.
     QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap = _scene->getAnimationPaused();
     Event* currentEvent = re ? re->getCurrentEvent() : nullptr;
-    if (pausedAnimationsMap && !pausedAnimationsMap->empty() && currentEvent) {
-        QList<AnimationTransition*>* pausedAnimations = pausedAnimationsMap->take(currentEvent);
-        if (pausedAnimations) {
-            // Resume each detached transition using the same event context.
-            for (AnimationTransition* animation : *pausedAnimations) {
-                if (animation) {
-                    _scene->runAnimateTransition(animation, currentEvent, true);
-                }
+    QList<AnimationTransition*>* pausedAnimations =
+        takePausedAnimationListForResume(pausedAnimationsMap, currentEvent);
+    if (pausedAnimations) {
+        // Replay each paused transition with the current resume event context.
+        for (AnimationTransition* animation : *pausedAnimations) {
+            if (animation) {
+                _scene->runAnimateTransition(animation, currentEvent, true);
             }
-            cleanupPausedAnimationList(pausedAnimations, false);
         }
+        cleanupPausedAnimationList(pausedAnimations, false);
     }
 
     QCoreApplication::processEvents();
