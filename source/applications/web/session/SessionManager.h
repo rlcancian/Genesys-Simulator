@@ -5,6 +5,7 @@
 
 #include <functional>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
@@ -20,5 +21,6 @@ public:
 private:
     TokenService& _tokenService;
     SimulatorFactory _simulatorFactory;
+    mutable std::mutex _sessionsMutex;
     std::unordered_map<std::string, std::unique_ptr<SessionContext>> _sessionsByToken;
 };

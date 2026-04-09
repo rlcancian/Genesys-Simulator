@@ -56,6 +56,42 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
         return HttpResponse{200, "application/json", body};
     }
 
+    if (request.path == "/api/v1/models") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/models");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        SimulatorSessionService::ModelInfoResult info{};
+        if (!_simulatorService.tryCreateModel(token, info)) {
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        }
+
+        return HttpResponse{201, "application/json", "{\"ok\":true,\"data\":" + _modelInfoDataJson(info) + "}"};
+    }
+
+    if (request.path == "/api/v1/models/current") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/models/current");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        SimulatorSessionService::ModelInfoResult info{};
+        if (!_simulatorService.tryGetCurrentModelInfo(token, info)) {
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _modelInfoDataJson(info) + "}"};
+    }
+
     return _jsonError(404, "NOT_FOUND", "Route not found");
 }
 
@@ -93,4 +129,21 @@ std::string ApiRouter::_escapeJson(const std::string& value) {
         }
     }
     return out;
+}
+
+std::string ApiRouter::_modelInfoDataJson(const SimulatorSessionService::ModelInfoResult& info) {
+    if (!info.exists) {
+        return "{\"exists\":false}";
+    }
+
+    return "{\"exists\":true,"
+           "\"modelId\":" + std::to_string(info.modelId) + ","
+           "\"hasChanged\":" + std::string(info.hasChanged ? "true" : "false") + ","
+           "\"level\":" + std::to_string(info.level) + ","
+           "\"name\":\"" + _escapeJson(info.name) + "\","
+           "\"analystName\":\"" + _escapeJson(info.analystName) + "\","
+           "\"projectTitle\":\"" + _escapeJson(info.projectTitle) + "\","
+           "\"version\":\"" + _escapeJson(info.version) + "\","
+           "\"description\":\"" + _escapeJson(info.description) + "\","
+           "\"componentCount\":" + std::to_string(info.componentCount) + "}";
 }
