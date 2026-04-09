@@ -42,7 +42,7 @@ class Simulator;
 class Model {
 public:
 	Model(Simulator* simulator, unsigned int level = 0);
-	virtual ~Model() = default;
+	virtual ~Model();
 public: // model control
 	//void showReports();
 	/*!
@@ -239,6 +239,10 @@ private:
 	void _showSimulationControls() const;
 	void _showSimulationResponses() const;
 	void _createModelInternalElements();
+	void _destroyFutureEvents();
+	void _destroyTransientEntities();
+	void _destroyComponents();
+	void _destroyModelDataDefinitions();
 private:
 	bool _hasChanged = false;
     //bool _isChecked = false; // @TODO: Not implemented yet. First, _hasChanged should be trustful
@@ -269,4 +273,3 @@ private: // no public access (no gets / sets)
 };
 //namespace\\}
 #endif /* SIMULATIONMODEL_H */
-

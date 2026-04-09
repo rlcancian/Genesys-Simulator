@@ -34,6 +34,9 @@ Model::Model(Simulator* simulator, unsigned int level) {
     (void)level;
 }
 
+// Provides a trivial out-of-line destructor for the test double after Model gained an explicit virtual destructor.
+Model::~Model() = default;
+
 bool Model::save(std::string filename) {
     (void)filename;
     return true;
@@ -440,4 +443,3 @@ TEST(SimulatorSupportTest, LegacyPropertyBaseCanCoexistWithKernelPropertyBaseAli
     SimulationResponse* response = &control;
     EXPECT_NE(response, nullptr);
 }
-

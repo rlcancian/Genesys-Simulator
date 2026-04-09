@@ -101,6 +101,44 @@ Model::Model(Simulator* simulator, unsigned int level) {
 
 }
 
+// Explicitly destroys model-owned runtime and manager infrastructure in a safe order.
+Model::~Model() {
+	// Releases pending heap events owned by the model calendar before managers are destroyed.
+	_destroyFutureEvents();
+	// Releases transient entity instances still alive in the model runtime list.
+	_destroyTransientEntities();
+	// Releases remaining components while letting component destructors update manager state.
+	_destroyComponents();
+	// Releases non-entity model data definitions that were not already released by components.
+	_destroyModelDataDefinitions();
+
+	// Destroys runtime services owned by Model (non-owned pointers are intentionally not deleted).
+	delete _simulation;
+	_simulation = nullptr;
+	delete _modelPersistence;
+	_modelPersistence = nullptr;
+	delete _modelChecker;
+	_modelChecker = nullptr;
+	delete _parser;
+	_parser = nullptr;
+
+	// Destroys infrastructure containers owned by Model after contained objects were released.
+	delete _futureEvents;
+	_futureEvents = nullptr;
+	delete _controls;
+	_controls = nullptr;
+	delete _responses;
+	_responses = nullptr;
+	delete _componentManager;
+	_componentManager = nullptr;
+	delete _modeldataManager;
+	_modeldataManager = nullptr;
+	delete _eventManager;
+	_eventManager = nullptr;
+	delete _modelInfo;
+	_modelInfo = nullptr;
+}
+
 void Model::sendEntityToComponent(Entity* entity, Connection* connection, double timeDelay) {
 	this->sendEntityToComponent(entity, connection->component, timeDelay, connection->channel.portNumber);
 }
@@ -296,13 +334,86 @@ void Model::_showSimulationResponses() const {
 }
 
 void Model::clear() {
-	this->_componentManager->clear();
-	this->_modeldataManager->clear();
-	this->_futureEvents->clear();
+	// Clears and destroys pending runtime events to avoid leaking queued Event objects.
+	_destroyFutureEvents();
+	// Clears and destroys transient entities that may still exist between runs.
+	_destroyTransientEntities();
+	// Clears and destroys components currently owned by the model.
+	_destroyComponents();
+	// Clears and destroys remaining non-entity data definitions tracked by the model.
+	_destroyModelDataDefinitions();
 	Util::ResetAllIds();
 	//this->_simulation->clear();  // @TODO clear method
 	//this->_modelInfo->clear(); // @TODO clear method
 	//Util::ResetAllIds(); // @TODO: To implement
+}
+
+// Iterates over the future event list and deletes each pending heap-allocated event.
+void Model::_destroyFutureEvents() {
+	if (_futureEvents == nullptr) {
+		return;
+	}
+	while (!_futureEvents->empty()) {
+		Event* event = _futureEvents->front();
+		_futureEvents->pop_front();
+		delete event;
+	}
+}
+
+// Iterates over the live entity list and deletes each transient heap-allocated entity.
+void Model::_destroyTransientEntities() {
+	if (_modeldataManager == nullptr) {
+		return;
+	}
+	List<ModelDataDefinition*>* entities = _modeldataManager->getDataDefinitionList(Util::TypeOf<Entity>());
+	while (entities != nullptr && !entities->empty()) {
+		ModelDataDefinition* data = entities->front();
+		Entity* entity = dynamic_cast<Entity*>(data);
+		if (entity == nullptr) {
+			entities->pop_front();
+			continue;
+		}
+		delete entity;
+	}
+}
+
+// Iterates over remaining components and deletes them so their destructors keep manager state consistent.
+void Model::_destroyComponents() {
+	if (_componentManager == nullptr) {
+		return;
+	}
+	while (_componentManager->getNumberOfComponents() > 0) {
+		ModelComponent* component = _componentManager->front();
+		if (component == nullptr) {
+			break;
+		}
+		delete component;
+	}
+}
+
+// Iteratively deletes non-entity data definitions without assuming stable collections during destruction.
+void Model::_destroyModelDataDefinitions() {
+	if (_modeldataManager == nullptr) {
+		return;
+	}
+	bool hasPendingNonEntity = true;
+	while (hasPendingNonEntity) {
+		hasPendingNonEntity = false;
+		std::list<std::string>* types = _modeldataManager->getDataDefinitionClassnames();
+		for (const std::string& type : *types) {
+			if (type == Util::TypeOf<Entity>()) {
+				continue;
+			}
+			List<ModelDataDefinition*>* datadefs = _modeldataManager->getDataDefinitionList(type);
+			if (datadefs != nullptr && !datadefs->empty()) {
+				hasPendingNonEntity = true;
+				ModelDataDefinition* data = datadefs->front();
+				delete data;
+				break;
+			}
+		}
+		delete types;
+	}
 }
 
 void Model::_createModelInternalElements() {

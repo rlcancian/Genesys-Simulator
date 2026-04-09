@@ -26,6 +26,12 @@ ComponentManager::ComponentManager(Model* model) {
 	});
 }
 
+// Releases the heap-allocated container that tracks components; component ownership is handled by Model.
+ComponentManager::~ComponentManager() {
+	delete _components;
+	_components = nullptr;
+}
+
 bool ComponentManager::insert(ModelComponent* comp) {
 	if (_components->find(comp) == _components->list()->end()) {
 		_components->insert(comp);

@@ -32,6 +32,10 @@ ModelManager::~ModelManager() {
 		for (Model* model : *_models->list()) {
 			delete model;
 		}
+		// Releases a detached current model that is not tracked by the manager list.
+		if (_currentModel != nullptr && _models->find(_currentModel) == _models->list()->end()) {
+			delete _currentModel;
+		}
 		delete _models;
 		_models = nullptr;
 	}
@@ -39,6 +43,10 @@ ModelManager::~ModelManager() {
 }
 
 Model* ModelManager::newModel() {
+	// Prevents leaking a previously created current model that was never inserted into _models.
+	if (_currentModel != nullptr && _models->find(_currentModel) == _models->list()->end()) {
+		delete _currentModel;
+	}
 	_currentModel = new Model(_simulator);
 	return _currentModel;
 }
