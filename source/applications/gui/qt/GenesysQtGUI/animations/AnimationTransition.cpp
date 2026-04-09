@@ -137,6 +137,16 @@ unsigned int AnimationTransition::getPortNumber() const {
     return _portNumber;
 }
 
+// Validate transition runtime invariants before starting or resuming animation.
+bool AnimationTransition::isReadyToRun() const {
+    return _myScene != nullptr
+            && _graphicalStartComponent != nullptr
+            && _graphicalEndComponent != nullptr
+            && _graphicalConnection != nullptr
+            && _imageAnimation != nullptr
+            && _pointsForAnimation.size() >= 2;
+}
+
 // Setters
 void AnimationTransition::setImageAnimation(GraphicalImageAnimation* imageAnimation) {
     _imageAnimation = imageAnimation;
@@ -156,8 +166,8 @@ void AnimationTransition::setRunning(bool running) {
 
 // Outros
 void AnimationTransition::startAnimation() {
-    // Guard against partially constructed transitions before interacting with scene/image pointers.
-    if (_myScene == nullptr || _imageAnimation == nullptr) {
+    // Block animation start when transition invariants are not fully satisfied.
+    if (!isReadyToRun()) {
         return;
     }
 
@@ -205,8 +215,8 @@ void AnimationTransition::stopAnimation() {
 }
 
 void AnimationTransition::restartAnimation() {
-    // Guard resume against missing image or invalid animation duration.
-    if (_imageAnimation == nullptr || duration() <= 0) {
+    // Block animation restart when transition invariants are not fully satisfied.
+    if (!isReadyToRun() || duration() <= 0) {
         return;
     }
 
