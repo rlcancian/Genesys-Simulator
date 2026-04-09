@@ -1267,14 +1267,35 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
 }
 
 void ModelGraphicsScene::handleAnimationStateChanged(QAbstractAnimation::State newState, QEventLoop* loop, Event* event, AnimationTransition* animationTransition) {
-    if (newState == QAbstractAnimation::Paused) {
-        if (!_animationPaused->contains(event)) {
-            QList<AnimationTransition *> *newList = new  QList<AnimationTransition *>();
-            _animationPaused->insert(event, newList);
-        }
-        _animationPaused->value(event)->append(animationTransition);
-        if (loop) loop->quit();
+    // Process only paused transitions and exit early for other states.
+    if (newState != QAbstractAnimation::Paused) {
+        return;
     }
+
+    // Protect map usage when paused storage is not available.
+    if (_animationPaused == nullptr) {
+        return;
+    }
+
+    // Ignore invalid transition pointers to avoid storing null entries.
+    if (animationTransition == nullptr) {
+        return;
+    }
+
+    // Ensure there is a paused-animation list for the current event key.
+    if (!_animationPaused->contains(event)) {
+        QList<AnimationTransition*>* newList = new QList<AnimationTransition*>();
+        _animationPaused->insert(event, newList);
+    }
+
+    // Append only when this transition is not already tracked for the event.
+    QList<AnimationTransition*>* pausedAnimations = _animationPaused->value(event);
+    if (pausedAnimations != nullptr && !pausedAnimations->contains(animationTransition)) {
+        pausedAnimations->append(animationTransition);
+    }
+
+    // Preserve local loop exit when the animation transitions to paused.
+    if (loop) loop->quit();
 }
 
 void ModelGraphicsScene::animateQueueInsert(ModelComponent *component, bool visivible) {
