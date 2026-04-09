@@ -1423,13 +1423,15 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
         return;
     }
 
-    // Use the guarded pointer for safe list cleanup and optional deletion.
+    // Resolve the guarded pointer before any post-loop state checks or deletion.
     AnimationTransition* transitionPtr = guardedTransition.data();
-    _animationsTransition->removeOne(transitionPtr);
 
-    // Destroy non-paused transitions only while the guarded object is still alive.
-    if (transitionPtr->state() != QAbstractAnimation::Paused) {
-        delete transitionPtr;
+    // Remove and delete only when the guarded transition is still valid.
+    if (transitionPtr != nullptr) {
+        _animationsTransition->removeOne(transitionPtr);
+        if (transitionPtr->state() != QAbstractAnimation::Paused) {
+            delete transitionPtr;
+        }
     }
 }
 
