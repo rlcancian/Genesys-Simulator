@@ -29,3 +29,16 @@ TEST(SupportConnectionManagerClassTest, RemoveAtPortClearsInsertedConnection) {
     EXPECT_EQ(manager.size(), 0u);
     EXPECT_EQ(manager.getConnectionAtPort(0), nullptr);
 }
+
+TEST(SupportConnectionManagerClassTest, InsertAtPortReplacesExistingConnectionWithoutGrowingSize) {
+    ConnectionManager manager;
+    // Build two raw connections to validate replacement and ownership in the same port.
+    Connection* first = new Connection{nullptr, {0, ""}};
+    Connection* second = new Connection{nullptr, {0, ""}};
+
+    manager.insertAtPort(0, first);
+    manager.insertAtPort(0, second);
+
+    EXPECT_EQ(manager.size(), 1u);
+    EXPECT_EQ(manager.getConnectionAtPort(0), second);
+}
