@@ -1234,22 +1234,22 @@ void ModelGraphicsScene::animateTransition(ModelComponent *source, ModelComponen
 void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTransition, Event *event, bool restart) {
     _animationsTransition->append(animationTransition);
 
-    // Inicia ou reinicia a animação
+    // Create the local event loop before starting the animation to avoid missing early signals.
+    QEventLoop loop;
+
+    // Store temporary finished connection to disconnect it after this loop execution.
+    QMetaObject::Connection finishedConnection = connect(animationTransition, &AnimationTransition::finished, &loop, &QEventLoop::quit);
+
+    // Connect state changes before start/restart so pause transitions are observed from the beginning.
+    QMetaObject::Connection stateChangedConnection = connect(animationTransition, &QAbstractAnimation::stateChanged, [this, &loop, event, animationTransition](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
+        handleAnimationStateChanged(newState, &loop, event, animationTransition);
+    });
+
+    // Start or restart only after wiring temporary loop exit connections.
     if (restart)
         animationTransition->restartAnimation();
     else
         animationTransition->startAnimation();
-
-    // Cria um loop de eventos para aguardar a conclusão da animação
-    QEventLoop loop;
-    // Store temporary finished connection to disconnect it after this loop execution.
-    QMetaObject::Connection finishedConnection = connect(animationTransition, &AnimationTransition::finished, &loop, &QEventLoop::quit);
-
-    // Conecta o sinal de stateChanged para sair do loop quando a animação for pausada
-    // Store temporary stateChanged connection to avoid callback accumulation across resumes.
-    QMetaObject::Connection stateChangedConnection = connect(animationTransition, &QAbstractAnimation::stateChanged, [this, &loop, event, animationTransition](QAbstractAnimation::State newState, QAbstractAnimation::State oldState) {
-        handleAnimationStateChanged(newState, &loop, event, animationTransition);
-    });
 
     // Aguarda a conclusão da animação sem bloquear o restante do código
     loop.exec();
