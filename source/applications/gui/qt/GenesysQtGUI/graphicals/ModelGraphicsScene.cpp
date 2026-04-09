@@ -34,6 +34,7 @@
 #include <QTreeWidget>
 #include <QMessageBox>
 #include <QUndoCommand>
+#include <memory>
 #include <string>
 #include <list>
 #include "graphicals/ModelGraphicsScene.h"
@@ -506,7 +507,8 @@ void ModelGraphicsScene::startTextEditing() {
 
 // limpa todo o modelo
 void ModelGraphicsScene::clearGraphicalModelComponents() {
-    QList<GraphicalModelComponent*> *componentsInModel = this->graphicalModelComponentItems();
+    // Own and automatically release the temporary component list returned by the scene query.
+    auto componentsInModel = std::unique_ptr<QList<GraphicalModelComponent*>>(this->graphicalModelComponentItems());
     GraphicalModelComponent *source;
     GraphicalModelComponent *destination;
 
@@ -881,7 +883,8 @@ void ModelGraphicsScene::redoConnections(GraphicalModelComponent *graphicalCompo
 
 
 void ModelGraphicsScene::saveDataDefinitions() {
-    QList<GraphicalModelComponent*> *components = this->graphicalModelComponentItems();
+    // Own and automatically release the temporary component list returned by the scene query.
+    auto components = std::unique_ptr<QList<GraphicalModelComponent*>>(this->graphicalModelComponentItems());
 
     for (GraphicalModelComponent* component : *components) {
         component->verifyQueue();
@@ -918,7 +921,8 @@ void ModelGraphicsScene::saveDataDefinitions() {
 }
 
 void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
-    QList<GraphicalModelComponent*> *components = this->graphicalModelComponentItems();
+    // Own and automatically release the temporary component list returned by the scene query.
+    auto components = std::unique_ptr<QList<GraphicalModelComponent*>>(this->graphicalModelComponentItems());
     QList<GraphicalModelComponent*> *allComponentes = this->getAllComponents();
 
     if (!allComponentes->empty()) {
@@ -2746,16 +2750,15 @@ void ModelGraphicsScene::clearAnimationsValues() {
 void ModelGraphicsScene::setCounters() {
     Model* currentModel = _simulator->getModelManager()->current();
 
-    QList<ModelDataDefinition *> *counters = nullptr;
-
     if (currentModel) {
         _counters->clear();
 
         List<ModelDataDefinition *> *countersList = currentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Counter>());
 
-        counters = new QList<ModelDataDefinition *>(countersList->list()->begin(), countersList->list()->end());
+        // Build the temporary data-definition list on the stack to avoid heap leaks.
+        QList<ModelDataDefinition *> counters(countersList->list()->begin(), countersList->list()->end());
 
-        foreach(ModelDataDefinition *counter, *counters) {
+        foreach(ModelDataDefinition *counter, counters) {
             Counter *newCounter = dynamic_cast<Counter *>(counter);
 
             if (newCounter) {
@@ -2768,16 +2771,15 @@ void ModelGraphicsScene::setCounters() {
 void ModelGraphicsScene::setVariables() {
     Model* currentModel = _simulator->getModelManager()->current();
 
-    QList<ModelDataDefinition *> *variables = nullptr;
-
     if (currentModel) {
         _variables->clear();
 
         List<ModelDataDefinition *> *variablesList = currentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Variable>());
 
-        variables = new QList<ModelDataDefinition *>(variablesList->list()->begin(), variablesList->list()->end());
+        // Build the temporary data-definition list on the stack to avoid heap leaks.
+        QList<ModelDataDefinition *> variables(variablesList->list()->begin(), variablesList->list()->end());
 
-        foreach(ModelDataDefinition *variable, *variables) {
+        foreach(ModelDataDefinition *variable, variables) {
             Variable *newVariable = dynamic_cast<Variable *>(variable);
 
             if (newVariable) {
