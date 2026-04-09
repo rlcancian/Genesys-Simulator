@@ -69,7 +69,8 @@ void ModelInspectorController::actualizeModelDataDefinitions(bool force) const {
         return;
     }
 
-    for (std::string dataTypename : *m->getDataManager()->getDataDefinitionClassnames()) {
+    // Iterate over a value snapshot of class names to populate the tree without manual ownership handling.
+    for (std::string dataTypename : m->getDataManager()->getDataDefinitionClassnames()) {
         for (ModelDataDefinition* comp : *m->getDataManager()->getDataDefinitionList(dataTypename)->list()) {
             QList<QTreeWidgetItem*> items = _dataDefinitionsTree->findItems(
                 QString::fromStdString(std::to_string(comp->getId())),
@@ -121,7 +122,8 @@ void ModelInspectorController::applyDataDefinitionNameChange(QTreeWidgetItem* it
             return;
         }
 
-        for (std::string dataTypename : *m->getDataManager()->getDataDefinitionClassnames()) {
+        // Iterate over a value snapshot of class names when applying renames to matching data definitions.
+        for (std::string dataTypename : m->getDataManager()->getDataDefinitionClassnames()) {
             for (ModelDataDefinition* comp : *m->getDataManager()->getDataDefinitionList(dataTypename)->list()) {
                 QString id = QString::fromStdString(Util::StrIndex(comp->getId()));
                 if (id.contains(item->text(0))) {

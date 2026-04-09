@@ -116,9 +116,9 @@ public:
 	int getRankOf(std::string datadefinitionTypename, std::string name); //!< returns the position (1st position=0) of the modeldatum if found, or negative value if not found
 	/*!
 	 * \brief getDataDefinitionClassnames
-	 * \return Heap-allocated list snapshot; caller must delete it after use.
+	 * \return Snapshot list of current data-definition class names returned by value.
 	 */
-	std::list<std::string>* getDataDefinitionClassnames() const;
+	std::list<std::string> getDataDefinitionClassnames() const;
 
 	//private:
 public:

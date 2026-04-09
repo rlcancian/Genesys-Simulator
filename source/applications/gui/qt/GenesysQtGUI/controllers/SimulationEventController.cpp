@@ -121,7 +121,8 @@ void SimulationEventController::onModelCheckSuccessHandler(ModelEvent* re) const
         ModelDataManager* dm = model->getDataManager();
         ModelGraphicsView* modelGraphView = _graphicsView;
         Q_UNUSED(modelGraphView)
-        for (auto elemclassname : *dm->getDataDefinitionClassnames()) {
+        // Iterate over a value snapshot of data-definition class names while touching checked model data.
+        for (auto elemclassname : dm->getDataDefinitionClassnames()) {
             for (ModelDataDefinition* elem : *dm->getDataDefinitionList(elemclassname)->list()) {
                 Util::identification id = elem->getId();
                 Q_UNUSED(id)

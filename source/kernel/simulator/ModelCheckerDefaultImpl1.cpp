@@ -147,9 +147,9 @@ bool ModelCheckerDefaultImpl1::checkSymbols() {
 				bool result;
 				ModelDataDefinition* modeldatum;
                 std::string errorMessage = "";
-				// Release the temporary type-name list after checking all data-definition symbols.
-				std::list<std::string>* elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
-				for (std::list<std::string>::iterator typeIt = elementTypes->begin(); typeIt != elementTypes->end(); typeIt++) {
+				// Iterate over a value snapshot of type names while checking all registered data definitions.
+				std::list<std::string> elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
+				for (std::list<std::string>::iterator typeIt = elementTypes.begin(); typeIt != elementTypes.end(); typeIt++) {
 					elementType = (*typeIt);
 					List<ModelDataDefinition*>* elements = _model->getDataManager()->getDataDefinitionList(elementType);
 					for (std::list<ModelDataDefinition*>::iterator it = elements->list()->begin(); it != elements->list()->end(); it++) {
@@ -171,7 +171,6 @@ bool ModelCheckerDefaultImpl1::checkSymbols() {
 						Util::DecIndent();
 					}
 				}
-				delete elementTypes;
 			}
 			Util::DecIndent();
 		}
@@ -235,20 +234,19 @@ bool ModelCheckerDefaultImpl1::checkOrphaned() {
 	{
 		std::list<ModelDataDefinition*>* orphaned = new std::list<ModelDataDefinition*>();
 		// Start by including all elements as orphaned
-		// Hold and free a temporary snapshot of type names when enumerating initial orphan candidates.
-		std::list<std::string>* allTypes = _model->getDataManager()->getDataDefinitionClassnames();
-		for (std::string ddtypename : *allTypes) {
+		// Use a value snapshot of type names when enumerating initial orphan candidates.
+		std::list<std::string> allTypes = _model->getDataManager()->getDataDefinitionClassnames();
+		for (std::string ddtypename : allTypes) {
 			for (ModelDataDefinition* element : *_model->getDataManager()->getDataDefinitionList(ddtypename)->list()) {
 				orphaned->insert(orphaned->end(), element);
 			}
 		}
-		delete allTypes;
 		// now exclude all those are refered by someone.
 		ModelDataDefinition* mdd;
 		// ... by someone (ModelDataDefinition).
-		// Hold and free another snapshot because orphan pruning can trigger recursive checks with changed registries.
-		std::list<std::string>* referencedTypes = _model->getDataManager()->getDataDefinitionClassnames();
-		for (std::string ddtypename : *referencedTypes) {
+		// Use another value snapshot because orphan pruning may observe changes made during checking.
+		std::list<std::string> referencedTypes = _model->getDataManager()->getDataDefinitionClassnames();
+		for (std::string ddtypename : referencedTypes) {
 			for (ModelDataDefinition* element : *_model->getDataManager()->getDataDefinitionList(ddtypename)->list()) {
 				for (std::pair<std::string, ModelDataDefinition*> pairInternal : *element->getInternalData()) {
 					mdd = pairInternal.second;
@@ -262,7 +260,6 @@ bool ModelCheckerDefaultImpl1::checkOrphaned() {
 				}
 			}
 		}
-		delete referencedTypes;
 		// ... by someone (ModelComponent).
 		for (ModelComponent* component : *_model->getComponentManager()->getAllComponents()) {
 			for (std::pair<std::string, ModelDataDefinition*> pairInternal : *component->getInternalData()) {

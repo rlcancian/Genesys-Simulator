@@ -1003,7 +1003,8 @@ void ModelGraphicsScene::createDiagrams()
     QColor purple(128,0,128);
     QColor grey(220,220,220);
     //creating graphicalModelDataDefinitions
-    for (std::string dataTypename : *m->getDataManager()->getDataDefinitionClassnames()) {
+    // Iterate over a value snapshot of data-definition class names when creating diagram nodes.
+    for (std::string dataTypename : m->getDataManager()->getDataDefinitionClassnames()) {
         std::list<ModelDataDefinition*>* listDataDefinitions = dataManager->getDataDefinitionList(dataTypename)->list();
 
         for (auto it = listDataDefinitions->begin(); it != listDataDefinitions->end(); ++it) {
@@ -1014,7 +1015,8 @@ void ModelGraphicsScene::createDiagrams()
         }
     }
     //organizing diagram
-    QList<GraphicalModelDataDefinition*>* datadef_visited = new QList<GraphicalModelDataDefinition*>();
+    // Track visited data-definition nodes in automatic storage to avoid temporary heap allocations.
+    QList<GraphicalModelDataDefinition*> datadef_visited;
     QList<GraphicalModelComponent*>* gmcs = getAllComponents();
     //internal and attached data of the modelComponents
     for (int i = 0; i < gmcs->size(); i++) {
@@ -1037,7 +1039,7 @@ void ModelGraphicsScene::createDiagrams()
                 std::string name = gdd->getDataDefinition()->getName();
                 if (name == dataDefinition->getName()) {
                     if (getGraphicalModelComponents()->contains(gmc)) {
-                        if (datadef_visited->contains(gdd)) {
+                        if (datadef_visited.contains(gdd)) {
                             qreal x = (gdd->x() + component_pos.x()) / 2;
                             gdd->setPos(x, y_attached -150);
                             gdd->setOldPosition(x, y_attached -150);
@@ -1050,7 +1052,7 @@ void ModelGraphicsScene::createDiagrams()
 
                         } else {
 
-                            datadef_visited->append(gdd);
+                            datadef_visited.append(gdd);
                             y_attached = y_attached - 150;
 
                             gdd->setPos(component_pos.x(), y_attached);
@@ -1077,7 +1079,7 @@ void ModelGraphicsScene::createDiagrams()
                 GraphicalModelDataDefinition* gdd = graphicalDataDefinitions->at(j);
                 std::string name = gdd->getDataDefinition()->getName();
                 if (name == dataDefinition->getName()) {
-                    datadef_visited->append(gdd);
+                    datadef_visited.append(gdd);
                     y_internal = y_internal + 150;
 
                     gdd->setPos(component_pos.x(), y_internal);
@@ -1091,8 +1093,9 @@ void ModelGraphicsScene::createDiagrams()
         }
     }
     //internalData of the DataDefinitions
-    for (int i = 0; i < datadef_visited->size(); i++) {
-        GraphicalModelDataDefinition* parentDataDefinition = datadef_visited->at(i);
+    // Reuse the visited-node list while wiring internal links among data-definition diagram nodes.
+    for (int i = 0; i < datadef_visited.size(); i++) {
+        GraphicalModelDataDefinition* parentDataDefinition = datadef_visited.at(i);
         std::map<std::string, ModelDataDefinition*>* internalData = parentDataDefinition->getDataDefinition()->getInternalData();
 
         QPointF dataDefinition_pos = parentDataDefinition->getOldPosition();
@@ -1106,7 +1109,7 @@ void ModelGraphicsScene::createDiagrams()
                 GraphicalModelDataDefinition* gdd = graphicalDataDefinitions->at(j);
                 std::string name = gdd->getDataDefinition()->getName();
                 if (name == dataDefinition->getName()) {
-                    datadef_visited->append(gdd);
+                    datadef_visited.append(gdd);
                     x = x - 200;
 
                     gdd->setPos(x, dataDefinition_pos.y());
@@ -1121,7 +1124,6 @@ void ModelGraphicsScene::createDiagrams()
     }
     _diagram = true;
     actualizeDiagramArrows();
-    delete datadef_visited;
 }
 
 void ModelGraphicsScene::actualizeDiagramArrows() {
