@@ -1,7 +1,11 @@
+#include <cmath>
 #include <gtest/gtest.h>
 
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ParserDefaultImpl2.h"
+#include "kernel/statistics/SamplerDefaultImpl1.h"
+#include "parser/Genesys++-driver.h"
 
 class ParserExpressionsTest : public ::testing::Test {
 protected:
@@ -35,4 +39,269 @@ TEST_F(ParserExpressionsTest, MathFunctionsRoundTruncFracAndSqrt) {
     EXPECT_DOUBLE_EQ(model->parseExpression("trunc(3.9)"), 3.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("frac(3.9)"), 0.9);
     EXPECT_DOUBLE_EQ(model->parseExpression("sqrt(9)"), 3.0);
+}
+
+TEST_F(ParserExpressionsTest, ProbabilisticFunctionsValidExpressionsWithThrowsExceptionTrue) {
+    bool success = false;
+    std::string errorMessage;
+
+    const double unifValue = model->parseExpression("unif(0.8,1.0)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(unifValue));
+    EXPECT_GE(unifValue, 0.8);
+    EXPECT_LE(unifValue, 1.0);
+
+    errorMessage.clear();
+    const double triaValue = model->parseExpression("tria(1,2,3)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(triaValue));
+    EXPECT_GE(triaValue, 1.0);
+    EXPECT_LE(triaValue, 3.0);
+
+    errorMessage.clear();
+    const double expoValue = model->parseExpression("expo(2.0)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(expoValue));
+    EXPECT_GE(expoValue, 0.0);
+
+    errorMessage.clear();
+    const double weibValue = model->parseExpression("weib(2,3)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(weibValue));
+    EXPECT_GE(weibValue, 0.0);
+}
+
+TEST_F(ParserExpressionsTest, AdditionalProbabilisticFunctionsValidExpressionsWithThrowsExceptionTrue) {
+    bool success = false;
+    std::string errorMessage;
+
+    const double normValue = model->parseExpression("norm(0,1)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(normValue));
+
+    errorMessage.clear();
+    const double lognValue = model->parseExpression("logn(2,0.5)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(lognValue));
+    EXPECT_GE(lognValue, 0.0);
+
+    errorMessage.clear();
+    const double gammValue = model->parseExpression("gamm(2,3)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(gammValue));
+    EXPECT_GE(gammValue, 0.0);
+
+    errorMessage.clear();
+    const double erlaValue = model->parseExpression("erla(4,2)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(erlaValue));
+    EXPECT_GE(erlaValue, 0.0);
+
+    errorMessage.clear();
+    const double betaValue = model->parseExpression("beta(2,3,0,1)", success, errorMessage);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_TRUE(std::isfinite(betaValue));
+    EXPECT_GE(betaValue, 0.0);
+    EXPECT_LE(betaValue, 1.0);
+}
+
+TEST_F(ParserExpressionsTest, ProbabilisticFunctionsInvalidExpressionsAreRecoverableWithThrowsExceptionTrue) {
+    bool success = true;
+    std::string errorMessage;
+
+    (void) model->parseExpression("unif(1,0.8)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("unif"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("tria(3,2,1)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("tria"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("weib(-1,2)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("weib"), std::string::npos);
+}
+
+TEST_F(ParserExpressionsTest, AdditionalProbabilisticFunctionsInvalidExpressionsAreRecoverableWithThrowsExceptionTrue) {
+    bool success = true;
+    std::string errorMessage;
+
+    (void) model->parseExpression("norm(0,-1)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("norm"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("logn(0,0.5)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("logn"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("logn(2,-0.5)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("logn"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("gamm(2,0)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("gamm"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("erla(4,0)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("erla"), std::string::npos);
+
+    errorMessage.clear();
+    (void) model->parseExpression("beta(2,3,1,0)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("beta"), std::string::npos);
+}
+
+TEST(ParserDriverThrowsFalseTest, ProbabilisticFunctionsRecoverWithoutThrowing) {
+    SamplerDefaultImpl1 sampler;
+    genesyspp_driver driver(nullptr, &sampler, false);
+
+    EXPECT_NO_THROW({
+        const int parseResult = driver.parse_str("unif(0.8,1.0)");
+        EXPECT_EQ(parseResult, 0);
+        EXPECT_TRUE(driver.getErrorMessage().empty());
+        const double value = driver.getResult();
+        EXPECT_TRUE(std::isfinite(value));
+        EXPECT_GE(value, 0.8);
+        EXPECT_LE(value, 1.0);
+    });
+
+    EXPECT_NO_THROW({
+        const int parseResult = driver.parse_str("unif(1,0.8)");
+        EXPECT_NE(parseResult, 0);
+        EXPECT_EQ(driver.getResult(), -1.0);
+        const std::string message = driver.getErrorMessage();
+        EXPECT_FALSE(message.empty());
+        EXPECT_NE(message.find("unif"), std::string::npos);
+    });
+
+    EXPECT_NO_THROW({
+        const int parseResult = driver.parse_str("tria(3,2,1)");
+        EXPECT_NE(parseResult, 0);
+        EXPECT_EQ(driver.getResult(), -1.0);
+        const std::string message = driver.getErrorMessage();
+        EXPECT_FALSE(message.empty());
+        EXPECT_NE(message.find("tria"), std::string::npos);
+    });
+
+    EXPECT_NO_THROW({
+        const int parseResult = driver.parse_str("weib(-1,2)");
+        EXPECT_NE(parseResult, 0);
+        EXPECT_EQ(driver.getResult(), -1.0);
+        const std::string message = driver.getErrorMessage();
+        EXPECT_FALSE(message.empty());
+        EXPECT_NE(message.find("weib"), std::string::npos);
+    });
+
+    EXPECT_NO_THROW({
+        const int parseResult = driver.parse_str("logn(2,-0.5)");
+        EXPECT_NE(parseResult, 0);
+        EXPECT_EQ(driver.getResult(), -1.0);
+        const std::string message = driver.getErrorMessage();
+        EXPECT_FALSE(message.empty());
+        EXPECT_NE(message.find("logn"), std::string::npos);
+    });
+}
+
+
+class CountingSampler final : public Sampler_if {
+public:
+    explicit CountingSampler(int* destroyedCounter, bool* destroyedFlag = nullptr)
+        : _destroyedCounter(destroyedCounter), _destroyedFlag(destroyedFlag) {}
+
+    ~CountingSampler() override {
+        if (_destroyedCounter != nullptr) {
+            ++(*_destroyedCounter);
+        }
+        if (_destroyedFlag != nullptr) {
+            *_destroyedFlag = true;
+        }
+    }
+
+    double random() override { return 0.5; }
+    double sampleBeta(double, double, double infLimit, double) override { return infLimit; }
+    double sampleBeta(double, double) override { return 0.5; }
+    double sampleErlang(double, int, double offset = 0.0) override { return offset; }
+    double sampleExponential(double, double offset = 0.0) override { return offset; }
+    double sampleGamma(double, double, double offset = 0.0) override { return offset; }
+    double sampleGumbell(double mode, double) override { return mode; }
+    double sampleLogNormal(double, double, double offset = 0.0) override { return offset; }
+    double sampleNormal(double mean, double) override { return mean; }
+    double sampleTriangular(double min, double, double) override { return min; }
+    double sampleUniform(double min, double) override { return min; }
+    double sampleWeibull(double, double) override { return 0.0; }
+    double sampleBinomial(int, double) override { return 0.0; }
+    double sampleBernoulli(double) override { return 0.0; }
+    double sampleDiscrete(double, double, ...) override { return 0.0; }
+    double sampleDiscrete(double*, double*, int) override { return 0.0; }
+    double sampleGeometric(double) override { return 0.0; }
+    void setRNGparameters(RNG_Parameters*) override {}
+    RNG_Parameters* getRNGparameters() const override { return nullptr; }
+
+private:
+    int* _destroyedCounter = nullptr;
+    bool* _destroyedFlag = nullptr;
+};
+
+TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerDeletesPreviousOwnedSamplerAndDoesNotDeleteExternalSampler) {
+    int destroyedCounter = 0;
+    bool externalDestroyed = false;
+
+    auto* initiallyOwnedSampler = new CountingSampler(&destroyedCounter);
+    CountingSampler externalSampler(&destroyedCounter, &externalDestroyed);
+
+    {
+        ParserDefaultImpl2 parser(model, initiallyOwnedSampler, false);
+        parser.setSampler(&externalSampler);
+        EXPECT_EQ(parser.getSampler(), &externalSampler);
+        EXPECT_EQ(destroyedCounter, 1);
+        EXPECT_FALSE(externalDestroyed);
+    }
+
+    EXPECT_FALSE(externalDestroyed);
+    EXPECT_EQ(destroyedCounter, 1);
+}
+
+TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerSameExternalPointerDoesNotDeleteIt) {
+    int destroyedCounter = 0;
+    bool externalDestroyed = false;
+
+    auto* initiallyOwnedSampler = new CountingSampler(&destroyedCounter);
+    CountingSampler externalSampler(&destroyedCounter, &externalDestroyed);
+
+    {
+        ParserDefaultImpl2 parser(model, initiallyOwnedSampler, false);
+        parser.setSampler(&externalSampler);
+        parser.setSampler(&externalSampler);
+        EXPECT_EQ(parser.getSampler(), &externalSampler);
+        EXPECT_EQ(destroyedCounter, 1);
+        EXPECT_FALSE(externalDestroyed);
+    }
+
+    EXPECT_FALSE(externalDestroyed);
+    EXPECT_EQ(destroyedCounter, 1);
 }

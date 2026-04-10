@@ -1,4 +1,5 @@
 #include "ObjectPropertyBrowser.h"
+#include "../GuiScopeTrace.h"
 
 #include <map>
 #include <set>
@@ -57,6 +58,8 @@ private:
 
 ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
     : QtTreePropertyBrowser(parent) {
+    // Initialize browser managers/factories once before the first clear/rebuild.
+    _ensureBrowserInfrastructure();
 
     _clearAll();
 
@@ -68,55 +71,78 @@ ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
     setAlternatingRowColors(true);
 }
 
+void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
+    // Keep a trace for one-time browser infrastructure setup diagnostics.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_ensureBrowserInfrastructure", this);
+
+    if (_variantManager == nullptr) {
+        // Create the variant manager only once and keep QObject parent ownership.
+        _variantManager = new QtVariantPropertyManager(this);
+        connect(
+            _variantManager,
+            SIGNAL(valueChanged(QtProperty*,QVariant)),
+            this,
+            SLOT(valueChanged(QtProperty*,QVariant))
+            );
+    }
+
+    if (_groupManager == nullptr) {
+        // Create the group manager only once for grouped properties.
+        _groupManager = new QtGroupPropertyManager(this);
+    }
+
+    if (_enumManager == nullptr) {
+        // Create the enum manager only once and connect value notifications once.
+        _enumManager = new QtEnumPropertyManager(this);
+        connect(
+            _enumManager,
+            SIGNAL(valueChanged(QtProperty*,int)),
+            this,
+            SLOT(enumValueChanged(QtProperty*,int))
+            );
+    }
+
+    if (_variantFactory == nullptr) {
+        // Preserve commit-aware variant editor factory behavior with one-time creation.
+        auto* commitFactory = new CommitAwareVariantEditorFactory(this);
+        commitFactory->setCommitCallback([this](QtProperty* property) {
+            onVariantEditorCommitted(property);
+        });
+        _variantFactory = commitFactory;
+    }
+
+    if (_enumFactory == nullptr) {
+        // Create the enum factory once for enum editor widgets.
+        _enumFactory = new QtEnumEditorFactory(this);
+    }
+
+    // Bind manager/factory pairs only once to keep browser infrastructure idempotent.
+    if (!_browserInfrastructureBound
+        && _variantManager != nullptr
+        && _variantFactory != nullptr
+        && _enumManager != nullptr
+        && _enumFactory != nullptr) {
+        setFactoryForManager(_variantManager, _variantFactory);
+        setFactoryForManager(_enumManager, _enumFactory);
+        _browserInfrastructureBound = true;
+    }
+}
+
 void ObjectPropertyBrowser::_clearAll() {
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_clearAll", this);
+    // Ensure infrastructure is available while clearing only transient browser content.
+    _ensureBrowserInfrastructure();
     clear();
     _bindings.clear();
     _enumNames.clear();
     _pendingCommittedProperties.clear();
     _pendingCommittedValues.clear();
-
-    delete _variantFactory;
-    delete _enumFactory;
-    delete _variantManager;
-    delete _groupManager;
-    delete _enumManager;
-
-    _variantFactory = nullptr;
-    _enumFactory = nullptr;
-    _variantManager = nullptr;
-    _groupManager = nullptr;
-    _enumManager = nullptr;
-
-    _variantManager = new QtVariantPropertyManager(this);
-    _groupManager = new QtGroupPropertyManager(this);
-    _enumManager = new QtEnumPropertyManager(this);
-
-    auto* commitFactory = new CommitAwareVariantEditorFactory(this);
-    commitFactory->setCommitCallback([this](QtProperty* property) {
-        onVariantEditorCommitted(property);
-    });
-    _variantFactory = commitFactory;
-    _enumFactory = new QtEnumEditorFactory(this);
-
-    setFactoryForManager(_variantManager, _variantFactory);
-    setFactoryForManager(_enumManager, _enumFactory);
-
-    connect(
-        _variantManager,
-        SIGNAL(valueChanged(QtProperty*,QVariant)),
-        this,
-        SLOT(valueChanged(QtProperty*,QVariant))
-        );
-
-    connect(
-        _enumManager,
-        SIGNAL(valueChanged(QtProperty*,int)),
-        this,
-        SLOT(enumValueChanged(QtProperty*,int))
-        );
 }
 
 void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::clearCurrentlyConnectedObject", this);
     // Fully detach object/editor pointers before clearing UI bindings.
     _graphicalObject = nullptr;
     _modelObject = nullptr;
@@ -126,6 +152,12 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
     _pendingRebuild = false;
     _isDeferredRebuildScheduled = false;
     _isDeferredModelChangedScheduled = false;
+    // Logs binding state reset to correlate object detachment with rebuild activity.
+    qInfo() << "[PropertyEditor] clearCurrentlyConnectedObject state graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     _clearAll();
 }
 
@@ -150,9 +182,17 @@ void ObjectPropertyBrowser::setActiveObject(
     std::map<SimulationControl*, DataComponentEditor*>* peUI,
     std::map<SimulationControl*, ComboBoxEnum*>* pb
     ) {
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::setActiveObject", this);
     // Always detach stale bindings first to avoid stale-pointer use during rebinding.
     clearCurrentlyConnectedObject();
 
+    // Logs new active binding pointers and state for selection-to-editor diagnostics.
+    qInfo() << "[PropertyEditor] setActiveObject bind graphical=" << static_cast<void*>(obj)
+            << " model=" << static_cast<void*>(mdd)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Bind the new active object and editor dependencies for the next safe rebuild.
     _graphicalObject = obj;
     _modelObject = mdd;
@@ -167,7 +207,12 @@ void ObjectPropertyBrowser::setActiveObject(
 
 // Rebuild properties with explicit suppression of nested recursive rebuild execution.
 void ObjectPropertyBrowser::_rebuildPropertiesGuarded() {
-    qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded enter. rebuilding=" << _isRebuildingProperties
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_rebuildPropertiesGuarded", this);
+    // Logs guarded rebuild state transitions for crash-path observability.
+    qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded enter. graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
             << " notifying=" << _isNotifyingModelChange << " pending=" << _pendingRebuild;
     if (_isRebuildingProperties) {
         _pendingRebuild = true;
@@ -267,7 +312,14 @@ bool ObjectPropertyBrowser::_hasValidActiveBindingContext(QtProperty* property) 
 }
 
 void ObjectPropertyBrowser::_rebuildProperties() {
-    qInfo() << "[PropertyEditor] _rebuildProperties enter";
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_rebuildProperties", this);
+    // Logs rebuild context pointers and flags before mutating property browser structures.
+    qInfo() << "[PropertyEditor] _rebuildProperties enter graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Clear existing browser state first so stale bindings cannot survive across rebuilds.
     _clearAll();
 
@@ -740,7 +792,14 @@ void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
 }
 
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
-    qInfo() << "[PropertyEditor] valueChanged enter";
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::valueChanged", this);
+    // Logs value-change state for commit pipeline and active-object diagnostics.
+    qInfo() << "[PropertyEditor] valueChanged enter graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Drop edits while a guarded rebuild is in progress to avoid reentrant mutation.
     if (_isRebuildingProperties) {
         qInfo() << "[PropertyEditor] valueChanged ignored because rebuild is active";
@@ -777,7 +836,14 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
 }
 
 void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
-    qInfo() << "[PropertyEditor] enumValueChanged enter";
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::enumValueChanged", this);
+    // Logs enum-change state for commit pipeline and active-object diagnostics.
+    qInfo() << "[PropertyEditor] enumValueChanged enter graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Drop enum edits while a guarded rebuild is in progress to avoid reentrant mutation.
     if (_isRebuildingProperties) {
         qInfo() << "[PropertyEditor] enumValueChanged ignored because rebuild is active";
@@ -834,7 +900,14 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 }
 
 void ObjectPropertyBrowser::_notifyModelChangeApplied() {
-    qInfo() << "[PropertyEditor] _notifyModelChangeApplied enter";
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_notifyModelChangeApplied", this);
+    // Logs model-change notification state to diagnose nested refresh cycles.
+    qInfo() << "[PropertyEditor] _notifyModelChangeApplied enter graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Suppress nested notification loops when model callbacks trigger additional edits.
     if (_isNotifyingModelChange) {
         _pendingRebuild = true;

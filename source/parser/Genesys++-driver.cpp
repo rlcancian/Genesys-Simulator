@@ -1,16 +1,111 @@
 #include <string>
+#include <exception>
 #include "Genesys++-driver.h"
 //#include "../Traits.h"
 
 //using namespace GenesysKernel;
 
-genesyspp_driver::genesyspp_driver() {
+namespace {
+// Deep-copy the referred-data registry so copied drivers do not share list ownership.
+std::map<std::string, std::list<std::string>*>* cloneReferedDataElements(const std::map<std::string, std::list<std::string>*>* source) {
+	auto* cloned = new std::map<std::string, std::list<std::string>*>();
+	if (source == nullptr) {
+		return cloned;
+	}
+	for (const auto& entry : *source) {
+		cloned->insert({entry.first, entry.second != nullptr ? new std::list<std::string>(*entry.second) : nullptr});
+	}
+	return cloned;
 }
+}
+
+genesyspp_driver::genesyspp_driver() {}
 
 genesyspp_driver::genesyspp_driver(/*GenesysKernel::*/Model* model, Sampler_if* sampler, bool throws) {
 	_model = model;
 	_sampler = sampler;
 	throwsException = throws;
+}
+
+// Release all dynamically allocated lists and the registry map owned by this driver.
+genesyspp_driver::~genesyspp_driver() {
+	clearReferedDataElements();
+	delete _referedDataElements;
+	_referedDataElements = nullptr;
+}
+
+// Copy constructor performs a deep copy of referred-data lists to avoid shared ownership.
+genesyspp_driver::genesyspp_driver(const genesyspp_driver& other)
+	: _model(other._model),
+	  _sampler(other._sampler),
+	  _referedDataElements(cloneReferedDataElements(other._referedDataElements)),
+	  _isRegisterReferedDataElements(other._isRegisterReferedDataElements),
+	  result(other.result),
+	  file(other.file),
+	  str_to_parse(other.str_to_parse),
+	  throwsException(other.throwsException),
+	  errorMessage(other.errorMessage) {}
+
+// Copy assignment replaces local registry with a deep-copied registry from the source driver.
+genesyspp_driver& genesyspp_driver::operator=(const genesyspp_driver& other) {
+	if (this == &other) {
+		return *this;
+	}
+	auto* newReferedDataElements = cloneReferedDataElements(other._referedDataElements);
+	clearReferedDataElements();
+	delete _referedDataElements;
+	_model = other._model;
+	_sampler = other._sampler;
+	_referedDataElements = newReferedDataElements;
+	_isRegisterReferedDataElements = other._isRegisterReferedDataElements;
+	result = other.result;
+	file = other.file;
+	str_to_parse = other.str_to_parse;
+	throwsException = other.throwsException;
+	errorMessage = other.errorMessage;
+	return *this;
+}
+
+// Move constructor transfers the registry pointer and leaves source in a valid empty state.
+genesyspp_driver::genesyspp_driver(genesyspp_driver&& other) noexcept
+	: _model(other._model),
+	  _sampler(other._sampler),
+	  _referedDataElements(other._referedDataElements),
+	  _isRegisterReferedDataElements(other._isRegisterReferedDataElements),
+	  result(other.result),
+	  file(std::move(other.file)),
+	  str_to_parse(std::move(other.str_to_parse)),
+	  throwsException(other.throwsException),
+	  errorMessage(std::move(other.errorMessage)) {
+	other._model = nullptr;
+	other._sampler = nullptr;
+	other._referedDataElements = nullptr;
+	other._isRegisterReferedDataElements = false;
+	other.result = 0.0;
+}
+
+// Move assignment safely releases current resources before taking over source ownership.
+genesyspp_driver& genesyspp_driver::operator=(genesyspp_driver&& other) noexcept {
+	if (this == &other) {
+		return *this;
+	}
+	clearReferedDataElements();
+	delete _referedDataElements;
+	_model = other._model;
+	_sampler = other._sampler;
+	_referedDataElements = other._referedDataElements;
+	_isRegisterReferedDataElements = other._isRegisterReferedDataElements;
+	result = other.result;
+	file = std::move(other.file);
+	str_to_parse = std::move(other.str_to_parse);
+	throwsException = other.throwsException;
+	errorMessage = std::move(other.errorMessage);
+	other._model = nullptr;
+	other._sampler = nullptr;
+	other._referedDataElements = nullptr;
+	other._isRegisterReferedDataElements = false;
+	other.result = 0.0;
+	return *this;
 }
 
 /*
@@ -37,7 +132,36 @@ int genesyspp_driver::parse_file(const std::string &f) {
 	setErrorMessage("");
 	scan_begin_file();
 	yy::genesyspp_parser parser(*this);
-	int res = parser.parse();
+	int res = -1;
+	try {
+		res = parser.parse();
+	} catch (const std::string& e) {
+		setErrorMessage(e);
+		setResult(-1);
+		scan_end_file();
+		if (throwsException) {
+			throw std::string(e);
+		}
+		return res;
+	} catch (const std::exception& e) {
+		const std::string message = e.what();
+		setErrorMessage(message);
+		setResult(-1);
+		scan_end_file();
+		if (throwsException) {
+			throw std::string(message);
+		}
+		return res;
+	} catch (...) {
+		const std::string message = "Unknown parser error";
+		setErrorMessage(message);
+		setResult(-1);
+		scan_end_file();
+		if (throwsException) {
+			throw std::string(message);
+		}
+		return res;
+	}
 	scan_end_file();
 	return res;
 }
@@ -48,7 +172,36 @@ int genesyspp_driver::parse_str(const std::string &str) {
 	setErrorMessage("");
 	scan_begin_str();
 	yy::genesyspp_parser parser(*this);
-	int res = parser.parse();
+	int res = -1;
+	try {
+		res = parser.parse();
+	} catch (const std::string& e) {
+		setErrorMessage(e);
+		setResult(-1);
+		scan_end_str();
+		if (throwsException) {
+			throw std::string(e);
+		}
+		return res;
+	} catch (const std::exception& e) {
+		const std::string message = e.what();
+		setErrorMessage(message);
+		setResult(-1);
+		scan_end_str();
+		if (throwsException) {
+			throw std::string(message);
+		}
+		return res;
+	} catch (...) {
+		const std::string message = "Unknown parser error";
+		setErrorMessage(message);
+		setResult(-1);
+		scan_end_str();
+		if (throwsException) {
+			throw std::string(message);
+		}
+		return res;
+	}
 	scan_end_str();
 	return res;
 }
@@ -117,6 +270,14 @@ std::map<std::string, std::list<std::string>*>* genesyspp_driver::getReferedData
 	return _referedDataElements;
 }
 void genesyspp_driver::clearReferedDataElements() {
+	// Delete each allocated list before clearing the map to avoid leaking referred-name lists.
+	if (_referedDataElements == nullptr) {
+		return;
+	}
+	for (auto& entry : *_referedDataElements) {
+		delete entry.second;
+		entry.second = nullptr;
+	}
 	_referedDataElements->clear();
 }
 

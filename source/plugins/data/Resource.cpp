@@ -98,6 +98,28 @@ Resource::Resource(Model* model, std::string name) : ModelDataDefinition(model, 
     _addProperty(propCapacitySchedule);
 }
 
+Resource::~Resource() {
+    if (_resourceEventHandlers != nullptr) {
+        for (SortedResourceEventHandler* sreh : *_resourceEventHandlers->list()) {
+            delete sreh;
+        }
+        _resourceEventHandlers->clear();
+        delete _resourceEventHandlers;
+        _resourceEventHandlers = nullptr;
+    }
+
+    if (_failures != nullptr) {
+        for (Failure* failure : *_failures->list()) {
+            if (failure != nullptr) {
+                failure->falingResources()->remove(this);
+            }
+        }
+        _failures->clear();
+        delete _failures;
+        _failures = nullptr;
+    }
+}
+
 std::string Resource::show() {
     return ModelDataDefinition::show() +
             ",capacity=" + Util::StrTruncIfInt(std::to_string(_capacity)) +
@@ -191,7 +213,7 @@ void Resource::_active() {
 //
 
 void Resource::setResourceState(ResourceState _resourceState) {
-    _resourceState = _resourceState;
+    this->_resourceState = _resourceState;
 }
 
 Resource::ResourceState Resource::getResourceState() const {
@@ -210,7 +232,7 @@ unsigned int Resource::getCapacity() const {
 }
 
 void Resource::setCostBusyTimeUnit(double _costBusyTimeUnit) {
-    _costBusyTimeUnit = _costBusyTimeUnit;
+    this->_costBusyTimeUnit = _costBusyTimeUnit;
 }
 
 double Resource::getCostBusyTimeUnit() const {
@@ -218,7 +240,7 @@ double Resource::getCostBusyTimeUnit() const {
 }
 
 void Resource::setCostIdleTimeUnit(double _costIdleTimeUnit) {
-    _costIdleTimeUnit = _costIdleTimeUnit;
+    this->_costIdleTimeUnit = _costIdleTimeUnit;
 }
 
 double Resource::getCostIdleTimeUnit() const {
@@ -226,7 +248,7 @@ double Resource::getCostIdleTimeUnit() const {
 }
 
 void Resource::setCostPerUse(double _costPerUse) {
-    _costPerUse = _costPerUse;
+    this->_costPerUse = _costPerUse;
 }
 
 double Resource::getCostPerUse() const {
@@ -290,7 +312,7 @@ void Resource::removeFailure(Failure* failure) {
 }
 
 void Resource::setCapacitySchedule(Schedule* _capacitySchedule) {
-    _capacitySchedule = _capacitySchedule;
+    this->_capacitySchedule = _capacitySchedule;
 }
 
 Schedule* Resource::getCapacitySchedule() const {
@@ -342,8 +364,25 @@ bool Resource::_loadInstance(PersistenceRecord *fields) {
         _costIdleTimeUnit = fields->loadField("costIdleTimeUnit", DEFAULT.cost);
         _costPerUse = fields->loadField("costPerUse", DEFAULT.cost);
         _resourceState = static_cast<Resource::ResourceState> (fields->loadField("resourceState", static_cast<int> (DEFAULT.resourceState)));
+
+        std::string scheduleName = fields->loadField("capacitySchedule", std::string(""));
+        _capacitySchedule = static_cast<Schedule*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Schedule>(), scheduleName));
+
+        for (Failure* failure : *_failures->list()) {
+            if (failure != nullptr) {
+                failure->falingResources()->remove(this);
+            }
+        }
+        _failures->clear();
+        unsigned int failuresSize = fields->loadField("failures", 0u);
+        for (unsigned int i = 0; i < failuresSize; i++) {
+            std::string failureName = fields->loadField("failure" + Util::StrIndex(i), std::string(""));
+            Failure* failure = static_cast<Failure*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Failure>(), failureName));
+            if (failure != nullptr) {
+                insertFailure(failure);
+            }
+        }
     }
-    //@TODO: Save failures
     return res;
 }
 
@@ -354,7 +393,13 @@ void Resource::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) 
     fields->saveField("costIdleTimeUnit", _costIdleTimeUnit, DEFAULT.cost, saveDefaultValues);
     fields->saveField("costPerUse", _costPerUse, DEFAULT.cost, saveDefaultValues);
     fields->saveField("resourceState", static_cast<int> (_resourceState), static_cast<int> (DEFAULT.resourceState), saveDefaultValues);
-    //@TODO: load failures
+    fields->saveField("capacitySchedule", _capacitySchedule != nullptr ? _capacitySchedule->getName() : std::string(""), std::string(""), saveDefaultValues);
+    fields->saveField("failures", _failures->size(), 0u, saveDefaultValues);
+    unsigned int i = 0;
+    for (Failure* failure : *_failures->list()) {
+        fields->saveField("failure" + Util::StrIndex(i), failure != nullptr ? failure->getName() : std::string(""), std::string(""), saveDefaultValues);
+        i++;
+    }
 }
 
 bool Resource::_check(std::string& errorMessage) {
@@ -369,6 +414,19 @@ bool Resource::_check(std::string& errorMessage) {
     if (_costBusyTimeUnit < 0 || _costIdleTimeUnit < 0 || _costPerUse < 0) {
         errorMessage += "Resource costs must be non-negative. ";
         resultAll = false;
+    }
+    if (_capacitySchedule != nullptr) {
+        bool scheduleOk = _parentModel->getDataManager()->check(Util::TypeOf<Schedule>(), _capacitySchedule, getName() + ".CapacitySchedule", errorMessage);
+        if (scheduleOk) {
+            scheduleOk &= ModelDataDefinition::Check(_capacitySchedule, errorMessage);
+        }
+        resultAll &= scheduleOk;
+    }
+    for (Failure* failure : *_failures->list()) {
+        resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Failure>(), failure, getName() + ".Failure", errorMessage);
+        if (failure != nullptr) {
+            resultAll &= ModelDataDefinition::Check(failure, errorMessage);
+        }
     }
     return resultAll;
 }
@@ -407,9 +465,42 @@ void Resource::_createInternalAndAttachedData() {
         _parentModel->getOnEventManager()->addOnReplicationEndHandler(this, &Resource::_onReplicationEnd);
     } else if (!_reportStatistics && _cstatTimeSeized != nullptr) {
         _internalDataClear();
+        _cstatTimeSeized = nullptr;
+        _cstatTimeFailed = nullptr;
+        _cstatProportionSeized = nullptr;
+        _cstatCapacityUtilization = nullptr;
+        _counterTotalTimeSeized = nullptr;
+        _counterTotalTimeFailed = nullptr;
+        _counterNumSeizes = nullptr;
+        _counterNumReleases = nullptr;
+        _counterTotalCostPerUse = nullptr;
+        _counterTotalCostBusy = nullptr;
+        _counterTotalCostIdle = nullptr;
     }
+
+    const std::string scheduleKey = getName() + ".CapacitySchedule";
+    if (_capacitySchedule != nullptr) {
+        _attachedDataInsert(scheduleKey, _capacitySchedule);
+    } else {
+        _attachedDataRemove(scheduleKey);
+    }
+
+    std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
+    std::list<std::string> staleFailureKeys;
+    const std::string failurePrefix = getName() + ".Failure.";
+    for (const auto& pair : *attachedData) {
+        if (pair.first.rfind(failurePrefix, 0) == 0) {
+            staleFailureKeys.push_back(pair.first);
+        }
+    }
+    for (const std::string& key : staleFailureKeys) {
+        _attachedDataRemove(key);
+    }
+
     for (Failure* failure : *_failures->list()) {
-        _attachedDataInsert(getName() + "." + failure->getName(), failure);
+        if (failure != nullptr) {
+            _attachedDataInsert(failurePrefix + failure->getName(), failure);
+        }
     }
 }
 

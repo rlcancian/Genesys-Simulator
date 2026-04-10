@@ -212,6 +212,12 @@ void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(std::stri
 		}
 		Util::DecIndent();
 	}
+	// Release temporary lists allocated during reference extraction to avoid local ownership leaks.
+	for (auto& pair : referencedDataDefinitions) {
+		delete pair.second;
+		pair.second = nullptr;
+	}
+	referencedDataDefinitions.clear();
 }
 
 bool ModelDataDefinition::_getSaveDefaultsOption() {

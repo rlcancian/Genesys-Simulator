@@ -12,5 +12,5 @@ add_custom_target(genesys_tests
 )
 
 if(GENESYS_BUILD_SMOKE_TESTS)
-    add_dependencies(genesys_tests genesys_smoke_simulator_start)
+    add_dependencies(genesys_tests genesys_smoke_tests)
 endif()

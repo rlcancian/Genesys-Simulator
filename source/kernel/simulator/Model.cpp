@@ -211,7 +211,23 @@ void Model::checkReferencesToDataDefinitions(std::string expression, std::map<st
 	wrapper.clearReferedDataElements();
 	wrapper.parse_str(expression);
 	std::map<std::string, std::list<std::string>*>* refs = wrapper.getReferedDataElements();
-	referencedDataDefinitions->insert(refs->begin(), refs->end());
+	// Deep-copy referred element names so output map owns stable lists beyond parser wrapper lifetime.
+	for (const auto& typeAndNames : *refs) {
+		const std::string& typeName = typeAndNames.first;
+		const std::list<std::string>* sourceNames = typeAndNames.second;
+		if (sourceNames == nullptr) {
+			continue;
+		}
+		std::list<std::string>*& destinationNames = (*referencedDataDefinitions)[typeName];
+		if (destinationNames == nullptr) {
+			destinationNames = new std::list<std::string>();
+		}
+		for (const std::string& referencedName : *sourceNames) {
+			if (std::find(destinationNames->begin(), destinationNames->end(), referencedName) == destinationNames->end()) {
+				destinationNames->push_back(referencedName);
+			}
+		}
+	}
 	wrapper.setRegisterReferedDataElements(false);
 }
 

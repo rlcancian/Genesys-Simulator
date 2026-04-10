@@ -10,17 +10,16 @@
 #include <QMutexLocker>
 #include <QStandardPaths>
 #include <QTextStream>
-#include <csignal>
 #include <exception>
 #include <iostream>
+#include <cstdlib>
 #include <execinfo.h>
-#include <fcntl.h>
-#include <unistd.h>
 
 #include "../../../GenesysApplication_if.h"
 #include "../../../TraitsApp.h"
 #include "../../../terminal/TraitsTerminalApp.h"
 #include "TraitsGUI.h"
+#include "GuiCrashDiagnostics.h"
 
 namespace {
 QMutex _logMutex;
@@ -70,32 +69,15 @@ void _terminateHandler() {
     std::_Exit(EXIT_FAILURE);
 }
 
-void _signalHandler(int signalNumber) {
-    const QString header = QString("[%1] [FATAL] signal %2 received")
-            .arg(QDateTime::currentDateTime().toString(Qt::ISODateWithMs))
-            .arg(signalNumber);
-    _appendLogLine(header);
-    void *trace[64];
-    int size = backtrace(trace, 64);
-    int fd = ::open(_logPath.toStdString().c_str(), O_WRONLY | O_APPEND | O_CREAT, 0644);
-    if (fd >= 0) {
-        backtrace_symbols_fd(trace, size, fd);
-        ::close(fd);
-    }
-    std::_Exit(128 + signalNumber);
-}
-
 void _installCrashAndLogHandlers() {
+    // Installs temporary fatal-signal crash diagnostics before GUI startup.
+    GuiCrashDiagnostics::installFatalSignalHandlers();
     qSetMessagePattern("[%{time yyyy-MM-ddTHH:mm:ss.zzz}] [%{if-debug}DEBUG%{endif}%{if-info}INFO%{endif}%{if-warning}WARN%{endif}%{if-critical}CRITICAL%{endif}%{if-fatal}FATAL%{endif}] [tid:%{threadid}] [%{file}:%{line}] [%{function}] %{message}");
     _logPath = _defaultLogPath();
     _appendLogLine(QString("[%1] [INFO] Logging started at %2")
                    .arg(QDateTime::currentDateTime().toString(Qt::ISODateWithMs), _logPath));
     qInstallMessageHandler(_qtMessageHandler);
     std::set_terminate(_terminateHandler);
-    std::signal(SIGSEGV, _signalHandler);
-    std::signal(SIGABRT, _signalHandler);
-    std::signal(SIGILL, _signalHandler);
-    std::signal(SIGFPE, _signalHandler);
 }
 }
 

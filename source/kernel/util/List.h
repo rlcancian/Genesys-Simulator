@@ -176,10 +176,9 @@ void List<T>::pop_front() {
 
 template <typename T>
 void List<T>::remove(T element) {
+	// Reset the internal cursor after erasure to avoid dereferencing a stale iterator during recursive removals.
 	_list->remove(element);
-	if ((*_it) == element) { /*  @TODO: +: check this */
-		_it = _list->begin(); // if it points to the removed modeldatum, then changes to begin
-	}
+	_it = _list->begin();
 }
 
 template <typename T>

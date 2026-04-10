@@ -90,7 +90,7 @@ Initial Value Variable value at the start of the simulation.
 class Variable : public ModelDataDefinition {
 public:
     Variable(Model* model, std::string name = "");
-    virtual ~Variable() = default;
+    virtual ~Variable() override;
 public:
     virtual std::string show() override;
 public: //static

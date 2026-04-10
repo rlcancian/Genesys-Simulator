@@ -1,19 +1,9 @@
 #pragma once
 
+#include "HttpRequest.h"
+#include "HttpResponse.h"
+
 #include <functional>
-#include <string>
-
-struct HttpRequest {
-    std::string method;
-    std::string path;
-    std::string body;
-};
-
-struct HttpResponse {
-    int status = 200;
-    std::string contentType = "application/json";
-    std::string body;
-};
 
 class SimpleHttpServer {
 public:

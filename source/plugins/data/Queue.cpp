@@ -59,9 +59,16 @@ Queue::Queue(Model* model, std::string name) : ModelDataDefinition(model, Util::
     _addProperty(propAttributeName);
     _addProperty(propOrderRule);
 	_addProperty(propOrderRuleInt);
+
+	_configureListComparator();
 }
 
 Queue::~Queue() {
+	for (Waiting* waiting : *_list->list()) {
+		delete waiting;
+	}
+	_list->clear();
+	delete _list;
 	//_parentModel->elements()->remove(Util::TypeOf<StatisticsCollector>(), _cstatNumberInQueue);
 	//_parentModel->elements()->remove(Util::TypeOf<StatisticsCollector>(), _cstatTimeInQueue);
 }
@@ -72,6 +79,7 @@ std::string Queue::show() {
 }
 
 void Queue::insertElement(Waiting* modeldatum) {
+	modeldatum->setArrivalOrder(_nextArrivalOrder++);
 	if (_reportStatistics) {
 		double tnow = _parentModel->getSimulation()->getSimulatedTime();
 		double duration = tnow - _lastTimeNumberInQueueChanged;
@@ -82,6 +90,9 @@ void Queue::insertElement(Waiting* modeldatum) {
 }
 
 void Queue::removeElement(Waiting* modeldatum) {
+	if (modeldatum == nullptr) {
+		return;
+	}
 	if (_reportStatistics) {
 		double tnow = _parentModel->getSimulation()->getSimulatedTime();
 		double duration = tnow - _lastTimeNumberInQueueChanged;
@@ -91,11 +102,16 @@ void Queue::removeElement(Waiting* modeldatum) {
 		this->_cstatTimeInQueue->getStatistics()->getCollector()->addValue(timeInQueue);
 	}
 	_list->remove(modeldatum);
+	delete modeldatum;
 }
 
 void Queue::_initBetweenReplications() {
+	for (Waiting* waiting : *_list->list()) {
+		delete waiting;
+	}
 	this->_list->clear();
 	_lastTimeNumberInQueueChanged = 0.0;
+	_nextArrivalOrder = 0;
 }
 
 unsigned int Queue::size() {
@@ -103,6 +119,9 @@ unsigned int Queue::size() {
 }
 
 Waiting* Queue::first() {
+	if (_list->size() == 0) {
+		return nullptr;
+	}
 	return _list->front();
 }
 
@@ -120,7 +139,6 @@ std::string Queue::getAttributeName() const {
 
 void Queue::setOrderRule(OrderRule _orderRule) {
 	this->_orderRule = _orderRule;
-	//@TODO: SORT THE QUEUE BASED ON QUE RULE. Create comparators
 }
 
 Queue::OrderRule Queue::getOrderRule() const {
@@ -185,7 +203,8 @@ void Queue::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 }
 
 bool Queue::_check(std::string& errorMessage) {
-	return _parentModel->getDataManager()->check(Util::TypeOf<Attribute>(), _attributeName, "AttributeName", false, errorMessage);
+	const bool attributeMandatory = _orderRule == OrderRule::HIGHESTVALUE || _orderRule == OrderRule::SMALLESTVALUE;
+	return _parentModel->getDataManager()->check(Util::TypeOf<Attribute>(), _attributeName, "AttributeName", attributeMandatory, errorMessage);
 }
 
 void Queue::_createInternalAndAttachedData() {
@@ -206,4 +225,37 @@ ParserChangesInformation * Queue::_getParserChangesInformation() {
 	//changes->getProductionToAdd()->insert(...);
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
+}
+
+void Queue::_configureListComparator() {
+	_list->setSortFunc([this](const Waiting* a, const Waiting* b) {
+		switch (_orderRule) {
+			case Queue::OrderRule::FIFO:
+				return a->getArrivalOrder() < b->getArrivalOrder();
+			case Queue::OrderRule::LIFO:
+				return a->getArrivalOrder() > b->getArrivalOrder();
+			case Queue::OrderRule::HIGHESTVALUE:
+			case Queue::OrderRule::SMALLESTVALUE: {
+				if (_attributeName.empty()) {
+					return a->getArrivalOrder() < b->getArrivalOrder();
+				}
+				Attribute* attribute = dynamic_cast<Attribute*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), _attributeName));
+				if (attribute == nullptr) {
+					return a->getArrivalOrder() < b->getArrivalOrder();
+				}
+				const Util::identification attributeId = attribute->getId();
+				const double valueA = a->getEntity()->getAttributeValue(attributeId);
+				const double valueB = b->getEntity()->getAttributeValue(attributeId);
+				if (valueA == valueB) {
+					return a->getArrivalOrder() < b->getArrivalOrder();
+				}
+				if (_orderRule == Queue::OrderRule::HIGHESTVALUE) {
+					return valueA > valueB;
+				}
+				return valueA < valueB;
+			}
+			default:
+				return a->getArrivalOrder() < b->getArrivalOrder();
+		}
+	});
 }

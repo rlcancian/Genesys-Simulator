@@ -39,9 +39,9 @@ Delay::Delay(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Delay::delayExpression, this), std::bind(&Delay::setDelayExpression, this, std::placeholders::_1, Util::TimeUnit::unknown),
 									Util::TypeOf<Delay>(), getName(), "DelayExpression", "");
-	SimulationControlGeneric<double>* propDelay = new SimulationControlGeneric<double>(
-									std::bind(&Delay::delay, this), std::bind(&Delay::setDelay, this, std::placeholders::_1),
-									Util::TypeOf<Delay>(), getName(), "Delay", "");
+//	SimulationControlGeneric<double>* propDelay = new SimulationControlGeneric<double>(
+//									std::bind(&Delay::delay, this), std::bind(&Delay::setDelay, this, std::placeholders::_1),
+//									Util::TypeOf<Delay>(), getName(), "Delay", "");
     SimulationControlGenericEnum<Util::TimeUnit, Util>* propUnitTime = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
 									std::bind(&Delay::delayTimeUnit, this),	std::bind(&Delay::setDelayTimeUnit, this, std::placeholders::_1),
 									Util::TypeOf<Delay>(), getName(), "DelayTimeUnit", "");
@@ -50,13 +50,13 @@ Delay::Delay(Model* model, std::string name) : ModelComponent(model, Util::TypeO
                                     Util::TypeOf<Delay>(), getName(), "AllocationType", "");
 
 	_parentModel->getControls()->insert(propExpression);
-	_parentModel->getControls()->insert(propDelay);
+//	_parentModel->getControls()->insert(propDelay);
 	_parentModel->getControls()->insert(propUnitTime);
     _parentModel->getControls()->insert(propAlloc);
 
 	// setting properties
 	_addProperty(propExpression);
-	_addProperty(propDelay);
+//	_addProperty(propDelay);
 	_addProperty(propUnitTime);
     _addProperty(propAlloc);
 }
@@ -104,11 +104,7 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	waitTime *= Util::TimeUnitConvert(_delayTimeUnit, stu);
 	if (_reportStatistics) {
 		std::string allocationCategory = Util::StrAllocation(_allocation);
-		//try { //@TODO: What the hell????!!!
-			_cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
-		//} catch (const std::exception& e) {
-		//	traceError(e.what());
-		//}
+        _cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
 		if (entity->getEntityType()->isReportStatistics())
 			entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + "." + allocationCategory+ "Time")->getStatistics()->getCollector()->addValue(waitTime);
 		double totalWaitTime = entity->getAttributeValue("Entity.Total" + allocationCategory + "Time");
@@ -152,21 +148,56 @@ bool Delay::_check(std::string& errorMessage) {
 	return _parentModel->checkExpression(_delayExpression, "Delay expression", errorMessage);
 }
 
-void Delay::_createInternalAndAttachedData() {
-	if (_reportStatistics && _cstatWaitTime == nullptr) {
-		_attachedAttributesInsert({"Entity.Total" + Util::StrAllocation(_allocation)+"Time"});
-		_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
-		_internalDataInsert("DelayTime", _cstatWaitTime);
-		// include StatisticsCollector needed in EntityType
-		//ModelDataManager* elements = _parentModel->getDataManager();
-		//std::list<ModelDataDefinition*>* enttypes = elements->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
-		//for (ModelDataDefinition* modeldatum : *enttypes) {
-		//	EntityType* enttype = static_cast<EntityType*> (modeldatum);
-		//	if (modeldatum->isReportStatistics())
-		//		enttype->addGetStatisticsCollector(enttype->getName() + ".DelayTime");
-		//}
+std::vector<std::string> Delay::_allAllocationAttachedAttributeNames() const {
+	return {
+		_allocationAttachedAttributeName(Util::AllocationType::ValueAdded),
+		_allocationAttachedAttributeName(Util::AllocationType::NonValueAdded),
+		_allocationAttachedAttributeName(Util::AllocationType::Transfer),
+		_allocationAttachedAttributeName(Util::AllocationType::Wait),
+		_allocationAttachedAttributeName(Util::AllocationType::Others)
+	};
+}
+
+std::string Delay::_allocationAttachedAttributeName(Util::AllocationType allocation) const {
+	return "Entity.Total" + Util::StrAllocation(allocation) + "Time";
+}
+
+void Delay::_reconcileAllocationAttachedAttributes() {
+	std::vector<std::string> allocationAttributes = _allAllocationAttachedAttributeNames();
+	if (_reportStatistics) {
+		const std::string currentAllocationAttribute = _allocationAttachedAttributeName(_allocation);
+		for (const std::string& allocationAttribute : allocationAttributes) {
+			if (allocationAttribute != currentAllocationAttribute) {
+				_attachedDataRemove(allocationAttribute);
+			}
+		}
+		_attachedAttributesInsert({currentAllocationAttribute});
 	} else {
+		for (const std::string& allocationAttribute : allocationAttributes) {
+			_attachedDataRemove(allocationAttribute);
+		}
+	}
+}
+
+void Delay::_createInternalAndAttachedData() {
+	_reconcileAllocationAttachedAttributes();
+
+	if (_reportStatistics) {
+		if (_cstatWaitTime == nullptr) {
+			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
+			_internalDataInsert("DelayTime", _cstatWaitTime);
+			// include StatisticsCollector needed in EntityType
+			//ModelDataManager* elements = _parentModel->getDataManager();
+			//std::list<ModelDataDefinition*>* enttypes = elements->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
+			//for (ModelDataDefinition* modeldatum : *enttypes) {
+			//	EntityType* enttype = static_cast<EntityType*> (modeldatum);
+			//	if (modeldatum->isReportStatistics())
+			//		enttype->addGetStatisticsCollector(enttype->getName() + ".DelayTime");
+			//}
+		}
+	} else if (_cstatWaitTime != nullptr) {
 		_internalDataClear();
+		_cstatWaitTime = nullptr;
 		// @TODO remove StatisticsCollector needed in EntityType
 	}
 }

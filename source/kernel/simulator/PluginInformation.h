@@ -35,6 +35,8 @@ class PluginInformation {
 public:
 	PluginInformation(std::string pluginTypename, StaticLoaderComponentInstance componentloader, StaticConstructorDataDefinitionInstance elementConstructor);
 	PluginInformation(std::string pluginTypename, StaticLoaderDataDefinitionInstance elementloader, StaticConstructorDataDefinitionInstance elementConstructor);
+	// Release owned metadata containers allocated alongside plugin-information objects.
+	virtual ~PluginInformation();
 public:
 	// gets
 	StaticLoaderDataDefinitionInstance getDataDefinitionLoader() const;
@@ -114,4 +116,3 @@ private:
 //namespace\\}
 
 #endif /* PLUGININFORMATION_H */
-

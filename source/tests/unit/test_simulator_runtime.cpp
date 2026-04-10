@@ -1,11 +1,63 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <memory>
+#include <vector>
 
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/Entity.h"
+#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/Persistence.h"
+#include "plugins/data/Queue.h"
+#include "plugins/data/Variable.h"
+#include "plugins/data/Resource.h"
+#include "plugins/data/Failure.h"
+#include "plugins/data/Schedule.h"
+#include "plugins/data/Sequence.h"
+#include "plugins/data/SignalData.h"
+#include "plugins/components/Delay.h"
+#include "plugins/components/Wait.h"
+
+class DelayProbe : public Delay {
+public:
+    DelayProbe(Model* model, const std::string& name = "") : Delay(model, name) {}
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    StatisticsCollector* WaitTimeStatisticsCollectorProbe() const {
+        return _cstatWaitTime;
+    }
+
+    void AddWaitTimeValueProbe(double waitTime) {
+        _cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
+    }
+
+    bool HasAttachedDataProbe(const std::string& key) const {
+        return getAttachedData()->find(key) != getAttachedData()->end();
+    }
+};
+
+class ResourceTestProbe {
+public:
+    static bool HasStatisticsInternals(const Resource& resource) {
+        return resource._cstatTimeSeized != nullptr &&
+               resource._cstatTimeFailed != nullptr &&
+               resource._cstatProportionSeized != nullptr &&
+               resource._cstatCapacityUtilization != nullptr &&
+               resource._counterTotalTimeSeized != nullptr &&
+               resource._counterTotalTimeFailed != nullptr &&
+               resource._counterNumSeizes != nullptr &&
+               resource._counterNumReleases != nullptr &&
+               resource._counterTotalCostPerUse != nullptr &&
+               resource._counterTotalCostBusy != nullptr &&
+               resource._counterTotalCostIdle != nullptr;
+    }
+};
 
 namespace {
 struct SimulationStartObserver {
@@ -45,6 +97,8 @@ public:
 
 static unsigned int g_countingControlProbeDestructorCount = 0;
 static unsigned int g_countingChildProbeDestructorCount = 0;
+static unsigned int g_countingWaitingProbeDestructorCount = 0;
+static unsigned int g_countingSequenceStepProbeDestructorCount = 0;
 
 // Tracks owned-property deletion through ModelDataDefinition teardown.
 class CountingSimulationControlProbe : public SimulationControl {
@@ -95,6 +149,163 @@ public:
         ++g_countingChildProbeDestructorCount;
     }
 };
+
+class QueueLifecycleProbe : public Queue {
+public:
+    QueueLifecycleProbe(Model* model, const std::string& name = "") : Queue(model, name) {}
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class QueueValidationProbe : public Queue {
+public:
+    QueueValidationProbe(Model* model, const std::string& name = "") : Queue(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+};
+
+class VariableLifecycleProbe : public Variable {
+public:
+    VariableLifecycleProbe(Model* model, const std::string& name = "") : Variable(model, name) {}
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class ResourceProbe : public Resource {
+public:
+    ResourceProbe(Model* model, const std::string& name = "") : Resource(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class SequenceProbe : public Sequence {
+public:
+    SequenceProbe(Model* model, const std::string& name = "") : Sequence(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void AttachDataProbe(const std::string& key, ModelDataDefinition* data) {
+        _attachedDataInsert(key, data);
+    }
+};
+
+class SignalDataProbe : public SignalData {
+public:
+    SignalDataProbe(Model* model, const std::string& name = "") : SignalData(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class WaitProbe : public Wait {
+public:
+    WaitProbe(Model* model, const std::string& name = "") : Wait(model, name) {}
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class CountingSequenceStepProbe : public SequenceStep {
+public:
+    CountingSequenceStepProbe(Station* station, std::list<Assignment*>* assignments = nullptr)
+        : SequenceStep(station, assignments) {}
+
+    ~CountingSequenceStepProbe() override {
+        ++g_countingSequenceStepProbeDestructorCount;
+    }
+};
+
+class FakeModelPersistenceRuntime : public ModelPersistence_if {
+public:
+    bool save(std::string) override { return false; }
+    bool load(std::string) override { return false; }
+    bool hasChanged() override { return false; }
+    bool getOption(ModelPersistence_if::Options) override { return false; }
+    void setOption(ModelPersistence_if::Options, bool) override {}
+    std::string getFormatedField(PersistenceRecord*) override { return ""; }
+};
+
+class CountingWaitingProbe final : public Waiting {
+public:
+    CountingWaitingProbe(Entity* entity, double timeStartedWaiting, ModelComponent* thisComponent, unsigned int thisComponentOutputPort = 0)
+        : Waiting(entity, timeStartedWaiting, thisComponent, thisComponentOutputPort) {}
+
+    ~CountingWaitingProbe() override {
+        ++g_countingWaitingProbeDestructorCount;
+    }
+};
+
+std::vector<std::string> DelayAllocationAttributeNames() {
+    return {
+        "Entity.TotalValueAddedTime",
+        "Entity.TotalNonValueAddedTime",
+        "Entity.TotalTransferTime",
+        "Entity.TotalWaitTime",
+        "Entity.TotalOthersTime"
+    };
+}
+
+std::string DelayAllocationAttributeName(Util::AllocationType allocation) {
+    return "Entity.Total" + Util::StrAllocation(allocation) + "Time";
+}
+
+size_t CountAttachedDelayAllocationAttributes(const DelayProbe& delay) {
+    size_t count = 0;
+    for (const std::string& attributeName : DelayAllocationAttributeNames()) {
+        if (delay.HasAttachedDataProbe(attributeName)) {
+            ++count;
+        }
+    }
+    return count;
+}
 }
 
 TEST(SimulatorRuntimeTest, CanConstructSimulatorAndAccessManagers) {
@@ -202,6 +413,33 @@ TEST(SimulatorRuntimeTest, ModelClearIsIdempotentAndKeepsRuntimeUsable) {
     EXPECT_NE(model->getComponentManager(), nullptr);
 }
 
+TEST(SimulatorRuntimeTest, ModelAccessorsExposeStableRuntimeReferencesAndFlags) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EXPECT_EQ(model->getParentSimulator(), &simulator);
+    EXPECT_EQ(model->getTracer(), simulator.getTraceManager());
+    EXPECT_NE(model->getPersistence(), nullptr);
+    EXPECT_EQ(model->getLevel(), 0u);
+
+    const bool initialAutoCreate = model->isAutomaticallyCreatesModelDataDefinitions();
+    model->setAutomaticallyCreatesModelDataDefinitions(!initialAutoCreate);
+    EXPECT_EQ(model->isAutomaticallyCreatesModelDataDefinitions(), !initialAutoCreate);
+}
+
+TEST(SimulatorRuntimeTest, ModelSetTracerRebindsTracerPointer) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    TraceManager alternateTracer(&simulator);
+    model->setTracer(&alternateTracer);
+
+    EXPECT_EQ(model->getTracer(), &alternateTracer);
+    EXPECT_NE(model->getTracer(), simulator.getTraceManager());
+}
+
 TEST(SimulatorRuntimeTest, DataDefinitionClassnamesSnapshotIsReturnedByValue) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -247,6 +485,48 @@ TEST(SimulatorRuntimeTest, AttachedDataRemoveOnlyDetachesRegistryEntry) {
     delete attached;
 }
 
+TEST(SimulatorRuntimeTest, ModelDataManagerSupportsLookupByNameIdAndRank) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* alpha = new SnapshotDataDefinitionProbe(model, "Alpha");
+    auto* beta = new SnapshotDataDefinitionProbe(model, "Beta");
+    auto* manager = model->getDataManager();
+    const std::string typeName = "SnapshotDataDefinitionProbe";
+
+    EXPECT_EQ(manager->getNumberOfDataDefinitions(typeName), 2u);
+    EXPECT_GE(manager->getNumberOfDataDefinitions(), 2u);
+    EXPECT_EQ(manager->getDataDefinition(typeName, "Alpha"), alpha);
+    EXPECT_EQ(manager->getDataDefinition(typeName, beta->getId()), beta);
+    EXPECT_EQ(manager->getRankOf(typeName, "Alpha"), 0);
+    EXPECT_EQ(manager->getRankOf(typeName, "Beta"), 1);
+    EXPECT_EQ(manager->getRankOf(typeName, "Missing"), -1);
+
+    delete alpha;
+    delete beta;
+}
+
+TEST(SimulatorRuntimeTest, ModelDataManagerHasChangedCanBeToggledAndRecomputed) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* manager = model->getDataManager();
+    auto* data = new SnapshotDataDefinitionProbe(model, "ChangeProbe");
+    ASSERT_NE(data, nullptr);
+
+    EXPECT_TRUE(manager->hasChanged());
+
+    manager->setHasChanged(false);
+    EXPECT_FALSE(manager->hasChanged());
+
+    data->setName("ChangeProbeRenamed");
+    EXPECT_TRUE(manager->hasChanged());
+
+    delete data;
+}
+
 TEST(SimulatorRuntimeTest, EntityAttributeValuesRoundTripByNameAndIndex) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -278,6 +558,54 @@ TEST(SimulatorRuntimeTest, RemovingEntityRemovesItFromDataManagerRegistry) {
 
     model->removeEntity(entity);
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions("Entity"), entitiesBefore);
+}
+
+TEST(SimulatorRuntimeTest, EntityAttributesCanBeSetAndReadByAttributeId) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Entity* first = model->createEntity("EntityC", true);
+    Entity* second = model->createEntity("EntityD", true);
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    auto* attribute = new Attribute(model, "Cost");
+    ASSERT_NE(attribute, nullptr);
+    const Util::identification attributeId = attribute->getId();
+
+    first->setAttributeValue(attributeId, 13.5);
+    second->setAttributeValue(attributeId, 21.0, "batch");
+
+    EXPECT_DOUBLE_EQ(first->getAttributeValue(attributeId), 13.5);
+    EXPECT_DOUBLE_EQ(second->getAttributeValue(attributeId, "batch"), 21.0);
+
+    model->removeEntity(first);
+    model->removeEntity(second);
+    delete attribute;
+}
+
+TEST(SimulatorRuntimeTest, ModelDataDefinitionAccessorsExposeStableStateAndMetadata) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* probe = new SnapshotDataDefinitionProbe(model, "ProbeMetadata");
+    ASSERT_NE(probe, nullptr);
+
+    EXPECT_FALSE(probe->getClassname().empty());
+    EXPECT_GT(probe->getId(), 0u);
+    EXPECT_EQ(probe->getName(), "ProbeMetadata");
+    EXPECT_FALSE(probe->hasChanged());
+
+    probe->setModelLevel(3u);
+    EXPECT_EQ(probe->getLevel(), 3u);
+
+    const bool initialReportStatistics = probe->isReportStatistics();
+    probe->setReportStatistics(!initialReportStatistics);
+    EXPECT_EQ(probe->isReportStatistics(), !initialReportStatistics);
+    EXPECT_TRUE(probe->hasChanged());
+
+    delete probe;
 }
 
 TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorRemovesOwnedPropertyFromModelControls) {
@@ -387,4 +715,1023 @@ TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorRemovesOwnedPropertyAlso
     EXPECT_EQ(model->getControls()->size(), controlsBefore);
     EXPECT_EQ(model->getResponses()->size(), responsesBefore);
     EXPECT_EQ(g_countingControlProbeDestructorCount, 1u);
+}
+
+TEST(SimulatorRuntimeTest, QueueFirstOnEmptyQueueReturnsNullptr) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "QueueEmpty");
+    queue.setReportStatistics(false);
+
+    EXPECT_EQ(queue.first(), nullptr);
+    EXPECT_EQ(queue.size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, QueueRemoveElementDeletesOwnedWaiting) {
+    g_countingWaitingProbeDestructorCount = 0;
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "QueueRemove");
+    queue.setReportStatistics(false);
+    Entity* entity = model->createEntity("QueueRemoveEntity", true);
+    ASSERT_NE(entity, nullptr);
+
+    auto* waiting = new CountingWaitingProbe(entity, 0.0, nullptr);
+    queue.insertElement(waiting);
+    queue.removeElement(waiting);
+
+    EXPECT_EQ(queue.size(), 0u);
+    EXPECT_EQ(g_countingWaitingProbeDestructorCount, 1u);
+}
+
+TEST(SimulatorRuntimeTest, QueueInitBetweenReplicationsDeletesOwnedWaiting) {
+    g_countingWaitingProbeDestructorCount = 0;
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    QueueLifecycleProbe queue(model, "QueueInit");
+    queue.setReportStatistics(false);
+    Entity* entityA = model->createEntity("QueueInitEntityA", true);
+    Entity* entityB = model->createEntity("QueueInitEntityB", true);
+    ASSERT_NE(entityA, nullptr);
+    ASSERT_NE(entityB, nullptr);
+
+    queue.insertElement(new CountingWaitingProbe(entityA, 0.0, nullptr));
+    queue.insertElement(new CountingWaitingProbe(entityB, 0.0, nullptr));
+    queue.InitBetweenReplicationsProbe();
+
+    EXPECT_EQ(queue.size(), 0u);
+    EXPECT_EQ(g_countingWaitingProbeDestructorCount, 2u);
+}
+
+TEST(SimulatorRuntimeTest, QueueDestructorDeletesRemainingOwnedWaiting) {
+    g_countingWaitingProbeDestructorCount = 0;
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Entity* entityA = model->createEntity("QueueDestructorEntityA", true);
+    Entity* entityB = model->createEntity("QueueDestructorEntityB", true);
+    ASSERT_NE(entityA, nullptr);
+    ASSERT_NE(entityB, nullptr);
+
+    auto* queue = new Queue(model, "QueueDestructor");
+    queue->setReportStatistics(false);
+    queue->insertElement(new CountingWaitingProbe(entityA, 0.0, nullptr));
+    queue->insertElement(new CountingWaitingProbe(entityB, 0.0, nullptr));
+    delete queue;
+
+    EXPECT_EQ(g_countingWaitingProbeDestructorCount, 2u);
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleFifoKeepsArrivalOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "QueueFIFO");
+    queue.setReportStatistics(false);
+    queue.setOrderRule(Queue::OrderRule::FIFO);
+
+    Entity* firstEntity = model->createEntity("QueueFIFOEntityA", true);
+    Entity* secondEntity = model->createEntity("QueueFIFOEntityB", true);
+    Entity* thirdEntity = model->createEntity("QueueFIFOEntityC", true);
+    ASSERT_NE(firstEntity, nullptr);
+    ASSERT_NE(secondEntity, nullptr);
+    ASSERT_NE(thirdEntity, nullptr);
+
+    queue.insertElement(new Waiting(firstEntity, 0.0, nullptr));
+    queue.insertElement(new Waiting(secondEntity, 0.0, nullptr));
+    queue.insertElement(new Waiting(thirdEntity, 0.0, nullptr));
+
+    ASSERT_NE(queue.getAtRank(0), nullptr);
+    ASSERT_NE(queue.getAtRank(1), nullptr);
+    ASSERT_NE(queue.getAtRank(2), nullptr);
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), firstEntity);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), secondEntity);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), thirdEntity);
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleLifoPlacesLatestArrivalFirst) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "QueueLIFO");
+    queue.setReportStatistics(false);
+    queue.setOrderRule(Queue::OrderRule::LIFO);
+
+    Entity* firstEntity = model->createEntity("QueueLIFOEntityA", true);
+    Entity* secondEntity = model->createEntity("QueueLIFOEntityB", true);
+    Entity* thirdEntity = model->createEntity("QueueLIFOEntityC", true);
+    ASSERT_NE(firstEntity, nullptr);
+    ASSERT_NE(secondEntity, nullptr);
+    ASSERT_NE(thirdEntity, nullptr);
+
+    queue.insertElement(new Waiting(firstEntity, 0.0, nullptr));
+    queue.insertElement(new Waiting(secondEntity, 0.0, nullptr));
+    queue.insertElement(new Waiting(thirdEntity, 0.0, nullptr));
+
+    ASSERT_NE(queue.first(), nullptr);
+    EXPECT_EQ(queue.first()->getEntity(), thirdEntity);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), secondEntity);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), firstEntity);
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleHighestValueRanksByAttributeDescending) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* priority = new Attribute(model, "Priority");
+    ASSERT_NE(priority, nullptr);
+    const Util::identification priorityId = priority->getId();
+
+    Queue queue(model, "QueueHighestValue");
+    queue.setReportStatistics(false);
+    queue.setAttributeName(priority->getName());
+    queue.setOrderRule(Queue::OrderRule::HIGHESTVALUE);
+
+    Entity* low = model->createEntity("QueueHighestLow", true);
+    Entity* high = model->createEntity("QueueHighestHigh", true);
+    Entity* mid = model->createEntity("QueueHighestMid", true);
+    ASSERT_NE(low, nullptr);
+    ASSERT_NE(high, nullptr);
+    ASSERT_NE(mid, nullptr);
+    low->setAttributeValue(priorityId, 1.0);
+    high->setAttributeValue(priorityId, 9.0);
+    mid->setAttributeValue(priorityId, 5.0);
+
+    queue.insertElement(new Waiting(low, 0.0, nullptr));
+    queue.insertElement(new Waiting(high, 0.0, nullptr));
+    queue.insertElement(new Waiting(mid, 0.0, nullptr));
+
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), high);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), mid);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), low);
+
+    delete priority;
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleSmallestValueRanksByAttributeAscending) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* priority = new Attribute(model, "PrioritySmallest");
+    ASSERT_NE(priority, nullptr);
+    const Util::identification priorityId = priority->getId();
+
+    Queue queue(model, "QueueSmallestValue");
+    queue.setReportStatistics(false);
+    queue.setAttributeName(priority->getName());
+    queue.setOrderRule(Queue::OrderRule::SMALLESTVALUE);
+
+    Entity* high = model->createEntity("QueueSmallestHigh", true);
+    Entity* low = model->createEntity("QueueSmallestLow", true);
+    Entity* mid = model->createEntity("QueueSmallestMid", true);
+    ASSERT_NE(high, nullptr);
+    ASSERT_NE(low, nullptr);
+    ASSERT_NE(mid, nullptr);
+    high->setAttributeValue(priorityId, 9.0);
+    low->setAttributeValue(priorityId, 1.0);
+    mid->setAttributeValue(priorityId, 5.0);
+
+    queue.insertElement(new Waiting(high, 0.0, nullptr));
+    queue.insertElement(new Waiting(low, 0.0, nullptr));
+    queue.insertElement(new Waiting(mid, 0.0, nullptr));
+
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), low);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), mid);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), high);
+
+    delete priority;
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleAttributeTieUsesFifoTiebreaker) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* priority = new Attribute(model, "PriorityTie");
+    ASSERT_NE(priority, nullptr);
+    const Util::identification priorityId = priority->getId();
+
+    Queue queue(model, "QueueTieFIFO");
+    queue.setReportStatistics(false);
+    queue.setAttributeName(priority->getName());
+    queue.setOrderRule(Queue::OrderRule::HIGHESTVALUE);
+
+    Entity* firstTie = model->createEntity("QueueTieFirst", true);
+    Entity* secondTie = model->createEntity("QueueTieSecond", true);
+    Entity* highest = model->createEntity("QueueTieHighest", true);
+    ASSERT_NE(firstTie, nullptr);
+    ASSERT_NE(secondTie, nullptr);
+    ASSERT_NE(highest, nullptr);
+    firstTie->setAttributeValue(priorityId, 5.0);
+    secondTie->setAttributeValue(priorityId, 5.0);
+    highest->setAttributeValue(priorityId, 7.0);
+
+    queue.insertElement(new Waiting(firstTie, 0.0, nullptr));
+    queue.insertElement(new Waiting(secondTie, 0.0, nullptr));
+    queue.insertElement(new Waiting(highest, 0.0, nullptr));
+
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), highest);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), firstTie);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), secondTie);
+
+    delete priority;
+}
+
+TEST(SimulatorRuntimeTest, QueueCheckFailsWhenAttributeRuleHasNoAttributeName) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    QueueValidationProbe queue(model, "QueueCheckMissingAttr");
+    queue.setOrderRule(Queue::OrderRule::HIGHESTVALUE);
+
+    std::string errorMessage;
+    EXPECT_FALSE(queue.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, QueueCheckPassesWhenAttributeRuleHasValidAttributeName) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* priority = new Attribute(model, "PriorityCheck");
+    ASSERT_NE(priority, nullptr);
+
+    QueueValidationProbe queue(model, "QueueCheckValidAttr");
+    queue.setOrderRule(Queue::OrderRule::SMALLESTVALUE);
+    queue.setAttributeName(priority->getName());
+
+    std::string errorMessage;
+    EXPECT_TRUE(queue.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+
+    delete priority;
+}
+
+TEST(SimulatorRuntimeTest, VariableInitBetweenReplicationsCopiesWithoutAliasingInitialValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariableResetNoAlias");
+    variable.setInitialValue(10.0, "idx");
+    variable.InitBetweenReplicationsProbe();
+
+    variable.setValue(77.0, "idx");
+
+    EXPECT_DOUBLE_EQ(variable.getValue("idx"), 77.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("idx"), 10.0);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitBetweenReplicationsRestoresCurrentValueFromInitial) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariableResetRestores");
+    variable.setInitialValue(21.5, "slot");
+    variable.setValue(3.0, "slot");
+
+    variable.InitBetweenReplicationsProbe();
+
+    EXPECT_DOUBLE_EQ(variable.getValue("slot"), 21.5);
+}
+
+TEST(SimulatorRuntimeTest, VariableSavePersistsMultipleDimensionsWithIncreasingIndexes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariablePersistDimensions");
+    variable.insertDimentionSize(3u);
+    variable.insertDimentionSize(5u);
+    variable.insertDimentionSize(7u);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    variable.SaveInstanceProbe(&fields, true);
+
+    EXPECT_EQ(fields.loadField("dimensions", 0u), 3u);
+    EXPECT_EQ(fields.loadField("dimension[0]", 0u), 3u);
+    EXPECT_EQ(fields.loadField("dimension[1]", 0u), 5u);
+    EXPECT_EQ(fields.loadField("dimension[2]", 0u), 7u);
+}
+
+TEST(SimulatorRuntimeTest, VariableSaveAndLoadPreservesInitialValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe source(model, "VariablePersistValuesSource");
+    source.setInitialValue(4.25, "");
+    source.setInitialValue(8.5, "1,1");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    VariableLifecycleProbe loaded(model, "VariablePersistValuesLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue(""), 4.25);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,1"), 8.5);
+}
+
+TEST(SimulatorRuntimeTest, VariableLoadedCurrentAndInitialContainersRemainIndependentAfterReset) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe source(model, "VariableContainerIndependenceSource");
+    source.setInitialValue(12.0, "shared");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    VariableLifecycleProbe loaded(model, "VariableContainerIndependenceLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    loaded.InitBetweenReplicationsProbe();
+
+    ASSERT_NE(loaded.getValues(), nullptr);
+    EXPECT_DOUBLE_EQ(loaded.getValue("shared"), 12.0);
+    loaded.setValue(44.0, "shared");
+    EXPECT_DOUBLE_EQ(loaded.getValue("shared"), 44.0);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("shared"), 12.0);
+    loaded.setInitialValue(66.0, "shared");
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("shared"), 66.0);
+    EXPECT_DOUBLE_EQ(loaded.getValue("shared"), 44.0);
+}
+
+TEST(SimulatorRuntimeTest, VariableShowIncludesVariableSpecificValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariableShowDetails");
+    variable.setValue(3.14, "pi");
+
+    const std::string shown = variable.show();
+    EXPECT_NE(shown.find("values:{"), std::string::npos);
+    EXPECT_NE(shown.find("pi="), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, ResourceSettersUpdateState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ResourceProbe resource(model, "ResourceSetterCheck");
+    Schedule schedule(model, "ResourceSetterSchedule");
+
+    resource.setResourceState(Resource::ResourceState::FAILED);
+    resource.setCostBusyTimeUnit(11.25);
+    resource.setCostIdleTimeUnit(7.5);
+    resource.setCostPerUse(3.5);
+    resource.setCapacitySchedule(&schedule);
+
+    EXPECT_EQ(resource.getResourceState(), Resource::ResourceState::FAILED);
+    EXPECT_DOUBLE_EQ(resource.getCostBusyTimeUnit(), 11.25);
+    EXPECT_DOUBLE_EQ(resource.getCostIdleTimeUnit(), 7.5);
+    EXPECT_DOUBLE_EQ(resource.getCostPerUse(), 3.5);
+    EXPECT_EQ(resource.getCapacitySchedule(), &schedule);
+}
+
+TEST(SimulatorRuntimeTest, ResourceCheckFailsForInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ResourceProbe capacityZero(model, "ResourceCheckCapacityZero");
+    capacityZero.setCapacity(0u);
+    std::string errorMessage;
+    EXPECT_FALSE(capacityZero.CheckProbe(errorMessage));
+
+    ResourceProbe negativeCost(model, "ResourceCheckNegativeCost");
+    negativeCost.setCostPerUse(-1.0);
+    errorMessage.clear();
+    EXPECT_FALSE(negativeCost.CheckProbe(errorMessage));
+
+    Schedule invalidSchedule(model, "ResourceCheckInvalidSchedule");
+    ResourceProbe invalidScheduleResource(model, "ResourceCheckWithInvalidSchedule");
+    invalidScheduleResource.setCapacitySchedule(&invalidSchedule);
+    errorMessage.clear();
+    EXPECT_FALSE(invalidScheduleResource.CheckProbe(errorMessage));
+
+    Failure invalidFailure(model, "ResourceCheckInvalidFailure");
+    invalidFailure.setFailureType(Failure::FailureType::COUNT);
+    invalidFailure.setCountExpression(")");
+    ResourceProbe invalidFailureResource(model, "ResourceCheckWithInvalidFailure");
+    invalidFailureResource.insertFailure(&invalidFailure);
+    errorMessage.clear();
+    EXPECT_FALSE(invalidFailureResource.CheckProbe(errorMessage));
+}
+
+TEST(SimulatorRuntimeTest, ResourceCheckPassesForValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule schedule(model, "ResourceCheckValidSchedule");
+    schedule.getSchedulableItems()->insert(new SchedulableItem("2", 10.0));
+
+    Failure failure(model, "ResourceCheckValidFailure");
+    failure.setFailureType(Failure::FailureType::COUNT);
+    failure.setCountExpression("3");
+    failure.setDownTimeExpression("1");
+
+    ResourceProbe resource(model, "ResourceCheckValid");
+    resource.setCapacity(2u);
+    resource.setCostBusyTimeUnit(1.0);
+    resource.setCostIdleTimeUnit(0.0);
+    resource.setCostPerUse(0.5);
+    resource.setCapacitySchedule(&schedule);
+    resource.insertFailure(&failure);
+
+    std::string errorMessage;
+    EXPECT_TRUE(resource.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, ResourceSaveAndLoadPreservesCapacityScheduleReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule schedule(model, "ResourcePersistSchedule");
+    ResourceProbe source(model, "ResourcePersistScheduleSource");
+    source.setCapacitySchedule(&schedule);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    ResourceProbe loaded(model, "ResourcePersistScheduleLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    EXPECT_EQ(loaded.getCapacitySchedule(), &schedule);
+}
+
+TEST(SimulatorRuntimeTest, ResourceSaveAndLoadPreservesFailuresReferenceList) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Failure failureA(model, "ResourcePersistFailureA");
+    Failure failureB(model, "ResourcePersistFailureB");
+    ResourceProbe source(model, "ResourcePersistFailureSource");
+    source.insertFailure(&failureA);
+    source.insertFailure(&failureB);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    ResourceProbe loaded(model, "ResourcePersistFailureLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    loaded.CreateInternalAndAttachedDataProbe();
+
+    auto* attached = loaded.getAttachedData();
+    const std::string keyPrefix = loaded.getName() + ".Failure.";
+    ASSERT_EQ(attached->count(keyPrefix + "ResourcePersistFailureA"), 1u);
+    ASSERT_EQ(attached->count(keyPrefix + "ResourcePersistFailureB"), 1u);
+    EXPECT_EQ(attached->at(keyPrefix + "ResourcePersistFailureA"), &failureA);
+    EXPECT_EQ(attached->at(keyPrefix + "ResourcePersistFailureB"), &failureB);
+}
+
+TEST(SimulatorRuntimeTest, ResourceRecheckKeepsAttachedDataConsistent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule scheduleA(model, "ResourceRecheckScheduleA");
+    Schedule scheduleB(model, "ResourceRecheckScheduleB");
+    Failure failureA(model, "ResourceRecheckFailureA");
+    Failure failureB(model, "ResourceRecheckFailureB");
+
+    ResourceProbe resource(model, "ResourceRecheckAttached");
+    resource.setCapacitySchedule(&scheduleA);
+    resource.insertFailure(&failureA);
+    resource.CreateInternalAndAttachedDataProbe();
+
+    auto* attached = resource.getAttachedData();
+    ASSERT_EQ(attached->at("ResourceRecheckAttached.CapacitySchedule"), &scheduleA);
+    ASSERT_EQ(attached->at("ResourceRecheckAttached.Failure.ResourceRecheckFailureA"), &failureA);
+
+    resource.removeFailure(&failureA);
+    resource.insertFailure(&failureB);
+    resource.setCapacitySchedule(&scheduleB);
+    resource.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(attached->at("ResourceRecheckAttached.CapacitySchedule"), &scheduleB);
+    EXPECT_EQ(attached->at("ResourceRecheckAttached.Failure.ResourceRecheckFailureB"), &failureB);
+    EXPECT_EQ(attached->count("ResourceRecheckAttached.Failure.ResourceRecheckFailureA"), 0u);
+
+    resource.setCapacitySchedule(nullptr);
+    resource.removeFailure(&failureB);
+    resource.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(attached->count("ResourceRecheckAttached.CapacitySchedule"), 0u);
+    EXPECT_EQ(attached->count("ResourceRecheckAttached.Failure.ResourceRecheckFailureB"), 0u);
+}
+
+TEST(SimulatorRuntimeTest, ResourceToggleReportStatisticsClearsAndRecreatesInternalPointersSafely) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ResourceProbe resource(model, "ResourceToggleStats");
+    resource.setReportStatistics(true);
+    resource.CreateInternalAndAttachedDataProbe();
+    EXPECT_TRUE(ResourceTestProbe::HasStatisticsInternals(resource));
+
+    resource.setReportStatistics(false);
+    resource.CreateInternalAndAttachedDataProbe();
+    EXPECT_FALSE(ResourceTestProbe::HasStatisticsInternals(resource));
+
+    resource.setReportStatistics(true);
+    resource.CreateInternalAndAttachedDataProbe();
+    EXPECT_TRUE(ResourceTestProbe::HasStatisticsInternals(resource));
+}
+
+TEST(SimulatorRuntimeTest, ResourceDestructorCleansOwnedHandlersContainers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    std::weak_ptr<int> weakCapture;
+    {
+        auto* resource = new ResourceProbe(model, "ResourceDestructorLifecycle");
+        auto capture = std::make_shared<int>(42);
+        weakCapture = capture;
+
+        Resource::ResourceEventHandler handler = [capture](Resource*) {
+            (void)capture;
+        };
+        resource->addReleaseResourceEventHandler(handler, nullptr, 1u);
+        ASSERT_FALSE(weakCapture.expired());
+        delete resource;
+    }
+
+    EXPECT_TRUE(weakCapture.expired());
+}
+
+TEST(SimulatorRuntimeTest, SequenceDestructorDeletesOwnedSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    g_countingSequenceStepProbeDestructorCount = 0;
+    Station station(model, "SequenceLifecycleStation");
+    auto* sequence = new SequenceProbe(model, "SequenceLifecycle");
+    sequence->getSteps()->insert(new CountingSequenceStepProbe(&station));
+    sequence->getSteps()->insert(new CountingSequenceStepProbe(&station));
+
+    delete sequence;
+    EXPECT_EQ(g_countingSequenceStepProbeDestructorCount, 2u);
+}
+
+TEST(SimulatorRuntimeTest, SequenceStepDestructorOwnsAndDeletesAssignments) {
+    std::list<Assignment*>* assignments = new std::list<Assignment*>();
+    assignments->push_back(new Assignment("Entity.a", "1", true));
+    assignments->push_back(new Assignment("Entity.b", "2", true));
+    SequenceStep* step = new SequenceStep(static_cast<Station*>(nullptr), assignments);
+
+    delete step;
+    SUCCEED();
+}
+
+TEST(SimulatorRuntimeTest, SequenceSaveAndLoadPreservesAssignmentsPerStepWithoutCollision) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station stationA(model, "SequencePersistStationA");
+    Station stationB(model, "SequencePersistStationB");
+    SequenceProbe source(model, "SequencePersistAssignmentsSource");
+    auto* stepA = new SequenceStep(&stationA);
+    stepA->getAssignments()->push_back(new Assignment("Entity.stepA", "11", true));
+    stepA->getAssignments()->push_back(new Assignment("Entity.stepA2", "12", true));
+    auto* stepB = new SequenceStep(&stationB);
+    stepB->getAssignments()->push_back(new Assignment("Entity.stepB", "21", true));
+    source.getSteps()->insert(stepA);
+    source.getSteps()->insert(stepB);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SequenceProbe loaded(model, "SequencePersistAssignmentsLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getSteps()->size(), 2u);
+
+    auto loadedSteps = loaded.getSteps()->list();
+    auto it = loadedSteps->begin();
+    SequenceStep* loadedStepA = *it++;
+    SequenceStep* loadedStepB = *it++;
+
+    ASSERT_EQ(loadedStepA->getAssignments()->size(), 2u);
+    ASSERT_EQ(loadedStepB->getAssignments()->size(), 1u);
+    EXPECT_EQ(loadedStepA->getAssignments()->front()->getDestination(), "Entity.stepA");
+    EXPECT_EQ(loadedStepA->getAssignments()->back()->getDestination(), "Entity.stepA2");
+    EXPECT_EQ(loadedStepB->getAssignments()->front()->getDestination(), "Entity.stepB");
+    EXPECT_EQ(loadedStepB->getAssignments()->front()->getExpression(), "21");
+}
+
+TEST(SimulatorRuntimeTest, SequenceSaveAndLoadPreservesStationAndLabelPerStep) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "SequencePersistStation");
+    Label label(model, "SequencePersistLabel");
+    SequenceProbe source(model, "SequencePersistRoutingSource");
+    source.getSteps()->insert(new SequenceStep(&station));
+    source.getSteps()->insert(new SequenceStep(&label));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SequenceProbe loaded(model, "SequencePersistRoutingLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getSteps()->size(), 2u);
+
+    auto steps = loaded.getSteps()->list();
+    auto it = steps->begin();
+    SequenceStep* loadedStationStep = *it++;
+    SequenceStep* loadedLabelStep = *it++;
+    EXPECT_EQ(loadedStationStep->getStation(), &station);
+    EXPECT_EQ(loadedStationStep->getLabel(), nullptr);
+    EXPECT_EQ(loadedLabelStep->getStation(), nullptr);
+    EXPECT_EQ(loadedLabelStep->getLabel(), &label);
+}
+
+TEST(SimulatorRuntimeTest, SequenceRecheckRemovesObsoleteAttachedData) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station stationA(model, "SequenceRecheckStationA");
+    Station stationB(model, "SequenceRecheckStationB");
+    Label labelA(model, "SequenceRecheckLabelA");
+    SequenceProbe sequence(model, "SequenceRecheck");
+    sequence.getSteps()->insert(new SequenceStep(&stationA));
+    sequence.getSteps()->insert(new SequenceStep(&stationB));
+    sequence.CreateInternalAndAttachedDataProbe();
+
+    auto* attached = sequence.getAttachedData();
+    EXPECT_EQ(attached->count("StepLabel[0]"), 0u);
+    sequence.AttachDataProbe("StepStation[77]", &stationA);
+    ASSERT_EQ(attached->count("StepStation[77]"), 1u);
+
+    SequenceStep* obsoleteStep = sequence.getSteps()->list()->back();
+    sequence.getSteps()->remove(obsoleteStep);
+    delete obsoleteStep;
+    SequenceStep* firstStationStep = sequence.getSteps()->front();
+    sequence.getSteps()->remove(firstStationStep);
+    delete firstStationStep;
+    sequence.getSteps()->insert(new SequenceStep(&labelA));
+    sequence.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(attached->count("StepStation[77]"), 0u);
+    EXPECT_EQ(attached->count("StepStation[1]"), 0u);
+    ASSERT_EQ(attached->count("StepLabel[0]"), 1u);
+    EXPECT_EQ(attached->at("StepLabel[0]"), &labelA);
+}
+
+TEST(SimulatorRuntimeTest, SequenceCheckFailsForEmptyStep) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SequenceProbe sequence(model, "SequenceInvalid");
+    sequence.getSteps()->insert(new SequenceStep(static_cast<Station*>(nullptr)));
+
+    std::string errorMessage;
+    EXPECT_FALSE(sequence.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("must reference a Station or a Label"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "SequenceValidStation");
+    SequenceProbe sequence(model, "SequenceValid");
+    auto* stationStep = new SequenceStep(&station);
+    stationStep->getAssignments()->push_back(new Assignment("Entity.valid", "1", true));
+    sequence.getSteps()->insert(stationStep);
+    Station station2(model, "SequenceValidStation2");
+    sequence.getSteps()->insert(new SequenceStep(&station2));
+
+    std::string errorMessage;
+    EXPECT_TRUE(sequence.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, SignalDataDestructorHandlesOwnedHandlersLifecycle) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* signal = new SignalDataProbe(model, "SignalLifecycle");
+    Wait waitA(model, "SignalLifecycleWaitA");
+    Wait waitB(model, "SignalLifecycleWaitB");
+    signal->addSignalDataEventHandler([](SignalData*) { return 0u; }, &waitA);
+    signal->addSignalDataEventHandler([](SignalData*) { return 0u; }, &waitB);
+
+    EXPECT_TRUE(signal->hasSignalDataEventHandler(&waitA));
+    EXPECT_TRUE(signal->hasSignalDataEventHandler(&waitB));
+    EXPECT_NO_THROW(delete signal);
+}
+
+TEST(SimulatorRuntimeTest, SignalDataInitBetweenReplicationsResetsRemainsToLimit) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalReset");
+    Wait wait(model, "SignalResetWait");
+    signal.addSignalDataEventHandler([](SignalData*) { return 0u; }, &wait);
+
+    signal.generateSignal(0.0, 3);
+    signal.decreaseRemainLimit();
+    ASSERT_EQ(signal.remainsToLimit(), 2u);
+
+    signal.InitBetweenReplicationsProbe();
+    EXPECT_EQ(signal.remainsToLimit(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, SignalDataAddHandlerDoesNotDuplicateSameComponent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalNoDuplicate");
+    Wait wait(model, "SignalNoDuplicateWait");
+    signal.addSignalDataEventHandler([](SignalData*) { return 1u; }, &wait);
+    signal.addSignalDataEventHandler([](SignalData*) { return 10u; }, &wait);
+
+    EXPECT_EQ(signal.generateSignal(0.0, 10), 1u);
+}
+
+TEST(SimulatorRuntimeTest, SignalDataRemoveHandlerByComponentRemovesOwnedRegistration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalRemove");
+    Wait wait(model, "SignalRemoveWait");
+    signal.addSignalDataEventHandler([](SignalData*) { return 2u; }, &wait);
+    ASSERT_TRUE(signal.hasSignalDataEventHandler(&wait));
+
+    signal.removeSignalDataEventHandler(&wait);
+    EXPECT_FALSE(signal.hasSignalDataEventHandler(&wait));
+    EXPECT_EQ(signal.generateSignal(0.0, 10), 0u);
+}
+
+TEST(SimulatorRuntimeTest, WaitRecheckUpdatesSignalDataHandlersWhenSignalChangesOrTypeChanges) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signalA(model, "SignalRecheckA");
+    SignalDataProbe signalB(model, "SignalRecheckB");
+    WaitProbe wait(model, "WaitRecheck");
+    wait.setWaitType(Wait::WaitType::WaitForSignal);
+    wait.setSignalData(&signalA);
+    wait.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(signalA.hasSignalDataEventHandler(&wait));
+
+    wait.setSignalData(&signalB);
+    wait.CreateInternalAndAttachedDataProbe();
+    EXPECT_FALSE(signalA.hasSignalDataEventHandler(&wait));
+    EXPECT_TRUE(signalB.hasSignalDataEventHandler(&wait));
+
+    wait.setWaitType(Wait::WaitType::InfiniteHold);
+    wait.CreateInternalAndAttachedDataProbe();
+    EXPECT_FALSE(signalB.hasSignalDataEventHandler(&wait));
+}
+
+TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayCreateStats");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayAttachedAttributeUsesInitialAllocationWhenStatisticsAreEnabled) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayInitialAllocationAttached");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::Wait);
+    delay.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_TRUE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+    EXPECT_EQ(CountAttachedDelayAllocationAttributes(delay), 1u);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckWithAllocationChangeKeepsOnlyCurrentAttachedAttribute) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayAllocationRecheck");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::Wait);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+
+    delay.setAllocation(Util::AllocationType::Transfer);
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_FALSE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+    EXPECT_TRUE(delay.HasAttachedDataProbe("Entity.TotalTransferTime"));
+    EXPECT_EQ(CountAttachedDelayAllocationAttributes(delay), 1u);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckWithStatisticsDisabledRemovesAllAllocationAttachedAttributes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayDisableStatisticsAttached");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::Transfer);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(delay.HasAttachedDataProbe("Entity.TotalTransferTime"));
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(CountAttachedDelayAllocationAttributes(delay), 0u);
+    EXPECT_EQ(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckReenableStatisticsWithDifferentAllocationCreatesSingleExpectedAttachedAttribute) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayReenableDifferentAllocation");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::Wait);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_EQ(CountAttachedDelayAllocationAttributes(delay), 0u);
+
+    delay.setAllocation(Util::AllocationType::Others);
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_TRUE(delay.HasAttachedDataProbe("Entity.TotalOthersTime"));
+    EXPECT_FALSE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+    EXPECT_EQ(CountAttachedDelayAllocationAttributes(delay), 1u);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckKeepsComponentConsistentForDispatchPathsAfterAllocationChanges) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayConsistentDispatchAfterRecheck");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::ValueAdded);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setAllocation(Util::AllocationType::Transfer);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(delay.HasAttachedDataProbe(DelayAllocationAttributeName(Util::AllocationType::Transfer)));
+    ASSERT_EQ(CountAttachedDelayAllocationAttributes(delay), 1u);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics(), nullptr);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics()->getCollector(), nullptr);
+    EXPECT_NO_THROW(delay.AddWaitTimeValueProbe(2.0));
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckWithStatisticsEnabledIsIdempotentAndPreservesInternalCollector) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayIdempotentStats");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    StatisticsCollector* firstCollector = delay.WaitTimeStatisticsCollectorProbe();
+    ASSERT_NE(firstCollector, nullptr);
+
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(delay.WaitTimeStatisticsCollectorProbe(), firstCollector);
+    EXPECT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckWithStatisticsDisabledClearsInternalCollectorPointer) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayDisableStats");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckCanRecreateCollectorAfterDisablingAndReenablingStatistics) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayRecreateStats");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_EQ(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    StatisticsCollector* recreatedCollector = delay.WaitTimeStatisticsCollectorProbe();
+    ASSERT_NE(recreatedCollector, nullptr);
+    EXPECT_NE(recreatedCollector->getStatistics(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayCollectorAccessPathRemainsValidAcrossStatisticsRecheckSequence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayCollectorPath");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    delay.CreateInternalAndAttachedDataProbe();
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_EQ(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics(), nullptr);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics()->getCollector(), nullptr);
+
+    EXPECT_NO_THROW(delay.AddWaitTimeValueProbe(1.5));
+}
+
+TEST(SimulatorRuntimeTest, SignalDataCheckFailsWithoutHandlers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalCheckInvalid");
+    std::string errorMessage;
+    EXPECT_FALSE(signal.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("requires at least one event handler"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SignalDataCheckPassesWithValidHandler) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalCheckValid");
+    Wait wait(model, "SignalCheckWait");
+    signal.addSignalDataEventHandler([](SignalData*) { return 0u; }, &wait);
+
+    std::string errorMessage;
+    EXPECT_TRUE(signal.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
 }

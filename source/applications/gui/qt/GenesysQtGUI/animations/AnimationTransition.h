@@ -32,6 +32,8 @@ public:
     QList<QPointF> getPointsForAnimation() const;
     GraphicalImageAnimation* getImageAnimation() const;
     unsigned int getPortNumber() const;
+    // Expose whether transition has all runtime prerequisites to safely animate.
+    bool isReadyToRun() const;
 
     // Setters
     void setImageAnimation(GraphicalImageAnimation* imageAnimation);
@@ -74,6 +76,10 @@ private:
     unsigned int _portNumber;
     qreal _currentProgress;
     bool _viewSimulation;
+    // Track terminal lifecycle paths to keep cleanup idempotent.
+    bool _isStopping;
+    // Track whether finished callback was already handled.
+    bool _isFinishedHandled;
 };
 
 #endif // ANIMATIONTRANSITION_H
