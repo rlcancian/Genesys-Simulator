@@ -111,6 +111,13 @@ unsigned int StatisticsDatafileDefaultImpl1::numElements() {
 
 double StatisticsDatafileDefaultImpl1::min() {
 	if (_hasNewValue() || !_minCalculated) {
+		// Return NaN for empty samples and recompute min from a fresh +infinity baseline.
+		if (_collector->numElements() == 0) {
+			_min = std::numeric_limits<double>::quiet_NaN();
+			_minCalculated = true;
+			return _min;
+		}
+		_min = std::numeric_limits<double>::infinity();
 		for (unsigned long i = 0; i < _collector->numElements(); i++) {
 			_min = (_collector->getValue(i) < _min) ? _collector->getValue(i) : _min;
 		}
@@ -121,6 +128,13 @@ double StatisticsDatafileDefaultImpl1::min() {
 
 double StatisticsDatafileDefaultImpl1::max() {
 	if (_hasNewValue() || !_maxCalculated) {
+		// Return NaN for empty samples and recompute max from a fresh -infinity baseline.
+		if (_collector->numElements() == 0) {
+			_max = std::numeric_limits<double>::quiet_NaN();
+			_maxCalculated = true;
+			return _max;
+		}
+		_max = -std::numeric_limits<double>::infinity();
 		for (unsigned long i = 0; i < _collector->numElements(); i++) {
 			_max = (_collector->getValue(i) > _max) ? _collector->getValue(i) : _max;
 		}
@@ -217,8 +231,19 @@ double StatisticsDatafileDefaultImpl1::halfWidthConfidenceInterval() {
 
 unsigned int StatisticsDatafileDefaultImpl1::newSampleSize(double halfWidth) {
 	if (_hasNewValue() || !_newSampleSizeCalculated || _confidenceLevel != _lastNewSampleSizeConfidenceLevel || halfWidth != _lastNewSampleSizeHalfWidth) {
-		double z = _getNormalProbability(_confidenceLevel);
-		_newSampleSize = pow((z * stddeviation() / halfWidth), 2);
+		// Guard sample-size estimation against non-positive width and undefined numeric inputs.
+		const double z = _getNormalProbability(_confidenceLevel);
+		const double stddev = stddeviation();
+		if (halfWidth <= 0.0 || std::isnan(stddev) || std::isinf(stddev) || std::isnan(z) || std::isinf(z)) {
+			_newSampleSize = 0;
+		} else {
+			const double ratio = z * stddev / halfWidth;
+			if (std::isnan(ratio) || std::isinf(ratio) || ratio < 0.0) {
+				_newSampleSize = 0;
+			} else {
+				_newSampleSize = pow(ratio, 2);
+			}
+		}
 		_lastNewSampleSizeConfidenceLevel = _confidenceLevel;
 		_lastNewSampleSizeHalfWidth = halfWidth;
 		_newSampleSizeCalculated = true;
@@ -385,10 +410,16 @@ unsigned short StatisticsDatafileDefaultImpl1::histogramNumClasses() {
 
 double StatisticsDatafileDefaultImpl1::histogramClassLowerLimit(unsigned short classNum) {
 	if (_hasNewValue() || !_histogramClassLowerLimitCalculated || classNum != _LastClassNumHistogramClassLowerLimit) {
-		if (classNum == 0)
-			_histogramClassLowerLimit = min();
-		else
-			_histogramClassLowerLimit = min() + classNum * ((max() - min()) / histogramNumClasses());
+		// Validate histogram preconditions and return NaN when class boundaries are undefined.
+		const unsigned short numClasses = histogramNumClasses();
+		const double sampleMin = min();
+		const double sampleMax = max();
+		if (_numElements == 0 || numClasses == 0 || classNum >= numClasses || std::isnan(sampleMin) || std::isnan(sampleMax)) {
+			_histogramClassLowerLimit = std::numeric_limits<double>::quiet_NaN();
+		} else {
+			const double classWidth = (sampleMax - sampleMin) / numClasses;
+			_histogramClassLowerLimit = sampleMin + classNum * classWidth;
+		}
 		_histogramClassLowerLimitCalculated = true;
 		_LastClassNumHistogramClassLowerLimit = classNum;
 	}
@@ -397,10 +428,22 @@ double StatisticsDatafileDefaultImpl1::histogramClassLowerLimit(unsigned short c
 
 unsigned int StatisticsDatafileDefaultImpl1::histogramClassFrequency(unsigned short classNum) {
 	if (_hasNewValue() || !_histogramClassFrequencyCalculated || classNum != _lastClassNumHistogramClassFrequency) {
+		// Abort frequency counting when histogram classes or sample bounds are not valid.
+		const unsigned short numClasses = histogramNumClasses();
+		const double sampleMin = min();
+		const double sampleMax = max();
+		if (_numElements == 0 || numClasses == 0 || classNum >= numClasses || std::isnan(sampleMin) || std::isnan(sampleMax)) {
+			_histogramClassFrequency = 0;
+			_histogramClassFrequencyCalculated = true;
+			_lastClassNumHistogramClassFrequency = classNum;
+			return _histogramClassFrequency;
+		}
 		if (!_fileSorted) _sortFile();
 
+		// Count sorted observations inside the selected class interval using a safe positive class width.
 		valueType classLowerLimit = histogramClassLowerLimit(classNum);
-		valueType classUpperLimit = classLowerLimit + ((max() - min()) / histogramNumClasses());
+		const valueType classWidth = (sampleMax - sampleMin) / numClasses;
+		valueType classUpperLimit = classLowerLimit + classWidth;
 		unsigned int frequency = 0;
 		valueType tmpValue;
 		for (unsigned long position = 0; position < _collectorSorted->numElements(); position++) {
