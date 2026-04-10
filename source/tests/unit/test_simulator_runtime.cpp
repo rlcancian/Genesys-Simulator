@@ -1,6 +1,7 @@
 #include <gtest/gtest.h>
 #include <algorithm>
 #include <memory>
+#include <vector>
 
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
@@ -34,6 +35,10 @@ public:
 
     void AddWaitTimeValueProbe(double waitTime) {
         _cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
+    }
+
+    bool HasAttachedDataProbe(const std::string& key) const {
+        return getAttachedData()->find(key) != getAttachedData()->end();
     }
 };
 
@@ -277,6 +282,30 @@ public:
         ++g_countingWaitingProbeDestructorCount;
     }
 };
+
+std::vector<std::string> DelayAllocationAttributeNames() {
+    return {
+        "Entity.TotalValueAddedTime",
+        "Entity.TotalNonValueAddedTime",
+        "Entity.TotalTransferTime",
+        "Entity.TotalWaitTime",
+        "Entity.TotalOthersTime"
+    };
+}
+
+std::string DelayAllocationAttributeName(Util::AllocationType allocation) {
+    return "Entity.Total" + Util::StrAllocation(allocation) + "Time";
+}
+
+size_t CountAttachedDelayAllocationAttributes(const DelayProbe& delay) {
+    size_t count = 0;
+    for (const std::string& attributeName : DelayAllocationAttributeNames()) {
+        if (delay.HasAttachedDataProbe(attributeName)) {
+            ++count;
+        }
+    }
+    return count;
+}
 }
 
 TEST(SimulatorRuntimeTest, CanConstructSimulatorAndAccessManagers) {
@@ -1511,6 +1540,99 @@ TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollecto
     delay.CreateInternalAndAttachedDataProbe();
 
     EXPECT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayAttachedAttributeUsesInitialAllocationWhenStatisticsAreEnabled) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayInitialAllocationAttached");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::Wait);
+    delay.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_TRUE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+    EXPECT_EQ(CountAttachedDelayAllocationAttributes(delay), 1u);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckWithAllocationChangeKeepsOnlyCurrentAttachedAttribute) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayAllocationRecheck");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::Wait);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+
+    delay.setAllocation(Util::AllocationType::Transfer);
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_FALSE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+    EXPECT_TRUE(delay.HasAttachedDataProbe("Entity.TotalTransferTime"));
+    EXPECT_EQ(CountAttachedDelayAllocationAttributes(delay), 1u);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckWithStatisticsDisabledRemovesAllAllocationAttachedAttributes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayDisableStatisticsAttached");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::Transfer);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(delay.HasAttachedDataProbe("Entity.TotalTransferTime"));
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(CountAttachedDelayAllocationAttributes(delay), 0u);
+    EXPECT_EQ(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckReenableStatisticsWithDifferentAllocationCreatesSingleExpectedAttachedAttribute) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayReenableDifferentAllocation");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::Wait);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_EQ(CountAttachedDelayAllocationAttributes(delay), 0u);
+
+    delay.setAllocation(Util::AllocationType::Others);
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_TRUE(delay.HasAttachedDataProbe("Entity.TotalOthersTime"));
+    EXPECT_FALSE(delay.HasAttachedDataProbe("Entity.TotalWaitTime"));
+    EXPECT_EQ(CountAttachedDelayAllocationAttributes(delay), 1u);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckKeepsComponentConsistentForDispatchPathsAfterAllocationChanges) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayConsistentDispatchAfterRecheck");
+    delay.setReportStatistics(true);
+    delay.setAllocation(Util::AllocationType::ValueAdded);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setAllocation(Util::AllocationType::Transfer);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(delay.HasAttachedDataProbe(DelayAllocationAttributeName(Util::AllocationType::Transfer)));
+    ASSERT_EQ(CountAttachedDelayAllocationAttributes(delay), 1u);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics(), nullptr);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics()->getCollector(), nullptr);
+    EXPECT_NO_THROW(delay.AddWaitTimeValueProbe(2.0));
 }
 
 TEST(SimulatorRuntimeTest, DelayRecheckWithStatisticsEnabledIsIdempotentAndPreservesInternalCollector) {
