@@ -1836,6 +1836,9 @@ void ModelGraphicsScene::setUndoStack(QUndoStack* undo) {
 
 
 void ModelGraphicsScene::beginConnection() {
+    if (checkIgnoreEvent()) {
+        return;
+    }
     _connectingStep = 1;
     // Set the connection cursor only when a valid parent view is available.
     QGraphicsView* parentView = sceneParentGraphicsView(this);
@@ -2214,7 +2217,7 @@ bool ModelGraphicsScene::checkIgnoreEvent() {
         return false;
     }
 
-    return simulation->isRunning();
+    return simulation->isRunning() || simulation->isPaused();
 }
 void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent *mouseEvent) {
     if (checkIgnoreEvent()) {
@@ -2834,6 +2837,10 @@ void ModelGraphicsScene::dragMoveEvent(QGraphicsSceneDragDropEvent *event) {
 }
 
 void ModelGraphicsScene::keyPressEvent(QKeyEvent *keyEvent) {
+    if (checkIgnoreEvent()) {
+        keyEvent->ignore();
+        return;
+    }
     QGraphicsScene::keyPressEvent(keyEvent);
     QList<QGraphicsItem*> selected = this->selectedItems();
     if (keyEvent->key() == Qt::Key_Delete && selected.size() > 0) {
