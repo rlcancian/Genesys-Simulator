@@ -27,13 +27,13 @@ void PropertyEditor::setModelBlock(ModelDataDefinition* modelblock) {
 	//PropertyT<bool>* propBool;
 	//PropertyT<std::string>* propStr;
 	//PropertyT<Util::TimeUnit>* propTUnit;
-	for (auto prop : *modelblock->getProperties()->list()) {
+	for (auto control : *modelblock->getSimulationControls()->list()) {
 		//propDouble = dynamic_cast<PropertyT<double>*>(prop);
 		//propUInt = dynamic_cast<PropertyT<unsigned int>*>(prop);
 		//propBool = dynamic_cast<PropertyT<bool>*>(prop);
 		//propStr = dynamic_cast<PropertyT<std::string>*>(prop);
 		//propTUnit = dynamic_cast<PropertyT<Util::TimeUnit>*>(prop);
-		category = QString::fromStdString(prop->getName()); ///!@TODO Era para ser getClassName());
+		category = QString::fromStdString(control->getName()); ///!@TODO Era para ser getClassName());
 		QList<QTreeWidgetItem*> founds = findItems(category, Qt::MatchContains);
 		if (founds.size() == 0) {
 			treeRootItem = new QTreeWidgetItem(this);
@@ -64,13 +64,13 @@ void PropertyEditor::setModelBlock(ModelDataDefinition* modelblock) {
 		QTreeWidgetItem *treeItemChild = new QTreeWidgetItem();
 		//treeItemChild->setWhatsThis(0, QString::fromStdString(plugin->getPluginInfo()->getPluginTypename()));
 		//treeItemChild->setTextColor(0, treeRootItem->backgroundColor(0));
-		treeItemChild->setText(0, QString::fromStdString(prop->getName()));
+		treeItemChild->setText(0, QString::fromStdString(control->getName()));
 		//treeItemChild->setText(1, QString::fromStdString(std::to_string(prop->getValue())));
 		//treeItemChild->setToolTip(0, QString::fromStdString(plugtextAdds));
 		//treeItemChild->setStatusTip(0, QString::fromStdString(plugin->getPluginInfo()->getLanguageTemplate()));
 		//treeItemChild->setFlags(Qt::ItemIsSelectable | Qt::ItemIsDragEnabled | Qt::ItemNeverHasChildren);
 		treeRootItem->addChild(treeItemChild);
-		QWidget* lineEdit = new QLineEdit(QString::fromStdString(prop->getValue()));
+		QWidget* lineEdit = new QLineEdit(QString::fromStdString(control->getValue()));
 		this->setItemWidget(treeItemChild, 1, lineEdit);
 	}
 	resizeColumnToContents(0);
