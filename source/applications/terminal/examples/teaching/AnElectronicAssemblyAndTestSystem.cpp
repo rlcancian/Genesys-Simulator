@@ -138,10 +138,8 @@ int AnElectronicAssemblyAndTestSystem::main(int argc, char** argv) {
 	//setting simulation parameters
 	ModelSimulation* sim = model->getSimulation();
 	sim->setNumberOfReplications(10);
-	sim->setReplicationLength(8);
-	sim->setReplicationLengthTimeUnit(Util::TimeUnit::hour);
-	sim->setWarmUpPeriod(1);
-	sim->setWarmUpPeriodTimeUnit(Util::TimeUnit::hour);
+	sim->setReplicationLength(8, Util::TimeUnit::hour);
+	sim->setWarmUpPeriod(1, Util::TimeUnit::hour);
 	sim->setReplicationReportBaseTimeUnit(Util::TimeUnit::minute);
 	//save the model
 	model->save("./models/AnElectronicAssemblyAndTestSystem.gen");
