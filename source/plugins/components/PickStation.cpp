@@ -313,6 +313,5 @@ void PickStation::_createInternalAndAttachedData() {
 }
 
 void PickStation::_addProperty(SimulationControl* property) {
-	_properties->insert(property);
+	_addSimulationControl(property);
 }
-

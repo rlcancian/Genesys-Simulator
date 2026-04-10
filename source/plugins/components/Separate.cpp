@@ -46,6 +46,7 @@ ModelComponent* Separate::LoadInstance(Model* model, PersistenceRecord *fields) 
 }
 
 void Separate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	// This path handles split-existing-batch semantics using the representative "Entity.Group" marker.
 	unsigned int entityGroupId = entity->getAttributeValue("Entity.Group"); //This attribute refers to the Batch internal modeldatum EntityGroup (which may contain several groups --map--
 	if (entityGroupId == 0) {
 		traceSimulation(this, TraceManager::Level::L7_internal, "Entity is not grouped. Nothing to do");
@@ -54,14 +55,24 @@ void Separate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		EntityGroup* entityGroup = dynamic_cast<EntityGroup*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), entityGroupId));
 		if (entityGroup == nullptr) {
 			traceError("Error: Could not find EntityGroup Id=" + std::to_string(entityGroupId), TraceManager::Level::L3_errorRecover);
+			this->_parentModel->sendEntityToComponent(entity, getConnectionManager()->getFrontConnection());
 		} else {
-			Entity* e;
 			unsigned int idGroupKey = entity->getId();
-			while ((e = entityGroup->getGroup(idGroupKey)->front()) != nullptr) {
+			List<Entity*>* members = entityGroup->getGroup(idGroupKey);
+			if (members->size() == 0) {
+				traceSimulation(this, TraceManager::Level::L7_internal, "Group key has no members. Representative entity will continue unchanged");
+				this->_parentModel->sendEntityToComponent(entity, getConnectionManager()->getFrontConnection());
+				return;
+			}
+			while (members->size() > 0) {
+				Entity* e = members->front();
 				entityGroup->removeElement(idGroupKey, e);
+				// Reset group marker so separated members do not keep stale grouping state.
+				e->setAttributeValue("Entity.Group", 0.0);
 				traceSimulation(this, TraceManager::Level::L7_internal, "Entity " + e ->getName() + " was separated out of the group " + std::to_string(entityGroupId) + " key=" + std::to_string(idGroupKey));
 				_parentModel->sendEntityToComponent(e, _connections->getFrontConnection());
 			}
+			// Remove temporary representative after all members are released.
 			_parentModel->removeEntity(entity);
 		}
 	}
@@ -77,8 +88,11 @@ void Separate::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) 
 }
 
 bool Separate::_check(std::string& errorMessage) {
+	// Require the special marker attribute used by split-existing-batch flow.
 	bool resultAll = true;
 	_attachedAttributesInsert({"Entity.Group"});
+	ModelDataManager* elements = _parentModel->getDataManager();
+	resultAll &= elements->check(Util::TypeOf<Attribute>(), "Entity.Group", "Entity.Group", true, errorMessage);
 	return resultAll;
 }
 
@@ -88,4 +102,3 @@ PluginInformation* Separate::GetPluginInformation() {
 	// ...
 	return info;
 }
-

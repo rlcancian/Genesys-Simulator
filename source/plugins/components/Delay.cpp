@@ -99,6 +99,9 @@ Util::TimeUnit Delay::delayTimeUnit() const {
 }
 
 void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+    // Keep unused input-port parameter explicit for delay scheduling path.
+    (void) inputPortNumber;
+
 	double waitTime = _parentModel->parseExpression(_delayExpression);
 	Util::TimeUnit stu = _parentModel->getSimulation()->getReplicationBaseTimeUnit(); //getReplicationLengthTimeUnit();
 	waitTime *= Util::TimeUnitConvert(_delayTimeUnit, stu);
@@ -111,9 +114,15 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		std::string attribIndex="";
 		entity->setAttributeValue("Entity.Total" + allocationCategory + "Time", totalWaitTime + waitTime, attribIndex, true);
 	}
+    Connection* frontConnection = this->getConnectionManager()->getFrontConnection();
+    if (frontConnection == nullptr || frontConnection->component == nullptr) {
+        traceSimulation(this, "Delay dispatch skipped: invalid front connection");
+        return;
+    }
+
+    // Route delayed forwarding through Model API so entity-move handlers are notified.
+    _parentModel->sendEntityToComponent(entity, frontConnection, waitTime);
 	double delayEndTime = _parentModel->getSimulation()->getSimulatedTime() + waitTime;
-	Event* newEvent = new Event(delayEndTime, entity, this->getConnectionManager()->getFrontConnection());
-	_parentModel->getFutureEvents()->insert(newEvent);
 	traceSimulation(this, "End of delay of "/*entity " + std::to_string(entity->entityNumber())*/ + entity->getName() + " scheduled to time " + std::to_string(delayEndTime) + Util::StrTimeUnitShort(stu) + " (wait time " + std::to_string(waitTime) + Util::StrTimeUnitShort(stu) + ") // " + _delayExpression+ " "+Util::StrTimeUnitShort(_delayTimeUnit));
 }
 

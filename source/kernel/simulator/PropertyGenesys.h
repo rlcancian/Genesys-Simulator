@@ -15,23 +15,33 @@ public:
     }
 
 public:
-    void changeProperty(SimulationControl* property, const std::string& value, bool remove = false) {
-        if (property != nullptr) {
-            property->setValue(value, remove);
+    void changeSimulationControl(SimulationControl* control, const std::string& value, bool remove = false) {
+        if (control != nullptr) {
+            control->setValue(value, remove);
         }
     }
 
-    SimulationControl* findProperty(const std::string& id, const std::string& attribute) {
+    SimulationControl* findSimulationControl(const std::string& id, const std::string& attribute) {
         for (auto element : _elements) {
             if (std::to_string(element->getId()) == id) {
-                for (auto prop : *element->getProperties()->list()) {
-                    if (prop->getName() == attribute) {
-                        return prop;
+                for (auto control : *element->getSimulationControls()->list()) {
+                    if (control->getName() == attribute) {
+                        return control;
                     }
                 }
             }
         }
         return nullptr;
+    }
+
+    // Legacy compatibility wrapper. Prefer changeSimulationControl.
+    void changeProperty(SimulationControl* control, const std::string& value, bool remove = false) {
+        changeSimulationControl(control, value, remove);
+    }
+
+    // Legacy compatibility wrapper. Prefer findSimulationControl.
+    SimulationControl* findProperty(const std::string& id, const std::string& attribute) {
+        return findSimulationControl(id, attribute);
     }
 
     void addElement(ModelComponent* component) {

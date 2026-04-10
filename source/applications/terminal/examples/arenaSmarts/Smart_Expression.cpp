@@ -41,37 +41,37 @@ int Smart_Expression::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 	// create model
 
-    EntityType* entityType = new EntityType(model, "Package");
-    Create* create = new Create(model);
+    EntityType* entityType = plugins->newInstance<EntityType>(model, "Package");
+    Create* create = plugins->newInstance<Create>(model);
     create->setDescription("Packages Arrive");
     create->setEntityType(entityType);
     create->setTimeBetweenCreationsExpression("EXPO(1)");
     create->setTimeUnit(Util::TimeUnit::minute);
 
-    Assign* assign = new Assign(model);
+    Assign* assign = plugins->newInstance<Assign>(model);
     assign->setDescription("The packages are weighted");
     Assignment* assignment = new Assignment("productWeight", "NORM(100, 5)");
     assign->getAssignments()->insert(assignment);
-    new Attribute(model, "productWeight");
-    create->getConnectionManager()->insert(assign);
+    plugins->newInstance<Attribute>(model, "productWeight");
+    create->connectTo(assign);
 
-    Delay* delay = new Delay(model);
+    Delay* delay = plugins->newInstance<Delay>(model);
     delay->setDescription("The packages are processed");
     delay->setDelayExpression("productWeight * 0.33 + 5");
     delay->setDelayTimeUnit(Util::TimeUnit::minute);
-    assign->getConnectionManager()->insert(delay);
+    assign->connectTo(delay);
 
-    Decide* decide = new Decide(model);
+    Decide* decide = plugins->newInstance<Decide>(model);
     decide->setDescription("Send Package to correct department");
     decide->getConditions()->insert("productWeight > 100");
-    delay->getConnectionManager()->insert(decide);
+    delay->connectTo(decide);
 
-    Dispose* department1 = new Dispose(model);
+    Dispose* department1 = plugins->newInstance<Dispose>(model);
     department1->setDescription("Department 1");
-    Dispose* department2 = new Dispose(model);
+    Dispose* department2 = plugins->newInstance<Dispose>(model);
     department2->setDescription("Department 2");
-    decide->getConnectionManager()->insert(department1);
-    decide->getConnectionManager()->insert(department2);
+    decide->connectTo(department1);
+    decide->connectTo(department2);
 
     ModelSimulation* simulation = model->getSimulation();
     simulation->setNumberOfReplications(3);

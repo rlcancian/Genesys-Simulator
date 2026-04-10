@@ -68,7 +68,7 @@ private:
 class Schedule : public ModelDataDefinition {
 public:
 	Schedule(Model* model, std::string name = "");
-	virtual ~Schedule() = default;
+	virtual ~Schedule() override;
 public: // static
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static PluginInformation* GetPluginInformation();

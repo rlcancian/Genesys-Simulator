@@ -14,7 +14,25 @@ namespace Ui {
 class MainWindow;
 }
 
-// Encapsulate Phase 7 model/application lifecycle orchestration with narrow dependencies.
+// Document model lifecycle orchestration delegated by MainWindow compatibility wrappers.
+/**
+ * @brief Controller for model/application lifecycle flows delegated from MainWindow.
+ *
+ * This controller centralizes lifecycle actions (new/open/save/close/check/configure/exit)
+ * while MainWindow remains the composition root and compatibility façade. It uses explicit
+ * callback injection to invoke existing UI update and persistence routines without changing
+ * signatures or ownership.
+ *
+ * Responsibilities:
+ * - orchestrate user-triggered lifecycle actions and guard pending-change confirmations;
+ * - coordinate model load/save paths through injected serializer callbacks;
+ * - trigger UI/tab/action refreshes required after lifecycle transitions.
+ *
+ * Boundaries:
+ * - it does not directly implement file formats (delegated to services);
+ * - it does not own simulator/model objects;
+ * - it does not manage scene tools, property editor internals, or simulation traces.
+ */
 class ModelLifecycleController {
 public:
     // Group callback dependencies to keep constructor arguments focused and explicit.
@@ -34,7 +52,7 @@ public:
         std::function<void(const char*)> disconnectSceneSignals;
     };
 
-    // Inject only the state and callbacks required by lifecycle flows.
+    /** @brief Creates the lifecycle orchestration controller used by MainWindow wrappers. */
     ModelLifecycleController(QWidget* ownerWidget,
                              Simulator* simulator,
                              Ui::MainWindow* ui,
@@ -44,16 +62,25 @@ public:
                              bool* loaded,
                              Callbacks callbacks);
 
-    // Expose lifecycle actions used by MainWindow compatibility wrappers.
+    /** @brief Starts the new-model lifecycle flow and reinitializes GUI/model state. */
     void onActionModelNewTriggered() const;
+    /** @brief Starts model-open flow with persistence loading and UI synchronization. */
     void onActionModelOpenTriggered() const;
+    /** @brief Starts model-save flow for graphical/text representations. */
     void onActionModelSaveTriggered() const;
+    /** @brief Closes current model after pending-change checks and cleanup orchestration. */
     void onActionModelCloseTriggered() const;
+    /** @brief Opens model information dialog for the current model context. */
     void onActionModelInformationTriggered() const;
+    /** @brief Runs model-check workflow as a delegated lifecycle operation. */
     void onActionModelCheckTriggered() const;
+    /** @brief Opens simulation configuration workflow anchored to lifecycle façade. */
     void onActionSimulationConfigureTriggered() const;
+    /** @brief Executes application-exit flow with pending-change confirmation semantics. */
     void onActionSimulatorExitTriggered() const;
+    /** @brief Indicates whether current model/text state has unsaved changes. */
     bool hasPendingModelChanges() const;
+    /** @brief Requests exit confirmation preserving compatibility prompt behavior. */
     bool confirmApplicationExit() const;
 
 private:

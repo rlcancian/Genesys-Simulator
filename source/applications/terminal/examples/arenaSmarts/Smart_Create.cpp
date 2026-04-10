@@ -39,29 +39,29 @@ int Smart_Create::main(int argc, char** argv) {
 	plugins->autoInsertPlugins("autoloadplugins.txt");
 	Model* model = genesys->getModelManager()->newModel();
 	// create model
-	EntityType* entityType = new EntityType(model, "Customers");
-    Create* create = new Create(model);
+	EntityType* entityType = plugins->newInstance<EntityType>(model, "Customers");
+    Create* create = plugins->newInstance<Create>(model);
     create->setDescription("Create Module");
     create->setEntityType(entityType);
     create->setTimeBetweenCreationsExpression("EXPO(1)");
     create->setTimeUnit(Util::TimeUnit::minute);
     
-    Assign* assign = new Assign(model);
+    Assign* assign = plugins->newInstance<Assign>(model);
     assign->setDescription("Assign");
     Assignment* assignment = new Assignment("processTime", "NORM(10, 2)");
     assign->getAssignments()->insert(assignment);
-    new Attribute(model, "processTime");
-    create->getConnectionManager()->insert(assign);
+    plugins->newInstance<Attribute>(model, "processTime");
+    create->connectTo(assign);
     
-    Delay* delay = new Delay(model);
+    Delay* delay = plugins->newInstance<Delay>(model);
     delay->setDescription("Process");
     delay->setDelayExpression("processTime");
     delay->setDelayTimeUnit(Util::TimeUnit::minute);
-    assign->getConnectionManager()->insert(delay);
+    assign->connectTo(delay);
     
-    Dispose* dispose = new Dispose(model);
+    Dispose* dispose = plugins->newInstance<Dispose>(model);
     dispose->setDescription("Dispose");
-    delay->getConnectionManager()->insert(dispose);
+    delay->connectTo(dispose);
     
     ModelSimulation* simulation = model->getSimulation();
     simulation->setReplicationLength(10);

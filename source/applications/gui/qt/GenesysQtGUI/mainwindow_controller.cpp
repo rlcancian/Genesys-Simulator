@@ -1,3 +1,12 @@
+// Document this compilation unit as the controller-wrapper partition of MainWindow.
+/**
+ * @file mainwindow_controller.cpp
+ * @brief Controller-delegation partition of MainWindow implementation.
+ *
+ * This file groups menu/toolbar/widget slot wrappers that delegate behavior to extracted
+ * controllers (for example lifecycle, simulation command, edit, scene tool, and dialog utility
+ * controllers). It does not define a new class; it is a thematic partition of MainWindow.
+ */
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 // Include the Phase 3 controller interface required by compatibility wrappers.

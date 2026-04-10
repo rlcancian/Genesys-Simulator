@@ -6,24 +6,42 @@
 class Simulator;
 class ModelGraphicsView;
 
-// Encapsulate Phase 3 model-inspection and tree/scene synchronization logic.
+// Document the controller boundary for model-inspection and tree/scene synchronization.
+/**
+ * @brief Controller for model inspection views and scene-selection synchronization.
+ *
+ * In the refactored GUI architecture, this controller receives delegated callbacks from
+ * MainWindow to keep model-inspector responsibilities outside the composition root while
+ * preserving the existing UI contract. It synchronizes Components/Data Definitions trees
+ * with the current kernel model and keeps tree-to-scene selection behavior consistent.
+ *
+ * Responsibilities:
+ * - refresh model component and data-definition trees from Simulator state;
+ * - manage in-place rename flow for editable data-definition names;
+ * - propagate current tree selection to the graphical scene and viewport.
+ *
+ * Boundaries:
+ * - it does not create/destroy models or files (model lifecycle remains elsewhere);
+ * - it does not own scene command logic, undo/redo, or simulation commands;
+ * - it does not act as a persistence or export service.
+ */
 class ModelInspectorController {
 public:
-    // Inject only the narrow dependencies required by the model-inspector workflow.
+    /** @brief Creates the model-inspector delegated controller. */
     ModelInspectorController(Simulator* simulator,
                              QTreeWidget* componentsTree,
                              QTreeWidget* dataDefinitionsTree,
                              ModelGraphicsView* graphicsView);
 
-    // Synchronize the Components tree with the current model state.
+    /** @brief Synchronizes the Components tree from the current model representation. */
     void actualizeModelComponents(bool force) const;
-    // Synchronize the Data Definitions tree with the current model state.
+    /** @brief Synchronizes the Data Definitions tree from current model data definitions. */
     void actualizeModelDataDefinitions(bool force) const;
-    // Start in-place edition for a data-definition name when column is editable.
+    /** @brief Starts in-place rename editing for editable data-definition entries. */
     void beginDataDefinitionNameEdit(QTreeWidgetItem* item, int column) const;
-    // Apply renamed data-definition names back into the current model.
+    /** @brief Commits edited data-definition names back to the kernel model. */
     void applyDataDefinitionNameChange(QTreeWidgetItem* item, int column) const;
-    // Synchronize tree selection with graphical scene selection and viewport.
+    /** @brief Synchronizes tree selection with scene selection and viewport focus. */
     void syncSelectedComponentTreeItemToScene() const;
 
 private:

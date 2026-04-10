@@ -110,6 +110,34 @@ genesys_add_unit_test(genesys_test_statistics
     genesys_kernel_util
 )
 
+add_executable(genesys_test_tools_hypothesistester
+    test_tools_hypothesistester.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/HypothesisTesterDefaultImpl1.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistribution.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistributionBase.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/SolverDefaultImpl1.cpp
+)
+
+target_include_directories(genesys_test_tools_hypothesistester
+    PRIVATE
+        ${CMAKE_SOURCE_DIR}/source
+)
+
+target_link_libraries(genesys_test_tools_hypothesistester
+    PRIVATE
+        genesys_kernel_simulator_runtime
+        genesys_kernel_statistics
+        genesys_kernel_util
+        GTest::gtest_main
+)
+
+gtest_discover_tests(genesys_test_tools_hypothesistester
+    PROPERTIES
+        LABELS "unit"
+)
+
+set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit)
+
 add_custom_target(genesys_kernel_unit_tests
     DEPENDS
         genesys_test_util
@@ -126,6 +154,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_simulationscenario
         genesys_test_support_experimentmanager
         genesys_test_statistics
+        genesys_test_tools_hypothesistester
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -194,6 +223,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_support_simulationscenario>
     COMMAND $<TARGET_FILE:genesys_test_support_experimentmanager>
     COMMAND $<TARGET_FILE:genesys_test_statistics>
+    COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests

@@ -15,10 +15,27 @@ class QSlider;
 class QAction;
 class ModelGraphicsView;
 
-// Persist and restore graphical-model state for Phase 2 extraction.
+// Document persistence responsibilities for textual and graphical GUI model data.
+/**
+ * @brief Persistence service for saving/loading graphical and textual model representations.
+ *
+ * This Phase-2 extraction removes serialization concerns from MainWindow while preserving file
+ * compatibility through wrapper delegation. It bridges GUI state (scene/view/actions/editors)
+ * and kernel model loading/saving workflows.
+ *
+ * Responsibilities:
+ * - save textual model content with the existing line-based format;
+ * - save full graphical .gui state sections used by legacy compatibility;
+ * - load persisted model files and restore graphical/editor UI state via callbacks.
+ *
+ * Boundaries:
+ * - it does not own widgets or simulator lifetime;
+ * - it does not run simulation commands or trace rendering;
+ * - it coordinates persistence/serialization only.
+ */
 class GraphicalModelSerializer {
 public:
-    // Capture only the narrow GUI/kernel dependencies required for persistence behavior.
+    /** @brief Creates the persistence service that backs MainWindow lifecycle wrappers. */
     GraphicalModelSerializer(Simulator* simulator,
                              QWidget* ownerWidget,
                              QPlainTextEdit* modelTextEditor,
@@ -39,11 +56,20 @@ public:
                              std::function<void()> applyShowAttachedElements,
                              std::function<void()> applyDiagramsVisibility);
 
-    // Save textual model representation using the existing line-by-line format.
+    /**
+     * @brief Saves textual model language using the established compatibility format.
+     * @return true when write succeeds.
+     */
     bool saveTextModel(QFile* saveFile, const QString& data) const;
-    // Save full .gui persistence sections without altering file compatibility.
+    /**
+     * @brief Saves full graphical `.gui` persistence sections without format changes.
+     * @return true when serialization succeeds.
+     */
     bool saveGraphicalModel(const QString& filename) const;
-    // Load .gui/.gen files and restore persisted graphical state.
+    /**
+     * @brief Loads `.gui`/`.gen` model files and restores persisted graphical/UI state.
+     * @return Loaded kernel model pointer or nullptr when loading fails.
+     */
     Model* loadGraphicalModel(const std::string& filename) const;
 
 private:

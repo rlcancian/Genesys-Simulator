@@ -46,6 +46,10 @@ List<Plugin*>* PluginManager::_autoFindPlugins() {
 	return  completePluginsFieldsAndTemplates();
 }
 
+List<Plugin*>* PluginManager::autoInsertPlugins() {
+    return autoInsertPlugins("", true);
+}
+
 List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)
 {
 	List<Plugin*>* loadedPlugins = nullptr;

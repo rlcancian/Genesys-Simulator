@@ -56,7 +56,9 @@ public:
 	/*! \brief Finds a connected plugin by plugin type name. */
 	Plugin* find(std::string pluginTypeName);
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */
-	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound = true);
+    List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound = true);
+    /*! \brief Auto-loads plugins discovered automatically). */
+    List<Plugin*>* autoInsertPlugins();
 public:
 	/*! \brief Returns the first plugin in the internal plugin list. */
 	Plugin* front();

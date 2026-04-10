@@ -727,7 +727,6 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 DISTFILES += \
-    ../../../../../autoloadplugins.txt \
     ../../../terminal/examples/arenaSmarts/Arrivals Element Stops Entities Arriving After a Set Time Modificado.doe \
     propertyeditor/qtpropertybrowser/CMakeLists.txt \
     propertyeditor/qtpropertybrowser/images/cursor-arrow.png \

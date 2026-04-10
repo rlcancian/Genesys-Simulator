@@ -6,8 +6,23 @@
 
 class SimulationController;
 
+// Document simulation command orchestration delegated by MainWindow slots.
 /**
- * @brief Phase 8 controller for UI-level simulation command orchestration.
+ * @brief Controller that orchestrates UI simulation commands over SimulationController guards.
+ *
+ * This class sits between MainWindow compatibility slots and the low-level simulation
+ * readiness controller. It coordinates command intent (start/step/pause/resume/stop), command
+ * logging, and action refresh callbacks while preserving the existing UI trigger surface.
+ *
+ * Responsibilities:
+ * - execute simulation command flows delegated from MainWindow;
+ * - use SimulationController precondition checks before unsafe commands;
+ * - invoke injected callbacks for console command logging and action-state refresh.
+ *
+ * Boundaries:
+ * - it does not own simulation state or kernel event wiring;
+ * - it does not render trace/event widgets;
+ * - it is a controller/orchestration layer, not a persistence or synchronization service.
  */
 class SimulationCommandController {
 public:

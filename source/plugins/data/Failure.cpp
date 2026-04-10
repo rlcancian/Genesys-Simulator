@@ -90,6 +90,23 @@ Failure::Failure(Model* model, std::string name) : ModelDataDefinition(model, Ut
 	_addProperty(propFalingResources);
 }
 
+Failure::~Failure() {
+	if (_falingResources != nullptr) {
+		while (!_falingResources->empty()) {
+			Resource* resource = _falingResources->front();
+			if (resource != nullptr) {
+				resource->removeFailure(this);
+			} else {
+				_falingResources->pop_front();
+			}
+		}
+		delete _falingResources;
+		_falingResources = nullptr;
+	}
+	delete _releaseCounts;
+	_releaseCounts = nullptr;
+}
+
 std::string Failure::show() {
 	return ModelDataDefinition::show() +
 			"";
@@ -215,8 +232,22 @@ bool Failure::_loadInstance(PersistenceRecord *fields) {
 			_upTimeTimeUnit = static_cast<Util::TimeUnit>(fields->loadField("upTimeTimeUnit", static_cast<int>(DEFAULT.upTimeTimeUnit)));
 			_downTimeExpression = fields->loadField("downTimeExpression", DEFAULT.downTimeExpression);
 			_downTimeTimeUnit = static_cast<Util::TimeUnit>(fields->loadField("downTimeTimeUnit", static_cast<int>(DEFAULT.downTimeTimeUnit)));
-			// Possible extension for attached resources:
-			// unsigned int numResources = fields->loadField("failingResources", 0u);
+			while (!_falingResources->empty()) {
+				Resource* resource = _falingResources->front();
+				if (resource != nullptr) {
+					resource->removeFailure(this);
+				} else {
+					_falingResources->pop_front();
+				}
+			}
+			unsigned int failingResourcesSize = fields->loadField("failingResources", 0u);
+			for (unsigned int i = 0; i < failingResourcesSize; i++) {
+				std::string resourceName = fields->loadField("failingResource" + Util::StrIndex(i), std::string(""));
+				Resource* resource = static_cast<Resource*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), resourceName));
+				if (resource != nullptr) {
+					addResource(resource);
+				}
+			}
 		} catch (...) {
 		}
 	}
@@ -235,8 +266,12 @@ void Failure::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	fields->saveField("upTimeTimeUnit", static_cast<int>(_upTimeTimeUnit), static_cast<int>(DEFAULT.upTimeTimeUnit), saveDefaultValues);
 	fields->saveField("downTimeExpression", _downTimeExpression, DEFAULT.downTimeExpression, saveDefaultValues);
 	fields->saveField("downTimeTimeUnit", static_cast<int>(_downTimeTimeUnit), static_cast<int>(DEFAULT.downTimeTimeUnit), saveDefaultValues);
-	// Possible extension for attached resources:
-	// fields->saveField("failingResources", _falingResources->size(), 0u, saveDefaultValues);
+	fields->saveField("failingResources", _falingResources->size(), 0u, saveDefaultValues);
+	unsigned int i = 0;
+	for (Resource* resource : *_falingResources->list()) {
+		fields->saveField("failingResource" + Util::StrIndex(i), resource != nullptr ? resource->getName() : std::string(""), std::string(""), saveDefaultValues);
+		i++;
+	}
 }
 
 bool Failure::_check(std::string& errorMessage) {
@@ -276,11 +311,21 @@ List<Resource*>*Failure::falingResources() const{
 }
 
 void Failure::addResource(Resource* newResource){
-	_falingResources->insert(newResource);
+	if (newResource == nullptr) {
+		return;
+	}
+	if (_falingResources->find(newResource) == _falingResources->list()->end()) {
+		newResource->insertFailure(this);
+	}
 }
 
 void Failure::removeResource(Resource* resource){
-	_falingResources->remove(resource);
+	if (resource == nullptr) {
+		return;
+	}
+	if (_falingResources->find(resource) != _falingResources->list()->end()) {
+		resource->removeFailure(this);
+	}
 }
 
 // private (internal!!) simulation event handlers
@@ -306,4 +351,3 @@ void Failure::_onFailureFailEventHandler(void* resourcePtr){
 	// schedule next resource activation
 	_scheduleActivation(resource);
 }
-

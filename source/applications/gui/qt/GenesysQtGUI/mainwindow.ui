@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1081</width>
+    <width>729</width>
     <height>777</height>
    </rect>
   </property>
@@ -150,7 +150,7 @@
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>98</width>
+                     <width>46</width>
                      <height>36</height>
                     </rect>
                    </property>
@@ -738,8 +738,8 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1081</width>
-     <height>26</height>
+     <width>729</width>
+     <height>22</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuModel">
@@ -981,7 +981,7 @@ p, li { white-space: pre-wrap; }
 hr { height: 1px; border-width: 0; }
 li.unchecked::marker { content: &quot;\2610&quot;; }
 li.checked::marker { content: &quot;\2612&quot;; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Noto Sans Brahmi'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'Sans Serif'; font-size:8pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-family:'DejaVu LGC Sans';&quot;&gt;Console&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
        </property>
        <property name="textInteractionFlags">
@@ -1441,7 +1441,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </action>
   <action name="actionAboutAbout">
    <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
+    <iconset>
      <normaloff>:/icons1/resources/icons/pack1/ico/106.ico</normaloff>:/icons1/resources/icons/pack1/ico/106.ico</iconset>
    </property>
    <property name="text">
@@ -1562,7 +1562,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Ctrl+R</string>
    </property>
   </action>
-  <!-- </action> -->
   <action name="actionEditCut">
    <property name="enabled">
     <bool>false</bool>
@@ -1917,7 +1916,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
+    <iconset>
      <normaloff>:/icons1/resources/icons/pack1/ico/190.ico</normaloff>:/icons1/resources/icons/pack1/ico/190.ico</iconset>
    </property>
    <property name="text">
@@ -2154,7 +2153,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </action>
   <action name="actionParallelization">
    <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
+    <iconset>
      <normaloff>:/icons1/resources/icons/pack1/ico/200.ico</normaloff>:/icons1/resources/icons/pack1/ico/200.ico</iconset>
    </property>
    <property name="text">
