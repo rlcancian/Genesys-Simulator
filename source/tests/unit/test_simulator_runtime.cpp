@@ -8,7 +8,9 @@
 #include "kernel/simulator/Attribute.h"
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/Persistence.h"
 #include "plugins/data/Queue.h"
+#include "plugins/data/Variable.h"
 
 namespace {
 struct SimulationStartObserver {
@@ -116,6 +118,33 @@ public:
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
     }
+};
+
+class VariableLifecycleProbe : public Variable {
+public:
+    VariableLifecycleProbe(Model* model, const std::string& name = "") : Variable(model, name) {}
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class FakeModelPersistenceRuntime : public ModelPersistence_if {
+public:
+    bool save(std::string) override { return false; }
+    bool load(std::string) override { return false; }
+    bool hasChanged() override { return false; }
+    bool getOption(ModelPersistence_if::Options) override { return false; }
+    void setOption(ModelPersistence_if::Options, bool) override {}
+    std::string getFormatedField(PersistenceRecord*) override { return ""; }
 };
 
 class CountingWaitingProbe final : public Waiting {
@@ -802,4 +831,112 @@ TEST(SimulatorRuntimeTest, QueueCheckPassesWhenAttributeRuleHasValidAttributeNam
     EXPECT_TRUE(errorMessage.empty());
 
     delete priority;
+}
+
+TEST(SimulatorRuntimeTest, VariableInitBetweenReplicationsCopiesWithoutAliasingInitialValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariableResetNoAlias");
+    variable.setInitialValue(10.0, "idx");
+    variable.InitBetweenReplicationsProbe();
+
+    variable.setValue(77.0, "idx");
+
+    EXPECT_DOUBLE_EQ(variable.getValue("idx"), 77.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("idx"), 10.0);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitBetweenReplicationsRestoresCurrentValueFromInitial) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariableResetRestores");
+    variable.setInitialValue(21.5, "slot");
+    variable.setValue(3.0, "slot");
+
+    variable.InitBetweenReplicationsProbe();
+
+    EXPECT_DOUBLE_EQ(variable.getValue("slot"), 21.5);
+}
+
+TEST(SimulatorRuntimeTest, VariableSavePersistsMultipleDimensionsWithIncreasingIndexes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariablePersistDimensions");
+    variable.insertDimentionSize(3u);
+    variable.insertDimentionSize(5u);
+    variable.insertDimentionSize(7u);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    variable.SaveInstanceProbe(&fields, true);
+
+    EXPECT_EQ(fields.loadField("dimensions", 0u), 3u);
+    EXPECT_EQ(fields.loadField("dimension[0]", 0u), 3u);
+    EXPECT_EQ(fields.loadField("dimension[1]", 0u), 5u);
+    EXPECT_EQ(fields.loadField("dimension[2]", 0u), 7u);
+}
+
+TEST(SimulatorRuntimeTest, VariableSaveAndLoadPreservesInitialValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe source(model, "VariablePersistValuesSource");
+    source.setInitialValue(4.25, "");
+    source.setInitialValue(8.5, "1,1");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    VariableLifecycleProbe loaded(model, "VariablePersistValuesLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue(""), 4.25);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,1"), 8.5);
+}
+
+TEST(SimulatorRuntimeTest, VariableLoadedCurrentAndInitialContainersRemainIndependentAfterReset) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe source(model, "VariableContainerIndependenceSource");
+    source.setInitialValue(12.0, "shared");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    VariableLifecycleProbe loaded(model, "VariableContainerIndependenceLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    loaded.InitBetweenReplicationsProbe();
+
+    ASSERT_NE(loaded.getValues(), nullptr);
+    EXPECT_DOUBLE_EQ(loaded.getValue("shared"), 12.0);
+    loaded.setValue(44.0, "shared");
+    EXPECT_DOUBLE_EQ(loaded.getValue("shared"), 44.0);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("shared"), 12.0);
+    loaded.setInitialValue(66.0, "shared");
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("shared"), 66.0);
+    EXPECT_DOUBLE_EQ(loaded.getValue("shared"), 44.0);
+}
+
+TEST(SimulatorRuntimeTest, VariableShowIncludesVariableSpecificValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariableShowDetails");
+    variable.setValue(3.14, "pi");
+
+    const std::string shown = variable.show();
+    EXPECT_NE(shown.find("values:{"), std::string::npos);
+    EXPECT_NE(shown.find("pi="), std::string::npos);
 }

@@ -27,10 +27,21 @@ ModelDataDefinition* Variable::NewInstance(Model* model, std::string name) {
 
 Variable::Variable(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<Variable>(), name) {
 	setName(name);
-	_parentModel->getControls()->insert(new SimulationControlDouble(
-						std::bind(&Variable::getInitialValue, this, ""),
-						std::bind(&Variable::setInitialValue, this, std::placeholders::_1, ""),
-						Util::TypeOf<Variable>(), name, "InitialValue", ""));
+	SimulationControlDouble* propInitialValue = new SimulationControlDouble(
+			std::bind(&Variable::getInitialValue, this, ""),
+			std::bind(&Variable::setInitialValue, this, std::placeholders::_1, ""),
+			Util::TypeOf<Variable>(), getName(), "InitialValue", "");
+	_parentModel->getControls()->insert(propInitialValue);
+	_addProperty(propInitialValue);
+}
+
+Variable::~Variable() {
+	delete _dimensionSizes;
+	_dimensionSizes = nullptr;
+	delete _values;
+	_values = nullptr;
+	delete _initialValues;
+	_initialValues = nullptr;
 }
 
 std::string Variable::show() {
@@ -38,9 +49,11 @@ std::string Variable::show() {
 	for (std::pair<std::string, double> var : * this->_values) {
 		text += var.first + "=" + Util::StrTruncIfInt(std::to_string(var.second)) + ", ";
 	}
-	text = text.substr(0, text.length() - 2);
+	if (!this->_values->empty()) {
+		text = text.substr(0, text.length() - 2);
+	}
 	text += "}";
-	return ModelDataDefinition::show();
+	return ModelDataDefinition::show() + ", " + text;
 }
 
 PluginInformation* Variable::GetPluginInformation() {
@@ -142,8 +155,8 @@ bool Variable::_loadInstance(PersistenceRecord *fields) {
 		}
 		nv = fields->loadField("values", 0);
 		for (unsigned int i = 0; i < nv; i++) {
-			pos = fields->loadField("valuePos" + Util::StrIndex(i), 0);
-			value = fields->loadField("value" + Util::StrIndex(i), 0);
+			pos = fields->loadField("valuePos" + Util::StrIndex(i), "");
+			value = fields->loadField("value" + Util::StrIndex(i), 0.0);
 			this->_initialValues->emplace(pos, value);
 		}
 	}
@@ -151,11 +164,14 @@ bool Variable::_loadInstance(PersistenceRecord *fields) {
 }
 
 void Variable::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	unsigned int i = 0;
 	fields->saveField("dimensions", _dimensionSizes->size(), 0u, saveDefaultValues);
 	for (unsigned int dimension : *_dimensionSizes) {
 		fields->saveField("dimension" + Util::StrIndex(i), dimension, 1u, saveDefaultValues);
+		i++;
 	}
+	i = 0;
 	fields->saveField("values", _initialValues->size(), 0);
 	for (std::map<std::string, double>::iterator it = _initialValues->begin(); it != _initialValues->end(); it++, i++) {
 		fields->saveField("valuePos" + Util::StrIndex(i), (*it).first, "0", saveDefaultValues);
@@ -169,8 +185,7 @@ bool Variable::_check(std::string& errorMessage) {
 }
 
 void Variable::_initBetweenReplications() {
-	this->_values->clear();
-	this->_values = this->_initialValues;
+	*this->_values = *this->_initialValues;
 }
 
 ModelDataDefinition* Variable::get_scope() {
