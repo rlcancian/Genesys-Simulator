@@ -138,7 +138,7 @@ void Wait::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		message += " for signal \"" + _signalData->getName() + "\"";
 	} else if (_waitType == Wait::WaitType::ScanForCondition) {
 		message += " until codition \"" + _condition + "\" is true";
-	} else if (_waitType == Wait::WaitType::ScanForCondition) {
+	} else if (_waitType == Wait::WaitType::InfiniteHold) {
 		message += " indefinitely";
 	}
 	_parentModel->getTracer()->traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, message);
@@ -181,10 +181,24 @@ void Wait::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Wait::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	if (_waitType == Wait::WaitType::ScanForCondition) {
+	if (_queue == nullptr) {
+		errorMessage += "Queue is null in Wait \"" + this->getName() + "\"";
+		return false;
+	}
+	if (_waitType == Wait::WaitType::WaitForSignal) {
+		// Wait/Signal operational contract is based on a shared SignalData instance.
+		if (_signalData == nullptr) {
+			errorMessage += "SignalData is null for WaitForSignal in Wait \"" + this->getName() + "\"";
+			resultAll = false;
+		}
+		if (!_parentModel->checkExpression(limitExpression, "LimitExpression", errorMessage)) {
+			resultAll = false;
+		}
+	} else if (_waitType == Wait::WaitType::ScanForCondition) {
 		resultAll = _parentModel->checkExpression(_condition, "Condition", errorMessage);
-		if (resultAll) { // add handler to event AfterProcessEvent
+		if (resultAll && !_isScanConditionHandlerRegistered) { // local guard to avoid duplicate registration on re-checks
 			_parentModel->getOnEventManager()->addOnAfterProcessEventHandler(this, &Wait::_handlerForAfterProcessEventEvent);
+			_isScanConditionHandlerRegistered = true;
 		}
 	}
 	return resultAll;
@@ -230,7 +244,8 @@ void Wait::_initBetweenReplications() {
 unsigned int Wait::_handlerForSignalDataEvent(SignalData* signalData) {
 	unsigned int freed = 0;
 	unsigned int waitLimit = _parentModel->parseExpression(limitExpression);
-	while (_queue->size() > 0 && signalData->remainsToLimit() > 0 &&  freed <= waitLimit) {
+	// Stop when either global signal limit or local wait limit is reached.
+	while (_queue->size() > 0 && signalData->remainsToLimit() > 0 && freed < waitLimit) {
 		Waiting* w = _queue->getAtRank(0);
 		Entity* ent = w->getEntity();
 		ModelComponent* sourceComponent = w->geComponent();
