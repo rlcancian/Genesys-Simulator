@@ -179,10 +179,11 @@ double StatisticsDatafileDefaultImpl1::_getNormalProbability(double confidenceLe
 
 double StatisticsDatafileDefaultImpl1::halfWidthConfidenceInterval() {
 	if (_hasNewValue() || !_halfWidthConfidenceIntervalCalculated || _confidenceLevel != _lastConfidenceLevel) {
+		// Compute and cache the confidence interval half-width using the current confidence level.
 		double z = _getNormalProbability(_confidenceLevel);
 		_halfWidthConfidenceInterval = z * stddeviation() / sqrt(_numElements);
 		_lastConfidenceLevel = _confidenceLevel;
-		_variationCoefCalculated = true;
+		_halfWidthConfidenceIntervalCalculated = true;
 	}
 	return _halfWidthConfidenceInterval;
 }
@@ -209,8 +210,10 @@ void StatisticsDatafileDefaultImpl1::setConfidenceLevel(double confidencelevel) 
 double StatisticsDatafileDefaultImpl1::mode() {
 	if (_hasNewValue() || !_modeCalculated) {
 		if (!_fileSorted) _sortFile();
-		valueType tmpModeValue = _collectorSorted->getValue(0), modeValue;
-		unsigned int modeCount = 0, tmpCount = 0;
+		// Scan sorted values by runs and keep the value with the highest observed frequency.
+		valueType tmpModeValue = _collectorSorted->getValue(0);
+		valueType modeValue = tmpModeValue;
+		unsigned int modeCount = 1, tmpCount = 1;
 		for (unsigned long position = 1; position < _collectorSorted->numElements(); position++) {
 			valueType value = _collectorSorted->getValue(position);
 			if (value == tmpModeValue) {
@@ -219,13 +222,14 @@ double StatisticsDatafileDefaultImpl1::mode() {
 				if (tmpCount > modeCount) {
 					modeCount = tmpCount;
 					modeValue = tmpModeValue;
-					tmpModeValue = value;
-					tmpCount = 1;
-				} else {
-					tmpCount = 1;
-					tmpModeValue = value;
 				}
+				tmpModeValue = value;
+				tmpCount = 1;
 			}
+		}
+		// Consolidate the trailing run, which is not closed inside the loop body.
+		if (tmpCount > modeCount) {
+			modeValue = tmpModeValue;
 		}
 		_mode = modeValue;
 		_modeCalculated = true;
@@ -237,12 +241,13 @@ double StatisticsDatafileDefaultImpl1::mediane() {
 	if (_hasNewValue() || !_medianeCalculated) {
 		if (!_fileSorted) _sortFile();
 
+		// Use zero-based central index for odd sample sizes and midpoint average for even sizes.
 		if (_collectorSorted->numElements() % 2 == 0) {
 			valueType tmpValue = _collectorSorted->getValue((_collectorSorted->numElements() / 2) - 1);
 			valueType tmpValue2 = _collectorSorted->getValue((_collectorSorted->numElements() / 2));
 			_mediane = (tmpValue + tmpValue2) / 2;
 		} else {
-			_mediane = _collectorSorted->getValue((_collectorSorted->numElements() + 1) / 2);
+			_mediane = _collectorSorted->getValue(_collectorSorted->numElements() / 2);
 		}
 		_medianeCalculated = true;
 	}
