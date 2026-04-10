@@ -32,6 +32,7 @@ ParserDefaultImpl2::~ParserDefaultImpl2() {
 void ParserDefaultImpl2::_setSamplerInternal(Sampler_if* sampler, bool ownsSampler) {
 	Sampler_if* currentSampler = _wrapper.getSampler();
 	if (currentSampler == sampler) {
+		// Preserve existing ownership if pointer is unchanged; never downgrade ownership.
 		_ownsSampler = _ownsSampler || ownsSampler;
 		return;
 	}
