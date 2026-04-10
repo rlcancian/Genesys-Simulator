@@ -14,6 +14,7 @@
 #include "StatisticsDataFileDefaultImpl.h"
 #include "../TraitsKernel.h"
 #include <math.h>
+#include <cmath>
 #include <limits>
 
 StatisticsDatafileDefaultImpl1::StatisticsDatafileDefaultImpl1() {
@@ -204,11 +205,12 @@ double StatisticsDatafileDefaultImpl1::variationCoef() {
 }
 
 double StatisticsDatafileDefaultImpl1::_getNormalProbability(double confidenceLevel) {
+	// Return NaN for unsupported confidence levels to avoid silent use of invalid z-values.
 	auto search = _z.find(confidenceLevel);
 	if (search != _z.end()) {
 		return search->second;
 	} else {
-		return 0.0;
+		return std::numeric_limits<double>::quiet_NaN();
 	}
 }
 
@@ -218,7 +220,7 @@ double StatisticsDatafileDefaultImpl1::halfWidthConfidenceInterval() {
 		double z = _getNormalProbability(_confidenceLevel);
 		// Return NaN for undefined interval width when sample size or deviation is invalid.
 		const double stddev = stddeviation();
-		if (_numElements == 0 || std::isnan(stddev)) {
+		if (_numElements == 0 || std::isnan(stddev) || !std::isfinite(z)) {
 			_halfWidthConfidenceInterval = std::numeric_limits<double>::quiet_NaN();
 		} else {
 			_halfWidthConfidenceInterval = z * stddev / sqrt(_numElements);
@@ -256,7 +258,12 @@ double StatisticsDatafileDefaultImpl1::confidenceLevel() {
 }
 
 void StatisticsDatafileDefaultImpl1::setConfidenceLevel(double confidencelevel) {
-	_confidenceLevel = round(confidencelevel * 100.0) / 100.0;
+	// Preserve supported table precision while rejecting out-of-range confidence levels.
+	if (confidencelevel > 0.0 && confidencelevel <= 1.0) {
+		_confidenceLevel = confidencelevel;
+	} else {
+		_confidenceLevel = std::numeric_limits<double>::quiet_NaN();
+	}
 }
 
 double StatisticsDatafileDefaultImpl1::mode() {
