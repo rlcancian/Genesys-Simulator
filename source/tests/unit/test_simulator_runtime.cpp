@@ -15,6 +15,7 @@
 #include "plugins/data/Resource.h"
 #include "plugins/data/Failure.h"
 #include "plugins/data/Schedule.h"
+#include "plugins/data/Sequence.h"
 
 class ResourceTestProbe {
 public:
@@ -72,6 +73,7 @@ public:
 static unsigned int g_countingControlProbeDestructorCount = 0;
 static unsigned int g_countingChildProbeDestructorCount = 0;
 static unsigned int g_countingWaitingProbeDestructorCount = 0;
+static unsigned int g_countingSequenceStepProbeDestructorCount = 0;
 
 // Tracks owned-property deletion through ModelDataDefinition teardown.
 class CountingSimulationControlProbe : public SimulationControl {
@@ -176,6 +178,41 @@ public:
 
     bool LoadInstanceProbe(PersistenceRecord* fields) {
         return _loadInstance(fields);
+    }
+};
+
+class SequenceProbe : public Sequence {
+public:
+    SequenceProbe(Model* model, const std::string& name = "") : Sequence(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void AttachDataProbe(const std::string& key, ModelDataDefinition* data) {
+        _attachedDataInsert(key, data);
+    }
+};
+
+class CountingSequenceStepProbe : public SequenceStep {
+public:
+    CountingSequenceStepProbe(Station* station, std::list<Assignment*>* assignments = nullptr)
+        : SequenceStep(station, assignments) {}
+
+    ~CountingSequenceStepProbe() override {
+        ++g_countingSequenceStepProbeDestructorCount;
     }
 };
 
@@ -1181,4 +1218,159 @@ TEST(SimulatorRuntimeTest, ResourceDestructorCleansOwnedHandlersContainers) {
     }
 
     EXPECT_TRUE(weakCapture.expired());
+}
+
+TEST(SimulatorRuntimeTest, SequenceDestructorDeletesOwnedSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    g_countingSequenceStepProbeDestructorCount = 0;
+    Station station(model, "SequenceLifecycleStation");
+    auto* sequence = new SequenceProbe(model, "SequenceLifecycle");
+    sequence->getSteps()->insert(new CountingSequenceStepProbe(&station));
+    sequence->getSteps()->insert(new CountingSequenceStepProbe(&station));
+
+    delete sequence;
+    EXPECT_EQ(g_countingSequenceStepProbeDestructorCount, 2u);
+}
+
+TEST(SimulatorRuntimeTest, SequenceStepDestructorOwnsAndDeletesAssignments) {
+    std::list<Assignment*>* assignments = new std::list<Assignment*>();
+    assignments->push_back(new Assignment("Entity.a", "1", true));
+    assignments->push_back(new Assignment("Entity.b", "2", true));
+    SequenceStep* step = new SequenceStep(static_cast<Station*>(nullptr), assignments);
+
+    delete step;
+    SUCCEED();
+}
+
+TEST(SimulatorRuntimeTest, SequenceSaveAndLoadPreservesAssignmentsPerStepWithoutCollision) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station stationA(model, "SequencePersistStationA");
+    Station stationB(model, "SequencePersistStationB");
+    SequenceProbe source(model, "SequencePersistAssignmentsSource");
+    auto* stepA = new SequenceStep(&stationA);
+    stepA->getAssignments()->push_back(new Assignment("Entity.stepA", "11", true));
+    stepA->getAssignments()->push_back(new Assignment("Entity.stepA2", "12", true));
+    auto* stepB = new SequenceStep(&stationB);
+    stepB->getAssignments()->push_back(new Assignment("Entity.stepB", "21", true));
+    source.getSteps()->insert(stepA);
+    source.getSteps()->insert(stepB);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SequenceProbe loaded(model, "SequencePersistAssignmentsLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getSteps()->size(), 2u);
+
+    auto loadedSteps = loaded.getSteps()->list();
+    auto it = loadedSteps->begin();
+    SequenceStep* loadedStepA = *it++;
+    SequenceStep* loadedStepB = *it++;
+
+    ASSERT_EQ(loadedStepA->getAssignments()->size(), 2u);
+    ASSERT_EQ(loadedStepB->getAssignments()->size(), 1u);
+    EXPECT_EQ(loadedStepA->getAssignments()->front()->getDestination(), "Entity.stepA");
+    EXPECT_EQ(loadedStepA->getAssignments()->back()->getDestination(), "Entity.stepA2");
+    EXPECT_EQ(loadedStepB->getAssignments()->front()->getDestination(), "Entity.stepB");
+    EXPECT_EQ(loadedStepB->getAssignments()->front()->getExpression(), "21");
+}
+
+TEST(SimulatorRuntimeTest, SequenceSaveAndLoadPreservesStationAndLabelPerStep) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "SequencePersistStation");
+    Label label(model, "SequencePersistLabel");
+    SequenceProbe source(model, "SequencePersistRoutingSource");
+    source.getSteps()->insert(new SequenceStep(&station));
+    source.getSteps()->insert(new SequenceStep(&label));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SequenceProbe loaded(model, "SequencePersistRoutingLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getSteps()->size(), 2u);
+
+    auto steps = loaded.getSteps()->list();
+    auto it = steps->begin();
+    SequenceStep* loadedStationStep = *it++;
+    SequenceStep* loadedLabelStep = *it++;
+    EXPECT_EQ(loadedStationStep->getStation(), &station);
+    EXPECT_EQ(loadedStationStep->getLabel(), nullptr);
+    EXPECT_EQ(loadedLabelStep->getStation(), nullptr);
+    EXPECT_EQ(loadedLabelStep->getLabel(), &label);
+}
+
+TEST(SimulatorRuntimeTest, SequenceRecheckRemovesObsoleteAttachedData) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station stationA(model, "SequenceRecheckStationA");
+    Station stationB(model, "SequenceRecheckStationB");
+    Label labelA(model, "SequenceRecheckLabelA");
+    SequenceProbe sequence(model, "SequenceRecheck");
+    sequence.getSteps()->insert(new SequenceStep(&stationA));
+    sequence.getSteps()->insert(new SequenceStep(&stationB));
+    sequence.CreateInternalAndAttachedDataProbe();
+
+    auto* attached = sequence.getAttachedData();
+    EXPECT_EQ(attached->count("StepLabel[0]"), 0u);
+    sequence.AttachDataProbe("StepStation[77]", &stationA);
+    ASSERT_EQ(attached->count("StepStation[77]"), 1u);
+
+    SequenceStep* obsoleteStep = sequence.getSteps()->list()->back();
+    sequence.getSteps()->remove(obsoleteStep);
+    delete obsoleteStep;
+    SequenceStep* firstStationStep = sequence.getSteps()->front();
+    sequence.getSteps()->remove(firstStationStep);
+    delete firstStationStep;
+    sequence.getSteps()->insert(new SequenceStep(&labelA));
+    sequence.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(attached->count("StepStation[77]"), 0u);
+    EXPECT_EQ(attached->count("StepStation[1]"), 0u);
+    ASSERT_EQ(attached->count("StepLabel[0]"), 1u);
+    EXPECT_EQ(attached->at("StepLabel[0]"), &labelA);
+}
+
+TEST(SimulatorRuntimeTest, SequenceCheckFailsForEmptyStep) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SequenceProbe sequence(model, "SequenceInvalid");
+    sequence.getSteps()->insert(new SequenceStep(static_cast<Station*>(nullptr)));
+
+    std::string errorMessage;
+    EXPECT_FALSE(sequence.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("must reference a Station or a Label"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "SequenceValidStation");
+    SequenceProbe sequence(model, "SequenceValid");
+    auto* stationStep = new SequenceStep(&station);
+    stationStep->getAssignments()->push_back(new Assignment("Entity.valid", "1", true));
+    sequence.getSteps()->insert(stationStep);
+    Station station2(model, "SequenceValidStation2");
+    sequence.getSteps()->insert(new SequenceStep(&station2));
+
+    std::string errorMessage;
+    EXPECT_TRUE(sequence.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
 }
