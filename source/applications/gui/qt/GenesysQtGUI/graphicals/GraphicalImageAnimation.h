@@ -31,8 +31,8 @@ private:
     // Builds an in-memory marker image when the file-based image cannot be loaded.
     QPixmap buildFallbackPixmap() const;
 
-    // Caminho padrão das imagens
-    QString _defaultPath = "../../images/";
+    // Use a Qt resource base path to avoid working-directory dependent file paths.
+    QString _resourceBasePath = ":/animations/";
 
     // Atributos
     QString _imagePath;

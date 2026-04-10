@@ -693,6 +693,10 @@
 		<file>resources/icons/pack4/iconsMxGraph/zoomin.gif</file>
 		<file>resources/icons/pack4/iconsMxGraph/zoomout.gif</file>
 	</qresource>
+	<!-- Register animation assets under a dedicated Qt resource prefix. -->
+	<qresource prefix="/animations">
+		<file>resources/animations/.gitkeep</file>
+	</qresource>
 	<qresource prefix="/">
 		<file>resources/icons/genesysico.gif</file>
 		<file>resources/ToolBar/_abrir.bmp</file>

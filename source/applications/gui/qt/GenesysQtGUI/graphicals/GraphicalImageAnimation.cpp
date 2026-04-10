@@ -59,13 +59,13 @@ void GraphicalImageAnimation::setHeight(unsigned int height) {
 
 // Outros
 void GraphicalImageAnimation::updateImage() {
-    // Forma o caminho completo para a imagem
-    _imagePath = _defaultPath + _imageName;
+    // Build the image path from Qt resources to remove relative filesystem dependency.
+    _imagePath = _resourceBasePath + _imageName;
 
-    // Load from filesystem first and fallback to an in-memory marker pixmap if missing.
+    // Load from Qt resources first and fallback to an in-memory marker pixmap if missing.
     QPixmap source(_imagePath);
     if (source.isNull()) {
-        qInfo() << "GraphicalImageAnimation: fallback image used for missing file" << _imagePath;
+        qInfo() << "GraphicalImageAnimation: fallback image used for missing resource" << _imagePath;
         source = buildFallbackPixmap();
     }
     // Resize only after ensuring a valid source pixmap.
