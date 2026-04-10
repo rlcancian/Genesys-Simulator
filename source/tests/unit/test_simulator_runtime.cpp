@@ -5,6 +5,8 @@
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/Entity.h"
+#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 namespace {
@@ -202,6 +204,33 @@ TEST(SimulatorRuntimeTest, ModelClearIsIdempotentAndKeepsRuntimeUsable) {
     EXPECT_NE(model->getComponentManager(), nullptr);
 }
 
+TEST(SimulatorRuntimeTest, ModelAccessorsExposeStableRuntimeReferencesAndFlags) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EXPECT_EQ(model->getParentSimulator(), &simulator);
+    EXPECT_EQ(model->getTracer(), simulator.getTraceManager());
+    EXPECT_NE(model->getPersistence(), nullptr);
+    EXPECT_EQ(model->getLevel(), 0u);
+
+    const bool initialAutoCreate = model->isAutomaticallyCreatesModelDataDefinitions();
+    model->setAutomaticallyCreatesModelDataDefinitions(!initialAutoCreate);
+    EXPECT_EQ(model->isAutomaticallyCreatesModelDataDefinitions(), !initialAutoCreate);
+}
+
+TEST(SimulatorRuntimeTest, ModelSetTracerRebindsTracerPointer) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    TraceManager alternateTracer(&simulator);
+    model->setTracer(&alternateTracer);
+
+    EXPECT_EQ(model->getTracer(), &alternateTracer);
+    EXPECT_NE(model->getTracer(), simulator.getTraceManager());
+}
+
 TEST(SimulatorRuntimeTest, DataDefinitionClassnamesSnapshotIsReturnedByValue) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -247,6 +276,48 @@ TEST(SimulatorRuntimeTest, AttachedDataRemoveOnlyDetachesRegistryEntry) {
     delete attached;
 }
 
+TEST(SimulatorRuntimeTest, ModelDataManagerSupportsLookupByNameIdAndRank) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* alpha = new SnapshotDataDefinitionProbe(model, "Alpha");
+    auto* beta = new SnapshotDataDefinitionProbe(model, "Beta");
+    auto* manager = model->getDataManager();
+    const std::string typeName = "SnapshotDataDefinitionProbe";
+
+    EXPECT_EQ(manager->getNumberOfDataDefinitions(typeName), 2u);
+    EXPECT_GE(manager->getNumberOfDataDefinitions(), 2u);
+    EXPECT_EQ(manager->getDataDefinition(typeName, "Alpha"), alpha);
+    EXPECT_EQ(manager->getDataDefinition(typeName, beta->getId()), beta);
+    EXPECT_EQ(manager->getRankOf(typeName, "Alpha"), 0);
+    EXPECT_EQ(manager->getRankOf(typeName, "Beta"), 1);
+    EXPECT_EQ(manager->getRankOf(typeName, "Missing"), -1);
+
+    delete alpha;
+    delete beta;
+}
+
+TEST(SimulatorRuntimeTest, ModelDataManagerHasChangedCanBeToggledAndRecomputed) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* manager = model->getDataManager();
+    auto* data = new SnapshotDataDefinitionProbe(model, "ChangeProbe");
+    ASSERT_NE(data, nullptr);
+
+    EXPECT_TRUE(manager->hasChanged());
+
+    manager->setHasChanged(false);
+    EXPECT_FALSE(manager->hasChanged());
+
+    data->setName("ChangeProbeRenamed");
+    EXPECT_TRUE(manager->hasChanged());
+
+    delete data;
+}
+
 TEST(SimulatorRuntimeTest, EntityAttributeValuesRoundTripByNameAndIndex) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -278,6 +349,54 @@ TEST(SimulatorRuntimeTest, RemovingEntityRemovesItFromDataManagerRegistry) {
 
     model->removeEntity(entity);
     EXPECT_EQ(model->getDataManager()->getNumberOfDataDefinitions("Entity"), entitiesBefore);
+}
+
+TEST(SimulatorRuntimeTest, EntityAttributesCanBeSetAndReadByAttributeId) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Entity* first = model->createEntity("EntityC", true);
+    Entity* second = model->createEntity("EntityD", true);
+    ASSERT_NE(first, nullptr);
+    ASSERT_NE(second, nullptr);
+    auto* attribute = new Attribute(model, "Cost");
+    ASSERT_NE(attribute, nullptr);
+    const Util::identification attributeId = attribute->getId();
+
+    first->setAttributeValue(attributeId, 13.5);
+    second->setAttributeValue(attributeId, 21.0, "batch");
+
+    EXPECT_DOUBLE_EQ(first->getAttributeValue(attributeId), 13.5);
+    EXPECT_DOUBLE_EQ(second->getAttributeValue(attributeId, "batch"), 21.0);
+
+    model->removeEntity(first);
+    model->removeEntity(second);
+    delete attribute;
+}
+
+TEST(SimulatorRuntimeTest, ModelDataDefinitionAccessorsExposeStableStateAndMetadata) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* probe = new SnapshotDataDefinitionProbe(model, "ProbeMetadata");
+    ASSERT_NE(probe, nullptr);
+
+    EXPECT_FALSE(probe->getClassname().empty());
+    EXPECT_GT(probe->getId(), 0u);
+    EXPECT_EQ(probe->getName(), "ProbeMetadata");
+    EXPECT_FALSE(probe->hasChanged());
+
+    probe->setModelLevel(3u);
+    EXPECT_EQ(probe->getLevel(), 3u);
+
+    const bool initialReportStatistics = probe->isReportStatistics();
+    probe->setReportStatistics(!initialReportStatistics);
+    EXPECT_EQ(probe->isReportStatistics(), !initialReportStatistics);
+    EXPECT_TRUE(probe->hasChanged());
+
+    delete probe;
 }
 
 TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorRemovesOwnedPropertyFromModelControls) {
