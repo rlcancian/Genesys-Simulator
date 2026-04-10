@@ -53,25 +53,25 @@ int Smart_Expression::main(int argc, char** argv) {
     Assignment* assignment = new Assignment("productWeight", "NORM(100, 5)");
     assign->getAssignments()->insert(assignment);
     plugins->newInstance<Attribute>(model, "productWeight");
-    create->getConnectionManager()->insert(assign);
+    create->connectTo(assign);
 
     Delay* delay = plugins->newInstance<Delay>(model);
     delay->setDescription("The packages are processed");
     delay->setDelayExpression("productWeight * 0.33 + 5");
     delay->setDelayTimeUnit(Util::TimeUnit::minute);
-    assign->getConnectionManager()->insert(delay);
+    assign->connectTo(delay);
 
     Decide* decide = plugins->newInstance<Decide>(model);
     decide->setDescription("Send Package to correct department");
     decide->getConditions()->insert("productWeight > 100");
-    delay->getConnectionManager()->insert(decide);
+    delay->connectTo(decide);
 
     Dispose* department1 = plugins->newInstance<Dispose>(model);
     department1->setDescription("Department 1");
     Dispose* department2 = plugins->newInstance<Dispose>(model);
     department2->setDescription("Department 2");
-    decide->getConnectionManager()->insert(department1);
-    decide->getConnectionManager()->insert(department2);
+    decide->connectTo(department1);
+    decide->connectTo(department2);
 
     ModelSimulation* simulation = model->getSimulation();
     simulation->setNumberOfReplications(3);

@@ -124,6 +124,7 @@ int Example_BasicOrderShipping::main(int argc, char** argv) {
 	reset->getAssignments()->insert(new Assignment(model, "v_day", "0", true));
 
 	//connections
+	// Legacy note: getConnectionManager()->insert() / getConnections()->insert() with a single ModelComponent argument could be replaced by connectTo().
 
 	//control
 	Create_2->getConnectionManager()->insert(assignDay);
