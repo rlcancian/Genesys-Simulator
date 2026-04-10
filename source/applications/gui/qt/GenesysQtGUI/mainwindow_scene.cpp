@@ -129,6 +129,18 @@ void MainWindow::sceneSelectionChanged() {
         qInfo() << "[MainWindow] sceneSelectionChanged exit early due to shutdown";
         return;
     }
+    // Skip property editor synchronization while simulation is running or paused.
+    const bool simulationInteractionLocked =
+        simulator != nullptr &&
+        simulator->getModelManager()->current() != nullptr &&
+        simulator->getModelManager()->current()->getSimulation() != nullptr &&
+        (simulator->getModelManager()->current()->getSimulation()->isRunning() ||
+         simulator->getModelManager()->current()->getSimulation()->isPaused());
+
+    if (simulationInteractionLocked) {
+        qInfo() << "[MainWindow] sceneSelectionChanged skipped while simulation keeps property editor disabled";
+        return;
+    }
     if (_propertyEditorController == nullptr) {
         if (ui != nullptr && ui->treeViewPropertyEditor != nullptr) {
             qWarning() << "[MainWindow] sceneSelectionChanged without controller. Clearing property editor directly";

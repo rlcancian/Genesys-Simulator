@@ -531,6 +531,8 @@ void MainWindow::_actualizeActions() {
             canConnect = scene->connectingStep() == 0;
         }
     }
+    // Lock GUI interactions tied to model editing while simulation is running or paused.
+    const bool simulationInteractionLocked = opened && (running || paused);
 
     //
     ui->graphicsView->setEnabled(opened);
@@ -563,6 +565,8 @@ void MainWindow::_actualizeActions() {
     ui->actionActivateGraphicalSimulation->setEnabled(opened);
     ui->actionSimulatorsPluginManager->setEnabled(!running);
     ui->actionSimulatorPreferences->setEnabled(!running);
+    // Keep plugins tree disabled while simulation interaction is locked.
+    ui->treeWidget_Plugins->setEnabled(opened && !simulationInteractionLocked);
 
     // debug
     ui->tableWidget_Breakpoints->setEnabled(opened && !running);
@@ -570,7 +574,8 @@ void MainWindow::_actualizeActions() {
     ui->tableWidget_Variables->setEnabled(opened && !running);
 
     // Property Editor
-    ui->treeViewPropertyEditor->setEnabled(!running);
+    // Keep property editor disabled while simulation interaction is locked.
+    ui->treeViewPropertyEditor->setEnabled(opened && !simulationInteractionLocked);
 
     // based on SELECTED GRAPHICAL OBJECTS or on COMMANDS DONE (UNDO/REDO)
     ui->toolBarArranje->setEnabled(opened && !running);
