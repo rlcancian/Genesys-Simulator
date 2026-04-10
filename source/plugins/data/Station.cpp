@@ -15,6 +15,7 @@
 #include "../../kernel/simulator/Entity.h"
 #include "../../kernel/simulator/Model.h"
 #include "../../kernel/simulator/Attribute.h"
+#include <vector>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -55,9 +56,7 @@ std::string Station::show() {
 }
 
 void Station::initBetweenReplications() {
-	_cstatNumberInStation->getStatistics()->getCollector()->clear();
-	_cstatTimeInStation->getStatistics()->getCollector()->clear();
-
+	_initBetweenReplications();
 }
 
 void Station::enter(Entity* entity) {
@@ -125,12 +124,25 @@ void Station::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 }
 
 bool Station::_check(std::string& errorMessage) {
-	_attachedAttributesInsert({"Entity.Station", "Entity.ArrivalAt" + this->getName()});
 	errorMessage += "";
 	return true;
 }
 
 void Station::_createInternalAndAttachedData() {
+	const std::string baseArrivalAttributeName = "Entity.ArrivalAt";
+	std::string currentArrivalAttributeName = baseArrivalAttributeName + getName();
+	Util::Trimwithin(currentArrivalAttributeName);
+	std::vector<std::string> staleArrivalAttributes;
+	for (const auto& attached : *getAttachedData()) {
+		if (attached.first.rfind(baseArrivalAttributeName, 0) == 0 && attached.first != currentArrivalAttributeName) {
+			staleArrivalAttributes.push_back(attached.first);
+		}
+	}
+	for (const std::string& staleKey : staleArrivalAttributes) {
+		_attachedDataRemove(staleKey);
+	}
+	_attachedAttributesInsert({"Entity.Station", currentArrivalAttributeName});
+
 	if (_reportStatistics) {
 		if (_cstatNumberInStation == nullptr) {
 			_cstatNumberInStation = new StatisticsCollector(_parentModel, getName() + "." + "NumberInStation", this);
@@ -146,8 +158,20 @@ void Station::_createInternalAndAttachedData() {
 			}
 
 		}
-	} else
-		if (_cstatNumberInStation != nullptr) {
+	} else if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
 		_internalDataClear();
+		_cstatNumberInStation = nullptr;
+		_cstatTimeInStation = nullptr;
+	}
+}
+
+void Station::_initBetweenReplications() {
+	ModelDataDefinition::_initBetweenReplications();
+	_numberInStation = 0;
+	if (_cstatNumberInStation != nullptr) {
+		_cstatNumberInStation->getStatistics()->getCollector()->clear();
+	}
+	if (_cstatTimeInStation != nullptr) {
+		_cstatTimeInStation->getStatistics()->getCollector()->clear();
 	}
 }

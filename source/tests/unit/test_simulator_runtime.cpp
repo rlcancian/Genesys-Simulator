@@ -19,6 +19,7 @@
 #include "plugins/data/Schedule.h"
 #include "plugins/data/Sequence.h"
 #include "plugins/data/SignalData.h"
+#include "plugins/data/Station.h"
 #include "plugins/components/Delay.h"
 #include "plugins/components/Wait.h"
 
@@ -65,6 +66,31 @@ public:
 
     static size_t FailureCount(const Resource& resource) {
         return resource._failures->size();
+    }
+};
+
+class StationTestProbe : public Station {
+public:
+    StationTestProbe(Model* model, const std::string& name = "") : Station(model, name) {}
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
+    StatisticsCollector* NumberInStationCollectorProbe() const {
+        return _cstatNumberInStation;
+    }
+
+    StatisticsCollector* TimeInStationCollectorProbe() const {
+        return _cstatTimeInStation;
+    }
+
+    unsigned int NumberInStationProbe() const {
+        return _numberInStation;
     }
 };
 
@@ -1744,6 +1770,137 @@ TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
     std::string errorMessage;
     EXPECT_TRUE(sequence.CheckProbe(errorMessage));
     EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, StationCreateInternalInitiallyCreatesCollectorsWhenStatisticsEnabled) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StationTestProbe station(model, "StationCreateStats");
+    station.setReportStatistics(true);
+    station.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_NE(station.NumberInStationCollectorProbe(), nullptr);
+    EXPECT_NE(station.TimeInStationCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, StationRecheckWithStatisticsEnabledIsIdempotentAndKeepsCollectors) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StationTestProbe station(model, "StationIdempotentStats");
+    station.setReportStatistics(true);
+    station.CreateInternalAndAttachedDataProbe();
+    StatisticsCollector* numberCollector = station.NumberInStationCollectorProbe();
+    StatisticsCollector* timeCollector = station.TimeInStationCollectorProbe();
+    ASSERT_NE(numberCollector, nullptr);
+    ASSERT_NE(timeCollector, nullptr);
+
+    station.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(station.NumberInStationCollectorProbe(), numberCollector);
+    EXPECT_EQ(station.TimeInStationCollectorProbe(), timeCollector);
+}
+
+TEST(SimulatorRuntimeTest, StationDisablingStatisticsOnRecheckClearsCollectorsPointers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StationTestProbe station(model, "StationDisableStats");
+    station.setReportStatistics(true);
+    station.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(station.NumberInStationCollectorProbe(), nullptr);
+    ASSERT_NE(station.TimeInStationCollectorProbe(), nullptr);
+
+    station.setReportStatistics(false);
+    station.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(station.NumberInStationCollectorProbe(), nullptr);
+    EXPECT_EQ(station.TimeInStationCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, StationReenableStatisticsOnRecheckRecreatesCollectors) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StationTestProbe station(model, "StationReenableStats");
+    station.setReportStatistics(true);
+    station.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(station.NumberInStationCollectorProbe(), nullptr);
+    ASSERT_NE(station.TimeInStationCollectorProbe(), nullptr);
+
+    station.setReportStatistics(false);
+    station.CreateInternalAndAttachedDataProbe();
+    ASSERT_EQ(station.NumberInStationCollectorProbe(), nullptr);
+    ASSERT_EQ(station.TimeInStationCollectorProbe(), nullptr);
+
+    station.setReportStatistics(true);
+    station.CreateInternalAndAttachedDataProbe();
+    EXPECT_NE(station.NumberInStationCollectorProbe(), nullptr);
+    EXPECT_NE(station.TimeInStationCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, StationInitBetweenReplicationsHookResetsLocalCount) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StationTestProbe station(model, "StationReplicationReset");
+    station.setReportStatistics(false);
+    station.CreateInternalAndAttachedDataProbe();
+    Entity* entityA = model->createEntity("StationReplicationEntityA", true);
+    Entity* entityB = model->createEntity("StationReplicationEntityB", true);
+    station.enter(entityA);
+    station.enter(entityB);
+    ASSERT_EQ(station.NumberInStationProbe(), 2u);
+
+    station.InitBetweenReplicationsProbe();
+    EXPECT_EQ(station.NumberInStationProbe(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, StationRenameRecheckKeepsOnlyCurrentArrivalAttributeAttached) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StationTestProbe station(model, "StationRenameOld");
+    station.CreateInternalAndAttachedDataProbe();
+    auto* attached = station.getAttachedData();
+    ASSERT_EQ(attached->count("Entity.ArrivalAtStationRenameOld"), 1u);
+
+    station.setName("StationRenameNew");
+    station.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(attached->count("Entity.ArrivalAtStationRenameNew"), 1u);
+    EXPECT_EQ(attached->count("Entity.ArrivalAtStationRenameOld"), 0u);
+    EXPECT_EQ(attached->count("Entity.Station"), 1u);
+}
+
+TEST(SimulatorRuntimeTest, StationEnterLeaveFlowRemainsCoherentAfterRechecksAndResets) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StationTestProbe station(model, "StationFlow");
+    station.setReportStatistics(true);
+    station.CreateInternalAndAttachedDataProbe();
+    station.setReportStatistics(false);
+    station.CreateInternalAndAttachedDataProbe();
+    station.setReportStatistics(true);
+    station.CreateInternalAndAttachedDataProbe();
+    station.setReportStatistics(false);
+    station.CreateInternalAndAttachedDataProbe();
+
+    Entity* entity = model->createEntity("StationFlowEntity", true);
+    station.enter(entity);
+    EXPECT_EQ(station.NumberInStationProbe(), 1u);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.Station"), static_cast<double>(station.getId()));
+    EXPECT_NO_THROW(entity->getAttributeValue("Entity.ArrivalAtStationFlow"));
+
+    station.leave(entity);
+    EXPECT_EQ(station.NumberInStationProbe(), 0u);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.Station"), 0.0);
 }
 
 TEST(SimulatorRuntimeTest, SignalDataDestructorHandlesOwnedHandlersLifecycle) {

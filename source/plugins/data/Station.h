@@ -82,13 +82,14 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _createInternalAndAttachedData() override;
+	virtual void _initBetweenReplications() override;
 private:
 	unsigned int _numberInStation = 0;
 	ModelComponent* _enterIntoStationComponent;
 private: // inner elements
 	StatisticsCollector* _cstatNumberInStation = nullptr;
 	StatisticsCollector* _cstatTimeInStation = nullptr;
+	friend class StationTestProbe;
 };
 
 #endif /* STATION_H */
-
