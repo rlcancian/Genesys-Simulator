@@ -42,7 +42,12 @@ public: //! new public user methods for this component
 	 * \return
 	 */
     ConnectionManager* getConnectionManager() const; //!< Returns a list of components directly connected to the output. Usually the components have a single output, but they may have none (such as Dispose) or more than one (as Decide). In addition to the component, NextComponents specifies the inputPortNumber of the next component where the entity will be sent to. Ussually the components have a single input, but they may have none (such as Create) or more than one (as Match).
-	/*!
+    /*!
+     * \brief
+     * \return
+     */
+    void connectTo(ModelComponent* component, unsigned int inputPortNumber = 0);
+    /*!
 	 * \brief hasBreakpointAt
 	 * \return
 	 */

@@ -42,6 +42,10 @@ ConnectionManager* ModelComponent::getConnectionManager() const {
 	return _connections; // @TODO How to know if it changes?
 }
 
+void ModelComponent::connectTo(ModelComponent* component, unsigned int inputPortNumber) {
+    _connections->insert(component, inputPortNumber);
+}
+
 bool ModelComponent::hasBreakpointAt() {
 	return _parentModel->getSimulation()->getBreakpointsOnComponent()->find(this) != _parentModel->getSimulation()->getBreakpointsOnComponent()->list()->end();
 }
