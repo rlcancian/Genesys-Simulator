@@ -47,43 +47,59 @@ Collector_if* StatisticsDatafileDefaultImpl1::getCollector() const {
 	return this->_collector;
 }
 
+// Reset all memoized statistics so future getters recompute from current collector data.
+void StatisticsDatafileDefaultImpl1::_invalidateCachedResults() {
+	_maxCalculated = false;
+	_minCalculated = false;
+	_averageCalculated = false;
+	_varianceCalculated = false;
+	_modeCalculated = false;
+	_medianeCalculated = false;
+	_stddeviationCalculated = false;
+	_variationCoefCalculated = false;
+	_halfWidthConfidenceIntervalCalculated = false;
+	_newSampleSizeCalculated = false;
+	_quartilCalculated = false;
+	_decilCalculated = false;
+	_centilCalculated = false;
+	_histogramNumClassesCalculated = false;
+	_histogramClassLowerLimitCalculated = false;
+	_histogramClassFrequencyCalculated = false;
+	_proportionCalculed = false;
+}
+
+// Drop sorted-file binding so a future sort rebuilds against the active source file.
+void StatisticsDatafileDefaultImpl1::_resetSortedFileState() {
+	_fileSorted = false;
+	_fileSortedCreated = false;
+	_sortedSourceFilename.clear();
+}
+
 void StatisticsDatafileDefaultImpl1::setCollector(Collector_if* collector) {
 	if (_collector == collector) {
 		return;
 	}
+	// Release previous collector when owned and fully invalidate cached state for the new source.
 	if (_ownsCollector) {
 		delete _collector;
 	}
 	_collector = static_cast<CollectorDatafile_if*> (collector);
 	_ownsCollector = false;
+	_numElements = 0;
+	_invalidateCachedResults();
+	_resetSortedFileState();
 }
 
 bool StatisticsDatafileDefaultImpl1::_hasNewValue() {
-	if (_numElements < _collector->numElements()) {
-		_numElements = _collector->numElements();
-		_maxCalculated = false;
-		_minCalculated = false;
-		_averageCalculated = false;
-		_varianceCalculated = false;
-		_modeCalculated = false;
-		_medianeCalculated = false;
-		_stddeviationCalculated = false;
-		_variationCoefCalculated = false;
-		_halfWidthConfidenceIntervalCalculated = false;
-		_newSampleSizeCalculated = false;
-		_quartilCalculated = false;
-		_decilCalculated = false;
-		_centilCalculated = false;
-		_histogramNumClassesCalculated = false;
-		_histogramClassLowerLimitCalculated = false;
-		_histogramClassFrequencyCalculated = false;
-		_proportionCalculed = false;
+	// Invalidate caches whenever collector size diverges in any direction (growth, shrink, reset).
+	const unsigned long currentNumElements = _collector->numElements();
+	if (_numElements != currentNumElements) {
+		_numElements = currentNumElements;
+		_invalidateCachedResults();
 		_fileSorted = false;
 		return true;
-	} else {
-		return false;
 	}
-
+	return false;
 }
 
 unsigned int StatisticsDatafileDefaultImpl1::numElements() {
@@ -330,18 +346,27 @@ unsigned int StatisticsDatafileDefaultImpl1::histogramClassFrequency(unsigned sh
 }
 
 void StatisticsDatafileDefaultImpl1::_sortFile() {
-
+	// Rebind and recreate the sorted collector file when the source filename changes.
+	const std::string sourceFilename = _collector->getDataFilename();
+	if (_sortedSourceFilename != sourceFilename) {
+		_resetSortedFileState();
+		_sortedSourceFilename = sourceFilename;
+	}
 	if (!_fileSortedCreated) {
-		_collectorSorted->setDataFilename(_collector->getDataFilename() + "_sorted");
+		_collectorSorted->setDataFilename(sourceFilename + "_sorted");
 		_collectorSorted->clear();
 		_fileSortedCreated = true;
 	}
-
+	// Ensure sorted mirror content tracks source size, including shrink/reset scenarios.
+	if (_collectorSorted->numElements() > _collector->numElements()) {
+		_collectorSorted->clear();
+	}
 	if (_collectorSorted->numElements() < _collector->numElements()) {
 		for (unsigned long position = _collectorSorted->numElements(); position < _collector->numElements(); position++) {
 			_collectorSorted->addValue(_collector->getValue(position));
 		}
 	}
+	// Sort the refreshed mirror file and mark sorted state as valid for this source filename.
 	sort->setDataFilename(_collectorSorted->getDataFilename());
 	sort->sort();
 	_fileSorted = true;
