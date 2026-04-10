@@ -191,6 +191,13 @@ bool Wait::_check(std::string& errorMessage) {
 }
 
 void Wait::_createInternalAndAttachedData() {
+	SignalData* previouslyAttachedSignalData = nullptr;
+	std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
+	std::map<std::string, ModelDataDefinition*>::iterator attachedSignalDataIt = attachedData->find("SignalData");
+	if (attachedSignalDataIt != attachedData->end()) {
+		previouslyAttachedSignalData = dynamic_cast<SignalData*>(attachedSignalDataIt->second);
+	}
+
 	// internal
 	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
 	if (_queue == nullptr) {
@@ -198,6 +205,10 @@ void Wait::_createInternalAndAttachedData() {
 	}
 	_internalDataInsert("Queue", _queue);
 	//attached
+	if (previouslyAttachedSignalData != nullptr && (_waitType != Wait::WaitType::WaitForSignal || previouslyAttachedSignalData != _signalData)) {
+		previouslyAttachedSignalData->removeSignalDataEventHandler(this);
+	}
+
 	if (_waitType == Wait::WaitType::WaitForSignal) {
 		if (_signalData == nullptr) {
 			_signalData = pm->newInstance<SignalData>(_parentModel);
