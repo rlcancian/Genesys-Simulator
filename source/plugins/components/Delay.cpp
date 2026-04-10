@@ -152,10 +152,42 @@ bool Delay::_check(std::string& errorMessage) {
 	return _parentModel->checkExpression(_delayExpression, "Delay expression", errorMessage);
 }
 
+std::vector<std::string> Delay::_allAllocationAttachedAttributeNames() const {
+	return {
+		_allocationAttachedAttributeName(Util::AllocationType::ValueAdded),
+		_allocationAttachedAttributeName(Util::AllocationType::NonValueAdded),
+		_allocationAttachedAttributeName(Util::AllocationType::Transfer),
+		_allocationAttachedAttributeName(Util::AllocationType::Wait),
+		_allocationAttachedAttributeName(Util::AllocationType::Others)
+	};
+}
+
+std::string Delay::_allocationAttachedAttributeName(Util::AllocationType allocation) const {
+	return "Entity.Total" + Util::StrAllocation(allocation) + "Time";
+}
+
+void Delay::_reconcileAllocationAttachedAttributes() {
+	std::vector<std::string> allocationAttributes = _allAllocationAttachedAttributeNames();
+	if (_reportStatistics) {
+		const std::string currentAllocationAttribute = _allocationAttachedAttributeName(_allocation);
+		for (const std::string& allocationAttribute : allocationAttributes) {
+			if (allocationAttribute != currentAllocationAttribute) {
+				_attachedDataRemove(allocationAttribute);
+			}
+		}
+		_attachedAttributesInsert({currentAllocationAttribute});
+	} else {
+		for (const std::string& allocationAttribute : allocationAttributes) {
+			_attachedDataRemove(allocationAttribute);
+		}
+	}
+}
+
 void Delay::_createInternalAndAttachedData() {
+	_reconcileAllocationAttachedAttributes();
+
 	if (_reportStatistics) {
 		if (_cstatWaitTime == nullptr) {
-			_attachedAttributesInsert({"Entity.Total" + Util::StrAllocation(_allocation)+"Time"});
 			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
 			_internalDataInsert("DelayTime", _cstatWaitTime);
 			// include StatisticsCollector needed in EntityType

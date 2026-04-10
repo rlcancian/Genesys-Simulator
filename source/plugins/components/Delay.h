@@ -15,6 +15,7 @@
 #define DELAY_H
 
 #include <string>
+#include <vector>
 #include "../../kernel/simulator/ModelComponent.h"
 #include "../../kernel/simulator/Plugin.h"
 
@@ -81,6 +82,10 @@ private:
 	std::string _delayExpression = DEFAULT.delayExpression;
 	Util::TimeUnit _delayTimeUnit = DEFAULT.delayTimeUnit;
 	Util::AllocationType _allocation = DEFAULT.allocation;
+private:
+	std::vector<std::string> _allAllocationAttachedAttributeNames() const;
+	std::string _allocationAttachedAttributeName(Util::AllocationType allocation) const;
+	void _reconcileAllocationAttachedAttributes();
 private: // inner internal elements
 	friend class DelayProbe;
 	StatisticsCollector* _cstatWaitTime = nullptr;
