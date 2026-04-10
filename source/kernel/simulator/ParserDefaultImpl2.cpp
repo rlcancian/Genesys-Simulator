@@ -18,12 +18,24 @@
 
 // Construct parser wrapper in-place to avoid copying partially initialized driver state.
 ParserDefaultImpl2::ParserDefaultImpl2(Model* model, Sampler_if* sampler, bool throws)
-	: _model(model), _wrapper(model, sampler, throws) {}
+	: _model(model), _wrapper(model, sampler, throws), _ownsSampler(true) {}
 
-// Delete the sampler owned by this parser wrapper to avoid leaking per-model parser state.
+// Delete sampler only when parser explicitly owns it.
 ParserDefaultImpl2::~ParserDefaultImpl2() {
-	delete _wrapper.getSampler();
+	if (_ownsSampler) {
+		delete _wrapper.getSampler();
+	}
 	_wrapper.setSampler(nullptr);
+	_ownsSampler = false;
+}
+
+void ParserDefaultImpl2::_setSamplerInternal(Sampler_if* sampler, bool ownsSampler) {
+	Sampler_if* currentSampler = _wrapper.getSampler();
+	if (_ownsSampler && currentSampler != nullptr && currentSampler != sampler) {
+		delete currentSampler;
+	}
+	_wrapper.setSampler(sampler);
+	_ownsSampler = ownsSampler;
 }
 
 double ParserDefaultImpl2::parse(const std::string expression) { // may throw exception
@@ -95,7 +107,8 @@ double ParserDefaultImpl2::parse(const std::string expression, bool& success, st
 }
 
 void ParserDefaultImpl2::setSampler(Sampler_if* _sampler) {
-	_wrapper.setSampler(_sampler);
+	// setSampler adopts an externally-owned sampler by default.
+	_setSamplerInternal(_sampler, false);
 }
 
 Sampler_if* ParserDefaultImpl2::getSampler() const {
