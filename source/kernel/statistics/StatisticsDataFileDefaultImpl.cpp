@@ -260,13 +260,14 @@ double StatisticsDatafileDefaultImpl1::quartil(unsigned short num) {
 		else {
 			if (!_fileSorted) _sortFile();
 
-			valueType quartil, tmpValue, tmpValue2;
-
-			unsigned long position = floor(num * _collectorSorted->numElements() / 4) - 1;
-			tmpValue = _collectorSorted->getValue(position);
-			//tmpValue2 = _collectorSorted->getValue(position + 1);
-
-			_quartil = tmpValue; //(tmpValue + tmpValue2) / 2;
+			// Compute quartile rank with floating-point arithmetic and clamp to valid zero-based index.
+			const unsigned long sampleSize = _collectorSorted->numElements();
+			const double rawRank = floor((static_cast<double>(num) * sampleSize) / 4.0);
+			unsigned long position = (rawRank <= 1.0) ? 0 : static_cast<unsigned long>(rawRank - 1.0);
+			if (position >= sampleSize) {
+				position = sampleSize - 1;
+			}
+			_quartil = _collectorSorted->getValue(position);
 			_quartilCalculated = true;
 			_lastQuartilNum = num;
 		}
@@ -279,7 +280,13 @@ double StatisticsDatafileDefaultImpl1::decil(unsigned short num) {
 		if (num == 5) _decil = mediane();
 		else {
 			if (!_fileSorted) _sortFile();
-			unsigned long position = ceil(num * _collectorSorted->numElements() / 10);
+			// Use nearest-rank index converted to zero-based and clamp to avoid out-of-range access.
+			const unsigned long sampleSize = _collectorSorted->numElements();
+			const double rawRank = ceil((static_cast<double>(num) * sampleSize) / 10.0);
+			unsigned long position = (rawRank <= 1.0) ? 0 : static_cast<unsigned long>(rawRank - 1.0);
+			if (position >= sampleSize) {
+				position = sampleSize - 1;
+			}
 			_decil = _collectorSorted->getValue(position);
 			_decilCalculated = true;
 			_lastDecilNum = num;
@@ -293,7 +300,13 @@ double StatisticsDatafileDefaultImpl1::centil(unsigned short num) {
 		if (num == 50) _centil = mediane();
 		else {
 			if (!_fileSorted) _sortFile();
-			unsigned long position = ceil(num * _collectorSorted->numElements() / 100);
+			// Use nearest-rank index converted to zero-based and clamp to avoid out-of-range access.
+			const unsigned long sampleSize = _collectorSorted->numElements();
+			const double rawRank = ceil((static_cast<double>(num) * sampleSize) / 100.0);
+			unsigned long position = (rawRank <= 1.0) ? 0 : static_cast<unsigned long>(rawRank - 1.0);
+			if (position >= sampleSize) {
+				position = sampleSize - 1;
+			}
 			_centil = _collectorSorted->getValue(position);
 			_centilCalculated = true;
 			_lastCentilNum = num;
