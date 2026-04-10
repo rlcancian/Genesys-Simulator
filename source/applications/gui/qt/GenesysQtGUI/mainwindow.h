@@ -68,14 +68,21 @@ class MainWindow : public QMainWindow {
     friend class SimulationEventController;
 
 public:
+    /** @brief Builds the composition root, wiring controllers/services and legacy Qt surface. */
 	MainWindow(QWidget *parent = nullptr);
+    /** @brief Releases UI resources while preserving existing Qt ownership semantics. */
 	~MainWindow();
+    /** @brief Returns the current model graphics scene used by delegated controllers/services. */
     ModelGraphicsScene* myScene() const;
 
 public: // to notify changes
+    /** @brief Indicates whether graphical representation has unsaved modifications. */
 	bool graphicalModelHasChanged() const;
+    /** @brief Updates graphical-change flag used by persistence/action synchronization. */
     void setGraphicalModelHasChanged(bool graphicalModelHasChanged);
+    /** @brief Compatibility wrapper that clears currently selected draw tool actions. */
     void unselectDrawIcons();
+    /** @brief Compatibility wrapper that reports whether any draw tool action is selected. */
     bool checkSelectedDrawIcons();
 
 private slots:
@@ -131,6 +138,7 @@ private slots:
 	void on_actionSimulationPause_triggered();
     /** @brief Resumes paused simulation when available. */
 	void on_actionSimulationResume_triggered();
+    /** @brief Compatibility slot that delegates simulation configuration flow to lifecycle controller. */
 	void on_actionSimulationConfigure_triggered();
 
 	void on_actionAboutAbout_triggered();
@@ -153,11 +161,17 @@ private slots:
 	void on_actionSimulatorExit_triggered();
 	void on_actionSimulatorPreferences_triggered();
 
+    /** @brief Delegates new-model lifecycle orchestration while preserving legacy Qt action slot. */
 	void on_actionModelNew_triggered();
+    /** @brief Delegates open-model lifecycle orchestration while preserving legacy Qt action slot. */
 	void on_actionModelOpen_triggered();
+    /** @brief Delegates save-model lifecycle orchestration while preserving legacy Qt action slot. */
 	void on_actionModelSave_triggered();
+    /** @brief Delegates close-model lifecycle orchestration while preserving legacy Qt action slot. */
 	void on_actionModelClose_triggered();
+    /** @brief Delegates model-information dialog flow to lifecycle/dialog compatibility layer. */
 	void on_actionModelInformation_triggered();
+    /** @brief Delegates model-check workflow used as precondition for simulation/export flows. */
 	void on_actionModelCheck_triggered();
 
 	void on_actionConnect_triggered();
@@ -193,7 +207,9 @@ private slots:
 	void on_pushButton_Breakpoint_Remove_clicked();
 	void on_pushButton_Export_clicked();
 
+    /** @brief Synchronizes selection/property editor state after rubber-band scene selection updates. */
 	void on_graphicsView_rubberBandChanged(const QRect &viewportRect, const QPointF &fromScenePoint, const QPointF &toScenePoint);
+    /** @brief Marks model-language representation dirty and updates synchronization-related UI state. */
 	void on_TextCodeEditor_textChanged();
 
     void on_treeWidgetDataDefnitions_itemDoubleClicked(QTreeWidgetItem *item, int column);
@@ -216,6 +232,7 @@ private slots:
     void on_actionParallelization_triggered();
 
     void on_horizontalSlider_ZoomGraphical_actionTriggered(int action);
+    /** @brief Compatibility slot bridging property-editor commit notifications to controller pipeline. */
     void _onPropertyEditorModelChanged();
 
 protected:
@@ -224,21 +241,36 @@ protected:
 private: // VIEW
 
 private: // trace handlers
+    /** @brief Compatibility façade wrapper that delegates generic trace rendering to controller. */
 	void _simulatorTraceHandler(TraceEvent e);
+    /** @brief Compatibility façade wrapper that delegates error trace rendering to controller. */
 	void _simulatorTraceErrorHandler(TraceErrorEvent e);
+    /** @brief Compatibility façade wrapper that delegates simulation trace rendering. */
 	void _simulatorTraceSimulationHandler(TraceSimulationEvent e);
+    /** @brief Compatibility façade wrapper that delegates reports trace rendering. */
 	void _simulatorTraceReportsHandler(TraceEvent e);
 private: // simulator event handlers
+    /** @brief Compatibility wrapper for model-check success event handling delegation. */
 	void _onModelCheckSuccessHandler(ModelEvent* re);
+    /** @brief Compatibility wrapper for replication-start event handling delegation. */
 	void _onReplicationStartHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for simulation-start event handling delegation. */
 	void _onSimulationStartHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for simulation-pause event handling delegation. */
 	void _onSimulationPausedHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for simulation-resume event handling delegation. */
 	void _onSimulationResumeHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for simulation-end event handling delegation. */
 	void _onSimulationEndHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for process-event handling delegation. */
 	void _onProcessEventHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for entity-create handling delegation. */
 	void _onEntityCreateHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for entity-remove handling delegation. */
 	void _onEntityRemoveHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for move-entity animation event delegation. */
     void _onMoveEntityEvent(SimulationEvent * re);
+    /** @brief Compatibility wrapper for after-process animation event delegation. */
     void _onAfterProcessEvent(SimulationEvent * re);
 private: // model Graphics View handlers
     void _onSceneMouseEvent(QGraphicsSceneMouseEvent* mouseEvent);
@@ -253,48 +285,87 @@ private: // QGraphicsScene Slots
 private: // Similar to QGraphicsScene Slots
 	void sceneGraphicalModelChanged();
 private: // simulator related
+    /** @brief Registers simulator event callbacks while preserving private wrapper surface. */
 	void _setOnEventHandlers();
+    /** @brief Guards command execution with model-check and text/model synchronization preconditions. */
     bool _ensureSimulationReady(bool checkModel = true);
+    /** @brief Returns whether current model exposes a valid ModelSimulation instance. */
     bool _hasCurrentModelSimulation() const;
+    /** @brief Compatibility wrapper delegating plugin-tree insertion to extracted controller. */
 	void _insertPluginUI(Plugin* plugin);
+    /** @brief Compatibility wrapper delegating fake-plugin insertion to extracted controller. */
 	void _insertFakePlugins();
+    /** @brief Compatibility wrapper delegating text-to-model synchronization to service. */
 	bool _setSimulationModelBasedOnText();
+    /** @brief Compatibility wrapper delegating Graphviz image generation to service. */
 	bool _createModelImage();
+    /** @brief Compatibility wrapper delegating DOT name normalization to service. */
 	std::string _adjustDotName(std::string name);
+    /** @brief Compatibility wrapper delegating DOT fragment insertion to service. */
 	void _insertTextInDot(std::string text, unsigned int compLevel, unsigned int compRank, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap, bool isNode = false);
+    /** @brief Compatibility wrapper delegating recursive DOT generation to service. */
 	void _recursiveCreateModelGraphicPicture(ModelDataDefinition* componentOrData, std::list<ModelDataDefinition*>* visited, std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap);
+    /** @brief Compatibility wrapper delegating C++ representation refresh to service. */
 	void _actualizeModelCppCode();
+    /** @brief Compatibility wrapper delegating C++ line formatting to service. */
 	std::string _addCppCodeLine(std::string line, unsigned int indent = 0);
 private: // view
+    /** @brief Initializes scene/view widgets and core scene callback wiring. */
 	void _initModelGraphicsView();
+    /** @brief Connects scene signals using stored QMetaObject connections for lifecycle control. */
     void _connectSceneSignals();
+    /** @brief Disconnects scene signals during lifecycle transitions and shutdown. */
     void _disconnectSceneSignals(const char* context);
+    /** @brief Reinitializes UI state after new/load model lifecycle operations. */
 	void _initUiForNewModel(Model* m);
+    /** @brief Recomputes action enabled/checked states from delegated controller/service state. */
 	void _actualizeActions();
+    /** @brief Refreshes undo view/actions after scene command changes. */
     void _actualizeUndo();
+    /** @brief Synchronizes tab panes that depend on simulation/model representation updates. */
 	void _actualizeTabPanes();
+    /** @brief Compatibility wrapper delegating model-language text refresh to service. */
 	void _actualizeModelSimLanguage();
+    /** @brief Updates text-change flags and related UI hints. */
 	void _actualizeModelTextHasChanged(bool hasChanged);
+    /** @brief Refreshes simulation-events pane based on latest event payload. */
 	void _actualizeSimulationEvents(SimulationEvent * re);
+    /** @brief Refreshes debug variables pane while preserving force-update semantics. */
 	void _actualizeDebugVariables(bool force);
+    /** @brief Refreshes debug entities pane while preserving force-update semantics. */
 	void _actualizeDebugEntities(bool force);
+    /** @brief Refreshes debug breakpoints pane while preserving force-update semantics. */
 	void _actualizeDebugBreakpoints(bool force);
+    /** @brief Compatibility wrapper delegating model-components tree synchronization. */
 	void _actualizeModelComponents(bool force);
+    /** @brief Compatibility wrapper delegating data-definitions tree synchronization. */
 	void _actualizeModelDataDefinitions(bool force);
+    /** @brief Refreshes graphical animation state based on simulation event progression. */
 	void _actualizeGraphicalModel(SimulationEvent * re);
+    /** @brief Appends command text to console, preserving legacy command-log formatting. */
 	void _insertCommandInConsole(std::string text);
+    /** @brief Clears model editors during lifecycle reset and persistence transitions. */
 	void _clearModelEditors();
+    /** @brief Applies smooth zoom transformation used by slider/action wrappers. */
 	void _gentle_zoom(double factor);
+    /** @brief Shows compatibility placeholder message for not-yet-implemented utilities. */
 	void _showMessageNotImplemented();
+    /** @brief Compatibility wrapper delegating recursive graphical rebuild to service. */
     void _recursivalyGenerateGraphicalModelFromModel(ModelComponent* component, List<ModelComponent*>* visited, std::map<ModelComponent*,GraphicalModelComponent*>* map, int *x, int *y, int *ymax, int sequenceInline);
+    /** @brief Compatibility wrapper delegating full graphical model rebuild to service. */
 	void _generateGraphicalModelFromModel();
+    /** @brief Compatibility wrapper delegating clipboard selection filtering to controller. */
     void saveItemForCopy(QList<GraphicalModelComponent*> * gmcList, QList<GraphicalConnection*> * connList);
 	//bool _checkStartSimulation();
 private: // graphical model persistence
+    /** @brief Compatibility wrapper delegating graphical model persistence to service. */
     bool _saveGraphicalModel(QString filename);
+    /** @brief Compatibility wrapper delegating text model persistence to service. */
     bool _saveTextModel(QFile *saveFile, QString data);
+    /** @brief Compatibility wrapper delegating model loading and restoration to service. */
 	Model* _loadGraphicalModel(std::string filename);
 private: //???
+    /** @brief Compatibility wrapper delegating deep-copy helper behavior to edit controller. */
 	void _helpCopy();
 private: // interface and model main elements to join
 	Ui::MainWindow *ui;
@@ -340,8 +411,11 @@ private: // interface and model main elements to join
 private: // attributes to be saved and loaded withing the graphical model
 	int _zoomValue; // todo should be set for each open graphical model, such as view rect, etc
 private: // misc useful
+    /** @brief Helper for legacy bool-check chaining used in compatibility flows. */
     bool _check(bool success = true);
+    /** @brief Delegates pending-change calculation to lifecycle controller compatibility flow. */
 	bool _hasPendingModelChanges() const;
+    /** @brief Delegates application-exit confirmation to lifecycle controller flow. */
 	bool _confirmApplicationExit();
 	bool _textModelHasChanged = false;
 	bool _graphicalModelHasChanged = false;
@@ -349,6 +423,7 @@ private: // misc useful
 	// Avoids duplicated prompts when exit is approved and Qt emits close events during shutdown.
 	bool _closingApproved = false;
 	QString _autoLoadPluginsFilename = "autoloadplugins.txt";
+    /** @brief Validates scene item invariants before executing scene-dependent commands. */
     bool _checkItemsScene();
 	QString _modelfilename;
 	std::map<std::string /*category*/,QColor>* _pluginCategoryColor = new std::map<std::string,QColor>();

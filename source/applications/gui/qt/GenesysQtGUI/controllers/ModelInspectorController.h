@@ -27,21 +27,21 @@ class ModelGraphicsView;
  */
 class ModelInspectorController {
 public:
-    // Inject only the narrow dependencies required by the model-inspector workflow.
+    /** @brief Creates the model-inspector delegated controller. */
     ModelInspectorController(Simulator* simulator,
                              QTreeWidget* componentsTree,
                              QTreeWidget* dataDefinitionsTree,
                              ModelGraphicsView* graphicsView);
 
-    // Synchronize the Components tree with the current model state.
+    /** @brief Synchronizes the Components tree from the current model representation. */
     void actualizeModelComponents(bool force) const;
-    // Synchronize the Data Definitions tree with the current model state.
+    /** @brief Synchronizes the Data Definitions tree from current model data definitions. */
     void actualizeModelDataDefinitions(bool force) const;
-    // Start in-place edition for a data-definition name when column is editable.
+    /** @brief Starts in-place rename editing for editable data-definition entries. */
     void beginDataDefinitionNameEdit(QTreeWidgetItem* item, int column) const;
-    // Apply renamed data-definition names back into the current model.
+    /** @brief Commits edited data-definition names back to the kernel model. */
     void applyDataDefinitionNameChange(QTreeWidgetItem* item, int column) const;
-    // Synchronize tree selection with graphical scene selection and viewport.
+    /** @brief Synchronizes tree selection with scene selection and viewport focus. */
     void syncSelectedComponentTreeItemToScene() const;
 
 private:

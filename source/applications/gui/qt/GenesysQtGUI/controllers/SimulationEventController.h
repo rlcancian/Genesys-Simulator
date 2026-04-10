@@ -48,7 +48,7 @@ public:
         std::function<void(SimulationEvent*)> actualizeGraphicalModel;
     };
 
-    // Inject simulator/view/widget dependencies required by legacy event reactions.
+    /** @brief Creates the simulation-event bridge used by MainWindow compatibility handlers. */
     SimulationEventController(Simulator* simulator,
                               ModelGraphicsScene* scene,
                               ModelGraphicsView* graphicsView,
@@ -65,29 +65,29 @@ public:
                               int tabCentralReportsIndex,
                               Callbacks callbacks);
 
-    // Keep model-check success handling behavior equivalent to legacy MainWindow logic.
+    /** @brief Handles model-check success and updates delegated GUI state. */
     void onModelCheckSuccessHandler(ModelEvent* re) const;
-    // Keep replication-start UI updates equivalent to legacy MainWindow logic.
+    /** @brief Handles replication-start event and updates simulation/report panes. */
     void onReplicationStartHandler(SimulationEvent* re) const;
-    // Keep simulation-start UI reset/setup equivalent to legacy MainWindow logic.
+    /** @brief Handles simulation-start event and resets run-scoped UI state. */
     void onSimulationStartHandler(SimulationEvent* re) const;
-    // Keep simulation-paused reaction equivalent to legacy MainWindow logic.
+    /** @brief Handles simulation pause event and refreshes action availability. */
     void onSimulationPausedHandler(SimulationEvent* re) const;
-    // Keep simulation-resume animation continuation behavior equivalent to legacy MainWindow logic.
+    /** @brief Handles simulation resume event and resumes graphical simulation synchronization. */
     void onSimulationResumeHandler(SimulationEvent* re) const;
-    // Keep simulation-end cleanup behavior equivalent to legacy MainWindow logic.
+    /** @brief Handles simulation end event and performs delegated cleanup/refresh. */
     void onSimulationEndHandler(SimulationEvent* re) const;
-    // Keep process-event updates equivalent to legacy MainWindow logic.
+    /** @brief Handles process-event updates for progress tables and scene refresh hooks. */
     void onProcessEventHandler(SimulationEvent* re) const;
-    // Keep entity-create hook compatibility.
+    /** @brief Handles entity-create events for compatibility callback wiring. */
     void onEntityCreateHandler(SimulationEvent* re) const;
-    // Keep entity-remove hook compatibility.
+    /** @brief Handles entity-remove events for compatibility callback wiring. */
     void onEntityRemoveHandler(SimulationEvent* re) const;
-    // Keep entity-move animation behavior equivalent to legacy MainWindow logic.
+    /** @brief Handles entity-move event updates used by graphical simulation animation. */
     void onMoveEntityEvent(SimulationEvent* re) const;
-    // Keep after-process animation updates equivalent to legacy MainWindow logic.
+    /** @brief Handles after-process event updates used by animation/frame synchronization. */
     void onAfterProcessEvent(SimulationEvent* re) const;
-    // Register simulation event handlers on OnEventManager while keeping MainWindow wrappers.
+    /** @brief Registers kernel on-event callbacks through MainWindow compatibility façade wrappers. */
     void setOnEventHandlers(MainWindow* owner) const;
 
 private:

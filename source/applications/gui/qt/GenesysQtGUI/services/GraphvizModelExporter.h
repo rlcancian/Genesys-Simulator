@@ -31,8 +31,9 @@ class ModelDataDefinition;
  */
 class GraphvizModelExporter {
 public:
-    // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.
-    // Receive a narrow callback to preserve text-to-model sync precondition before image export.
+    /**
+     * @brief Creates the Graphviz exporter service used by MainWindow compatibility wrappers.
+     */
     GraphvizModelExporter(Simulator* simulator,
                           QLabel* modelGraphicLabel,
                           QCheckBox* showInternals,
@@ -41,16 +42,32 @@ public:
                           QCheckBox* showLevels,
                           std::function<bool()> ensureModelSynchronized);
 
+    /**
+     * @brief Normalizes identifiers to Graphviz-safe names.
+     * @param name Raw label/name from model representation.
+     * @return DOT-safe identifier preserving compatibility naming intent.
+     */
     std::string adjustDotName(std::string name) const;
+
+    /**
+     * @brief Inserts a DOT line into the hierarchical rank/level map used for image generation.
+     */
     void insertTextInDot(std::string text,
                          unsigned int compLevel,
                          unsigned int compRank,
                          std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap,
                          bool isNode = false) const;
+    /**
+     * @brief Recursively traverses model/data nodes to build DOT content fragments.
+     */
     void recursiveCreateModelGraphicPicture(ModelDataDefinition* componentOrData,
                                             std::list<ModelDataDefinition*>* visited,
                                             std::map<unsigned int, std::map<unsigned int, std::list<std::string>*>*>* dotmap) const;
-    // Keep image generation API wrapper-friendly while internally invoking synchronization callback.
+
+    /**
+     * @brief Generates and displays the model image after synchronization preconditions.
+     * @return true when DOT generation and image rendering complete successfully.
+     */
     bool createModelImage() const;
 
 private:

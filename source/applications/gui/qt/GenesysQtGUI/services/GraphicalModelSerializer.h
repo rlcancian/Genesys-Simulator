@@ -35,7 +35,7 @@ class ModelGraphicsView;
  */
 class GraphicalModelSerializer {
 public:
-    // Capture only the narrow GUI/kernel dependencies required for persistence behavior.
+    /** @brief Creates the persistence service that backs MainWindow lifecycle wrappers. */
     GraphicalModelSerializer(Simulator* simulator,
                              QWidget* ownerWidget,
                              QPlainTextEdit* modelTextEditor,
@@ -56,11 +56,20 @@ public:
                              std::function<void()> applyShowAttachedElements,
                              std::function<void()> applyDiagramsVisibility);
 
-    // Save textual model representation using the existing line-by-line format.
+    /**
+     * @brief Saves textual model language using the established compatibility format.
+     * @return true when write succeeds.
+     */
     bool saveTextModel(QFile* saveFile, const QString& data) const;
-    // Save full .gui persistence sections without altering file compatibility.
+    /**
+     * @brief Saves full graphical `.gui` persistence sections without format changes.
+     * @return true when serialization succeeds.
+     */
     bool saveGraphicalModel(const QString& filename) const;
-    // Load .gui/.gen files and restore persisted graphical state.
+    /**
+     * @brief Loads `.gui`/`.gen` model files and restores persisted graphical/UI state.
+     * @return Loaded kernel model pointer or nullptr when loading fails.
+     */
     Model* loadGraphicalModel(const std::string& filename) const;
 
 private:
