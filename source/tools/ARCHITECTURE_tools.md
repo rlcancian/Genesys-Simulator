@@ -25,6 +25,7 @@ The `tools` package provides domain-support services for statistical analysis an
 
 ### Hypothesis testing
 - Maintain current contract and refine implementation completeness, especially two-population methods.
+- HYPTEST-1 alignment keeps the current pooled-vs-Welch heuristic, but documents it as a TODO while consolidating one-population p-value coherence and the two-proportion-difference confidence interval formula.
 
 ### Distribution abstractions
 - Introduce `Distribution_if` and specialized continuous/discrete interfaces.
