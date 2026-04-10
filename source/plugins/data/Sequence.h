@@ -26,6 +26,7 @@ public:
 	SequenceStep(Station* station, std::list<Assignment*>* assignments = nullptr);
 	SequenceStep(Label* label, std::list<Assignment*>* assignments = nullptr);
 	SequenceStep(Model* model, std::string stationOrLabelName, bool isStation = true, std::list<Assignment*>* assignments = nullptr);
+	virtual ~SequenceStep() override;
 public: // virtual
 
 	virtual bool _loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
@@ -84,7 +85,7 @@ public:
 
 public:
 	Sequence(Model* model, std::string name = "");
-	virtual ~Sequence() = default;
+	virtual ~Sequence() override;
 public:
 	virtual std::string show() override;
 public: // static 
@@ -97,6 +98,7 @@ protected:
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
 private:
 	List<SequenceStep*>* _steps = new List<SequenceStep*>();
 };
