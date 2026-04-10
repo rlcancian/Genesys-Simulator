@@ -221,13 +221,14 @@ unsigned int Wait::_handlerForSignalDataEvent(SignalData* signalData) {
 	unsigned int waitLimit = _parentModel->parseExpression(limitExpression);
 	while (_queue->size() > 0 && signalData->remainsToLimit() > 0 &&  freed <= waitLimit) {
 		Waiting* w = _queue->getAtRank(0);
+		Entity* ent = w->getEntity();
+		ModelComponent* sourceComponent = w->geComponent();
 		_queue->removeElement(w);
 		freed++;
 		signalData->decreaseRemainLimit();
-		Entity* ent = w->getEntity();
 		std::string message = getName() + " received " + signalData->getName() + ". " + ent->getName() + " removed from " + _queue->getName() + ". " + std::to_string(freed) + " freed, " + std::to_string(signalData->remainsToLimit()) + " remaining";
 		_parentModel->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, _parentModel->getSimulation()->getSimulatedTime(), ent, this, message);
-		_parentModel->sendEntityToComponent(w->getEntity(), w->geComponent()->getConnectionManager()->getFrontConnection());
+		_parentModel->sendEntityToComponent(ent, sourceComponent->getConnectionManager()->getFrontConnection());
 	}
 	return freed;
 }
@@ -239,11 +240,12 @@ void Wait::_handlerForAfterProcessEventEvent(SimulationEvent* event) {
 	if (result) { // condition is true. Remove entities from the queue
 		while (_queue->size() > 0) {
 			Waiting* w = _queue->getAtRank(0);
-			_queue->removeElement(w);
 			Entity* ent = w->getEntity();
+			ModelComponent* sourceComponent = w->geComponent();
+			_queue->removeElement(w);
 			std::string message = getName() + " evaluated condition " + _condition + " as true. " + ent->getName() + " removed from " + _queue->getName();
 			_parentModel->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, _parentModel->getSimulation()->getSimulatedTime(), ent, this, message);
-			_parentModel->sendEntityToComponent(w->getEntity(), w->geComponent()->getConnectionManager()->getFrontConnection());
+			_parentModel->sendEntityToComponent(ent, sourceComponent->getConnectionManager()->getFrontConnection());
 		}
 
 	}
