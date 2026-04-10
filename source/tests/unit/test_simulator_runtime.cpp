@@ -109,6 +109,15 @@ public:
     }
 };
 
+class QueueValidationProbe : public Queue {
+public:
+    QueueValidationProbe(Model* model, const std::string& name = "") : Queue(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+};
+
 class CountingWaitingProbe final : public Waiting {
 public:
     CountingWaitingProbe(Entity* entity, double timeStartedWaiting, ModelComponent* thisComponent, unsigned int thisComponentOutputPort = 0)
@@ -602,4 +611,195 @@ TEST(SimulatorRuntimeTest, QueueDestructorDeletesRemainingOwnedWaiting) {
     delete queue;
 
     EXPECT_EQ(g_countingWaitingProbeDestructorCount, 2u);
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleFifoKeepsArrivalOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "QueueFIFO");
+    queue.setReportStatistics(false);
+    queue.setOrderRule(Queue::OrderRule::FIFO);
+
+    Entity* firstEntity = model->createEntity("QueueFIFOEntityA", true);
+    Entity* secondEntity = model->createEntity("QueueFIFOEntityB", true);
+    Entity* thirdEntity = model->createEntity("QueueFIFOEntityC", true);
+    ASSERT_NE(firstEntity, nullptr);
+    ASSERT_NE(secondEntity, nullptr);
+    ASSERT_NE(thirdEntity, nullptr);
+
+    queue.insertElement(new Waiting(firstEntity, 0.0, nullptr));
+    queue.insertElement(new Waiting(secondEntity, 0.0, nullptr));
+    queue.insertElement(new Waiting(thirdEntity, 0.0, nullptr));
+
+    ASSERT_NE(queue.getAtRank(0), nullptr);
+    ASSERT_NE(queue.getAtRank(1), nullptr);
+    ASSERT_NE(queue.getAtRank(2), nullptr);
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), firstEntity);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), secondEntity);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), thirdEntity);
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleLifoPlacesLatestArrivalFirst) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "QueueLIFO");
+    queue.setReportStatistics(false);
+    queue.setOrderRule(Queue::OrderRule::LIFO);
+
+    Entity* firstEntity = model->createEntity("QueueLIFOEntityA", true);
+    Entity* secondEntity = model->createEntity("QueueLIFOEntityB", true);
+    Entity* thirdEntity = model->createEntity("QueueLIFOEntityC", true);
+    ASSERT_NE(firstEntity, nullptr);
+    ASSERT_NE(secondEntity, nullptr);
+    ASSERT_NE(thirdEntity, nullptr);
+
+    queue.insertElement(new Waiting(firstEntity, 0.0, nullptr));
+    queue.insertElement(new Waiting(secondEntity, 0.0, nullptr));
+    queue.insertElement(new Waiting(thirdEntity, 0.0, nullptr));
+
+    ASSERT_NE(queue.first(), nullptr);
+    EXPECT_EQ(queue.first()->getEntity(), thirdEntity);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), secondEntity);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), firstEntity);
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleHighestValueRanksByAttributeDescending) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* priority = new Attribute(model, "Priority");
+    ASSERT_NE(priority, nullptr);
+    const Util::identification priorityId = priority->getId();
+
+    Queue queue(model, "QueueHighestValue");
+    queue.setReportStatistics(false);
+    queue.setAttributeName(priority->getName());
+    queue.setOrderRule(Queue::OrderRule::HIGHESTVALUE);
+
+    Entity* low = model->createEntity("QueueHighestLow", true);
+    Entity* high = model->createEntity("QueueHighestHigh", true);
+    Entity* mid = model->createEntity("QueueHighestMid", true);
+    ASSERT_NE(low, nullptr);
+    ASSERT_NE(high, nullptr);
+    ASSERT_NE(mid, nullptr);
+    low->setAttributeValue(priorityId, 1.0);
+    high->setAttributeValue(priorityId, 9.0);
+    mid->setAttributeValue(priorityId, 5.0);
+
+    queue.insertElement(new Waiting(low, 0.0, nullptr));
+    queue.insertElement(new Waiting(high, 0.0, nullptr));
+    queue.insertElement(new Waiting(mid, 0.0, nullptr));
+
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), high);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), mid);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), low);
+
+    delete priority;
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleSmallestValueRanksByAttributeAscending) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* priority = new Attribute(model, "PrioritySmallest");
+    ASSERT_NE(priority, nullptr);
+    const Util::identification priorityId = priority->getId();
+
+    Queue queue(model, "QueueSmallestValue");
+    queue.setReportStatistics(false);
+    queue.setAttributeName(priority->getName());
+    queue.setOrderRule(Queue::OrderRule::SMALLESTVALUE);
+
+    Entity* high = model->createEntity("QueueSmallestHigh", true);
+    Entity* low = model->createEntity("QueueSmallestLow", true);
+    Entity* mid = model->createEntity("QueueSmallestMid", true);
+    ASSERT_NE(high, nullptr);
+    ASSERT_NE(low, nullptr);
+    ASSERT_NE(mid, nullptr);
+    high->setAttributeValue(priorityId, 9.0);
+    low->setAttributeValue(priorityId, 1.0);
+    mid->setAttributeValue(priorityId, 5.0);
+
+    queue.insertElement(new Waiting(high, 0.0, nullptr));
+    queue.insertElement(new Waiting(low, 0.0, nullptr));
+    queue.insertElement(new Waiting(mid, 0.0, nullptr));
+
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), low);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), mid);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), high);
+
+    delete priority;
+}
+
+TEST(SimulatorRuntimeTest, QueueOrderRuleAttributeTieUsesFifoTiebreaker) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* priority = new Attribute(model, "PriorityTie");
+    ASSERT_NE(priority, nullptr);
+    const Util::identification priorityId = priority->getId();
+
+    Queue queue(model, "QueueTieFIFO");
+    queue.setReportStatistics(false);
+    queue.setAttributeName(priority->getName());
+    queue.setOrderRule(Queue::OrderRule::HIGHESTVALUE);
+
+    Entity* firstTie = model->createEntity("QueueTieFirst", true);
+    Entity* secondTie = model->createEntity("QueueTieSecond", true);
+    Entity* highest = model->createEntity("QueueTieHighest", true);
+    ASSERT_NE(firstTie, nullptr);
+    ASSERT_NE(secondTie, nullptr);
+    ASSERT_NE(highest, nullptr);
+    firstTie->setAttributeValue(priorityId, 5.0);
+    secondTie->setAttributeValue(priorityId, 5.0);
+    highest->setAttributeValue(priorityId, 7.0);
+
+    queue.insertElement(new Waiting(firstTie, 0.0, nullptr));
+    queue.insertElement(new Waiting(secondTie, 0.0, nullptr));
+    queue.insertElement(new Waiting(highest, 0.0, nullptr));
+
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), highest);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), firstTie);
+    EXPECT_EQ(queue.getAtRank(2)->getEntity(), secondTie);
+
+    delete priority;
+}
+
+TEST(SimulatorRuntimeTest, QueueCheckFailsWhenAttributeRuleHasNoAttributeName) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    QueueValidationProbe queue(model, "QueueCheckMissingAttr");
+    queue.setOrderRule(Queue::OrderRule::HIGHESTVALUE);
+
+    std::string errorMessage;
+    EXPECT_FALSE(queue.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, QueueCheckPassesWhenAttributeRuleHasValidAttributeName) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* priority = new Attribute(model, "PriorityCheck");
+    ASSERT_NE(priority, nullptr);
+
+    QueueValidationProbe queue(model, "QueueCheckValidAttr");
+    queue.setOrderRule(Queue::OrderRule::SMALLESTVALUE);
+    queue.setAttributeName(priority->getName());
+
+    std::string errorMessage;
+    EXPECT_TRUE(queue.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+
+    delete priority;
 }
