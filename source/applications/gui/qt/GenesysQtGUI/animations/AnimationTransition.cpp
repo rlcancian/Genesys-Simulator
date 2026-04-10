@@ -1,6 +1,7 @@
 #include <QEventLoop>
 #include <QThread>
 #include <QCoreApplication>
+#include <QDebug>
 
 #include "AnimationTransition.h"
 #include "graphicals/ModelGraphicsScene.h"
@@ -30,6 +31,10 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
 
     // Abort construction when required input pointers are missing.
     if (_myScene == nullptr || graphicalStartComponent == nullptr || graphicalEndComponent == nullptr) {
+        // Log constructor early exit when mandatory input pointers are missing.
+        qInfo() << "GUI AnimationTransition ctor earlyExit reason=missingInput sceneNull=" << (_myScene == nullptr)
+                << "sourceNull=" << (graphicalStartComponent == nullptr)
+                << "destinationNull=" << (graphicalEndComponent == nullptr);
         return;
     }
 
@@ -39,6 +44,10 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
 
     // Stop setup when either graphical endpoint is not present in the scene.
     if (_graphicalStartComponent == nullptr || _graphicalEndComponent == nullptr) {
+        // Log constructor early exit when graphical endpoints are not found in the scene.
+        qInfo() << "GUI AnimationTransition ctor earlyExit reason=missingGraphicalEndpoint sourceId="
+                << graphicalStartComponent->getId()
+                << "destinationId=" << graphicalEndComponent->getId();
         return;
     }
 
@@ -62,6 +71,10 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
         if (connection == nullptr) {
             _graphicalEndComponent = nullptr;
             _graphicalConnection = nullptr;
+            // Log constructor early exit when no compatible graphical connection exists.
+            qInfo() << "GUI AnimationTransition ctor earlyExit reason=missingConnection sourceId="
+                    << graphicalStartComponent->getId()
+                    << "destinationId=" << graphicalEndComponent->getId();
             return;
         }
 
@@ -77,6 +90,8 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
         if (pointsConnection.size() < 4) {
             _graphicalEndComponent = nullptr;
             _graphicalConnection = nullptr;
+            // Log constructor early exit when connection geometry has insufficient points.
+            qInfo() << "GUI AnimationTransition ctor earlyExit reason=insufficientPoints count=" << pointsConnection.size();
             return;
         }
 
@@ -101,6 +116,11 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
 
         // Configura a animação
         configureAnimation();
+        // Log constructor completion with endpoint ids and runtime data used by the animation.
+        qInfo() << "GUI AnimationTransition ctor sourceId=" << graphicalStartComponent->getId()
+                << "destinationId=" << graphicalEndComponent->getId()
+                << "imageCreated=" << (_imageAnimation != nullptr)
+                << "pointsCount=" << _pointsForAnimation.size();
     }
 }
 
@@ -166,6 +186,9 @@ void AnimationTransition::setRunning(bool running) {
 
 // Outros
 void AnimationTransition::startAnimation() {
+    // Log start request readiness and current animation duration before running.
+    qInfo() << "GUI AnimationTransition startAnimation ready=" << isReadyToRun()
+            << "durationMs=" << duration();
     // Block animation start when transition invariants are not fully satisfied.
     if (!isReadyToRun()) {
         return;
@@ -184,6 +207,9 @@ void AnimationTransition::startAnimation() {
 }
 
 void AnimationTransition::stopAnimation() {
+    // Log stop request including idempotent path and image ownership status.
+    qInfo() << "GUI AnimationTransition stopAnimation idempotent=" << _isStopping
+            << "hasImage=" << (_imageAnimation != nullptr);
     // Return immediately when stop cleanup is already in progress.
     if (_isStopping) {
         return;
@@ -215,6 +241,9 @@ void AnimationTransition::stopAnimation() {
 }
 
 void AnimationTransition::restartAnimation() {
+    // Log restart request readiness and current animation duration before running.
+    qInfo() << "GUI AnimationTransition restartAnimation ready=" << isReadyToRun()
+            << "durationMs=" << duration();
     // Block animation restart when transition invariants are not fully satisfied.
     if (!isReadyToRun() || duration() <= 0) {
         return;
@@ -270,18 +299,27 @@ void AnimationTransition::connectValueChangedSignal() {
 void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
     // Stop and exit immediately when simulation runtime is no longer running.
     if (_running == false) {
+        // Log runtime deviation when animation receives ticks while running flag is false.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=runningFalse";
         stopAnimation();
         return;
     }
 
     // Pause and exit immediately to avoid running animation logic while paused.
     if (_pause == true) {
+        // Log runtime deviation when animation receives ticks while paused.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=pausedTrue";
         pause();
         return;
     }
 
     // Validate mandatory runtime pointers and geometry before processing interpolation.
     if (_myScene == nullptr || _imageAnimation == nullptr || _pointsForAnimation.size() < 2) {
+        // Log runtime deviation when mandatory animation guards are invalid.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=invalidGuards"
+                << "sceneNull=" << (_myScene == nullptr)
+                << "imageNull=" << (_imageAnimation == nullptr)
+                << "pointsCount=" << _pointsForAnimation.size();
         return;
     }
 
@@ -297,6 +335,8 @@ void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
         totalDistance += QLineF(_pointsForAnimation[i], _pointsForAnimation[i + 1]).length();
     }
     if (totalDistance <= 0.0) {
+        // Log runtime deviation when total path geometry distance is degenerate.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=totalDistanceNonPositive";
         return;
     }
 
@@ -311,12 +351,18 @@ void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
         ++currentSegment;
     }
     if (currentSegment < 0 || currentSegment >= numSegments) {
+        // Log runtime deviation when current interpolation segment index is invalid.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=invalidSegmentIndex"
+                << "currentSegment=" << currentSegment
+                << "numSegments=" << numSegments;
         return;
     }
 
     // Guard segment interpolation against zero-length segments before dividing.
     qreal segmentLength = QLineF(_pointsForAnimation[currentSegment], _pointsForAnimation[currentSegment + 1]).length();
     if (segmentLength <= 0.0) {
+        // Log runtime deviation when active segment length is non-positive.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=segmentLengthNonPositive";
         return;
     }
 
@@ -336,6 +382,8 @@ void AnimationTransition::connectFinishedSignal() {
 }
 
 void AnimationTransition::onAnimationFinished() {
+    // Log finished callback entry and whether this callback was already processed.
+    qInfo() << "GUI AnimationTransition onAnimationFinished begin alreadyHandled=" << _isFinishedHandled;
     // Return when finished callback cleanup already ran before.
     if (_isFinishedHandled) {
         return;
@@ -346,16 +394,22 @@ void AnimationTransition::onAnimationFinished() {
 
     // Only notify queue insertion when both scene and destination component are valid.
     if (_myScene != nullptr && _graphicalEndComponent != nullptr) {
+        // Log queue-insert dispatch performed on a valid destination component.
+        qInfo() << "GUI AnimationTransition onAnimationFinished animateQueueInsert=true";
         _myScene->animateQueueInsert(_graphicalEndComponent->getComponent(), _viewSimulation);
     }
 
     // Remove image only when it is valid and still attached to this scene.
     if (_myScene != nullptr && _imageAnimation != nullptr && _imageAnimation->scene() == _myScene) {
+        // Log image removal from scene during finished cleanup.
+        qInfo() << "GUI AnimationTransition onAnimationFinished cleanup=removeImageFromScene";
         _myScene->removeItem(_imageAnimation);
     }
 
     // Delete the owned image item explicitly after animation completion.
     if (_imageAnimation != nullptr) {
+        // Log image object destruction during finished cleanup.
+        qInfo() << "GUI AnimationTransition onAnimationFinished cleanup=deleteImage";
         delete _imageAnimation;
         _imageAnimation = nullptr;
     }

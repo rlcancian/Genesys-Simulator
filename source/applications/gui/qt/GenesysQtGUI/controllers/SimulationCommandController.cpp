@@ -3,6 +3,7 @@
 #include "controllers/SimulationController.h"
 #include "animations/AnimationTransition.h"
 #include "../../../../../kernel/simulator/ModelSimulation.h"
+#include <QDebug>
 
 SimulationCommandController::SimulationCommandController(
     SimulationController* simulationController,
@@ -28,10 +29,14 @@ void SimulationCommandController::onActionSimulationStartTriggered(bool modelChe
     }
 
     ModelSimulation* simulation = _simulationController->currentSimulation();
+    // Log start command context before dereferencing the simulation pointer.
+    qInfo() << "GUI SimulationCommand start simulationNull=" << (simulation == nullptr);
     if (simulation == nullptr) {
         return;
     }
 
+    // Log static animation runtime flags applied by the start action.
+    qInfo() << "GUI SimulationCommand start setRunning=true setPause=false";
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
     _insertCommandInConsole("start");
@@ -49,10 +54,14 @@ void SimulationCommandController::onActionSimulationStepTriggered(bool modelChec
     }
 
     ModelSimulation* simulation = _simulationController->currentSimulation();
+    // Log step command context before dereferencing the simulation pointer.
+    qInfo() << "GUI SimulationCommand step simulationNull=" << (simulation == nullptr);
     if (simulation == nullptr) {
         return;
     }
 
+    // Log static animation runtime flags applied by the step action.
+    qInfo() << "GUI SimulationCommand step setRunning=true setPause=false";
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
     _insertCommandInConsole("step");
@@ -66,10 +75,14 @@ void SimulationCommandController::onActionSimulationPauseTriggered() const {
     }
 
     ModelSimulation* simulation = _simulationController->currentSimulation();
+    // Log pause command context before dereferencing the simulation pointer.
+    qInfo() << "GUI SimulationCommand pause simulationNull=" << (simulation == nullptr);
     if (simulation == nullptr) {
         return;
     }
 
+    // Log static animation runtime flags applied by the pause action.
+    qInfo() << "GUI SimulationCommand pause setRunning=true setPause=true";
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(true);
 
@@ -88,10 +101,14 @@ void SimulationCommandController::onActionSimulationResumeTriggered(bool modelCh
     }
 
     ModelSimulation* simulation = _simulationController->currentSimulation();
+    // Log resume command context before dereferencing the simulation pointer.
+    qInfo() << "GUI SimulationCommand resume simulationNull=" << (simulation == nullptr);
     if (simulation == nullptr) {
         return;
     }
 
+    // Log static animation runtime flags applied by the resume action.
+    qInfo() << "GUI SimulationCommand resume setRunning=true setPause=false";
     AnimationTransition::setRunning(true);
     AnimationTransition::setPause(false);
 
@@ -106,10 +123,14 @@ void SimulationCommandController::onActionSimulationStopTriggered() const {
     }
 
     ModelSimulation* simulation = _simulationController->currentSimulation();
+    // Log stop command context before dereferencing the simulation pointer.
+    qInfo() << "GUI SimulationCommand stop simulationNull=" << (simulation == nullptr);
     if (simulation == nullptr) {
         return;
     }
 
+    // Log static animation runtime flags applied by the stop action.
+    qInfo() << "GUI SimulationCommand stop setRunning=false setPause=false";
     AnimationTransition::setRunning(false);
     AnimationTransition::setPause(false);
 

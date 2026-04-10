@@ -20,6 +20,7 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTextEdit>
+#include <QDebug>
 
 #include <string>
 #include <utility>
@@ -149,6 +150,8 @@ void SimulationEventController::onReplicationStartHandler(SimulationEvent* re) c
 
 // Preserve simulation-start setup, clears and conversion factor update behavior.
 void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) const {
+    // Log simulation-start handler entry for animation pipeline tracing.
+    qInfo() << "GUI SimulationEvent onSimulationStartHandler begin";
     Q_UNUSED(re)
     _callbacks.actualizeActions();
     _simulationProgressBar->setMaximum(
@@ -169,6 +172,8 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     _scene->clearAnimationsQueue();
     _scene->clearAnimationsValues();
 
+    // Log simulation-start handler exit after scene reset and timer factor setup.
+    qInfo() << "GUI SimulationEvent onSimulationStartHandler end";
     QCoreApplication::processEvents();
 }
 
@@ -181,6 +186,8 @@ void SimulationEventController::onSimulationPausedHandler(SimulationEvent* re) c
 
 // Preserve simulation-resume animation continuation behavior.
 void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) const {
+    // Log simulation-resume handler entry before paused-animation lookup.
+    qInfo() << "GUI SimulationEvent onSimulationResumeHandler begin";
     _callbacks.actualizeActions();
 
     // Resume detached paused animations using the same key selected from the paused map.
@@ -188,6 +195,11 @@ void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) c
     Event* currentEvent = re ? re->getCurrentEvent() : nullptr;
     auto [resumeEventKey, pausedAnimations] =
         takePausedAnimationListForResume(pausedAnimationsMap, currentEvent);
+    // Log resume selection details including paused list size and effective resume key.
+    qInfo() << "GUI SimulationEvent onSimulationResumeHandler pausedMapEmpty="
+            << (pausedAnimationsMap == nullptr || pausedAnimationsMap->empty())
+            << "pausedListSize=" << (pausedAnimations ? pausedAnimations->size() : 0)
+            << "resumeEventKeyPresent=" << (resumeEventKey != nullptr);
     if (pausedAnimations) {
         for (AnimationTransition* animation : *pausedAnimations) {
             if (animation) {
@@ -197,12 +209,19 @@ void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) c
     }
     cleanupPausedAnimationList(pausedAnimations, false);
 
+    // Log simulation-resume handler exit after paused animations are processed.
+    qInfo() << "GUI SimulationEvent onSimulationResumeHandler end";
     QCoreApplication::processEvents();
 }
 
 // Preserve simulation-end cleanup, tab switch and model-check flag reset behavior.
 void SimulationEventController::onSimulationEndHandler(SimulationEvent* re) const {
+    // Log simulation-end handler entry before paused-animation cleanup.
+    qInfo() << "GUI SimulationEvent onSimulationEndHandler begin";
     Q_UNUSED(re)
+    // Log paused-animation map size before terminal cleanup.
+    qInfo() << "GUI SimulationEvent onSimulationEndHandler pausedMapSizeBeforeCleanup="
+            << (_scene->getAnimationPaused() ? _scene->getAnimationPaused()->size() : 0);
     // Destroy all paused-animation lists and remaining paused animations before ending.
     cleanupPausedAnimationMap(_scene->getAnimationPaused(), true);
     // Clear any remaining scene animation state before final UI updates.
@@ -216,6 +235,8 @@ void SimulationEventController::onSimulationEndHandler(SimulationEvent* re) cons
     }
 
     *_modelChecked = false;
+    // Log simulation-end handler exit after terminal GUI state updates.
+    qInfo() << "GUI SimulationEvent onSimulationEndHandler end";
 }
 
 // Preserve process-event UI updates and delegated debug/graphical refresh behavior.
@@ -240,6 +261,9 @@ void SimulationEventController::onEntityRemoveHandler(SimulationEvent* re) const
 
 // Preserve entity-move animation pipeline behavior.
 void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
+    // Log move-entity handler entry and graphical simulation toggle state.
+    qInfo() << "GUI SimulationEvent onMoveEntityEvent begin graphicalSimulationChecked="
+            << (_activateGraphicalSimulation ? _activateGraphicalSimulation->isChecked() : false);
     _scene->animateCounter();
     _scene->animateVariable();
 
@@ -248,6 +272,11 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
             if (re->getCurrentEvent()->getComponent()) {
                 ModelComponent* source = re->getCurrentEvent()->getComponent();
                 ModelComponent* destination = re->getDestinationComponent();
+                // Log source and destination identifiers before transition dispatch.
+                qInfo() << "GUI SimulationEvent onMoveEntityEvent sourceId="
+                        << (source ? source->getId() : 0)
+                        << "destinationId="
+                        << (destination ? destination->getId() : 0);
 
                 _scene->animateQueueRemove(source);
 
@@ -259,6 +288,8 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
             }
         }
     }
+    // Log move-entity handler exit after animation pipeline delegation.
+    qInfo() << "GUI SimulationEvent onMoveEntityEvent end";
 }
 
 // Preserve after-process animation update behavior.
