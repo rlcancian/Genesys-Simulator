@@ -20,6 +20,7 @@
 #include "plugins/data/Sequence.h"
 #include "plugins/data/SignalData.h"
 #include "plugins/data/Station.h"
+#include "plugins/data/Set.h"
 #include "plugins/components/Delay.h"
 #define private public
 #define protected public
@@ -387,6 +388,27 @@ public:
 
     void InternalEventNoopProbe(void* parameter) {
         (void) parameter;
+    }
+};
+
+class SetProbe : public Set {
+public:
+    SetProbe(Model* model, const std::string& name = "") : Set(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
     }
 };
 
@@ -1830,6 +1852,147 @@ TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
     std::string errorMessage;
     EXPECT_TRUE(sequence.CheckProbe(errorMessage));
     EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, SetDestructorReleasesOwnedContainerWithoutDeletingMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* queueA = new Queue(model, "SetLifecycleQueueA");
+    auto* queueB = new Queue(model, "SetLifecycleQueueB");
+    {
+        auto* set = new SetProbe(model, "SetLifecycle");
+        set->addElementSet(queueA);
+        set->addElementSet(queueB);
+        ASSERT_EQ(set->getElementSet()->size(), 2u);
+        delete set;
+    }
+
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "SetLifecycleQueueA"), nullptr);
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "SetLifecycleQueueB"), nullptr);
+
+    delete queueA;
+    delete queueB;
+}
+
+TEST(SimulatorRuntimeTest, SetLoadInstanceReplacesPreviousMembersWithoutResidualState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queueA(model, "SetPersistQueueA");
+    Queue queueB(model, "SetPersistQueueB");
+    Queue queueC(model, "SetPersistQueueC");
+
+    SetProbe first(model, "SetPersistFirst");
+    first.setSetOfType(Util::TypeOf<Queue>());
+    first.addElementSet(&queueA);
+    first.addElementSet(&queueB);
+
+    SetProbe second(model, "SetPersistSecond");
+    second.setSetOfType(Util::TypeOf<Queue>());
+    second.addElementSet(&queueC);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fieldsFirst(persistence);
+    PersistenceRecord fieldsSecond(persistence);
+    first.SaveInstanceProbe(&fieldsFirst, true);
+    second.SaveInstanceProbe(&fieldsSecond, true);
+
+    SetProbe loaded(model, "SetPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fieldsFirst));
+    ASSERT_EQ(loaded.getElementSet()->size(), 2u);
+    ASSERT_EQ(loaded.getElementSet()->getAtRank(0), &queueA);
+    ASSERT_EQ(loaded.getElementSet()->getAtRank(1), &queueB);
+
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fieldsSecond));
+    ASSERT_EQ(loaded.getElementSet()->size(), 1u);
+    EXPECT_EQ(loaded.getElementSet()->getAtRank(0), &queueC);
+}
+
+TEST(SimulatorRuntimeTest, SetCheckFailsForHeterogeneousMemberTypes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "SetMixedQueue");
+    Variable variable(model, "SetMixedVariable");
+    SetProbe set(model, "SetMixed");
+    set.addElementSet(&queue);
+    set.addElementSet(&variable);
+
+    std::string errorMessage;
+    EXPECT_FALSE(set.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("member"), std::string::npos);
+    EXPECT_NE(errorMessage.find("SetMixedVariable"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SetCheckPassesForHomogeneousMembersAndPreservesOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queueA(model, "SetCheckQueueA");
+    Queue queueB(model, "SetCheckQueueB");
+    SetProbe set(model, "SetCheckHomogeneous");
+    set.addElementSet(&queueA);
+    set.addElementSet(&queueB);
+
+    std::string errorMessage;
+    EXPECT_TRUE(set.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+    ASSERT_EQ(set.getElementSet()->size(), 2u);
+    EXPECT_EQ(set.getElementSet()->getAtRank(0), &queueA);
+    EXPECT_EQ(set.getElementSet()->getAtRank(1), &queueB);
+}
+
+TEST(SimulatorRuntimeTest, SetCheckCreatesIndexedAttachedMembersWithoutKeyCollisions) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queueA(model, "SetAttachedQueueA");
+    Queue queueB(model, "SetAttachedQueueB");
+    SetProbe set(model, "SetAttached");
+    set.addElementSet(&queueA);
+    set.addElementSet(&queueB);
+
+    std::string errorMessage;
+    ASSERT_TRUE(set.CheckProbe(errorMessage));
+    auto* attached = set.getAttachedData();
+    ASSERT_EQ(attached->count("Member[0]"), 1u);
+    ASSERT_EQ(attached->count("Member[1]"), 1u);
+    EXPECT_EQ(attached->at("Member[0]"), &queueA);
+    EXPECT_EQ(attached->at("Member[1]"), &queueB);
+}
+
+TEST(SimulatorRuntimeTest, SetRecheckRemovesObsoleteAttachedMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queueA(model, "SetRecheckQueueA");
+    Queue queueB(model, "SetRecheckQueueB");
+    SetProbe set(model, "SetRecheck");
+    set.addElementSet(&queueA);
+    set.addElementSet(&queueB);
+
+    std::string errorMessage;
+    ASSERT_TRUE(set.CheckProbe(errorMessage));
+    set.CreateInternalAndAttachedDataProbe();
+    auto* attached = set.getAttachedData();
+    ASSERT_EQ(attached->count("SetRecheck.SetRecheckQueueA"), 1u);
+    ASSERT_EQ(attached->count("SetRecheck.SetRecheckQueueB"), 1u);
+
+    set.removeElementSet(&queueA);
+    errorMessage.clear();
+    ASSERT_TRUE(set.CheckProbe(errorMessage));
+    set.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(attached->count("SetRecheck.SetRecheckQueueA"), 0u);
+    ASSERT_EQ(attached->count("SetRecheck.SetRecheckQueueB"), 1u);
+    EXPECT_EQ(attached->at("SetRecheck.SetRecheckQueueB"), &queueB);
 }
 
 TEST(SimulatorRuntimeTest, StationCreateInternalInitiallyCreatesCollectorsWhenStatisticsEnabled) {

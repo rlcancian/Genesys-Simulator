@@ -43,6 +43,11 @@ Set::Set(Model* model, std::string name) : ModelDataDefinition(model, Util::Type
     _addProperty(propElementSet);
 }
 
+Set::~Set() {
+    delete _elementSet;
+    _elementSet = nullptr;
+}
+
 std::string Set::show() {
     return ModelDataDefinition::show() +
             "";
@@ -61,8 +66,13 @@ List<ModelDataDefinition*>* Set::getElementSet() const {
 }
 
 void Set::addElementSet(ModelDataDefinition* newElement) {
+    if (newElement == nullptr) {
+        return;
+    }
     _elementSet->insert(newElement);
-    _setOfType = newElement->getClassname();
+    if (_elementSet->size() == 1) {
+        _setOfType = newElement->getClassname();
+    }
 }
 
 void Set::removeElementSet(ModelDataDefinition* element) {
@@ -88,6 +98,7 @@ bool Set::_loadInstance(PersistenceRecord *fields) {
     bool res = ModelDataDefinition::_loadInstance(fields);
     if (res) {
         try {
+            _elementSet->clear();
             _setOfType = fields->loadField("type", DEFAULT.setOfType);
             unsigned int memberSize = fields->loadField("members", DEFAULT.membersSize);
             for (unsigned int i = 0; i < memberSize; i++) {
@@ -118,20 +129,31 @@ void Set::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Set::_check(std::string& errorMessage) {
     bool resultAll = true;
-    if (_elementSet->size() > 0) {
-        std::string typeOfFirstElement = _elementSet->front()->getClassname();
-        if (_setOfType == "") {
-            _setOfType = typeOfFirstElement;
-        } else if (_setOfType != typeOfFirstElement) {
-            resultAll = false;
-            errorMessage += "Set is of type \"" + _setOfType + "\" and first modeldatum is of type \"" + typeOfFirstElement + "\"";
+    std::string expectedType = _setOfType;
+    if (expectedType == "" && _elementSet->size() > 0) {
+        expectedType = _elementSet->front()->getClassname();
+        _setOfType = expectedType;
+    }
+
+    std::list<std::string> attachedKeysToRemove;
+    for (const std::pair<std::string, ModelDataDefinition*>& pair : *getAttachedData()) {
+        if (pair.first.rfind("Member", 0) == 0) {
+            attachedKeysToRemove.push_back(pair.first);
         }
     }
+    for (const std::string& key : attachedKeysToRemove) {
+        _attachedDataRemove(key);
+    }
+
     int i = 0;
     for (ModelDataDefinition* data : *_elementSet->list()) {
+        if (data != nullptr && expectedType != "" && data->getClassname() != expectedType) {
+            resultAll = false;
+            errorMessage += "Set is of type \"" + expectedType + "\" but member \"" + data->getName() + "\" is of type \"" + data->getClassname() + "\". ";
+        }
         this->_attachedDataInsert("Member" + Util::StrIndex(i), data);
+        i++;
     }
-    errorMessage += "";
     return resultAll;
 }
 
@@ -143,6 +165,17 @@ ParserChangesInformation* Set::_getParserChangesInformation() {
 }
 
 void Set::_createInternalAndAttachedData() {
+    std::list<std::string> attachedKeysToRemove;
+    const std::string keyPrefix = getName() + ".";
+    for (const std::pair<std::string, ModelDataDefinition*>& pair : *getAttachedData()) {
+        if (pair.first.rfind(keyPrefix, 0) == 0) {
+            attachedKeysToRemove.push_back(pair.first);
+        }
+    }
+    for (const std::string& key : attachedKeysToRemove) {
+        _attachedDataRemove(key);
+    }
+
     for(ModelDataDefinition* dd: *_elementSet->list()) {
         _attachedDataInsert(getName()+"."+dd->getName(), dd);
     }
