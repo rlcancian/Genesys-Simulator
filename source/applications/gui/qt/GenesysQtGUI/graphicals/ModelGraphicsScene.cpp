@@ -1419,16 +1419,18 @@ void ModelGraphicsScene::animateTransition(ModelComponent *source, ModelComponen
 }
 
 void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTransition, Event *event, bool restart) {
+    // Log only the raw transition address to avoid QDebug QObject* dereference paths.
+    const void* initialTransitionAddress = static_cast<const void*>(animationTransition);
     // Log transition runner entry with correlation keys before runtime checks.
     qInfo() << "GUI ModelGraphicsScene runAnimateTransition begin restart=" << restart
             << "eventPtr=" << event
-            << "transitionPtr=" << animationTransition;
+            << "transitionPtr=" << initialTransitionAddress;
     // Exit before local event loop when transition pointer is invalid or not runnable.
     if (animationTransition == nullptr || !animationTransition->isReadyToRun()) {
         // Log rejection details when transition is null or not ready to run.
         qInfo() << "GUI ModelGraphicsScene runAnimateTransition rejected transitionNull="
                 << (animationTransition == nullptr)
-                << "transitionPtr=" << animationTransition
+                << "transitionPtr=" << initialTransitionAddress
                 << "eventPtr=" << event
                 << "restart=" << restart
                 << "ready=" << (animationTransition ? animationTransition->isReadyToRun() : false);
@@ -1476,9 +1478,11 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
         animationTransition->restartAnimation();
     else
         animationTransition->startAnimation();
+    // Capture a stable raw address for logs while the local loop is running.
+    const void* runningTransitionAddress = static_cast<const void*>(animationTransition);
     // Log runtime execution parameters right after start/restart dispatch.
     qInfo() << "GUI ModelGraphicsScene runAnimateTransition runtime ready="
-            << "transitionPtr=" << animationTransition
+            << "transitionPtr=" << runningTransitionAddress
             << "eventPtr=" << event
             << "restart=" << restart
             << animationTransition->isReadyToRun()
@@ -1492,7 +1496,8 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
     timeoutTimer.start(timeoutMs);
 
     // Log local loop entry and timeout guard values for this transition.
-    qInfo() << "GUI ModelGraphicsScene runAnimateTransition loop.exec enter transitionPtr=" << animationTransition
+    // Log the raw address to keep diagnostics safe in terminal lifecycle paths.
+    qInfo() << "GUI ModelGraphicsScene runAnimateTransition loop.exec enter transitionPtr=" << runningTransitionAddress
             << "eventPtr=" << event
             << "restart=" << restart
             << "ready=" << animationTransition->isReadyToRun()
@@ -1500,8 +1505,10 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
             << "timeoutMs=" << timeoutMs;
     // Aguarda a conclusão da animação sem bloquear o restante do código
     loop.exec();
+    // Reuse the raw address after loop exit to avoid QObject* debug streaming.
+    const void* postLoopTransitionAddress = static_cast<const void*>(animationTransition);
     // Log local loop exit to capture timeout result for this transition execution.
-    qInfo() << "GUI ModelGraphicsScene runAnimateTransition loop.exec exit transitionPtr=" << animationTransition
+    qInfo() << "GUI ModelGraphicsScene runAnimateTransition loop.exec exit transitionPtr=" << postLoopTransitionAddress
             << "eventPtr=" << event
             << "timeout=" << exitedByTimeout;
 
@@ -1519,8 +1526,9 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
     // Stop post-loop processing when the transition was destroyed during loop execution.
     if (guardedTransition.isNull()) {
         // Log guarded pointer nullification when transition is deleted during loop execution.
+        // Keep guarded-null diagnostics on raw address only.
         qInfo() << "GUI ModelGraphicsScene runAnimateTransition guardedTransitionNull=true"
-                << "transitionPtr=" << animationTransition
+                << "transitionPtr=" << postLoopTransitionAddress
                 << "eventPtr=" << event;
         _animationsTransition->removeOne(animationTransition);
         return;
@@ -1528,12 +1536,14 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
 
     // Resolve the guarded pointer before any post-loop state checks or deletion.
     AnimationTransition* transitionPtr = guardedTransition.data();
+    // Resolve a raw address snapshot for terminal cleanup logging.
+    const void* transitionAddress = static_cast<const void*>(transitionPtr);
 
     // Perform terminal cleanup when loop exit happened through timeout.
     if (exitedByTimeout && transitionPtr != nullptr) {
         // Log timeout cleanup path before force-stopping and deleting transition.
         qInfo() << "GUI ModelGraphicsScene runAnimateTransition terminalCleanup reason=timeout"
-                << "transitionPtr=" << transitionPtr
+                << "transitionPtr=" << transitionAddress
                 << "eventPtr=" << event
                 << "timeout=" << exitedByTimeout;
         transitionPtr->stopAnimation();
@@ -1546,7 +1556,7 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
     if (transitionPtr != nullptr) {
         // Log final state used to choose paused retention or terminal destruction.
         qInfo() << "GUI ModelGraphicsScene runAnimateTransition finalState="
-                << "transitionPtr=" << transitionPtr
+                << "transitionPtr=" << transitionAddress
                 << "eventPtr=" << event
                 << transitionPtr->state()
                 << "paused=" << (transitionPtr->state() == QAbstractAnimation::Paused);
@@ -1554,20 +1564,20 @@ void ModelGraphicsScene::runAnimateTransition(AnimationTransition *animationTran
         if (transitionPtr->state() != QAbstractAnimation::Paused) {
             // Log terminal destruction path when transition does not remain paused.
             qInfo() << "GUI ModelGraphicsScene runAnimateTransition cleanup destination=terminalDestroy"
-                    << "transitionPtr=" << transitionPtr
+                    << "transitionPtr=" << transitionAddress
                     << "eventPtr=" << event;
             delete transitionPtr;
         } else {
             // Log paused retention path when transition remains available for resume.
             qInfo() << "GUI ModelGraphicsScene runAnimateTransition cleanup destination=pausedMap"
-                    << "transitionPtr=" << transitionPtr
+                    << "transitionPtr=" << transitionAddress
                     << "eventPtr=" << event;
         }
     }
 
     // Log final cleanup checkpoint after the transition is removed from active list.
     qInfo() << "GUI ModelGraphicsScene runAnimateTransition cleanup final transitionPtr="
-            << transitionPtr
+            << transitionAddress
             << "eventPtr=" << event;
 }
 
