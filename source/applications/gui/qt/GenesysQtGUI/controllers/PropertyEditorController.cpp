@@ -1,4 +1,5 @@
 #include "PropertyEditorController.h"
+#include "../GuiScopeTrace.h"
 
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/ModelGraphicsScene.h"
@@ -57,6 +58,8 @@ bool PropertyEditorController::isPostCommitPipelineActive() const {
 
 // Preserve legacy single-selection behavior while moving orchestration out of MainWindow.
 void PropertyEditorController::sceneSelectionChanged() const {
+    // Adds scoped tracing for property-controller selection synchronization diagnostics.
+    const GuiScopeTrace scopeTrace("PropertyEditorController::sceneSelectionChanged", this);
     if (_graphicsView == nullptr || _propertyBrowser == nullptr) {
         return;
     }

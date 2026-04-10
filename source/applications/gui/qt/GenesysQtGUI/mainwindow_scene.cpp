@@ -2,6 +2,7 @@
 #include "ui_mainwindow.h"
 // Include the Phase 6 controller type so member calls compile with a complete class definition.
 #include "controllers/PropertyEditorController.h"
+#include "GuiScopeTrace.h"
 #include <QDebug>
 
 //-----------------------------------------
@@ -111,6 +112,8 @@ void MainWindow::sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsIte
  * Updates property editor state according to current selection.
  */
 void MainWindow::sceneSelectionChanged() {
+    // Adds scoped tracing for scene-selection diagnostics in GUI crash investigations.
+    const GuiScopeTrace scopeTrace("MainWindow::sceneSelectionChanged", this);
     qInfo() << "[MainWindow] sceneSelectionChanged enter";
     // Keep this wrapper for compatibility during the incremental Phase 6 refactor.
     if (_shuttingDown) {

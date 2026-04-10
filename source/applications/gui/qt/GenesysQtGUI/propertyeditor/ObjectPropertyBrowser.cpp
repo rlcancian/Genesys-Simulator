@@ -1,4 +1,5 @@
 #include "ObjectPropertyBrowser.h"
+#include "../GuiScopeTrace.h"
 
 #include <map>
 #include <set>
@@ -69,16 +70,28 @@ ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
 }
 
 void ObjectPropertyBrowser::_clearAll() {
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_clearAll", this);
     clear();
     _bindings.clear();
     _enumNames.clear();
     _pendingCommittedProperties.clear();
     _pendingCommittedValues.clear();
 
+    // Logs factory lifecycle before deletion to diagnose dangling QObject ownership.
+    qInfo() << "[PropertyEditor] deleting _variantFactory ptr=" << static_cast<void*>(_variantFactory);
     delete _variantFactory;
+    // Logs factory lifecycle before deletion to diagnose dangling QObject ownership.
+    qInfo() << "[PropertyEditor] deleting _enumFactory ptr=" << static_cast<void*>(_enumFactory);
     delete _enumFactory;
+    // Logs manager lifecycle before deletion to diagnose dangling QObject ownership.
+    qInfo() << "[PropertyEditor] deleting _variantManager ptr=" << static_cast<void*>(_variantManager);
     delete _variantManager;
+    // Logs manager lifecycle before deletion to diagnose dangling QObject ownership.
+    qInfo() << "[PropertyEditor] deleting _groupManager ptr=" << static_cast<void*>(_groupManager);
     delete _groupManager;
+    // Logs manager lifecycle before deletion to diagnose dangling QObject ownership.
+    qInfo() << "[PropertyEditor] deleting _enumManager ptr=" << static_cast<void*>(_enumManager);
     delete _enumManager;
 
     _variantFactory = nullptr;
@@ -90,6 +103,18 @@ void ObjectPropertyBrowser::_clearAll() {
     _variantManager = new QtVariantPropertyManager(this);
     _groupManager = new QtGroupPropertyManager(this);
     _enumManager = new QtEnumPropertyManager(this);
+    // Tracks manager destruction events for lifecycle diagnostics.
+    connect(_variantManager, &QObject::destroyed, this, [](QObject* obj) {
+        qInfo() << "[PropertyEditor] destroyed _variantManager ptr=" << obj;
+    });
+    // Tracks manager destruction events for lifecycle diagnostics.
+    connect(_groupManager, &QObject::destroyed, this, [](QObject* obj) {
+        qInfo() << "[PropertyEditor] destroyed _groupManager ptr=" << obj;
+    });
+    // Tracks manager destruction events for lifecycle diagnostics.
+    connect(_enumManager, &QObject::destroyed, this, [](QObject* obj) {
+        qInfo() << "[PropertyEditor] destroyed _enumManager ptr=" << obj;
+    });
 
     auto* commitFactory = new CommitAwareVariantEditorFactory(this);
     commitFactory->setCommitCallback([this](QtProperty* property) {
@@ -97,6 +122,14 @@ void ObjectPropertyBrowser::_clearAll() {
     });
     _variantFactory = commitFactory;
     _enumFactory = new QtEnumEditorFactory(this);
+    // Tracks factory destruction events for lifecycle diagnostics.
+    connect(_variantFactory, &QObject::destroyed, this, [](QObject* obj) {
+        qInfo() << "[PropertyEditor] destroyed _variantFactory ptr=" << obj;
+    });
+    // Tracks factory destruction events for lifecycle diagnostics.
+    connect(_enumFactory, &QObject::destroyed, this, [](QObject* obj) {
+        qInfo() << "[PropertyEditor] destroyed _enumFactory ptr=" << obj;
+    });
 
     setFactoryForManager(_variantManager, _variantFactory);
     setFactoryForManager(_enumManager, _enumFactory);
@@ -117,6 +150,8 @@ void ObjectPropertyBrowser::_clearAll() {
 }
 
 void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::clearCurrentlyConnectedObject", this);
     // Fully detach object/editor pointers before clearing UI bindings.
     _graphicalObject = nullptr;
     _modelObject = nullptr;
@@ -126,6 +161,12 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
     _pendingRebuild = false;
     _isDeferredRebuildScheduled = false;
     _isDeferredModelChangedScheduled = false;
+    // Logs binding state reset to correlate object detachment with rebuild activity.
+    qInfo() << "[PropertyEditor] clearCurrentlyConnectedObject state graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     _clearAll();
 }
 
@@ -150,9 +191,17 @@ void ObjectPropertyBrowser::setActiveObject(
     std::map<SimulationControl*, DataComponentEditor*>* peUI,
     std::map<SimulationControl*, ComboBoxEnum*>* pb
     ) {
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::setActiveObject", this);
     // Always detach stale bindings first to avoid stale-pointer use during rebinding.
     clearCurrentlyConnectedObject();
 
+    // Logs new active binding pointers and state for selection-to-editor diagnostics.
+    qInfo() << "[PropertyEditor] setActiveObject bind graphical=" << static_cast<void*>(obj)
+            << " model=" << static_cast<void*>(mdd)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Bind the new active object and editor dependencies for the next safe rebuild.
     _graphicalObject = obj;
     _modelObject = mdd;
@@ -167,7 +216,12 @@ void ObjectPropertyBrowser::setActiveObject(
 
 // Rebuild properties with explicit suppression of nested recursive rebuild execution.
 void ObjectPropertyBrowser::_rebuildPropertiesGuarded() {
-    qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded enter. rebuilding=" << _isRebuildingProperties
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_rebuildPropertiesGuarded", this);
+    // Logs guarded rebuild state transitions for crash-path observability.
+    qInfo() << "[PropertyEditor] _rebuildPropertiesGuarded enter. graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
             << " notifying=" << _isNotifyingModelChange << " pending=" << _pendingRebuild;
     if (_isRebuildingProperties) {
         _pendingRebuild = true;
@@ -267,7 +321,14 @@ bool ObjectPropertyBrowser::_hasValidActiveBindingContext(QtProperty* property) 
 }
 
 void ObjectPropertyBrowser::_rebuildProperties() {
-    qInfo() << "[PropertyEditor] _rebuildProperties enter";
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_rebuildProperties", this);
+    // Logs rebuild context pointers and flags before mutating property browser structures.
+    qInfo() << "[PropertyEditor] _rebuildProperties enter graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Clear existing browser state first so stale bindings cannot survive across rebuilds.
     _clearAll();
 
@@ -740,7 +801,14 @@ void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
 }
 
 void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &value) {
-    qInfo() << "[PropertyEditor] valueChanged enter";
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::valueChanged", this);
+    // Logs value-change state for commit pipeline and active-object diagnostics.
+    qInfo() << "[PropertyEditor] valueChanged enter graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Drop edits while a guarded rebuild is in progress to avoid reentrant mutation.
     if (_isRebuildingProperties) {
         qInfo() << "[PropertyEditor] valueChanged ignored because rebuild is active";
@@ -777,7 +845,14 @@ void ObjectPropertyBrowser::valueChanged(QtProperty *property, const QVariant &v
 }
 
 void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
-    qInfo() << "[PropertyEditor] enumValueChanged enter";
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::enumValueChanged", this);
+    // Logs enum-change state for commit pipeline and active-object diagnostics.
+    qInfo() << "[PropertyEditor] enumValueChanged enter graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Drop enum edits while a guarded rebuild is in progress to avoid reentrant mutation.
     if (_isRebuildingProperties) {
         qInfo() << "[PropertyEditor] enumValueChanged ignored because rebuild is active";
@@ -834,7 +909,14 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 }
 
 void ObjectPropertyBrowser::_notifyModelChangeApplied() {
-    qInfo() << "[PropertyEditor] _notifyModelChangeApplied enter";
+    // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_notifyModelChangeApplied", this);
+    // Logs model-change notification state to diagnose nested refresh cycles.
+    qInfo() << "[PropertyEditor] _notifyModelChangeApplied enter graphical=" << static_cast<void*>(_graphicalObject.data())
+            << " model=" << static_cast<void*>(_modelObject)
+            << " rebuilding=" << _isRebuildingProperties
+            << " notifying=" << _isNotifyingModelChange
+            << " pendingRebuild=" << _pendingRebuild;
     // Suppress nested notification loops when model callbacks trigger additional edits.
     if (_isNotifyingModelChange) {
         _pendingRebuild = true;
