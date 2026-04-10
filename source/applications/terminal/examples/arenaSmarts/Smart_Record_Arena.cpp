@@ -42,33 +42,33 @@ int Smart_Record_Arena::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 	// create model
 
-    EntityType* entityType = new EntityType(model, "Person");
-    Create* create = new Create(model);
+    EntityType* entityType = plugins->newInstance<EntityType>(model, "Person");
+    Create* create = plugins->newInstance<Create>(model);
     create->setDescription("Enter Store");
     create->setEntityType(entityType);
     create->setTimeBetweenCreationsExpression("EXPO(5)");
     create->setTimeUnit(Util::TimeUnit::minute);
 
-    Assign* assign = new Assign(model);
+    Assign* assign = plugins->newInstance<Assign>(model);
     assign->setDescription("Mark Entry Time");
     Assignment* assignment = new Assignment("timeIn", "tnow");
     assign->getAssignments()->insert(assignment);
-    new Attribute(model, "timeIn");
+    plugins->newInstance<Attribute>(model, "timeIn");
     create->getConnectionManager()->insert(assign);
 
-    Delay* delay = new Delay(model);
+    Delay* delay = plugins->newInstance<Delay>(model);
     delay->setDescription("Browse");
     delay->setDelayExpression("tria(3, 7, 11)");
     delay->setDelayTimeUnit(Util::TimeUnit::minute);
     assign->getConnectionManager()->insert(delay);
 
-    Record* record = new Record(model);
+    Record* record = plugins->newInstance<Record>(model);
     record->setDescription("Time in Store");
     record->setExpression("timeIn");
     record->setExpressionName("Time in Store");
     delay->getConnectionManager()->insert(record);
 
-    Dispose* dispose = new Dispose(model);
+    Dispose* dispose = plugins->newInstance<Dispose>(model);
     dispose->setDescription("Leave Store");
     record->getConnectionManager()->insert(dispose);
 

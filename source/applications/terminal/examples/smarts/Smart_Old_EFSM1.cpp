@@ -41,14 +41,14 @@ int Smart_Old_EFSM1::main(int argc, char** argv) {
 	// create model
 	Model* model = genesys->getModels()->newModel();
 
-    EntityType* entityType = new EntityType(model, "Person");
+    EntityType* entityType = plugins->newInstance<EntityType>(model, "Person");
     Create* create1 = plugins->newInstance<Create>(model);
     create1->setDescription("Enter Garage");
     create1->setEntityType(entityType);
     create1->setTimeBetweenCreationsExpression("1");
     create1->setTimeUnit(Util::TimeUnit::minute);
 
-    Assign* assign1 = new Assign(model);
+    Assign* assign1 = plugins->newInstance<Assign>(model);
     assign1->setDescription("Verify if has car");
     Assignment* assigment1 = new Assignment("hasCar", "1");
     assign1->getAssignments()->insert(assigment1);
