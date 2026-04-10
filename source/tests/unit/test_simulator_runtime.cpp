@@ -2289,6 +2289,47 @@ TEST(SimulatorRuntimeTest, WaitScanForConditionRecheckDoesNotReRegisterHandlerFl
     EXPECT_TRUE(wait.IsScanConditionHandlerRegisteredProbe());
 }
 
+TEST(SimulatorRuntimeTest, WaitCheckValidatesWaitForSignalContractAndLimitExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WaitProbe wait(model, "WaitForSignalCheck");
+    Queue queue(model, "WaitForSignalQueue");
+    SignalDataProbe signalData(model, "WaitForSignalData");
+
+    wait.setQueue(&queue);
+    wait.setWaitType(Wait::WaitType::WaitForSignal);
+    wait.setLimitExpression("1");
+
+    std::string missingSignalError;
+    EXPECT_FALSE(wait.CheckProbe(missingSignalError));
+    EXPECT_NE(missingSignalError.find("SignalData is null"), std::string::npos);
+
+    wait.setSignalData(&signalData);
+    wait.setLimitExpression("invalid +");
+
+    std::string invalidLimitError;
+    EXPECT_FALSE(wait.CheckProbe(invalidLimitError));
+    EXPECT_NE(invalidLimitError.find("LimitExpression"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, WaitCheckValidatesScanConditionExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WaitProbe wait(model, "WaitScanConditionCheck");
+    Queue queue(model, "WaitScanConditionQueue");
+    wait.setQueue(&queue);
+    wait.setWaitType(Wait::WaitType::ScanForCondition);
+    wait.setCondition("invalid +");
+
+    std::string errorMessage;
+    EXPECT_FALSE(wait.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("Condition"), std::string::npos);
+}
+
 TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
