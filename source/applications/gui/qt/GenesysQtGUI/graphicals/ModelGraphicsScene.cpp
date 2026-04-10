@@ -664,7 +664,8 @@ void ModelGraphicsScene::insertComponent(GraphicalModelComponent* gmc, QList<Gra
 void ModelGraphicsScene::removeGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd) {
     //graphically
     removeItem(gmdd);
-    getGraphicalModelComponents()->removeOne(gmdd);
+    // Keep data-definition ownership lists consistent during removal.
+    getGraphicalModelDataDefinitions()->removeOne(gmdd);
     getAllDataDefinitions()->removeOne(gmdd);
     delete(gmdd);
 }
