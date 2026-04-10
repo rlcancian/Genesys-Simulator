@@ -1,7 +1,7 @@
 # Auditoria C++23 no diretório `/source/kernel`
 
 ## Audit Status (WiP20261)
-- Branch audited: `WiP20261` (requested scope; local branch name may differ)
+- Branch audited: `WiP20261`
 - Audit scope: C++23/kernel modernization audit revalidated against current code in `source/kernel`
 - Status legend: `DONE`, `PARTIAL`, `OPEN`, `UNCERTAIN`, `SUPERSEDED`
 
@@ -24,16 +24,16 @@ Contagens históricas registradas:
 ### Audit status
 `PARTIAL` — a seção continua útil como baseline histórico, mas não representa o estado atual sem recontagem.
 
-### Evidence (revalidação atual)
-Reexecução local com os mesmos padrões (na árvore atual):
+### Evidence
+Reexecução local na árvore atual (mesmos padrões):
 
 - `std::list<...>::iterator`: **33** ocorrências.
 - candidatos a cast estilo C: **118** ocorrências (busca ampla, com falsos positivos esperados).
 - `new`: **80** ocorrências.
 
 ### Remaining gaps
-- A contagem histórica não é mais reproduzida exatamente para iteradores/casts; deve ser tratada como fotografia antiga.
-- A busca de casts continua exigindo triagem semântica (regex isolada não separa casos reais de ruído).
+- As contagens históricas de iteradores/casts não são mais reproduzidas exatamente; devem ser tratadas como fotografia inicial.
+- A busca de cast por regex continua exigindo triagem semântica para separar risco real de ruído.
 
 ## Arquivos com maior concentração de iteração legada
 Top histórico (auditoria original):
@@ -47,10 +47,10 @@ Top histórico (auditoria original):
 7. `source/kernel/simulator/OnEventManager.cpp` (4)
 
 ### Audit status
-`PARTIAL` — a lista preserva contexto histórico, mas não é mais representativa como “top atual”.
+`PARTIAL` — a lista mantém valor histórico, mas não é mais representativa como ranking atual.
 
-### Evidence (revalidação atual)
-Top atual por `std::list<...>::iterator` (mesmo comando de busca):
+### Evidence
+Ranking atual por `std::list<...>::iterator`:
 
 1. `source/kernel/util/List.h` (9)
 2. `source/kernel/util/ListObservable.h` (7)
@@ -59,70 +59,71 @@ Top atual por `std::list<...>::iterator` (mesmo comando de busca):
 5. `source/kernel/simulator/ModelSimulation.cpp` (3)
 6. `source/kernel/simulator/ComponentManager.h` (3)
 
-Reavaliação explícita dos arquivos pedidos:
+Reavaliação explícita dos arquivos solicitados:
 
-- `TraceManager.cpp`: `SUPERSEDED` como concentrador de iteração legada (não aparece mais entre ocorrências atuais de `std::list<...>::iterator`).
-- `Model.cpp`: `PARTIAL` (continua relevante como alvo de modernização, mas com menor concentração que a histórica).
-- `List.h`: `OPEN` (permanece com concentração alta e padrão legado estrutural).
-- `ListObservable.h`: `OPEN` (permanece com concentração alta e padrão legado estrutural).
+- `TraceManager.cpp` → `SUPERSEDED` como “concentrador”: não há ocorrência atual de `std::list<...>::iterator` no arquivo.
+- `Model.cpp` → `PARTIAL`: ainda relevante (4 ocorrências), porém abaixo da concentração histórica.
+- `List.h` → `OPEN`: segue como concentração alta e padrão legado estrutural.
+- `ListObservable.h` → `OPEN`: segue como concentração alta e padrão legado estrutural.
 
 ### Remaining gaps
-- A priorização de backlog deve usar o ranking atual e não apenas o histórico.
+- Priorização futura deve usar o ranking atual, mantendo o ranking histórico apenas como contexto.
 
 ## Modernizações aplicadas neste lote (revalidadas)
 
 ### 1) `OnEventManager.cpp`
 - Histórico: laços com iterador explícito substituídos por `range-based for` em notificações.
-- Estado atual: confirmação positiva dos laços em `_NotifyHandlers`/`_NotifyHandlerMethods` com `range-based for`.
+- Estado atual: confirmado (`_NotifyHandlers` e `_NotifyHandlerMethods` seguem em `range-based for`).
 
 #### Audit status
 `DONE`
 
 #### Evidence
-- Laços internos de notificação seguem em `for (auto ...)` / `for (auto& ...)`.
+- Iteração por elemento em notificações sem `std::list<...>::iterator` no `.cpp`.
 
 #### Remaining gaps
-- Sem gap direto no item de iteração deste arquivo.
+- Nenhum gap direto deste item.
 
 ### 2) `TraceManager.cpp`
 - Histórico: iterações de handlers migradas para `range-based for`.
-- Estado atual: confirmação positiva em `trace`, `traceError`, `traceSimulation`, `traceReport`.
+- Estado atual: confirmado em `trace`, `traceError`, `traceSimulation` e `traceReport`.
 
 #### Audit status
 `DONE`
 
 #### Evidence
-- Iterações de handlers permanecem em `range-based for`; não há ocorrência de `std::list<...>::iterator` no arquivo.
+- Loops de handlers permanecem em `range-based for`.
+- Sem ocorrência de `std::list<...>::iterator` no arquivo.
 
 #### Remaining gaps
-- Sem gap direto no item de iteração deste arquivo.
+- Nenhum gap direto deste item.
 
 ### 3) `PluginManager.cpp`
-- Histórico: `find` modernizado para iteração por elemento com retorno direto.
-- Estado atual: confirmação positiva; iteração observada em `range-based for`.
+- Histórico: `find` modernizado para iteração por elemento e retorno direto.
+- Estado atual: confirmado (`find` usa `for (Plugin* plugin : *this->_plugins->list())`).
 
 #### Audit status
 `DONE`
 
 #### Evidence
-- `PluginManager::find` e outros pontos de varredura da lista de plugins usam iteração por elemento.
+- Iteração por elemento consolidada em `find` e em outros fluxos de varredura.
 
 #### Remaining gaps
-- Sem gap direto no item de iteração deste arquivo.
+- Nenhum gap direto deste item.
 
 ### 4) `ModelDataManager.cpp`
-- Histórico: `show`, `getDataDefinition` e `getRankOf` modernizados para `range-based for`; iteração em mapa com structured bindings.
-- Estado atual: modernização majoritária confirmada, mas ainda existe iteração explícita legada no arquivo (`getNumberOfDataDefinitions()` com iterador de `std::map`).
+- Histórico: `show`, `getDataDefinition` e `getRankOf` modernizados; structured bindings em iteração de mapa.
+- Estado atual: modernização majoritária confirmada, porém há laço legado remanescente em `getNumberOfDataDefinitions()`.
 
 #### Audit status
 `PARTIAL`
 
 #### Evidence
-- Há uso atual de `const auto& [typenameKey, definitions]` em `show()`.
-- Persistência de laço legado com `std::map<...>::iterator` em `getNumberOfDataDefinitions()`.
+- `show()` usa `for (const auto& [typenameKey, definitions] : *_datadefinitions)`.
+- `getNumberOfDataDefinitions()` ainda usa `std::map<...>::iterator` explícito.
 
 #### Remaining gaps
-- Converter o laço residual de `std::map<...>::iterator` para iteração moderna para fechar o arquivo como `DONE`.
+- Converter o laço residual para iteração moderna e fechar o arquivo como `DONE`.
 
 ## Riscos ainda existentes (reclassificados)
 
@@ -131,22 +132,22 @@ Reavaliação explícita dos arquivos pedidos:
 `OPEN`
 
 #### Evidence
-- Revalidação local encontrou múltiplos casos ainda ativos em headers do kernel (ex.: `OnEventManager.h`, `TraceManager.h`, `PluginManager.h`, `ConnectionManager.h`, `SimulationScenario.h`, `ModelSimulation.h`, entre outros).
-- Quantidade aproximada revalidada no escopo `source/kernel/*.h`: **82** ocorrências de `= new`.
+- Padrão ainda presente em múltiplos headers (ex.: `OnEventManager.h`, `TraceManager.h`, `PluginManager.h`, `ConnectionManager.h`, entre outros).
+- Recontagem atual no escopo `source/kernel/*.h`: **82** ocorrências de `= new`.
 
 #### Remaining gaps
-- Backlog real para migração gradual de ownership para RAII/smart pointers e simplificação de destrutores manuais.
+- Backlog real de migração gradual para RAII/smart pointers e simplificação de destrutores manuais.
 
 ### 2) Containers utilitários legados (`List.h`, `ListObservable.h`)
 #### Audit status
 `OPEN`
 
 #### Evidence
-- Ambos continuam entre os arquivos com maior concentração de `std::list<...>::iterator`.
-- Arquitetura ainda depende de alocação manual (`_list = new std::list<T>()`) e cursor interno mutável (`_it`).
+- Ambos permanecem no topo de concentração de `std::list<...>::iterator`.
+- Estrutura ainda depende de alocação manual (`_list = new std::list<T>()`) e cursor interno mutável (`_it`).
 
 #### Remaining gaps
-- Lote dedicado para modernização estrutural desses containers (API, ownership e padrões de iteração), com mitigação de regressão.
+- Lote dedicado para modernização estrutural desses containers (API, ownership e iteração), com mitigação de regressão.
 
 ### 3) Casts estilo C / necessidade de triagem manual
 #### Audit status
@@ -154,20 +155,20 @@ Reavaliação explícita dos arquivos pedidos:
 
 #### Evidence
 - Busca textual ampla retornou **118** candidatos no estado atual.
-- O padrão de regex é conhecido por capturar falsos positivos; sem análise semântica, não é possível classificar precisamente risco real por arquivo.
+- Regex inclui falso positivo; sem triagem semântica não há classificação confiável por risco/arquivo.
 
 #### Remaining gaps
-- Rodar triagem semântica (ex.: clang-tidy com checks de modernização/casts) antes de transformar o número bruto em plano de execução.
+- Executar triagem semântica (ex.: clang-tidy/checks específicos) antes de transformar o número bruto em plano de ação.
 
 ## Conclusão
-A auditoria original permanece útil como registro de primeira onda, mas agora precisa ser lida como documento híbrido (histórico + revalidação). As modernizações de `OnEventManager.cpp`, `TraceManager.cpp` e `PluginManager.cpp` estão consolidadas (`DONE`), `ModelDataManager.cpp` permanece `PARTIAL`, e o backlog real concentra-se principalmente em ownership manual de headers e nos containers legados.
+A auditoria original permanece útil como registro da primeira varredura, mas deve ser lida como documento híbrido (histórico + revalidação). As modernizações em `OnEventManager.cpp`, `TraceManager.cpp` e `PluginManager.cpp` estão consolidadas (`DONE`); `ModelDataManager.cpp` permanece `PARTIAL`; e o backlog real concentra-se em ownership manual de headers, containers legados e triagem semântica de casts.
 
-Itens históricos que ficaram superados por mudanças posteriores:
+Itens históricos superados por mudanças posteriores:
 - `TraceManager.cpp` como “maior concentração” de iteração legada (`SUPERSEDED` no ranking atual).
-- contagem histórica de `std::list<...>::iterator` (=59) como estado corrente (`SUPERSEDED` por recontagem atual=33).
+- Contagem histórica `std::list<...>::iterator = 59` como estado corrente (`SUPERSEDED` por recontagem atual = 33).
 
 ## Remaining Work
 - `PARTIAL` — `ModelDataManager.cpp`: remover iteração legada residual em `getNumberOfDataDefinitions()`.
-- `OPEN` — Ownership manual em headers com `= new` (backlog de RAII/smart pointers).
+- `OPEN` — Ownership manual em headers com `= new` (migração para RAII/smart pointers).
 - `OPEN` — Modernização estrutural de `List.h` e `ListObservable.h`.
-- `UNCERTAIN` — Triagem semântica de candidatos a cast estilo C (resultado textual não conclusivo).
+- `UNCERTAIN` — Triagem semântica de candidatos a cast estilo C (resultado textual isolado não conclusivo).
