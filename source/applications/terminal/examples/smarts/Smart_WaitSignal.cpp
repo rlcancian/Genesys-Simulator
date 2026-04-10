@@ -69,6 +69,7 @@ int Smart_WaitSignal::main(int argc, char** argv) {
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 	//
+	// Legacy note: getConnectionManager()->insert() with a single ModelComponent argument could be replaced by connectTo().
 	create1->getConnectionManager()->insert(wait1);
 	wait1->getConnectionManager()->insert(dispose1);
 	create2->getConnectionManager()->insert(wait2);

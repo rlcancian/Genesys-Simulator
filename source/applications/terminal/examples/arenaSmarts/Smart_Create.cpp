@@ -51,17 +51,17 @@ int Smart_Create::main(int argc, char** argv) {
     Assignment* assignment = new Assignment("processTime", "NORM(10, 2)");
     assign->getAssignments()->insert(assignment);
     plugins->newInstance<Attribute>(model, "processTime");
-    create->getConnectionManager()->insert(assign);
+    create->connectTo(assign);
     
     Delay* delay = plugins->newInstance<Delay>(model);
     delay->setDescription("Process");
     delay->setDelayExpression("processTime");
     delay->setDelayTimeUnit(Util::TimeUnit::minute);
-    assign->getConnectionManager()->insert(delay);
+    assign->connectTo(delay);
     
     Dispose* dispose = plugins->newInstance<Dispose>(model);
     dispose->setDescription("Dispose");
-    delay->getConnectionManager()->insert(dispose);
+    delay->connectTo(dispose);
     
     ModelSimulation* simulation = model->getSimulation();
     simulation->setReplicationLength(10);

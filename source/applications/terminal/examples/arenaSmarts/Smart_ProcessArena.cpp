@@ -51,11 +51,11 @@ int Smart_ProcessArena::main(int argc, char** argv) {
     delay->setDescription("Process 1");
     delay->setDelayExpression("tria(0.5, 1, 1.5)");
     delay->setDelayTimeUnit(Util::TimeUnit::hour);
-    create->getConnectionManager()->insert(delay);
+    create->connectTo(delay);
 
     Dispose* dispose = plugins->newInstance<Dispose>(model);
     dispose->setDescription("Dispose 1");
-    delay->getConnectionManager()->insert(dispose);
+    delay->connectTo(dispose);
 
     ModelSimulation* simulation = model->getSimulation();
     simulation->setReplicationLength(10);
