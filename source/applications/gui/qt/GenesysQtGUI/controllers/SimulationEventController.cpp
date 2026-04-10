@@ -153,6 +153,8 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     // Log simulation-start handler entry for animation pipeline tracing.
     qInfo() << "GUI SimulationEvent onSimulationStartHandler begin";
     Q_UNUSED(re)
+    // Reset global animation pause state to a known baseline on simulation start.
+    AnimationTransition::setPause(false);
     _callbacks.actualizeActions();
     _simulationProgressBar->setMaximum(
         _simulator->getModelManager()->current()->getSimulation()->getReplicationLength());
@@ -219,6 +221,9 @@ void SimulationEventController::onSimulationEndHandler(SimulationEvent* re) cons
     // Log simulation-end handler entry before paused-animation cleanup.
     qInfo() << "GUI SimulationEvent onSimulationEndHandler begin";
     Q_UNUSED(re)
+    // Force global animation state to stopped and unpaused during terminal cleanup.
+    AnimationTransition::setRunning(false);
+    AnimationTransition::setPause(false);
     // Log paused-animation map size before terminal cleanup.
     qInfo() << "GUI SimulationEvent onSimulationEndHandler pausedMapSizeBeforeCleanup="
             << (_scene->getAnimationPaused() ? _scene->getAnimationPaused()->size() : 0);
