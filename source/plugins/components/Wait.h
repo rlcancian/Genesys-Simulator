@@ -129,9 +129,9 @@ private: // internal
 	Queue *_queue = nullptr; // @TODO: It should be a QueueableItem, (Queue or Set)
 private: // attached
 	SignalData* _signalData = nullptr;
+	bool _isScanConditionHandlerRegistered = false; // local guard to avoid duplicate registration in repeated checks
 private: // attributes 1:n
 };
 
 
 #endif /* WAIT_H */
-

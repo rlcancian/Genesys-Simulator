@@ -85,31 +85,43 @@ void Signal::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Signal::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
 		this->_limitExpression = fields->loadField("limitExpression", DEFAULT.limitExpression);
+		std::string signalDataName = fields->loadField("signalData", "");
+		if (signalDataName != "") {
+			// Persisted coupling is restored by name to keep Wait/Signal sharing the same SignalData.
+			_signalData = dynamic_cast<SignalData*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<SignalData>(), signalDataName));
+		}
 	}
 	return res;
 }
 
 void Signal::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
 	fields->saveField("limitExpression", _limitExpression, DEFAULT.limitExpression);
+	if (_signalData != nullptr) {
+		// Save associated SignalData name so load can reconnect shared state with Wait components.
+		fields->saveField("signalData", _signalData->getName(), "", saveDefaultValues);
+	}
 }
 
 // protected should override
 
 bool Signal::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	// @TODO: not implemented yet
-	errorMessage += "";
+	if (!_parentModel->checkExpression(_limitExpression, "LimitExpression", errorMessage)) {
+		resultAll = false;
+	}
+	// Current operational contract requires Signal to reference shared SignalData.
+	if (_signalData == nullptr) {
+		errorMessage += "SignalData is null in Signal \"" + this->getName() + "\"";
+		resultAll = false;
+	}
 	return resultAll;
 }
 
 void Signal::_createInternalAndAttachedData() {
-	// internal
 	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-	//attached
+	// Preserve loaded/configured association; only create SignalData if none is already associated.
 	if (_signalData == nullptr) {
 		_signalData = pm->newInstance<SignalData>(_parentModel);
 	}
