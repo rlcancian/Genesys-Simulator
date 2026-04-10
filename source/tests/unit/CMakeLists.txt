@@ -103,6 +103,13 @@ genesys_add_unit_test(genesys_test_support_experimentmanager
     genesys_kernel_util
 )
 
+
+genesys_add_unit_test(genesys_test_statistics
+    test_statistics.cpp
+    genesys_kernel_statistics
+    genesys_kernel_util
+)
+
 add_custom_target(genesys_kernel_unit_tests
     DEPENDS
         genesys_test_util
@@ -118,6 +125,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_connectionmanager
         genesys_test_support_simulationscenario
         genesys_test_support_experimentmanager
+        genesys_test_statistics
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -185,6 +193,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_support_connectionmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_simulationscenario>
     COMMAND $<TARGET_FILE:genesys_test_support_experimentmanager>
+    COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests
