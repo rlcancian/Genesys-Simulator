@@ -108,6 +108,8 @@ public: // static
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
 	void insertElement(Waiting* modeldatum);
+	Waiting* takeElement(Waiting* modeldatum);
+	Waiting* takeFirst();
 	void removeElement(Waiting* modeldatum);
 	unsigned int size();
 	Waiting* first();
@@ -134,6 +136,7 @@ protected: // could be overriden
 
 private:
 	void _initCStats();
+	void _clearOwnedWaitings();
 private:
 	List<Waiting*>* _list = new List<Waiting*>();
 	double _lastTimeNumberInQueueChanged;
@@ -151,4 +154,3 @@ private: // inner internal elements
 };
 
 #endif /* QUEUE_H */
-

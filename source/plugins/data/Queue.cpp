@@ -62,8 +62,8 @@ Queue::Queue(Model* model, std::string name) : ModelDataDefinition(model, Util::
 }
 
 Queue::~Queue() {
-	//_parentModel->elements()->remove(Util::TypeOf<StatisticsCollector>(), _cstatNumberInQueue);
-	//_parentModel->elements()->remove(Util::TypeOf<StatisticsCollector>(), _cstatTimeInQueue);
+	_clearOwnedWaitings();
+	delete _list;
 }
 
 std::string Queue::show() {
@@ -81,8 +81,8 @@ void Queue::insertElement(Waiting* modeldatum) {
 	_list->insert(modeldatum);
 }
 
-void Queue::removeElement(Waiting* modeldatum) {
-	if (_reportStatistics) {
+Waiting* Queue::takeElement(Waiting* modeldatum) {
+	if (_reportStatistics && modeldatum != nullptr) {
 		double tnow = _parentModel->getSimulation()->getSimulatedTime();
 		double duration = tnow - _lastTimeNumberInQueueChanged;
 		this->_cstatNumberInQueue->getStatistics()->getCollector()->addValue(_list->size(), duration); // save the OLD quantity and for how long it was there
@@ -91,10 +91,24 @@ void Queue::removeElement(Waiting* modeldatum) {
 		this->_cstatTimeInQueue->getStatistics()->getCollector()->addValue(timeInQueue);
 	}
 	_list->remove(modeldatum);
+	return modeldatum;
+}
+
+Waiting* Queue::takeFirst() {
+	if (_list->size() == 0) {
+		return nullptr;
+	}
+	Waiting* modeldatum = _list->front();
+	return takeElement(modeldatum);
+}
+
+void Queue::removeElement(Waiting* modeldatum) {
+	Waiting* removed = takeElement(modeldatum);
+	delete removed;
 }
 
 void Queue::_initBetweenReplications() {
-	this->_list->clear();
+	_clearOwnedWaitings();
 	_lastTimeNumberInQueueChanged = 0.0;
 }
 
@@ -103,6 +117,9 @@ unsigned int Queue::size() {
 }
 
 Waiting* Queue::first() {
+	if (_list->size() == 0) {
+		return nullptr;
+	}
 	return _list->front();
 }
 
@@ -206,4 +223,11 @@ ParserChangesInformation * Queue::_getParserChangesInformation() {
 	//changes->getProductionToAdd()->insert(...);
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
+}
+
+void Queue::_clearOwnedWaitings() {
+	for (Waiting* waiting : *_list->list()) {
+		delete waiting;
+	}
+	_list->clear();
 }
