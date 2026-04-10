@@ -29,6 +29,15 @@ ModelDataDefinition* SignalData::NewInstance(Model* model, std::string name) {
 SignalData::SignalData(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<SignalData>(), name) {
 }
 
+SignalData::~SignalData() {
+	for (PairSignalDataEventHandler* handler : *_signalDataEventHandlers->list()) {
+		delete handler;
+	}
+	_signalDataEventHandlers->clear();
+	delete _signalDataEventHandlers;
+	_signalDataEventHandlers = nullptr;
+}
+
 //public
 
 std::string SignalData::show() {
@@ -51,6 +60,30 @@ void SignalData::addSignalDataEventHandler(SignalDataEventHandler eventHandler, 
 	}
 	PairSignalDataEventHandler* pairEventHandler = new PairSignalDataEventHandler(eventHandler, component);
 	_signalDataEventHandlers->insert(pairEventHandler);
+}
+
+void SignalData::removeSignalDataEventHandler(ModelComponent* component) {
+	if (_signalDataEventHandlers == nullptr) {
+		return;
+	}
+	std::list<PairSignalDataEventHandler*>* handlers = _signalDataEventHandlers->list();
+	for (std::list<PairSignalDataEventHandler*>::iterator it = handlers->begin(); it != handlers->end(); ++it) {
+		PairSignalDataEventHandler* pairEventHandler = *it;
+		if (pairEventHandler->second == component) {
+			delete pairEventHandler;
+			handlers->erase(it);
+			return;
+		}
+	}
+}
+
+bool SignalData::hasSignalDataEventHandler(ModelComponent* component) const {
+	for (PairSignalDataEventHandler* pairEventHandler : *_signalDataEventHandlers->list()) {
+		if (pairEventHandler->second == component) {
+			return true;
+		}
+	}
+	return false;
 }
 
 // public static
@@ -97,17 +130,16 @@ void SignalData::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues
 // protected virtual -- could be overriden
 
 bool SignalData::_check(std::string& errorMessage) {
-	bool resultAll = true;
-	//!@TODO
-	resultAll &= _signalDataEventHandlers->size() > 0;
-	if (!resultAll) {
-		traceError("There is no handler added to SignalData "+this->getName());
+	if (_signalDataEventHandlers->size() == 0) {
+		errorMessage = "SignalData \"" + this->getName() + "\" requires at least one event handler";
+		traceError(errorMessage);
+		return false;
 	}
-	//resultAll &= _quantityExpression != "";
-	return resultAll;
+	return true;
 }
 
 void SignalData::_initBetweenReplications() {
+	_remainsToLimit = 0;
 }
 
 //void SignalData::_createInternalAndAttachedData() {}

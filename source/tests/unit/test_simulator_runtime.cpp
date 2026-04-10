@@ -16,6 +16,8 @@
 #include "plugins/data/Failure.h"
 #include "plugins/data/Schedule.h"
 #include "plugins/data/Sequence.h"
+#include "plugins/data/SignalData.h"
+#include "plugins/components/Wait.h"
 
 class ResourceTestProbe {
 public:
@@ -203,6 +205,28 @@ public:
 
     void AttachDataProbe(const std::string& key, ModelDataDefinition* data) {
         _attachedDataInsert(key, data);
+    }
+};
+
+class SignalDataProbe : public SignalData {
+public:
+    SignalDataProbe(Model* model, const std::string& name = "") : SignalData(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class WaitProbe : public Wait {
+public:
+    WaitProbe(Model* model, const std::string& name = "") : Wait(model, name) {}
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -1372,5 +1396,115 @@ TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
 
     std::string errorMessage;
     EXPECT_TRUE(sequence.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, SignalDataDestructorHandlesOwnedHandlersLifecycle) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* signal = new SignalDataProbe(model, "SignalLifecycle");
+    Wait waitA(model, "SignalLifecycleWaitA");
+    Wait waitB(model, "SignalLifecycleWaitB");
+    signal->addSignalDataEventHandler([](SignalData*) { return 0u; }, &waitA);
+    signal->addSignalDataEventHandler([](SignalData*) { return 0u; }, &waitB);
+
+    EXPECT_TRUE(signal->hasSignalDataEventHandler(&waitA));
+    EXPECT_TRUE(signal->hasSignalDataEventHandler(&waitB));
+    EXPECT_NO_THROW(delete signal);
+}
+
+TEST(SimulatorRuntimeTest, SignalDataInitBetweenReplicationsResetsRemainsToLimit) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalReset");
+    Wait wait(model, "SignalResetWait");
+    signal.addSignalDataEventHandler([](SignalData*) { return 0u; }, &wait);
+
+    signal.generateSignal(0.0, 3);
+    signal.decreaseRemainLimit();
+    ASSERT_EQ(signal.remainsToLimit(), 2u);
+
+    signal.InitBetweenReplicationsProbe();
+    EXPECT_EQ(signal.remainsToLimit(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, SignalDataAddHandlerDoesNotDuplicateSameComponent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalNoDuplicate");
+    Wait wait(model, "SignalNoDuplicateWait");
+    signal.addSignalDataEventHandler([](SignalData*) { return 1u; }, &wait);
+    signal.addSignalDataEventHandler([](SignalData*) { return 10u; }, &wait);
+
+    EXPECT_EQ(signal.generateSignal(0.0, 10), 1u);
+}
+
+TEST(SimulatorRuntimeTest, SignalDataRemoveHandlerByComponentRemovesOwnedRegistration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalRemove");
+    Wait wait(model, "SignalRemoveWait");
+    signal.addSignalDataEventHandler([](SignalData*) { return 2u; }, &wait);
+    ASSERT_TRUE(signal.hasSignalDataEventHandler(&wait));
+
+    signal.removeSignalDataEventHandler(&wait);
+    EXPECT_FALSE(signal.hasSignalDataEventHandler(&wait));
+    EXPECT_EQ(signal.generateSignal(0.0, 10), 0u);
+}
+
+TEST(SimulatorRuntimeTest, WaitRecheckUpdatesSignalDataHandlersWhenSignalChangesOrTypeChanges) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signalA(model, "SignalRecheckA");
+    SignalDataProbe signalB(model, "SignalRecheckB");
+    WaitProbe wait(model, "WaitRecheck");
+    wait.setWaitType(Wait::WaitType::WaitForSignal);
+    wait.setSignalData(&signalA);
+    wait.CreateInternalAndAttachedDataProbe();
+    ASSERT_TRUE(signalA.hasSignalDataEventHandler(&wait));
+
+    wait.setSignalData(&signalB);
+    wait.CreateInternalAndAttachedDataProbe();
+    EXPECT_FALSE(signalA.hasSignalDataEventHandler(&wait));
+    EXPECT_TRUE(signalB.hasSignalDataEventHandler(&wait));
+
+    wait.setWaitType(Wait::WaitType::InfiniteHold);
+    wait.CreateInternalAndAttachedDataProbe();
+    EXPECT_FALSE(signalB.hasSignalDataEventHandler(&wait));
+}
+
+TEST(SimulatorRuntimeTest, SignalDataCheckFailsWithoutHandlers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalCheckInvalid");
+    std::string errorMessage;
+    EXPECT_FALSE(signal.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("requires at least one event handler"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SignalDataCheckPassesWithValidHandler) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signal(model, "SignalCheckValid");
+    Wait wait(model, "SignalCheckWait");
+    signal.addSignalDataEventHandler([](SignalData*) { return 0u; }, &wait);
+
+    std::string errorMessage;
+    EXPECT_TRUE(signal.CheckProbe(errorMessage));
     EXPECT_TRUE(errorMessage.empty());
 }
