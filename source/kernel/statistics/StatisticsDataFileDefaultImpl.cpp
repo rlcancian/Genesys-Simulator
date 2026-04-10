@@ -87,6 +87,8 @@ bool StatisticsDatafileDefaultImpl1::_hasNewValue() {
 }
 
 unsigned int StatisticsDatafileDefaultImpl1::numElements() {
+	// Synchronize cached size with the collector before exposing the count.
+	_hasNewValue();
 	return _numElements;
 }
 
