@@ -18,6 +18,7 @@
 #include "SorttFile.h"
 #include <limits.h>
 #include <map>
+#include <string>
 
 typedef double valueType;
 
@@ -81,6 +82,10 @@ public:
 	/*! \brief Returns absolute frequency of histogram class \p classNum. */
 	virtual unsigned int histogramClassFrequency(unsigned short classNum) override;
 private:
+	/*! \brief Invalidates calculated statistics to force recomputation from source data. */
+	void _invalidateCachedResults();
+	/*! \brief Resets sorted-file lifecycle state bound to the current source filename. */
+	void _resetSortedFileState();
 	/*! \brief Sorts collector file if required by order-based metrics. */
 	void _sortFile();
 	/*! \brief Checks whether source data changed since last cached computation. */
@@ -100,6 +105,7 @@ private:
 	std::map<double, double> _z;
 	bool _fileSorted = false;
 	bool _fileSortedCreated = false;
+	std::string _sortedSourceFilename;
 	//unsigned long _numElements = 0;
 	bool _numElementsCalculated = false;
 	double _max = INT_MIN;
