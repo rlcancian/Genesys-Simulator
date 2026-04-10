@@ -147,6 +147,15 @@ void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, dou
 	auto se = _simulation->_createSimulationEvent();
 	se->setDestinationComponent(component);
 	se->setEntityMoveTimeDelay(timeDelay);
+    // Log emitted move-event endpoints before notifying GUI/observer handlers.
+    ModelComponent* sourceComponent = (se->getCurrentEvent() != nullptr ? se->getCurrentEvent()->getComponent() : nullptr);
+    std::string sourceName = (sourceComponent != nullptr ? sourceComponent->getName() : "<null>");
+    std::string destinationName = (component != nullptr ? component->getName() : "<null>");
+    std::string message = "Entity move event emitted sourceId=" + std::to_string(sourceComponent != nullptr ? sourceComponent->getId() : 0)
+            + " sourceName=" + sourceName
+            + " destinationId=" + std::to_string(component != nullptr ? component->getId() : 0)
+            + " destinationName=" + destinationName;
+    this->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, message);
     this->getOnEventManager()->NotifyEntityMoveHandlers(se.get()); // it's my friend
 	Event* newEvent = new Event(this->getSimulation()->getSimulatedTime()+timeDelay, entity, component, componentinputPortNumber);
 	this->getFutureEvents()->insert(newEvent);

@@ -433,10 +433,16 @@ void AnimationTransition::onAnimationFinished() {
     // Mark finished callback as handled for idempotent terminal cleanup.
     _isFinishedHandled = true;
 
-    // Only notify queue insertion when both scene and destination component are valid.
-    if (_myScene != nullptr && _graphicalEndComponent != nullptr) {
-        // Log queue-insert dispatch performed on a valid destination component.
-        qInfo() << "GUI AnimationTransition onAnimationFinished animateQueueInsert=true";
+    // Insert queue animation only when destination queue graphics infrastructure is initialized.
+    bool shouldAnimateQueueInsert = false;
+    if (_graphicalEndComponent != nullptr && _graphicalEndComponent->hasQueue()) {
+        QList<QList<GraphicalImageAnimation *>*>* imagesQueue = _graphicalEndComponent->getImagesQueue();
+        shouldAnimateQueueInsert = (imagesQueue != nullptr && !imagesQueue->empty() && imagesQueue->at(0) != nullptr);
+    }
+    qInfo() << "GUI AnimationTransition onAnimationFinished queueInsertDecision="
+            << (shouldAnimateQueueInsert ? "insert" : "skip")
+            << "destinationId=" << (_graphicalEndComponent ? _graphicalEndComponent->getComponent()->getId() : 0);
+    if (_myScene != nullptr && _graphicalEndComponent != nullptr && shouldAnimateQueueInsert) {
         _myScene->animateQueueInsert(_graphicalEndComponent->getComponent(), _viewSimulation);
     }
 
