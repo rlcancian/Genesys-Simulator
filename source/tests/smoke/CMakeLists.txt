@@ -6,6 +6,8 @@ target_link_libraries(genesys_smoke_simulator_start
     PRIVATE
         genesys_kernel_simulator_runtime
         genesys_kernel_util
+        genesys_plugins_components_minimal
+        genesys_kernel_simulator_runtime
 )
 
 add_test(NAME smoke_simulator_start COMMAND genesys_smoke_simulator_start)
