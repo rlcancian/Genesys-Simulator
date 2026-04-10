@@ -46,8 +46,8 @@ void ModelInspectorController::actualizeModelComponents(bool force) const {
             treeComp->setText(1, QString::fromStdString(comp->getClassname()));
             treeComp->setText(2, QString::fromStdString(comp->getName()));
             std::string properties = "";
-            for (auto prop : *comp->getProperties()->list()) {
-                properties += prop->getName() + ":" + prop->getValue() + ", ";
+            for (auto control : *comp->getSimulationControls()->list()) {
+                properties += control->getName() + ":" + control->getValue() + ", ";
             }
             properties = properties.substr(0, properties.length() - 2);
             treeComp->setText(3, QString::fromStdString(properties));
@@ -82,8 +82,8 @@ void ModelInspectorController::actualizeModelDataDefinitions(bool force) const {
                 treeComp->setText(1, QString::fromStdString(comp->getClassname()));
                 treeComp->setText(2, QString::fromStdString(comp->getName()));
                 std::string properties = "";
-                for (auto prop : *comp->getProperties()->list()) {
-                    properties += prop->getName() + ":" + prop->getValue() + ", ";
+                for (auto control : *comp->getSimulationControls()->list()) {
+                    properties += control->getName() + ":" + control->getValue() + ", ";
                 }
                 properties = properties.substr(0, properties.length() - 2);
                 treeComp->setText(3, QString::fromStdString(properties));
