@@ -391,6 +391,62 @@ TEST(WebApiRouterTest, SimulationConfigWithoutTokenReturnsUnauthorized) {
     EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
 }
 
+TEST(WebApiRouterTest, SimulationRunWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/simulation/run";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationStepWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/simulation/step";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationRunWithoutCurrentModelReturnsConflict) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/simulation/run";
+    request.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 409);
+    EXPECT_NE(response.body.find("\"NO_CURRENT_MODEL\""), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationStepWithoutCurrentModelReturnsConflict) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/simulation/step";
+    request.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 409);
+    EXPECT_NE(response.body.find("\"NO_CURRENT_MODEL\""), std::string::npos);
+}
+
 TEST(WebApiRouterTest, SimulationConfigWithoutCurrentModelReturnsConflict) {
     ApiRouterFixture fixture;
     const std::string token = createSessionAndGetToken(fixture.router);
@@ -460,6 +516,72 @@ TEST(WebApiRouterTest, SimulationStatusAndConfigFlowUpdatesValues) {
     EXPECT_NE(updatedStatusResponse.body.find("\"pauseOnReplication\":true"), std::string::npos);
     EXPECT_NE(updatedStatusResponse.body.find("\"initializeStatistics\":false"), std::string::npos);
     EXPECT_NE(updatedStatusResponse.body.find("\"initializeSystem\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationStepWithCurrentModelReturnsUpdatedStatusEnvelope) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest createModelRequest;
+    createModelRequest.method = "POST";
+    createModelRequest.path = "/api/v1/models";
+    createModelRequest.headers["authorization"] = "Bearer " + token;
+    ASSERT_EQ(fixture.router.handle(createModelRequest).status, 201);
+
+    HttpRequest configRequest;
+    configRequest.method = "POST";
+    configRequest.path = "/api/v1/simulation/config";
+    configRequest.headers["authorization"] = "Bearer " + token;
+    configRequest.body =
+        "{\"numberOfReplications\":1,\"replicationLength\":1.0,\"warmUpPeriod\":0.0,"
+        "\"pauseOnEvent\":false,\"pauseOnReplication\":false,\"initializeStatistics\":true,\"initializeSystem\":true}";
+    ASSERT_EQ(fixture.router.handle(configRequest).status, 200);
+
+    HttpRequest stepRequest;
+    stepRequest.method = "POST";
+    stepRequest.path = "/api/v1/simulation/step";
+    stepRequest.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse response = fixture.router.handle(stepRequest);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"ok\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"hasCurrentModel\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"isRunning\":"), std::string::npos);
+    EXPECT_NE(response.body.find("\"simulatedTime\":"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationRunWithCurrentModelReturnsUpdatedStatusEnvelope) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest createModelRequest;
+    createModelRequest.method = "POST";
+    createModelRequest.path = "/api/v1/models";
+    createModelRequest.headers["authorization"] = "Bearer " + token;
+    ASSERT_EQ(fixture.router.handle(createModelRequest).status, 201);
+
+    HttpRequest configRequest;
+    configRequest.method = "POST";
+    configRequest.path = "/api/v1/simulation/config";
+    configRequest.headers["authorization"] = "Bearer " + token;
+    configRequest.body =
+        "{\"numberOfReplications\":1,\"replicationLength\":1.0,\"warmUpPeriod\":0.0,"
+        "\"pauseOnEvent\":false,\"pauseOnReplication\":false,\"initializeStatistics\":true,\"initializeSystem\":true}";
+    ASSERT_EQ(fixture.router.handle(configRequest).status, 200);
+
+    HttpRequest runRequest;
+    runRequest.method = "POST";
+    runRequest.path = "/api/v1/simulation/run";
+    runRequest.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse response = fixture.router.handle(runRequest);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"ok\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"hasCurrentModel\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"isRunning\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"simulatedTime\":"), std::string::npos);
 }
 
 TEST(WebApiRouterTest, SimulationConfigWithInvalidBodyReturnsBadRequest) {

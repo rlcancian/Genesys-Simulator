@@ -2,7 +2,7 @@
 
 First functional implementation of the **Web** application type for GenESyS.
 
-## Current Stage 4 scope
+## Current Stage 5 scope
 - CMake executable: `genesys_webhook` (enabled with `-DGENESYS_BUILD_WEB_APPLICATION=ON`).
 - Layered architecture for HTTP transport, API routing, session/token, and simulator service.
 - Stateful session management with one `Simulator` per session and per-session workspace directories.
@@ -16,6 +16,8 @@ First functional implementation of the **Web** application type for GenESyS.
   - `POST /api/v1/models/load` (requires `Authorization: Bearer <token>`)
   - `GET /api/v1/simulation/status` (requires `Authorization: Bearer <token>`)
   - `POST /api/v1/simulation/config` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/simulation/run` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/simulation/step` (requires `Authorization: Bearer <token>`)
 
 ## How to run
 ```bash
@@ -39,3 +41,7 @@ For Stage 3 model persistence:
 For Stage 4 simulation configuration:
 - `POST /api/v1/simulation/config` currently uses a minimal contract parser without external JSON libraries.
 - All configuration fields are required in the request body: `numberOfReplications`, `replicationLength`, `warmUpPeriod`, `pauseOnEvent`, `pauseOnReplication`, `initializeStatistics`, `initializeSystem`.
+
+For Stage 5 simulation execution:
+- `POST /api/v1/simulation/run` and `POST /api/v1/simulation/step` are synchronous wrappers over `ModelSimulation::start()` and `ModelSimulation::step()`.
+- This stage intentionally does not introduce asynchronous/background simulation control endpoints.
