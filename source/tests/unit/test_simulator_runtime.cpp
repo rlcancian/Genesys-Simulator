@@ -20,6 +20,7 @@
 #include "plugins/data/Sequence.h"
 #include "plugins/data/SignalData.h"
 #include "plugins/data/Station.h"
+#include "plugins/data/Set.h"
 #include "plugins/components/Delay.h"
 #define private public
 #define protected public
@@ -387,6 +388,27 @@ public:
 
     void InternalEventNoopProbe(void* parameter) {
         (void) parameter;
+    }
+};
+
+class SetProbe : public Set {
+public:
+    SetProbe(Model* model, const std::string& name = "") : Set(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -1830,6 +1852,137 @@ TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
     std::string errorMessage;
     EXPECT_TRUE(sequence.CheckProbe(errorMessage));
     EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, SetDestructorDeletesOwnedContainerButNotMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Resource memberA(model, "SetLifecycleMemberA");
+    Resource memberB(model, "SetLifecycleMemberB");
+
+    auto* set = new SetProbe(model, "SetLifecycle");
+    set->addElementSet(&memberA);
+    set->addElementSet(&memberB);
+    ASSERT_EQ(set->getElementSet()->size(), 2u);
+
+    delete set;
+    EXPECT_EQ(memberA.getName(), "SetLifecycleMemberA");
+    EXPECT_EQ(memberB.getName(), "SetLifecycleMemberB");
+}
+
+TEST(SimulatorRuntimeTest, SetLoadInstanceReplacesStateWithoutResidualMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Resource memberA(model, "SetLoadMemberA");
+    Resource memberB(model, "SetLoadMemberB");
+    Resource memberC(model, "SetLoadMemberC");
+    SetProbe set(model, "SetLoad");
+
+    set.addElementSet(&memberA);
+    set.addElementSet(&memberB);
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord firstFields(persistence);
+    set.SaveInstanceProbe(&firstFields, true);
+
+    set.getElementSet()->clear();
+    set.addElementSet(&memberC);
+    PersistenceRecord secondFields(persistence);
+    set.SaveInstanceProbe(&secondFields, true);
+
+    ASSERT_TRUE(set.LoadInstanceProbe(&firstFields));
+    ASSERT_EQ(set.getElementSet()->size(), 2u);
+    ASSERT_TRUE(set.LoadInstanceProbe(&secondFields));
+    ASSERT_EQ(set.getElementSet()->size(), 1u);
+    EXPECT_EQ(set.getElementSet()->front(), &memberC);
+}
+
+TEST(SimulatorRuntimeTest, SetCheckFailsForMixedMemberTypes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Resource resource(model, "SetMixedResource");
+    Queue queue(model, "SetMixedQueue");
+    SetProbe set(model, "SetMixed");
+    set.addElementSet(&resource);
+    set.addElementSet(&queue);
+
+    std::string errorMessage;
+    EXPECT_FALSE(set.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("member["), std::string::npos);
+    EXPECT_NE(errorMessage.find("SetMixedQueue"), std::string::npos);
+    EXPECT_NE(errorMessage.find("Queue"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SetCheckPassesForHomogeneousMembersAndPreservesOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Resource memberA(model, "SetHomogeneousA");
+    Resource memberB(model, "SetHomogeneousB");
+    SetProbe set(model, "SetHomogeneous");
+    set.addElementSet(&memberA);
+    set.addElementSet(&memberB);
+
+    std::string errorMessage;
+    EXPECT_TRUE(set.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+    ASSERT_EQ(set.getElementSet()->size(), 2u);
+    auto members = set.getElementSet()->list();
+    EXPECT_EQ(members->front(), &memberA);
+    EXPECT_EQ(members->back(), &memberB);
+}
+
+TEST(SimulatorRuntimeTest, SetCheckCreatesDistinctIndexedAttachedMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Resource memberA(model, "SetAttachedIndexA");
+    Resource memberB(model, "SetAttachedIndexB");
+    SetProbe set(model, "SetAttachedIndex");
+    set.addElementSet(&memberA);
+    set.addElementSet(&memberB);
+
+    std::string errorMessage;
+    ASSERT_TRUE(set.CheckProbe(errorMessage));
+    auto* attached = set.getAttachedData();
+    const std::string member0Key = "Member" + Util::StrIndex(0);
+    const std::string member1Key = "Member" + Util::StrIndex(1);
+    ASSERT_EQ(attached->count(member0Key), 1u);
+    ASSERT_EQ(attached->count(member1Key), 1u);
+    EXPECT_EQ(attached->at(member0Key), &memberA);
+    EXPECT_EQ(attached->at(member1Key), &memberB);
+}
+
+TEST(SimulatorRuntimeTest, SetRecheckRemovesObsoleteAttachedMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Resource memberA(model, "SetRecheckA");
+    Resource memberB(model, "SetRecheckB");
+    SetProbe set(model, "SetRecheck");
+    set.addElementSet(&memberA);
+    set.addElementSet(&memberB);
+    set.CreateInternalAndAttachedDataProbe();
+
+    auto* attached = set.getAttachedData();
+    ASSERT_EQ(attached->count("SetRecheck.SetRecheckA"), 1u);
+    ASSERT_EQ(attached->count("SetRecheck.SetRecheckB"), 1u);
+
+    set.getElementSet()->clear();
+    set.addElementSet(&memberB);
+    set.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(attached->count("SetRecheck.SetRecheckA"), 0u);
+    ASSERT_EQ(attached->count("SetRecheck.SetRecheckB"), 1u);
+    EXPECT_EQ(attached->at("SetRecheck.SetRecheckB"), &memberB);
 }
 
 TEST(SimulatorRuntimeTest, StationCreateInternalInitiallyCreatesCollectorsWhenStatisticsEnabled) {

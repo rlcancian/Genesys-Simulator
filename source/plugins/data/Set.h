@@ -56,7 +56,7 @@ Type is Entity Picture.
 class Set : public ModelDataDefinition {
 public:
 	Set(Model* model, std::string name = "");
-	virtual ~Set() = default;
+	virtual ~Set() override;
 public: // static
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static PluginInformation* GetPluginInformation();
@@ -90,4 +90,3 @@ private:
 };
 
 #endif /* SET_H */
-
