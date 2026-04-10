@@ -285,3 +285,23 @@ TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerDeletesPreviousOwnedSa
     EXPECT_FALSE(externalDestroyed);
     EXPECT_EQ(destroyedCounter, 1);
 }
+
+TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerSameExternalPointerDoesNotDeleteIt) {
+    int destroyedCounter = 0;
+    bool externalDestroyed = false;
+
+    auto* initiallyOwnedSampler = new CountingSampler(&destroyedCounter);
+    CountingSampler externalSampler(&destroyedCounter, &externalDestroyed);
+
+    {
+        ParserDefaultImpl2 parser(model, initiallyOwnedSampler, false);
+        parser.setSampler(&externalSampler);
+        parser.setSampler(&externalSampler);
+        EXPECT_EQ(parser.getSampler(), &externalSampler);
+        EXPECT_EQ(destroyedCounter, 1);
+        EXPECT_FALSE(externalDestroyed);
+    }
+
+    EXPECT_FALSE(externalDestroyed);
+    EXPECT_EQ(destroyedCounter, 1);
+}

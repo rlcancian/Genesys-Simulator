@@ -24,13 +24,33 @@
 
 class ParserDefaultImpl2 : public Parser_if {
 public:
+	/*!
+	 * \brief Creates parser wrapper bound to a model and an initial sampler.
+	 *
+	 * The constructor stores \p sampler in the internal driver and marks it as
+	 * parser-owned when non-null. This preserves current model behavior where the
+	 * parser starts with an internally managed sampler instance.
+	 */
 	ParserDefaultImpl2(Model* model, Sampler_if* sampler, bool throws = false);
-	// Release parser-owned sampler instance created for expression evaluation.
+	/*!
+	 * \brief Destroys parser wrapper and releases only parser-owned sampler.
+	 *
+	 * The destructor deletes the current sampler only when ownership is flagged as
+	 * internal. Samplers installed through setSampler(...) are non-owned by default
+	 * and therefore not deleted at destruction time.
+	 */
 	virtual ~ParserDefaultImpl2();
 public:
 	virtual double parse(const std::string expression) override; // may throw exception
     virtual double parse(const std::string expression, bool& success, std::string& errorMessage) override;
     virtual std::string getErrorMessage() override;
+	/*!
+	 * \brief Replaces parser sampler with an externally-owned sampler.
+	 *
+	 * If the parser currently owns a previous sampler, that previous sampler is
+	 * released before binding the new pointer. The provided sampler pointer is then
+	 * tracked as non-owned.
+	 */
 	virtual void setSampler(Sampler_if* _sampler) override;
 	virtual Sampler_if* getSampler() const override;
 	virtual genesyspp_driver getParser() const override;
