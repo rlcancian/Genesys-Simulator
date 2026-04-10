@@ -12,7 +12,24 @@ class DataComponentProperty;
 class DataComponentEditor;
 class ComboBoxEnum;
 
-// Encapsulate Phase 6 property-editor and scene-selection orchestration outside MainWindow.
+// Document the property-editor controller and post-commit synchronization pipeline.
+/**
+ * @brief Controller that orchestrates property editor state and scene-selection coupling.
+ *
+ * This Phase-6 extraction isolates property editor wiring from MainWindow while preserving
+ * the existing compatibility façade methods. It coordinates selection-driven property binding
+ * and the deferred refresh cascade required after property commits.
+ *
+ * Responsibilities:
+ * - synchronize current scene selection into PropertyEditorGenesys/ObjectPropertyBrowser;
+ * - execute post-edit refresh callbacks for model language, trees, C++ export, and tabs;
+ * - coalesce heavy refresh requests to avoid re-entrant UI update storms.
+ *
+ * Boundaries:
+ * - it does not own property objects/editors lifetime (maps are injected);
+ * - it does not alter undo/redo infrastructure or scene command orchestration;
+ * - it does not persist models or execute simulation commands.
+ */
 class PropertyEditorController {
 public:
     // Inject only the property-editor dependencies needed by the Phase 6 flow.

@@ -11,7 +11,24 @@ class GraphicalModelComponent;
 class GraphicalConnection;
 class QGraphicsItemGroup;
 
-// Phase 9 controller that centralizes edit/clipboard command orchestration.
+// Document edit command orchestration extracted from MainWindow wrappers.
+/**
+ * @brief Controller for edit/clipboard/grouping command orchestration in the scene.
+ *
+ * This Phase-9 controller keeps MainWindow slots as compatibility wrappers while centralizing
+ * clipboard buffers, grouping operations, and undo-aware edit command dispatch against the
+ * current graphical scene.
+ *
+ * Responsibilities:
+ * - execute undo/redo/cut/copy/paste/delete/group/ungroup command flows;
+ * - preserve legacy clipboard structures used by graphical components and drawings;
+ * - trigger action refresh callbacks after command execution.
+ *
+ * Boundaries:
+ * - it does not own scene lifetime (resolved from injected graphics view);
+ * - it does not persist clipboard state across sessions;
+ * - it does not manage simulation events, model lifecycle, or property-editor synchronization.
+ */
 class EditCommandController {
 public:
     // Inject only narrow dependencies required by edit command behavior.

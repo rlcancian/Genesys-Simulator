@@ -41,10 +41,25 @@ class EditCommandController;
 class SceneToolController;
 class DialogUtilityController;
 
+// Document MainWindow as composition root and incremental compatibility façade.
 /**
- * @brief Main Qt window of Genesys GUI.
+ * @brief Main Qt window that composes controllers/services and preserves legacy GUI entry points.
  *
- * Acts as the final composition root and compatibility façade for extracted controllers/services.
+ * MainWindow remains the composition root of GenesysQtGUI: it owns the generated UI, wires
+ * extracted controllers/services, and exposes the original Qt slot surface expected by actions,
+ * widgets, and kernel callback registration. In the refactored architecture it primarily acts as
+ * a compatibility façade that delegates operational responsibilities to focused collaborators.
+ *
+ * Responsibilities:
+ * - bootstrap UI construction and dependency wiring for controllers/services;
+ * - host compatibility wrappers used by menus/toolbars/scene callbacks;
+ * - coordinate cross-cutting state that still spans multiple controllers.
+ *
+ * Boundaries:
+ * - detailed domain workflows (simulation commands, lifecycle, persistence, scene tools,
+ *   property editing, trace/event rendering) are delegated to dedicated controller/service
+ *   classes whenever extraction already exists;
+ * - MainWindow does not replace kernel ownership semantics.
  */
 class MainWindow : public QMainWindow {
 	Q_OBJECT

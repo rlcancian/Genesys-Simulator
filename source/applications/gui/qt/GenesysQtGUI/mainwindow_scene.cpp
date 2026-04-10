@@ -1,3 +1,12 @@
+// Document this compilation unit as the scene-synchronization partition of MainWindow.
+/**
+ * @file mainwindow_scene.cpp
+ * @brief Scene callback and scene synchronization partition of MainWindow implementation.
+ *
+ * This file concentrates scene-related callbacks, selection/focus/zoom bridging, and wrappers
+ * that synchronize scene state with UI elements such as actions and the property editor
+ * controller. It does not define a new class; it is a thematic partition of MainWindow.
+ */
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 // Include the Phase 6 controller type so member calls compile with a complete class definition.

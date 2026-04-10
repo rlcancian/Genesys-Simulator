@@ -1,3 +1,13 @@
+// Document this compilation unit as the simulator-callback partition of MainWindow.
+/**
+ * @file mainwindow_simulator.cpp
+ * @brief Simulator trace/event wrapper partition of MainWindow implementation.
+ *
+ * This file centralizes MainWindow compatibility wrappers for simulator traces and simulation
+ * event callbacks, delegating rendering and reactions to TraceConsoleController and
+ * SimulationEventController (plus plugin-catalog related delegation where applicable). It does
+ * not define a new class; it is a thematic partition of MainWindow.
+ */
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 // Include dedicated Phase 4 controllers used by simulator compatibility wrappers.

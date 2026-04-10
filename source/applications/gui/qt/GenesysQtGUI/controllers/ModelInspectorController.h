@@ -6,7 +6,25 @@
 class Simulator;
 class ModelGraphicsView;
 
-// Encapsulate Phase 3 model-inspection and tree/scene synchronization logic.
+// Document the controller boundary for model-inspection and tree/scene synchronization.
+/**
+ * @brief Controller for model inspection views and scene-selection synchronization.
+ *
+ * In the refactored GUI architecture, this controller receives delegated callbacks from
+ * MainWindow to keep model-inspector responsibilities outside the composition root while
+ * preserving the existing UI contract. It synchronizes Components/Data Definitions trees
+ * with the current kernel model and keeps tree-to-scene selection behavior consistent.
+ *
+ * Responsibilities:
+ * - refresh model component and data-definition trees from Simulator state;
+ * - manage in-place rename flow for editable data-definition names;
+ * - propagate current tree selection to the graphical scene and viewport.
+ *
+ * Boundaries:
+ * - it does not create/destroy models or files (model lifecycle remains elsewhere);
+ * - it does not own scene command logic, undo/redo, or simulation commands;
+ * - it does not act as a persistence or export service.
+ */
 class ModelInspectorController {
 public:
     // Inject only the narrow dependencies required by the model-inspector workflow.

@@ -5,7 +5,24 @@
 
 class QTextEdit;
 
-// Encapsulate Phase 4 trace rendering for console/simulation/report widgets.
+// Document the trace rendering bridge used by MainWindow simulator callbacks.
+/**
+ * @brief Controller that routes simulator trace events to GUI text widgets.
+ *
+ * This controller is the Phase-4 extraction for trace presentation. MainWindow keeps
+ * compatibility handlers registered in the kernel trace manager and delegates rendering to
+ * this class, reducing direct UI formatting logic in the façade.
+ *
+ * Responsibilities:
+ * - render regular/error traces to the main console pane;
+ * - render simulation traces to the simulation output pane;
+ * - render report traces to the reports pane.
+ *
+ * Boundaries:
+ * - it does not subscribe handlers by itself (registration stays in MainWindow/event layer);
+ * - it does not change simulation flow, model state, or controller orchestration;
+ * - it acts as a UI bridge, not as a domain service.
+ */
 class TraceConsoleController {
 public:
     // Inject narrow text-output dependencies used by trace handlers.

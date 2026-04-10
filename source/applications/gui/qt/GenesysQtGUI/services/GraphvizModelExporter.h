@@ -11,7 +11,24 @@ class QCheckBox;
 class Simulator;
 class ModelDataDefinition;
 
-// This Phase-1 service encapsulates Graphviz DOT generation and PNG rendering for model representation.
+// Document the service used to export graphical model representations via Graphviz.
+/**
+ * @brief Service that builds DOT content and renders model images for the GUI.
+ *
+ * This service encapsulates Graphviz-oriented model representation logic extracted from
+ * MainWindow. It keeps image-generation behavior stable while MainWindow exposes compatibility
+ * wrappers used by actions and tabs.
+ *
+ * Responsibilities:
+ * - normalize identifiers for DOT compatibility;
+ * - build hierarchical DOT fragments from model/data-definition traversal;
+ * - generate and display model images after ensuring text/model synchronization.
+ *
+ * Boundaries:
+ * - it does not own model synchronization policy (uses injected callback);
+ * - it does not manage simulation commands, traces, or lifecycle actions;
+ * - it provides export/representation service behavior, not controller orchestration.
+ */
 class GraphvizModelExporter {
 public:
     // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.

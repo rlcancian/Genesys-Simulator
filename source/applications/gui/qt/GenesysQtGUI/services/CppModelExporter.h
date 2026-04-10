@@ -6,7 +6,23 @@
 class QPlainTextEdit;
 class Simulator;
 
-// This Phase-1 service encapsulates generation of C++ model code shown in the GUI editor.
+// Document the service that generates C++ model representation text.
+/**
+ * @brief Service responsible for C++ code representation of the current simulation model.
+ *
+ * The refactoring keeps C++ representation generation outside MainWindow by delegating this
+ * concern to a dedicated service. MainWindow wrappers call into this class when model or UI
+ * state changes require regeneration.
+ *
+ * Responsibilities:
+ * - format indented C++ output lines used by exporter routines;
+ * - rebuild the full C++ representation shown in the GUI code pane.
+ *
+ * Boundaries:
+ * - it does not compile or execute generated code;
+ * - it does not persist files directly;
+ * - it does not manage lifecycle/simulation/scene controller flows.
+ */
 class CppModelExporter {
 public:
     // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.

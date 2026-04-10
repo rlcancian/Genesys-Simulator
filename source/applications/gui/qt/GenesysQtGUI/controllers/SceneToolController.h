@@ -10,7 +10,23 @@ namespace Ui {
 class MainWindow;
 }
 
-// Move scene/view/drawing command orchestration into a dedicated Phase 10 controller.
+// Document the scene tooling controller that receives delegated UI commands.
+/**
+ * @brief Controller for scene visualization, drawing tools, alignment, and zoom orchestration.
+ *
+ * MainWindow delegates many menu/toolbar wrappers to this Phase-10 controller to keep the
+ * compatibility façade thin while concentrating scene-tool behavior in a dedicated component.
+ *
+ * Responsibilities:
+ * - handle grid/ruler/guides/snap toggles and zoom commands;
+ * - orchestrate drawing/connection modes and alignment actions;
+ * - coordinate animation toggles and scene-display filters through injected callbacks.
+ *
+ * Boundaries:
+ * - it does not own MainWindow or scene/view lifetime;
+ * - it does not perform model persistence/export/simulation lifecycle work;
+ * - it relies on injected references for shared UI state (zoom, first-click connection state).
+ */
 class SceneToolController {
 public:
     // Inject only narrow dependencies required by scene and tool command handlers.
