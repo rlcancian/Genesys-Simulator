@@ -21,7 +21,10 @@
 #include "plugins/data/SignalData.h"
 #include "plugins/data/Station.h"
 #include "plugins/data/Set.h"
+#include "plugins/data/EntityGroup.h"
 #include "plugins/components/Delay.h"
+#include "plugins/components/Batch.h"
+#include "plugins/components/Separate.h"
 #define private public
 #define protected public
 #include "plugins/components/Wait.h"
@@ -348,6 +351,72 @@ public:
         return _signalData;
     }
 };
+
+class CollectorSinkComponentProbe : public ModelComponent {
+public:
+    CollectorSinkComponentProbe(Model* model, const std::string& name = "")
+        : ModelComponent(model, "CollectorSinkComponentProbe", name) {}
+
+    const std::vector<Entity*>& ReceivedEntities() const {
+        return _received;
+    }
+
+protected:
+    void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override {
+        (void)inputPortNumber;
+        _received.push_back(entity);
+    }
+
+    bool _loadInstance(PersistenceRecord* fields) override {
+        return ModelComponent::_loadInstance(fields);
+    }
+
+    void _saveInstance(PersistenceRecord* fields, bool saveDefaultValues) override {
+        ModelComponent::_saveInstance(fields, saveDefaultValues);
+    }
+
+private:
+    std::vector<Entity*> _received;
+};
+
+class BatchProbe : public Batch {
+public:
+    BatchProbe(Model* model, const std::string& name = "") : Batch(model, name) {}
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class SeparateProbe : public Separate {
+public:
+    SeparateProbe(Model* model, const std::string& name = "") : Separate(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+static void DrainFutureEvents(Model* model) {
+    while (!model->getFutureEvents()->empty()) {
+        Event* event = model->getFutureEvents()->front();
+        model->getFutureEvents()->pop_front();
+        ModelComponent::DispatchEvent(event);
+        delete event;
+    }
+}
 
 class FailureProbe : public Failure {
 public:
@@ -2534,4 +2603,211 @@ TEST(SimulatorRuntimeTest, SignalDataCheckPassesWithValidHandler) {
     std::string errorMessage;
     EXPECT_TRUE(signal.CheckProbe(errorMessage));
     EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, BatchAnyFormsSingleBatchWithAtLeastBatchSizeAndKeepsOverflowQueued) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BatchProbe batch(model, "BatchAny");
+    CollectorSinkComponentProbe sink(model, "BatchAnySink");
+    batch.connectTo(&sink);
+    batch.setBatchSize("2");
+    batch.setRule(Batch::Rule::Any);
+    batch.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "BatchAnyPart");
+    Entity* e1 = model->createEntity("AnyE1", true);
+    Entity* e2 = model->createEntity("AnyE2", true);
+    Entity* e3 = model->createEntity("AnyE3", true);
+    e1->setEntityType(partType);
+    e2->setEntityType(partType);
+    e3->setEntityType(partType);
+
+    batch.DispatchEventProbe(e1);
+    batch.DispatchEventProbe(e2);
+    batch.DispatchEventProbe(e3);
+    DrainFutureEvents(model);
+
+    Queue* queue = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "BatchAny.Queue"));
+    ASSERT_NE(queue, nullptr);
+    EXPECT_EQ(queue->size(), 1u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+}
+
+TEST(SimulatorRuntimeTest, BatchByAttributeFormsExactBatchSizeOfFirstCompatibleEntities) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BatchProbe batch(model, "BatchByAttribute");
+    CollectorSinkComponentProbe sink(model, "BatchByAttributeSink");
+    batch.connectTo(&sink);
+    batch.setBatchSize("2");
+    batch.setRule(Batch::Rule::ByAttribute);
+    batch.setAttributeName("Color");
+    batch.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "BatchByAttrPart");
+    (void)new Attribute(model, "Color");
+    Entity* e1 = model->createEntity("ByAttrE1", true);
+    Entity* e2 = model->createEntity("ByAttrE2", true);
+    Entity* e3 = model->createEntity("ByAttrE3", true);
+    Entity* e4 = model->createEntity("ByAttrE4", true);
+    e1->setEntityType(partType);
+    e2->setEntityType(partType);
+    e3->setEntityType(partType);
+    e4->setEntityType(partType);
+    e1->setAttributeValue("Color", 1.0);
+    e2->setAttributeValue("Color", 2.0);
+    e3->setAttributeValue("Color", 1.0);
+    e4->setAttributeValue("Color", 1.0);
+
+    batch.DispatchEventProbe(e1);
+    batch.DispatchEventProbe(e2);
+    batch.DispatchEventProbe(e3);
+    batch.DispatchEventProbe(e4);
+    DrainFutureEvents(model);
+
+    Queue* queue = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "BatchByAttribute.Queue"));
+    ASSERT_NE(queue, nullptr);
+    EXPECT_EQ(queue->size(), 2u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+}
+
+TEST(SimulatorRuntimeTest, BatchTemporaryThenSeparateReleasesOriginalMembersInOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BatchProbe batch(model, "BatchTemp");
+    SeparateProbe separate(model, "SeparateAfterTemp");
+    CollectorSinkComponentProbe sink(model, "BatchTempSink");
+    batch.connectTo(&separate);
+    separate.connectTo(&sink);
+    batch.setBatchType(Batch::BatchType::Temporary);
+    batch.setBatchSize("2");
+    batch.setRule(Batch::Rule::Any);
+    batch.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "BatchTempPart");
+    Entity* e1 = model->createEntity("TempE1", true);
+    Entity* e2 = model->createEntity("TempE2", true);
+    e1->setEntityType(partType);
+    e2->setEntityType(partType);
+
+    batch.DispatchEventProbe(e1);
+    batch.DispatchEventProbe(e2);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], e1);
+    EXPECT_EQ(sink.ReceivedEntities()[1], e2);
+}
+
+TEST(SimulatorRuntimeTest, BatchPermanentRepresentativePassesThroughSeparateWithoutResurrectingMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BatchProbe batch(model, "BatchPermanent");
+    SeparateProbe separate(model, "SeparateAfterPermanent");
+    CollectorSinkComponentProbe sink(model, "BatchPermanentSink");
+    batch.connectTo(&separate);
+    separate.connectTo(&sink);
+    batch.setBatchType(Batch::BatchType::Permanent);
+    batch.setBatchSize("2");
+    batch.setRule(Batch::Rule::Any);
+    batch.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "BatchPermanentPart");
+    Entity* e1 = model->createEntity("PermE1", true);
+    Entity* e2 = model->createEntity("PermE2", true);
+    const Util::identification e1Id = e1->getId();
+    const Util::identification e2Id = e2->getId();
+    e1->setEntityType(partType);
+    e2->setEntityType(partType);
+
+    batch.DispatchEventProbe(e1);
+    batch.DispatchEventProbe(e2);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_NE(sink.ReceivedEntities()[0], e1);
+    EXPECT_NE(sink.ReceivedEntities()[0], e2);
+    EXPECT_EQ(dynamic_cast<Entity*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Entity>(), e1Id)), nullptr);
+    EXPECT_EQ(dynamic_cast<Entity*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Entity>(), e2Id)), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, BatchCheckValidatesByAttributeRequirementAndMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BatchProbe invalidBatch(model, "BatchCheckInvalid");
+    invalidBatch.setRule(Batch::Rule::ByAttribute);
+    invalidBatch.setBatchSize("2");
+    invalidBatch.setAttributeName("");
+    std::string invalidError;
+    EXPECT_FALSE(invalidBatch.CheckProbe(invalidError));
+    EXPECT_FALSE(invalidError.empty());
+
+    BatchProbe validBatch(model, "BatchCheckValid");
+    validBatch.setRule(Batch::Rule::Any);
+    validBatch.setBatchSize("2");
+    std::string validError;
+    EXPECT_TRUE(validBatch.CheckProbe(validError));
+    EXPECT_TRUE(validError.empty());
+}
+
+TEST(SimulatorRuntimeTest, SeparateHandlesUngroupedEntitySafely) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SeparateProbe separate(model, "SeparateUngrouped");
+    CollectorSinkComponentProbe sink(model, "SeparateUngroupedSink");
+    separate.connectTo(&sink);
+
+    EntityType* partType = new EntityType(model, "SeparateUngroupedPart");
+    Entity* entity = model->createEntity("UngroupedEntity", true);
+    entity->setEntityType(partType);
+    entity->setAttributeValue("Entity.Group", 0.0, "", true);
+
+    separate.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+}
+
+TEST(SimulatorRuntimeTest, SeparateCheckAndValidGroupReferenceRemainCoherent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SeparateProbe separate(model, "SeparateValidGroup");
+    CollectorSinkComponentProbe sink(model, "SeparateValidGroupSink");
+    separate.connectTo(&sink);
+
+    std::string checkError;
+    EXPECT_TRUE(separate.CheckProbe(checkError));
+    EXPECT_TRUE(checkError.empty());
+
+    EntityType* partType = new EntityType(model, "SeparateGroupedPart");
+    EntityGroup* entityGroup = new EntityGroup(model, "ManualEntityGroup");
+    Entity* representative = model->createEntity("Representative", true);
+    Entity* member = model->createEntity("Member", true);
+    representative->setEntityType(partType);
+    member->setEntityType(partType);
+    representative->setAttributeValue("Entity.Group", entityGroup->getId(), "", true);
+    entityGroup->insertElement(representative->getId(), member);
+
+    separate.DispatchEventProbe(representative);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], member);
+    EXPECT_EQ(member->getAttributeValue("Entity.Group"), 0.0);
 }

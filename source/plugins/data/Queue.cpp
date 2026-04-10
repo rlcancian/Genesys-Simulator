@@ -81,7 +81,10 @@ std::string Queue::show() {
 void Queue::insertElement(Waiting* modeldatum) {
 	modeldatum->setArrivalOrder(_nextArrivalOrder++);
 	if (_reportStatistics) {
-		double tnow = _parentModel->getSimulation()->getSimulatedTime();
+		double tnow = 0.0;
+		if (_parentModel->getSimulation() != nullptr) {
+			tnow = _parentModel->getSimulation()->getSimulatedTime();
+		}
 		double duration = tnow - _lastTimeNumberInQueueChanged;
 		this->_cstatNumberInQueue->getStatistics()->getCollector()->addValue(_list->size(), duration); // save the OLD quantity and for how long it was there
 		_lastTimeNumberInQueueChanged = tnow;
@@ -94,7 +97,10 @@ void Queue::removeElement(Waiting* modeldatum) {
 		return;
 	}
 	if (_reportStatistics) {
-		double tnow = _parentModel->getSimulation()->getSimulatedTime();
+		double tnow = 0.0;
+		if (_parentModel->getSimulation() != nullptr) {
+			tnow = _parentModel->getSimulation()->getSimulatedTime();
+		}
 		double duration = tnow - _lastTimeNumberInQueueChanged;
 		this->_cstatNumberInQueue->getStatistics()->getCollector()->addValue(_list->size(), duration); // save the OLD quantity and for how long it was there
 		_lastTimeNumberInQueueChanged = tnow;
