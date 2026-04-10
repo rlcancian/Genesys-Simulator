@@ -14,6 +14,7 @@
 #include "StatisticsDataFileDefaultImpl.h"
 #include "../TraitsKernel.h"
 #include <math.h>
+#include <limits>
 
 StatisticsDatafileDefaultImpl1::StatisticsDatafileDefaultImpl1() {
 	_collector = new TraitsKernel<StatisticsDatafile_if>::CollectorImplementation();
@@ -130,6 +131,12 @@ double StatisticsDatafileDefaultImpl1::max() {
 
 double StatisticsDatafileDefaultImpl1::average() {
 	if (_hasNewValue() || !_averageCalculated) {
+		// Return NaN for empty samples to avoid undefined division by zero.
+		if (_collector->numElements() == 0) {
+			_average = std::numeric_limits<double>::quiet_NaN();
+			_averageCalculated = true;
+			return _average;
+		}
 		valueType sumElements = 0;
 		for (unsigned long i = 0; i < _collector->numElements(); i++) {
 			sumElements += _collector->getValue(i);
@@ -142,6 +149,12 @@ double StatisticsDatafileDefaultImpl1::average() {
 
 double StatisticsDatafileDefaultImpl1::variance() {
 	if (_hasNewValue() || !_varianceCalculated) {
+		// Return NaN when sample variance is undefined for fewer than two observations.
+		if (_collector->numElements() < 2) {
+			_variance = std::numeric_limits<double>::quiet_NaN();
+			_varianceCalculated = true;
+			return _variance;
+		}
 		valueType sumElements = 0;
 		for (unsigned long i = 0; i < _collector->numElements(); i++) {
 			sumElements += pow((_collector->getValue(i) - average()), 2);
@@ -154,6 +167,7 @@ double StatisticsDatafileDefaultImpl1::variance() {
 
 double StatisticsDatafileDefaultImpl1::stddeviation() {
 	if (_hasNewValue() || !_stddeviationCalculated) {
+		// Propagate undefined variance cases through the standard deviation cache.
 		_stddeviation = sqrt(variance());
 		_stddeviationCalculated = true;
 	}
@@ -162,7 +176,14 @@ double StatisticsDatafileDefaultImpl1::stddeviation() {
 
 double StatisticsDatafileDefaultImpl1::variationCoef() {
 	if (_hasNewValue() || !_variationCoefCalculated) {
-		_variationCoef = stddeviation() / average();
+		// Guard coefficient of variation against undefined/zero means and invalid dispersion.
+		const double avg = average();
+		const double stddev = stddeviation();
+		if (_numElements == 0 || std::isnan(avg) || std::isnan(stddev) || avg == 0.0) {
+			_variationCoef = std::numeric_limits<double>::quiet_NaN();
+		} else {
+			_variationCoef = stddev / avg;
+		}
 		_variationCoefCalculated = true;
 	}
 	return _variationCoef;
@@ -181,7 +202,13 @@ double StatisticsDatafileDefaultImpl1::halfWidthConfidenceInterval() {
 	if (_hasNewValue() || !_halfWidthConfidenceIntervalCalculated || _confidenceLevel != _lastConfidenceLevel) {
 		// Compute and cache the confidence interval half-width using the current confidence level.
 		double z = _getNormalProbability(_confidenceLevel);
-		_halfWidthConfidenceInterval = z * stddeviation() / sqrt(_numElements);
+		// Return NaN for undefined interval width when sample size or deviation is invalid.
+		const double stddev = stddeviation();
+		if (_numElements == 0 || std::isnan(stddev)) {
+			_halfWidthConfidenceInterval = std::numeric_limits<double>::quiet_NaN();
+		} else {
+			_halfWidthConfidenceInterval = z * stddev / sqrt(_numElements);
+		}
 		_lastConfidenceLevel = _confidenceLevel;
 		_halfWidthConfidenceIntervalCalculated = true;
 	}
@@ -209,6 +236,12 @@ void StatisticsDatafileDefaultImpl1::setConfidenceLevel(double confidencelevel) 
 
 double StatisticsDatafileDefaultImpl1::mode() {
 	if (_hasNewValue() || !_modeCalculated) {
+		// Return NaN for empty samples because mode is undefined without observations.
+		if (_collector->numElements() == 0) {
+			_mode = std::numeric_limits<double>::quiet_NaN();
+			_modeCalculated = true;
+			return _mode;
+		}
 		if (!_fileSorted) _sortFile();
 		// Scan sorted values by runs and keep the value with the highest observed frequency.
 		valueType tmpModeValue = _collectorSorted->getValue(0);
@@ -239,6 +272,12 @@ double StatisticsDatafileDefaultImpl1::mode() {
 
 double StatisticsDatafileDefaultImpl1::mediane() {
 	if (_hasNewValue() || !_medianeCalculated) {
+		// Return NaN for empty samples because median position is undefined.
+		if (_collector->numElements() == 0) {
+			_mediane = std::numeric_limits<double>::quiet_NaN();
+			_medianeCalculated = true;
+			return _mediane;
+		}
 		if (!_fileSorted) _sortFile();
 
 		// Use zero-based central index for odd sample sizes and midpoint average for even sizes.
@@ -256,8 +295,12 @@ double StatisticsDatafileDefaultImpl1::mediane() {
 
 double StatisticsDatafileDefaultImpl1::quartil(unsigned short num) {
 	if (_hasNewValue() || !_quartilCalculated || num != _lastQuartilNum) {
-		if (num == 2) _quartil = mediane();
-		else {
+		// Validate quartile order and sample availability before rank-based access.
+		if (num < 1 || num > 3 || _collector->numElements() == 0) {
+			_quartil = std::numeric_limits<double>::quiet_NaN();
+		} else if (num == 2) {
+			_quartil = mediane();
+		} else {
 			if (!_fileSorted) _sortFile();
 
 			// Compute quartile rank with floating-point arithmetic and clamp to valid zero-based index.
@@ -268,17 +311,21 @@ double StatisticsDatafileDefaultImpl1::quartil(unsigned short num) {
 				position = sampleSize - 1;
 			}
 			_quartil = _collectorSorted->getValue(position);
-			_quartilCalculated = true;
-			_lastQuartilNum = num;
 		}
+		_quartilCalculated = true;
+		_lastQuartilNum = num;
 	}
 	return _quartil;
 }
 
 double StatisticsDatafileDefaultImpl1::decil(unsigned short num) {
 	if (_hasNewValue() || !_decilCalculated || num != _lastDecilNum) {
-		if (num == 5) _decil = mediane();
-		else {
+		// Validate decile order and sample availability before rank-based access.
+		if (num < 1 || num > 10 || _collector->numElements() == 0) {
+			_decil = std::numeric_limits<double>::quiet_NaN();
+		} else if (num == 5) {
+			_decil = mediane();
+		} else {
 			if (!_fileSorted) _sortFile();
 			// Use nearest-rank index converted to zero-based and clamp to avoid out-of-range access.
 			const unsigned long sampleSize = _collectorSorted->numElements();
@@ -288,17 +335,21 @@ double StatisticsDatafileDefaultImpl1::decil(unsigned short num) {
 				position = sampleSize - 1;
 			}
 			_decil = _collectorSorted->getValue(position);
-			_decilCalculated = true;
-			_lastDecilNum = num;
 		}
+		_decilCalculated = true;
+		_lastDecilNum = num;
 	}
 	return _decil;
 }
 
 double StatisticsDatafileDefaultImpl1::centil(unsigned short num) {
 	if (_hasNewValue() || !_centilCalculated || num != _lastCentilNum) {
-		if (num == 50) _centil = mediane();
-		else {
+		// Validate percentile order and sample availability before rank-based access.
+		if (num < 1 || num > 100 || _collector->numElements() == 0) {
+			_centil = std::numeric_limits<double>::quiet_NaN();
+		} else if (num == 50) {
+			_centil = mediane();
+		} else {
 			if (!_fileSorted) _sortFile();
 			// Use nearest-rank index converted to zero-based and clamp to avoid out-of-range access.
 			const unsigned long sampleSize = _collectorSorted->numElements();
@@ -308,9 +359,9 @@ double StatisticsDatafileDefaultImpl1::centil(unsigned short num) {
 				position = sampleSize - 1;
 			}
 			_centil = _collectorSorted->getValue(position);
-			_centilCalculated = true;
-			_lastCentilNum = num;
 		}
+		_centilCalculated = true;
+		_lastCentilNum = num;
 	}
 	return _centil;
 }
@@ -321,7 +372,12 @@ void StatisticsDatafileDefaultImpl1::setHistogramNumClasses(unsigned short num) 
 
 unsigned short StatisticsDatafileDefaultImpl1::histogramNumClasses() {
 	if (_hasNewValue() || !_histogramNumClassesCalculated) {
-		_histogramNumClasses = ceil(1 + 3.32 * log10(_numElements));
+		// Avoid log10(0) by returning zero classes for empty samples.
+		if (_numElements == 0) {
+			_histogramNumClasses = 0;
+		} else {
+			_histogramNumClasses = ceil(1 + 3.32 * log10(_numElements));
+		}
 		_histogramNumClassesCalculated = true;
 	}
 	return _histogramNumClasses;
