@@ -318,10 +318,10 @@ L      [A-Za-z0-9_.]+
         //Case not found retturns a illegal token
 		//datadef = driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Set>(), std::string(yytext));
 		//std::cout << "NOT FOUND " << std::string(yytext) << std::endl;
-        return yy::genesyspp_parser::make_ILLEGAL(obj_t(0, std::string("Illegal")), loc);
+        return yy::genesyspp_parser::make_ILLEGAL(obj_t(0, std::string(yytext)), loc);
       }
 
-.       {return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string("Illegal")), loc);}
+.       {return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string(yytext)), loc);}
 
 <<EOF>> {return yy::genesyspp_parser::make_END(loc);}
 

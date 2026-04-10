@@ -624,17 +624,21 @@ listaparm:
 illegal: 
 	ILLEGAL           {
 		driver.setResult(-1);
+		std::string lexema = $1.tipo;
+		bool hasLexema = !lexema.empty();
+		std::string literalMsg = hasLexema ? std::string("Literal nao encontrado: \"") + lexema + "\"" : std::string("Literal nao encontrado");
+		std::string caracterMsg = hasLexema ? std::string("Caracter invalido encontrado: \"") + lexema + "\"" : std::string("Caracter invalido encontrado");
 		if(driver.getThrowsException()){
 			if($1.valor == 0){
-			  throw std::string("Literal nao encontrado");
+			  throw literalMsg;
 			}else if($1.valor == 1){
-			  throw std::string("Caracter invalido encontrado");
+			  throw caracterMsg;
 			}
 		} else {
 			if($1.valor == 0){
-			  driver.setErrorMessage(std::string("Literal nao encontrado"));
+			  driver.setErrorMessage(literalMsg);
 			}else if($1.valor == 1){
-				driver.setErrorMessage(std::string("Caracter invalido encontrado"));
+				driver.setErrorMessage(caracterMsg);
 			}
 		}
 	}
