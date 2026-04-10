@@ -15,9 +15,30 @@
 #include <assert.h>
 #include <iomanip>
 #include <iostream>
+#include <map>
+#include <list>
 #include "Counter.h"
 
 //using namespace GenesysKernel;
+
+namespace {
+using GroupedStats = std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*> > >;
+
+// Build a parent-type/parent-name index for statistics and counters using stack-owned containers.
+static GroupedStats groupStatsByParent(const std::list<ModelDataDefinition*>& items, const std::string& statisticsType, const std::string& counterType) {
+	GroupedStats grouped;
+	for (ModelDataDefinition* item : items) {
+		if (item->getClassname() == statisticsType) {
+			StatisticsCollector* cstat = dynamic_cast<StatisticsCollector*> (item);
+			grouped[cstat->getParent()->getClassname()][cstat->getParent()->getName()].push_back(item);
+		} else if (item->getClassname() == counterType) {
+			Counter* counter = dynamic_cast<Counter*> (item);
+			grouped[counter->getParent()->getClassname()][counter->getParent()->getName()].push_back(item);
+		}
+	}
+	return grouped;
+}
+}
 
 SimulationReporterDefaultImpl1::SimulationReporterDefaultImpl1(ModelSimulation* simulation, Model* model, List<ModelDataDefinition*>* statsCountersSimulation) {
 	_simulation = simulation;
@@ -57,30 +78,8 @@ void SimulationReporterDefaultImpl1::showReplicationStatistics() {
 	std::list<ModelDataDefinition*> counters(*(_model->getDataManager()->getDataDefinitionList(UtilTypeOfCounter)->list()));
 	statisticsAndCounters.merge(counters);
 	//statisticsAndCounters->insert(counters->list()->begin(), counters->list()->end());
-	// Group report items by parent type and parent name with automatic storage containers.
-	std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*> > > mapMapTypeStat;
-
-	for (ModelDataDefinition* cstatOrCounter : statisticsAndCounters) {
-		std::string parentName, parentTypename;
-		//std::cout << statOrCnt->getName() << ": " << statOrCnt->getTypename() << std::endl;
-		if (cstatOrCounter->getClassname() == UtilTypeOfStatisticsCollector) {
-			StatisticsCollector* cstat = dynamic_cast<StatisticsCollector*> (cstatOrCounter);
-			parentName = cstat->getParent()->getName();
-			parentTypename = cstat->getParent()->getClassname();
-		} else {
-			if (cstatOrCounter->getClassname() == UtilTypeOfCounter) {
-				Counter* counter = dynamic_cast<Counter*> (cstatOrCounter);
-				parentName = counter->getParent()->getName();
-				parentTypename = counter->getParent()->getClassname();
-
-			}
-		}
-		// look for key=parentTypename
-		// Insert into nested maps/lists via references to avoid heap-allocated pairs and lists.
-		std::list<ModelDataDefinition*>& listStatAndCount = mapMapTypeStat[parentTypename][parentName];
-		listStatAndCount.insert(listStatAndCount.end(), cstatOrCounter);
-		//_model->getTraceManager()->traceReport(parentTypename + " -> " + parentName + " -> " + stat->show());
-	}
+	// Reuse a shared grouping routine to keep ownership/lifetime logic identical across reports.
+	GroupedStats mapMapTypeStat = groupStatsByParent(statisticsAndCounters, UtilTypeOfStatisticsCollector, UtilTypeOfCounter);
 	//
 	//
 	// now runs over that map of maps showing the statistics
@@ -158,31 +157,8 @@ void SimulationReporterDefaultImpl1::showSimulationStatistics() {//List<Statisti
 	// runs over all elements and list the statistics for each one, and then the statistics with no parent
 	// COPY the list of statistics and counters into a single new list
 	//std::list<ModelDataDefinition*>* statisticsAndCounters = //new std::list<ModelDataDefinition*>(*(this->_statsCountersSimulation->list()));
-	// Group simulation-level stats and counters in local containers without heap-allocated nodes.
-	std::map<std::string, std::map<std::string, std::list<ModelDataDefinition*> > > mapMapTypeStat;
-
-	for (std::list<ModelDataDefinition*>::iterator it = _statsCountersSimulation->list()->begin(); it != _statsCountersSimulation->list()->end(); it++) {
-		std::string parentName, parentTypename;
-		ModelDataDefinition* statOrCnt = (*it);
-		//std::cout << statOrCnt->getName() << ": " << statOrCnt->getTypename() << std::endl;
-		if ((*it)->getClassname() == UtilTypeOfStatisticsCollector) {
-			StatisticsCollector* stat = dynamic_cast<StatisticsCollector*> (statOrCnt);
-			parentName = stat->getParent()->getName();
-			parentTypename = stat->getParent()->getClassname();
-		} else {
-			if ((*it)->getClassname() == UtilTypeOfCounter) {
-				Counter* cnt = dynamic_cast<Counter*> (statOrCnt);
-				parentName = cnt->getParent()->getName();
-				parentTypename = cnt->getParent()->getClassname();
-
-			}
-		}
-		// look for key=parentTypename
-		// Insert into grouped lists using map references to avoid manual heap lifecycle.
-		std::list<ModelDataDefinition*>& listStat = mapMapTypeStat[parentTypename][parentName];
-		listStat.insert(listStat.end(), statOrCnt);
-		//_model->getTraceManager()->traceReport(parentTypename + " -> " + parentName + " -> " + stat->show());
-	}
+	// Apply the same grouping flow used by replication reports to reduce structural divergence.
+	GroupedStats mapMapTypeStat = groupStatsByParent(*_statsCountersSimulation->list(), UtilTypeOfStatisticsCollector, UtilTypeOfCounter);
 	// now runs over that map of maps showing the statistics
 	//int w = 12;
 	Util::IncIndent();
