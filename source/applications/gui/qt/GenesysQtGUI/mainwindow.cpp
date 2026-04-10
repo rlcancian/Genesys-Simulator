@@ -538,38 +538,43 @@ void MainWindow::_actualizeActions() {
     ui->graphicsView->setEnabled(opened);
     ui->tabWidgetCentral->setEnabled(opened);
     // model
-    ui->menuModel->setEnabled(!running);
-    ui->actionModelNew->setEnabled(!running);
-    ui->actionModelSave->setEnabled(opened && !running);
-    ui->actionModelOpen->setEnabled(!running);
-    ui->actionModelClose->setEnabled(opened && !running);
+    // Keep model lifecycle actions locked while simulation remains active (running or paused).
+    ui->menuModel->setEnabled(!simulationInteractionLocked);
+    ui->actionModelNew->setEnabled(!simulationInteractionLocked);
+    ui->actionModelSave->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionModelOpen->setEnabled(!simulationInteractionLocked);
+    ui->actionModelClose->setEnabled(opened && !simulationInteractionLocked);
     ui->actionModelInformation->setEnabled(opened);
-    ui->actionModelCheck->setEnabled(opened && !running);
+    ui->actionModelCheck->setEnabled(opened && !simulationInteractionLocked);
     //edit
-    ui->toolBarEdit->setEnabled(opened && !running);
-    ui->menuEdit->setEnabled(opened && !running);
+    // Keep structural editing tool surfaces locked while simulation remains active.
+    ui->toolBarEdit->setEnabled(opened && !simulationInteractionLocked);
+    ui->menuEdit->setEnabled(opened && !simulationInteractionLocked);
     // view
-    ui->menuView->setEnabled(opened && !running);
-    ui->toolBarView->setEnabled(opened && !running);
-    ui->toolBarAnimate->setEnabled(opened && !running);
-    ui->toolBarGraphicalModel->setEnabled(opened && !running);
-    ui->toolBarDraw->setEnabled(opened && !running);
+    // Keep scene manipulation and drawing surfaces locked while simulation remains active.
+    ui->menuView->setEnabled(opened && !simulationInteractionLocked);
+    ui->toolBarView->setEnabled(opened && !simulationInteractionLocked);
+    ui->toolBarAnimate->setEnabled(opened && !simulationInteractionLocked);
+    ui->toolBarGraphicalModel->setEnabled(opened && !simulationInteractionLocked);
+    ui->toolBarDraw->setEnabled(opened && !simulationInteractionLocked);
     // simulation
     ui->menuSimulation->setEnabled(opened);
-    ui->actionSimulationConfigure->setEnabled(opened && !running);
-    ui->actionSimulationStart->setEnabled(opened && !running);
-    ui->actionSimulationStep->setEnabled(opened && !running);
+    // Keep simulation structural controls locked while simulation remains active.
+    ui->actionSimulationConfigure->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionSimulationStart->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionSimulationStep->setEnabled(opened && !simulationInteractionLocked);
     ui->actionSimulationStop->setEnabled(opened && (running || paused));
     ui->actionSimulationPause->setEnabled(opened && running);
     ui->actionSimulationResume->setEnabled(opened && paused);
     ui->actionActivateGraphicalSimulation->setEnabled(opened);
-    ui->actionSimulatorsPluginManager->setEnabled(!running);
-    ui->actionSimulatorPreferences->setEnabled(!running);
+    ui->actionSimulatorsPluginManager->setEnabled(!simulationInteractionLocked);
+    ui->actionSimulatorPreferences->setEnabled(!simulationInteractionLocked);
     // Keep plugins tree disabled while simulation interaction is locked.
     ui->treeWidget_Plugins->setEnabled(opened && !simulationInteractionLocked);
 
     // debug
-    ui->tableWidget_Breakpoints->setEnabled(opened && !running);
+    // Keep mutable debug surface locked while simulation remains active.
+    ui->tableWidget_Breakpoints->setEnabled(opened && !simulationInteractionLocked);
     ui->tableWidget_Entities->setEnabled(opened && !running);
     ui->tableWidget_Variables->setEnabled(opened && !running);
 
@@ -578,20 +583,22 @@ void MainWindow::_actualizeActions() {
     ui->treeViewPropertyEditor->setEnabled(opened && !simulationInteractionLocked);
 
     // based on SELECTED GRAPHICAL OBJECTS or on COMMANDS DONE (UNDO/REDO)
-    ui->toolBarArranje->setEnabled(opened && !running);
-    ui->actionEditCopy->setEnabled(canCutCopyDelete && !running);
-    ui->actionEditCut->setEnabled(canCutCopyDelete && !running);
-    ui->actionEditDelete->setEnabled(canCutCopyDelete && !running);
-    ui->actionEditPaste->setEnabled(canPaste && !running);
-    ui->actionGModelShowConnect->setEnabled(opened && canConnect && !running);
-    ui->actionViewGroup->setEnabled(opened && canGroup && !running);
-    ui->actionEditGroup->setEnabled(opened && canGroup && !running);
-    ui->actionViewUngroup->setEnabled(opened && canUngroup && !running);
-    ui->actionEditUngroup->setEnabled(opened && canUngroup && !running);
-    ui->actionEditReplace->setEnabled(opened && !running);
+    // Keep arrangement and structural mutation commands locked while simulation remains active.
+    ui->toolBarArranje->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionEditCopy->setEnabled(canCutCopyDelete && !simulationInteractionLocked);
+    ui->actionEditCut->setEnabled(canCutCopyDelete && !simulationInteractionLocked);
+    ui->actionEditDelete->setEnabled(canCutCopyDelete && !simulationInteractionLocked);
+    ui->actionEditPaste->setEnabled(canPaste && !simulationInteractionLocked);
+    ui->actionGModelShowConnect->setEnabled(opened && canConnect && !simulationInteractionLocked);
+    ui->actionViewGroup->setEnabled(opened && canGroup && !simulationInteractionLocked);
+    ui->actionEditGroup->setEnabled(opened && canGroup && !simulationInteractionLocked);
+    ui->actionViewUngroup->setEnabled(opened && canUngroup && !simulationInteractionLocked);
+    ui->actionEditUngroup->setEnabled(opened && canUngroup && !simulationInteractionLocked);
+    ui->actionEditReplace->setEnabled(opened && !simulationInteractionLocked);
 
     // sliders
-    ui->horizontalSlider_ZoomGraphical->setEnabled(opened && !running);
+    // Keep zoom/edit navigation control locked while simulation remains active.
+    ui->horizontalSlider_ZoomGraphical->setEnabled(opened && !simulationInteractionLocked);
     if (_modelWasOpened && !opened) {
         _clearModelEditors();
     }
@@ -599,7 +606,7 @@ void MainWindow::_actualizeActions() {
     //slider animation speed
     ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused);
 
-    ui->actionSelectAll->setEnabled(opened && !running);
+    ui->actionSelectAll->setEnabled(opened && !simulationInteractionLocked);
 
     _modelWasOpened = opened;
 }
