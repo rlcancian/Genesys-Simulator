@@ -261,9 +261,12 @@ void SimulationEventController::onEntityRemoveHandler(SimulationEvent* re) const
 
 // Preserve entity-move animation pipeline behavior.
 void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
-    // Log move-entity handler entry and graphical simulation toggle state.
+    // Log move-event correlation context before dispatching transition animation.
     qInfo() << "GUI SimulationEvent onMoveEntityEvent begin graphicalSimulationChecked="
-            << (_activateGraphicalSimulation ? _activateGraphicalSimulation->isChecked() : false);
+            << (_activateGraphicalSimulation ? _activateGraphicalSimulation->isChecked() : false)
+            << "eventPtr=" << (re ? re->getCurrentEvent() : nullptr)
+            << "sourceId=" << ((re && re->getCurrentEvent() && re->getCurrentEvent()->getComponent()) ? re->getCurrentEvent()->getComponent()->getId() : 0)
+            << "destinationId=" << ((re && re->getDestinationComponent()) ? re->getDestinationComponent()->getId() : 0);
     _scene->animateCounter();
     _scene->animateVariable();
 
@@ -272,11 +275,12 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
             if (re->getCurrentEvent()->getComponent()) {
                 ModelComponent* source = re->getCurrentEvent()->getComponent();
                 ModelComponent* destination = re->getDestinationComponent();
-                // Log source and destination identifiers before transition dispatch.
+                // Log event and endpoint identifiers used to correlate with scene/animation logs.
                 qInfo() << "GUI SimulationEvent onMoveEntityEvent sourceId="
                         << (source ? source->getId() : 0)
                         << "destinationId="
-                        << (destination ? destination->getId() : 0);
+                        << (destination ? destination->getId() : 0)
+                        << "eventPtr=" << re->getCurrentEvent();
 
                 _scene->animateQueueRemove(source);
 

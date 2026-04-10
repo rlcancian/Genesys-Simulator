@@ -31,8 +31,9 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
 
     // Abort construction when required input pointers are missing.
     if (_myScene == nullptr || graphicalStartComponent == nullptr || graphicalEndComponent == nullptr) {
-        // Log constructor early exit when mandatory input pointers are missing.
+        // Log constructor early exit with transition correlation fields.
         qInfo() << "GUI AnimationTransition ctor earlyExit reason=missingInput sceneNull=" << (_myScene == nullptr)
+                << "transitionPtr=" << this
                 << "sourceNull=" << (graphicalStartComponent == nullptr)
                 << "destinationNull=" << (graphicalEndComponent == nullptr);
         return;
@@ -44,8 +45,9 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
 
     // Stop setup when either graphical endpoint is not present in the scene.
     if (_graphicalStartComponent == nullptr || _graphicalEndComponent == nullptr) {
-        // Log constructor early exit when graphical endpoints are not found in the scene.
+        // Log constructor early exit with endpoint ids for transition correlation.
         qInfo() << "GUI AnimationTransition ctor earlyExit reason=missingGraphicalEndpoint sourceId="
+                << "transitionPtr=" << this
                 << graphicalStartComponent->getId()
                 << "destinationId=" << graphicalEndComponent->getId();
         return;
@@ -71,8 +73,9 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
         if (connection == nullptr) {
             _graphicalEndComponent = nullptr;
             _graphicalConnection = nullptr;
-            // Log constructor early exit when no compatible graphical connection exists.
+            // Log constructor early exit when no graphical connection can be resolved.
             qInfo() << "GUI AnimationTransition ctor earlyExit reason=missingConnection sourceId="
+                    << "transitionPtr=" << this
                     << graphicalStartComponent->getId()
                     << "destinationId=" << graphicalEndComponent->getId();
             return;
@@ -90,8 +93,11 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
         if (pointsConnection.size() < 4) {
             _graphicalEndComponent = nullptr;
             _graphicalConnection = nullptr;
-            // Log constructor early exit when connection geometry has insufficient points.
-            qInfo() << "GUI AnimationTransition ctor earlyExit reason=insufficientPoints count=" << pointsConnection.size();
+            // Log constructor early exit when connection geometry cannot build animation path.
+            qInfo() << "GUI AnimationTransition ctor earlyExit reason=insufficientPoints transitionPtr=" << this
+                    << "sourceId=" << graphicalStartComponent->getId()
+                    << "destinationId=" << graphicalEndComponent->getId()
+                    << "pointsCount=" << pointsConnection.size();
             return;
         }
 
@@ -116,10 +122,12 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
 
         // Configura a animação
         configureAnimation();
-        // Log constructor completion with endpoint ids and runtime data used by the animation.
+        // Log constructor completion with transition pointer and path readiness context.
         qInfo() << "GUI AnimationTransition ctor sourceId=" << graphicalStartComponent->getId()
+                << "transitionPtr=" << this
                 << "destinationId=" << graphicalEndComponent->getId()
-                << "imageCreated=" << (_imageAnimation != nullptr)
+                << "ready=" << isReadyToRun()
+                << "hasImage=" << (_imageAnimation != nullptr)
                 << "pointsCount=" << _pointsForAnimation.size();
     }
 }
@@ -186,8 +194,13 @@ void AnimationTransition::setRunning(bool running) {
 
 // Outros
 void AnimationTransition::startAnimation() {
-    // Log start request readiness and current animation duration before running.
+    // Log start request with transition correlation keys and runtime invariants.
     qInfo() << "GUI AnimationTransition startAnimation ready=" << isReadyToRun()
+            << "transitionPtr=" << this
+            << "sourceId=" << (_graphicalStartComponent ? _graphicalStartComponent->getComponent()->getId() : 0)
+            << "destinationId=" << (_graphicalEndComponent ? _graphicalEndComponent->getComponent()->getId() : 0)
+            << "hasImage=" << (_imageAnimation != nullptr)
+            << "pointsCount=" << _pointsForAnimation.size()
             << "durationMs=" << duration();
     // Block animation start when transition invariants are not fully satisfied.
     if (!isReadyToRun()) {
@@ -207,8 +220,12 @@ void AnimationTransition::startAnimation() {
 }
 
 void AnimationTransition::stopAnimation() {
-    // Log stop request including idempotent path and image ownership status.
+    // Log stop request with transition pointer and endpoint correlation metadata.
     qInfo() << "GUI AnimationTransition stopAnimation idempotent=" << _isStopping
+            << "transitionPtr=" << this
+            << "sourceId=" << (_graphicalStartComponent ? _graphicalStartComponent->getComponent()->getId() : 0)
+            << "destinationId=" << (_graphicalEndComponent ? _graphicalEndComponent->getComponent()->getId() : 0)
+            << "ready=" << isReadyToRun()
             << "hasImage=" << (_imageAnimation != nullptr);
     // Return immediately when stop cleanup is already in progress.
     if (_isStopping) {
@@ -241,8 +258,13 @@ void AnimationTransition::stopAnimation() {
 }
 
 void AnimationTransition::restartAnimation() {
-    // Log restart request readiness and current animation duration before running.
+    // Log restart request with transition correlation keys and runtime invariants.
     qInfo() << "GUI AnimationTransition restartAnimation ready=" << isReadyToRun()
+            << "transitionPtr=" << this
+            << "sourceId=" << (_graphicalStartComponent ? _graphicalStartComponent->getComponent()->getId() : 0)
+            << "destinationId=" << (_graphicalEndComponent ? _graphicalEndComponent->getComponent()->getId() : 0)
+            << "hasImage=" << (_imageAnimation != nullptr)
+            << "pointsCount=" << _pointsForAnimation.size()
             << "durationMs=" << duration();
     // Block animation restart when transition invariants are not fully satisfied.
     if (!isReadyToRun() || duration() <= 0) {
@@ -299,24 +321,31 @@ void AnimationTransition::connectValueChangedSignal() {
 void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
     // Stop and exit immediately when simulation runtime is no longer running.
     if (_running == false) {
-        // Log runtime deviation when animation receives ticks while running flag is false.
-        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=runningFalse";
+        // Log running-flag deviation including transition correlation keys.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=runningFalse"
+                << "transitionPtr=" << this;
         stopAnimation();
         return;
     }
 
     // Pause and exit immediately to avoid running animation logic while paused.
     if (_pause == true) {
-        // Log runtime deviation when animation receives ticks while paused.
-        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=pausedTrue";
+        // Log pause-flag deviation including transition correlation keys.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=pausedTrue"
+                << "transitionPtr=" << this;
         pause();
         return;
     }
 
     // Validate mandatory runtime pointers and geometry before processing interpolation.
     if (_myScene == nullptr || _imageAnimation == nullptr || _pointsForAnimation.size() < 2) {
-        // Log runtime deviation when mandatory animation guards are invalid.
+        // Log invalid runtime guard deviation with full transition context.
         qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=invalidGuards"
+                << "transitionPtr=" << this
+                << "sourceId=" << (_graphicalStartComponent ? _graphicalStartComponent->getComponent()->getId() : 0)
+                << "destinationId=" << (_graphicalEndComponent ? _graphicalEndComponent->getComponent()->getId() : 0)
+                << "ready=" << isReadyToRun()
+                << "hasImage=" << (_imageAnimation != nullptr)
                 << "sceneNull=" << (_myScene == nullptr)
                 << "imageNull=" << (_imageAnimation == nullptr)
                 << "pointsCount=" << _pointsForAnimation.size();
@@ -335,8 +364,12 @@ void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
         totalDistance += QLineF(_pointsForAnimation[i], _pointsForAnimation[i + 1]).length();
     }
     if (totalDistance <= 0.0) {
-        // Log runtime deviation when total path geometry distance is degenerate.
-        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=totalDistanceNonPositive";
+        // Log degenerate path deviation including transition correlation keys.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=totalDistanceNonPositive"
+                << "transitionPtr=" << this
+                << "sourceId=" << (_graphicalStartComponent ? _graphicalStartComponent->getComponent()->getId() : 0)
+                << "destinationId=" << (_graphicalEndComponent ? _graphicalEndComponent->getComponent()->getId() : 0)
+                << "pointsCount=" << _pointsForAnimation.size();
         return;
     }
 
@@ -351,8 +384,9 @@ void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
         ++currentSegment;
     }
     if (currentSegment < 0 || currentSegment >= numSegments) {
-        // Log runtime deviation when current interpolation segment index is invalid.
+        // Log invalid segment-index deviation including transition correlation keys.
         qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=invalidSegmentIndex"
+                << "transitionPtr=" << this
                 << "currentSegment=" << currentSegment
                 << "numSegments=" << numSegments;
         return;
@@ -361,8 +395,9 @@ void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
     // Guard segment interpolation against zero-length segments before dividing.
     qreal segmentLength = QLineF(_pointsForAnimation[currentSegment], _pointsForAnimation[currentSegment + 1]).length();
     if (segmentLength <= 0.0) {
-        // Log runtime deviation when active segment length is non-positive.
-        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=segmentLengthNonPositive";
+        // Log zero-length segment deviation including transition correlation keys.
+        qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=segmentLengthNonPositive"
+                << "transitionPtr=" << this;
         return;
     }
 
@@ -382,8 +417,14 @@ void AnimationTransition::connectFinishedSignal() {
 }
 
 void AnimationTransition::onAnimationFinished() {
-    // Log finished callback entry and whether this callback was already processed.
+    // Log finished callback entry with transition correlation context.
     qInfo() << "GUI AnimationTransition onAnimationFinished begin alreadyHandled=" << _isFinishedHandled;
+    qInfo() << "GUI AnimationTransition onAnimationFinished context transitionPtr=" << this
+            << "sourceId=" << (_graphicalStartComponent ? _graphicalStartComponent->getComponent()->getId() : 0)
+            << "destinationId=" << (_graphicalEndComponent ? _graphicalEndComponent->getComponent()->getId() : 0)
+            << "ready=" << isReadyToRun()
+            << "hasImage=" << (_imageAnimation != nullptr)
+            << "pointsCount=" << _pointsForAnimation.size();
     // Return when finished callback cleanup already ran before.
     if (_isFinishedHandled) {
         return;
