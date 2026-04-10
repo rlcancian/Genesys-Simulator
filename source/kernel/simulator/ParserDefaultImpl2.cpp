@@ -18,7 +18,7 @@
 
 // Construct parser wrapper in-place to avoid copying partially initialized driver state.
 ParserDefaultImpl2::ParserDefaultImpl2(Model* model, Sampler_if* sampler, bool throws)
-	: _model(model), _wrapper(model, sampler, throws), _ownsSampler(true) {}
+	: _model(model), _wrapper(model, sampler, throws), _ownsSampler(sampler != nullptr) {}
 
 // Delete sampler only when parser explicitly owns it.
 ParserDefaultImpl2::~ParserDefaultImpl2() {
@@ -31,6 +31,10 @@ ParserDefaultImpl2::~ParserDefaultImpl2() {
 
 void ParserDefaultImpl2::_setSamplerInternal(Sampler_if* sampler, bool ownsSampler) {
 	Sampler_if* currentSampler = _wrapper.getSampler();
+	if (currentSampler == sampler) {
+		_ownsSampler = _ownsSampler || ownsSampler;
+		return;
+	}
 	if (_ownsSampler && currentSampler != nullptr && currentSampler != sampler) {
 		delete currentSampler;
 	}
