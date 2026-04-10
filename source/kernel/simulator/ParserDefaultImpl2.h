@@ -35,8 +35,11 @@ public:
 	virtual Sampler_if* getSampler() const override;
 	virtual genesyspp_driver getParser() const override;
 private:
+	void _setSamplerInternal(Sampler_if* sampler, bool ownsSampler);
+private:
 	Model* _model;
 	genesyspp_driver _wrapper;
+	bool _ownsSampler = false;
 };
 //namespace\\}
 #endif /* PARSERDEFAULTIMPL2_H */

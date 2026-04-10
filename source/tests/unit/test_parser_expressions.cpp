@@ -3,6 +3,7 @@
 
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ParserDefaultImpl2.h"
 #include "kernel/statistics/SamplerDefaultImpl1.h"
 #include "parser/Genesys++-driver.h"
 
@@ -224,4 +225,63 @@ TEST(ParserDriverThrowsFalseTest, ProbabilisticFunctionsRecoverWithoutThrowing) 
         EXPECT_FALSE(message.empty());
         EXPECT_NE(message.find("logn"), std::string::npos);
     });
+}
+
+
+class CountingSampler final : public Sampler_if {
+public:
+    explicit CountingSampler(int* destroyedCounter, bool* destroyedFlag = nullptr)
+        : _destroyedCounter(destroyedCounter), _destroyedFlag(destroyedFlag) {}
+
+    ~CountingSampler() override {
+        if (_destroyedCounter != nullptr) {
+            ++(*_destroyedCounter);
+        }
+        if (_destroyedFlag != nullptr) {
+            *_destroyedFlag = true;
+        }
+    }
+
+    double random() override { return 0.5; }
+    double sampleBeta(double, double, double infLimit, double) override { return infLimit; }
+    double sampleBeta(double, double) override { return 0.5; }
+    double sampleErlang(double, int, double offset = 0.0) override { return offset; }
+    double sampleExponential(double, double offset = 0.0) override { return offset; }
+    double sampleGamma(double, double, double offset = 0.0) override { return offset; }
+    double sampleGumbell(double mode, double) override { return mode; }
+    double sampleLogNormal(double, double, double offset = 0.0) override { return offset; }
+    double sampleNormal(double mean, double) override { return mean; }
+    double sampleTriangular(double min, double, double) override { return min; }
+    double sampleUniform(double min, double) override { return min; }
+    double sampleWeibull(double, double) override { return 0.0; }
+    double sampleBinomial(int, double) override { return 0.0; }
+    double sampleBernoulli(double) override { return 0.0; }
+    double sampleDiscrete(double, double, ...) override { return 0.0; }
+    double sampleDiscrete(double*, double*, int) override { return 0.0; }
+    double sampleGeometric(double) override { return 0.0; }
+    void setRNGparameters(RNG_Parameters*) override {}
+    RNG_Parameters* getRNGparameters() const override { return nullptr; }
+
+private:
+    int* _destroyedCounter = nullptr;
+    bool* _destroyedFlag = nullptr;
+};
+
+TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerDeletesPreviousOwnedSamplerAndDoesNotDeleteExternalSampler) {
+    int destroyedCounter = 0;
+    bool externalDestroyed = false;
+
+    auto* initiallyOwnedSampler = new CountingSampler(&destroyedCounter);
+    CountingSampler externalSampler(&destroyedCounter, &externalDestroyed);
+
+    {
+        ParserDefaultImpl2 parser(model, initiallyOwnedSampler, false);
+        parser.setSampler(&externalSampler);
+        EXPECT_EQ(parser.getSampler(), &externalSampler);
+        EXPECT_EQ(destroyedCounter, 1);
+        EXPECT_FALSE(externalDestroyed);
+    }
+
+    EXPECT_FALSE(externalDestroyed);
+    EXPECT_EQ(destroyedCounter, 1);
 }
