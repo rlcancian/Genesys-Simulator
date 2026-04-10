@@ -206,6 +206,62 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
         };
     }
 
+    if (request.path == "/api/v1/simulation/run") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/simulation/run");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.runSimulation(token);
+        if (!result.success) {
+            if (result.invalidToken) {
+                return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+            }
+            if (result.missingCurrentModel) {
+                return _jsonError(409, "NO_CURRENT_MODEL", "No current model available to run simulation");
+            }
+            return _jsonError(500, "INTERNAL_ERROR", "Unable to run simulation");
+        }
+
+        return HttpResponse{
+            200,
+            "application/json",
+            "{\"ok\":true,\"data\":" + _simulationStatusDataJson(result.status) + "}"
+        };
+    }
+
+    if (request.path == "/api/v1/simulation/step") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/simulation/step");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.stepSimulation(token);
+        if (!result.success) {
+            if (result.invalidToken) {
+                return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+            }
+            if (result.missingCurrentModel) {
+                return _jsonError(409, "NO_CURRENT_MODEL", "No current model available to step simulation");
+            }
+            return _jsonError(500, "INTERNAL_ERROR", "Unable to step simulation");
+        }
+
+        return HttpResponse{
+            200,
+            "application/json",
+            "{\"ok\":true,\"data\":" + _simulationStatusDataJson(result.status) + "}"
+        };
+    }
+
     return _jsonError(404, "NOT_FOUND", "Route not found");
 }
 

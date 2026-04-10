@@ -172,6 +172,76 @@ SimulatorSessionService::SimulationConfigResult SimulatorSessionService::configu
     return result;
 }
 
+SimulatorSessionService::SimulationActionResult SimulatorSessionService::runSimulation(const std::string& accessToken) {
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return SimulationActionResult{false, true, false, SimulationStatusResult{}};
+    }
+
+    std::scoped_lock lock(session->mutex);
+    ModelManager* modelManager = session->simulator->getModelManager();
+    if (modelManager == nullptr) {
+        return SimulationActionResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    Model* model = modelManager->current();
+    if (model == nullptr) {
+        return SimulationActionResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    ModelSimulation* simulation = model->getSimulation();
+    if (simulation == nullptr) {
+        return SimulationActionResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    try {
+        simulation->start();
+    } catch (...) {
+        return SimulationActionResult{false, false, false, SimulationStatusResult{}};
+    }
+
+    SimulationActionResult result{};
+    result.success = true;
+    result.status.success = true;
+    _populateSimulationStatusFromModel(model, result.status);
+    return result;
+}
+
+SimulatorSessionService::SimulationActionResult SimulatorSessionService::stepSimulation(const std::string& accessToken) {
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return SimulationActionResult{false, true, false, SimulationStatusResult{}};
+    }
+
+    std::scoped_lock lock(session->mutex);
+    ModelManager* modelManager = session->simulator->getModelManager();
+    if (modelManager == nullptr) {
+        return SimulationActionResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    Model* model = modelManager->current();
+    if (model == nullptr) {
+        return SimulationActionResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    ModelSimulation* simulation = model->getSimulation();
+    if (simulation == nullptr) {
+        return SimulationActionResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    try {
+        simulation->step();
+    } catch (...) {
+        return SimulationActionResult{false, false, false, SimulationStatusResult{}};
+    }
+
+    SimulationActionResult result{};
+    result.success = true;
+    result.status.success = true;
+    _populateSimulationStatusFromModel(model, result.status);
+    return result;
+}
+
 SimulatorSessionService::ModelPersistenceResult SimulatorSessionService::saveCurrentModel(
     const std::string& accessToken,
     const std::string& filename

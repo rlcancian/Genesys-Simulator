@@ -80,6 +80,13 @@ public:
         SimulationStatusResult status;
     };
 
+    struct SimulationActionResult {
+        bool success = false;
+        bool invalidToken = false;
+        bool missingCurrentModel = false;
+        SimulationStatusResult status;
+    };
+
     explicit SimulatorSessionService(SessionManager& sessionManager);
 
     CreateSessionResult createSession();
@@ -88,6 +95,8 @@ public:
     bool tryGetCurrentModelInfo(const std::string& accessToken, ModelInfoResult& outInfo);
     SimulationStatusResult getSimulationStatus(const std::string& accessToken);
     SimulationConfigResult configureSimulation(const std::string& accessToken, const SimulationConfigInput& input);
+    SimulationActionResult runSimulation(const std::string& accessToken);
+    SimulationActionResult stepSimulation(const std::string& accessToken);
     ModelPersistenceResult saveCurrentModel(const std::string& accessToken, const std::string& filename);
     ModelPersistenceResult loadModel(const std::string& accessToken, const std::string& filename);
 
