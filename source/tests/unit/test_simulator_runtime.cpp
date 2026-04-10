@@ -6,6 +6,7 @@
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/Entity.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "plugins/data/Queue.h"
 
 namespace {
 struct SimulationStartObserver {
@@ -45,6 +46,7 @@ public:
 
 static unsigned int g_countingControlProbeDestructorCount = 0;
 static unsigned int g_countingChildProbeDestructorCount = 0;
+static unsigned int g_countingWaitingProbeDestructorCount = 0;
 
 // Tracks owned-property deletion through ModelDataDefinition teardown.
 class CountingSimulationControlProbe : public SimulationControl {
@@ -93,6 +95,25 @@ public:
 
     ~CountingChildDataDefinitionProbe() override {
         ++g_countingChildProbeDestructorCount;
+    }
+};
+
+class QueueLifecycleProbe : public Queue {
+public:
+    QueueLifecycleProbe(Model* model, const std::string& name = "") : Queue(model, name) {}
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class CountingWaitingProbe final : public Waiting {
+public:
+    CountingWaitingProbe(Entity* entity, double timeStartedWaiting, ModelComponent* thisComponent, unsigned int thisComponentOutputPort = 0)
+        : Waiting(entity, timeStartedWaiting, thisComponent, thisComponentOutputPort) {}
+
+    ~CountingWaitingProbe() override {
+        ++g_countingWaitingProbeDestructorCount;
     }
 };
 }
@@ -387,4 +408,79 @@ TEST(SimulatorRuntimeTest, ModelDataDefinitionDestructorRemovesOwnedPropertyAlso
     EXPECT_EQ(model->getControls()->size(), controlsBefore);
     EXPECT_EQ(model->getResponses()->size(), responsesBefore);
     EXPECT_EQ(g_countingControlProbeDestructorCount, 1u);
+}
+
+TEST(SimulatorRuntimeTest, QueueFirstOnEmptyQueueReturnsNullptr) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "QueueEmpty");
+    queue.setReportStatistics(false);
+
+    EXPECT_EQ(queue.first(), nullptr);
+    EXPECT_EQ(queue.size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, QueueRemoveElementDeletesOwnedWaiting) {
+    g_countingWaitingProbeDestructorCount = 0;
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "QueueRemove");
+    queue.setReportStatistics(false);
+    Entity* entity = model->createEntity("QueueRemoveEntity", true);
+    ASSERT_NE(entity, nullptr);
+
+    auto* waiting = new CountingWaitingProbe(entity, 0.0, nullptr);
+    queue.insertElement(waiting);
+    queue.removeElement(waiting);
+
+    EXPECT_EQ(queue.size(), 0u);
+    EXPECT_EQ(g_countingWaitingProbeDestructorCount, 1u);
+}
+
+TEST(SimulatorRuntimeTest, QueueInitBetweenReplicationsDeletesOwnedWaiting) {
+    g_countingWaitingProbeDestructorCount = 0;
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    QueueLifecycleProbe queue(model, "QueueInit");
+    queue.setReportStatistics(false);
+    Entity* entityA = model->createEntity("QueueInitEntityA", true);
+    Entity* entityB = model->createEntity("QueueInitEntityB", true);
+    ASSERT_NE(entityA, nullptr);
+    ASSERT_NE(entityB, nullptr);
+
+    queue.insertElement(new CountingWaitingProbe(entityA, 0.0, nullptr));
+    queue.insertElement(new CountingWaitingProbe(entityB, 0.0, nullptr));
+    queue.InitBetweenReplicationsProbe();
+
+    EXPECT_EQ(queue.size(), 0u);
+    EXPECT_EQ(g_countingWaitingProbeDestructorCount, 2u);
+}
+
+TEST(SimulatorRuntimeTest, QueueDestructorDeletesRemainingOwnedWaiting) {
+    g_countingWaitingProbeDestructorCount = 0;
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Entity* entityA = model->createEntity("QueueDestructorEntityA", true);
+    Entity* entityB = model->createEntity("QueueDestructorEntityB", true);
+    ASSERT_NE(entityA, nullptr);
+    ASSERT_NE(entityB, nullptr);
+
+    auto* queue = new Queue(model, "QueueDestructor");
+    queue->setReportStatistics(false);
+    queue->insertElement(new CountingWaitingProbe(entityA, 0.0, nullptr));
+    queue->insertElement(new CountingWaitingProbe(entityB, 0.0, nullptr));
+    delete queue;
+
+    EXPECT_EQ(g_countingWaitingProbeDestructorCount, 2u);
 }

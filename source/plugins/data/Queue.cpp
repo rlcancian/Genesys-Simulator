@@ -62,6 +62,11 @@ Queue::Queue(Model* model, std::string name) : ModelDataDefinition(model, Util::
 }
 
 Queue::~Queue() {
+	for (Waiting* waiting : *_list->list()) {
+		delete waiting;
+	}
+	_list->clear();
+	delete _list;
 	//_parentModel->elements()->remove(Util::TypeOf<StatisticsCollector>(), _cstatNumberInQueue);
 	//_parentModel->elements()->remove(Util::TypeOf<StatisticsCollector>(), _cstatTimeInQueue);
 }
@@ -82,6 +87,9 @@ void Queue::insertElement(Waiting* modeldatum) {
 }
 
 void Queue::removeElement(Waiting* modeldatum) {
+	if (modeldatum == nullptr) {
+		return;
+	}
 	if (_reportStatistics) {
 		double tnow = _parentModel->getSimulation()->getSimulatedTime();
 		double duration = tnow - _lastTimeNumberInQueueChanged;
@@ -91,9 +99,13 @@ void Queue::removeElement(Waiting* modeldatum) {
 		this->_cstatTimeInQueue->getStatistics()->getCollector()->addValue(timeInQueue);
 	}
 	_list->remove(modeldatum);
+	delete modeldatum;
 }
 
 void Queue::_initBetweenReplications() {
+	for (Waiting* waiting : *_list->list()) {
+		delete waiting;
+	}
 	this->_list->clear();
 	_lastTimeNumberInQueueChanged = 0.0;
 }
@@ -103,6 +115,9 @@ unsigned int Queue::size() {
 }
 
 Waiting* Queue::first() {
+	if (_list->size() == 0) {
+		return nullptr;
+	}
 	return _list->front();
 }
 
