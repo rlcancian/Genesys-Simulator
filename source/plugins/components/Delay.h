@@ -82,9 +82,9 @@ private:
 	Util::TimeUnit _delayTimeUnit = DEFAULT.delayTimeUnit;
 	Util::AllocationType _allocation = DEFAULT.allocation;
 private: // inner internal elements
+	friend class DelayProbe;
 	StatisticsCollector* _cstatWaitTime = nullptr;
 };
 //enable_this_owner(Delay, DelayExpression);
 
 #endif /* DELAY_H */
-
