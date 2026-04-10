@@ -81,6 +81,8 @@ public:
 	void setGroupedEntityType(EntityType* groupedEntityType);
 	void setGroupedEntityTypeName(std::string groupedEntityTypeName);
 	EntityType* getGroupedEntityType() const;
+	void setBatchType(Batch::BatchType batchType);
+	Batch::BatchType getBatchType() const;
 	void setAttributeName(std::string attributeName);
 	std::string getAttributeName() const;
 	void setBatchSize(std::string batchSize);
@@ -122,4 +124,3 @@ private: // attributes 1:n
 
 
 #endif /* BATCH_H */
-
