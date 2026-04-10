@@ -118,8 +118,12 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 	if (n < 2 || prop < 0.0 || prop > 1.0) {
 		throw std::invalid_argument("proportionConfidenceInterval requires n >= 2 and 0 <= prop <= 1");
 	}
-	double correctConf = (1.0 - confidenceLevel) / 2.0;
-	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n - 1);
+	validateConfidenceLevel(confidenceLevel);
+	// Use the large-sample normal approximation for one-population proportion CI;
+	// keep the previous t-Student quantile expression commented for historical/technical traceability.
+	const double alpha = 1.0 - confidenceLevel;
+	const double critic = ProbabilityDistribution::inverseNormal(1.0 - alpha / 2.0, 0.0, 1.0);
+	// const double critic = -ProbabilityDistribution::inverseTStudent((1.0 - confidenceLevel) / 2.0, 0.0, 1.0, n - 1);
 	double e0 = critic * sqrt(prop * (1 - prop) / n);
 	return HypothesisTester_if::ConfidenceInterval(prop - e0, prop + e0, e0);
 }
@@ -128,9 +132,13 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 	if (N <= 1 || n < 2 || n > static_cast<unsigned int> (N) || prop < 0.0 || prop > 1.0) {
 		throw std::invalid_argument("proportionConfidenceInterval(population) requires N > 1, 2 <= n <= N and 0 <= prop <= 1");
 	}
-	double correctConf = (1.0 - confidenceLevel) / 2.0;
-	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n - 1);
-	double e0 = critic * sqrt(prop * (1 - prop) / n) * sqrt((N - n) / (N - 1));
+	validateConfidenceLevel(confidenceLevel);
+	// Use the finite-population proportion CI with normal approximation + finite-population correction;
+	// keep the previous t-Student quantile expression commented for historical/technical traceability.
+	const double alpha = 1.0 - confidenceLevel;
+	const double critic = ProbabilityDistribution::inverseNormal(1.0 - alpha / 2.0, 0.0, 1.0);
+	// const double critic = -ProbabilityDistribution::inverseTStudent((1.0 - confidenceLevel) / 2.0, 0.0, 1.0, n - 1);
+	double e0 = critic * sqrt(prop * (1 - prop) / n) * sqrt((static_cast<double> (N) - n) / (static_cast<double> (N) - 1.0));
 	return HypothesisTester_if::ConfidenceInterval(prop - e0, prop + e0, e0);
 }
 
