@@ -57,6 +57,14 @@ public:
                resource._counterTotalCostBusy != nullptr &&
                resource._counterTotalCostIdle != nullptr;
     }
+
+    static bool HasFailure(const Resource& resource, const Failure* failure) {
+        return std::find(resource._failures->list()->begin(), resource._failures->list()->end(), failure) != resource._failures->list()->end();
+    }
+
+    static size_t FailureCount(const Resource& resource) {
+        return resource._failures->size();
+    }
 };
 
 namespace {
@@ -250,6 +258,23 @@ public:
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
+    }
+};
+
+class FailureProbe : public Failure {
+public:
+    FailureProbe(Model* model, const std::string& name = "") : Failure(model, name) {}
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
     }
 };
 
@@ -1289,6 +1314,109 @@ TEST(SimulatorRuntimeTest, ResourceDestructorCleansOwnedHandlersContainers) {
     }
 
     EXPECT_TRUE(weakCapture.expired());
+}
+
+TEST(SimulatorRuntimeTest, FailureDestructorReleasesOwnedContainersAndDetachesResources) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ResourceProbe resourceA(model, "FailureLifecycleResourceA");
+    ResourceProbe resourceB(model, "FailureLifecycleResourceB");
+
+    auto* failure = new FailureProbe(model, "FailureLifecycle");
+    failure->addResource(&resourceA);
+    failure->addResource(&resourceB);
+
+    ASSERT_TRUE(ResourceTestProbe::HasFailure(resourceA, failure));
+    ASSERT_TRUE(ResourceTestProbe::HasFailure(resourceB, failure));
+    ASSERT_EQ(ResourceTestProbe::FailureCount(resourceA), 1u);
+    ASSERT_EQ(ResourceTestProbe::FailureCount(resourceB), 1u);
+
+    delete failure;
+
+    EXPECT_EQ(ResourceTestProbe::FailureCount(resourceA), 0u);
+    EXPECT_EQ(ResourceTestProbe::FailureCount(resourceB), 0u);
+}
+
+TEST(SimulatorRuntimeTest, FailureAddResourceMaintainsBidirectionalAssociationWithoutDuplicates) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FailureProbe failure(model, "FailureBidirectionalAdd");
+    ResourceProbe resource(model, "FailureBidirectionalAddResource");
+
+    failure.addResource(&resource);
+    failure.addResource(&resource); // duplicate attempt
+
+    EXPECT_EQ(failure.falingResources()->size(), 1u);
+    EXPECT_EQ(failure.falingResources()->getAtRank(0), &resource);
+    EXPECT_TRUE(ResourceTestProbe::HasFailure(resource, &failure));
+    EXPECT_EQ(ResourceTestProbe::FailureCount(resource), 1u);
+}
+
+TEST(SimulatorRuntimeTest, FailureRemoveResourceMaintainsBidirectionalAssociation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FailureProbe failure(model, "FailureBidirectionalRemove");
+    ResourceProbe resource(model, "FailureBidirectionalRemoveResource");
+    failure.addResource(&resource);
+    ASSERT_EQ(failure.falingResources()->size(), 1u);
+    ASSERT_TRUE(ResourceTestProbe::HasFailure(resource, &failure));
+
+    failure.removeResource(&resource);
+
+    EXPECT_EQ(failure.falingResources()->size(), 0u);
+    EXPECT_EQ(ResourceTestProbe::FailureCount(resource), 0u);
+    EXPECT_FALSE(ResourceTestProbe::HasFailure(resource, &failure));
+}
+
+TEST(SimulatorRuntimeTest, FailureSaveAndLoadPreservesFalingResourcesBidirectionally) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ResourceProbe resourceA(model, "FailurePersistResourceA");
+    ResourceProbe resourceB(model, "FailurePersistResourceB");
+    FailureProbe source(model, "FailurePersistSource");
+    source.addResource(&resourceA);
+    source.addResource(&resourceB);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    FailureProbe loaded(model, "FailurePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.falingResources()->size(), 2u);
+    EXPECT_TRUE(std::find(loaded.falingResources()->list()->begin(), loaded.falingResources()->list()->end(), &resourceA) != loaded.falingResources()->list()->end());
+    EXPECT_TRUE(std::find(loaded.falingResources()->list()->begin(), loaded.falingResources()->list()->end(), &resourceB) != loaded.falingResources()->list()->end());
+    EXPECT_TRUE(ResourceTestProbe::HasFailure(resourceA, &loaded));
+    EXPECT_TRUE(ResourceTestProbe::HasFailure(resourceB, &loaded));
+}
+
+TEST(SimulatorRuntimeTest, FailureInitBetweenReplicationsSchedulesByFalingResourcesList) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FailureProbe failure(model, "FailureInitSchedule");
+    ResourceProbe resourceA(model, "FailureInitResourceA");
+    ResourceProbe resourceB(model, "FailureInitResourceB");
+    failure.setFailureType(Failure::FailureType::TIME);
+    failure.setUpTimeExpression("1");
+    failure.setDownTimeExpression("1");
+    failure.addResource(&resourceA);
+    failure.addResource(&resourceB);
+
+    const unsigned int eventsBefore = model->getFutureEvents()->size();
+    failure.InitBetweenReplicationsProbe();
+    const unsigned int eventsAfter = model->getFutureEvents()->size();
+
+    EXPECT_EQ(eventsAfter - eventsBefore, 2u);
 }
 
 TEST(SimulatorRuntimeTest, SequenceDestructorDeletesOwnedSteps) {
