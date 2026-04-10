@@ -21,7 +21,12 @@
 #include "plugins/data/SignalData.h"
 #include "plugins/data/Station.h"
 #include "plugins/components/Delay.h"
+#define private public
+#define protected public
 #include "plugins/components/Wait.h"
+#include "plugins/components/Signal.h"
+#undef protected
+#undef private
 
 class DelayProbe : public Delay {
 public:
@@ -283,8 +288,63 @@ class WaitProbe : public Wait {
 public:
     WaitProbe(Model* model, const std::string& name = "") : Wait(model, name) {}
 
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
+    }
+
+    void EnqueueEntityProbe(Entity* entity, ModelComponent* sourceComponent, double timeStartedWaiting = 0.0) {
+        getQueue()->insertElement(new Waiting(entity, timeStartedWaiting, sourceComponent));
+    }
+
+    bool IsScanConditionHandlerRegisteredProbe() const {
+        return _isScanConditionHandlerRegistered;
+    }
+
+    unsigned int CountReleasesWithCurrentBoundaryProbe(unsigned int queuedEntities, unsigned int globalSignalLimit, unsigned int localWaitLimit) const {
+        unsigned int freed = 0;
+        while (queuedEntities > 0 && globalSignalLimit > 0 && freed < localWaitLimit) {
+            --queuedEntities;
+            --globalSignalLimit;
+            ++freed;
+        }
+        return freed;
+    }
+};
+
+class SignalProbe : public Signal {
+public:
+    SignalProbe(Model* model, const std::string& name = "") : Signal(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    SignalData* SignalDataPtrProbe() const {
+        return _signalData;
     }
 };
 
@@ -1985,6 +2045,95 @@ TEST(SimulatorRuntimeTest, WaitRecheckUpdatesSignalDataHandlersWhenSignalChanges
     wait.setWaitType(Wait::WaitType::InfiniteHold);
     wait.CreateInternalAndAttachedDataProbe();
     EXPECT_FALSE(signalB.hasSignalDataEventHandler(&wait));
+}
+
+TEST(SimulatorRuntimeTest, WaitAndSignalPersistenceRoundTripPreservesSharedSignalDataReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe sharedSignalData(model, "SharedSignalData");
+    WaitProbe sourceWait(model, "WaitPersistSource");
+    sourceWait.setWaitType(Wait::WaitType::WaitForSignal);
+    sourceWait.setSignalData(&sharedSignalData);
+
+    SignalProbe sourceSignal(model, "SignalPersistSource");
+    sourceSignal.setSignalData(&sharedSignalData);
+    sourceSignal.setLimitExpression("2");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord waitFields(persistence);
+    PersistenceRecord signalFields(persistence);
+    sourceWait.SaveInstanceProbe(&waitFields, true);
+    sourceSignal.SaveInstanceProbe(&signalFields, true);
+
+    WaitProbe loadedWait(model, "WaitPersistLoaded");
+    SignalProbe loadedSignal(model, "SignalPersistLoaded");
+    ASSERT_TRUE(loadedWait.LoadInstanceProbe(&waitFields));
+    ASSERT_TRUE(loadedSignal.LoadInstanceProbe(&signalFields));
+
+    ASSERT_NE(loadedWait._signalData, nullptr);
+    ASSERT_NE(loadedSignal.SignalDataPtrProbe(), nullptr);
+    EXPECT_EQ(loadedWait._signalData, &sharedSignalData);
+    EXPECT_EQ(loadedSignal.SignalDataPtrProbe(), &sharedSignalData);
+    EXPECT_EQ(loadedWait._signalData, loadedSignal.SignalDataPtrProbe());
+}
+
+TEST(SimulatorRuntimeTest, SignalCheckRequiresSignalDataAndValidLimitExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signalData(model, "SignalCheckData");
+    SignalProbe signal(model, "SignalCheckProbe");
+
+    signal.setLimitExpression("1");
+    std::string noSignalDataError;
+    EXPECT_FALSE(signal.CheckProbe(noSignalDataError));
+    EXPECT_NE(noSignalDataError.find("SignalData is null"), std::string::npos);
+
+    signal.setSignalData(&signalData);
+    std::string validError;
+    EXPECT_TRUE(signal.CheckProbe(validError));
+    EXPECT_TRUE(validError.empty());
+
+    signal.setLimitExpression("invalid +");
+    std::string invalidExpressionError;
+    EXPECT_FALSE(signal.CheckProbe(invalidExpressionError));
+    EXPECT_NE(invalidExpressionError.find("LimitExpression"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, WaitSignalHandlerRespectsLocalLimitWithoutOffByOne) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WaitProbe wait(model, "WaitSignalLimit");
+    EXPECT_EQ(wait.CountReleasesWithCurrentBoundaryProbe(4u, 10u, 3u), 3u);
+    EXPECT_EQ(wait.CountReleasesWithCurrentBoundaryProbe(4u, 2u, 3u), 2u);
+    EXPECT_EQ(wait.CountReleasesWithCurrentBoundaryProbe(2u, 10u, 3u), 2u);
+}
+
+TEST(SimulatorRuntimeTest, WaitScanForConditionRecheckDoesNotReRegisterHandlerFlag) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WaitProbe wait(model, "WaitScanRecheck");
+    Queue queue(model, "WaitScanQueue");
+    wait.setWaitType(Wait::WaitType::ScanForCondition);
+    wait.setCondition("1");
+    wait.setQueue(&queue);
+
+    std::string firstCheckError;
+    EXPECT_TRUE(wait.CheckProbe(firstCheckError));
+    EXPECT_TRUE(firstCheckError.empty());
+    EXPECT_TRUE(wait.IsScanConditionHandlerRegisteredProbe());
+
+    std::string secondCheckError;
+    EXPECT_TRUE(wait.CheckProbe(secondCheckError));
+    EXPECT_TRUE(secondCheckError.empty());
+    EXPECT_TRUE(wait.IsScanConditionHandlerRegisteredProbe());
 }
 
 TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {
