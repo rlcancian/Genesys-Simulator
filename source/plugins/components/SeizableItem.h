@@ -68,7 +68,9 @@ public:
 	void setLastPreferedOrder(unsigned int lastPreferedOrder);
 	unsigned int getLastPreferedOrder() const;
 	//void setComponentManager(ComponentManager* _componentManager);
+	List<PropertyBase*>* getSimulationControls() const;
     List<PropertyBase*>* getProperties() const;
+	void _addSimulationControl(PropertyBase* control);
     void _addProperty(PropertyBase* property);
 
 	std::string getTypeDC() {return _typeDC;};
@@ -94,8 +96,7 @@ private:
 	std::string _typeDC = Util::TypeOf<Resource>();
 private:
 	ModelDataManager* _modeldataManager;
-    List<PropertyBase*>* _properties = new List<PropertyBase*>();
+	List<PropertyBase*>* _simulationControls = new List<PropertyBase*>();
 };
 
 #endif /* SEIZABLEITEM_H */
-

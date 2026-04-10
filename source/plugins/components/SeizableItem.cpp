@@ -104,16 +104,16 @@ SeizableItem::SeizableItem(Model* model, std::string resourceName, std::string q
     model->getControls()->insert(propLastMemberSeized);
     model->getControls()->insert(propLastPreferedOrder);
 
-    // setting properties
-    _addProperty(propIndex);
-    _addProperty(propRule);
-    _addProperty(propType);
-    _addProperty(propSaveAttribute);
-    _addProperty(propQuantityExpression);
-    _addProperty(propResource);
-    _addProperty(propSet);
-    _addProperty(propLastMemberSeized);
-    _addProperty(propLastPreferedOrder);
+    // Register editable controls.
+    _addSimulationControl(propIndex);
+    _addSimulationControl(propRule);
+    _addSimulationControl(propType);
+    _addSimulationControl(propSaveAttribute);
+    _addSimulationControl(propQuantityExpression);
+    _addSimulationControl(propResource);
+    _addSimulationControl(propSet);
+    _addSimulationControl(propLastMemberSeized);
+    _addSimulationControl(propLastPreferedOrder);
 
     SeizableItem(resource, quantityExpression, selectionRule, saveAttribute, index);
 }
@@ -212,12 +212,22 @@ std::string SeizableItem::show() {
     return "resourceType=" + std::to_string(static_cast<int> (_seizableType)) + ",resource=\"" + _resourceOrSet->getName() + "\",quantityExpression=\"" + _quantityExpression + "\", selectionRule=" + std::to_string(static_cast<int> (_selectionRule)) + ", _saveAttribute=\"" + _saveAttribute + "\",index=\"" + _index + "\"";
 }
 
+void SeizableItem::_addSimulationControl(PropertyBase* control) {
+    _simulationControls->insert(control);
+}
+
 void SeizableItem::_addProperty(PropertyBase* property) {
-    _properties->insert(property);
+    // Legacy compatibility wrapper.
+    _addSimulationControl(property);
+}
+
+List<PropertyBase*>* SeizableItem::getSimulationControls() const {
+    return _simulationControls;
 }
 
 List<PropertyBase*>* SeizableItem::getProperties() const {
-    return _properties;
+    // Legacy compatibility wrapper.
+    return getSimulationControls();
 }
 
 void SeizableItem::setIndex(std::string index) {

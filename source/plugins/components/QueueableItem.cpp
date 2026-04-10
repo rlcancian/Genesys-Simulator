@@ -69,11 +69,11 @@ QueueableItem::QueueableItem(Model* model, std::string queueName = "") {
 	model->getControls()->insert(propSet);
 	model->getControls()->insert(propType);
 
-    // setting properties
-    _addProperty(propIndex);
-	_addProperty(propQueue);
-	_addProperty(propSet);
-	_addProperty(propType);
+    // Register editable controls.
+    _addSimulationControl(propIndex);
+	_addSimulationControl(propQueue);
+	_addSimulationControl(propSet);
+	_addSimulationControl(propType);
 }
 
 bool QueueableItem::loadInstance(PersistenceRecord *fields) {
@@ -114,12 +114,22 @@ std::string QueueableItem::show() {
 	return "queueType=" + std::to_string(static_cast<int> (_queueableType)) + ",queue=\"" + (_queueOrSet != nullptr ? _queueOrSet->getName() : "") + "\",index=\"" + _index + "\"";
 }
 
+void QueueableItem::_addSimulationControl(PropertyBase* control) {
+	_simulationControls->insert(control);
+}
+
 void QueueableItem::_addProperty(PropertyBase* property) {
-    _properties->insert(property);
+	// Legacy compatibility wrapper.
+	_addSimulationControl(property);
+}
+
+List<PropertyBase*>* QueueableItem::getSimulationControls() const {
+	return _simulationControls;
 }
 
 List<PropertyBase*>* QueueableItem::getProperties() const {
-    return _properties;
+	// Legacy compatibility wrapper.
+	return getSimulationControls();
 }
 
 void QueueableItem::setIndex(std::string index) {
