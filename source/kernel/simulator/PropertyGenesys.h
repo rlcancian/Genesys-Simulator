@@ -15,17 +15,16 @@ public:
     }
 
 public:
-    // Current GUI editing path writes values through SimulationControl.
-    void changeProperty(SimulationControl* control, const std::string& value, bool remove = false) {
+    void changeSimulationControl(SimulationControl* control, const std::string& value, bool remove = false) {
         if (control != nullptr) {
             control->setValue(value, remove);
         }
     }
 
-    SimulationControl* findProperty(const std::string& id, const std::string& attribute) {
+    SimulationControl* findSimulationControl(const std::string& id, const std::string& attribute) {
         for (auto element : _elements) {
             if (std::to_string(element->getId()) == id) {
-                for (auto control : *element->getProperties()->list()) {
+                for (auto control : *element->getSimulationControls()->list()) {
                     if (control->getName() == attribute) {
                         return control;
                     }
@@ -33,6 +32,16 @@ public:
             }
         }
         return nullptr;
+    }
+
+    // Legacy compatibility wrapper. Prefer changeSimulationControl.
+    void changeProperty(SimulationControl* control, const std::string& value, bool remove = false) {
+        changeSimulationControl(control, value, remove);
+    }
+
+    // Legacy compatibility wrapper. Prefer findSimulationControl.
+    SimulationControl* findProperty(const std::string& id, const std::string& attribute) {
+        return findSimulationControl(id, attribute);
     }
 
     void addElement(ModelComponent* component) {
