@@ -1,11 +1,20 @@
 #include "SessionManager.h"
 
+#include <filesystem>
 #include <mutex>
 #include <stdexcept>
 #include <utility>
 
 SessionManager::SessionManager(TokenService& tokenService, SimulatorFactory simulatorFactory)
-    : _tokenService(tokenService), _simulatorFactory(std::move(simulatorFactory)) {}
+    : _tokenService(tokenService),
+      _simulatorFactory(std::move(simulatorFactory)),
+      _workspaceRoot(_buildWorkspaceRoot()) {
+    std::error_code ec;
+    std::filesystem::create_directories(_workspaceRoot, ec);
+    if (ec) {
+        throw std::runtime_error("Failed to create workspace root directory for web sessions");
+    }
+}
 
 SessionContext* SessionManager::createSession() {
     std::scoped_lock lock(_sessionsMutex);
@@ -23,6 +32,13 @@ SessionContext* SessionManager::createSession() {
     if (!session->simulator) {
         throw std::runtime_error("Failed to create Simulator for session");
     }
+    session->workspacePath = _workspaceRoot / session->sessionId;
+
+    std::error_code ec;
+    std::filesystem::create_directories(session->workspacePath, ec);
+    if (ec) {
+        throw std::runtime_error("Failed to create workspace directory for session");
+    }
 
     SessionContext* raw = session.get();
     _sessionsByToken.emplace(token, std::move(session));
@@ -37,4 +53,8 @@ SessionContext* SessionManager::getSessionByToken(const std::string& token) {
         return nullptr;
     }
     return it->second.get();
+}
+
+std::filesystem::path SessionManager::_buildWorkspaceRoot() {
+    return std::filesystem::temp_directory_path() / "genesys_web_sessions";
 }
