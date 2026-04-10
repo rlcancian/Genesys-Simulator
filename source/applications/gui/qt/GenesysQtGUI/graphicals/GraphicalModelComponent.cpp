@@ -528,6 +528,8 @@ void GraphicalModelComponent::clearQueues() {
     }
     _imagesQueue->clear();
     _mapQueue->clear();
+    // Keep logical queue state synchronized with structural queue cleanup.
+    _hasQueue = false;
 }
 
 /*

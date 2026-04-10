@@ -98,13 +98,20 @@ void AnimationQueue::verifyRemoveAnimationQueue() {
 
 // Se o componente for um componente de fila, adiciona animação
 void AnimationQueue::addAnimationQueue(bool visivible) {
+    // Guard queue animation insertion when queue graphics infrastructure is not initialized.
     if (_graphicalComponent) {
         if (_graphicalComponent->hasQueue()) {
+            QList<QList<GraphicalImageAnimation *>*> *imagesQueue = _graphicalComponent->getImagesQueue();
+            if (imagesQueue == nullptr || imagesQueue->empty() || imagesQueue->at(0) == nullptr) {
+                qInfo() << "AnimationQueue: queue animation insertion skipped due to uninitialized queue graphics infrastructure";
+                return;
+            }
+
             QString animationImageName = _graphicalComponent->getAnimationImageName();
             unsigned int width = 30;
             unsigned int height = 30;
 
-            unsigned int sizeQueue = (unsigned int) _graphicalComponent->getImagesQueue()->at(0)->size();
+            unsigned int sizeQueue = (unsigned int) imagesQueue->at(0)->size();
 
             QPointF position = calculatePositionImageQueue(0, sizeQueue, width, height);
 
@@ -119,18 +126,25 @@ void AnimationQueue::addAnimationQueue(bool visivible) {
 
             _myScene->update();
         }
+        else {
+            qInfo() << "AnimationQueue: queue animation insertion skipped due to uninitialized queue graphics infrastructure";
+        }
+    } else {
+        qInfo() << "AnimationQueue: queue animation insertion skipped due to uninitialized queue graphics infrastructure";
     }
 }
 
 // Se o componente for um componente de fila, remove a animação
 void AnimationQueue::removeAnimationQueue() {
+    // Guard batch queue removal path to avoid out-of-range access when queue list is empty.
     if (_graphicalComponent) {
         if (_graphicalComponent->hasQueue()) {
 
             unsigned int images = 1;
 
             if (_graphicalComponent->getComponent()->getClassname() == "Batch") {
-                if (!_graphicalComponent->getImagesQueue()->empty())
+                QList<QList<GraphicalImageAnimation *>*> *imagesQueue = _graphicalComponent->getImagesQueue();
+                if (imagesQueue != nullptr && !imagesQueue->empty() && imagesQueue->at(0) != nullptr)
                     images = (unsigned int) _graphicalComponent->getImagesQueue()->at(0)->size();
             }
 

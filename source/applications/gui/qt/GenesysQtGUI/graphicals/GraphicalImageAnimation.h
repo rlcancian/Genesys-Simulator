@@ -28,6 +28,9 @@ public:
     void updateImage();
 
 private:
+    // Builds an in-memory marker image when the file-based image cannot be loaded.
+    QPixmap buildFallbackPixmap() const;
+
     // Caminho padrão das imagens
     QString _defaultPath = "../../images/";
 
