@@ -15,18 +15,19 @@ public:
     }
 
 public:
-    void changeProperty(SimulationControl* property, const std::string& value, bool remove = false) {
-        if (property != nullptr) {
-            property->setValue(value, remove);
+    // Current GUI editing path writes values through SimulationControl.
+    void changeProperty(SimulationControl* control, const std::string& value, bool remove = false) {
+        if (control != nullptr) {
+            control->setValue(value, remove);
         }
     }
 
     SimulationControl* findProperty(const std::string& id, const std::string& attribute) {
         for (auto element : _elements) {
             if (std::to_string(element->getId()) == id) {
-                for (auto prop : *element->getProperties()->list()) {
-                    if (prop->getName() == attribute) {
-                        return prop;
+                for (auto control : *element->getProperties()->list()) {
+                    if (control->getName() == attribute) {
+                        return control;
                     }
                 }
             }
