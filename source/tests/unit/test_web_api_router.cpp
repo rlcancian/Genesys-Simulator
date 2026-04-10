@@ -31,6 +31,18 @@ std::string extractJsonStringField(const std::string& json, const std::string& f
 
     return json.substr(valueStart, valueEnd - valueStart);
 }
+
+std::string createSessionAndGetToken(ApiRouter& router) {
+    HttpRequest createSessionRequest;
+    createSessionRequest.method = "POST";
+    createSessionRequest.path = "/api/v1/auth/session";
+    const HttpResponse createSessionResponse = router.handle(createSessionRequest);
+    EXPECT_EQ(createSessionResponse.status, 201);
+
+    const std::string token = extractJsonStringField(createSessionResponse.body, "accessToken");
+    EXPECT_FALSE(token.empty());
+    return token;
+}
 }  // namespace
 
 TEST(WebSessionManagerTest, CreateSessionProducesUniqueTokens) {
@@ -198,4 +210,137 @@ TEST(WebApiRouterTest, CurrentModelAfterCreationReturnsExpectedFields) {
     EXPECT_NE(currentResponse.body.find("\"version\":"), std::string::npos);
     EXPECT_NE(currentResponse.body.find("\"description\":"), std::string::npos);
     EXPECT_NE(currentResponse.body.find("\"componentCount\":"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SaveModelWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/models/save";
+    request.body = "{\"filename\":\"model.gen\"}";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, LoadModelWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/models/load";
+    request.body = "{\"filename\":\"model.gen\"}";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SaveModelWithInvalidBodyReturnsBadRequest) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/models/save";
+    request.headers["authorization"] = "Bearer " + token;
+    request.body = "{}";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 400);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, LoadModelWithInvalidBodyReturnsBadRequest) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/models/load";
+    request.headers["authorization"] = "Bearer " + token;
+    request.body = "{\"filename\":42}";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 400);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SaveModelWithInvalidFilenameReturnsBadRequest) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest createModelRequest;
+    createModelRequest.method = "POST";
+    createModelRequest.path = "/api/v1/models";
+    createModelRequest.headers["authorization"] = "Bearer " + token;
+    ASSERT_EQ(fixture.router.handle(createModelRequest).status, 201);
+
+    HttpRequest saveRequest;
+    saveRequest.method = "POST";
+    saveRequest.path = "/api/v1/models/save";
+    saveRequest.headers["authorization"] = "Bearer " + token;
+    saveRequest.body = "{\"filename\":\"../model.gen\"}";
+
+    const HttpResponse saveResponse = fixture.router.handle(saveRequest);
+
+    EXPECT_EQ(saveResponse.status, 400);
+    EXPECT_NE(saveResponse.body.find("\"INVALID_FILENAME\""), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SaveAndLoadModelInSessionWorkspaceSucceeds) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest createModelRequest;
+    createModelRequest.method = "POST";
+    createModelRequest.path = "/api/v1/models";
+    createModelRequest.headers["authorization"] = "Bearer " + token;
+    ASSERT_EQ(fixture.router.handle(createModelRequest).status, 201);
+
+    HttpRequest saveRequest;
+    saveRequest.method = "POST";
+    saveRequest.path = "/api/v1/models/save";
+    saveRequest.headers["authorization"] = "Bearer " + token;
+    saveRequest.headers["content-type"] = "application/json";
+    saveRequest.body = "{\"filename\":\"model.gen\"}";
+    const HttpResponse saveResponse = fixture.router.handle(saveRequest);
+    ASSERT_EQ(saveResponse.status, 200);
+    EXPECT_NE(saveResponse.body.find("\"ok\":true"), std::string::npos);
+    EXPECT_NE(saveResponse.body.find("\"filename\":\"model.gen\""), std::string::npos);
+
+    HttpRequest loadRequest;
+    loadRequest.method = "POST";
+    loadRequest.path = "/api/v1/models/load";
+    loadRequest.headers["authorization"] = "Bearer " + token;
+    loadRequest.headers["content-type"] = "application/json";
+    loadRequest.body = "{\"filename\":\"model.gen\"}";
+    const HttpResponse loadResponse = fixture.router.handle(loadRequest);
+    EXPECT_EQ(loadResponse.status, 200);
+    EXPECT_NE(loadResponse.body.find("\"ok\":true"), std::string::npos);
+    EXPECT_NE(loadResponse.body.find("\"filename\":\"model.gen\""), std::string::npos);
+    EXPECT_NE(loadResponse.body.find("\"exists\":true"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, LoadModelForMissingFileReturnsNotFound) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/models/load";
+    request.headers["authorization"] = "Bearer " + token;
+    request.body = "{\"filename\":\"missing.gen\"}";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 404);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"MODEL_FILE_NOT_FOUND\""), std::string::npos);
 }

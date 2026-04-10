@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <regex>
 
 ApiRouter::ApiRouter(SimulatorSessionService& simulatorService) : _simulatorService(simulatorService) {}
 
@@ -92,6 +93,60 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
         return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _modelInfoDataJson(info) + "}"};
     }
 
+    if (request.path == "/api/v1/models/save") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/models/save");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        std::string filename;
+        if (!_tryExtractFilenameFromBody(request.body, filename)) {
+            return _jsonError(400, "BAD_REQUEST", "Invalid request body: expected JSON with filename");
+        }
+
+        const auto result = _simulatorService.saveCurrentModel(token, filename);
+        if (!result.success) {
+            return _mapPersistenceError(result);
+        }
+
+        const std::string body =
+            "{\"ok\":true,\"data\":{"
+            "\"filename\":\"" + _escapeJson(result.filename) + "\","
+            "\"model\":" + _modelInfoDataJson(result.modelInfo) + "}}";
+        return HttpResponse{200, "application/json", body};
+    }
+
+    if (request.path == "/api/v1/models/load") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/models/load");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        std::string filename;
+        if (!_tryExtractFilenameFromBody(request.body, filename)) {
+            return _jsonError(400, "BAD_REQUEST", "Invalid request body: expected JSON with filename");
+        }
+
+        const auto result = _simulatorService.loadModel(token, filename);
+        if (!result.success) {
+            return _mapPersistenceError(result);
+        }
+
+        const std::string body =
+            "{\"ok\":true,\"data\":{"
+            "\"filename\":\"" + _escapeJson(result.filename) + "\","
+            "\"model\":" + _modelInfoDataJson(result.modelInfo) + "}}";
+        return HttpResponse{200, "application/json", body};
+    }
+
     return _jsonError(404, "NOT_FOUND", "Route not found");
 }
 
@@ -114,6 +169,34 @@ std::string ApiRouter::_extractBearerToken(const HttpRequest& request) {
     token.erase(token.begin(), std::find_if(token.begin(), token.end(), [](unsigned char c) { return !std::isspace(c); }));
     token.erase(std::find_if(token.rbegin(), token.rend(), [](unsigned char c) { return !std::isspace(c); }).base(), token.end());
     return token;
+}
+
+bool ApiRouter::_tryExtractFilenameFromBody(const std::string& body, std::string& outFilename) {
+    static const std::regex filenameRegex("\"filename\"\\s*:\\s*\"([^\"]+)\"");
+    std::smatch match;
+    if (!std::regex_search(body, match, filenameRegex) || match.size() < 2) {
+        return false;
+    }
+    outFilename = match[1].str();
+    return !outFilename.empty();
+}
+
+HttpResponse ApiRouter::_mapPersistenceError(const SimulatorSessionService::ModelPersistenceResult& result) {
+    switch (result.error) {
+        case SimulatorSessionService::PersistenceError::InvalidToken:
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        case SimulatorSessionService::PersistenceError::InvalidFilename:
+            return _jsonError(400, "INVALID_FILENAME", "Filename must be a safe basename using [A-Za-z0-9._-]");
+        case SimulatorSessionService::PersistenceError::MissingCurrentModel:
+            return _jsonError(409, "NO_CURRENT_MODEL", "No current model available to save");
+        case SimulatorSessionService::PersistenceError::FileNotFound:
+            return _jsonError(404, "MODEL_FILE_NOT_FOUND", "Model file not found in session workspace");
+        case SimulatorSessionService::PersistenceError::OperationFailed:
+            return _jsonError(500, "MODEL_PERSISTENCE_FAILED", "Model persistence operation failed");
+        case SimulatorSessionService::PersistenceError::None:
+        default:
+            return _jsonError(500, "INTERNAL_ERROR", "Unexpected persistence error state");
+    }
 }
 
 std::string ApiRouter::_escapeJson(const std::string& value) {

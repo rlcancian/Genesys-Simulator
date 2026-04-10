@@ -2,13 +2,18 @@
 
 First functional implementation of the **Web** application type for GenESyS.
 
-## Current Stage 1 scope
+## Current Stage 3 scope
 - CMake executable: `genesys_webhook` (enabled with `-DGENESYS_BUILD_WEB_APPLICATION=ON`).
 - Layered architecture for HTTP transport, API routing, session/token, and simulator service.
+- Stateful session management with one `Simulator` per session and per-session workspace directories.
 - Endpoints:
   - `GET /health`
   - `POST /api/v1/auth/session`
   - `GET /api/v1/simulator/info` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/models` (requires `Authorization: Bearer <token>`)
+  - `GET /api/v1/models/current` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/models/save` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/models/load` (requires `Authorization: Bearer <token>`)
 
 ## How to run
 ```bash
@@ -23,3 +28,8 @@ Optional parameters:
 
 ## Security notice
 Session creation in Stage 1 is provisional and stateful in memory. Generated tokens are opaque random strings and **not** production-grade authentication.
+
+For Stage 3 model persistence:
+- Save/load operations are restricted to each session workspace directory.
+- API requests accept only a `filename` basename (no paths).
+- Filenames must match `[A-Za-z0-9._-]` and cannot include `..`, `/`, or `\`.

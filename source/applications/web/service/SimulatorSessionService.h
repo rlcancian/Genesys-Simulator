@@ -6,6 +6,15 @@
 
 class SimulatorSessionService {
 public:
+    enum class PersistenceError {
+        None,
+        InvalidToken,
+        InvalidFilename,
+        MissingCurrentModel,
+        FileNotFound,
+        OperationFailed
+    };
+
     struct CreateSessionResult {
         std::string sessionId;
         std::string accessToken;
@@ -30,13 +39,24 @@ public:
         unsigned int componentCount = 0;
     };
 
+    struct ModelPersistenceResult {
+        bool success = false;
+        PersistenceError error = PersistenceError::None;
+        std::string filename;
+        ModelInfoResult modelInfo;
+    };
+
     explicit SimulatorSessionService(SessionManager& sessionManager);
 
     CreateSessionResult createSession();
     bool tryGetSimulatorInfo(const std::string& accessToken, SimulatorInfoResult& outInfo);
     bool tryCreateModel(const std::string& accessToken, ModelInfoResult& outInfo);
     bool tryGetCurrentModelInfo(const std::string& accessToken, ModelInfoResult& outInfo);
+    ModelPersistenceResult saveCurrentModel(const std::string& accessToken, const std::string& filename);
+    ModelPersistenceResult loadModel(const std::string& accessToken, const std::string& filename);
 
 private:
+    static bool _isSafeFilename(const std::string& filename);
+
     SessionManager& _sessionManager;
 };
