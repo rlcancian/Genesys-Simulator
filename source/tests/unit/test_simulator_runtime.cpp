@@ -8,6 +8,7 @@
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/Entity.h"
 #include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/Event.h"
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Persistence.h"
@@ -275,6 +276,49 @@ public:
 
     void InitBetweenReplicationsProbe() {
         _initBetweenReplications();
+    }
+};
+
+class ScheduleProbe : public Schedule {
+public:
+    ScheduleProbe(Model* model, const std::string& name = "") : Schedule(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void InternalEventNoopProbe(void* parameter) {
+        (void) parameter;
+    }
+};
+
+struct ReplicationStartEventInjector {
+    Model* model = nullptr;
+    ScheduleProbe* owner = nullptr;
+    bool inserted = false;
+    double eventTime = 0.0;
+    std::string description;
+
+    void OnReplicationStart(SimulationEvent*) {
+        if (inserted || model == nullptr || owner == nullptr) {
+            return;
+        }
+        auto* event = new InternalEvent(eventTime, description);
+        event->setEventHandler(owner, &ScheduleProbe::InternalEventNoopProbe, nullptr);
+        model->getFutureEvents()->insert(event);
+        inserted = true;
     }
 };
 
@@ -1114,6 +1158,134 @@ TEST(SimulatorRuntimeTest, VariableShowIncludesVariableSpecificValues) {
     const std::string shown = variable.show();
     EXPECT_NE(shown.find("values:{"), std::string::npos);
     EXPECT_NE(shown.find("pi="), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, ScheduleDestructorDeletesOwnedSchedulableItemsSafely) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* schedule = new ScheduleProbe(model, "ScheduleLifecycle");
+    schedule->getSchedulableItems()->insert(new SchedulableItem("1", 1.0));
+    schedule->getSchedulableItems()->insert(new SchedulableItem("2", 2.0));
+
+    EXPECT_NO_THROW(delete schedule);
+}
+
+TEST(SimulatorRuntimeTest, ScheduleLoadInstanceReplacesSchedulableItemsWithoutKeepingOldPointers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ScheduleProbe firstPersisted(model, "ScheduleReloadFirst");
+    firstPersisted.setRepeatAfterLast(false);
+    firstPersisted.getSchedulableItems()->insert(new SchedulableItem("stale", 4.0));
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fieldsFirst(persistence);
+    firstPersisted.SaveInstanceProbe(&fieldsFirst, true);
+
+    ScheduleProbe secondPersisted(model, "ScheduleReloadSecond");
+    secondPersisted.setRepeatAfterLast(false);
+    secondPersisted.getSchedulableItems()->insert(new SchedulableItem("11", 3.0));
+    secondPersisted.getSchedulableItems()->insert(new SchedulableItem("22", 5.0, SchedulableItem::Rule::WAIT));
+    PersistenceRecord fieldsSecond(persistence);
+    secondPersisted.SaveInstanceProbe(&fieldsSecond, true);
+
+    ScheduleProbe schedule(model, "ScheduleReloadTarget");
+    ASSERT_TRUE(schedule.LoadInstanceProbe(&fieldsFirst));
+    ASSERT_EQ(schedule.getSchedulableItems()->size(), 1u);
+    ASSERT_EQ(schedule.getSchedulableItems()->getAtRank(0)->getExpression(), "stale");
+
+    ASSERT_TRUE(schedule.LoadInstanceProbe(&fieldsSecond));
+    ASSERT_EQ(schedule.getSchedulableItems()->size(), 2u);
+    EXPECT_EQ(schedule.getSchedulableItems()->getAtRank(0)->getExpression(), "11");
+    EXPECT_DOUBLE_EQ(schedule.getSchedulableItems()->getAtRank(0)->getDuration(), 3.0);
+    EXPECT_EQ(schedule.getSchedulableItems()->getAtRank(1)->getExpression(), "22");
+    EXPECT_DOUBLE_EQ(schedule.getSchedulableItems()->getAtRank(1)->getDuration(), 5.0);
+}
+
+TEST(SimulatorRuntimeTest, ScheduleGetExpressionReturnsSafeFallbackForEmptyList) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule schedule(model, "ScheduleEmptyExpression");
+    EXPECT_EQ(schedule.getExpression(), "");
+}
+
+TEST(SimulatorRuntimeTest, ScheduleGetExpressionHandlesNonRepeatingAndReturnsLastAfterEnd) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ScheduleProbe schedule(model, "ScheduleNonRepeatExpression");
+    schedule.setRepeatAfterLast(false);
+    schedule.getSchedulableItems()->insert(new SchedulableItem("1", 2.0));
+    schedule.getSchedulableItems()->insert(new SchedulableItem("2", 3.0));
+
+    EXPECT_EQ(schedule.getExpression(), "1");
+
+    ReplicationStartEventInjector injector{model, &schedule, false, 10.0, "AdvanceTimeForSchedule"};
+    model->getOnEventManager()->addOnReplicationStartHandler(&injector, &ReplicationStartEventInjector::OnReplicationStart);
+    model->getSimulation()->setReplicationLength(20.0);
+    model->getSimulation()->start();
+
+    EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 10.0);
+    EXPECT_EQ(schedule.getExpression(), "2");
+}
+
+TEST(SimulatorRuntimeTest, ScheduleGetExpressionRepeatsWithPositiveCycleDurations) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ScheduleProbe schedule(model, "ScheduleRepeatExpression");
+    schedule.setRepeatAfterLast(true);
+    schedule.getSchedulableItems()->insert(new SchedulableItem("1", 2.0));
+    schedule.getSchedulableItems()->insert(new SchedulableItem("2", 3.0));
+
+    EXPECT_EQ(schedule.getExpression(), "1");
+
+    ReplicationStartEventInjector injector{model, &schedule, false, 8.0, "AdvanceTimeForScheduleRepeat"};
+    model->getOnEventManager()->addOnReplicationStartHandler(&injector, &ReplicationStartEventInjector::OnReplicationStart);
+    model->getSimulation()->setReplicationLength(20.0);
+    model->getSimulation()->start();
+
+    EXPECT_DOUBLE_EQ(model->getSimulation()->getSimulatedTime(), 8.0);
+    EXPECT_EQ(schedule.getExpression(), "2");
+}
+
+TEST(SimulatorRuntimeTest, ScheduleCheckFailsForRepeatingCyclesWithZeroTotalDuration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ScheduleProbe schedule(model, "ScheduleInvalidZeroCycle");
+    schedule.setRepeatAfterLast(true);
+    schedule.getSchedulableItems()->insert(new SchedulableItem("1", 0.0));
+    schedule.getSchedulableItems()->insert(new SchedulableItem("2", 0.0));
+
+    std::string errorMessage;
+    EXPECT_FALSE(schedule.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("duration > 0"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, ScheduleCheckPassesForValidRepeatingConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ScheduleProbe schedule(model, "ScheduleValidCheck");
+    schedule.setRepeatAfterLast(true);
+    schedule.getSchedulableItems()->insert(new SchedulableItem("1", 1.0));
+    schedule.getSchedulableItems()->insert(new SchedulableItem("2", 0.0));
+
+    std::string errorMessage;
+    EXPECT_TRUE(schedule.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+    EXPECT_NE(schedule.show().find("items=2"), std::string::npos);
+    EXPECT_NE(schedule.show().find("repeatAfterLast=true"), std::string::npos);
+    EXPECT_NO_THROW(schedule.CreateInternalAndAttachedDataProbe());
 }
 
 TEST(SimulatorRuntimeTest, ResourceSettersUpdateState) {
