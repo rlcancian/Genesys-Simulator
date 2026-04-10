@@ -76,11 +76,11 @@ public: // trying to get infos about ModelDataElements refered in expressions (s
 
 private:
 	void _destroyReferedDataElements();
-	void _copyReferedDataElementsFrom(const genesyspp_driver& other);
+	std::map<std::string, std::list<std::string>*>* _cloneReferedDataElements(const genesyspp_driver& other) const;
 private:
 	/*GenesysKernel::*/Model* _model;
 	Sampler_if* _sampler;
-	std::map<std::string, std::list<std::string>*>* _referedDataElements = new std::map<std::string, std::list<std::string>*>(); // maps each dataelement class referenced to a list of referenced names
+	std::map<std::string, std::list<std::string>*>* _referedDataElements; // maps each dataelement class referenced to a list of referenced names
 	bool _isRegisterReferedDataElements = false;
 private:
 	double result = 0;

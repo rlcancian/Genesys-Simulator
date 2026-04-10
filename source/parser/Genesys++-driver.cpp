@@ -8,11 +8,13 @@
 genesyspp_driver::genesyspp_driver() {
 	_model = nullptr;
 	_sampler = nullptr;
+	_referedDataElements = new std::map<std::string, std::list<std::string>*>();
 }
 
 genesyspp_driver::genesyspp_driver(/*GenesysKernel::*/Model* model, Sampler_if* sampler, bool throws) {
 	_model = model;
 	_sampler = sampler;
+	_referedDataElements = new std::map<std::string, std::list<std::string>*>();
 	throwsException = throws;
 }
 
@@ -25,11 +27,12 @@ genesyspp_driver::genesyspp_driver(const genesyspp_driver& other) {
 	str_to_parse = other.str_to_parse;
 	throwsException = other.throwsException;
 	errorMessage = other.errorMessage;
-	_copyReferedDataElementsFrom(other);
+	_referedDataElements = _cloneReferedDataElements(other);
 }
 
 genesyspp_driver& genesyspp_driver::operator=(const genesyspp_driver& other) {
 	if (this != &other) {
+		std::map<std::string, std::list<std::string>*>* copiedReferedDataElements = _cloneReferedDataElements(other);
 		_destroyReferedDataElements();
 		_model = other._model;
 		_sampler = other._sampler;
@@ -39,7 +42,7 @@ genesyspp_driver& genesyspp_driver::operator=(const genesyspp_driver& other) {
 		str_to_parse = other.str_to_parse;
 		throwsException = other.throwsException;
 		errorMessage = other.errorMessage;
-		_copyReferedDataElementsFrom(other);
+		_referedDataElements = copiedReferedDataElements;
 	}
 	return *this;
 }
@@ -262,13 +265,14 @@ void genesyspp_driver::_destroyReferedDataElements() {
 	}
 }
 
-void genesyspp_driver::_copyReferedDataElementsFrom(const genesyspp_driver& other) {
-	_referedDataElements = new std::map<std::string, std::list<std::string>*>();
+std::map<std::string, std::list<std::string>*>* genesyspp_driver::_cloneReferedDataElements(const genesyspp_driver& other) const {
+	auto* copiedReferedDataElements = new std::map<std::string, std::list<std::string>*>();
 	for (const auto& dataElementEntry : *other._referedDataElements) {
 		if (dataElementEntry.second != nullptr) {
-			(*_referedDataElements)[dataElementEntry.first] = new std::list<std::string>(*dataElementEntry.second);
+			(*copiedReferedDataElements)[dataElementEntry.first] = new std::list<std::string>(*dataElementEntry.second);
 		} else {
-			(*_referedDataElements)[dataElementEntry.first] = nullptr;
+			(*copiedReferedDataElements)[dataElementEntry.first] = nullptr;
 		}
 	}
+	return copiedReferedDataElements;
 }
