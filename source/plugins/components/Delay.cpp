@@ -153,20 +153,23 @@ bool Delay::_check(std::string& errorMessage) {
 }
 
 void Delay::_createInternalAndAttachedData() {
-	if (_reportStatistics && _cstatWaitTime == nullptr) {
-		_attachedAttributesInsert({"Entity.Total" + Util::StrAllocation(_allocation)+"Time"});
-		_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
-		_internalDataInsert("DelayTime", _cstatWaitTime);
-		// include StatisticsCollector needed in EntityType
-		//ModelDataManager* elements = _parentModel->getDataManager();
-		//std::list<ModelDataDefinition*>* enttypes = elements->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
-		//for (ModelDataDefinition* modeldatum : *enttypes) {
-		//	EntityType* enttype = static_cast<EntityType*> (modeldatum);
-		//	if (modeldatum->isReportStatistics())
-		//		enttype->addGetStatisticsCollector(enttype->getName() + ".DelayTime");
-		//}
-	} else {
+	if (_reportStatistics) {
+		if (_cstatWaitTime == nullptr) {
+			_attachedAttributesInsert({"Entity.Total" + Util::StrAllocation(_allocation)+"Time"});
+			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
+			_internalDataInsert("DelayTime", _cstatWaitTime);
+			// include StatisticsCollector needed in EntityType
+			//ModelDataManager* elements = _parentModel->getDataManager();
+			//std::list<ModelDataDefinition*>* enttypes = elements->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
+			//for (ModelDataDefinition* modeldatum : *enttypes) {
+			//	EntityType* enttype = static_cast<EntityType*> (modeldatum);
+			//	if (modeldatum->isReportStatistics())
+			//		enttype->addGetStatisticsCollector(enttype->getName() + ".DelayTime");
+			//}
+		}
+	} else if (_cstatWaitTime != nullptr) {
 		_internalDataClear();
+		_cstatWaitTime = nullptr;
 		// @TODO remove StatisticsCollector needed in EntityType
 	}
 }

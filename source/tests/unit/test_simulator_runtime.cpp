@@ -17,7 +17,25 @@
 #include "plugins/data/Schedule.h"
 #include "plugins/data/Sequence.h"
 #include "plugins/data/SignalData.h"
+#include "plugins/components/Delay.h"
 #include "plugins/components/Wait.h"
+
+class DelayProbe : public Delay {
+public:
+    DelayProbe(Model* model, const std::string& name = "") : Delay(model, name) {}
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    StatisticsCollector* WaitTimeStatisticsCollectorProbe() const {
+        return _cstatWaitTime;
+    }
+
+    void AddWaitTimeValueProbe(double waitTime) {
+        _cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
+    }
+};
 
 class ResourceTestProbe {
 public:
@@ -1481,6 +1499,93 @@ TEST(SimulatorRuntimeTest, WaitRecheckUpdatesSignalDataHandlersWhenSignalChanges
     wait.setWaitType(Wait::WaitType::InfiniteHold);
     wait.CreateInternalAndAttachedDataProbe();
     EXPECT_FALSE(signalB.hasSignalDataEventHandler(&wait));
+}
+
+TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayCreateStats");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckWithStatisticsEnabledIsIdempotentAndPreservesInternalCollector) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayIdempotentStats");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    StatisticsCollector* firstCollector = delay.WaitTimeStatisticsCollectorProbe();
+    ASSERT_NE(firstCollector, nullptr);
+
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(delay.WaitTimeStatisticsCollectorProbe(), firstCollector);
+    EXPECT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckWithStatisticsDisabledClearsInternalCollectorPointer) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayDisableStats");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayRecheckCanRecreateCollectorAfterDisablingAndReenablingStatistics) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayRecreateStats");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_EQ(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    StatisticsCollector* recreatedCollector = delay.WaitTimeStatisticsCollectorProbe();
+    ASSERT_NE(recreatedCollector, nullptr);
+    EXPECT_NE(recreatedCollector->getStatistics(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, DelayCollectorAccessPathRemainsValidAcrossStatisticsRecheckSequence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DelayProbe delay(model, "DelayCollectorPath");
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    delay.CreateInternalAndAttachedDataProbe();
+
+    delay.setReportStatistics(false);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_EQ(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+
+    delay.setReportStatistics(true);
+    delay.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe(), nullptr);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics(), nullptr);
+    ASSERT_NE(delay.WaitTimeStatisticsCollectorProbe()->getStatistics()->getCollector(), nullptr);
+
+    EXPECT_NO_THROW(delay.AddWaitTimeValueProbe(1.5));
 }
 
 TEST(SimulatorRuntimeTest, SignalDataCheckFailsWithoutHandlers) {
