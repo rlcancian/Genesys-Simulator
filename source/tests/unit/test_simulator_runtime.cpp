@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <memory>
 
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
@@ -11,6 +12,26 @@
 #include "kernel/simulator/Persistence.h"
 #include "plugins/data/Queue.h"
 #include "plugins/data/Variable.h"
+#include "plugins/data/Resource.h"
+#include "plugins/data/Failure.h"
+#include "plugins/data/Schedule.h"
+
+class ResourceTestProbe {
+public:
+    static bool HasStatisticsInternals(const Resource& resource) {
+        return resource._cstatTimeSeized != nullptr &&
+               resource._cstatTimeFailed != nullptr &&
+               resource._cstatProportionSeized != nullptr &&
+               resource._cstatCapacityUtilization != nullptr &&
+               resource._counterTotalTimeSeized != nullptr &&
+               resource._counterTotalTimeFailed != nullptr &&
+               resource._counterNumSeizes != nullptr &&
+               resource._counterNumReleases != nullptr &&
+               resource._counterTotalCostPerUse != nullptr &&
+               resource._counterTotalCostBusy != nullptr &&
+               resource._counterTotalCostIdle != nullptr;
+    }
+};
 
 namespace {
 struct SimulationStartObserver {
@@ -126,6 +147,27 @@ public:
 
     void InitBetweenReplicationsProbe() {
         _initBetweenReplications();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class ResourceProbe : public Resource {
+public:
+    ResourceProbe(Model* model, const std::string& name = "") : Resource(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
@@ -939,4 +981,204 @@ TEST(SimulatorRuntimeTest, VariableShowIncludesVariableSpecificValues) {
     const std::string shown = variable.show();
     EXPECT_NE(shown.find("values:{"), std::string::npos);
     EXPECT_NE(shown.find("pi="), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, ResourceSettersUpdateState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ResourceProbe resource(model, "ResourceSetterCheck");
+    Schedule schedule(model, "ResourceSetterSchedule");
+
+    resource.setResourceState(Resource::ResourceState::FAILED);
+    resource.setCostBusyTimeUnit(11.25);
+    resource.setCostIdleTimeUnit(7.5);
+    resource.setCostPerUse(3.5);
+    resource.setCapacitySchedule(&schedule);
+
+    EXPECT_EQ(resource.getResourceState(), Resource::ResourceState::FAILED);
+    EXPECT_DOUBLE_EQ(resource.getCostBusyTimeUnit(), 11.25);
+    EXPECT_DOUBLE_EQ(resource.getCostIdleTimeUnit(), 7.5);
+    EXPECT_DOUBLE_EQ(resource.getCostPerUse(), 3.5);
+    EXPECT_EQ(resource.getCapacitySchedule(), &schedule);
+}
+
+TEST(SimulatorRuntimeTest, ResourceCheckFailsForInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ResourceProbe capacityZero(model, "ResourceCheckCapacityZero");
+    capacityZero.setCapacity(0u);
+    std::string errorMessage;
+    EXPECT_FALSE(capacityZero.CheckProbe(errorMessage));
+
+    ResourceProbe negativeCost(model, "ResourceCheckNegativeCost");
+    negativeCost.setCostPerUse(-1.0);
+    errorMessage.clear();
+    EXPECT_FALSE(negativeCost.CheckProbe(errorMessage));
+
+    Schedule invalidSchedule(model, "ResourceCheckInvalidSchedule");
+    ResourceProbe invalidScheduleResource(model, "ResourceCheckWithInvalidSchedule");
+    invalidScheduleResource.setCapacitySchedule(&invalidSchedule);
+    errorMessage.clear();
+    EXPECT_FALSE(invalidScheduleResource.CheckProbe(errorMessage));
+
+    Failure invalidFailure(model, "ResourceCheckInvalidFailure");
+    invalidFailure.setFailureType(Failure::FailureType::COUNT);
+    invalidFailure.setCountExpression(")");
+    ResourceProbe invalidFailureResource(model, "ResourceCheckWithInvalidFailure");
+    invalidFailureResource.insertFailure(&invalidFailure);
+    errorMessage.clear();
+    EXPECT_FALSE(invalidFailureResource.CheckProbe(errorMessage));
+}
+
+TEST(SimulatorRuntimeTest, ResourceCheckPassesForValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule schedule(model, "ResourceCheckValidSchedule");
+    schedule.getSchedulableItems()->insert(new SchedulableItem("2", 10.0));
+
+    Failure failure(model, "ResourceCheckValidFailure");
+    failure.setFailureType(Failure::FailureType::COUNT);
+    failure.setCountExpression("3");
+    failure.setDownTimeExpression("1");
+
+    ResourceProbe resource(model, "ResourceCheckValid");
+    resource.setCapacity(2u);
+    resource.setCostBusyTimeUnit(1.0);
+    resource.setCostIdleTimeUnit(0.0);
+    resource.setCostPerUse(0.5);
+    resource.setCapacitySchedule(&schedule);
+    resource.insertFailure(&failure);
+
+    std::string errorMessage;
+    EXPECT_TRUE(resource.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, ResourceSaveAndLoadPreservesCapacityScheduleReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule schedule(model, "ResourcePersistSchedule");
+    ResourceProbe source(model, "ResourcePersistScheduleSource");
+    source.setCapacitySchedule(&schedule);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    ResourceProbe loaded(model, "ResourcePersistScheduleLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    EXPECT_EQ(loaded.getCapacitySchedule(), &schedule);
+}
+
+TEST(SimulatorRuntimeTest, ResourceSaveAndLoadPreservesFailuresReferenceList) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Failure failureA(model, "ResourcePersistFailureA");
+    Failure failureB(model, "ResourcePersistFailureB");
+    ResourceProbe source(model, "ResourcePersistFailureSource");
+    source.insertFailure(&failureA);
+    source.insertFailure(&failureB);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    ResourceProbe loaded(model, "ResourcePersistFailureLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    loaded.CreateInternalAndAttachedDataProbe();
+
+    auto* attached = loaded.getAttachedData();
+    const std::string keyPrefix = loaded.getName() + ".Failure.";
+    ASSERT_EQ(attached->count(keyPrefix + "ResourcePersistFailureA"), 1u);
+    ASSERT_EQ(attached->count(keyPrefix + "ResourcePersistFailureB"), 1u);
+    EXPECT_EQ(attached->at(keyPrefix + "ResourcePersistFailureA"), &failureA);
+    EXPECT_EQ(attached->at(keyPrefix + "ResourcePersistFailureB"), &failureB);
+}
+
+TEST(SimulatorRuntimeTest, ResourceRecheckKeepsAttachedDataConsistent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule scheduleA(model, "ResourceRecheckScheduleA");
+    Schedule scheduleB(model, "ResourceRecheckScheduleB");
+    Failure failureA(model, "ResourceRecheckFailureA");
+    Failure failureB(model, "ResourceRecheckFailureB");
+
+    ResourceProbe resource(model, "ResourceRecheckAttached");
+    resource.setCapacitySchedule(&scheduleA);
+    resource.insertFailure(&failureA);
+    resource.CreateInternalAndAttachedDataProbe();
+
+    auto* attached = resource.getAttachedData();
+    ASSERT_EQ(attached->at("ResourceRecheckAttached.CapacitySchedule"), &scheduleA);
+    ASSERT_EQ(attached->at("ResourceRecheckAttached.Failure.ResourceRecheckFailureA"), &failureA);
+
+    resource.removeFailure(&failureA);
+    resource.insertFailure(&failureB);
+    resource.setCapacitySchedule(&scheduleB);
+    resource.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(attached->at("ResourceRecheckAttached.CapacitySchedule"), &scheduleB);
+    EXPECT_EQ(attached->at("ResourceRecheckAttached.Failure.ResourceRecheckFailureB"), &failureB);
+    EXPECT_EQ(attached->count("ResourceRecheckAttached.Failure.ResourceRecheckFailureA"), 0u);
+
+    resource.setCapacitySchedule(nullptr);
+    resource.removeFailure(&failureB);
+    resource.CreateInternalAndAttachedDataProbe();
+
+    EXPECT_EQ(attached->count("ResourceRecheckAttached.CapacitySchedule"), 0u);
+    EXPECT_EQ(attached->count("ResourceRecheckAttached.Failure.ResourceRecheckFailureB"), 0u);
+}
+
+TEST(SimulatorRuntimeTest, ResourceToggleReportStatisticsClearsAndRecreatesInternalPointersSafely) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ResourceProbe resource(model, "ResourceToggleStats");
+    resource.setReportStatistics(true);
+    resource.CreateInternalAndAttachedDataProbe();
+    EXPECT_TRUE(ResourceTestProbe::HasStatisticsInternals(resource));
+
+    resource.setReportStatistics(false);
+    resource.CreateInternalAndAttachedDataProbe();
+    EXPECT_FALSE(ResourceTestProbe::HasStatisticsInternals(resource));
+
+    resource.setReportStatistics(true);
+    resource.CreateInternalAndAttachedDataProbe();
+    EXPECT_TRUE(ResourceTestProbe::HasStatisticsInternals(resource));
+}
+
+TEST(SimulatorRuntimeTest, ResourceDestructorCleansOwnedHandlersContainers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    std::weak_ptr<int> weakCapture;
+    {
+        auto* resource = new ResourceProbe(model, "ResourceDestructorLifecycle");
+        auto capture = std::make_shared<int>(42);
+        weakCapture = capture;
+
+        Resource::ResourceEventHandler handler = [capture](Resource*) {
+            (void)capture;
+        };
+        resource->addReleaseResourceEventHandler(handler, nullptr, 1u);
+        ASSERT_FALSE(weakCapture.expired());
+        delete resource;
+    }
+
+    EXPECT_TRUE(weakCapture.expired());
 }
