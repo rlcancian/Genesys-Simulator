@@ -25,18 +25,18 @@ class QTextEdit;
  */
 class TraceConsoleController {
 public:
-    // Inject narrow text-output dependencies used by trace handlers.
+    /** @brief Creates the trace-output bridge used by MainWindow trace wrappers. */
     TraceConsoleController(QTextEdit* console,
                            QTextEdit* simulationText,
                            QTextEdit* reportsText);
 
-    // Render generic simulator traces to the main console text area.
+    /** @brief Renders generic traces to the main console pane. */
     void simulatorTraceHandler(TraceEvent e) const;
-    // Render simulator error traces to the main console text area.
+    /** @brief Renders error traces to the main console pane. */
     void simulatorTraceErrorHandler(TraceErrorEvent e) const;
-    // Render simulation traces to the simulation output text area.
+    /** @brief Renders simulation traces to the simulation output pane. */
     void simulatorTraceSimulationHandler(TraceSimulationEvent e) const;
-    // Render reports traces to the reports output text area.
+    /** @brief Renders reports traces to the reports output pane. */
     void simulatorTraceReportsHandler(TraceEvent e) const;
 
 private:

@@ -33,19 +33,19 @@ class QTreeWidgetItem;
  */
 class PluginCatalogController {
 public:
-    // Inject only the dependencies required to manage plugin catalog UI behavior.
+    /** @brief Creates the plugin-catalog controller used by MainWindow compatibility slots. */
     PluginCatalogController(Simulator* simulator,
                             QTreeWidget* pluginsTree,
                             QPlainTextEdit* modelTextEditor,
                             std::map<std::string, QColor>* pluginCategoryColor);
 
-    // Populate plugin-tree entries while preserving legacy visual behavior.
+    /** @brief Inserts one plugin entry into the categorized plugin tree representation. */
     void insertPluginUI(Plugin* plugin) const;
-    // Keep fake plugin insertion extension point for compatibility.
+    /** @brief Inserts compatibility fake plugins used by legacy GUI flows. */
     void insertFakePlugins() const;
-    // Handle plugin-tree double-click behavior delegated from MainWindow.
+    /** @brief Handles plugin double-click by delegating insertion/selection behavior. */
     void handlePluginItemDoubleClicked(QTreeWidgetItem* item, int column) const;
-    // Handle plugin-tree single-click behavior delegated from MainWindow.
+    /** @brief Handles plugin single-click behavior without mutating model lifecycle state. */
     void handlePluginItemClicked(QTreeWidgetItem* item, int column) const;
 
 private:

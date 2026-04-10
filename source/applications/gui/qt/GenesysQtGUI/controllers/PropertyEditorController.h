@@ -32,7 +32,7 @@ class ComboBoxEnum;
  */
 class PropertyEditorController {
 public:
-    // Inject only the property-editor dependencies needed by the Phase 6 flow.
+    /** @brief Creates the property-editor controller and its synchronization callbacks. */
     PropertyEditorController(ObjectPropertyBrowser* propertyBrowser,
                              ModelGraphicsView* graphicsView,
                              PropertyEditorGenesys* propertyGenesys,
@@ -47,13 +47,13 @@ public:
                              std::function<void()> actualizeTabPanes,
                              std::function<void()> actualizeActions);
 
-    // Synchronize current scene selection into the property editor safely.
+    /** @brief Synchronizes current scene selection into property editor bindings. */
     void sceneSelectionChanged() const;
-    // Execute the post-edit model/UI update cascade safely.
+    /** @brief Executes post-commit synchronization across model representations and panes. */
     void onPropertyEditorModelChanged() const;
-    // Clear property editor selection and bindings defensively.
+    /** @brief Clears property editor selection/bindings during lifecycle resets. */
     void clearPropertyEditorSelection() const;
-    // Report whether post-commit stabilization/refresh is still running or queued.
+    /** @brief Reports whether the deferred global refresh pipeline is active. */
     bool isPostCommitPipelineActive() const;
 
 private:

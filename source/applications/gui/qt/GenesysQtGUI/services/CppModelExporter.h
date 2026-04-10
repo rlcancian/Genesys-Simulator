@@ -25,10 +25,15 @@ class Simulator;
  */
 class CppModelExporter {
 public:
-    // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.
+    /** @brief Creates the exporter service for the C++ model-representation pane. */
     CppModelExporter(Simulator* simulator, QPlainTextEdit* cppCodeEditor);
 
+    /**
+     * @brief Formats one C++ output line with the requested indentation level.
+     * @return Formatted line that can be appended to the representation buffer.
+     */
     std::string addCppCodeLine(const std::string& line, unsigned int indent = 0) const;
+    /** @brief Rebuilds the full C++ model representation shown in the GUI editor pane. */
     void actualizeModelCppCode() const;
 
 private:

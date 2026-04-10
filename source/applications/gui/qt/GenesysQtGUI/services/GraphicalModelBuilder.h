@@ -34,14 +34,16 @@ template<typename T> class List;
  */
 class GraphicalModelBuilder {
 public:
-    // Keep builder dependencies narrow and explicit for Phase 2 extraction.
+    /** @brief Creates the reconstruction service used by load/rebuild compatibility flows. */
     GraphicalModelBuilder(Simulator* simulator,
                           ModelGraphicsView* graphicsView,
                           ModelGraphicsScene* scene,
                           std::map<std::string, QColor>* pluginCategoryColor,
                           QTextEdit* console);
 
-    // Recursively create graphical items and connections from one component branch.
+    /**
+     * @brief Recursively rebuilds graphical items and links from one model-component branch.
+     */
     void recursivalyGenerateGraphicalModelFromModel(ModelComponent* component,
                                                     List<ModelComponent*>* visited,
                                                     std::map<ModelComponent*, GraphicalModelComponent*>* map,
@@ -50,7 +52,7 @@ public:
                                                     int* ymax,
                                                     int sequenceInLine);
 
-    // Generate the full graphical model from all source components.
+    /** @brief Rebuilds the full scene model representation from kernel source components. */
     void generateGraphicalModelFromModel();
 
 private:

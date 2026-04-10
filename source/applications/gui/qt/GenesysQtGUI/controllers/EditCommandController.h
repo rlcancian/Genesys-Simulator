@@ -31,7 +31,7 @@ class QGraphicsItemGroup;
  */
 class EditCommandController {
 public:
-    // Inject only narrow dependencies required by edit command behavior.
+    /** @brief Creates the edit-command controller used by MainWindow compatibility slots. */
     EditCommandController(Simulator* simulator,
                           ModelGraphicsView* graphicsView,
                           std::function<void()> actualizeActions,
@@ -41,30 +41,30 @@ public:
                           QList<QGraphicsItem*>** drawCopy,
                           QList<QGraphicsItemGroup*>** groupCopy);
 
-    // Delegate undo command handling without changing scene undo semantics.
+    /** @brief Delegates undo command handling without changing scene undo semantics. */
     void onActionEditUndoTriggered() const;
-    // Delegate redo command handling without changing scene undo semantics.
+    /** @brief Delegates redo command handling without changing scene undo semantics. */
     void onActionEditRedoTriggered() const;
-    // Delegate cut command handling while preserving copy buffers.
+    /** @brief Delegates cut command handling while preserving compatibility copy buffers. */
     void onActionEditCutTriggered() const;
-    // Delegate copy command handling while preserving copy buffers.
+    /** @brief Delegates copy command handling while preserving compatibility copy buffers. */
     void onActionEditCopyTriggered() const;
-    // Delegate paste command handling while preserving copy buffers.
+    /** @brief Delegates paste command handling while preserving compatibility copy buffers. */
     void onActionEditPasteTriggered() const;
-    // Delegate delete command handling while preserving undo integration.
+    /** @brief Delegates delete command handling while preserving undo integration. */
     void onActionEditDeleteTriggered() const;
-    // Delegate group command handling through scene grouping APIs.
+    /** @brief Delegates group command handling through scene grouping APIs. */
     void onActionEditGroupTriggered() const;
-    // Delegate ungroup command handling through scene grouping APIs.
+    /** @brief Delegates ungroup command handling through scene grouping APIs. */
     void onActionEditUngroupTriggered() const;
-    // Delegate view-group command handling through scene grouping APIs.
+    /** @brief Delegates view-group command handling through scene grouping APIs. */
     void onActionViewGroupTriggered() const;
-    // Delegate view-ungroup command handling through scene grouping APIs.
+    /** @brief Delegates view-ungroup command handling through scene grouping APIs. */
     void onActionViewUngroupTriggered() const;
 
-    // Keep clipboard filtering helper behavior used by copy/cut workflows.
+    /** @brief Stores eligible selected items in compatibility clipboard structures. */
     void saveItemForCopy(QList<GraphicalModelComponent*>* gmcList, QList<GraphicalConnection*>* connList) const;
-    // Keep deep-copy helper behavior used by paste workflows.
+    /** @brief Performs deep-copy preparation for subsequent paste command execution. */
     void helpCopy() const;
 
 private:

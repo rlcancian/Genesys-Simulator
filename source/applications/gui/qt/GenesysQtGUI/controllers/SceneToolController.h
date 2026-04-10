@@ -29,7 +29,9 @@ class MainWindow;
  */
 class SceneToolController {
 public:
-    // Inject only narrow dependencies required by scene and tool command handlers.
+    /**
+     * @brief Builds the scene-tool delegated controller used by MainWindow compatibility slots.
+     */
     SceneToolController(ModelGraphicsView* graphicsView,
                         Ui::MainWindow* ui,
                         std::function<ModelGraphicsScene*()> currentScene,
@@ -42,39 +44,73 @@ public:
                         int& zoomValue,
                         bool& firstClickShowConnection);
 
+    /** @brief Toggles grid visibility and requests scene redraw updates. */
     void onActionShowGridTriggered();
+    /** @brief Toggles ruler visibility through the delegated scene callback path. */
     void onActionShowRuleTriggered();
+    /** @brief Toggles guide visibility and keeps tab/action synchronization. */
     void onActionShowGuidesTriggered();
+    /** @brief Toggles snap behavior on the current scene without changing tool wiring. */
     void onActionShowSnapTriggered();
+    /** @brief Applies incremental zoom-in and updates shared zoom state. */
     void onActionZoomInTriggered();
+    /** @brief Applies incremental zoom-out and updates shared zoom state. */
     void onActionZoomOutTriggered();
+    /** @brief Fits the current graphical model in view and re-synchronizes zoom widgets. */
     void onActionZoomAllTriggered();
+    /** @brief Synchronizes slider-originated zoom changes with scene/view scale. */
     void onHorizontalSliderZoomGraphicalValueChanged(int value);
+    /** @brief Activates line drawing mode as a compatibility façade wrapper. */
     void onActionDrawLineTriggered();
+    /** @brief Activates rectangle drawing mode as a compatibility façade wrapper. */
     void onActionDrawRectangleTriggered();
+    /** @brief Activates ellipse drawing mode as a compatibility façade wrapper. */
     void onActionDrawEllipseTriggered();
+    /** @brief Activates text drawing mode as a compatibility façade wrapper. */
     void onActionDrawTextTriggered();
+    /** @brief Activates polygon drawing mode as a compatibility façade wrapper. */
     void onActionDrawPoligonTriggered();
+    /** @brief Toggles simulated-time animation overlays in the current scene. */
     void onActionAnimateSimulatedTimeTriggered();
+    /** @brief Toggles variable animation overlays in the current scene. */
     void onActionAnimateVariableTriggered();
+    /** @brief Toggles counter animation overlays in the current scene. */
     void onActionAnimateCounterTriggered();
+    /** @brief Activates connection-creation mode and resets first-click compatibility state. */
     void onActionConnectTriggered();
+    /** @brief Aligns selected graphical items to the left boundary. */
     void onActionArranjeLeftTriggered();
+    /** @brief Aligns selected graphical items to the right boundary. */
     void onActionArranjeRightTriggered();
+    /** @brief Aligns selected graphical items to the top boundary. */
     void onActionArranjeTopTriggered();
+    /** @brief Aligns selected graphical items to the bottom boundary. */
     void onActionArranjeBototmTriggered();
+    /** @brief Aligns selected graphical items to horizontal center. */
     void onActionArranjeCenterTriggered();
+    /** @brief Aligns selected graphical items to vertical middle. */
     void onActionArranjeMiddleTriggered();
+    /** @brief Toggles graphical simulation visualization mode and action state. */
     void onActionActivateGraphicalSimulationTriggered();
+    /** @brief Applies animation-speed slider values to scene animation pacing. */
     void onHorizontalSliderAnimationSpeedValueChanged(int value);
+    /** @brief Toggles diagram overlays and refreshes model-image representation. */
     void onActionDiagramsTriggered();
+    /** @brief Selects all graphical items in the active scene context. */
     void onActionSelectAllTriggered();
+    /** @brief Toggles rendering of internal elements and triggers representation refresh. */
     void onActionShowInternalElementsTriggered();
+    /** @brief Toggles rendering of attached elements and triggers representation refresh. */
     void onActionShowAttachedElementsTriggered();
+    /** @brief Bridges checkbox state changes to the show-elements action wrapper. */
     void onCheckBoxShowElementsStateChanged(int arg1);
+    /** @brief Bridges checkbox state changes to the show-internals action wrapper. */
     void onCheckBoxShowInternalsStateChanged(int arg1);
+    /** @brief Bridges recursive-render checkbox changes to model-image refresh workflow. */
     void onCheckBoxShowRecursiveStateChanged(int arg1);
+    /** @brief Bridges level-annotation checkbox changes to model-image refresh workflow. */
     void onCheckBoxShowLevelsStateChanged(int arg1);
+    /** @brief Toggles interactive connection-hint visibility in scene callback wiring. */
     void onActionGModelShowConnectTriggered();
 
 private:

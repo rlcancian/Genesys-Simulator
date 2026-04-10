@@ -27,14 +27,26 @@ class Simulator;
  */
 class ModelLanguageSynchronizer {
 public:
-    // MainWindow provides explicit dependencies once, keeping wrappers thin and stable.
+    /**
+     * @brief Creates the synchronization service used by MainWindow compatibility wrappers.
+     */
     ModelLanguageSynchronizer(Simulator* simulator,
                               QPlainTextEdit* modelTextEditor,
                               bool* textModelHasChangedFlag,
                               QWidget* ownerWidget,
                               std::function<void()> onModelCreatedOrLoaded);
 
+    /**
+     * @brief Rebuilds textual model representation from the current kernel model.
+     *
+     * This is part of the synchronization bridge used after lifecycle, property, and scene updates.
+     */
     void actualizeModelSimLanguage() const;
+
+    /**
+     * @brief Parses text editor content and applies it to the simulator model.
+     * @return true when synchronization succeeds and model state is valid for downstream workflows.
+     */
     bool setSimulationModelBasedOnText() const;
 
 private:
