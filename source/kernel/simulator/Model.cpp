@@ -140,6 +140,16 @@ Model::~Model() {
 }
 
 void Model::sendEntityToComponent(Entity* entity, Connection* connection, double timeDelay) {
+	if (connection == nullptr) {
+		this->getTracer()->traceSimulation(this, TraceManager::Level::L3_errorRecover,
+				"Model::sendEntityToComponent skipped: null connection");
+		return;
+	}
+	if (connection->component == nullptr) {
+		this->getTracer()->traceSimulation(this, TraceManager::Level::L3_errorRecover,
+				"Model::sendEntityToComponent skipped: null destination component");
+		return;
+	}
 	this->sendEntityToComponent(entity, connection->component, timeDelay, connection->channel.portNumber);
 }
 

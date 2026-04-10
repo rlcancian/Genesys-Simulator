@@ -704,6 +704,16 @@
         <file>resources/icons/pack4/iconsMxGraph/zoomout.gif</file>
     </qresource>
     <qresource prefix="/animations">
+        <file alias="boat.png">resources/animations/boat.png</file>
+        <file alias="car.png">resources/animations/car.png</file>
+        <file alias="default.png">resources/animations/default.png</file>
+        <file alias="gear.png">resources/animations/gear.png</file>
+        <file alias="laptop.png">resources/animations/laptop.png</file>
+        <file alias="motorcycle-with-person.png">resources/animations/motorcycle-with-person.png</file>
+        <file alias="motorcycle.png">resources/animations/motorcycle.png</file>
+        <file alias="plane.png">resources/animations/plane.png</file>
+        <file alias="tractor.png">resources/animations/tractor.png</file>
+        <file alias="woman.png">resources/animations/woman.png</file>
         <file>resources/animations/.gitkeep</file>
     </qresource>
     <qresource prefix="/">
