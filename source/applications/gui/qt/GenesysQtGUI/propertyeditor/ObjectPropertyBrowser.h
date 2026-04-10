@@ -57,6 +57,8 @@ private:
     };
 
 private:
+    // Ensure the property browser infrastructure is created exactly once.
+    void _ensureBrowserInfrastructure();
     void _notifyModelChangeApplied();
     void _clearAll();
     void _rebuildProperties();

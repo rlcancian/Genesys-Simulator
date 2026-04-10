@@ -58,6 +58,8 @@ private:
 
 ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
     : QtTreePropertyBrowser(parent) {
+    // Initialize browser managers/factories once before the first clear/rebuild.
+    _ensureBrowserInfrastructure();
 
     _clearAll();
 
@@ -69,84 +71,71 @@ ObjectPropertyBrowser::ObjectPropertyBrowser(QWidget* parent)
     setAlternatingRowColors(true);
 }
 
+void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
+    // Keep a trace for one-time browser infrastructure setup diagnostics.
+    const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_ensureBrowserInfrastructure", this);
+
+    if (_variantManager == nullptr) {
+        // Create the variant manager only once and keep QObject parent ownership.
+        _variantManager = new QtVariantPropertyManager(this);
+        connect(
+            _variantManager,
+            SIGNAL(valueChanged(QtProperty*,QVariant)),
+            this,
+            SLOT(valueChanged(QtProperty*,QVariant))
+            );
+    }
+
+    if (_groupManager == nullptr) {
+        // Create the group manager only once for grouped properties.
+        _groupManager = new QtGroupPropertyManager(this);
+    }
+
+    if (_enumManager == nullptr) {
+        // Create the enum manager only once and connect value notifications once.
+        _enumManager = new QtEnumPropertyManager(this);
+        connect(
+            _enumManager,
+            SIGNAL(valueChanged(QtProperty*,int)),
+            this,
+            SLOT(enumValueChanged(QtProperty*,int))
+            );
+    }
+
+    if (_variantFactory == nullptr) {
+        // Preserve commit-aware variant editor factory behavior with one-time creation.
+        auto* commitFactory = new CommitAwareVariantEditorFactory(this);
+        commitFactory->setCommitCallback([this](QtProperty* property) {
+            onVariantEditorCommitted(property);
+        });
+        _variantFactory = commitFactory;
+    }
+
+    if (_enumFactory == nullptr) {
+        // Create the enum factory once for enum editor widgets.
+        _enumFactory = new QtEnumEditorFactory(this);
+    }
+
+    if (_variantManager != nullptr && _variantFactory != nullptr) {
+        // Bind variant manager/factory one time to avoid repeated reconfiguration.
+        setFactoryForManager(_variantManager, _variantFactory);
+    }
+    if (_enumManager != nullptr && _enumFactory != nullptr) {
+        // Bind enum manager/factory one time to avoid repeated reconfiguration.
+        setFactoryForManager(_enumManager, _enumFactory);
+    }
+}
+
 void ObjectPropertyBrowser::_clearAll() {
     // Adds scoped tracing for critical Property Editor crash-diagnosis paths.
     const GuiScopeTrace scopeTrace("ObjectPropertyBrowser::_clearAll", this);
+    // Ensure infrastructure is available while clearing only transient browser content.
+    _ensureBrowserInfrastructure();
     clear();
     _bindings.clear();
     _enumNames.clear();
     _pendingCommittedProperties.clear();
     _pendingCommittedValues.clear();
-
-    // Logs factory lifecycle before deletion to diagnose dangling QObject ownership.
-    qInfo() << "[PropertyEditor] deleting _variantFactory ptr=" << static_cast<void*>(_variantFactory);
-    delete _variantFactory;
-    // Logs factory lifecycle before deletion to diagnose dangling QObject ownership.
-    qInfo() << "[PropertyEditor] deleting _enumFactory ptr=" << static_cast<void*>(_enumFactory);
-    delete _enumFactory;
-    // Logs manager lifecycle before deletion to diagnose dangling QObject ownership.
-    qInfo() << "[PropertyEditor] deleting _variantManager ptr=" << static_cast<void*>(_variantManager);
-    delete _variantManager;
-    // Logs manager lifecycle before deletion to diagnose dangling QObject ownership.
-    qInfo() << "[PropertyEditor] deleting _groupManager ptr=" << static_cast<void*>(_groupManager);
-    delete _groupManager;
-    // Logs manager lifecycle before deletion to diagnose dangling QObject ownership.
-    qInfo() << "[PropertyEditor] deleting _enumManager ptr=" << static_cast<void*>(_enumManager);
-    delete _enumManager;
-
-    _variantFactory = nullptr;
-    _enumFactory = nullptr;
-    _variantManager = nullptr;
-    _groupManager = nullptr;
-    _enumManager = nullptr;
-
-    _variantManager = new QtVariantPropertyManager(this);
-    _groupManager = new QtGroupPropertyManager(this);
-    _enumManager = new QtEnumPropertyManager(this);
-    // Tracks manager destruction events for lifecycle diagnostics.
-    connect(_variantManager, &QObject::destroyed, this, [](QObject* obj) {
-        qInfo() << "[PropertyEditor] destroyed _variantManager ptr=" << obj;
-    });
-    // Tracks manager destruction events for lifecycle diagnostics.
-    connect(_groupManager, &QObject::destroyed, this, [](QObject* obj) {
-        qInfo() << "[PropertyEditor] destroyed _groupManager ptr=" << obj;
-    });
-    // Tracks manager destruction events for lifecycle diagnostics.
-    connect(_enumManager, &QObject::destroyed, this, [](QObject* obj) {
-        qInfo() << "[PropertyEditor] destroyed _enumManager ptr=" << obj;
-    });
-
-    auto* commitFactory = new CommitAwareVariantEditorFactory(this);
-    commitFactory->setCommitCallback([this](QtProperty* property) {
-        onVariantEditorCommitted(property);
-    });
-    _variantFactory = commitFactory;
-    _enumFactory = new QtEnumEditorFactory(this);
-    // Tracks factory destruction events for lifecycle diagnostics.
-    connect(_variantFactory, &QObject::destroyed, this, [](QObject* obj) {
-        qInfo() << "[PropertyEditor] destroyed _variantFactory ptr=" << obj;
-    });
-    // Tracks factory destruction events for lifecycle diagnostics.
-    connect(_enumFactory, &QObject::destroyed, this, [](QObject* obj) {
-        qInfo() << "[PropertyEditor] destroyed _enumFactory ptr=" << obj;
-    });
-
-    setFactoryForManager(_variantManager, _variantFactory);
-    setFactoryForManager(_enumManager, _enumFactory);
-
-    connect(
-        _variantManager,
-        SIGNAL(valueChanged(QtProperty*,QVariant)),
-        this,
-        SLOT(valueChanged(QtProperty*,QVariant))
-        );
-
-    connect(
-        _enumManager,
-        SIGNAL(valueChanged(QtProperty*,int)),
-        this,
-        SLOT(enumValueChanged(QtProperty*,int))
-        );
 }
 
 void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
