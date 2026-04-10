@@ -72,7 +72,8 @@ ModelGraphicsView* sceneParentModelGraphicsView(ModelGraphicsScene* scene) {
     if (scene == nullptr) {
         return nullptr;
     }
-    return qobject_cast<ModelGraphicsView*>(scene->parent());
+    // Use RTTI because ModelGraphicsView does not provide Qt meta-object casting.
+    return dynamic_cast<ModelGraphicsView*>(scene->parent());
 }
 }
 
