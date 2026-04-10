@@ -13,6 +13,7 @@
 
 #include "Set.h"
 #include "../../kernel/simulator/Model.h"
+#include <vector>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -43,6 +44,11 @@ Set::Set(Model* model, std::string name) : ModelDataDefinition(model, Util::Type
     _addProperty(propElementSet);
 }
 
+Set::~Set() {
+    delete _elementSet;
+    _elementSet = nullptr;
+}
+
 std::string Set::show() {
     return ModelDataDefinition::show() +
             "";
@@ -62,7 +68,9 @@ List<ModelDataDefinition*>* Set::getElementSet() const {
 
 void Set::addElementSet(ModelDataDefinition* newElement) {
     _elementSet->insert(newElement);
-    _setOfType = newElement->getClassname();
+    if (_elementSet->size() == 1 && (_setOfType.empty() || _setOfType == DEFAULT.setOfType)) {
+        _setOfType = newElement->getClassname();
+    }
 }
 
 void Set::removeElementSet(ModelDataDefinition* element) {
@@ -88,6 +96,7 @@ bool Set::_loadInstance(PersistenceRecord *fields) {
     bool res = ModelDataDefinition::_loadInstance(fields);
     if (res) {
         try {
+            _elementSet->clear();
             _setOfType = fields->loadField("type", DEFAULT.setOfType);
             unsigned int memberSize = fields->loadField("members", DEFAULT.membersSize);
             for (unsigned int i = 0; i < memberSize; i++) {
@@ -118,20 +127,30 @@ void Set::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Set::_check(std::string& errorMessage) {
     bool resultAll = true;
-    if (_elementSet->size() > 0) {
-        std::string typeOfFirstElement = _elementSet->front()->getClassname();
-        if (_setOfType == "") {
-            _setOfType = typeOfFirstElement;
-        } else if (_setOfType != typeOfFirstElement) {
-            resultAll = false;
-            errorMessage += "Set is of type \"" + _setOfType + "\" and first modeldatum is of type \"" + typeOfFirstElement + "\"";
+    std::vector<std::string> previousMemberKeys;
+    for (const auto& pair : *getAttachedData()) {
+        if (pair.first.rfind("Member", 0) == 0) {
+            previousMemberKeys.push_back(pair.first);
         }
     }
-    int i = 0;
-    for (ModelDataDefinition* data : *_elementSet->list()) {
-        this->_attachedDataInsert("Member" + Util::StrIndex(i), data);
+    for (const std::string& key : previousMemberKeys) {
+        _attachedDataRemove(key);
     }
-    errorMessage += "";
+
+    if (_elementSet->size() > 0) {
+        unsigned int i = 0;
+        for (ModelDataDefinition* data : *_elementSet->list()) {
+            std::string currentType = data->getClassname();
+            if (_setOfType.empty()) {
+                _setOfType = currentType;
+            } else if (_setOfType != currentType) {
+                resultAll = false;
+                errorMessage += "Set is of type \"" + _setOfType + "\" but member[" + Util::StrIndex(i) + "]=\"" + data->getName() + "\" is of type \"" + currentType + "\"";
+            }
+            _attachedDataInsert("Member" + Util::StrIndex(i), data);
+            ++i;
+        }
+    }
     return resultAll;
 }
 
@@ -143,6 +162,17 @@ ParserChangesInformation* Set::_getParserChangesInformation() {
 }
 
 void Set::_createInternalAndAttachedData() {
+    std::vector<std::string> previousSetMemberKeys;
+    const std::string setMemberPrefix = getName() + ".";
+    for (const auto& pair : *getAttachedData()) {
+        if (pair.first.rfind(setMemberPrefix, 0) == 0) {
+            previousSetMemberKeys.push_back(pair.first);
+        }
+    }
+    for (const std::string& key : previousSetMemberKeys) {
+        _attachedDataRemove(key);
+    }
+
     for(ModelDataDefinition* dd: *_elementSet->list()) {
         _attachedDataInsert(getName()+"."+dd->getName(), dd);
     }
