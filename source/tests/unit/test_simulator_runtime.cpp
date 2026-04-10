@@ -21,6 +21,7 @@
 #include "plugins/data/SignalData.h"
 #include "plugins/data/Station.h"
 #include "plugins/data/Set.h"
+#include "plugins/data/Label.h"
 #include "plugins/components/Delay.h"
 #define private public
 #define protected public
@@ -409,6 +410,23 @@ public:
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
+    }
+};
+
+class LabelProbe : public Label {
+public:
+    LabelProbe(Model* model, const std::string& name = "") : Label(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
     }
 };
 
@@ -1983,6 +2001,125 @@ TEST(SimulatorRuntimeTest, SetRecheckRemovesObsoleteAttachedMembers) {
     EXPECT_EQ(attached->count("SetRecheck.SetRecheckA"), 0u);
     ASSERT_EQ(attached->count("SetRecheck.SetRecheckB"), 1u);
     EXPECT_EQ(attached->at("SetRecheck.SetRecheckB"), &memberB);
+}
+
+TEST(SimulatorRuntimeTest, LabelCheckFailsWithoutEnteringComponent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    LabelProbe label(model, "LabelMissingEnteringComponent");
+    label.setLabel("Dock-A");
+
+    std::string errorMessage;
+    EXPECT_FALSE(label.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("entering component was not defined"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, LabelCheckPassesWithValidEnteringComponentAndAttachesReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Delay destination(model, "LabelValidDestination");
+    LabelProbe label(model, "LabelValid");
+    label.setLabel("Dock-B");
+    label.setEnterIntoLabelComponent(&destination);
+
+    std::string errorMessage;
+    EXPECT_TRUE(label.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+    auto* attached = label.getAttachedData();
+    ASSERT_EQ(attached->count("EnteringLabelComponent"), 1u);
+    EXPECT_EQ(attached->at("EnteringLabelComponent"), &destination);
+}
+
+TEST(SimulatorRuntimeTest, LabelLoadWithMissingComponentKeepsStateCoherentAndTraceable) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    LabelProbe source(model, "LabelLoadSource");
+    source.setLabel("Dock-C");
+    Delay validDestination(model, "LabelLoadValidDestination");
+    source.setEnterIntoLabelComponent(&validDestination);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+    fields.saveField("enteringComponentName", std::string("MissingComponent"));
+
+    LabelProbe label(model, "LabelLoadMissing");
+    ASSERT_TRUE(label.LoadInstanceProbe(&fields));
+    EXPECT_EQ(label.getLabel(), "Dock-C");
+    EXPECT_EQ(label.getEnteringLabelComponentName(), "MissingComponent");
+    EXPECT_EQ(label.getEnterIntoLabelComponent(), nullptr);
+
+    const auto* traceErrors = model->getTracer()->errorMessages()->list();
+    const bool foundTrace = std::any_of(traceErrors->begin(), traceErrors->end(), [](const std::string& message) {
+        return message.find("MissingComponent") != std::string::npos;
+    });
+    EXPECT_TRUE(foundTrace);
+
+    std::string errorMessage;
+    EXPECT_FALSE(label.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("was not defined"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, LabelSendEntityWithoutDestinationDoesNotCrashAndEmitsTrace) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    LabelProbe label(model, "LabelSendWithoutDestination");
+    Entity* entity = model->createEntity("LabelSendEntity", true);
+    ASSERT_NE(entity, nullptr);
+
+    EXPECT_NO_THROW(label.sendEntityToLabelComponent(entity, 0.0));
+
+    const auto* traceErrors = model->getTracer()->errorMessages()->list();
+    const bool foundTrace = std::any_of(traceErrors->begin(), traceErrors->end(), [](const std::string& message) {
+        return message.find("has no entering component defined") != std::string::npos;
+    });
+    EXPECT_TRUE(foundTrace);
+
+    model->removeEntity(entity);
+}
+
+TEST(SimulatorRuntimeTest, LabelShowIncludesLabelAndEnteringComponentName) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Delay destination(model, "LabelShowDestination");
+    LabelProbe label(model, "LabelShow");
+    label.setLabel("Dock-D");
+    label.setEnterIntoLabelComponent(&destination);
+
+    const std::string shown = label.show();
+    EXPECT_NE(shown.find("label=\"Dock-D\""), std::string::npos);
+    EXPECT_NE(shown.find("enteringComponentName=LabelShowDestination"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, LabelSaveLoadRoundTripPreservesLabelAndEnteringComponentName) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Delay destination(model, "LabelRoundTripDestination");
+    LabelProbe source(model, "LabelRoundTripSource");
+    source.setLabel("Dock-E");
+    source.setEnterIntoLabelComponent(&destination);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    LabelProbe loaded(model, "LabelRoundTripLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getLabel(), "Dock-E");
+    EXPECT_EQ(loaded.getEnteringLabelComponentName(), "LabelRoundTripDestination");
+    EXPECT_EQ(loaded.getEnterIntoLabelComponent(), &destination);
 }
 
 TEST(SimulatorRuntimeTest, StationCreateInternalInitiallyCreatesCollectorsWhenStatisticsEnabled) {

@@ -70,7 +70,13 @@ PluginInformation* Label::GetPluginInformation() {
 //
 
 std::string Label::show() {
-	return ModelDataDefinition::show();
+	std::string enteringComponentName = _enteringLabelComponentName;
+	if (_enteringLabelComponent != nullptr && enteringComponentName.empty()) {
+		enteringComponentName = _enteringLabelComponent->getName();
+	}
+	return ModelDataDefinition::show() +
+			",label=\"" + _label + "\"" +
+			",enteringComponentName=" + (enteringComponentName.empty() ? "NULL" : enteringComponentName);
 }
 
 void Label::setLabel(std::string _label) {
@@ -81,12 +87,31 @@ std::string Label::getLabel() const {
 	return _label;
 }
 
+void Label::setEnterIntoLabelComponent(ModelComponent* enteringLabelComponent) {
+	_enteringLabelComponent = enteringLabelComponent;
+	_enteringLabelComponentName = enteringLabelComponent != nullptr ? enteringLabelComponent->getName() : "";
+}
+
 ModelComponent* Label::getEnterIntoLabelComponent() const {
 	return _enteringLabelComponent;
 }
 
+std::string Label::getEnteringLabelComponentName() const {
+	return _enteringLabelComponentName;
+}
+
 void Label::sendEntityToLabelComponent(Entity* entity, double timeDelay) {
-	//_parentModel->sendEntityToComponent(entity, _enteringLabelComponent->getConnections()->getFrontConnection(), timeDelay);
+	if (_enteringLabelComponent == nullptr) {
+		traceError("Label \"" + getName() + "\" has no entering component defined. Entity was not sent.");
+		return;
+	}
+	if (!_enteringLabelComponentName.empty()) {
+		ModelComponent* resolved = _parentModel->getComponentManager()->find(_enteringLabelComponentName);
+		if (resolved == nullptr || resolved != _enteringLabelComponent) {
+			traceError("Label \"" + getName() + "\" entering component reference is stale or invalid (\"" + _enteringLabelComponentName + "\"). Entity was not sent.");
+			return;
+		}
+	}
 	_parentModel->sendEntityToComponent(entity, _enteringLabelComponent, timeDelay);
 }
 
@@ -97,9 +122,15 @@ bool Label::_loadInstance(PersistenceRecord *fields) {
 	if (res) {
 		try {
 			this->_label = fields->loadField("label", "");
-			std::string componentName = fields->loadField("enteringComponentName", "");
-			ModelComponent* comp = _parentModel->getComponentManager()->find(componentName);
-			this->_enteringLabelComponent = comp;
+			this->_enteringLabelComponent = nullptr;
+			this->_enteringLabelComponentName = fields->loadField("enteringComponentName", "");
+			if (!_enteringLabelComponentName.empty()) {
+				ModelComponent* comp = _parentModel->getComponentManager()->find(_enteringLabelComponentName);
+				this->_enteringLabelComponent = comp;
+				if (comp == nullptr) {
+					traceError("Label \"" + getName() + "\" could not resolve entering component \"" + _enteringLabelComponentName + "\" while loading.");
+				}
+			}
 		} catch (...) {
 		}
 	}
@@ -109,20 +140,43 @@ bool Label::_loadInstance(PersistenceRecord *fields) {
 void Label::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("label", this->_label, "", saveDefaultValues);
+	std::string componentName = _enteringLabelComponentName;
 	if (_enteringLabelComponent != nullptr) {
-		fields->saveField("enteringComponentName", _enteringLabelComponent->getName(), "", saveDefaultValues);
+		componentName = _enteringLabelComponent->getName();
+		_enteringLabelComponentName = componentName;
+	}
+	if (!componentName.empty()) {
+		fields->saveField("enteringComponentName", componentName, "", saveDefaultValues);
 	}
 }
 
 // could be overriden
 
 bool Label::_check(std::string& errorMessage) {
-	bool resultAll = true;
-	resultAll &= (_enteringLabelComponent != nullptr);
-	if (!resultAll) {
-		errorMessage += "Entering Label Component was not defined";
+	_attachedDataRemove("EnteringLabelComponent");
+
+	if (_enteringLabelComponent == nullptr) {
+		errorMessage += "Label \"" + getName() + "\" entering component was not defined";
+		return false;
 	}
-	return resultAll;
+
+	if (_enteringLabelComponentName.empty()) {
+		_enteringLabelComponentName = _enteringLabelComponent->getName();
+	}
+
+	ModelComponent* resolvedComponent = _parentModel->getComponentManager()->find(_enteringLabelComponentName);
+	if (resolvedComponent == nullptr) {
+		errorMessage += "Label \"" + getName() + "\" entering component \"" + _enteringLabelComponentName + "\" does not exist in current model";
+		return false;
+	}
+
+	if (resolvedComponent != _enteringLabelComponent) {
+		errorMessage += "Label \"" + getName() + "\" entering component reference is stale for \"" + _enteringLabelComponentName + "\"";
+		return false;
+	}
+
+	_attachedDataInsert("EnteringLabelComponent", _enteringLabelComponent);
+	return true;
 }
 
 //ParserChangesInformation* Label::_getParserChangesInformation() {}

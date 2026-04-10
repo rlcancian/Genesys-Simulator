@@ -27,7 +27,9 @@ public:
 	virtual std::string show() override;
 	void setLabel(std::string _label);
 	std::string getLabel() const;
+	void setEnterIntoLabelComponent(ModelComponent* enteringLabelComponent);
 	ModelComponent* getEnterIntoLabelComponent() const;
+	std::string getEnteringLabelComponentName() const;
 	void sendEntityToLabelComponent(Entity* entity, double timeDelay);
 protected: // must be overriden 
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
@@ -39,8 +41,8 @@ protected: // could be overriden
 	//virtual void _createInternalAndAttachedData();
 private:
 	std::string _label;
+	std::string _enteringLabelComponentName;
 	ModelComponent* _enteringLabelComponent = nullptr;
 };
 
 #endif /* LABEL_H */
-
