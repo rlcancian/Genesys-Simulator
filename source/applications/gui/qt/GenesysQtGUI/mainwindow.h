@@ -273,16 +273,24 @@ private: // simulator event handlers
     /** @brief Compatibility wrapper for after-process animation event delegation. */
     void _onAfterProcessEvent(SimulationEvent * re);
 private: // model Graphics View handlers
+    /** @brief Receives scene mouse callbacks and delegates interaction flow to scene-tool pipeline. */
     void _onSceneMouseEvent(QGraphicsSceneMouseEvent* mouseEvent);
+    /** @brief Handles scene wheel-in callbacks to keep zoom wrappers synchronized. */
     void _onSceneWheelInEvent();
+    /** @brief Handles scene wheel-out callbacks to keep zoom wrappers synchronized. */
     void _onSceneWheelOutEvent();
+    /** @brief Bridges scene graphical-model events to compatibility refresh/update routines. */
     void _onSceneGraphicalModelEvent(const GraphicalModelEvent& event);
 private: // QGraphicsScene Slots
+    /** @brief Reacts to scene dirty-region changes and updates compatibility state flags. */
 	void sceneChanged(const QList<QRectF> &region);
+    /** @brief Reacts to focus-item transitions and synchronizes property/editor wrappers. */
 	void sceneFocusItemChanged(QGraphicsItem *newFocusItem, QGraphicsItem *oldFocusItem, Qt::FocusReason reason);
 	//void sceneRectChanged(const QRectF &rect);
+    /** @brief Reacts to scene selection changes and delegates to property/inspector synchronization. */
 	void sceneSelectionChanged();
 private: // Similar to QGraphicsScene Slots
+    /** @brief Compatibility hook fired when scene model graph changes outside Qt dirty-region notifications. */
 	void sceneGraphicalModelChanged();
 private: // simulator related
     /** @brief Registers simulator event callbacks while preserving private wrapper surface. */
