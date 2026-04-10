@@ -164,6 +164,11 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     double conversionFactorToSeconds = Util::TimeUnitConvert(replicationBaseTimeUnit, Util::TimeUnit(5));
     AnimationTimer::setConversionFactorToSeconds(conversionFactorToSeconds);
 
+    // Reset scene animation artifacts to guarantee a clean start baseline.
+    _scene->clearAnimationsTransition();
+    _scene->clearAnimationsQueue();
+    _scene->clearAnimationsValues();
+
     QCoreApplication::processEvents();
 }
 
@@ -200,13 +205,15 @@ void SimulationEventController::onSimulationEndHandler(SimulationEvent* re) cons
     Q_UNUSED(re)
     // Destroy all paused-animation lists and remaining paused animations before ending.
     cleanupPausedAnimationMap(_scene->getAnimationPaused(), true);
+    // Clear any remaining scene animation state before final UI updates.
+    _scene->clearAnimationsTransition();
+    _scene->clearAnimationsQueue();
+    _scene->clearAnimationsValues();
     _callbacks.actualizeActions();
     _centralTabWidget->setCurrentIndex(_tabCentralReportsIndex);
     for (unsigned int i = 0; i < 50; i++) {
         QCoreApplication::processEvents();
     }
-
-    _scene->clearAnimationsQueue();
 
     *_modelChecked = false;
 }
