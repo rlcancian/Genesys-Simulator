@@ -13,6 +13,8 @@
 #include "Schedule.h"
 
 #include "../../kernel/simulator/Model.h"
+#include <cmath>
+#include <sstream>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -31,24 +33,54 @@ ModelDataDefinition* Schedule::NewInstance(Model* model, std::string name) {
 
 Schedule::Schedule(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<Schedule>(), name) {
 }
+
+Schedule::~Schedule() {
+	for (SchedulableItem* item : *_schedulableItems->list()) {
+		delete item;
+	}
+	delete _schedulableItems;
+}
 //
 //public
 //
 
 std::string Schedule::show() {
-	return ModelDataDefinition::show();
+	std::stringstream ss;
+	ss << ModelDataDefinition::show()
+	   << ",items=" << _schedulableItems->size()
+	   << ",repeatAfterLast=" << (_repeatAfterLast ? "true" : "false");
+	return ss.str();
 }
 
 std::string Schedule::getExpression() {
+	if (_schedulableItems->size() == 0) {
+		return "";
+	}
+
 	double tnow = _parentModel->getSimulation()->getSimulatedTime();
+	double cycleDuration = 0.0;
+	for (SchedulableItem* item : *_schedulableItems->list()) {
+		cycleDuration += item->getDuration();
+	}
+
+	double targetTime = tnow;
+	if (_repeatAfterLast) {
+		if (cycleDuration <= 0.0) {
+			return _schedulableItems->last()->getExpression();
+		}
+		targetTime = std::fmod(tnow, cycleDuration);
+		if (targetTime < 0.0) {
+			targetTime += cycleDuration;
+		}
+	}
+
 	double accumDuration = 0.0;
-	do
-		for (SchedulableItem* item : *_schedulableItems->list()) {
-			if (tnow <= accumDuration + item->getDuration()) {
-				return item->getExpression();
-			}
-			accumDuration += item->getDuration();
-		} while (_repeatAfterLast);
+	for (SchedulableItem* item : *_schedulableItems->list()) {
+		accumDuration += item->getDuration();
+		if (targetTime <= accumDuration) {
+			return item->getExpression();
+		}
+	}
 	return _schedulableItems->last()->getExpression();
 }
 
@@ -103,6 +135,9 @@ bool Schedule::_loadInstance(PersistenceRecord *fields) {
 			 */
 			_repeatAfterLast = fields->loadField("repeatAfterLast", DEFAULT.repeatAfterLast);
 			unsigned int items = fields->loadField("items", 0u);
+			for (SchedulableItem* item : *_schedulableItems->list()) {
+				delete item;
+			}
 			_schedulableItems->clear();
 			for (unsigned int i = 0; i < items; i++) {
 				std::string suffix = Util::StrIndex(i);
@@ -143,6 +178,7 @@ bool Schedule::_check(std::string& errorMessage) {
 	 * \brief Validate that schedule has items and non-negative durations.
 	 */
 	bool resultAll = true;
+	bool hasPositiveDuration = false;
 	if (_schedulableItems->size() == 0) {
 		errorMessage += "Schedule has no schedulable items. ";
 		resultAll = false;
@@ -152,7 +188,14 @@ bool Schedule::_check(std::string& errorMessage) {
 			errorMessage += "Schedule item duration must be >= 0. ";
 			resultAll = false;
 		}
+		if (item->getDuration() > 0.0) {
+			hasPositiveDuration = true;
+		}
 		resultAll &= _parentModel->checkExpression(item->getExpression(), getName() + ".ItemExpression", errorMessage);
+	}
+	if (_repeatAfterLast && !hasPositiveDuration) {
+		errorMessage += "Schedule repeating cycle must contain at least one item with duration > 0. ";
+		resultAll = false;
 	}
 	return resultAll;
 }
@@ -163,14 +206,7 @@ void Schedule::_initBetweenReplications() {
 }
 
 void Schedule::_createInternalAndAttachedData() {
-	if (_reportStatistics) {
-		//if (_internal == nullptr) {
-		//	_internal = new StatisticsCollector(_parentModel, getName() + "." + "NumberInQueue", this); 
-		//	_internelElementsInsert("NumberInQueue", _internal);
-		//}
-	} else { //if (_cstatNumberInQueue != nullptr) {
-		this->_internalDataClear();
-	}
+	// Schedule currently has no internal or attached data to instantiate.
 }
 
 ParserChangesInformation* Schedule::_getParserChangesInformation() {
