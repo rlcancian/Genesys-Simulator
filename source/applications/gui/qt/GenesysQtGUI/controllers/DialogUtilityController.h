@@ -13,7 +13,24 @@ namespace Ui {
 class MainWindow;
 }
 
-// Move remaining dialog and utility orchestration into a dedicated Phase 11 controller.
+// Document the dialog and utility controller extracted from remaining MainWindow actions.
+/**
+ * @brief Controller that orchestrates auxiliary dialogs and utility actions.
+ *
+ * This Phase-11 controller gathers non-core menu/toolbar actions that were still in
+ * MainWindow, such as About dialogs, breakpoint utilities, optimization/preferences dialogs,
+ * data analyzer launch flow, and parallelization toggles.
+ *
+ * Responsibilities:
+ * - execute dialog-driven utility actions delegated from MainWindow wrappers;
+ * - access shared UI/simulator state through narrow injected callbacks/references;
+ * - keep compatibility behavior for debug breakpoints and auxiliary tooling actions.
+ *
+ * Boundaries:
+ * - it does not own simulator/model lifecycle;
+ * - it does not manage scene command pipeline or property editor internals;
+ * - it acts as a controller-level compatibility wrapper, not as a domain service.
+ */
 class DialogUtilityController {
 public:
     // Inject only narrow dependencies required by Phase 11 dialog and utility workflows.

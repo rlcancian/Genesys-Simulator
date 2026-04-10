@@ -15,7 +15,24 @@ class QSlider;
 class QAction;
 class ModelGraphicsView;
 
-// Persist and restore graphical-model state for Phase 2 extraction.
+// Document persistence responsibilities for textual and graphical GUI model data.
+/**
+ * @brief Persistence service for saving/loading graphical and textual model representations.
+ *
+ * This Phase-2 extraction removes serialization concerns from MainWindow while preserving file
+ * compatibility through wrapper delegation. It bridges GUI state (scene/view/actions/editors)
+ * and kernel model loading/saving workflows.
+ *
+ * Responsibilities:
+ * - save textual model content with the existing line-based format;
+ * - save full graphical .gui state sections used by legacy compatibility;
+ * - load persisted model files and restore graphical/editor UI state via callbacks.
+ *
+ * Boundaries:
+ * - it does not own widgets or simulator lifetime;
+ * - it does not run simulation commands or trace rendering;
+ * - it coordinates persistence/serialization only.
+ */
 class GraphicalModelSerializer {
 public:
     // Capture only the narrow GUI/kernel dependencies required for persistence behavior.

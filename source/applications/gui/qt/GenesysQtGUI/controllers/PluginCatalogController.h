@@ -13,7 +13,24 @@ class QString;
 class QTreeWidget;
 class QTreeWidgetItem;
 
-// Encapsulate Phase 5 plugin-catalog and plugin-palette UI behavior.
+// Document the plugin-catalog controller extracted from MainWindow UI code.
+/**
+ * @brief Controller responsible for plugin catalog presentation and plugin palette behavior.
+ *
+ * This controller encapsulates the plugin-tree behavior used by MainWindow wrappers, keeping
+ * plugin browsing and insertion affordances consistent while reducing direct widget logic in
+ * the MainWindow compatibility façade.
+ *
+ * Responsibilities:
+ * - populate plugin entries grouped by category with legacy color conventions;
+ * - provide compatibility helpers for fake-plugin insertion paths;
+ * - react to plugin-tree click/double-click events delegated by MainWindow.
+ *
+ * Boundaries:
+ * - it does not load plugin binaries or manage kernel plugin lifecycle;
+ * - it does not own textual model synchronization beyond delegated editor insertions;
+ * - it is a UI controller layer, not a persistence/export service.
+ */
 class PluginCatalogController {
 public:
     // Inject only the dependencies required to manage plugin catalog UI behavior.

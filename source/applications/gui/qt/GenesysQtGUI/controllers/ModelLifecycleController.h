@@ -14,7 +14,25 @@ namespace Ui {
 class MainWindow;
 }
 
-// Encapsulate Phase 7 model/application lifecycle orchestration with narrow dependencies.
+// Document model lifecycle orchestration delegated by MainWindow compatibility wrappers.
+/**
+ * @brief Controller for model/application lifecycle flows delegated from MainWindow.
+ *
+ * This controller centralizes lifecycle actions (new/open/save/close/check/configure/exit)
+ * while MainWindow remains the composition root and compatibility façade. It uses explicit
+ * callback injection to invoke existing UI update and persistence routines without changing
+ * signatures or ownership.
+ *
+ * Responsibilities:
+ * - orchestrate user-triggered lifecycle actions and guard pending-change confirmations;
+ * - coordinate model load/save paths through injected serializer callbacks;
+ * - trigger UI/tab/action refreshes required after lifecycle transitions.
+ *
+ * Boundaries:
+ * - it does not directly implement file formats (delegated to services);
+ * - it does not own simulator/model objects;
+ * - it does not manage scene tools, property editor internals, or simulation traces.
+ */
 class ModelLifecycleController {
 public:
     // Group callback dependencies to keep constructor arguments focused and explicit.

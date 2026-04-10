@@ -1,3 +1,13 @@
+// Document this compilation unit as the MainWindow composition-root partition.
+/**
+ * @file mainwindow.cpp
+ * @brief Composition-root partition of MainWindow implementation.
+ *
+ * This file contains central MainWindow construction, initialization, and wiring logic,
+ * including creation of extracted controllers/services and baseline UI setup. It does not
+ * define a new class; it is a physical partition of the same MainWindow implementation used
+ * as a compatibility façade in the incremental refactoring.
+ */
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 

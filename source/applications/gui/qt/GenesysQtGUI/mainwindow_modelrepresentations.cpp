@@ -1,3 +1,13 @@
+// Document this compilation unit as the model-representation partition of MainWindow.
+/**
+ * @file mainwindow_modelrepresentations.cpp
+ * @brief Model representation/persistence wrapper partition of MainWindow implementation.
+ *
+ * This file groups MainWindow wrappers related to textual synchronization, Graphviz and C++
+ * exports, graphical persistence/serialization, and graphical model reconstruction through
+ * extracted services/controllers. It does not define a new class; it is a thematic partition
+ * of MainWindow.
+ */
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 // Include the Phase 3 controller interface required by compatibility wrappers.

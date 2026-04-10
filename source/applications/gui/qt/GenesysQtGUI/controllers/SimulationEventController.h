@@ -17,7 +17,26 @@ class QTextEdit;
 class QTabWidget;
 class QAction;
 
-// Encapsulate Phase 4 simulation-event handling and handler registration.
+// Document the controller that bridges kernel simulation events to GUI updates.
+/**
+ * @brief Controller for simulation event callbacks, UI updates, and handler wiring.
+ *
+ * This controller concentrates event-reaction logic previously embedded in MainWindow and
+ * keeps compatibility by exposing methods invoked from MainWindow wrappers. It also provides
+ * the event-registration entry point used to wire kernel OnEventManager callbacks to those
+ * wrappers without changing the existing signal/slot surface.
+ *
+ * Responsibilities:
+ * - react to model-check, replication, simulation, process, and entity events;
+ * - update progress/status widgets and debug tables through injected UI dependencies;
+ * - trigger delegated refresh callbacks for actions, debug panes, and scene synchronization;
+ * - register handlers through MainWindow compatibility façade ownership.
+ *
+ * Boundaries:
+ * - it does not own MainWindow or widget lifetime;
+ * - it does not execute simulation commands (handled by command controllers);
+ * - it does not perform persistence/export/model-language synchronization.
+ */
 class SimulationEventController {
 public:
     // Group callback dependencies to keep constructor explicit and narrow.
