@@ -158,12 +158,35 @@ TEST(SimulatorSupportTest, DefaultActivationCodeReportsNotFound) {
     EXPECT_EQ(lm.showActivationCode(), "ACTIVATION CODE: Not found.");
 }
 
+TEST(SimulatorSupportTest, LicenceManagerDefaultLimitsAndResetAreStable) {
+    LicenceManager lm(nullptr);
+
+    EXPECT_EQ(lm.getModelComponentsLimit(), 100u);
+    EXPECT_EQ(lm.getModelDatasLimit(), 300u);
+    EXPECT_EQ(lm.getEntityLimit(), 300u);
+    EXPECT_EQ(lm.getHostsLimit(), 1u);
+    EXPECT_EQ(lm.getThreadsLimit(), 1u);
+    EXPECT_NE(lm.showLimits().find("100 components"), std::string::npos);
+    EXPECT_NE(lm.showLimits().find("300 elements"), std::string::npos);
+    EXPECT_FALSE(lm.insertActivationCode());
+    EXPECT_FALSE(lm.lookforActivationCode());
+
+    lm.removeActivationCode();
+
+    EXPECT_EQ(lm.showActivationCode(), "ACTIVATION CODE: Not found.");
+    EXPECT_EQ(lm.getModelComponentsLimit(), 100u);
+}
+
 // ExperimentManager class-focused tests moved to test_support_experimentmanager.cpp
 
 TEST(SimulatorSupportTest, ModelInfoStartsMarkedAsUnchanged) {
     ModelInfo info;
     EXPECT_FALSE(info.hasChanged());
     EXPECT_FALSE(info.getName().empty());
+    EXPECT_EQ(info.getAnalystName(), "");
+    EXPECT_EQ(info.getDescription(), "");
+    EXPECT_EQ(info.getProjectTitle(), "");
+    EXPECT_EQ(info.getVersion(), "1.0");
 }
 
 TEST(SimulatorSupportTest, ModelInfoSettersMarkObjectAsChanged) {
@@ -196,6 +219,20 @@ TEST(SimulatorSupportTest, ModelInfoSaveAndLoadRoundTrip) {
     EXPECT_EQ(loaded.getProjectTitle(), "Project_W");
     EXPECT_EQ(loaded.getVersion(), "2.5");
     EXPECT_FALSE(loaded.hasChanged());
+}
+
+TEST(SimulatorSupportTest, ModelInfoShowReflectsConfiguredFields) {
+    ModelInfo info;
+    info.setName("Model_S");
+    info.setAnalystName("Analyst_S");
+    info.setDescription("Desc_S");
+    info.setVersion("9.8");
+
+    const std::string shown = info.show();
+    EXPECT_NE(shown.find("analystName=\"Analyst_S\""), std::string::npos);
+    EXPECT_NE(shown.find("description=\"Desc_S\""), std::string::npos);
+    EXPECT_NE(shown.find("name=\"Model_S\""), std::string::npos);
+    EXPECT_NE(shown.find("version=9.8"), std::string::npos);
 }
 
 // ModelManager class-focused tests moved to test_support_modelmanager.cpp
@@ -234,6 +271,19 @@ TEST(SimulatorSupportTest, ParserChangesInformationStoresAllConfiguredSections) 
     EXPECT_EQ(info.getexpressionProductions(), "prod");
     EXPECT_EQ(info.getassignments(), "assign");
     EXPECT_EQ(info.getfunctionProdutions(), "func");
+}
+
+TEST(SimulatorSupportTest, ParserChangesInformationSupportsMultilineAndOverwrite) {
+    ParserChangesInformation info;
+
+    info.setIncludes("#include <x>\n#include <y>");
+    info.setTokens("TOK_A TOK_B");
+    info.setIncludes("just-one");
+    info.setFunctionProdutions("f1\nf2");
+
+    EXPECT_EQ(info.getincludes(), "just-one");
+    EXPECT_EQ(info.gettokens(), "TOK_A TOK_B");
+    EXPECT_EQ(info.getfunctionProdutions(), "f1\nf2");
 }
 
 TEST(SimulatorSupportTest, PropertyManagerCanBeConstructed) {
@@ -302,6 +352,30 @@ TEST(SimulatorSupportTest, PluginInformationStoresMetadataAndLimits) {
     EXPECT_EQ(info.getDynamicLibFilenameDependencies()->size(), 1u);
 }
 
+TEST(SimulatorSupportTest, PluginInformationDefaultsAndContainerReplacementWork) {
+    PluginInformation info("Delay", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+
+    EXPECT_EQ(info.getCategory(), "Discrete Processing");
+    EXPECT_FALSE(info.isGenerateReport());
+    EXPECT_FALSE(info.isSource());
+    EXPECT_FALSE(info.isSink());
+    EXPECT_EQ(info.getMinimumInputs(), 1u);
+    EXPECT_EQ(info.getMaximumInputs(), 1u);
+    EXPECT_EQ(info.getMinimumOutputs(), 1u);
+    EXPECT_EQ(info.getMaximumOutputs(), 1u);
+
+    auto* deps = new std::list<std::string>{"dep1.so", "dep2.so"};
+    auto* fields = new std::map<std::string, std::string>{{"k1", "v1"}, {"k2", "v2"}};
+    info.setDynamicLibFilenameDependencies(deps);
+    info.setFields(fields);
+
+    ASSERT_NE(info.getDynamicLibFilenameDependencies(), nullptr);
+    EXPECT_EQ(info.getDynamicLibFilenameDependencies()->size(), 2u);
+    ASSERT_NE(info.getFields(), nullptr);
+    EXPECT_EQ(info.getFields()->at("k1"), "v1");
+    EXPECT_EQ(info.getFields()->at("k2"), "v2");
+}
+
 TEST(SimulatorSupportTest, PluginConstructedFromFactoryCanExposePluginInformation) {
     Plugin plugin(&GetTestComponentPluginInformation);
 
@@ -331,6 +405,9 @@ TEST(SimulatorSupportTest, PluginCanRepresentElementPluginKind) {
     ASSERT_TRUE(plugin.isIsValidPlugin());
     ASSERT_NE(plugin.getPluginInfo(), nullptr);
     EXPECT_FALSE(plugin.getPluginInfo()->isComponent());
+    const std::string text = plugin.show();
+    EXPECT_NE(text.find("Element"), std::string::npos);
+    EXPECT_NE(text.find("\"TestElement\""), std::string::npos);
 }
 
 TEST(SimulatorSupportTest, PluginMarksFactoryFailureAsInvalid) {
@@ -370,6 +447,37 @@ TEST(SimulatorSupportTest, SimulationControlInheritsReadPathAndAddsWritePath) {
 
     EXPECT_EQ(value, "beta");
     EXPECT_EQ(control.getValue(), "beta");
+}
+
+TEST(SimulatorSupportTest, SimulationControlStringReadOnlyRejectsWrites) {
+    std::string value = "alpha";
+    SimulationControlString control(
+        [&]() { return value; },
+        nullptr,
+        "C",
+        "E",
+        "P"
+    );
+
+    EXPECT_TRUE(control.isReadOnly());
+    EXPECT_THROW(control.setValue("beta"), std::logic_error);
+    EXPECT_EQ(control.getValue(), "alpha");
+}
+
+TEST(SimulatorSupportTest, SimulationControlBoolParsesTextAndNumericValues) {
+    bool value = false;
+    SimulationControlBool control(
+        [&]() { return value; },
+        [&](bool newValue) { value = newValue; },
+        "C",
+        "E",
+        "B"
+    );
+
+    control.setValue("true");
+    EXPECT_TRUE(value);
+    control.setValue("0");
+    EXPECT_FALSE(value);
 }
 
 TEST(SimulatorSupportTest, DefineSimulationGetterAndSetterBindKernelMethods) {
