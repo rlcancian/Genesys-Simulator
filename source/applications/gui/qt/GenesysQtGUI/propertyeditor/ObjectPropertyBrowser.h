@@ -123,6 +123,8 @@ private:
 
     QtVariantEditorFactory* _variantFactory = nullptr;
     QtEnumEditorFactory* _enumFactory = nullptr;
+    // Track whether factories were already bound to managers in the browser.
+    bool _browserInfrastructureBound = false;
 
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;

@@ -116,13 +116,15 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
         _enumFactory = new QtEnumEditorFactory(this);
     }
 
-    if (_variantManager != nullptr && _variantFactory != nullptr) {
-        // Bind variant manager/factory one time to avoid repeated reconfiguration.
+    // Bind manager/factory pairs only once to keep browser infrastructure idempotent.
+    if (!_browserInfrastructureBound
+        && _variantManager != nullptr
+        && _variantFactory != nullptr
+        && _enumManager != nullptr
+        && _enumFactory != nullptr) {
         setFactoryForManager(_variantManager, _variantFactory);
-    }
-    if (_enumManager != nullptr && _enumFactory != nullptr) {
-        // Bind enum manager/factory one time to avoid repeated reconfiguration.
         setFactoryForManager(_enumManager, _enumFactory);
+        _browserInfrastructureBound = true;
     }
 }
 
