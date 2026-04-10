@@ -1,76 +1,137 @@
 # Análise técnica do parser (Bison/Flex)
 
+## Audit Status (WiP20261)
+- Branch audited: `WiP20261`
+- Audit scope: reauditoria do lexer/gramática e ações semânticas em `source/parser/parserBisonFlex`
+- Status legend: `DONE`, `PARTIAL`, `OPEN`, `UNCERTAIN`, `SUPERSEDED`
+- Data desta reauditoria documental: `2026-04-10`
+
 ## Escopo
-Arquivos avaliados:
+Arquivos revalidados:
 - `source/parser/parserBisonFlex/bisonparser.yy`
 - `source/parser/parserBisonFlex/lexerparser.ll`
-- `source/parser/parserBisonFlex/bisonparser.report`
+- `source/parser/parserBisonFlex/bisonparser.report` (não encontrado no checkout atual)
 
-## Principais problemas encontrados
+## Registro histórico (pré-reauditoria)
+O texto original deste documento apontava conflitos LR elevados, erros de tokenização e lacunas semânticas. Parte desse diagnóstico foi superada por mudanças posteriores; parte ainda permanece relevante.
 
-1. **Explosão de conflitos LR (gramática altamente ambígua)**
-   - O relatório mostra centenas de conflitos, incluindo **shift/reduce** e **reduce/reduce**.
-   - Causa raiz: regra `expression` referencia `arithmetic`, `logical`, `relacional`, e cada uma delas por sua vez usa `expression` nos dois lados, criando ambiguidade estrutural de precedência/associatividade.
-   - Impacto: o parser aceita entradas de forma não determinística sem semântica robusta; mudanças pequenas na gramática podem alterar interpretações silenciosamente.
+## Reclassificação dos achados históricos
 
-2. **Tokenização incorreta de `min`/`max` (invertidos)**
-   - No Flex, `min` retorna token de `mathMAX` e `max` retorna `mathMIN`.
-   - Impacto: `min(a,b)` computa máximo e `max(a,b)` computa mínimo (erro semântico crítico).
+### Conversão hexadecimal
+### Audit status
+`DONE`
 
-3. **Regex de `EntitiesWIP` incorreta (classe de caracteres)**
-   - Regra usa `[EntitiesWIP]`, que em Flex significa “um caractere dentre E,n,t,i,...”, não a palavra completa.
-   - Impacto: qualquer caractere isolado do conjunto pode virar token `simulEntitiesWIP`, desviando a análise léxica.
+### Evidence
+- O lexer converte hex com `std::strtoll(yytext, &endPtr, 16)` e emite `NUMH`.
 
-4. **Regra isolada `T` no lexer**
-   - Existe uma linha `T` solta como regra léxica.
-   - Impacto: entrada contendo `T` maiúsculo pode ser consumida por uma regra inesperada e mascarar identificadores/erros.
+### Remaining gaps
+- Sem gap direto neste item.
 
-5. **Token `ILLEGAL` nunca consumido pela gramática efetiva**
-   - Nonterminal `illegal` está declarado mas não é alcançável por `input -> expression`.
-   - O relatório do Bison marca `illegal`/`ILLEGAL` como inúteis.
-   - Impacto: tratamento de erro lexical planejado não executa; erros podem cair apenas no `error(...)` genérico.
+### Tokenização de `min` / `max`
+### Audit status
+`DONE`
 
-6. **Conversão de hexadecimal conceitualmente incorreta**
-   - Hex `0x...` é convertido via `atof(yytext)`.
-   - `atof` não é apropriado para inteiros hexadecimais no formato esperado (`strtol` base 16 seria correto).
-   - Impacto: valores hex podem ser interpretados como `0` ou incorretos.
+### Evidence
+- `min` retorna `mathMIN` e `max` retorna `mathMAX`.
 
-7. **Ação vazia em não terminal tipado (`elementFunction`)**
-   - O Bison sinaliza regra vazia para símbolo tipado sem ação.
-   - Impacto: comportamento indefinido de valor semântico em alguns caminhos e warning estrutural.
+### Remaining gaps
+- Sem gap direto neste item.
 
-8. **Precedência declarada sem efeito real em alguns tokens**
-   - Bison sinaliza precedências inúteis (`oNOT`, funções matemáticas e `[`), indicando modelagem inconsistente de precedência.
-   - Impacto: falsa sensação de controle da gramática; conflitos continuam altos.
+### Regex de `EntitiesWIP`
+### Audit status
+`DONE`
 
-9. **Operador de potência sem associatividade adequada**
-   - `POWER` é tratado na mesma forma de binários genéricos à esquerda (via recursão com `expression`).
-   - Em linguagens formais, `^` costuma ser associativo à direita (`a^b^c = a^(b^c)`).
-   - Impacto: possível divergência semântica para expressões encadeadas.
+### Evidence
+- Regra atual usa padrão de palavra completa `[eE][nN][tT][iI][tT][iI][eE][sS][wW][iI][pP]`.
 
-10. **Semânticas parcialmente não implementadas retornando valores neutros**
-    - Regras como `fDISC`, `fLASTINQ`, `fRESSEIZES`, avaliação de `FORM` possuem TODO com retorno fixo/zero.
-    - Impacto: expressões sintaticamente válidas com resultado semântico errado.
+### Remaining gaps
+- Sem gap direto neste item.
 
-11. **Risco de null-deref em ações semânticas**
-    - Há acessos diretos encadeados (`getCurrentEvent()->getEntity()`) em atribuições sem checagem robusta.
-    - Impacto: parser pode falhar em runtime dependendo do contexto de simulação.
+### Regra isolada `T` no lexer
+### Audit status
+`SUPERSEDED`
 
-## Recomendações de arquitetura (compiladores/linguagens formais)
+### Evidence
+- A regra isolada não aparece mais no lexer atual.
 
-1. **Refatorar gramática para níveis explícitos de precedência**:
-   - `expr_or -> expr_and -> expr_rel -> expr_add -> expr_mul -> expr_unary -> expr_pow -> primary`.
-   - Elimina a maior parte dos conflitos LR de forma canônica.
+### Remaining gaps
+- Sem gap direto neste item.
 
-2. **Separar comandos de expressões**:
-   - `if/for/assign` em não terminal de comando, não misturado ao núcleo aritmético/lógico.
+### Token `ILLEGAL` antes inútil
+### Audit status
+`DONE`
 
-3. **Corrigir o léxico antes de ajustar sintaxe**:
-   - Consertar `min/max`, `EntitiesWIP`, remover regra `T`, e converter hex com `strtol(...,16)`.
+### Evidence
+- A gramática atual inclui `expression: ... | illegal { $$.valor = -1; }`, tornando o caminho alcançável.
 
-4. **Conectar tratamento de erro léxico ao start symbol**:
-   - Tornar `ILLEGAL` alcançável por regra de recuperação de erro (ou tratar no driver de forma unificada).
+### Remaining gaps
+- Avaliar qualidade de recuperação/diagnóstico de erro além da alcançabilidade.
 
-5. **Transformar TODOs semânticos em erro explícito**:
-   - Melhor sinalizar “função não implementada” do que retornar 0 silenciosamente.
+### Estrutura de precedência/associatividade da gramática
+### Audit status
+`DONE`
 
+### Evidence
+- Estrutura por níveis explícitos: `logicalOr -> logicalXor -> logicalAnd -> logicalNot -> relational -> additive -> multiplicative -> power -> unary -> primary`.
+- Potência em `power: unary POWER power`, indicando associatividade à direita.
+
+### Remaining gaps
+- Não foi possível revalidar numericamente conflitos LR no estado atual sem `bisonparser.report`.
+
+## Pontos ainda pendentes (ou parcialmente mitigados)
+
+### Funções semânticas não implementadas totalmente (`fDISC`, `fLASTINQ`, `fRESSEIZES`)
+### Audit status
+`OPEN`
+
+### Evidence
+- `fDISC` em `probFunction` contém TODO e retorno placeholder (`sampleDiscrete(0,0)`).
+- `fLASTINQ` possui ação vazia com comentário de não implementado.
+- `fRESSEIZES` também está com comentário de não implementado.
+
+### Remaining gaps
+- Implementar semântica real dessas funções e cobrir com testes de expressão.
+
+### Avaliação de `FORM`
+### Audit status
+`OPEN`
+
+### Evidence
+- Regras de `FORM` continuam comentando problema sério de reentrada e retornam `0.0`.
+
+### Remaining gaps
+- Resolver avaliação de fórmula (reentrância/arquitetura de avaliação) para evitar retorno silencioso inválido.
+
+### Risco de null-deref em atribuições/leituras ligadas a evento atual
+### Audit status
+`PARTIAL`
+
+### Evidence
+- Há guardas em alguns caminhos (`if (getCurrentEvent() != nullptr && getCurrentEvent()->getEntity() != nullptr)`), mas ainda existem acessos diretos como `fIDENT` e outras ações usando `getCurrentEvent()->getEntity()` sem guarda uniforme.
+
+### Remaining gaps
+- Padronizar guarda robusta em todos os pontos de acesso a evento/entidade corrente.
+
+### Conflitos LR atuais
+### Audit status
+`UNCERTAIN`
+
+### Evidence
+- `source/parser/parserBisonFlex/bisonparser.report` não estava disponível no checkout atual, então não houve recontagem atual de conflitos shift/reduce e reduce/reduce.
+
+### Remaining gaps
+- Gerar novo report do Bison e atualizar números concretos de conflitos.
+
+## Recomendações arquiteturais que seguem válidas
+1. Formalizar tratamento de funções não implementadas com erro explícito (em vez de `0`/placeholder silencioso).
+2. Consolidar estratégia de null-safety para contexto de evento corrente.
+3. Reintroduzir rotina de auditoria de conflitos LR no pipeline (geração e versionamento de report ou artefato equivalente).
+4. Fortalecer testes de regressão de parser para operadores, funções de plugin e cenários de erro.
+
+## Remaining Work
+- `OPEN` — Implementar semântica real de `fDISC`.
+- `OPEN` — Implementar semântica real de `fLASTINQ`.
+- `OPEN` — Implementar semântica real de `fRESSEIZES`.
+- `OPEN` — Resolver avaliação de `FORM` sem retorno neutro silencioso.
+- `PARTIAL` — Eliminar caminhos restantes de null-deref em `getCurrentEvent()->getEntity()`.
+- `UNCERTAIN` — Recontar conflitos LR com novo `bisonparser.report`.

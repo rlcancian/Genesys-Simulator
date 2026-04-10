@@ -2,110 +2,91 @@
 
 Data: 2026-04-01
 
-## 1) Como está hoje (resumo técnico)
+## Audit Status (WiP20261)
+- Branch audited: `WiP20261`
+- Audit scope: reauditoria do roadmap de build terminal contra `CMakeLists.txt`, `main.cpp`, `TraitsTerminalApp.h` e presets
+- Status legend: `DONE`, `PARTIAL`, `OPEN`, `UNCERTAIN`, `SUPERSEDED`
+- Data desta reauditoria documental: `2026-04-10`
 
-- O `main.cpp` instancia `TraitsTerminalApp<GenesysApplication_if>::Application` e chama `main(...)` da classe selecionada.
-- A seleção da aplicação está centralizada em `TraitsTerminalApp.h` via `typedef ... Application;`.
-- Existem dezenas de aplicações em `examples/` (smarts, arenaSmarts, arenaExamples, teaching, book).
-- Muitas dessas aplicações têm dependências cruzadas com `kernel` e `plugins/components`, e algumas têm código legado/experimental que pode quebrar quando se tenta compilar “tudo de uma vez”.
+## 1) Como está hoje (revalidado)
 
-## 2) Problema arquitetural principal
+- Existe `source/applications/terminal/CMakeLists.txt` com alvo executável `genesys_terminal_application`.
+- `main.cpp` define `SelectedTerminalApplication` e usa `TraitsTerminalApp<GenesysApplication_if>::Application` quando `GENESYS_TERMINAL_USE_TRAITS_APP=1`.
+- Há opção CMake `GENESYS_TERMINAL_BUILD_ALL_SOURCES` (global) para compilar tudo recursivamente.
+- Preset `terminal-app` existe em `CMakePresets.json` e habilita `GENESYS_TERMINAL_APPLICATION=ON`.
 
-A escolha da aplicação por `typedef` é simples, mas **não escala** para múltiplos perfis de build porque:
+### Audit status
+`PARTIAL`
 
-1. mistura seleção de app com composição do link;
-2. dificulta compilar “qualquer app” sem editar header;
-3. incentiva estratégia de incluir muitos `.cpp` no mesmo executável, aumentando tempo de build e chance de quebra.
+### Evidence
+- Itens principais do fluxo terminal já estão implementados e funcionais.
+- A seleção de app segue centrada em `TraitsTerminalApp.h` (edição de header).
 
-## 3) Recomendação de estratégia (baixa complexidade)
+### Remaining gaps
+- Estratégia proposta no documento original foi implementada apenas em parte e com diferenças de desenho.
 
-## 3.1. Separar em 3 alvos CMake
+## 2) Reclassificação do plano original
 
-1. `genesys_terminal_core` (STATIC)
-   - `main.cpp`, `GenesysShell`, `BaseGenesysTerminalApplication` e infraestrutura comum.
-2. `genesys_terminal_examples` (STATIC)
-   - exemplos (idealmente por grupos).
-3. `genesys_terminal_application` (EXECUTABLE)
-   - linka `core` + o subconjunto de exemplos selecionado.
+### 2.1 Separar em 3 alvos (`core`, `examples`, `application`)
+### Audit status
+`SUPERSEDED`
 
-Benefício: o executável final continua único, mas a organização de fontes fica previsível.
+### Evidence
+- Solução atual funciona com executável único `genesys_terminal_application` e link explícito de libs do kernel/parser/plugins.
+- Não há sinais de `genesys_terminal_core`/`genesys_terminal_examples` como no plano original.
 
-## 3.2. Seleção da app por variável CMake (sem editar header)
+### Remaining gaps
+- Se desejado, pode virar melhoria de organização/tempo de build, mas não bloqueia operação atual.
 
-Introduzir variável de cache, por exemplo:
+### 2.2 Seleção da app por variável CMake (`GENESYS_TERMINAL_APP_CLASS`) + header gerado
+### Audit status
+`OPEN`
 
-- `GENESYS_TERMINAL_APP_CLASS` (string), exemplos:
-  - `Smart_SeizeDelayReleaseMany`
-  - `GenesysShell`
-  - `Smart_BasicModeling`
+### Evidence
+- Não há variável `GENESYS_TERMINAL_APP_CLASS` no CMake atual.
+- Não há header gerado em configure-time para seleção da app.
 
-E gerar um header em configure-time (`configured_terminal_app.h`) com:
+### Remaining gaps
+- Implementar seleção por cache variable para remover necessidade de editar `TraitsTerminalApp.h`.
 
-```cpp
-using SelectedTerminalApplication = <valor da variável>;
-```
+### 2.3 Flags granulares por grupos (`SMARTS`, `ARENA_SMARTS`, `TEACHING`, `BOOK`...)
+### Audit status
+`OPEN`
 
-Então o `main.cpp` passa a incluir esse header gerado.
+### Evidence
+- O build expõe apenas o switch global `GENESYS_TERMINAL_BUILD_ALL_SOURCES`.
 
-Benefício: trocar aplicação vira **comando de build**, não edição de código.
+### Remaining gaps
+- Introduzir flags por família de exemplos para controlar escopo de compilação.
 
-## 3.3. Seleção de grupos de exemplos via opções
+### 2.4 Catálogo explícito de apps suportadas
+### Audit status
+`PARTIAL`
 
-Sugestão de flags (booleans):
+### Evidence
+- Existe lista explícita de alguns `.cpp` no modo default do CMake atual (sem glob total).
+- Porém não há validação declarativa do nome de app escolhido via variável dedicada.
 
-- `GENESYS_TERMINAL_BUILD_SMARTS`
-- `GENESYS_TERMINAL_BUILD_ARENA_SMARTS`
-- `GENESYS_TERMINAL_BUILD_ARENA_EXAMPLES`
-- `GENESYS_TERMINAL_BUILD_TEACHING`
-- `GENESYS_TERMINAL_BUILD_BOOK`
+### Remaining gaps
+- Falta mapear formalmente “nome de app -> fonte” com validação de entrada de configuração.
 
-Começar com default conservador (`OFF`) e habilitar apenas o grupo necessário.
+## 3) O que foi entregue de forma diferente da proposta antiga
 
-Benefício: evita build “gigante” e reduz regressões.
+### Audit status
+`DONE`
 
-## 3.4. Catálogo explícito de apps suportadas
+### Evidence
+- Foi adotado um caminho pragmático: alvo único + seleção via traits + opção global de build total.
+- Isso resolve parte do objetivo de operabilidade com complexidade menor que o plano em 3 alvos.
 
-Criar uma tabela (CMake list) `nome_da_app -> arquivo.cpp` para as aplicações oficialmente suportadas no build do terminal.
+### Remaining gaps
+- Para escalabilidade de CI e reprodutibilidade de seleção de app, o backlog arquitetural segue aberto.
 
-- evita depender de `GLOB_RECURSE` para tudo;
-- permite mensagem de erro amigável se `GENESYS_TERMINAL_APP_CLASS` inválida.
+## 4) Conclusão da reauditoria
+O roadmap de 2026-04-01 está parcialmente superado: o núcleo da aplicação terminal já existe e está integrado a presets e build padrão, mas a parte de parametrização forte por CMake (classe selecionada, header gerado e flags granulares por grupo) não foi implementada até o estado auditado.
 
-## 4) O que evitar
-
-- Evitar compilar recursivamente todos os `.cpp` de `examples/**` por padrão.
-- Evitar fallback silencioso para app “dummy” no build oficial (pode mascarar erro de configuração).
-- Evitar acoplamento entre “seleção da app” e “seleção de plugins/componentes”.
-
-## 5) Plano incremental recomendado
-
-Fase A (rápida)
-1. Introduzir `GENESYS_TERMINAL_APP_CLASS`.
-2. Gerar header `configured_terminal_app.h`.
-3. Validar nome da app e falhar com erro claro quando inválido.
-
-Fase B (estabilização)
-1. Criar `genesys_terminal_core`.
-2. Quebrar exemplos por grupos com opções ON/OFF.
-3. Manter preset `terminal-app` mínimo e criar presets por família (`terminal-smarts`, etc.).
-
-Fase C (escalabilidade)
-1. Migrar gradualmente para catálogo explícito de apps.
-2. Opcional: um executável por app (`genesys_terminal_<app>`) para CI granular.
-
-## 6) Comandos de uso sugeridos (alvo único, app configurável)
-
-Exemplo de experiência desejada:
-
-```bash
-cmake --preset terminal-app -DGENESYS_TERMINAL_APP_CLASS=Smart_SeizeDelayReleaseMany
-cmake --build --preset terminal-app
-```
-
-Ou:
-
-```bash
-cmake --preset terminal-app -DGENESYS_TERMINAL_APP_CLASS=GenesysShell
-cmake --build --preset terminal-app
-```
-
-Isso resolve a necessidade de compilar “qualquer aplicação terminal” com complexidade controlada.
+## Remaining Work
+- `OPEN` — Criar `GENESYS_TERMINAL_APP_CLASS` e validar valor no configure.
+- `OPEN` — Gerar header de seleção de app em configure-time para desacoplar de `TraitsTerminalApp.h`.
+- `OPEN` — Adicionar flags granulares por famílias de exemplos (SMARTS/ARENA_SMARTS/TEACHING/BOOK...).
+- `PARTIAL` — Evoluir de lista estática parcial para catálogo explícito e validado de aplicações suportadas.
