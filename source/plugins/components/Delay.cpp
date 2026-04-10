@@ -104,11 +104,7 @@ void Delay::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	waitTime *= Util::TimeUnitConvert(_delayTimeUnit, stu);
 	if (_reportStatistics) {
 		std::string allocationCategory = Util::StrAllocation(_allocation);
-		//try { //@TODO: What the hell????!!!
-			_cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
-		//} catch (const std::exception& e) {
-		//	traceError(e.what());
-		//}
+        _cstatWaitTime->getStatistics()->getCollector()->addValue(waitTime);
 		if (entity->getEntityType()->isReportStatistics())
 			entity->getEntityType()->addGetStatisticsCollector(entity->getEntityTypeName() + "." + allocationCategory+ "Time")->getStatistics()->getCollector()->addValue(waitTime);
 		double totalWaitTime = entity->getAttributeValue("Entity.Total" + allocationCategory + "Time");
