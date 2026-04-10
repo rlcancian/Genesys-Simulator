@@ -39,9 +39,9 @@ Delay::Delay(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
 									std::bind(&Delay::delayExpression, this), std::bind(&Delay::setDelayExpression, this, std::placeholders::_1, Util::TimeUnit::unknown),
 									Util::TypeOf<Delay>(), getName(), "DelayExpression", "");
-	SimulationControlGeneric<double>* propDelay = new SimulationControlGeneric<double>(
-									std::bind(&Delay::delay, this), std::bind(&Delay::setDelay, this, std::placeholders::_1),
-									Util::TypeOf<Delay>(), getName(), "Delay", "");
+//	SimulationControlGeneric<double>* propDelay = new SimulationControlGeneric<double>(
+//									std::bind(&Delay::delay, this), std::bind(&Delay::setDelay, this, std::placeholders::_1),
+//									Util::TypeOf<Delay>(), getName(), "Delay", "");
     SimulationControlGenericEnum<Util::TimeUnit, Util>* propUnitTime = new SimulationControlGenericEnum<Util::TimeUnit, Util>(
 									std::bind(&Delay::delayTimeUnit, this),	std::bind(&Delay::setDelayTimeUnit, this, std::placeholders::_1),
 									Util::TypeOf<Delay>(), getName(), "DelayTimeUnit", "");
@@ -50,13 +50,13 @@ Delay::Delay(Model* model, std::string name) : ModelComponent(model, Util::TypeO
                                     Util::TypeOf<Delay>(), getName(), "AllocationType", "");
 
 	_parentModel->getControls()->insert(propExpression);
-	_parentModel->getControls()->insert(propDelay);
+//	_parentModel->getControls()->insert(propDelay);
 	_parentModel->getControls()->insert(propUnitTime);
     _parentModel->getControls()->insert(propAlloc);
 
 	// setting properties
 	_addProperty(propExpression);
-	_addProperty(propDelay);
+//	_addProperty(propDelay);
 	_addProperty(propUnitTime);
     _addProperty(propAlloc);
 }
