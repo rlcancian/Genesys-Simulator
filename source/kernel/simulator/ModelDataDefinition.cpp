@@ -50,8 +50,8 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 	_parentModel->getControls()->insert(propName);
 
 	// setting properties
-	_addProperty(propName);
-	_addProperty(propReportStatistics);
+	_addSimulationControl(propName);
+	_addSimulationControl(propReportStatistics);
 }
 
 bool ModelDataDefinition::hasChanged() const {
@@ -77,21 +77,21 @@ ModelDataDefinition::~ModelDataDefinition() {
 	_internalDataClear();
 	// Keep model registry consistent by removing this modeldata from the manager first.
 	_parentModel->getDataManager()->remove(this);
-	// Detach and destroy owned SimulationControl properties tracked by this model element.
-	if (_properties != nullptr) {
-		for (SimulationControl* property : *_properties->list()) {
-			if (property == nullptr) {
+	// Detach and destroy owned SimulationControl entries tracked by this model element.
+	if (_simulationControls != nullptr) {
+		for (SimulationControl* control : *_simulationControls->list()) {
+			if (control == nullptr) {
 				continue;
 			}
-			_parentModel->getControls()->remove(property);
-			SimulationResponse* response = dynamic_cast<SimulationResponse*>(property);
+			_parentModel->getControls()->remove(control);
+			SimulationResponse* response = dynamic_cast<SimulationResponse*>(control);
 			if (response != nullptr) {
 				_parentModel->getResponses()->remove(response);
 			}
-			delete property;
+			delete control;
 		}
-		delete _properties;
-		_properties = nullptr;
+		delete _simulationControls;
+		_simulationControls = nullptr;
 	}
 	// Destroy the internal-data registry container after its owned contents are cleared.
 	delete _internalData;
@@ -414,22 +414,28 @@ void ModelDataDefinition::_createInternalAndAttachedData() {
 
 }
 
+void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
+	_simulationControls->insert(control);
+}
+
 void ModelDataDefinition::_addProperty(SimulationControl* property) {
-	_properties->insert(property);
+	// Legacy compatibility wrapper.
+	_addSimulationControl(property);
 }
 
 /*
 void ModelDataDefinition::_addSimulationResponse(SimulationControl* response) {
 	_simulationResponses->insert(response); //@TODO: Check if exists before insert?
 }
-
-void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
-	_simulationControls->insert(control);
-}
 */
 
 List<SimulationControl*> *ModelDataDefinition::getProperties() const {
-	return _properties;
+	// Legacy compatibility wrapper.
+	return getSimulationControls();
+}
+
+List<SimulationControl*>* ModelDataDefinition::getSimulationControls() const {
+	return _simulationControls;
 }
 
 

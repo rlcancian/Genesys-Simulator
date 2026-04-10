@@ -225,7 +225,7 @@ void Schedule::_addProperty(SimulationControl* property) {
 	/*!
 	 * \brief Keep local property mirror aligned with controls registered in model.
 	 */
-	_properties->insert(property);
+	_addSimulationControl(property);
 }
 
 //
