@@ -4,6 +4,21 @@ QT += designer
 greaterThan(QT_MAJOR_VERSION, 6): QT += widgets
 CONFIG += c++14
 
+# Enables temporary GUI diagnostic debug symbols and frame pointers only in debug builds.
+debug {
+    CONFIG += force_debug_info
+    QMAKE_CFLAGS_DEBUG += -g3 -O0 -fno-omit-frame-pointer
+    QMAKE_CXXFLAGS_DEBUG += -g3 -O0 -fno-omit-frame-pointer
+    QMAKE_LFLAGS_DEBUG += -rdynamic
+}
+
+# Enables optional ASan/UBSan instrumentation for GUI diagnostics when explicitly requested.
+gui_diagnostics:debug {
+    QMAKE_CFLAGS_DEBUG += -fsanitize=address,undefined
+    QMAKE_CXXFLAGS_DEBUG += -fsanitize=address,undefined
+    QMAKE_LFLAGS_DEBUG += -fsanitize=address,undefined
+}
+
 
 # Remova o pacote padrão de warnings do qmake
 CONFIG -= warn_on
@@ -304,6 +319,8 @@ SOURCES += \
     graphicals/GraphicalImageAnimation.cpp \
     graphicals/GraphicalModelComponent.cpp \
     graphicals/GraphicalModelDataDefinition.cpp \
+    GuiCrashDiagnostics.cpp \
+    GuiScopeTrace.cpp \
     main.cpp \
     mainwindow.cpp \
     propertyeditor/qtpropertybrowser/qtbuttonpropertybrowser.cpp \
@@ -627,6 +644,8 @@ HEADERS += \
     graphicals/GraphicalDiagramConnection.h \
     graphicals/GraphicalImageAnimation.h \
     graphicals/GraphicalModelComponent.h \
+    GuiCrashDiagnostics.h \
+    GuiScopeTrace.h \
     graphicals/GraphicalModelDataDefinition.h \
     mainwindow.h \
     propertyeditor/qtpropertybrowser/QtAbstractEditorFactoryBase \
