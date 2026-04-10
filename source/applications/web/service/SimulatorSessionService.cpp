@@ -23,6 +23,26 @@ void _populateModelInfoFromModel(Model* model, SimulatorSessionService::ModelInf
         outInfo.componentCount = componentManager->getNumberOfComponents();
     }
 }
+
+void _populateSimulationStatusFromModel(Model* model, SimulatorSessionService::SimulationStatusResult& outStatus) {
+    outStatus.hasCurrentModel = true;
+    ModelSimulation* simulation = model->getSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+
+    outStatus.isRunning = simulation->isRunning();
+    outStatus.isPaused = simulation->isPaused();
+    outStatus.simulatedTime = simulation->getSimulatedTime();
+    outStatus.currentReplicationNumber = simulation->getCurrentReplicationNumber();
+    outStatus.numberOfReplications = simulation->getNumberOfReplications();
+    outStatus.replicationLength = simulation->getReplicationLength();
+    outStatus.warmUpPeriod = simulation->getWarmUpPeriod();
+    outStatus.pauseOnEvent = simulation->isPauseOnEvent();
+    outStatus.pauseOnReplication = simulation->isPauseOnReplication();
+    outStatus.initializeStatistics = simulation->isInitializeStatistics();
+    outStatus.initializeSystem = simulation->isInitializeSystem();
+}
 }  // namespace
 
 SimulatorSessionService::SimulatorSessionService(SessionManager& sessionManager) : _sessionManager(sessionManager) {}
@@ -87,6 +107,69 @@ bool SimulatorSessionService::tryGetCurrentModelInfo(const std::string& accessTo
 
     _populateModelInfoFromModel(model, outInfo);
     return true;
+}
+
+SimulatorSessionService::SimulationStatusResult SimulatorSessionService::getSimulationStatus(const std::string& accessToken) {
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return SimulationStatusResult{false, true};
+    }
+
+    std::scoped_lock lock(session->mutex);
+    ModelManager* modelManager = session->simulator->getModelManager();
+    if (modelManager == nullptr) {
+        return SimulationStatusResult{false, false};
+    }
+
+    SimulationStatusResult result{};
+    result.success = true;
+    Model* model = modelManager->current();
+    if (model == nullptr) {
+        return result;
+    }
+
+    _populateSimulationStatusFromModel(model, result);
+    return result;
+}
+
+SimulatorSessionService::SimulationConfigResult SimulatorSessionService::configureSimulation(
+    const std::string& accessToken,
+    const SimulationConfigInput& input
+) {
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return SimulationConfigResult{false, true, false, SimulationStatusResult{}};
+    }
+
+    std::scoped_lock lock(session->mutex);
+    ModelManager* modelManager = session->simulator->getModelManager();
+    if (modelManager == nullptr) {
+        return SimulationConfigResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    Model* model = modelManager->current();
+    if (model == nullptr) {
+        return SimulationConfigResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    ModelSimulation* simulation = model->getSimulation();
+    if (simulation == nullptr) {
+        return SimulationConfigResult{false, false, true, SimulationStatusResult{}};
+    }
+
+    simulation->setNumberOfReplications(input.numberOfReplications);
+    simulation->setReplicationLength(input.replicationLength);
+    simulation->setWarmUpPeriod(input.warmUpPeriod);
+    simulation->setPauseOnEvent(input.pauseOnEvent);
+    simulation->setPauseOnReplication(input.pauseOnReplication);
+    simulation->setInitializeStatistics(input.initializeStatistics);
+    simulation->setInitializeSystem(input.initializeSystem);
+
+    SimulationConfigResult result{};
+    result.success = true;
+    result.status.success = true;
+    _populateSimulationStatusFromModel(model, result.status);
+    return result;
 }
 
 SimulatorSessionService::ModelPersistenceResult SimulatorSessionService::saveCurrentModel(

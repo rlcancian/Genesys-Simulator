@@ -46,12 +46,48 @@ public:
         ModelInfoResult modelInfo;
     };
 
+    struct SimulationStatusResult {
+        bool success = false;
+        bool invalidToken = false;
+        bool hasCurrentModel = false;
+        bool isRunning = false;
+        bool isPaused = false;
+        double simulatedTime = 0.0;
+        unsigned int currentReplicationNumber = 0;
+        unsigned int numberOfReplications = 0;
+        double replicationLength = 0.0;
+        double warmUpPeriod = 0.0;
+        bool pauseOnEvent = false;
+        bool pauseOnReplication = false;
+        bool initializeStatistics = false;
+        bool initializeSystem = false;
+    };
+
+    struct SimulationConfigInput {
+        unsigned int numberOfReplications = 0;
+        double replicationLength = 0.0;
+        double warmUpPeriod = 0.0;
+        bool pauseOnEvent = false;
+        bool pauseOnReplication = false;
+        bool initializeStatistics = false;
+        bool initializeSystem = false;
+    };
+
+    struct SimulationConfigResult {
+        bool success = false;
+        bool invalidToken = false;
+        bool missingCurrentModel = false;
+        SimulationStatusResult status;
+    };
+
     explicit SimulatorSessionService(SessionManager& sessionManager);
 
     CreateSessionResult createSession();
     bool tryGetSimulatorInfo(const std::string& accessToken, SimulatorInfoResult& outInfo);
     bool tryCreateModel(const std::string& accessToken, ModelInfoResult& outInfo);
     bool tryGetCurrentModelInfo(const std::string& accessToken, ModelInfoResult& outInfo);
+    SimulationStatusResult getSimulationStatus(const std::string& accessToken);
+    SimulationConfigResult configureSimulation(const std::string& accessToken, const SimulationConfigInput& input);
     ModelPersistenceResult saveCurrentModel(const std::string& accessToken, const std::string& filename);
     ModelPersistenceResult loadModel(const std::string& accessToken, const std::string& filename);
 

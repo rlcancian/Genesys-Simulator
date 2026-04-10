@@ -344,3 +344,141 @@ TEST(WebApiRouterTest, LoadModelForMissingFileReturnsNotFound) {
     EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
     EXPECT_NE(response.body.find("\"MODEL_FILE_NOT_FOUND\""), std::string::npos);
 }
+
+TEST(WebApiRouterTest, SimulationStatusWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/simulation/status";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationStatusWithoutCurrentModelReturnsHasCurrentModelFalse) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/simulation/status";
+    request.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"ok\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"hasCurrentModel\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationConfigWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/simulation/config";
+    request.body =
+        "{\"numberOfReplications\":3,\"replicationLength\":120.0,\"warmUpPeriod\":10.0,"
+        "\"pauseOnEvent\":false,\"pauseOnReplication\":false,\"initializeStatistics\":true,\"initializeSystem\":true}";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationConfigWithoutCurrentModelReturnsConflict) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/simulation/config";
+    request.headers["authorization"] = "Bearer " + token;
+    request.body =
+        "{\"numberOfReplications\":3,\"replicationLength\":120.0,\"warmUpPeriod\":10.0,"
+        "\"pauseOnEvent\":false,\"pauseOnReplication\":false,\"initializeStatistics\":true,\"initializeSystem\":true}";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 409);
+    EXPECT_NE(response.body.find("\"NO_CURRENT_MODEL\""), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationStatusAndConfigFlowUpdatesValues) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest createModelRequest;
+    createModelRequest.method = "POST";
+    createModelRequest.path = "/api/v1/models";
+    createModelRequest.headers["authorization"] = "Bearer " + token;
+    ASSERT_EQ(fixture.router.handle(createModelRequest).status, 201);
+
+    HttpRequest initialStatusRequest;
+    initialStatusRequest.method = "GET";
+    initialStatusRequest.path = "/api/v1/simulation/status";
+    initialStatusRequest.headers["authorization"] = "Bearer " + token;
+    const HttpResponse initialStatusResponse = fixture.router.handle(initialStatusRequest);
+    ASSERT_EQ(initialStatusResponse.status, 200);
+    EXPECT_NE(initialStatusResponse.body.find("\"hasCurrentModel\":true"), std::string::npos);
+    EXPECT_NE(initialStatusResponse.body.find("\"numberOfReplications\":1"), std::string::npos);
+    EXPECT_NE(initialStatusResponse.body.find("\"replicationLength\":60.000000"), std::string::npos);
+    EXPECT_NE(initialStatusResponse.body.find("\"warmUpPeriod\":0.000000"), std::string::npos);
+
+    HttpRequest configRequest;
+    configRequest.method = "POST";
+    configRequest.path = "/api/v1/simulation/config";
+    configRequest.headers["authorization"] = "Bearer " + token;
+    configRequest.body =
+        "{\"numberOfReplications\":5,\"replicationLength\":120.0,\"warmUpPeriod\":10.0,"
+        "\"pauseOnEvent\":true,\"pauseOnReplication\":true,\"initializeStatistics\":false,\"initializeSystem\":false}";
+    const HttpResponse configResponse = fixture.router.handle(configRequest);
+    ASSERT_EQ(configResponse.status, 200);
+    EXPECT_NE(configResponse.body.find("\"numberOfReplications\":5"), std::string::npos);
+    EXPECT_NE(configResponse.body.find("\"replicationLength\":120.000000"), std::string::npos);
+    EXPECT_NE(configResponse.body.find("\"warmUpPeriod\":10.000000"), std::string::npos);
+    EXPECT_NE(configResponse.body.find("\"pauseOnEvent\":true"), std::string::npos);
+    EXPECT_NE(configResponse.body.find("\"pauseOnReplication\":true"), std::string::npos);
+    EXPECT_NE(configResponse.body.find("\"initializeStatistics\":false"), std::string::npos);
+    EXPECT_NE(configResponse.body.find("\"initializeSystem\":false"), std::string::npos);
+
+    HttpRequest updatedStatusRequest;
+    updatedStatusRequest.method = "GET";
+    updatedStatusRequest.path = "/api/v1/simulation/status";
+    updatedStatusRequest.headers["authorization"] = "Bearer " + token;
+    const HttpResponse updatedStatusResponse = fixture.router.handle(updatedStatusRequest);
+    ASSERT_EQ(updatedStatusResponse.status, 200);
+    EXPECT_NE(updatedStatusResponse.body.find("\"numberOfReplications\":5"), std::string::npos);
+    EXPECT_NE(updatedStatusResponse.body.find("\"replicationLength\":120.000000"), std::string::npos);
+    EXPECT_NE(updatedStatusResponse.body.find("\"warmUpPeriod\":10.000000"), std::string::npos);
+    EXPECT_NE(updatedStatusResponse.body.find("\"pauseOnEvent\":true"), std::string::npos);
+    EXPECT_NE(updatedStatusResponse.body.find("\"pauseOnReplication\":true"), std::string::npos);
+    EXPECT_NE(updatedStatusResponse.body.find("\"initializeStatistics\":false"), std::string::npos);
+    EXPECT_NE(updatedStatusResponse.body.find("\"initializeSystem\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationConfigWithInvalidBodyReturnsBadRequest) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest createModelRequest;
+    createModelRequest.method = "POST";
+    createModelRequest.path = "/api/v1/models";
+    createModelRequest.headers["authorization"] = "Bearer " + token;
+    ASSERT_EQ(fixture.router.handle(createModelRequest).status, 201);
+
+    HttpRequest configRequest;
+    configRequest.method = "POST";
+    configRequest.path = "/api/v1/simulation/config";
+    configRequest.headers["authorization"] = "Bearer " + token;
+    configRequest.body = "{\"numberOfReplications\":2}";
+
+    const HttpResponse configResponse = fixture.router.handle(configRequest);
+
+    EXPECT_EQ(configResponse.status, 400);
+    EXPECT_NE(configResponse.body.find("\"INVALID_SIMULATION_CONFIG\""), std::string::npos);
+}

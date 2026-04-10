@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cstdlib>
 #include <regex>
 
 ApiRouter::ApiRouter(SimulatorSessionService& simulatorService) : _simulatorService(simulatorService) {}
@@ -147,6 +148,64 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
         return HttpResponse{200, "application/json", body};
     }
 
+    if (request.path == "/api/v1/simulation/status") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/simulation/status");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.getSimulationStatus(token);
+        if (!result.success) {
+            if (result.invalidToken) {
+                return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+            }
+            return _jsonError(500, "INTERNAL_ERROR", "Unable to query simulation status");
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _simulationStatusDataJson(result) + "}"};
+    }
+
+    if (request.path == "/api/v1/simulation/config") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/simulation/config");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto config = _parseSimulationConfigBody(request.body);
+        if (!config.has_value()) {
+            return _jsonError(
+                400,
+                "INVALID_SIMULATION_CONFIG",
+                "Invalid request body: required fields are numberOfReplications, replicationLength, warmUpPeriod, pauseOnEvent, pauseOnReplication, initializeStatistics, initializeSystem"
+            );
+        }
+
+        const auto result = _simulatorService.configureSimulation(token, config.value());
+        if (!result.success) {
+            if (result.invalidToken) {
+                return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+            }
+            if (result.missingCurrentModel) {
+                return _jsonError(409, "NO_CURRENT_MODEL", "No current model available to configure simulation");
+            }
+            return _jsonError(500, "INTERNAL_ERROR", "Unable to configure simulation");
+        }
+
+        return HttpResponse{
+            200,
+            "application/json",
+            "{\"ok\":true,\"data\":" + _simulationStatusDataJson(result.status) + "}"
+        };
+    }
+
     return _jsonError(404, "NOT_FOUND", "Route not found");
 }
 
@@ -179,6 +238,90 @@ bool ApiRouter::_tryExtractFilenameFromBody(const std::string& body, std::string
     }
     outFilename = match[1].str();
     return !outFilename.empty();
+}
+
+bool ApiRouter::_tryExtractUnsignedIntField(const std::string& body, const std::string& fieldName, unsigned int& outValue) {
+    const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*([0-9]+)");
+    std::smatch match;
+    if (!std::regex_search(body, match, pattern) || match.size() < 2) {
+        return false;
+    }
+
+    const std::string value = match[1].str();
+    char* endPtr = nullptr;
+    const unsigned long parsed = std::strtoul(value.c_str(), &endPtr, 10);
+    if (endPtr == nullptr || *endPtr != '\0') {
+        return false;
+    }
+
+    outValue = static_cast<unsigned int>(parsed);
+    return true;
+}
+
+bool ApiRouter::_tryExtractDoubleField(const std::string& body, const std::string& fieldName, double& outValue) {
+    const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*(-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)");
+    std::smatch match;
+    if (!std::regex_search(body, match, pattern) || match.size() < 2) {
+        return false;
+    }
+
+    const std::string value = match[1].str();
+    char* endPtr = nullptr;
+    const double parsed = std::strtod(value.c_str(), &endPtr);
+    if (endPtr == nullptr || *endPtr != '\0') {
+        return false;
+    }
+
+    outValue = parsed;
+    return true;
+}
+
+bool ApiRouter::_tryExtractBooleanField(const std::string& body, const std::string& fieldName, bool& outValue) {
+    const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*(true|false)");
+    std::smatch match;
+    if (!std::regex_search(body, match, pattern) || match.size() < 2) {
+        return false;
+    }
+
+    outValue = match[1].str() == "true";
+    return true;
+}
+
+std::optional<SimulatorSessionService::SimulationConfigInput> ApiRouter::_parseSimulationConfigBody(const std::string& body) {
+    SimulatorSessionService::SimulationConfigInput config{};
+    if (!_tryExtractUnsignedIntField(body, "numberOfReplications", config.numberOfReplications) ||
+        !_tryExtractDoubleField(body, "replicationLength", config.replicationLength) ||
+        !_tryExtractDoubleField(body, "warmUpPeriod", config.warmUpPeriod) ||
+        !_tryExtractBooleanField(body, "pauseOnEvent", config.pauseOnEvent) ||
+        !_tryExtractBooleanField(body, "pauseOnReplication", config.pauseOnReplication) ||
+        !_tryExtractBooleanField(body, "initializeStatistics", config.initializeStatistics) ||
+        !_tryExtractBooleanField(body, "initializeSystem", config.initializeSystem)) {
+        return std::nullopt;
+    }
+
+    return config;
+}
+
+std::string ApiRouter::_simulationStatusDataJson(const SimulatorSessionService::SimulationStatusResult& status) {
+    std::string json = "{\"hasCurrentModel\":" + std::string(status.hasCurrentModel ? "true" : "false");
+    if (!status.hasCurrentModel) {
+        json += "}";
+        return json;
+    }
+
+    json += ",\"isRunning\":" + std::string(status.isRunning ? "true" : "false");
+    json += ",\"isPaused\":" + std::string(status.isPaused ? "true" : "false");
+    json += ",\"simulatedTime\":" + std::to_string(status.simulatedTime);
+    json += ",\"currentReplicationNumber\":" + std::to_string(status.currentReplicationNumber);
+    json += ",\"numberOfReplications\":" + std::to_string(status.numberOfReplications);
+    json += ",\"replicationLength\":" + std::to_string(status.replicationLength);
+    json += ",\"warmUpPeriod\":" + std::to_string(status.warmUpPeriod);
+    json += ",\"pauseOnEvent\":" + std::string(status.pauseOnEvent ? "true" : "false");
+    json += ",\"pauseOnReplication\":" + std::string(status.pauseOnReplication ? "true" : "false");
+    json += ",\"initializeStatistics\":" + std::string(status.initializeStatistics ? "true" : "false");
+    json += ",\"initializeSystem\":" + std::string(status.initializeSystem ? "true" : "false");
+    json += "}";
+    return json;
 }
 
 HttpResponse ApiRouter::_mapPersistenceError(const SimulatorSessionService::ModelPersistenceResult& result) {
