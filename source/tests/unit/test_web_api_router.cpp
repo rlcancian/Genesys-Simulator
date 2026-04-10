@@ -5,6 +5,7 @@
 #include "applications/web/service/SimulatorSessionService.h"
 #include "applications/web/session/SessionManager.h"
 
+#include <array>
 #include <memory>
 #include <string>
 
@@ -481,4 +482,69 @@ TEST(WebApiRouterTest, SimulationConfigWithInvalidBodyReturnsBadRequest) {
 
     EXPECT_EQ(configResponse.status, 400);
     EXPECT_NE(configResponse.body.find("\"INVALID_SIMULATION_CONFIG\""), std::string::npos);
+}
+
+TEST(WebApiRouterTest, SimulationConfigRequiresAllFieldsInRequestBody) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest createModelRequest;
+    createModelRequest.method = "POST";
+    createModelRequest.path = "/api/v1/models";
+    createModelRequest.headers["authorization"] = "Bearer " + token;
+    ASSERT_EQ(fixture.router.handle(createModelRequest).status, 201);
+
+    const std::string baseBody =
+        "\"numberOfReplications\":2,\"replicationLength\":90.0,\"warmUpPeriod\":15.0,"
+        "\"pauseOnEvent\":true,\"pauseOnReplication\":false,\"initializeStatistics\":true,\"initializeSystem\":false";
+
+    const std::array<std::string, 7> requiredFields = {
+        "numberOfReplications",
+        "replicationLength",
+        "warmUpPeriod",
+        "pauseOnEvent",
+        "pauseOnReplication",
+        "initializeStatistics",
+        "initializeSystem"
+    };
+
+    for (const std::string& missingField : requiredFields) {
+        std::string bodyWithoutField = baseBody;
+
+        if (missingField == "numberOfReplications") {
+            bodyWithoutField = "\"replicationLength\":90.0,\"warmUpPeriod\":15.0,"
+                               "\"pauseOnEvent\":true,\"pauseOnReplication\":false,\"initializeStatistics\":true,"
+                               "\"initializeSystem\":false";
+        } else if (missingField == "replicationLength") {
+            bodyWithoutField = "\"numberOfReplications\":2,\"warmUpPeriod\":15.0,"
+                               "\"pauseOnEvent\":true,\"pauseOnReplication\":false,\"initializeStatistics\":true,"
+                               "\"initializeSystem\":false";
+        } else if (missingField == "warmUpPeriod") {
+            bodyWithoutField = "\"numberOfReplications\":2,\"replicationLength\":90.0,"
+                               "\"pauseOnEvent\":true,\"pauseOnReplication\":false,\"initializeStatistics\":true,"
+                               "\"initializeSystem\":false";
+        } else if (missingField == "pauseOnEvent") {
+            bodyWithoutField = "\"numberOfReplications\":2,\"replicationLength\":90.0,\"warmUpPeriod\":15.0,"
+                               "\"pauseOnReplication\":false,\"initializeStatistics\":true,\"initializeSystem\":false";
+        } else if (missingField == "pauseOnReplication") {
+            bodyWithoutField = "\"numberOfReplications\":2,\"replicationLength\":90.0,\"warmUpPeriod\":15.0,"
+                               "\"pauseOnEvent\":true,\"initializeStatistics\":true,\"initializeSystem\":false";
+        } else if (missingField == "initializeStatistics") {
+            bodyWithoutField = "\"numberOfReplications\":2,\"replicationLength\":90.0,\"warmUpPeriod\":15.0,"
+                               "\"pauseOnEvent\":true,\"pauseOnReplication\":false,\"initializeSystem\":false";
+        } else if (missingField == "initializeSystem") {
+            bodyWithoutField = "\"numberOfReplications\":2,\"replicationLength\":90.0,\"warmUpPeriod\":15.0,"
+                               "\"pauseOnEvent\":true,\"pauseOnReplication\":false,\"initializeStatistics\":true";
+        }
+
+        HttpRequest configRequest;
+        configRequest.method = "POST";
+        configRequest.path = "/api/v1/simulation/config";
+        configRequest.headers["authorization"] = "Bearer " + token;
+        configRequest.body = "{" + bodyWithoutField + "}";
+
+        const HttpResponse response = fixture.router.handle(configRequest);
+        EXPECT_EQ(response.status, 400) << "Expected 400 when missing field: " << missingField;
+        EXPECT_NE(response.body.find("\"INVALID_SIMULATION_CONFIG\""), std::string::npos);
+    }
 }
