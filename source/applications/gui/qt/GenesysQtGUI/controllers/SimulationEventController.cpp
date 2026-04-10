@@ -266,12 +266,16 @@ void SimulationEventController::onEntityRemoveHandler(SimulationEvent* re) const
 
 // Preserve entity-move animation pipeline behavior.
 void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
+    ModelComponent* sourceComponent = (re && re->getCurrentEvent()) ? re->getCurrentEvent()->getComponent() : nullptr;
+    ModelComponent* destinationComponent = re ? re->getDestinationComponent() : nullptr;
     // Log move-event correlation context before dispatching transition animation.
     qInfo() << "GUI SimulationEvent onMoveEntityEvent begin graphicalSimulationChecked="
             << (_activateGraphicalSimulation ? _activateGraphicalSimulation->isChecked() : false)
             << "eventPtr=" << (re ? re->getCurrentEvent() : nullptr)
-            << "sourceId=" << ((re && re->getCurrentEvent() && re->getCurrentEvent()->getComponent()) ? re->getCurrentEvent()->getComponent()->getId() : 0)
-            << "destinationId=" << ((re && re->getDestinationComponent()) ? re->getDestinationComponent()->getId() : 0);
+            << "sourceId=" << (sourceComponent ? sourceComponent->getId() : 0)
+            << "sourceName=" << (sourceComponent ? QString::fromStdString(sourceComponent->getName()) : QStringLiteral("<null>"))
+            << "destinationId=" << (destinationComponent ? destinationComponent->getId() : 0)
+            << "destinationName=" << (destinationComponent ? QString::fromStdString(destinationComponent->getName()) : QStringLiteral("<null>"));
     _scene->animateCounter();
     _scene->animateVariable();
 
@@ -283,8 +287,10 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
                 // Log event and endpoint identifiers used to correlate with scene/animation logs.
                 qInfo() << "GUI SimulationEvent onMoveEntityEvent sourceId="
                         << (source ? source->getId() : 0)
+                        << "sourceName=" << (source ? QString::fromStdString(source->getName()) : QStringLiteral("<null>"))
                         << "destinationId="
                         << (destination ? destination->getId() : 0)
+                        << "destinationName=" << (destination ? QString::fromStdString(destination->getName()) : QStringLiteral("<null>"))
                         << "eventPtr=" << re->getCurrentEvent();
 
                 _scene->animateQueueRemove(source);
