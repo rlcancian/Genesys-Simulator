@@ -6,6 +6,7 @@
 #include "../animations/AnimationVariable.h"
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"
+#include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/ModelGraphicsView.h"
@@ -114,6 +115,8 @@ void EditCommandController::onActionEditCutTriggered() const {
                 }
             } else if (GraphicalConnection* port = dynamic_cast<GraphicalConnection*>(item)) {
                 (*_portsCopies)->append(port);
+            } else if (dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr) {
+                continue;
             } else {
                 (*_drawCopy)->append(item);
             }
@@ -163,6 +166,9 @@ void EditCommandController::onActionEditCopyTriggered() const {
                 if (!groupComponents.isEmpty()) {
                     (*_groupCopy)->append(group);
                 }
+            } else if (dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr) {
+                item->setSelected(false);
+                continue;
             } else {
                 item->setSelected(false);
                 (*_drawCopy)->append(item);
@@ -303,6 +309,9 @@ void EditCommandController::helpCopy() const {
 
             GraphicalModelComponent* newgmc = new GraphicalModelComponent(plugin, component, position, color);
             GraphicalModelComponent* oldgmc = currentScene->findGraphicalModelComponent(previousComponent->getId());
+            if (oldgmc == nullptr) {
+                continue;
+            }
 
             if (!oldgmc->getGraphicalInputPorts().empty() && !oldgmc->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
                 connGroup->removeOne(oldgmc->getGraphicalInputPorts().at(0)->getConnections()->at(0));
@@ -377,6 +386,9 @@ void EditCommandController::helpCopy() const {
             }
         }
 
+        if (gmcNewSource == nullptr || gmcNewDestination == nullptr) {
+            continue;
+        }
         sourcePort = gmcNewSource->getGraphicalOutputPorts().at(portSourceConnection);
         destinationPort = gmcNewDestination->getGraphicalInputPorts().at(portDestinationConnection);
 

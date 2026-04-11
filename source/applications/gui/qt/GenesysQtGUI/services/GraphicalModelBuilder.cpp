@@ -15,6 +15,7 @@
 #include "../../../../../kernel/simulator/ModelDataDefinition.h"
 
 #include <QTextEdit>
+#include <QSet>
 
 // Build the graphical reconstruction service with explicit dependencies.
 GraphicalModelBuilder::GraphicalModelBuilder(Simulator* simulator,
@@ -108,115 +109,8 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
 
 // Rebuild graphical data definitions and diagram links as part of the main model regeneration flow.
 void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(std::map<ModelComponent*, GraphicalModelComponent*>* componentMap) {
-    Model* model = _simulator->getModelManager()->current();
-    if (model == nullptr || model->getDataManager() == nullptr || componentMap == nullptr) {
-        return;
-    }
-
-    _scene->clearGraphicalDiagramConnections();
-    _scene->clearGraphicalModelDataDefinitions();
-
-    PluginManager* pluginManager = _simulator->getPluginManager();
-    ModelDataManager* dataManager = model->getDataManager();
-    QColor purple(128, 0, 128);
-    QColor grey(220, 220, 220);
-    std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> dataDefinitionMap;
-
-    // Create one graphical node for each kernel data definition.
-    for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
-        std::list<ModelDataDefinition*>* listDataDefinitions = dataManager->getDataDefinitionList(dataTypename)->list();
-        for (ModelDataDefinition* dataDefinition : *listDataDefinitions) {
-            if (dataDefinition == nullptr) {
-                continue;
-            }
-            // Resolve data definition plugins by classname to match kernel semantic identifiers.
-            Plugin* plugin = pluginManager->find(dataDefinition->getClassname());
-            if (plugin == nullptr) {
-                continue;
-            }
-            GraphicalModelDataDefinition* graphicalDataDefinition = _scene->addGraphicalModelDataDefinition(plugin, dataDefinition, QPointF(0, 0), grey);
-            if (graphicalDataDefinition != nullptr) {
-                dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
-            }
-        }
-    }
-
-    QList<GraphicalModelDataDefinition*> visitedDataDefinitions;
-    // Reuse the existing createDiagrams positioning semantics for component-attached/internal data links.
-    for (const auto& componentEntry : *componentMap) {
-        ModelComponent* component = componentEntry.first;
-        GraphicalModelComponent* graphicalComponent = componentEntry.second;
-        if (component == nullptr || graphicalComponent == nullptr) {
-            continue;
-        }
-
-        QPointF componentPosition = graphicalComponent->getOldPosition();
-        qreal yInternal = componentPosition.y();
-        qreal yAttached = componentPosition.y();
-
-        for (const auto& attachedData : *component->getAttachedData()) {
-            auto attachedIt = dataDefinitionMap.find(attachedData.second);
-            if (attachedIt == dataDefinitionMap.end()) {
-                continue;
-            }
-            GraphicalModelDataDefinition* gdd = attachedIt->second;
-            if (visitedDataDefinitions.contains(gdd)) {
-                qreal x = (gdd->x() + componentPosition.x()) / 2.0;
-                gdd->setPos(x, yAttached - 150);
-                gdd->setOldPosition(x, yAttached - 150);
-            } else {
-                visitedDataDefinitions.append(gdd);
-                yAttached -= 150;
-                gdd->setPos(componentPosition.x(), yAttached);
-                gdd->setOldPosition(componentPosition.x(), yAttached);
-                gdd->setColor(purple);
-            }
-            _scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::ATTACHED);
-        }
-
-        for (const auto& internalData : *component->getInternalData()) {
-            auto internalIt = dataDefinitionMap.find(internalData.second);
-            if (internalIt == dataDefinitionMap.end()) {
-                continue;
-            }
-            GraphicalModelDataDefinition* gdd = internalIt->second;
-            visitedDataDefinitions.append(gdd);
-            yInternal += 150;
-            gdd->setPos(componentPosition.x(), yInternal);
-            gdd->setOldPosition(componentPosition.x(), yInternal);
-            // Apply first-materialization fallback grouping only for internal data without persisted layout restoration.
-            if (!_scene->isRestoringPersistedGuiLayout() && gdd->parentItem() == nullptr && gdd->group() == nullptr) {
-                QPointF scenePosition = gdd->scenePos();
-                gdd->setParentItem(graphicalComponent);
-                gdd->setPos(graphicalComponent->mapFromScene(scenePosition));
-            }
-            _scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::INTERNAL);
-        }
-    }
-
-    // Reuse the same lateral placement rule for internal links between data definitions.
-    for (int i = 0; i < visitedDataDefinitions.size(); i++) {
-        GraphicalModelDataDefinition* parentDataDefinition = visitedDataDefinitions.at(i);
-        if (parentDataDefinition == nullptr || parentDataDefinition->getDataDefinition() == nullptr) {
-            continue;
-        }
-        QPointF parentPosition = parentDataDefinition->getOldPosition();
-        qreal x = parentPosition.x();
-        for (const auto& internalData : *parentDataDefinition->getDataDefinition()->getInternalData()) {
-            auto internalIt = dataDefinitionMap.find(internalData.second);
-            if (internalIt == dataDefinitionMap.end()) {
-                continue;
-            }
-            GraphicalModelDataDefinition* childDataDefinition = internalIt->second;
-            visitedDataDefinitions.append(childDataDefinition);
-            x -= 200;
-            childDataDefinition->setPos(x, parentPosition.y());
-            childDataDefinition->setOldPosition(x, parentPosition.y());
-            _scene->addGraphicalDiagramConnection(childDataDefinition, parentDataDefinition, GraphicalDiagramConnection::ConnectionType::INTERNAL);
-        }
-    }
-
-    _scene->setDiagramLayerState(!dataDefinitionMap.empty(), true);
+    Q_UNUSED(componentMap);
+    synchronizeGraphicalDataDefinitionsLayer(_simulator, _scene);
 }
 
 // Preserve the existing full-model generation flow and visitation semantics.
@@ -258,5 +152,167 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
         delete map;
         delete visited;
         _graphicsView->setCanNotifyGraphicalModelEventHandlers(true);
+    }
+}
+
+void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* simulator, ModelGraphicsScene* scene) {
+    if (simulator == nullptr || scene == nullptr) {
+        return;
+    }
+
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr || model->getDataManager() == nullptr) {
+        scene->clearGraphicalDiagramConnections();
+        scene->clearGraphicalModelDataDefinitions();
+        scene->setDiagramLayerState(false, false);
+        return;
+    }
+
+    std::map<ModelComponent*, GraphicalModelComponent*> componentMap;
+    for (GraphicalModelComponent* gmc : *scene->getAllComponents()) {
+        if (gmc == nullptr || gmc->getComponent() == nullptr) {
+            continue;
+        }
+        componentMap[gmc->getComponent()] = gmc;
+    }
+
+    std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> existingDataDefinitions;
+    for (GraphicalModelDataDefinition* gmdd : *scene->getAllDataDefinitions()) {
+        if (gmdd == nullptr || gmdd->getDataDefinition() == nullptr) {
+            continue;
+        }
+        existingDataDefinitions[gmdd->getDataDefinition()] = gmdd;
+    }
+
+    PluginManager* pluginManager = simulator->getPluginManager();
+    ModelDataManager* dataManager = model->getDataManager();
+    QColor purple(128, 0, 128);
+    QColor grey(220, 220, 220);
+
+    std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> dataDefinitionMap;
+    QSet<ModelDataDefinition*> seenInModel;
+    QSet<ModelDataDefinition*> newDataDefinitions;
+
+    for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
+        std::list<ModelDataDefinition*>* listDataDefinitions = dataManager->getDataDefinitionList(dataTypename)->list();
+        for (ModelDataDefinition* dataDefinition : *listDataDefinitions) {
+            if (dataDefinition == nullptr) {
+                continue;
+            }
+            seenInModel.insert(dataDefinition);
+
+            auto existingIt = existingDataDefinitions.find(dataDefinition);
+            if (existingIt != existingDataDefinitions.end()) {
+                dataDefinitionMap[dataDefinition] = existingIt->second;
+                continue;
+            }
+
+            Plugin* plugin = pluginManager->find(dataDefinition->getClassname());
+            if (plugin == nullptr) {
+                continue;
+            }
+            GraphicalModelDataDefinition* graphicalDataDefinition = scene->addGraphicalModelDataDefinition(plugin, dataDefinition, QPointF(0, 0), grey);
+            if (graphicalDataDefinition != nullptr) {
+                dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
+                newDataDefinitions.insert(dataDefinition);
+            }
+        }
+    }
+
+    QList<GraphicalModelDataDefinition*> staleGraphicalDataDefinitions;
+    for (auto it = existingDataDefinitions.begin(); it != existingDataDefinitions.end(); ++it) {
+        if (!seenInModel.contains(it->first) && it->second != nullptr) {
+            staleGraphicalDataDefinitions.append(it->second);
+        }
+    }
+    for (GraphicalModelDataDefinition* stale : staleGraphicalDataDefinitions) {
+        scene->removeGraphicalModelDataDefinition(stale);
+    }
+
+    scene->clearGraphicalDiagramConnections();
+
+    for (const auto& componentEntry : componentMap) {
+        ModelComponent* component = componentEntry.first;
+        GraphicalModelComponent* graphicalComponent = componentEntry.second;
+        if (component == nullptr || graphicalComponent == nullptr) {
+            continue;
+        }
+
+        QPointF componentPosition = graphicalComponent->scenePos();
+        qreal yInternal = componentPosition.y();
+        qreal yAttached = componentPosition.y();
+
+        for (const auto& attachedData : *component->getAttachedData()) {
+            auto attachedIt = dataDefinitionMap.find(attachedData.second);
+            if (attachedIt == dataDefinitionMap.end()) {
+                continue;
+            }
+            GraphicalModelDataDefinition* gdd = attachedIt->second;
+            if (gdd == nullptr) {
+                continue;
+            }
+            if (newDataDefinitions.contains(attachedData.second)) {
+                yAttached -= 150;
+                gdd->setParentItem(nullptr);
+                gdd->setPos(componentPosition.x(), yAttached);
+                gdd->setOldPosition(componentPosition.x(), yAttached);
+                gdd->setColor(purple);
+            }
+            scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::ATTACHED);
+        }
+
+        for (const auto& internalData : *component->getInternalData()) {
+            auto internalIt = dataDefinitionMap.find(internalData.second);
+            if (internalIt == dataDefinitionMap.end()) {
+                continue;
+            }
+            GraphicalModelDataDefinition* gdd = internalIt->second;
+            if (gdd == nullptr) {
+                continue;
+            }
+            if (newDataDefinitions.contains(internalData.second)) {
+                yInternal += 150;
+                gdd->setPos(componentPosition.x(), yInternal);
+                gdd->setOldPosition(componentPosition.x(), yInternal);
+                scene->ensureInitialInternalDataDefinitionGrouping(gdd, graphicalComponent);
+            }
+            scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::INTERNAL);
+        }
+    }
+
+    for (const auto& dataDefinitionEntry : dataDefinitionMap) {
+        ModelDataDefinition* parentDefinition = dataDefinitionEntry.first;
+        GraphicalModelDataDefinition* parentGraphicalDefinition = dataDefinitionEntry.second;
+        if (parentDefinition == nullptr || parentGraphicalDefinition == nullptr) {
+            continue;
+        }
+
+        QPointF parentPosition = parentGraphicalDefinition->scenePos();
+        qreal x = parentPosition.x();
+        for (const auto& internalData : *parentDefinition->getInternalData()) {
+            auto childIt = dataDefinitionMap.find(internalData.second);
+            if (childIt == dataDefinitionMap.end() || childIt->second == nullptr) {
+                continue;
+            }
+            GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
+            if (newDataDefinitions.contains(internalData.second)) {
+                x -= 200;
+                childGraphicalDefinition->setParentItem(nullptr);
+                childGraphicalDefinition->setPos(x, parentPosition.y());
+                childGraphicalDefinition->setOldPosition(x, parentPosition.y());
+            }
+            scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition, GraphicalDiagramConnection::ConnectionType::INTERNAL);
+        }
+    }
+
+    const bool hasDataDefinitions = !dataDefinitionMap.empty();
+    const bool visible = hasDataDefinitions ? scene->visibleDiagram() : false;
+    scene->setDiagramLayerState(hasDataDefinitions, visible);
+    if (hasDataDefinitions) {
+        if (visible) {
+            scene->showDiagrams();
+        } else {
+            scene->hideDiagrams();
+        }
     }
 }

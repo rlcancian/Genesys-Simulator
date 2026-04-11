@@ -258,7 +258,6 @@ qreal GraphicalModelDataDefinition::getHeight() const {
 }
 
 bool GraphicalModelDataDefinition::sceneEvent(QEvent *event) {
-	QGraphicsObject::sceneEvent(event); // Unnecessary
+	return QGraphicsObject::sceneEvent(event);
 }
-
 
