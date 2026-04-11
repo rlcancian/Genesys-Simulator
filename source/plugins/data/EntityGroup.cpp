@@ -32,7 +32,10 @@ EntityGroup::EntityGroup(Model* model, std::string name) : ModelDataDefinition(m
 }
 
 EntityGroup::~EntityGroup() {
-	//_parentModel->elements()->remove(Util::TypeOf<StatisticsCollector>(), _cstatNumberInGroup);
+	_clearGroups();
+	delete _groupMap;
+	_groupMap = nullptr;
+	_cstatNumberInGroup = nullptr;
 }
 
 std::string EntityGroup::show() {
@@ -47,24 +50,46 @@ void EntityGroup::insertElement(unsigned int idKey, Entity* modeldatum) {
 		it = _groupMap->find(idKey);
 	}
 	(*it).second->insert(modeldatum);
-	_cstatNumberInGroup->getStatistics()->getCollector()->addValue((*it).second->size());
+	if (_cstatNumberInGroup != nullptr) {
+		_cstatNumberInGroup->getStatistics()->getCollector()->addValue((*it).second->size());
+	}
 }
 
 void EntityGroup::removeElement(unsigned int idKey, Entity * modeldatum) {
 	std::map<unsigned int, List<Entity*>*>::iterator it = _groupMap->find(idKey);
 	if (it != _groupMap->end()) {
 		(*it).second->remove(modeldatum);
-		_cstatNumberInGroup->getStatistics()->getCollector()->addValue((*it).second->size());
+		if (_cstatNumberInGroup != nullptr) {
+			_cstatNumberInGroup->getStatistics()->getCollector()->addValue((*it).second->size());
+		}
+		if ((*it).second->size() == 0) {
+			_detachedEmptyGroups.push_back((*it).second);
+			_groupMap->erase(it);
+		}
 	}
 }
 
 List<Entity*>* EntityGroup::getGroup(unsigned int idKey) {
 	std::map<unsigned int, List<Entity*>*>::iterator it = _groupMap->find(idKey);
 	if (it == _groupMap->end()) {
-		return new List<Entity*>(); // not found
+		return nullptr;
 	} else {
 		return (*it).second;
 	}
+}
+
+void EntityGroup::_clearGroups() {
+	if (_groupMap == nullptr) {
+		return;
+	}
+	for (auto& entry : *_groupMap) {
+		delete entry.second;
+	}
+	_groupMap->clear();
+	for (List<Entity*>* detachedGroup : _detachedEmptyGroups) {
+		delete detachedGroup;
+	}
+	_detachedEmptyGroups.clear();
 }
 
 bool EntityGroup::_loadInstance(PersistenceRecord *fields) {
@@ -107,10 +132,15 @@ void EntityGroup::_createInternalAndAttachedData() {
 			_cstatNumberInGroup = new StatisticsCollector(_parentModel, "NumberInGroup", this);
 			_internalDataInsert("NumberInGroup", _cstatNumberInGroup);
 		}
-	} else
-		if (_cstatNumberInGroup != nullptr) {
+	} else if (_cstatNumberInGroup != nullptr) {
 		_internalDataClear();
+		_cstatNumberInGroup = nullptr;
 	}
+}
+
+void EntityGroup::_initBetweenReplications() {
+	ModelDataDefinition::_initBetweenReplications();
+	_clearGroups();
 }
 
 bool EntityGroup::_check(std::string& errorMessage) {
