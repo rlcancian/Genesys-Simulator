@@ -520,7 +520,8 @@ void MainWindow::_actualizeActions() {
         ModelGraphicsScene* scene = ui->graphicsView->getScene();
         if (scene != nullptr) {
             const QList<QGraphicsItem*> selectedItems = scene->selectedItems();
-            canCutCopyDelete = !selectedItems.isEmpty();
+            const QList<QGraphicsItem*> userDeletableSelection = scene->userDeletableItems(selectedItems);
+            canCutCopyDelete = !userDeletableSelection.isEmpty();
             canPaste = !_draw_copy->empty() || !_gmc_copies->empty() || !_group_copy->empty() || !_ports_copies->empty();
 
             int selectedComponents = 0;

@@ -7,10 +7,12 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
     // filtra cada tipo de item possível em sua respectiva lista
     for (QGraphicsItem *item : items) {
         // Keep data definitions managed by model reconstruction instead of direct delete actions.
-        if (dynamic_cast<GraphicalModelDataDefinition *>(item)) {
+        const bool isDataDefinition = dynamic_cast<GraphicalModelDataDefinition *>(item) != nullptr;
+        const bool isComponent = dynamic_cast<GraphicalModelComponent *>(item) != nullptr;
+        if (isDataDefinition && !isComponent) {
             continue;
         }
-        if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *>(item)) {
+        if (GraphicalModelComponent *component = isComponent ? dynamic_cast<GraphicalModelComponent *>(item) : nullptr) {
             ComponentItem componentItem;
 
             componentItem.graphicalComponent = component;

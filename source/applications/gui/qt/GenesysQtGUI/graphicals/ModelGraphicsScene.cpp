@@ -710,7 +710,9 @@ QList<QGraphicsItem*> ModelGraphicsScene::userDeletableItems(const QList<QGraphi
     QList<QGraphicsItem*> filtered;
     // Keep data definitions editable/selectable but block their direct manual deletion.
     for (QGraphicsItem* item : items) {
-        if (dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr) {
+        const bool isDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr;
+        const bool isComponent = dynamic_cast<GraphicalModelComponent*>(item) != nullptr;
+        if (isDataDefinition && !isComponent) {
             continue;
         }
         filtered.append(item);
@@ -2917,13 +2919,6 @@ void ModelGraphicsScene::keyPressEvent(QKeyEvent *keyEvent) {
     QGraphicsScene::keyPressEvent(keyEvent);
     QList<QGraphicsItem*> selected = userDeletableItems(this->selectedItems());
     if (keyEvent->key() == Qt::Key_Delete && selected.size() > 0) {
-        // Keep data definitions selectable, but block direct user-triggered deletion.
-        selected.erase(std::remove_if(selected.begin(), selected.end(), [](QGraphicsItem* item) {
-            return dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr;
-        }), selected.end());
-        if (selected.isEmpty()) {
-            return;
-        }
         QMessageBox::StandardButton reply = QMessageBox::question(this->_parentWidget, "Delete Component", "Are you sure you want to delete the selected components?", QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::No) {
             return;
