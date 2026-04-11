@@ -25,6 +25,7 @@
 #include "plugins/components/Delay.h"
 #include "plugins/components/Batch.h"
 #include "plugins/components/Separate.h"
+#include "plugins/components/Match.h"
 #define private public
 #define protected public
 #include "plugins/components/Wait.h"
@@ -406,6 +407,31 @@ public:
 
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
         _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class MatchProbe : public Match {
+public:
+    MatchProbe(Model* model, const std::string& name = "") : Match(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
     }
 };
 
@@ -2603,6 +2629,187 @@ TEST(SimulatorRuntimeTest, SignalDataCheckPassesWithValidHandler) {
     std::string errorMessage;
     EXPECT_TRUE(signal.CheckProbe(errorMessage));
     EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, MatchAnyReleasesOnlyWhenAllQueuesHaveEnoughEntities) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    MatchProbe match(model, "MatchAnyBasic");
+    CollectorSinkComponentProbe sink(model, "MatchAnyBasicSink");
+    match.connectTo(&sink);
+    match.setRule(Match::Rule::Any);
+    match.setNumberOfQueues(2);
+    match.setMatchSize("1");
+    match.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "MatchAnyBasicPart");
+    Entity* q0e1 = model->createEntity("MatchAnyQ0E1", true);
+    Entity* q1e1 = model->createEntity("MatchAnyQ1E1", true);
+    q0e1->setEntityType(partType);
+    q1e1->setEntityType(partType);
+
+    match.DispatchEventProbe(q0e1, 0);
+    DrainFutureEvents(model);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+
+    match.DispatchEventProbe(q1e1, 1);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], q0e1);
+    EXPECT_EQ(sink.ReceivedEntities()[1], q1e1);
+}
+
+TEST(SimulatorRuntimeTest, MatchAnyWithMatchSizeTwoReleasesExactlyTwoPerQueueAndKeepsOverflowWaiting) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    MatchProbe match(model, "MatchAnySizeTwo");
+    CollectorSinkComponentProbe sink(model, "MatchAnySizeTwoSink");
+    match.connectTo(&sink);
+    match.setRule(Match::Rule::Any);
+    match.setNumberOfQueues(2);
+    match.setMatchSize("2");
+    match.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "MatchAnySizeTwoPart");
+    Entity* q0e1 = model->createEntity("MatchAny2Q0E1", true);
+    Entity* q0e2 = model->createEntity("MatchAny2Q0E2", true);
+    Entity* q0e3 = model->createEntity("MatchAny2Q0E3", true);
+    Entity* q1e1 = model->createEntity("MatchAny2Q1E1", true);
+    Entity* q1e2 = model->createEntity("MatchAny2Q1E2", true);
+    q0e1->setEntityType(partType);
+    q0e2->setEntityType(partType);
+    q0e3->setEntityType(partType);
+    q1e1->setEntityType(partType);
+    q1e2->setEntityType(partType);
+
+    match.DispatchEventProbe(q0e1, 0);
+    match.DispatchEventProbe(q0e2, 0);
+    match.DispatchEventProbe(q0e3, 0);
+    match.DispatchEventProbe(q1e1, 1);
+    match.DispatchEventProbe(q1e2, 1);
+    DrainFutureEvents(model);
+
+    Queue* q0 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "MatchAnySizeTwo.Queue0"));
+    Queue* q1 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "MatchAnySizeTwo.Queue1"));
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
+    EXPECT_EQ(q0->size(), 1u);
+    EXPECT_EQ(q1->size(), 0u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 4u);
+}
+
+TEST(SimulatorRuntimeTest, MatchByAttributeSynchronizesOnlyCompatibleAttributeValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    (void)new Attribute(model, "Color");
+    MatchProbe match(model, "MatchByAttribute");
+    CollectorSinkComponentProbe sink(model, "MatchByAttributeSink");
+    match.connectTo(&sink);
+    match.setRule(Match::Rule::ByAttribute);
+    match.setNumberOfQueues(2);
+    match.setMatchSize("1");
+    match.setAttributeName("Color");
+    match.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "MatchByAttributePart");
+    Entity* q0Color1 = model->createEntity("MatchByAttrQ0Color1", true);
+    Entity* q1Color2 = model->createEntity("MatchByAttrQ1Color2", true);
+    Entity* q0Color2 = model->createEntity("MatchByAttrQ0Color2", true);
+    q0Color1->setEntityType(partType);
+    q1Color2->setEntityType(partType);
+    q0Color2->setEntityType(partType);
+    q0Color1->setAttributeValue("Color", 1.0);
+    q1Color2->setAttributeValue("Color", 2.0);
+    q0Color2->setAttributeValue("Color", 2.0);
+
+    match.DispatchEventProbe(q0Color1, 0);
+    match.DispatchEventProbe(q1Color2, 1);
+    DrainFutureEvents(model);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+
+    match.DispatchEventProbe(q0Color2, 0);
+    DrainFutureEvents(model);
+
+    Queue* q0 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "MatchByAttribute.Queue0"));
+    Queue* q1 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "MatchByAttribute.Queue1"));
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(q0->size(), 1u);
+    EXPECT_EQ(q1->size(), 0u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], q0Color2);
+    EXPECT_EQ(sink.ReceivedEntities()[1], q1Color2);
+}
+
+TEST(SimulatorRuntimeTest, MatchPersistenceRoundTripPreservesRuleQueueCountMatchSizeAndAttribute) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    MatchProbe source(model, "MatchPersistSource");
+    source.setRule(Match::Rule::ByAttribute);
+    source.setNumberOfQueues(4);
+    source.setMatchSize("3");
+    source.setAttributeName("Color");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    MatchProbe loaded(model, "MatchPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRule(), Match::Rule::ByAttribute);
+    EXPECT_EQ(loaded.getNumberOfQueues(), 4u);
+    EXPECT_EQ(loaded.getMatchSize(), "3");
+    EXPECT_EQ(loaded.getAttributeName(), "Color");
+}
+
+TEST(SimulatorRuntimeTest, MatchCheckValidatesQueueCountMatchSizeAndByAttributeContract) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    MatchProbe invalidQueues(model, "MatchCheckInvalidQueues");
+    invalidQueues.setRule(Match::Rule::Any);
+    invalidQueues.setNumberOfQueues(1);
+    invalidQueues.setMatchSize("1");
+    std::string invalidQueuesError;
+    EXPECT_FALSE(invalidQueues.CheckProbe(invalidQueuesError));
+    EXPECT_NE(invalidQueuesError.find("NumberOfQueues"), std::string::npos);
+
+    MatchProbe invalidMatchSize(model, "MatchCheckInvalidExpression");
+    invalidMatchSize.setRule(Match::Rule::Any);
+    invalidMatchSize.setNumberOfQueues(2);
+    invalidMatchSize.setMatchSize("bad_expr(");
+    std::string invalidExpressionError;
+    EXPECT_FALSE(invalidMatchSize.CheckProbe(invalidExpressionError));
+    EXPECT_NE(invalidExpressionError.find("MatchSize"), std::string::npos);
+
+    MatchProbe invalidAttribute(model, "MatchCheckInvalidAttribute");
+    invalidAttribute.setRule(Match::Rule::ByAttribute);
+    invalidAttribute.setNumberOfQueues(2);
+    invalidAttribute.setMatchSize("1");
+    invalidAttribute.setAttributeName("MissingColorAttribute");
+    std::string invalidAttributeError;
+    EXPECT_FALSE(invalidAttribute.CheckProbe(invalidAttributeError));
+    EXPECT_NE(invalidAttributeError.find("AttributeName"), std::string::npos);
+
+    (void)new Attribute(model, "Color");
+    MatchProbe valid(model, "MatchCheckValid");
+    valid.setRule(Match::Rule::ByAttribute);
+    valid.setNumberOfQueues(2);
+    valid.setMatchSize("1");
+    valid.setAttributeName("Color");
+    std::string validError;
+    EXPECT_TRUE(valid.CheckProbe(validError));
+    EXPECT_TRUE(validError.empty());
 }
 
 TEST(SimulatorRuntimeTest, BatchAnyFormsSingleBatchWithAtLeastBatchSizeAndKeepsOverflowQueued) {
