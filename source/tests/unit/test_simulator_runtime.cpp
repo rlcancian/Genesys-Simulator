@@ -33,6 +33,11 @@
 #include "plugins/components/Match.h"
 #define private public
 #define protected public
+#include "plugins/components/Process.h"
+#undef protected
+#undef private
+#define private public
+#define protected public
 #include "plugins/components/Wait.h"
 #include "plugins/components/Signal.h"
 #undef protected
@@ -356,6 +361,31 @@ public:
     SignalData* SignalDataPtrProbe() const {
         return _signalData;
     }
+};
+
+class ProcessProbe : public Process {
+public:
+    ProcessProbe(Model* model, const std::string& name = "") : Process(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    Seize* SeizePtrProbe() const { return _seize; }
+    Delay* DelayPtrProbe() const { return _delay; }
+    Release* ReleasePtrProbe() const { return _release; }
 };
 
 class CollectorSinkComponentProbe : public ModelComponent {
@@ -3263,4 +3293,128 @@ TEST(SimulatorRuntimeTest, EntityGroupDestructorCleansOwnedGroupContainersSafely
         entityGroup.insertElement(401u, e2);
         entityGroup.insertElement(402u, e1);
     });
+}
+
+TEST(SimulatorRuntimeTest, ProcessCreateInternalMacroComponentKeepsSeizeDelayReleaseChainCoherent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe process(model, "ProcessCreateMacro");
+    Delay sink(model, "ProcessCreateMacroSink");
+    process.getConnectionManager()->insert(&sink);
+    process.CreateInternalAndAttachedDataProbe();
+
+    ASSERT_NE(process.SeizePtrProbe(), nullptr);
+    ASSERT_NE(process.DelayPtrProbe(), nullptr);
+    ASSERT_NE(process.ReleasePtrProbe(), nullptr);
+    EXPECT_EQ(process.SeizePtrProbe()->getLevel(), process.getId());
+    EXPECT_EQ(process.DelayPtrProbe()->getLevel(), process.getId());
+    EXPECT_EQ(process.ReleasePtrProbe()->getLevel(), process.getId());
+    ASSERT_NE(process.SeizePtrProbe()->getConnectionManager()->getFrontConnection(), nullptr);
+    ASSERT_NE(process.DelayPtrProbe()->getConnectionManager()->getFrontConnection(), nullptr);
+    EXPECT_EQ(process.SeizePtrProbe()->getConnectionManager()->getFrontConnection()->component, process.DelayPtrProbe());
+    EXPECT_EQ(process.DelayPtrProbe()->getConnectionManager()->getFrontConnection()->component, process.ReleasePtrProbe());
+    ASSERT_NE(process.getConnectionManager()->getFrontConnection(), nullptr);
+    EXPECT_EQ(process.getConnectionManager()->getFrontConnection()->component, process.SeizePtrProbe());
+    ASSERT_NE(process.ReleasePtrProbe()->getConnectionManager()->getFrontConnection(), nullptr);
+    EXPECT_EQ(process.ReleasePtrProbe()->getConnectionManager()->getFrontConnection()->component, &sink);
+}
+
+TEST(SimulatorRuntimeTest, ProcessRecheckReconcilesReleaseRequestsFromSeizeRequests) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe process(model, "ProcessReconcile");
+    Queue* queue = new Queue(model, "ProcessReconcileQueue");
+    process.setQueueableItem(new QueueableItem(queue));
+    Resource* r1 = new Resource(model, "ProcessReconcileR1");
+    Resource* r2 = new Resource(model, "ProcessReconcileR2");
+    process.addSeizeRequest(new SeizableItem(r1, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY, "Entity.CustomSaveR1"));
+    process.addSeizeRequest(new SeizableItem(r2, "2", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY));
+    process.CreateInternalAndAttachedDataProbe();
+
+    std::string errorMessage;
+    ASSERT_TRUE(process.CheckProbe(errorMessage)) << errorMessage;
+    ASSERT_NE(process.ReleasePtrProbe(), nullptr);
+    ASSERT_EQ(process.SeizePtrProbe()->getSeizeRequests()->size(), process.ReleasePtrProbe()->getReleaseRequests()->size());
+    ASSERT_EQ(process.ReleasePtrProbe()->getReleaseRequests()->size(), 2u);
+    EXPECT_EQ(process.ReleasePtrProbe()->getReleaseRequests()->getAtRank(0)->getSelectionRule(), SeizableItem::SelectionRule::SPECIFICMEMBER);
+    EXPECT_EQ(process.ReleasePtrProbe()->getReleaseRequests()->getAtRank(1)->getSelectionRule(), SeizableItem::SelectionRule::SPECIFICMEMBER);
+    EXPECT_EQ(process.ReleasePtrProbe()->getReleaseRequests()->getAtRank(0)->getSaveAttribute(), "Entity.CustomSaveR1");
+    EXPECT_FALSE(process.ReleasePtrProbe()->getReleaseRequests()->getAtRank(1)->getSaveAttribute().empty());
+}
+
+TEST(SimulatorRuntimeTest, ProcessPersistenceRoundTripPreservesConfigurationAndReconcilesInternals) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe source(model, "ProcessPersistSource");
+    Queue* queue = new Queue(model, "ProcessPersistQueue");
+    source.setAllocationType(Util::AllocationType::ValueAdded);
+    source.setPriority(7u);
+    source.setPriorityExpression("2+3");
+    source.setQueueableItem(new QueueableItem(queue));
+    source.addSeizeRequest(new SeizableItem(new Resource(model, "ProcessPersistResource"), "3", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY));
+    source.setDelayExpression("4");
+    source.setDelayTimeUnit(Util::TimeUnit::minute);
+    Delay sink(model, "ProcessPersistSink");
+    source.getConnectionManager()->insert(&sink);
+    source.CreateInternalAndAttachedDataProbe();
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    ProcessProbe loaded(model, "ProcessPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    EXPECT_EQ(loaded.getAllocationType(), Util::AllocationType::ValueAdded);
+    EXPECT_EQ(loaded.getPriority(), 7u);
+    EXPECT_EQ(loaded.getPriorityExpression(), "2+3");
+    ASSERT_NE(loaded.getQueueableItem(), nullptr);
+    EXPECT_EQ(loaded.getQueueableItem()->getQueueableName(), "ProcessPersistQueue");
+    ASSERT_EQ(loaded.getSeizeRequests()->size(), 1u);
+    EXPECT_EQ(loaded.getSeizeRequests()->getAtRank(0)->getResourceName(), "ProcessPersistResource");
+    EXPECT_EQ(loaded.delayExpression(), "4");
+    EXPECT_EQ(loaded.delayTimeUnit(), Util::TimeUnit::minute);
+    ASSERT_NE(loaded.ReleasePtrProbe(), nullptr);
+    EXPECT_EQ(loaded.SeizePtrProbe()->getSeizeRequests()->size(), loaded.ReleasePtrProbe()->getReleaseRequests()->size());
+    EXPECT_EQ(fields.loadField("nextId", -1), sink.getId());
+}
+
+TEST(SimulatorRuntimeTest, ProcessCheckFailsWhenInternalCompositionIsInconsistent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe process(model, "ProcessInvalid");
+    process.setQueueableItem(new QueueableItem(new Queue(model, "ProcessInvalidQueue")));
+    process.addSeizeRequest(new SeizableItem(new Resource(model, "ProcessInvalidResource"), "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY));
+    process.CreateInternalAndAttachedDataProbe();
+    process.SeizePtrProbe()->getConnectionManager()->connections()->clear();
+    process.DelayPtrProbe()->getConnectionManager()->connections()->clear();
+    process.ReleasePtrProbe()->getReleaseRequests()->clear();
+
+    std::string errorMessage;
+    EXPECT_FALSE(process.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, ProcessCheckPassesWithMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe process(model, "ProcessValid");
+    process.setQueueableItem(new QueueableItem(new Queue(model, "ProcessValidQueue")));
+    process.addSeizeRequest(new SeizableItem(new Resource(model, "ProcessValidResource"), "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY));
+    process.setDelayExpression("1");
+    process.setDelayTimeUnit(Util::TimeUnit::second);
+    process.CreateInternalAndAttachedDataProbe();
+
+    std::string errorMessage;
+    EXPECT_TRUE(process.CheckProbe(errorMessage)) << errorMessage;
 }

@@ -58,6 +58,9 @@ protected: // virtual
 	virtual void _createInternalAndAttachedData() override;
 private: // methods
 	void _adjustConnections();
+	void _ensureInternalComponents();
+	void _reconcileInternalComponents();
+	bool _hasConsistentInternalChain(std::string& errorMessage) const;
 private: // attributes 1:1
 	Seize* _seize = nullptr;
 	Delay* _delay = nullptr;
@@ -69,4 +72,3 @@ private: // attributes 1:n
 };
 
 #endif /* PROCESS_H */
-
