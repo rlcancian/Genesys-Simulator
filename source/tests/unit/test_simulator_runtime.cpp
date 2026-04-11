@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <fstream>
 #include <memory>
 #include <vector>
 
@@ -24,6 +25,8 @@
 #include "plugins/data/Set.h"
 #include "plugins/data/Label.h"
 #include "plugins/data/Storage.h"
+#include "plugins/data/File.h"
+#include "kernel/util/Util.h"
 #define private public
 #define protected public
 #include "plugins/data/EntityGroup.h"
@@ -693,6 +696,23 @@ public:
 class StorageProbe : public Storage {
 public:
     StorageProbe(Model* model, const std::string& name = "") : Storage(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class FileProbe : public File {
+public:
+    FileProbe(Model* model, const std::string& name = "") : File(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
