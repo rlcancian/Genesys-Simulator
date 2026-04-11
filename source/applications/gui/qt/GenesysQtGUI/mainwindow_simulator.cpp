@@ -93,6 +93,7 @@ void MainWindow::_onSimulationEndHandler(SimulationEvent * re) {
     if (_simulationEventController != nullptr) {
         _simulationEventController->onSimulationEndHandler(re);
     }
+    _actualizeReportsResultsTable();
 }
 
 void MainWindow::_onProcessEventHandler(SimulationEvent * re) {
