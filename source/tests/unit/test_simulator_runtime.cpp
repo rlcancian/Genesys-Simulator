@@ -2,6 +2,8 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 #include "kernel/simulator/Simulator.h"
@@ -25,6 +27,7 @@
 #include "plugins/data/Label.h"
 #include "plugins/data/Storage.h"
 #include "plugins/data/File.h"
+#include "plugins/data/CppCompiler.h"
 #include "kernel/util/Util.h"
 #define private public
 #define protected public
@@ -671,6 +674,27 @@ public:
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
         _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class CppCompilerProbe : public CppCompiler {
+public:
+    CppCompilerProbe(Model* model, const std::string& name = "") : CppCompiler(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    CompilationResult InvokeCompilerProbe(const std::string& command) {
+        return _invokeCompiler(command);
     }
 };
 
@@ -4129,4 +4153,159 @@ TEST(SimulatorRuntimeTest, FileRegistersControlsAndPropertiesForMainMetadata) {
     }
     EXPECT_TRUE(modelHasSystemFilenameControl);
     EXPECT_TRUE(modelHasAccessModeControl);
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerDefaultsExposeMainConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerDefaults");
+    EXPECT_EQ(compiler.getSourceFilename(), "");
+    EXPECT_EQ(compiler.getOutputFilename(), "");
+    EXPECT_EQ(compiler.getCompilerCommand(), "g++");
+    EXPECT_EQ(compiler.getOutputDir(), ".temp/");
+    EXPECT_EQ(compiler.getTempDir(), ".temp/");
+    EXPECT_FALSE(compiler.IsLibraryLoaded());
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerSettersAndGettersPreserveValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerSetGet");
+    compiler.setSourceFilename("my_model.cpp");
+    compiler.setOutputFilename("my_model.so");
+    compiler.setCompilerCommand("clang++");
+    compiler.setOutputDir("out");
+    compiler.setTempDir("tmp");
+
+    EXPECT_EQ(compiler.getSourceFilename(), "my_model.cpp");
+    EXPECT_EQ(compiler.getOutputFilename(), "my_model.so");
+    EXPECT_EQ(compiler.getCompilerCommand(), "clang++");
+    EXPECT_EQ(compiler.getOutputDir(), "out");
+    EXPECT_EQ(compiler.getTempDir(), "tmp");
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerCheckRejectsEmptyRequiredFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerCheckInvalid");
+    compiler.setCompilerCommand("");
+    compiler.setSourceFilename("");
+    compiler.setOutputFilename("");
+
+    std::string errorMessage;
+    EXPECT_FALSE(compiler.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("CompilerCommand must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("SourceFilename must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("OutputFilename must not be empty"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerCheckAcceptsMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerCheckValid");
+    compiler.setCompilerCommand("g++");
+    compiler.setSourceFilename("main.cpp");
+    compiler.setOutputFilename("main.out");
+
+    std::string errorMessage;
+    EXPECT_TRUE(compiler.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerShowIncludesMainObservabilityFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerShow");
+    compiler.setSourceFilename("input.cpp");
+    compiler.setOutputFilename("output.so");
+    compiler.setCompilerCommand("clang++");
+    compiler.setOutputDir("out");
+    compiler.setTempDir("tmp");
+    compiler.setLibraryLoaded(true);
+
+    const std::string shown = compiler.show();
+    EXPECT_NE(shown.find("sourceFilename=\"input.cpp\""), std::string::npos);
+    EXPECT_NE(shown.find("outputFilename=\"output.so\""), std::string::npos);
+    EXPECT_NE(shown.find("compilerCommand=\"clang++\""), std::string::npos);
+    EXPECT_NE(shown.find("outputDir=\"out\""), std::string::npos);
+    EXPECT_NE(shown.find("tempDir=\"tmp\""), std::string::npos);
+    EXPECT_NE(shown.find("libraryLoaded=true"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerPersistenceRoundTripPreservesMainFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe source(model, "CppCompilerPersistSource");
+    source.setSourceFilename("persist.cpp");
+    source.setOutputFilename("persist.so");
+    source.setCompilerCommand("clang++");
+    source.setOutputDir("persist-out");
+    source.setTempDir("persist-tmp");
+    source.setLibraryLoaded(true);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    CppCompilerProbe loaded(model, "CppCompilerPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getSourceFilename(), "persist.cpp");
+    EXPECT_EQ(loaded.getOutputFilename(), "persist.so");
+    EXPECT_EQ(loaded.getCompilerCommand(), "clang++");
+    EXPECT_EQ(loaded.getOutputDir(), "persist-out");
+    EXPECT_EQ(loaded.getTempDir(), "persist-tmp");
+    EXPECT_TRUE(loaded.IsLibraryLoaded());
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerInvokeCompilerSeparatesStdoutAndStderrLogs) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const std::string base = Util::RunningPath() + Util::DirSeparator() + "cppcompiler_runtime";
+    const std::string outputDir = base + "_out";
+    const std::string tempDir = base + "_tmp";
+    ::mkdir(outputDir.c_str(), 0755);
+    ::mkdir(tempDir.c_str(), 0755);
+
+    CppCompilerProbe compiler(model, "CppCompilerInvoke");
+    compiler.setOutputDir(outputDir);
+    compiler.setTempDir(tempDir);
+    const std::string outputPath = outputDir + Util::DirSeparator() + "invoke_result.bin";
+    compiler.setOutputFilename(outputPath);
+    const std::string command = "sh -c \"echo STDOUT_LINE; echo STDERR_LINE 1>&2; touch " + outputPath + "\"";
+    CppCompiler::CompilationResult result = compiler.InvokeCompilerProbe(command);
+
+    EXPECT_TRUE(result.success);
+    EXPECT_NE(result.compilationStdOutput.find("STDOUT_LINE"), std::string::npos);
+    EXPECT_EQ(result.compilationStdOutput.find("STDERR_LINE"), std::string::npos);
+    EXPECT_NE(result.compilationErrOutput.find("STDERR_LINE"), std::string::npos);
+    EXPECT_EQ(result.compilationErrOutput.find("STDOUT_LINE"), std::string::npos);
+    EXPECT_EQ(result.destinationPath, tempDir + Util::DirSeparator());
+
+    Util::FileDelete(outputPath);
+    ::rmdir(outputDir.c_str());
+    ::rmdir(tempDir.c_str());
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerUnloadLibraryIsSafeWhenNoLibraryIsLoaded) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerUnload");
+    EXPECT_FALSE(compiler.IsLibraryLoaded());
+    EXPECT_TRUE(compiler.unloadLibrary());
+    EXPECT_FALSE(compiler.IsLibraryLoaded());
 }
