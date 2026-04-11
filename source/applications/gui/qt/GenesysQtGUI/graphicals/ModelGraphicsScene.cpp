@@ -2955,13 +2955,39 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent *event) {
                     ModelComponent* component = (ModelComponent*) plugin->newInstance(_simulator->getModelManager()->current());
                     // create graphically
                     addGraphicalModelComponent(plugin, component, event->scenePos(), color, true);
-                    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, this);
+                    // Defer synchronization until after the drop event completes and scene transforms settle.
+                    scheduleGraphicalDataDefinitionsSync();
                     return;
                 }
             }
         }
     }
     event->setAccepted(false);
+}
+
+void ModelGraphicsScene::scheduleGraphicalDataDefinitionsSync() {
+    // Coalesce chained requests to avoid running redundant synchronizations in the same event-loop turn.
+    if (_graphicalDataDefinitionsSyncPending) {
+        return;
+    }
+    _graphicalDataDefinitionsSyncPending = true;
+
+    QPointer<ModelGraphicsScene> guardedScene(this);
+    QTimer::singleShot(0, this, [guardedScene]() {
+        if (guardedScene.isNull()) {
+            return;
+        }
+
+        // Clear pending state first so follow-up model mutations can enqueue another sync.
+        guardedScene->_graphicalDataDefinitionsSyncPending = false;
+        Simulator* simulator = guardedScene->_simulator;
+        if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+            return;
+        }
+
+        // Run canonical layer synchronization only when both the scene and active model are still valid.
+        GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, guardedScene.data());
+    });
 }
 
 void ModelGraphicsScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *contextMenuEvent) {

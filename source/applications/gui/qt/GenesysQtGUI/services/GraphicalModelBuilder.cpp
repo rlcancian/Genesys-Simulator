@@ -170,6 +170,23 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         scene->setDiagramLayerState(false, false);
         return;
     }
+    ModelDataManager* dataManager = model->getDataManager();
+
+    // Exit early when no model data definitions exist, avoiding unnecessary scene scans and geometry reads.
+    bool hasAnyModelDataDefinition = false;
+    for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
+        List<ModelDataDefinition*>* modelDataDefinitionList = dataManager->getDataDefinitionList(dataTypename);
+        if (modelDataDefinitionList != nullptr && !modelDataDefinitionList->list()->empty()) {
+            hasAnyModelDataDefinition = true;
+            break;
+        }
+    }
+    if (!hasAnyModelDataDefinition) {
+        scene->clearGraphicalDiagramConnections();
+        scene->clearGraphicalModelDataDefinitions();
+        scene->setDiagramLayerState(false, false);
+        return;
+    }
 
     std::map<ModelComponent*, GraphicalModelComponent*> componentMap;
     for (GraphicalModelComponent* gmc : *scene->getAllComponents()) {
@@ -191,7 +208,6 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     }
 
     PluginManager* pluginManager = simulator->getPluginManager();
-    ModelDataManager* dataManager = model->getDataManager();
     QColor purple(128, 0, 128);
     QColor grey(220, 220, 220);
 
@@ -243,10 +259,10 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         if (component == nullptr || graphicalComponent == nullptr) {
             continue;
         }
-
-        QPointF componentPosition = graphicalComponent->scenePos();
-        qreal yInternal = componentPosition.y();
-        qreal yAttached = componentPosition.y();
+        qreal yInternal = 0.0;
+        qreal yAttached = 0.0;
+        QPointF componentPosition;
+        bool hasComponentPosition = false;
 
         for (const auto& attachedData : *component->getAttachedData()) {
             auto attachedIt = dataDefinitionMap.find(attachedData.second);
@@ -258,6 +274,13 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 continue;
             }
             if (newDataDefinitions.contains(attachedData.second)) {
+                // Read component geometry only when a newly created attached data definition needs placement.
+                if (!hasComponentPosition) {
+                    componentPosition = graphicalComponent->scenePos();
+                    yInternal = componentPosition.y();
+                    yAttached = componentPosition.y();
+                    hasComponentPosition = true;
+                }
                 yAttached -= 150;
                 gdd->setParentItem(nullptr);
                 gdd->setPos(componentPosition.x(), yAttached);
@@ -277,6 +300,13 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 continue;
             }
             if (newDataDefinitions.contains(internalData.second)) {
+                // Read component geometry only when a newly created internal data definition needs placement.
+                if (!hasComponentPosition) {
+                    componentPosition = graphicalComponent->scenePos();
+                    yInternal = componentPosition.y();
+                    yAttached = componentPosition.y();
+                    hasComponentPosition = true;
+                }
                 yInternal += 150;
                 gdd->setPos(componentPosition.x(), yInternal);
                 gdd->setOldPosition(componentPosition.x(), yInternal);
@@ -292,9 +322,9 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         if (parentDefinition == nullptr || parentGraphicalDefinition == nullptr) {
             continue;
         }
-
-        QPointF parentPosition = parentGraphicalDefinition->scenePos();
-        qreal x = parentPosition.x();
+        QPointF parentPosition;
+        qreal x = 0.0;
+        bool hasParentPosition = false;
         for (const auto& internalData : *parentDefinition->getInternalData()) {
             auto childIt = dataDefinitionMap.find(internalData.second);
             if (childIt == dataDefinitionMap.end() || childIt->second == nullptr) {
@@ -302,6 +332,12 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             }
             GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
             if (newDataDefinitions.contains(internalData.second)) {
+                // Read parent geometry only when placing newly created child data definitions.
+                if (!hasParentPosition) {
+                    parentPosition = parentGraphicalDefinition->scenePos();
+                    x = parentPosition.x();
+                    hasParentPosition = true;
+                }
                 x -= 200;
                 childGraphicalDefinition->setParentItem(nullptr);
                 childGraphicalDefinition->setPos(x, parentPosition.y());
