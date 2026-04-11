@@ -17,7 +17,8 @@ GraphicalComponentPort::GraphicalComponentPort(GraphicalModelComponent* componen
 		_height *= 1.15;
 	}
 	//setPos(0,0);
-    setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable);
+    setFlag(QGraphicsItem::ItemIsSelectable, false);
+    setFlag(QGraphicsItem::ItemIsFocusable, false);
 	setAcceptHoverEvents(true);
 	setAcceptTouchEvents(true);
 	setActive(true);
