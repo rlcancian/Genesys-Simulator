@@ -45,6 +45,12 @@
 #include "plugins/components/Write.h"
 #define private public
 #define protected public
+#include "plugins/components/Buffer.h"
+#include "plugins/components/PickStation.h"
+#undef protected
+#undef private
+#define private public
+#define protected public
 #include "plugins/components/Create.h"
 #undef protected
 #undef private
@@ -427,6 +433,48 @@ public:
 
     bool LoadInstanceProbe(PersistenceRecord* fields) {
         return _loadInstance(fields);
+    }
+};
+
+class BufferProbe : public Buffer {
+public:
+    BufferProbe(Model* model, const std::string& name = "") : Buffer(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    std::vector<Entity*>* RawBufferProbe() const {
+        return _buffer;
+    }
+};
+
+class PickStationProbe : public PickStation {
+public:
+    PickStationProbe(Model* model, const std::string& name = "") : PickStation(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
     }
 };
 
@@ -2976,6 +3024,177 @@ TEST(SimulatorRuntimeTest, SignalAndWaitSharedSignalDataRemainCoherentAfterReche
     EXPECT_EQ(signal.SignalDataPtrProbe(), &signalData);
     EXPECT_EQ(wait._signalData, signal.SignalDataPtrProbe());
     EXPECT_TRUE(signalData.hasSignalDataEventHandler(&wait));
+}
+
+TEST(SimulatorRuntimeTest, BufferCheckFailsWhenCapacityIsZero) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferCheckCapZero");
+    buffer.setCapacity(0);
+
+    std::string errorMessage;
+    EXPECT_FALSE(buffer.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("Capacity greater than zero"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BufferCheckRequiresSignalDataWhenAdvanceOnSignal) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferCheckSignalRequired");
+    buffer.setCapacity(2);
+    buffer.setAdvanceOn(Buffer::AdvanceOn::Signal);
+    buffer.setSignal(nullptr);
+
+    std::string errorMessage;
+    EXPECT_FALSE(buffer.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("requires a valid SignalData"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BufferRecheckKeepsInternalVectorSizedToCapacityIdempotently) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferRecheckResize");
+    buffer.setCapacity(4);
+    buffer.InitBetweenReplicationsProbe();
+    ASSERT_EQ(buffer.RawBufferProbe()->size(), 4u);
+
+    buffer.setCapacity(2);
+    std::string checkError;
+    EXPECT_TRUE(buffer.CheckProbe(checkError));
+    EXPECT_EQ(buffer.RawBufferProbe()->size(), 2u);
+
+    std::string secondCheckError;
+    EXPECT_TRUE(buffer.CheckProbe(secondCheckError));
+    EXPECT_EQ(buffer.RawBufferProbe()->size(), 2u);
+}
+
+TEST(SimulatorRuntimeTest, BufferSignalArrivalOccupiesFirstFreePositionInsteadOfLastByDefault) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalData signal(model, "BufferSignalModeSignal");
+    BufferProbe buffer(model, "BufferSignalMode");
+    buffer.setAdvanceOn(Buffer::AdvanceOn::Signal);
+    buffer.setSignal(&signal);
+    buffer.setCapacity(3);
+    buffer.InitBetweenReplicationsProbe();
+
+    Entity* existing = model->createEntity("BufferExisting", true);
+    Entity* arriving = model->createEntity("BufferArriving", true);
+    buffer.RawBufferProbe()->at(0) = existing;
+    buffer.RawBufferProbe()->at(1) = nullptr;
+    buffer.RawBufferProbe()->at(2) = nullptr;
+
+    buffer.DispatchEventProbe(arriving);
+    EXPECT_EQ(buffer.RawBufferProbe()->at(0), existing);
+    EXPECT_EQ(buffer.RawBufferProbe()->at(1), arriving);
+    EXPECT_EQ(buffer.RawBufferProbe()->at(2), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, BufferNewArrivalsDoesNotForwardNullEntityWhenFirstSlotIsEmpty) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferNewArrivalsNullGuard");
+    CollectorSinkComponentProbe sink(model, "BufferNewArrivalsNullGuardSink");
+    buffer.connectTo(&sink);
+    buffer.setAdvanceOn(Buffer::AdvanceOn::NewArrivals);
+    buffer.setCapacity(2);
+    buffer.InitBetweenReplicationsProbe();
+
+    Entity* retained = model->createEntity("BufferRetained", true);
+    Entity* arriving = model->createEntity("BufferIncoming", true);
+    buffer.RawBufferProbe()->at(0) = nullptr;
+    buffer.RawBufferProbe()->at(1) = retained;
+
+    buffer.DispatchEventProbe(arriving);
+    DrainFutureEvents(model);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+    EXPECT_EQ(buffer.RawBufferProbe()->at(0), retained);
+    EXPECT_EQ(buffer.RawBufferProbe()->at(1), arriving);
+}
+
+TEST(SimulatorRuntimeTest, PickStationCheckFailsWithoutPickableItems) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PickStationProbe pick(model, "PickNoItems");
+    pick.setSaveAttribute("Entity.PickStation");
+
+    std::string errorMessage;
+    EXPECT_FALSE(pick.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("requires at least one PickableStationItem"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, PickStationCheckFailsWhenAnyItemHasNoStation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PickStationProbe pick(model, "PickNullStation");
+    pick.setSaveAttribute("Entity.PickStation");
+    pick.addPickableStationItem(new PickableStationItem(static_cast<Station*>(nullptr), "1"));
+
+    std::string errorMessage;
+    EXPECT_FALSE(pick.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("without a valid Station"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, PickStationCheckFailsWithInvalidExpressionWhenExpressionConditionIsActive) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "PickExprStation");
+    PickStationProbe pick(model, "PickInvalidExpression");
+    pick.setSaveAttribute("Entity.PickStation");
+    pick.setPickConditionExpression(true);
+    pick.setPickConditionNumberInQueue(false);
+    pick.setPickConditionNumberBusyResource(false);
+    pick.addPickableStationItem(new PickableStationItem(&station, "1+"));
+
+    std::string errorMessage;
+    EXPECT_FALSE(pick.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("Expression"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, PickStationDispatchChoosesStationAndStoresSelectedId) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station stationA(model, "PickStationA");
+    Station stationB(model, "PickStationB");
+    Attribute savedStationAttribute(model, "Entity.PickStation");
+    PickStationProbe pick(model, "PickValidDispatch");
+    CollectorSinkComponentProbe sink(model, "PickValidDispatchSink");
+    pick.connectTo(&sink);
+    pick.setSaveAttribute("Entity.PickStation");
+    pick.setTestCondition(PickStation::TestCondition::MINIMUM);
+    pick.setPickConditionExpression(true);
+    pick.setPickConditionNumberInQueue(false);
+    pick.setPickConditionNumberBusyResource(false);
+    pick.addPickableStationItem(new PickableStationItem(&stationA, "5"));
+    pick.addPickableStationItem(new PickableStationItem(&stationB, "1"));
+
+    std::string checkError;
+    ASSERT_TRUE(pick.CheckProbe(checkError)) << checkError;
+
+    Entity* entity = model->createEntity("PickDispatchEntity", true);
+    pick.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+    EXPECT_EQ(entity->getAttributeValue(savedStationAttribute.getId()), stationB.getId());
 }
 
 TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {

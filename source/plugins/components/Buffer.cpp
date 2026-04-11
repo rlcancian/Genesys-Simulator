@@ -102,10 +102,20 @@ PluginInformation* Buffer::GetPluginInformation() {
 // protected virtual -- must be overriden
 
 void Buffer::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	(void)inputPortNumber;
+	if (_capacity == 0) {
+		traceError("Buffer \"" + getName() + "\" received entity with invalid Capacity=0");
+		return;
+	}
+	if (_buffer->size() != _capacity) {
+		_buffer->resize(_capacity, nullptr);
+	}
 	if (_advanceOn == AdvanceOn::NewArrivals) {
 		// just move on
 		Entity* first = _advance(entity);
-		_parentModel->sendEntityToComponent(first, _connections->getFrontConnection());
+		if (first != nullptr) {
+			_parentModel->sendEntityToComponent(first, _connections->getFrontConnection());
+		}
 	} else { // advance on signal. Do not move. Only check if buffer is full
 		if (_buffer->at(_capacity-1) != nullptr) { // full buffer
 			traceSimulation(this, "Entity arrived on a full buffer");
@@ -121,8 +131,9 @@ void Buffer::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 				{
 					Entity* replaced = _buffer->at(_capacity-1);
 					traceSimulation(this, "Entity "+entity->getName()+" will replace entity "+replaced->getName()+" on the buffer");
-					traceSimulation(this, "Disposing replaced entity "+entity->getName());
+					traceSimulation(this, "Disposing replaced entity "+replaced->getName());
 					_parentModel->removeEntity(replaced);
+					_buffer->at(_capacity-1) = entity;
 					break;
 				}
 				case ArrivalOnFullBufferRule::num_elements:
@@ -130,7 +141,13 @@ void Buffer::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 					break;
 			}
 		} else { // insert
-			_buffer->at(_capacity-1) = entity;
+			// Keep insertion coherent by placing the arriving entity in the first free slot.
+			for (unsigned int i = 0; i < _capacity; i++) {
+				if (_buffer->at(i) == nullptr) {
+					_buffer->at(i) = entity;
+					break;
+				}
+			}
 		}
 	}
 }
@@ -166,7 +183,19 @@ void Buffer::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Buffer::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	//...
+	if (_capacity == 0) {
+		errorMessage = "Buffer \"" + getName() + "\" must have Capacity greater than zero";
+		traceError(errorMessage);
+		resultAll = false;
+	}
+	if (_advanceOn == AdvanceOn::Signal && _attachedSignal == nullptr) {
+		errorMessage = "Buffer \"" + getName() + "\" configured with AdvanceOn=Signal requires a valid SignalData";
+		traceError(errorMessage);
+		resultAll = false;
+	}
+	if (_buffer != nullptr && _capacity > 0 && _buffer->size() != _capacity) {
+		_buffer->resize(_capacity, nullptr); // keep check idempotent for rechecks
+	}
 	return resultAll;
 }
 
@@ -202,13 +231,29 @@ void Buffer::_createInternalAndAttachedData() {
 	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
 	//attached
 	if (_advanceOn == AdvanceOn::Signal) {
+		if (_signalWithRegisteredHandler != nullptr && _signalWithRegisteredHandler != _attachedSignal) {
+			_signalWithRegisteredHandler->removeSignalDataEventHandler(this);
+			_signalWithRegisteredHandler = nullptr;
+		}
 		if (_attachedSignal  == nullptr) {
 			_attachedSignal = pm->newInstance<SignalData>(_parentModel, getName() + "." + "SignalData");
+			if (_attachedSignal == nullptr) {
+				traceError("Buffer \"" + getName() + "\" failed to create SignalData while configured with AdvanceOn=Signal");
+				_attachedDataRemove("SignalData");
+				return;
+			}
 		}
 		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Buffer>(&Buffer::_handlerForSignalDataEvent, this);
-		_attachedSignal->addSignalDataEventHandler(handler, this);
+		if (!_attachedSignal->hasSignalDataEventHandler(this)) {
+			_attachedSignal->addSignalDataEventHandler(handler, this);
+		}
+		_signalWithRegisteredHandler = _attachedSignal;
 		_attachedDataInsert("SignalData", _attachedSignal);
 	} else {
+		if (_signalWithRegisteredHandler != nullptr) {
+			_signalWithRegisteredHandler->removeSignalDataEventHandler(this);
+			_signalWithRegisteredHandler = nullptr;
+		}
 		_attachedDataRemove("SignalData");
 	}
 }
