@@ -85,6 +85,7 @@ protected: // could be overriden by derived classes
 	virtual void _createInternalAndAttachedData() override; /*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
 	//virtual void _addProperty(PropertyBase* property);
 private:
+	static std::string _destinationBaseName(const std::string& destination);
 private:
 
 	const struct DEFAULT_VALUES {

@@ -150,14 +150,48 @@ void Create::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Create::_check(std::string& errorMessage) {
 	bool resultAll = SourceModelComponent::_check(errorMessage);
-	// @TODO Check expression with Schedule and Formula all together
+
+	const bool hasExpression = !_timeBetweenCreationsExpression.empty();
+	const bool hasSchedule = _timeBetweenCreationsSchedule != nullptr;
+	const bool hasFormula = _timeBetweenCreationsFormula != nullptr;
+	const unsigned int activeGenerators = static_cast<unsigned int>(hasExpression) + static_cast<unsigned int>(hasSchedule) + static_cast<unsigned int>(hasFormula);
+
+	if (activeGenerators != 1) {
+		errorMessage += "Create must define exactly one time-between-creations source: expression, schedule, or formula. ";
+		resultAll = false;
+	}
+	if (hasSchedule) {
+		resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Schedule>(), _timeBetweenCreationsSchedule, "TimeBetweenCreationsSchedule", errorMessage);
+		if (_timeBetweenCreationsSchedule != nullptr) {
+			resultAll &= _parentModel->checkExpression(_timeBetweenCreationsSchedule->getExpression(), "TimeBetweenCreationsSchedule", errorMessage);
+		}
+	}
+	if (hasFormula) {
+		resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Formula>(), _timeBetweenCreationsFormula, "TimeBetweenCreationsFormula", errorMessage);
+		if (_timeBetweenCreationsFormula != nullptr) {
+			resultAll &= _parentModel->checkExpression(_timeBetweenCreationsFormula->getExpression(), "TimeBetweenCreationsFormula", errorMessage);
+		}
+	}
 	return resultAll;
 }
 
 void Create::_createInternalAndAttachedData() {
 	SourceModelComponent::_createInternalAndAttachedData();
+	if (_timeBetweenCreationsSchedule != nullptr) {
+		_attachedDataInsert("TimeBetweenCreationsSchedule", _timeBetweenCreationsSchedule);
+	} else {
+		_attachedDataRemove("TimeBetweenCreationsSchedule");
+	}
+	if (_timeBetweenCreationsFormula != nullptr) {
+		_attachedDataInsert("TimeBetweenCreationsFormula", _timeBetweenCreationsFormula);
+	} else {
+		_attachedDataRemove("TimeBetweenCreationsFormula");
+	}
+
 	if (_reportStatistics && _numberOut == nullptr) {
 		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberOut", this);
+		_internalDataInsert("CountNumberOut", _numberOut);
+	} else if (_reportStatistics && _numberOut != nullptr) {
 		_internalDataInsert("CountNumberOut", _numberOut);
 	} else if (!_reportStatistics && _numberOut != nullptr) {
 		this->_internalDataClear();

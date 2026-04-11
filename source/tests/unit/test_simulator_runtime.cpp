@@ -16,6 +16,7 @@
 #include "plugins/data/Variable.h"
 #include "plugins/data/Resource.h"
 #include "plugins/data/Failure.h"
+#include "plugins/data/Formula.h"
 #include "plugins/data/Schedule.h"
 #include "plugins/data/Sequence.h"
 #include "plugins/data/SignalData.h"
@@ -34,6 +35,12 @@
 #include "plugins/components/Match.h"
 #include "plugins/components/Search.h"
 #include "plugins/components/Remove.h"
+#include "plugins/components/Assign.h"
+#define private public
+#define protected public
+#include "plugins/components/Create.h"
+#undef protected
+#undef private
 #define private public
 #define protected public
 #include "plugins/components/Process.h"
@@ -545,6 +552,52 @@ public:
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
+    }
+};
+
+class AssignProbe : public Assign {
+public:
+    AssignProbe(Model* model, const std::string& name = "") : Assign(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class CreateProbe : public Create {
+public:
+    CreateProbe(Model* model, const std::string& name = "") : Create(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    Counter* NumberOutProbe() const {
+        return _numberOut;
     }
 };
 
@@ -3948,4 +4001,171 @@ TEST(SimulatorRuntimeTest, RemoveCheckValidatesRankExpressionsAndMinimalQueueCon
     valid.setRemoveEndRank("0");
     std::string validMessage;
     EXPECT_TRUE(valid.CheckProbe(validMessage)) << validMessage;
+}
+
+TEST(SimulatorRuntimeTest, AssignSaveLoadPreservesMultipleAssignmentsWithoutIndexGaps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe source(model, "AssignPersistSource");
+    source.addAssignment(new Assignment("Entity.attrA", "1", true));
+    source.addAssignment(new Assignment("Entity.attrB", "2+3", true));
+    source.addAssignment(new Assignment("vCounter", "7", false));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    AssignProbe loaded(model, "AssignPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getAssignments()->size(), 3u);
+    auto it = loaded.getAssignments()->list()->begin();
+    EXPECT_EQ((*it)->getDestination(), "Entity.attrA");
+    EXPECT_EQ((*it)->getExpression(), "1");
+    ++it;
+    EXPECT_EQ((*it)->getDestination(), "Entity.attrB");
+    EXPECT_EQ((*it)->getExpression(), "2+3");
+    ++it;
+    EXPECT_EQ((*it)->getDestination(), "vCounter");
+    EXPECT_EQ((*it)->getExpression(), "7");
+    EXPECT_FALSE((*it)->isAttributeNotVariable());
+}
+
+TEST(SimulatorRuntimeTest, AssignCheckFailsForInvalidExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrBadExpr");
+    AssignProbe assign(model, "AssignCheckInvalidExpression");
+    assign.addAssignment(new Assignment("Entity.attrBadExpr", "1+", true));
+
+    std::string errorMessage;
+    EXPECT_FALSE(assign.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, AssignCreateInternalAndAttachedDataReconcilesChangesWithoutResidualKeys) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrFirst");
+    new Variable(model, "varSecond");
+    new Attribute(model, "Entity.attrThird");
+
+    AssignProbe assign(model, "AssignAttachedReconcile");
+    Assignment* first = new Assignment("Entity.attrFirst", "1", true);
+    Assignment* second = new Assignment("varSecond", "2", false);
+    assign.addAssignment(first);
+    assign.addAssignment(second);
+    assign.CreateInternalAndAttachedDataProbe();
+
+    auto* attachedFirst = assign.getAttachedData();
+    EXPECT_NE(attachedFirst->find("Attribute_Entity.attrFirst"), attachedFirst->end());
+    EXPECT_NE(attachedFirst->find("Variable_varSecond"), attachedFirst->end());
+
+    assign.removeAssignment(first);
+    assign.removeAssignment(second);
+    assign.addAssignment(new Assignment("Entity.attrThird", "3", true));
+    assign.CreateInternalAndAttachedDataProbe();
+
+    auto* attachedSecond = assign.getAttachedData();
+    EXPECT_EQ(attachedSecond->find("Attribute_Entity.attrFirst"), attachedSecond->end());
+    EXPECT_EQ(attachedSecond->find("Variable_varSecond"), attachedSecond->end());
+    EXPECT_NE(attachedSecond->find("Attribute_Entity.attrThird"), attachedSecond->end());
+}
+
+TEST(SimulatorRuntimeTest, AssignCheckAcceptsIndexedAttributeDestinationWhenBaseAttributeExists) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrIndexed");
+    AssignProbe assign(model, "AssignIndexedDestination");
+    assign.addAssignment(new Assignment("Entity.attrIndexed[2]", "5", true));
+
+    std::string errorMessage;
+    EXPECT_TRUE(assign.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, CreateCheckFailsForAmbiguousTimeBetweenConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule schedule(model, "CreateCheckAmbiguousSchedule");
+    schedule.getSchedulableItems()->insert(new SchedulableItem("1", 1.0, SchedulableItem::Rule::IGNORE));
+
+    CreateProbe create(model, "CreateCheckAmbiguous");
+    create.setTimeBetweenCreationsExpression("1", Util::TimeUnit::second);
+    create.setTimeBetweenCreationsSchedule(&schedule);
+
+    std::string errorMessage;
+    EXPECT_FALSE(create.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("exactly one time-between-creations source"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, CreateCheckPassesForMinimalValidExpressionConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe create(model, "CreateCheckValidExpression");
+    create.setTimeBetweenCreationsFormula(nullptr);
+    create.setTimeBetweenCreationsSchedule(nullptr);
+    create.setTimeBetweenCreationsExpression("1", Util::TimeUnit::second);
+    create.CreateInternalAndAttachedDataProbe(); // ensure default entity type attachment exists before check
+
+    std::string errorMessage;
+    EXPECT_TRUE(create.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, CreateInternalCounterFollowsReportStatisticsToggleIdempotently) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe create(model, "CreateStatisticsToggle");
+    create.setReportStatistics(true);
+    create.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(create.NumberOutProbe(), nullptr);
+    Counter* firstCounter = create.NumberOutProbe();
+
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(create.NumberOutProbe(), firstCounter);
+
+    create.setReportStatistics(false);
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(create.NumberOutProbe(), nullptr);
+
+    create.setReportStatistics(true);
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_NE(create.NumberOutProbe(), nullptr);
+    EXPECT_EQ(create.getInternalData()->find("CountNumberOut") != create.getInternalData()->end(), true);
+}
+
+TEST(SimulatorRuntimeTest, CreateSaveLoadRoundTripPreservesBasicConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe source(model, "CreatePersistSource");
+    source.setEntitiesPerCreation(3);
+    source.setFirstCreation(4.5);
+    source.setMaxCreations("12");
+    source.setTimeBetweenCreationsExpression("2", Util::TimeUnit::minute);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    CreateProbe loaded(model, "CreatePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getEntitiesPerCreation(), 3u);
+    EXPECT_DOUBLE_EQ(loaded.getFirstCreation(), 4.5);
+    EXPECT_EQ(loaded.getMaxCreations(), "12");
+    EXPECT_EQ(loaded.getTimeBetweenCreationsExpression(), "2");
+    EXPECT_EQ(loaded.getTimeUnit(), Util::TimeUnit::minute);
 }
