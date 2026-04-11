@@ -9,11 +9,7 @@
 #include "../animations/AnimationVariable.h"
 #include "../animations/AnimationTimer.h"
 #include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/simulator/PluginManager.h"
 #include "../../../../../kernel/simulator/ModelManager.h"
-#include "../../../../../kernel/simulator/ComponentManager.h"
-#include "../../../../../kernel/simulator/ConnectionManager.h"
-#include "../../../../../kernel/simulator/ModelDataManager.h"
 
 #include <QAction>
 #include <QDateTime>
@@ -476,13 +472,32 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QFile::remove(tempFile.fileName());
 
     if (model != nullptr) {
+        // Rebuild the base graphical topology from a single source of truth before applying persisted GUI overlays.
         _clearModelEditors();
+        _rebuildGraphicalModelFromModel();
+
+        struct PersistedComponentState {
+            Util::identification componentId = 0;
+            QPointF position;
+            int itemId = -1;
+        };
+
+        struct PersistedDataDefinitionState {
+            Util::identification dataId = 0;
+            QString className;
+            QString name;
+            QPointF position;
+            int itemId = -1;
+        };
 
         bool firstLine = true;
         bool hasPersistedViewState = false;
         int restoredViewpointX = 0;
         int restoredViewpointY = 0;
         QHash<int, QGraphicsItem*> persistedItems;
+        QHash<Util::identification, PersistedComponentState> persistedComponentsById;
+        QHash<Util::identification, PersistedDataDefinitionState> persistedDataDefinitionsById;
+        QHash<QString, PersistedDataDefinitionState> persistedDataDefinitionsByClassAndName;
 
         for (const QString& line : gui) {
             if (line.trimmed().isEmpty()) {
@@ -540,15 +555,11 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 continue;
             }
 
-            Util::identification id = split[0].toULong();
-            QString comp = split[1];
-            QString col = split[3];
+            PersistedComponentState state;
+            state.componentId = split[0].toULongLong();
             QString pos = split[4];
 
-            QRegularExpressionMatch colorMatch = QRegularExpression("color=#([0-9A-Fa-f]{6})").match(col);
-            QColor color("#" + (colorMatch.hasMatch() ? colorMatch.captured(1) : QString()));
-
-            QPoint position;
+            QPointF position;
             QRegularExpressionMatch posMatch = QRegularExpression("position=\\((-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*)\\)").match(pos);
             if (posMatch.hasMatch()) {
                 position.setX(posMatch.captured(1).toDouble());
@@ -560,77 +571,39 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     position.setY(legacyPosMatch.captured(3).toDouble());
                 }
             }
+            state.position = position;
 
-            Plugin* plugin = _simulator->getPluginManager()->find(comp.toStdString());
-            if (plugin == nullptr) {
-                _console->append(QString("Warning: Could not find plugin \"%1\" while loading GUI item id=%2. Item ignored.")
-                                     .arg(comp).arg(id));
-                continue;
-            }
-
-            ModelComponent* component = _simulator->getModelManager()->current()->getComponentManager()->find(id);
-            if (!component) {
-                continue;
-            }
-
-            GraphicalModelComponent* loadedComponent = _graphicsView->getScene()->addGraphicalModelComponent(plugin, component, position, color);
-            if (loadedComponent != nullptr && split.size() >= 6) {
+            if (split.size() >= 6) {
                 QRegularExpressionMatch itemIdMatch = QRegularExpression("itemid=(\\d+)").match(split[5]);
                 if (itemIdMatch.hasMatch()) {
-                    persistedItems.insert(itemIdMatch.captured(1).toInt(), loadedComponent);
+                    state.itemId = itemIdMatch.captured(1).toInt();
                 }
             }
+            persistedComponentsById.insert(state.componentId, state);
         }
 
-        QList<QGraphicsItem*>* graphicalComponents = _graphicsView->getScene()->getGraphicalModelComponents();
-        for (unsigned int i = 0; i < static_cast<unsigned int>(graphicalComponents->size()); i++) {
-            GraphicalModelComponent* source = dynamic_cast<GraphicalModelComponent*>(graphicalComponents->at(i));
-            if (source == nullptr || source->getComponent() == nullptr) {
+        // Restore persisted component positions by matching existing items created by GraphicalModelBuilder.
+        for (auto it = persistedComponentsById.constBegin(); it != persistedComponentsById.constEnd(); ++it) {
+            const PersistedComponentState& state = it.value();
+            GraphicalModelComponent* existingComponent = _graphicsView->getScene()->findGraphicalModelComponent(state.componentId);
+            if (existingComponent == nullptr) {
                 continue;
             }
-            std::map<unsigned int, Connection*>* connections = source->getComponent()->getConnectionManager()->connections();
-            if (connections == nullptr) {
-                continue;
-            }
-            for (auto it = connections->begin(); it != connections->end(); ++it) {
-                unsigned int portSource = it->first;
-                Connection* connection = it->second;
-                if (connection == nullptr || connection->component == nullptr) {
-                    continue;
-                }
-                GraphicalModelComponent* destination = _graphicsView->getScene()->findGraphicalModelComponent(connection->component->getId());
-                if (destination == nullptr || destination->getGraphicalInputPorts().empty()) {
-                    continue;
-                }
-                unsigned int portDestination = destination->getGraphicalInputPorts().at(0)->portNum();
-                if (portSource >= source->getGraphicalOutputPorts().size() || portDestination >= destination->getGraphicalInputPorts().size()) {
-                    continue;
-                }
-
-                source->setOcupiedOutputPorts(source->getOcupiedOutputPorts() + 1);
-                destination->setOcupiedInputPorts(destination->getOcupiedInputPorts() + 1);
-                _graphicsView->getScene()->addGraphicalConnection(source->getGraphicalOutputPorts().at(portSource),
-                                                                  destination->getGraphicalInputPorts().at(portDestination),
-                                                                  portSource,
-                                                                  portDestination);
+            QPointF componentPos(state.position.x(), state.position.y() - existingComponent->getHeight() / 2.0);
+            existingComponent->setPos(componentPos);
+            existingComponent->setOldPosition(componentPos);
+            if (state.itemId > 0) {
+                persistedItems.insert(state.itemId, existingComponent);
             }
         }
 
         if (!dataDefinitions.empty()) {
-            // Restore data definition positions after kernel model + graphical scene are available.
-            struct PersistedDataDefinitionState {
-                Util::identification dataId = 0;
-                QString className;
-                QString name;
-                QPointF position;
-            };
-
-            QHash<Util::identification, PersistedDataDefinitionState> persistedById;
-            QHash<QString, PersistedDataDefinitionState> persistedByClassAndName;
+            // Parse persisted data definition layout metadata for id-based and fallback lookup.
             QRegularExpression regexDataId("\\s*dataid=(\\d+)");
             QRegularExpression regexClassname("\\s*classname=([^\\t]+)");
             QRegularExpression regexName("\\s*name=([^\\t]+)");
             QRegularExpression regexPosition("\\s*position=\\(([^,]+),([^\\)]+)\\)");
+            QRegularExpression regexItemId("\\s*itemid=(\\d+)");
 
             for (const QString& rawLine : dataDefinitions) {
                 if (rawLine.trimmed().isEmpty()) {
@@ -661,37 +634,22 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 } else {
                     continue;
                 }
-
-                if (state.dataId > 0) {
-                    persistedById.insert(state.dataId, state);
-                }
-                persistedByClassAndName.insert(state.className + "#" + state.name, state);
-            }
-
-            ModelGraphicsScene* scene = _graphicsView->getScene();
-            QList<QGraphicsItem*>* graphicalDataDefinitions = scene->getGraphicalModelDataDefinitions();
-
-            // Ensure data definition items exist in .gui reload flow before applying persisted layout.
-            if (graphicalDataDefinitions != nullptr && graphicalDataDefinitions->isEmpty()) {
-                ModelDataManager* dataManager = _simulator->getModelManager()->current()->getDataManager();
-                if (dataManager != nullptr) {
-                    QColor defaultDataDefinitionColor(220, 220, 220);
-                    for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
-                        std::list<ModelDataDefinition*>* listDataDefinitions = dataManager->getDataDefinitionList(dataTypename)->list();
-                        for (ModelDataDefinition* dataDefinition : *listDataDefinitions) {
-                            if (dataDefinition == nullptr) {
-                                continue;
-                            }
-                            Plugin* plugin = _simulator->getPluginManager()->find(dataDefinition->getClassname());
-                            if (plugin == nullptr) {
-                                continue;
-                            }
-                            scene->addGraphicalModelDataDefinition(plugin, dataDefinition, QPointF(0, 0), defaultDataDefinitionColor);
-                        }
+                if (tokens.size() >= 7) {
+                    QRegularExpressionMatch itemIdMatch = regexItemId.match(tokens[6]);
+                    if (itemIdMatch.hasMatch()) {
+                        state.itemId = itemIdMatch.captured(1).toInt();
                     }
                 }
+
+                if (state.dataId > 0) {
+                    persistedDataDefinitionsById.insert(state.dataId, state);
+                }
+                persistedDataDefinitionsByClassAndName.insert(state.className + "#" + state.name, state);
             }
 
+            // Apply persisted data definition positions to existing items created by GraphicalModelBuilder.
+            ModelGraphicsScene* scene = _graphicsView->getScene();
+            QList<QGraphicsItem*>* graphicalDataDefinitions = scene->getGraphicalModelDataDefinitions();
             if (graphicalDataDefinitions != nullptr) {
                 for (QGraphicsItem* item : *graphicalDataDefinitions) {
                     GraphicalModelDataDefinition* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item);
@@ -701,20 +659,26 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
                     ModelDataDefinition* dataDefinition = gmdd->getDataDefinition();
                     bool applied = false;
-                    auto byId = persistedById.find(dataDefinition->getId());
-                    if (byId != persistedById.end()) {
+                    auto byId = persistedDataDefinitionsById.find(dataDefinition->getId());
+                    if (byId != persistedDataDefinitionsById.end()) {
                         gmdd->setPos(byId->position);
                         gmdd->setOldPosition(byId->position.x(), byId->position.y());
+                        if (byId->itemId > 0) {
+                            persistedItems.insert(byId->itemId, gmdd);
+                        }
                         applied = true;
                     }
 
                     if (!applied) {
                         const QString fallbackKey = QString::fromStdString(dataDefinition->getClassname()) + "#"
                                                     + QString::fromStdString(dataDefinition->getName());
-                        auto byClassAndName = persistedByClassAndName.find(fallbackKey);
-                        if (byClassAndName != persistedByClassAndName.end()) {
+                        auto byClassAndName = persistedDataDefinitionsByClassAndName.find(fallbackKey);
+                        if (byClassAndName != persistedDataDefinitionsByClassAndName.end()) {
                             gmdd->setPos(byClassAndName->position);
                             gmdd->setOldPosition(byClassAndName->position.x(), byClassAndName->position.y());
+                            if (byClassAndName->itemId > 0) {
+                                persistedItems.insert(byClassAndName->itemId, gmdd);
+                            }
                         }
                     }
                 }
