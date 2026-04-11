@@ -199,9 +199,11 @@ void GraphicalModelDataDefinition::paint(QPainter *painter, const QStyleOptionGr
 	pathFill.lineTo(pp5);
 	pathFill.lineTo(pp6);
 	painter->drawPath(pathFill);
+    // @TODO refactor block bellow => repeated code
+    {
 	// text
-	QString text = QString::fromStdString(_element->getName());
-	QRect rect2 = QRect(_margin + _raise + 1, _margin + _raise + 1, _margin + wi - 2 * _raise - _margin, _margin + hi - 2 * _raise - _margin);
+        QString text = QString::fromStdString(_element->getClassname());
+    QRect rect2 = QRect(_margin + _raise + 1, _margin + _raise + 1, _margin + wi - 2 * _raise - _margin, hi/2);
 	brush = QBrush(Qt::NoBrush);
 	painter->setBrush(brush);
 	pen = QPen(myrgba(TraitsGUI<GModelDataDefinition>::textColor));
@@ -212,7 +214,21 @@ void GraphicalModelDataDefinition::paint(QPainter *painter, const QStyleOptionGr
 	pen.setColor(myrgba(TraitsGUI<GModelDataDefinition>::textShadowColor));
 	painter->setPen(pen);
 	painter->drawText(rect2.adjusted(0,2,2,0), Qt::AlignCenter, text);
-	// text shadow
+    // text2
+    QString text3 = QString::fromStdString(_element->getName());
+    QRect rect3 = QRect(_margin + _raise + 1, hi/2 , _margin + wi - 2 * _raise - _margin, _margin + hi - 2 * _raise - _margin);
+    brush = QBrush(Qt::NoBrush);
+    painter->setBrush(brush);
+    pen = QPen(myrgba(TraitsGUI<GModelDataDefinition>::textColor));
+    pen.setWidth(2);
+    pen.setCosmetic(true);
+    painter->setPen(pen);
+    painter->drawText(rect3, Qt::AlignCenter, text3);
+    pen.setColor(myrgba(TraitsGUI<GModelDataDefinition>::textShadowColor));
+    painter->setPen(pen);
+    painter->drawText(rect3.adjusted(0,2,2,0), Qt::AlignCenter, text3);
+    }
+    // text shadow
 	//
 	if (isSelected()) { //draw squares on corners
 		brush = QBrush(Qt::SolidPattern);
