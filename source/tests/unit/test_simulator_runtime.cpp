@@ -22,7 +22,11 @@
 #include "plugins/data/Station.h"
 #include "plugins/data/Set.h"
 #include "plugins/data/Label.h"
+#define private public
+#define protected public
 #include "plugins/data/EntityGroup.h"
+#undef protected
+#undef private
 #include "plugins/components/Delay.h"
 #include "plugins/components/Batch.h"
 #include "plugins/components/Separate.h"
@@ -408,6 +412,23 @@ public:
 
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
         _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class EntityGroupProbe : public EntityGroup {
+public:
+    EntityGroupProbe(Model* model, const std::string& name = "") : EntityGroup(model, name) {}
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    StatisticsCollector* NumberInGroupCollectorProbe() const {
+        return _cstatNumberInGroup;
     }
 };
 
@@ -3135,4 +3156,111 @@ TEST(SimulatorRuntimeTest, SeparateCheckAndValidGroupReferenceRemainCoherent) {
     ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
     EXPECT_EQ(sink.ReceivedEntities()[0], member);
     EXPECT_EQ(member->getAttributeValue("Entity.Group"), 0.0);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupInsertAndGetExistingGroupPreservesInsertionOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupExisting");
+    EntityType* partType = new EntityType(model, "EntityGroupExistingPart");
+    Entity* e1 = model->createEntity("GroupE1", true);
+    Entity* e2 = model->createEntity("GroupE2", true);
+    e1->setEntityType(partType);
+    e2->setEntityType(partType);
+
+    const unsigned int groupKey = 101u;
+    entityGroup.insertElement(groupKey, e1);
+    entityGroup.insertElement(groupKey, e2);
+    List<Entity*>* members = entityGroup.getGroup(groupKey);
+
+    ASSERT_NE(members, nullptr);
+    ASSERT_EQ(members->size(), 2u);
+    EXPECT_EQ(members->getAtRank(0), e1);
+    EXPECT_EQ(members->getAtRank(1), e2);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupGetGroupReturnsNullptrForMissingGroup) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupMissing");
+    EXPECT_EQ(entityGroup.getGroup(999u), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupRemoveElementDeletesEmptyGroupEntry) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupRemove");
+    EntityType* partType = new EntityType(model, "EntityGroupRemovePart");
+    Entity* e1 = model->createEntity("GroupRemoveE1", true);
+    e1->setEntityType(partType);
+
+    const unsigned int groupKey = 202u;
+    entityGroup.insertElement(groupKey, e1);
+    ASSERT_NE(entityGroup.getGroup(groupKey), nullptr);
+
+    entityGroup.removeElement(groupKey, e1);
+    EXPECT_EQ(entityGroup.getGroup(groupKey), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupInitBetweenReplicationsClearsAllRuntimeGroups) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupReplicationReset");
+    EntityType* partType = new EntityType(model, "EntityGroupReplicationResetPart");
+    Entity* e1 = model->createEntity("GroupResetE1", true);
+    Entity* e2 = model->createEntity("GroupResetE2", true);
+    e1->setEntityType(partType);
+    e2->setEntityType(partType);
+
+    entityGroup.insertElement(301u, e1);
+    entityGroup.insertElement(302u, e2);
+    ASSERT_NE(entityGroup.getGroup(301u), nullptr);
+    ASSERT_NE(entityGroup.getGroup(302u), nullptr);
+
+    entityGroup.InitBetweenReplicationsProbe();
+    EXPECT_EQ(entityGroup.getGroup(301u), nullptr);
+    EXPECT_EQ(entityGroup.getGroup(302u), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupStatisticsToggleResetsAndRecreatesCollectorOnRecheck) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupStatsToggle");
+    ASSERT_NE(entityGroup.NumberInGroupCollectorProbe(), nullptr);
+
+    entityGroup.setReportStatistics(false);
+    entityGroup.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(entityGroup.NumberInGroupCollectorProbe(), nullptr);
+
+    entityGroup.setReportStatistics(true);
+    entityGroup.CreateInternalAndAttachedDataProbe();
+    EXPECT_NE(entityGroup.NumberInGroupCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupDestructorCleansOwnedGroupContainersSafely) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EXPECT_NO_FATAL_FAILURE({
+        EntityGroupProbe entityGroup(model, "EntityGroupDestructorCleanup");
+        EntityType* partType = new EntityType(model, "EntityGroupDestructorPart");
+        Entity* e1 = model->createEntity("GroupDestructorE1", true);
+        Entity* e2 = model->createEntity("GroupDestructorE2", true);
+        e1->setEntityType(partType);
+        e2->setEntityType(partType);
+        entityGroup.insertElement(401u, e1);
+        entityGroup.insertElement(401u, e2);
+        entityGroup.insertElement(402u, e1);
+    });
 }

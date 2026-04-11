@@ -17,6 +17,7 @@
 #include "../../kernel/simulator/ModelDataDefinition.h"
 #include "../../kernel/simulator/Entity.h"
 #include "../../kernel/util/List.h"
+#include <list>
 #include <map>
 
 /*
@@ -39,20 +40,20 @@ public:
 	void insertElement(unsigned int idKey, Entity* modeldatum);
 	void removeElement(unsigned int idKey, Entity* modeldatum);
 	List<Entity*>* getGroup(unsigned int idKey);
-public:
-	void initBetweenReplications();
 protected:
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
+	virtual void _initBetweenReplications() override;
 	virtual void _createInternalAndAttachedData() override;
 private:
+	void _clearGroups();
 	void _initCStats();
 private: //1::n
 	std::map<unsigned int, List<Entity*>*>* _groupMap = new std::map<unsigned int, List<Entity*>*>();
+	std::list<List<Entity*>*> _detachedEmptyGroups;
 private: // child inner modeldatum
 	StatisticsCollector* _cstatNumberInGroup = nullptr;
 };
 
 #endif /* ENTITYGROUP_H */
-
