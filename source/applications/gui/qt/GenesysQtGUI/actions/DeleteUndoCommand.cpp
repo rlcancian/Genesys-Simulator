@@ -1,10 +1,15 @@
 #include "DeleteUndoCommand.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 
 DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphicsScene *scene, QUndoCommand *parent)
     : QUndoCommand(parent), _myComponentItems(new QList<ComponentItem>()), _myConnectionItems(new QList<GraphicalConnection *>()), _myDrawingItems(new QList<DrawingItem>()), _myGroupItems(new QList<GroupItem>()), _myGraphicsScene(scene) {
 
     // filtra cada tipo de item possível em sua respectiva lista
     for (QGraphicsItem *item : items) {
+        // Keep data definitions selectable/editable while preventing direct manual deletion.
+        if (dynamic_cast<GraphicalModelDataDefinition *>(item)) {
+            continue;
+        }
         if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *>(item)) {
             ComponentItem componentItem;
 
@@ -36,6 +41,9 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
 
             for (int i = 0; i < group->childItems().size(); i++) {
                 GraphicalModelComponent * component = dynamic_cast<GraphicalModelComponent *>(groupItem.group->childItems().at(i));
+                if (component == nullptr) {
+                    continue;
+                }
 
                 ComponentItem componentItem;
 

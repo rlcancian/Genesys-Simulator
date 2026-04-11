@@ -184,6 +184,8 @@ void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(std::map<ModelC
             yInternal += 150;
             gdd->setPos(componentPosition.x(), yInternal);
             gdd->setOldPosition(componentPosition.x(), yInternal);
+            // Apply automatic initial grouping only for internal data definitions as a first-materialization fallback.
+            _scene->ensureInitialInternalDataDefinitionGrouping(gdd, graphicalComponent);
             _scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::INTERNAL);
         }
     }

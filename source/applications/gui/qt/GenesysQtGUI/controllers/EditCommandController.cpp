@@ -182,7 +182,7 @@ void EditCommandController::onActionEditPasteTriggered() const {
 
 // Preserve delete behavior and action-state refresh callback.
 void EditCommandController::onActionEditDeleteTriggered() const {
-    QList<QGraphicsItem*> selecteds = _graphicsView->scene()->selectedItems();
+    QList<QGraphicsItem*> selecteds = scene()->userDeletableItems(_graphicsView->scene()->selectedItems());
     if (selecteds.isEmpty()) {
         return;
     }
