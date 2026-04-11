@@ -27,23 +27,31 @@ ModelDataDefinition* Storage::NewInstance(Model* model, std::string name) {
 
 Storage::Storage(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<Storage>(), name) {
 	//controls
-	_parentModel->getControls()->insert(new SimulationControlDouble(
+	SimulationControlDouble* propCapacity = new SimulationControlDouble(
 					 std::bind(&Storage::getCapacity, this),
 					 std::bind(&Storage::setCapacity, this, std::placeholders::_1),
-					 Util::TypeOf<Storage>(), getName(), "Capacity"));
-	_parentModel->getControls()->insert(new SimulationControlDouble(
+					 Util::TypeOf<Storage>(), getName(), "Capacity");
+	SimulationControlDouble* propTotalArea = new SimulationControlDouble(
 					 std::bind(&Storage::getTotalArea, this),
 					 std::bind(&Storage::setTotalArea, this, std::placeholders::_1),
-					 Util::TypeOf<Storage>(), getName(), "TotalArea"));
-	_parentModel->getControls()->insert(new SimulationControlDouble(
+					 Util::TypeOf<Storage>(), getName(), "TotalArea");
+	SimulationControlDouble* propUnitsPerArea = new SimulationControlDouble(
 					 std::bind(&Storage::getUnitsPerArea, this),
 					 std::bind(&Storage::setUnitsPerArea, this, std::placeholders::_1),
-					 Util::TypeOf<Storage>(), getName(), "UnitsPerArea"));
+					 Util::TypeOf<Storage>(), getName(), "UnitsPerArea");
+	_parentModel->getControls()->insert(propCapacity);
+	_parentModel->getControls()->insert(propTotalArea);
+	_parentModel->getControls()->insert(propUnitsPerArea);
+	_addProperty(propCapacity);
+	_addProperty(propTotalArea);
+	_addProperty(propUnitsPerArea);
 }
 
 std::string Storage::show() {
 	return ModelDataDefinition::show() +
-			"";
+			", capacity=" + std::to_string(_capacity) +
+			", totalArea=" + Util::StrTruncIfInt(std::to_string(_totalArea)) +
+			", unitsPerArea=" + Util::StrTruncIfInt(std::to_string(_unitsPerArea));
 }
 
 void Storage::setTotalArea(double _totalArea) {
@@ -109,10 +117,16 @@ void Storage::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 }
 
 bool Storage::_check(std::string& errorMessage) {
-	bool resultAll = true;
-	// resultAll |= ...
-	errorMessage += "";
-	return resultAll;
+	if (_capacity <= 0) {
+		errorMessage += "Capacity must be greater than zero. ";
+	}
+	if (_totalArea <= 0.0) {
+		errorMessage += "TotalArea must be greater than zero. ";
+	}
+	if (_unitsPerArea <= 0.0) {
+		errorMessage += "UnitsPerArea must be greater than zero. ";
+	}
+	return errorMessage.empty();
 }
 
 ParserChangesInformation* Storage::_getParserChangesInformation() {

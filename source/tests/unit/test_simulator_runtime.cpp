@@ -22,6 +22,7 @@
 #include "plugins/data/Station.h"
 #include "plugins/data/Set.h"
 #include "plugins/data/Label.h"
+#include "plugins/data/Storage.h"
 #define private public
 #define protected public
 #include "plugins/data/EntityGroup.h"
@@ -570,6 +571,23 @@ public:
 class LabelProbe : public Label {
 public:
     LabelProbe(Model* model, const std::string& name = "") : Label(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class StorageProbe : public Storage {
+public:
+    StorageProbe(Model* model, const std::string& name = "") : Storage(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -2255,6 +2273,138 @@ TEST(SimulatorRuntimeTest, SetRecheckRemovesObsoleteAttachedMembers) {
     EXPECT_EQ(attached->count("SetRecheck.SetRecheckA"), 0u);
     ASSERT_EQ(attached->count("SetRecheck.SetRecheckB"), 1u);
     EXPECT_EQ(attached->at("SetRecheck.SetRecheckB"), &memberB);
+}
+
+TEST(SimulatorRuntimeTest, StorageDefaultsAreInitializedAsExpected) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorageDefaults");
+    EXPECT_EQ(storage.getCapacity(), 10u);
+    EXPECT_DOUBLE_EQ(storage.getTotalArea(), 1.0);
+    EXPECT_DOUBLE_EQ(storage.getUnitsPerArea(), 1.0);
+}
+
+TEST(SimulatorRuntimeTest, StorageSettersAndGettersRemainCoherent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorageSetters");
+    storage.setCapacity(25u);
+    storage.setTotalArea(42.5);
+    storage.setUnitsPerArea(3.75);
+
+    EXPECT_EQ(storage.getCapacity(), 25u);
+    EXPECT_DOUBLE_EQ(storage.getTotalArea(), 42.5);
+    EXPECT_DOUBLE_EQ(storage.getUnitsPerArea(), 3.75);
+}
+
+TEST(SimulatorRuntimeTest, StorageCheckFailsForInvalidValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "StorageInvalid");
+
+    storage.setCapacity(0u);
+    storage.setTotalArea(1.0);
+    storage.setUnitsPerArea(1.0);
+    std::string invalidCapacityError;
+    EXPECT_FALSE(storage.CheckProbe(invalidCapacityError));
+    EXPECT_NE(invalidCapacityError.find("Capacity must be greater than zero"), std::string::npos);
+
+    storage.setCapacity(1u);
+    storage.setTotalArea(0.0);
+    storage.setUnitsPerArea(1.0);
+    std::string invalidTotalAreaError;
+    EXPECT_FALSE(storage.CheckProbe(invalidTotalAreaError));
+    EXPECT_NE(invalidTotalAreaError.find("TotalArea must be greater than zero"), std::string::npos);
+
+    storage.setCapacity(1u);
+    storage.setTotalArea(1.0);
+    storage.setUnitsPerArea(-1.0);
+    std::string invalidUnitsPerAreaError;
+    EXPECT_FALSE(storage.CheckProbe(invalidUnitsPerAreaError));
+    EXPECT_NE(invalidUnitsPerAreaError.find("UnitsPerArea must be greater than zero"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, StorageCheckPassesForValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "StorageValid");
+    storage.setCapacity(7u);
+    storage.setTotalArea(2.5);
+    storage.setUnitsPerArea(4.0);
+
+    std::string errorMessage;
+    EXPECT_TRUE(storage.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, StorageShowIncludesMainConfiguredParameters) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorageShow");
+    storage.setCapacity(15u);
+    storage.setTotalArea(6.5);
+    storage.setUnitsPerArea(2.25);
+
+    const std::string info = storage.show();
+    EXPECT_NE(info.find("capacity=15"), std::string::npos);
+    EXPECT_NE(info.find("totalArea=6.5"), std::string::npos);
+    EXPECT_NE(info.find("unitsPerArea=2.25"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, StorageSaveAndLoadRoundTripPreservesParameters) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe source(model, "StorageSaveSource");
+    source.setCapacity(18u);
+    source.setTotalArea(11.5);
+    source.setUnitsPerArea(5.25);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    StorageProbe loaded(model, "StorageSaveLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getCapacity(), 18u);
+    EXPECT_DOUBLE_EQ(loaded.getTotalArea(), 11.5);
+    EXPECT_DOUBLE_EQ(loaded.getUnitsPerArea(), 5.25);
+}
+
+TEST(SimulatorRuntimeTest, StorageRegistersMainControlsAsOwnedProperties) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorageProperties");
+    auto* controls = storage.getSimulationControls();
+    ASSERT_NE(controls, nullptr);
+    EXPECT_GE(controls->size(), 3u);
+
+    bool hasCapacity = false;
+    bool hasTotalArea = false;
+    bool hasUnitsPerArea = false;
+    for (SimulationControl* control : *controls->list()) {
+        ASSERT_NE(control, nullptr);
+        hasCapacity = hasCapacity || control->getName() == "Capacity";
+        hasTotalArea = hasTotalArea || control->getName() == "TotalArea";
+        hasUnitsPerArea = hasUnitsPerArea || control->getName() == "UnitsPerArea";
+    }
+
+    EXPECT_TRUE(hasCapacity);
+    EXPECT_TRUE(hasTotalArea);
+    EXPECT_TRUE(hasUnitsPerArea);
 }
 
 TEST(SimulatorRuntimeTest, StationCreateInternalInitiallyCreatesCollectorsWhenStatisticsEnabled) {
