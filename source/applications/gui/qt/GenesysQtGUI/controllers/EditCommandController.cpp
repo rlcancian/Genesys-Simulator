@@ -83,6 +83,9 @@ void EditCommandController::onActionEditCutTriggered() const {
             } else if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
                 for (int i = 0; i < group->childItems().size(); i++) {
                     GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(group->childItems().at(i));
+                    if (component == nullptr) {
+                        continue;
+                    }
 
                     if (!component->getGraphicalInputPorts().empty() && !component->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
                         for (int j = 0; j < component->getGraphicalInputPorts().at(0)->getConnections()->size(); ++j) {
@@ -101,11 +104,13 @@ void EditCommandController::onActionEditCutTriggered() const {
                     groupComponents.append(component);
                 }
 
-                saveItemForCopy(&groupComponents, connGroup);
-                (*_groupCopy)->append(group);
-                currentScene->insertComponentGroup(group, groupComponents);
-                for (unsigned int k = 0; k < static_cast<unsigned int>(connGroup->size()); k++) {
-                    (*_portsCopies)->append(connGroup->at(k));
+                if (!groupComponents.isEmpty()) {
+                    saveItemForCopy(&groupComponents, connGroup);
+                    (*_groupCopy)->append(group);
+                    currentScene->insertComponentGroup(group, groupComponents);
+                    for (unsigned int k = 0; k < static_cast<unsigned int>(connGroup->size()); k++) {
+                        (*_portsCopies)->append(connGroup->at(k));
+                    }
                 }
             } else if (GraphicalConnection* port = dynamic_cast<GraphicalConnection*>(item)) {
                 (*_portsCopies)->append(port);
@@ -144,11 +149,19 @@ void EditCommandController::onActionEditCopyTriggered() const {
                 (*_portsCopies)->append(conn);
             } else if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
                 group->setSelected(false);
-                (*_groupCopy)->append(group);
+                QList<GraphicalModelComponent*> groupComponents;
 
                 for (int i = 0; i < group->childItems().size(); i++) {
                     GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(group->childItems().at(i));
+                    if (component == nullptr) {
+                        continue;
+                    }
                     gmcCopiesCopy.append(component);
+                    groupComponents.append(component);
+                }
+
+                if (!groupComponents.isEmpty()) {
+                    (*_groupCopy)->append(group);
                 }
             } else {
                 item->setSelected(false);
@@ -271,10 +284,13 @@ void EditCommandController::helpCopy() const {
 
     for (QGraphicsItemGroup* group : **_groupCopy) {
         QList<GraphicalConnection*>* connGroup = new QList<GraphicalConnection*>();
-        unsigned int size = group->childItems().size();
+        QList<QGraphicsItem*> groupChildren = group->childItems();
 
-        for (unsigned int i = 0; i < size; i++) {
-            GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(group->childItems().at(0));
+        for (QGraphicsItem* child : groupChildren) {
+            GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(child);
+            if (gmc == nullptr) {
+                continue;
+            }
             group->removeFromGroup(gmc);
 
             ModelComponent* previousComponent = gmc->getComponent();
@@ -308,7 +324,7 @@ void EditCommandController::helpCopy() const {
         }
 
         saveItemForCopy(gmcOldGroupAux, connGroup);
-        for (unsigned int k = 0; k < size; k++) {
+        for (unsigned int k = 0; k < static_cast<unsigned int>(gmcOldGroupAux->size()); k++) {
             group->addToGroup(gmcOldGroupAux->at(k));
         }
 
@@ -317,11 +333,13 @@ void EditCommandController::helpCopy() const {
             (*_portsCopies)->append(connGroup->at(k));
         }
 
-        QGraphicsItemGroup* newGroup = new QGraphicsItemGroup();
-        _graphicsView->getScene()->insertComponentGroup(newGroup, *gmcNewGroupAux);
+        if (!gmcNewGroupAux->isEmpty()) {
+            QGraphicsItemGroup* newGroup = new QGraphicsItemGroup();
+            _graphicsView->getScene()->insertComponentGroup(newGroup, *gmcNewGroupAux);
+            groupAux->append(newGroup);
+        }
         gmcOldGroupAux->clear();
         gmcNewGroupAux->clear();
-        groupAux->append(newGroup);
         delete connGroup;
     }
 

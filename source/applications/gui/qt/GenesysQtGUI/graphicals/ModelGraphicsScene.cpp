@@ -2075,6 +2075,10 @@ void ModelGraphicsScene::ungroupModelComponents(QGraphicsItemGroup *group) {
 }
 
 void ModelGraphicsScene::removeGroup(QGraphicsItemGroup* group, bool notify) {
+    if (group == nullptr) {
+        return;
+    }
+
     //Recupere os itens individuais no grupo
     QList<QGraphicsItem*> itemsInGroup = group->childItems();
 
@@ -2083,10 +2087,18 @@ void ModelGraphicsScene::removeGroup(QGraphicsItemGroup* group, bool notify) {
 
     unsigned int size = itemsInGroup.size();
     for (unsigned int i = 0; i < size; i++) {
-        GraphicalModelComponent * gmc = dynamic_cast<GraphicalModelComponent *> (itemsInGroup.at(i));
+        QGraphicsItem* child = itemsInGroup.at(i);
+        if (GraphicalModelComponent * gmc = dynamic_cast<GraphicalModelComponent *> (child)) {
+            group->removeFromGroup(gmc);
+            removeComponent(gmc);
+            continue;
+        }
 
-        group->removeFromGroup(gmc);
-        removeComponent(gmc);
+        // Keep non-component children safe when removing mixed groups.
+        group->removeFromGroup(child);
+        if (child->scene() != this) {
+            addItem(child);
+        }
     }
     _graphicalGroups->removeOne(group);
     group->update();
