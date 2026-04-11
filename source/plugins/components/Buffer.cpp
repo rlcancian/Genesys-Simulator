@@ -295,6 +295,10 @@ void Buffer::setArrivalOnFullBufferRule(Buffer::ArrivalOnFullBufferRule newArriv
 }
 
 Entity* Buffer::_advance(Entity* enteringEntity) {
+	if (_buffer == nullptr || _buffer->empty()) {
+		// Safety guard for inconsistent runtime states (for example, Capacity misconfiguration).
+		return nullptr;
+	}
 	Entity *result = _buffer->front();
 	_buffer->erase(_buffer->begin());
 	_buffer->push_back(enteringEntity);

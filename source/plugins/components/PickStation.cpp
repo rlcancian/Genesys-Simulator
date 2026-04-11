@@ -182,6 +182,10 @@ void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 		bestValue = std::numeric_limits<double>::max();
 	}
 	for (PickableStationItem* item : *_pickableStationItens->list()) {
+		if (item == nullptr || item->getStation() == nullptr) {
+			// Ignore invalid entries during runtime dispatch; model check reports configuration errors.
+			continue;
+		}
 		if (_pickConditionExpression) {
 			valueExpression = _parentModel->parseExpression(item->getExpression());
 		}
@@ -326,6 +330,10 @@ void PickStation::_createInternalAndAttachedData() {
 	unsigned int i = 0;
 	_attachedDataClear();
 	for (PickableStationItem* item : *_pickableStationItens->list()) {
+		if (item == nullptr) {
+			i++;
+			continue;
+		}
 		if (item->getStation() != nullptr) {
 			_attachedDataInsert("Station" + std::to_string(i), item->getStation());
 		}
