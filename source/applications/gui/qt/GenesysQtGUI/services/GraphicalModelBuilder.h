@@ -12,6 +12,8 @@ class ModelGraphicsView;
 class ModelGraphicsScene;
 class ModelComponent;
 class GraphicalModelComponent;
+class ModelDataDefinition;
+class GraphicalModelDataDefinition;
 template<typename T> class List;
 
 // Document the service that rebuilds graphical scene artifacts from kernel models.
@@ -56,6 +58,8 @@ public:
     void generateGraphicalModelFromModel();
 
 private:
+    void rebuildGraphicalDataDefinitionsLayer(std::map<ModelComponent*, GraphicalModelComponent*>* componentMap);
+
     Simulator* _simulator;
     ModelGraphicsView* _graphicsView;
     ModelGraphicsScene* _scene;

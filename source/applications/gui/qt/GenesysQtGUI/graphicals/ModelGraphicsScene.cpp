@@ -679,6 +679,30 @@ void ModelGraphicsScene::removeGraphicalDiagramConnection(GraphicalDiagramConnec
     delete(connection);
 }
 
+// Clear only graphical data-definition nodes without touching normal components/connections.
+void ModelGraphicsScene::clearGraphicalModelDataDefinitions() {
+    QList<GraphicalModelDataDefinition*>* gmdds = getAllDataDefinitions();
+    while (!gmdds->isEmpty()) {
+        GraphicalModelDataDefinition* gmdd = gmdds->first();
+        removeGraphicalModelDataDefinition(gmdd);
+    }
+}
+
+// Clear only diagram arrows that link data-definition artifacts.
+void ModelGraphicsScene::clearGraphicalDiagramConnections() {
+    QList<GraphicalDiagramConnection*>* connections = getAllGraphicalDiagramsConnections();
+    while (!connections->isEmpty()) {
+        GraphicalDiagramConnection* connection = connections->first();
+        removeGraphicalDiagramConnection(connection);
+    }
+}
+
+// Keep legacy diagram visibility checks coherent when data definitions are rebuilt by the builder.
+void ModelGraphicsScene::setDiagramLayerState(bool diagramCreated, bool visible) {
+    _diagram = diagramCreated;
+    _visibleDiagram = visible;
+}
+
 // trata da remocao das conexoes de um componente
 void ModelGraphicsScene::clearConnectionsComponent(GraphicalModelComponent* gmc) {
     ModelGraphicsScene::clearInputConnectionsComponent(gmc);
@@ -1308,21 +1332,9 @@ bool ModelGraphicsScene::visibleDiagram() {
 }
 
 void ModelGraphicsScene::destroyDiagram() {
-    QList<GraphicalModelDataDefinition*>* gmdds = getAllDataDefinitions();
-    int size_gmdds = gmdds->size();
-    for (int i = 0; i < size_gmdds; i++) {
-        GraphicalModelDataDefinition* gmdd = gmdds->first();
-        removeGraphicalModelDataDefinition(gmdd);
-    }
-
-    QList<GraphicalDiagramConnection*>* connections = getAllGraphicalDiagramsConnections();
-    int size_connections = connections->size();
-    for (int i = 0; i < size_connections; i++) {
-        GraphicalDiagramConnection* itemConnection = connections->first();
-        removeGraphicalDiagramConnection(itemConnection);
-    }
-
-    _diagram = false;
+    clearGraphicalModelDataDefinitions();
+    clearGraphicalDiagramConnections();
+    setDiagramLayerState(false, false);
 }
 
 void ModelGraphicsScene::hideDiagrams() {

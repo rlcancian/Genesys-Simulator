@@ -49,6 +49,11 @@ GraphicalDiagramConnection::GraphicalDiagramConnection(QGraphicsItem* dataDefini
     }
 
     setLine(QLineF(startPoint, endPoint));
+    // Keep diagram links purely representational in this phase.
+    setFlag(QGraphicsItem::ItemIsSelectable, false);
+    setFlag(QGraphicsItem::ItemIsFocusable, false);
+    setFlag(QGraphicsItem::ItemIsMovable, false);
+    setAcceptedMouseButtons(Qt::NoButton);
 }
 
 
