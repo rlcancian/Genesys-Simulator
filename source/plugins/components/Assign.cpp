@@ -102,14 +102,15 @@ ModelComponent* Assign::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	Assignment* let;
-	std::list<Assignment*>* lets = this->_assignments->list();
-	for (std::list<Assignment*>::iterator it = lets->begin(); it != lets->end(); it++) {
+    std::list<Assignment*>* assignments = this->_assignments->list();
+    for (std::list<Assignment*>::iterator it = assignments->begin(); it != assignments->end(); it++) {
 
 		let = (*it);
 		double value = _parentModel->parseExpression(let->getExpression());
 		_parentModel->parseExpression(let->getDestination() + "=" + std::to_string(value));
-		traceSimulation(this, "Let \"" + let->getDestination() + "\" = " + Util::StrTruncIfInt(std::to_string(value)) + "  // " + let->getExpression());
-	}
+        //traceSimulation(this, "Let \"" + let->getDestination() + "\" = " + Util::StrTruncIfInt(std::to_string(value)) + "  // " + let->getExpression());
+        traceSimulation(this, "Let " + let->getDestination() + " = \"" + let->getExpression() + "\" = " + Util::StrTruncIfInt(std::to_string(value)));
+    }
 
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }

@@ -178,7 +178,7 @@ private:
 	Util::identification _lastEntityTraceSimulation = 0;
 	Util::identification _lastModuleTraceSimulation = 0;
 	bool _traceSimulationRuleAllAllowed = true;
-	List<std::string>* _errorMessages; /* @TODO: 18/08/24 this is a new one. several methods should use it */
+    List<std::string>* _errorMessages = new List<std::string>(); /* @TODO: 18/08/24 this is a new one. several methods should use it */
 
 };
 

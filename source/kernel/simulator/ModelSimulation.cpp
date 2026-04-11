@@ -145,8 +145,8 @@ std::unique_ptr<SimulationEvent> ModelSimulation::_createSimulationEvent(void* t
 	//	se->currentinputPortNumber = _currentinputPortNumber;
 	se->currentReplicationNumber = _currentReplicationNumber;
 	se->customObject = thiscustomObject;
-	se->_isPaused = this->_isPaused;
-	se->_isRunning = this->_isRunning;
+    se->_isPaused = _isPaused;
+    se->_isRunning = _isRunning;
 	se->pauseRequested = _pauseRequested;
 	se->simulatedTime = _simulatedTime;
 	se->stopRequested = _stopRequested;
@@ -351,8 +351,8 @@ void ModelSimulation::_initSimulation() {
 	// @TODO: Should not be CStats and Counters, but any modeldatum that generates report importation
 	this->_cstatsAndCountersSimulation->clear();
 	StatisticsCollector* cstat;
-	List<ModelDataDefinition*>* cstats = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());
-	for (ModelDataDefinition* cstatData : *cstats->list()) {
+    List<ModelDataDefinition*>* simulationStatistics = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());
+    for (ModelDataDefinition* cstatData : *simulationStatistics->list()) {
 		cstat = dynamic_cast<StatisticsCollector*> (cstatData);
 		// this new CSat should NOT be inserted into the model (so the false as last argument)
 		StatisticsCollector* newCStatSimulation = new StatisticsCollector(_model, _cte_stCountSimulNamePrefix+cstat->getName(), cstat->getParent(), false);
@@ -361,8 +361,8 @@ void ModelSimulation::_initSimulation() {
 	// copy all Counters (used in a replication) to Counters for the whole simulation
 	// @TODO: Counters in replication should be converted into CStats in simulation. Each value counted in a replication should be added in a CStat for Stats.
 	Counter* counter;
-	List<ModelDataDefinition*>* counters = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<Counter>());
-	for (ModelDataDefinition* counterData : *counters->list()) {
+    List<ModelDataDefinition*>* simulationCounters = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<Counter>());
+    for (ModelDataDefinition* counterData : *simulationCounters->list()) {
 		counter = dynamic_cast<Counter*> (counterData);
 		/* // we do NOT add a counter in the simulation. We add a CStat that collect statistics about the Counter
 		Counter* newCountSimul = new Counter(_cte_stCountSimulNamePrefix + counter->getName(), counter->getParent());
@@ -526,14 +526,14 @@ void ModelSimulation::_dispatchEvent(Event* event) {
 
 bool ModelSimulation::_checkBreakpointAt(Event* event) {
 	bool res = false;
-	auto se = _createSimulationEvent();
 	if (dynamic_cast<InternalEvent*> (event)==nullptr) {
 		if (_breakpointsOnComponent->find(event->getComponent())!=_breakpointsOnComponent->list()->end()) {
 			if (_justTriggeredBreakpointsOnComponent==event->getComponent()) {
 				_justTriggeredBreakpointsOnComponent = nullptr;
 			} else {
 				_justTriggeredBreakpointsOnComponent = event->getComponent();
-				_model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
+                auto se = _createSimulationEvent();
+                _model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
 				_model->getTracer()->trace("Breakpoint found at component '"+event->getComponent()->getName()+"'. Replication is paused.", TraceManager::Level::L5_event);
 
 				res = true;
@@ -545,7 +545,8 @@ bool ModelSimulation::_checkBreakpointAt(Event* event) {
 			} else {
 				_justTriggeredBreakpointsOnEntity = event->getEntity();
 				_model->getTracer()->trace("Breakpoint found at entity '"+event->getEntity()->getName()+"'. Replication is paused.", TraceManager::Level::L5_event);
-				_model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
+                auto se = _createSimulationEvent();
+                _model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
 				res = true;
 			}
 		}
@@ -559,7 +560,8 @@ bool ModelSimulation::_checkBreakpointAt(Event* event) {
 			} else {
 				_justTriggeredBreakpointsOnTime = time;
 				_model->getTracer()->trace("Breakpoint found at time '"+std::to_string(event->getTime())+"'. Replication is paused.", TraceManager::Level::L5_event);
-				_model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
+                auto se = _createSimulationEvent();
+                _model->getOnEventManager()->NotifyBreakpointHandlers(se.get());
 
 				return true;
 			}

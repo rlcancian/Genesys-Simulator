@@ -69,7 +69,8 @@ std::string Create::show() {
 void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	_parentModel->getDataManager()->insert(entity->getClassname(), entity);
 	double tnow = _parentModel->getSimulation()->getSimulatedTime();
-	entity->setAttributeValue("Entity.ArrivalTime", tnow);
+    // init entity attibutes
+    entity->setAttributeValue("Entity.ArrivalTime", tnow);
 	entity->setAttributeValue("Entity.Type", (double) entity->getEntityType()->getId());
 	//entity->setAttributeValue("Entity.Picture", 1);
 	double timeBetweenCreations, timeScale, newArrivalTime;
@@ -88,7 +89,8 @@ void Create::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		}
 		timeScale = Util::TimeUnitConvert(this->_timeBetweenCreationsTimeUnit, _parentModel->getSimulation()->getReplicationBaseTimeUnit());
 		newArrivalTime = std::max<double>(tnow + timeBetweenCreations*timeScale, tnow); // force no time travel to past. Not sure if it should really be avoided
-		for (unsigned int i = 0; i<this->_entitiesPerCreation; i++) {
+        // create new entities (to be sent to this component in future at time newArrivalTime
+        for (unsigned int i = 0; i<this->_entitiesPerCreation; i++) {
 			if (_entitiesCreatedSoFar < _maxCreations) {
 				_entitiesCreatedSoFar++;
 				Entity* newEntity = _parentModel->createEntity(entity->getEntityType()->getName() + "_%", false);
