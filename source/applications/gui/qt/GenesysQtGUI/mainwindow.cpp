@@ -410,6 +410,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 }
 
 MainWindow::~MainWindow() {
+    // Proactively disable trace callbacks before QWidget and simulator teardown starts.
+    if (simulator != nullptr && simulator->getTraceManager() != nullptr) {
+        simulator->getTraceManager()->beginShutdown();
+    }
     _shuttingDown = true;
     _disconnectSceneSignals("~MainWindow");
     disconnect();
