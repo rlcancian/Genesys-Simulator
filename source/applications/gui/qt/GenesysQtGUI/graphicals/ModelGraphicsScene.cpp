@@ -57,6 +57,7 @@
 #include <QPointer>
 #include <QTimer>
 #include <QDebug>
+#include <algorithm>
 
 namespace {
 // Safely cast the scene parent to a generic graphics view.
@@ -2856,6 +2857,13 @@ void ModelGraphicsScene::keyPressEvent(QKeyEvent *keyEvent) {
     QGraphicsScene::keyPressEvent(keyEvent);
     QList<QGraphicsItem*> selected = this->selectedItems();
     if (keyEvent->key() == Qt::Key_Delete && selected.size() > 0) {
+        // Keep data definitions selectable, but block direct user-triggered deletion.
+        selected.erase(std::remove_if(selected.begin(), selected.end(), [](QGraphicsItem* item) {
+            return dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr;
+        }), selected.end());
+        if (selected.isEmpty()) {
+            return;
+        }
         QMessageBox::StandardButton reply = QMessageBox::question(this->_parentWidget, "Delete Component", "Are you sure you want to delete the selected components?", QMessageBox::Yes | QMessageBox::No);
         if (reply == QMessageBox::No) {
             return;
@@ -2892,6 +2900,16 @@ void ModelGraphicsScene::drawingTimer() {
 
 void ModelGraphicsScene::setObjectBeingDragged(QTreeWidgetItem* objectBeingDragged) {
     _objectBeingDragged = objectBeingDragged;
+}
+
+// Toggle whether diagram items are currently being reconstructed from persisted .gui state.
+void ModelGraphicsScene::setRestoringPersistedGuiLayout(bool restoring) {
+    _restoringPersistedGuiLayout = restoring;
+}
+
+// Expose persisted-layout restoration state to avoid applying default-only grouping fallbacks.
+bool ModelGraphicsScene::isRestoringPersistedGuiLayout() const {
+    return _restoringPersistedGuiLayout;
 }
 
 void ModelGraphicsScene::setSimulator(Simulator *simulator) {

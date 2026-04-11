@@ -472,8 +472,11 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QFile::remove(tempFile.fileName());
 
     if (model != nullptr) {
+        ModelGraphicsScene* scene = _graphicsView->getScene();
         // Rebuild the base graphical topology from a single source of truth before applying persisted GUI overlays.
         _clearModelEditors();
+        // Mark persisted-layout restore so builder defaults do not override saved grouping/positions.
+        scene->setRestoringPersistedGuiLayout(true);
         _rebuildGraphicalModelFromModel();
 
         struct PersistedComponentState {
@@ -648,7 +651,6 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             }
 
             // Apply persisted data definition positions to existing items created by GraphicalModelBuilder.
-            ModelGraphicsScene* scene = _graphicsView->getScene();
             QList<QGraphicsItem*>* graphicalDataDefinitions = scene->getGraphicalModelDataDefinitions();
             if (graphicalDataDefinitions != nullptr) {
                 for (QGraphicsItem* item : *graphicalDataDefinitions) {
@@ -917,6 +919,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         }
 
         _applyDiagramsVisibility();
+        scene->setRestoringPersistedGuiLayout(false);
         if (hasPersistedViewState) {
             QTimer::singleShot(0, _ownerWidget, [this, restoredViewpointX, restoredViewpointY]() {
                 QScrollBar* hBar = _graphicsView->horizontalScrollBar();
