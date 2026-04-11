@@ -114,6 +114,8 @@ public: // traces (invoke trace handlers)
 	void traceSimulation(void* thisobject, TraceManager::Level level, double time, Entity* entity, ModelComponent* component, std::string text); //<! Deprected
 	void traceSimulation(void* thisobject, TraceManager::Level level, std::string text); //<! Deprected
 public: // traces
+	// Disable callbacks and clear handler lists before simulator teardown destroys GUI objects.
+	void beginShutdown();
 	void trace(std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed); //!< Trace to a general output, used when not simulating (eg: adding plugins, checking the model, etc
 	void traceError(std::string text, std::exception e); //!< Trace to the error output, used in every situation an error happens (simulating, report, general)
 	void traceError(std::string text, TraceManager::Level level = TraceManager::Level::L1_errorFatal); //!< Trace to the error output, used in every situation an error happens (simulating, report, general)
@@ -174,6 +176,7 @@ private:
 	Simulator* _simulator;
 private:
 	TraceManager::Level _traceLevel; // = TraceManager::Level::L9_mostDetailed;
+	bool _shuttingDown = false;
     double _lastTimeTraceSimulation = -1.0; // an invalid time
 	Util::identification _lastEntityTraceSimulation = 0;
 	Util::identification _lastModuleTraceSimulation = 0;

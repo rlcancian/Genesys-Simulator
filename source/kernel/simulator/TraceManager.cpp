@@ -22,6 +22,8 @@ TraceManager::TraceManager(Simulator* simulator) {//(Model* model) {
 }
 
 TraceManager::~TraceManager() {
+	// Reuse shutdown path so callback vectors are neutralized before storage is released.
+	beginShutdown();
 	delete _traceHandlers;
 	delete _traceErrorHandlers;
 	delete _traceReportHandlers;
@@ -32,6 +34,19 @@ TraceManager::~TraceManager() {
 	delete _traceSimulationHandlersMethod;
 	delete _traceSimulationExceptionRule;
 	delete _errorMessages;
+}
+
+void TraceManager::beginShutdown() {
+	// Mark tracer as shutting down and clear all callback targets to block late GUI invocations.
+	_shuttingDown = true;
+	_traceHandlers->clear();
+	_traceErrorHandlers->clear();
+	_traceReportHandlers->clear();
+	_traceSimulationHandlers->clear();
+	_traceHandlersMethod->clear();
+	_traceErrorHandlersMethod->clear();
+	_traceReportHandlersMethod->clear();
+	_traceSimulationHandlersMethod->clear();
 }
 
 void TraceManager::setTraceLevel(TraceManager::Level _traceLevel) {
@@ -81,6 +96,10 @@ void TraceManager::trace(TraceManager::Level level, std::string text) {
 }
 
 void TraceManager::trace(std::string text, TraceManager::Level level) {
+	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
+	if (_shuttingDown) {
+		return;
+	}
 	if (_traceConditionPassed(level)) {
 		text = Util::Indent() + text;
 		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
@@ -104,6 +123,10 @@ void TraceManager::trace(std::string text, TraceManager::Level level) {
 //}
 
 void TraceManager::traceError(std::string text, TraceManager::Level level) {
+	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
+	if (_shuttingDown) {
+		return;
+	}
 	text = Util::Indent() + text;
 	_errorMessages->insert(text);
 	TraceErrorEvent exceptEvent = TraceErrorEvent(text, level);
@@ -116,6 +139,10 @@ void TraceManager::traceError(std::string text, TraceManager::Level level) {
 }
 
 void TraceManager::traceError(std::string text, std::exception e) {
+	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
+	if (_shuttingDown) {
+		return;
+	}
 	text = Util::Indent() + text;
 	_errorMessages->insert(text);
 	TraceErrorEvent exceptEvent = TraceErrorEvent(text, e);
@@ -133,6 +160,10 @@ void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, 
 }
 
 void TraceManager::traceSimulation(void* thisobject, std::string text, TraceManager::Level level) {
+	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
+	if (_shuttingDown) {
+		return;
+	}
 	if (_traceSimulationConditionPassed(level, thisobject)) {
 		text = Util::Indent() + text;
 		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
@@ -152,6 +183,10 @@ void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, 
 }
 
 void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level) {
+	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
+	if (_shuttingDown) {
+		return;
+	}
 	if (_traceSimulationConditionPassed(level, thisobject)) {
 		text = Util::Indent() + text;
 		TraceSimulationEvent e = TraceSimulationEvent(level, time, entity, component, text);
@@ -169,6 +204,10 @@ void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity
 //}
 
 void TraceManager::traceReport(std::string text, TraceManager::Level level) {
+	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
+	if (_shuttingDown) {
+		return;
+	}
 	if (_traceConditionPassed(level)) {
 		text = Util::Indent() + text;
 		TraceEvent e = TraceEvent(text, level);
