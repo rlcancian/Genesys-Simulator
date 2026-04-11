@@ -687,6 +687,10 @@ List<ModelComponent*>* ModelSimulation::getBreakpointsOnComponent() const {
 	return _breakpointsOnComponent;
 }
 
+const List<ModelDataDefinition*>* ModelSimulation::getSimulationStatisticsAggregates() const {
+	return _cstatsAndCountersSimulation;
+}
+
 bool ModelSimulation::isPaused() const {
 	return _isPaused;
 }

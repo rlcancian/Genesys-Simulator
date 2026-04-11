@@ -344,6 +344,12 @@ private: // view
 	void _actualizeDebugEntities(bool force);
     /** @brief Refreshes debug breakpoints pane while preserving force-update semantics. */
 	void _actualizeDebugBreakpoints(bool force);
+    /** @brief Configures and clears the simulation results table widget headers and behavior. */
+    void _prepareReportsResultsTable();
+    /** @brief Clears all rows from the simulation results table widget. */
+    void _clearReportsResultsTable();
+    /** @brief Fills the simulation results table with final aggregated simulation statistics. */
+    void _actualizeReportsResultsTable();
     /** @brief Compatibility wrapper delegating model-components tree synchronization. */
 	void _actualizeModelComponents(bool force);
     /** @brief Compatibility wrapper delegating data-definitions tree synchronization. */
