@@ -11,6 +11,8 @@
 #include "../../../../../kernel/simulator/PluginManager.h"
 #include "../../../../../kernel/simulator/Plugin.h"
 #include "../../../../../kernel/simulator/SourceModelComponent.h"
+#include "../../../../../kernel/simulator/ModelDataManager.h"
+#include "../../../../../kernel/simulator/ModelDataDefinition.h"
 
 #include <QTextEdit>
 
@@ -104,6 +106,112 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
     *y = yIni;
 }
 
+// Rebuild graphical data definitions and diagram links as part of the main model regeneration flow.
+void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(std::map<ModelComponent*, GraphicalModelComponent*>* componentMap) {
+    Model* model = _simulator->getModelManager()->current();
+    if (model == nullptr || model->getDataManager() == nullptr || componentMap == nullptr) {
+        return;
+    }
+
+    _scene->clearGraphicalDiagramConnections();
+    _scene->clearGraphicalModelDataDefinitions();
+
+    PluginManager* pluginManager = _simulator->getPluginManager();
+    ModelDataManager* dataManager = model->getDataManager();
+    QColor purple(128, 0, 128);
+    QColor grey(220, 220, 220);
+    std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> dataDefinitionMap;
+
+    // Create one graphical node for each kernel data definition.
+    for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
+        std::list<ModelDataDefinition*>* listDataDefinitions = dataManager->getDataDefinitionList(dataTypename)->list();
+        for (ModelDataDefinition* dataDefinition : *listDataDefinitions) {
+            if (dataDefinition == nullptr) {
+                continue;
+            }
+            Plugin* plugin = pluginManager->find(dataDefinition->getName());
+            if (plugin == nullptr) {
+                continue;
+            }
+            GraphicalModelDataDefinition* graphicalDataDefinition = _scene->addGraphicalModelDataDefinition(plugin, dataDefinition, QPointF(0, 0), grey);
+            if (graphicalDataDefinition != nullptr) {
+                dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
+            }
+        }
+    }
+
+    QList<GraphicalModelDataDefinition*> visitedDataDefinitions;
+    // Reuse the existing createDiagrams positioning semantics for component-attached/internal data links.
+    for (const auto& componentEntry : *componentMap) {
+        ModelComponent* component = componentEntry.first;
+        GraphicalModelComponent* graphicalComponent = componentEntry.second;
+        if (component == nullptr || graphicalComponent == nullptr) {
+            continue;
+        }
+
+        QPointF componentPosition = graphicalComponent->getOldPosition();
+        qreal yInternal = componentPosition.y();
+        qreal yAttached = componentPosition.y();
+
+        for (const auto& attachedData : *component->getAttachedData()) {
+            auto attachedIt = dataDefinitionMap.find(attachedData.second);
+            if (attachedIt == dataDefinitionMap.end()) {
+                continue;
+            }
+            GraphicalModelDataDefinition* gdd = attachedIt->second;
+            if (visitedDataDefinitions.contains(gdd)) {
+                qreal x = (gdd->x() + componentPosition.x()) / 2.0;
+                gdd->setPos(x, yAttached - 150);
+                gdd->setOldPosition(x, yAttached - 150);
+            } else {
+                visitedDataDefinitions.append(gdd);
+                yAttached -= 150;
+                gdd->setPos(componentPosition.x(), yAttached);
+                gdd->setOldPosition(componentPosition.x(), yAttached);
+                gdd->setColor(purple);
+            }
+            _scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::ATTACHED);
+        }
+
+        for (const auto& internalData : *component->getInternalData()) {
+            auto internalIt = dataDefinitionMap.find(internalData.second);
+            if (internalIt == dataDefinitionMap.end()) {
+                continue;
+            }
+            GraphicalModelDataDefinition* gdd = internalIt->second;
+            visitedDataDefinitions.append(gdd);
+            yInternal += 150;
+            gdd->setPos(componentPosition.x(), yInternal);
+            gdd->setOldPosition(componentPosition.x(), yInternal);
+            _scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::INTERNAL);
+        }
+    }
+
+    // Reuse the same lateral placement rule for internal links between data definitions.
+    for (int i = 0; i < visitedDataDefinitions.size(); i++) {
+        GraphicalModelDataDefinition* parentDataDefinition = visitedDataDefinitions.at(i);
+        if (parentDataDefinition == nullptr || parentDataDefinition->getDataDefinition() == nullptr) {
+            continue;
+        }
+        QPointF parentPosition = parentDataDefinition->getOldPosition();
+        qreal x = parentPosition.x();
+        for (const auto& internalData : *parentDataDefinition->getDataDefinition()->getInternalData()) {
+            auto internalIt = dataDefinitionMap.find(internalData.second);
+            if (internalIt == dataDefinitionMap.end()) {
+                continue;
+            }
+            GraphicalModelDataDefinition* childDataDefinition = internalIt->second;
+            visitedDataDefinitions.append(childDataDefinition);
+            x -= 200;
+            childDataDefinition->setPos(x, parentPosition.y());
+            childDataDefinition->setOldPosition(x, parentPosition.y());
+            _scene->addGraphicalDiagramConnection(childDataDefinition, parentDataDefinition, GraphicalDiagramConnection::ConnectionType::INTERNAL);
+        }
+    }
+
+    _scene->setDiagramLayerState(!dataDefinitionMap.empty(), true);
+}
+
 // Preserve the existing full-model generation flow and visitation semantics.
 void GraphicalModelBuilder::generateGraphicalModelFromModel() {
     Model* m = _simulator->getModelManager()->current();
@@ -137,6 +245,8 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
                 }
             }
         } while (foundNotVisited);
+
+        rebuildGraphicalDataDefinitionsLayer(map);
 
         delete map;
         delete visited;
