@@ -741,6 +741,14 @@ void ModelGraphicsScene::ensureInitialInternalDataDefinitionGrouping(GraphicalMo
     }
     targetGroup->addToGroup(dataDefinition);
     insertOldPositionItem(dataDefinition, dataDefinition->pos());
+
+    if (!_listComponentsGroup.contains(targetGroup)) {
+        _listComponentsGroup.insert(targetGroup, QList<GraphicalModelComponent*>());
+    }
+    QList<GraphicalModelComponent*>& groupedComponents = _listComponentsGroup[targetGroup];
+    if (!groupedComponents.contains(component)) {
+        groupedComponents.append(component);
+    }
 }
 
 void ModelGraphicsScene::setPersistedGuiRestoreInProgress(bool restoring) {
@@ -1235,8 +1243,11 @@ void ModelGraphicsScene::createDiagrams()
 
         for (auto it = listDataDefinitions->begin(); it != listDataDefinitions->end(); ++it) {
             ModelDataDefinition* datadef = *it;
-            std::string pluginName = datadef->getName();
+            std::string pluginName = datadef->getClassname();
             Plugin* plugin = _simulator->getPluginManager()->find(pluginName);
+            if (plugin == nullptr) {
+                continue;
+            }
             addGraphicalModelDataDefinition(plugin, datadef, QPointF(0, 0), grey);
         }
     }
@@ -1367,7 +1378,6 @@ void ModelGraphicsScene::actualizeDiagramArrows() {
 
             removeGraphicalDiagramConnection(itemConnection);
         }
-        if (!visibleDiagram()) hideDiagrams();
     }
 }
 
@@ -1386,13 +1396,6 @@ void ModelGraphicsScene::destroyDiagram() {
 }
 
 void ModelGraphicsScene::hideDiagrams() {
-    QList<GraphicalModelDataDefinition*>* dataDefinitions = getAllDataDefinitions();
-    for (int i = 0; i < dataDefinitions->size(); i++) {
-        dataDefinitions->at(i)->hide();
-        dataDefinitions->at(i)->setFlag(QGraphicsItem::ItemIsSelectable, false);
-        dataDefinitions->at(i)->setFlag(QGraphicsItem::ItemIsMovable, false);
-    }
-
     QList<GraphicalDiagramConnection*>* connections = getAllGraphicalDiagramsConnections();
     for (int i = 0; i < connections->size(); i++) {
         connections->at(i)->hide();
@@ -1404,7 +1407,6 @@ void ModelGraphicsScene::showDiagrams() {
     QList<GraphicalModelDataDefinition*>* dataDefinitions = getAllDataDefinitions();
     if (dataDefinitions->size() > 0) {
         for (int i = 0; i < dataDefinitions->size(); i++) {
-
             dataDefinitions->at(i)->show();
             dataDefinitions->at(i)->setFlag(QGraphicsItem::ItemIsSelectable, true);
             dataDefinitions->at(i)->setFlag(QGraphicsItem::ItemIsMovable, true);

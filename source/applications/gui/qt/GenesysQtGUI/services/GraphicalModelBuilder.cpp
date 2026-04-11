@@ -306,13 +306,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     }
 
     const bool hasDataDefinitions = !dataDefinitionMap.empty();
-    const bool visible = hasDataDefinitions ? scene->visibleDiagram() : false;
-    scene->setDiagramLayerState(hasDataDefinitions, visible);
+    scene->setDiagramLayerState(hasDataDefinitions, hasDataDefinitions);
     if (hasDataDefinitions) {
-        if (visible) {
-            scene->showDiagrams();
-        } else {
-            scene->hideDiagrams();
-        }
+        scene->showDiagrams();
     }
 }

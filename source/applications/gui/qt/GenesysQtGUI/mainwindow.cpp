@@ -923,9 +923,9 @@ bool MainWindow::_check(bool success)
 
     if (res) {
         ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
+        GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
         // Mensagem de sucesso
         if (success) {
-            GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, scene);
             QMessageBox::information(this, "Model Check", "Model successfully checked.");
         }
         // Salva os data definitions dos componentes atuais
