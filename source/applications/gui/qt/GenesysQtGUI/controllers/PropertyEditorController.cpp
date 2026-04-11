@@ -4,12 +4,12 @@
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 
 #include <QGraphicsItem>
 #include <QDebug>
 #include <QTimer>
-#include <QPointer>
 
 // Build the Phase 6 controller with narrow dependencies for property-editor orchestration.
 PropertyEditorController::PropertyEditorController(
@@ -92,6 +92,20 @@ void PropertyEditorController::sceneSelectionChanged() const {
                 _propertyBox);
             return;
         }
+
+        // Bind data-definition selection to the same property editor API used for components.
+        GraphicalModelDataDefinition* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        if (gmdd != nullptr) {
+            qInfo() << "[PropertyEditorController] sceneSelectionChanged binding single GraphicalModelDataDefinition";
+            _propertyBrowser->setActiveObject(
+                gmdd,
+                gmdd->getDataDefinition(),
+                _propertyGenesys,
+                _propertyList,
+                _propertyEditorUI,
+                _propertyBox);
+            return;
+        }
     }
 
     // Clear bindings when none or multiple scene items are selected.
@@ -165,25 +179,9 @@ void PropertyEditorController::_runGlobalRefresh() const {
         if (scene == nullptr) {
             qWarning() << "[PropertyEditorController] Skipping scene refresh because scene is null";
         } else {
+            // Refresh diagram arrows in-place without forcing legacy destroy/create diagram regeneration.
             scene->actualizeDiagramArrows();
             scene->update();
-
-            if (scene->existDiagram()) {
-                const bool wasVisible = scene->visibleDiagram();
-                QPointer<ModelGraphicsScene> guardedScene(scene);
-                QTimer::singleShot(0, [guardedScene, wasVisible]() {
-                    if (guardedScene.isNull()) {
-                        return;
-                    }
-                    guardedScene->destroyDiagram();
-                    guardedScene->createDiagrams();
-                    if (wasVisible) {
-                        guardedScene->showDiagrams();
-                    } else {
-                        guardedScene->hideDiagrams();
-                    }
-                });
-            }
         }
         qInfo() << "[PropertyEditorController] _runGlobalRefresh exit";
     } while (_pendingGlobalRefresh);

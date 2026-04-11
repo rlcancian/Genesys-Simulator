@@ -129,7 +129,8 @@ void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(std::map<ModelC
             if (dataDefinition == nullptr) {
                 continue;
             }
-            Plugin* plugin = pluginManager->find(dataDefinition->getName());
+            // Resolve data definition plugins by classname to match kernel semantic identifiers.
+            Plugin* plugin = pluginManager->find(dataDefinition->getClassname());
             if (plugin == nullptr) {
                 continue;
             }
