@@ -59,6 +59,7 @@
 #include <QPointer>
 #include <QTimer>
 #include <QDebug>
+#include <QSet>
 #include <algorithm>
 
 namespace {
@@ -666,6 +667,18 @@ void ModelGraphicsScene::insertComponent(GraphicalModelComponent* gmc, QList<Gra
 }
 
 void ModelGraphicsScene::removeGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd) {
+    if (gmdd == nullptr) {
+        return;
+    }
+
+    // Remove only data-definition items that are still alive in the scene snapshot.
+    const QList<QGraphicsItem*> liveItems = items();
+    if (!liveItems.contains(gmdd)) {
+        getGraphicalModelDataDefinitions()->removeOne(gmdd);
+        getAllDataDefinitions()->removeOne(gmdd);
+        return;
+    }
+
     //graphically
     removeItem(gmdd);
     // Keep data-definition ownership lists consistent during removal.
@@ -697,6 +710,59 @@ void ModelGraphicsScene::clearGraphicalDiagramConnections() {
     while (!connections->isEmpty()) {
         GraphicalDiagramConnection* connection = connections->first();
         removeGraphicalDiagramConnection(connection);
+    }
+}
+
+void ModelGraphicsScene::sanitizeGraphicalDataDefinitionsBookkeeping() {
+    // Rebuild live data-definition/diagram sets from scene-owned items before differential synchronization.
+    const QList<QGraphicsItem*> liveItems = items();
+    QSet<GraphicalModelDataDefinition*> liveDataDefinitions;
+    QSet<GraphicalDiagramConnection*> liveDiagramConnections;
+
+    for (QGraphicsItem* item : liveItems) {
+        if (auto* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
+            liveDataDefinitions.insert(gmdd);
+            continue;
+        }
+        if (auto* connection = dynamic_cast<GraphicalDiagramConnection*>(item)) {
+            liveDiagramConnections.insert(connection);
+        }
+    }
+
+    // Drop stale pointers from helper lists to prevent dangling addresses from being used as source of truth.
+    for (auto it = _allGraphicalModelDataDefinitions.begin(); it != _allGraphicalModelDataDefinitions.end();) {
+        if (!liveDataDefinitions.contains(*it)) {
+            it = _allGraphicalModelDataDefinitions.erase(it);
+        } else {
+            ++it;
+        }
+    }
+    for (auto it = _allGraphicalDiagramConnections.begin(); it != _allGraphicalDiagramConnections.end();) {
+        if (!liveDiagramConnections.contains(*it)) {
+            it = _allGraphicalDiagramConnections.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    QList<QGraphicsItem*>* graphicalDataDefinitions = getGraphicalModelDataDefinitions();
+    for (auto it = graphicalDataDefinitions->begin(); it != graphicalDataDefinitions->end();) {
+        auto* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(*it);
+        if (gmdd == nullptr || !liveDataDefinitions.contains(gmdd)) {
+            it = graphicalDataDefinitions->erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    QList<QGraphicsItem*>* graphicalDiagramConnections = getGraphicalDiagramsConnections();
+    for (auto it = graphicalDiagramConnections->begin(); it != graphicalDiagramConnections->end();) {
+        auto* connection = dynamic_cast<GraphicalDiagramConnection*>(*it);
+        if (connection == nullptr || !liveDiagramConnections.contains(connection)) {
+            it = graphicalDiagramConnections->erase(it);
+        } else {
+            ++it;
+        }
     }
 }
 

@@ -160,6 +160,9 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         return;
     }
 
+    // Sanitize scene helper containers before any diff logic to avoid stale bookkeeping pointers.
+    scene->sanitizeGraphicalDataDefinitionsBookkeeping();
+
     Model* model = simulator->getModelManager()->current();
     if (model == nullptr || model->getDataManager() == nullptr) {
         scene->clearGraphicalDiagramConnections();
@@ -176,8 +179,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         componentMap[gmc->getComponent()] = gmc;
     }
 
+    // Build the live graphical data-definition snapshot strictly from scene-owned items.
     std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> existingDataDefinitions;
-    for (GraphicalModelDataDefinition* gmdd : *scene->getAllDataDefinitions()) {
+    const QList<QGraphicsItem*> liveItems = scene->items();
+    for (QGraphicsItem* item : liveItems) {
+        GraphicalModelDataDefinition* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item);
         if (gmdd == nullptr || gmdd->getDataDefinition() == nullptr) {
             continue;
         }
