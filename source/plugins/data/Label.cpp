@@ -70,7 +70,11 @@ PluginInformation* Label::GetPluginInformation() {
 //
 
 std::string Label::show() {
-	return ModelDataDefinition::show();
+	std::string msg = ModelDataDefinition::show();
+	msg += ",label=\"" + _label + "\"";
+	msg += ",enteringComponent=";
+	msg += (_enteringLabelComponent != nullptr ? _enteringLabelComponent->getName() : "NULL");
+	return msg;
 }
 
 void Label::setLabel(std::string _label) {
@@ -81,12 +85,20 @@ std::string Label::getLabel() const {
 	return _label;
 }
 
+void Label::setEnterIntoLabelComponent(ModelComponent* enteringLabelComponent) {
+	_enteringLabelComponent = enteringLabelComponent;
+}
+
 ModelComponent* Label::getEnterIntoLabelComponent() const {
 	return _enteringLabelComponent;
 }
 
 void Label::sendEntityToLabelComponent(Entity* entity, double timeDelay) {
 	//_parentModel->sendEntityToComponent(entity, _enteringLabelComponent->getConnections()->getFrontConnection(), timeDelay);
+	if (_enteringLabelComponent == nullptr) {
+		traceError("Label \"" + getName() + "\" has no entering component defined. Entity was not sent.", TraceManager::Level::L2_results);
+		return;
+	}
 	_parentModel->sendEntityToComponent(entity, _enteringLabelComponent, timeDelay);
 }
 
@@ -97,9 +109,16 @@ bool Label::_loadInstance(PersistenceRecord *fields) {
 	if (res) {
 		try {
 			this->_label = fields->loadField("label", "");
+			this->_enteringLabelComponent = nullptr;
 			std::string componentName = fields->loadField("enteringComponentName", "");
-			ModelComponent* comp = _parentModel->getComponentManager()->find(componentName);
-			this->_enteringLabelComponent = comp;
+			if (!componentName.empty()) {
+				ModelComponent* comp = _parentModel->getComponentManager()->find(componentName);
+				if (comp == nullptr) {
+					traceError("Label \"" + getName() + "\" could not resolve entering component \"" + componentName + "\" while loading.", TraceManager::Level::L2_results);
+				} else {
+					this->_enteringLabelComponent = comp;
+				}
+			}
 		} catch (...) {
 		}
 	}
@@ -118,9 +137,18 @@ void Label::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Label::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	resultAll &= (_enteringLabelComponent != nullptr);
-	if (!resultAll) {
-		errorMessage += "Entering Label Component was not defined";
+	_attachedDataRemove("EnteringLabelComponent");
+	if (_enteringLabelComponent == nullptr) {
+		errorMessage += "Label \"" + getName() + "\" entering component was not defined. ";
+		resultAll = false;
+	} else {
+		ModelComponent* modelComponentByName = _parentModel->getComponentManager()->find(_enteringLabelComponent->getName());
+		if (modelComponentByName == nullptr || modelComponentByName != _enteringLabelComponent) {
+			errorMessage += "Label \"" + getName() + "\" entering component \"" + _enteringLabelComponent->getName() + "\" is stale or not owned by this model. ";
+			resultAll = false;
+		} else {
+			_attachedDataInsert("EnteringLabelComponent", _enteringLabelComponent);
+		}
 	}
 	return resultAll;
 }
