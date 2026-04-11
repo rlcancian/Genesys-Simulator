@@ -27,6 +27,7 @@ public:
 	virtual std::string show() override;
 	void setLabel(std::string _label);
 	std::string getLabel() const;
+	void setEnterIntoLabelComponent(ModelComponent* enteringLabelComponent);
 	ModelComponent* getEnterIntoLabelComponent() const;
 	void sendEntityToLabelComponent(Entity* entity, double timeDelay);
 protected: // must be overriden 
@@ -43,4 +44,3 @@ private:
 };
 
 #endif /* LABEL_H */
-
