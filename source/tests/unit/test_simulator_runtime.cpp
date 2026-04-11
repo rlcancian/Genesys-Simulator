@@ -331,6 +331,14 @@ public:
         }
         return freed;
     }
+
+    unsigned int TriggerSignalHandlerProbe(SignalData* signalData) {
+        return _handlerForSignalDataEvent(signalData);
+    }
+
+    void TriggerAfterProcessHandlerProbe(SimulationEvent* event) {
+        _handlerForAfterProcessEventEvent(event);
+    }
 };
 
 class SignalProbe : public Signal {
@@ -2546,6 +2554,11 @@ TEST(SimulatorRuntimeTest, WaitCheckValidatesWaitForSignalContractAndLimitExpres
     std::string invalidLimitError;
     EXPECT_FALSE(wait.CheckProbe(invalidLimitError));
     EXPECT_NE(invalidLimitError.find("LimitExpression"), std::string::npos);
+
+    wait.setLimitExpression("1");
+    std::string validLimitError;
+    EXPECT_TRUE(wait.CheckProbe(validLimitError));
+    EXPECT_TRUE(validLimitError.empty());
 }
 
 TEST(SimulatorRuntimeTest, WaitCheckValidatesScanConditionExpression) {
@@ -2562,6 +2575,60 @@ TEST(SimulatorRuntimeTest, WaitCheckValidatesScanConditionExpression) {
     std::string errorMessage;
     EXPECT_FALSE(wait.CheckProbe(errorMessage));
     EXPECT_NE(errorMessage.find("Condition"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, WaitForSignalLimitZeroDoesNotReleaseQueuedEntities) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WaitProbe wait(model, "WaitSignalLimitZero");
+    Queue* queue = new Queue(model, "WaitSignalLimitZeroQueue");
+    SignalDataProbe signalData(model, "WaitSignalLimitZeroData");
+
+    wait.setQueue(queue);
+    wait.setWaitType(Wait::WaitType::WaitForSignal);
+    wait.setSignalData(&signalData);
+    wait.setLimitExpression("0");
+
+    signalData.generateSignal(0.0, 10u);
+    EXPECT_EQ(wait.TriggerSignalHandlerProbe(&signalData), 0u);
+    EXPECT_EQ(wait.getQueue()->size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, SignalAndWaitSharedSignalDataRemainCoherentAfterRecheck) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signalData(model, "RecheckSharedSignalData");
+    Queue* queue = new Queue(model, "RecheckSharedWaitQueue");
+
+    WaitProbe wait(model, "RecheckSharedWait");
+    wait.setQueue(queue);
+    wait.setWaitType(Wait::WaitType::WaitForSignal);
+    wait.setSignalData(&signalData);
+    wait.setLimitExpression("1");
+
+    SignalProbe signal(model, "RecheckSharedSignal");
+    signal.setSignalData(&signalData);
+    signal.setLimitExpression("1");
+
+    wait.CreateInternalAndAttachedDataProbe();
+    std::string firstWaitError;
+    std::string firstSignalError;
+    EXPECT_TRUE(wait.CheckProbe(firstWaitError));
+    EXPECT_TRUE(signal.CheckProbe(firstSignalError));
+
+    std::string secondWaitError;
+    std::string secondSignalError;
+    EXPECT_TRUE(wait.CheckProbe(secondWaitError));
+    EXPECT_TRUE(signal.CheckProbe(secondSignalError));
+
+    EXPECT_EQ(wait._signalData, &signalData);
+    EXPECT_EQ(signal.SignalDataPtrProbe(), &signalData);
+    EXPECT_EQ(wait._signalData, signal.SignalDataPtrProbe());
+    EXPECT_TRUE(signalData.hasSignalDataEventHandler(&wait));
 }
 
 TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {

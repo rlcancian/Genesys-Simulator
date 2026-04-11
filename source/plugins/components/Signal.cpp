@@ -115,6 +115,15 @@ bool Signal::_check(std::string& errorMessage) {
 	if (_signalData == nullptr) {
 		errorMessage += "SignalData is null in Signal \"" + this->getName() + "\"";
 		resultAll = false;
+	} else {
+		SignalData* signalDataByName = dynamic_cast<SignalData*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<SignalData>(), _signalData->getName()));
+		if (signalDataByName == nullptr) {
+			errorMessage += "SignalData \"" + _signalData->getName() + "\" was not found in model data manager for Signal \"" + this->getName() + "\"";
+			resultAll = false;
+		} else if (signalDataByName != _signalData) {
+			errorMessage += "SignalData \"" + _signalData->getName() + "\" reference mismatch in Signal \"" + this->getName() + "\"";
+			resultAll = false;
+		}
 	}
 	return resultAll;
 }
