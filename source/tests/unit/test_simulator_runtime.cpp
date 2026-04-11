@@ -31,6 +31,8 @@
 #include "plugins/components/Batch.h"
 #include "plugins/components/Separate.h"
 #include "plugins/components/Match.h"
+#include "plugins/components/Search.h"
+#include "plugins/components/Remove.h"
 #define private public
 #define protected public
 #include "plugins/components/Process.h"
@@ -492,6 +494,56 @@ public:
 
     bool LoadInstanceProbe(PersistenceRecord* fields) {
         return _loadInstance(fields);
+    }
+};
+
+class SearchProbe : public Search {
+public:
+    SearchProbe(Model* model, const std::string& name = "") : Search(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class RemoveProbe : public Remove {
+public:
+    RemoveProbe(Model* model, const std::string& name = "") : Remove(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -3484,4 +3536,266 @@ TEST(SimulatorRuntimeTest, ProcessCheckPassesWithMinimalValidConfiguration) {
 
     std::string errorMessage;
     EXPECT_TRUE(process.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, DISABLED_SearchQueueFindsEntityInRangeSavesRankAndRoutesToFoundPort) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SearchProbe search(model, "SearchFind");
+    Queue queue(model, "SearchFindQueue");
+    CollectorSinkComponentProbe notFoundSink(model, "SearchFindNotFound");
+    CollectorSinkComponentProbe foundSink(model, "SearchFindFound");
+    search.getConnectionManager()->insert(&notFoundSink);
+    search.getConnectionManager()->insert(&foundSink);
+    search.setSearchInType(Search::SearchInType::QUEUE);
+    search.setSearchIn(&queue);
+    search.setStartRank("1");
+    search.setEndRank("3");
+    search.setSearchCondition("1");
+    search.setSaveFounRankAttribute("SearchFoundRankAttr");
+    Attribute searchFoundRankAttr(model, "SearchFoundRankAttr");
+
+    CollectorSinkComponentProbe producer(model, "SearchFindProducer");
+    queue.insertElement(new Waiting(model->createEntity("SearchFindQueueE0", true), 0.0, &producer));
+    queue.insertElement(new Waiting(model->createEntity("SearchFindQueueE1", true), 0.0, &producer));
+    queue.insertElement(new Waiting(model->createEntity("SearchFindQueueE2", true), 0.0, &producer));
+
+    Entity* trigger = model->createEntity("SearchFindTrigger", true);
+    search.DispatchEventProbe(trigger);
+
+    EXPECT_EQ(trigger->getAttributeValue("SearchFoundRankAttr"), 1.0);
+    EXPECT_EQ(notFoundSink.ReceivedEntities().size(), 0u);
+    ASSERT_EQ(foundSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(foundSink.ReceivedEntities().front(), trigger);
+}
+
+TEST(SimulatorRuntimeTest, DISABLED_SearchQueueNotFoundRoutesToPortZeroAndSavesZeroRank) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SearchProbe search(model, "SearchNotFound");
+    Queue queue(model, "SearchNotFoundQueue");
+    CollectorSinkComponentProbe notFoundSink(model, "SearchNotFoundOut0");
+    CollectorSinkComponentProbe foundSink(model, "SearchNotFoundOut1");
+    search.getConnectionManager()->insert(&notFoundSink);
+    search.getConnectionManager()->insert(&foundSink);
+    search.setSearchInType(Search::SearchInType::QUEUE);
+    search.setSearchIn(&queue);
+    search.setStartRank("0");
+    search.setEndRank("2");
+    search.setSearchCondition("0");
+    search.setSaveFounRankAttribute("SearchNotFoundRankAttr");
+    Attribute searchNotFoundRankAttr(model, "SearchNotFoundRankAttr");
+
+    CollectorSinkComponentProbe producer(model, "SearchNotFoundProducer");
+    queue.insertElement(new Waiting(model->createEntity("SearchNotFoundQueueE0", true), 0.0, &producer));
+    queue.insertElement(new Waiting(model->createEntity("SearchNotFoundQueueE1", true), 0.0, &producer));
+
+    Entity* trigger = model->createEntity("SearchNotFoundTrigger", true);
+    search.DispatchEventProbe(trigger);
+
+    EXPECT_EQ(trigger->getAttributeValue("SearchNotFoundRankAttr"), 0.0);
+    ASSERT_EQ(notFoundSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(notFoundSink.ReceivedEntities().front(), trigger);
+    EXPECT_EQ(foundSink.ReceivedEntities().size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, SearchPersistenceRoundTripPreservesConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "SearchPersistQueue");
+    SearchProbe source(model, "SearchPersistSource");
+    source.setSearchInType(Search::SearchInType::QUEUE);
+    source.setSearchIn(&queue);
+    source.setStartRank("2");
+    source.setEndRank("4");
+    source.setSearchCondition("Entity.Value > 0");
+    source.setSaveFounRankAttribute("SearchPersistFoundRank");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SearchProbe loaded(model, "SearchPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_NE(loaded.getSearchIn(), nullptr);
+    EXPECT_EQ(loaded.getSearchInType(), Search::SearchInType::QUEUE);
+    EXPECT_EQ(loaded.getStartRank(), "2");
+    EXPECT_EQ(loaded.getEndRank(), "4");
+    EXPECT_EQ(loaded.getSearchCondition(), "Entity.Value > 0");
+    EXPECT_EQ(loaded.getSaveFounRankAttribute(), "SearchPersistFoundRank");
+    EXPECT_EQ(loaded.getSearchInName(), "SearchPersistQueue");
+}
+
+TEST(SimulatorRuntimeTest, SearchCheckValidatesConditionSearchInAndMinimalQueueConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SearchProbe invalidCondition(model, "SearchCheckInvalidCondition");
+    invalidCondition.setSearchInType(Search::SearchInType::QUEUE);
+    invalidCondition.setSearchIn(new Queue(model, "SearchCheckInvalidConditionQueue"));
+    invalidCondition.setStartRank("0");
+    invalidCondition.setEndRank("1");
+    invalidCondition.setSearchCondition("1+");
+    invalidCondition.setSaveFounRankAttribute("SearchCheckInvalidConditionAttr");
+    std::string invalidConditionMessage;
+    EXPECT_FALSE(invalidCondition.CheckProbe(invalidConditionMessage));
+    EXPECT_FALSE(invalidConditionMessage.empty());
+
+    SearchProbe missingSearchIn(model, "SearchCheckMissingSearchIn");
+    missingSearchIn.setSearchInType(Search::SearchInType::QUEUE);
+    missingSearchIn.setStartRank("0");
+    missingSearchIn.setEndRank("1");
+    missingSearchIn.setSearchCondition("1");
+    missingSearchIn.setSaveFounRankAttribute("SearchCheckMissingSearchInAttr");
+    std::string missingSearchInMessage;
+    EXPECT_FALSE(missingSearchIn.CheckProbe(missingSearchInMessage));
+    EXPECT_NE(missingSearchInMessage.find("SearchIn was not defined"), std::string::npos);
+
+    SearchProbe valid(model, "SearchCheckValid");
+    Attribute validSearchAttribute(model, "SearchCheckValidAttr");
+    valid.setSearchInType(Search::SearchInType::QUEUE);
+    valid.setSearchIn(new Queue(model, "SearchCheckValidQueue"));
+    valid.setStartRank("0");
+    valid.setEndRank("1");
+    valid.setSearchCondition("1");
+    valid.setSaveFounRankAttribute("SearchCheckValidAttr");
+    std::string validMessage;
+    EXPECT_TRUE(valid.CheckProbe(validMessage)) << validMessage;
+}
+
+TEST(SimulatorRuntimeTest, DISABLED_RemoveEqualStartAndEndRankRemovesExactlyOneAndRoutesCorrectly) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RemoveProbe remove(model, "RemoveSingleRank");
+    Queue queue(model, "RemoveSingleRankQueue");
+    CollectorSinkComponentProbe mainSink(model, "RemoveSingleRankMain");
+    CollectorSinkComponentProbe removedSink(model, "RemoveSingleRankRemoved");
+    remove.getConnectionManager()->insert(&mainSink);
+    remove.getConnectionManager()->insert(&removedSink);
+    remove.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    remove.setRemoveFrom(&queue);
+    remove.setRemoveStartRank("1");
+    remove.setRemoveEndRank("1");
+
+    CollectorSinkComponentProbe producer(model, "RemoveSingleRankProducer");
+    Entity* q0 = model->createEntity("RemoveSingleRankQ0", true);
+    Entity* q1 = model->createEntity("RemoveSingleRankQ1", true);
+    Entity* q2 = model->createEntity("RemoveSingleRankQ2", true);
+    queue.insertElement(new Waiting(q0, 0.0, &producer));
+    queue.insertElement(new Waiting(q1, 0.0, &producer));
+    queue.insertElement(new Waiting(q2, 0.0, &producer));
+
+    Entity* trigger = model->createEntity("RemoveSingleRankTrigger", true);
+    remove.DispatchEventProbe(trigger);
+
+    ASSERT_EQ(removedSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(removedSink.ReceivedEntities().front(), q1);
+    EXPECT_EQ(queue.size(), 2u);
+    ASSERT_EQ(mainSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(mainSink.ReceivedEntities().front(), trigger);
+}
+
+TEST(SimulatorRuntimeTest, DISABLED_RemoveRangeRemovesOnlyEntitiesInsideConfiguredInterval) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RemoveProbe remove(model, "RemoveRange");
+    Queue queue(model, "RemoveRangeQueue");
+    CollectorSinkComponentProbe mainSink(model, "RemoveRangeMain");
+    CollectorSinkComponentProbe removedSink(model, "RemoveRangeRemoved");
+    remove.getConnectionManager()->insert(&mainSink);
+    remove.getConnectionManager()->insert(&removedSink);
+    remove.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    remove.setRemoveFrom(&queue);
+    remove.setRemoveStartRank("1");
+    remove.setRemoveEndRank("2");
+
+    CollectorSinkComponentProbe producer(model, "RemoveRangeProducer");
+    Entity* q0 = model->createEntity("RemoveRangeQ0", true);
+    Entity* q1 = model->createEntity("RemoveRangeQ1", true);
+    Entity* q2 = model->createEntity("RemoveRangeQ2", true);
+    Entity* q3 = model->createEntity("RemoveRangeQ3", true);
+    queue.insertElement(new Waiting(q0, 0.0, &producer));
+    queue.insertElement(new Waiting(q1, 0.0, &producer));
+    queue.insertElement(new Waiting(q2, 0.0, &producer));
+    queue.insertElement(new Waiting(q3, 0.0, &producer));
+
+    Entity* trigger = model->createEntity("RemoveRangeTrigger", true);
+    remove.DispatchEventProbe(trigger);
+
+    ASSERT_EQ(removedSink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(removedSink.ReceivedEntities().at(0), q1);
+    EXPECT_EQ(removedSink.ReceivedEntities().at(1), q2);
+    EXPECT_EQ(queue.size(), 2u);
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), q0);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), q3);
+    ASSERT_EQ(mainSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(mainSink.ReceivedEntities().front(), trigger);
+}
+
+TEST(SimulatorRuntimeTest, RemovePersistenceRoundTripPreservesConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "RemovePersistQueue");
+    RemoveProbe source(model, "RemovePersistSource");
+    source.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    source.setRemoveFrom(&queue);
+    source.setRemoveStartRank("3");
+    source.setRemoveEndRank("5");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    RemoveProbe loaded(model, "RemovePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_NE(loaded.getRemoveFrom(), nullptr);
+    EXPECT_EQ(loaded.getRemoveFromType(), Remove::RemoveFromType::QUEUE);
+    EXPECT_EQ(loaded.getRemoveStartRank(), "3");
+    EXPECT_EQ(loaded.getRemoveEndRank(), "5");
+    EXPECT_EQ(loaded.getRemoveFrom()->getName(), "RemovePersistQueue");
+}
+
+TEST(SimulatorRuntimeTest, RemoveCheckValidatesRankExpressionsAndMinimalQueueConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RemoveProbe invalidStart(model, "RemoveCheckInvalidStart");
+    invalidStart.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    invalidStart.setRemoveFrom(new Queue(model, "RemoveCheckInvalidStartQueue"));
+    invalidStart.setRemoveStartRank("1+");
+    invalidStart.setRemoveEndRank("1");
+    std::string invalidStartMessage;
+    EXPECT_FALSE(invalidStart.CheckProbe(invalidStartMessage));
+    EXPECT_FALSE(invalidStartMessage.empty());
+
+    RemoveProbe invalidEnd(model, "RemoveCheckInvalidEnd");
+    invalidEnd.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    invalidEnd.setRemoveFrom(new Queue(model, "RemoveCheckInvalidEndQueue"));
+    invalidEnd.setRemoveStartRank("0");
+    invalidEnd.setRemoveEndRank("2+");
+    std::string invalidEndMessage;
+    EXPECT_FALSE(invalidEnd.CheckProbe(invalidEndMessage));
+    EXPECT_FALSE(invalidEndMessage.empty());
+
+    RemoveProbe valid(model, "RemoveCheckValid");
+    valid.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    valid.setRemoveFrom(new Queue(model, "RemoveCheckValidQueue"));
+    valid.setRemoveStartRank("0");
+    valid.setRemoveEndRank("0");
+    std::string validMessage;
+    EXPECT_TRUE(valid.CheckProbe(validMessage)) << validMessage;
 }
