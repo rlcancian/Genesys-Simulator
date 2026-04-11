@@ -232,6 +232,7 @@ public:
     void insertRestoredDataDefinitions(bool loaded);
     void saveDataDefinitions();
     // --------------------------------- //
+    void scheduleGraphicalDataDefinitionsSync();
 
 public:
     QList<QGraphicsItem*>*getGraphicalModelDataDefinitions() const;
@@ -338,6 +339,7 @@ private:
     QList<QGraphicsItem*>* _graphicalEntities = new QList<QGraphicsItem*>();
     QList<QGraphicsItemGroup*>* _graphicalGroups = new QList<QGraphicsItemGroup*>();
     bool _restoringPersistedGuiLayout = false;
+    bool _graphicalDataDefinitionsSyncPending = false;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */
