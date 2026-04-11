@@ -131,6 +131,13 @@ public: // editing graphic model
     void clearGraphicalModelDataDefinitions();
     void clearGraphicalDiagramConnections();
     void setDiagramLayerState(bool diagramCreated, bool visible);
+    // Filter out non-deletable items from user-triggered delete flows.
+    QList<QGraphicsItem*> userDeletableItems(const QList<QGraphicsItem*>& items) const;
+    // Keep internal data-definition initial grouping opt-in during model rebuild only.
+    void ensureInitialInternalDataDefinitionGrouping(GraphicalModelDataDefinition* dataDefinition, GraphicalModelComponent* component);
+    // Allow serializer to disable automatic initial grouping while persisted GUI state is being restored.
+    void setPersistedGuiRestoreInProgress(bool restoring);
+    bool isPersistedGuiRestoreInProgress() const;
     void removeDrawing(QGraphicsItem * item, bool notify = false);
     bool removeDrawingGeometry(QGraphicsItem * item);
     bool removeDrawingAnimation(QGraphicsItem * item);
@@ -292,6 +299,7 @@ private:
     bool _drawing = false;
     bool _diagram = false;
     bool _visibleDiagram = false;
+    bool _persistedGuiRestoreInProgress = false;
     unsigned short _connectingStep = 0; //0:nothing, 1:waiting click on source or destination, 2: click on source, 3: click on destination
     bool _controlIsPressed = false;
     bool _snapToGrid = false;

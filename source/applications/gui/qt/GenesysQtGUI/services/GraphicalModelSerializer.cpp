@@ -474,6 +474,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     if (model != nullptr) {
         // Rebuild the base graphical topology from a single source of truth before applying persisted GUI overlays.
         _clearModelEditors();
+        // Suspend builder-only fallback grouping while persisted .gui positions/groups are being restored.
+        _graphicsView->getScene()->setPersistedGuiRestoreInProgress(true);
         _rebuildGraphicalModelFromModel();
 
         struct PersistedComponentState {
@@ -925,6 +927,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 vBar->setValue(qBound(vBar->minimum(), restoredViewpointY, vBar->maximum()));
             });
         }
+        _graphicsView->getScene()->setPersistedGuiRestoreInProgress(false);
 
         _console->append("\n");
         *_modelFilename = QString::fromStdString(filename);
