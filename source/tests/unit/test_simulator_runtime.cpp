@@ -42,6 +42,7 @@
 #include "plugins/components/Search.h"
 #include "plugins/components/Remove.h"
 #include "plugins/components/Assign.h"
+#include "plugins/components/Write.h"
 #define private public
 #define protected public
 #include "plugins/components/Create.h"
@@ -410,6 +411,23 @@ public:
     Seize* SeizePtrProbe() const { return _seize; }
     Delay* DelayPtrProbe() const { return _delay; }
     Release* ReleasePtrProbe() const { return _release; }
+};
+
+class WriteProbe : public Write {
+public:
+    WriteProbe(Model* model, const std::string& name = "") : Write(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
 };
 
 class CollectorSinkComponentProbe : public ModelComponent {
@@ -4212,6 +4230,114 @@ TEST(SimulatorRuntimeTest, CreateSaveLoadRoundTripPreservesBasicConfiguration) {
     EXPECT_EQ(loaded.getMaxCreations(), "12");
     EXPECT_EQ(loaded.getTimeBetweenCreationsExpression(), "2");
     EXPECT_EQ(loaded.getTimeUnit(), Util::TimeUnit::minute);
+}
+
+TEST(SimulatorRuntimeTest, WritePersistenceRoundTripPreservesAllTextElementsInOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe source(model, "WritePersistSource");
+    source.setWriteToType(Write::WriteToType::FILE);
+    source.setFilename("write_persist_roundtrip.txt");
+    source.insertText({"alpha", "@1+2", "omega"});
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord saved(persistence);
+    source.SaveInstanceProbe(&saved, true);
+
+    WriteProbe loaded(model, "WritePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&saved));
+
+    FakeModelPersistenceRuntime persistenceAfterLoad;
+    PersistenceRecord loadedSaved(persistenceAfterLoad);
+    loaded.SaveInstanceProbe(&loadedSaved, true);
+
+    const unsigned int writesCount = loadedSaved.loadField("writes", 0u);
+    ASSERT_EQ(writesCount, 4u);
+    EXPECT_EQ(loadedSaved.loadField("write[0]", std::string("")), "alpha");
+    EXPECT_EQ(loadedSaved.loadField("write[1]", std::string("")), "@1+2");
+    EXPECT_EQ(loadedSaved.loadField("write[2]", std::string("")), "omega");
+    EXPECT_EQ(loadedSaved.loadField("write[3]", std::string("")), "\n");
+}
+
+TEST(SimulatorRuntimeTest, WriteCheckFailsForInvalidEmbeddedExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe write(model, "WriteCheckInvalidExpression");
+    write.setWriteToType(Write::WriteToType::SCREEN);
+    write.insertText({"@1+"});
+
+    std::string errorMessage;
+    EXPECT_FALSE(write.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("writeExpression"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, WriteCheckPassesForValidEmbeddedExpressionAndConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe write(model, "WriteCheckValidExpression");
+    write.setWriteToType(Write::WriteToType::FILE);
+    write.setFilename("write_check_valid.txt");
+    write.insertText({"result=", "@1+2"});
+
+    std::string errorMessage;
+    EXPECT_TRUE(write.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, WriteInsertTextHandlesEdgeCasesWithoutBreakingAppendSemantics) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe emptyList(model, "WriteInsertEmptyList");
+    emptyList.insertText({});
+    FakeModelPersistenceRuntime persistenceEmpty;
+    PersistenceRecord savedEmpty(persistenceEmpty);
+    emptyList.SaveInstanceProbe(&savedEmpty, true);
+    EXPECT_EQ(savedEmpty.loadField("writes", 0u), 0u);
+
+    WriteProbe plainText(model, "WriteInsertPlainText");
+    plainText.insertText({"plain"});
+    FakeModelPersistenceRuntime persistencePlain;
+    PersistenceRecord savedPlain(persistencePlain);
+    plainText.SaveInstanceProbe(&savedPlain, true);
+    ASSERT_EQ(savedPlain.loadField("writes", 0u), 2u);
+    EXPECT_EQ(savedPlain.loadField("write[0]", std::string("")), "plain");
+    EXPECT_EQ(savedPlain.loadField("write[1]", std::string("")), "\n");
+
+    WriteProbe emptyString(model, "WriteInsertEmptyString");
+    emptyString.insertText({""});
+    FakeModelPersistenceRuntime persistenceEmptyString;
+    PersistenceRecord savedEmptyString(persistenceEmptyString);
+    emptyString.SaveInstanceProbe(&savedEmptyString, true);
+    ASSERT_EQ(savedEmptyString.loadField("writes", 0u), 2u);
+    EXPECT_EQ(savedEmptyString.loadField("write[0]", std::string("default")), "");
+    EXPECT_EQ(savedEmptyString.loadField("write[1]", std::string("default")), "\n");
+}
+
+TEST(SimulatorRuntimeTest, WritePersistenceRoundTripPreservesWriteToTypeAndFilename) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe source(model, "WritePersistFieldsSource");
+    source.setWriteToType(Write::WriteToType::FILE);
+    source.setFilename("write_fields_roundtrip.txt");
+    source.insertText({"payload"});
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord saved(persistence);
+    source.SaveInstanceProbe(&saved, true);
+
+    WriteProbe loaded(model, "WritePersistFieldsLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&saved));
+    EXPECT_EQ(loaded.writeToType(), Write::WriteToType::FILE);
+    EXPECT_EQ(loaded.filename(), "write_fields_roundtrip.txt");
 }
 
 TEST(SimulatorRuntimeTest, CppCompilerDefaultsExposeMainConfiguration) {
