@@ -130,6 +130,7 @@ public: // editing graphic model
     void removeGraphicalDiagramConnection(GraphicalDiagramConnection* connection);
     void clearGraphicalModelDataDefinitions();
     void clearGraphicalDiagramConnections();
+    void sanitizeGraphicalDataDefinitionsBookkeeping();
     void setDiagramLayerState(bool diagramCreated, bool visible);
     // Return only items that can be directly manipulated by user edit commands.
     QList<QGraphicsItem*> userOperableItems(const QList<QGraphicsItem*>& items) const;
