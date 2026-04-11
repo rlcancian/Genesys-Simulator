@@ -184,6 +184,8 @@ public:
     void setPropertyEditorUI(std::map<SimulationControl*, DataComponentEditor*>* propEditorUI);
     void setComboBox(std::map<SimulationControl*, ComboBoxEnum*>* propCombo);
     void setObjectBeingDragged(QTreeWidgetItem* objectBeingDragged);
+    void setRestoringPersistedGuiLayout(bool restoring);
+    bool isRestoringPersistedGuiLayout() const;
     void setParentWidget(QWidget *parentWidget);
     unsigned short connectingStep() const;
     void setConnectingStep(unsigned short connectingStep);
@@ -332,6 +334,7 @@ private:
     QList<QGraphicsItem*>* _graphicalAnimations = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalEntities = new QList<QGraphicsItem*>();
     QList<QGraphicsItemGroup*>* _graphicalGroups = new QList<QGraphicsItemGroup*>();
+    bool _restoringPersistedGuiLayout = false;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

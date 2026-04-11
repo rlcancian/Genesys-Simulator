@@ -184,8 +184,12 @@ void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(std::map<ModelC
             yInternal += 150;
             gdd->setPos(componentPosition.x(), yInternal);
             gdd->setOldPosition(componentPosition.x(), yInternal);
-            // Apply automatic initial grouping only for internal data definitions as a first-materialization fallback.
-            _scene->ensureInitialInternalDataDefinitionGrouping(gdd, graphicalComponent);
+            // Apply first-materialization fallback grouping only for internal data without persisted layout restoration.
+            if (!_scene->isRestoringPersistedGuiLayout() && gdd->parentItem() == nullptr && gdd->group() == nullptr) {
+                QPointF scenePosition = gdd->scenePos();
+                gdd->setParentItem(graphicalComponent);
+                gdd->setPos(graphicalComponent->mapFromScene(scenePosition));
+            }
             _scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::INTERNAL);
         }
     }

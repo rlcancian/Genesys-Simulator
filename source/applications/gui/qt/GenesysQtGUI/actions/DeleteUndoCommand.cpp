@@ -6,7 +6,7 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
 
     // filtra cada tipo de item possível em sua respectiva lista
     for (QGraphicsItem *item : items) {
-        // Keep data definitions selectable/editable while preventing direct manual deletion.
+        // Keep data definitions managed by model reconstruction instead of direct delete actions.
         if (dynamic_cast<GraphicalModelDataDefinition *>(item)) {
             continue;
         }
