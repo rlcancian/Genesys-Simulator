@@ -6,7 +6,6 @@
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
-#include "services/GraphicalModelBuilder.h"
 
 #include <QGraphicsItem>
 #include <QDebug>
@@ -180,7 +179,8 @@ void PropertyEditorController::_runGlobalRefresh() const {
         if (scene == nullptr) {
             qWarning() << "[PropertyEditorController] Skipping scene refresh because scene is null";
         } else {
-            GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(scene->getSimulator(), scene);
+            // Route through scene-owned scheduling to avoid sync during unstable mutation stacks.
+            scene->requestGraphicalDataDefinitionsSync();
             scene->update();
         }
         qInfo() << "[PropertyEditorController] _runGlobalRefresh exit";
