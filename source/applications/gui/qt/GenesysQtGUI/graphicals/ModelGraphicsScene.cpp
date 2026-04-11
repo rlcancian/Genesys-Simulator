@@ -53,6 +53,7 @@
 #include "dialogs/DialogSelectVariable.h"
 #include "dialogs/DialogTimerConfigure.h"
 #include "animations/AnimationQueue.h"
+#include "services/GraphicalModelBuilder.h"
 #include <QCoreApplication>
 #include <QThread>
 #include <QPointer>
@@ -2865,14 +2866,13 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent *event) {
             Plugin* plugin = _simulator->getPluginManager()->find(pluginname.toStdString());
             if (plugin != nullptr) {
                 if (plugin->getPluginInfo()->isComponent()) {
-                    destroyDiagram();
-
                     event->setDropAction(Qt::IgnoreAction);
                     event->accept();
                     // create component in the model
                     ModelComponent* component = (ModelComponent*) plugin->newInstance(_simulator->getModelManager()->current());
                     // create graphically
                     addGraphicalModelComponent(plugin, component, event->scenePos(), color, true);
+                    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, this);
                     return;
                 }
             }
@@ -2927,9 +2927,9 @@ void ModelGraphicsScene::keyPressEvent(QKeyEvent *keyEvent) {
             return;
         }
 
-        destroyDiagram();
         QUndoCommand *deleteUndoCommand = new DeleteUndoCommand(selected, this);
         _undoStack->push(deleteUndoCommand);
+        GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, this);
     }
     _controlIsPressed = (keyEvent->key() == Qt::Key_Control);
 }
