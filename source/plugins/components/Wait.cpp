@@ -137,7 +137,7 @@ void Wait::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_waitType == Wait::WaitType::WaitForSignal) {
 		message += " for signal \"" + _signalData->getName() + "\"";
 	} else if (_waitType == Wait::WaitType::ScanForCondition) {
-		message += " until codition \"" + _condition + "\" is true";
+		message += " until condition \"" + _condition + "\" is true";
 	} else if (_waitType == Wait::WaitType::InfiniteHold) {
 		message += " indefinitely";
 	}
@@ -260,6 +260,9 @@ unsigned int Wait::_handlerForSignalDataEvent(SignalData* signalData) {
 }
 
 void Wait::_handlerForAfterProcessEventEvent(SimulationEvent* event) {
+	if (_waitType != Wait::WaitType::ScanForCondition) {
+		return;
+	}
 	double result = _parentModel->parseExpression(_condition);
 	//std::string message = "Condition \"" + _condition + "\" evaluates to " + std::to_string(result);
 	//traceSimulation(this, TraceManager::Level::L7_internal, _parentModel->getSimulation()->getSimulatedTime(), event->getCurrentEvent()->getEntity(), this, message);
