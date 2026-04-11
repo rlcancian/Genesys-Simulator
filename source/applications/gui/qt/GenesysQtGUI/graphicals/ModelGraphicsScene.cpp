@@ -707,9 +707,22 @@ void ModelGraphicsScene::setDiagramLayerState(bool diagramCreated, bool visible)
 }
 
 QList<QGraphicsItem*> ModelGraphicsScene::userDeletableItems(const QList<QGraphicsItem*>& items) const {
+    return userOperableItems(items);
+}
+
+QList<QGraphicsItem*> ModelGraphicsScene::userOperableItems(const QList<QGraphicsItem*>& items) const {
     QList<QGraphicsItem*> filtered;
-    // Keep data definitions editable/selectable but block their direct manual deletion.
+    // Keep internal infrastructure selectable when needed by logic, but not operable by edit actions.
     for (QGraphicsItem* item : items) {
+        if (item == nullptr) {
+            continue;
+        }
+        if (dynamic_cast<GraphicalComponentPort*>(item) != nullptr) {
+            continue;
+        }
+        if (dynamic_cast<GraphicalDiagramConnection*>(item) != nullptr) {
+            continue;
+        }
         const bool isDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr;
         const bool isComponent = dynamic_cast<GraphicalModelComponent*>(item) != nullptr;
         if (isDataDefinition && !isComponent) {

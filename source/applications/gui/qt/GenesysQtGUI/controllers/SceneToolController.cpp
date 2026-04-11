@@ -346,14 +346,14 @@ void SceneToolController::onActionDiagramsTriggered() {
     }
 }
 
-// Preserve select-all semantics by selecting every scene item.
+// Preserve select-all semantics while ignoring non-operable internal infrastructure items.
 void SceneToolController::onActionSelectAllTriggered() {
     ModelGraphicsScene* scene = _currentScene();
     if (scene == nullptr) {
         return;
     }
 
-    const QList<QGraphicsItem*> itemsToScene = scene->items();
+    const QList<QGraphicsItem*> itemsToScene = scene->userOperableItems(scene->items());
     for (QGraphicsItem* item : itemsToScene) {
         item->setSelected(true);
     }
