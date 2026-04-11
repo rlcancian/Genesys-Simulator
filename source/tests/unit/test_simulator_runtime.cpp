@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <fstream>
 #include <memory>
 #include <vector>
 
@@ -23,6 +24,8 @@
 #include "plugins/data/Set.h"
 #include "plugins/data/Label.h"
 #include "plugins/data/Storage.h"
+#include "plugins/data/File.h"
+#include "kernel/util/Util.h"
 #define private public
 #define protected public
 #include "plugins/data/EntityGroup.h"
@@ -640,6 +643,23 @@ public:
 class StorageProbe : public Storage {
 public:
     StorageProbe(Model* model, const std::string& name = "") : Storage(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class FileProbe : public File {
+public:
+    FileProbe(Model* model, const std::string& name = "") : File(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -3948,4 +3968,165 @@ TEST(SimulatorRuntimeTest, RemoveCheckValidatesRankExpressionsAndMinimalQueueCon
     valid.setRemoveEndRank("0");
     std::string validMessage;
     EXPECT_TRUE(valid.CheckProbe(validMessage)) << validMessage;
+}
+
+TEST(SimulatorRuntimeTest, FileDefaultsExposeSafeDescriptorMetadata) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FileProbe file(model, "FileDefaults");
+    EXPECT_EQ(file.getSystemFilename(), "");
+    EXPECT_EQ(file.getFilenameOnly(), "");
+    EXPECT_EQ(file.getPathOnly(), "");
+    EXPECT_EQ(file.getAccessModeAsString(), "Read");
+}
+
+TEST(SimulatorRuntimeTest, FileSettersAndGettersPreserveDescriptorInformation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FileProbe file(model, "FileSetterGetter");
+    const std::string configured = std::string("folder") + Util::DirSeparator() + "sub" + Util::DirSeparator() + "dataset.csv";
+    file.setSystemFilename(configured);
+    file.setAccessMode(File::AccessMode::Append);
+
+    EXPECT_EQ(file.getSystemFilename(), configured);
+    EXPECT_EQ(file.getFilenameOnly(), "dataset.csv");
+    EXPECT_EQ(file.getPathOnly(), std::string("folder") + Util::DirSeparator() + "sub");
+    EXPECT_EQ(file.getAccessModeAsString(), "Append");
+}
+
+TEST(SimulatorRuntimeTest, FileNormalizesPathSeparatorsBeforeDerivingFilenameAndPath) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FileProbe withSlashes(model, "FileSlashPath");
+    withSlashes.setSystemFilename("dirA/dirB/slash.txt");
+    EXPECT_EQ(withSlashes.getFilenameOnly(), "slash.txt");
+    EXPECT_EQ(withSlashes.getPathOnly(), std::string("dirA") + Util::DirSeparator() + "dirB");
+
+    FileProbe withBackslashes(model, "FileBackslashPath");
+    withBackslashes.setSystemFilename("dirX\\dirY\\backslash.txt");
+    EXPECT_EQ(withBackslashes.getFilenameOnly(), "backslash.txt");
+    EXPECT_EQ(withBackslashes.getPathOnly(), std::string("dirX") + Util::DirSeparator() + "dirY");
+}
+
+TEST(SimulatorRuntimeTest, FileCheckRejectsEmptyFilenameAndMissingReadableFile) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FileProbe emptyFilename(model, "FileCheckEmpty");
+    emptyFilename.setAccessMode(File::AccessMode::Write);
+    std::string emptyError;
+    EXPECT_FALSE(emptyFilename.CheckProbe(emptyError));
+    EXPECT_NE(emptyError.find("non-empty systemFilename"), std::string::npos);
+
+    FileProbe missingReadFile(model, "FileCheckMissingRead");
+    missingReadFile.setSystemFilename(std::string("missing") + Util::DirSeparator() + "missing-file-runtime-check.txt");
+    missingReadFile.setAccessMode(File::AccessMode::Read);
+    std::string missingReadError;
+    EXPECT_FALSE(missingReadFile.CheckProbe(missingReadError));
+    EXPECT_NE(missingReadError.find("requires an existing file"), std::string::npos);
+
+    FileProbe invalidAccessMode(model, "FileCheckInvalidMode");
+    invalidAccessMode.setSystemFilename(std::string("any") + Util::DirSeparator() + "path.txt");
+    invalidAccessMode.setAccessModeAsString("invalid-mode");
+    std::string invalidAccessModeError;
+    EXPECT_FALSE(invalidAccessMode.CheckProbe(invalidAccessModeError));
+    EXPECT_NE(invalidAccessModeError.find("unsupported accessMode"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, FileCheckAcceptsMinimalWritableConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FileProbe file(model, "FileCheckWrite");
+    file.setSystemFilename(std::string("new-output") + Util::DirSeparator() + "result.dat");
+    file.setAccessMode(File::AccessMode::Write);
+    std::string errorMessage;
+    EXPECT_TRUE(file.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, FileShowIncludesFilenamePathAndAccessModeMetadata) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FileProbe file(model, "FileShow");
+    file.setSystemFilename("show/path/file.txt");
+    file.setAccessMode(File::AccessMode::ReadWrite);
+
+    const std::string shown = file.show();
+    EXPECT_NE(shown.find("systemFilename=\"show"), std::string::npos);
+    EXPECT_NE(shown.find("filenameOnly=\"file.txt\""), std::string::npos);
+    EXPECT_NE(shown.find("pathOnly=\"show"), std::string::npos);
+    EXPECT_NE(shown.find("accessMode=\"ReadWrite\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, FilePersistenceRoundTripPreservesMetadata) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const std::string tempFile = Util::RunningPath() + Util::DirSeparator() + "sim_runtime_file_roundtrip.tmp";
+    {
+        std::ofstream temp(tempFile);
+        ASSERT_TRUE(temp.good());
+        temp << "probe";
+    }
+
+    FileProbe source(model, "FilePersistSource");
+    source.setSystemFilename(tempFile);
+    source.setAccessMode(File::AccessMode::ReadWrite);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    FileProbe loaded(model, "FilePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getSystemFilename(), source.getSystemFilename());
+    EXPECT_EQ(loaded.getFilenameOnly(), source.getFilenameOnly());
+    EXPECT_EQ(loaded.getPathOnly(), source.getPathOnly());
+    EXPECT_EQ(loaded.getAccessModeAsString(), "ReadWrite");
+
+    Util::FileDelete(tempFile);
+}
+
+TEST(SimulatorRuntimeTest, FileRegistersControlsAndPropertiesForMainMetadata) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FileProbe file(model, "FileControls");
+    ASSERT_GE(file.getProperties()->size(), 2u);
+
+    bool hasSystemFilenameProperty = false;
+    bool hasAccessModeProperty = false;
+    for (SimulationControl* property : *file.getProperties()->list()) {
+        if (property->getName() == "SystemFilename") {
+            hasSystemFilenameProperty = true;
+        } else if (property->getName() == "AccessMode") {
+            hasAccessModeProperty = true;
+        }
+    }
+    EXPECT_TRUE(hasSystemFilenameProperty);
+    EXPECT_TRUE(hasAccessModeProperty);
+
+    bool modelHasSystemFilenameControl = false;
+    bool modelHasAccessModeControl = false;
+    for (SimulationControl* control : *model->getControls()->list()) {
+        if (control->getName() == "SystemFilename" && control->getElementName() == file.getName()) {
+            modelHasSystemFilenameControl = true;
+        } else if (control->getName() == "AccessMode" && control->getElementName() == file.getName()) {
+            modelHasAccessModeControl = true;
+        }
+    }
+    EXPECT_TRUE(modelHasSystemFilenameControl);
+    EXPECT_TRUE(modelHasAccessModeControl);
 }
