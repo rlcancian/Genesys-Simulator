@@ -131,6 +131,8 @@ public: // editing graphic model
     void clearGraphicalModelDataDefinitions();
     void clearGraphicalDiagramConnections();
     void setDiagramLayerState(bool diagramCreated, bool visible);
+    // Return only items that can be directly manipulated by user edit commands.
+    QList<QGraphicsItem*> userOperableItems(const QList<QGraphicsItem*>& items) const;
     // Filter out non-deletable items from user-triggered delete flows.
     QList<QGraphicsItem*> userDeletableItems(const QList<QGraphicsItem*>& items) const;
     // Keep internal data-definition initial grouping opt-in during model rebuild only.

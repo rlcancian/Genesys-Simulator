@@ -70,12 +70,12 @@ void EditCommandController::onActionEditCutTriggered() const {
     (*_groupCopy)->clear();
     (*_drawCopy)->clear();
 
-    QList<QGraphicsItem*> selecteds = _graphicsView->scene()->selectedItems();
+    ModelGraphicsScene* currentScene = scene();
+    QList<QGraphicsItem*> selecteds = currentScene->userOperableItems(_graphicsView->scene()->selectedItems());
     if (selecteds.size() > 0) {
-        ModelGraphicsScene* currentScene = scene();
         *_cut = true;
 
-        for (QGraphicsItem* item : _graphicsView->scene()->selectedItems()) {
+        for (QGraphicsItem* item : selecteds) {
             QList<GraphicalModelComponent*> groupComponents;
             QList<GraphicalConnection*>* connGroup = new QList<GraphicalConnection*>();
 
@@ -137,12 +137,13 @@ void EditCommandController::onActionEditCopyTriggered() const {
     (*_groupCopy)->clear();
     (*_drawCopy)->clear();
 
-    QList<QGraphicsItem*> selected = _graphicsView->scene()->selectedItems();
+    ModelGraphicsScene* currentScene = scene();
+    QList<QGraphicsItem*> selected = currentScene->userOperableItems(_graphicsView->scene()->selectedItems());
     QList<GraphicalModelComponent*> gmcCopiesCopy;
 
     if (selected.size() > 0) {
         *_cut = false;
-        for (QGraphicsItem* item : _graphicsView->scene()->selectedItems()) {
+        for (QGraphicsItem* item : selected) {
             if (GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
                 gmc->setSelected(false);
                 (*_gmcCopies)->append(gmc);
