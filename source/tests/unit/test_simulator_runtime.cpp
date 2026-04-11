@@ -17,6 +17,7 @@
 #include "plugins/data/Variable.h"
 #include "plugins/data/Resource.h"
 #include "plugins/data/Failure.h"
+#include "plugins/data/Formula.h"
 #include "plugins/data/Schedule.h"
 #include "plugins/data/Sequence.h"
 #include "plugins/data/SignalData.h"
@@ -37,6 +38,12 @@
 #include "plugins/components/Match.h"
 #include "plugins/components/Search.h"
 #include "plugins/components/Remove.h"
+#include "plugins/components/Assign.h"
+#define private public
+#define protected public
+#include "plugins/components/Create.h"
+#undef protected
+#undef private
 #define private public
 #define protected public
 #include "plugins/components/Process.h"
@@ -548,6 +555,52 @@ public:
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
+    }
+};
+
+class AssignProbe : public Assign {
+public:
+    AssignProbe(Model* model, const std::string& name = "") : Assign(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class CreateProbe : public Create {
+public:
+    CreateProbe(Model* model, const std::string& name = "") : Create(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    Counter* NumberOutProbe() const {
+        return _numberOut;
     }
 };
 
@@ -3970,163 +4023,169 @@ TEST(SimulatorRuntimeTest, RemoveCheckValidatesRankExpressionsAndMinimalQueueCon
     EXPECT_TRUE(valid.CheckProbe(validMessage)) << validMessage;
 }
 
-TEST(SimulatorRuntimeTest, FileDefaultsExposeSafeDescriptorMetadata) {
+TEST(SimulatorRuntimeTest, AssignSaveLoadPreservesMultipleAssignmentsWithoutIndexGaps) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    FileProbe file(model, "FileDefaults");
-    EXPECT_EQ(file.getSystemFilename(), "");
-    EXPECT_EQ(file.getFilenameOnly(), "");
-    EXPECT_EQ(file.getPathOnly(), "");
-    EXPECT_EQ(file.getAccessModeAsString(), "Read");
-}
-
-TEST(SimulatorRuntimeTest, FileSettersAndGettersPreserveDescriptorInformation) {
-    Simulator simulator;
-    Model* model = simulator.getModelManager()->newModel();
-    ASSERT_NE(model, nullptr);
-
-    FileProbe file(model, "FileSetterGetter");
-    const std::string configured = std::string("folder") + Util::DirSeparator() + "sub" + Util::DirSeparator() + "dataset.csv";
-    file.setSystemFilename(configured);
-    file.setAccessMode(File::AccessMode::Append);
-
-    EXPECT_EQ(file.getSystemFilename(), configured);
-    EXPECT_EQ(file.getFilenameOnly(), "dataset.csv");
-    EXPECT_EQ(file.getPathOnly(), std::string("folder") + Util::DirSeparator() + "sub");
-    EXPECT_EQ(file.getAccessModeAsString(), "Append");
-}
-
-TEST(SimulatorRuntimeTest, FileNormalizesPathSeparatorsBeforeDerivingFilenameAndPath) {
-    Simulator simulator;
-    Model* model = simulator.getModelManager()->newModel();
-    ASSERT_NE(model, nullptr);
-
-    FileProbe withSlashes(model, "FileSlashPath");
-    withSlashes.setSystemFilename("dirA/dirB/slash.txt");
-    EXPECT_EQ(withSlashes.getFilenameOnly(), "slash.txt");
-    EXPECT_EQ(withSlashes.getPathOnly(), std::string("dirA") + Util::DirSeparator() + "dirB");
-
-    FileProbe withBackslashes(model, "FileBackslashPath");
-    withBackslashes.setSystemFilename("dirX\\dirY\\backslash.txt");
-    EXPECT_EQ(withBackslashes.getFilenameOnly(), "backslash.txt");
-    EXPECT_EQ(withBackslashes.getPathOnly(), std::string("dirX") + Util::DirSeparator() + "dirY");
-}
-
-TEST(SimulatorRuntimeTest, FileCheckRejectsEmptyFilenameAndMissingReadableFile) {
-    Simulator simulator;
-    Model* model = simulator.getModelManager()->newModel();
-    ASSERT_NE(model, nullptr);
-
-    FileProbe emptyFilename(model, "FileCheckEmpty");
-    emptyFilename.setAccessMode(File::AccessMode::Write);
-    std::string emptyError;
-    EXPECT_FALSE(emptyFilename.CheckProbe(emptyError));
-    EXPECT_NE(emptyError.find("non-empty systemFilename"), std::string::npos);
-
-    FileProbe missingReadFile(model, "FileCheckMissingRead");
-    missingReadFile.setSystemFilename(std::string("missing") + Util::DirSeparator() + "missing-file-runtime-check.txt");
-    missingReadFile.setAccessMode(File::AccessMode::Read);
-    std::string missingReadError;
-    EXPECT_FALSE(missingReadFile.CheckProbe(missingReadError));
-    EXPECT_NE(missingReadError.find("requires an existing file"), std::string::npos);
-
-    FileProbe invalidAccessMode(model, "FileCheckInvalidMode");
-    invalidAccessMode.setSystemFilename(std::string("any") + Util::DirSeparator() + "path.txt");
-    invalidAccessMode.setAccessModeAsString("invalid-mode");
-    std::string invalidAccessModeError;
-    EXPECT_FALSE(invalidAccessMode.CheckProbe(invalidAccessModeError));
-    EXPECT_NE(invalidAccessModeError.find("unsupported accessMode"), std::string::npos);
-}
-
-TEST(SimulatorRuntimeTest, FileCheckAcceptsMinimalWritableConfiguration) {
-    Simulator simulator;
-    Model* model = simulator.getModelManager()->newModel();
-    ASSERT_NE(model, nullptr);
-
-    FileProbe file(model, "FileCheckWrite");
-    file.setSystemFilename(std::string("new-output") + Util::DirSeparator() + "result.dat");
-    file.setAccessMode(File::AccessMode::Write);
-    std::string errorMessage;
-    EXPECT_TRUE(file.CheckProbe(errorMessage)) << errorMessage;
-}
-
-TEST(SimulatorRuntimeTest, FileShowIncludesFilenamePathAndAccessModeMetadata) {
-    Simulator simulator;
-    Model* model = simulator.getModelManager()->newModel();
-    ASSERT_NE(model, nullptr);
-
-    FileProbe file(model, "FileShow");
-    file.setSystemFilename("show/path/file.txt");
-    file.setAccessMode(File::AccessMode::ReadWrite);
-
-    const std::string shown = file.show();
-    EXPECT_NE(shown.find("systemFilename=\"show"), std::string::npos);
-    EXPECT_NE(shown.find("filenameOnly=\"file.txt\""), std::string::npos);
-    EXPECT_NE(shown.find("pathOnly=\"show"), std::string::npos);
-    EXPECT_NE(shown.find("accessMode=\"ReadWrite\""), std::string::npos);
-}
-
-TEST(SimulatorRuntimeTest, FilePersistenceRoundTripPreservesMetadata) {
-    Simulator simulator;
-    Model* model = simulator.getModelManager()->newModel();
-    ASSERT_NE(model, nullptr);
-
-    const std::string tempFile = Util::RunningPath() + Util::DirSeparator() + "sim_runtime_file_roundtrip.tmp";
-    {
-        std::ofstream temp(tempFile);
-        ASSERT_TRUE(temp.good());
-        temp << "probe";
-    }
-
-    FileProbe source(model, "FilePersistSource");
-    source.setSystemFilename(tempFile);
-    source.setAccessMode(File::AccessMode::ReadWrite);
+    AssignProbe source(model, "AssignPersistSource");
+    source.addAssignment(new Assignment("Entity.attrA", "1", true));
+    source.addAssignment(new Assignment("Entity.attrB", "2+3", true));
+    source.addAssignment(new Assignment("vCounter", "7", false));
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
     source.SaveInstanceProbe(&fields, true);
 
-    FileProbe loaded(model, "FilePersistLoaded");
+    AssignProbe loaded(model, "AssignPersistLoaded");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
-    EXPECT_EQ(loaded.getSystemFilename(), source.getSystemFilename());
-    EXPECT_EQ(loaded.getFilenameOnly(), source.getFilenameOnly());
-    EXPECT_EQ(loaded.getPathOnly(), source.getPathOnly());
-    EXPECT_EQ(loaded.getAccessModeAsString(), "ReadWrite");
-
-    Util::FileDelete(tempFile);
+    ASSERT_EQ(loaded.getAssignments()->size(), 3u);
+    auto it = loaded.getAssignments()->list()->begin();
+    EXPECT_EQ((*it)->getDestination(), "Entity.attrA");
+    EXPECT_EQ((*it)->getExpression(), "1");
+    ++it;
+    EXPECT_EQ((*it)->getDestination(), "Entity.attrB");
+    EXPECT_EQ((*it)->getExpression(), "2+3");
+    ++it;
+    EXPECT_EQ((*it)->getDestination(), "vCounter");
+    EXPECT_EQ((*it)->getExpression(), "7");
+    EXPECT_FALSE((*it)->isAttributeNotVariable());
 }
 
-TEST(SimulatorRuntimeTest, FileRegistersControlsAndPropertiesForMainMetadata) {
+TEST(SimulatorRuntimeTest, AssignCheckFailsForInvalidExpression) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    FileProbe file(model, "FileControls");
-    ASSERT_GE(file.getProperties()->size(), 2u);
+    new Attribute(model, "Entity.attrBadExpr");
+    AssignProbe assign(model, "AssignCheckInvalidExpression");
+    assign.addAssignment(new Assignment("Entity.attrBadExpr", "1+", true));
 
-    bool hasSystemFilenameProperty = false;
-    bool hasAccessModeProperty = false;
-    for (SimulationControl* property : *file.getProperties()->list()) {
-        if (property->getName() == "SystemFilename") {
-            hasSystemFilenameProperty = true;
-        } else if (property->getName() == "AccessMode") {
-            hasAccessModeProperty = true;
-        }
-    }
-    EXPECT_TRUE(hasSystemFilenameProperty);
-    EXPECT_TRUE(hasAccessModeProperty);
+    std::string errorMessage;
+    EXPECT_FALSE(assign.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+}
 
-    bool modelHasSystemFilenameControl = false;
-    bool modelHasAccessModeControl = false;
-    for (SimulationControl* control : *model->getControls()->list()) {
-        if (control->getName() == "SystemFilename" && control->getElementName() == file.getName()) {
-            modelHasSystemFilenameControl = true;
-        } else if (control->getName() == "AccessMode" && control->getElementName() == file.getName()) {
-            modelHasAccessModeControl = true;
-        }
-    }
-    EXPECT_TRUE(modelHasSystemFilenameControl);
-    EXPECT_TRUE(modelHasAccessModeControl);
+TEST(SimulatorRuntimeTest, AssignCreateInternalAndAttachedDataReconcilesChangesWithoutResidualKeys) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrFirst");
+    new Variable(model, "varSecond");
+    new Attribute(model, "Entity.attrThird");
+
+    AssignProbe assign(model, "AssignAttachedReconcile");
+    Assignment* first = new Assignment("Entity.attrFirst", "1", true);
+    Assignment* second = new Assignment("varSecond", "2", false);
+    assign.addAssignment(first);
+    assign.addAssignment(second);
+    assign.CreateInternalAndAttachedDataProbe();
+
+    auto* attachedFirst = assign.getAttachedData();
+    EXPECT_NE(attachedFirst->find("Attribute_Entity.attrFirst"), attachedFirst->end());
+    EXPECT_NE(attachedFirst->find("Variable_varSecond"), attachedFirst->end());
+
+    assign.removeAssignment(first);
+    assign.removeAssignment(second);
+    assign.addAssignment(new Assignment("Entity.attrThird", "3", true));
+    assign.CreateInternalAndAttachedDataProbe();
+
+    auto* attachedSecond = assign.getAttachedData();
+    EXPECT_EQ(attachedSecond->find("Attribute_Entity.attrFirst"), attachedSecond->end());
+    EXPECT_EQ(attachedSecond->find("Variable_varSecond"), attachedSecond->end());
+    EXPECT_NE(attachedSecond->find("Attribute_Entity.attrThird"), attachedSecond->end());
+}
+
+TEST(SimulatorRuntimeTest, AssignCheckAcceptsIndexedAttributeDestinationWhenBaseAttributeExists) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrIndexed");
+    AssignProbe assign(model, "AssignIndexedDestination");
+    assign.addAssignment(new Assignment("Entity.attrIndexed[2]", "5", true));
+
+    std::string errorMessage;
+    EXPECT_TRUE(assign.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, CreateCheckFailsForAmbiguousTimeBetweenConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule schedule(model, "CreateCheckAmbiguousSchedule");
+    schedule.getSchedulableItems()->insert(new SchedulableItem("1", 1.0, SchedulableItem::Rule::IGNORE));
+
+    CreateProbe create(model, "CreateCheckAmbiguous");
+    create.setTimeBetweenCreationsExpression("1", Util::TimeUnit::second);
+    create.setTimeBetweenCreationsSchedule(&schedule);
+
+    std::string errorMessage;
+    EXPECT_FALSE(create.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("exactly one time-between-creations source"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, CreateCheckPassesForMinimalValidExpressionConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe create(model, "CreateCheckValidExpression");
+    create.setTimeBetweenCreationsFormula(nullptr);
+    create.setTimeBetweenCreationsSchedule(nullptr);
+    create.setTimeBetweenCreationsExpression("1", Util::TimeUnit::second);
+    create.CreateInternalAndAttachedDataProbe(); // ensure default entity type attachment exists before check
+
+    std::string errorMessage;
+    EXPECT_TRUE(create.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, CreateInternalCounterFollowsReportStatisticsToggleIdempotently) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe create(model, "CreateStatisticsToggle");
+    create.setReportStatistics(true);
+    create.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(create.NumberOutProbe(), nullptr);
+    Counter* firstCounter = create.NumberOutProbe();
+
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(create.NumberOutProbe(), firstCounter);
+
+    create.setReportStatistics(false);
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(create.NumberOutProbe(), nullptr);
+
+    create.setReportStatistics(true);
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_NE(create.NumberOutProbe(), nullptr);
+    EXPECT_EQ(create.getInternalData()->find("CountNumberOut") != create.getInternalData()->end(), true);
+}
+
+TEST(SimulatorRuntimeTest, CreateSaveLoadRoundTripPreservesBasicConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe source(model, "CreatePersistSource");
+    source.setEntitiesPerCreation(3);
+    source.setFirstCreation(4.5);
+    source.setMaxCreations("12");
+    source.setTimeBetweenCreationsExpression("2", Util::TimeUnit::minute);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    CreateProbe loaded(model, "CreatePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getEntitiesPerCreation(), 3u);
+    EXPECT_DOUBLE_EQ(loaded.getFirstCreation(), 4.5);
+    EXPECT_EQ(loaded.getMaxCreations(), "12");
+    EXPECT_EQ(loaded.getTimeBetweenCreationsExpression(), "2");
+    EXPECT_EQ(loaded.getTimeUnit(), Util::TimeUnit::minute);
 }

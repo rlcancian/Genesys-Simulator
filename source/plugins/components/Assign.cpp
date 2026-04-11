@@ -13,6 +13,8 @@
 
 #include "Assign.h"
 #include <string>
+#include <algorithm>
+#include <cctype>
 #include "../../kernel/simulator/Model.h"
 #include "../../kernel/simulator/Attribute.h"
 #include "../../kernel/simulator/Simulator.h"
@@ -135,31 +137,30 @@ void Assign::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	for (std::list<Assignment*>::iterator it = _assignments->list()->begin(); it != _assignments->list()->end(); it++, i++) {
 		let = (*it);
 		let->saveInstance(fields, i, saveDefaultValues);
-		i++;
 	}
 }
 
 bool Assign::_check(std::string& errorMessage) {
 	bool resultAll = true;
+	_attachedDataClear();
 	int i = 0;
 	for (Assignment* let : *_assignments->list()) {
-		ModelDataDefinition* data = nullptr;
-		if (let->isAttributeNotVariable()) {
-			data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), let->getDestination());
-			if (data == nullptr) {
-				data = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Attribute>(_parentModel, let->getDestination());
-				_parentModel->getDataManager()->insert(data);
-			}
+		if (let->getDestination().empty()) {
+			errorMessage += "Assignment destination cannot be empty. ";
+			resultAll = false;
+			continue;
 		}
-		if (!let->isAttributeNotVariable()) {
-			data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), let->getDestination());
-			if (data == nullptr) {
-				data = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Variable>(_parentModel, let->getDestination());
-				_parentModel->getDataManager()->insert(data);
-			}
+
+		const std::string baseDestination = _destinationBaseName(let->getDestination());
+		const std::string destinationType = let->isAttributeNotVariable() ? Util::TypeOf<Attribute>() : Util::TypeOf<Variable>();
+		ModelDataDefinition* data = _parentModel->getDataManager()->getDataDefinition(destinationType, baseDestination);
+		if (data == nullptr) {
+			errorMessage += destinationType + " \"" + baseDestination + "\" for assignment destination is not in the model. ";
+			resultAll = false;
+		} else {
+			_attachedDataInsert("Assignment" + Util::StrIndex(i), data);
 		}
-		_attachedDataInsert("Assignment" + Util::StrIndex(i), data);
-		// @TODO: +++ Reimplement it. Since 201910, attributes may have index, just like "atrrib1[2]" or "att[10,1]". Because of that, the string may contain not only the name of the attribute, but also its index and therefore, fails on the test bellow.
+
 		resultAll &= _parentModel->checkExpression(let->getExpression(), "assignment", errorMessage);
 		i++;
 	}
@@ -167,20 +168,32 @@ bool Assign::_check(std::string& errorMessage) {
 }
 
 void Assign::_createInternalAndAttachedData() {
+	_attachedDataClear();
 	ModelDataManager* elems = _parentModel->getDataManager();
 	for (Assignment* ass : *_assignments->list()) {
-		ModelDataDefinition* elem;
+		ModelDataDefinition* elem = nullptr;
 		std::string name;
+		const std::string baseDestination = _destinationBaseName(ass->getDestination());
 		if (ass->isAttributeNotVariable()) {
 			name = "Attribute";
-			elem = elems->getDataDefinition(Util::TypeOf<Attribute>(), ass->getDestination());
+			elem = elems->getDataDefinition(Util::TypeOf<Attribute>(), baseDestination);
 		} else {
 			name = "Variable";
-			elem = elems->getDataDefinition(Util::TypeOf<Variable>(), ass->getDestination());
+			elem = elems->getDataDefinition(Util::TypeOf<Variable>(), baseDestination);
 		}
 		//assert elem != nullptr
 		if (elem != nullptr) {
-			this->_attachedDataInsert(name + "_" + ass->getDestination(), elem);
+			this->_attachedDataInsert(name + "_" + baseDestination, elem);
 		}
 	}
+}
+
+std::string Assign::_destinationBaseName(const std::string& destination) {
+	const std::string::size_type bracket = destination.find('[');
+	if (bracket == std::string::npos) {
+		return destination;
+	}
+	std::string base = destination.substr(0, bracket);
+	base.erase(std::find_if(base.rbegin(), base.rend(), [](unsigned char ch) { return !std::isspace(ch); }).base(), base.end());
+	return base;
 }
