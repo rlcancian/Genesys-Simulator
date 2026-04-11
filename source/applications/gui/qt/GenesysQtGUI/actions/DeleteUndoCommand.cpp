@@ -41,6 +41,9 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
 
             for (int i = 0; i < group->childItems().size(); i++) {
                 GraphicalModelComponent * component = dynamic_cast<GraphicalModelComponent *>(groupItem.group->childItems().at(i));
+                if (component == nullptr) {
+                    continue;
+                }
 
                 ComponentItem componentItem;
 

@@ -928,6 +928,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 vBar->setValue(qBound(vBar->minimum(), restoredViewpointY, vBar->maximum()));
             });
         }
+        _graphicsView->getScene()->setPersistedGuiRestoreInProgress(false);
 
         _console->append("\n");
         *_modelFilename = QString::fromStdString(filename);

@@ -40,6 +40,7 @@
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 #include "graphicals/GraphicalComponentPort.h"
 #include "graphicals/GraphicalConnection.h"
 #include "graphicals/GraphicalDiagramConnection.h"
@@ -702,6 +703,51 @@ void ModelGraphicsScene::clearGraphicalDiagramConnections() {
 void ModelGraphicsScene::setDiagramLayerState(bool diagramCreated, bool visible) {
     _diagram = diagramCreated;
     _visibleDiagram = visible;
+}
+
+QList<QGraphicsItem*> ModelGraphicsScene::userDeletableItems(const QList<QGraphicsItem*>& items) const {
+    QList<QGraphicsItem*> filtered;
+    // Keep data definitions editable/selectable but block their direct manual deletion.
+    for (QGraphicsItem* item : items) {
+        if (dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr) {
+            continue;
+        }
+        filtered.append(item);
+    }
+    return filtered;
+}
+
+void ModelGraphicsScene::ensureInitialInternalDataDefinitionGrouping(GraphicalModelDataDefinition* dataDefinition, GraphicalModelComponent* component) {
+    // Only auto-group on first materialization when there is no persisted GUI state restoration in progress.
+    if (_persistedGuiRestoreInProgress || dataDefinition == nullptr || component == nullptr || dataDefinition->group() != nullptr) {
+        return;
+    }
+
+    QGraphicsItemGroup* targetGroup = component->group();
+    if (targetGroup == nullptr) {
+        targetGroup = new QGraphicsItemGroup();
+        targetGroup->setHandlesChildEvents(false);
+        targetGroup->setFlag(QGraphicsItem::ItemIsSelectable, true);
+        targetGroup->setFlag(QGraphicsItem::ItemIsMovable, true);
+        addItem(targetGroup);
+        _graphicalGroups->append(targetGroup);
+        insertOldPositionItem(targetGroup, targetGroup->pos());
+    }
+
+    if (component->group() == nullptr) {
+        targetGroup->addToGroup(component);
+        insertOldPositionItem(component, component->pos());
+    }
+    targetGroup->addToGroup(dataDefinition);
+    insertOldPositionItem(dataDefinition, dataDefinition->pos());
+}
+
+void ModelGraphicsScene::setPersistedGuiRestoreInProgress(bool restoring) {
+    _persistedGuiRestoreInProgress = restoring;
+}
+
+bool ModelGraphicsScene::isPersistedGuiRestoreInProgress() const {
+    return _persistedGuiRestoreInProgress;
 }
 
 // trata da remocao das conexoes de um componente
@@ -2855,7 +2901,7 @@ void ModelGraphicsScene::keyPressEvent(QKeyEvent *keyEvent) {
         return;
     }
     QGraphicsScene::keyPressEvent(keyEvent);
-    QList<QGraphicsItem*> selected = this->selectedItems();
+    QList<QGraphicsItem*> selected = userDeletableItems(this->selectedItems());
     if (keyEvent->key() == Qt::Key_Delete && selected.size() > 0) {
         // Keep data definitions selectable, but block direct user-triggered deletion.
         selected.erase(std::remove_if(selected.begin(), selected.end(), [](QGraphicsItem* item) {
