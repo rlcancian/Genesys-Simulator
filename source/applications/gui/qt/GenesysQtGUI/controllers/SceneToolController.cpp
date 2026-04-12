@@ -9,6 +9,7 @@
 
 #include <QGraphicsItem>
 #include <QSignalBlocker>
+#include <QDebug>
 #include <Qt>
 
 // Store only narrow collaborators needed for Phase 10 scene-tool orchestration.
@@ -411,12 +412,14 @@ void SceneToolController::onActionGModelShowConnectTriggered() {
     }
 
     if (!_ui->actionGModelShowConnect->isChecked() && !_firstClickShowConnection) {
+        qInfo() << "Connection tool deactivated";
         _ui->actionGModelShowConnect->setChecked(false);
         scene->setConnectingStep(0);
         _graphicsView->setCursor(Qt::ArrowCursor);
     } else {
+        qInfo() << "Connection tool activated";
         _ui->actionGModelShowConnect->setChecked(true);
-        scene->setConnectingStep(1);
+        scene->beginConnection();
         _firstClickShowConnection = false;
     }
 }
