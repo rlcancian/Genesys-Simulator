@@ -109,7 +109,7 @@ void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			file << value << std::endl;
 		file.close();
 	}
-	_parentModel->getTracer()->traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Recording value " + std::to_string(value));
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Recording value " + std::to_string(value));
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 
 }

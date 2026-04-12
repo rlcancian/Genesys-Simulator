@@ -1,6 +1,9 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <fstream>
 #include <memory>
+#include <sys/stat.h>
+#include <unistd.h>
 #include <vector>
 
 #include "kernel/simulator/Simulator.h"
@@ -16,15 +19,46 @@
 #include "plugins/data/Variable.h"
 #include "plugins/data/Resource.h"
 #include "plugins/data/Failure.h"
+#include "plugins/data/Formula.h"
 #include "plugins/data/Schedule.h"
 #include "plugins/data/Sequence.h"
 #include "plugins/data/SignalData.h"
 #include "plugins/data/Station.h"
 #include "plugins/data/Set.h"
+#include "plugins/data/Label.h"
+#include "plugins/data/Storage.h"
+#include "plugins/data/File.h"
+#include "plugins/data/CppCompiler.h"
+#include "kernel/util/Util.h"
+#define private public
+#define protected public
 #include "plugins/data/EntityGroup.h"
+#undef protected
+#undef private
 #include "plugins/components/Delay.h"
 #include "plugins/components/Batch.h"
 #include "plugins/components/Separate.h"
+#include "plugins/components/Match.h"
+#include "plugins/components/Search.h"
+#include "plugins/components/Remove.h"
+#include "plugins/components/Assign.h"
+#include "plugins/components/Write.h"
+#define private public
+#define protected public
+#include "plugins/components/Buffer.h"
+#include "plugins/components/PickStation.h"
+#undef protected
+#undef private
+#define private public
+#define protected public
+#include "plugins/components/Create.h"
+#undef protected
+#undef private
+#define private public
+#define protected public
+#include "plugins/components/Process.h"
+#undef protected
+#undef private
 #define private public
 #define protected public
 #include "plugins/components/Wait.h"
@@ -325,6 +359,14 @@ public:
         }
         return freed;
     }
+
+    unsigned int TriggerSignalHandlerProbe(SignalData* signalData) {
+        return _handlerForSignalDataEvent(signalData);
+    }
+
+    void TriggerAfterProcessHandlerProbe(SimulationEvent* event) {
+        _handlerForAfterProcessEventEvent(event);
+    }
 };
 
 class SignalProbe : public Signal {
@@ -349,6 +391,90 @@ public:
 
     SignalData* SignalDataPtrProbe() const {
         return _signalData;
+    }
+};
+
+class ProcessProbe : public Process {
+public:
+    ProcessProbe(Model* model, const std::string& name = "") : Process(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    Seize* SeizePtrProbe() const { return _seize; }
+    Delay* DelayPtrProbe() const { return _delay; }
+    Release* ReleasePtrProbe() const { return _release; }
+};
+
+class WriteProbe : public Write {
+public:
+    WriteProbe(Model* model, const std::string& name = "") : Write(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class BufferProbe : public Buffer {
+public:
+    BufferProbe(Model* model, const std::string& name = "") : Buffer(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    std::vector<Entity*>* RawBufferProbe() const {
+        return _buffer;
+    }
+};
+
+class PickStationProbe : public PickStation {
+public:
+    PickStationProbe(Model* model, const std::string& name = "") : PickStation(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
     }
 };
 
@@ -406,6 +532,144 @@ public:
 
     void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
         _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class EntityGroupProbe : public EntityGroup {
+public:
+    EntityGroupProbe(Model* model, const std::string& name = "") : EntityGroup(model, name) {}
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    StatisticsCollector* NumberInGroupCollectorProbe() const {
+        return _cstatNumberInGroup;
+    }
+};
+
+class MatchProbe : public Match {
+public:
+    MatchProbe(Model* model, const std::string& name = "") : Match(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class SearchProbe : public Search {
+public:
+    SearchProbe(Model* model, const std::string& name = "") : Search(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class RemoveProbe : public Remove {
+public:
+    RemoveProbe(Model* model, const std::string& name = "") : Remove(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class AssignProbe : public Assign {
+public:
+    AssignProbe(Model* model, const std::string& name = "") : Assign(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
+class CreateProbe : public Create {
+public:
+    CreateProbe(Model* model, const std::string& name = "") : Create(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    Counter* NumberOutProbe() const {
+        return _numberOut;
     }
 };
 
@@ -478,6 +742,78 @@ public:
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
+    }
+};
+
+class LabelProbe : public Label {
+public:
+    LabelProbe(Model* model, const std::string& name = "") : Label(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class StorageProbe : public Storage {
+public:
+    StorageProbe(Model* model, const std::string& name = "") : Storage(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class FileProbe : public File {
+public:
+    FileProbe(Model* model, const std::string& name = "") : File(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class CppCompilerProbe : public CppCompiler {
+public:
+    CppCompilerProbe(Model* model, const std::string& name = "") : CppCompiler(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    CompilationResult InvokeCompilerProbe(const std::string& command) {
+        return _invokeCompiler(command);
     }
 };
 
@@ -1923,6 +2259,106 @@ TEST(SimulatorRuntimeTest, SequenceCheckPassesForValidSteps) {
     EXPECT_TRUE(errorMessage.empty());
 }
 
+TEST(SimulatorRuntimeTest, LabelCheckFailsWithoutEnteringComponent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    LabelProbe label(model, "LabelCheckMissingDestination");
+    std::string errorMessage;
+    EXPECT_FALSE(label.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("entering component was not defined"), std::string::npos);
+    EXPECT_EQ(label.getAttachedData()->count("EnteringLabelComponent"), 0u);
+}
+
+TEST(SimulatorRuntimeTest, LabelCheckPassesWithValidEnteringComponentAndAttachesIt) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    LabelProbe label(model, "LabelCheckValidDestination");
+    CollectorSinkComponentProbe sink(model, "LabelCheckSink");
+    label.setEnterIntoLabelComponent(&sink);
+
+    std::string errorMessage;
+    EXPECT_TRUE(label.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+    ASSERT_EQ(label.getAttachedData()->count("EnteringLabelComponent"), 1u);
+    EXPECT_EQ(label.getAttachedData()->at("EnteringLabelComponent"), &sink);
+}
+
+TEST(SimulatorRuntimeTest, LabelLoadWithMissingEnteringComponentRemainsTraceableAndCheckFails) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    fields.saveField("typename", Util::TypeOf<Label>());
+    fields.saveField("id", 1u);
+    fields.saveField("name", "LabelLoadMissingDestination");
+    fields.saveField("reportStatistics", true);
+    fields.saveField("label", "Dock-A");
+    fields.saveField("enteringComponentName", "ComponentThatDoesNotExist");
+
+    LabelProbe loaded(model, "LabelLoadMissingDestination");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getEnterIntoLabelComponent(), nullptr);
+    EXPECT_EQ(loaded.getLabel(), "Dock-A");
+
+    std::string errorMessage;
+    EXPECT_FALSE(loaded.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("entering component was not defined"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, LabelSendEntityWithoutDestinationDoesNotCrash) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    LabelProbe label(model, "LabelSafeSendWithoutDestination");
+    EXPECT_NO_THROW(label.sendEntityToLabelComponent(nullptr, 0.0));
+}
+
+TEST(SimulatorRuntimeTest, LabelShowIncludesLabelAndEnteringComponent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    LabelProbe label(model, "LabelShowProbe");
+    CollectorSinkComponentProbe sink(model, "LabelShowSink");
+    label.setLabel("Station-Transfer");
+    label.setEnterIntoLabelComponent(&sink);
+
+    const std::string shown = label.show();
+    EXPECT_NE(shown.find("label=\"Station-Transfer\""), std::string::npos);
+    EXPECT_NE(shown.find("enteringComponent=LabelShowSink"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, LabelSaveAndLoadRoundTripPreservesLabelAndEnteringComponentName) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CollectorSinkComponentProbe sink(model, "LabelPersistSink");
+    LabelProbe source(model, "LabelPersistSource");
+    source.setLabel("QueueToSink");
+    source.setEnterIntoLabelComponent(&sink);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    LabelProbe loaded(model, "LabelPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getLabel(), "QueueToSink");
+    EXPECT_EQ(loaded.getEnterIntoLabelComponent(), &sink);
+
+    std::string errorMessage;
+    EXPECT_TRUE(loaded.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
 TEST(SimulatorRuntimeTest, SetDestructorDeletesOwnedContainerButNotMembers) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -2052,6 +2488,138 @@ TEST(SimulatorRuntimeTest, SetRecheckRemovesObsoleteAttachedMembers) {
     EXPECT_EQ(attached->count("SetRecheck.SetRecheckA"), 0u);
     ASSERT_EQ(attached->count("SetRecheck.SetRecheckB"), 1u);
     EXPECT_EQ(attached->at("SetRecheck.SetRecheckB"), &memberB);
+}
+
+TEST(SimulatorRuntimeTest, StorageDefaultsAreInitializedAsExpected) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorageDefaults");
+    EXPECT_EQ(storage.getCapacity(), 10u);
+    EXPECT_DOUBLE_EQ(storage.getTotalArea(), 1.0);
+    EXPECT_DOUBLE_EQ(storage.getUnitsPerArea(), 1.0);
+}
+
+TEST(SimulatorRuntimeTest, StorageSettersAndGettersRemainCoherent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorageSetters");
+    storage.setCapacity(25u);
+    storage.setTotalArea(42.5);
+    storage.setUnitsPerArea(3.75);
+
+    EXPECT_EQ(storage.getCapacity(), 25u);
+    EXPECT_DOUBLE_EQ(storage.getTotalArea(), 42.5);
+    EXPECT_DOUBLE_EQ(storage.getUnitsPerArea(), 3.75);
+}
+
+TEST(SimulatorRuntimeTest, StorageCheckFailsForInvalidValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "StorageInvalid");
+
+    storage.setCapacity(0u);
+    storage.setTotalArea(1.0);
+    storage.setUnitsPerArea(1.0);
+    std::string invalidCapacityError;
+    EXPECT_FALSE(storage.CheckProbe(invalidCapacityError));
+    EXPECT_NE(invalidCapacityError.find("Capacity must be greater than zero"), std::string::npos);
+
+    storage.setCapacity(1u);
+    storage.setTotalArea(0.0);
+    storage.setUnitsPerArea(1.0);
+    std::string invalidTotalAreaError;
+    EXPECT_FALSE(storage.CheckProbe(invalidTotalAreaError));
+    EXPECT_NE(invalidTotalAreaError.find("TotalArea must be greater than zero"), std::string::npos);
+
+    storage.setCapacity(1u);
+    storage.setTotalArea(1.0);
+    storage.setUnitsPerArea(-1.0);
+    std::string invalidUnitsPerAreaError;
+    EXPECT_FALSE(storage.CheckProbe(invalidUnitsPerAreaError));
+    EXPECT_NE(invalidUnitsPerAreaError.find("UnitsPerArea must be greater than zero"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, StorageCheckPassesForValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe storage(model, "StorageValid");
+    storage.setCapacity(7u);
+    storage.setTotalArea(2.5);
+    storage.setUnitsPerArea(4.0);
+
+    std::string errorMessage;
+    EXPECT_TRUE(storage.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, StorageShowIncludesMainConfiguredParameters) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorageShow");
+    storage.setCapacity(15u);
+    storage.setTotalArea(6.5);
+    storage.setUnitsPerArea(2.25);
+
+    const std::string info = storage.show();
+    EXPECT_NE(info.find("capacity=15"), std::string::npos);
+    EXPECT_NE(info.find("totalArea=6.5"), std::string::npos);
+    EXPECT_NE(info.find("unitsPerArea=2.25"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, StorageSaveAndLoadRoundTripPreservesParameters) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    StorageProbe source(model, "StorageSaveSource");
+    source.setCapacity(18u);
+    source.setTotalArea(11.5);
+    source.setUnitsPerArea(5.25);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    StorageProbe loaded(model, "StorageSaveLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getCapacity(), 18u);
+    EXPECT_DOUBLE_EQ(loaded.getTotalArea(), 11.5);
+    EXPECT_DOUBLE_EQ(loaded.getUnitsPerArea(), 5.25);
+}
+
+TEST(SimulatorRuntimeTest, StorageRegistersMainControlsAsOwnedProperties) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Storage storage(model, "StorageProperties");
+    auto* controls = storage.getSimulationControls();
+    ASSERT_NE(controls, nullptr);
+    EXPECT_GE(controls->size(), 3u);
+
+    bool hasCapacity = false;
+    bool hasTotalArea = false;
+    bool hasUnitsPerArea = false;
+    for (SimulationControl* control : *controls->list()) {
+        ASSERT_NE(control, nullptr);
+        hasCapacity = hasCapacity || control->getName() == "Capacity";
+        hasTotalArea = hasTotalArea || control->getName() == "TotalArea";
+        hasUnitsPerArea = hasUnitsPerArea || control->getName() == "UnitsPerArea";
+    }
+
+    EXPECT_TRUE(hasCapacity);
+    EXPECT_TRUE(hasTotalArea);
+    EXPECT_TRUE(hasUnitsPerArea);
 }
 
 TEST(SimulatorRuntimeTest, StationCreateInternalInitiallyCreatesCollectorsWhenStatisticsEnabled) {
@@ -2381,6 +2949,11 @@ TEST(SimulatorRuntimeTest, WaitCheckValidatesWaitForSignalContractAndLimitExpres
     std::string invalidLimitError;
     EXPECT_FALSE(wait.CheckProbe(invalidLimitError));
     EXPECT_NE(invalidLimitError.find("LimitExpression"), std::string::npos);
+
+    wait.setLimitExpression("1");
+    std::string validLimitError;
+    EXPECT_TRUE(wait.CheckProbe(validLimitError));
+    EXPECT_TRUE(validLimitError.empty());
 }
 
 TEST(SimulatorRuntimeTest, WaitCheckValidatesScanConditionExpression) {
@@ -2397,6 +2970,231 @@ TEST(SimulatorRuntimeTest, WaitCheckValidatesScanConditionExpression) {
     std::string errorMessage;
     EXPECT_FALSE(wait.CheckProbe(errorMessage));
     EXPECT_NE(errorMessage.find("Condition"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, WaitForSignalLimitZeroDoesNotReleaseQueuedEntities) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WaitProbe wait(model, "WaitSignalLimitZero");
+    Queue* queue = new Queue(model, "WaitSignalLimitZeroQueue");
+    SignalDataProbe signalData(model, "WaitSignalLimitZeroData");
+
+    wait.setQueue(queue);
+    wait.setWaitType(Wait::WaitType::WaitForSignal);
+    wait.setSignalData(&signalData);
+    wait.setLimitExpression("0");
+
+    signalData.generateSignal(0.0, 10u);
+    EXPECT_EQ(wait.TriggerSignalHandlerProbe(&signalData), 0u);
+    EXPECT_EQ(wait.getQueue()->size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, SignalAndWaitSharedSignalDataRemainCoherentAfterRecheck) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalDataProbe signalData(model, "RecheckSharedSignalData");
+    Queue* queue = new Queue(model, "RecheckSharedWaitQueue");
+
+    WaitProbe wait(model, "RecheckSharedWait");
+    wait.setQueue(queue);
+    wait.setWaitType(Wait::WaitType::WaitForSignal);
+    wait.setSignalData(&signalData);
+    wait.setLimitExpression("1");
+
+    SignalProbe signal(model, "RecheckSharedSignal");
+    signal.setSignalData(&signalData);
+    signal.setLimitExpression("1");
+
+    wait.CreateInternalAndAttachedDataProbe();
+    std::string firstWaitError;
+    std::string firstSignalError;
+    EXPECT_TRUE(wait.CheckProbe(firstWaitError));
+    EXPECT_TRUE(signal.CheckProbe(firstSignalError));
+
+    std::string secondWaitError;
+    std::string secondSignalError;
+    EXPECT_TRUE(wait.CheckProbe(secondWaitError));
+    EXPECT_TRUE(signal.CheckProbe(secondSignalError));
+
+    EXPECT_EQ(wait._signalData, &signalData);
+    EXPECT_EQ(signal.SignalDataPtrProbe(), &signalData);
+    EXPECT_EQ(wait._signalData, signal.SignalDataPtrProbe());
+    EXPECT_TRUE(signalData.hasSignalDataEventHandler(&wait));
+}
+
+TEST(SimulatorRuntimeTest, BufferCheckFailsWhenCapacityIsZero) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferCheckCapZero");
+    buffer.setCapacity(0);
+
+    std::string errorMessage;
+    EXPECT_FALSE(buffer.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("Capacity greater than zero"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BufferCheckRequiresSignalDataWhenAdvanceOnSignal) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferCheckSignalRequired");
+    buffer.setCapacity(2);
+    buffer.setAdvanceOn(Buffer::AdvanceOn::Signal);
+    buffer.setSignal(nullptr);
+
+    std::string errorMessage;
+    EXPECT_FALSE(buffer.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("requires a valid SignalData"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BufferRecheckKeepsInternalVectorSizedToCapacityIdempotently) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferRecheckResize");
+    buffer.setCapacity(4);
+    buffer.InitBetweenReplicationsProbe();
+    ASSERT_EQ(buffer.RawBufferProbe()->size(), 4u);
+
+    buffer.setCapacity(2);
+    std::string checkError;
+    EXPECT_TRUE(buffer.CheckProbe(checkError));
+    EXPECT_EQ(buffer.RawBufferProbe()->size(), 2u);
+
+    std::string secondCheckError;
+    EXPECT_TRUE(buffer.CheckProbe(secondCheckError));
+    EXPECT_EQ(buffer.RawBufferProbe()->size(), 2u);
+}
+
+TEST(SimulatorRuntimeTest, BufferSignalArrivalOccupiesFirstFreePositionInsteadOfLastByDefault) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SignalData signal(model, "BufferSignalModeSignal");
+    BufferProbe buffer(model, "BufferSignalMode");
+    buffer.setAdvanceOn(Buffer::AdvanceOn::Signal);
+    buffer.setSignal(&signal);
+    buffer.setCapacity(3);
+    buffer.InitBetweenReplicationsProbe();
+
+    Entity* existing = model->createEntity("BufferExisting", true);
+    Entity* arriving = model->createEntity("BufferArriving", true);
+    buffer.RawBufferProbe()->at(0) = existing;
+    buffer.RawBufferProbe()->at(1) = nullptr;
+    buffer.RawBufferProbe()->at(2) = nullptr;
+
+    buffer.DispatchEventProbe(arriving);
+    EXPECT_EQ(buffer.RawBufferProbe()->at(0), existing);
+    EXPECT_EQ(buffer.RawBufferProbe()->at(1), arriving);
+    EXPECT_EQ(buffer.RawBufferProbe()->at(2), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, BufferNewArrivalsDoesNotForwardNullEntityWhenFirstSlotIsEmpty) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BufferProbe buffer(model, "BufferNewArrivalsNullGuard");
+    CollectorSinkComponentProbe sink(model, "BufferNewArrivalsNullGuardSink");
+    buffer.connectTo(&sink);
+    buffer.setAdvanceOn(Buffer::AdvanceOn::NewArrivals);
+    buffer.setCapacity(2);
+    buffer.InitBetweenReplicationsProbe();
+
+    Entity* retained = model->createEntity("BufferRetained", true);
+    Entity* arriving = model->createEntity("BufferIncoming", true);
+    buffer.RawBufferProbe()->at(0) = nullptr;
+    buffer.RawBufferProbe()->at(1) = retained;
+
+    buffer.DispatchEventProbe(arriving);
+    DrainFutureEvents(model);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+    EXPECT_EQ(buffer.RawBufferProbe()->at(0), retained);
+    EXPECT_EQ(buffer.RawBufferProbe()->at(1), arriving);
+}
+
+TEST(SimulatorRuntimeTest, PickStationCheckFailsWithoutPickableItems) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PickStationProbe pick(model, "PickNoItems");
+    pick.setSaveAttribute("Entity.PickStation");
+
+    std::string errorMessage;
+    EXPECT_FALSE(pick.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("requires at least one PickableStationItem"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, PickStationCheckFailsWhenAnyItemHasNoStation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PickStationProbe pick(model, "PickNullStation");
+    pick.setSaveAttribute("Entity.PickStation");
+    pick.addPickableStationItem(new PickableStationItem(static_cast<Station*>(nullptr), "1"));
+
+    std::string errorMessage;
+    EXPECT_FALSE(pick.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("without a valid Station"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, PickStationCheckFailsWithInvalidExpressionWhenExpressionConditionIsActive) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station station(model, "PickExprStation");
+    PickStationProbe pick(model, "PickInvalidExpression");
+    pick.setSaveAttribute("Entity.PickStation");
+    pick.setPickConditionExpression(true);
+    pick.setPickConditionNumberInQueue(false);
+    pick.setPickConditionNumberBusyResource(false);
+    pick.addPickableStationItem(new PickableStationItem(&station, "1+"));
+
+    std::string errorMessage;
+    EXPECT_FALSE(pick.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("Expression"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, PickStationDispatchChoosesStationAndStoresSelectedId) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Station stationA(model, "PickStationA");
+    Station stationB(model, "PickStationB");
+    Attribute savedStationAttribute(model, "Entity.PickStation");
+    PickStationProbe pick(model, "PickValidDispatch");
+    CollectorSinkComponentProbe sink(model, "PickValidDispatchSink");
+    pick.connectTo(&sink);
+    pick.setSaveAttribute("Entity.PickStation");
+    pick.setTestCondition(PickStation::TestCondition::MINIMUM);
+    pick.setPickConditionExpression(true);
+    pick.setPickConditionNumberInQueue(false);
+    pick.setPickConditionNumberBusyResource(false);
+    pick.addPickableStationItem(new PickableStationItem(&stationA, "5"));
+    pick.addPickableStationItem(new PickableStationItem(&stationB, "1"));
+
+    std::string checkError;
+    ASSERT_TRUE(pick.CheckProbe(checkError)) << checkError;
+
+    Entity* entity = model->createEntity("PickDispatchEntity", true);
+    pick.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], entity);
+    EXPECT_EQ(entity->getAttributeValue(savedStationAttribute.getId()), stationB.getId());
 }
 
 TEST(SimulatorRuntimeTest, DelayCreateInternalInitiallyCreatesStatisticsCollectorWhenEnabled) {
@@ -2605,6 +3403,187 @@ TEST(SimulatorRuntimeTest, SignalDataCheckPassesWithValidHandler) {
     EXPECT_TRUE(errorMessage.empty());
 }
 
+TEST(SimulatorRuntimeTest, MatchAnyReleasesOnlyWhenAllQueuesHaveEnoughEntities) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    MatchProbe match(model, "MatchAnyBasic");
+    CollectorSinkComponentProbe sink(model, "MatchAnyBasicSink");
+    match.connectTo(&sink);
+    match.setRule(Match::Rule::Any);
+    match.setNumberOfQueues(2);
+    match.setMatchSize("1");
+    match.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "MatchAnyBasicPart");
+    Entity* q0e1 = model->createEntity("MatchAnyQ0E1", true);
+    Entity* q1e1 = model->createEntity("MatchAnyQ1E1", true);
+    q0e1->setEntityType(partType);
+    q1e1->setEntityType(partType);
+
+    match.DispatchEventProbe(q0e1, 0);
+    DrainFutureEvents(model);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+
+    match.DispatchEventProbe(q1e1, 1);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], q0e1);
+    EXPECT_EQ(sink.ReceivedEntities()[1], q1e1);
+}
+
+TEST(SimulatorRuntimeTest, MatchAnyWithMatchSizeTwoReleasesExactlyTwoPerQueueAndKeepsOverflowWaiting) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    MatchProbe match(model, "MatchAnySizeTwo");
+    CollectorSinkComponentProbe sink(model, "MatchAnySizeTwoSink");
+    match.connectTo(&sink);
+    match.setRule(Match::Rule::Any);
+    match.setNumberOfQueues(2);
+    match.setMatchSize("2");
+    match.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "MatchAnySizeTwoPart");
+    Entity* q0e1 = model->createEntity("MatchAny2Q0E1", true);
+    Entity* q0e2 = model->createEntity("MatchAny2Q0E2", true);
+    Entity* q0e3 = model->createEntity("MatchAny2Q0E3", true);
+    Entity* q1e1 = model->createEntity("MatchAny2Q1E1", true);
+    Entity* q1e2 = model->createEntity("MatchAny2Q1E2", true);
+    q0e1->setEntityType(partType);
+    q0e2->setEntityType(partType);
+    q0e3->setEntityType(partType);
+    q1e1->setEntityType(partType);
+    q1e2->setEntityType(partType);
+
+    match.DispatchEventProbe(q0e1, 0);
+    match.DispatchEventProbe(q0e2, 0);
+    match.DispatchEventProbe(q0e3, 0);
+    match.DispatchEventProbe(q1e1, 1);
+    match.DispatchEventProbe(q1e2, 1);
+    DrainFutureEvents(model);
+
+    Queue* q0 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "MatchAnySizeTwo.Queue0"));
+    Queue* q1 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "MatchAnySizeTwo.Queue1"));
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
+    EXPECT_EQ(q0->size(), 1u);
+    EXPECT_EQ(q1->size(), 0u);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 4u);
+}
+
+TEST(SimulatorRuntimeTest, MatchByAttributeSynchronizesOnlyCompatibleAttributeValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    (void)new Attribute(model, "Color");
+    MatchProbe match(model, "MatchByAttribute");
+    CollectorSinkComponentProbe sink(model, "MatchByAttributeSink");
+    match.connectTo(&sink);
+    match.setRule(Match::Rule::ByAttribute);
+    match.setNumberOfQueues(2);
+    match.setMatchSize("1");
+    match.setAttributeName("Color");
+    match.CreateInternalAndAttachedDataProbe();
+
+    EntityType* partType = new EntityType(model, "MatchByAttributePart");
+    Entity* q0Color1 = model->createEntity("MatchByAttrQ0Color1", true);
+    Entity* q1Color2 = model->createEntity("MatchByAttrQ1Color2", true);
+    Entity* q0Color2 = model->createEntity("MatchByAttrQ0Color2", true);
+    q0Color1->setEntityType(partType);
+    q1Color2->setEntityType(partType);
+    q0Color2->setEntityType(partType);
+    q0Color1->setAttributeValue("Color", 1.0);
+    q1Color2->setAttributeValue("Color", 2.0);
+    q0Color2->setAttributeValue("Color", 2.0);
+
+    match.DispatchEventProbe(q0Color1, 0);
+    match.DispatchEventProbe(q1Color2, 1);
+    DrainFutureEvents(model);
+    EXPECT_TRUE(sink.ReceivedEntities().empty());
+
+    match.DispatchEventProbe(q0Color2, 0);
+    DrainFutureEvents(model);
+
+    Queue* q0 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "MatchByAttribute.Queue0"));
+    Queue* q1 = dynamic_cast<Queue*>(model->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), "MatchByAttribute.Queue1"));
+    ASSERT_NE(q0, nullptr);
+    ASSERT_NE(q1, nullptr);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(q0->size(), 1u);
+    EXPECT_EQ(q1->size(), 0u);
+    EXPECT_EQ(sink.ReceivedEntities()[0], q0Color2);
+    EXPECT_EQ(sink.ReceivedEntities()[1], q1Color2);
+}
+
+TEST(SimulatorRuntimeTest, MatchPersistenceRoundTripPreservesRuleQueueCountMatchSizeAndAttribute) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    MatchProbe source(model, "MatchPersistSource");
+    source.setRule(Match::Rule::ByAttribute);
+    source.setNumberOfQueues(4);
+    source.setMatchSize("3");
+    source.setAttributeName("Color");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    MatchProbe loaded(model, "MatchPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRule(), Match::Rule::ByAttribute);
+    EXPECT_EQ(loaded.getNumberOfQueues(), 4u);
+    EXPECT_EQ(loaded.getMatchSize(), "3");
+    EXPECT_EQ(loaded.getAttributeName(), "Color");
+}
+
+TEST(SimulatorRuntimeTest, MatchCheckValidatesQueueCountMatchSizeAndByAttributeContract) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    MatchProbe invalidQueues(model, "MatchCheckInvalidQueues");
+    invalidQueues.setRule(Match::Rule::Any);
+    invalidQueues.setNumberOfQueues(1);
+    invalidQueues.setMatchSize("1");
+    std::string invalidQueuesError;
+    EXPECT_FALSE(invalidQueues.CheckProbe(invalidQueuesError));
+    EXPECT_NE(invalidQueuesError.find("NumberOfQueues"), std::string::npos);
+
+    MatchProbe invalidMatchSize(model, "MatchCheckInvalidExpression");
+    invalidMatchSize.setRule(Match::Rule::Any);
+    invalidMatchSize.setNumberOfQueues(2);
+    invalidMatchSize.setMatchSize("bad_expr(");
+    std::string invalidExpressionError;
+    EXPECT_FALSE(invalidMatchSize.CheckProbe(invalidExpressionError));
+    EXPECT_NE(invalidExpressionError.find("MatchSize"), std::string::npos);
+
+    MatchProbe invalidAttribute(model, "MatchCheckInvalidAttribute");
+    invalidAttribute.setRule(Match::Rule::ByAttribute);
+    invalidAttribute.setNumberOfQueues(2);
+    invalidAttribute.setMatchSize("1");
+    invalidAttribute.setAttributeName("MissingColorAttribute");
+    std::string invalidAttributeError;
+    EXPECT_FALSE(invalidAttribute.CheckProbe(invalidAttributeError));
+    EXPECT_NE(invalidAttributeError.find("AttributeName"), std::string::npos);
+
+    (void)new Attribute(model, "Color");
+    MatchProbe valid(model, "MatchCheckValid");
+    valid.setRule(Match::Rule::ByAttribute);
+    valid.setNumberOfQueues(2);
+    valid.setMatchSize("1");
+    valid.setAttributeName("Color");
+    std::string validError;
+    EXPECT_TRUE(valid.CheckProbe(validError));
+    EXPECT_TRUE(validError.empty());
+}
+
 TEST(SimulatorRuntimeTest, BatchAnyFormsSingleBatchWithAtLeastBatchSizeAndKeepsOverflowQueued) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -2810,4 +3789,927 @@ TEST(SimulatorRuntimeTest, SeparateCheckAndValidGroupReferenceRemainCoherent) {
     ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
     EXPECT_EQ(sink.ReceivedEntities()[0], member);
     EXPECT_EQ(member->getAttributeValue("Entity.Group"), 0.0);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupInsertAndGetExistingGroupPreservesInsertionOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupExisting");
+    EntityType* partType = new EntityType(model, "EntityGroupExistingPart");
+    Entity* e1 = model->createEntity("GroupE1", true);
+    Entity* e2 = model->createEntity("GroupE2", true);
+    e1->setEntityType(partType);
+    e2->setEntityType(partType);
+
+    const unsigned int groupKey = 101u;
+    entityGroup.insertElement(groupKey, e1);
+    entityGroup.insertElement(groupKey, e2);
+    List<Entity*>* members = entityGroup.getGroup(groupKey);
+
+    ASSERT_NE(members, nullptr);
+    ASSERT_EQ(members->size(), 2u);
+    EXPECT_EQ(members->getAtRank(0), e1);
+    EXPECT_EQ(members->getAtRank(1), e2);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupGetGroupReturnsNullptrForMissingGroup) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupMissing");
+    EXPECT_EQ(entityGroup.getGroup(999u), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupRemoveElementDeletesEmptyGroupEntry) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupRemove");
+    EntityType* partType = new EntityType(model, "EntityGroupRemovePart");
+    Entity* e1 = model->createEntity("GroupRemoveE1", true);
+    e1->setEntityType(partType);
+
+    const unsigned int groupKey = 202u;
+    entityGroup.insertElement(groupKey, e1);
+    ASSERT_NE(entityGroup.getGroup(groupKey), nullptr);
+
+    entityGroup.removeElement(groupKey, e1);
+    EXPECT_EQ(entityGroup.getGroup(groupKey), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupInitBetweenReplicationsClearsAllRuntimeGroups) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupReplicationReset");
+    EntityType* partType = new EntityType(model, "EntityGroupReplicationResetPart");
+    Entity* e1 = model->createEntity("GroupResetE1", true);
+    Entity* e2 = model->createEntity("GroupResetE2", true);
+    e1->setEntityType(partType);
+    e2->setEntityType(partType);
+
+    entityGroup.insertElement(301u, e1);
+    entityGroup.insertElement(302u, e2);
+    ASSERT_NE(entityGroup.getGroup(301u), nullptr);
+    ASSERT_NE(entityGroup.getGroup(302u), nullptr);
+
+    entityGroup.InitBetweenReplicationsProbe();
+    EXPECT_EQ(entityGroup.getGroup(301u), nullptr);
+    EXPECT_EQ(entityGroup.getGroup(302u), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupStatisticsToggleResetsAndRecreatesCollectorOnRecheck) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EntityGroupProbe entityGroup(model, "EntityGroupStatsToggle");
+    ASSERT_NE(entityGroup.NumberInGroupCollectorProbe(), nullptr);
+
+    entityGroup.setReportStatistics(false);
+    entityGroup.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(entityGroup.NumberInGroupCollectorProbe(), nullptr);
+
+    entityGroup.setReportStatistics(true);
+    entityGroup.CreateInternalAndAttachedDataProbe();
+    EXPECT_NE(entityGroup.NumberInGroupCollectorProbe(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, EntityGroupDestructorCleansOwnedGroupContainersSafely) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    EXPECT_NO_FATAL_FAILURE({
+        EntityGroupProbe entityGroup(model, "EntityGroupDestructorCleanup");
+        EntityType* partType = new EntityType(model, "EntityGroupDestructorPart");
+        Entity* e1 = model->createEntity("GroupDestructorE1", true);
+        Entity* e2 = model->createEntity("GroupDestructorE2", true);
+        e1->setEntityType(partType);
+        e2->setEntityType(partType);
+        entityGroup.insertElement(401u, e1);
+        entityGroup.insertElement(401u, e2);
+        entityGroup.insertElement(402u, e1);
+    });
+}
+
+TEST(SimulatorRuntimeTest, ProcessCreateInternalMacroComponentKeepsSeizeDelayReleaseChainCoherent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe process(model, "ProcessCreateMacro");
+    Delay sink(model, "ProcessCreateMacroSink");
+    process.getConnectionManager()->insert(&sink);
+    process.CreateInternalAndAttachedDataProbe();
+
+    ASSERT_NE(process.SeizePtrProbe(), nullptr);
+    ASSERT_NE(process.DelayPtrProbe(), nullptr);
+    ASSERT_NE(process.ReleasePtrProbe(), nullptr);
+    EXPECT_EQ(process.SeizePtrProbe()->getLevel(), process.getId());
+    EXPECT_EQ(process.DelayPtrProbe()->getLevel(), process.getId());
+    EXPECT_EQ(process.ReleasePtrProbe()->getLevel(), process.getId());
+    ASSERT_NE(process.SeizePtrProbe()->getConnectionManager()->getFrontConnection(), nullptr);
+    ASSERT_NE(process.DelayPtrProbe()->getConnectionManager()->getFrontConnection(), nullptr);
+    EXPECT_EQ(process.SeizePtrProbe()->getConnectionManager()->getFrontConnection()->component, process.DelayPtrProbe());
+    EXPECT_EQ(process.DelayPtrProbe()->getConnectionManager()->getFrontConnection()->component, process.ReleasePtrProbe());
+    ASSERT_NE(process.getConnectionManager()->getFrontConnection(), nullptr);
+    EXPECT_EQ(process.getConnectionManager()->getFrontConnection()->component, process.SeizePtrProbe());
+    ASSERT_NE(process.ReleasePtrProbe()->getConnectionManager()->getFrontConnection(), nullptr);
+    EXPECT_EQ(process.ReleasePtrProbe()->getConnectionManager()->getFrontConnection()->component, &sink);
+}
+
+TEST(SimulatorRuntimeTest, ProcessRecheckReconcilesReleaseRequestsFromSeizeRequests) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe process(model, "ProcessReconcile");
+    Queue* queue = new Queue(model, "ProcessReconcileQueue");
+    process.setQueueableItem(new QueueableItem(queue));
+    Resource* r1 = new Resource(model, "ProcessReconcileR1");
+    Resource* r2 = new Resource(model, "ProcessReconcileR2");
+    process.addSeizeRequest(new SeizableItem(r1, "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY, "Entity.CustomSaveR1"));
+    process.addSeizeRequest(new SeizableItem(r2, "2", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY));
+    process.CreateInternalAndAttachedDataProbe();
+
+    std::string errorMessage;
+    ASSERT_TRUE(process.CheckProbe(errorMessage)) << errorMessage;
+    ASSERT_NE(process.ReleasePtrProbe(), nullptr);
+    ASSERT_EQ(process.SeizePtrProbe()->getSeizeRequests()->size(), process.ReleasePtrProbe()->getReleaseRequests()->size());
+    ASSERT_EQ(process.ReleasePtrProbe()->getReleaseRequests()->size(), 2u);
+    EXPECT_EQ(process.ReleasePtrProbe()->getReleaseRequests()->getAtRank(0)->getSelectionRule(), SeizableItem::SelectionRule::SPECIFICMEMBER);
+    EXPECT_EQ(process.ReleasePtrProbe()->getReleaseRequests()->getAtRank(1)->getSelectionRule(), SeizableItem::SelectionRule::SPECIFICMEMBER);
+    EXPECT_EQ(process.ReleasePtrProbe()->getReleaseRequests()->getAtRank(0)->getSaveAttribute(), "Entity.CustomSaveR1");
+    EXPECT_FALSE(process.ReleasePtrProbe()->getReleaseRequests()->getAtRank(1)->getSaveAttribute().empty());
+}
+
+TEST(SimulatorRuntimeTest, ProcessPersistenceRoundTripPreservesConfigurationAndReconcilesInternals) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe source(model, "ProcessPersistSource");
+    Queue* queue = new Queue(model, "ProcessPersistQueue");
+    source.setAllocationType(Util::AllocationType::ValueAdded);
+    source.setPriority(7u);
+    source.setPriorityExpression("2+3");
+    source.setQueueableItem(new QueueableItem(queue));
+    source.addSeizeRequest(new SeizableItem(new Resource(model, "ProcessPersistResource"), "3", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY));
+    source.setDelayExpression("4");
+    source.setDelayTimeUnit(Util::TimeUnit::minute);
+    Delay sink(model, "ProcessPersistSink");
+    source.getConnectionManager()->insert(&sink);
+    source.CreateInternalAndAttachedDataProbe();
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    ProcessProbe loaded(model, "ProcessPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    EXPECT_EQ(loaded.getAllocationType(), Util::AllocationType::ValueAdded);
+    EXPECT_EQ(loaded.getPriority(), 7u);
+    EXPECT_EQ(loaded.getPriorityExpression(), "2+3");
+    ASSERT_NE(loaded.getQueueableItem(), nullptr);
+    EXPECT_EQ(loaded.getQueueableItem()->getQueueableName(), "ProcessPersistQueue");
+    ASSERT_EQ(loaded.getSeizeRequests()->size(), 1u);
+    EXPECT_EQ(loaded.getSeizeRequests()->getAtRank(0)->getResourceName(), "ProcessPersistResource");
+    EXPECT_EQ(loaded.delayExpression(), "4");
+    EXPECT_EQ(loaded.delayTimeUnit(), Util::TimeUnit::minute);
+    ASSERT_NE(loaded.ReleasePtrProbe(), nullptr);
+    EXPECT_EQ(loaded.SeizePtrProbe()->getSeizeRequests()->size(), loaded.ReleasePtrProbe()->getReleaseRequests()->size());
+    EXPECT_EQ(fields.loadField("nextId", -1), sink.getId());
+}
+
+TEST(SimulatorRuntimeTest, ProcessCheckFailsWhenInternalCompositionIsInconsistent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe process(model, "ProcessInvalid");
+    process.setQueueableItem(new QueueableItem(new Queue(model, "ProcessInvalidQueue")));
+    process.addSeizeRequest(new SeizableItem(new Resource(model, "ProcessInvalidResource"), "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY));
+    process.CreateInternalAndAttachedDataProbe();
+    process.SeizePtrProbe()->getConnectionManager()->connections()->clear();
+    process.DelayPtrProbe()->getConnectionManager()->connections()->clear();
+    process.ReleasePtrProbe()->getReleaseRequests()->clear();
+
+    std::string errorMessage;
+    EXPECT_FALSE(process.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, ProcessCheckPassesWithMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    ProcessProbe process(model, "ProcessValid");
+    process.setQueueableItem(new QueueableItem(new Queue(model, "ProcessValidQueue")));
+    process.addSeizeRequest(new SeizableItem(new Resource(model, "ProcessValidResource"), "1", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY));
+    process.setDelayExpression("1");
+    process.setDelayTimeUnit(Util::TimeUnit::second);
+    process.CreateInternalAndAttachedDataProbe();
+
+    std::string errorMessage;
+    EXPECT_TRUE(process.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, DISABLED_SearchQueueFindsEntityInRangeSavesRankAndRoutesToFoundPort) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SearchProbe search(model, "SearchFind");
+    Queue queue(model, "SearchFindQueue");
+    CollectorSinkComponentProbe notFoundSink(model, "SearchFindNotFound");
+    CollectorSinkComponentProbe foundSink(model, "SearchFindFound");
+    search.getConnectionManager()->insert(&notFoundSink);
+    search.getConnectionManager()->insert(&foundSink);
+    search.setSearchInType(Search::SearchInType::QUEUE);
+    search.setSearchIn(&queue);
+    search.setStartRank("1");
+    search.setEndRank("3");
+    search.setSearchCondition("1");
+    search.setSaveFounRankAttribute("SearchFoundRankAttr");
+    Attribute searchFoundRankAttr(model, "SearchFoundRankAttr");
+
+    CollectorSinkComponentProbe producer(model, "SearchFindProducer");
+    queue.insertElement(new Waiting(model->createEntity("SearchFindQueueE0", true), 0.0, &producer));
+    queue.insertElement(new Waiting(model->createEntity("SearchFindQueueE1", true), 0.0, &producer));
+    queue.insertElement(new Waiting(model->createEntity("SearchFindQueueE2", true), 0.0, &producer));
+
+    Entity* trigger = model->createEntity("SearchFindTrigger", true);
+    search.DispatchEventProbe(trigger);
+
+    EXPECT_EQ(trigger->getAttributeValue("SearchFoundRankAttr"), 1.0);
+    EXPECT_EQ(notFoundSink.ReceivedEntities().size(), 0u);
+    ASSERT_EQ(foundSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(foundSink.ReceivedEntities().front(), trigger);
+}
+
+TEST(SimulatorRuntimeTest, DISABLED_SearchQueueNotFoundRoutesToPortZeroAndSavesZeroRank) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SearchProbe search(model, "SearchNotFound");
+    Queue queue(model, "SearchNotFoundQueue");
+    CollectorSinkComponentProbe notFoundSink(model, "SearchNotFoundOut0");
+    CollectorSinkComponentProbe foundSink(model, "SearchNotFoundOut1");
+    search.getConnectionManager()->insert(&notFoundSink);
+    search.getConnectionManager()->insert(&foundSink);
+    search.setSearchInType(Search::SearchInType::QUEUE);
+    search.setSearchIn(&queue);
+    search.setStartRank("0");
+    search.setEndRank("2");
+    search.setSearchCondition("0");
+    search.setSaveFounRankAttribute("SearchNotFoundRankAttr");
+    Attribute searchNotFoundRankAttr(model, "SearchNotFoundRankAttr");
+
+    CollectorSinkComponentProbe producer(model, "SearchNotFoundProducer");
+    queue.insertElement(new Waiting(model->createEntity("SearchNotFoundQueueE0", true), 0.0, &producer));
+    queue.insertElement(new Waiting(model->createEntity("SearchNotFoundQueueE1", true), 0.0, &producer));
+
+    Entity* trigger = model->createEntity("SearchNotFoundTrigger", true);
+    search.DispatchEventProbe(trigger);
+
+    EXPECT_EQ(trigger->getAttributeValue("SearchNotFoundRankAttr"), 0.0);
+    ASSERT_EQ(notFoundSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(notFoundSink.ReceivedEntities().front(), trigger);
+    EXPECT_EQ(foundSink.ReceivedEntities().size(), 0u);
+}
+
+TEST(SimulatorRuntimeTest, SearchPersistenceRoundTripPreservesConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "SearchPersistQueue");
+    SearchProbe source(model, "SearchPersistSource");
+    source.setSearchInType(Search::SearchInType::QUEUE);
+    source.setSearchIn(&queue);
+    source.setStartRank("2");
+    source.setEndRank("4");
+    source.setSearchCondition("Entity.Value > 0");
+    source.setSaveFounRankAttribute("SearchPersistFoundRank");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SearchProbe loaded(model, "SearchPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_NE(loaded.getSearchIn(), nullptr);
+    EXPECT_EQ(loaded.getSearchInType(), Search::SearchInType::QUEUE);
+    EXPECT_EQ(loaded.getStartRank(), "2");
+    EXPECT_EQ(loaded.getEndRank(), "4");
+    EXPECT_EQ(loaded.getSearchCondition(), "Entity.Value > 0");
+    EXPECT_EQ(loaded.getSaveFounRankAttribute(), "SearchPersistFoundRank");
+    EXPECT_EQ(loaded.getSearchInName(), "SearchPersistQueue");
+}
+
+TEST(SimulatorRuntimeTest, SearchCheckValidatesConditionSearchInAndMinimalQueueConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SearchProbe invalidCondition(model, "SearchCheckInvalidCondition");
+    invalidCondition.setSearchInType(Search::SearchInType::QUEUE);
+    invalidCondition.setSearchIn(new Queue(model, "SearchCheckInvalidConditionQueue"));
+    invalidCondition.setStartRank("0");
+    invalidCondition.setEndRank("1");
+    invalidCondition.setSearchCondition("1+");
+    invalidCondition.setSaveFounRankAttribute("SearchCheckInvalidConditionAttr");
+    std::string invalidConditionMessage;
+    EXPECT_FALSE(invalidCondition.CheckProbe(invalidConditionMessage));
+    EXPECT_FALSE(invalidConditionMessage.empty());
+
+    SearchProbe missingSearchIn(model, "SearchCheckMissingSearchIn");
+    missingSearchIn.setSearchInType(Search::SearchInType::QUEUE);
+    missingSearchIn.setStartRank("0");
+    missingSearchIn.setEndRank("1");
+    missingSearchIn.setSearchCondition("1");
+    missingSearchIn.setSaveFounRankAttribute("SearchCheckMissingSearchInAttr");
+    std::string missingSearchInMessage;
+    EXPECT_FALSE(missingSearchIn.CheckProbe(missingSearchInMessage));
+    EXPECT_NE(missingSearchInMessage.find("SearchIn was not defined"), std::string::npos);
+
+    SearchProbe valid(model, "SearchCheckValid");
+    Attribute validSearchAttribute(model, "SearchCheckValidAttr");
+    valid.setSearchInType(Search::SearchInType::QUEUE);
+    valid.setSearchIn(new Queue(model, "SearchCheckValidQueue"));
+    valid.setStartRank("0");
+    valid.setEndRank("1");
+    valid.setSearchCondition("1");
+    valid.setSaveFounRankAttribute("SearchCheckValidAttr");
+    std::string validMessage;
+    EXPECT_TRUE(valid.CheckProbe(validMessage)) << validMessage;
+}
+
+TEST(SimulatorRuntimeTest, DISABLED_RemoveEqualStartAndEndRankRemovesExactlyOneAndRoutesCorrectly) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RemoveProbe remove(model, "RemoveSingleRank");
+    Queue queue(model, "RemoveSingleRankQueue");
+    CollectorSinkComponentProbe mainSink(model, "RemoveSingleRankMain");
+    CollectorSinkComponentProbe removedSink(model, "RemoveSingleRankRemoved");
+    remove.getConnectionManager()->insert(&mainSink);
+    remove.getConnectionManager()->insert(&removedSink);
+    remove.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    remove.setRemoveFrom(&queue);
+    remove.setRemoveStartRank("1");
+    remove.setRemoveEndRank("1");
+
+    CollectorSinkComponentProbe producer(model, "RemoveSingleRankProducer");
+    Entity* q0 = model->createEntity("RemoveSingleRankQ0", true);
+    Entity* q1 = model->createEntity("RemoveSingleRankQ1", true);
+    Entity* q2 = model->createEntity("RemoveSingleRankQ2", true);
+    queue.insertElement(new Waiting(q0, 0.0, &producer));
+    queue.insertElement(new Waiting(q1, 0.0, &producer));
+    queue.insertElement(new Waiting(q2, 0.0, &producer));
+
+    Entity* trigger = model->createEntity("RemoveSingleRankTrigger", true);
+    remove.DispatchEventProbe(trigger);
+
+    ASSERT_EQ(removedSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(removedSink.ReceivedEntities().front(), q1);
+    EXPECT_EQ(queue.size(), 2u);
+    ASSERT_EQ(mainSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(mainSink.ReceivedEntities().front(), trigger);
+}
+
+TEST(SimulatorRuntimeTest, DISABLED_RemoveRangeRemovesOnlyEntitiesInsideConfiguredInterval) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RemoveProbe remove(model, "RemoveRange");
+    Queue queue(model, "RemoveRangeQueue");
+    CollectorSinkComponentProbe mainSink(model, "RemoveRangeMain");
+    CollectorSinkComponentProbe removedSink(model, "RemoveRangeRemoved");
+    remove.getConnectionManager()->insert(&mainSink);
+    remove.getConnectionManager()->insert(&removedSink);
+    remove.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    remove.setRemoveFrom(&queue);
+    remove.setRemoveStartRank("1");
+    remove.setRemoveEndRank("2");
+
+    CollectorSinkComponentProbe producer(model, "RemoveRangeProducer");
+    Entity* q0 = model->createEntity("RemoveRangeQ0", true);
+    Entity* q1 = model->createEntity("RemoveRangeQ1", true);
+    Entity* q2 = model->createEntity("RemoveRangeQ2", true);
+    Entity* q3 = model->createEntity("RemoveRangeQ3", true);
+    queue.insertElement(new Waiting(q0, 0.0, &producer));
+    queue.insertElement(new Waiting(q1, 0.0, &producer));
+    queue.insertElement(new Waiting(q2, 0.0, &producer));
+    queue.insertElement(new Waiting(q3, 0.0, &producer));
+
+    Entity* trigger = model->createEntity("RemoveRangeTrigger", true);
+    remove.DispatchEventProbe(trigger);
+
+    ASSERT_EQ(removedSink.ReceivedEntities().size(), 2u);
+    EXPECT_EQ(removedSink.ReceivedEntities().at(0), q1);
+    EXPECT_EQ(removedSink.ReceivedEntities().at(1), q2);
+    EXPECT_EQ(queue.size(), 2u);
+    EXPECT_EQ(queue.getAtRank(0)->getEntity(), q0);
+    EXPECT_EQ(queue.getAtRank(1)->getEntity(), q3);
+    ASSERT_EQ(mainSink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(mainSink.ReceivedEntities().front(), trigger);
+}
+
+TEST(SimulatorRuntimeTest, RemovePersistenceRoundTripPreservesConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue queue(model, "RemovePersistQueue");
+    RemoveProbe source(model, "RemovePersistSource");
+    source.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    source.setRemoveFrom(&queue);
+    source.setRemoveStartRank("3");
+    source.setRemoveEndRank("5");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    RemoveProbe loaded(model, "RemovePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_NE(loaded.getRemoveFrom(), nullptr);
+    EXPECT_EQ(loaded.getRemoveFromType(), Remove::RemoveFromType::QUEUE);
+    EXPECT_EQ(loaded.getRemoveStartRank(), "3");
+    EXPECT_EQ(loaded.getRemoveEndRank(), "5");
+    EXPECT_EQ(loaded.getRemoveFrom()->getName(), "RemovePersistQueue");
+}
+
+TEST(SimulatorRuntimeTest, RemoveCheckValidatesRankExpressionsAndMinimalQueueConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RemoveProbe invalidStart(model, "RemoveCheckInvalidStart");
+    invalidStart.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    invalidStart.setRemoveFrom(new Queue(model, "RemoveCheckInvalidStartQueue"));
+    invalidStart.setRemoveStartRank("1+");
+    invalidStart.setRemoveEndRank("1");
+    std::string invalidStartMessage;
+    EXPECT_FALSE(invalidStart.CheckProbe(invalidStartMessage));
+    EXPECT_FALSE(invalidStartMessage.empty());
+
+    RemoveProbe invalidEnd(model, "RemoveCheckInvalidEnd");
+    invalidEnd.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    invalidEnd.setRemoveFrom(new Queue(model, "RemoveCheckInvalidEndQueue"));
+    invalidEnd.setRemoveStartRank("0");
+    invalidEnd.setRemoveEndRank("2+");
+    std::string invalidEndMessage;
+    EXPECT_FALSE(invalidEnd.CheckProbe(invalidEndMessage));
+    EXPECT_FALSE(invalidEndMessage.empty());
+
+    RemoveProbe valid(model, "RemoveCheckValid");
+    valid.setRemoveFromType(Remove::RemoveFromType::QUEUE);
+    valid.setRemoveFrom(new Queue(model, "RemoveCheckValidQueue"));
+    valid.setRemoveStartRank("0");
+    valid.setRemoveEndRank("0");
+    std::string validMessage;
+    EXPECT_TRUE(valid.CheckProbe(validMessage)) << validMessage;
+}
+
+TEST(SimulatorRuntimeTest, AssignSaveLoadPreservesMultipleAssignmentsWithoutIndexGaps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe source(model, "AssignPersistSource");
+    source.addAssignment(new Assignment("Entity.attrA", "1", true));
+    source.addAssignment(new Assignment("Entity.attrB", "2+3", true));
+    source.addAssignment(new Assignment("vCounter", "7", false));
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    AssignProbe loaded(model, "AssignPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getAssignments()->size(), 3u);
+    auto it = loaded.getAssignments()->list()->begin();
+    EXPECT_EQ((*it)->getDestination(), "Entity.attrA");
+    EXPECT_EQ((*it)->getExpression(), "1");
+    ++it;
+    EXPECT_EQ((*it)->getDestination(), "Entity.attrB");
+    EXPECT_EQ((*it)->getExpression(), "2+3");
+    ++it;
+    EXPECT_EQ((*it)->getDestination(), "vCounter");
+    EXPECT_EQ((*it)->getExpression(), "7");
+    EXPECT_FALSE((*it)->isAttributeNotVariable());
+}
+
+TEST(SimulatorRuntimeTest, AssignCheckFailsForInvalidExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrBadExpr");
+    AssignProbe assign(model, "AssignCheckInvalidExpression");
+    assign.addAssignment(new Assignment("Entity.attrBadExpr", "1+", true));
+
+    std::string errorMessage;
+    EXPECT_FALSE(assign.CheckProbe(errorMessage));
+    EXPECT_FALSE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, AssignCreateInternalAndAttachedDataReconcilesChangesWithoutResidualKeys) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrFirst");
+    new Variable(model, "varSecond");
+    new Attribute(model, "Entity.attrThird");
+
+    AssignProbe assign(model, "AssignAttachedReconcile");
+    Assignment* first = new Assignment("Entity.attrFirst", "1", true);
+    Assignment* second = new Assignment("varSecond", "2", false);
+    assign.addAssignment(first);
+    assign.addAssignment(second);
+    assign.CreateInternalAndAttachedDataProbe();
+
+    auto* attachedFirst = assign.getAttachedData();
+    EXPECT_NE(attachedFirst->find("Attribute_Entity.attrFirst"), attachedFirst->end());
+    EXPECT_NE(attachedFirst->find("Variable_varSecond"), attachedFirst->end());
+
+    assign.removeAssignment(first);
+    assign.removeAssignment(second);
+    assign.addAssignment(new Assignment("Entity.attrThird", "3", true));
+    assign.CreateInternalAndAttachedDataProbe();
+
+    auto* attachedSecond = assign.getAttachedData();
+    EXPECT_EQ(attachedSecond->find("Attribute_Entity.attrFirst"), attachedSecond->end());
+    EXPECT_EQ(attachedSecond->find("Variable_varSecond"), attachedSecond->end());
+    EXPECT_NE(attachedSecond->find("Attribute_Entity.attrThird"), attachedSecond->end());
+}
+
+TEST(SimulatorRuntimeTest, AssignCheckAcceptsIndexedAttributeDestinationWhenBaseAttributeExists) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrIndexed");
+    AssignProbe assign(model, "AssignIndexedDestination");
+    assign.addAssignment(new Assignment("Entity.attrIndexed[2]", "5", true));
+
+    std::string errorMessage;
+    EXPECT_TRUE(assign.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, CreateCheckFailsForAmbiguousTimeBetweenConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Schedule schedule(model, "CreateCheckAmbiguousSchedule");
+    schedule.getSchedulableItems()->insert(new SchedulableItem("1", 1.0, SchedulableItem::Rule::IGNORE));
+
+    CreateProbe create(model, "CreateCheckAmbiguous");
+    create.setTimeBetweenCreationsExpression("1", Util::TimeUnit::second);
+    create.setTimeBetweenCreationsSchedule(&schedule);
+
+    std::string errorMessage;
+    EXPECT_FALSE(create.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("exactly one time-between-creations source"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, CreateCheckPassesForMinimalValidExpressionConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe create(model, "CreateCheckValidExpression");
+    create.setTimeBetweenCreationsFormula(nullptr);
+    create.setTimeBetweenCreationsSchedule(nullptr);
+    create.setTimeBetweenCreationsExpression("1", Util::TimeUnit::second);
+    create.CreateInternalAndAttachedDataProbe(); // ensure default entity type attachment exists before check
+
+    std::string errorMessage;
+    EXPECT_TRUE(create.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, CreateInternalCounterFollowsReportStatisticsToggleIdempotently) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe create(model, "CreateStatisticsToggle");
+    create.setReportStatistics(true);
+    create.CreateInternalAndAttachedDataProbe();
+    ASSERT_NE(create.NumberOutProbe(), nullptr);
+    Counter* firstCounter = create.NumberOutProbe();
+
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(create.NumberOutProbe(), firstCounter);
+
+    create.setReportStatistics(false);
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_EQ(create.NumberOutProbe(), nullptr);
+
+    create.setReportStatistics(true);
+    create.CreateInternalAndAttachedDataProbe();
+    EXPECT_NE(create.NumberOutProbe(), nullptr);
+    EXPECT_EQ(create.getInternalData()->find("CountNumberOut") != create.getInternalData()->end(), true);
+}
+
+TEST(SimulatorRuntimeTest, CreateSaveLoadRoundTripPreservesBasicConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CreateProbe source(model, "CreatePersistSource");
+    source.setEntitiesPerCreation(3);
+    source.setFirstCreation(4.5);
+    source.setMaxCreations("12");
+    source.setTimeBetweenCreationsExpression("2", Util::TimeUnit::minute);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    CreateProbe loaded(model, "CreatePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getEntitiesPerCreation(), 3u);
+    EXPECT_DOUBLE_EQ(loaded.getFirstCreation(), 4.5);
+    EXPECT_EQ(loaded.getMaxCreations(), "12");
+    EXPECT_EQ(loaded.getTimeBetweenCreationsExpression(), "2");
+    EXPECT_EQ(loaded.getTimeUnit(), Util::TimeUnit::minute);
+}
+
+TEST(SimulatorRuntimeTest, WritePersistenceRoundTripPreservesAllTextElementsInOrder) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe source(model, "WritePersistSource");
+    source.setWriteToType(Write::WriteToType::FILE);
+    source.setFilename("write_persist_roundtrip.txt");
+    source.insertText({"alpha", "@1+2", "omega"});
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord saved(persistence);
+    source.SaveInstanceProbe(&saved, true);
+
+    WriteProbe loaded(model, "WritePersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&saved));
+
+    FakeModelPersistenceRuntime persistenceAfterLoad;
+    PersistenceRecord loadedSaved(persistenceAfterLoad);
+    loaded.SaveInstanceProbe(&loadedSaved, true);
+
+    const unsigned int writesCount = loadedSaved.loadField("writes", 0u);
+    ASSERT_EQ(writesCount, 4u);
+    EXPECT_EQ(loadedSaved.loadField("write[0]", std::string("")), "alpha");
+    EXPECT_EQ(loadedSaved.loadField("write[1]", std::string("")), "@1+2");
+    EXPECT_EQ(loadedSaved.loadField("write[2]", std::string("")), "omega");
+    EXPECT_EQ(loadedSaved.loadField("write[3]", std::string("")), "\n");
+}
+
+TEST(SimulatorRuntimeTest, WriteCheckFailsForInvalidEmbeddedExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe write(model, "WriteCheckInvalidExpression");
+    write.setWriteToType(Write::WriteToType::SCREEN);
+    write.insertText({"@1+"});
+
+    std::string errorMessage;
+    EXPECT_FALSE(write.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("writeExpression"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, WriteCheckPassesForValidEmbeddedExpressionAndConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe write(model, "WriteCheckValidExpression");
+    write.setWriteToType(Write::WriteToType::FILE);
+    write.setFilename("write_check_valid.txt");
+    write.insertText({"result=", "@1+2"});
+
+    std::string errorMessage;
+    EXPECT_TRUE(write.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, WriteInsertTextHandlesEdgeCasesWithoutBreakingAppendSemantics) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe emptyList(model, "WriteInsertEmptyList");
+    emptyList.insertText({});
+    FakeModelPersistenceRuntime persistenceEmpty;
+    PersistenceRecord savedEmpty(persistenceEmpty);
+    emptyList.SaveInstanceProbe(&savedEmpty, true);
+    EXPECT_EQ(savedEmpty.loadField("writes", 0u), 0u);
+
+    WriteProbe plainText(model, "WriteInsertPlainText");
+    plainText.insertText({"plain"});
+    FakeModelPersistenceRuntime persistencePlain;
+    PersistenceRecord savedPlain(persistencePlain);
+    plainText.SaveInstanceProbe(&savedPlain, true);
+    ASSERT_EQ(savedPlain.loadField("writes", 0u), 2u);
+    EXPECT_EQ(savedPlain.loadField("write[0]", std::string("")), "plain");
+    EXPECT_EQ(savedPlain.loadField("write[1]", std::string("")), "\n");
+
+    WriteProbe emptyString(model, "WriteInsertEmptyString");
+    emptyString.insertText({""});
+    FakeModelPersistenceRuntime persistenceEmptyString;
+    PersistenceRecord savedEmptyString(persistenceEmptyString);
+    emptyString.SaveInstanceProbe(&savedEmptyString, true);
+    ASSERT_EQ(savedEmptyString.loadField("writes", 0u), 2u);
+    EXPECT_EQ(savedEmptyString.loadField("write[0]", std::string("default")), "");
+    EXPECT_EQ(savedEmptyString.loadField("write[1]", std::string("default")), "\n");
+}
+
+TEST(SimulatorRuntimeTest, WritePersistenceRoundTripPreservesWriteToTypeAndFilename) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    WriteProbe source(model, "WritePersistFieldsSource");
+    source.setWriteToType(Write::WriteToType::FILE);
+    source.setFilename("write_fields_roundtrip.txt");
+    source.insertText({"payload"});
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord saved(persistence);
+    source.SaveInstanceProbe(&saved, true);
+
+    WriteProbe loaded(model, "WritePersistFieldsLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&saved));
+    EXPECT_EQ(loaded.writeToType(), Write::WriteToType::FILE);
+    EXPECT_EQ(loaded.filename(), "write_fields_roundtrip.txt");
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerDefaultsExposeMainConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerDefaults");
+    EXPECT_EQ(compiler.getSourceFilename(), "");
+    EXPECT_EQ(compiler.getOutputFilename(), "");
+    EXPECT_EQ(compiler.getCompilerCommand(), "g++");
+    EXPECT_EQ(compiler.getOutputDir(), ".temp/");
+    EXPECT_EQ(compiler.getTempDir(), ".temp/");
+    EXPECT_FALSE(compiler.IsLibraryLoaded());
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerSettersAndGettersPreserveValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerSetGet");
+    compiler.setSourceFilename("my_model.cpp");
+    compiler.setOutputFilename("my_model.so");
+    compiler.setCompilerCommand("clang++");
+    compiler.setOutputDir("out");
+    compiler.setTempDir("tmp");
+
+    EXPECT_EQ(compiler.getSourceFilename(), "my_model.cpp");
+    EXPECT_EQ(compiler.getOutputFilename(), "my_model.so");
+    EXPECT_EQ(compiler.getCompilerCommand(), "clang++");
+    EXPECT_EQ(compiler.getOutputDir(), "out");
+    EXPECT_EQ(compiler.getTempDir(), "tmp");
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerCheckRejectsEmptyRequiredFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerCheckInvalid");
+    compiler.setCompilerCommand("");
+    compiler.setSourceFilename("");
+    compiler.setOutputFilename("");
+
+    std::string errorMessage;
+    EXPECT_FALSE(compiler.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("CompilerCommand must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("SourceFilename must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("OutputFilename must not be empty"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerCheckAcceptsMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerCheckValid");
+    compiler.setCompilerCommand("g++");
+    compiler.setSourceFilename("main.cpp");
+    compiler.setOutputFilename("main.out");
+
+    std::string errorMessage;
+    EXPECT_TRUE(compiler.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerShowIncludesMainObservabilityFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerShow");
+    compiler.setSourceFilename("input.cpp");
+    compiler.setOutputFilename("output.so");
+    compiler.setCompilerCommand("clang++");
+    compiler.setOutputDir("out");
+    compiler.setTempDir("tmp");
+    compiler.setLibraryLoaded(true);
+
+    const std::string shown = compiler.show();
+    EXPECT_NE(shown.find("sourceFilename=\"input.cpp\""), std::string::npos);
+    EXPECT_NE(shown.find("outputFilename=\"output.so\""), std::string::npos);
+    EXPECT_NE(shown.find("compilerCommand=\"clang++\""), std::string::npos);
+    EXPECT_NE(shown.find("outputDir=\"out\""), std::string::npos);
+    EXPECT_NE(shown.find("tempDir=\"tmp\""), std::string::npos);
+    EXPECT_NE(shown.find("libraryLoaded=true"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerPersistenceRoundTripPreservesMainFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe source(model, "CppCompilerPersistSource");
+    source.setSourceFilename("persist.cpp");
+    source.setOutputFilename("persist.so");
+    source.setCompilerCommand("clang++");
+    source.setOutputDir("persist-out");
+    source.setTempDir("persist-tmp");
+    source.setLibraryLoaded(true);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    CppCompilerProbe loaded(model, "CppCompilerPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getSourceFilename(), "persist.cpp");
+    EXPECT_EQ(loaded.getOutputFilename(), "persist.so");
+    EXPECT_EQ(loaded.getCompilerCommand(), "clang++");
+    EXPECT_EQ(loaded.getOutputDir(), "persist-out");
+    EXPECT_EQ(loaded.getTempDir(), "persist-tmp");
+    EXPECT_TRUE(loaded.IsLibraryLoaded());
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerInvokeCompilerSeparatesStdoutAndStderrLogs) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const std::string base = Util::RunningPath() + Util::DirSeparator() + "cppcompiler_runtime";
+    const std::string outputDir = base + "_out";
+    const std::string tempDir = base + "_tmp";
+    ::mkdir(outputDir.c_str(), 0755);
+    ::mkdir(tempDir.c_str(), 0755);
+
+    CppCompilerProbe compiler(model, "CppCompilerInvoke");
+    compiler.setOutputDir(outputDir);
+    compiler.setTempDir(tempDir);
+    const std::string outputPath = outputDir + Util::DirSeparator() + "invoke_result.bin";
+    compiler.setOutputFilename(outputPath);
+    const std::string command = "sh -c \"echo STDOUT_LINE; echo STDERR_LINE 1>&2; touch " + outputPath + "\"";
+    CppCompiler::CompilationResult result = compiler.InvokeCompilerProbe(command);
+
+    EXPECT_TRUE(result.success);
+    EXPECT_NE(result.compilationStdOutput.find("STDOUT_LINE"), std::string::npos);
+    EXPECT_EQ(result.compilationStdOutput.find("STDERR_LINE"), std::string::npos);
+    EXPECT_NE(result.compilationErrOutput.find("STDERR_LINE"), std::string::npos);
+    EXPECT_EQ(result.compilationErrOutput.find("STDOUT_LINE"), std::string::npos);
+    EXPECT_EQ(result.destinationPath, tempDir + Util::DirSeparator());
+
+    Util::FileDelete(outputPath);
+    ::rmdir(outputDir.c_str());
+    ::rmdir(tempDir.c_str());
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerUnloadLibraryIsSafeWhenNoLibraryIsLoaded) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerUnload");
+    EXPECT_FALSE(compiler.IsLibraryLoaded());
+    EXPECT_TRUE(compiler.unloadLibrary());
+    EXPECT_FALSE(compiler.IsLibraryLoaded());
 }

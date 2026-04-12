@@ -103,6 +103,7 @@ public: // only gets
 	List<double>* getBreakpointsOnTime() const;
 	List<Entity*>* getBreakpointsOnEntity() const;
 	List<ModelComponent*>* getBreakpointsOnComponent() const;
+	const List<ModelDataDefinition*>* getSimulationStatisticsAggregates() const;
 public:
 	void loadInstance(PersistenceRecord *fields);
 	void saveInstance(PersistenceRecord *fields, bool saveDefaults);

@@ -251,6 +251,18 @@ L      [A-Za-z0-9_.]+
 			return yy::genesyspp_parser::make_COUNTER(obj_t(0, Util::TypeOf<Counter>(), datadef->getId()),loc);
         }
 
+		// check SIMULATION RESPONSE (not a ModelDataDefinition)
+		SimulationResponse* simResponse = driver.findSimulationResponse(std::string(yytext));
+		if (simResponse != nullptr) {
+			return yy::genesyspp_parser::make_SIMRESP(obj_t(0, std::string(yytext)), loc);
+		}
+
+		// check SIMULATION CONTROL (not a ModelDataDefinition)
+		SimulationControl* simControl = driver.findSimulationControl(std::string(yytext));
+		if (simControl != nullptr) {
+			return yy::genesyspp_parser::make_SIMCTRL(obj_t(0, std::string(yytext)), loc);
+		}
+
 /****begin_LexicalLiterals_plugins****/
 
 /**begin_LexicalLiterals:Variable**/

@@ -34,7 +34,7 @@ AnElectronicAssemblyAndTestSystem::AnElectronicAssemblyAndTestSystem() {
 int AnElectronicAssemblyAndTestSystem::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
 	this->setDefaultTraceHandlers(genesys->getTraceManager());
-	genesys->getPluginManager()->autoInsertPlugins("autoloadplugins.txt");
+    genesys->getPluginManager()->autoInsertPlugins();
 	// creating the model
 	Model* model = genesys->getModelManager()->newModel();
 	PluginManager* plugins = genesys->getPluginManager();

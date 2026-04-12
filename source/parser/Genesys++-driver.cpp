@@ -1,5 +1,7 @@
 #include <string>
 #include <exception>
+#include <cerrno>
+#include <cstdlib>
 #include "Genesys++-driver.h"
 //#include "../Traits.h"
 
@@ -317,4 +319,64 @@ void
 genesyspp_driver::error(const std::string& m) {
 	setErrorMessage(m);
 	setResult(-1);
+}
+
+SimulationResponse* genesyspp_driver::findSimulationResponse(const std::string& name) const {
+	if (_model == nullptr || _model->getResponses() == nullptr || _model->getResponses()->list() == nullptr) {
+		return nullptr;
+	}
+	for (SimulationResponse* response : *_model->getResponses()->list()) {
+		if (response != nullptr && response->getName() == name) {
+			return response;
+		}
+	}
+	return nullptr;
+}
+
+SimulationControl* genesyspp_driver::findSimulationControl(const std::string& name) const {
+	if (_model == nullptr || _model->getControls() == nullptr || _model->getControls()->list() == nullptr) {
+		return nullptr;
+	}
+	for (SimulationControl* control : *_model->getControls()->list()) {
+		if (control != nullptr && control->getName() == name) {
+			return control;
+		}
+	}
+	return nullptr;
+}
+
+double genesyspp_driver::getSimulationResponseValueAsDouble(const std::string& name) const {
+	SimulationResponse* response = findSimulationResponse(name);
+	if (response == nullptr) {
+		return 0.0;
+	}
+	return stringToDoubleOrWarn("SimulationResponse", name, response->getValue());
+}
+
+double genesyspp_driver::getSimulationControlValueAsDouble(const std::string& name) const {
+	SimulationControl* control = findSimulationControl(name);
+	if (control == nullptr) {
+		return 0.0;
+	}
+	return stringToDoubleOrWarn("SimulationControl", name, control->getValue());
+}
+
+double genesyspp_driver::stringToDoubleOrWarn(const std::string& sourceType, const std::string& symbolName, const std::string& valueText) const {
+	char* endPtr = nullptr;
+	errno = 0;
+	const double converted = std::strtod(valueText.c_str(), &endPtr);
+	const bool noDigitsFound = (endPtr == valueText.c_str());
+	const bool hasTrailingChars = (endPtr != nullptr && *endPtr != '\0');
+	const bool outOfRange = (errno == ERANGE);
+	if (!noDigitsFound && !hasTrailingChars && !outOfRange) {
+		return converted;
+	}
+	traceWarning(sourceType + " \"" + symbolName + "\" has non-numeric value \"" + valueText + "\"; assuming 0.0");
+	return 0.0;
+}
+
+void genesyspp_driver::traceWarning(const std::string& message) const {
+	if (_model != nullptr && _model->getTracer() != nullptr) {
+		_model->getTracer()->trace(TraceManager::Level::L4_warning, message);
+	}
 }

@@ -101,7 +101,7 @@ public: // editing graphic model
     enum DrawingMode{
         NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED, COUNTER, VARIABLE, TIMER
     };
-    GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false);
+    GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false, GraphicalModelComponent* autoConnectSource = nullptr);
     GraphicalConnection* addGraphicalConnection(GraphicalComponentPort* sourcePort, GraphicalComponentPort* destinationPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, bool notify = false);
     GraphicalModelDataDefinition* addGraphicalModelDataDefinition(Plugin* plugin, ModelDataDefinition* element, QPointF position, QColor color = Qt::blue);
     GraphicalDiagramConnection* addGraphicalDiagramConnection(QGraphicsItem* dataDefinition, QGraphicsItem* linkedTo, GraphicalDiagramConnection::ConnectionType type);
@@ -128,6 +128,19 @@ public: // editing graphic model
     bool addDrawingAnimation(QGraphicsItem * item);
     void removeGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd);
     void removeGraphicalDiagramConnection(GraphicalDiagramConnection* connection);
+    void clearGraphicalModelDataDefinitions();
+    void clearGraphicalDiagramConnections();
+    void sanitizeGraphicalDataDefinitionsBookkeeping();
+    void setDiagramLayerState(bool diagramCreated, bool visible);
+    // Return only items that can be directly manipulated by user edit commands.
+    QList<QGraphicsItem*> userOperableItems(const QList<QGraphicsItem*>& items) const;
+    // Filter out non-deletable items from user-triggered delete flows.
+    QList<QGraphicsItem*> userDeletableItems(const QList<QGraphicsItem*>& items) const;
+    // Keep internal data-definition initial grouping opt-in during model rebuild only.
+    void ensureInitialInternalDataDefinitionGrouping(GraphicalModelDataDefinition* dataDefinition, GraphicalModelComponent* component);
+    // Allow serializer to disable automatic initial grouping while persisted GUI state is being restored.
+    void setPersistedGuiRestoreInProgress(bool restoring);
+    bool isPersistedGuiRestoreInProgress() const;
     void removeDrawing(QGraphicsItem * item, bool notify = false);
     bool removeDrawingGeometry(QGraphicsItem * item);
     bool removeDrawingAnimation(QGraphicsItem * item);
@@ -174,6 +187,8 @@ public:
     void setPropertyEditorUI(std::map<SimulationControl*, DataComponentEditor*>* propEditorUI);
     void setComboBox(std::map<SimulationControl*, ComboBoxEnum*>* propCombo);
     void setObjectBeingDragged(QTreeWidgetItem* objectBeingDragged);
+    void setRestoringPersistedGuiLayout(bool restoring);
+    bool isRestoringPersistedGuiLayout() const;
     void setParentWidget(QWidget *parentWidget);
     unsigned short connectingStep() const;
     void setConnectingStep(unsigned short connectingStep);
@@ -217,6 +232,11 @@ public:
     void insertRestoredDataDefinitions(bool loaded);
     void saveDataDefinitions();
     // --------------------------------- //
+    void requestGraphicalDataDefinitionsSync();
+    void scheduleGraphicalDataDefinitionsSync();
+    bool isGraphicalDataDefinitionsSyncInProgress() const;
+    void setConnectionGeometryUpdatesBlocked(bool blocked);
+    bool areConnectionGeometryUpdatesBlocked() const;
 
 public:
     QList<QGraphicsItem*>*getGraphicalModelDataDefinitions() const;
@@ -259,6 +279,11 @@ protected: // virtual functions
     virtual void wheelEvent(QGraphicsSceneWheelEvent *wheelEvent);
 
 private:
+    bool tryCreateConnection(GraphicalComponentPort* source, GraphicalComponentPort* destination, bool notify = true);
+    GraphicalComponentPort* firstAvailableOutputPort(GraphicalModelComponent* component) const;
+    GraphicalComponentPort* firstInputPort(GraphicalModelComponent* component) const;
+    void resetConnectingState();
+private:
     GRID _grid;
     Simulator* _simulator = nullptr;
     PropertyEditorGenesys* _propertyEditor = nullptr;
@@ -289,6 +314,7 @@ private:
     bool _drawing = false;
     bool _diagram = false;
     bool _visibleDiagram = false;
+    bool _persistedGuiRestoreInProgress = false;
     unsigned short _connectingStep = 0; //0:nothing, 1:waiting click on source or destination, 2: click on source, 3: click on destination
     bool _controlIsPressed = false;
     bool _snapToGrid = false;
@@ -321,6 +347,10 @@ private:
     QList<QGraphicsItem*>* _graphicalAnimations = new QList<QGraphicsItem*>();
     QList<QGraphicsItem*>* _graphicalEntities = new QList<QGraphicsItem*>();
     QList<QGraphicsItemGroup*>* _graphicalGroups = new QList<QGraphicsItemGroup*>();
+    bool _restoringPersistedGuiLayout = false;
+    bool _graphicalDataDefinitionsSyncPending = false;
+    bool _graphicalDataDefinitionsSyncInProgress = false;
+    bool _connectionGeometryUpdatesBlocked = false;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

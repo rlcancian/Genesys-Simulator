@@ -12,6 +12,8 @@ class ModelGraphicsView;
 class ModelGraphicsScene;
 class ModelComponent;
 class GraphicalModelComponent;
+class ModelDataDefinition;
+class GraphicalModelDataDefinition;
 template<typename T> class List;
 
 // Document the service that rebuilds graphical scene artifacts from kernel models.
@@ -54,8 +56,12 @@ public:
 
     /** @brief Rebuilds the full scene model representation from kernel source components. */
     void generateGraphicalModelFromModel();
+    /** @brief Synchronizes only data-definition graphical layer with current model preserving existing layout. */
+    static void synchronizeGraphicalDataDefinitionsLayer(Simulator* simulator, ModelGraphicsScene* scene);
 
 private:
+    void rebuildGraphicalDataDefinitionsLayer(std::map<ModelComponent*, GraphicalModelComponent*>* componentMap);
+
     Simulator* _simulator;
     ModelGraphicsView* _graphicsView;
     ModelGraphicsScene* _scene;

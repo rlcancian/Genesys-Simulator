@@ -111,7 +111,7 @@ void StatisticsDefaultImpl1::collectorAddHandler(double newValue, double newWeig
 	//_variance = (_variance * (elems - 1) + pow(newValue - _average, 2)) / elems;  // this approach propagates the numeric error
 
 	// Propagate undefined dispersion and confidence settings as NaN instead of fragile default zeros.
-	_stddeviation = std::isnan(_variance) ? std::numeric_limits<double>::quiet_NaN() : sqrt(_variance);
+	_stddeviation = (_elems < 3 || std::isnan(_variance)) ? std::numeric_limits<double>::quiet_NaN() : sqrt(_variance);
 	_variationCoef = (_elems == 0 || std::isnan(_stddeviation) || _average == 0.0) ? std::numeric_limits<double>::quiet_NaN() : (_stddeviation / _average);
 	_halfWidth = (_elems == 0 || std::isnan(_stddeviation) || !std::isfinite(_criticalTn_1)) ? std::numeric_limits<double>::quiet_NaN() : _criticalTn_1 * (_stddeviation / std::sqrt(_elems));
 }
@@ -123,21 +123,21 @@ void StatisticsDefaultImpl1::collectorClearHandler() {
 }
 
 void StatisticsDefaultImpl1::initStatistics() {
-	// Reset accumulators to a clean empty-state baseline without using numeric sentinels.
+	// Reset accumulators to the project-established empty-state baseline.
 	_elems = 0;
-	_min = std::numeric_limits<double>::quiet_NaN();
-	_max = std::numeric_limits<double>::quiet_NaN();
+	_min = 0.0;
+	_max = 0.0;
 	_sumData = 0.0;
 	_sumWeight = 0.0;
 	_sumWeightSquare = 0.0;
 	_sumDataSquare = 0.0;
-	_average = std::numeric_limits<double>::quiet_NaN();
-	_variance = std::numeric_limits<double>::quiet_NaN();
-	_unweightedvariance = std::numeric_limits<double>::quiet_NaN();
-	_unbiasedVariance = std::numeric_limits<double>::quiet_NaN();
-	_stddeviation = std::numeric_limits<double>::quiet_NaN();
-	_variationCoef = std::numeric_limits<double>::quiet_NaN();
-	_halfWidth = std::numeric_limits<double>::quiet_NaN();
+	_average = 0.0;
+	_variance = 0.0;
+	_unweightedvariance = 0.0;
+	_unbiasedVariance = 0.0;
+	_stddeviation = 0.0;
+	_variationCoef = 0.0;
+	_halfWidth = 0.0;
 	_onlineStateValid = true;
 }
 
@@ -146,57 +146,57 @@ unsigned int StatisticsDefaultImpl1::numElements() {
 }
 
 double StatisticsDefaultImpl1::min() {
-	// Return NaN while online state is invalid or sample is empty.
+	// Keep contract-compatible zero baseline for empty or invalid state.
 	if (!_onlineStateValid || _elems == 0) {
-		return std::numeric_limits<double>::quiet_NaN();
+		return 0.0;
 	}
 	return _min;
 }
 
 double StatisticsDefaultImpl1::max() {
-	// Return NaN while online state is invalid or sample is empty.
+	// Keep contract-compatible zero baseline for empty or invalid state.
 	if (!_onlineStateValid || _elems == 0) {
-		return std::numeric_limits<double>::quiet_NaN();
+		return 0.0;
 	}
 	return _max;
 }
 
 double StatisticsDefaultImpl1::average() {
-	// Return NaN when full historical reconstruction is unavailable.
+	// Keep contract-compatible zero baseline for empty or invalid state.
 	if (!_onlineStateValid || _elems == 0) {
-		return std::numeric_limits<double>::quiet_NaN();
+		return 0.0;
 	}
 	return _average;
 }
 
 double StatisticsDefaultImpl1::variance() {
-	// Return NaN when full historical reconstruction is unavailable.
+	// Keep contract-compatible zero baseline when reconstruction is unavailable.
 	if (!_onlineStateValid) {
-		return std::numeric_limits<double>::quiet_NaN();
+		return 0.0;
 	}
 	return _variance;
 }
 
 double StatisticsDefaultImpl1::stddeviation() {
-	// Return NaN when full historical reconstruction is unavailable.
+	// Keep contract-compatible zero baseline when reconstruction is unavailable.
 	if (!_onlineStateValid) {
-		return std::numeric_limits<double>::quiet_NaN();
+		return 0.0;
 	}
 	return _stddeviation;
 }
 
 double StatisticsDefaultImpl1::variationCoef() {
-	// Return NaN when full historical reconstruction is unavailable.
+	// Keep contract-compatible zero baseline when reconstruction is unavailable.
 	if (!_onlineStateValid) {
-		return std::numeric_limits<double>::quiet_NaN();
+		return 0.0;
 	}
 	return _variationCoef;
 }
 
 double StatisticsDefaultImpl1::halfWidthConfidenceInterval() {
-	// Return NaN when full historical reconstruction is unavailable.
+	// Keep contract-compatible zero baseline when reconstruction is unavailable.
 	if (!_onlineStateValid) {
-		return std::numeric_limits<double>::quiet_NaN();
+		return 0.0;
 	}
 	return _halfWidth;
 }

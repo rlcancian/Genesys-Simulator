@@ -42,8 +42,8 @@
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation getPluginInformation() {
-	return &CppCompiler::getPluginInformation;
+extern "C" StaticGetPluginInformation GetPluginInformation() {
+	return &CppCompiler::GetPluginInformation;
 }
 #endif
 
@@ -138,7 +138,13 @@ PluginInformation* CppCompiler::GetPluginInformation() {
 //
 
 std::string CppCompiler::show() {
-	return ModelDataDefinition::show();
+	return ModelDataDefinition::show() +
+			",sourceFilename=\"" + _sourceFilename + "\"" +
+			",outputFilename=\"" + _outputFilename + "\"" +
+			",compilerCommand=\"" + _compilerCommand + "\"" +
+			",outputDir=\"" + _outputDir + "\"" +
+			",tempDir=\"" + _tempDir + "\"" +
+			",libraryLoaded=" + (_libraryLoaded ? "true" : "false");
 }
 
 void CppCompiler::setSourceFilename(std::string _code) {
@@ -210,6 +216,14 @@ bool CppCompiler::_check(std::string& errorMessage) {
 		errorMessage += "CompilerCommand must not be empty. ";
 		resultAll = false;
 	}
+	if (_sourceFilename == "") {
+		errorMessage += "SourceFilename must not be empty. ";
+		resultAll = false;
+	}
+	if (_outputFilename == "") {
+		errorMessage += "OutputFilename must not be empty. ";
+		resultAll = false;
+	}
 	// Optional strict checks that can be enabled later:
 	// resultAll &= Util::FileExists(_compilerCommand);
 	// resultAll &= (_sourceFilename != "");
@@ -226,26 +240,50 @@ void CppCompiler::_initBetweenReplications() {
 
 CppCompiler::CompilationResult CppCompiler::compileToExecutable() {
 	CppCompiler::CompilationResult result;
-	Util::FileDelete(this->_outputFilename);
-	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsExecutable + " " + _objectFiles + " " + _sourceFilename + " -o " + _outputFilename);
+	std::string outputDir = _outputDir;
+	if (!outputDir.empty() && outputDir.back() != Util::DirSeparator()) {
+		outputDir += Util::DirSeparator();
+	}
+	const std::string outputPath = outputDir + _outputFilename;
+	Util::FileDelete(outputPath);
+	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsExecutable + " " + _objectFiles + " " + _sourceFilename + " -o " + outputPath);
 	result = _invokeCompiler(command);
+	if (result.success) {
+		_outputFilename = outputPath;
+	}
 	_compiledToDynamicLibrary = false;
 	return result;
 }
 
 CppCompiler::CompilationResult CppCompiler::compileToDynamicLibrary() {
 	CppCompiler::CompilationResult result;
-	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsDynamicLibrary + " " + _objectFiles + " " + _sourceFilename + " -o " + _outputFilename);
+	std::string outputDir = _outputDir;
+	if (!outputDir.empty() && outputDir.back() != Util::DirSeparator()) {
+		outputDir += Util::DirSeparator();
+	}
+	const std::string outputPath = outputDir + _outputFilename;
+	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsDynamicLibrary + " " + _objectFiles + " " + _sourceFilename + " -o " + outputPath);
 	result = _invokeCompiler(command);
 	_compiledToDynamicLibrary = result.success;
+	if (result.success) {
+		_outputFilename = outputPath;
+	}
 	return result;
 }
 
 CppCompiler::CompilationResult CppCompiler::compileToStaticLibrary() {
 	CppCompiler::CompilationResult result;
-	Util::FileDelete(_outputFilename);
-	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsStaticLibrary + " " + _objectFiles + " " + _sourceFilename + " -o " + _outputFilename);
+	std::string outputDir = _outputDir;
+	if (!outputDir.empty() && outputDir.back() != Util::DirSeparator()) {
+		outputDir += Util::DirSeparator();
+	}
+	const std::string outputPath = outputDir + _outputFilename;
+	Util::FileDelete(outputPath);
+	std::string command(_compilerCommand + " " + _flagsGeneral + " " + _flagsStaticLibrary + " " + _objectFiles + " " + _sourceFilename + " -o " + outputPath);
 	result = _invokeCompiler(command);
+	if (result.success) {
+		_outputFilename = outputPath;
+	}
 	_compiledToDynamicLibrary = false;
 	return result;
 }
@@ -273,11 +311,12 @@ bool CppCompiler::unloadLibrary() {
 			_dynamicLibraryHandle = nullptr;
 			_libraryLoaded = false;
 			return true;
-			_libraryLoaded = false;
 		} catch (const std::exception& e) {
 			return false;
 		}
 	}
+	_dynamicLibraryHandle = nullptr;
+	_libraryLoaded = false;
 	return true;
 }
 
@@ -379,22 +418,27 @@ std::string CppCompiler::_read(std::string filename) {
 }
 
 CppCompiler::CompilationResult CppCompiler::_invokeCompiler(std::string command) {
-	const std::string destPath = "";
-	const std::string redirect = " >" + destPath + "stdout.log 2>" + destPath + "stdout.log";
+	std::string destPath = _tempDir.empty() ? _outputDir : _tempDir;
+	if (!destPath.empty() && destPath.back() != Util::DirSeparator()) {
+		destPath += Util::DirSeparator();
+	}
+	const std::string stdoutFile = destPath + "stdout.log";
+	const std::string stderrFile = destPath + "stderr.log";
+	const std::string redirect = " >" + stdoutFile + " 2>" + stderrFile;
 
 	Util::IncIndent();
 
 	Util::FileDelete(_outputFilename);
-	Util::FileDelete(destPath + "stdout.log");
-	Util::FileDelete(destPath + "stdout.log");
+	Util::FileDelete(stdoutFile);
+	Util::FileDelete(stderrFile);
 
 	const std::string execCommand = command + redirect;
 	//trace(execCommand);
 	system(execCommand.c_str());
 	for (short i = 0; i < 32; i++)
         std::this_thread::yield(); // give the system some time // TODO: Does it work? Is this enough?
-	const std::string resultStdout = _read(destPath+"stdout.log");
-	const std::string resultStderr = _read(destPath+"stderr.log");
+	const std::string resultStdout = _read(stdoutFile);
+	const std::string resultStderr = _read(stderrFile);
 	//trace(resultStdout);
 	//trace(resultStderr);
 
@@ -405,8 +449,8 @@ CppCompiler::CompilationResult CppCompiler::_invokeCompiler(std::string command)
 	result.compilationErrOutput = resultStderr;
 	result.destinationPath = destPath;
 
-	Util::FileDelete(destPath + "stdout.log");
-	Util::FileDelete(destPath + "stderr.log");
+	Util::FileDelete(stdoutFile);
+	Util::FileDelete(stderrFile);
 
 	Util::DecIndent();
 

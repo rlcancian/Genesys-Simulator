@@ -15,6 +15,8 @@
 // Kernel
 #include "../../../../kernel/simulator/SinkModelComponent.h"
 #include "../../../../kernel/simulator/Attribute.h"
+#include "../../../../kernel/simulator/Counter.h"
+#include "../../../../kernel/simulator/StatisticsCollector.h"
 #include "../../../TraitsApp.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
@@ -155,6 +157,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     headers << tr("Number") << tr("Name") << tr("Type"); // << and each attribute as a column
     ui->tableWidget_Entities->setHorizontalHeaderLabels(headers);
     ui->tableWidget_Entities->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    _prepareReportsResultsTable();
     ui->tableWidget_Simulation_Event->setContentsMargins(1, 0, 1, 0);
     //
     // Trees
@@ -407,6 +410,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 }
 
 MainWindow::~MainWindow() {
+    // Proactively disable trace callbacks before QWidget and simulator teardown starts.
+    if (simulator != nullptr && simulator->getTraceManager() != nullptr) {
+        simulator->getTraceManager()->beginShutdown();
+    }
     _shuttingDown = true;
     _disconnectSceneSignals("~MainWindow");
     disconnect();
@@ -513,7 +520,8 @@ void MainWindow::_actualizeActions() {
         ModelGraphicsScene* scene = ui->graphicsView->getScene();
         if (scene != nullptr) {
             const QList<QGraphicsItem*> selectedItems = scene->selectedItems();
-            canCutCopyDelete = !selectedItems.isEmpty();
+            const QList<QGraphicsItem*> userOperableSelection = scene->userOperableItems(selectedItems);
+            canCutCopyDelete = !userOperableSelection.isEmpty();
             canPaste = !_draw_copy->empty() || !_gmc_copies->empty() || !_group_copy->empty() || !_ports_copies->empty();
 
             int selectedComponents = 0;
@@ -628,7 +636,7 @@ void MainWindow::_actualizeTabPanes() {
             } else if (index == CONST.TabModelDataDefinitionsIndex) {
                 _actualizeModelDataDefinitions(true);
             }
-        } else if (index == CONST.TabCentralModelIndex) {
+        } else if (index == CONST.TabCentralSimulationIndex) {
             index = ui->tabWidgetSimulation->currentIndex();
             if (index == CONST.TabSimulationBreakpointsIndex) {
                 _actualizeDebugBreakpoints(true);
@@ -638,12 +646,99 @@ void MainWindow::_actualizeTabPanes() {
                 _actualizeDebugVariables(true);
             }
         } else if (index == CONST.TabCentralReportsIndex) {
-            index = ui->tabWidgetReports->currentIndex(); //@TODO: Add results
+            index = ui->tabWidgetReports->currentIndex();
+            if (index == CONST.TabReportResultIndex) {
+                _actualizeReportsResultsTable();
+            }
         }
     } else {
         ui->actionAnimateCounter->setChecked(false);
         ui->actionAnimateVariable->setChecked(false);
         ui->actionAnimateSimulatedTime->setChecked(false);
+    }
+}
+
+void MainWindow::_prepareReportsResultsTable() {
+    QStringList headers;
+    headers << tr("Type")
+            << tr("ParentType")
+            << tr("ParentName")
+            << tr("Name")
+            << tr("NumElements")
+            << tr("Min")
+            << tr("Max")
+            << tr("Average")
+            << tr("Variance")
+            << tr("StdDev")
+            << tr("VarCoef")
+            << tr("HalfWidthCI")
+            << tr("ConfidenceLevel");
+    ui->tableWidget_ReportsResults->setHorizontalHeaderLabels(headers);
+    ui->tableWidget_ReportsResults->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->tableWidget_ReportsResults->verticalHeader()->setVisible(false);
+    ui->tableWidget_ReportsResults->setSortingEnabled(false);
+    _clearReportsResultsTable();
+}
+
+void MainWindow::_clearReportsResultsTable() {
+    ui->tableWidget_ReportsResults->setRowCount(0);
+}
+
+void MainWindow::_actualizeReportsResultsTable() {
+    _clearReportsResultsTable();
+    if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+        return;
+    }
+    ModelSimulation* simulation = simulator->getModelManager()->current()->getSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+    const List<ModelDataDefinition*>* aggregates = simulation->getSimulationStatisticsAggregates();
+    if (aggregates == nullptr) {
+        return;
+    }
+
+    auto setCell = [this](int row, int col, const QString& value) {
+        ui->tableWidget_ReportsResults->setItem(row, col, new QTableWidgetItem(value));
+    };
+    auto numberToQString = [](double value) {
+        return QString::fromStdString(std::to_string(value));
+    };
+
+    int row = 0;
+    for (ModelDataDefinition* data : *aggregates->list()) {
+        if (data == nullptr) {
+            continue;
+        }
+        ui->tableWidget_ReportsResults->insertRow(row);
+        setCell(row, 0, QString::fromStdString(data->getClassname()));
+        setCell(row, 3, QString::fromStdString(data->getName()));
+
+        ModelDataDefinition* parent = nullptr;
+        if (StatisticsCollector* collector = dynamic_cast<StatisticsCollector*>(data)) {
+            parent = collector->getParent();
+            Statistics_if* stats = collector->getStatistics();
+            if (stats != nullptr) {
+                setCell(row, 4, QString::number(stats->numElements()));
+                setCell(row, 5, numberToQString(stats->min()));
+                setCell(row, 6, numberToQString(stats->max()));
+                setCell(row, 7, numberToQString(stats->average()));
+                setCell(row, 8, numberToQString(stats->variance()));
+                setCell(row, 9, numberToQString(stats->stddeviation()));
+                setCell(row, 10, numberToQString(stats->variationCoef()));
+                setCell(row, 11, numberToQString(stats->halfWidthConfidenceInterval()));
+                setCell(row, 12, numberToQString(stats->confidenceLevel()));
+            }
+        } else if (Counter* counter = dynamic_cast<Counter*>(data)) {
+            parent = counter->getParent();
+            setCell(row, 4, numberToQString(counter->getCountValue()));
+        }
+
+        if (parent != nullptr) {
+            setCell(row, 1, QString::fromStdString(parent->getClassname()));
+            setCell(row, 2, QString::fromStdString(parent->getName()));
+        }
+        row++;
     }
 }
 
@@ -833,14 +928,12 @@ bool MainWindow::_check(bool success)
 
     if (res) {
         ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
+        // Schedule data-definition synchronization outside this check stack to avoid scene teardown reentrancy.
+        if (scene != nullptr) {
+            scene->requestGraphicalDataDefinitionsSync();
+        }
         // Mensagem de sucesso
         if (success) {
-            if (!scene->existDiagram()){
-                scene->createDiagrams();
-            } else {
-                scene->destroyDiagram();
-                scene->createDiagrams();
-            }
             QMessageBox::information(this, "Model Check", "Model successfully checked.");
         }
         // Salva os data definitions dos componentes atuais

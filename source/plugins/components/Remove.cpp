@@ -17,6 +17,9 @@
 #include "../../kernel/simulator/SimulationControlAndResponse.h"
 #include "../../plugins/data/EntityGroup.h"
 #include "../../plugins/data/Queue.h"
+#include <algorithm>
+#include <cstdlib>
+#include <vector>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -78,7 +81,7 @@ Remove::Remove(Model* model, std::string name) : ModelComponent(model, Util::Typ
 									Util::TypeOf<Remove>(), getName(), "RemoveEndRank", "");
     SimulationControlGenericEnum<Remove::RemoveFromType, Remove>* propRemoveType = new SimulationControlGenericEnum<Remove::RemoveFromType, Remove>(
                                     std::bind(&Remove::getRemoveFromType, this), std::bind(&Remove::setRemoveFromType, this, std::placeholders::_1),
-                                    Util::TypeOf<Remove>(), getName(), "RemoveEndRank", "");
+                                    Util::TypeOf<Remove>(), getName(), "RemoveFromType", "");
 	// SimulationControlGeneric<ModelDataDefinition*>* propRemoveFrom = new SimulationControlGeneric<ModelDataDefinition*>(
 	// 								std::bind(&Remove::getRemoveFrom, this), std::bind(&Remove::setRemoveFrom, this, std::placeholders::_1),
 	// 								Util::TypeOf<Remove>(), getName(), "RemoveFrom", "");								
@@ -110,20 +113,32 @@ ModelComponent* Remove::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void Remove::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	(void) inputPortNumber;
+	auto parseNumericOrExpression = [this](const std::string& expression)->int {
+		char* parseEnd = nullptr;
+		double numericValue = std::strtod(expression.c_str(), &parseEnd);
+		const bool isNumericConstant = parseEnd != expression.c_str() && *parseEnd == '\0';
+		if (isNumericConstant) {
+			return static_cast<int>(numericValue);
+		}
+		return _parentModel->parseExpression(expression);
+	};
 	if (_removeFromType == RemoveFromType::QUEUE) {
 		Queue* queue = dynamic_cast<Queue*> (_removeFrom);
-		unsigned int startRank = _parentModel->parseExpression(_removeStartRank);
-		unsigned int endRank = _parentModel->parseExpression(_removeEndRank);
+		const int parsedStartRank = parseNumericOrExpression(_removeStartRank);
+		const int parsedEndRank = parseNumericOrExpression(_removeEndRank);
+		const unsigned int startRank = parsedStartRank <= parsedEndRank ? static_cast<unsigned int>(std::max(0, parsedStartRank)) : static_cast<unsigned int>(std::max(0, parsedEndRank));
+		const unsigned int endRank = parsedStartRank <= parsedEndRank ? static_cast<unsigned int>(std::max(0, parsedEndRank)) : static_cast<unsigned int>(std::max(0, parsedStartRank));
 		if (startRank == endRank) {
 			traceSimulation(this, TraceManager::Level::L7_internal, "Removing entity from queue \"" + queue->getName() + "\" at rank " + std::to_string(startRank) + "  // " + _removeStartRank);
 		} else {
 			traceSimulation(this, TraceManager::Level::L7_internal, "Removing entities from queue \"" + queue->getName() + "\" from rank " + std::to_string(startRank) + " to rank " + std::to_string(endRank) + "  // " + _removeStartRank + "  // " + _removeEndRank);
 		}
-		Waiting* waiting;
-		for (unsigned int rank = startRank; rank < endRank; rank++) {
-			waiting = queue->getAtRank(rank);
+		std::vector<Waiting*> waitingToRemove;
+		for (unsigned int rank = startRank; rank <= endRank && rank < queue->size(); rank++) {
+			Waiting* waiting = queue->getAtRank(rank);
 			if (waiting != nullptr) {
-				//queue->removeElement(waiting); // will remove later, on other loop
+				waitingToRemove.push_back(waiting);
 				Entity* removedEntity = waiting->getEntity();
 				traceSimulation(this, TraceManager::Level::L8_detailed, "Entity \"" + removedEntity->getName() + "\" was removed from queue \"" + queue->getName() + "\" at rank "+std::to_string(rank));
 				_parentModel->sendEntityToComponent(removedEntity, this->getConnectionManager()->getConnectionAtPort(1)); // port 1 is the removed entities output
@@ -131,15 +146,12 @@ void Remove::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 				traceSimulation(this, TraceManager::Level::L8_detailed, "Could not remove entity from queue \"" + queue->getName() + "\" at rank " + std::to_string(rank));
 			}
 		}
-		for (unsigned int rank = startRank; rank < endRank; rank++) {
-			waiting = queue->getAtRank(startRank); //always startRank, since when one is removed, the next one take its place
-			if (waiting != nullptr) {
-				queue->removeElement(waiting);
-			}			
+		for (Waiting* waiting : waitingToRemove) {
+			queue->removeElement(waiting);
 		}
 	}
 	if (_removeFromType == RemoveFromType::ENTITYGROUP) {
-		//@TODO
+		traceSimulation(this, TraceManager::Level::L8_detailed, "RemoveFromType ENTITYGROUP is not supported in this implementation batch.");
 	}
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
@@ -174,11 +186,38 @@ void Remove::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Remove::_check(std::string& errorMessage) {
 	bool resultAll = true;
+	bool sucess = false;
+	std::string msg = "";
 	resultAll = _removeFrom != nullptr;
 	if (!resultAll) {
 		errorMessage += "RemoveFrom was not defined.";
 	}
+	if (_removeStartRank == "") {
+		resultAll = false;
+		errorMessage += "RemoveStartRank was not defined.";
+	} else {
+		_parentModel->parseExpression(_removeStartRank, sucess, msg);
+		resultAll &= sucess;
+		if (!sucess) {
+			errorMessage += msg;
+		}
+	}
+	if (_removeEndRank == "") {
+		resultAll = false;
+		errorMessage += "RemoveEndRank was not defined.";
+	} else {
+		_parentModel->parseExpression(_removeEndRank, sucess, msg);
+		resultAll &= sucess;
+		if (!sucess) {
+			errorMessage += msg;
+		}
+	}
 	if (resultAll) {
+		if (_removeFromType == RemoveFromType::ENTITYGROUP) {
+			resultAll = false;
+			errorMessage += "RemoveFromType ENTITYGROUP is not supported in this implementation batch.";
+			return resultAll;
+		}
 		resultAll &= (_removeFrom->getClassname() == Util::TypeOf<Queue>() && _removeFromType == RemoveFromType::QUEUE) ||
 				(_removeFrom->getClassname() == Util::TypeOf<EntityGroup>() && _removeFromType == RemoveFromType::ENTITYGROUP);
 		if (!resultAll) {
@@ -193,11 +232,14 @@ void Remove::_createInternalAndAttachedData() {
 	if (_removeFromType == Remove::RemoveFromType::QUEUE) {
 		if (_removeFrom == nullptr) {
 			_removeFrom = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
+			if (_removeFrom == nullptr) {
+				_removeFrom = new Queue(_parentModel, getName() + ".Queue");
+			}
 		}
 		_attachedDataInsert("Queue", _removeFrom);
 	}
 	if (_removeFromType == Remove::RemoveFromType::ENTITYGROUP) {
-		//@TODO
+		// Not supported in this implementation batch. Explicitly validated in _check().
 	}
 }
 

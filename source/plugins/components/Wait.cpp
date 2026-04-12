@@ -137,11 +137,11 @@ void Wait::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_waitType == Wait::WaitType::WaitForSignal) {
 		message += " for signal \"" + _signalData->getName() + "\"";
 	} else if (_waitType == Wait::WaitType::ScanForCondition) {
-		message += " until codition \"" + _condition + "\" is true";
+		message += " until condition \"" + _condition + "\" is true";
 	} else if (_waitType == Wait::WaitType::InfiniteHold) {
 		message += " indefinitely";
 	}
-	_parentModel->getTracer()->traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, message);
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, message);
 	Waiting* waiting = new Waiting(entity, _parentModel->getSimulation()->getSimulatedTime(), this);
 	_queue->insertElement(waiting);
 }
@@ -253,13 +253,16 @@ unsigned int Wait::_handlerForSignalDataEvent(SignalData* signalData) {
 		freed++;
 		signalData->decreaseRemainLimit();
 		std::string message = getName() + " received " + signalData->getName() + ". " + ent->getName() + " removed from " + _queue->getName() + ". " + std::to_string(freed) + " freed, " + std::to_string(signalData->remainsToLimit()) + " remaining";
-		_parentModel->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, _parentModel->getSimulation()->getSimulatedTime(), ent, this, message);
+        traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), ent, this, message);
 		_parentModel->sendEntityToComponent(ent, sourceComponent->getConnectionManager()->getFrontConnection());
 	}
 	return freed;
 }
 
 void Wait::_handlerForAfterProcessEventEvent(SimulationEvent* event) {
+	if (_waitType != Wait::WaitType::ScanForCondition) {
+		return;
+	}
 	double result = _parentModel->parseExpression(_condition);
 	//std::string message = "Condition \"" + _condition + "\" evaluates to " + std::to_string(result);
 	//traceSimulation(this, TraceManager::Level::L7_internal, _parentModel->getSimulation()->getSimulatedTime(), event->getCurrentEvent()->getEntity(), this, message);
@@ -270,7 +273,7 @@ void Wait::_handlerForAfterProcessEventEvent(SimulationEvent* event) {
 			ModelComponent* sourceComponent = w->geComponent();
 			_queue->removeElement(w);
 			std::string message = getName() + " evaluated condition " + _condition + " as true. " + ent->getName() + " removed from " + _queue->getName();
-			_parentModel->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, _parentModel->getSimulation()->getSimulatedTime(), ent, this, message);
+            traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), ent, this, message, TraceManager::Level::L8_detailed);
 			_parentModel->sendEntityToComponent(ent, sourceComponent->getConnectionManager()->getFrontConnection());
 		}
 

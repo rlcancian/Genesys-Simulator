@@ -56,12 +56,20 @@ Simulator::Simulator() {
 
 
 Simulator::~Simulator() {
+	// Keep teardown deterministic and avoid dangling manager pointers after deletion.
 	delete _experimentManager;
+	_experimentManager = nullptr;
 	delete _parserManager;
-	delete _traceManager;
+	_parserManager = nullptr;
+	// Destroy models before tracing infrastructure to avoid late traces using a dead tracer.
 	delete _modelManager;
+	_modelManager = nullptr;
+	delete _traceManager;
+	_traceManager = nullptr;
 	delete _pluginManager;
+	_pluginManager = nullptr;
 	delete _licenceManager;
+	_licenceManager = nullptr;
 }
 
 PluginManager* Simulator::getPluginManager() const {

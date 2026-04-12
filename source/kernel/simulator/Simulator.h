@@ -107,7 +107,7 @@ private: // attributes 1:1 objects
 
 private: // attributes 1:1 native
 	const std::string _name = "GenESyS - GENeric and Expansible SYstem Simulator";
-    const std::string _versionName = "thecodexstrech";
+    const std::string _versionName = "thecodexbebout";
     const unsigned int _versionNumber = 260330;
 };
 //namespace\\}

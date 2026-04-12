@@ -161,8 +161,10 @@ SOURCES += \
     ../../../../plugins/data/Station.cpp \
     ../../../../plugins/data/Storage.cpp \
     ../../../../plugins/data/Variable.cpp \
+    ../../../../tools/FactorialDesign/FactorialDesign.cpp \
     ../../../../tools/FitterDummyImpl.cpp \
     ../../../../tools/HypothesisTesterDefaultImpl1.cpp \
+    ../../../../tools/OptimizerDefaultImpl1.cpp \
     ../../../../tools/ProbabilityDistribution.cpp \
     ../../../../tools/ProbabilityDistributionBase.cpp \
     ../../../../tools/SolverDefaultImpl1.cpp \
@@ -479,13 +481,25 @@ HEADERS += \
     ../../../../plugins/data/Station.h \
     ../../../../plugins/data/Storage.h \
     ../../../../plugins/data/Variable.h \
+    ../../../../tools/ContinuousDistribution_if.h \
     ../../../../tools/DataAnalyser_if.h \
+    ../../../../tools/DataSet_if.h \
+    ../../../../tools/DiscreteDistribution_if.h \
+    ../../../../tools/Distribution_if.h \
+    ../../../../tools/FactorialDesign/FactorialDesign.h \
+    ../../../../tools/FitterDefaultImpl.h \
     ../../../../tools/FitterDummyImpl.h \
     ../../../../tools/Fitter_if.h \
     ../../../../tools/HypothesisTesterDefaultImpl1.h \
     ../../../../tools/HypothesisTester_if.h \
+    ../../../../tools/OdeSolver_if.h \
+    ../../../../tools/OdeSystem_if.h \
+    ../../../../tools/OptimizerDefaultImpl1.h \
+    ../../../../tools/Optimizer_if.h \
     ../../../../tools/ProbabilityDistribution.h \
     ../../../../tools/ProbabilityDistributionBase.h \
+    ../../../../tools/Quadrature_if.h \
+    ../../../../tools/RootFinder_if.h \
     ../../../../tools/SolverDefaultImpl1.h \
     ../../../../tools/Solver_if.h \
     ../../../../tools/TraitsTools.h \
@@ -727,6 +741,7 @@ else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
 DISTFILES += \
+    ../../../../tools/README_tools.md \
     ../../../terminal/examples/arenaSmarts/Arrivals Element Stops Entities Arriving After a Set Time Modificado.doe \
     propertyeditor/qtpropertybrowser/CMakeLists.txt \
     propertyeditor/qtpropertybrowser/images/cursor-arrow.png \

@@ -438,6 +438,19 @@ List<SimulationControl*>* ModelDataDefinition::getSimulationControls() const {
 	return _simulationControls;
 }
 
+TraceManager::Level ModelDataDefinition::getSpecificTraceLevel() const{
+    return _specificTraceLevel;
+}
+void ModelDataDefinition::setSpecificTraceLevel(TraceManager::Level specificTraceLevel){
+    _specificTraceLevel = specificTraceLevel;
+}
+bool ModelDataDefinition::isSpecificTraceLevelEnabled() const {
+    return _specificTraceLevelEnabled;
+}
+void ModelDataDefinition::setSpecificTraceLevelEnabled(bool specificTraceLevelEnabled) {
+    _specificTraceLevelEnabled =specificTraceLevelEnabled;
+}
+
 
 void ModelDataDefinition::setReportStatistics(bool reportStatistics) {
 	if (_reportStatistics != reportStatistics) {
@@ -451,27 +464,45 @@ bool ModelDataDefinition::isReportStatistics() const {
 }
 
 
-// just an easy access to trace manager
+// NOT just an easy access to trace manager, but a wrapper to check if specificTraceLevel applies
+
+bool ModelDataDefinition::_checkSpecificTraceLevel(TraceManager::Level level) {
+    if (_specificTraceLevelEnabled && level > _specificTraceLevel) {
+        return false;
+    }
+    return true;
+}
+
 void ModelDataDefinition::trace(std::string text, TraceManager::Level level){
-	_parentModel->getTracer()->traceReport(text, level);
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceReport(text, level);
 }
 
 void ModelDataDefinition::traceError(std::string text, TraceManager::Level level){
-	_parentModel->getTracer()->traceError(text, level);
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceError(text, level);
 }
 
 void ModelDataDefinition::traceError(std::string text, std::exception e) {
-	_parentModel->getTracer()->traceError(text, e);
+    _parentModel->getTracer()->traceError(text, e);
 }
 
 void ModelDataDefinition::traceReport(std::string text, TraceManager::Level level){
-	_parentModel->getTracer()->traceReport(text, level);
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceReport(text, level);
+}
+
+void ModelDataDefinition::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level) {
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceSimulation(thisobject, time, entity, component, text, level);
 }
 
 void ModelDataDefinition::traceSimulation(void* thisobject, std::string text, TraceManager::Level level){
-	_parentModel->getTracer()->traceSimulation(thisobject, text, level);
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceSimulation(thisobject, text, level);
 }
 
 void ModelDataDefinition::traceSimulation(void* thisobject, TraceManager::Level level, std::string text) {
-	_parentModel->getTracer()->traceSimulation(thisobject, text, level);
+
+    _parentModel->getTracer()->traceSimulation(thisobject, text, level);
 }

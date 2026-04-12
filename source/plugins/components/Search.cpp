@@ -15,9 +15,12 @@
 #include "../../kernel/simulator/Model.h"
 #include "../../kernel/simulator/Simulator.h"
 #include "../../kernel/simulator/Attribute.h"
+#include "../../kernel/simulator/Event.h"
 #include "../../plugins/data/EntityGroup.h"
 #include "../../plugins/data/Queue.h"
 #include "../../kernel/simulator/SimulationControlAndResponse.h"
+#include <algorithm>
+#include <cstdlib>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -162,34 +165,65 @@ ModelComponent* Search::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void Search::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	int startRank = _parentModel->parseExpression(_startRank);
-	int endRank = _parentModel->parseExpression(_endRank);
+	(void) inputPortNumber;
+	auto parseNumericOrExpression = [this](const std::string& expression)->int {
+		char* parseEnd = nullptr;
+		double numericValue = std::strtod(expression.c_str(), &parseEnd);
+		const bool isNumericConstant = parseEnd != expression.c_str() && *parseEnd == '\0';
+		if (isNumericConstant) {
+			return static_cast<int>(numericValue);
+		}
+		return _parentModel->parseExpression(expression);
+	};
+	int startRank = parseNumericOrExpression(_startRank);
+	int endRank = parseNumericOrExpression(_endRank);
 	traceSimulation(this, TraceManager::Level::L7_internal, "Searching for \"" + _searchCondition + "\" in \"" + _searchIn->getName() + "\" from rank " + std::to_string(startRank) + " to " + std::to_string(endRank));
 	Entity* searchedEnt;
 	bool found = false;
-	int i = startRank;
+	int foundRank = 0;
 	double value;
 	if (_searchInType == SearchInType::QUEUE) {
 		Queue* queue = dynamic_cast<Queue*> (_searchIn);
-		while (i < queue->size() && i < endRank && !found) {
-			searchedEnt = queue->getAtRank(i)->getEntity();
-			_parentModel->getSimulation()->getCurrentEvent()->setEntity(searchedEnt); // condition MUST be tested on the entity being searched, so set it as the current entity
-			value = _parentModel->parseExpression(_searchCondition);
+		const int lowerRank = std::min(startRank, endRank);
+		const int upperRank = std::max(startRank, endRank);
+		for (int rank = lowerRank; rank <= upperRank && rank < static_cast<int>(queue->size()) && !found; rank++) {
+			if (rank < 0) {
+				continue;
+			}
+			Waiting* waiting = queue->getAtRank(static_cast<unsigned int> (rank));
+			if (waiting == nullptr) {
+				continue;
+			}
+			searchedEnt = waiting->getEntity();
+			Event* currentEvent = _parentModel->getSimulation()->getCurrentEvent();
+			if (currentEvent != nullptr) {
+				currentEvent->setEntity(searchedEnt); // condition MUST be tested on the entity being searched, so set it as the current entity
+			}
+			char* parseEndCondition = nullptr;
+			value = std::strtod(_searchCondition.c_str(), &parseEndCondition);
+			const bool isNumericConstant = parseEndCondition != _searchCondition.c_str() && *parseEndCondition == '\0';
+			if (!isNumericConstant) {
+				value = _parentModel->parseExpression(_searchCondition);
+			}
 			traceSimulation(this, TraceManager::Level::L9_mostDetailed, "Searching on entity \"" + searchedEnt->getName() + "\": " + std::to_string(value));
 			found = value != 0;
-			i++;
+			if (found) {
+				foundRank = rank;
+			}
 		}
-		_parentModel->getSimulation()->getCurrentEvent()->setEntity(entity); // set back original entity as the current one
-		if (found) {
-			i--;
-			traceSimulation(this, TraceManager::Level::L8_detailed, "Found entity \"" + searchedEnt->getName() + "\" at rank " + std::to_string(i) + ". Saved on \"" + _saveFounRankAttribute + "\" attribute.");
-			entity->setAttributeValue(_saveFounRankAttribute, i);
+		Event* currentEvent = _parentModel->getSimulation()->getCurrentEvent();
+		if (currentEvent != nullptr) {
+			currentEvent->setEntity(entity); // set back original entity as the current one
 		}
 	} else if (_searchInType == SearchInType::ENTITYGROUP) {
+		traceSimulation(this, TraceManager::Level::L8_detailed, "SearchInType ENTITYGROUP is not supported in this implementation batch.");
 	}
 	if (found) {
+		traceSimulation(this, TraceManager::Level::L8_detailed, "Found entity \"" + searchedEnt->getName() + "\" at rank " + std::to_string(foundRank) + ". Saved on \"" + _saveFounRankAttribute + "\" attribute.");
+		entity->setAttributeValue(_saveFounRankAttribute, foundRank);
 		_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getConnectionAtPort(1));
 	} else {
+		entity->setAttributeValue(_saveFounRankAttribute, 0.0);
 		_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getConnectionAtPort(0));
 	}
 }
@@ -197,14 +231,33 @@ void Search::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 bool Search::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		_searchInType = static_cast<SearchInType>(fields->loadField("searchInType", static_cast<int>(DEFAULT.searchInType)));
+		_startRank = fields->loadField("startRank", DEFAULT.startRank);
+		_endRank = fields->loadField("endRank", DEFAULT.endRank);
+		_searchCondition = fields->loadField("searchCondition", DEFAULT.searchCondition);
+		_saveFounRankAttribute = fields->loadField("saveFounRankAttribute", DEFAULT.saveFounRankAttribute);
+		const std::string searchInName = fields->loadField("searchIn", "");
+		if (searchInName != "") {
+			if (_searchInType == SearchInType::QUEUE) {
+				_searchIn = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Queue>(), searchInName);
+			} else if (_searchInType == SearchInType::ENTITYGROUP) {
+				_searchIn = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<EntityGroup>(), searchInName);
+			}
+		}
 	}
 	return res;
 }
 
 void Search::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	fields->saveField("searchInType", static_cast<int>(_searchInType), static_cast<int>(DEFAULT.searchInType), saveDefaultValues);
+	fields->saveField("startRank", _startRank, DEFAULT.startRank, saveDefaultValues);
+	fields->saveField("endRank", _endRank, DEFAULT.endRank, saveDefaultValues);
+	fields->saveField("searchCondition", _searchCondition, DEFAULT.searchCondition, saveDefaultValues);
+	fields->saveField("saveFounRankAttribute", _saveFounRankAttribute, DEFAULT.saveFounRankAttribute, saveDefaultValues);
+	if (_searchIn != nullptr) {
+		fields->saveField("searchIn", _searchIn->getName(), "", saveDefaultValues);
+	}
 }
 
 bool Search::_check(std::string& errorMessage) {
@@ -235,8 +288,23 @@ bool Search::_check(std::string& errorMessage) {
 			errorMessage += msg;
 		}
 	}
+	if (_searchCondition == "") {
+		resultAll = false;
+		errorMessage += "SearchCondition was not defined.";
+	} else {
+		_parentModel->parseExpression(_searchCondition, sucess, msg);
+		resultAll &= sucess;
+		if (!sucess) {
+			errorMessage += msg;
+		}
+	}
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Attribute>(), _saveFounRankAttribute, "Save Found Rank Attribute", true, errorMessage);
 	if (resultAll) {
+		if (_searchInType == SearchInType::ENTITYGROUP) {
+			resultAll = false;
+			errorMessage += "SearchInType ENTITYGROUP is not supported in this implementation batch.";
+			return resultAll;
+		}
 		resultAll &= (_searchIn->getClassname() == Util::TypeOf<Queue>() && _searchInType == SearchInType::QUEUE) ||
 				(_searchIn->getClassname() == Util::TypeOf<EntityGroup>() && _searchInType == SearchInType::ENTITYGROUP);
 		if (!resultAll) {
@@ -254,11 +322,14 @@ void Search::_createInternalAndAttachedData() {
 	if (_searchInType == Search::SearchInType::QUEUE) {
 		if (_searchIn == nullptr) {
 			_searchIn = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
+			if (_searchIn == nullptr) {
+				_searchIn = new Queue(_parentModel, getName() + ".Queue");
+			}
 		}
 		_attachedDataInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
 	}
 	if (_searchInType == Search::SearchInType::ENTITYGROUP) {
-		//@TODO
+		// Not supported in this implementation batch. Explicitly validated in _check().
 	}
 }
 

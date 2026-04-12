@@ -174,7 +174,6 @@ private slots:
     /** @brief Delegates model-check workflow used as precondition for simulation/export flows. */
 	void on_actionModelCheck_triggered();
 
-	void on_actionConnect_triggered();
 	void on_actionGModelComponentBreakpoint_triggered();
 	void on_actionShowInternalElements_triggered();
 	void on_actionShowAttachedElements_triggered();
@@ -221,7 +220,7 @@ private slots:
     void on_actionArranjeCenter_triggered();
     void on_actionArranjeMiddle_triggered();
     void on_actionShowSnap_triggered();
-    void on_actionGModelShowConnect_triggered();
+    void on_actionGModelShowConnect_triggered(bool checked = false);
 
     void on_actionActivateGraphicalSimulation_triggered();
     void on_horizontalSliderAnimationSpeed_valueChanged(int value);
@@ -344,6 +343,12 @@ private: // view
 	void _actualizeDebugEntities(bool force);
     /** @brief Refreshes debug breakpoints pane while preserving force-update semantics. */
 	void _actualizeDebugBreakpoints(bool force);
+    /** @brief Configures and clears the simulation results table widget headers and behavior. */
+    void _prepareReportsResultsTable();
+    /** @brief Clears all rows from the simulation results table widget. */
+    void _clearReportsResultsTable();
+    /** @brief Fills the simulation results table with final aggregated simulation statistics. */
+    void _actualizeReportsResultsTable();
     /** @brief Compatibility wrapper delegating model-components tree synchronization. */
 	void _actualizeModelComponents(bool force);
     /** @brief Compatibility wrapper delegating data-definitions tree synchronization. */

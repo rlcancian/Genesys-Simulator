@@ -199,21 +199,39 @@ void GraphicalModelDataDefinition::paint(QPainter *painter, const QStyleOptionGr
 	pathFill.lineTo(pp5);
 	pathFill.lineTo(pp6);
 	painter->drawPath(pathFill);
-	// text
-	QString text = QString::fromStdString(_element->getName());
-	QRect rect2 = QRect(_margin + _raise + 1, _margin + _raise + 1, _margin + wi - 2 * _raise - _margin, _margin + hi - 2 * _raise - _margin);
+	// text (two centered lines as a single vertically centered block)
+	const QString text1 = QString::fromStdString(_element->getClassname());
+	const QString text2 = QString::fromStdString(_element->getName());
+	const QRect contentRect(
+		_margin + _raise + 1,
+		_margin + _raise + 1,
+		wi - 2 * _raise - 2,
+		hi - 2 * _raise - 2
+	);
+	const QFontMetrics fm = painter->fontMetrics();
+	const int lineHeight = fm.height();
+	const int lineSpacing = 3;
+	const int totalHeight = lineHeight * 2 + lineSpacing;
+	const int blockTop = contentRect.top() + (contentRect.height() - totalHeight) / 2;
+	const QRect line1Rect(contentRect.left(), blockTop, contentRect.width(), lineHeight);
+	const QRect line2Rect(contentRect.left(), blockTop + lineHeight + lineSpacing, contentRect.width(), lineHeight);
+	const QPoint shadowOffset(0, 2);
 	brush = QBrush(Qt::NoBrush);
 	painter->setBrush(brush);
 	pen = QPen(myrgba(TraitsGUI<GModelDataDefinition>::textColor));
 	pen.setWidth(2);
 	pen.setCosmetic(true);
-	painter->setPen(pen);
-	painter->drawText(rect2, Qt::AlignCenter, text);
-	pen.setColor(myrgba(TraitsGUI<GModelDataDefinition>::textShadowColor));
-	painter->setPen(pen);
-	painter->drawText(rect2.adjusted(0,2,2,0), Qt::AlignCenter, text);
-	// text shadow
-	//
+	auto drawCenteredTextWithShadow = [&](const QRect& rect, const QString& textLine) {
+		pen.setColor(myrgba(TraitsGUI<GModelDataDefinition>::textShadowColor));
+		painter->setPen(pen);
+		painter->drawText(rect.translated(shadowOffset), Qt::AlignCenter, textLine);
+		pen.setColor(myrgba(TraitsGUI<GModelDataDefinition>::textColor));
+		painter->setPen(pen);
+		painter->drawText(rect, Qt::AlignCenter, textLine);
+	};
+	drawCenteredTextWithShadow(line1Rect, text1);
+	drawCenteredTextWithShadow(line2Rect, text2);
+
 	if (isSelected()) { //draw squares on corners
 		brush = QBrush(Qt::SolidPattern);
 		brush.setColor(myrgba(TraitsGUI<GModelDataDefinition>::selectionSquaresColor));
@@ -258,7 +276,5 @@ qreal GraphicalModelDataDefinition::getHeight() const {
 }
 
 bool GraphicalModelDataDefinition::sceneEvent(QEvent *event) {
-	QGraphicsObject::sceneEvent(event); // Unnecessary
+	return QGraphicsObject::sceneEvent(event);
 }
-
-

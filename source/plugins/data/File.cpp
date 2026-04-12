@@ -12,6 +12,7 @@
  */
 
 #include "File.h"
+#include "../../kernel/simulator/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -25,12 +26,24 @@ ModelDataDefinition* File::NewInstance(Model* model, std::string name) {
 }
 
 File::File(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<File>(), name) {
-	//_elems = elems;
+	SimulationControlGeneric<std::string>* propSystemFilename = new SimulationControlGeneric<std::string>(
+			std::bind(&File::getSystemFilename, this), std::bind(&File::setSystemFilename, this, std::placeholders::_1),
+			Util::TypeOf<File>(), getName(), "SystemFilename", "");
+	SimulationControlGeneric<std::string>* propAccessMode = new SimulationControlGeneric<std::string>(
+			std::bind(&File::getAccessModeAsString, this), std::bind(&File::setAccessModeAsString, this, std::placeholders::_1),
+			Util::TypeOf<File>(), getName(), "AccessMode", "");
+	_parentModel->getControls()->insert(propSystemFilename);
+	_parentModel->getControls()->insert(propAccessMode);
+	_addProperty(propSystemFilename);
+	_addProperty(propAccessMode);
 }
 
 std::string File::show() {
 	return ModelDataDefinition::show() +
-			"";
+			",systemFilename=\"" + _systemFilename + "\"" +
+			",filenameOnly=\"" + getFilenameOnly() + "\"" +
+			",pathOnly=\"" + getPathOnly() + "\"" +
+			",accessMode=\"" + getAccessModeAsString() + "\"";
 }
 
 PluginInformation* File::GetPluginInformation() {
@@ -53,16 +66,8 @@ bool File::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		try {
-			/*!
-			 * \brief Load file metadata fields.
-			 *
-			 * File currently stores only the base ModelDataDefinition data.
-			 * Keep the template commands below as guidance when file-specific
-			 * attributes are introduced.
-			 */
-			// this->_accessType = fields->loadField("accessType", DEFAULT.accessType);
-			// this->_systemFilename = fields->loadField("systemFilename", DEFAULT.systemFilename);
-			// this->_recordsetName = fields->loadField("recordsetName", DEFAULT.recordsetName);
+			setSystemFilename(fields->loadField("systemFilename", DEFAULT.systemFilename));
+			setAccessModeAsString(fields->loadField("accessMode", _accessModeToString(DEFAULT.accessMode)));
 		} catch (...) {
 		}
 	}
@@ -71,22 +76,26 @@ bool File::_loadInstance(PersistenceRecord *fields) {
 
 void File::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	/*!
-	 * \brief Save file metadata fields.
-	 */
-	// fields->saveField("accessType", _accessType, DEFAULT.accessType, saveDefaultValues);
-	// fields->saveField("systemFilename", _systemFilename, DEFAULT.systemFilename, saveDefaultValues);
-	// fields->saveField("recordsetName", _recordsetName, DEFAULT.recordsetName, saveDefaultValues);
+	fields->saveField("systemFilename", _systemFilename, DEFAULT.systemFilename, saveDefaultValues);
+	fields->saveField("accessMode", getAccessModeAsString(), _accessModeToString(DEFAULT.accessMode), saveDefaultValues);
 }
 
 bool File::_check(std::string& errorMessage) {
-	/*!
-	 * \brief Validate file metadata consistency.
-	 */
 	bool resultAll = true;
-	// resultAll &= (_systemFilename != "");
-	// resultAll &= Util::FileExists(_systemFilename);
-	(void) errorMessage;
+	if (_systemFilename.empty()) {
+		errorMessage += "File \"" + getName() + "\" must define a non-empty systemFilename. ";
+		resultAll = false;
+	}
+	if (_systemFilename.empty() == false) {
+		if (_accessModeWasInvalid) {
+			errorMessage += "File \"" + getName() + "\" has unsupported accessMode. ";
+			resultAll = false;
+		}
+		if ((_accessMode == AccessMode::Read || _accessMode == AccessMode::ReadWrite) && !Util::FileExists(_systemFilename)) {
+			errorMessage += "File \"" + getName() + "\" requires an existing file for accessMode \"" + getAccessModeAsString() + "\". ";
+			resultAll = false;
+		}
+	}
 	return resultAll;
 }
 
@@ -100,4 +109,90 @@ ParserChangesInformation* File::_getParserChangesInformation() {
 	//changes->getProductionToAdd()->insert(...);
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
+}
+
+void File::setSystemFilename(std::string systemFilename) {
+	_systemFilename = _normalizePathSeparators(systemFilename);
+}
+
+std::string File::getSystemFilename() const {
+	return _systemFilename;
+}
+
+std::string File::getFilenameOnly() const {
+	const std::string normalized = _normalizePathSeparators(_systemFilename);
+	return Util::FilenameFromFullFilename(normalized);
+}
+
+std::string File::getPathOnly() const {
+	const std::string normalized = _normalizePathSeparators(_systemFilename);
+	const size_t sepPos = normalized.find_last_of(Util::DirSeparator());
+	if (sepPos == std::string::npos) {
+		return "";
+	}
+	return Util::PathFromFullFilename(normalized);
+}
+
+void File::setAccessMode(AccessMode accessMode) {
+	_accessMode = accessMode;
+	_accessModeWasInvalid = false;
+}
+
+File::AccessMode File::getAccessMode() const {
+	return _accessMode;
+}
+
+void File::setAccessModeAsString(std::string accessMode) {
+	AccessMode parsed = DEFAULT.accessMode;
+	if (_stringToAccessMode(accessMode, &parsed)) {
+		_accessMode = parsed;
+		_accessModeWasInvalid = false;
+	} else {
+		_accessModeWasInvalid = true;
+	}
+}
+
+std::string File::getAccessModeAsString() const {
+	return _accessModeToString(_accessMode);
+}
+
+std::string File::_accessModeToString(AccessMode accessMode) {
+	switch (accessMode) {
+		case AccessMode::Read: return "Read";
+		case AccessMode::Write: return "Write";
+		case AccessMode::Append: return "Append";
+		case AccessMode::ReadWrite: return "ReadWrite";
+		default: return "Read";
+	}
+}
+
+bool File::_stringToAccessMode(const std::string& accessMode, AccessMode* parsedAccessMode) {
+	if (accessMode == "Read") {
+		*parsedAccessMode = AccessMode::Read;
+		return true;
+	}
+	if (accessMode == "Write") {
+		*parsedAccessMode = AccessMode::Write;
+		return true;
+	}
+	if (accessMode == "Append") {
+		*parsedAccessMode = AccessMode::Append;
+		return true;
+	}
+	if (accessMode == "ReadWrite") {
+		*parsedAccessMode = AccessMode::ReadWrite;
+		return true;
+	}
+	return false;
+}
+
+std::string File::_normalizePathSeparators(const std::string& filename) {
+	std::string normalized = filename;
+	const char separator = Util::DirSeparator();
+	for (char& ch : normalized) {
+		if (ch == '/' || ch == '\\') {
+			ch = separator;
+		}
+	}
+	return normalized;
 }
