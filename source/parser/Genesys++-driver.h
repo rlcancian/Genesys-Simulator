@@ -5,6 +5,7 @@
 #include <map>
 #include "GenesysParser.h"
 #include "../kernel/simulator/Model.h"
+#include "../kernel/simulator/SimulationControlAndResponse.h"
 #include "../kernel/util/Util.h"
 #include "../kernel/statistics/Sampler_if.h"
 // Tell Flex the lexer's prototype ...
@@ -75,6 +76,14 @@ public: // trying to get infos about ModelDataElements refered in expressions (s
 	std::map<std::string, std::list<std::string>*>* getReferedDataElements();
 	void clearReferedDataElements();
 	void addRefered(std::pair<std::string,std::string> referedElement);
+
+public: // SimulationResponse / SimulationControl helpers for parser semantics
+	SimulationResponse* findSimulationResponse(const std::string& name) const;
+	SimulationControl* findSimulationControl(const std::string& name) const;
+	double getSimulationResponseValueAsDouble(const std::string& name) const;
+	double getSimulationControlValueAsDouble(const std::string& name) const;
+	double stringToDoubleOrWarn(const std::string& sourceType, const std::string& symbolName, const std::string& valueText) const;
+	void traceWarning(const std::string& message) const;
 
 private:
 	/*GenesysKernel::*/Model* _model = nullptr;

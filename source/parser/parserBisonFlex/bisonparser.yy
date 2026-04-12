@@ -149,6 +149,8 @@ void failProbFunction(genesyspp_driver& driver, const std::string& message) {
 %token <obj_t> ATRIB
 %token <obj_t> CSTAT
 %token <obj_t> COUNTER
+%token <obj_t> SIMRESP
+%token <obj_t> SIMCTRL
 
 // kernel elements' functions
 %token <obj_t> fTAVG
@@ -233,6 +235,8 @@ void failProbFunction(genesyspp_driver& driver, const std::string& message) {
 %type <obj_t> function
 %type <obj_t> number
 %type <obj_t> attribute
+%type <obj_t> simulationResponse
+%type <obj_t> simulationControl
 %type <obj_t> assigment
 %type <obj_t> kernelFunction
 %type <obj_t> trigonFunction
@@ -330,6 +334,8 @@ primary:
     | function                           {$$.valor = $1.valor;}
     | LPAREN expression RPAREN           {$$.valor = $2.valor;}
     | attribute                          {$$.valor = $1.valor;}
+    | simulationResponse                 {$$.valor = $1.valor;}
+    | simulationControl                  {$$.valor = $1.valor;}
 
 /****begin_Expression_plugins****/
 
@@ -683,6 +689,18 @@ attribute:
 			attributeValue = driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->getAttributeValue($1.id, index);
 		}
 		$$.valor = attributeValue; 
+	}
+	;
+
+simulationResponse:
+	SIMRESP    {
+		$$.valor = driver.getSimulationResponseValueAsDouble($1.tipo);
+	}
+	;
+
+simulationControl:
+	SIMCTRL    {
+		$$.valor = driver.getSimulationControlValueAsDouble($1.tipo);
 	}
 	;
 
