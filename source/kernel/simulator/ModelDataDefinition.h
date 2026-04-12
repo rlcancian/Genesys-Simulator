@@ -192,7 +192,8 @@ protected: //! not just an easy access to trace manager, but wrappers to check i
 	void traceError(std::string text, std::exception e);
 	void traceError(std::string text, TraceManager::Level level = TraceManager::Level::L1_errorFatal);
 	void traceReport(std::string text, TraceManager::Level level = TraceManager::Level::L2_results);
-	void traceSimulation(void* thisobject, std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed);
+    void traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed); //!< Trace to the simulation output, used only when simulation is running (eg: compponents or dataElements inform something)
+    void traceSimulation(void* thisobject, std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed);
 	void traceSimulation(void* thisobject, TraceManager::Level level, std::string text);
 
 protected:

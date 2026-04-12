@@ -1133,6 +1133,6 @@ void SPICECircuit::_saveInstance(PersistenceRecord *fields, bool saveDefaultValu
 }
 
 void SPICECircuit::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	_parentModel->getTracer()->traceSimulation(this, "I'm just an electric circuit model and I'm not event oriented.");
+	traceSimulation(this, "I'm just an electric circuit model and I'm not event oriented.");
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }

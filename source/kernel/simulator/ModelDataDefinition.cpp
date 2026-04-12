@@ -492,6 +492,11 @@ void ModelDataDefinition::traceReport(std::string text, TraceManager::Level leve
         _parentModel->getTracer()->traceReport(text, level);
 }
 
+void ModelDataDefinition::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level) {
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceSimulation(thisobject, time, entity, component, text, level);
+}
+
 void ModelDataDefinition::traceSimulation(void* thisobject, std::string text, TraceManager::Level level){
     if (_checkSpecificTraceLevel(level))
         _parentModel->getTracer()->traceSimulation(thisobject, text, level);
