@@ -61,6 +61,20 @@
 %code
 {
 # include "Genesys++-driver.h"
+# include <exception>
+
+namespace {
+
+std::string buildProbError(const std::string& functionName, const std::string& details) {
+	return std::string("Error evaluating ") + functionName + ": " + details;
+}
+
+void failProbFunction(genesyspp_driver& driver, const std::string& message) {
+	driver.setErrorMessage(message);
+	driver.setResult(-1);
+}
+
+}
 
 }
 
@@ -135,6 +149,8 @@
 %token <obj_t> ATRIB
 %token <obj_t> CSTAT
 %token <obj_t> COUNTER
+%token <obj_t> SIMRESP
+%token <obj_t> SIMCTRL
 
 // kernel elements' functions
 %token <obj_t> fTAVG
@@ -219,6 +235,8 @@
 %type <obj_t> function
 %type <obj_t> number
 %type <obj_t> attribute
+%type <obj_t> simulationResponse
+%type <obj_t> simulationControl
 %type <obj_t> assigment
 %type <obj_t> kernelFunction
 %type <obj_t> trigonFunction
@@ -316,6 +334,8 @@ primary:
     | function                           {$$.valor = $1.valor;}
     | LPAREN expression RPAREN           {$$.valor = $2.valor;}
     | attribute                          {$$.valor = $1.valor;}
+    | simulationResponse                 {$$.valor = $1.valor;}
+    | simulationControl                  {$$.valor = $1.valor;}
 
 /****begin_Expression_plugins****/
 
@@ -401,16 +421,196 @@ mathFunction:
     ;
 
 probFunction:
-	  fRND1					     { $$.valor = driver.getSampler()->sampleUniform(0.0,1.0);}
-	| fEXPO  "(" expression ")"  { $$.valor = driver.getSampler()->sampleExponential($3.valor);}
-	| fNORM  "(" expression "," expression ")"  { $$.valor = driver.getSampler()->sampleNormal($3.valor,$5.valor);}
-	| fUNIF  "(" expression "," expression ")"  { $$.valor = driver.getSampler()->sampleUniform($3.valor,$5.valor);}
-	| fWEIB  "(" expression "," expression ")"  { $$.valor = driver.getSampler()->sampleWeibull($3.valor,$5.valor);}
-	| fLOGN  "(" expression "," expression ")"  { $$.valor = driver.getSampler()->sampleLogNormal($3.valor,$5.valor);}
-	| fGAMM  "(" expression "," expression ")"  { $$.valor = driver.getSampler()->sampleGamma($3.valor,$5.valor);}
-	| fERLA  "(" expression "," expression ")"  { $$.valor = driver.getSampler()->sampleErlang($3.valor,$5.valor);}
-	| fTRIA  "(" expression "," expression "," expression ")"   { $$.valor = driver.getSampler()->sampleTriangular($3.valor,$5.valor,$7.valor);}
-	| fBETA  "(" expression "," expression "," expression "," expression ")"  { $$.valor = driver.getSampler()->sampleBeta($3.valor,$5.valor,$7.valor,$9.valor);}
+	  fRND1					     {
+		try { $$.valor = driver.getSampler()->sampleUniform(0.0,1.0); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("rnd", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("rnd", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating rnd: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fEXPO  "(" expression ")"  {
+		try { $$.valor = driver.getSampler()->sampleExponential($3.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("expo", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("expo", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating expo: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fNORM  "(" expression "," expression ")"  {
+		try { $$.valor = driver.getSampler()->sampleNormal($3.valor,$5.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("norm", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("norm", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating norm: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fUNIF  "(" expression "," expression ")"  {
+		try { $$.valor = driver.getSampler()->sampleUniform($3.valor,$5.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("unif", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("unif", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating unif: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fWEIB  "(" expression "," expression ")"  {
+		try { $$.valor = driver.getSampler()->sampleWeibull($3.valor,$5.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("weib", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("weib", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating weib: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fLOGN  "(" expression "," expression ")"  {
+		try { $$.valor = driver.getSampler()->sampleLogNormal($3.valor,$5.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("logn", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("logn", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating logn: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fGAMM  "(" expression "," expression ")"  {
+		try { $$.valor = driver.getSampler()->sampleGamma($3.valor,$5.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("gamm", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("gamm", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating gamm: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fERLA  "(" expression "," expression ")"  {
+		try { $$.valor = driver.getSampler()->sampleErlang($3.valor,$5.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("erla", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("erla", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating erla: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fTRIA  "(" expression "," expression "," expression ")"   {
+		try { $$.valor = driver.getSampler()->sampleTriangular($3.valor,$5.valor,$7.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("tria", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("tria", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating tria: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
+	| fBETA  "(" expression "," expression "," expression "," expression ")"  {
+		try { $$.valor = driver.getSampler()->sampleBeta($3.valor,$5.valor,$7.valor,$9.valor); }
+		catch (const std::exception& e) {
+			std::string msg = buildProbError("beta", e.what());
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (const std::string& e) {
+			std::string msg = buildProbError("beta", e);
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		} catch (...) {
+			std::string msg = "Error evaluating beta: unknown error";
+			failProbFunction(driver, msg);
+			if (driver.getThrowsException()) throw std::string(msg);
+			YYERROR;
+		}
+	}
 	| fDISC  "(" listaparm ")"                  { $$.valor = driver.getSampler()->sampleDiscrete(0,0); /*@TODO: NOT IMPLEMENTED YET*/ }
     ;
 
@@ -430,17 +630,21 @@ listaparm:
 illegal: 
 	ILLEGAL           {
 		driver.setResult(-1);
+		std::string lexema = $1.tipo;
+		bool hasLexema = !lexema.empty();
+		std::string literalMsg = hasLexema ? std::string("Literal nao encontrado: \"") + lexema + "\"" : std::string("Literal nao encontrado");
+		std::string caracterMsg = hasLexema ? std::string("Caracter invalido encontrado: \"") + lexema + "\"" : std::string("Caracter invalido encontrado");
 		if(driver.getThrowsException()){
 			if($1.valor == 0){
-			  throw std::string("Literal nao encontrado");
+			  throw literalMsg;
 			}else if($1.valor == 1){
-			  throw std::string("Caracter invalido encontrado");
+			  throw caracterMsg;
 			}
 		} else {
 			if($1.valor == 0){
-			  driver.setErrorMessage(std::string("Literal nao encontrado"));
+			  driver.setErrorMessage(literalMsg);
 			}else if($1.valor == 1){
-				driver.setErrorMessage(std::string("Caracter invalido encontrado"));
+				driver.setErrorMessage(caracterMsg);
 			}
 		}
 	}
@@ -485,6 +689,18 @@ attribute:
 			attributeValue = driver.getModel()->getSimulation()->getCurrentEvent()->getEntity()->getAttributeValue($1.id, index);
 		}
 		$$.valor = attributeValue; 
+	}
+	;
+
+simulationResponse:
+	SIMRESP    {
+		$$.valor = driver.getSimulationResponseValueAsDouble($1.tipo);
+	}
+	;
+
+simulationControl:
+	SIMCTRL    {
+		$$.valor = driver.getSimulationControlValueAsDouble($1.tipo);
 	}
 	;
 

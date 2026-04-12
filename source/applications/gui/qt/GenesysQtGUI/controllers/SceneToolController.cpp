@@ -9,6 +9,7 @@
 
 #include <QGraphicsItem>
 #include <QSignalBlocker>
+#include <QDebug>
 #include <Qt>
 
 // Store only narrow collaborators needed for Phase 10 scene-tool orchestration.
@@ -346,14 +347,14 @@ void SceneToolController::onActionDiagramsTriggered() {
     }
 }
 
-// Preserve select-all semantics by selecting every scene item.
+// Preserve select-all semantics while ignoring non-operable internal infrastructure items.
 void SceneToolController::onActionSelectAllTriggered() {
     ModelGraphicsScene* scene = _currentScene();
     if (scene == nullptr) {
         return;
     }
 
-    const QList<QGraphicsItem*> itemsToScene = scene->items();
+    const QList<QGraphicsItem*> itemsToScene = scene->userOperableItems(scene->items());
     for (QGraphicsItem* item : itemsToScene) {
         item->setSelected(true);
     }
@@ -411,12 +412,14 @@ void SceneToolController::onActionGModelShowConnectTriggered() {
     }
 
     if (!_ui->actionGModelShowConnect->isChecked() && !_firstClickShowConnection) {
+        qInfo() << "Connection tool deactivated";
         _ui->actionGModelShowConnect->setChecked(false);
         scene->setConnectingStep(0);
         _graphicsView->setCursor(Qt::ArrowCursor);
     } else {
+        qInfo() << "Connection tool activated";
         _ui->actionGModelShowConnect->setChecked(true);
-        scene->setConnectingStep(1);
+        scene->beginConnection();
         _firstClickShowConnection = false;
     }
 }

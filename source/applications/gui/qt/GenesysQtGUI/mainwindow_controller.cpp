@@ -1,3 +1,12 @@
+// Document this compilation unit as the controller-wrapper partition of MainWindow.
+/**
+ * @file mainwindow_controller.cpp
+ * @brief Controller-delegation partition of MainWindow implementation.
+ *
+ * This file groups menu/toolbar/widget slot wrappers that delegate behavior to extracted
+ * controllers (for example lifecycle, simulation command, edit, scene tool, and dialog utility
+ * controllers). It does not define a new class; it is a thematic partition of MainWindow.
+ */
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 // Include the Phase 3 controller interface required by compatibility wrappers.
@@ -647,7 +656,8 @@ void MainWindow::on_actionArranjeBototm_triggered() {
     }
 }
 
-void MainWindow::on_actionGModelShowConnect_triggered() {
+void MainWindow::on_actionGModelShowConnect_triggered(bool checked) {
+    Q_UNUSED(checked);
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {
         _sceneToolController->onActionGModelShowConnectTriggered();
@@ -822,13 +832,6 @@ void MainWindow::on_horizontalSlider_ZoomGraphical_valueChanged(int value) {
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {
         _sceneToolController->onHorizontalSliderZoomGraphicalValueChanged(value);
-    }
-}
-
-void MainWindow::on_actionConnect_triggered() {
-    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
-    if (_sceneToolController != nullptr) {
-        _sceneToolController->onActionConnectTriggered();
     }
 }
 

@@ -32,7 +32,8 @@ class Plugin {
 public:
 	Plugin(std::string filename_so_dll);
 	Plugin(StaticGetPluginInformation getInformation); // @TODO: temporary. Just while compiled together
-	virtual ~Plugin() = default;
+	// Destroy plugin-owned metadata allocated by the plugin-information callback.
+	virtual ~Plugin();
 public:
 	std::string show();
 public:
@@ -73,11 +74,12 @@ private:
 	ModelDataDefinition* _loadNewElement(Model* model, PersistenceRecord *fields);
 
 private: // read only
-	bool _isValidPlugin;
-	PluginInformation* _pluginInfo;
+	// Default invalid state avoids reading indeterminate validity after construction failures.
+	bool _isValidPlugin = false;
+	// Store plugin metadata pointer with a safe default for invalid plugin construction paths.
+	PluginInformation* _pluginInfo = nullptr;
 private:
 	StaticGetPluginInformation _StatMethodGetInformation;
 };
 //namespace\\}
 #endif /* PLUGIN_H */
-

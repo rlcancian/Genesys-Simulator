@@ -160,8 +160,13 @@ void ModelLifecycleController::onActionModelCloseTriggered() const {
     _ui->graphicsView->getScene()->clearAnimationsQueue();
     _ui->graphicsView->getScene()->getGraphicalModelComponents()->clear();
     _ui->graphicsView->getScene()->getGraphicalConnections()->clear();
+    // Reset data-definition diagram bookkeeping alongside component/connection cleanup.
+    _ui->graphicsView->getScene()->getGraphicalModelDataDefinitions()->clear();
+    _ui->graphicsView->getScene()->getGraphicalDiagramsConnections()->clear();
     _ui->graphicsView->getScene()->getAllComponents()->clear();
     _ui->graphicsView->getScene()->getAllConnections()->clear();
+    _ui->graphicsView->getScene()->getAllDataDefinitions()->clear();
+    _ui->graphicsView->getScene()->getAllGraphicalDiagramsConnections()->clear();
     _ui->graphicsView->getScene()->clearAnimations();
     _ui->graphicsView->getScene()->clear();
     _ui->graphicsView->clear();

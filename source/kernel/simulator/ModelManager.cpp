@@ -24,7 +24,6 @@
 
 ModelManager::ModelManager(Simulator* simulator) {
 	_simulator = simulator;
-	_currentModel = nullptr;
 }
 
 ModelManager::~ModelManager() {

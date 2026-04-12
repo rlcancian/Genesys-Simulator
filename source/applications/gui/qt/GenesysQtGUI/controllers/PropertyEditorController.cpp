@@ -1,14 +1,15 @@
 #include "PropertyEditorController.h"
+#include "../GuiScopeTrace.h"
 
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 
 #include <QGraphicsItem>
 #include <QDebug>
 #include <QTimer>
-#include <QPointer>
 
 // Build the Phase 6 controller with narrow dependencies for property-editor orchestration.
 PropertyEditorController::PropertyEditorController(
@@ -57,6 +58,8 @@ bool PropertyEditorController::isPostCommitPipelineActive() const {
 
 // Preserve legacy single-selection behavior while moving orchestration out of MainWindow.
 void PropertyEditorController::sceneSelectionChanged() const {
+    // Adds scoped tracing for property-controller selection synchronization diagnostics.
+    const GuiScopeTrace scopeTrace("PropertyEditorController::sceneSelectionChanged", this);
     if (_graphicsView == nullptr || _propertyBrowser == nullptr) {
         return;
     }
@@ -83,6 +86,20 @@ void PropertyEditorController::sceneSelectionChanged() const {
             _propertyBrowser->setActiveObject(
                 gmc,
                 gmc->getComponent(),
+                _propertyGenesys,
+                _propertyList,
+                _propertyEditorUI,
+                _propertyBox);
+            return;
+        }
+
+        // Bind data-definition selection to the same property editor API used for components.
+        GraphicalModelDataDefinition* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        if (gmdd != nullptr) {
+            qInfo() << "[PropertyEditorController] sceneSelectionChanged binding single GraphicalModelDataDefinition";
+            _propertyBrowser->setActiveObject(
+                gmdd,
+                gmdd->getDataDefinition(),
                 _propertyGenesys,
                 _propertyList,
                 _propertyEditorUI,
@@ -162,25 +179,9 @@ void PropertyEditorController::_runGlobalRefresh() const {
         if (scene == nullptr) {
             qWarning() << "[PropertyEditorController] Skipping scene refresh because scene is null";
         } else {
-            scene->actualizeDiagramArrows();
+            // Route through scene-owned scheduling to avoid sync during unstable mutation stacks.
+            scene->requestGraphicalDataDefinitionsSync();
             scene->update();
-
-            if (scene->existDiagram()) {
-                const bool wasVisible = scene->visibleDiagram();
-                QPointer<ModelGraphicsScene> guardedScene(scene);
-                QTimer::singleShot(0, [guardedScene, wasVisible]() {
-                    if (guardedScene.isNull()) {
-                        return;
-                    }
-                    guardedScene->destroyDiagram();
-                    guardedScene->createDiagrams();
-                    if (wasVisible) {
-                        guardedScene->showDiagrams();
-                    } else {
-                        guardedScene->hideDiagrams();
-                    }
-                });
-            }
         }
         qInfo() << "[PropertyEditorController] _runGlobalRefresh exit";
     } while (_pendingGlobalRefresh);

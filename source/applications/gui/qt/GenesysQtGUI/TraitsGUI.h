@@ -79,20 +79,20 @@ template <> struct TraitsGUI<GComponentPort> {
 
 class GModelDataDefinition;
 template <> struct TraitsGUI<GModelDataDefinition> {//<GraphicalModelComponent> {
-	constexpr static const int opacity = 64;
-	constexpr static const int width = 150;
+    constexpr static const int opacity = 256*0.33;
+    constexpr static const int width = 180;
 	constexpr static const int penWidth = 1;
-	constexpr static const int raise = 5;
-	constexpr static const int margin = 8;
+    constexpr static const int raise = 5;
+    constexpr static const int margin = 8;
 	constexpr static const int selectionWidth = 8;
 	constexpr static const float stretchPos = 0.5;
 	constexpr static const float stretch = 0.0;
-	constexpr static const float heightProportion = 0.67;
+    constexpr static const float heightProportion = 0.35;
 	static const uint64_t breakpointColor = 0xFF0000FF;
 	static const uint64_t borderColor = 0x000000FF;
-	static const uint64_t pathRaised = 0xFFFFFFFF;
-	static const uint64_t pathStunken = 0x808080FF;
-	static const uint64_t textColor = 0xFFFFFFFF;
+    static const uint64_t pathRaised = 0x808080FF;
+    static const uint64_t pathStunken = 0xFFFFFFFF;
+    static const uint64_t textColor = 0x0; // 0xFFFFFFFF;
 	static const uint64_t textShadowColor = 0x000000FF;
 	static const uint64_t selectionSquaresColor = 0x000000FF;
 };

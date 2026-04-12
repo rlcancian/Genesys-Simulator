@@ -30,8 +30,20 @@ ModelDataDefinition* Sequence::NewInstance(Model* model, std::string name) {
 Sequence::Sequence(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<Sequence>(), name) {
 }
 
+Sequence::~Sequence() {
+	if (_steps != nullptr) {
+		for (SequenceStep* step : *_steps->list()) {
+			delete step;
+		}
+		_steps->clear();
+		delete _steps;
+		_steps = nullptr;
+	}
+}
+
 std::string Sequence::show() {
 	std::string msg = ModelDataDefinition::show();
+	msg += ",steps=" + std::to_string(_steps != nullptr ? _steps->size() : 0u);
 	return msg;
 }
 
@@ -82,15 +94,81 @@ void Sequence::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) 
 }
 
 bool Sequence::_check(std::string& errorMessage) {
-	_attachedAttributesInsert({"Entity.Sequence", "Entity.SequenceStep"});
-	int i = 0;
+	bool resultAll = true;
+	unsigned int i = 0;
 	for (SequenceStep* step : *_steps->list()) {
-		_attachedDataInsert("StepStation" + Util::StrIndex(i), step->getStation());
-		_attachedDataInsert("StepLabel" + Util::StrIndex(i), step->getLabel());
+		const std::string stepPrefix = getName() + ".Step" + Util::StrIndex(i);
+		if (step == nullptr) {
+			errorMessage += stepPrefix + " is null. ";
+			resultAll = false;
+			i++;
+			continue;
+		}
+		Station* station = step->getStation();
+		Label* label = step->getLabel();
+		const bool hasStation = station != nullptr;
+		const bool hasLabel = label != nullptr;
+		if (!hasStation && !hasLabel) {
+			errorMessage += stepPrefix + " must reference a Station or a Label. ";
+			resultAll = false;
+		}
+		if (hasStation && hasLabel) {
+			errorMessage += stepPrefix + " cannot reference both Station and Label simultaneously. ";
+			resultAll = false;
+		}
+		if (hasStation) {
+			bool stationOk = _parentModel->getDataManager()->check(Util::TypeOf<Station>(), station, stepPrefix + ".Station", errorMessage);
+			if (stationOk) {
+				stationOk &= ModelDataDefinition::Check(station, errorMessage);
+			}
+			resultAll &= stationOk;
+		}
+		if (hasLabel) {
+			bool labelOk = _parentModel->getDataManager()->check(Util::TypeOf<Label>(), label, stepPrefix + ".Label", errorMessage);
+			if (labelOk) {
+				labelOk &= ModelDataDefinition::Check(label, errorMessage);
+			}
+			resultAll &= labelOk;
+		}
+
+		unsigned int assignmentIndex = 0;
+		for (Assignment* assignment : *step->getAssignments()) {
+			if (assignment == nullptr) {
+				errorMessage += stepPrefix + ".Assignment" + Util::StrIndex(assignmentIndex) + " is null. ";
+				resultAll = false;
+			} else if (assignment->getDestination().empty()) {
+				errorMessage += stepPrefix + ".Assignment" + Util::StrIndex(assignmentIndex) + " destination cannot be empty. ";
+				resultAll = false;
+			}
+			assignmentIndex++;
+		}
 		i++;
 	}
-	errorMessage += "";
-	return true;
+	return resultAll;
+}
+
+void Sequence::_createInternalAndAttachedData() {
+	_attachedAttributesInsert({"Entity.Sequence", "Entity.SequenceStep"});
+
+	std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
+	std::list<std::string> staleStepKeys;
+	for (const auto& pair : *attachedData) {
+		if (pair.first.rfind("StepStation", 0) == 0 || pair.first.rfind("StepLabel", 0) == 0) {
+			staleStepKeys.push_back(pair.first);
+		}
+	}
+	for (const std::string& key : staleStepKeys) {
+		_attachedDataRemove(key);
+	}
+
+	unsigned int i = 0;
+	for (SequenceStep* step : *_steps->list()) {
+		if (step != nullptr) {
+			_attachedDataInsert("StepStation" + Util::StrIndex(i), step->getStation());
+			_attachedDataInsert("StepLabel" + Util::StrIndex(i), step->getLabel());
+		}
+		i++;
+	}
 }
 
 SequenceStep::SequenceStep(Station* station, std::list<Assignment*>* assignments) {
@@ -136,6 +214,17 @@ SequenceStep::SequenceStep(Model* model, std::string stationOrLabelName, bool is
 		_assignments = new std::list<Assignment*>();
 }
 
+SequenceStep::~SequenceStep() {
+	if (_assignments != nullptr) {
+		for (Assignment* assignment : *_assignments) {
+			delete assignment;
+		}
+		_assignments->clear();
+		delete _assignments;
+		_assignments = nullptr;
+	}
+}
+
 bool SequenceStep::_loadInstance(PersistenceRecord *fields, unsigned int parentIndex) {
 	bool res = true;
 	std::string num = Util::StrIndex(parentIndex);
@@ -152,7 +241,10 @@ bool SequenceStep::_loadInstance(PersistenceRecord *fields, unsigned int parentI
 		unsigned int assignmentsSize = fields->loadField("stepAssignments" + num, DEFAULT.assignmentsSize);
 		for (unsigned short i = 0; i < assignmentsSize; i++) {
 			Assignment* assm = new Assignment("", "");
-			assm->loadInstance(fields, i);
+			const std::string assignmentIndex = num + "_" + Util::StrIndex(i);
+			assm->setDestination(fields->loadField("assignDest" + assignmentIndex, ""));
+			assm->setExpression(fields->loadField("assignExpr" + assignmentIndex, ""));
+			assm->setAttributeNotVariable(fields->loadField("assignIsAttrib" + assignmentIndex, true));
 			_assignments->insert(_assignments->end(), assm);
 		}
 	} catch (...) {
@@ -172,7 +264,10 @@ void SequenceStep::_saveInstance(PersistenceRecord *fields, unsigned int parentI
 	fields->saveField("stepAssignments" + num, _assignments->size(), DEFAULT.assignmentsSize);
 	unsigned short i = 0;
 	for (Assignment* assm : *_assignments) {
-		assm->saveInstance(fields, i, saveDefaultValues);
+		const std::string assignmentIndex = num + "_" + Util::StrIndex(i);
+		fields->saveField("assignDest" + assignmentIndex, assm != nullptr ? assm->getDestination() : std::string(""), std::string(""), saveDefaultValues);
+		fields->saveField("assignExpr" + assignmentIndex, assm != nullptr ? assm->getExpression() : std::string(""), std::string(""), saveDefaultValues);
+		fields->saveField("assignIsAttrib" + assignmentIndex, assm != nullptr ? assm->isAttributeNotVariable() : true, true, saveDefaultValues);
 		i++;
 	}
 }

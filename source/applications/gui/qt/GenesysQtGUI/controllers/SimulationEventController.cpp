@@ -20,6 +20,7 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTextEdit>
+#include <QDebug>
 
 #include <string>
 #include <utility>
@@ -53,11 +54,12 @@ static void cleanupPausedAnimationList(QList<AnimationTransition*>* pausedAnimat
     }
 
     if (destroyAnimations) {
-        // Stop each paused transition and schedule Qt-safe destruction.
+        // Stop each paused transition before deterministic terminal destruction.
         for (AnimationTransition* animation : *pausedAnimations) {
             if (animation) {
                 animation->stopAnimation();
-                animation->deleteLater();
+                // Destroy paused transitions immediately in terminal cleanup paths.
+                delete animation;
             }
         }
     }
@@ -148,7 +150,11 @@ void SimulationEventController::onReplicationStartHandler(SimulationEvent* re) c
 
 // Preserve simulation-start setup, clears and conversion factor update behavior.
 void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) const {
+    // Log simulation-start handler entry for animation pipeline tracing.
+    qInfo() << "GUI SimulationEvent onSimulationStartHandler begin";
     Q_UNUSED(re)
+    // Reset global animation pause state to a known baseline on simulation start.
+    AnimationTransition::setPause(false);
     _callbacks.actualizeActions();
     _simulationProgressBar->setMaximum(
         _simulator->getModelManager()->current()->getSimulation()->getReplicationLength());
@@ -163,6 +169,13 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     double conversionFactorToSeconds = Util::TimeUnitConvert(replicationBaseTimeUnit, Util::TimeUnit(5));
     AnimationTimer::setConversionFactorToSeconds(conversionFactorToSeconds);
 
+    // Reset scene animation artifacts to guarantee a clean start baseline.
+    _scene->clearAnimationsTransition();
+    _scene->clearAnimationsQueue();
+    _scene->clearAnimationsValues();
+
+    // Log simulation-start handler exit after scene reset and timer factor setup.
+    qInfo() << "GUI SimulationEvent onSimulationStartHandler end";
     QCoreApplication::processEvents();
 }
 
@@ -175,6 +188,8 @@ void SimulationEventController::onSimulationPausedHandler(SimulationEvent* re) c
 
 // Preserve simulation-resume animation continuation behavior.
 void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) const {
+    // Log simulation-resume handler entry before paused-animation lookup.
+    qInfo() << "GUI SimulationEvent onSimulationResumeHandler begin";
     _callbacks.actualizeActions();
 
     // Resume detached paused animations using the same key selected from the paused map.
@@ -182,6 +197,11 @@ void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) c
     Event* currentEvent = re ? re->getCurrentEvent() : nullptr;
     auto [resumeEventKey, pausedAnimations] =
         takePausedAnimationListForResume(pausedAnimationsMap, currentEvent);
+    // Log resume selection details including paused list size and effective resume key.
+    qInfo() << "GUI SimulationEvent onSimulationResumeHandler pausedMapEmpty="
+            << (pausedAnimationsMap == nullptr || pausedAnimationsMap->empty())
+            << "pausedListSize=" << (pausedAnimations ? pausedAnimations->size() : 0)
+            << "resumeEventKeyPresent=" << (resumeEventKey != nullptr);
     if (pausedAnimations) {
         for (AnimationTransition* animation : *pausedAnimations) {
             if (animation) {
@@ -191,23 +211,37 @@ void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) c
     }
     cleanupPausedAnimationList(pausedAnimations, false);
 
+    // Log simulation-resume handler exit after paused animations are processed.
+    qInfo() << "GUI SimulationEvent onSimulationResumeHandler end";
     QCoreApplication::processEvents();
 }
 
 // Preserve simulation-end cleanup, tab switch and model-check flag reset behavior.
 void SimulationEventController::onSimulationEndHandler(SimulationEvent* re) const {
+    // Log simulation-end handler entry before paused-animation cleanup.
+    qInfo() << "GUI SimulationEvent onSimulationEndHandler begin";
     Q_UNUSED(re)
+    // Force global animation state to stopped and unpaused during terminal cleanup.
+    AnimationTransition::setRunning(false);
+    AnimationTransition::setPause(false);
+    // Log paused-animation map size before terminal cleanup.
+    qInfo() << "GUI SimulationEvent onSimulationEndHandler pausedMapSizeBeforeCleanup="
+            << (_scene->getAnimationPaused() ? _scene->getAnimationPaused()->size() : 0);
     // Destroy all paused-animation lists and remaining paused animations before ending.
     cleanupPausedAnimationMap(_scene->getAnimationPaused(), true);
+    // Clear any remaining scene animation state before final UI updates.
+    _scene->clearAnimationsTransition();
+    _scene->clearAnimationsQueue();
+    _scene->clearAnimationsValues();
     _callbacks.actualizeActions();
     _centralTabWidget->setCurrentIndex(_tabCentralReportsIndex);
     for (unsigned int i = 0; i < 50; i++) {
         QCoreApplication::processEvents();
     }
 
-    _scene->clearAnimationsQueue();
-
     *_modelChecked = false;
+    // Log simulation-end handler exit after terminal GUI state updates.
+    qInfo() << "GUI SimulationEvent onSimulationEndHandler end";
 }
 
 // Preserve process-event UI updates and delegated debug/graphical refresh behavior.
@@ -232,6 +266,16 @@ void SimulationEventController::onEntityRemoveHandler(SimulationEvent* re) const
 
 // Preserve entity-move animation pipeline behavior.
 void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
+    ModelComponent* sourceComponent = (re && re->getCurrentEvent()) ? re->getCurrentEvent()->getComponent() : nullptr;
+    ModelComponent* destinationComponent = re ? re->getDestinationComponent() : nullptr;
+    // Log move-event correlation context before dispatching transition animation.
+    qInfo() << "GUI SimulationEvent onMoveEntityEvent begin graphicalSimulationChecked="
+            << (_activateGraphicalSimulation ? _activateGraphicalSimulation->isChecked() : false)
+            << "eventPtr=" << (re ? re->getCurrentEvent() : nullptr)
+            << "sourceId=" << (sourceComponent ? sourceComponent->getId() : 0)
+            << "sourceName=" << (sourceComponent ? QString::fromStdString(sourceComponent->getName()) : QStringLiteral("<null>"))
+            << "destinationId=" << (destinationComponent ? destinationComponent->getId() : 0)
+            << "destinationName=" << (destinationComponent ? QString::fromStdString(destinationComponent->getName()) : QStringLiteral("<null>"));
     _scene->animateCounter();
     _scene->animateVariable();
 
@@ -240,6 +284,14 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
             if (re->getCurrentEvent()->getComponent()) {
                 ModelComponent* source = re->getCurrentEvent()->getComponent();
                 ModelComponent* destination = re->getDestinationComponent();
+                // Log event and endpoint identifiers used to correlate with scene/animation logs.
+                qInfo() << "GUI SimulationEvent onMoveEntityEvent sourceId="
+                        << (source ? source->getId() : 0)
+                        << "sourceName=" << (source ? QString::fromStdString(source->getName()) : QStringLiteral("<null>"))
+                        << "destinationId="
+                        << (destination ? destination->getId() : 0)
+                        << "destinationName=" << (destination ? QString::fromStdString(destination->getName()) : QStringLiteral("<null>"))
+                        << "eventPtr=" << re->getCurrentEvent();
 
                 _scene->animateQueueRemove(source);
 
@@ -251,6 +303,8 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
             }
         }
     }
+    // Log move-entity handler exit after animation pipeline delegation.
+    qInfo() << "GUI SimulationEvent onMoveEntityEvent end";
 }
 
 // Preserve after-process animation update behavior.

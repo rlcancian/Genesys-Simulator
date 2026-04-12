@@ -40,22 +40,22 @@ int Smart_ProcessArena::main(int argc, char** argv) {
 	Model* model = genesys->getModelManager()->newModel();
 	// create model
 
-    EntityType* entityType = new EntityType(model, "Entity 1");
-    Create* create = new Create(model);
+    EntityType* entityType = plugins->newInstance<EntityType>(model, "Entity 1");
+    Create* create = plugins->newInstance<Create>(model);
     create->setDescription("Create 1");
     create->setEntityType(entityType);
     create->setTimeBetweenCreationsExpression("EXPO(1)");
     create->setTimeUnit(Util::TimeUnit::hour);
 
-    Delay* delay = new Delay(model);
+    Delay* delay = plugins->newInstance<Delay>(model);
     delay->setDescription("Process 1");
     delay->setDelayExpression("tria(0.5, 1, 1.5)");
     delay->setDelayTimeUnit(Util::TimeUnit::hour);
-    create->getConnectionManager()->insert(delay);
+    create->connectTo(delay);
 
-    Dispose* dispose = new Dispose(model);
+    Dispose* dispose = plugins->newInstance<Dispose>(model);
     dispose->setDescription("Dispose 1");
-    delay->getConnectionManager()->insert(dispose);
+    delay->connectTo(dispose);
 
     ModelSimulation* simulation = model->getSimulation();
     simulation->setReplicationLength(10);

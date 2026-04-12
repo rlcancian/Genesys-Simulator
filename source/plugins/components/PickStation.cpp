@@ -173,6 +173,7 @@ PluginInformation* PickStation::GetPluginInformation() {
 // protected virtual -- must be overriden
 
 void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
+	(void)inputPortNumber;
 	double value, valueResource=0, valueQueue=0, valueExpression=0, bestValue;
 	Station* bestStation = nullptr;
 	if (_testCondition == TestCondition::MAXIMUM) {
@@ -181,6 +182,10 @@ void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 		bestValue = std::numeric_limits<double>::max();
 	}
 	for (PickableStationItem* item : *_pickableStationItens->list()) {
+		if (item == nullptr || item->getStation() == nullptr) {
+			// Ignore invalid entries during runtime dispatch; model check reports configuration errors.
+			continue;
+		}
 		if (_pickConditionExpression) {
 			valueExpression = _parentModel->parseExpression(item->getExpression());
 		}
@@ -203,6 +208,10 @@ void PickStation::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 			bestValue = value;
 			bestStation = item->getStation();
 		}
+	}
+	if (bestStation == nullptr) {
+		traceError("PickStation \"" + getName() + "\" could not select a valid Station during dispatch");
+		return;
 	}
 	entity->setAttributeValue(_saveAttribute, bestStation->getId());
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
@@ -274,8 +283,33 @@ void PickStation::_saveInstance(PersistenceRecord *fields, bool saveDefaultValue
 
 bool PickStation::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	//resultAll &= _someString != "";
-	//resultAll &= _someUint > 0;
+	if (_pickableStationItens->size() == 0) {
+		errorMessage = "PickStation \"" + getName() + "\" requires at least one PickableStationItem";
+		traceError(errorMessage);
+		resultAll = false;
+	}
+	if (_saveAttribute == "") {
+		errorMessage = "PickStation \"" + getName() + "\" requires SaveAttribute to store selected station";
+		traceError(errorMessage);
+		resultAll = false;
+	}
+	if (!_pickConditionExpression && !_pickConditionNumberInQueue && !_pickConditionNumberBusyResource) {
+		errorMessage = "PickStation \"" + getName() + "\" requires at least one active pick condition";
+		traceError(errorMessage);
+		resultAll = false;
+	}
+	unsigned int idx = 0;
+	for (PickableStationItem* item : *_pickableStationItens->list()) {
+		if (item == nullptr || item->getStation() == nullptr) {
+			errorMessage = "PickStation \"" + getName() + "\" has item " + std::to_string(idx) + " without a valid Station";
+			traceError(errorMessage);
+			resultAll = false;
+		}
+		if (_pickConditionExpression && item != nullptr) {
+			resultAll &= _parentModel->checkExpression(item->getExpression(), getName() + ".PickableStationItem[" + std::to_string(idx) + "].Expression", errorMessage);
+		}
+		idx++;
+	}
 	return resultAll;
 }
 
@@ -296,7 +330,13 @@ void PickStation::_createInternalAndAttachedData() {
 	unsigned int i = 0;
 	_attachedDataClear();
 	for (PickableStationItem* item : *_pickableStationItens->list()) {
-		_attachedDataInsert("Station" + std::to_string(i), item->getStation());
+		if (item == nullptr) {
+			i++;
+			continue;
+		}
+		if (item->getStation() != nullptr) {
+			_attachedDataInsert("Station" + std::to_string(i), item->getStation());
+		}
 		if (item->getResource() != nullptr) {
 			_attachedDataInsert("Resource" + std::to_string(i), item->getResource());
 		}
@@ -313,6 +353,5 @@ void PickStation::_createInternalAndAttachedData() {
 }
 
 void PickStation::_addProperty(SimulationControl* property) {
-	_properties->insert(property);
+	_addSimulationControl(property);
 }
-

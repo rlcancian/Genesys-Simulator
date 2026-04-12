@@ -53,11 +53,18 @@ public:
 	unsigned int geComponentOutputPort() const {
 		return _thisComponentOutputPort;
 	}
+	unsigned long long getArrivalOrder() const {
+		return _arrivalOrder;
+	}
+	void setArrivalOrder(unsigned long long arrivalOrder) {
+		_arrivalOrder = arrivalOrder;
+	}
 private:
 	Entity* _entity;
 	ModelComponent* _thisComponent;
 	double _timeStartedWaiting;
 	unsigned int _thisComponentOutputPort;
+	unsigned long long _arrivalOrder = 0;
 };
 
 /*!
@@ -134,9 +141,11 @@ protected: // could be overriden
 
 private:
 	void _initCStats();
+	void _configureListComparator();
 private:
 	List<Waiting*>* _list = new List<Waiting*>();
 	double _lastTimeNumberInQueueChanged;
+	unsigned long long _nextArrivalOrder = 0;
 private: //1::1
 
 	const struct DEFAULT_VALUES {
@@ -151,4 +160,3 @@ private: // inner internal elements
 };
 
 #endif /* QUEUE_H */
-

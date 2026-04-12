@@ -80,7 +80,7 @@ public:
 	static std::string convertEnumToStr(FailureRule rule);
 public:
 	Failure(Model* model, std::string name = "");
-	virtual ~Failure() = default;
+	virtual ~Failure() override;
 public: // static
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static PluginInformation* GetPluginInformation();
@@ -146,4 +146,3 @@ private:
 };
 
 #endif /* FAILURE_H */
-

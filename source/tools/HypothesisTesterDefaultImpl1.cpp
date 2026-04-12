@@ -42,6 +42,19 @@ double chi2CdfApproximation(double chi2, double degreesOfFreedom) {
 	return clampProbability(normalCdf(transformed));
 }
 
+double chi2CdfByIntegration(double chi2, double degreesOfFreedom) {
+	if (chi2 <= 0.0) {
+		return 0.0;
+	}
+	if (degreesOfFreedom <= 0.0 || !std::isfinite(degreesOfFreedom)) {
+		throw std::invalid_argument("chi2CdfByIntegration requires positive finite degreesOfFreedom");
+	}
+	// Use numerical integration of the chi-square PDF to keep p-values coherent with chi-square quantiles.
+	SolverDefaultImpl1 integrator(1e-6, 10000);
+	const double integral = integrator.integrate(0.0, chi2, ProbabilityDistributionBase::chi2, degreesOfFreedom);
+	return clampProbability(integral);
+}
+
 void validateConfidenceLevel(double confidenceLevel) {
 	if (!(confidenceLevel > 0.0 && confidenceLevel < 1.0)) {
 		throw std::invalid_argument("confidenceLevel must be in (0,1)");
@@ -105,8 +118,12 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 	if (n < 2 || prop < 0.0 || prop > 1.0) {
 		throw std::invalid_argument("proportionConfidenceInterval requires n >= 2 and 0 <= prop <= 1");
 	}
-	double correctConf = (1.0 - confidenceLevel) / 2.0;
-	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n - 1);
+	validateConfidenceLevel(confidenceLevel);
+	// Use the large-sample normal approximation for one-population proportion CI;
+	// keep the previous t-Student quantile expression commented for historical/technical traceability.
+	const double alpha = 1.0 - confidenceLevel;
+	const double critic = ProbabilityDistribution::inverseNormal(1.0 - alpha / 2.0, 0.0, 1.0);
+	// const double critic = -ProbabilityDistribution::inverseTStudent((1.0 - confidenceLevel) / 2.0, 0.0, 1.0, n - 1);
 	double e0 = critic * sqrt(prop * (1 - prop) / n);
 	return HypothesisTester_if::ConfidenceInterval(prop - e0, prop + e0, e0);
 }
@@ -115,9 +132,13 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 	if (N <= 1 || n < 2 || n > static_cast<unsigned int> (N) || prop < 0.0 || prop > 1.0) {
 		throw std::invalid_argument("proportionConfidenceInterval(population) requires N > 1, 2 <= n <= N and 0 <= prop <= 1");
 	}
-	double correctConf = (1.0 - confidenceLevel) / 2.0;
-	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n - 1);
-	double e0 = critic * sqrt(prop * (1 - prop) / n) * sqrt((N - n) / (N - 1));
+	validateConfidenceLevel(confidenceLevel);
+	// Use the finite-population proportion CI with normal approximation + finite-population correction;
+	// keep the previous t-Student quantile expression commented for historical/technical traceability.
+	const double alpha = 1.0 - confidenceLevel;
+	const double critic = ProbabilityDistribution::inverseNormal(1.0 - alpha / 2.0, 0.0, 1.0);
+	// const double critic = -ProbabilityDistribution::inverseTStudent((1.0 - confidenceLevel) / 2.0, 0.0, 1.0, n - 1);
+	double e0 = critic * sqrt(prop * (1 - prop) / n) * sqrt((static_cast<double> (N) - n) / (static_cast<double> (N) - 1.0));
 	return HypothesisTester_if::ConfidenceInterval(prop - e0, prop + e0, e0);
 }
 
@@ -139,6 +160,7 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageDif
 	double correctConf = (1.0 - confidenceLevel) / 2.0;
 	double e0;
 	HypothesisTester_if::ConfidenceInterval varIC = varianceRatioConfidenceInterval(pow(stddev1, 2), n1, pow(stddev2, 2), n2, confidenceLevel);
+	// @TODO: Equal-variance selection is currently indirect, based on whether the variance-ratio CI contains 1.0; revisit with an explicit pooled-vs-Welch policy.
 	if ((varIC.inferiorLimit() <= 1.0 && varIC.superiorLimit() >= 1.0) || (varIC.inferiorLimit() >= 1.0 && varIC.superiorLimit() <= 1.0)) { // test variances ratio
 		// equal variances
 		const double pooledVariance = (((n1 - 1) * stddev1 * stddev1) + ((n2 - 1) * stddev2 * stddev2)) / (n1 + n2 - 2);
@@ -155,18 +177,21 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageDif
 }
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionDifferenceConfidenceInterval(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel) {
-	if (n1 < 2 || n2 < 2 || stddev1 < 0.0 || stddev2 < 0.0) {
-		throw std::invalid_argument("proportionDifferenceConfidenceInterval requires n1,n2 >= 2 and stddev1,stddev2 >= 0");
+	// Legacy signature compatibility: avg1/avg2 are interpreted as p1/p2 and stddev1/stddev2 are intentionally unused.
+	(void) stddev1;
+	(void) stddev2;
+	const double prop1 = avg1;
+	const double prop2 = avg2;
+	if (n1 < 2 || n2 < 2 || prop1 < 0.0 || prop1 > 1.0 || prop2 < 0.0 || prop2 > 1.0) {
+		throw std::invalid_argument("proportionDifferenceConfidenceInterval requires n1,n2 >= 2 and 0 <= p1,p2 <= 1");
 	}
-	constexpr auto epsilon = std::numeric_limits<double>::epsilon();
-	const double denominator = std::sqrt((stddev1 * stddev1) / n1 + (stddev2 * stddev2) / n2);
-	if (denominator <= epsilon) {
-		return HypothesisTester_if::ConfidenceInterval(avg1 - avg2, avg1 - avg2, 0.0);
-	}
-	double correctConf = (1.0 - confidenceLevel) / 2.0;
-	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, std::min(n1, n2) - 1);
-	double e0 = critic * denominator;
-	return HypothesisTester_if::ConfidenceInterval(avg1 - avg2 - e0, avg1 - avg2 + e0, e0);
+	validateConfidenceLevel(confidenceLevel);
+	// Use the classical CI for p1 - p2 with normal quantile z_(1-alpha/2), as required by the adopted formalism.
+	const double alpha = 1.0 - confidenceLevel;
+	const double critic = ProbabilityDistribution::inverseNormal(1.0 - alpha / 2.0, 0.0, 1.0);
+	const double standardError = std::sqrt(prop1 * (1.0 - prop1) / n1 + prop2 * (1.0 - prop2) / n2);
+	const double e0 = critic * standardError;
+	return HypothesisTester_if::ConfidenceInterval((prop1 - prop2) - e0, (prop1 - prop2) + e0, e0);
 }
 
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceRatioConfidenceInterval(double var1, unsigned int n1, double var2, unsigned int n2, double confidenceLevel) {
@@ -259,7 +284,10 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(double
 		acceptSupLimit = ProbabilityDistribution::inverseTStudent(1.0 - significanceLevel, 0.0, 1.0, n - 1);
 	}
 	double testStat = (avgSample - avg) / (stddev / sqrt(n));
-	const double cdf = normalCdf(testStat); // normal approximation
+	// Use Student-t CDF for p-value consistency with the t-based critical limits above.
+	const double cdf = studentTCdf(testStat, n - 1);
+	// Historical reference: the previous implementation used a normal approximation for p-value.
+	// const double cdf = normalCdf(testStat); // normal approximation
 	double pvalue;
 	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
 		pvalue = cdf;
@@ -303,7 +331,10 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(doubl
 	const double significanceLevel = 1.0 - confidenceLevel;
 	const double dof = n - 1;
 	const double testStat = (dof * var) / vartest;
-	const double cdf = chi2CdfApproximation(testStat, dof);
+	// Use integrated chi-square CDF for p-value coherence with inverseChi2-based acceptance limits.
+	const double cdf = chi2CdfByIntegration(testStat, dof);
+	// Historical reference: Wilson-Hilferty approximation kept commented for technical traceability.
+	// const double cdf = chi2CdfApproximation(testStat, dof);
 	double pValue;
 	double acceptInfLim = -std::numeric_limits<double>::infinity();
 	double acceptSupLim = std::numeric_limits<double>::infinity();
@@ -331,6 +362,7 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(double
 	const double var1 = stddev1 * stddev1;
 	const double var2 = stddev2 * stddev2;
 	HypothesisTester_if::ConfidenceInterval varIC = varianceRatioConfidenceInterval(var1, n1, var2, n2, confidenceLevel);
+	// @TODO: Equal-variance selection is currently indirect, based on whether the variance-ratio CI contains 1.0; revisit with an explicit pooled-vs-Welch policy.
 	const bool equalVariances = (varIC.inferiorLimit() <= 1.0 && varIC.superiorLimit() >= 1.0);
 	const double diff = avg1 - avg2;
 	double testStat;

@@ -1,6 +1,7 @@
 #include "GraphicalComponentPort.h"
 #include "GraphicalConnection.h"
 #include "GraphicalModelComponent.h"
+#include "ModelGraphicsScene.h"
 #include <QPainter>
 #include "TraitsGUI.h"
 #include "UtilGUI.h"
@@ -17,7 +18,9 @@ GraphicalComponentPort::GraphicalComponentPort(GraphicalModelComponent* componen
 		_height *= 1.15;
 	}
 	//setPos(0,0);
-    setFlags(QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable);
+    setFlag(QGraphicsItem::ItemIsSelectable, false);
+    setFlag(QGraphicsItem::ItemIsFocusable, false);
+    setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
 	setAcceptHoverEvents(true);
 	setAcceptTouchEvents(true);
 	setActive(true);
@@ -51,8 +54,27 @@ void GraphicalComponentPort::mouseMoveEvent(QGraphicsSceneMouseEvent *mouseEvent
 
 QVariant GraphicalComponentPort::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value) {
 	QVariant res = QGraphicsObject::itemChange(change, value);
-	if (change == QGraphicsItem::ItemPositionChange || QGraphicsItem::ItemScenePositionHasChanged) {
+	// Avoid connection geometry updates while scene membership or parentage is changing.
+	if (change == QGraphicsItem::ItemSceneChange
+	        || change == QGraphicsItem::ItemSceneHasChanged
+	        || change == QGraphicsItem::ItemParentChange
+	        || change == QGraphicsItem::ItemParentHasChanged) {
+		return res;
+	}
+
+	// Update connected edges only when scene coordinates were committed and scene/component are stable.
+	if (change == QGraphicsItem::ItemScenePositionHasChanged) {
+		QGraphicsScene* ownerScene = scene();
+		ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(ownerScene);
+		if (ownerScene == nullptr || _componentGraph == nullptr
+		        || (modelScene != nullptr && (modelScene->isGraphicalDataDefinitionsSyncInProgress()
+		                                       || modelScene->areConnectionGeometryUpdatesBlocked()))) {
+			return res;
+		}
 		for (GraphicalConnection* graphconnection : *_connections) {
+			if (graphconnection == nullptr) {
+				continue;
+			}
 			graphconnection->updateDimensionsAndPosition();
 			//graphconnection->update();//updateDimensions();
 		}

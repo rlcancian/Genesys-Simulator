@@ -18,6 +18,7 @@
 #include "Simulator.h"
 
 #include <assert.h>
+#include <unordered_set>
 
 //using namespace GenesysKernel;
 
@@ -93,8 +94,9 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 	Plugin* plugin;
 	Util::IncIndent();
 	{
-		List<ModelComponent*>* visited = new List<ModelComponent*>();
-		List<ModelComponent*>* unconnected = new List<ModelComponent*>();
+		// Use automatic local containers to avoid leaking traversal bookkeeping structures.
+		List<ModelComponent*> visited;
+		List<ModelComponent*> unconnected;
 		ModelComponent* comp;
 		for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); it++) {
 			comp = (*it);
@@ -103,7 +105,8 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 			if (plugin->getPluginInfo()->isSource() || plugin->getPluginInfo()->isReceiveTransfer()) { //(dynamic_cast<SourceModelComponent*> (comp) != nullptr) {
 				// it is a source component OR it can receive enetities from transfer
 				bool drenoFound = false;
-				_recursiveConnectedTo(pluginManager, comp, visited, unconnected, &drenoFound);
+				// Keep recursive traversal state entirely in stack-owned bookkeeping objects.
+				_recursiveConnectedTo(pluginManager, comp, &visited, &unconnected, &drenoFound);
 				if (!drenoFound)
 					resultAll = false;
 			}
@@ -111,7 +114,7 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 		// check if any component remains unconnected
 		for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); it++) {
 			comp = (*it);
-			if (visited->find(comp) == visited->list()->end()) { //not found
+			if (visited.find(comp) == visited.list()->end()) { //not found
 				resultAll = false;
 				_model->getTracer()->traceError("Component \"" + comp->getName() + "\" is unconnected.");
 			}
@@ -232,53 +235,57 @@ bool ModelCheckerDefaultImpl1::checkOrphaned() {
 	_model->getTracer()->trace("Checking Orphaned DataDefinitions", TraceManager::Level::L7_internal);
 	Util::IncIndent();
 	{
-		std::list<ModelDataDefinition*>* orphaned = new std::list<ModelDataDefinition*>();
+		// Track orphan candidates by pointer identity to make pruning deterministic and iteration-safe.
+		std::unordered_set<ModelDataDefinition*> orphaned;
 		// Start by including all elements as orphaned
 		// Use a value snapshot of type names when enumerating initial orphan candidates.
 		std::list<std::string> allTypes = _model->getDataManager()->getDataDefinitionClassnames();
 		for (std::string ddtypename : allTypes) {
 			for (ModelDataDefinition* element : *_model->getDataManager()->getDataDefinitionList(ddtypename)->list()) {
-				orphaned->insert(orphaned->end(), element);
+				orphaned.insert(element);
 			}
 		}
-		// now exclude all those are refered by someone.
-		ModelDataDefinition* mdd;
+		// Remove every referenced data definition from orphan candidates while preserving trace semantics.
+		auto removeReferenced = [&](ModelDataDefinition* owner) {
+			for (std::pair<std::string, ModelDataDefinition*> pairInternal : *owner->getInternalData()) {
+				ModelDataDefinition* mdd = pairInternal.second;
+				orphaned.erase(mdd);
+				_model->getTracer()->trace("(" + owner->getClassname() + ") " + owner->getName() + " <#>--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
+			}
+			for (std::pair<std::string, ModelDataDefinition*> pairAttached : *owner->getAttachedData()) {
+				ModelDataDefinition* mdd = pairAttached.second;
+				orphaned.erase(mdd);
+				_model->getTracer()->trace("(" + owner->getClassname() + ") " + owner->getName() + " < >--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
+			}
+		};
 		// ... by someone (ModelDataDefinition).
 		// Use another value snapshot because orphan pruning may observe changes made during checking.
 		std::list<std::string> referencedTypes = _model->getDataManager()->getDataDefinitionClassnames();
 		for (std::string ddtypename : referencedTypes) {
 			for (ModelDataDefinition* element : *_model->getDataManager()->getDataDefinitionList(ddtypename)->list()) {
-				for (std::pair<std::string, ModelDataDefinition*> pairInternal : *element->getInternalData()) {
-					mdd = pairInternal.second;
-					orphaned->remove(mdd);
-					_model->getTracer()->trace("(" + element->getClassname() + ") " + element->getName() + " <#>--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
-				}
-				for (std::pair<std::string, ModelDataDefinition*> pairAttached : *element->getAttachedData()) {
-					mdd = pairAttached.second;
-					orphaned->remove(mdd);
-					_model->getTracer()->trace("(" + element->getClassname() + ") " + element->getName() + " < >--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
-				}
+				removeReferenced(element);
 			}
 		}
 		// ... by someone (ModelComponent).
 		for (ModelComponent* component : *_model->getComponentManager()->getAllComponents()) {
+			// Remove all component-owned references from orphan candidates before final deletion pass.
 			for (std::pair<std::string, ModelDataDefinition*> pairInternal : *component->getInternalData()) {
-				mdd = pairInternal.second;
-				orphaned->remove(mdd);
+				ModelDataDefinition* mdd = pairInternal.second;
+				orphaned.erase(mdd);
 				_model->getTracer()->trace("(" + component->getClassname() + ") " + component->getName() + " <#>--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
 			}
 			for (std::pair<std::string, ModelDataDefinition*> pairAttached : *component->getAttachedData()) {
-				mdd = pairAttached.second;
-				orphaned->remove(mdd);
+				ModelDataDefinition* mdd = pairAttached.second;
+				orphaned.erase(mdd);
 				_model->getTracer()->trace("(" + component->getClassname() + ") " + component->getName() + " < >--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
 			}
 		}
 		// every one in orphaned list now is really orphaned
-		if (orphaned->size() > 0) {
+		if (orphaned.size() > 0) {
 			_model->getTracer()->trace("Orphaned DataDefinitions found and will be removed:", TraceManager::Level::L7_internal);
 			Util::IncIndent();
 			{
-				for (ModelDataDefinition* orphanElem : *orphaned) {
+				for (ModelDataDefinition* orphanElem : orphaned) {
 					_model->getTracer()->trace("Orphan (" + orphanElem->getClassname() + ") " + orphanElem->getName() + "(id=" + std::to_string(orphanElem->getId()) + ") removed");
 					_model->getDataManager()->remove(orphanElem);
 				}

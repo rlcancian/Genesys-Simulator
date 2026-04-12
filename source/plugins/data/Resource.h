@@ -104,7 +104,7 @@ public:
 public:
 	//Resource(Model* model);
 	Resource(Model* model, std::string name = "");
-	virtual ~Resource() = default;
+	virtual ~Resource() override;
 public:
 	virtual std::string show() override;
 public: // static
@@ -151,6 +151,7 @@ private: //methods
 	void _active();
 	void _checkFailByCount();
 	friend class Failure;
+	friend class ResourceTestProbe;
 
 private:
 
@@ -188,14 +189,13 @@ private: // internal elements
 	StatisticsCollector* _cstatTimeFailed = nullptr;
 	StatisticsCollector* _cstatProportionSeized = nullptr;
 	StatisticsCollector* _cstatCapacityUtilization = nullptr;
-	Counter* _counterTotalTimeSeized;
-	Counter* _counterTotalTimeFailed;
-	Counter* _counterNumSeizes;
-	Counter* _counterNumReleases;
-	Counter* _counterTotalCostPerUse;
-	Counter* _counterTotalCostBusy;
-	Counter* _counterTotalCostIdle;
+	Counter* _counterTotalTimeSeized = nullptr;
+	Counter* _counterTotalTimeFailed = nullptr;
+	Counter* _counterNumSeizes = nullptr;
+	Counter* _counterNumReleases = nullptr;
+	Counter* _counterTotalCostPerUse = nullptr;
+	Counter* _counterTotalCostBusy = nullptr;
+	Counter* _counterTotalCostIdle = nullptr;
 };
 
 #endif /* RESOURCE_H */
-

@@ -27,7 +27,7 @@ public:
 	}
 public:
 	SignalData(Model* model, std::string name = "");
-	virtual ~SignalData() = default;
+	virtual ~SignalData() override;
 public: // static
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static PluginInformation* GetPluginInformation();
@@ -37,6 +37,8 @@ public: //virtual
 public:
 	unsigned int generateSignal(double signalValue, unsigned int limit);
 	void addSignalDataEventHandler(SignalDataEventHandler eventHandler, ModelComponent* component);
+	void removeSignalDataEventHandler(ModelComponent* component);
+	bool hasSignalDataEventHandler(ModelComponent* component) const;
 	unsigned int remainsToLimit() const;
 	void decreaseRemainLimit();
 
@@ -51,10 +53,9 @@ protected: // could be overriden .
 private: // methods
 	unsigned int  _notifySignalDataEventHandlers(); //!< Notify observer classes that some of the resource capacity has been released. It is useful for allocation components (such as Seize) to know when an entity waiting into a queue can try to seize the resource again
 private: //1::1
-	unsigned int _remainsToLimit;
+	unsigned int _remainsToLimit = 0;
 private: //1::n
 	List<PairSignalDataEventHandler*>* _signalDataEventHandlers = new List<PairSignalDataEventHandler*>();
 };
 
 #endif /* SIGNALDATA_H */
-

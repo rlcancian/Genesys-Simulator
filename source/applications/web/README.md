@@ -1,35 +1,47 @@
 # Genesys Web Application
 
-Primeira implementação funcional do tipo de aplicação **Web** do GenESyS.
+First functional implementation of the **Web** application type for GenESyS.
 
-## O que já existe
-- Executável CMake: `genesys_webhook` (habilitado com `-DGENESYS_BUILD_WEB=ON`).
-- Servidor HTTP simples baseado em socket TCP.
-- Endpoints iniciais:
+## Current Stage 5 scope
+- CMake executable: `genesys_webhook` (enabled with `-DGENESYS_BUILD_WEB_APPLICATION=ON`).
+- Layered architecture for HTTP transport, API routing, session/token, and simulator service.
+- Stateful session management with one `Simulator` per session and per-session workspace directories.
+- Endpoints:
   - `GET /health`
-  - `GET /api/v1/simulator/info`
+  - `POST /api/v1/auth/session`
+  - `GET /api/v1/simulator/info` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/models` (requires `Authorization: Bearer <token>`)
+  - `GET /api/v1/models/current` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/models/save` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/models/load` (requires `Authorization: Bearer <token>`)
+  - `GET /api/v1/simulation/status` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/simulation/config` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/simulation/run` (requires `Authorization: Bearer <token>`)
+  - `POST /api/v1/simulation/step` (requires `Authorization: Bearer <token>`)
 
-## Como executar
+## How to run
 ```bash
-cmake --preset debug -DGENESYS_BUILD_WEB=ON
-cmake --build --preset debug --target genesys_webhook
-./build/debug/source/applications/web/genesys_webhook --port 8080
+cmake -S . -B build/web-debug -G Ninja -DGENESYS_BUILD_WEB_APPLICATION=ON
+cmake --build build/web-debug --target genesys_webhook
+./build/web-debug/source/applications/web/genesys_webhook --port 8080
 ```
 
-Parâmetros opcionais:
-- `--port <N>`: porta HTTP (default 8080).
-- `--max-requests <N>`: encerra após N requisições (útil para testes automatizados).
+Optional parameters:
+- `--port <N>`: HTTP port (default 8080).
+- `--max-requests <N>`: exit after N requests (useful for scripted smoke tests).
 
-## Próximos incrementos
-- Rotas `POST` para `PluginManager` e `ModelManager`.
-- Tratamento de payload JSON.
-- Autenticação por token.
-- Endpoints de controle de simulação.
-# Genesys Web Application (proposta)
+## Security notice
+Session creation in Stage 1 is provisional and stateful in memory. Generated tokens are opaque random strings and **not** production-grade authentication.
 
-Este diretório está reservado para o novo tipo de aplicação **Web** do GenESyS.
+For Stage 3 model persistence:
+- Save/load operations are restricted to each session workspace directory.
+- API requests accept only a `filename` basename (no paths).
+- Filenames must match `[A-Za-z0-9._-]` and cannot include `..`, `/`, or `\`.
 
-Objetivo inicial (v1): executar um processo HTTP que converta requisições em chamadas de API para o kernel (`Simulator`, `PluginManager`, `ModelManager`).
+For Stage 4 simulation configuration:
+- `POST /api/v1/simulation/config` currently uses a minimal contract parser without external JSON libraries.
+- All configuration fields are required in the request body: `numberOfReplications`, `replicationLength`, `warmUpPeriod`, `pauseOnEvent`, `pauseOnReplication`, `initializeStatistics`, `initializeSystem`.
 
-Consulte o roadmap técnico em:
-- `documentation/web-application-roadmap-2026-03-30.md`
+For Stage 5 simulation execution:
+- `POST /api/v1/simulation/run` and `POST /api/v1/simulation/step` are synchronous wrappers over `ModelSimulation::start()` and `ModelSimulation::step()`.
+- This stage intentionally does not introduce asynchronous/background simulation control endpoints.

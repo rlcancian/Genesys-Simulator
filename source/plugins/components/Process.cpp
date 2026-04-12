@@ -175,15 +175,94 @@ void Process::_adjustConnections() {
 	}
 }
 
+void Process::_ensureInternalComponents() {
+	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
+	if (_seize == nullptr) {
+		_seize = plugins->newInstance<Seize>(_parentModel, getName() + ".Seize");
+		if (_seize == nullptr) {
+			_seize = new Seize(_parentModel, getName() + ".Seize");
+		}
+	}
+	if (_delay == nullptr) {
+		_delay = plugins->newInstance<Delay>(_parentModel, getName() + ".Delay");
+		if (_delay == nullptr) {
+			_delay = new Delay(_parentModel, getName() + ".Delay");
+		}
+	}
+	if (_release == nullptr) {
+		_release = plugins->newInstance<Release>(_parentModel, getName() + ".Release");
+		if (_release == nullptr) {
+			_release = new Release(_parentModel, getName() + ".Release");
+		}
+	}
+	_seize->setModelLevel(_id);
+	_delay->setModelLevel(_id);
+	_release->setModelLevel(_id);
+
+	_seize->getConnectionManager()->connections()->clear();
+	_delay->getConnectionManager()->connections()->clear();
+	_seize->getConnectionManager()->insert(_delay);
+	_delay->getConnectionManager()->insert(_release);
+
+	_internalDataInsert("Seize", _seize);
+	_internalDataInsert("Delay", _delay);
+	_internalDataInsert("Release", _release);
+}
+
+void Process::_reconcileInternalComponents() {
+	_release->getReleaseRequests()->clear();
+	for (SeizableItem* seizeItem : *_seize->getSeizeRequests()->list()) {
+		SeizableItem* releaseItem = new SeizableItem(seizeItem);
+		std::string saveAttr = seizeItem->getSaveAttribute();
+		if (saveAttr == "") {
+			saveAttr = "Entity." + this->getName() + ".";
+			if (seizeItem->getSeizableType() == SeizableItem::SeizableType::RESOURCE) {
+				saveAttr += seizeItem->getResourceName();
+			} else if (seizeItem->getSet() != nullptr) {
+				saveAttr += seizeItem->getSet()->getName();
+			} else {
+				saveAttr += "Set";
+			}
+			saveAttr += "SaveAttribute";
+			seizeItem->setSaveAttribute(saveAttr);
+		}
+		releaseItem->setSelectionRule(SeizableItem::SelectionRule::SPECIFICMEMBER);
+		releaseItem->setSaveAttribute(saveAttr);
+		_release->getReleaseRequests()->insert(releaseItem);
+		this->_attachedAttributesInsert({saveAttr});
+	}
+}
+
+bool Process::_hasConsistentInternalChain(std::string& errorMessage) const {
+	Connection* seizeOut = _seize->getConnectionManager()->getFrontConnection();
+	Connection* delayOut = _delay->getConnectionManager()->getFrontConnection();
+	if (seizeOut == nullptr || seizeOut->component != _delay) {
+		errorMessage += "Process internal chain is invalid: expected Seize -> Delay. ";
+		return false;
+	}
+	if (delayOut == nullptr || delayOut->component != _release) {
+		errorMessage += "Process internal chain is invalid: expected Delay -> Release. ";
+		return false;
+	}
+	if (getConnectionManager()->size() > 0 && getConnectionManager()->getFrontConnection()->component != _seize) {
+		errorMessage += "Process external output must target internal Seize. ";
+		return false;
+	}
+	return true;
+}
+
 bool Process::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
+		_ensureInternalComponents();
 		_seize->setAllocationType(static_cast<Util::AllocationType> (fields->loadField("allocationType", static_cast<int> (_seize->DEFAULT.allocationType))));
 		_seize->setPriority(fields->loadField("priority", _seize->DEFAULT.priority));
+		_seize->setPriorityExpression(fields->loadField("priorityExpression", _seize->DEFAULT.priorityExpression));
 		QueueableItem* queueableItem = new QueueableItem(nullptr);
 		queueableItem->setElementManager(_parentModel->getDataManager());
 		queueableItem->loadInstance(fields);
 		_seize->setQueueableItem(queueableItem);
+		_seize->getSeizeRequests()->clear();
 		unsigned short numRequests = fields->loadField("resquests", _seize->DEFAULT.seizeRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr, "", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
@@ -193,9 +272,8 @@ bool Process::_loadInstance(PersistenceRecord *fields) {
 		}
 		_delay->setDelayExpression(fields->loadField("delayExpression", _delay->DEFAULT.delayExpression));
 		_delay->setDelayTimeUnit(fields->loadField("delayExpressionTimeUnit", _delay->DEFAULT.delayTimeUnit));
-		_seize->setModelLevel(_id);
-		_delay->setModelLevel(_id);
-		_release->setModelLevel(_id);
+		_reconcileInternalComponents();
+		_adjustConnections();
 	}
 	return res;
 }
@@ -238,56 +316,38 @@ PluginInformation* Process::GetPluginInformation() {
 }
 
 void Process::_createInternalAndAttachedData() {
-	if (_seize == nullptr) {
-		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
-		// the following components are created into the "_id" model level (a submodel) and therefore will not be saved
-		_seize = plugins->newInstance<Seize>(_parentModel, getName() + ".Seize");
-		_delay = plugins->newInstance<Delay>(_parentModel, getName() + ".Delay");
-		_release = plugins->newInstance<Release>(_parentModel, getName() + ".Release");
-		_seize->setModelLevel(_id); // set level as subcomponent
-		_delay->setModelLevel(_id); // set level as subcomponent
-		_release->setModelLevel(_id); // set level as subcomponent
-		_seize->getConnectionManager()->insert(_delay);
-		_delay->getConnectionManager()->insert(_release);
-		_internalDataInsert("Seize", _seize);
-		_internalDataInsert("Delay", _delay);
-		_internalDataInsert("Release", _release);
-	}
+	_ensureInternalComponents();
 	_adjustConnections();
-	if (!_flagConstructing) { // this method was called before checking the model, not by the object constructor
-		// garantee that release releases exactlly what seize seizes
-		_release->getReleaseRequests()->clear();
-		for (SeizableItem* item : *_seize->getSeizeRequests()->list()) {
-			_release->getReleaseRequests()->insert(item);
-		}
-		SeizableItem* releaseItem;
-		unsigned int i = 0;
-		for (SeizableItem* seizeItem : *_seize->getSeizeRequests()->list()) {
-			std::string saveAttr = seizeItem->getSaveAttribute();
-			if (saveAttr == "") { // force seize to have a save attribute
-				saveAttr = "Entity." + this->getName() + ".";
-				if (seizeItem->getSeizableType() == SeizableItem::SeizableType::RESOURCE)
-					saveAttr += seizeItem->getResourceName();
-				else
-					saveAttr += seizeItem->getSet()->getName();
-				saveAttr += "SaveAttribute";
-				seizeItem->setSaveAttribute(saveAttr);
-			}
-			releaseItem = _release->getReleaseRequests()->getAtRank(i);
-			releaseItem->setSelectionRule(SeizableItem::SelectionRule::SPECIFICMEMBER);
-			releaseItem->setSaveAttribute(saveAttr);
-			this->_attachedAttributesInsert({saveAttr});
-			i++;
-		}
+	if (!_flagConstructing) {
+		_reconcileInternalComponents();
 	}
 }
 
 bool Process::_check(std::string& errorMessage) {
+	_ensureInternalComponents();
+	_adjustConnections();
 	bool resultAll = true;
+
+	if (_seize == nullptr || _delay == nullptr || _release == nullptr) {
+		errorMessage += "Process must have internal Seize, Delay and Release components. ";
+		return false;
+	}
+	resultAll &= _hasConsistentInternalChain(errorMessage);
+	if (_seize->getQueueableItem() == nullptr) {
+		resultAll = false;
+		errorMessage += "Process requires a QueueableItem in internal Seize. ";
+	}
+	if (_seize->getSeizeRequests()->size() == 0) {
+		resultAll = false;
+		errorMessage += "Process requires at least one SeizeRequest. ";
+	}
+	if (_seize->getSeizeRequests()->size() != _release->getReleaseRequests()->size()) {
+		resultAll = false;
+		errorMessage += "Process requires matching SeizeRequests and ReleaseRequests cardinality. ";
+	}
 
 	resultAll &= ModelComponent::Check(_seize);
 	resultAll &= ModelComponent::Check(_delay);
 	resultAll &= ModelComponent::Check(_release);
-	errorMessage += "";
 	return resultAll;
 }

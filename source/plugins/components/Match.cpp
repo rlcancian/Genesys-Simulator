@@ -13,7 +13,9 @@
 
 #include "Match.h"
 
+#include <algorithm>
 #include "../../kernel/simulator/Model.h"
+#include "../../kernel/simulator/Attribute.h"
 #include "../../kernel/simulator/Simulator.h"
 #include "../../kernel/simulator/SimulationControlAndResponse.h"
 
@@ -77,47 +79,106 @@ ModelComponent* Match::LoadInstance(Model* model, PersistenceRecord *fields) {
 }
 
 void Match::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	Waiting* waiting = new Waiting(entity, _parentModel->getSimulation()->getSimulatedTime(), this);
-	if (_rule == Match::Rule::ByAttribute) {
-		double value = entity->getAttributeValue(_attributeName);
-		// std::map<Queue*, std::map<double, unsigned int>*>*
-		std::pair<Queue*, std::map<double, unsigned int>*> pair1;
-		while (_entitiesByAttrib->find(_queues->getAtRank(inputPortNumber)) == _entitiesByAttrib->end()) {
-			_entitiesByAttrib->insert({_queues->getAtRank(inputPortNumber), new std::map<double, unsigned int>()});
-		}
-		pair1 = *(_entitiesByAttrib->find(_queues->getAtRank(inputPortNumber)));
-		std::pair<double, unsigned int> pair2;
-		while (pair1.second->find(value) == pair1.second->end()) {
-			pair1.second->insert({value, 0});
-		}
-		pair2 = *(pair1.second->find(value));
-		pair2.second++;
+	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
+		_createInternalAndAttachedData();
 	}
+	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
+		traceError("Match internal queues are not initialized.", TraceManager::Level::L1_errorFatal);
+		return;
+	}
+	if (inputPortNumber >= _queues->size()) {
+		traceError("Match received entity on invalid input port " + std::to_string(inputPortNumber) + ".", TraceManager::Level::L3_errorRecover);
+		return;
+	}
+
+	unsigned int matchSize = static_cast<unsigned int>(_parentModel->parseExpression(_matchSize));
+	if (matchSize == 0) {
+		traceError("MatchSize evaluated to zero. Entity will remain waiting.", TraceManager::Level::L3_errorRecover);
+		return;
+	}
+
+	double tnow = 0.0;
+	if (_parentModel->getSimulation() != nullptr) {
+		tnow = _parentModel->getSimulation()->getSimulatedTime();
+	}
+	Waiting* waiting = new Waiting(entity, tnow, this);
 	_queues->getAtRank(inputPortNumber)->insertElement(waiting);
-	unsigned int matchSize = _parentModel->parseExpression(_matchSize);
-	unsigned int i = 0;
+
 	if (_rule == Match::Rule::Any) {
 		bool foundAll = true;
-		while (foundAll && i < _queues->size()) {
-			foundAll &= _queues->getAtRank(i++)->size() >= matchSize;
+		for (unsigned int i = 0; foundAll && i < _queues->size(); ++i) {
+			foundAll = foundAll && (_queues->getAtRank(i)->size() >= matchSize);
 		}
 		if (foundAll) {
 			// release entities
-			Entity* waitingEntity;
+			Entity* waitingEntity = nullptr;
 			for (Queue* queue : *_queues->list()) {
-				for (i = 0; i < matchSize; i++) {
+				for (unsigned int i = 0; i < matchSize; i++) {
 					waiting = queue->first();
-					queue->removeElement(waiting);
-					// @TODO: Actualize STATISTICS about queue/wait time
+					if (waiting == nullptr) {
+						break;
+					}
 					waitingEntity = waiting->getEntity();
+					queue->removeElement(waiting);
 					_parentModel->sendEntityToComponent(waitingEntity, this->getConnectionManager()->getFrontConnection(), 0.0);
 				}
 			}
 		}
-	} else {
-		// by attribute
-		bool foundAll = true;
-		while (foundAll && i < _queues->size()) {
+	} else if (_rule == Match::Rule::ByAttribute) {
+		std::list<double> candidateValues;
+		Queue* firstQueue = _queues->size() > 0 ? _queues->getAtRank(0) : nullptr;
+		if (firstQueue != nullptr) {
+			for (unsigned int i = 0; i < firstQueue->size(); ++i) {
+				Waiting* queueWaiting = firstQueue->getAtRank(i);
+				if (queueWaiting != nullptr) {
+					double candidate = queueWaiting->getEntity()->getAttributeValue(_attributeName);
+					if (std::find(candidateValues.begin(), candidateValues.end(), candidate) == candidateValues.end()) {
+						candidateValues.push_back(candidate);
+					}
+				}
+			}
+		}
+		double selectedValue = 0.0;
+		bool foundMatch = false;
+		for (double candidate : candidateValues) {
+			bool candidateInAllQueues = true;
+			for (unsigned int q = 0; candidateInAllQueues && q < _queues->size(); ++q) {
+				Queue* queue = _queues->getAtRank(q);
+				unsigned int countInQueue = 0;
+				for (unsigned int i = 0; i < queue->size(); ++i) {
+					Waiting* queueWaiting = queue->getAtRank(i);
+					if (queueWaiting != nullptr && queueWaiting->getEntity()->getAttributeValue(_attributeName) == candidate) {
+						++countInQueue;
+						if (countInQueue >= matchSize) {
+							break;
+						}
+					}
+				}
+				candidateInAllQueues = countInQueue >= matchSize;
+			}
+			if (candidateInAllQueues) {
+				selectedValue = candidate;
+				foundMatch = true;
+				break;
+			}
+		}
+
+		if (foundMatch) {
+			for (unsigned int q = 0; q < _queues->size(); ++q) {
+				Queue* queue = _queues->getAtRank(q);
+				unsigned int released = 0;
+				for (unsigned int i = 0; i < queue->size() && released < matchSize; /* no increment */) {
+					Waiting* queueWaiting = queue->getAtRank(i);
+					if (queueWaiting != nullptr && queueWaiting->getEntity()->getAttributeValue(_attributeName) == selectedValue) {
+						Entity* waitingEntity = queueWaiting->getEntity();
+						queue->removeElement(queueWaiting);
+						_parentModel->sendEntityToComponent(waitingEntity, this->getConnectionManager()->getFrontConnection(), 0.0);
+						++released;
+						continue;
+					}
+					++i;
+				}
+			}
 		}
 	}
 }
@@ -126,9 +187,9 @@ bool Match::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		_rule =  static_cast<Rule>(fields->loadField("rule", static_cast<int>(DEFAULT.rule)));
+		_numberOfQueues = fields->loadField("numberOfQueues", DEFAULT.numberOfQueues);
 		_matchSize = fields->loadField("matchSize", DEFAULT.matchSize);
 		_attributeName = fields->loadField("attributeName", DEFAULT.attributeName);
-		//@TODO _queues
 	}
 	return res;
 }
@@ -136,6 +197,7 @@ bool Match::_loadInstance(PersistenceRecord *fields) {
 void Match::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("rule", static_cast<int> (_rule), static_cast<int> (DEFAULT.rule), saveDefaultValues);
+	fields->saveField("numberOfQueues", _numberOfQueues, DEFAULT.numberOfQueues, saveDefaultValues);
 	fields->saveField("matchSize", _matchSize, DEFAULT.matchSize, saveDefaultValues);
 	fields->saveField("attributeName", _attributeName, DEFAULT.attributeName, saveDefaultValues);
 	fields->saveField("queues", _queues->size(), 0u, saveDefaultValues);
@@ -175,19 +237,29 @@ unsigned int Match::getNumberOfQueues() const {
 
 bool Match::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	// @TODO: not implemented yet
-	errorMessage += "";
+	if (_numberOfQueues < 2) {
+		errorMessage += "NumberOfQueues must be at least 2. ";
+		resultAll = false;
+	}
+	resultAll &= _parentModel->checkExpression(_matchSize, "MatchSize", errorMessage);
+	const bool attributeMandatory = _rule == Match::Rule::ByAttribute;
+	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Attribute>(), _attributeName, "AttributeName", attributeMandatory, errorMessage);
 	return resultAll;
 }
 
 void Match::_createInternalAndAttachedData() {
 	while (_queues->size() > _numberOfQueues) {
-		this->_internalDataRemove(_queues->last()->getName());
-		_internalDataRemove(_queues->last()->getName());
+		Queue* obsoleteQueue = _queues->last();
+		_internalDataRemove(obsoleteQueue->getName());
 		_queues->remove(_queues->last());
+		_entitiesByAttrib->erase(obsoleteQueue);
 	}
 	while (_queues->size() < _numberOfQueues) {
 		Queue* newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+		if (newQueue == nullptr) {
+			newQueue = new Queue(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+		}
+		ModelDataDefinition::CreateInternalData(newQueue);
 		_queues->insert(newQueue);
 		_internalDataInsert(newQueue->getName(), newQueue);
 	}
@@ -196,7 +268,6 @@ void Match::_createInternalAndAttachedData() {
 PluginInformation * Match::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Match>(), &Match::LoadInstance, &Match::NewInstance);
 	info->setCategory("Decision");
-	info->setMaximumInputs(2);
 	info->setMaximumInputs(99);
 	//info->getDynamicLibFilenameDependencies()->insert("queue.so");
 	// ...

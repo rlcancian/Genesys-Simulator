@@ -78,6 +78,7 @@ private:
 	std::vector<Entity*>* _buffer = new std::vector<Entity*>;
 private: // attached
 	SignalData* _attachedSignal = nullptr;
+	SignalData* _signalWithRegisteredHandler = nullptr;
 };
 
 #endif /* BUFFER_H */

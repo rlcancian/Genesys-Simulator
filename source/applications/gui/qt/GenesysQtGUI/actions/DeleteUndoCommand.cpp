@@ -1,11 +1,18 @@
 #include "DeleteUndoCommand.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 
 DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphicsScene *scene, QUndoCommand *parent)
     : QUndoCommand(parent), _myComponentItems(new QList<ComponentItem>()), _myConnectionItems(new QList<GraphicalConnection *>()), _myDrawingItems(new QList<DrawingItem>()), _myGroupItems(new QList<GroupItem>()), _myGraphicsScene(scene) {
 
     // filtra cada tipo de item possível em sua respectiva lista
     for (QGraphicsItem *item : items) {
-        if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *>(item)) {
+        // Keep data definitions managed by model reconstruction instead of direct delete actions.
+        const bool isDataDefinition = dynamic_cast<GraphicalModelDataDefinition *>(item) != nullptr;
+        const bool isComponent = dynamic_cast<GraphicalModelComponent *>(item) != nullptr;
+        if (isDataDefinition && !isComponent) {
+            continue;
+        }
+        if (GraphicalModelComponent *component = isComponent ? dynamic_cast<GraphicalModelComponent *>(item) : nullptr) {
             ComponentItem componentItem;
 
             componentItem.graphicalComponent = component;
@@ -36,6 +43,9 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
 
             for (int i = 0; i < group->childItems().size(); i++) {
                 GraphicalModelComponent * component = dynamic_cast<GraphicalModelComponent *>(groupItem.group->childItems().at(i));
+                if (component == nullptr) {
+                    continue;
+                }
 
                 ComponentItem componentItem;
 

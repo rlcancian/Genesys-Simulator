@@ -140,6 +140,16 @@ Model::~Model() {
 }
 
 void Model::sendEntityToComponent(Entity* entity, Connection* connection, double timeDelay) {
+	if (connection == nullptr) {
+		this->getTracer()->traceSimulation(this, TraceManager::Level::L3_errorRecover,
+				"Model::sendEntityToComponent skipped: null connection");
+		return;
+	}
+	if (connection->component == nullptr) {
+		this->getTracer()->traceSimulation(this, TraceManager::Level::L3_errorRecover,
+				"Model::sendEntityToComponent skipped: null destination component");
+		return;
+	}
 	this->sendEntityToComponent(entity, connection->component, timeDelay, connection->channel.portNumber);
 }
 
@@ -147,6 +157,15 @@ void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, dou
 	auto se = _simulation->_createSimulationEvent();
 	se->setDestinationComponent(component);
 	se->setEntityMoveTimeDelay(timeDelay);
+    // Log emitted move-event endpoints before notifying GUI/observer handlers.
+    ModelComponent* sourceComponent = (se->getCurrentEvent() != nullptr ? se->getCurrentEvent()->getComponent() : nullptr);
+    std::string sourceName = (sourceComponent != nullptr ? sourceComponent->getName() : "<null>");
+    std::string destinationName = (component != nullptr ? component->getName() : "<null>");
+    std::string message = "Entity move event emitted sourceId=" + std::to_string(sourceComponent != nullptr ? sourceComponent->getId() : 0)
+            + " sourceName=" + sourceName
+            + " destinationId=" + std::to_string(component != nullptr ? component->getId() : 0)
+            + " destinationName=" + destinationName;
+    this->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, message);
     this->getOnEventManager()->NotifyEntityMoveHandlers(se.get()); // it's my friend
 	Event* newEvent = new Event(this->getSimulation()->getSimulatedTime()+timeDelay, entity, component, componentinputPortNumber);
 	this->getFutureEvents()->insert(newEvent);
@@ -211,7 +230,23 @@ void Model::checkReferencesToDataDefinitions(std::string expression, std::map<st
 	wrapper.clearReferedDataElements();
 	wrapper.parse_str(expression);
 	std::map<std::string, std::list<std::string>*>* refs = wrapper.getReferedDataElements();
-	referencedDataDefinitions->insert(refs->begin(), refs->end());
+	// Deep-copy referred element names so output map owns stable lists beyond parser wrapper lifetime.
+	for (const auto& typeAndNames : *refs) {
+		const std::string& typeName = typeAndNames.first;
+		const std::list<std::string>* sourceNames = typeAndNames.second;
+		if (sourceNames == nullptr) {
+			continue;
+		}
+		std::list<std::string>*& destinationNames = (*referencedDataDefinitions)[typeName];
+		if (destinationNames == nullptr) {
+			destinationNames = new std::list<std::string>();
+		}
+		for (const std::string& referencedName : *sourceNames) {
+			if (std::find(destinationNames->begin(), destinationNames->end(), referencedName) == destinationNames->end()) {
+				destinationNames->push_back(referencedName);
+			}
+		}
+	}
 	wrapper.setRegisterReferedDataElements(false);
 }
 

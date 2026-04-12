@@ -75,8 +75,13 @@ void Write::insertText(std::list<std::string> texts) {
 		_writeElements->list()->push_back(text);
 	}
 
-	if (texts.size() > 0 && texts.back().substr(texts.back().length() - 1, 1) != "\n") {
-		_writeElements->list()->push_back("\n");
+	// Keep append semantics, but guard edge cases such as empty list/empty tail string.
+	if (!texts.empty()) {
+		const std::string& last = texts.back();
+		const bool endsWithNewLine = !last.empty() && last.back() == '\n';
+		if (!endsWithNewLine) {
+			_writeElements->list()->push_back("\n");
+		}
 	}
 }
 
@@ -101,7 +106,7 @@ Write::WriteToType Write::writeToType() const {
 }
 
 void Write::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	if (this->_writeToType == Write::WriteToType::FILE) { // file is kept open during replication
+	if (this->_writeToType == Write::WriteToType::FILE && !_filename.empty()) { // file is kept open during replication
 		_savefile.open(_filename, std::ofstream::app);
 	}
 	std::string message = "";
@@ -112,7 +117,7 @@ void Write::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		} else {
 			message += msgElem;
 		}
-		lastWasShown = msgElem.substr(msgElem.length() - 1, 1) == "\n";
+		lastWasShown = !msgElem.empty() && msgElem.back() == '\n';
 		if (lastWasShown) {
 			message = message.substr(0, message.length() - 1);
 			if (message != "") {
@@ -132,14 +137,14 @@ void Write::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			_savefile << message << std::endl;
 		}
 	}
-	if (this->_writeToType == Write::WriteToType::FILE) { // file is kept open during replication (//@TODO: whould need to intercept end of simulation event
+	if (this->_writeToType == Write::WriteToType::FILE && _savefile.is_open()) { // file is kept open during replication (//@TODO: whould need to intercept end of simulation event
 		_savefile.close();
 	}
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
 void Write::_initBetweenReplications() {
-	if (this->_writeToType == Write::WriteToType::FILE) {
+	if (this->_writeToType == Write::WriteToType::FILE && !_filename.empty()) {
 		try {
 			if (!_savefile.is_open()) {
 				_savefile.open(_filename, std::ofstream::app);
@@ -163,7 +168,6 @@ bool Write::_loadInstance(PersistenceRecord *fields) {
 		for (unsigned short i = 0; i < writesSize; i++) {
 			std::string text = fields->loadField("write" + Util::StrIndex(i), "");
 			_writeElements->insert(text);
-			i++;
 		}
 	}
 	return res;
@@ -184,21 +188,18 @@ void Write::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Write::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	/*
-	WriteText* msgElem;
+	if (_writeToType == Write::WriteToType::FILE && _filename.empty()) {
+		errorMessage.append("Filename must be informed when WriteToType=FILE. ");
+		resultAll = false;
+	}
 	unsigned short i = 0;
-	std::list<WriteText*>* msgs = this->_writeElements->list();
-	for (std::list<WriteText*>::iterator it = msgs->begin(); it != msgs->end(); it++) {
-		msgElem = (*it);
+	for (const std::string& msgElem : *_writeElements->list()) {
 		i++;
-		if (msgElem->isExpression) {
-			resultAll &= _parentModel->checkExpression(msgElem->text, "writeExpression" + Util::strIndex(i), errorMessage);
+		if (!msgElem.empty() && msgElem.front() == '@') {
+			const std::string expression = msgElem.substr(1);
+			resultAll &= _parentModel->checkExpression(expression, "writeExpression" + Util::StrIndex(i), errorMessage);
 		}
 	}
-	 */
-	// when cheking the model (before simulating it), remove the file if exists
-	std::remove(_filename.c_str());
-
 	return resultAll;
 }
 

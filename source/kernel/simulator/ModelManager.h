@@ -85,7 +85,7 @@ public:
 	//Model* end();
 private:
 	List<Model*>* _models = new List<Model*>();
-	Model* _currentModel;
+    Model* _currentModel = nullptr;
 private:
 	Simulator* _simulator;
 };

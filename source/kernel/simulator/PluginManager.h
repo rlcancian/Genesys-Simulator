@@ -36,7 +36,8 @@ class PluginManager {
 public:
 	/*! \brief Creates a plugin manager bound to a simulator instance. */
 	PluginManager(Simulator* simulator);
-	virtual ~PluginManager() = default;
+	/*! \brief Destroys owned plugin wrappers and connector resources. */
+	virtual ~PluginManager();
 public:
 	/*! \brief Returns a human-readable summary of currently connected plugins. */
 	std::string show();
@@ -55,7 +56,9 @@ public:
 	/*! \brief Finds a connected plugin by plugin type name. */
 	Plugin* find(std::string pluginTypeName);
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */
-	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound = true);
+    List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound = true);
+    /*! \brief Auto-loads plugins discovered automatically). */
+    List<Plugin*>* autoInsertPlugins();
 public:
 	/*! \brief Returns the first plugin in the internal plugin list. */
 	Plugin* front();

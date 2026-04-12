@@ -6,6 +6,7 @@
 #include "../animations/AnimationVariable.h"
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"
+#include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/ModelGraphicsView.h"
@@ -69,12 +70,12 @@ void EditCommandController::onActionEditCutTriggered() const {
     (*_groupCopy)->clear();
     (*_drawCopy)->clear();
 
-    QList<QGraphicsItem*> selecteds = _graphicsView->scene()->selectedItems();
+    ModelGraphicsScene* currentScene = scene();
+    QList<QGraphicsItem*> selecteds = currentScene->userOperableItems(_graphicsView->scene()->selectedItems());
     if (selecteds.size() > 0) {
-        ModelGraphicsScene* currentScene = scene();
         *_cut = true;
 
-        for (QGraphicsItem* item : _graphicsView->scene()->selectedItems()) {
+        for (QGraphicsItem* item : selecteds) {
             QList<GraphicalModelComponent*> groupComponents;
             QList<GraphicalConnection*>* connGroup = new QList<GraphicalConnection*>();
 
@@ -83,6 +84,9 @@ void EditCommandController::onActionEditCutTriggered() const {
             } else if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
                 for (int i = 0; i < group->childItems().size(); i++) {
                     GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(group->childItems().at(i));
+                    if (component == nullptr) {
+                        continue;
+                    }
 
                     if (!component->getGraphicalInputPorts().empty() && !component->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
                         for (int j = 0; j < component->getGraphicalInputPorts().at(0)->getConnections()->size(); ++j) {
@@ -101,14 +105,18 @@ void EditCommandController::onActionEditCutTriggered() const {
                     groupComponents.append(component);
                 }
 
-                saveItemForCopy(&groupComponents, connGroup);
-                (*_groupCopy)->append(group);
-                currentScene->insertComponentGroup(group, groupComponents);
-                for (unsigned int k = 0; k < static_cast<unsigned int>(connGroup->size()); k++) {
-                    (*_portsCopies)->append(connGroup->at(k));
+                if (!groupComponents.isEmpty()) {
+                    saveItemForCopy(&groupComponents, connGroup);
+                    (*_groupCopy)->append(group);
+                    currentScene->insertComponentGroup(group, groupComponents);
+                    for (unsigned int k = 0; k < static_cast<unsigned int>(connGroup->size()); k++) {
+                        (*_portsCopies)->append(connGroup->at(k));
+                    }
                 }
             } else if (GraphicalConnection* port = dynamic_cast<GraphicalConnection*>(item)) {
                 (*_portsCopies)->append(port);
+            } else if (dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr) {
+                continue;
             } else {
                 (*_drawCopy)->append(item);
             }
@@ -129,12 +137,13 @@ void EditCommandController::onActionEditCopyTriggered() const {
     (*_groupCopy)->clear();
     (*_drawCopy)->clear();
 
-    QList<QGraphicsItem*> selected = _graphicsView->scene()->selectedItems();
+    ModelGraphicsScene* currentScene = scene();
+    QList<QGraphicsItem*> selected = currentScene->userOperableItems(_graphicsView->scene()->selectedItems());
     QList<GraphicalModelComponent*> gmcCopiesCopy;
 
     if (selected.size() > 0) {
         *_cut = false;
-        for (QGraphicsItem* item : _graphicsView->scene()->selectedItems()) {
+        for (QGraphicsItem* item : selected) {
             if (GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
                 gmc->setSelected(false);
                 (*_gmcCopies)->append(gmc);
@@ -144,12 +153,23 @@ void EditCommandController::onActionEditCopyTriggered() const {
                 (*_portsCopies)->append(conn);
             } else if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
                 group->setSelected(false);
-                (*_groupCopy)->append(group);
+                QList<GraphicalModelComponent*> groupComponents;
 
                 for (int i = 0; i < group->childItems().size(); i++) {
                     GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(group->childItems().at(i));
+                    if (component == nullptr) {
+                        continue;
+                    }
                     gmcCopiesCopy.append(component);
+                    groupComponents.append(component);
                 }
+
+                if (!groupComponents.isEmpty()) {
+                    (*_groupCopy)->append(group);
+                }
+            } else if (dynamic_cast<GraphicalModelDataDefinition*>(item) != nullptr) {
+                item->setSelected(false);
+                continue;
             } else {
                 item->setSelected(false);
                 (*_drawCopy)->append(item);
@@ -182,7 +202,7 @@ void EditCommandController::onActionEditPasteTriggered() const {
 
 // Preserve delete behavior and action-state refresh callback.
 void EditCommandController::onActionEditDeleteTriggered() const {
-    QList<QGraphicsItem*> selecteds = _graphicsView->scene()->selectedItems();
+    QList<QGraphicsItem*> selecteds = scene()->userDeletableItems(_graphicsView->scene()->selectedItems());
     if (selecteds.isEmpty()) {
         return;
     }
@@ -271,10 +291,13 @@ void EditCommandController::helpCopy() const {
 
     for (QGraphicsItemGroup* group : **_groupCopy) {
         QList<GraphicalConnection*>* connGroup = new QList<GraphicalConnection*>();
-        unsigned int size = group->childItems().size();
+        QList<QGraphicsItem*> groupChildren = group->childItems();
 
-        for (unsigned int i = 0; i < size; i++) {
-            GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(group->childItems().at(0));
+        for (QGraphicsItem* child : groupChildren) {
+            GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(child);
+            if (gmc == nullptr) {
+                continue;
+            }
             group->removeFromGroup(gmc);
 
             ModelComponent* previousComponent = gmc->getComponent();
@@ -287,6 +310,9 @@ void EditCommandController::helpCopy() const {
 
             GraphicalModelComponent* newgmc = new GraphicalModelComponent(plugin, component, position, color);
             GraphicalModelComponent* oldgmc = currentScene->findGraphicalModelComponent(previousComponent->getId());
+            if (oldgmc == nullptr) {
+                continue;
+            }
 
             if (!oldgmc->getGraphicalInputPorts().empty() && !oldgmc->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
                 connGroup->removeOne(oldgmc->getGraphicalInputPorts().at(0)->getConnections()->at(0));
@@ -308,7 +334,7 @@ void EditCommandController::helpCopy() const {
         }
 
         saveItemForCopy(gmcOldGroupAux, connGroup);
-        for (unsigned int k = 0; k < size; k++) {
+        for (unsigned int k = 0; k < static_cast<unsigned int>(gmcOldGroupAux->size()); k++) {
             group->addToGroup(gmcOldGroupAux->at(k));
         }
 
@@ -317,11 +343,13 @@ void EditCommandController::helpCopy() const {
             (*_portsCopies)->append(connGroup->at(k));
         }
 
-        QGraphicsItemGroup* newGroup = new QGraphicsItemGroup();
-        _graphicsView->getScene()->insertComponentGroup(newGroup, *gmcNewGroupAux);
+        if (!gmcNewGroupAux->isEmpty()) {
+            QGraphicsItemGroup* newGroup = new QGraphicsItemGroup();
+            _graphicsView->getScene()->insertComponentGroup(newGroup, *gmcNewGroupAux);
+            groupAux->append(newGroup);
+        }
         gmcOldGroupAux->clear();
         gmcNewGroupAux->clear();
-        groupAux->append(newGroup);
         delete connGroup;
     }
 
@@ -359,6 +387,9 @@ void EditCommandController::helpCopy() const {
             }
         }
 
+        if (gmcNewSource == nullptr || gmcNewDestination == nullptr) {
+            continue;
+        }
         sourcePort = gmcNewSource->getGraphicalOutputPorts().at(portSourceConnection);
         destinationPort = gmcNewDestination->getGraphicalInputPorts().at(portDestinationConnection);
 

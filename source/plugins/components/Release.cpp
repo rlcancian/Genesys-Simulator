@@ -209,7 +209,7 @@ void Release::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		Resource* resource = _getResourceFromSeizableItem(seizable, entity);
 		unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
 		assert(resource->getNumberBusy() >= quantity); // 202104 ops. maybe not anymore
-		_parentModel->getTracer()->traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, entity->getName() + " releases " + std::to_string(quantity) + " units of resource \"" + resource->getName() + "\" seized on time " + std::to_string(resource->getLastTimeSeized()));
+		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, entity->getName() + " releases " + std::to_string(quantity) + " units of resource \"" + resource->getName() + "\" seized on time " + std::to_string(resource->getLastTimeSeized()));
 		resource->release(quantity); //{releases and sets the 'LastTimeSeized'property}
 		if (_reportStatistics) {
 			double timeSeized = resource->getLastTimeSeized();

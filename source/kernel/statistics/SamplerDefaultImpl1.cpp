@@ -16,6 +16,7 @@
 #include <cmath>
 #include <complex>
 #include <random>
+#include <stdexcept>
 
 #include "SamplerDefaultImpl1.h"
 
@@ -87,17 +88,23 @@ double SamplerDefaultImpl1::random() {
 }
 
 double SamplerDefaultImpl1::sampleUniform(double min, double max) {
-	assert(min <= max);
+	if (min > max) {
+		throw std::invalid_argument("unif requires min <= max");
+	}
 	return min + (max - min) * random();
 }
 
 double SamplerDefaultImpl1::sampleExponential(double mean, double offset) {
-	assert(mean >= 0.0);
+	if (mean < 0.0) {
+		throw std::invalid_argument("expo requires mean >= 0");
+	}
 	return offset + mean * (-std::log(randomOpen01(*this)));
 }
 
 double SamplerDefaultImpl1::sampleErlang(double mean, int M, double offset) {
-	assert((mean >= 0.0) && (M > 0));
+	if (mean < 0.0 || M <= 0) {
+		throw std::invalid_argument("erla requires mean >= 0 and M > 0");
+	}
 	double P = 1.0;
 	for (int i = 0; i < M; i++) {
 		P *= randomOpen01(*this);
@@ -106,7 +113,9 @@ double SamplerDefaultImpl1::sampleErlang(double mean, int M, double offset) {
 }
 
 double SamplerDefaultImpl1::sampleNormal(double mean, double stddev) {
-	assert(stddev >= 0.0);
+	if (stddev < 0.0) {
+		throw std::invalid_argument("norm requires stddev >= 0");
+	}
 	double z;
 	if (_normalflag) {
 		z = _lastnormal;
@@ -123,15 +132,21 @@ double SamplerDefaultImpl1::sampleNormal(double mean, double stddev) {
 }
 
 double SamplerDefaultImpl1::sampleLogNormal(double mean, double stddev, double offset) {
-	assert(mean > 0.0);
-	assert(stddev >= 0.0);
+	if (mean <= 0.0) {
+		throw std::invalid_argument("logn requires mean > 0");
+	}
+	if (stddev < 0.0) {
+		throw std::invalid_argument("logn requires stddev >= 0");
+	}
 	const double dispersionNorm = std::log((stddev * stddev) / (mean * mean) + 1.0);
 	const double meanNorm = std::log(mean) - 0.5 * dispersionNorm;
 	return offset + std::exp(sampleNormal(meanNorm, std::sqrt(dispersionNorm)));
 }
 
 double SamplerDefaultImpl1::sampleTriangular(double min, double mode, double max) {
-	assert(!((min > mode) || (max < mode) || (min > max)));
+	if ((min > mode) || (max < mode) || (min > max)) {
+		throw std::invalid_argument("tria requires min <= mode <= max");
+	}
 	const double part1 = mode - min;
 	const double part2 = max - mode;
 	const double full = max - min;
@@ -217,8 +232,9 @@ double SamplerDefaultImpl1::sampleGamma(double mean, double alpha) {
  */
 
 double SamplerDefaultImpl1::sampleGamma(double alpha, double beta, double offset) {
-	assert(alpha > 0.0);
-	assert(beta > 0.0);
+	if (alpha <= 0.0 || beta <= 0.0) {
+		throw std::invalid_argument("gamm requires alpha > 0 and beta > 0");
+	}
 
 	if (alpha < 1.0) {
 		const double g = sampleGamma(alpha + 1.0, beta);
@@ -250,13 +266,20 @@ double SamplerDefaultImpl1::sampleGamma(double alpha, double beta, double offset
 }
 
 double SamplerDefaultImpl1::sampleBeta(double alpha, double beta, double infLimit, double supLimit) {
-	assert(infLimit <= supLimit);
+	if (alpha <= 0.0 || beta <= 0.0) {
+		throw std::invalid_argument("beta requires alpha > 0 and beta > 0");
+	}
+	if (infLimit > supLimit) {
+		throw std::invalid_argument("beta requires infLimit <= supLimit");
+	}
 	double X = sampleBeta(alpha, beta);
 	return infLimit + (supLimit - infLimit) * X;
 }
 
 double SamplerDefaultImpl1::sampleWeibull(double alpha, double scale) {
-	assert(!((alpha <= 0.0) || (scale <= 0.0)));
+	if ((alpha <= 0.0) || (scale <= 0.0)) {
+		throw std::invalid_argument("weib requires alpha > 0 and scale > 0");
+	}
 	return std::exp(std::log(scale * (-std::log(randomOpen01(*this)))) / alpha);
 }
 
@@ -298,8 +321,9 @@ double SamplerDefaultImpl1::sampleGumbell(double mode, double scale) {
 }
 
 double SamplerDefaultImpl1::sampleBeta(double alpha, double beta) {
-	assert(alpha > 0.0);
-	assert(beta > 0.0);
+	if (alpha <= 0.0 || beta <= 0.0) {
+		throw std::invalid_argument("beta requires alpha > 0 and beta > 0");
+	}
 	const double x = sampleGamma(alpha, 1.0);
 	const double y = sampleGamma(beta, 1.0);
 	return x / (x + y);

@@ -17,7 +17,26 @@ class QTextEdit;
 class QTabWidget;
 class QAction;
 
-// Encapsulate Phase 4 simulation-event handling and handler registration.
+// Document the controller that bridges kernel simulation events to GUI updates.
+/**
+ * @brief Controller for simulation event callbacks, UI updates, and handler wiring.
+ *
+ * This controller concentrates event-reaction logic previously embedded in MainWindow and
+ * keeps compatibility by exposing methods invoked from MainWindow wrappers. It also provides
+ * the event-registration entry point used to wire kernel OnEventManager callbacks to those
+ * wrappers without changing the existing signal/slot surface.
+ *
+ * Responsibilities:
+ * - react to model-check, replication, simulation, process, and entity events;
+ * - update progress/status widgets and debug tables through injected UI dependencies;
+ * - trigger delegated refresh callbacks for actions, debug panes, and scene synchronization;
+ * - register handlers through MainWindow compatibility façade ownership.
+ *
+ * Boundaries:
+ * - it does not own MainWindow or widget lifetime;
+ * - it does not execute simulation commands (handled by command controllers);
+ * - it does not perform persistence/export/model-language synchronization.
+ */
 class SimulationEventController {
 public:
     // Group callback dependencies to keep constructor explicit and narrow.
@@ -29,7 +48,7 @@ public:
         std::function<void(SimulationEvent*)> actualizeGraphicalModel;
     };
 
-    // Inject simulator/view/widget dependencies required by legacy event reactions.
+    /** @brief Creates the simulation-event bridge used by MainWindow compatibility handlers. */
     SimulationEventController(Simulator* simulator,
                               ModelGraphicsScene* scene,
                               ModelGraphicsView* graphicsView,
@@ -46,29 +65,29 @@ public:
                               int tabCentralReportsIndex,
                               Callbacks callbacks);
 
-    // Keep model-check success handling behavior equivalent to legacy MainWindow logic.
+    /** @brief Handles model-check success and updates delegated GUI state. */
     void onModelCheckSuccessHandler(ModelEvent* re) const;
-    // Keep replication-start UI updates equivalent to legacy MainWindow logic.
+    /** @brief Handles replication-start event and updates simulation/report panes. */
     void onReplicationStartHandler(SimulationEvent* re) const;
-    // Keep simulation-start UI reset/setup equivalent to legacy MainWindow logic.
+    /** @brief Handles simulation-start event and resets run-scoped UI state. */
     void onSimulationStartHandler(SimulationEvent* re) const;
-    // Keep simulation-paused reaction equivalent to legacy MainWindow logic.
+    /** @brief Handles simulation pause event and refreshes action availability. */
     void onSimulationPausedHandler(SimulationEvent* re) const;
-    // Keep simulation-resume animation continuation behavior equivalent to legacy MainWindow logic.
+    /** @brief Handles simulation resume event and resumes graphical simulation synchronization. */
     void onSimulationResumeHandler(SimulationEvent* re) const;
-    // Keep simulation-end cleanup behavior equivalent to legacy MainWindow logic.
+    /** @brief Handles simulation end event and performs delegated cleanup/refresh. */
     void onSimulationEndHandler(SimulationEvent* re) const;
-    // Keep process-event updates equivalent to legacy MainWindow logic.
+    /** @brief Handles process-event updates for progress tables and scene refresh hooks. */
     void onProcessEventHandler(SimulationEvent* re) const;
-    // Keep entity-create hook compatibility.
+    /** @brief Handles entity-create events for compatibility callback wiring. */
     void onEntityCreateHandler(SimulationEvent* re) const;
-    // Keep entity-remove hook compatibility.
+    /** @brief Handles entity-remove events for compatibility callback wiring. */
     void onEntityRemoveHandler(SimulationEvent* re) const;
-    // Keep entity-move animation behavior equivalent to legacy MainWindow logic.
+    /** @brief Handles entity-move event updates used by graphical simulation animation. */
     void onMoveEntityEvent(SimulationEvent* re) const;
-    // Keep after-process animation updates equivalent to legacy MainWindow logic.
+    /** @brief Handles after-process event updates used by animation/frame synchronization. */
     void onAfterProcessEvent(SimulationEvent* re) const;
-    // Register simulation event handlers on OnEventManager while keeping MainWindow wrappers.
+    /** @brief Registers kernel on-event callbacks through MainWindow compatibility façade wrappers. */
     void setOnEventHandlers(MainWindow* owner) const;
 
 private:

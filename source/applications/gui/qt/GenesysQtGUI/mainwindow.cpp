@@ -1,3 +1,13 @@
+// Document this compilation unit as the MainWindow composition-root partition.
+/**
+ * @file mainwindow.cpp
+ * @brief Composition-root partition of MainWindow implementation.
+ *
+ * This file contains central MainWindow construction, initialization, and wiring logic,
+ * including creation of extracted controllers/services and baseline UI setup. It does not
+ * define a new class; it is a physical partition of the same MainWindow implementation used
+ * as a compatibility façade in the incremental refactoring.
+ */
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
@@ -5,6 +15,8 @@
 // Kernel
 #include "../../../../kernel/simulator/SinkModelComponent.h"
 #include "../../../../kernel/simulator/Attribute.h"
+#include "../../../../kernel/simulator/Counter.h"
+#include "../../../../kernel/simulator/StatisticsCollector.h"
 #include "../../../TraitsApp.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
@@ -145,6 +157,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     headers << tr("Number") << tr("Name") << tr("Type"); // << and each attribute as a column
     ui->tableWidget_Entities->setHorizontalHeaderLabels(headers);
     ui->tableWidget_Entities->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    _prepareReportsResultsTable();
     ui->tableWidget_Simulation_Event->setContentsMargins(1, 0, 1, 0);
     //
     // Trees
@@ -397,6 +410,10 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 }
 
 MainWindow::~MainWindow() {
+    // Proactively disable trace callbacks before QWidget and simulator teardown starts.
+    if (simulator != nullptr && simulator->getTraceManager() != nullptr) {
+        simulator->getTraceManager()->beginShutdown();
+    }
     _shuttingDown = true;
     _disconnectSceneSignals("~MainWindow");
     disconnect();
@@ -503,7 +520,8 @@ void MainWindow::_actualizeActions() {
         ModelGraphicsScene* scene = ui->graphicsView->getScene();
         if (scene != nullptr) {
             const QList<QGraphicsItem*> selectedItems = scene->selectedItems();
-            canCutCopyDelete = !selectedItems.isEmpty();
+            const QList<QGraphicsItem*> userOperableSelection = scene->userOperableItems(selectedItems);
+            canCutCopyDelete = !userOperableSelection.isEmpty();
             canPaste = !_draw_copy->empty() || !_gmc_copies->empty() || !_group_copy->empty() || !_ports_copies->empty();
 
             int selectedComponents = 0;
@@ -521,62 +539,74 @@ void MainWindow::_actualizeActions() {
             canConnect = scene->connectingStep() == 0;
         }
     }
+    // Lock GUI interactions tied to model editing while simulation is running or paused.
+    const bool simulationInteractionLocked = opened && (running || paused);
 
     //
     ui->graphicsView->setEnabled(opened);
     ui->tabWidgetCentral->setEnabled(opened);
     // model
-    ui->menuModel->setEnabled(!running);
-    ui->actionModelNew->setEnabled(!running);
-    ui->actionModelSave->setEnabled(opened && !running);
-    ui->actionModelOpen->setEnabled(!running);
-    ui->actionModelClose->setEnabled(opened && !running);
+    // Keep model lifecycle actions locked while simulation remains active (running or paused).
+    ui->menuModel->setEnabled(!simulationInteractionLocked);
+    ui->actionModelNew->setEnabled(!simulationInteractionLocked);
+    ui->actionModelSave->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionModelOpen->setEnabled(!simulationInteractionLocked);
+    ui->actionModelClose->setEnabled(opened && !simulationInteractionLocked);
     ui->actionModelInformation->setEnabled(opened);
-    ui->actionModelCheck->setEnabled(opened && !running);
+    ui->actionModelCheck->setEnabled(opened && !simulationInteractionLocked);
     //edit
-    ui->toolBarEdit->setEnabled(opened && !running);
-    ui->menuEdit->setEnabled(opened && !running);
+    // Keep structural editing tool surfaces locked while simulation remains active.
+    ui->toolBarEdit->setEnabled(opened && !simulationInteractionLocked);
+    ui->menuEdit->setEnabled(opened && !simulationInteractionLocked);
     // view
-    ui->menuView->setEnabled(opened && !running);
-    ui->toolBarView->setEnabled(opened && !running);
-    ui->toolBarAnimate->setEnabled(opened && !running);
-    ui->toolBarGraphicalModel->setEnabled(opened && !running);
-    ui->toolBarDraw->setEnabled(opened && !running);
+    // Keep scene manipulation and drawing surfaces locked while simulation remains active.
+    ui->menuView->setEnabled(opened && !simulationInteractionLocked);
+    ui->toolBarView->setEnabled(opened && !simulationInteractionLocked);
+    ui->toolBarAnimate->setEnabled(opened && !simulationInteractionLocked);
+    ui->toolBarGraphicalModel->setEnabled(opened && !simulationInteractionLocked);
+    ui->toolBarDraw->setEnabled(opened && !simulationInteractionLocked);
     // simulation
     ui->menuSimulation->setEnabled(opened);
-    ui->actionSimulationConfigure->setEnabled(opened && !running);
-    ui->actionSimulationStart->setEnabled(opened && !running);
-    ui->actionSimulationStep->setEnabled(opened && !running);
+    // Keep simulation structural controls locked while simulation remains active.
+    ui->actionSimulationConfigure->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionSimulationStart->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionSimulationStep->setEnabled(opened && !simulationInteractionLocked);
     ui->actionSimulationStop->setEnabled(opened && (running || paused));
     ui->actionSimulationPause->setEnabled(opened && running);
     ui->actionSimulationResume->setEnabled(opened && paused);
     ui->actionActivateGraphicalSimulation->setEnabled(opened);
-    ui->actionSimulatorsPluginManager->setEnabled(!running);
-    ui->actionSimulatorPreferences->setEnabled(!running);
+    ui->actionSimulatorsPluginManager->setEnabled(!simulationInteractionLocked);
+    ui->actionSimulatorPreferences->setEnabled(!simulationInteractionLocked);
+    // Keep plugins tree disabled while simulation interaction is locked.
+    ui->treeWidget_Plugins->setEnabled(opened && !simulationInteractionLocked);
 
     // debug
-    ui->tableWidget_Breakpoints->setEnabled(opened && !running);
+    // Keep mutable debug surface locked while simulation remains active.
+    ui->tableWidget_Breakpoints->setEnabled(opened && !simulationInteractionLocked);
     ui->tableWidget_Entities->setEnabled(opened && !running);
     ui->tableWidget_Variables->setEnabled(opened && !running);
 
     // Property Editor
-    ui->treeViewPropertyEditor->setEnabled(!running);
+    // Keep property editor disabled while simulation interaction is locked.
+    ui->treeViewPropertyEditor->setEnabled(opened && !simulationInteractionLocked);
 
     // based on SELECTED GRAPHICAL OBJECTS or on COMMANDS DONE (UNDO/REDO)
-    ui->toolBarArranje->setEnabled(opened && !running);
-    ui->actionEditCopy->setEnabled(canCutCopyDelete && !running);
-    ui->actionEditCut->setEnabled(canCutCopyDelete && !running);
-    ui->actionEditDelete->setEnabled(canCutCopyDelete && !running);
-    ui->actionEditPaste->setEnabled(canPaste && !running);
-    ui->actionGModelShowConnect->setEnabled(opened && canConnect && !running);
-    ui->actionViewGroup->setEnabled(opened && canGroup && !running);
-    ui->actionEditGroup->setEnabled(opened && canGroup && !running);
-    ui->actionViewUngroup->setEnabled(opened && canUngroup && !running);
-    ui->actionEditUngroup->setEnabled(opened && canUngroup && !running);
-    ui->actionEditReplace->setEnabled(opened && !running);
+    // Keep arrangement and structural mutation commands locked while simulation remains active.
+    ui->toolBarArranje->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionEditCopy->setEnabled(canCutCopyDelete && !simulationInteractionLocked);
+    ui->actionEditCut->setEnabled(canCutCopyDelete && !simulationInteractionLocked);
+    ui->actionEditDelete->setEnabled(canCutCopyDelete && !simulationInteractionLocked);
+    ui->actionEditPaste->setEnabled(canPaste && !simulationInteractionLocked);
+    ui->actionGModelShowConnect->setEnabled(opened && canConnect && !simulationInteractionLocked);
+    ui->actionViewGroup->setEnabled(opened && canGroup && !simulationInteractionLocked);
+    ui->actionEditGroup->setEnabled(opened && canGroup && !simulationInteractionLocked);
+    ui->actionViewUngroup->setEnabled(opened && canUngroup && !simulationInteractionLocked);
+    ui->actionEditUngroup->setEnabled(opened && canUngroup && !simulationInteractionLocked);
+    ui->actionEditReplace->setEnabled(opened && !simulationInteractionLocked);
 
     // sliders
-    ui->horizontalSlider_ZoomGraphical->setEnabled(opened && !running);
+    // Keep zoom/edit navigation control locked while simulation remains active.
+    ui->horizontalSlider_ZoomGraphical->setEnabled(opened && !simulationInteractionLocked);
     if (_modelWasOpened && !opened) {
         _clearModelEditors();
     }
@@ -584,7 +614,7 @@ void MainWindow::_actualizeActions() {
     //slider animation speed
     ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused);
 
-    ui->actionSelectAll->setEnabled(opened && !running);
+    ui->actionSelectAll->setEnabled(opened && !simulationInteractionLocked);
 
     _modelWasOpened = opened;
 }
@@ -606,7 +636,7 @@ void MainWindow::_actualizeTabPanes() {
             } else if (index == CONST.TabModelDataDefinitionsIndex) {
                 _actualizeModelDataDefinitions(true);
             }
-        } else if (index == CONST.TabCentralModelIndex) {
+        } else if (index == CONST.TabCentralSimulationIndex) {
             index = ui->tabWidgetSimulation->currentIndex();
             if (index == CONST.TabSimulationBreakpointsIndex) {
                 _actualizeDebugBreakpoints(true);
@@ -616,12 +646,99 @@ void MainWindow::_actualizeTabPanes() {
                 _actualizeDebugVariables(true);
             }
         } else if (index == CONST.TabCentralReportsIndex) {
-            index = ui->tabWidgetReports->currentIndex(); //@TODO: Add results
+            index = ui->tabWidgetReports->currentIndex();
+            if (index == CONST.TabReportResultIndex) {
+                _actualizeReportsResultsTable();
+            }
         }
     } else {
         ui->actionAnimateCounter->setChecked(false);
         ui->actionAnimateVariable->setChecked(false);
         ui->actionAnimateSimulatedTime->setChecked(false);
+    }
+}
+
+void MainWindow::_prepareReportsResultsTable() {
+    QStringList headers;
+    headers << tr("Type")
+            << tr("ParentType")
+            << tr("ParentName")
+            << tr("Name")
+            << tr("NumElements")
+            << tr("Min")
+            << tr("Max")
+            << tr("Average")
+            << tr("Variance")
+            << tr("StdDev")
+            << tr("VarCoef")
+            << tr("HalfWidthCI")
+            << tr("ConfidenceLevel");
+    ui->tableWidget_ReportsResults->setHorizontalHeaderLabels(headers);
+    ui->tableWidget_ReportsResults->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+    ui->tableWidget_ReportsResults->verticalHeader()->setVisible(false);
+    ui->tableWidget_ReportsResults->setSortingEnabled(false);
+    _clearReportsResultsTable();
+}
+
+void MainWindow::_clearReportsResultsTable() {
+    ui->tableWidget_ReportsResults->setRowCount(0);
+}
+
+void MainWindow::_actualizeReportsResultsTable() {
+    _clearReportsResultsTable();
+    if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+        return;
+    }
+    ModelSimulation* simulation = simulator->getModelManager()->current()->getSimulation();
+    if (simulation == nullptr) {
+        return;
+    }
+    const List<ModelDataDefinition*>* aggregates = simulation->getSimulationStatisticsAggregates();
+    if (aggregates == nullptr) {
+        return;
+    }
+
+    auto setCell = [this](int row, int col, const QString& value) {
+        ui->tableWidget_ReportsResults->setItem(row, col, new QTableWidgetItem(value));
+    };
+    auto numberToQString = [](double value) {
+        return QString::fromStdString(std::to_string(value));
+    };
+
+    int row = 0;
+    for (ModelDataDefinition* data : *aggregates->list()) {
+        if (data == nullptr) {
+            continue;
+        }
+        ui->tableWidget_ReportsResults->insertRow(row);
+        setCell(row, 0, QString::fromStdString(data->getClassname()));
+        setCell(row, 3, QString::fromStdString(data->getName()));
+
+        ModelDataDefinition* parent = nullptr;
+        if (StatisticsCollector* collector = dynamic_cast<StatisticsCollector*>(data)) {
+            parent = collector->getParent();
+            Statistics_if* stats = collector->getStatistics();
+            if (stats != nullptr) {
+                setCell(row, 4, QString::number(stats->numElements()));
+                setCell(row, 5, numberToQString(stats->min()));
+                setCell(row, 6, numberToQString(stats->max()));
+                setCell(row, 7, numberToQString(stats->average()));
+                setCell(row, 8, numberToQString(stats->variance()));
+                setCell(row, 9, numberToQString(stats->stddeviation()));
+                setCell(row, 10, numberToQString(stats->variationCoef()));
+                setCell(row, 11, numberToQString(stats->halfWidthConfidenceInterval()));
+                setCell(row, 12, numberToQString(stats->confidenceLevel()));
+            }
+        } else if (Counter* counter = dynamic_cast<Counter*>(data)) {
+            parent = counter->getParent();
+            setCell(row, 4, numberToQString(counter->getCountValue()));
+        }
+
+        if (parent != nullptr) {
+            setCell(row, 1, QString::fromStdString(parent->getClassname()));
+            setCell(row, 2, QString::fromStdString(parent->getName()));
+        }
+        row++;
     }
 }
 
@@ -811,14 +928,12 @@ bool MainWindow::_check(bool success)
 
     if (res) {
         ModelGraphicsScene* scene = (ModelGraphicsScene*) (ui->graphicsView->scene());
+        // Schedule data-definition synchronization outside this check stack to avoid scene teardown reentrancy.
+        if (scene != nullptr) {
+            scene->requestGraphicalDataDefinitionsSync();
+        }
         // Mensagem de sucesso
         if (success) {
-            if (!scene->existDiagram()){
-                scene->createDiagrams();
-            } else {
-                scene->destroyDiagram();
-                scene->createDiagrams();
-            }
             QMessageBox::information(this, "Model Check", "Model successfully checked.");
         }
         // Salva os data definitions dos componentes atuais

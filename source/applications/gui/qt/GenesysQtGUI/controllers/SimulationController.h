@@ -7,16 +7,27 @@ class QWidget;
 class Simulator;
 class ModelSimulation;
 
+// Document the simulation precondition controller role in the refactored GUI architecture.
 /**
- * @brief Thin controller responsible for simulation-command preconditions in GUI.
+ * @brief Controller that validates simulation command readiness for MainWindow wrappers.
  *
- * This class centralizes guard logic previously duplicated across simulation actions
- * (`start`, `step`, `pause`, `resume`, `stop`) in MainWindow.
+ * This controller is part of the incremental extraction that keeps MainWindow as a
+ * compatibility façade while moving simulation-command orchestration behind smaller
+ * collaborators. It centralizes precondition checks shared by start/step/pause/resume/stop
+ * flows, including model availability and model-text synchronization guards.
  *
- * It deliberately avoids owning simulation model state; ownership remains in Simulator.
+ * Responsibilities:
+ * - verify that the current model and its ModelSimulation are available;
+ * - execute callback-based readiness checks delegated by MainWindow;
+ * - return a single command-ready decision used by higher-level command controllers.
  *
- * @todo Evolve this controller to encapsulate command execution itself
- *       (not only readiness validation), reducing MainWindow responsibilities further.
+ * Boundaries:
+ * - it does not own simulation state or lifecycle (owned by Simulator);
+ * - it does not execute GUI commands directly (handled by SimulationCommandController);
+ * - it does not update widgets, tabs, or trace outputs.
+ *
+ * Dependencies are injected narrowly (owner widget + simulator + callbacks) to preserve
+ * existing ownership and enable incremental compatibility without changing slot signatures.
  */
 class SimulationController {
 public:

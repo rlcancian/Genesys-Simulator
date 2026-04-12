@@ -50,8 +50,8 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 	_parentModel->getControls()->insert(propName);
 
 	// setting properties
-	_addProperty(propName);
-	_addProperty(propReportStatistics);
+	_addSimulationControl(propName);
+	_addSimulationControl(propReportStatistics);
 }
 
 bool ModelDataDefinition::hasChanged() const {
@@ -77,21 +77,21 @@ ModelDataDefinition::~ModelDataDefinition() {
 	_internalDataClear();
 	// Keep model registry consistent by removing this modeldata from the manager first.
 	_parentModel->getDataManager()->remove(this);
-	// Detach and destroy owned SimulationControl properties tracked by this model element.
-	if (_properties != nullptr) {
-		for (SimulationControl* property : *_properties->list()) {
-			if (property == nullptr) {
+	// Detach and destroy owned SimulationControl entries tracked by this model element.
+	if (_simulationControls != nullptr) {
+		for (SimulationControl* control : *_simulationControls->list()) {
+			if (control == nullptr) {
 				continue;
 			}
-			_parentModel->getControls()->remove(property);
-			SimulationResponse* response = dynamic_cast<SimulationResponse*>(property);
+			_parentModel->getControls()->remove(control);
+			SimulationResponse* response = dynamic_cast<SimulationResponse*>(control);
 			if (response != nullptr) {
 				_parentModel->getResponses()->remove(response);
 			}
-			delete property;
+			delete control;
 		}
-		delete _properties;
-		_properties = nullptr;
+		delete _simulationControls;
+		_simulationControls = nullptr;
 	}
 	// Destroy the internal-data registry container after its owned contents are cleared.
 	delete _internalData;
@@ -212,6 +212,12 @@ void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(std::stri
 		}
 		Util::DecIndent();
 	}
+	// Release temporary lists allocated during reference extraction to avoid local ownership leaks.
+	for (auto& pair : referencedDataDefinitions) {
+		delete pair.second;
+		pair.second = nullptr;
+	}
+	referencedDataDefinitions.clear();
 }
 
 bool ModelDataDefinition::_getSaveDefaultsOption() {
@@ -408,22 +414,41 @@ void ModelDataDefinition::_createInternalAndAttachedData() {
 
 }
 
+void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
+	_simulationControls->insert(control);
+}
+
 void ModelDataDefinition::_addProperty(SimulationControl* property) {
-	_properties->insert(property);
+	// Legacy compatibility wrapper.
+	_addSimulationControl(property);
 }
 
 /*
 void ModelDataDefinition::_addSimulationResponse(SimulationControl* response) {
 	_simulationResponses->insert(response); //@TODO: Check if exists before insert?
 }
-
-void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
-	_simulationControls->insert(control);
-}
 */
 
 List<SimulationControl*> *ModelDataDefinition::getProperties() const {
-	return _properties;
+	// Legacy compatibility wrapper.
+	return getSimulationControls();
+}
+
+List<SimulationControl*>* ModelDataDefinition::getSimulationControls() const {
+	return _simulationControls;
+}
+
+TraceManager::Level ModelDataDefinition::getSpecificTraceLevel() const{
+    return _specificTraceLevel;
+}
+void ModelDataDefinition::setSpecificTraceLevel(TraceManager::Level specificTraceLevel){
+    _specificTraceLevel = specificTraceLevel;
+}
+bool ModelDataDefinition::isSpecificTraceLevelEnabled() const {
+    return _specificTraceLevelEnabled;
+}
+void ModelDataDefinition::setSpecificTraceLevelEnabled(bool specificTraceLevelEnabled) {
+    _specificTraceLevelEnabled =specificTraceLevelEnabled;
 }
 
 
@@ -439,27 +464,45 @@ bool ModelDataDefinition::isReportStatistics() const {
 }
 
 
-// just an easy access to trace manager
+// NOT just an easy access to trace manager, but a wrapper to check if specificTraceLevel applies
+
+bool ModelDataDefinition::_checkSpecificTraceLevel(TraceManager::Level level) {
+    if (_specificTraceLevelEnabled && level > _specificTraceLevel) {
+        return false;
+    }
+    return true;
+}
+
 void ModelDataDefinition::trace(std::string text, TraceManager::Level level){
-	_parentModel->getTracer()->traceReport(text, level);
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceReport(text, level);
 }
 
 void ModelDataDefinition::traceError(std::string text, TraceManager::Level level){
-	_parentModel->getTracer()->traceError(text, level);
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceError(text, level);
 }
 
 void ModelDataDefinition::traceError(std::string text, std::exception e) {
-	_parentModel->getTracer()->traceError(text, e);
+    _parentModel->getTracer()->traceError(text, e);
 }
 
 void ModelDataDefinition::traceReport(std::string text, TraceManager::Level level){
-	_parentModel->getTracer()->traceReport(text, level);
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceReport(text, level);
+}
+
+void ModelDataDefinition::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level) {
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceSimulation(thisobject, time, entity, component, text, level);
 }
 
 void ModelDataDefinition::traceSimulation(void* thisobject, std::string text, TraceManager::Level level){
-	_parentModel->getTracer()->traceSimulation(thisobject, text, level);
+    if (_checkSpecificTraceLevel(level))
+        _parentModel->getTracer()->traceSimulation(thisobject, text, level);
 }
 
 void ModelDataDefinition::traceSimulation(void* thisobject, TraceManager::Level level, std::string text) {
-	_parentModel->getTracer()->traceSimulation(thisobject, text, level);
+
+    _parentModel->getTracer()->traceSimulation(thisobject, text, level);
 }

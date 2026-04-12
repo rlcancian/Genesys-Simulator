@@ -29,12 +29,25 @@ PluginManager::PluginManager(Simulator* simulator) {
 	_insertDefaultKernelElements();
 }
 
+// Release connector and plugin wrappers owned by the manager during simulator teardown.
+PluginManager::~PluginManager() {
+	for (Plugin* plugin : *_plugins->list()) {
+		delete plugin;
+	}
+	delete _plugins;
+	delete _pluginConnector;
+}
+
 List<Plugin*>* PluginManager::_autoFindPlugins() {
 	List<std::string>* filenames = _pluginConnector->find();
 	for (std::string filename: *filenames->list()) {
 		insert(filename);
 	}
 	return  completePluginsFieldsAndTemplates();
+}
+
+List<Plugin*>* PluginManager::autoInsertPlugins() {
+    return autoInsertPlugins("", true);
 }
 
 List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)

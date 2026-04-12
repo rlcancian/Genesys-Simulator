@@ -31,10 +31,14 @@
 
 #include "GraphicalModelComponent.h"
 #include "GraphicalComponentPort.h"
+#include "GraphicalConnection.h"
+#include "ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "UtilGUI.h"
 #include <QPainter>
 #include <QRgba64>
+#include <QSet>
+#include <QDebug>
 
 GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color, QGraphicsItem *parent) :  GraphicalModelDataDefinition(plugin, component, position, color) { //  QGraphicsObject(parent) {
 	_component = component;
@@ -70,6 +74,8 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	// position and flags
 	setPos(position.x()/*-_width/2*/, position.y() - _height / 2);
 	setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable);
+    setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+    setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
 	setAcceptHoverEvents(true);
 	setAcceptTouchEvents(true);
 	setActive(true);
@@ -306,6 +312,50 @@ bool GraphicalModelComponent::sceneEvent(QEvent *event) {
     return QGraphicsObject::sceneEvent(event); // Unnecessary
 }
 
+QVariant GraphicalModelComponent::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant& value) {
+    QVariant result = GraphicalModelDataDefinition::itemChange(change, value);
+    if (change != QGraphicsItem::ItemPositionHasChanged
+            && change != QGraphicsItem::ItemScenePositionHasChanged) {
+        return result;
+    }
+
+    ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(scene());
+    if (modelScene != nullptr
+            && (modelScene->areConnectionGeometryUpdatesBlocked()
+                || modelScene->isGraphicalDataDefinitionsSyncInProgress())) {
+        return result;
+    }
+
+    QSet<GraphicalConnection*> uniqueConnections;
+    auto collectConnections = [&uniqueConnections](const QList<GraphicalComponentPort*>& ports) {
+        for (GraphicalComponentPort* port : ports) {
+            if (port == nullptr || port->getConnections() == nullptr) {
+                continue;
+            }
+            for (GraphicalConnection* connection : *port->getConnections()) {
+                if (connection != nullptr) {
+                    uniqueConnections.insert(connection);
+                }
+            }
+        }
+    };
+    collectConnections(_graphicalInputPorts);
+    collectConnections(_graphicalOutputPorts);
+
+    int updatedConnections = 0;
+    for (GraphicalConnection* connection : uniqueConnections) {
+        connection->updateDimensionsAndPosition();
+        connection->update();
+        ++updatedConnections;
+    }
+
+    qInfo() << "GraphicalModelComponent::itemChange refreshed connections" << updatedConnections
+            << "for component"
+            << (_component != nullptr ? QString::fromStdString(_component->getName()) : QString("<null>"));
+
+    return result;
+}
+
 QList<GraphicalComponentPort *> GraphicalModelComponent::getGraphicalOutputPorts() const {
     return _graphicalOutputPorts;
 }
@@ -528,6 +578,8 @@ void GraphicalModelComponent::clearQueues() {
     }
     _imagesQueue->clear();
     _mapQueue->clear();
+    // Keep logical queue state synchronized with structural queue cleanup.
+    _hasQueue = false;
 }
 
 /*

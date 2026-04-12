@@ -28,8 +28,11 @@ public:
     void updateImage();
 
 private:
-    // Caminho padrão das imagens
-    QString _defaultPath = "../../images/";
+    // Builds an in-memory marker image when the file-based image cannot be loaded.
+    QPixmap buildFallbackPixmap() const;
+
+    // Use a Qt resource base path to avoid working-directory dependent file paths.
+    QString _resourceBasePath = ":/animations/";
 
     // Atributos
     QString _imagePath;

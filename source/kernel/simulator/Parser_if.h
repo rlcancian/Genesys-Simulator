@@ -52,16 +52,22 @@ public:
     /*! \brief Returns the last error message produced by the parser. */
     virtual std::string getErrorMessage() = 0; // to get error message in the case of thrown exception
 	/*!
-	 * \brief setSampler
-	 * \param sampler
+	 * \brief Sets the sampler used by stochastic language functions.
+	 * \param sampler Pointer to sampler instance that must outlive parser usage unless
+	 *        an implementation-specific ownership transfer is explicitly documented.
+	 *
+	 * This interface does not enforce ownership transfer. Concrete parser
+	 * implementations may own a sampler created/provided at construction time, but
+	 * samplers passed through \c setSampler are expected to be externally owned by
+	 * default unless documented otherwise by the implementation.
 	 */
-	/*! \brief Sets the random sampler used by stochastic language functions. */
 	virtual void setSampler(Sampler_if* sampler) = 0;
 	/*!
-	 * \brief getSampler
-	 * \return
+	 * \brief Returns the sampler currently associated with the parser.
+	 *
+	 * The returned pointer is non-owning. Callers must consult concrete parser
+	 * documentation for lifetime/ownership details of the underlying instance.
 	 */
-	/*! \brief Returns the sampler currently associated with the parser. */
 	virtual Sampler_if* getSampler() const = 0;
 	// ...? // TODO: Implement a method to get the TOKENS parsed. Example: If parsing "nq(queue1) < var1" return a list containing something like "fNQ tLPAR eQUEUE tRPAR tLESS eVARIABLE"
 	/*!

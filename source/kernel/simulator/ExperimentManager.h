@@ -70,6 +70,8 @@ public:
 
 public:
 	ExperimentManager(Simulator* simulator);
+	// Release owned experiment instances and container storage during simulator shutdown.
+	virtual ~ExperimentManager();
 
 public:
 	SimulationExperiment* newSimulationExperiment();
@@ -96,4 +98,3 @@ private:
 };
 
 #endif /* EXPERIMENTMANAGER_H */
-

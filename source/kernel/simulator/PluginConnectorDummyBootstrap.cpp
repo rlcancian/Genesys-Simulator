@@ -1,4 +1,5 @@
-#include "PluginConnectorDummyImpl1.h"
+// Use an explicit relative include so kernel runtime builds can resolve the dummy connector header.
+#include "../../plugins/PluginConnectorDummyImpl1.h"
 
 PluginConnectorDummyImpl1::PluginConnectorDummyImpl1() = default;
 
@@ -18,38 +19,10 @@ bool PluginConnectorDummyImpl1::disconnect(Plugin*) {
     return false;
 }
 
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectBasic(const std::string) {
-    return nullptr;
+// Return an empty discovery list for the bootstrap stub when plugin scanning is unavailable.
+List<std::string>* PluginConnectorDummyImpl1::find() {
+    return new List<std::string>();
 }
 
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectContinuos(const std::string) {
-    return nullptr;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectDiscrete(const std::string) {
-    return nullptr;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectInputOutput(const std::string) {
-    return nullptr;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectIntegrations(const std::string) {
-    return nullptr;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectNetwork(const std::string) {
-    return nullptr;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectTransfer(const std::string) {
-    return nullptr;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectElectronicDomain(const std::string) {
-    return nullptr;
-}
-
-StaticGetPluginInformation PluginConnectorDummyImpl1::_connectBiochemicalDomain(const std::string) {
-    return nullptr;
-}
+// Keep bootstrap connector behavior as a no-op to avoid mutating plugin registries in unit test builds.
+void PluginConnectorDummyImpl1::_connect(List<Plugin*>*, Plugin*) {}
