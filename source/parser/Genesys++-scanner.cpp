@@ -6133,6 +6133,18 @@ YY_RULE_SETUP
 			return yy::genesyspp_parser::make_COUNTER(obj_t(0, Util::TypeOf<Counter>(), datadef->getId()),loc);
         }
 
+		// check SIMULATION RESPONSE (not a ModelDataDefinition)
+		SimulationResponse* simResponse = driver.findSimulationResponse(std::string(yytext));
+		if (simResponse != nullptr) {
+			return yy::genesyspp_parser::make_SIMRESP(obj_t(0, std::string(yytext)), loc);
+		}
+
+		// check SIMULATION CONTROL (not a ModelDataDefinition)
+		SimulationControl* simControl = driver.findSimulationControl(std::string(yytext));
+		if (simControl != nullptr) {
+			return yy::genesyspp_parser::make_SIMCTRL(obj_t(0, std::string(yytext)), loc);
+		}
+
 /****begin_LexicalLiterals_plugins****/
 
 /**begin_LexicalLiterals:Variable**/
@@ -6200,24 +6212,24 @@ YY_RULE_SETUP
         //Case not found retturns a illegal token
 		//datadef = driver.getModel()->getDataManager()->getDataDefinition(Util::TypeOf<Set>(), std::string(yytext));
 		//std::cout << "NOT FOUND " << std::string(yytext) << std::endl;
-        return yy::genesyspp_parser::make_ILLEGAL(obj_t(0, std::string("Illegal")), loc);
+        return yy::genesyspp_parser::make_ILLEGAL(obj_t(0, std::string(yytext)), loc);
       }
 	YY_BREAK
 case 93:
 YY_RULE_SETUP
-#line 325 "lexerparser.ll"
-{return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string("Illegal")), loc);}
+#line 337 "lexerparser.ll"
+{return yy::genesyspp_parser::make_ILLEGAL(obj_t(1, std::string(yytext)), loc);}
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
-#line 327 "lexerparser.ll"
+#line 339 "lexerparser.ll"
 {return yy::genesyspp_parser::make_END(loc);}
 	YY_BREAK
 case 94:
 YY_RULE_SETUP
-#line 330 "lexerparser.ll"
+#line 342 "lexerparser.ll"
 ECHO;
 	YY_BREAK
-#line 6221 "../Genesys++-scanner.cpp"
+#line 6233 "../Genesys++-scanner.cpp"
 
 	case YY_END_OF_BUFFER:
 		{
@@ -7178,7 +7190,7 @@ void yyfree (void * ptr )
 
 #define YYTABLES_NAME "yytables"
 
-#line 330 "lexerparser.ll"
+#line 342 "lexerparser.ll"
 
 
 void
