@@ -101,7 +101,7 @@ public: // editing graphic model
     enum DrawingMode{
         NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED, COUNTER, VARIABLE, TIMER
     };
-    GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false);
+    GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false, GraphicalModelComponent* autoConnectSource = nullptr);
     GraphicalConnection* addGraphicalConnection(GraphicalComponentPort* sourcePort, GraphicalComponentPort* destinationPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, bool notify = false);
     GraphicalModelDataDefinition* addGraphicalModelDataDefinition(Plugin* plugin, ModelDataDefinition* element, QPointF position, QColor color = Qt::blue);
     GraphicalDiagramConnection* addGraphicalDiagramConnection(QGraphicsItem* dataDefinition, QGraphicsItem* linkedTo, GraphicalDiagramConnection::ConnectionType type);
@@ -278,6 +278,11 @@ protected: // virtual functions
     virtual void mouseReleaseEvent(QGraphicsSceneMouseEvent *mouseEvent);
     virtual void wheelEvent(QGraphicsSceneWheelEvent *wheelEvent);
 
+private:
+    bool tryCreateConnection(GraphicalComponentPort* source, GraphicalComponentPort* destination, bool notify = true);
+    GraphicalComponentPort* firstAvailableOutputPort(GraphicalModelComponent* component) const;
+    GraphicalComponentPort* firstInputPort(GraphicalModelComponent* component) const;
+    void resetConnectingState();
 private:
     GRID _grid;
     Simulator* _simulator = nullptr;

@@ -174,7 +174,7 @@ private slots:
     /** @brief Delegates model-check workflow used as precondition for simulation/export flows. */
 	void on_actionModelCheck_triggered();
 
-	void on_actionConnect_triggered();
+	void on_actionConnect_triggered(bool checked = false);
 	void on_actionGModelComponentBreakpoint_triggered();
 	void on_actionShowInternalElements_triggered();
 	void on_actionShowAttachedElements_triggered();
