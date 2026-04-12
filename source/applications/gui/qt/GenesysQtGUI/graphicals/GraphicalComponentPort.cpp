@@ -65,7 +65,9 @@ QVariant GraphicalComponentPort::itemChange(QGraphicsItem::GraphicsItemChange ch
 	if (change == QGraphicsItem::ItemPositionChange || change == QGraphicsItem::ItemScenePositionHasChanged) {
 		QGraphicsScene* ownerScene = scene();
 		ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(ownerScene);
-		if (ownerScene == nullptr || _componentGraph == nullptr || (modelScene != nullptr && modelScene->isGraphicalDataDefinitionsSyncInProgress())) {
+		if (ownerScene == nullptr || _componentGraph == nullptr
+		        || (modelScene != nullptr && (modelScene->isGraphicalDataDefinitionsSyncInProgress()
+		                                       || modelScene->areConnectionGeometryUpdatesBlocked()))) {
 			return res;
 		}
 		for (GraphicalConnection* graphconnection : *_connections) {

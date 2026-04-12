@@ -72,8 +72,8 @@ protected: // virtual
 	//virtual void mousePressEvent(QGraphicsSceneMouseEvent * event);
 	//virtual void	mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 private:
-	qreal _width;
-	qreal _height;
+	qreal _width = 0.0;
+	qreal _height = 0.0;
 	unsigned int _margin = TraitsGUI<GConnection>::margin;//2;
 	unsigned int _selWidth = TraitsGUI<GConnection>::selectionWidth;//8;
 	ConnectionType _connectionType = ConnectionType::HORIZONTAL;

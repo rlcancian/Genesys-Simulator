@@ -160,6 +160,24 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         return;
     }
 
+    class ScopedConnectionGeometryBlocker {
+    public:
+        explicit ScopedConnectionGeometryBlocker(ModelGraphicsScene* guardedScene) : _guardedScene(guardedScene) {
+            if (_guardedScene != nullptr) {
+                _guardedScene->setConnectionGeometryUpdatesBlocked(true);
+            }
+        }
+        ~ScopedConnectionGeometryBlocker() {
+            if (_guardedScene != nullptr) {
+                _guardedScene->setConnectionGeometryUpdatesBlocked(false);
+            }
+        }
+    private:
+        ModelGraphicsScene* _guardedScene = nullptr;
+    };
+
+    ScopedConnectionGeometryBlocker scopedConnectionGeometryBlocker(scene);
+
     // Sanitize scene helper containers before any diff logic to avoid stale bookkeeping pointers.
     scene->sanitizeGraphicalDataDefinitionsBookkeeping();
 

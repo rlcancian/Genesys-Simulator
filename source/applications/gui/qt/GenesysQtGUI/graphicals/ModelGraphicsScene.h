@@ -235,6 +235,8 @@ public:
     void requestGraphicalDataDefinitionsSync();
     void scheduleGraphicalDataDefinitionsSync();
     bool isGraphicalDataDefinitionsSyncInProgress() const;
+    void setConnectionGeometryUpdatesBlocked(bool blocked);
+    bool areConnectionGeometryUpdatesBlocked() const;
 
 public:
     QList<QGraphicsItem*>*getGraphicalModelDataDefinitions() const;
@@ -343,6 +345,7 @@ private:
     bool _restoringPersistedGuiLayout = false;
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
+    bool _connectionGeometryUpdatesBlocked = false;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */
