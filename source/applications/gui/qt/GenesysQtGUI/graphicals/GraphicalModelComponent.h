@@ -47,6 +47,7 @@ private:
 	QColor myrgba(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
 protected: // virtual
 	virtual bool sceneEvent(QEvent *event) override;
+    QVariant itemChange(GraphicsItemChange change, const QVariant& value) override;
 	//virtual void	hoverEnterEvent(QGraphicsSceneHoverEvent * event)
 	//virtual void	hoverLeaveEvent(QGraphicsSceneHoverEvent * event)
 	//virtual void	hoverMoveEvent(QGraphicsSceneHoverEvent * event)
@@ -118,4 +119,3 @@ public:
 };
 
 #endif /* MODELCOMPONENTGRAPHICITEM_H */
-

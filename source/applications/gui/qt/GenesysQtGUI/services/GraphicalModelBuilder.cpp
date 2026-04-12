@@ -16,6 +16,7 @@
 
 #include <QTextEdit>
 #include <QSet>
+#include <QDebug>
 
 namespace {
 QPointF stableComponentPosition(GraphicalModelComponent* component) {
@@ -248,6 +249,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> existingDataDefinitions;
     const QList<QGraphicsItem*> liveItems = scene->items();
     for (QGraphicsItem* item : liveItems) {
+        if (auto* gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
+            qInfo() << "synchronizeGraphicalDataDefinitionsLayer: ignoring GraphicalModelComponent in data-definition snapshot"
+                    << (gmc->getComponent() != nullptr ? QString::fromStdString(gmc->getComponent()->getName()) : QString("<null>"));
+            continue;
+        }
         GraphicalModelDataDefinition* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item);
         if (gmdd == nullptr || gmdd->getDataDefinition() == nullptr) {
             continue;
@@ -296,6 +302,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
     }
     for (GraphicalModelDataDefinition* stale : staleGraphicalDataDefinitions) {
+        const QString staleName = (stale->getDataDefinition() != nullptr)
+                ? QString::fromStdString(stale->getDataDefinition()->getName())
+                : QString("<null>");
+        qInfo() << "synchronizeGraphicalDataDefinitionsLayer: stale data definition removal"
+                << staleName;
         scene->removeGraphicalModelDataDefinition(stale);
     }
 

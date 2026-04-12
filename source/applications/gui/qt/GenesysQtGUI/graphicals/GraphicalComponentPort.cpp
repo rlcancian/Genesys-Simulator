@@ -20,6 +20,7 @@ GraphicalComponentPort::GraphicalComponentPort(GraphicalModelComponent* componen
 	//setPos(0,0);
     setFlag(QGraphicsItem::ItemIsSelectable, false);
     setFlag(QGraphicsItem::ItemIsFocusable, false);
+    setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
 	setAcceptHoverEvents(true);
 	setAcceptTouchEvents(true);
 	setActive(true);

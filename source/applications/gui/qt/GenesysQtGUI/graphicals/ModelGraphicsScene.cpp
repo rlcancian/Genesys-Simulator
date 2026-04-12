@@ -664,6 +664,10 @@ void ModelGraphicsScene::removeGraphicalModelDataDefinition(GraphicalModelDataDe
     if (gmdd == nullptr) {
         return;
     }
+    if (dynamic_cast<GraphicalModelComponent*>(gmdd) != nullptr) {
+        qInfo() << "removeGraphicalModelDataDefinition: refusing to remove GraphicalModelComponent as data definition";
+        return;
+    }
 
     // Remove only data-definition items that are still alive in the scene snapshot.
     const QList<QGraphicsItem*> liveItems = items();
@@ -756,6 +760,10 @@ void ModelGraphicsScene::sanitizeGraphicalDataDefinitionsBookkeeping() {
     QSet<GraphicalDiagramConnection*> liveDiagramConnections;
 
     for (QGraphicsItem* item : liveItems) {
+        if (dynamic_cast<GraphicalModelComponent*>(item) != nullptr) {
+            qInfo() << "sanitizeGraphicalDataDefinitionsBookkeeping: ignoring GraphicalModelComponent item";
+            continue;
+        }
         if (auto* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
             liveDataDefinitions.insert(gmdd);
             continue;
