@@ -2,6 +2,7 @@
 #include "GraphicalModelComponent.h"
 #include "ModelGraphicsScene.h"
 #include <QPainter>
+#include <QtMath>
 
 GraphicalConnection::GraphicalConnection(GraphicalComponentPort* sourceGraphicalPort, GraphicalComponentPort* destinationGraphicalPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, QColor color, QGraphicsItem *parent) : QGraphicsObject(parent) {
 	/**
@@ -85,35 +86,36 @@ void GraphicalConnection::updateDimensionsAndPosition() {
 		return;
 	}
 	ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(sourceScene);
-	if (modelScene != nullptr && modelScene->areConnectionGeometryUpdatesBlocked()) {
+	if (modelScene != nullptr && (modelScene->areConnectionGeometryUpdatesBlocked()
+	                              || modelScene->isGraphicalDataDefinitionsSyncInProgress())) {
 		return;
 	}
 	if (_sourceGraphicalPort->graphicalComponent() == nullptr || _destinationGraphicalPort->graphicalComponent() == nullptr) {
 		return;
 	}
-	/**
-	 * Bloco 1: coleta de geometria absoluta de portas.
-	 */
-	qreal x1, x2, y1, y2, w1, w2, h1, h2;
-	x1 = _sourceGraphicalPort->scenePos().x();
-	x2 = _destinationGraphicalPort->scenePos().x();
-	y1 = _sourceGraphicalPort->scenePos().y();
-	y2 = _destinationGraphicalPort->scenePos().y();
-	w1 = _sourceGraphicalPort->width();
-	h1 = _sourceGraphicalPort->height();
-	w2 = _destinationGraphicalPort->width();
-	h2 = _destinationGraphicalPort->height();
-	prepareGeometryChange();
-	/**
-	 * Bloco 2: projeta esta conexão para um sistema de coordenadas local mínimo.
-	 */
-	setPos((x1 < x2 ? x1 + w1 : x2 + w2) - 2/*penwidth*/, y1 < y2 ? y1 : y2);
-	//setPos((x1 < x2 ? x1 + w1 : x2 + w2) - 2/*penwidth*/, y1 < y2 ? y1 : y2);
-	_width = abs(x2 - x1)-(x1 < x2 ? w2 : w1);
-	_height = abs(y2 - y1)+(y1 < y2 ? h2 : h1);
-	/**
-	 * Bloco 3: mantém apenas atualização geométrica local.
-	 */
+	const QPointF sourceScenePos = _sourceGraphicalPort->scenePos();
+	const QPointF destinationScenePos = _destinationGraphicalPort->scenePos();
+	const qreal w1 = _sourceGraphicalPort->width();
+	const qreal h1 = _sourceGraphicalPort->height();
+	const qreal w2 = _destinationGraphicalPort->width();
+	const qreal h2 = _destinationGraphicalPort->height();
+
+	const qreal newX = (sourceScenePos.x() < destinationScenePos.x() ? sourceScenePos.x() + w1 : destinationScenePos.x() + w2) - 2;
+	const qreal newY = sourceScenePos.y() < destinationScenePos.y() ? sourceScenePos.y() : destinationScenePos.y();
+	const qreal newWidth = qAbs(destinationScenePos.x() - sourceScenePos.x()) - (sourceScenePos.x() < destinationScenePos.x() ? w2 : w1);
+	const qreal newHeight = qAbs(destinationScenePos.y() - sourceScenePos.y()) + (sourceScenePos.y() < destinationScenePos.y() ? h2 : h1);
+
+	const bool positionChanged = !qFuzzyCompare(pos().x() + 1.0, newX + 1.0) || !qFuzzyCompare(pos().y() + 1.0, newY + 1.0);
+	const bool geometryChanged = !qFuzzyCompare(_width + 1.0, newWidth + 1.0) || !qFuzzyCompare(_height + 1.0, newHeight + 1.0);
+	if (!positionChanged && !geometryChanged) {
+		return;
+	}
+	if (geometryChanged) {
+		prepareGeometryChange();
+	}
+	_width = newWidth;
+	_height = newHeight;
+	setPos(newX, newY);
 }
 
 QRectF GraphicalConnection::boundingRect() const {
@@ -137,6 +139,9 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	QGraphicsScene* sourceScene = _sourceGraphicalPort->scene();
 	QGraphicsScene* destinationScene = _destinationGraphicalPort->scene();
 	if (sourceScene == nullptr || destinationScene == nullptr || sourceScene != destinationScene || scene() != sourceScene) {
+		return;
+	}
+	if (_sourceGraphicalPort->graphicalComponent() == nullptr || _destinationGraphicalPort->graphicalComponent() == nullptr) {
 		return;
 	}
 	QPen pen = QPen(_color);

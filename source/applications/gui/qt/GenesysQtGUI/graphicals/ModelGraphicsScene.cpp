@@ -731,8 +731,9 @@ void ModelGraphicsScene::removeGraphicalModelDataDefinition(GraphicalModelDataDe
         removeGraphicalDiagramConnection(connection);
     }
 
-    if (QGraphicsItemGroup* group = gmdd->group()) {
-        group->removeFromGroup(gmdd);
+    QGraphicsItemGroup* parentGroup = gmdd->group();
+    if (parentGroup != nullptr) {
+        parentGroup->removeFromGroup(gmdd);
     }
 
     //graphically
@@ -740,6 +741,15 @@ void ModelGraphicsScene::removeGraphicalModelDataDefinition(GraphicalModelDataDe
     // Keep data-definition ownership lists consistent during removal.
     getGraphicalModelDataDefinitions()->removeOne(gmdd);
     getAllDataDefinitions()->removeOne(gmdd);
+    _oldPositionsItems.remove(gmdd);
+
+    // Cleanup trivial automatic grouping leftovers after detaching/removing this data definition.
+    if (parentGroup != nullptr && parentGroup->childItems().isEmpty()) {
+        removeItem(parentGroup);
+        getGraphicalGroups()->removeOne(parentGroup);
+        _listComponentsGroup.remove(parentGroup);
+        delete parentGroup;
+    }
     delete(gmdd);
 }
 
@@ -1504,16 +1514,11 @@ void ModelGraphicsScene::actualizeDiagramArrows() {
 
     if (existDiagram()) {
         QList<GraphicalDiagramConnection*>* connections = getAllGraphicalDiagramsConnections();
-        int size_connections = connections->size();
-        for (int i = 0; i < size_connections; i++) {
-
-            GraphicalDiagramConnection* itemConnection = connections->first();
-
-            QGraphicsItem * item_1 = itemConnection->getDataDefinition();
-            QGraphicsItem * item_2 = itemConnection->getLinkedDataDefinition();
-            addGraphicalDiagramConnection(item_1, item_2, itemConnection->getConnectionType());
-
-            removeGraphicalDiagramConnection(itemConnection);
+        for (GraphicalDiagramConnection* itemConnection : *connections) {
+            if (itemConnection == nullptr) {
+                continue;
+            }
+            itemConnection->refreshGeometry();
         }
     }
 }
@@ -2481,8 +2486,6 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent *mouseEvent) {
                         QUndoCommand *addUndoCommand = new AddUndoCommand(graphicconnection, this);
                         _undoStack->push(addUndoCommand);
 
-                        addItem(graphicconnection);
-
                         // Reset cursor only when the parent model view exists.
                         ModelGraphicsView* parentView = sceneParentModelGraphicsView(this);
                         if (parentView != nullptr) {
@@ -2503,8 +2506,6 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent *mouseEvent) {
                         // porem o connectComponents ja faz isso pra quando há necessidade de fazer reconexao
                         QUndoCommand *addUndoCommand = new AddUndoCommand(graphicconnection, this);
                         _undoStack->push(addUndoCommand);
-
-                        addItem(graphicconnection);
 
                         // Reset cursor only when the parent model view exists.
                         ModelGraphicsView* parentView = sceneParentModelGraphicsView(this);

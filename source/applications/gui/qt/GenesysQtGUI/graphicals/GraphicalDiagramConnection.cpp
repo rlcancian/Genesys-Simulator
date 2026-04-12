@@ -9,51 +9,53 @@ GraphicalDiagramConnection::GraphicalDiagramConnection(QGraphicsItem* dataDefini
     _item2 = linkedTo;
     _type = type;
 
-    QRectF startRect = dataDefinition->sceneBoundingRect();
-    QRectF endRect = linkedTo->sceneBoundingRect();
-
-    QPointF startPoint;
-    QPointF endPoint;
-
-    if (startRect.bottom() < endRect.top()) { //seta para baixo
-
-        startPoint.setX(startRect.center().x());
-        startPoint.setY(startRect.bottom() - 10);
-
-        endPoint.setX(endRect.center().x());
-        endPoint.setY(endRect.top() + 10);
-
-    } else if (startRect.top() > endRect.bottom()){ //seta para cima
-
-        startPoint.setX(startRect.center().x());
-        startPoint.setY(startRect.top() + 10);
-
-        endPoint.setX(endRect.center().x());
-        endPoint.setY(endRect.bottom() - 10);
-
-    } else if (startRect.right() < endRect.left()){ //seta para direita
-
-        startPoint.setX(startRect.right() - 10);
-        startPoint.setY(startRect.center().y());
-
-        endPoint.setX(endRect.left() + 10);
-        endPoint.setY(endRect.center().y());
-
-    } else { //seta para esquerda
-
-        startPoint.setX(startRect.left() + 10);
-        startPoint.setY(startRect.center().y());
-
-        endPoint.setX(endRect.right() - 10);
-        endPoint.setY(endRect.center().y());
-    }
-
-    setLine(QLineF(startPoint, endPoint));
+    refreshGeometry();
     // Keep diagram links purely representational in this phase.
     setFlag(QGraphicsItem::ItemIsSelectable, false);
     setFlag(QGraphicsItem::ItemIsFocusable, false);
     setFlag(QGraphicsItem::ItemIsMovable, false);
     setAcceptedMouseButtons(Qt::NoButton);
+}
+
+void GraphicalDiagramConnection::refreshGeometry() {
+    if (_item1 == nullptr || _item2 == nullptr) {
+        return;
+    }
+    QGraphicsScene* scene1 = _item1->scene();
+    QGraphicsScene* scene2 = _item2->scene();
+    if (scene1 == nullptr || scene2 == nullptr || scene1 != scene2) {
+        return;
+    }
+
+    QRectF startRect = _item1->sceneBoundingRect();
+    QRectF endRect = _item2->sceneBoundingRect();
+
+    QPointF startPoint;
+    QPointF endPoint;
+
+    if (startRect.bottom() < endRect.top()) { //seta para baixo
+        startPoint.setX(startRect.center().x());
+        startPoint.setY(startRect.bottom() - 10);
+        endPoint.setX(endRect.center().x());
+        endPoint.setY(endRect.top() + 10);
+    } else if (startRect.top() > endRect.bottom()){ //seta para cima
+        startPoint.setX(startRect.center().x());
+        startPoint.setY(startRect.top() + 10);
+        endPoint.setX(endRect.center().x());
+        endPoint.setY(endRect.bottom() - 10);
+    } else if (startRect.right() < endRect.left()){ //seta para direita
+        startPoint.setX(startRect.right() - 10);
+        startPoint.setY(startRect.center().y());
+        endPoint.setX(endRect.left() + 10);
+        endPoint.setY(endRect.center().y());
+    } else { //seta para esquerda
+        startPoint.setX(startRect.left() + 10);
+        startPoint.setY(startRect.center().y());
+        endPoint.setX(endRect.right() - 10);
+        endPoint.setY(endRect.center().y());
+    }
+
+    setLine(QLineF(startPoint, endPoint));
 }
 
 

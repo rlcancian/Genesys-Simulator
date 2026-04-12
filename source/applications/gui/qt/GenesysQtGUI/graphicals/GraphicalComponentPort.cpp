@@ -61,8 +61,8 @@ QVariant GraphicalComponentPort::itemChange(QGraphicsItem::GraphicsItemChange ch
 		return res;
 	}
 
-	// Update connected edges only when scene and component are stable.
-	if (change == QGraphicsItem::ItemPositionChange || change == QGraphicsItem::ItemScenePositionHasChanged) {
+	// Update connected edges only when scene/component are stable and final position is committed.
+	if (change == QGraphicsItem::ItemPositionHasChanged || change == QGraphicsItem::ItemScenePositionHasChanged) {
 		QGraphicsScene* ownerScene = scene();
 		ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(ownerScene);
 		if (ownerScene == nullptr || _componentGraph == nullptr
@@ -72,6 +72,9 @@ QVariant GraphicalComponentPort::itemChange(QGraphicsItem::GraphicsItemChange ch
 		}
 		for (GraphicalConnection* graphconnection : *_connections) {
 			if (graphconnection == nullptr) {
+				continue;
+			}
+			if (graphconnection->scene() != nullptr && graphconnection->scene() != ownerScene) {
 				continue;
 			}
 			graphconnection->updateDimensionsAndPosition();

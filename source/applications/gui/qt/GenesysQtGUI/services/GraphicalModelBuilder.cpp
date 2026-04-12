@@ -16,6 +16,31 @@
 
 #include <QTextEdit>
 #include <QSet>
+#include <QtMath>
+
+namespace {
+QPointF stableComponentAnchor(GraphicalModelComponent* component) {
+    if (component == nullptr) {
+        return QPointF();
+    }
+    QPointF anchor = component->getOldPosition();
+    if (!qIsFinite(anchor.x()) || !qIsFinite(anchor.y())) {
+        anchor = component->pos();
+    }
+    return anchor;
+}
+
+QPointF stableDataDefinitionAnchor(GraphicalModelDataDefinition* dataDefinition) {
+    if (dataDefinition == nullptr) {
+        return QPointF();
+    }
+    QPointF anchor = dataDefinition->getOldPosition();
+    if (!qIsFinite(anchor.x()) || !qIsFinite(anchor.y())) {
+        anchor = dataDefinition->pos();
+    }
+    return anchor;
+}
+}
 
 // Build the graphical reconstruction service with explicit dependencies.
 GraphicalModelBuilder::GraphicalModelBuilder(Simulator* simulator,
@@ -294,11 +319,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (newDataDefinitions.contains(attachedData.second)) {
                 // Read component geometry only when a newly created attached data definition needs placement.
                 if (!hasComponentPosition) {
-                    // Only read scene geometry when the component is attached to a valid scene.
-                    if (graphicalComponent->scene() == nullptr) {
-                        continue;
-                    }
-                    componentPosition = graphicalComponent->scenePos();
+                    componentPosition = stableComponentAnchor(graphicalComponent);
                     yInternal = componentPosition.y();
                     yAttached = componentPosition.y();
                     hasComponentPosition = true;
@@ -324,11 +345,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (newDataDefinitions.contains(internalData.second)) {
                 // Read component geometry only when a newly created internal data definition needs placement.
                 if (!hasComponentPosition) {
-                    // Only read scene geometry when the component is attached to a valid scene.
-                    if (graphicalComponent->scene() == nullptr) {
-                        continue;
-                    }
-                    componentPosition = graphicalComponent->scenePos();
+                    componentPosition = stableComponentAnchor(graphicalComponent);
                     yInternal = componentPosition.y();
                     yAttached = componentPosition.y();
                     hasComponentPosition = true;
@@ -360,11 +377,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (newDataDefinitions.contains(internalData.second)) {
                 // Read parent geometry only when placing newly created child data definitions.
                 if (!hasParentPosition) {
-                    // Only read scene geometry when the parent definition is attached to a valid scene.
-                    if (parentGraphicalDefinition->scene() == nullptr) {
-                        continue;
-                    }
-                    parentPosition = parentGraphicalDefinition->scenePos();
+                    parentPosition = stableDataDefinitionAnchor(parentGraphicalDefinition);
                     x = parentPosition.x();
                     hasParentPosition = true;
                 }
