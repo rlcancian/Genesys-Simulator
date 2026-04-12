@@ -82,7 +82,6 @@
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
-    QObject::connect(ui->actionConnect, &QAction::triggered, this, &MainWindow::on_actionConnect_triggered, Qt::UniqueConnection);
     // Keep plugins tree as drag source only (never a drop target).
     ui->treeWidget_Plugins->setDragDropMode(QAbstractItemView::DragOnly);
     ui->treeWidget_Plugins->setAcceptDrops(false);

@@ -174,7 +174,6 @@ private slots:
     /** @brief Delegates model-check workflow used as precondition for simulation/export flows. */
 	void on_actionModelCheck_triggered();
 
-	void on_actionConnect_triggered(bool checked = false);
 	void on_actionGModelComponentBreakpoint_triggered();
 	void on_actionShowInternalElements_triggered();
 	void on_actionShowAttachedElements_triggered();
@@ -221,7 +220,7 @@ private slots:
     void on_actionArranjeCenter_triggered();
     void on_actionArranjeMiddle_triggered();
     void on_actionShowSnap_triggered();
-    void on_actionGModelShowConnect_triggered();
+    void on_actionGModelShowConnect_triggered(bool checked = false);
 
     void on_actionActivateGraphicalSimulation_triggered();
     void on_horizontalSliderAnimationSpeed_valueChanged(int value);
