@@ -41,27 +41,47 @@ GraphicalConnection::GraphicalConnection(const GraphicalConnection& orig) {
 }
 
 GraphicalConnection::~GraphicalConnection() {
-    /**
-     * @brief Desfaz vínculo modelo<->gráfico da conexão.
-     *
-     * Ordem adotada:
-     * 1) remove relação no ConnectionManager do componente de origem;
-     * 2) remove ponteiros desta conexão nas portas gráficas;
-     * 3) libera objetos Connection auxiliares alocados neste item gráfico.
-     *
-     * @todo Avaliar migração de `_sourceConnection/_destinationConnection` para smart pointers.
-     */
-    if (_sourceConnection != nullptr && _sourceConnection->component != nullptr) {
-        _sourceConnection->component->getConnectionManager()->remove(_destinationConnection);
-    }
-    if (_sourceGraphicalPort != nullptr) {
-	    _sourceGraphicalPort->removeGraphicalConnection(this);
-    }
-    if (_destinationGraphicalPort != nullptr) {
-	    _destinationGraphicalPort->removeGraphicalConnection(this);
-    }
-    delete _destinationConnection;
-    delete _sourceConnection;
+	Connection* sourceConnection = _sourceConnection;
+	Connection* destinationConnection = _destinationConnection;
+	GraphicalComponentPort* sourceGraphicalPort = _sourceGraphicalPort;
+	GraphicalComponentPort* destinationGraphicalPort = _destinationGraphicalPort;
+
+	_sourceConnection = nullptr;
+	_destinationConnection = nullptr;
+	_sourceGraphicalPort = nullptr;
+	_destinationGraphicalPort = nullptr;
+
+	if (sourceGraphicalPort != nullptr) {
+		sourceGraphicalPort->removeGraphicalConnection(this);
+	}
+	if (destinationGraphicalPort != nullptr) {
+		destinationGraphicalPort->removeGraphicalConnection(this);
+	}
+
+	// Destination connection may already be destroyed by ConnectionManager::remove;
+	// avoid double free during scene/model teardown.
+	if (destinationConnection != nullptr) {
+		ConnectionManager* manager = nullptr;
+		if (sourceConnection != nullptr && sourceConnection->component != nullptr) {
+			manager = sourceConnection->component->getConnectionManager();
+		}
+		bool isManagedConnection = false;
+		if (manager != nullptr && manager->connections() != nullptr) {
+			for (const std::pair<const unsigned int, Connection*>& connectionPair : *manager->connections()) {
+				if (connectionPair.second == destinationConnection) {
+					isManagedConnection = true;
+					break;
+				}
+			}
+		}
+		if (isManagedConnection) {
+			manager->remove(destinationConnection);
+		} else {
+			delete destinationConnection;
+		}
+	}
+
+	delete sourceConnection;
 }
 
 GraphicalConnection::ConnectionType GraphicalConnection::connectionType() const
