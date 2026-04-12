@@ -834,7 +834,9 @@ void MainWindow::on_horizontalSlider_ZoomGraphical_valueChanged(int value) {
     }
 }
 
-void MainWindow::on_actionConnect_triggered() {
+void MainWindow::on_actionConnect_triggered(bool checked) {
+    Q_UNUSED(checked);
+    qInfo() << "Connect action triggered";
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {
         _sceneToolController->onActionConnectTriggered();
