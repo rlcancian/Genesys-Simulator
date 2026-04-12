@@ -60,9 +60,27 @@
 #include <QTimer>
 #include <QDebug>
 #include <QSet>
+#include <QMetaObject>
 #include <algorithm>
 
 namespace {
+// Keep sync-in-progress state exception-safe inside queued synchronization execution.
+class ScopedSyncInProgress {
+public:
+    explicit ScopedSyncInProgress(bool* flag) : _flag(flag) {
+        if (_flag != nullptr) {
+            *_flag = true;
+        }
+    }
+    ~ScopedSyncInProgress() {
+        if (_flag != nullptr) {
+            *_flag = false;
+        }
+    }
+private:
+    bool* _flag = nullptr;
+};
+
 // Safely cast the scene parent to a generic graphics view.
 QGraphicsView* sceneParentGraphicsView(ModelGraphicsScene* scene) {
     if (scene == nullptr) {
@@ -389,7 +407,17 @@ GraphicalModelDataDefinition* ModelGraphicsScene::addGraphicalModelDataDefinitio
     getAllDataDefinitions()->append(graphDataDef);
     getGraphicalModelDataDefinitions()->append(graphDataDef);
 
-    addItem(graphDataDef);
+    // Avoid duplicate addItem and avoid cross-scene item ownership conflicts.
+    if (graphDataDef != nullptr) {
+        if (graphDataDef->scene() == this) {
+            // Item is already owned by this scene.
+        } else if (graphDataDef->scene() != nullptr) {
+            graphDataDef->scene()->removeItem(graphDataDef);
+            addItem(graphDataDef);
+        } else {
+            addItem(graphDataDef);
+        }
+    }
 
     return graphDataDef;
 }
@@ -401,7 +429,17 @@ GraphicalDiagramConnection* ModelGraphicsScene::addGraphicalDiagramConnection(QG
     getAllGraphicalDiagramsConnections()->append(connection);
     getGraphicalDiagramsConnections()->append(connection);
 
-    addItem(connection);
+    // Avoid duplicate addItem and avoid cross-scene item ownership conflicts.
+    if (connection != nullptr) {
+        if (connection->scene() == this) {
+            // Item is already owned by this scene.
+        } else if (connection->scene() != nullptr) {
+            connection->scene()->removeItem(connection);
+            addItem(connection);
+        } else {
+            addItem(connection);
+        }
+    }
 
     return connection;
 }
@@ -677,6 +715,20 @@ void ModelGraphicsScene::removeGraphicalModelDataDefinition(GraphicalModelDataDe
         getGraphicalModelDataDefinitions()->removeOne(gmdd);
         getAllDataDefinitions()->removeOne(gmdd);
         return;
+    }
+
+    // Remove all diagram links that still reference this data definition before removing the item itself.
+    QList<GraphicalDiagramConnection*> relatedConnections;
+    for (GraphicalDiagramConnection* connection : *getAllGraphicalDiagramsConnections()) {
+        if (connection == nullptr) {
+            continue;
+        }
+        if (connection->getDataDefinition() == gmdd || connection->getLinkedDataDefinition() == gmdd) {
+            relatedConnections.append(connection);
+        }
+    }
+    for (GraphicalDiagramConnection* connection : relatedConnections) {
+        removeGraphicalDiagramConnection(connection);
     }
 
     //graphically
@@ -2956,7 +3008,7 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent *event) {
                     // create graphically
                     addGraphicalModelComponent(plugin, component, event->scenePos(), color, true);
                     // Defer synchronization until after the drop event completes and scene transforms settle.
-                    scheduleGraphicalDataDefinitionsSync();
+                    requestGraphicalDataDefinitionsSync();
                     return;
                 }
             }
@@ -2965,21 +3017,22 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent *event) {
     event->setAccepted(false);
 }
 
-void ModelGraphicsScene::scheduleGraphicalDataDefinitionsSync() {
+void ModelGraphicsScene::requestGraphicalDataDefinitionsSync() {
     // Coalesce chained requests to avoid running redundant synchronizations in the same event-loop turn.
-    if (_graphicalDataDefinitionsSyncPending) {
+    if (_graphicalDataDefinitionsSyncPending || _graphicalDataDefinitionsSyncInProgress) {
         return;
     }
     _graphicalDataDefinitionsSyncPending = true;
 
     QPointer<ModelGraphicsScene> guardedScene(this);
-    QTimer::singleShot(0, this, [guardedScene]() {
+    QMetaObject::invokeMethod(this, [guardedScene]() {
         if (guardedScene.isNull()) {
             return;
         }
 
         // Clear pending state first so follow-up model mutations can enqueue another sync.
         guardedScene->_graphicalDataDefinitionsSyncPending = false;
+        ScopedSyncInProgress scopedSyncFlag(&guardedScene->_graphicalDataDefinitionsSyncInProgress);
         Simulator* simulator = guardedScene->_simulator;
         if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
             return;
@@ -2987,7 +3040,16 @@ void ModelGraphicsScene::scheduleGraphicalDataDefinitionsSync() {
 
         // Run canonical layer synchronization only when both the scene and active model are still valid.
         GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(simulator, guardedScene.data());
-    });
+    }, Qt::QueuedConnection);
+}
+
+// Keep compatibility with existing call sites while enforcing canonical queued scheduling.
+void ModelGraphicsScene::scheduleGraphicalDataDefinitionsSync() {
+    requestGraphicalDataDefinitionsSync();
+}
+
+bool ModelGraphicsScene::isGraphicalDataDefinitionsSyncInProgress() const {
+    return _graphicalDataDefinitionsSyncInProgress;
 }
 
 void ModelGraphicsScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *contextMenuEvent) {
@@ -3031,7 +3093,7 @@ void ModelGraphicsScene::keyPressEvent(QKeyEvent *keyEvent) {
 
         QUndoCommand *deleteUndoCommand = new DeleteUndoCommand(selected, this);
         _undoStack->push(deleteUndoCommand);
-        GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(_simulator, this);
+        requestGraphicalDataDefinitionsSync();
     }
     _controlIsPressed = (keyEvent->key() == Qt::Key_Control);
 }

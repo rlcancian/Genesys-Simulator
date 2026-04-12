@@ -1,6 +1,7 @@
 #include "GraphicalComponentPort.h"
 #include "GraphicalConnection.h"
 #include "GraphicalModelComponent.h"
+#include "ModelGraphicsScene.h"
 #include <QPainter>
 #include "TraitsGUI.h"
 #include "UtilGUI.h"
@@ -52,8 +53,25 @@ void GraphicalComponentPort::mouseMoveEvent(QGraphicsSceneMouseEvent *mouseEvent
 
 QVariant GraphicalComponentPort::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value) {
 	QVariant res = QGraphicsObject::itemChange(change, value);
-	if (change == QGraphicsItem::ItemPositionChange || QGraphicsItem::ItemScenePositionHasChanged) {
+	// Avoid connection geometry updates while scene membership or parentage is changing.
+	if (change == QGraphicsItem::ItemSceneChange
+	        || change == QGraphicsItem::ItemSceneHasChanged
+	        || change == QGraphicsItem::ItemParentChange
+	        || change == QGraphicsItem::ItemParentHasChanged) {
+		return res;
+	}
+
+	// Update connected edges only when scene and component are stable.
+	if (change == QGraphicsItem::ItemPositionChange || change == QGraphicsItem::ItemScenePositionHasChanged) {
+		QGraphicsScene* ownerScene = scene();
+		ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(ownerScene);
+		if (ownerScene == nullptr || _componentGraph == nullptr || (modelScene != nullptr && modelScene->isGraphicalDataDefinitionsSyncInProgress())) {
+			return res;
+		}
 		for (GraphicalConnection* graphconnection : *_connections) {
+			if (graphconnection == nullptr) {
+				continue;
+			}
 			graphconnection->updateDimensionsAndPosition();
 			//graphconnection->update();//updateDimensions();
 		}

@@ -1,5 +1,6 @@
 #include "GraphicalConnection.h"
 #include "GraphicalModelComponent.h"
+#include "ModelGraphicsScene.h"
 #include <QPainter>
 
 GraphicalConnection::GraphicalConnection(GraphicalComponentPort* sourceGraphicalPort, GraphicalComponentPort* destinationGraphicalPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, QColor color, QGraphicsItem *parent) : QGraphicsObject(parent) {
@@ -74,6 +75,22 @@ void GraphicalConnection::setConnectionType(GraphicalConnection::ConnectionType 
 }
 
 void GraphicalConnection::updateDimensionsAndPosition() {
+	// Skip geometric work while endpoints/scenes are unstable or during data-definition sync teardown.
+	if (_sourceGraphicalPort == nullptr || _destinationGraphicalPort == nullptr) {
+		return;
+	}
+	QGraphicsScene* sourceScene = _sourceGraphicalPort->scene();
+	QGraphicsScene* destinationScene = _destinationGraphicalPort->scene();
+	if (sourceScene == nullptr || destinationScene == nullptr || sourceScene != destinationScene) {
+		return;
+	}
+	ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(sourceScene);
+	if (modelScene != nullptr && modelScene->isGraphicalDataDefinitionsSyncInProgress()) {
+		return;
+	}
+	if (_sourceGraphicalPort->graphicalComponent() == nullptr || _destinationGraphicalPort->graphicalComponent() == nullptr) {
+		return;
+	}
 	/**
 	 * Bloco 1: coleta de geometria absoluta de portas.
 	 */
