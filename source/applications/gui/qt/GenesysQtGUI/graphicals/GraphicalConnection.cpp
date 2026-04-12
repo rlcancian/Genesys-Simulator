@@ -75,20 +75,7 @@ void GraphicalConnection::setConnectionType(GraphicalConnection::ConnectionType 
 }
 
 void GraphicalConnection::updateDimensionsAndPosition() {
-	// Skip geometric work while endpoints/scenes are unstable or during data-definition sync teardown.
-	if (_sourceGraphicalPort == nullptr || _destinationGraphicalPort == nullptr) {
-		return;
-	}
-	QGraphicsScene* sourceScene = _sourceGraphicalPort->scene();
-	QGraphicsScene* destinationScene = _destinationGraphicalPort->scene();
-	if (sourceScene == nullptr || destinationScene == nullptr || sourceScene != destinationScene) {
-		return;
-	}
-	ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(sourceScene);
-	if (modelScene != nullptr && modelScene->areConnectionGeometryUpdatesBlocked()) {
-		return;
-	}
-	if (_sourceGraphicalPort->graphicalComponent() == nullptr || _destinationGraphicalPort->graphicalComponent() == nullptr) {
+	if (!canRefreshGeometry()) {
 		return;
 	}
 	/**
@@ -103,17 +90,59 @@ void GraphicalConnection::updateDimensionsAndPosition() {
 	h1 = _sourceGraphicalPort->height();
 	w2 = _destinationGraphicalPort->width();
 	h2 = _destinationGraphicalPort->height();
-	prepareGeometryChange();
+
+	const bool sourceIsLeft = x1 < x2;
+	const bool sourceIsAbove = y1 < y2;
+	const QPointF newPos((sourceIsLeft ? x1 + w1 : x2 + w2) - 2/*penwidth*/, sourceIsAbove ? y1 : y2);
+	const qreal newWidth = abs(x2 - x1) - (sourceIsLeft ? w2 : w1);
+	const qreal newHeight = abs(y2 - y1) + (sourceIsAbove ? h2 : h1);
+	const QPointF sourceLocal(sourceIsLeft ? -w1 / 2.0 : newWidth + w1 / 2.0,
+	                         sourceIsAbove ? h1 / 2.0 : newHeight - h1 / 2.0);
+	const QPointF destinationLocal(sourceIsLeft ? newWidth + w2 / 2.0 : -w2 / 2.0,
+	                              sourceIsAbove ? newHeight - h1 / 2.0 : h1 / 2.0);
+	const bool geometryChanged = !qFuzzyCompare(_width + 1.0, newWidth + 1.0)
+	        || !qFuzzyCompare(_height + 1.0, newHeight + 1.0)
+	        || !qFuzzyCompare(pos().x() + 1.0, newPos.x() + 1.0)
+	        || !qFuzzyCompare(pos().y() + 1.0, newPos.y() + 1.0);
+	if (geometryChanged) {
+		prepareGeometryChange();
+	}
 	/**
 	 * Bloco 2: projeta esta conexão para um sistema de coordenadas local mínimo.
 	 */
-	setPos((x1 < x2 ? x1 + w1 : x2 + w2) - 2/*penwidth*/, y1 < y2 ? y1 : y2);
-	//setPos((x1 < x2 ? x1 + w1 : x2 + w2) - 2/*penwidth*/, y1 < y2 ? y1 : y2);
-	_width = abs(x2 - x1)-(x1 < x2 ? w2 : w1);
-	_height = abs(y2 - y1)+(y1 < y2 ? h2 : h1);
+	setPos(newPos);
+	_width = newWidth;
+	_height = newHeight;
+	_sourcePointLocal = sourceLocal;
+	_destinationPointLocal = destinationLocal;
+	_points.clear();
+	_points.append(mapToScene(_sourcePointLocal));
+	if (_connectionType == ConnectionType::HORIZONTAL) {
+		_points.append(mapToScene(QPointF((_sourcePointLocal.x() + _destinationPointLocal.x()) / 2.0, _sourcePointLocal.y())));
+		_points.append(mapToScene(QPointF((_sourcePointLocal.x() + _destinationPointLocal.x()) / 2.0, _destinationPointLocal.y())));
+	}
+	_points.append(mapToScene(_destinationPointLocal));
 	/**
 	 * Bloco 3: mantém apenas atualização geométrica local.
 	 */
+}
+
+bool GraphicalConnection::canRefreshGeometry() const {
+	// Skip geometric work while endpoints/scenes are unstable or during data-definition sync teardown.
+	if (_sourceGraphicalPort == nullptr || _destinationGraphicalPort == nullptr) {
+		return false;
+	}
+	QGraphicsScene* sourceScene = _sourceGraphicalPort->scene();
+	QGraphicsScene* destinationScene = _destinationGraphicalPort->scene();
+	if (sourceScene == nullptr || destinationScene == nullptr || sourceScene != destinationScene) {
+		return false;
+	}
+	ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(sourceScene);
+	if (modelScene != nullptr && (modelScene->areConnectionGeometryUpdatesBlocked()
+	                              || modelScene->isGraphicalDataDefinitionsSyncInProgress())) {
+		return false;
+	}
+	return _sourceGraphicalPort->graphicalComponent() != nullptr && _destinationGraphicalPort->graphicalComponent() != nullptr;
 }
 
 QRectF GraphicalConnection::boundingRect() const {
@@ -131,12 +160,7 @@ QRectF GraphicalConnection::boundingRect() const {
 void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
-	if (_sourceGraphicalPort == nullptr || _destinationGraphicalPort == nullptr) {
-		return;
-	}
-	QGraphicsScene* sourceScene = _sourceGraphicalPort->scene();
-	QGraphicsScene* destinationScene = _destinationGraphicalPort->scene();
-	if (sourceScene == nullptr || destinationScene == nullptr || sourceScene != destinationScene || scene() != sourceScene) {
+	if (!canRefreshGeometry()) {
 		return;
 	}
 	QPen pen = QPen(_color);
@@ -149,37 +173,20 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	/**
 	 * Bloco 2: normaliza coordenadas locais considerando orientação relativa.
 	 */
-	qreal x1, x2, y1, y2; // x1 < x2
-	if (_sourceGraphicalPort->scenePos().x() < _destinationGraphicalPort->scenePos().x()) {
-		x1 = 0-_sourceGraphicalPort->width()/2;
-		x2 = _width+_destinationGraphicalPort->width()/2;
-	} else {
-		x2 = 0-_destinationGraphicalPort->width()/2;
-		x1 = _width+_sourceGraphicalPort->width()/2;
-	}
-	// y1 < y2
-	if (_sourceGraphicalPort->scenePos().y() < _destinationGraphicalPort->scenePos().y()) {
-		y1 = _sourceGraphicalPort->height() / 2.0;
-		y2 = _height - _sourceGraphicalPort->height() / 2.0;
-	} else {
-		y2 = _sourceGraphicalPort->height() / 2.0;
-		y1 = _height - _sourceGraphicalPort->height() / 2.0;
-	}
-	inipos = QPointF(x1, y1); //QPointF(_sourceGraphicalPort->pos());//_sourceGraphicalPort->pos().x()+_sourceGraphicalPort->width()/2.0, _sourceGraphicalPort->pos().y()+_sourceGraphicalPort->height()/2.0
-	endpos = QPointF(x2, y2); //QPointF(_destinationGraphicalPort->pos());// _destinationGraphicalPort->pos().x()+_destinationGraphicalPort->width()/2.0, _destinationGraphicalPort->pos().y()+_destinationGraphicalPort->height()/2.0
+	const qreal x1 = _sourcePointLocal.x();
+	const qreal y1 = _sourcePointLocal.y();
+	const qreal x2 = _destinationPointLocal.x();
+	const qreal y2 = _destinationPointLocal.y();
+	inipos = _sourcePointLocal;
+	endpos = _destinationPointLocal;
 	/**
 	 * Bloco 3: gera path de desenho com base no tipo de roteamento.
 	 */
 	path.moveTo(inipos);
 	switch (_connectionType) {
 		case ConnectionType::HORIZONTAL:
-			path.lineTo((x1 + x2) / 2, y1);
+            path.lineTo((x1 + x2) / 2, y1);
             path.lineTo((x1 + x2) / 2, y2);
-            _points.clear();
-            _points.append(mapToScene(inipos));
-            _points.append(mapToScene(QPointF(inipos.x() + ((x1 + x2) / 2), y1)));
-            _points.append(mapToScene(QPointF(inipos.x() + ((x1 + x2) / 2), y2)));
-            _points.append(mapToScene(endpos));
 			break;
 		case ConnectionType::VERTICAL:
             path.lineTo(x1, (y1 + y2) / 2);
