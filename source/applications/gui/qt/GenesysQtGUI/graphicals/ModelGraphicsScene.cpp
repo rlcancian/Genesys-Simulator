@@ -731,6 +731,10 @@ void ModelGraphicsScene::removeGraphicalModelDataDefinition(GraphicalModelDataDe
         removeGraphicalDiagramConnection(connection);
     }
 
+    if (QGraphicsItemGroup* group = gmdd->group()) {
+        group->removeFromGroup(gmdd);
+    }
+
     //graphically
     removeItem(gmdd);
     // Keep data-definition ownership lists consistent during removal.
@@ -3050,6 +3054,14 @@ void ModelGraphicsScene::scheduleGraphicalDataDefinitionsSync() {
 
 bool ModelGraphicsScene::isGraphicalDataDefinitionsSyncInProgress() const {
     return _graphicalDataDefinitionsSyncInProgress;
+}
+
+void ModelGraphicsScene::setConnectionGeometryUpdatesBlocked(bool blocked) {
+    _connectionGeometryUpdatesBlocked = blocked;
+}
+
+bool ModelGraphicsScene::areConnectionGeometryUpdatesBlocked() const {
+    return _connectionGeometryUpdatesBlocked;
 }
 
 void ModelGraphicsScene::contextMenuEvent(QGraphicsSceneContextMenuEvent *contextMenuEvent) {

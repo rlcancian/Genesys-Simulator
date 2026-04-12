@@ -85,7 +85,7 @@ void GraphicalConnection::updateDimensionsAndPosition() {
 		return;
 	}
 	ModelGraphicsScene* modelScene = dynamic_cast<ModelGraphicsScene*>(sourceScene);
-	if (modelScene != nullptr && modelScene->isGraphicalDataDefinitionsSyncInProgress()) {
+	if (modelScene != nullptr && modelScene->areConnectionGeometryUpdatesBlocked()) {
 		return;
 	}
 	if (_sourceGraphicalPort->graphicalComponent() == nullptr || _destinationGraphicalPort->graphicalComponent() == nullptr) {
@@ -103,6 +103,7 @@ void GraphicalConnection::updateDimensionsAndPosition() {
 	h1 = _sourceGraphicalPort->height();
 	w2 = _destinationGraphicalPort->width();
 	h2 = _destinationGraphicalPort->height();
+	prepareGeometryChange();
 	/**
 	 * Bloco 2: projeta esta conexão para um sistema de coordenadas local mínimo.
 	 */
@@ -111,11 +112,8 @@ void GraphicalConnection::updateDimensionsAndPosition() {
 	_width = abs(x2 - x1)-(x1 < x2 ? w2 : w1);
 	_height = abs(y2 - y1)+(y1 < y2 ? h2 : h1);
 	/**
-	 * Bloco 3: solicita repaint.
-	 *
-	 * @todo Evitar update() em caminho quente de paint para reduzir jitter.
+	 * Bloco 3: mantém apenas atualização geométrica local.
 	 */
-	update(); //@TODO SHould not call it here
 }
 
 QRectF GraphicalConnection::boundingRect() const {
@@ -131,10 +129,16 @@ QRectF GraphicalConnection::boundingRect() const {
 }
 
 void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
-	/**
-	 * Bloco 1: recalcula dimensões para refletir movimentação dos componentes.
-	 */
-	updateDimensionsAndPosition();
+	Q_UNUSED(option);
+	Q_UNUSED(widget);
+	if (_sourceGraphicalPort == nullptr || _destinationGraphicalPort == nullptr) {
+		return;
+	}
+	QGraphicsScene* sourceScene = _sourceGraphicalPort->scene();
+	QGraphicsScene* destinationScene = _destinationGraphicalPort->scene();
+	if (sourceScene == nullptr || destinationScene == nullptr || sourceScene != destinationScene || scene() != sourceScene) {
+		return;
+	}
 	QPen pen = QPen(_color);
 	pen.setWidth(2);
 	painter->setPen(pen);
