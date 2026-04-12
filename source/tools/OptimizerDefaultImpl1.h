@@ -9,6 +9,7 @@
 #define OPTIMIZERDEFAULTIMPL1_H
 
 #include "Optimizer_if.h"
+#include <string>
 
 /**
  * @brief Initial concrete scaffold for an OptQuest-like optimizer.
@@ -28,8 +29,8 @@
  */
 class OptimizerDefaultImpl1 : public Optimizer_if {
 public:
-	OptimizerDefaultImpl1() = default;
-	virtual ~OptimizerDefaultImpl1() = default;
+	OptimizerDefaultImpl1();
+	virtual ~OptimizerDefaultImpl1();
 
 public:
 	virtual void setModel(Model* model) override;
@@ -68,6 +69,31 @@ public:
 	virtual List<SolutionSummary>* getBestSolutions() const override;
 	virtual const SolutionSummary* getCurrentBestSolution() const override;
 	virtual void resetResults() override;
+
+private:
+	void _clearRuntimeState();
+	void _refreshAvailableElementsFromModel();
+	void _copyControlList(List<SimulationControl*>* source, List<SimulationControl*>* target);
+	void _copyResponseList(List<SimulationResponse*>* source, List<SimulationResponse*>* target);
+	bool _hasEnabledObjective() const;
+	void _updateReadyState();
+
+private:
+	Model* _model = nullptr;
+	std::string _modelFilename;
+	List<SimulationControl*>* _availableControls = nullptr;
+	List<SimulationResponse*>* _availableResponses = nullptr;
+	List<SimulationControl*>* _selectedControls = nullptr;
+	List<SimulationResponse*>* _selectedResponses = nullptr;
+	List<ObjectiveDefinition>* _objectives = nullptr;
+	List<ConstraintDefinition>* _constraints = nullptr;
+	List<SolutionSummary>* _bestSolutions = nullptr;
+	OptimizationSettings _settings;
+	ExecutionState _executionState = ExecutionState::NOT_READY;
+	unsigned int _currentIteration = 0;
+	unsigned int _totalSimulations = 0;
+	std::string _lastErrorMessage;
+	const SolutionSummary* _currentBestSolution = nullptr;
 };
 
 #endif /* OPTIMIZERDEFAULTIMPL1_H */
