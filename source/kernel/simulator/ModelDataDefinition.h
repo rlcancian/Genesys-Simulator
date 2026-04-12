@@ -114,6 +114,10 @@ public:
 	 * Legacy compatibility wrapper that delegates to getSimulationControls().
 	 */
 	List<SimulationControl*> *getProperties() const;
+    TraceManager::Level getSpecificTraceLevel() const;
+    void setSpecificTraceLevel(TraceManager::Level specificTraceLevel);
+    bool isSpecificTraceLevelEnabled() const;
+    void setSpecificTraceLevelEnabled(bool specificTraceLevelEnabled);
 
 public: // public static methods
 	/*! This class method receives a map of fields readed from a file (or somewhere else) creates an instace of the ModelDatas and inokes the protected method _loadInstance() of that instance, whch fills the field values. The instance can be automatticaly inserted into the simulation model if required*/
@@ -180,8 +184,11 @@ protected:
 	unsigned int _modelLevel = 0; // the ID of parent component (submodel or process, for now) in the "superlevel"
 	Model* _parentModel;
 
-protected: //! just an easy access to trace manager
-	void trace(std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed);
+private:
+    bool _checkSpecificTraceLevel(TraceManager::Level level);
+
+protected: //! not just an easy access to trace manager, but wrappers to check if specific trace level applies
+    void trace(std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed);
 	void traceError(std::string text, std::exception e);
 	void traceError(std::string text, TraceManager::Level level = TraceManager::Level::L1_errorFatal);
 	void traceReport(std::string text, TraceManager::Level level = TraceManager::Level::L2_results);
@@ -191,6 +198,8 @@ protected: //! just an easy access to trace manager
 protected:
 	//List<SimulationControl*>* _simulationResponses = new List<SimulationControl*>();
 	List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
+    TraceManager::Level _specificTraceLevel;
+    bool _specificTraceLevelEnabled = false;
 	//PropertyListG* _propertiesG = new PropertyListG();
 };
 //namespace\\}
