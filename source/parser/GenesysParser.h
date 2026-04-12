@@ -496,6 +496,8 @@ namespace yy {
       // ATRIB
       // CSTAT
       // COUNTER
+      // SIMRESP
+      // SIMCTRL
       // fTAVG
       // fCOUNT
       // ILLEGAL
@@ -546,6 +548,8 @@ namespace yy {
       // listaparm
       // illegal
       // attribute
+      // simulationResponse
+      // simulationControl
       // variable
       // formula
       // assigment
@@ -655,43 +659,45 @@ namespace yy {
     ATRIB = 307,                   // ATRIB
     CSTAT = 308,                   // CSTAT
     COUNTER = 309,                 // COUNTER
-    fTAVG = 310,                   // fTAVG
-    fCOUNT = 311,                  // fCOUNT
-    ILLEGAL = 312,                 // ILLEGAL
-    RESOURCE = 313,                // RESOURCE
-    fNR = 314,                     // fNR
-    fMR = 315,                     // fMR
-    fIRF = 316,                    // fIRF
-    fRESSEIZES = 317,              // fRESSEIZES
-    fSTATE = 318,                  // fSTATE
-    fSETSUM = 319,                 // fSETSUM
-    fRESUTIL = 320,                // fRESUTIL
-    QUEUE = 321,                   // QUEUE
-    fNQ = 322,                     // fNQ
-    fFIRSTINQ = 323,               // fFIRSTINQ
-    fLASTINQ = 324,                // fLASTINQ
-    fSAQUE = 325,                  // fSAQUE
-    fAQUE = 326,                   // fAQUE
-    fENTATRANK = 327,              // fENTATRANK
-    SET = 328,                     // SET
-    fNUMSET = 329,                 // fNUMSET
-    VARI = 330,                    // VARI
-    FORM = 331,                    // FORM
-    fNUMGR = 332,                  // fNUMGR
-    fATRGR = 333,                  // fATRGR
-    LPAREN = 334,                  // "("
-    RPAREN = 335,                  // ")"
-    LBRACKET = 336,                // "["
-    RBRACKET = 337,                // "]"
-    PLUS = 338,                    // "+"
-    MINUS = 339,                   // "-"
-    STAR = 340,                    // "*"
-    POWER = 341,                   // "^"
-    SLASH = 342,                   // "/"
-    LESS = 343,                    // "<"
-    GREATER = 344,                 // ">"
-    ASSIGN = 345,                  // "="
-    COMMA = 346                    // ","
+    SIMRESP = 310,                 // SIMRESP
+    SIMCTRL = 311,                 // SIMCTRL
+    fTAVG = 312,                   // fTAVG
+    fCOUNT = 313,                  // fCOUNT
+    ILLEGAL = 314,                 // ILLEGAL
+    RESOURCE = 315,                // RESOURCE
+    fNR = 316,                     // fNR
+    fMR = 317,                     // fMR
+    fIRF = 318,                    // fIRF
+    fRESSEIZES = 319,              // fRESSEIZES
+    fSTATE = 320,                  // fSTATE
+    fSETSUM = 321,                 // fSETSUM
+    fRESUTIL = 322,                // fRESUTIL
+    QUEUE = 323,                   // QUEUE
+    fNQ = 324,                     // fNQ
+    fFIRSTINQ = 325,               // fFIRSTINQ
+    fLASTINQ = 326,                // fLASTINQ
+    fSAQUE = 327,                  // fSAQUE
+    fAQUE = 328,                   // fAQUE
+    fENTATRANK = 329,              // fENTATRANK
+    SET = 330,                     // SET
+    fNUMSET = 331,                 // fNUMSET
+    VARI = 332,                    // VARI
+    FORM = 333,                    // FORM
+    fNUMGR = 334,                  // fNUMGR
+    fATRGR = 335,                  // fATRGR
+    LPAREN = 336,                  // "("
+    RPAREN = 337,                  // ")"
+    LBRACKET = 338,                // "["
+    RBRACKET = 339,                // "]"
+    PLUS = 340,                    // "+"
+    MINUS = 341,                   // "-"
+    STAR = 342,                    // "*"
+    POWER = 343,                   // "^"
+    SLASH = 344,                   // "/"
+    LESS = 345,                    // "<"
+    GREATER = 346,                 // ">"
+    ASSIGN = 347,                  // "="
+    COMMA = 348                    // ","
       };
       /// Backward compatibility alias (Bison 3.6).
       typedef token_kind_type yytokentype;
@@ -708,7 +714,7 @@ namespace yy {
     {
       enum symbol_kind_type
       {
-        YYNTOKENS = 93, ///< Number of tokens.
+        YYNTOKENS = 95, ///< Number of tokens.
         S_YYEMPTY = -2,
         S_YYEOF = 0,                             // "end of file"
         S_YYerror = 1,                           // error
@@ -765,75 +771,79 @@ namespace yy {
         S_ATRIB = 52,                            // ATRIB
         S_CSTAT = 53,                            // CSTAT
         S_COUNTER = 54,                          // COUNTER
-        S_fTAVG = 55,                            // fTAVG
-        S_fCOUNT = 56,                           // fCOUNT
-        S_ILLEGAL = 57,                          // ILLEGAL
-        S_RESOURCE = 58,                         // RESOURCE
-        S_fNR = 59,                              // fNR
-        S_fMR = 60,                              // fMR
-        S_fIRF = 61,                             // fIRF
-        S_fRESSEIZES = 62,                       // fRESSEIZES
-        S_fSTATE = 63,                           // fSTATE
-        S_fSETSUM = 64,                          // fSETSUM
-        S_fRESUTIL = 65,                         // fRESUTIL
-        S_QUEUE = 66,                            // QUEUE
-        S_fNQ = 67,                              // fNQ
-        S_fFIRSTINQ = 68,                        // fFIRSTINQ
-        S_fLASTINQ = 69,                         // fLASTINQ
-        S_fSAQUE = 70,                           // fSAQUE
-        S_fAQUE = 71,                            // fAQUE
-        S_fENTATRANK = 72,                       // fENTATRANK
-        S_SET = 73,                              // SET
-        S_fNUMSET = 74,                          // fNUMSET
-        S_VARI = 75,                             // VARI
-        S_FORM = 76,                             // FORM
-        S_fNUMGR = 77,                           // fNUMGR
-        S_fATRGR = 78,                           // fATRGR
-        S_LPAREN = 79,                           // "("
-        S_RPAREN = 80,                           // ")"
-        S_LBRACKET = 81,                         // "["
-        S_RBRACKET = 82,                         // "]"
-        S_PLUS = 83,                             // "+"
-        S_MINUS = 84,                            // "-"
-        S_STAR = 85,                             // "*"
-        S_POWER = 86,                            // "^"
-        S_SLASH = 87,                            // "/"
-        S_LESS = 88,                             // "<"
-        S_GREATER = 89,                          // ">"
-        S_ASSIGN = 90,                           // "="
-        S_COMMA = 91,                            // ","
-        S_92_USER_ = 92,                         // "USER"
-        S_YYACCEPT = 93,                         // $accept
-        S_input = 94,                            // input
-        S_expression = 95,                       // expression
-        S_logicalOr = 96,                        // logicalOr
-        S_logicalXor = 97,                       // logicalXor
-        S_logicalAnd = 98,                       // logicalAnd
-        S_logicalNot = 99,                       // logicalNot
-        S_relational = 100,                      // relational
-        S_additive = 101,                        // additive
-        S_multiplicative = 102,                  // multiplicative
-        S_power = 103,                           // power
-        S_unary = 104,                           // unary
-        S_primary = 105,                         // primary
-        S_number = 106,                          // number
-        S_command = 107,                         // command
-        S_commandIF = 108,                       // commandIF
-        S_commandFOR = 109,                      // commandFOR
-        S_function = 110,                        // function
-        S_kernelFunction = 111,                  // kernelFunction
-        S_elementFunction = 112,                 // elementFunction
-        S_trigonFunction = 113,                  // trigonFunction
-        S_mathFunction = 114,                    // mathFunction
-        S_probFunction = 115,                    // probFunction
-        S_userFunction = 116,                    // userFunction
-        S_listaparm = 117,                       // listaparm
-        S_illegal = 118,                         // illegal
-        S_attribute = 119,                       // attribute
-        S_variable = 120,                        // variable
-        S_formula = 121,                         // formula
-        S_assigment = 122,                       // assigment
-        S_pluginFunction = 123                   // pluginFunction
+        S_SIMRESP = 55,                          // SIMRESP
+        S_SIMCTRL = 56,                          // SIMCTRL
+        S_fTAVG = 57,                            // fTAVG
+        S_fCOUNT = 58,                           // fCOUNT
+        S_ILLEGAL = 59,                          // ILLEGAL
+        S_RESOURCE = 60,                         // RESOURCE
+        S_fNR = 61,                              // fNR
+        S_fMR = 62,                              // fMR
+        S_fIRF = 63,                             // fIRF
+        S_fRESSEIZES = 64,                       // fRESSEIZES
+        S_fSTATE = 65,                           // fSTATE
+        S_fSETSUM = 66,                          // fSETSUM
+        S_fRESUTIL = 67,                         // fRESUTIL
+        S_QUEUE = 68,                            // QUEUE
+        S_fNQ = 69,                              // fNQ
+        S_fFIRSTINQ = 70,                        // fFIRSTINQ
+        S_fLASTINQ = 71,                         // fLASTINQ
+        S_fSAQUE = 72,                           // fSAQUE
+        S_fAQUE = 73,                            // fAQUE
+        S_fENTATRANK = 74,                       // fENTATRANK
+        S_SET = 75,                              // SET
+        S_fNUMSET = 76,                          // fNUMSET
+        S_VARI = 77,                             // VARI
+        S_FORM = 78,                             // FORM
+        S_fNUMGR = 79,                           // fNUMGR
+        S_fATRGR = 80,                           // fATRGR
+        S_LPAREN = 81,                           // "("
+        S_RPAREN = 82,                           // ")"
+        S_LBRACKET = 83,                         // "["
+        S_RBRACKET = 84,                         // "]"
+        S_PLUS = 85,                             // "+"
+        S_MINUS = 86,                            // "-"
+        S_STAR = 87,                             // "*"
+        S_POWER = 88,                            // "^"
+        S_SLASH = 89,                            // "/"
+        S_LESS = 90,                             // "<"
+        S_GREATER = 91,                          // ">"
+        S_ASSIGN = 92,                           // "="
+        S_COMMA = 93,                            // ","
+        S_94_USER_ = 94,                         // "USER"
+        S_YYACCEPT = 95,                         // $accept
+        S_input = 96,                            // input
+        S_expression = 97,                       // expression
+        S_logicalOr = 98,                        // logicalOr
+        S_logicalXor = 99,                       // logicalXor
+        S_logicalAnd = 100,                      // logicalAnd
+        S_logicalNot = 101,                      // logicalNot
+        S_relational = 102,                      // relational
+        S_additive = 103,                        // additive
+        S_multiplicative = 104,                  // multiplicative
+        S_power = 105,                           // power
+        S_unary = 106,                           // unary
+        S_primary = 107,                         // primary
+        S_number = 108,                          // number
+        S_command = 109,                         // command
+        S_commandIF = 110,                       // commandIF
+        S_commandFOR = 111,                      // commandFOR
+        S_function = 112,                        // function
+        S_kernelFunction = 113,                  // kernelFunction
+        S_elementFunction = 114,                 // elementFunction
+        S_trigonFunction = 115,                  // trigonFunction
+        S_mathFunction = 116,                    // mathFunction
+        S_probFunction = 117,                    // probFunction
+        S_userFunction = 118,                    // userFunction
+        S_listaparm = 119,                       // listaparm
+        S_illegal = 120,                         // illegal
+        S_attribute = 121,                       // attribute
+        S_simulationResponse = 122,              // simulationResponse
+        S_simulationControl = 123,               // simulationControl
+        S_variable = 124,                        // variable
+        S_formula = 125,                         // formula
+        S_assigment = 126,                       // assigment
+        S_pluginFunction = 127                   // pluginFunction
       };
     };
 
@@ -922,6 +932,8 @@ namespace yy {
       case symbol_kind::S_ATRIB: // ATRIB
       case symbol_kind::S_CSTAT: // CSTAT
       case symbol_kind::S_COUNTER: // COUNTER
+      case symbol_kind::S_SIMRESP: // SIMRESP
+      case symbol_kind::S_SIMCTRL: // SIMCTRL
       case symbol_kind::S_fTAVG: // fTAVG
       case symbol_kind::S_fCOUNT: // fCOUNT
       case symbol_kind::S_ILLEGAL: // ILLEGAL
@@ -972,6 +984,8 @@ namespace yy {
       case symbol_kind::S_listaparm: // listaparm
       case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
+      case symbol_kind::S_simulationResponse: // simulationResponse
+      case symbol_kind::S_simulationControl: // simulationControl
       case symbol_kind::S_variable: // variable
       case symbol_kind::S_formula: // formula
       case symbol_kind::S_assigment: // assigment
@@ -1092,6 +1106,8 @@ switch (yykind)
       case symbol_kind::S_ATRIB: // ATRIB
       case symbol_kind::S_CSTAT: // CSTAT
       case symbol_kind::S_COUNTER: // COUNTER
+      case symbol_kind::S_SIMRESP: // SIMRESP
+      case symbol_kind::S_SIMCTRL: // SIMCTRL
       case symbol_kind::S_fTAVG: // fTAVG
       case symbol_kind::S_fCOUNT: // fCOUNT
       case symbol_kind::S_ILLEGAL: // ILLEGAL
@@ -1142,6 +1158,8 @@ switch (yykind)
       case symbol_kind::S_listaparm: // listaparm
       case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
+      case symbol_kind::S_simulationResponse: // simulationResponse
+      case symbol_kind::S_simulationControl: // simulationControl
       case symbol_kind::S_variable: // variable
       case symbol_kind::S_formula: // formula
       case symbol_kind::S_assigment: // assigment
@@ -1248,7 +1266,7 @@ switch (yykind)
 #if !defined _MSC_VER || defined __clang__
         YY_ASSERT (tok == token::END
                    || (token::YYerror <= tok && tok <= token::YYUNDEF)
-                   || (token::LPAREN <= tok && tok <= 347));
+                   || (token::LPAREN <= tok && tok <= 349));
 #endif
       }
 #if 201103L <= YY_CPLUSPLUS
@@ -2139,6 +2157,36 @@ switch (yykind)
 #if 201103L <= YY_CPLUSPLUS
       static
       symbol_type
+      make_SIMRESP (obj_t v, location_type l)
+      {
+        return symbol_type (token::SIMRESP, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_SIMRESP (const obj_t& v, const location_type& l)
+      {
+        return symbol_type (token::SIMRESP, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
+      make_SIMCTRL (obj_t v, location_type l)
+      {
+        return symbol_type (token::SIMCTRL, std::move (v), std::move (l));
+      }
+#else
+      static
+      symbol_type
+      make_SIMCTRL (const obj_t& v, const location_type& l)
+      {
+        return symbol_type (token::SIMCTRL, v, l);
+      }
+#endif
+#if 201103L <= YY_CPLUSPLUS
+      static
+      symbol_type
       make_fTAVG (obj_t v, location_type l)
       {
         return symbol_type (token::fTAVG, std::move (v), std::move (l));
@@ -3021,9 +3069,9 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 569,     ///< Last index in yytable_.
-      yynnts_ = 31,  ///< Number of nonterminal symbols.
-      yyfinal_ = 138 ///< Termination state number.
+      yylast_ = 577,     ///< Last index in yytable_.
+      yynnts_ = 33,  ///< Number of nonterminal symbols.
+      yyfinal_ = 142 ///< Termination state number.
     };
 
 
@@ -3076,10 +3124,10 @@ switch (yykind)
       55,    56,    57,    58,    59,    60,    61,    62,    63,    64,
       65,    66,    67,    68,    69,    70,    71,    72,    73,    74,
       75,    76,    77,    78,    79,    80,    81,    82,    83,    84,
-      85,    86,    87,    88,    89,    90,    91,    92
+      85,    86,    87,    88,    89,    90,    91,    92,    93,    94
     };
     // Last valid token kind.
-    const int code_max = 347;
+    const int code_max = 349;
 
     if (t <= 0)
       return symbol_kind::S_YYEOF;
@@ -3150,6 +3198,8 @@ switch (yykind)
       case symbol_kind::S_ATRIB: // ATRIB
       case symbol_kind::S_CSTAT: // CSTAT
       case symbol_kind::S_COUNTER: // COUNTER
+      case symbol_kind::S_SIMRESP: // SIMRESP
+      case symbol_kind::S_SIMCTRL: // SIMCTRL
       case symbol_kind::S_fTAVG: // fTAVG
       case symbol_kind::S_fCOUNT: // fCOUNT
       case symbol_kind::S_ILLEGAL: // ILLEGAL
@@ -3200,6 +3250,8 @@ switch (yykind)
       case symbol_kind::S_listaparm: // listaparm
       case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
+      case symbol_kind::S_simulationResponse: // simulationResponse
+      case symbol_kind::S_simulationControl: // simulationControl
       case symbol_kind::S_variable: // variable
       case symbol_kind::S_formula: // formula
       case symbol_kind::S_assigment: // assigment
@@ -3290,6 +3342,8 @@ switch (yykind)
       case symbol_kind::S_ATRIB: // ATRIB
       case symbol_kind::S_CSTAT: // CSTAT
       case symbol_kind::S_COUNTER: // COUNTER
+      case symbol_kind::S_SIMRESP: // SIMRESP
+      case symbol_kind::S_SIMCTRL: // SIMCTRL
       case symbol_kind::S_fTAVG: // fTAVG
       case symbol_kind::S_fCOUNT: // fCOUNT
       case symbol_kind::S_ILLEGAL: // ILLEGAL
@@ -3340,6 +3394,8 @@ switch (yykind)
       case symbol_kind::S_listaparm: // listaparm
       case symbol_kind::S_illegal: // illegal
       case symbol_kind::S_attribute: // attribute
+      case symbol_kind::S_simulationResponse: // simulationResponse
+      case symbol_kind::S_simulationControl: // simulationControl
       case symbol_kind::S_variable: // variable
       case symbol_kind::S_formula: // formula
       case symbol_kind::S_assigment: // assigment
@@ -3413,7 +3469,7 @@ switch (yykind)
 
 
 } // yy
-#line 3417 "../GenesysParser.h"
+#line 3473 "../GenesysParser.h"
 
 
 
