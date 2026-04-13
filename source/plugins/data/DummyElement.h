@@ -22,7 +22,10 @@ public: /// constructors
 	virtual ~DummyElement() = default;
 
 public: /// new public user methods for this component
-	// ...
+	void setSomeString(const std::string& someString);
+	std::string getSomeString() const;
+	void setSomeUint(unsigned int someUint);
+	unsigned int getSomeUint() const;
 
 public: /// virtual public methods
 	virtual std::string show() override;
@@ -35,6 +38,7 @@ public: /// static public methods that must have implementations (Load and New j
 protected: /// virtual protected method that must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+	virtual bool _check(std::string& errorMessage) override;
 
 protected: /// virtual protected methods that could be overriden by derived classes, if needed
 	/*! This method is called by ModelChecker during model check. The component should check itself to verify if user parameters are ok (ex: correct syntax for the parser) and everithing in its parameters allow the model too run without errors in this component */
@@ -67,4 +71,3 @@ private: /// attached DataElements (Agrregation)
 };
 
 #endif /* DUMMYELEMENT_H */
-

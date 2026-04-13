@@ -32,6 +32,7 @@
 #include "plugins/data/SPICERunner.h"
 #include "plugins/data/BioSimulatorRunner.h"
 #include "plugins/data/AssignmentItem.h"
+#include "plugins/data/DummyElement.h"
 #include "kernel/util/Util.h"
 #define private public
 #define protected public
@@ -255,6 +256,23 @@ public:
 
     void InitBetweenReplicationsProbe() {
         _initBetweenReplications();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class DummyElementProbe : public DummyElement {
+public:
+    DummyElementProbe(Model* model, const std::string& name = "") : DummyElement(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
     }
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
@@ -2661,6 +2679,113 @@ TEST(SimulatorRuntimeTest, StorageRegistersMainControlsAsOwnedProperties) {
     EXPECT_TRUE(hasCapacity);
     EXPECT_TRUE(hasTotalArea);
     EXPECT_TRUE(hasUnitsPerArea);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementDefaultsAreInitializedAsExpected) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElement element(model, "DummyDefaults");
+    EXPECT_EQ(element.getSomeString(), "Test");
+    EXPECT_EQ(element.getSomeUint(), 1u);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementSettersAndGettersRemainCoherent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElement element(model, "DummySetters");
+    element.setSomeString("TemplateValue");
+    element.setSomeUint(42u);
+
+    EXPECT_EQ(element.getSomeString(), "TemplateValue");
+    EXPECT_EQ(element.getSomeUint(), 42u);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementCheckFailsForInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElementProbe element(model, "DummyInvalid");
+    element.setSomeString("");
+    element.setSomeUint(0u);
+
+    std::string errorMessage;
+    EXPECT_FALSE(element.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("SomeString must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("SomeUint must be greater than zero"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementCheckPassesForValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElementProbe element(model, "DummyValid");
+    element.setSomeString("Ok");
+    element.setSomeUint(3u);
+
+    std::string errorMessage;
+    EXPECT_TRUE(element.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, DummyElementShowIncludesMainConfiguredFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElement element(model, "DummyShow");
+    element.setSomeString("Alpha");
+    element.setSomeUint(8u);
+
+    const std::string info = element.show();
+    EXPECT_NE(info.find("someString=\"Alpha\""), std::string::npos);
+    EXPECT_NE(info.find("someUint=8"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementSaveAndLoadRoundTripPreservesParameters) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElementProbe source(model, "DummySource");
+    source.setSomeString("Persisted");
+    source.setSomeUint(77u);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    DummyElementProbe loaded(model, "DummyLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getSomeString(), "Persisted");
+    EXPECT_EQ(loaded.getSomeUint(), 77u);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementRegistersMainControlsAsOwnedProperties) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElement element(model, "DummyProperties");
+    auto* controls = element.getSimulationControls();
+    ASSERT_NE(controls, nullptr);
+    EXPECT_GE(controls->size(), 2u);
+
+    bool hasSomeString = false;
+    bool hasSomeUint = false;
+    for (SimulationControl* control : *controls->list()) {
+        ASSERT_NE(control, nullptr);
+        hasSomeString = hasSomeString || control->getName() == "SomeString";
+        hasSomeUint = hasSomeUint || control->getName() == "SomeUint";
+    }
+
+    EXPECT_TRUE(hasSomeString);
+    EXPECT_TRUE(hasSomeUint);
 }
 
 TEST(SimulatorRuntimeTest, StationCreateInternalInitiallyCreatesCollectorsWhenStatisticsEnabled) {
