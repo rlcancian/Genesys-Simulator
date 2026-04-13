@@ -159,12 +159,12 @@ void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, 
 	traceSimulation(thisobject, text, level);
 }
 
-void TraceManager::traceSimulation(void* thisobject, std::string text, TraceManager::Level level) {
+void TraceManager::traceSimulation(void* thisobject, std::string text, TraceManager::Level level, bool showAnyway) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
 	}
-	if (_traceSimulationConditionPassed(level, thisobject)) {
+    if (_traceSimulationConditionPassed(level, thisobject,showAnyway)) {
 		text = Util::Indent() + text;
 		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
 		TraceSimulationEvent e = TraceSimulationEvent(level, 0.0, nullptr, nullptr, text);
@@ -182,12 +182,12 @@ void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, 
 	traceSimulation(thisobject, time, entity, component, text, level);
 }
 
-void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level) {
+void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level, bool showAnyway) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
 	}
-	if (_traceSimulationConditionPassed(level, thisobject)) {
+    if (_traceSimulationConditionPassed(level, thisobject, showAnyway)) {
 		text = Util::Indent() + text;
 		TraceSimulationEvent e = TraceSimulationEvent(level, time, entity, component, text);
 		for (auto handler : *this->_traceSimulationHandlers->list()) {
@@ -228,12 +228,14 @@ bool TraceManager::_traceConditionPassed(TraceManager::Level level) {
 	return /*this->_debugged &&*/ static_cast<int> (this->_traceLevel) >= static_cast<int> (level);
 }
 
-bool TraceManager::_traceSimulationConditionPassed(TraceManager::Level level, void* thisobject) {
-	bool result = _traceConditionPassed(level);
-	bool isException = false;
-	if (result) {
-		isException = (_traceSimulationExceptionRule->find(thisobject) != _traceSimulationExceptionRule->list()->end());
-	}
-	result &= (_traceSimulationRuleAllAllowed && !isException) || (!_traceSimulationRuleAllAllowed && isException); // xor
+bool TraceManager::_traceSimulationConditionPassed(TraceManager::Level level, void* thisobject, bool showAnyway) {
+    if (showAnyway)
+        return true;
+    bool result = _traceConditionPassed(level);
+    if (result) {
+        bool isException = false;
+        isException = (_traceSimulationExceptionRule->find(thisobject) != _traceSimulationExceptionRule->list()->end());
+        result &= (_traceSimulationRuleAllAllowed && !isException) || (!_traceSimulationRuleAllAllowed && isException); // xor
+    }
 	return result;
 }

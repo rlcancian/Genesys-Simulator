@@ -120,8 +120,8 @@ public: // traces
 	void traceError(std::string text, std::exception e); //!< Trace to the error output, used in every situation an error happens (simulating, report, general)
 	void traceError(std::string text, TraceManager::Level level = TraceManager::Level::L1_errorFatal); //!< Trace to the error output, used in every situation an error happens (simulating, report, general)
 	void traceReport(std::string text, TraceManager::Level level = TraceManager::Level::L2_results); //!< Trace to the report output, used only when generating the simulation report
-	void traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed); //!< Trace to the simulation output, used only when simulation is running (eg: compponents or dataElements inform something)
-	void traceSimulation(void* thisobject, std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed); //!< Trace to the simulation output, used only when simulation is running (eg: compponents or dataElements inform something)
+    void traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed,bool showAnyway = false); //!< Trace to the simulation output, used only when simulation is running (eg: compponents or dataElements inform something)
+    void traceSimulation(void* thisobject, std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed, bool showAnyway = false); //!< Trace to the simulation output, used only when simulation is running (eg: compponents or dataElements inform something)
 
 public:
 	/*!
@@ -158,7 +158,7 @@ public:
 private:
 	//void _addHandler(List<traceListener>* list, )
 	bool _traceConditionPassed(TraceManager::Level level);
-	bool _traceSimulationConditionPassed(TraceManager::Level level, void* thisobject);
+    bool _traceSimulationConditionPassed(TraceManager::Level level, void* thisobject, bool showAnyway = false);
 private: // trace listener
 	// for handlers that are simple functions
 	List<traceListener>* _traceHandlers = new List<traceListener>();

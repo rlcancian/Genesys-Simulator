@@ -30,8 +30,6 @@ bool ModelCheckerDefaultImpl1::checkAll() {
 	bool res = true;
 	res &= checkSymbols();
 	if (res)
-		res = checkOrphaned();
-	if (res)
 		res &= checkLimits();
 	if (res)
 		res &= checkConnected();
@@ -226,83 +224,6 @@ bool ModelCheckerDefaultImpl1::checkLimits() {
 		}
 	}
 	_showResult(res, "Checking limits");
-	Util::DecIndent();
-	return res;
-}
-
-bool ModelCheckerDefaultImpl1::checkOrphaned() {
-	bool res = true;
-	_model->getTracer()->trace("Checking Orphaned DataDefinitions", TraceManager::Level::L7_internal);
-	Util::IncIndent();
-	{
-		// Track orphan candidates by pointer identity to make pruning deterministic and iteration-safe.
-		std::unordered_set<ModelDataDefinition*> orphaned;
-		// Start by including all elements as orphaned
-		// Use a value snapshot of type names when enumerating initial orphan candidates.
-		std::list<std::string> allTypes = _model->getDataManager()->getDataDefinitionClassnames();
-		for (std::string ddtypename : allTypes) {
-			for (ModelDataDefinition* element : *_model->getDataManager()->getDataDefinitionList(ddtypename)->list()) {
-				orphaned.insert(element);
-			}
-		}
-		// Remove every referenced data definition from orphan candidates while preserving trace semantics.
-		auto removeReferenced = [&](ModelDataDefinition* owner) {
-			for (std::pair<std::string, ModelDataDefinition*> pairInternal : *owner->getInternalData()) {
-				ModelDataDefinition* mdd = pairInternal.second;
-				orphaned.erase(mdd);
-				_model->getTracer()->trace("(" + owner->getClassname() + ") " + owner->getName() + " <#>--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
-			}
-			for (std::pair<std::string, ModelDataDefinition*> pairAttached : *owner->getAttachedData()) {
-				ModelDataDefinition* mdd = pairAttached.second;
-				orphaned.erase(mdd);
-				_model->getTracer()->trace("(" + owner->getClassname() + ") " + owner->getName() + " < >--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
-			}
-		};
-		// ... by someone (ModelDataDefinition).
-		// Use another value snapshot because orphan pruning may observe changes made during checking.
-		std::list<std::string> referencedTypes = _model->getDataManager()->getDataDefinitionClassnames();
-		for (std::string ddtypename : referencedTypes) {
-			for (ModelDataDefinition* element : *_model->getDataManager()->getDataDefinitionList(ddtypename)->list()) {
-				removeReferenced(element);
-			}
-		}
-		// ... by someone (ModelComponent).
-		for (ModelComponent* component : *_model->getComponentManager()->getAllComponents()) {
-			// Remove all component-owned references from orphan candidates before final deletion pass.
-			for (std::pair<std::string, ModelDataDefinition*> pairInternal : *component->getInternalData()) {
-				ModelDataDefinition* mdd = pairInternal.second;
-				orphaned.erase(mdd);
-				_model->getTracer()->trace("(" + component->getClassname() + ") " + component->getName() + " <#>--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
-			}
-			for (std::pair<std::string, ModelDataDefinition*> pairAttached : *component->getAttachedData()) {
-				ModelDataDefinition* mdd = pairAttached.second;
-				orphaned.erase(mdd);
-				_model->getTracer()->trace("(" + component->getClassname() + ") " + component->getName() + " < >--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
-			}
-		}
-		// every one in orphaned list now is really orphaned
-		if (orphaned.size() > 0) {
-			_model->getTracer()->trace("Orphaned DataDefinitions found and will be removed:", TraceManager::Level::L7_internal);
-			Util::IncIndent();
-			{
-				for (ModelDataDefinition* orphanElem : orphaned) {
-					_model->getTracer()->trace("Orphan (" + orphanElem->getClassname() + ") " + orphanElem->getName() + "(id=" + std::to_string(orphanElem->getId()) + ") removed");
-					_model->getDataManager()->remove(orphanElem);
-				}
-			}
-			Util::DecIndent();
-			// inoke again, recursivelly (removing some datadefinitions may create some other orphans)
-			Util::IncIndent();
-			{
-				res = checkOrphaned();
-			}
-			Util::DecIndent();
-		} else {
-			_model->getTracer()->trace("No orphaned DataDefinitions found", TraceManager::Level::L7_internal);
-			res = true;
-		}
-	}
-	_showResult(res, "Checking Orphaned");
 	Util::DecIndent();
 	return res;
 }

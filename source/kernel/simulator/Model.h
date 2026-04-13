@@ -141,6 +141,13 @@ public: // model control
 	 * \param referencedDataDefinitions
 	 */
 	void checkReferencesToDataDefinitions(std::string expression, std::map<std::string, std::list<std::string>*>* referencedDataDefinitions);
+    /*!
+     */
+    void clearOrphanedDataDefinitions();
+    /*!
+     */
+    void createInternalDataDefinitions();
+
 public: // only gets
 	/*!
 	 * \brief getId
@@ -238,7 +245,6 @@ private:
 	void _showElements() const;
 	void _showSimulationControls() const;
 	void _showSimulationResponses() const;
-	void _createModelInternalElements();
 	void _destroyFutureEvents();
 	void _destroyTransientEntities();
 	void _destroyComponents();

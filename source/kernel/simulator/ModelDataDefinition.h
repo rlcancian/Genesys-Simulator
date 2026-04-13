@@ -114,10 +114,10 @@ public:
 	 * Legacy compatibility wrapper that delegates to getSimulationControls().
 	 */
 	List<SimulationControl*> *getProperties() const;
-    TraceManager::Level getSpecificTraceLevel() const;
-    void setSpecificTraceLevel(TraceManager::Level specificTraceLevel);
-    bool isSpecificTraceLevelEnabled() const;
-    void setSpecificTraceLevelEnabled(bool specificTraceLevelEnabled);
+    TraceManager::Level getTraceLevelSpecific() const;
+    void defineTraceLevelSpecific(TraceManager::Level traceLevelspecific, bool traceLevelSpecificEnabled = true);
+    bool isTraceLevelSpecificEnabled() const;
+    void setTraceLevelSpecificEnabled(bool traceLevelSpecificEnabled);
 
 public: // public static methods
 	/*! This class method receives a map of fields readed from a file (or somewhere else) creates an instace of the ModelDatas and inokes the protected method _loadInstance() of that instance, whch fills the field values. The instance can be automatticaly inserted into the simulation model if required*/
@@ -199,8 +199,8 @@ protected: //! not just an easy access to trace manager, but wrappers to check i
 protected:
 	//List<SimulationControl*>* _simulationResponses = new List<SimulationControl*>();
 	List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
-    TraceManager::Level _specificTraceLevel;
-    bool _specificTraceLevelEnabled = false;
+    TraceManager::Level _traceLevelSpecific;
+    bool _traceLevelSpecificEnabled = false;
 	//PropertyListG* _propertiesG = new PropertyListG();
 };
 //namespace\\}

@@ -19,6 +19,7 @@
 #include <list>
 #include <fstream>
 #include <filesystem>
+#include <unordered_set>
 //#include <stdio.h>
 
 #include "SourceModelComponent.h"
@@ -45,7 +46,7 @@ Model::Model(Simulator* simulator, unsigned int level) {
 	_modelInfo = new ModelInfo();	//Sampler_if* sampler = new Traits<Sampler_if>::Implementation();
 
 	_eventManager = new OnEventManager(); // should be on .h (all that does not depends on THIS)
-	_modeldataManager = new ModelDataManager(this);
+    _modeldataManager = new ModelDataManager(this);
 	_componentManager = new ComponentManager(this);
 	_simulation = new ModelSimulation(this);
 	// 1:1 associations (Traits)
@@ -131,8 +132,8 @@ Model::~Model() {
 	_responses = nullptr;
 	delete _componentManager;
 	_componentManager = nullptr;
-	delete _modeldataManager;
-	_modeldataManager = nullptr;
+    delete _modeldataManager;
+    _modeldataManager = nullptr;
 	delete _eventManager;
 	_eventManager = nullptr;
 	delete _modelInfo;
@@ -398,10 +399,10 @@ void Model::_destroyFutureEvents() {
 
 // Iterates over the live entity list and deletes each transient heap-allocated entity.
 void Model::_destroyTransientEntities() {
-	if (_modeldataManager == nullptr) {
+    if (_modeldataManager == nullptr) {
 		return;
 	}
-	List<ModelDataDefinition*>* entities = _modeldataManager->getDataDefinitionList(Util::TypeOf<Entity>());
+    List<ModelDataDefinition*>* entities = _modeldataManager->getDataDefinitionList(Util::TypeOf<Entity>());
 	while (entities != nullptr && !entities->empty()) {
 		ModelDataDefinition* data = entities->front();
 		Entity* entity = dynamic_cast<Entity*>(data);
@@ -429,19 +430,19 @@ void Model::_destroyComponents() {
 
 // Iteratively deletes non-entity data definitions without assuming stable collections during destruction.
 void Model::_destroyModelDataDefinitions() {
-	if (_modeldataManager == nullptr) {
+    if (_modeldataManager == nullptr) {
 		return;
 	}
 	bool hasPendingNonEntity = true;
 	while (hasPendingNonEntity) {
 		hasPendingNonEntity = false;
 		// Re-evaluate the current class-name snapshot each pass while deleting non-entity data definitions.
-		std::list<std::string> types = _modeldataManager->getDataDefinitionClassnames();
+        std::list<std::string> types = _modeldataManager->getDataDefinitionClassnames();
 		for (const std::string& type : types) {
 			if (type == Util::TypeOf<Entity>()) {
 				continue;
 			}
-			List<ModelDataDefinition*>* datadefs = _modeldataManager->getDataDefinitionList(type);
+            List<ModelDataDefinition*>* datadefs = _modeldataManager->getDataDefinitionList(type);
 			if (datadefs != nullptr && !datadefs->empty()) {
 				hasPendingNonEntity = true;
 				ModelDataDefinition* data = datadefs->front();
@@ -452,7 +453,7 @@ void Model::_destroyModelDataDefinitions() {
 	}
 }
 
-void Model::_createModelInternalElements() {
+void Model::createInternalDataDefinitions() {
 	if (!_automaticallyCreatesModelDataDefinitions) {
 		getTracer()->trace("Automatically creating internal elements disabled", TraceManager::Level::L7_internal);
 	} else {
@@ -472,15 +473,7 @@ void Model::_createModelInternalElements() {
 		unsigned int originalSize = elementTypes.size(), pos = 1;
 		std::list<std::string>::iterator itty = elementTypes.begin();
 		while (itty!=elementTypes.end()&&pos<=originalSize) {
-			//try {
 			modelElements = getDataManager()->getDataDefinitionList((*itty))->list();
-			//} catch (const std::exception& e) {
-			// @TODO Is there a better solution to iterate over a changing sorted list??
-			// ops. Sorted list has changed and iteration fails. Starts iterating again
-			//	itty = elements()->elementClassnames()->begin();
-			//	modelElements = elements()->elementList((*itty))->list();
-			//	tracer()->trace(TraceManager::Level::L7_internal, "Creating internal elements");
-			//}
 			for (std::list<ModelDataDefinition*>::iterator itel = modelElements->begin(); itel!=modelElements->end(); itel++) {
 				getTracer()->trace("Internals for "+(*itel)->getClassname()+" \""+(*itel)->getName()+"\""); // (" + std::to_string(pos) + "/" + std::to_string(originalSize) + ")");
 				Util::IncIndent();
@@ -506,6 +499,80 @@ void Model::_createModelInternalElements() {
 	}
 }
 
+void Model::clearOrphanedDataDefinitions() {
+    //bool res = true;
+    _traceManager->trace("Checking Orphaned DataDefinitions", TraceManager::Level::L7_internal);
+    Util::IncIndent();
+    {
+        // Track orphan candidates by pointer identity to make pruning deterministic and iteration-safe.
+        std::unordered_set<ModelDataDefinition*> orphaned;
+        // Start by including all elements as orphaned
+        // Use a value snapshot of type names when enumerating initial orphan candidates.
+        std::list<std::string> allTypes = _modeldataManager->getDataDefinitionClassnames();
+        for (std::string ddtypename : allTypes) {
+            for (ModelDataDefinition* element : *_modeldataManager->getDataDefinitionList(ddtypename)->list()) {
+                orphaned.insert(element);
+            }
+        }
+        // Remove every referenced data definition from orphan candidates while preserving trace semantics.
+        auto removeReferenced = [&](ModelDataDefinition* owner) {
+            for (std::pair<std::string, ModelDataDefinition*> pairInternal : *owner->getInternalData()) {
+                ModelDataDefinition* mdd = pairInternal.second;
+                orphaned.erase(mdd);
+                _traceManager->trace("(" + owner->getClassname() + ") " + owner->getName() + " <#>--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
+            }
+            for (std::pair<std::string, ModelDataDefinition*> pairAttached : *owner->getAttachedData()) {
+                ModelDataDefinition* mdd = pairAttached.second;
+                orphaned.erase(mdd);
+                _traceManager->trace("(" + owner->getClassname() + ") " + owner->getName() + " < >--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
+            }
+        };
+        // ... by someone (ModelDataDefinition).
+        // Use another value snapshot because orphan pruning may observe changes made during checking.
+        std::list<std::string> referencedTypes = _modeldataManager->getDataDefinitionClassnames();
+        for (std::string ddtypename : referencedTypes) {
+            for (ModelDataDefinition* element : *_modeldataManager->getDataDefinitionList(ddtypename)->list()) {
+                removeReferenced(element);
+            }
+        }
+        // ... by someone (ModelComponent).
+        for (ModelComponent* component : *_componentManager->getAllComponents()) {
+            // Remove all component-owned references from orphan candidates before final deletion pass.
+            for (std::pair<std::string, ModelDataDefinition*> pairInternal : *component->getInternalData()) {
+                ModelDataDefinition* mdd = pairInternal.second;
+                orphaned.erase(mdd);
+                _traceManager->trace("(" + component->getClassname() + ") " + component->getName() + " <#>--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
+            }
+            for (std::pair<std::string, ModelDataDefinition*> pairAttached : *component->getAttachedData()) {
+                ModelDataDefinition* mdd = pairAttached.second;
+                orphaned.erase(mdd);
+                _traceManager->trace("(" + component->getClassname() + ") " + component->getName() + " < >--> " + "(" + mdd->getClassname() + ") " + mdd->getName());
+            }
+        }
+        // every one in orphaned list now is really orphaned
+        if (orphaned.size() > 0) {
+            _traceManager->trace("Orphaned DataDefinitions found and will be removed:", TraceManager::Level::L7_internal);
+            Util::IncIndent();
+            {
+                for (ModelDataDefinition* orphanElem : orphaned) {
+                    _traceManager->trace("Orphan (" + orphanElem->getClassname() + ") " + orphanElem->getName() + "(id=" + std::to_string(orphanElem->getId()) + ") removed");
+                    _modeldataManager->remove(orphanElem);
+                }
+            }
+            Util::DecIndent();
+            // inoke again, recursivelly (removing some datadefinitions may create some other orphans)
+            Util::IncIndent();
+            {
+                clearOrphanedDataDefinitions();
+            }
+            Util::DecIndent();
+        } else {
+            _traceManager->trace("No orphaned DataDefinitions found", TraceManager::Level::L7_internal);
+        }
+    }
+    Util::DecIndent();
+}
+
 List<SimulationControl*>* Model::getControls() const {
 	return _controls;
 }
@@ -517,8 +584,9 @@ List<SimulationResponse*>* Model::getResponses() const {
 bool Model::check() {
 	getTracer()->trace("Checking model consistency", TraceManager::Level::L7_internal);
 	Util::IncIndent();
-	// before checking the model, creates all necessary internal ModelDatas
-	_createModelInternalElements();
+    // before checking the model, creates all necessary internal ModelDatas and clear orphaned
+    createInternalDataDefinitions();
+    clearOrphanedDataDefinitions();
 	bool res = this->_modelChecker->checkAll();
 	Util::DecIndent();
 	if (res) {
@@ -585,7 +653,7 @@ unsigned int Model::getLevel() const {
 bool Model::hasChanged() const {
 	bool changed = _hasChanged;
 	changed = changed || this->_componentManager->hasChanged();
-	changed = changed || this->_modeldataManager->hasChanged();
+    changed = changed || this->_modeldataManager->hasChanged();
 	changed = changed || this->_modelInfo->hasChanged();
 	changed = changed || this->_modelPersistence->hasChanged();
 	return changed;
@@ -600,7 +668,7 @@ OnEventManager*Model::getOnEventManager() const {
 }
 
 ModelDataManager*Model::getDataManager() const {
-	return _modeldataManager;
+    return _modeldataManager;
 }
 
 ModelInfo*Model::getInfos() const {

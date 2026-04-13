@@ -36,7 +36,7 @@ Smart_SeizeDelayReleaseMany::Smart_SeizeDelayReleaseMany() {
  */
 int Smart_SeizeDelayReleaseMany::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+    genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L5_event);
 	setDefaultTraceHandlers(genesys->getTraceManager());
 	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
@@ -59,6 +59,7 @@ int Smart_SeizeDelayReleaseMany::main(int argc, char** argv) {
 	seize1->getSeizeRequests()->insert(new SeizableItem(machine5));
 	seize1->setQueue(queueSeize1);
 	seize1->setAllocationType(Util::AllocationType::Others);
+    seize1->defineTraceLevelSpecific(TraceManager::Level::L9_mostDetailed, true);
 	Delay* delay1 = plugins->newInstance<Delay>(model);
 	delay1->setDelayExpression("unif(0.6,1.5)");
 	delay1->setAllocation(Util::AllocationType::ValueAdded);
@@ -68,6 +69,7 @@ int Smart_SeizeDelayReleaseMany::main(int argc, char** argv) {
 	release1->getReleaseRequests()->insert(new SeizableItem(machine3));
 	release1->getReleaseRequests()->insert(new SeizableItem(machine4));
 	release1->getReleaseRequests()->insert(new SeizableItem(machine5));
+    release1->defineTraceLevelSpecific(TraceManager::Level::L9_mostDetailed);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
 	create1->connectTo(seize1);
@@ -79,10 +81,11 @@ int Smart_SeizeDelayReleaseMany::main(int argc, char** argv) {
 	sim->setReplicationLength(10);
 	sim->setNumberOfReplications(3);
 	model->save("./models/Smart_SeizeDelayReleaseMany.gen");
-	do {
-		sim->start(); //step();
-		//std::cin.ignore(std::numeric_limits <std::streamsize> ::max(), '\n');
-	} while (false); //(sim->isPaused());
+//	do {
+//        sim->step();
+//        std::cin.ignore(std::numeric_limits <std::streamsize> ::max(), '\n');
+//    } while (sim->isPaused());
+    sim->start();
 	delete genesys;
 	return 0;
 };
