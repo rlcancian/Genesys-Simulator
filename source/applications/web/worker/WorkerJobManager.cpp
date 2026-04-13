@@ -50,6 +50,19 @@ bool WorkerJobManager::setMessage(const std::string& jobId, const std::string& m
     return true;
 }
 
+bool WorkerJobManager::setTerminalResult(const std::string& jobId, const WorkerJobTerminalResult& terminalResult) {
+    std::scoped_lock lock(_mutex);
+
+    const auto iterator = _jobs.find(jobId);
+    if (iterator == _jobs.end()) {
+        return false;
+    }
+
+    iterator->second.terminalResult = terminalResult;
+    iterator->second.hasTerminalResult = true;
+    return true;
+}
+
 std::optional<WorkerJob> WorkerJobManager::getJob(const std::string& jobId) const {
     std::scoped_lock lock(_mutex);
 

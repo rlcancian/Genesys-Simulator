@@ -2,7 +2,7 @@
 
 First functional implementation of the **Web** application type for GenESyS.
 
-## Current Stage 5 scope
+## Current scope
 - CMake executable: `genesys_webhook` (enabled with `-DGENESYS_BUILD_WEB_APPLICATION=ON`).
 - Layered architecture for HTTP transport, API routing, session/token, and simulator service.
 - Stateful session management with one `Simulator` per session and per-session workspace directories.
@@ -60,6 +60,19 @@ Behavior in this stage:
 - `GET /api/v1/worker/jobs/{jobId}` remains the basic state inspection/polling mechanism after run requests.
 
 This stage still does **not** include background execution, queue worker loops, cancellation, streaming updates, or a dedicated job result endpoint.
+
+
+## Worker cycle Stage 5
+This stage adds terminal result retrieval for previously executed worker jobs:
+- `GET /api/v1/worker/jobs/{jobId}/result` (requires `Authorization: Bearer <token>`)
+
+Behavior in this stage:
+- result retrieval is available only after the job reaches a terminal state (`finished` or `failed`);
+- queued or running jobs return a conflict response because no terminal result exists yet;
+- the endpoint returns a minimal structured simulation summary persisted at the end of synchronous execution;
+- execution remains synchronous and non-background (`POST /run` still performs the run inline);
+- cancellation is still not available;
+- distributed orchestration remains out of scope.
 
 ## How to run
 ```bash

@@ -135,6 +135,13 @@ private:
      */
     static bool _tryExtractWorkerJobRunIdFromPath(const std::string& path, std::string& outJobId);
     /**
+     * @brief Tries to parse a worker job identifier from `/api/v1/worker/jobs/{jobId}/result`.
+     * @param path HTTP request path.
+     * @param outJobId Receives parsed job identifier when the path matches.
+     * @return True when the path format is valid and a non-empty id was extracted.
+     */
+    static bool _tryExtractWorkerJobResultIdFromPath(const std::string& path, std::string& outJobId);
+    /**
      * @brief Converts worker job states into API string values.
      * @param state Worker job state value.
      * @return Lowercase state string expected by clients.
@@ -146,6 +153,12 @@ private:
      * @return JSON object string.
      */
     static std::string _workerJobDataJson(const SimulatorSessionService::WorkerJobInfoResult& job);
+    /**
+     * @brief Serializes worker terminal result metadata into a JSON object string.
+     * @param result Worker job terminal result information.
+     * @return JSON object string.
+     */
+    static std::string _workerJobResultDataJson(const SimulatorSessionService::WorkerJobResultInfo& result);
     /**
      * @brief Maps worker job operation errors to transport-level HTTP responses.
      * @param error Worker job error code.

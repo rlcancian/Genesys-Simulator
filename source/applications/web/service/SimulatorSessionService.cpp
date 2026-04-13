@@ -108,6 +108,7 @@ SimulatorSessionService::WorkerCapabilitiesResult SimulatorSessionService::getWo
     // Stage 2 introduces a worker model-ingress endpoint based on plain text language import.
     result.supportsModelUpload = true;
     result.supportsStreamingEvents = false;
+    result.supportsJobResultRetrieval = true;
     return result;
 }
 
@@ -485,6 +486,7 @@ SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJo
 
     std::string failureMessage;
     bool executionSucceeded = false;
+    WorkerJobTerminalResult terminalResult{};
 
     {
         std::scoped_lock lock(session->mutex);
@@ -493,7 +495,7 @@ SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJo
             failureMessage = "Unable to access model manager";
         } else {
             try {
-                // Stage 4 executes directly from the persisted worker job snapshot in the same session simulator.
+                // Stage 4/5 keep synchronous execution from the persisted job snapshot.
                 const std::filesystem::path snapshotPath = session->workspacePath / job->snapshotFilename;
                 Model* loadedModel = modelManager->loadModel(snapshotPath.string());
                 if (loadedModel == nullptr) {
@@ -505,6 +507,14 @@ SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJo
                     } else {
                         simulation->start();
                         executionSucceeded = true;
+
+                        // Persist a minimal terminal summary that can be queried by /result.
+                        terminalResult.simulatedTime = simulation->getSimulatedTime();
+                        terminalResult.currentReplicationNumber = simulation->getCurrentReplicationNumber();
+                        terminalResult.numberOfReplications = simulation->getNumberOfReplications();
+                        terminalResult.replicationLength = simulation->getReplicationLength();
+                        terminalResult.warmUpPeriod = simulation->getWarmUpPeriod();
+                        terminalResult.isPaused = simulation->isPaused();
                     }
                 }
             } catch (const std::exception& exception) {
@@ -516,12 +526,18 @@ SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJo
     }
 
     if (!executionSucceeded) {
-        _workerJobManager.setState(jobId, WorkerJobState::Failed);
+        if (_workerJobManager.setState(jobId, WorkerJobState::Failed)) {
+            // Even on failures, keep a safe partial terminal summary for stage 5 result retrieval.
+            _workerJobManager.setTerminalResult(jobId, terminalResult);
+        }
         _workerJobManager.setMessage(jobId, failureMessage);
         return WorkerJobRunResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
     }
 
     if (!_workerJobManager.setState(jobId, WorkerJobState::Finished)) {
+        return WorkerJobRunResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+    if (!_workerJobManager.setTerminalResult(jobId, terminalResult)) {
         return WorkerJobRunResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
     }
     _workerJobManager.setMessage(jobId, "");
@@ -532,6 +548,31 @@ SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJo
     }
 
     return WorkerJobRunResult{true, WorkerJobError::None, _toWorkerJobInfoResult(storedJob.value())};
+}
+
+SimulatorSessionService::WorkerJobResultQueryResult SimulatorSessionService::getWorkerJobResult(
+    const std::string& accessToken,
+    const std::string& jobId
+) {
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return WorkerJobResultQueryResult{false, WorkerJobError::InvalidToken, WorkerJobResultInfo{}};
+    }
+
+    const std::optional<WorkerJob> job = _workerJobManager.getJob(jobId);
+    if (!job.has_value()) {
+        return WorkerJobResultQueryResult{false, WorkerJobError::JobNotFound, WorkerJobResultInfo{}};
+    }
+
+    if (job->sessionId != session->sessionId) {
+        return WorkerJobResultQueryResult{false, WorkerJobError::AccessDenied, WorkerJobResultInfo{}};
+    }
+
+    if (job->state == WorkerJobState::Queued || job->state == WorkerJobState::Running || !job->hasTerminalResult) {
+        return WorkerJobResultQueryResult{false, WorkerJobError::ResultNotReady, WorkerJobResultInfo{}};
+    }
+
+    return WorkerJobResultQueryResult{true, WorkerJobError::None, _toWorkerJobResultInfo(job.value())};
 }
 
 bool SimulatorSessionService::_isSafeFilename(const std::string& filename) {
@@ -561,5 +602,20 @@ SimulatorSessionService::WorkerJobInfoResult SimulatorSessionService::_toWorkerJ
     result.snapshotFilename = job.snapshotFilename;
     result.createdMarker = job.createdMarker;
     result.message = job.message;
+    return result;
+}
+
+SimulatorSessionService::WorkerJobResultInfo SimulatorSessionService::_toWorkerJobResultInfo(const WorkerJob& job) {
+    WorkerJobResultInfo result{};
+    result.jobId = job.jobId;
+    result.state = job.state;
+    result.message = job.message;
+    result.simulatedTime = job.terminalResult.simulatedTime;
+    result.currentReplicationNumber = job.terminalResult.currentReplicationNumber;
+    result.numberOfReplications = job.terminalResult.numberOfReplications;
+    result.replicationLength = job.terminalResult.replicationLength;
+    result.warmUpPeriod = job.terminalResult.warmUpPeriod;
+    result.hasIsPaused = job.terminalResult.isPaused.has_value();
+    result.isPaused = job.terminalResult.isPaused.value_or(false);
     return result;
 }
