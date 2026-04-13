@@ -65,6 +65,40 @@ bool SimulatorSessionService::tryGetSimulatorInfo(const std::string& accessToken
     return true;
 }
 
+SimulatorSessionService::WorkerInfoResult SimulatorSessionService::getWorkerInfo() const {
+    // A temporary simulator instance provides stable identity metadata for public worker discovery.
+    Simulator simulator;
+
+    WorkerInfoResult result{};
+    result.role = "worker";
+    result.application = "genesys_webhook";
+    result.apiFamily = "genesys-web-worker";
+    result.apiVersion = "v1";
+    result.simulatorName = simulator.getName();
+    result.simulatorVersionName = simulator.getVersion();
+    result.simulatorVersionNumber = simulator.getVersionNumber();
+    return result;
+}
+
+SimulatorSessionService::WorkerCapabilitiesResult SimulatorSessionService::getWorkerCapabilities() const {
+    WorkerCapabilitiesResult result{};
+    result.supportsSessionApi = true;
+    result.supportsSessionScopedSimulator = true;
+    result.supportsModelCreation = true;
+    result.supportsModelPersistence = true;
+    result.supportsSimulationStatus = true;
+    result.supportsSimulationConfig = true;
+    result.supportsSynchronousRun = true;
+    result.supportsSynchronousStep = true;
+    // Distributed job orchestration features are intentionally not available in stage 1.
+    result.supportsDistributedJobs = false;
+    result.supportsJobPolling = false;
+    result.supportsBackgroundExecution = false;
+    result.supportsModelUpload = false;
+    result.supportsStreamingEvents = false;
+    return result;
+}
+
 bool SimulatorSessionService::tryCreateModel(const std::string& accessToken, ModelInfoResult& outInfo) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {

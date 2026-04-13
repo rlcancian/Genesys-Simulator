@@ -19,6 +19,15 @@ First functional implementation of the **Web** application type for GenESyS.
   - `POST /api/v1/simulation/run` (requires `Authorization: Bearer <token>`)
   - `POST /api/v1/simulation/step` (requires `Authorization: Bearer <token>`)
 
+## Worker cycle Stage 1 (new cycle)
+The Web application is now also being evolved as a **worker API** that can be discovered by a future distributed orchestrator application.
+
+This stage adds two public worker discovery endpoints (no Bearer token required):
+- `GET /api/v1/worker/info`
+- `GET /api/v1/worker/capabilities`
+
+These routes expose worker identity metadata and current implementation capability flags. They are intentionally limited to discovery only and do not include job submission, polling, or background execution in this stage.
+
 ## How to run
 ```bash
 cmake -S . -B build/web-debug -G Ninja -DGENESYS_BUILD_WEB_APPLICATION=ON

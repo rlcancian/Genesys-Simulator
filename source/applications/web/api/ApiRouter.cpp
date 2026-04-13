@@ -19,6 +19,28 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
         return HttpResponse{200, "application/json", "{\"ok\":true,\"status\":\"up\"}"};
     }
 
+    if (request.path == "/api/v1/worker/info") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/worker/info");
+        }
+
+        const auto info = _simulatorService.getWorkerInfo();
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _workerInfoDataJson(info) + "}"};
+    }
+
+    if (request.path == "/api/v1/worker/capabilities") {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/worker/capabilities");
+        }
+
+        const auto capabilities = _simulatorService.getWorkerCapabilities();
+        return HttpResponse{
+            200,
+            "application/json",
+            "{\"ok\":true,\"data\":" + _workerCapabilitiesDataJson(capabilities) + "}"
+        };
+    }
+
     if (request.path == "/api/v1/auth/session") {
         if (request.method != "POST") {
             return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/auth/session");
@@ -428,4 +450,32 @@ std::string ApiRouter::_modelInfoDataJson(const SimulatorSessionService::ModelIn
            "\"version\":\"" + _escapeJson(info.version) + "\","
            "\"description\":\"" + _escapeJson(info.description) + "\","
            "\"componentCount\":" + std::to_string(info.componentCount) + "}";
+}
+
+std::string ApiRouter::_workerInfoDataJson(const SimulatorSessionService::WorkerInfoResult& info) {
+    return "{\"role\":\"" + _escapeJson(info.role) + "\","
+           "\"application\":\"" + _escapeJson(info.application) + "\","
+           "\"apiFamily\":\"" + _escapeJson(info.apiFamily) + "\","
+           "\"apiVersion\":\"" + _escapeJson(info.apiVersion) + "\","
+           "\"simulatorName\":\"" + _escapeJson(info.simulatorName) + "\","
+           "\"simulatorVersionName\":\"" + _escapeJson(info.simulatorVersionName) + "\","
+           "\"simulatorVersionNumber\":" + std::to_string(info.simulatorVersionNumber) + "}";
+}
+
+std::string ApiRouter::_workerCapabilitiesDataJson(const SimulatorSessionService::WorkerCapabilitiesResult& capabilities) {
+    return "{\"supportsSessionApi\":" + std::string(capabilities.supportsSessionApi ? "true" : "false") + ","
+           "\"supportsSessionScopedSimulator\":" + std::string(capabilities.supportsSessionScopedSimulator ? "true" : "false") +
+           ","
+           "\"supportsModelCreation\":" + std::string(capabilities.supportsModelCreation ? "true" : "false") + ","
+           "\"supportsModelPersistence\":" + std::string(capabilities.supportsModelPersistence ? "true" : "false") + ","
+           "\"supportsSimulationStatus\":" + std::string(capabilities.supportsSimulationStatus ? "true" : "false") + ","
+           "\"supportsSimulationConfig\":" + std::string(capabilities.supportsSimulationConfig ? "true" : "false") + ","
+           "\"supportsSynchronousRun\":" + std::string(capabilities.supportsSynchronousRun ? "true" : "false") + ","
+           "\"supportsSynchronousStep\":" + std::string(capabilities.supportsSynchronousStep ? "true" : "false") + ","
+           "\"supportsDistributedJobs\":" + std::string(capabilities.supportsDistributedJobs ? "true" : "false") + ","
+           "\"supportsJobPolling\":" + std::string(capabilities.supportsJobPolling ? "true" : "false") + ","
+           "\"supportsBackgroundExecution\":" + std::string(capabilities.supportsBackgroundExecution ? "true" : "false") +
+           ","
+           "\"supportsModelUpload\":" + std::string(capabilities.supportsModelUpload ? "true" : "false") + ","
+           "\"supportsStreamingEvents\":" + std::string(capabilities.supportsStreamingEvents ? "true" : "false") + "}";
 }
