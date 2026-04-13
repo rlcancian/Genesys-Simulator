@@ -30,6 +30,7 @@
 #include "plugins/data/File.h"
 #include "plugins/data/CppCompiler.h"
 #include "plugins/data/SPICERunner.h"
+#include "plugins/data/AssignmentItem.h"
 #include "kernel/util/Util.h"
 #define private public
 #define protected public
@@ -4329,6 +4330,69 @@ TEST(SimulatorRuntimeTest, AssignSaveLoadPreservesMultipleAssignmentsWithoutInde
     EXPECT_EQ((*it)->getDestination(), "vCounter");
     EXPECT_EQ((*it)->getExpression(), "7");
     EXPECT_FALSE((*it)->isAttributeNotVariable());
+}
+
+TEST(SimulatorRuntimeTest, AssignmentConstructorInitializesTypeConsistently) {
+    Assignment asAttribute("Entity.attrCtor", "1", true);
+    EXPECT_TRUE(asAttribute.isAttributeNotVariable());
+    EXPECT_EQ(asAttribute.getTypeDC(), Util::TypeOf<Attribute>());
+
+    Assignment asVariable("varCtor", "2", false);
+    EXPECT_FALSE(asVariable.isAttributeNotVariable());
+    EXPECT_EQ(asVariable.getTypeDC(), Util::TypeOf<Variable>());
+}
+
+TEST(SimulatorRuntimeTest, AssignmentSetterUpdatesTypeConsistently) {
+    Assignment assignment("Entity.attrSetter", "1", true);
+    EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Attribute>());
+
+    assignment.setAttributeNotVariable(false);
+    EXPECT_FALSE(assignment.isAttributeNotVariable());
+    EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Variable>());
+
+    assignment.setAttributeNotVariable(true);
+    EXPECT_TRUE(assignment.isAttributeNotVariable());
+    EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Attribute>());
+}
+
+TEST(SimulatorRuntimeTest, AssignmentSaveLoadRoundTripPreservesDestinationExpressionAndType) {
+    Assignment source("Entity.attrRoundTrip", "3+4", true);
+    source.setAttributeNotVariable(false);
+    source.setDestination("varRoundTrip");
+    source.setExpression("5*6");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.saveInstance(&fields, 0, true);
+
+    Assignment loaded("placeholder", "0", true);
+    ASSERT_TRUE(loaded.loadInstance(&fields, 0));
+    EXPECT_EQ(loaded.getDestination(), "varRoundTrip");
+    EXPECT_EQ(loaded.getExpression(), "5*6");
+    EXPECT_FALSE(loaded.isAttributeNotVariable());
+    EXPECT_EQ(loaded.getTypeDC(), Util::TypeOf<Variable>());
+}
+
+TEST(SimulatorRuntimeTest, AssignmentPropertiesContainerLifecycleWithModelConstructorIsSafe) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* assignment = new Assignment(model, "Entity.attrProps", "1", true);
+    auto* properties = assignment->getProperties();
+    ASSERT_NE(properties, nullptr);
+    EXPECT_EQ(properties->size(), 3u);
+
+    delete assignment;
+    SUCCEED();
+}
+
+TEST(SimulatorRuntimeTest, AssignmentSimpleConstructorWithoutModelKeepsCoherentState) {
+    Assignment assignment("varSimpleCtor", "9", false);
+    EXPECT_EQ(assignment.getDestination(), "varSimpleCtor");
+    EXPECT_EQ(assignment.getExpression(), "9");
+    EXPECT_FALSE(assignment.isAttributeNotVariable());
+    EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Variable>());
 }
 
 TEST(SimulatorRuntimeTest, AssignCheckFailsForInvalidExpression) {
