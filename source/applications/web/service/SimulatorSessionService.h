@@ -161,6 +161,15 @@ public:
     };
 
     /**
+     * @brief Contains worker job run output and error state.
+     */
+    struct WorkerJobRunResult {
+        bool success = false;
+        WorkerJobError error = WorkerJobError::None;
+        WorkerJobInfoResult jobInfo;
+    };
+
+    /**
      * @brief Captures the current simulation execution state.
      */
     struct SimulationStatusResult {
@@ -315,6 +324,13 @@ public:
      * @return Worker job lookup output and error state.
      */
     WorkerJobQueryResult getWorkerJob(const std::string& accessToken, const std::string& jobId);
+    /**
+     * @brief Executes a worker job synchronously in the token-scoped simulator session.
+     * @param accessToken Bearer token associated with a session.
+     * @param jobId Worker job identifier to execute.
+     * @return Worker job run output and error state.
+     */
+    WorkerJobRunResult runWorkerJob(const std::string& accessToken, const std::string& jobId);
 
 private:
     /**

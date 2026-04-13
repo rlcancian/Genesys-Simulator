@@ -26,6 +26,21 @@ public:
      * @return True when the job exists and was updated.
      */
     bool setSnapshotFilename(const std::string& jobId, const std::string& snapshotFilename);
+    /**
+     * @brief Updates the lifecycle state for an existing job.
+     * @param jobId Job identifier to update.
+     * @param state New worker job state.
+     * @return True when the job exists and was updated.
+     */
+    bool setState(const std::string& jobId, WorkerJobState state);
+
+    /**
+     * @brief Replaces the message text for an existing job.
+     * @param jobId Job identifier to update.
+     * @param message Human-readable status or error message.
+     * @return True when the job exists and was updated.
+     */
+    bool setMessage(const std::string& jobId, const std::string& message);
 
     /**
      * @brief Fetches a previously stored job record.

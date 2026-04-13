@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <exception>
 #include <filesystem>
 #include <mutex>
 #include <optional>
@@ -100,9 +101,9 @@ SimulatorSessionService::WorkerCapabilitiesResult SimulatorSessionService::getWo
     result.supportsSimulationConfig = true;
     result.supportsSynchronousRun = true;
     result.supportsSynchronousStep = true;
-    // Stage 3 introduces job abstraction creation/inspection, but not execution yet.
+    // Stage 4 keeps synchronous execution and exposes state inspection via job lookup.
     result.supportsDistributedJobs = true;
-    result.supportsJobPolling = false;
+    result.supportsJobPolling = true;
     result.supportsBackgroundExecution = false;
     // Stage 2 introduces a worker model-ingress endpoint based on plain text language import.
     result.supportsModelUpload = true;
@@ -451,6 +452,86 @@ SimulatorSessionService::WorkerJobQueryResult SimulatorSessionService::getWorker
     }
 
     return WorkerJobQueryResult{true, WorkerJobError::None, _toWorkerJobInfoResult(job.value())};
+}
+
+SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJob(
+    const std::string& accessToken,
+    const std::string& jobId
+) {
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return WorkerJobRunResult{false, WorkerJobError::InvalidToken, WorkerJobInfoResult{}};
+    }
+
+    const std::optional<WorkerJob> job = _workerJobManager.getJob(jobId);
+    if (!job.has_value()) {
+        return WorkerJobRunResult{false, WorkerJobError::JobNotFound, WorkerJobInfoResult{}};
+    }
+
+    if (job->sessionId != session->sessionId) {
+        return WorkerJobRunResult{false, WorkerJobError::AccessDenied, WorkerJobInfoResult{}};
+    }
+
+    if (job->snapshotFilename.empty()) {
+        _workerJobManager.setState(jobId, WorkerJobState::Failed);
+        _workerJobManager.setMessage(jobId, "Worker job snapshot filename is missing");
+        return WorkerJobRunResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    if (!_workerJobManager.setState(jobId, WorkerJobState::Running)) {
+        return WorkerJobRunResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+    _workerJobManager.setMessage(jobId, "");
+
+    std::string failureMessage;
+    bool executionSucceeded = false;
+
+    {
+        std::scoped_lock lock(session->mutex);
+        ModelManager* modelManager = session->simulator->getModelManager();
+        if (modelManager == nullptr) {
+            failureMessage = "Unable to access model manager";
+        } else {
+            try {
+                // Stage 4 executes directly from the persisted worker job snapshot in the same session simulator.
+                const std::filesystem::path snapshotPath = session->workspacePath / job->snapshotFilename;
+                Model* loadedModel = modelManager->loadModel(snapshotPath.string());
+                if (loadedModel == nullptr) {
+                    failureMessage = "Unable to load worker snapshot model";
+                } else {
+                    ModelSimulation* simulation = loadedModel->getSimulation();
+                    if (simulation == nullptr) {
+                        failureMessage = "Unable to access model simulation";
+                    } else {
+                        simulation->start();
+                        executionSucceeded = true;
+                    }
+                }
+            } catch (const std::exception& exception) {
+                failureMessage = exception.what();
+            } catch (...) {
+                failureMessage = "Unexpected simulation execution failure";
+            }
+        }
+    }
+
+    if (!executionSucceeded) {
+        _workerJobManager.setState(jobId, WorkerJobState::Failed);
+        _workerJobManager.setMessage(jobId, failureMessage);
+        return WorkerJobRunResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    if (!_workerJobManager.setState(jobId, WorkerJobState::Finished)) {
+        return WorkerJobRunResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+    _workerJobManager.setMessage(jobId, "");
+
+    const std::optional<WorkerJob> storedJob = _workerJobManager.getJob(jobId);
+    if (!storedJob.has_value()) {
+        return WorkerJobRunResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    return WorkerJobRunResult{true, WorkerJobError::None, _toWorkerJobInfoResult(storedJob.value())};
 }
 
 bool SimulatorSessionService::_isSafeFilename(const std::string& filename) {

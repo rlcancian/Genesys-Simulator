@@ -26,6 +26,30 @@ bool WorkerJobManager::setSnapshotFilename(const std::string& jobId, const std::
     return true;
 }
 
+bool WorkerJobManager::setState(const std::string& jobId, WorkerJobState state) {
+    std::scoped_lock lock(_mutex);
+
+    const auto iterator = _jobs.find(jobId);
+    if (iterator == _jobs.end()) {
+        return false;
+    }
+
+    iterator->second.state = state;
+    return true;
+}
+
+bool WorkerJobManager::setMessage(const std::string& jobId, const std::string& message) {
+    std::scoped_lock lock(_mutex);
+
+    const auto iterator = _jobs.find(jobId);
+    if (iterator == _jobs.end()) {
+        return false;
+    }
+
+    iterator->second.message = message;
+    return true;
+}
+
 std::optional<WorkerJob> WorkerJobManager::getJob(const std::string& jobId) const {
     std::scoped_lock lock(_mutex);
 

@@ -128,6 +128,13 @@ private:
      */
     static bool _tryExtractWorkerJobIdFromPath(const std::string& path, std::string& outJobId);
     /**
+     * @brief Tries to parse a worker job identifier from `/api/v1/worker/jobs/{jobId}/run`.
+     * @param path HTTP request path.
+     * @param outJobId Receives parsed job identifier when the path matches.
+     * @return True when the path format is valid and a non-empty id was extracted.
+     */
+    static bool _tryExtractWorkerJobRunIdFromPath(const std::string& path, std::string& outJobId);
+    /**
      * @brief Converts worker job states into API string values.
      * @param state Worker job state value.
      * @return Lowercase state string expected by clients.
