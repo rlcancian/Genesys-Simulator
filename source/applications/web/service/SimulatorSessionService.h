@@ -22,6 +22,17 @@ public:
     };
 
     /**
+     * @brief Enumerates model import errors for worker language-ingress operations.
+     */
+    enum class ModelImportError {
+        None,
+        InvalidToken,
+        EmptySpecification,
+        InvalidSpecification,
+        OperationFailed
+    };
+
+    /**
      * @brief Contains session creation identifiers returned to API clients.
      */
     struct CreateSessionResult {
@@ -93,6 +104,15 @@ public:
         bool success = false;
         PersistenceError error = PersistenceError::None;
         std::string filename;
+        ModelInfoResult modelInfo;
+    };
+
+    /**
+     * @brief Contains model import output and error state.
+     */
+    struct ModelImportResult {
+        bool success = false;
+        ModelImportError error = ModelImportError::None;
         ModelInfoResult modelInfo;
     };
 
@@ -230,6 +250,13 @@ public:
      * @return Persistence output and error state.
      */
     ModelPersistenceResult loadModel(const std::string& accessToken, const std::string& filename);
+    /**
+     * @brief Imports a model from plain text model language into the token-scoped session.
+     * @param accessToken Bearer token associated with a session.
+     * @param modelSpecification Plain text model language content.
+     * @return Import output and error state.
+     */
+    ModelImportResult importModelFromLanguage(const std::string& accessToken, const std::string& modelSpecification);
 
 private:
     /**

@@ -91,6 +91,12 @@ private:
      */
     static HttpResponse _mapPersistenceError(const SimulatorSessionService::ModelPersistenceResult& result);
     /**
+     * @brief Maps model import errors to transport-level HTTP responses.
+     * @param result Import operation result.
+     * @return HTTP response containing mapped status and error body.
+     */
+    static HttpResponse _mapModelImportError(const SimulatorSessionService::ModelImportResult& result);
+    /**
      * @brief Escapes backslash and quote characters for JSON strings.
      * @param value Raw string value.
      * @return JSON-escaped string.

@@ -28,6 +28,14 @@ This stage adds two public worker discovery endpoints (no Bearer token required)
 
 These routes expose worker identity metadata and current implementation capability flags. They are intentionally limited to discovery only and do not include job submission, polling, or background execution in this stage.
 
+## Worker cycle Stage 2
+This stage starts worker model-ingress support with one authenticated and session-scoped endpoint:
+- `POST /api/v1/worker/models/import-language` (requires `Authorization: Bearer <token>`)
+
+The request body must be plain text GenESyS model language/specification. The worker imports this text into the session simulator as the current model.
+
+This stage still does **not** include multipart/binary upload, distributed job submission, polling, or background orchestration.
+
 ## How to run
 ```bash
 cmake -S . -B build/web-debug -G Ninja -DGENESYS_BUILD_WEB_APPLICATION=ON
