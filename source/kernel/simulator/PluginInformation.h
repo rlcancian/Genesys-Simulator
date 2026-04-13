@@ -31,6 +31,34 @@ typedef ModelDataDefinition* (*StaticConstructorDataDefinitionInstance)(Model*, 
 class PluginInformation;
 typedef PluginInformation* (*StaticGetPluginInformation)();
 
+class SystemDependency {
+public:
+	enum class OS {
+		Any,
+		Linux,
+		Windows,
+		MacOS,
+		Unknown
+	};
+
+	SystemDependency() = default;
+	SystemDependency(OS os, std::string name, std::string installCommand = "", std::string checkCommand = "");
+
+	OS getOS() const;
+	std::string getName() const;
+	std::string getInstallCommand() const;
+	std::string getCheckCommand() const;
+	std::string show() const;
+
+	static std::string osToString(OS os);
+
+private:
+	OS _os = OS::Any;
+	std::string _name = "";
+	std::string _installCommand = "";
+	std::string _checkCommand = "";
+};
+
 class PluginInformation {
 public:
 	PluginInformation(std::string pluginTypename, StaticLoaderComponentInstance componentloader, StaticConstructorDataDefinitionInstance elementConstructor);
@@ -59,6 +87,9 @@ public:
 	// This setter currently replaces the internal raw pointer without documenting transfer semantics.
 	void setDynamicLibFilenameDependencies(std::list<std::string>* dynamicLibFilenameDependencies);
 	std::list<std::string>* getDynamicLibFilenameDependencies() const;
+	void insertSystemDependency(const SystemDependency& dependency);
+	const std::list<SystemDependency>* getSystemDependencies() const;
+	bool hasSystemDependencies() const;
 	void setGenerateReport(bool generateReport);
 	void setSendTransfer(bool sendTransfer);
 	void setReceiveTransfer(bool receiveTransfer);
@@ -101,6 +132,7 @@ private:
 	bool _sendTransfer = false; /*!< If true, an entity can be sent from this component to another one without a phisical connection. In terms of model connection check, it is just like a Sink component, since it does not need to have a sucessor */
 	bool _generateReport = false;
 	std::list<std::string>* _dynamicLibFilenameDependencies = new std::list<std::string>();
+	std::list<SystemDependency>* _systemDependencies = new std::list<SystemDependency>();
 	std::map<std::string, std::string>* _fields = new std::map<std::string, std::string>();
 	// set from constructor
 	std::string _pluginTypename;

@@ -25,7 +25,7 @@ SessionContext* SessionManager::createSession() {
     std::string token;
     do {
         token = _tokenService.generateAccessToken();
-    } while (_sessionsByToken.contains(token));
+    } while (_sessionsByToken.find(token) != _sessionsByToken.end());
 
     session->accessToken = token;
     session->simulator = _simulatorFactory();

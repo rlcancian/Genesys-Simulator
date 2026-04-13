@@ -141,12 +141,6 @@ public: // model control
 	 * \param referencedDataDefinitions
 	 */
 	void checkReferencesToDataDefinitions(std::string expression, std::map<std::string, std::list<std::string>*>* referencedDataDefinitions);
-    /*!
-     */
-    void clearOrphanedDataDefinitions();
-    /*!
-     */
-    void createInternalDataDefinitions();
 
 public: // only gets
 	/*!
@@ -249,6 +243,8 @@ private:
 	void _destroyTransientEntities();
 	void _destroyComponents();
 	void _destroyModelDataDefinitions();
+    void _clearOrphanedDataDefinitions();
+    void _createInternalDataDefinitions();
 private:
 	bool _hasChanged = false;
     //bool _isChecked = false; // @TODO: Not implemented yet. First, _hasChanged should be trustful

@@ -30,6 +30,7 @@
 #include "plugins/data/File.h"
 #include "plugins/data/CppCompiler.h"
 #include "plugins/data/SPICERunner.h"
+#include "plugins/data/BioSimulatorRunner.h"
 #include "plugins/data/AssignmentItem.h"
 #include "kernel/util/Util.h"
 #define private public
@@ -833,6 +834,27 @@ public:
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
         _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class BioSimulatorRunnerProbe : public BioSimulatorRunner {
+public:
+    BioSimulatorRunnerProbe(Model* model, const std::string& name = "") : BioSimulatorRunner(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -4971,4 +4993,326 @@ TEST(SimulatorRuntimeTest, SPICERunnerRunUsesConfiguredOperationalFilenamesInCom
     const std::string outputPath = workingDir + Util::DirSeparator() + "runtime_output_test.log";
     Util::FileDelete(outputPath);
     ::rmdir(workingDir.c_str());
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerDefaultsExposeStructuralConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorDefaults");
+    EXPECT_EQ(runner.getBackend(), "RoadRunnerEmbedded");
+    EXPECT_EQ(runner.getModelSourceType(), "SBMLString");
+    EXPECT_EQ(runner.getModelSource(), "");
+    EXPECT_EQ(runner.getCommand(), "");
+    EXPECT_EQ(runner.getLastStatus(), "Idle");
+    EXPECT_EQ(runner.getLastErrorMessage(), "");
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+    EXPECT_EQ(runner.getLastResponseFilename(), "");
+    EXPECT_EQ(runner.getWorkingDirectory(), "");
+    EXPECT_EQ(runner.getWorkingInputFilename(), "biosim_input.xml");
+    EXPECT_EQ(runner.getWorkingOutputFilename(), "biosim_output.json");
+    EXPECT_EQ(runner.getEndpointOrLibrary(), "");
+    EXPECT_EQ(runner.getTimeoutSeconds(), 30u);
+    EXPECT_TRUE(runner.getAutoValidateModel());
+    EXPECT_GE(runner.getSimulationControls()->size(), 14u);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerPluginInformationDeclaresLibSBMLDependency) {
+    std::unique_ptr<PluginInformation> info(BioSimulatorRunner::GetPluginInformation());
+
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<BioSimulatorRunner>());
+    ASSERT_TRUE(info->hasSystemDependencies());
+    ASSERT_NE(info->getSystemDependencies(), nullptr);
+
+    bool foundLibSBML = false;
+    for (const SystemDependency& dependency : *info->getSystemDependencies()) {
+        if (dependency.getOS() == SystemDependency::OS::Linux && dependency.getName() == "libSBML") {
+            foundLibSBML = true;
+            EXPECT_EQ(dependency.getInstallCommand(), "sudo apt install libsbml5-dev -y");
+            EXPECT_EQ(dependency.getCheckCommand(), "pkg-config --exists libsbml");
+        }
+    }
+    EXPECT_TRUE(foundLibSBML);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerSettersAndGettersPreserveValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorSetGet");
+    runner.setBackend("CopasiSEExternal");
+    runner.setModelSourceType("SBMLFile");
+    runner.setModelSource("model.xml");
+    runner.setCommand("simulate(0,10,5)");
+    runner.setWorkingDirectory("biosim_work");
+    runner.setWorkingInputFilename("custom_input.xml");
+    runner.setWorkingOutputFilename("custom_output.json");
+    runner.setEndpointOrLibrary("/opt/copasi/CopasiSE");
+    runner.setTimeoutSeconds(45u);
+    runner.setAutoValidateModel(false);
+
+    EXPECT_EQ(runner.getBackend(), "CopasiSEExternal");
+    EXPECT_EQ(runner.getModelSourceType(), "SBMLFile");
+    EXPECT_EQ(runner.getModelSource(), "model.xml");
+    EXPECT_EQ(runner.getCommand(), "simulate(0,10,5)");
+    EXPECT_EQ(runner.getWorkingDirectory(), "biosim_work");
+    EXPECT_EQ(runner.getWorkingInputFilename(), "custom_input.xml");
+    EXPECT_EQ(runner.getWorkingOutputFilename(), "custom_output.json");
+    EXPECT_EQ(runner.getEndpointOrLibrary(), "/opt/copasi/CopasiSE");
+    EXPECT_EQ(runner.getTimeoutSeconds(), 45u);
+    EXPECT_FALSE(runner.getAutoValidateModel());
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerCheckRejectsInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe emptyFields(model, "BioSimulatorCheckEmpty");
+    emptyFields.setBackend("");
+    emptyFields.setModelSourceType("");
+    emptyFields.setTimeoutSeconds(0u);
+    emptyFields.setWorkingInputFilename("");
+    emptyFields.setWorkingOutputFilename("");
+
+    std::string emptyFieldsError;
+    EXPECT_FALSE(emptyFields.CheckProbe(emptyFieldsError));
+    EXPECT_NE(emptyFieldsError.find("non-empty backend"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("non-empty modelSourceType"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("timeoutSeconds greater than zero"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("non-empty workingInputFilename"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("non-empty workingOutputFilename"), std::string::npos);
+
+    BioSimulatorRunnerProbe invalidType(model, "BioSimulatorCheckInvalidType");
+    invalidType.setModelSourceType("CellMLString");
+    std::string invalidTypeError;
+    EXPECT_FALSE(invalidType.CheckProbe(invalidTypeError));
+    EXPECT_NE(invalidTypeError.find("unsupported modelSourceType"), std::string::npos);
+
+    BioSimulatorRunnerProbe missingFileSource(model, "BioSimulatorCheckMissingFile");
+    missingFileSource.setModelSourceType("SBMLFile");
+    missingFileSource.setModelSource("");
+    std::string missingFileSourceError;
+    EXPECT_FALSE(missingFileSource.CheckProbe(missingFileSourceError));
+    EXPECT_NE(missingFileSourceError.find("must define modelSource when modelSourceType is SBMLFile"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerCheckAcceptsMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorCheckValid");
+    std::string errorMessage;
+    EXPECT_TRUE(runner.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerPersistenceRoundTripPreservesMainFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe source(model, "BioSimulatorPersistSource");
+    source.setBackend("VCellRest");
+    source.setModelSourceType("SBMLFile");
+    source.setModelSource("persist_model.xml");
+    source.setCommand("steadyState()");
+    source.setLastStatus("Completed");
+    source.setLastErrorMessage("none");
+    source.setLastResponsePayload("{\"ok\":true}");
+    source.setLastResponseFilename("persist_response.json");
+    source.setWorkingDirectory("persist_workdir");
+    source.setWorkingInputFilename("persist_input.xml");
+    source.setWorkingOutputFilename("persist_output.json");
+    source.setEndpointOrLibrary("https://example.invalid/stub");
+    source.setTimeoutSeconds(75u);
+    source.setAutoValidateModel(false);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    BioSimulatorRunnerProbe loaded(model, "BioSimulatorPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getBackend(), "VCellRest");
+    EXPECT_EQ(loaded.getModelSourceType(), "SBMLFile");
+    EXPECT_EQ(loaded.getModelSource(), "persist_model.xml");
+    EXPECT_EQ(loaded.getCommand(), "steadyState()");
+    EXPECT_EQ(loaded.getLastStatus(), "Completed");
+    EXPECT_EQ(loaded.getLastErrorMessage(), "none");
+    EXPECT_EQ(loaded.getLastResponsePayload(), "{\"ok\":true}");
+    EXPECT_EQ(loaded.getLastResponseFilename(), "persist_response.json");
+    EXPECT_EQ(loaded.getWorkingDirectory(), "persist_workdir");
+    EXPECT_EQ(loaded.getWorkingInputFilename(), "persist_input.xml");
+    EXPECT_EQ(loaded.getWorkingOutputFilename(), "persist_output.json");
+    EXPECT_EQ(loaded.getEndpointOrLibrary(), "https://example.invalid/stub");
+    EXPECT_EQ(loaded.getTimeoutSeconds(), 75u);
+    EXPECT_FALSE(loaded.getAutoValidateModel());
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerShowIncludesMainObservabilityFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorShow");
+    runner.setBackend("CopasiSEExternal");
+    runner.setModelSourceType("SBMLFile");
+    runner.setCommand("simulate(0,1,2)");
+    runner.setLastStatus("Completed");
+    runner.setWorkingDirectory("show_work");
+    runner.setWorkingInputFilename("show_input.xml");
+    runner.setWorkingOutputFilename("show_output.json");
+    runner.setEndpointOrLibrary("copasi");
+    runner.setTimeoutSeconds(12u);
+
+    const std::string shown = runner.show();
+    EXPECT_NE(shown.find("backend=\"CopasiSEExternal\""), std::string::npos);
+    EXPECT_NE(shown.find("modelSourceType=\"SBMLFile\""), std::string::npos);
+    EXPECT_NE(shown.find("command=\"simulate(0,1,2)\""), std::string::npos);
+    EXPECT_NE(shown.find("lastStatus=\"Completed\""), std::string::npos);
+    EXPECT_NE(shown.find("workingDirectory=\"show_work\""), std::string::npos);
+    EXPECT_NE(shown.find("workingInputFilename=\"show_input.xml\""), std::string::npos);
+    EXPECT_NE(shown.find("workingOutputFilename=\"show_output.json\""), std::string::npos);
+    EXPECT_NE(shown.find("endpointOrLibrary=\"copasi\""), std::string::npos);
+    EXPECT_NE(shown.find("timeoutSeconds=12"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerUnknownCommandFailsPredictably) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorUnknownCommand");
+    runner.setCommand("unknown()");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.executeCommand(errorMessage));
+    EXPECT_EQ(runner.getLastStatus(), "Failed");
+    EXPECT_NE(errorMessage.find("Unknown BioSimulatorRunner command"), std::string::npos);
+    EXPECT_EQ(runner.getLastErrorMessage(), errorMessage);
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelWithEmptySourceFailsCoherently) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorValidateEmpty");
+    runner.setCommand("validateModel()");
+    runner.setModelSource("");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.executeCommand(errorMessage));
+    EXPECT_EQ(runner.getLastStatus(), "Failed");
+    EXPECT_NE(errorMessage.find("requires a non-empty modelSource"), std::string::npos);
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelProducesStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorValidateStub");
+    runner.setModelSource("<sbml/>");
+    runner.setCommand("validateModel()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_EQ(runner.getLastErrorMessage(), "");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_validation\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"modelSourceType\":\"SBMLString\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerSimulateProducesDeterministicStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorSimulateStub");
+    runner.setCommand("simulate(0,10,101)");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_EQ(runner.getLastResponseFilename(), "biosim_output.json");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_time_course\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"start\":0"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"stop\":10"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"steps\":101"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerSteadyStateProducesStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorSteadyStateStub");
+    runner.setCommand("steadyState()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_steady_state\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"converged\":true"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerGetValueProducesStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorGetValueStub");
+    runner.setCommand("getValue(\"S1\")");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_value\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"symbol\":\"S1\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"value\":0.0"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerSetValueProducesStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorSetValueStub");
+    runner.setCommand("setValue(\"S1\", 2.5)");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_set_value\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"symbol\":\"S1\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"value\":2.5"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"updated\":true"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReset");
+    runner.setLastStatus("Completed");
+    runner.setLastErrorMessage("previous error");
+    runner.setLastResponsePayload("{\"previous\":true}");
+    runner.setLastResponseFilename("previous.json");
+    runner.setCommand("reset()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Idle");
+    EXPECT_EQ(runner.getLastErrorMessage(), "");
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+    EXPECT_EQ(runner.getLastResponseFilename(), "");
+    EXPECT_EQ(errorMessage, "");
 }

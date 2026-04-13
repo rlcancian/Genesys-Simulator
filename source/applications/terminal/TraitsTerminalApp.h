@@ -18,6 +18,7 @@
 #include "examples/smarts/Smart_DefaultModalModel.h"
 #include "examples/smarts/Smart_SeizeDelayRelease.h"
 #include "examples/smarts/Smart_SeizeDelayReleaseMany.h"
+#include "examples/smarts/Smart_SeizeDelayReleaseNoDataDefs.h"
 #include "examples/teaching/AnElectronicAssemblyAndTestSystem.h"
 
 template <typename T>
@@ -28,7 +29,11 @@ struct TraitsTerminalApp {
  *  Configure the Genesys Application to be compiled and executed
  */
 template <> struct TraitsTerminalApp<GenesysApplication_if> {
-    //typedef GenesysShell Application;
+#ifndef GENESYS_TERMINAL_APP_CLASS
+#define GENESYS_TERMINAL_APP_CLASS GenesysShell
+#endif
+
+	typedef GENESYS_TERMINAL_APP_CLASS Application;
 
 	//
 	// MODEL SPECIFIC TERMINAL SIMULATORS:
@@ -61,7 +66,7 @@ template <> struct TraitsTerminalApp<GenesysApplication_if> {
 	//typedef Smart_Record Application;
 	//typedef Smart_RouteStation Application;
     //typedef Smart_SeizeDelayRelease Application;
-	//typedef Smart_SeizeDelayReleaseNoDataDefs Application;
+    //typedef Smart_SeizeDelayReleaseNoDataDefs Application;
     //typedef Smart_SeizeDelayReleaseMany Application;
 	//typedef Smart_Sequence Application;
 	//typedef Smart_SynchronizingParallelEntities Application;
@@ -125,7 +130,7 @@ template <> struct TraitsTerminalApp<GenesysApplication_if> {
 	//typedef Half_Adder Application;
 
     // TEACHING
-    typedef AnElectronicAssemblyAndTestSystem Application;
+    //typedef AnElectronicAssemblyAndTestSystem Application;
     //typedef OperatingSystem01 Application;
     //typedef OperatingSystem02 Application;
     //typedef OperatingSystem03 Application;

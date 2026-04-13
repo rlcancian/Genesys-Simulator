@@ -36,7 +36,10 @@ bool ComponentManager::insert(ModelComponent* comp) {
 	if (_components->find(comp) == _components->list()->end()) {
 		_components->insert(comp);
 		_parentModel->getTracer()->trace("Component \"" + comp->getName() + "\" successfully inserted", TraceManager::Level::L2_results);
-		_hasChanged = true;
+        if (_parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+            ModelComponent::CreateInternalData(comp);
+        }
+        _hasChanged = true;
 		return true;
 	}
 	_parentModel->getTracer()->trace("Component \"" + comp->getName() + "\" could not be inserted", TraceManager::Level::L2_results);

@@ -255,6 +255,14 @@ SOURCES += \
     ../../../terminal/examples/teaching/OperatingSystem02.cpp \
     ../../../terminal/examples/teaching/OperatingSystem03.cpp \
     ../../../terminal/examples/teaching/Rectifier.cpp \
+    ../../../web/BaseGenesysWebApplication.cpp \
+    ../../../web/api/ApiRouter.cpp \
+    ../../../web/auth/TokenService.cpp \
+    ../../../web/http/SimpleHttpServer.cpp \
+    ../../../web/main.cpp \
+    ../../../web/service/SimulatorSessionService.cpp \
+    ../../../web/session/SessionManager.cpp \
+    ../../../web/worker/WorkerJobManager.cpp \
     codeeditor/CodeEditor.cpp \
     controllers/SimulationController.cpp \
     # Phase-3 GUI refactor controller for model-inspector responsibilities.
@@ -594,6 +602,17 @@ HEADERS += \
     ../../../terminal/examples/teaching/OperatingSystem02.h \
     ../../../terminal/examples/teaching/OperatingSystem03.h \
     ../../../terminal/examples/teaching/Rectifier.h \
+    ../../../web/BaseGenesysWebApplication.h \
+    ../../../web/api/ApiRouter.h \
+    ../../../web/auth/TokenService.h \
+    ../../../web/http/HttpRequest.h \
+    ../../../web/http/HttpResponse.h \
+    ../../../web/http/SimpleHttpServer.h \
+    ../../../web/service/SimulatorSessionService.h \
+    ../../../web/session/SessionContext.h \
+    ../../../web/session/SessionManager.h \
+    ../../../web/worker/WorkerJob.h \
+    ../../../web/worker/WorkerJobManager.h \
     codeeditor/CodeEditor.h \
     codeeditor/LineNumberArea.h \
     graphicals/ModelGraphicsScene.h \

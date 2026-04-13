@@ -453,7 +453,7 @@ void Model::_destroyModelDataDefinitions() {
 	}
 }
 
-void Model::createInternalDataDefinitions() {
+void Model::_createInternalDataDefinitions() {
 	if (!_automaticallyCreatesModelDataDefinitions) {
 		getTracer()->trace("Automatically creating internal elements disabled", TraceManager::Level::L7_internal);
 	} else {
@@ -499,7 +499,7 @@ void Model::createInternalDataDefinitions() {
 	}
 }
 
-void Model::clearOrphanedDataDefinitions() {
+void Model::_clearOrphanedDataDefinitions() {
     //bool res = true;
     _traceManager->trace("Checking Orphaned DataDefinitions", TraceManager::Level::L7_internal);
     Util::IncIndent();
@@ -563,7 +563,7 @@ void Model::clearOrphanedDataDefinitions() {
             // inoke again, recursivelly (removing some datadefinitions may create some other orphans)
             Util::IncIndent();
             {
-                clearOrphanedDataDefinitions();
+                _clearOrphanedDataDefinitions();
             }
             Util::DecIndent();
         } else {
@@ -585,8 +585,8 @@ bool Model::check() {
 	getTracer()->trace("Checking model consistency", TraceManager::Level::L7_internal);
 	Util::IncIndent();
     // before checking the model, creates all necessary internal ModelDatas and clear orphaned
-    createInternalDataDefinitions();
-    clearOrphanedDataDefinitions();
+    _createInternalDataDefinitions();
+    _clearOrphanedDataDefinitions();
 	bool res = this->_modelChecker->checkAll();
 	Util::DecIndent();
 	if (res) {
