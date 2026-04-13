@@ -4713,3 +4713,15 @@ TEST(SimulatorRuntimeTest, CppCompilerUnloadLibraryIsSafeWhenNoLibraryIsLoaded) 
     EXPECT_TRUE(compiler.unloadLibrary());
     EXPECT_FALSE(compiler.IsLibraryLoaded());
 }
+
+TEST(SimulatorRuntimeTest, CppCompilerUnloadLibraryNormalizesStateWhenFlagSetWithoutHandle) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerUnloadInconsistent");
+    compiler.setLibraryLoaded(true);
+    EXPECT_TRUE(compiler.unloadLibrary());
+    EXPECT_FALSE(compiler.IsLibraryLoaded());
+    EXPECT_EQ(compiler.getDynamicLibraryHandler(), nullptr);
+}
