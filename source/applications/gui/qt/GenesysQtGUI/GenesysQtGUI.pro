@@ -144,6 +144,7 @@ SOURCES += \
     ../../../../plugins/components/network/FSMState.cpp \
     ../../../../plugins/components/network/PetriPlace.cpp \
     ../../../../plugins/data/AssignmentItem.cpp \
+    ../../../../plugins/data/BioSimulatorRunner.cpp \
     ../../../../plugins/data/CppCompiler.cpp \
     ../../../../plugins/data/DummyElement.cpp \
     ../../../../plugins/data/EntityGroup.cpp \
@@ -259,7 +260,6 @@ SOURCES += \
     ../../../web/api/ApiRouter.cpp \
     ../../../web/auth/TokenService.cpp \
     ../../../web/http/SimpleHttpServer.cpp \
-    ../../../web/main.cpp \
     ../../../web/service/SimulatorSessionService.cpp \
     ../../../web/session/SessionManager.cpp \
     ../../../web/worker/WorkerJobManager.cpp \
@@ -472,6 +472,7 @@ HEADERS += \
     ../../../../plugins/components/network/FSMState.h \
     ../../../../plugins/components/network/PetriPlace.h \
     ../../../../plugins/data/AssignmentItem.h \
+    ../../../../plugins/data/BioSimulatorRunner.h \
     ../../../../plugins/data/CppCompiler.h \
     ../../../../plugins/data/DummyElement.h \
     ../../../../plugins/data/EntityGroup.h \
