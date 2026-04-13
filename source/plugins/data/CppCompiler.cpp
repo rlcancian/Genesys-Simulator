@@ -305,16 +305,17 @@ bool CppCompiler::loadLibrary(std::string& errorMessage) {
 }
 
 bool CppCompiler::unloadLibrary() {
-	if (_libraryLoaded) {
-		try {
-			dlclose(_dynamicLibraryHandle);
-			_dynamicLibraryHandle = nullptr;
-			_libraryLoaded = false;
-			return true;
-		} catch (const std::exception& e) {
-			return false;
-		}
+	if (!_libraryLoaded || _dynamicLibraryHandle == nullptr) {
+		_dynamicLibraryHandle = nullptr;
+		_libraryLoaded = false;
+		return true;
 	}
+
+	const int closeResult = dlclose(_dynamicLibraryHandle);
+	if (closeResult != 0) {
+		return false;
+	}
+
 	_dynamicLibraryHandle = nullptr;
 	_libraryLoaded = false;
 	return true;
