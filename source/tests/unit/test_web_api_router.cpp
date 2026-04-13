@@ -73,6 +73,96 @@ TEST(WebApiRouterTest, HealthEndpointReturnsUp) {
     EXPECT_NE(response.body.find("\"status\":\"up\""), std::string::npos);
 }
 
+TEST(WebApiRouterTest, WorkerInfoPublicEndpointReturnsOk) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/worker/info";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"ok\":true"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerInfoContainsRoleAndSimulatorVersionFields) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/worker/info";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"role\":\"worker\""), std::string::npos);
+    EXPECT_NE(response.body.find("\"simulatorVersionName\":"), std::string::npos);
+    EXPECT_NE(response.body.find("\"simulatorVersionNumber\":"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerInfoPostReturnsMethodNotAllowed) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/info";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 405);
+}
+
+TEST(WebApiRouterTest, WorkerCapabilitiesPublicEndpointReturnsOk) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/worker/capabilities";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"ok\":true"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerCapabilitiesReflectCurrentImplementation) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/worker/capabilities";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"supportsSessionApi\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsSessionScopedSimulator\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsModelCreation\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsModelPersistence\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsSimulationStatus\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsSimulationConfig\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsSynchronousRun\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsSynchronousStep\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsDistributedJobs\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsJobPolling\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsBackgroundExecution\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsModelUpload\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsStreamingEvents\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerCapabilitiesPostReturnsMethodNotAllowed) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/capabilities";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 405);
+}
+
 TEST(WebApiRouterTest, AuthSessionThenSimulatorInfoWithBearerToken) {
     ApiRouterFixture fixture;
 
