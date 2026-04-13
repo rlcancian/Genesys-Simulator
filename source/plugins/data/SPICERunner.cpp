@@ -11,6 +11,7 @@
  */
 
 #include "SPICERunner.h"
+#include "../../kernel/simulator/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -61,6 +62,33 @@ std::pair<std::string, double> ParseTrigLine(std::string line){
 //
 
 SPICERunner::SPICERunner(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<SPICERunner>(), name) {
+    SimulationControlGeneric<std::string>* propRunnerCommand = new SimulationControlGeneric<std::string>(
+            std::bind(&SPICERunner::getRunnerCommand, this), std::bind(&SPICERunner::setRunnerCommand, this, std::placeholders::_1),
+            Util::TypeOf<SPICERunner>(), getName(), "RunnerCommand", "");
+    SimulationControlGeneric<std::string>* propModelsPath = new SimulationControlGeneric<std::string>(
+            std::bind(&SPICERunner::getModelsPath, this), std::bind(&SPICERunner::setModelsPath, this, std::placeholders::_1),
+            Util::TypeOf<SPICERunner>(), getName(), "ModelsPath", "");
+    SimulationControlGeneric<std::string>* propWorkingInputFilename = new SimulationControlGeneric<std::string>(
+            std::bind(&SPICERunner::getWorkingInputFilename, this), std::bind(&SPICERunner::setWorkingInputFilename, this, std::placeholders::_1),
+            Util::TypeOf<SPICERunner>(), getName(), "WorkingInputFilename", "");
+    SimulationControlGeneric<std::string>* propWorkingOutputFilename = new SimulationControlGeneric<std::string>(
+            std::bind(&SPICERunner::getWorkingOutputFilename, this), std::bind(&SPICERunner::setWorkingOutputFilename, this, std::placeholders::_1),
+            Util::TypeOf<SPICERunner>(), getName(), "WorkingOutputFilename", "");
+    SimulationControlGeneric<std::string>* propWorkingDirectory = new SimulationControlGeneric<std::string>(
+            std::bind(&SPICERunner::getWorkingDirectory, this), std::bind(&SPICERunner::setWorkingDirectory, this, std::placeholders::_1),
+            Util::TypeOf<SPICERunner>(), getName(), "WorkingDirectory", "");
+
+    _parentModel->getControls()->insert(propRunnerCommand);
+    _parentModel->getControls()->insert(propModelsPath);
+    _parentModel->getControls()->insert(propWorkingInputFilename);
+    _parentModel->getControls()->insert(propWorkingOutputFilename);
+    _parentModel->getControls()->insert(propWorkingDirectory);
+
+    _addProperty(propRunnerCommand);
+    _addProperty(propModelsPath);
+    _addProperty(propWorkingInputFilename);
+    _addProperty(propWorkingOutputFilename);
+    _addProperty(propWorkingDirectory);
 }
 
 SPICERunner::~SPICERunner() {
@@ -78,7 +106,7 @@ std::string SPICERunner::CompileSpiceFile() {
 
     std::string spicefile = "GenESyS generated circuit\n\n";//set spicebehavior=all\n\n";
     // Resolves all model dependencies
-	for (std::string model: models) spicefile += ".include " + models_path + model + ".cir\n";
+	for (std::string model: models) spicefile += ".include " + _modelsPath + model + ".cir\n";
     spicefile += "\n";
     // Compiles all subcircuit templates
     for (std::string subcircuit: subcircuits) spicefile += subcircuit + "\n";
@@ -117,7 +145,7 @@ void SPICERunner::PlotVRelative(std::string comparison_base, std::string net) {
 template<typename... Args>
 void SPICERunner::PlotVRelative(std::string comparison_base, std::string net, Args... args) {
 	vplots.push_back("v("+ net + ")-v(" + comparison_base + ") ");
-    PlotVPlotVRelative(comparison_base, args...);
+    PlotVRelative(comparison_base, args...);
 }
 
 void SPICERunner::PlotI(std::string net) {
@@ -127,7 +155,7 @@ void SPICERunner::PlotI(std::string net) {
 template<typename... Args>
 void SPICERunner::PlotI(std::string net, Args... args) {
 	iplots.push_back("i("+net+") ");
-    PlotV(args...);
+    PlotI(args...);
 }
 
 void SPICERunner::PlotIRelative(std::string comparison_base, std::string net) {
@@ -137,7 +165,7 @@ void SPICERunner::PlotIRelative(std::string comparison_base, std::string net) {
 template<typename... Args>
 void SPICERunner::PlotIRelative(std::string comparison_base, std::string net, Args... args) {
 	iplots.push_back("i("+ net + ")-i(" + comparison_base + ") ");
-    PlotVPlotIRelative(comparison_base, args...);
+    PlotIRelative(comparison_base, args...);
 }
 
 double* SPICERunner::MeasurePeak(std::string label, std::string peak, std::string quantity, std::string node, float start, float finish) {
@@ -155,7 +183,8 @@ double* SPICERunner::MeasureTrigTarg(std::string label, std::string trig, float 
 }
 
 void SPICERunner::ParseOutput(){
-    std::ifstream data("output");
+    std::string outputFilepath = _workingDirectory.empty() ? _workingOutputFilename : (_workingDirectory + Util::DirSeparator() + _workingOutputFilename);
+    std::ifstream data(outputFilepath);
     if (!data.is_open()) return;
     std::string line;
     while (getline(data, line)){
@@ -200,16 +229,19 @@ void SPICERunner::ConfigSim(double duration, double step) {
 }
 
 void SPICERunner::Run() {
-    std::string output = CompileSpiceFile();
+    const std::string compiledInput = CompileSpiceFile();
+    std::string inputFilepath = _workingDirectory.empty() ? _workingInputFilename : (_workingDirectory + Util::DirSeparator() + _workingInputFilename);
+    std::string outputFilepath = _workingDirectory.empty() ? _workingOutputFilename : (_workingDirectory + Util::DirSeparator() + _workingOutputFilename);
     std::string s;
-    std::ofstream out("input.cir");
-    out << output;
+    std::ofstream out(inputFilepath);
+    out << compiledInput;
     out.close();
 
-	int code = std::system("ngspice < input.cir 2> /dev/null");
+	_lastRunCommand = _runnerCommand + " -b -o \"" + outputFilepath + "\" \"" + inputFilepath + "\"";
+	int code = std::system(_lastRunCommand.c_str());
 
     if (code == 0) {
-        std::ifstream in("output");
+        std::ifstream in(outputFilepath);
         while (std::getline(in, s)) {
             std::cout << s << '\n';
         }
@@ -227,7 +259,16 @@ void SPICERunner::Run() {
 //
 
 std::string SPICERunner::show() {
-	return ModelDataDefinition::show();
+	return ModelDataDefinition::show() +
+            ",runnerCommand=\"" + _runnerCommand + "\"" +
+            ",modelsPath=\"" + _modelsPath + "\"" +
+            ",workingInputFilename=\"" + _workingInputFilename + "\"" +
+            ",workingOutputFilename=\"" + _workingOutputFilename + "\"" +
+            ",workingDirectory=\"" + _workingDirectory + "\"" +
+            ",subscribers=" + std::to_string(subscribers.size()) +
+            ",instances=" + std::to_string(instances.size()) +
+            ",plots=" + std::to_string(vplots.size() + iplots.size()) +
+            ",measures=" + std::to_string(measures.size());
 }
 
 
@@ -265,19 +306,86 @@ ModelDataDefinition* SPICERunner::NewInstance(Model* model, std::string name) {
 bool SPICERunner::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		try {
-			this->_someString = fields->loadField("someString", DEFAULT.someString);
-			this->_someUint = fields->loadField("someUint", DEFAULT.someUint);
-		} catch (...) {
-		}
+		_runnerCommand = fields->loadField("runnerCommand", DEFAULT.runnerCommand);
+		_modelsPath = fields->loadField("modelsPath", DEFAULT.modelsPath);
+		_workingInputFilename = fields->loadField("workingInputFilename", DEFAULT.workingInputFilename);
+		_workingOutputFilename = fields->loadField("workingOutputFilename", DEFAULT.workingOutputFilename);
+		_workingDirectory = fields->loadField("workingDirectory", DEFAULT.workingDirectory);
 	}
 	return res;
 }
 
 void SPICERunner::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	fields->saveField("someUint", _someUint, DEFAULT.someUint);
-	fields->saveField("someString", _someString, DEFAULT.someString);
+	fields->saveField("runnerCommand", _runnerCommand, DEFAULT.runnerCommand, saveDefaultValues);
+	fields->saveField("modelsPath", _modelsPath, DEFAULT.modelsPath, saveDefaultValues);
+	fields->saveField("workingInputFilename", _workingInputFilename, DEFAULT.workingInputFilename, saveDefaultValues);
+	fields->saveField("workingOutputFilename", _workingOutputFilename, DEFAULT.workingOutputFilename, saveDefaultValues);
+	fields->saveField("workingDirectory", _workingDirectory, DEFAULT.workingDirectory, saveDefaultValues);
 }
 
+bool SPICERunner::_check(std::string& errorMessage) {
+    bool resultAll = true;
+    if (_runnerCommand.empty()) {
+        errorMessage += "RunnerCommand must not be empty. ";
+        resultAll = false;
+    }
+    if (_workingInputFilename.empty()) {
+        errorMessage += "WorkingInputFilename must not be empty. ";
+        resultAll = false;
+    }
+    if (_workingOutputFilename.empty()) {
+        errorMessage += "WorkingOutputFilename must not be empty. ";
+        resultAll = false;
+    }
+    if (!models.empty() && _modelsPath.empty()) {
+        errorMessage += "ModelsPath must not be empty when model includes are used. ";
+        resultAll = false;
+    }
+    return resultAll;
+}
+
+void SPICERunner::setRunnerCommand(std::string runnerCommand) {
+    _runnerCommand = runnerCommand;
+}
+
+std::string SPICERunner::getRunnerCommand() const {
+    return _runnerCommand;
+}
+
+void SPICERunner::setModelsPath(std::string modelsPath) {
+    _modelsPath = modelsPath;
+}
+
+std::string SPICERunner::getModelsPath() const {
+    return _modelsPath;
+}
+
+void SPICERunner::setWorkingInputFilename(std::string workingInputFilename) {
+    _workingInputFilename = workingInputFilename;
+}
+
+std::string SPICERunner::getWorkingInputFilename() const {
+    return _workingInputFilename;
+}
+
+void SPICERunner::setWorkingOutputFilename(std::string workingOutputFilename) {
+    _workingOutputFilename = workingOutputFilename;
+}
+
+std::string SPICERunner::getWorkingOutputFilename() const {
+    return _workingOutputFilename;
+}
+
+void SPICERunner::setWorkingDirectory(std::string workingDirectory) {
+    _workingDirectory = workingDirectory;
+}
+
+std::string SPICERunner::getWorkingDirectory() const {
+    return _workingDirectory;
+}
+
+std::string SPICERunner::getLastRunCommand() const {
+    return _lastRunCommand;
+}
 
