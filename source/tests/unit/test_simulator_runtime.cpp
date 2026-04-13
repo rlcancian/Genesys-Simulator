@@ -29,6 +29,7 @@
 #include "plugins/data/Storage.h"
 #include "plugins/data/File.h"
 #include "plugins/data/CppCompiler.h"
+#include "plugins/data/SPICERunner.h"
 #include "kernel/util/Util.h"
 #define private public
 #define protected public
@@ -814,6 +815,23 @@ public:
 
     CompilationResult InvokeCompilerProbe(const std::string& command) {
         return _invokeCompiler(command);
+    }
+};
+
+class SPICERunnerProbe : public SPICERunner {
+public:
+    SPICERunnerProbe(Model* model, const std::string& name = "") : SPICERunner(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
     }
 };
 
@@ -4724,4 +4742,169 @@ TEST(SimulatorRuntimeTest, CppCompilerUnloadLibraryNormalizesStateWhenFlagSetWit
     EXPECT_TRUE(compiler.unloadLibrary());
     EXPECT_FALSE(compiler.IsLibraryLoaded());
     EXPECT_EQ(compiler.getDynamicLibraryHandler(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerDefaultsExposeOperationalConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerDefaults");
+    EXPECT_EQ(runner.getRunnerCommand(), "ngspice");
+    EXPECT_EQ(runner.getModelsPath(), "./");
+    EXPECT_EQ(runner.getWorkingInputFilename(), "input.cir");
+    EXPECT_EQ(runner.getWorkingOutputFilename(), "output");
+    EXPECT_EQ(runner.getWorkingDirectory(), "");
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerSettersAndGettersPreserveMainFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerSetGet");
+    runner.setRunnerCommand("xyce");
+    runner.setModelsPath("models/");
+    runner.setWorkingInputFilename("custom_input.cir");
+    runner.setWorkingOutputFilename("custom_output.log");
+    runner.setWorkingDirectory("workdir");
+
+    EXPECT_EQ(runner.getRunnerCommand(), "xyce");
+    EXPECT_EQ(runner.getModelsPath(), "models/");
+    EXPECT_EQ(runner.getWorkingInputFilename(), "custom_input.cir");
+    EXPECT_EQ(runner.getWorkingOutputFilename(), "custom_output.log");
+    EXPECT_EQ(runner.getWorkingDirectory(), "workdir");
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerCheckRejectsInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerCheckInvalid");
+    runner.setRunnerCommand("");
+    runner.setWorkingInputFilename("");
+    runner.setWorkingOutputFilename("");
+    std::string instance = "R1 a b 1k";
+    runner.SendComponent(&instance, "", "nmosp");
+    runner.setModelsPath("");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("RunnerCommand must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("WorkingInputFilename must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("WorkingOutputFilename must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("ModelsPath must not be empty"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerCheckAcceptsMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerCheckValid");
+    runner.setRunnerCommand("ngspice");
+    runner.setWorkingInputFilename("input_valid.cir");
+    runner.setWorkingOutputFilename("output_valid.log");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerShowIncludesOperationalObservability) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerShow");
+    runner.setRunnerCommand("xyce");
+    runner.setModelsPath("models/");
+    runner.setWorkingInputFilename("show_input.cir");
+    runner.setWorkingOutputFilename("show_output.log");
+    std::string instance = "Rshow in out 1k";
+    runner.SendComponent(&instance);
+    runner.PlotV("out");
+    runner.MeasurePeak("p1", "max", "v", "out", 0.0f, 1.0f);
+
+    const std::string shown = runner.show();
+    EXPECT_NE(shown.find("runnerCommand=\"xyce\""), std::string::npos);
+    EXPECT_NE(shown.find("modelsPath=\"models/\""), std::string::npos);
+    EXPECT_NE(shown.find("workingInputFilename=\"show_input.cir\""), std::string::npos);
+    EXPECT_NE(shown.find("workingOutputFilename=\"show_output.log\""), std::string::npos);
+    EXPECT_NE(shown.find("instances=1"), std::string::npos);
+    EXPECT_NE(shown.find("plots=1"), std::string::npos);
+    EXPECT_NE(shown.find("measures=1"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerPersistenceRoundTripPreservesOperationalFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe source(model, "SPICERunnerPersistSource");
+    source.setRunnerCommand("xyce");
+    source.setModelsPath("persist_models/");
+    source.setWorkingInputFilename("persist_input.cir");
+    source.setWorkingOutputFilename("persist_output.log");
+    source.setWorkingDirectory("persist_workdir");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SPICERunnerProbe loaded(model, "SPICERunnerPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRunnerCommand(), "xyce");
+    EXPECT_EQ(loaded.getModelsPath(), "persist_models/");
+    EXPECT_EQ(loaded.getWorkingInputFilename(), "persist_input.cir");
+    EXPECT_EQ(loaded.getWorkingOutputFilename(), "persist_output.log");
+    EXPECT_EQ(loaded.getWorkingDirectory(), "persist_workdir");
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerCompileSpiceFileStillBuildsExpectedNetlistSegments) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerCompile");
+    runner.setModelsPath("my_models/");
+    std::string instance = "R1 in out 1k";
+    runner.SendComponent(&instance, ".subckt my_sub in out\nRsub in out 2k\n.ends", "my_model");
+    runner.ConfigSim(1.0, 0.1);
+
+    const std::string compiled = runner.CompileSpiceFile();
+    EXPECT_NE(compiled.find(".include my_models/my_model.cir"), std::string::npos);
+    EXPECT_NE(compiled.find(".subckt my_sub in out"), std::string::npos);
+    EXPECT_NE(compiled.find("R1 in out 1k"), std::string::npos);
+    EXPECT_NE(compiled.find("tran"), std::string::npos);
+    EXPECT_NE(compiled.find(".end"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerRunUsesConfiguredOperationalFilenamesInCommand) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const std::string workingDir = Util::RunningPath() + Util::DirSeparator() + "spice_runner_runtime";
+    ::mkdir(workingDir.c_str(), 0755);
+
+    SPICERunnerProbe runner(model, "SPICERunnerRunCommand");
+    runner.setRunnerCommand("true");
+    runner.setWorkingDirectory(workingDir);
+    runner.setWorkingInputFilename("runtime_input_test.cir");
+    runner.setWorkingOutputFilename("runtime_output_test.log");
+    runner.Run();
+
+    const std::string command = runner.getLastRunCommand();
+    EXPECT_NE(command.find("runtime_input_test.cir"), std::string::npos);
+    EXPECT_NE(command.find("runtime_output_test.log"), std::string::npos);
+    EXPECT_NE(command.find(" -b -o "), std::string::npos);
+
+    const std::string inputPath = workingDir + Util::DirSeparator() + "runtime_input_test.cir";
+    EXPECT_TRUE(Util::FileExists(inputPath));
+
+    Util::FileDelete(inputPath);
+    const std::string outputPath = workingDir + Util::DirSeparator() + "runtime_output_test.log";
+    Util::FileDelete(outputPath);
+    ::rmdir(workingDir.c_str());
 }
