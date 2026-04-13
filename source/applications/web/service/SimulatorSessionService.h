@@ -43,7 +43,8 @@ public:
         MissingCurrentModel,
         JobNotFound,
         AccessDenied,
-        OperationFailed
+        OperationFailed,
+        ResultNotReady
     };
 
     /**
@@ -93,6 +94,7 @@ public:
         bool supportsBackgroundExecution = false;
         bool supportsModelUpload = false;
         bool supportsStreamingEvents = false;
+        bool supportsJobResultRetrieval = false;
     };
 
     /**
@@ -167,6 +169,31 @@ public:
         bool success = false;
         WorkerJobError error = WorkerJobError::None;
         WorkerJobInfoResult jobInfo;
+    };
+
+    /**
+     * @brief Describes terminal worker job result data exposed by worker stage 5 endpoint.
+     */
+    struct WorkerJobResultInfo {
+        std::string jobId;
+        WorkerJobState state = WorkerJobState::Queued;
+        std::string message;
+        double simulatedTime = 0.0;
+        unsigned int currentReplicationNumber = 0;
+        unsigned int numberOfReplications = 0;
+        double replicationLength = 0.0;
+        double warmUpPeriod = 0.0;
+        bool hasIsPaused = false;
+        bool isPaused = false;
+    };
+
+    /**
+     * @brief Contains worker job terminal result lookup output and error state.
+     */
+    struct WorkerJobResultQueryResult {
+        bool success = false;
+        WorkerJobError error = WorkerJobError::None;
+        WorkerJobResultInfo jobResult;
     };
 
     /**
@@ -331,6 +358,13 @@ public:
      * @return Worker job run output and error state.
      */
     WorkerJobRunResult runWorkerJob(const std::string& accessToken, const std::string& jobId);
+    /**
+     * @brief Returns persisted terminal result data for a token-scoped worker job.
+     * @param accessToken Bearer token associated with a session.
+     * @param jobId Worker job identifier to query.
+     * @return Worker job terminal result lookup output and error state.
+     */
+    WorkerJobResultQueryResult getWorkerJobResult(const std::string& accessToken, const std::string& jobId);
 
 private:
     /**
@@ -346,6 +380,13 @@ private:
      * @return API-facing worker job metadata.
      */
     static WorkerJobInfoResult _toWorkerJobInfoResult(const WorkerJob& job);
+
+    /**
+     * @brief Converts internal worker job storage record into stage 5 result output shape.
+     * @param job Internal job record.
+     * @return API-facing worker job terminal result metadata.
+     */
+    static WorkerJobResultInfo _toWorkerJobResultInfo(const WorkerJob& job);
 
     SessionManager& _sessionManager;
     WorkerJobManager& _workerJobManager;

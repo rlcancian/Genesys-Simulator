@@ -43,6 +43,14 @@ public:
     bool setMessage(const std::string& jobId, const std::string& message);
 
     /**
+     * @brief Persists the terminal simulation summary for an existing job.
+     * @param jobId Job identifier to update.
+     * @param terminalResult Terminal simulation summary values.
+     * @return True when the job exists and was updated.
+     */
+    bool setTerminalResult(const std::string& jobId, const WorkerJobTerminalResult& terminalResult);
+
+    /**
      * @brief Fetches a previously stored job record.
      * @param jobId Job identifier.
      * @return Copy of the job when found.
