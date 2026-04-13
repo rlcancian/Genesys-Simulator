@@ -3,6 +3,7 @@
 #include "applications/web/api/ApiRouter.h"
 #include "applications/web/auth/TokenService.h"
 #include "applications/web/service/SimulatorSessionService.h"
+#include "applications/web/worker/WorkerJobManager.h"
 #include "applications/web/session/SessionManager.h"
 
 #include <array>
@@ -13,7 +14,8 @@ namespace {
 struct ApiRouterFixture {
     TokenService tokenService;
     SessionManager sessionManager{tokenService, [] { return std::make_unique<Simulator>(); }};
-    SimulatorSessionService simulatorService{sessionManager};
+    WorkerJobManager workerJobManager;
+    SimulatorSessionService simulatorService{sessionManager, workerJobManager};
     ApiRouter router{simulatorService};
 };
 
@@ -163,7 +165,7 @@ TEST(WebApiRouterTest, WorkerCapabilitiesReflectCurrentImplementation) {
     EXPECT_NE(response.body.find("\"supportsSimulationConfig\":true"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsSynchronousRun\":true"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsSynchronousStep\":true"), std::string::npos);
-    EXPECT_NE(response.body.find("\"supportsDistributedJobs\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsDistributedJobs\":true"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsJobPolling\":false"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsBackgroundExecution\":false"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsModelUpload\":true"), std::string::npos);
@@ -242,6 +244,121 @@ TEST(WebApiRouterTest, WorkerImportLanguageHappyPathReturnsModelMetadata) {
     EXPECT_NE(response.body.find("\"modelId\":"), std::string::npos);
     EXPECT_NE(response.body.find("\"name\":"), std::string::npos);
     EXPECT_NE(response.body.find("\"componentCount\":"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerJobsCreateWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/jobs";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerJobsCreateWithoutCurrentModelReturnsConflict) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/jobs";
+    request.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 409);
+    EXPECT_NE(response.body.find("\"NO_CURRENT_MODEL\""), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerJobsCreateWithCurrentModelReturnsCreatedQueuedMetadata) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest importRequest;
+    importRequest.method = "POST";
+    importRequest.path = "/api/v1/worker/models/import-language";
+    importRequest.headers["authorization"] = "Bearer " + token;
+    importRequest.body = minimalValidModelSpecification();
+    const HttpResponse importResponse = fixture.router.handle(importRequest);
+    ASSERT_EQ(importResponse.status, 200);
+
+    HttpRequest createJobRequest;
+    createJobRequest.method = "POST";
+    createJobRequest.path = "/api/v1/worker/jobs";
+    createJobRequest.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse createJobResponse = fixture.router.handle(createJobRequest);
+
+    EXPECT_EQ(createJobResponse.status, 201);
+    EXPECT_NE(createJobResponse.body.find("\"ok\":true"), std::string::npos);
+    EXPECT_NE(createJobResponse.body.find("\"jobId\":"), std::string::npos);
+    EXPECT_NE(createJobResponse.body.find("\"state\":\"queued\""), std::string::npos);
+    EXPECT_NE(createJobResponse.body.find("\"snapshotFilename\":\"job_"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerJobsGetWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/worker/jobs/job-1";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerJobsGetUnknownIdReturnsNotFound) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/worker/jobs/job-9999";
+    request.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 404);
+    EXPECT_NE(response.body.find("\"WORKER_JOB_NOT_FOUND\""), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerJobsCreateThenGetReturnsSameQueuedJobMetadata) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest importRequest;
+    importRequest.method = "POST";
+    importRequest.path = "/api/v1/worker/models/import-language";
+    importRequest.headers["authorization"] = "Bearer " + token;
+    importRequest.body = minimalValidModelSpecification();
+    const HttpResponse importResponse = fixture.router.handle(importRequest);
+    ASSERT_EQ(importResponse.status, 200);
+
+    HttpRequest createJobRequest;
+    createJobRequest.method = "POST";
+    createJobRequest.path = "/api/v1/worker/jobs";
+    createJobRequest.headers["authorization"] = "Bearer " + token;
+    const HttpResponse createJobResponse = fixture.router.handle(createJobRequest);
+    ASSERT_EQ(createJobResponse.status, 201);
+
+    const std::string jobId = extractJsonStringField(createJobResponse.body, "jobId");
+    ASSERT_FALSE(jobId.empty());
+
+    HttpRequest getJobRequest;
+    getJobRequest.method = "GET";
+    getJobRequest.path = "/api/v1/worker/jobs/" + jobId;
+    getJobRequest.headers["authorization"] = "Bearer " + token;
+    const HttpResponse getJobResponse = fixture.router.handle(getJobRequest);
+
+    EXPECT_EQ(getJobResponse.status, 200);
+    EXPECT_NE(getJobResponse.body.find("\"state\":\"queued\""), std::string::npos);
+    EXPECT_NE(getJobResponse.body.find("\"jobId\":\"" + jobId + "\""), std::string::npos);
 }
 
 TEST(WebApiRouterTest, AuthSessionThenSimulatorInfoWithBearerToken) {

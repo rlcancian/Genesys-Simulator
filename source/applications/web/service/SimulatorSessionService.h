@@ -1,6 +1,8 @@
 #pragma once
 
 #include "../session/SessionManager.h"
+#include "../worker/WorkerJob.h"
+#include "../worker/WorkerJobManager.h"
 
 #include <string>
 
@@ -29,6 +31,18 @@ public:
         InvalidToken,
         EmptySpecification,
         InvalidSpecification,
+        OperationFailed
+    };
+
+    /**
+     * @brief Enumerates worker job operation errors.
+     */
+    enum class WorkerJobError {
+        None,
+        InvalidToken,
+        MissingCurrentModel,
+        JobNotFound,
+        AccessDenied,
         OperationFailed
     };
 
@@ -117,6 +131,36 @@ public:
     };
 
     /**
+     * @brief Describes worker job metadata exposed by worker stage 3 endpoints.
+     */
+    struct WorkerJobInfoResult {
+        std::string jobId;
+        std::string sessionId;
+        WorkerJobState state = WorkerJobState::Queued;
+        std::string snapshotFilename;
+        std::string createdMarker;
+        std::string message;
+    };
+
+    /**
+     * @brief Contains worker job creation output and error state.
+     */
+    struct WorkerJobCreationResult {
+        bool success = false;
+        WorkerJobError error = WorkerJobError::None;
+        WorkerJobInfoResult jobInfo;
+    };
+
+    /**
+     * @brief Contains worker job lookup output and error state.
+     */
+    struct WorkerJobQueryResult {
+        bool success = false;
+        WorkerJobError error = WorkerJobError::None;
+        WorkerJobInfoResult jobInfo;
+    };
+
+    /**
      * @brief Captures the current simulation execution state.
      */
     struct SimulationStatusResult {
@@ -172,8 +216,9 @@ public:
     /**
      * @brief Builds a service bound to the provided session manager.
      * @param sessionManager Session manager used to resolve active sessions.
+     * @param workerJobManager In-memory worker job storage manager.
      */
-    explicit SimulatorSessionService(SessionManager& sessionManager);
+    explicit SimulatorSessionService(SessionManager& sessionManager, WorkerJobManager& workerJobManager);
 
     /**
      * @brief Creates a new authenticated session.
@@ -257,6 +302,19 @@ public:
      * @return Import output and error state.
      */
     ModelImportResult importModelFromLanguage(const std::string& accessToken, const std::string& modelSpecification);
+    /**
+     * @brief Creates a queued worker job for the token-scoped session model snapshot.
+     * @param accessToken Bearer token associated with a session.
+     * @return Worker job creation output and error state.
+     */
+    WorkerJobCreationResult createWorkerJob(const std::string& accessToken);
+    /**
+     * @brief Returns worker job metadata for a token-scoped session.
+     * @param accessToken Bearer token associated with a session.
+     * @param jobId Worker job identifier to query.
+     * @return Worker job lookup output and error state.
+     */
+    WorkerJobQueryResult getWorkerJob(const std::string& accessToken, const std::string& jobId);
 
 private:
     /**
@@ -266,5 +324,13 @@ private:
      */
     static bool _isSafeFilename(const std::string& filename);
 
+    /**
+     * @brief Converts internal worker job storage record into API service output shape.
+     * @param job Internal job record.
+     * @return API-facing worker job metadata.
+     */
+    static WorkerJobInfoResult _toWorkerJobInfoResult(const WorkerJob& job);
+
     SessionManager& _sessionManager;
+    WorkerJobManager& _workerJobManager;
 };
