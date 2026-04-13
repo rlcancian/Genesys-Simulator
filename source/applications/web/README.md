@@ -74,6 +74,17 @@ Behavior in this stage:
 - cancellation is still not available;
 - distributed orchestration remains out of scope.
 
+
+## Worker cycle Stage 6
+This stage hardens HTTP transport behavior for existing worker and session APIs without changing route contracts:
+- request reading is now incremental (`recv` loop) instead of single-shot reads;
+- request assembly is bounded by a transport limit of **1 MiB** (larger payloads return `413 Payload Too Large`);
+- socket receive/send timeouts are configured to **5 seconds** per client connection;
+- when timeout happens before a complete request is assembled, the server returns `408 Request Timeout`;
+- transport-level error payloads remain JSON-shaped and consistent with current server error responses.
+
+This stage is explicitly operational hardening only. Application-layer endpoints and worker cycle stages 1-5 contracts remain unchanged.
+
 ## How to run
 ```bash
 cmake -S . -B build/web-debug -G Ninja -DGENESYS_BUILD_WEB_APPLICATION=ON
