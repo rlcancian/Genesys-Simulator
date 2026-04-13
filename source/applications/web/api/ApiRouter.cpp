@@ -4,6 +4,7 @@
 #include <cctype>
 #include <cstdlib>
 #include <regex>
+#include <string_view>
 
 ApiRouter::ApiRouter(SimulatorSessionService& simulatorService) : _simulatorService(simulatorService) {}
 
@@ -57,6 +58,45 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
         }
 
         return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _modelInfoDataJson(result.modelInfo) + "}"};
+    }
+
+
+    if (request.path == "/api/v1/worker/jobs") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/worker/jobs");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.createWorkerJob(token);
+        if (!result.success) {
+            return _mapWorkerJobError(result.error, true);
+        }
+
+        return HttpResponse{201, "application/json", "{\"ok\":true,\"data\":" + _workerJobDataJson(result.jobInfo) + "}"};
+    }
+
+    // Stage 3 requires only minimal path parsing for job inspection by id.
+    std::string workerJobId;
+    if (_tryExtractWorkerJobIdFromPath(request.path, workerJobId)) {
+        if (request.method != "GET") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only GET is allowed for /api/v1/worker/jobs/{jobId}");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.getWorkerJob(token, workerJobId);
+        if (!result.success) {
+            return _mapWorkerJobError(result.error, false);
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _workerJobDataJson(result.jobInfo) + "}"};
     }
 
     if (request.path == "/api/v1/auth/session") {
@@ -512,4 +552,67 @@ std::string ApiRouter::_workerCapabilitiesDataJson(const SimulatorSessionService
            ","
            "\"supportsModelUpload\":" + std::string(capabilities.supportsModelUpload ? "true" : "false") + ","
            "\"supportsStreamingEvents\":" + std::string(capabilities.supportsStreamingEvents ? "true" : "false") + "}";
+}
+
+
+bool ApiRouter::_tryExtractWorkerJobIdFromPath(const std::string& path, std::string& outJobId) {
+    constexpr std::string_view prefix = "/api/v1/worker/jobs/";
+    if (path.rfind(prefix, 0) != 0 || path.size() <= prefix.size()) {
+        return false;
+    }
+
+    outJobId = path.substr(prefix.size());
+    if (outJobId.empty() || outJobId.find('/') != std::string::npos) {
+        return false;
+    }
+    return true;
+}
+
+const char* ApiRouter::_workerJobStateToString(WorkerJobState state) {
+    switch (state) {
+        case WorkerJobState::Queued:
+            return "queued";
+        case WorkerJobState::Running:
+            return "running";
+        case WorkerJobState::Finished:
+            return "finished";
+        case WorkerJobState::Failed:
+            return "failed";
+        default:
+            return "queued";
+    }
+}
+
+std::string ApiRouter::_workerJobDataJson(const SimulatorSessionService::WorkerJobInfoResult& job) {
+    return "{\"jobId\":\"" + _escapeJson(job.jobId) + "\","
+           "\"state\":\"" + std::string(_workerJobStateToString(job.state)) + "\","
+           "\"sessionId\":\"" + _escapeJson(job.sessionId) + "\","
+           "\"snapshotFilename\":\"" + _escapeJson(job.snapshotFilename) + "\","
+           "\"createdMarker\":\"" + _escapeJson(job.createdMarker) + "\","
+           "\"message\":\"" + _escapeJson(job.message) + "\"}";
+}
+
+HttpResponse ApiRouter::_mapWorkerJobError(
+    SimulatorSessionService::WorkerJobError error,
+    bool includeMissingModelMessage
+) {
+    switch (error) {
+        case SimulatorSessionService::WorkerJobError::InvalidToken:
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        case SimulatorSessionService::WorkerJobError::MissingCurrentModel:
+            return _jsonError(
+                409,
+                "NO_CURRENT_MODEL",
+                includeMissingModelMessage ? "No current model available to create worker job" : "No current model available"
+            );
+        case SimulatorSessionService::WorkerJobError::JobNotFound:
+            return _jsonError(404, "WORKER_JOB_NOT_FOUND", "Worker job was not found");
+        case SimulatorSessionService::WorkerJobError::AccessDenied:
+            return _jsonError(404, "WORKER_JOB_NOT_FOUND", "Worker job was not found");
+        case SimulatorSessionService::WorkerJobError::OperationFailed:
+            return _jsonError(500, "WORKER_JOB_FAILED", "Unable to process worker job request");
+        case SimulatorSessionService::WorkerJobError::None:
+        default:
+            return _jsonError(500, "INTERNAL_ERROR", "Unexpected worker job error state");
+    }
 }

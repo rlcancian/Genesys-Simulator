@@ -120,4 +120,30 @@ private:
      * @return JSON object string.
      */
     static std::string _workerCapabilitiesDataJson(const SimulatorSessionService::WorkerCapabilitiesResult& capabilities);
+    /**
+     * @brief Tries to parse a worker job identifier from `/api/v1/worker/jobs/{jobId}`.
+     * @param path HTTP request path.
+     * @param outJobId Receives parsed job identifier when the path matches.
+     * @return True when the path format is valid and a non-empty id was extracted.
+     */
+    static bool _tryExtractWorkerJobIdFromPath(const std::string& path, std::string& outJobId);
+    /**
+     * @brief Converts worker job states into API string values.
+     * @param state Worker job state value.
+     * @return Lowercase state string expected by clients.
+     */
+    static const char* _workerJobStateToString(WorkerJobState state);
+    /**
+     * @brief Serializes worker job metadata into a JSON object string.
+     * @param job Worker job information result.
+     * @return JSON object string.
+     */
+    static std::string _workerJobDataJson(const SimulatorSessionService::WorkerJobInfoResult& job);
+    /**
+     * @brief Maps worker job operation errors to transport-level HTTP responses.
+     * @param error Worker job error code.
+     * @param includeMissingModelMessage Controls no-model message wording for create/get routes.
+     * @return HTTP response containing mapped status and error body.
+     */
+    static HttpResponse _mapWorkerJobError(SimulatorSessionService::WorkerJobError error, bool includeMissingModelMessage);
 };

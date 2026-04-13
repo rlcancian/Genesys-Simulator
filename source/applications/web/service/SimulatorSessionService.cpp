@@ -4,6 +4,7 @@
 #include <cctype>
 #include <filesystem>
 #include <mutex>
+#include <optional>
 #include <regex>
 
 namespace {
@@ -53,7 +54,8 @@ void _populateSimulationStatusFromModel(Model* model, SimulatorSessionService::S
 }
 }  // namespace
 
-SimulatorSessionService::SimulatorSessionService(SessionManager& sessionManager) : _sessionManager(sessionManager) {}
+SimulatorSessionService::SimulatorSessionService(SessionManager& sessionManager, WorkerJobManager& workerJobManager)
+    : _sessionManager(sessionManager), _workerJobManager(workerJobManager) {}
 
 SimulatorSessionService::CreateSessionResult SimulatorSessionService::createSession() {
     SessionContext* session = _sessionManager.createSession();
@@ -98,8 +100,8 @@ SimulatorSessionService::WorkerCapabilitiesResult SimulatorSessionService::getWo
     result.supportsSimulationConfig = true;
     result.supportsSynchronousRun = true;
     result.supportsSynchronousStep = true;
-    // Distributed job orchestration features are intentionally not available in stage 1.
-    result.supportsDistributedJobs = false;
+    // Stage 3 introduces job abstraction creation/inspection, but not execution yet.
+    result.supportsDistributedJobs = true;
     result.supportsJobPolling = false;
     result.supportsBackgroundExecution = false;
     // Stage 2 introduces a worker model-ingress endpoint based on plain text language import.
@@ -391,6 +393,66 @@ SimulatorSessionService::ModelImportResult SimulatorSessionService::importModelF
     return result;
 }
 
+
+SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::createWorkerJob(const std::string& accessToken) {
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return WorkerJobCreationResult{false, WorkerJobError::InvalidToken, WorkerJobInfoResult{}};
+    }
+
+    std::scoped_lock lock(session->mutex);
+    ModelManager* modelManager = session->simulator->getModelManager();
+    if (modelManager == nullptr) {
+        return WorkerJobCreationResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    Model* model = modelManager->current();
+    if (model == nullptr) {
+        return WorkerJobCreationResult{false, WorkerJobError::MissingCurrentModel, WorkerJobInfoResult{}};
+    }
+
+    WorkerJob job = _workerJobManager.createQueuedJob(session->sessionId);
+    const std::string snapshotFilename = std::string("job_") + job.jobId + ".gen";
+
+    // Persisting a snapshot decouples future worker execution from live model mutations.
+    const std::filesystem::path snapshotPath = session->workspacePath / snapshotFilename;
+    if (!model->save(snapshotPath.string())) {
+        return WorkerJobCreationResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    if (!_workerJobManager.setSnapshotFilename(job.jobId, snapshotFilename)) {
+        return WorkerJobCreationResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    const std::optional<WorkerJob> storedJob = _workerJobManager.getJob(job.jobId);
+    if (!storedJob.has_value()) {
+        return WorkerJobCreationResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    return WorkerJobCreationResult{true, WorkerJobError::None, _toWorkerJobInfoResult(storedJob.value())};
+}
+
+SimulatorSessionService::WorkerJobQueryResult SimulatorSessionService::getWorkerJob(
+    const std::string& accessToken,
+    const std::string& jobId
+) {
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return WorkerJobQueryResult{false, WorkerJobError::InvalidToken, WorkerJobInfoResult{}};
+    }
+
+    const std::optional<WorkerJob> job = _workerJobManager.getJob(jobId);
+    if (!job.has_value()) {
+        return WorkerJobQueryResult{false, WorkerJobError::JobNotFound, WorkerJobInfoResult{}};
+    }
+
+    if (job->sessionId != session->sessionId) {
+        return WorkerJobQueryResult{false, WorkerJobError::AccessDenied, WorkerJobInfoResult{}};
+    }
+
+    return WorkerJobQueryResult{true, WorkerJobError::None, _toWorkerJobInfoResult(job.value())};
+}
+
 bool SimulatorSessionService::_isSafeFilename(const std::string& filename) {
     if (filename.empty()) {
         return false;
@@ -408,4 +470,15 @@ bool SimulatorSessionService::_isSafeFilename(const std::string& filename) {
 
     static const std::regex safeNamePattern("^[A-Za-z0-9._-]+$");
     return std::regex_match(filename, safeNamePattern);
+}
+
+SimulatorSessionService::WorkerJobInfoResult SimulatorSessionService::_toWorkerJobInfoResult(const WorkerJob& job) {
+    WorkerJobInfoResult result{};
+    result.jobId = job.jobId;
+    result.sessionId = job.sessionId;
+    result.state = job.state;
+    result.snapshotFilename = job.snapshotFilename;
+    result.createdMarker = job.createdMarker;
+    result.message = job.message;
+    return result;
 }

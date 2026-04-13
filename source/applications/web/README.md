@@ -36,6 +36,19 @@ The request body must be plain text GenESyS model language/specification. The wo
 
 This stage still does **not** include multipart/binary upload, distributed job submission, polling, or background orchestration.
 
+## Worker cycle Stage 3
+This stage introduces a minimal worker job abstraction with authenticated, session-scoped endpoints:
+- `POST /api/v1/worker/jobs` (requires `Authorization: Bearer <token>`)
+- `GET /api/v1/worker/jobs/{jobId}` (requires `Authorization: Bearer <token>`)
+
+Behavior in this stage:
+- job creation requires a valid current model in the session;
+- each job is created in in-memory storage with state `queued`;
+- job creation persists a session-workspace snapshot file (for example `job_<id>.gen`) to decouple future execution from live model mutations;
+- job metadata can be queried by id from the same authenticated session.
+
+This stage still does **not** execute jobs, provide result retrieval, add polling loops, or introduce background worker threads.
+
 ## How to run
 ```bash
 cmake -S . -B build/web-debug -G Ninja -DGENESYS_BUILD_WEB_APPLICATION=ON
