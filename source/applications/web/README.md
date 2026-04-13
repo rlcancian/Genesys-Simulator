@@ -49,6 +49,18 @@ Behavior in this stage:
 
 This stage still does **not** execute jobs, provide result retrieval, add polling loops, or introduce background worker threads.
 
+## Worker cycle Stage 4
+This stage adds explicit, synchronous execution of existing worker jobs:
+- `POST /api/v1/worker/jobs/{jobId}/run` (requires `Authorization: Bearer <token>`)
+
+Behavior in this stage:
+- execution is triggered only for an existing job id;
+- job state is updated in memory through `queued -> running -> finished|failed`;
+- execution is synchronous and performed by the session simulator using the job snapshot file;
+- `GET /api/v1/worker/jobs/{jobId}` remains the basic state inspection/polling mechanism after run requests.
+
+This stage still does **not** include background execution, queue worker loops, cancellation, streaming updates, or a dedicated job result endpoint.
+
 ## How to run
 ```bash
 cmake -S . -B build/web-debug -G Ninja -DGENESYS_BUILD_WEB_APPLICATION=ON

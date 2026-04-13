@@ -166,7 +166,7 @@ TEST(WebApiRouterTest, WorkerCapabilitiesReflectCurrentImplementation) {
     EXPECT_NE(response.body.find("\"supportsSynchronousRun\":true"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsSynchronousStep\":true"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsDistributedJobs\":true"), std::string::npos);
-    EXPECT_NE(response.body.find("\"supportsJobPolling\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsJobPolling\":true"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsBackgroundExecution\":false"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsModelUpload\":true"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsStreamingEvents\":false"), std::string::npos);
@@ -328,6 +328,46 @@ TEST(WebApiRouterTest, WorkerJobsGetUnknownIdReturnsNotFound) {
     EXPECT_NE(response.body.find("\"WORKER_JOB_NOT_FOUND\""), std::string::npos);
 }
 
+TEST(WebApiRouterTest, WorkerJobsRunWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/jobs/job-1/run";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerJobsRunWrongMethodReturnsMethodNotAllowed) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/worker/jobs/job-1/run";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 405);
+}
+
+TEST(WebApiRouterTest, WorkerJobsRunUnknownIdReturnsNotFound) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/jobs/job-9999/run";
+    request.headers["authorization"] = "Bearer " + token;
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 404);
+    EXPECT_NE(response.body.find("\"WORKER_JOB_NOT_FOUND\""), std::string::npos);
+}
+
 TEST(WebApiRouterTest, WorkerJobsCreateThenGetReturnsSameQueuedJobMetadata) {
     ApiRouterFixture fixture;
     const std::string token = createSessionAndGetToken(fixture.router);
@@ -359,6 +399,49 @@ TEST(WebApiRouterTest, WorkerJobsCreateThenGetReturnsSameQueuedJobMetadata) {
     EXPECT_EQ(getJobResponse.status, 200);
     EXPECT_NE(getJobResponse.body.find("\"state\":\"queued\""), std::string::npos);
     EXPECT_NE(getJobResponse.body.find("\"jobId\":\"" + jobId + "\""), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerJobsRunThenGetShowsUpdatedFinishedState) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest importRequest;
+    importRequest.method = "POST";
+    importRequest.path = "/api/v1/worker/models/import-language";
+    importRequest.headers["authorization"] = "Bearer " + token;
+    importRequest.body = minimalValidModelSpecification();
+    const HttpResponse importResponse = fixture.router.handle(importRequest);
+    ASSERT_EQ(importResponse.status, 200);
+
+    HttpRequest createJobRequest;
+    createJobRequest.method = "POST";
+    createJobRequest.path = "/api/v1/worker/jobs";
+    createJobRequest.headers["authorization"] = "Bearer " + token;
+    const HttpResponse createJobResponse = fixture.router.handle(createJobRequest);
+    ASSERT_EQ(createJobResponse.status, 201);
+
+    const std::string jobId = extractJsonStringField(createJobResponse.body, "jobId");
+    ASSERT_FALSE(jobId.empty());
+
+    HttpRequest runJobRequest;
+    runJobRequest.method = "POST";
+    runJobRequest.path = "/api/v1/worker/jobs/" + jobId + "/run";
+    runJobRequest.headers["authorization"] = "Bearer " + token;
+    const HttpResponse runJobResponse = fixture.router.handle(runJobRequest);
+
+    EXPECT_EQ(runJobResponse.status, 200);
+    EXPECT_NE(runJobResponse.body.find("\"jobId\":\"" + jobId + "\""), std::string::npos);
+    EXPECT_NE(runJobResponse.body.find("\"state\":\"finished\""), std::string::npos);
+
+    HttpRequest getJobRequest;
+    getJobRequest.method = "GET";
+    getJobRequest.path = "/api/v1/worker/jobs/" + jobId;
+    getJobRequest.headers["authorization"] = "Bearer " + token;
+    const HttpResponse getJobResponse = fixture.router.handle(getJobRequest);
+
+    EXPECT_EQ(getJobResponse.status, 200);
+    EXPECT_NE(getJobResponse.body.find("\"jobId\":\"" + jobId + "\""), std::string::npos);
+    EXPECT_NE(getJobResponse.body.find("\"state\":\"finished\""), std::string::npos);
 }
 
 TEST(WebApiRouterTest, AuthSessionThenSimulatorInfoWithBearerToken) {

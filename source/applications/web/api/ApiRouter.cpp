@@ -79,7 +79,27 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
         return HttpResponse{201, "application/json", "{\"ok\":true,\"data\":" + _workerJobDataJson(result.jobInfo) + "}"};
     }
 
-    // Stage 3 requires only minimal path parsing for job inspection by id.
+    // Stage 4 adds explicit synchronous worker job execution.
+    std::string workerRunJobId;
+    if (_tryExtractWorkerJobRunIdFromPath(request.path, workerRunJobId)) {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/worker/jobs/{jobId}/run");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.runWorkerJob(token, workerRunJobId);
+        if (!result.success) {
+            return _mapWorkerJobError(result.error, false);
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _workerJobDataJson(result.jobInfo) + "}"};
+    }
+
+    // Stage 3 and stage 4 use this endpoint as basic job metadata inspection/polling.
     std::string workerJobId;
     if (_tryExtractWorkerJobIdFromPath(request.path, workerJobId)) {
         if (request.method != "GET") {
@@ -565,6 +585,26 @@ bool ApiRouter::_tryExtractWorkerJobIdFromPath(const std::string& path, std::str
     if (outJobId.empty() || outJobId.find('/') != std::string::npos) {
         return false;
     }
+    return true;
+}
+
+bool ApiRouter::_tryExtractWorkerJobRunIdFromPath(const std::string& path, std::string& outJobId) {
+    constexpr std::string_view prefix = "/api/v1/worker/jobs/";
+    constexpr std::string_view suffix = "/run";
+
+    if (path.rfind(prefix, 0) != 0 || path.size() <= prefix.size() + suffix.size()) {
+        return false;
+    }
+
+    if (path.compare(path.size() - suffix.size(), suffix.size(), suffix) != 0) {
+        return false;
+    }
+
+    outJobId = path.substr(prefix.size(), path.size() - prefix.size() - suffix.size());
+    if (outJobId.empty() || outJobId.find('/') != std::string::npos) {
+        return false;
+    }
+
     return true;
 }
 
