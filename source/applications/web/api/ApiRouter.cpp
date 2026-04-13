@@ -41,6 +41,24 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
         };
     }
 
+    if (request.path == "/api/v1/worker/models/import-language") {
+        if (request.method != "POST") {
+            return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/worker/models/import-language");
+        }
+
+        const std::string token = _extractBearerToken(request);
+        if (token.empty()) {
+            return _jsonError(401, "UNAUTHORIZED", "Missing or invalid Bearer token");
+        }
+
+        const auto result = _simulatorService.importModelFromLanguage(token, request.body);
+        if (!result.success) {
+            return _mapModelImportError(result);
+        }
+
+        return HttpResponse{200, "application/json", "{\"ok\":true,\"data\":" + _modelInfoDataJson(result.modelInfo) + "}"};
+    }
+
     if (request.path == "/api/v1/auth/session") {
         if (request.method != "POST") {
             return _jsonError(405, "METHOD_NOT_ALLOWED", "Only POST is allowed for /api/v1/auth/session");
@@ -417,6 +435,22 @@ HttpResponse ApiRouter::_mapPersistenceError(const SimulatorSessionService::Mode
         case SimulatorSessionService::PersistenceError::None:
         default:
             return _jsonError(500, "INTERNAL_ERROR", "Unexpected persistence error state");
+    }
+}
+
+HttpResponse ApiRouter::_mapModelImportError(const SimulatorSessionService::ModelImportResult& result) {
+    switch (result.error) {
+        case SimulatorSessionService::ModelImportError::InvalidToken:
+            return _jsonError(401, "UNAUTHORIZED", "Invalid or expired session token");
+        case SimulatorSessionService::ModelImportError::EmptySpecification:
+            return _jsonError(400, "EMPTY_MODEL_SPECIFICATION", "Model specification body cannot be empty");
+        case SimulatorSessionService::ModelImportError::InvalidSpecification:
+            return _jsonError(400, "INVALID_MODEL_SPECIFICATION", "Model specification could not be parsed");
+        case SimulatorSessionService::ModelImportError::OperationFailed:
+            return _jsonError(500, "MODEL_IMPORT_FAILED", "Unable to import model specification");
+        case SimulatorSessionService::ModelImportError::None:
+        default:
+            return _jsonError(500, "INTERNAL_ERROR", "Unexpected model import error state");
     }
 }
 

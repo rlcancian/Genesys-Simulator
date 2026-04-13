@@ -1,10 +1,18 @@
 #include "SimulatorSessionService.h"
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <mutex>
 #include <regex>
 
 namespace {
+bool _isBlankSpecification(const std::string& specification) {
+    return std::all_of(specification.begin(), specification.end(), [](unsigned char character) {
+        return std::isspace(character) != 0;
+    });
+}
+
 void _populateModelInfoFromModel(Model* model, SimulatorSessionService::ModelInfoResult& outInfo) {
     outInfo.exists = true;
     outInfo.modelId = static_cast<unsigned int>(model->getId());
@@ -94,7 +102,8 @@ SimulatorSessionService::WorkerCapabilitiesResult SimulatorSessionService::getWo
     result.supportsDistributedJobs = false;
     result.supportsJobPolling = false;
     result.supportsBackgroundExecution = false;
-    result.supportsModelUpload = false;
+    // Stage 2 introduces a worker model-ingress endpoint based on plain text language import.
+    result.supportsModelUpload = true;
     result.supportsStreamingEvents = false;
     return result;
 }
@@ -346,6 +355,38 @@ SimulatorSessionService::ModelPersistenceResult SimulatorSessionService::loadMod
     result.success = true;
     result.error = PersistenceError::None;
     result.filename = filename;
+    _populateModelInfoFromModel(model, result.modelInfo);
+    return result;
+}
+
+SimulatorSessionService::ModelImportResult SimulatorSessionService::importModelFromLanguage(
+    const std::string& accessToken,
+    const std::string& modelSpecification
+) {
+    if (modelSpecification.empty() || _isBlankSpecification(modelSpecification)) {
+        return ModelImportResult{false, ModelImportError::EmptySpecification, ModelInfoResult{}};
+    }
+
+    SessionContext* session = _sessionManager.getSessionByToken(accessToken);
+    if (session == nullptr || session->simulator == nullptr) {
+        return ModelImportResult{false, ModelImportError::InvalidToken, ModelInfoResult{}};
+    }
+
+    std::scoped_lock lock(session->mutex);
+    ModelManager* modelManager = session->simulator->getModelManager();
+    if (modelManager == nullptr) {
+        return ModelImportResult{false, ModelImportError::OperationFailed, ModelInfoResult{}};
+    }
+
+    // Import uses the real kernel parser pathway that accepts the model language as plain text.
+    Model* model = modelManager->createFromLanguage(modelSpecification);
+    if (model == nullptr) {
+        return ModelImportResult{false, ModelImportError::InvalidSpecification, ModelInfoResult{}};
+    }
+
+    ModelImportResult result{};
+    result.success = true;
+    result.error = ModelImportError::None;
     _populateModelInfoFromModel(model, result.modelInfo);
     return result;
 }

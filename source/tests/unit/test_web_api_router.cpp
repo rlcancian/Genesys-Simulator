@@ -44,6 +44,25 @@ std::string createSessionAndGetToken(ApiRouter& router) {
     EXPECT_FALSE(token.empty());
     return token;
 }
+
+std::string minimalValidModelSpecification() {
+    // Grounded in repository model syntax from models/Smart_Record.gen.
+    return
+        "# Genesys Simulation Model\n"
+        "# Simulator, Model and Simulation infos\n"
+        "0   Simulator  \"GenESyS - GENeric and Expansible SYstem Simulator\" versionNumber=230914 0   ModelInfo  \"Model 1\" "
+        "version=\"1.0\" projectTitle=\"\" description=\"\" analystName=\"\" 0   ModelSimulation \"\" traceLevel=9 "
+        "replicationLength=1000.000000 numberOfReplications=30 \n"
+        "# Model Data Definitions\n"
+        "68  Resource   \"Resource_1\" capacity=5 69  Queue      \"Queue_1\" \n"
+        "# Model Components\n"
+        "63  Create     \"Create_1\" entityType=\"entitytype\" nextId=64 64  Process    \"Process_1\" delayExpression=\"unif(2, 6)\" "
+        "queueable=\"Queue_1\" nextId=70 requestSeizable[0]=\"Resource_1\" 70  Record     \"Record_1\" "
+        "fileName=\"recordNumberInQueue.txt\" nextId=71 expressionName=\"Number in queue\" expression=\"nq(Queue_1)\" "
+        "71  Record     \"Record_2\" fileName=\"recordNumberBusy.txt\" nextId=72 expressionName=\"resource_1 number busy\" "
+        "expression=\"NR(Resource_1)\" 72  Record     \"Record_3\" fileName=\"recordBeta.txt\" nextId=73 "
+        "expressionName=\"Just a Beta distribution\" expression=\"beta(2,8,0,100)\" 73  Dispose    \"Dispose_1\" nexts=0  ";
+}
 }  // namespace
 
 TEST(WebSessionManagerTest, CreateSessionProducesUniqueTokens) {
@@ -147,7 +166,7 @@ TEST(WebApiRouterTest, WorkerCapabilitiesReflectCurrentImplementation) {
     EXPECT_NE(response.body.find("\"supportsDistributedJobs\":false"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsJobPolling\":false"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsBackgroundExecution\":false"), std::string::npos);
-    EXPECT_NE(response.body.find("\"supportsModelUpload\":false"), std::string::npos);
+    EXPECT_NE(response.body.find("\"supportsModelUpload\":true"), std::string::npos);
     EXPECT_NE(response.body.find("\"supportsStreamingEvents\":false"), std::string::npos);
 }
 
@@ -161,6 +180,68 @@ TEST(WebApiRouterTest, WorkerCapabilitiesPostReturnsMethodNotAllowed) {
     const HttpResponse response = fixture.router.handle(request);
 
     EXPECT_EQ(response.status, 405);
+}
+
+TEST(WebApiRouterTest, WorkerImportLanguageWithoutTokenReturnsUnauthorized) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/models/import-language";
+    request.body = minimalValidModelSpecification();
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 401);
+    EXPECT_NE(response.body.find("\"ok\":false"), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerImportLanguageWithEmptyBodyReturnsBadRequest) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/models/import-language";
+    request.headers["authorization"] = "Bearer " + token;
+    request.body = "";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 400);
+    EXPECT_NE(response.body.find("\"EMPTY_MODEL_SPECIFICATION\""), std::string::npos);
+}
+
+TEST(WebApiRouterTest, WorkerImportLanguageGetMethodReturnsMethodNotAllowed) {
+    ApiRouterFixture fixture;
+
+    HttpRequest request;
+    request.method = "GET";
+    request.path = "/api/v1/worker/models/import-language";
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 405);
+}
+
+TEST(WebApiRouterTest, WorkerImportLanguageHappyPathReturnsModelMetadata) {
+    ApiRouterFixture fixture;
+    const std::string token = createSessionAndGetToken(fixture.router);
+
+    HttpRequest request;
+    request.method = "POST";
+    request.path = "/api/v1/worker/models/import-language";
+    request.headers["authorization"] = "Bearer " + token;
+    request.body = minimalValidModelSpecification();
+
+    const HttpResponse response = fixture.router.handle(request);
+
+    EXPECT_EQ(response.status, 200);
+    EXPECT_NE(response.body.find("\"ok\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"exists\":true"), std::string::npos);
+    EXPECT_NE(response.body.find("\"modelId\":"), std::string::npos);
+    EXPECT_NE(response.body.find("\"name\":"), std::string::npos);
+    EXPECT_NE(response.body.find("\"componentCount\":"), std::string::npos);
 }
 
 TEST(WebApiRouterTest, AuthSessionThenSimulatorInfoWithBearerToken) {
