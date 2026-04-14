@@ -37,6 +37,7 @@
 #include <QColor>
 #include <QStyle>
 #include <QGraphicsSceneMouseEvent>
+#include <QContextMenuEvent>
 #include <QPainter>
 #include "graphicals/ModelGraphicsScene.h"
 #include "propertyeditor/DataComponentProperty.h"
@@ -97,6 +98,12 @@ public: // events and notifications
         this->_sceneWheelOutEventHandler = handlerMethod;
     }
 
+    template <typename Class> void setContextMenuEventHandler(Class* object, void (Class::*function)(QContextMenuEvent*)) {
+        // Keep context-menu construction outside the view so menus can reuse MainWindow actions.
+        contextMenuEventHandlerMethod handlerMethod = std::bind(function, object, std::placeholders::_1);
+        this->_contextMenuEventHandler = handlerMethod;
+    }
+
     void notifySceneMouseEventHandler(QGraphicsSceneMouseEvent* mouseEvent);
     void notifySceneWheelInEventHandler();
     void notifySceneWheelOutEventHandler();
@@ -146,10 +153,12 @@ private:
 	typedef std::function<void(QGraphicsSceneMouseEvent*) > sceneMouseEventHandlerMethod;
     typedef std::function<void()> sceneWheelEventHandlerMethod;
     typedef std::function<void(const GraphicalModelEvent&)> sceneGraphicalModelEventHandlerMethod;
+    typedef std::function<void(QContextMenuEvent*)> contextMenuEventHandlerMethod;
     sceneMouseEventHandlerMethod _sceneMouseEventHandler;
     sceneWheelEventHandlerMethod _sceneWheelInEventHandler;
     sceneWheelEventHandlerMethod _sceneWheelOutEventHandler;
     sceneGraphicalModelEventHandlerMethod _sceneGraphicalModelEventHandler;
+    contextMenuEventHandlerMethod _contextMenuEventHandler;
     Simulator* _simulator = nullptr;
     PropertyEditorGenesys* _propertyEditor = nullptr;
     std::map<SimulationControl*, DataComponentProperty*>* _propertyList = nullptr;

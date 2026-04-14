@@ -281,6 +281,8 @@ SOURCES += \
     controllers/EditCommandController.cpp \
     # Phase-10 GUI refactor controller for scene/view/drawing responsibilities.
     controllers/SceneToolController.cpp \
+    # Graphical context-menu controller for canvas popup actions.
+    controllers/GraphicalContextMenuController.cpp \
     # Phase-11 GUI refactor controller for dialog/utility responsibilities.
     controllers/DialogUtilityController.cpp \
     # Phase-1 GUI refactor services for model representations.
@@ -641,6 +643,8 @@ HEADERS += \
     controllers/EditCommandController.h \
     # Phase-10 GUI refactor controller header for scene/view/drawing responsibilities.
     controllers/SceneToolController.h \
+    # Graphical context-menu controller header for canvas popup actions.
+    controllers/GraphicalContextMenuController.h \
     # Phase-11 GUI refactor controller header for dialog/utility responsibilities.
     controllers/DialogUtilityController.h \
     # Phase-1 GUI refactor service headers.

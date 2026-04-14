@@ -39,6 +39,8 @@
 #include "controllers/EditCommandController.h"
 // Add Phase 10 controller include for scene/view/drawing command orchestration.
 #include "controllers/SceneToolController.h"
+// Add graphical context-menu controller include for canvas popup orchestration.
+#include "controllers/GraphicalContextMenuController.h"
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
 #include "services/ModelLanguageSynchronizer.h"
@@ -339,6 +341,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         [this]() { _actualizeTabPanes(); },
         _zoomValue,
         _firstClickShowConnection);
+
+    // Initialize the graphical context-menu controller after edit and scene actions are wired.
+    _graphicalContextMenuController = std::make_unique<GraphicalContextMenuController>(
+        ui->graphicsView,
+        ui,
+        [this]() { return ui->graphicsView->getScene(); },
+        [this]() { _actualizeActions(); });
+    ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
+                                                 &GraphicalContextMenuController::handleGraphicsViewContextMenu);
 
     // Initialize the Phase 11 dialog-utility controller after UI/simulator dependencies and callbacks are ready.
     _dialogUtilityController = std::make_unique<DialogUtilityController>(
