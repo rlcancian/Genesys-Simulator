@@ -45,6 +45,8 @@ public:
 public:
 	/*! \brief Indicates whether persistent state changed since the last save/load. */
 	virtual bool hasChanged() = 0;
+	/*! \brief Updates the persistent-state changed flag. */
+	virtual void setHasChanged(bool hasChanged) = 0;
 	/*! \brief Returns whether a persistence option is currently enabled. */
 	virtual bool getOption(ModelPersistence_if::Options option) = 0;
 	/*! \brief Enables or disables a persistence option. */

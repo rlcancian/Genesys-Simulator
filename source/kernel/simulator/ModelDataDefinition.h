@@ -91,6 +91,8 @@ public:
 	 * \return
 	 */
 	bool hasChanged() const;
+	/*! \brief Updates the changed flag for this data definition. */
+	void setHasChanged(bool hasChanged);
 	/*!
 	 * \brief getLevel
 	 * \return

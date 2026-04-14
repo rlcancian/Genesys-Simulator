@@ -377,6 +377,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         ui,
         &_modelfilename,
         &_textModelHasChanged,
+        &_graphicalModelHasChanged,
         &_closingApproved,
         &_loaded,
         ModelLifecycleController::Callbacks{

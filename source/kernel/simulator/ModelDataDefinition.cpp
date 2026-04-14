@@ -61,6 +61,10 @@ bool ModelDataDefinition::hasChanged() const {
 	return _hasChanged;
 }
 
+void ModelDataDefinition::setHasChanged(bool hasChanged) {
+	_hasChanged = hasChanged;
+}
+
 unsigned int ModelDataDefinition::getLevel() const {
 	return _modelLevel;
 }

@@ -96,3 +96,7 @@ void ModelInfo::saveInstance(PersistenceRecord *fields) {
 bool ModelInfo::hasChanged() const {
 	return _hasChanged;
 }
+
+void ModelInfo::setHasChanged(bool hasChanged) {
+	_hasChanged = hasChanged;
+}

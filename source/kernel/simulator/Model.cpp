@@ -35,6 +35,26 @@ bool EventCompare(const Event* a, const Event* b) {
     return a->getTime() < b->getTime();
 }
 
+namespace {
+void SetDataDefinitionChanged(ModelDataDefinition* dataDefinition,
+                              bool hasChanged,
+                              std::unordered_set<ModelDataDefinition*>* visited) {
+    if (dataDefinition == nullptr || visited == nullptr || visited->find(dataDefinition) != visited->end()) {
+        return;
+    }
+
+    visited->insert(dataDefinition);
+    dataDefinition->setHasChanged(hasChanged);
+
+    for (const auto& child : *dataDefinition->getInternalData()) {
+        SetDataDefinitionChanged(child.second, hasChanged, visited);
+    }
+    for (const auto& child : *dataDefinition->getAttachedData()) {
+        SetDataDefinitionChanged(child.second, hasChanged, visited);
+    }
+}
+}
+
 Model::Model(Simulator* simulator, unsigned int level) {
     _parentSimulator = simulator; // a simulator is the "parent" of a model
     _level = level;
@@ -682,6 +702,29 @@ bool Model::hasChanged() const {
     changed = changed || this->_modelInfo->hasChanged();
     changed = changed || this->_modelPersistence->hasChanged();
     return changed;
+}
+
+void Model::setHasChanged(bool hasChanged) {
+    _hasChanged = hasChanged;
+    _componentManager->setHasChanged(hasChanged);
+    _modeldataManager->setHasChanged(hasChanged);
+    _modelInfo->setHasChanged(hasChanged);
+    _modelPersistence->setHasChanged(hasChanged);
+
+    // Clear or mark every persistent object so aggregate hasChanged() reflects the saved model state.
+    std::unordered_set<ModelDataDefinition*> visited;
+    for (ModelComponent* component : *_componentManager->getAllComponents()) {
+        SetDataDefinitionChanged(component, hasChanged, &visited);
+    }
+    for (const std::string& classname : _modeldataManager->getDataDefinitionClassnames()) {
+        List<ModelDataDefinition*>* dataDefinitions = _modeldataManager->getDataDefinitionList(classname);
+        if (dataDefinitions == nullptr) {
+            continue;
+        }
+        for (ModelDataDefinition* dataDefinition : *dataDefinitions->list()) {
+            SetDataDefinitionChanged(dataDefinition, hasChanged, &visited);
+        }
+    }
 }
 
 ComponentManager* Model::getComponentManager() const {

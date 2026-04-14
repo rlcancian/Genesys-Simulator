@@ -153,6 +153,8 @@ public: // only gets
 	 * \return
 	 */
 	bool hasChanged() const;
+	/*! \brief Updates the changed flag for the model and its owned persistent objects. */
+	void setHasChanged(bool hasChanged);
 	// 1:1
 	/*!
 	 * \brief getOnEvents
