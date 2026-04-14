@@ -172,7 +172,9 @@ bool PluginManager::check(std::string dynamicLibraryFilename) {
 	} catch (...) {
 		return false;
 	}
-	return (plugin != nullptr);
+	const bool checked = plugin != nullptr && plugin->isIsValidPlugin();
+	delete plugin;
+	return checked;
 }
 
 Plugin * PluginManager::insert(std::string dynamicLibraryFilename) {
@@ -200,12 +202,15 @@ bool PluginManager::remove(std::string dynamicLibraryFilename) {
 
 bool PluginManager::remove(Plugin * plugin) {
 	if (plugin != nullptr) {
-		_plugins->remove(plugin);
 		try {
-			_pluginConnector->disconnect(plugin);
+			if (!_pluginConnector->disconnect(plugin)) {
+				return false;
+			}
 		} catch (...) {
 			return false;
 		}
+		_plugins->remove(plugin);
+		delete plugin;
 		_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin successfully removed");
 		return true;
 	}

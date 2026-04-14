@@ -362,6 +362,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         [this]() { return _createModelImage(); },
         [this]() { _actualizeActions(); },
         [this]() { _actualizeTabPanes(); },
+        [this]() {
+            if (_pluginCatalogController != nullptr) {
+                _pluginCatalogController->reloadFromPluginManager();
+            }
+        },
         [this]() { return myScene(); },
         _optimizerPrecision,
         _optimizerMaxSteps,
