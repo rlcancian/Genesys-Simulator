@@ -130,7 +130,7 @@ void ModelSimulation::_traceReplicationEnded() {
 		causeTerminated = "replication length "+std::to_string(_replicationLength)+" "+Util::StrTimeUnitLong(_replicationLengthTimeUnit)+" was achieved";
 	} else if (_model->parseExpression(_terminatingCondition)) {
 		causeTerminated = "termination condition was achieved";
-	} else //@TODO WTF?
+	} else
 		causeTerminated = "it just did it :-|. Sorry";
 	std::chrono::duration<double> duration = std::chrono::system_clock::now()-this->_startRealSimulationTimeReplication;
 	std::string message = "Replication "+std::to_string(_currentReplicationNumber)+" of "+std::to_string(_numberOfReplications)+" has finished with last event at time "+std::to_string(_simulatedTime)+" "+Util::StrTimeUnitLong(_replicationBaseTimeUnit)+" because "+causeTerminated+"; Elapsed time "+std::to_string(duration.count())+" seconds.";
@@ -249,7 +249,7 @@ void ModelSimulation::_replicationEnded() {
 }
 
 void ModelSimulation::_actualizeSimulationStatistics() {
-	//@TODO: should not be only CSTAT and COUNTER, but any modeldatum that generateReportInformation
+	// @ToDo: (importante): should not be only CSTAT and COUNTER, but any modeldatum that generateReportInformation
 	const std::string UtilTypeOfStatisticsCollector = Util::TypeOf<StatisticsCollector>();
 	const std::string UtilTypeOfCounter = Util::TypeOf<Counter>();
 
@@ -320,7 +320,7 @@ void ModelSimulation::_showSimulationHeader() {
 //    // model controls and responses
 //    std::string controls;
 //    for (/*PropertyBase**/SimulationControl* control : * _model->getControls()->list()) {
-//        //!@TODO IMPORTANT CONTROLS AND RESPONSES MUST WORK NO MATTER THE PROPERTIES //!@TODO PProperties ///
+//        // @ToDo: (importante): IMPORTANT CONTROLS AND RESPONSES MUST WORK NO MATTER THE PROPERTIES PProperties
 //        controls += control->getName()+"("+control->getClassname()+")="+control->getValue()+", ";
 //    }
 //    controls = controls.substr(0, controls.length()-2);
@@ -348,7 +348,7 @@ void ModelSimulation::_initSimulation() {
 	// defines the time scale factor to adjust replicatonLength to replicationBaseTime
 	_replicationTimeScaleFactorToBase = Util::TimeUnitConvert(this->_replicationLengthTimeUnit, this->_replicationBaseTimeUnit);
 	// copy all CStats and Counters (used in a replication) to CStats and counters for the whole simulation
-	// @TODO: Should not be CStats and Counters, but any modeldatum that generates report importation
+	// @ToDo: (importante): Should not be CStats and Counters, but any modeldatum that generates report importation
 	this->_cstatsAndCountersSimulation->clear();
 	StatisticsCollector* cstat;
     List<ModelDataDefinition*>* simulationStatistics = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());
@@ -359,7 +359,6 @@ void ModelSimulation::_initSimulation() {
 		this->_cstatsAndCountersSimulation->insert(newCStatSimulation);
 	}
 	// copy all Counters (used in a replication) to Counters for the whole simulation
-	// @TODO: Counters in replication should be converted into CStats in simulation. Each value counted in a replication should be added in a CStat for Stats.
 	Counter* counter;
     List<ModelDataDefinition*>* simulationCounters = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<Counter>());
     for (ModelDataDefinition* counterData : *simulationCounters->list()) {
@@ -372,7 +371,7 @@ void ModelSimulation::_initSimulation() {
 		StatisticsCollector* newCStatSimulation = new StatisticsCollector(_model, _cte_stCountSimulNamePrefix+counter->getName(), counter->getParent(), false);
 		this->_cstatsAndCountersSimulation->insert(newCStatSimulation);
 	}
-	_simulationIsInitiated = true; // @TODO Check the uses of _simulationIsInitiated and when it should be set to false
+	_simulationIsInitiated = true;
 	_replicationIsInitiaded = false;
 	_currentReplicationNumber = 1;
 }
@@ -380,7 +379,7 @@ void ModelSimulation::_initSimulation() {
 void ModelSimulation::_initReplication() {
 	_startRealSimulationTimeReplication = std::chrono::system_clock::now();
 	TraceManager* tm = _model->getTracer();
-	tm->traceSimulation(this, TraceManager::Level::L5_event, ""); //@TODO L5 and L2??
+	tm->traceSimulation(this, TraceManager::Level::L5_event, "");
 	tm->traceSimulation(this, TraceManager::Level::L2_results, "Replication "+std::to_string(_currentReplicationNumber)+" of "+std::to_string(_numberOfReplications)+" is starting.");
 	// Destroys pending events before resetting replication state to avoid leaking queued heap events.
 	while (!_model->getFutureEvents()->empty()) {
@@ -426,11 +425,11 @@ void ModelSimulation::_initReplication() {
 		}
 	}
 	Util::DecIndent();
-	this->_replicationIsInitiaded = true; // @TODO Check the uses of _replicationIsInitiaded and when it should be set to false
+	this->_replicationIsInitiaded = true;
 }
 
 void ModelSimulation::_clearStatistics() {
-	//@Todo create a OnClearStatistics event handler
+	// @ToDo: (pequena alteração): create a OnClearStatistics event handler
 	StatisticsCollector* cstat;
 	List<ModelDataDefinition*>* list = _model->getDataManager()->getDataDefinitionList(Util::TypeOf<StatisticsCollector>());
 	for (ModelDataDefinition* modelData : *list->list()) {
@@ -508,7 +507,7 @@ void ModelSimulation::_stepSimulation() {
 void ModelSimulation::_dispatchEvent(Event* event) {
 	InternalEvent* intEvent = dynamic_cast<InternalEvent*> (event);
 	if (intEvent==nullptr) {
-        /*@TODO SHOW ONLY BASED ON CONFIGURATION*/
+        /* @ToDo: (pequena alteração): SHOW ONLY BASED ON CONFIGURATION */
 		_model->getTracer()->traceSimulation(this, TraceManager::Level::L9_mostDetailed, "Entity "+event->getEntity()->show());
 		try {
 			ModelComponent::DispatchEvent(event); //->_onDispatchEvent(entity, inputPortNumber);
@@ -783,7 +782,7 @@ void ModelSimulation::loadInstance(PersistenceRecord *fields) {
 	_hasChanged = false;
 }
 
-// @TODO:!: implement check method (to check things like terminating condition)
+// @ToDo: (importante): implement check method (to check things like terminating condition)
 
 void ModelSimulation::saveInstance(PersistenceRecord *fields, bool saveDefaults) {
 	fields->saveField("typename", "ModelSimulation");
@@ -799,7 +798,7 @@ void ModelSimulation::saveInstance(PersistenceRecord *fields, bool saveDefaults)
 	fields->saveField("showReportsAfterSimulation", _showReportsAfterSimulation, DEFAULT.showReportsAfterSimulation, saveDefaults);
 	fields->saveField("showSimulationControlsInReport", _showSimulationControlsInReport, DEFAULT.showSimulationControlsInReport, saveDefaults);
 	fields->saveField("showSimulationResposesInReport", _showSimulationResposesInReport, DEFAULT.showSimulationResposesInReport, saveDefaults);
-	// @TODO not a field of ModelSimulation, but I'll save it here for now
+	// @ToDo: (importante): not a field of ModelSimulation, but I'll save it here for now
 	fields->saveField("traceLevel", static_cast<int> (_model->getTracer()->getTraceLevel()), static_cast<int> (TraitsKernel<Model>::traceLevel));
 	_hasChanged = false;
 }

@@ -247,7 +247,6 @@ private:
     void _createInternalDataDefinitions();
 private:
 	bool _hasChanged = false;
-    //bool _isChecked = false; // @TODO: Not implemented yet. First, _hasChanged should be trustful
 	bool _automaticallyCreatesModelDataDefinitions; // default will come from Traits in the constructor
 private: // read only public access (gets)
 	Util::identification _id;

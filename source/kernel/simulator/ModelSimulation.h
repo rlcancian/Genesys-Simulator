@@ -50,12 +50,12 @@ public:
 	virtual ~ModelSimulation();
 public:
 	std::string show();
-// TODO(genesys|experiment-layer|architecture): Keep ModelSimulation as the stable
+// @ToDo: (importante): Keep ModelSimulation as the stable
 // execution core while the higher-level experiment abstractions mature.
 // Any migration of responsibilities to SimulationExperiment/SimulationScenario
 // should preserve the already functional replication-based workflow here.
 public: // simulation control
-	/// @todo Revisit how this class should interact with the unfinished higher-level experiment layer.
+	// @ToDo: (importante): Revisit how this class should interact with the unfinished higher-level experiment layer.
 	void start(); //!< Starts a sequential execution of a simulation, ie, a set of replications of this model.
 	void pause(); //!<
 	void step(); //!< Executes the processing of a single event, the next one in the future events list.
@@ -132,15 +132,14 @@ private:
 	void _traceReplicationEnded(); //!<
 private:
 	std::unique_ptr<SimulationEvent> _createSimulationEvent(void* thiscustomObject = nullptr); //!<
-	//friend Entity* Model::createEntity(std::string name, bool insertIntoModel); //@TODO: make it work (only friend functions, not the entire class)
 	//friend void Model::removeEntity(Entity* entity);
 	//friend void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, double timeDelay, unsigned int componentinputPortNumber);
 	friend class Model;
 private:
 	double _simulatedTime = 0.0;
 	double _justTriggeredBreakpointsOnTime = 0.0;
-	// @TODO: list of double double _breakOnTimes;
-	// @TODO: list of modules _breakOnModules;
+	// @ToDo: (pequena alteração): list of double double _breakOnTimes;
+	// @ToDo: (pequena alteração): list of modules _breakOnModules;
 	bool _stepByStep = false;
 	bool _pauseOnReplication = false;
 	bool _pauseOnEvent = false;
@@ -197,7 +196,7 @@ private:
 	SimulationReporter_if* _simulationReporter;
 	bool _ownsSimulationReporter = true;
 	List<SimulationControl*>* _ownedControls = new List<SimulationControl*>();
-	//@TODO Change List below to a MAP, associating every CstatOuCounter in the replication to the equivalent in the simulation
+	// @ToDo: (importante): Change List below to a MAP, associating every CstatOuCounter in the replication to the equivalent in the simulation
 	List<ModelDataDefinition*>* _cstatsAndCountersSimulation = new List<ModelDataDefinition*>();
 	std::map<ModelDataDefinition*, ModelDataDefinition*>* _cstatsAndCountersMapSimulation = new std::map<ModelDataDefinition*, ModelDataDefinition*>();
 	List<double>* _breakpointsOnTime = new List<double>();

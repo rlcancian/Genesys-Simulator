@@ -109,7 +109,7 @@ LicenceManager* Simulator::getLicenceManager() const {
 }
 
 List<Plugin*>* Simulator::_completePluginsFieldsAndTemplate() {
-	//* TODO: NOT THRE RIGHT PLACE TO BE *//
+	// @ToDo: (importante): NOT THRE RIGHT PLACE TO BE
 	TraceManager::Level savedTraceLevel = _traceManager->getTraceLevel();
 	// this crap stuff should not been shown
 	_traceManager->trace("Completing plugins and templates", TraceManager::Level::L8_detailed);
@@ -147,7 +147,7 @@ List<Plugin*>* Simulator::_completePluginsFieldsAndTemplate() {
 						datum->SaveInstance(fields.get(), datum);
 					}
 				} catch (...) {
-					//@TODO
+					// @ToDo: (importante): preserve plugin field/template completion diagnostics
 					//std::cout << "ERROR completing plugin " << info->getPluginTypename() << std::endl;
 				}
 				for (auto& field : *fields.get()) {

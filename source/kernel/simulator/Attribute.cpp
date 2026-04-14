@@ -15,7 +15,7 @@
 
 //using namespace GenesysKernel;
 
-#ifdef PLUGINCONNECT_DYNAMIC 
+#ifdef PLUGINCONNECT_DYNAMIC
 
 extern "C" StaticGetPluginInformation GetPluginInformation() {
 	return &Attribute::GetPluginInformation;
@@ -33,33 +33,34 @@ std::string Attribute::show() {
 	return ModelDataDefinition::show();
 }
 
-bool Attribute::_loadInstance(PersistenceRecord *fields) {
+bool Attribute::_loadInstance(PersistenceRecord* fields) {
 	return ModelDataDefinition::_loadInstance(fields);
 }
 
 PluginInformation* Attribute::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Attribute>(), &Attribute::LoadInstance, &Attribute::NewInstance);
-	info->setDescriptionHelp("//@TODO");
+	PluginInformation* info = new PluginInformation(Util::TypeOf<Attribute>(), &Attribute::LoadInstance,
+	                                                &Attribute::NewInstance);
+	// @ToDo: (pequena alteração): Add Attribute description help
+	info->setDescriptionHelp("");
 	return info;
-
 }
 
-ModelDataDefinition* Attribute::LoadInstance(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* Attribute::LoadInstance(Model* model, PersistenceRecord* fields) {
 	Attribute* newElement = new Attribute(model);
 	try {
 		newElement->_loadInstance(fields);
-	} catch (const std::exception& e) {
-
+	}
+	catch (const std::exception& e) {
 	}
 	return newElement;
 }
 
-void Attribute::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+void Attribute::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
 	bool saveDefaults = this->_getSaveDefaultsOption();
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
 }
 
 bool Attribute::_check(std::string& errorMessage) {
-    errorMessage += "";
+	errorMessage += "";
 	return true;
 }

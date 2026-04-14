@@ -25,8 +25,8 @@ double ParserDefaultImpl1::parse(const std::string expression) { // may throw ex
 }
 
 std::string ParserDefaultImpl1::getErrorMessage() {
-    std::string errorMsg = "ToDo";
-	return errorMsg; /* @ @TODO: */
+    std::string errorMsg = "ParserDefaultImpl1 error message unavailable";
+	return errorMsg;
 }
 
 double ParserDefaultImpl1::parse(const std::string expression, bool& success, std::string& errorMessage) {
@@ -43,4 +43,3 @@ double ParserDefaultImpl1::parse(const std::string expression, bool& success, st
 }
 
 //namespace\\}
-

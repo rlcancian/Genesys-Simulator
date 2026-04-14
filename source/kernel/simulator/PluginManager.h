@@ -15,6 +15,8 @@
 #define PLUGINMANAGER_H
 
 #include <string>
+
+#include "Model.h"
 #include "../util/List.h"
 #include "../util/Util.h"
 #include "Plugin.h"
@@ -38,12 +40,15 @@ public:
 	PluginManager(Simulator* simulator);
 	/*! \brief Destroys owned plugin wrappers and connector resources. */
 	virtual ~PluginManager();
+
 public:
 	/*! \brief Returns a human-readable summary of currently connected plugins. */
 	std::string show();
+
 public:
 	/*! \brief Completes plugin metadata (fields/templates) after loading. */
 	List<Plugin*>* completePluginsFieldsAndTemplates();
+
 public:
 	/*! \brief Validates whether a dynamic library provides a compatible plugin. */
 	bool check(const std::string dynamicLibraryFilename);
@@ -56,9 +61,11 @@ public:
 	/*! \brief Finds a connected plugin by plugin type name. */
 	Plugin* find(std::string pluginTypeName);
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */
-    List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound = true);
-    /*! \brief Auto-loads plugins discovered automatically). */
-    List<Plugin*>* autoInsertPlugins();
+	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename,
+	                                 const bool lookForPluginsIfFilenameNotFound = true);
+	/*! \brief Auto-loads plugins discovered automatically). */
+	List<Plugin*>* autoInsertPlugins();
+
 public:
 	/*! \brief Returns the first plugin in the internal plugin list. */
 	Plugin* front();
@@ -70,35 +77,46 @@ public:
 	unsigned int size();
 	/*! \brief Returns the plugin at a specific list rank. */
 	Plugin* getAtRank(unsigned int rank);
+
 public:
 	/*! \brief Creates a new model data/component instance using a plugin typename. */
 	ModelDataDefinition* newInstance(std::string pluginTypename, Model* model, std::string name = "");
 
-	template <typename T>T* newInstance(Model* model, std::string name = "") {
+	template <typename T>
+	T* newInstance(Model* model, std::string name = "") {
 		name = Util::StrReplace(name, " ", "_");
 		Plugin* plugin;
 		std::string pluginTypename = Util::TypeOf<T>();
-		//@TODO: Use Find method??
+		// @ToDo: (pequena alteração): Use Find method??
 		for (unsigned short i = 0; i < _plugins->size(); i++) {
 			plugin = _plugins->getAtRank(i);
 			if (plugin->getPluginInfo()->getPluginTypename() == pluginTypename) {
 				T* instance;
-				StaticConstructorDataDefinitionInstance constructor = plugin->getPluginInfo()->getDataDefinitionConstructor();
-				instance = static_cast<T*> (constructor(model, name));
+				StaticConstructorDataDefinitionInstance constructor = plugin->getPluginInfo()->
+				                                                              getDataDefinitionConstructor();
+				instance = static_cast<T*>(constructor(model, name));
+				if (model != nullptr) {
+					if (model->isAutomaticallyCreatesModelDataDefinitions()) {
+						ModelDataDefinition::CreateInternalData(instance);
+					}
+				}
 				return instance;
 			}
 		}
 		// Keep this header free of Simulator implementation details to avoid include cycles.
 		return nullptr;
 	}
+
 private:
 	bool _insert(Plugin* plugin);
 	void _insertDefaultKernelElements();
 	List<Plugin*>* _autoFindPlugins();
+
 private:
 	List<Plugin*>* _plugins = new List<Plugin*>();
 	Simulator* _simulator;
 	PluginConnector_if* _pluginConnector;
 };
+
 //namespace\\}
 #endif /* PLUGINMANAGER_H */

@@ -72,7 +72,7 @@ private:
 
 typedef std::function<void(void*) > InternalEventHandler;
 
-class InternalEvent: public Event { // BAD SW ENGINEERING //@TODO Fix it
+class InternalEvent: public Event { // @ToDo: (importante): BAD SW ENGINEERING Fix it
 public:
 	InternalEvent(double time, std::string description): Event(time, nullptr, nullptr, 0){
 		_description = description;
@@ -125,4 +125,3 @@ private:
 
 //namespace\\}
 #endif /* EVENT_H */
-

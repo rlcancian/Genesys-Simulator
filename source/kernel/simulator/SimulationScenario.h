@@ -54,7 +54,7 @@ public: // gets and sets
 	std::list<std::string>* getSelectedControls() const; // access to the list to insert or remove controls
 	double getControlValue(const std::string& controlName);
 	std::list<std::string>* getSelectedResponses() const; // access to the list to insert or remove responses
-	// TODO(genesys|scenario|ownership): Clarify ownership and replacement semantics for selected controls.
+	// @ToDo: (importante): Clarify ownership and replacement semantics for selected controls.
 	// This setter currently allocates a new list and replaces the stored pointer.
 	void setSelectedControls(std::list<std::string>* selectedControls);
 	void setControl(std::string name, double value) const;
@@ -65,7 +65,7 @@ private:
 	std::list<std::string>* _selectedControls = new std::list<std::string>(); /*!< a subset of SimulationControls available in the model (chosen by user)*/
 	std::list<std::string>* _selectedResponses = new std::list<std::string>(); /*!< a subset of SimulationResponses available in the model (chosen by user) */
 	std::list<std::pair<std::string, double>*>* _controlValues = new std::list<std::pair<std::string, double>*>();
-	// TODO(genesys|scenario|lifetime): Define initialization and ownership rules for response values.
+	// @ToDo: (importante): Define initialization and ownership rules for response values.
 	std::list<std::pair<std::string, double>*>* _responseValues = new std::list<std::pair<std::string, double>*>(); /*!< stored values of the results returned by simulation <name of response, value returned>*/
 };
 

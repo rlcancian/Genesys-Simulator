@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
@@ -40,6 +41,7 @@
 #undef protected
 #undef private
 #include "plugins/components/Delay.h"
+#include "plugins/components/Dispose.h"
 #include "plugins/components/Batch.h"
 #include "plugins/components/Separate.h"
 #include "plugins/components/Match.h"
@@ -5440,4 +5442,55 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
     EXPECT_EQ(runner.getLastResponsePayload(), "");
     EXPECT_EQ(runner.getLastResponseFilename(), "");
     EXPECT_EQ(errorMessage, "");
+}
+
+TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* create = new Create(model, "Create A");
+    auto* delay = new Delay(model, "Delay A");
+    auto* dispose = new Dispose(model, "Dispose A");
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(delay, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setFirstCreation(2.5);
+    create->setEntitiesPerCreation(3);
+    create->setTimeBetweenCreationsExpression("expo(5)", Util::TimeUnit::minute);
+    delay->setDelayExpression("tria(1,2,3)", Util::TimeUnit::hour);
+    create->connectTo(delay);
+    delay->connectTo(dispose);
+
+    model->getSimulation()->setNumberOfReplications(7);
+    model->getSimulation()->setReplicationLength(42, Util::TimeUnit::minute);
+
+    const std::string filename = "/tmp/genesys_cppserializer_runtime_test_" + std::to_string(::getpid()) + ".cpp";
+    ASSERT_TRUE(model->save(filename));
+
+    std::ifstream file(filename);
+    ASSERT_TRUE(file.good());
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    const std::string generated = buffer.str();
+    ::unlink(filename.c_str());
+
+    EXPECT_NE(generated.find("genesys->getTraceManager()->setTraceLevel"), std::string::npos);
+    EXPECT_NE(generated.find("genesys->getPluginManager()"), std::string::npos);
+    EXPECT_NE(generated.find("genesys->getModelManager()->newModel()"), std::string::npos);
+    EXPECT_EQ(generated.find("getTracer()->setTraceLevel"), std::string::npos);
+    EXPECT_EQ(generated.find("genesys->getPlugins()"), std::string::npos);
+    EXPECT_EQ(generated.find("genesys->getModels()"), std::string::npos);
+
+    EXPECT_NE(generated.find("setProperty(Create_A, \"FirstCreation\", \"2.5\")"), std::string::npos);
+    EXPECT_NE(generated.find("setProperty(Create_A, \"EntitiesPerCreation\", \"3\")"), std::string::npos);
+    EXPECT_NE(generated.find("setProperty(Create_A, \"TimeBetweenArrivals\", \"expo(5)\")"), std::string::npos);
+    EXPECT_EQ(generated.find("setProperty(Create_A, \"TimeBetweenCreationsFormula\", \"\")"), std::string::npos);
+    EXPECT_EQ(generated.find("setProperty(Create_A, \"TimeBetweenCreationsSchedule\", \"\")"), std::string::npos);
+    EXPECT_NE(generated.find("setProperty(Delay_A, \"DelayExpression\", \"tria(1,2,3)\")"), std::string::npos);
+    EXPECT_NE(generated.find("Create_A->connectTo(Delay_A, 0);"), std::string::npos);
+    EXPECT_NE(generated.find("Delay_A->connectTo(Dispose_A, 0);"), std::string::npos);
+    EXPECT_NE(generated.find("sim->setNumberOfReplications(7);"), std::string::npos);
+    EXPECT_NE(generated.find("sim->setReplicationLength(42.000000, Util::TimeUnit::minute);"), std::string::npos);
 }

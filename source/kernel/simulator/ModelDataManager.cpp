@@ -34,20 +34,21 @@ ModelDataManager::~ModelDataManager() {
 	_datadefinitions = nullptr;
 }
 
-bool ModelDataManager::insert(ModelDataDefinition * anElement) {
+bool ModelDataManager::insert(ModelDataDefinition* anElement) {
 	std::string datadefinitionTypename = anElement->getClassname();
-    bool result = insert(datadefinitionTypename, anElement);
-    if (result && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
-        ModelDataDefinition::CreateInternalData(anElement);
-    }
-    return result;
+	bool result = insert(datadefinitionTypename, anElement);
+	//if (result && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	//	ModelDataDefinition::CreateInternalData(anElement);
+	//}
+	return result;
 }
 
-bool ModelDataManager::insert(std::string datadefinitionTypename, ModelDataDefinition * anElement) {
+bool ModelDataManager::insert(std::string datadefinitionTypename, ModelDataDefinition* anElement) {
 	List<ModelDataDefinition*>* listElements = getDataDefinitionList(datadefinitionTypename);
 	std::string text = "";
 	bool result = false;
-	if (listElements->find(anElement) == listElements->list()->end()) { //not found
+	if (listElements->find(anElement) == listElements->list()->end()) {
+		//not found
 		listElements->insert(anElement);
 		_hasChanged = true;
 		text = anElement->getClassname() + " \"" + anElement->getName() + "\"" + " successfully inserted.";
@@ -58,46 +59,50 @@ bool ModelDataManager::insert(std::string datadefinitionTypename, ModelDataDefin
 	if (result) {
 		if (_parentModel->getSimulation()->isRunning()) {
 			_parentModel->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, text);
-		} else {
+		}
+		else {
 			_parentModel->getTracer()->trace(text);
 		}
 	}
 	return result;
 }
 
-void ModelDataManager::remove(ModelDataDefinition * anElement) {
+void ModelDataManager::remove(ModelDataDefinition* anElement) {
 	std::string datadefinitionTypename = anElement->getClassname();
 	List<ModelDataDefinition*>* listElements = getDataDefinitionList(datadefinitionTypename);
 	listElements->remove(anElement);
 	_hasChanged = true;
 	////trace("Element successfully removed.");
-
 }
 
-void ModelDataManager::remove(std::string datadefinitionTypename, ModelDataDefinition * anElement) {
+void ModelDataManager::remove(std::string datadefinitionTypename, ModelDataDefinition* anElement) {
 	List<ModelDataDefinition*>* listElements = getDataDefinitionList(datadefinitionTypename);
 	_hasChanged = true;
 	listElements->remove(anElement);
 }
 
-bool ModelDataManager::check(std::string datadefinitionTypename, std::string elementName, std::string expressionName, bool mandatory, std::string& errorMessage) {
+bool ModelDataManager::check(std::string datadefinitionTypename, std::string elementName, std::string expressionName,
+                             bool mandatory, std::string& errorMessage) {
 	if (elementName == "" && !mandatory) {
 		return true;
 	}
 	bool result = getDataDefinition(datadefinitionTypename, elementName) != nullptr;
 	if (!result) {
-		std::string msg = datadefinitionTypename + " \"" + elementName + "\" for '" + expressionName + "' is not in the model.";
-        errorMessage.append(msg);
+		std::string msg = datadefinitionTypename + " \"" + elementName + "\" for '" + expressionName +
+			"' is not in the model.";
+		errorMessage.append(msg);
 	}
 	return result;
 }
 
-bool ModelDataManager::check(std::string datadefinitionTypename, ModelDataDefinition* anElement, std::string expressionName, std::string& errorMessage) {
+bool ModelDataManager::check(std::string datadefinitionTypename, ModelDataDefinition* anElement,
+                             std::string expressionName, std::string& errorMessage) {
 	bool result = anElement != nullptr;
 	if (!result) {
 		std::string msg = datadefinitionTypename + " for '" + expressionName + "' is null.";
-        errorMessage.append(msg);
-	} else {
+		errorMessage.append(msg);
+	}
+	else {
 		result = check(datadefinitionTypename, anElement->getName(), expressionName, true, errorMessage);
 	}
 	return result;
@@ -119,7 +124,8 @@ unsigned int ModelDataManager::getNumberOfDataDefinitions(std::string datadefini
 
 unsigned int ModelDataManager::getNumberOfDataDefinitions() {
 	unsigned int total = 0;
-	for (std::map<std::string, List<ModelDataDefinition*>*>::iterator it = _datadefinitions->begin(); it != _datadefinitions->end(); it++) {
+	for (std::map<std::string, List<ModelDataDefinition*>*>::iterator it = _datadefinitions->begin(); it !=
+	     _datadefinitions->end(); it++) {
 		total += (*it).second->size();
 	}
 	return total;
@@ -132,23 +138,23 @@ void ModelDataManager::show() {
 	List<ModelDataDefinition*>* list;
 	Util::IncIndent();
 	{
-			for (const auto& [typenameKey, definitions] : *_datadefinitions) {
-				key = typenameKey;
-				list = definitions;
-				_parentModel->getTracer()->trace(key + ": (" + std::to_string(list->size()) + ")");
-				Util::IncIndent();
-				{
-					for (ModelDataDefinition* modeldatum : *list->list()) {
-						_parentModel->getTracer()->trace(modeldatum->show());
-					}
+		for (const auto& [typenameKey, definitions] : *_datadefinitions) {
+			key = typenameKey;
+			list = definitions;
+			_parentModel->getTracer()->trace(key + ": (" + std::to_string(list->size()) + ")");
+			Util::IncIndent();
+			{
+				for (ModelDataDefinition* modeldatum : *list->list()) {
+					_parentModel->getTracer()->trace(modeldatum->show());
 				}
-				Util::DecIndent();
 			}
+			Util::DecIndent();
+		}
 	}
 	Util::DecIndent();
 }
 
-Model * ModelDataManager::getParentModel() const {
+Model* ModelDataManager::getParentModel() const {
 	return _parentModel;
 }
 
@@ -177,7 +183,7 @@ List<ModelDataDefinition*>* ModelDataManager::getDataDefinitionList(std::string 
 	if (not found) {
 		// list does not exists yet. Create it and set a valid iterator
 		List<ModelDataDefinition*>* newList = new List<ModelDataDefinition*>();
-		newList->setSortFunc([](const ModelDataDefinition* a, const ModelDataDefinition * b) {
+		newList->setSortFunc([](const ModelDataDefinition* a, const ModelDataDefinition* b) {
 			return a->getId() < b->getId();
 		});
 		_datadefinitions->insert(std::pair<std::string, List<ModelDataDefinition*>*>(datadefinitionTypename, newList));
@@ -187,10 +193,11 @@ List<ModelDataDefinition*>* ModelDataManager::getDataDefinitionList(std::string 
 	return infras;
 }
 
-	ModelDataDefinition * ModelDataManager::getDataDefinition(std::string datadefinitionTypename, Util::identification id) {
+ModelDataDefinition* ModelDataManager::getDataDefinition(std::string datadefinitionTypename, Util::identification id) {
 	List<ModelDataDefinition*>* list = getDataDefinitionList(datadefinitionTypename);
 	for (ModelDataDefinition* modeldatum : *list->list()) {
-		if (modeldatum->getId() == id) { // found
+		if (modeldatum->getId() == id) {
+			// found
 			return modeldatum;
 		}
 	}
@@ -201,9 +208,11 @@ int ModelDataManager::getRankOf(std::string datadefinitionTypename, std::string 
 	int rank = 0;
 	List<ModelDataDefinition*>* list = getDataDefinitionList(datadefinitionTypename);
 	for (ModelDataDefinition* modeldatum : *list->list()) {
-		if (modeldatum->getName() == name) { // found
+		if (modeldatum->getName() == name) {
+			// found
 			return rank;
-		} else {
+		}
+		else {
 			rank++;
 		}
 	}
@@ -219,9 +228,9 @@ std::list<std::string> ModelDataManager::getDataDefinitionClassnames() const {
 	return keys;
 }
 
-ModelDataDefinition * ModelDataManager::getDataDefinition(std::string datadefinitionTypename, std::string name) {
+ModelDataDefinition* ModelDataManager::getDataDefinition(std::string datadefinitionTypename, std::string name) {
 	List<ModelDataDefinition*>* list = getDataDefinitionList(datadefinitionTypename);
-	for (ModelDataDefinition* dd: *list->list()) {
+	for (ModelDataDefinition* dd : *list->list()) {
 		if (dd->getName() == name) {
 			return dd;
 		}

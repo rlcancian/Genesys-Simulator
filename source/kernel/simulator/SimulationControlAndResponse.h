@@ -76,7 +76,7 @@ public:
 	bool isModified() const { return _isModified; }
 	bool isSubProperty()const { return _isSubProperty; }
 	bool hasValue() const { return _hasValue; }
-	std::string valueText() const { return "?"; } // TODO
+	std::string valueText() const { return "?"; } // @ToDo: (importante): implement value text
 	void setToolTip(const std::string text);
 	void setStatusTip(const std::string text);
 	void setWhatsThis(const std::string text);
@@ -85,7 +85,7 @@ public:
 	void setEnabled(bool enable);
 	void setModified(bool modified);
 public:
-	virtual bool compare(PropertyGenesys* otherProperty)const { return true; } // TODO
+	virtual bool compare(PropertyGenesys* otherProperty)const { return true; } // @ToDo: (importante): implement comparison
 public:
 	void addSubProperty(PropertyGenesys *property) {}
 	void insertSubProperty(PropertyGenesys *property, PropertyGenesys *afterProperty) {}
@@ -446,7 +446,7 @@ private:
 };
 
 
-// TODO(genesys|kernel-controls|migration): This compatibility alias keeps the current
+// @ToDo: (importante): This compatibility alias keeps the current
 // kernel API working while the codebase migrates from the legacy PropertyBase
 // naming toward explicit SimulationResponse/SimulationControl types.
 typedef SimulationControl PropertyBase;
@@ -500,7 +500,7 @@ private:
 	SetterGeneric<T> _setter;
 };
 
-// TODO: remove typename E
+// @ToDo: (pequena alteração): remove typename E
 template <typename T, typename E>
 class SimulationControlGenericEnum: public SimulationControl {
 public:
@@ -546,7 +546,7 @@ private:
 	SetterGeneric<T> _setter;
 };
 
-// TODO: remove typename C
+// @ToDo: (pequena alteração): remove typename C
 template <typename T, typename M, typename C>
 class SimulationControlGenericClass: public SimulationControl {
 public:
@@ -656,7 +656,7 @@ private:
     Creator _creator;
 };
 
-// TODO: remove typename C
+// @ToDo: (pequena alteração): remove typename C
 template <typename T, typename M, typename C>
 class SimulationControlGenericClassNotDC: public SimulationControl {
 public:

@@ -60,8 +60,8 @@ unsigned int ExperimentManager::size() {
 }
 
 bool ExperimentManager::saveSimulationExperiment(std::string filename) {
-	/// @todo This method currently reflects the unfinished higher-level experiment layer.
-	// @TODO: implement
+	// @ToDo: (importante): This method currently reflects the unfinished higher-level experiment layer.
+	// @ToDo: (importante): implement
 	if (_currentSimulationExperiment != nullptr) {
 		filename = ""; // just to avoid not using it
 		//return _currentSimulationExperiment->save(filename);
@@ -70,9 +70,9 @@ bool ExperimentManager::saveSimulationExperiment(std::string filename) {
 }
 
 bool ExperimentManager::loadSimulationExperiment(std::string filename) {
-	/// @todo The higher-level experiment workflow is still under construction.
+	// @ToDo: (importante): The higher-level experiment workflow is still under construction.
 	SimulationExperiment* experiment = new SimulationExperiment(); //_simulator);
-	// @TODO: not implemented yet!
+	// @ToDo: (importante): not implemented yet!
 	filename = ""; // jut to avoid not using it
 	bool res = false; // = experiment->load(filename);
 	if (res) {

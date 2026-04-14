@@ -78,9 +78,9 @@ public:
 	void insert(SimulationExperiment* experiment);
 	void remove(SimulationExperiment* experiment);
 	void setCurrent(SimulationExperiment* experiment);
-	/// @todo Implement persistence once SimulationExperiment serialization is defined.
+	// @ToDo: (importante): Implement persistence once SimulationExperiment serialization is defined.
 	bool saveSimulationExperiment(std::string filename);
-	/// @todo Implement loading once SimulationExperiment deserialization and scenario execution are defined.
+	// @ToDo: (importante): Implement loading once SimulationExperiment deserialization and scenario execution are defined.
 	bool loadSimulationExperiment(std::string filename);
 	unsigned int size();
 public:

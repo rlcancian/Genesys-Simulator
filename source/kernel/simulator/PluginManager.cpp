@@ -69,7 +69,7 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 		loadedPlugins = new List<Plugin*>();
 		while (std::getline(file, line)) {
 			if (line.length()>=1) {
-                // TODO 2500701 why [0-2] are special chars?
+                // @ToDo: (pequena alteração): 2500701 why [0-2] are special chars?
                 while (line[0]>126 || line[0]<32) {
                     line.erase(0,1);
                 }
