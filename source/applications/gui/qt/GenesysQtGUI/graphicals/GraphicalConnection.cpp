@@ -2,6 +2,7 @@
 #include "GraphicalModelComponent.h"
 #include "ModelGraphicsScene.h"
 #include <QPainter>
+#include <QPainterPathStroker>
 
 GraphicalConnection::GraphicalConnection(GraphicalComponentPort* sourceGraphicalPort, GraphicalComponentPort* destinationGraphicalPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, QColor color, QGraphicsItem *parent) : QGraphicsObject(parent) {
 	/**
@@ -177,6 +178,46 @@ QRectF GraphicalConnection::boundingRect() const {
 	return QRectF(0 - portWidth, 0 - portHeight, _width + portWidth, _height + portHeight);
 }
 
+QPainterPath GraphicalConnection::connectionPath() const {
+	QPainterPath path;
+	if (!canRefreshGeometry()) {
+		return path;
+	}
+
+	const qreal x1 = _sourcePointLocal.x();
+	const qreal y1 = _sourcePointLocal.y();
+	const qreal x2 = _destinationPointLocal.x();
+	const qreal y2 = _destinationPointLocal.y();
+
+	path.moveTo(_sourcePointLocal);
+	switch (_connectionType) {
+		case ConnectionType::HORIZONTAL:
+			path.lineTo((x1 + x2) / 2, y1);
+			path.lineTo((x1 + x2) / 2, y2);
+			break;
+		case ConnectionType::VERTICAL:
+			path.lineTo(x1, (y1 + y2) / 2);
+			path.lineTo(x2, (y1 + y2) / 2);
+			break;
+		case ConnectionType::DIRECT:
+			break;
+		case ConnectionType::USERDEFINED:
+			//@TODO: draw intermediate points
+			break;
+	}
+	path.lineTo(_destinationPointLocal);
+	return path;
+}
+
+QPainterPath GraphicalConnection::shape() const {
+	// Keep hit testing close to the visible line instead of using the large bounding rectangle.
+	QPainterPathStroker stroker;
+	stroker.setWidth(qMax<qreal>(8.0, static_cast<qreal>(_selWidth)));
+	stroker.setCapStyle(Qt::RoundCap);
+	stroker.setJoinStyle(Qt::RoundJoin);
+	return stroker.createStroke(connectionPath());
+}
+
 void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
@@ -186,9 +227,6 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	QPen pen = QPen(_color);
 	pen.setWidth(2);
 	painter->setPen(pen);
-	QPainterPath path;
-	QPointF inipos;
-	QPointF endpos;
 
 	/**
 	 * Bloco 2: normaliza coordenadas locais considerando orientação relativa.
@@ -197,31 +235,13 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	const qreal y1 = _sourcePointLocal.y();
 	const qreal x2 = _destinationPointLocal.x();
 	const qreal y2 = _destinationPointLocal.y();
-	inipos = _sourcePointLocal;
-	endpos = _destinationPointLocal;
 	/**
 	 * Bloco 3: gera path de desenho com base no tipo de roteamento.
 	 */
-	path.moveTo(inipos);
-	switch (_connectionType) {
-		case ConnectionType::HORIZONTAL:
-            path.lineTo((x1 + x2) / 2, y1);
-            path.lineTo((x1 + x2) / 2, y2);
-			break;
-		case ConnectionType::VERTICAL:
-            path.lineTo(x1, (y1 + y2) / 2);
-            path.lineTo(x2, (y1 + y2) / 2);
-			break;
-		case ConnectionType::DIRECT:
-			break;
-		case ConnectionType::USERDEFINED:
-			//@TODO: draw intermediate points
-			break;
-	}
+	const QPainterPath path = connectionPath();
 	/**
 	 * Bloco 4: renderiza o path final da conexão.
 	 */
-	path.lineTo(endpos);
 	painter->drawPath(path);
 	//
 	/**
