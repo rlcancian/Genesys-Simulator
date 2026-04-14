@@ -247,7 +247,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     }
 
     std::map<ModelComponent*, GraphicalModelComponent*> componentMap;
-    for (GraphicalModelComponent* gmc : *scene->getAllComponents()) {
+    const QList<GraphicalModelComponent*> liveGraphicalComponents = scene->graphicalModelComponentItems();
+    for (GraphicalModelComponent* gmc : liveGraphicalComponents) {
         if (gmc == nullptr || gmc->getComponent() == nullptr) {
             continue;
         }

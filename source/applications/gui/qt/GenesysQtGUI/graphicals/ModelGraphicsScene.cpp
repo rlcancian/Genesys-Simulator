@@ -760,6 +760,43 @@ void ModelGraphicsScene::removeGraphicalModelDataDefinition(GraphicalModelDataDe
     delete(gmdd);
 }
 
+void ModelGraphicsScene::detachGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd) {
+    if (gmdd == nullptr || dynamic_cast<GraphicalModelComponent*>(gmdd) != nullptr) {
+        return;
+    }
+
+    // Keep the data-definition item alive for undo while removing it from all live-scene indexes.
+    if (QGraphicsItemGroup* group = gmdd->group()) {
+        group->removeFromGroup(gmdd);
+    }
+    if (gmdd->scene() == this) {
+        removeItem(gmdd);
+    }
+    getGraphicalModelDataDefinitions()->removeOne(gmdd);
+    getAllDataDefinitions()->removeOne(gmdd);
+    _oldPositionsItems.remove(gmdd);
+}
+
+void ModelGraphicsScene::restoreGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd) {
+    if (gmdd == nullptr || dynamic_cast<GraphicalModelComponent*>(gmdd) != nullptr) {
+        return;
+    }
+
+    // Reattach an undo-preserved data-definition item without creating a duplicate object.
+    if (gmdd->scene() != this) {
+        if (gmdd->scene() != nullptr) {
+            gmdd->scene()->removeItem(gmdd);
+        }
+        addItem(gmdd);
+    }
+    if (!getGraphicalModelDataDefinitions()->contains(gmdd)) {
+        getGraphicalModelDataDefinitions()->append(gmdd);
+    }
+    if (!getAllDataDefinitions()->contains(gmdd)) {
+        getAllDataDefinitions()->append(gmdd);
+    }
+}
+
 void ModelGraphicsScene::removeGraphicalDiagramConnection(GraphicalDiagramConnection* connection) {
     //graphically
     removeItem(connection);
