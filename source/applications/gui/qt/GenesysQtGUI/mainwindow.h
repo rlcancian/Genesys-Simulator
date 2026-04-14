@@ -253,6 +253,8 @@ private: // simulator event handlers
 	void _onModelCheckSuccessHandler(ModelEvent* re);
     /** @brief Compatibility wrapper for replication-start event handling delegation. */
 	void _onReplicationStartHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for replication-end event handling delegation. */
+	void _onReplicationEndHandler(SimulationEvent* re);
     /** @brief Compatibility wrapper for simulation-start event handling delegation. */
 	void _onSimulationStartHandler(SimulationEvent* re);
     /** @brief Compatibility wrapper for simulation-pause event handling delegation. */

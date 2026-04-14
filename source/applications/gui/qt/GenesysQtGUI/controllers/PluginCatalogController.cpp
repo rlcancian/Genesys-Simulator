@@ -70,6 +70,7 @@ void PluginCatalogController::insertPluginUI(Plugin* plugin) const {
         delete treeItemChild;
         return;
     }
+    treeItemChild->setData(0, Qt::UserRole, treeRootItem->background(0).color());
 
     // Keep legacy icon color selection based on root category color.
     if (plugin->getPluginInfo()->isComponent()
@@ -152,11 +153,13 @@ QTreeWidgetItem* PluginCatalogController::ensureCategoryRoot(const QString& cate
     }
     treeRootItem->setBackground(0, bbackground);
     treeRootItem->setFont(0, QFont("Nimbus Sans", 12, QFont::Bold));
-    treeRootItem->setExpanded(false);
+    treeRootItem->setExpanded(true);
 
     // Preserve category-color map updates for graphical-model integration.
-    if (_pluginCategoryColor != nullptr && pluginCategoryName == category.toStdString()) {
-        _pluginCategoryColor->insert({pluginCategoryName, bbackground.color()});
+    if (_pluginCategoryColor != nullptr) {
+        const QColor categoryColor = bbackground.color();
+        _pluginCategoryColor->insert({category.toStdString(), categoryColor});
+        _pluginCategoryColor->insert({pluginCategoryName, categoryColor});
     }
     return treeRootItem;
 }

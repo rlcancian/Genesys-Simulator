@@ -79,6 +79,8 @@
 #include <QRegularExpression>
 #include <QRandomGenerator>
 #include <QAction>
+#include <QSignalBlocker>
+#include <QTabBar>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -131,6 +133,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QSizePolicy policy = ui->dockWidgetConsole->sizePolicy();
     policy.setVerticalPolicy(QSizePolicy::Minimum);
     ui->dockWidgetConsole->setSizePolicy(policy);
+    splitDockWidget(ui->dockWidgetPropertyEditor, ui->dockWidgetConsole, Qt::Vertical);
     //...
     // plugins
     ui->treeWidget_Plugins->sortByColumn(0, Qt::AscendingOrder);
@@ -188,6 +191,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->tabWidgetModel->setCurrentIndex(CONST.TabModelSimLangIndex);
     ui->tabWidgetSimulation->setCurrentIndex(CONST.TabSimulationBreakpointsIndex);
     ui->tabWidgetReports->setCurrentIndex(CONST.TabReportReportIndex);
+    {
+        const QSignalBlocker tabWidgetModelBlocker(ui->tabWidgetModel);
+        const QSignalBlocker tabBarBlocker(ui->tabWidgetModel->tabBar());
+        const int modelDiagramTabIndex = ui->tabWidgetModel->indexOf(ui->tabModelDiagram);
+        if (modelDiagramTabIndex >= 0) {
+            ui->tabWidgetModel->setTabVisible(modelDiagramTabIndex, false);
+        }
+    }
     //
     // adjust toolbars position and ranking
     //
@@ -381,6 +392,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             //@TODO: now it's the opportunity to adjust template
             _insertPluginUI(simulator->getPluginManager()->getAtRank(i));
         }
+        ui->treeWidget_Plugins->expandAll();
     }
     if (SystemPreferences::startMaximized()) {
         // another try to start maximized (it should not be that hard)

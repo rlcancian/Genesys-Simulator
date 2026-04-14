@@ -19,33 +19,33 @@
 #include <QDebug>
 
 namespace {
-QPointF stableComponentPosition(GraphicalModelComponent* component) {
-    if (component == nullptr) {
-        return QPointF();
+    QPointF stableComponentPosition(GraphicalModelComponent* component) {
+        if (component == nullptr) {
+            return QPointF();
+        }
+        const QPointF oldPosition = component->getOldPosition();
+        if (!qFuzzyIsNull(oldPosition.x()) || !qFuzzyIsNull(oldPosition.y())) {
+            return oldPosition;
+        }
+        if (component->scene() != nullptr) {
+            return component->scenePos();
+        }
+        return component->pos();
     }
-    const QPointF oldPosition = component->getOldPosition();
-    if (!qFuzzyIsNull(oldPosition.x()) || !qFuzzyIsNull(oldPosition.y())) {
-        return oldPosition;
-    }
-    if (component->scene() != nullptr) {
-        return component->scenePos();
-    }
-    return component->pos();
-}
 
-QPointF stableDataDefinitionPosition(GraphicalModelDataDefinition* dataDefinition) {
-    if (dataDefinition == nullptr) {
-        return QPointF();
+    QPointF stableDataDefinitionPosition(GraphicalModelDataDefinition* dataDefinition) {
+        if (dataDefinition == nullptr) {
+            return QPointF();
+        }
+        const QPointF oldPosition = dataDefinition->getOldPosition();
+        if (!qFuzzyIsNull(oldPosition.x()) || !qFuzzyIsNull(oldPosition.y())) {
+            return oldPosition;
+        }
+        if (dataDefinition->scene() != nullptr) {
+            return dataDefinition->scenePos();
+        }
+        return dataDefinition->pos();
     }
-    const QPointF oldPosition = dataDefinition->getOldPosition();
-    if (!qFuzzyIsNull(oldPosition.x()) || !qFuzzyIsNull(oldPosition.y())) {
-        return oldPosition;
-    }
-    if (dataDefinition->scene() != nullptr) {
-        return dataDefinition->scenePos();
-    }
-    return dataDefinition->pos();
-}
 }
 
 // Build the graphical reconstruction service with explicit dependencies.
@@ -58,16 +58,18 @@ GraphicalModelBuilder::GraphicalModelBuilder(Simulator* simulator,
       _graphicsView(graphicsView),
       _scene(scene),
       _pluginCategoryColor(pluginCategoryColor),
-      _console(console) {}
+      _console(console) {
+}
 
 // Preserve recursive layout traversal and connection restoration behavior.
 void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComponent* component,
-                                                                        List<ModelComponent*>* visited,
-                                                                        std::map<ModelComponent*, GraphicalModelComponent*>* map,
-                                                                        int* x,
-                                                                        int* y,
-                                                                        int* ymax,
-                                                                        int sequenceInLine) {
+                                                                       List<ModelComponent*>* visited,
+                                                                       std::map<ModelComponent*, GraphicalModelComponent
+                                                                           *>* map,
+                                                                       int* x,
+                                                                       int* y,
+                                                                       int* ymax,
+                                                                       int sequenceInLine) {
     PluginManager* pm = _simulator->getPluginManager();
     Plugin* plugin = pm->find(component->getClassname());
     if (plugin == nullptr) {
@@ -109,7 +111,8 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
                 *x -= 5 * TraitsGUI<GModelComponent>::width * 1.5;
                 *y += deltaY;
                 sequenceInLine = 0;
-            } else {
+            }
+            else {
                 *x += TraitsGUI<GModelComponent>::width * 1.5;
             }
             if (*y > *ymax) {
@@ -121,9 +124,10 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
             if (destinyIt != map->end()) {
                 GraphicalModelComponent* destinyGmc = destinyIt->second;
                 if (connectionMap.first < gmc->getGraphicalOutputPorts().size()
-                        && connectionMap.second->channel.portNumber < destinyGmc->getGraphicalInputPorts().size()) {
+                    && connectionMap.second->channel.portNumber < destinyGmc->getGraphicalInputPorts().size()) {
                     _scene->addGraphicalConnection(gmc->getGraphicalOutputPorts().at(connectionMap.first),
-                                                   destinyGmc->getGraphicalInputPorts().at(connectionMap.second->channel.portNumber),
+                                                   destinyGmc->getGraphicalInputPorts().at(
+                                                       connectionMap.second->channel.portNumber),
                                                    connectionMap.first,
                                                    connectionMap.second->channel.portNumber);
                 }
@@ -139,7 +143,8 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
 }
 
 // Rebuild graphical data definitions and diagram links as part of the main model regeneration flow.
-void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(std::map<ModelComponent*, GraphicalModelComponent*>* componentMap) {
+void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(
+    std::map<ModelComponent*, GraphicalModelComponent*>* componentMap) {
     Q_UNUSED(componentMap);
     synchronizeGraphicalDataDefinitionsLayer(_simulator, _scene);
 }
@@ -160,7 +165,8 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
         }
 
         List<ModelComponent*>* visited = new List<ModelComponent*>();
-        std::map<ModelComponent*, GraphicalModelComponent*>* map = new std::map<ModelComponent*, GraphicalModelComponent*>();
+        std::map<ModelComponent*, GraphicalModelComponent*>* map = new std::map<
+            ModelComponent*, GraphicalModelComponent*>();
 
         for (SourceModelComponent* source : *cm->getSourceComponents()) {
             recursivalyGenerateGraphicalModelFromModel(source, visited, map, &x, &y, &ymax, 0);
@@ -176,7 +182,8 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
                     visited->insert(comp);
                 }
             }
-        } while (foundNotVisited);
+        }
+        while (foundNotVisited);
 
         rebuildGraphicalDataDefinitionsLayer(map);
 
@@ -198,11 +205,13 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 _guardedScene->setConnectionGeometryUpdatesBlocked(true);
             }
         }
+
         ~ScopedConnectionGeometryBlocker() {
             if (_guardedScene != nullptr) {
                 _guardedScene->setConnectionGeometryUpdatesBlocked(false);
             }
         }
+
     private:
         ModelGraphicsScene* _guardedScene = nullptr;
     };
@@ -250,8 +259,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     const QList<QGraphicsItem*> liveItems = scene->items();
     for (QGraphicsItem* item : liveItems) {
         if (auto* gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
-            qInfo() << "synchronizeGraphicalDataDefinitionsLayer: ignoring GraphicalModelComponent in data-definition snapshot"
-                    << (gmc->getComponent() != nullptr ? QString::fromStdString(gmc->getComponent()->getName()) : QString("<null>"));
+            qInfo() <<
+                "synchronizeGraphicalDataDefinitionsLayer: ignoring GraphicalModelComponent in data-definition snapshot"
+                << (gmc->getComponent() != nullptr
+                        ? QString::fromStdString(gmc->getComponent()->getName())
+                        : QString("<null>"));
             continue;
         }
         GraphicalModelDataDefinition* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item);
@@ -287,7 +299,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (plugin == nullptr) {
                 continue;
             }
-            GraphicalModelDataDefinition* graphicalDataDefinition = scene->addGraphicalModelDataDefinition(plugin, dataDefinition, QPointF(0, 0), grey);
+            GraphicalModelDataDefinition* graphicalDataDefinition = scene->addGraphicalModelDataDefinition(
+                plugin, dataDefinition, QPointF(0, 0), grey);
             if (graphicalDataDefinition != nullptr) {
                 dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
                 newDataDefinitions.insert(dataDefinition);
@@ -303,10 +316,10 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     }
     for (GraphicalModelDataDefinition* stale : staleGraphicalDataDefinitions) {
         const QString staleName = (stale->getDataDefinition() != nullptr)
-                ? QString::fromStdString(stale->getDataDefinition()->getName())
-                : QString("<null>");
+                                      ? QString::fromStdString(stale->getDataDefinition()->getName())
+                                      : QString("<null>");
         qInfo() << "synchronizeGraphicalDataDefinitionsLayer: stale data definition removal"
-                << staleName;
+            << staleName;
         scene->removeGraphicalModelDataDefinition(stale);
     }
 
@@ -346,7 +359,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 gdd->setOldPosition(componentPosition.x(), yAttached);
                 gdd->setColor(purple);
             }
-            scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::ATTACHED);
+            scene->addGraphicalDiagramConnection(gdd, graphicalComponent,
+                                                 GraphicalDiagramConnection::ConnectionType::ATTACHED);
         }
 
         for (const auto& internalData : *component->getInternalData()) {
@@ -369,9 +383,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 yInternal += 150;
                 gdd->setPos(componentPosition.x(), yInternal);
                 gdd->setOldPosition(componentPosition.x(), yInternal);
-                scene->ensureInitialInternalDataDefinitionGrouping(gdd, graphicalComponent);
+                // do NOT group
+                //scene->ensureInitialInternalDataDefinitionGrouping(gdd, graphicalComponent);
             }
-            scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::INTERNAL);
+            scene->addGraphicalDiagramConnection(gdd, graphicalComponent,
+                                                 GraphicalDiagramConnection::ConnectionType::INTERNAL);
         }
     }
 
@@ -402,7 +418,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 childGraphicalDefinition->setPos(x, parentPosition.y());
                 childGraphicalDefinition->setOldPosition(x, parentPosition.y());
             }
-            scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition, GraphicalDiagramConnection::ConnectionType::INTERNAL);
+            scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition,
+                                                 GraphicalDiagramConnection::ConnectionType::INTERNAL);
         }
     }
 

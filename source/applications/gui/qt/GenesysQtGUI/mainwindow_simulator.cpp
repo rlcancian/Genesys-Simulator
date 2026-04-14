@@ -67,6 +67,13 @@ void MainWindow::_onReplicationStartHandler(SimulationEvent * re) {
     }
 }
 
+void MainWindow::_onReplicationEndHandler(SimulationEvent * re) {
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onReplicationEndHandler(re);
+    }
+}
+
 void MainWindow::_onSimulationStartHandler(SimulationEvent * re) {
     // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
     if (_simulationEventController != nullptr) {

@@ -14,7 +14,7 @@ public:
     AnimationTimer(ModelGraphicsScene* myScene);
 
     // Sobrecarga do método paint
-    void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget = nullptr) override;
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
 
     // Getters
     double getTime();
@@ -38,10 +38,10 @@ public:
     void setTimeFormat(Util::TimeFormat timeFormat);
 
     // Outros
-    void startDrawing(QGraphicsSceneMouseEvent *event); // Inicia o desenho da tela
-    void continueDrawing(QGraphicsSceneMouseEvent *event); // Continua o desenho na tela
-    void stopDrawing(QGraphicsSceneMouseEvent *event); // Finaliza o desenho na tela
-    void adjustSizeAndPosition(QGraphicsSceneMouseEvent *event); // Ajusta posição e dimensão do retângulo no final
+    void startDrawing(QGraphicsSceneMouseEvent* event); // Inicia o desenho da tela
+    void continueDrawing(QGraphicsSceneMouseEvent* event); // Continua o desenho na tela
+    void stopDrawing(QGraphicsSceneMouseEvent* event); // Finaliza o desenho na tela
+    void adjustSizeAndPosition(QGraphicsSceneMouseEvent* event); // Ajusta posição e dimensão do retângulo no final
     void convertSeconds(); // converte o tempo recebido em segundos para horas, dias e segundos
     bool isDrawingInicialized(); // Diz se o relógio começou a ser desenhado
     bool isDrawingFinalized(); // Diz se o relógio terminou de ser desenhado
@@ -57,7 +57,9 @@ private:
     unsigned int _hours = 0;
     unsigned int _minutes = 0;
     unsigned int _seconds = 0;
-    Util::TimeFormat _timeFormat = Util::TimeFormat(12);
+    unsigned int _microsseconds = 0;
+    Util::TimeFormat _timeFormat = Util::TimeFormat(24);
+    bool _showMicrosseconds = true;
     bool _isResizing = false;
     bool _isDrawingInicialized = false;
     bool _isDrawingFinalized = false;
