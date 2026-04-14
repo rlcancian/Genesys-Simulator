@@ -7,6 +7,8 @@
 #include <string>
 
 class QComboBox;
+class ExperimentManager;
+class SimulationReporter_if;
 
 namespace Ui {
 	class DialogSimulationConfigure;
@@ -20,6 +22,7 @@ public:
 	explicit DialogSimulationConfigure(QWidget *parent = nullptr);
 	~DialogSimulationConfigure();
 	void setModelSimulation(ModelSimulation* modelSimulation);
+	void setExperimentManager(ExperimentManager* experimentManager);
 
 public slots:
 	void accept() override;
@@ -43,6 +46,8 @@ private:
 
 	void _populateTimeUnitComboBoxes();
 	void _loadModelSimulation();
+	void _loadSimulationReporter();
+	void _loadExperimentManager();
 	SimulationConfiguration _configurationFromUi() const;
 	bool _hasPendingChanges() const;
 	Util::TimeUnit _timeUnitFromComboBox(const QComboBox* comboBox) const;
@@ -51,6 +56,8 @@ private:
 
 	Ui::DialogSimulationConfigure *ui;
 	ModelSimulation* _modelSimulation = nullptr;
+	SimulationReporter_if* _simulationReporter = nullptr;
+	ExperimentManager* _experimentManager = nullptr;
 	SimulationConfiguration _originalConfiguration;
 };
 

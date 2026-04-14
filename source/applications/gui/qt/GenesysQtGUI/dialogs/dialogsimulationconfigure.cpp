@@ -1,6 +1,9 @@
 #include "dialogsimulationconfigure.h"
 #include "ui_dialogsimulationconfigure.h"
 
+#include "../../../../../kernel/simulator/ExperimentManager.h"
+#include "../../../../../kernel/simulator/SimulationReporter_if.h"
+
 #include <QComboBox>
 #include <QMessageBox>
 
@@ -20,7 +23,15 @@ DialogSimulationConfigure::~DialogSimulationConfigure()
 void DialogSimulationConfigure::setModelSimulation(ModelSimulation* modelSimulation)
 {
 	_modelSimulation = modelSimulation;
+	_simulationReporter = _modelSimulation != nullptr ? _modelSimulation->getReporter() : nullptr;
 	_loadModelSimulation();
+	_loadSimulationReporter();
+}
+
+void DialogSimulationConfigure::setExperimentManager(ExperimentManager* experimentManager)
+{
+	_experimentManager = experimentManager;
+	_loadExperimentManager();
 }
 
 void DialogSimulationConfigure::accept()
@@ -104,6 +115,30 @@ void DialogSimulationConfigure::_loadModelSimulation()
 	ui->checkBoxStepByStep->setChecked(_originalConfiguration.stepByStep);
 	ui->checkBoxPauseOnEvent->setChecked(_originalConfiguration.pauseOnEvent);
 	ui->checkBoxPauseOnReplication->setChecked(_originalConfiguration.pauseOnReplication);
+}
+
+void DialogSimulationConfigure::_loadSimulationReporter()
+{
+	if (_simulationReporter == nullptr) {
+		ui->labelSimulationReporterStatus->setText(tr("No SimulationReporter_if instance is loaded."));
+		return;
+	}
+
+	// The reporter interface currently exposes report actions, but no editable configuration properties.
+	ui->labelSimulationReporterStatus->setText(tr("SimulationReporter_if instance is loaded for the current ModelSimulation."));
+}
+
+void DialogSimulationConfigure::_loadExperimentManager()
+{
+	if (_experimentManager == nullptr) {
+		ui->labelExperimentManagerStatus->setText(tr("No ExperimentManager instance is loaded."));
+		return;
+	}
+
+	// The current kernel exposes the concrete ExperimentManager while the ExperimentManager_if API evolves.
+	ui->labelExperimentManagerStatus->setText(
+		tr("ExperimentManager instance is loaded. Experiments: %1.").arg(_experimentManager->size())
+	);
 }
 
 DialogSimulationConfigure::SimulationConfiguration DialogSimulationConfigure::_configurationFromUi() const

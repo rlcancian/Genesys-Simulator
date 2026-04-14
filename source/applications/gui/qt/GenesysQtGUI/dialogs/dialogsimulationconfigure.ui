@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>560</width>
-    <height>420</height>
+    <width>620</width>
+    <height>500</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,172 +18,279 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QFormLayout" name="formLayout">
-     <property name="leftMargin">
+    <widget class="QTabWidget" name="tabWidgetSimulationConfigure">
+     <property name="currentIndex">
       <number>0</number>
      </property>
-     <property name="bottomMargin">
-      <number>2</number>
-     </property>
-     <item row="0" column="0">
-      <widget class="QLabel" name="labelNumberOfReplications">
-       <property name="text">
-        <string>Number of Replications:</string>
-       </property>
-       <property name="buddy">
-        <cstring>spinBoxNumberOfReplications</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="0" column="1">
-      <widget class="QSpinBox" name="spinBoxNumberOfReplications">
-       <property name="minimum">
-        <number>1</number>
-       </property>
-       <property name="maximum">
-        <number>2147483647</number>
-       </property>
-       <property name="value">
-        <number>1</number>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="labelReplicationBaseTimeUnit">
-       <property name="text">
-        <string>Replication Base Time Unit:</string>
-       </property>
-       <property name="buddy">
-        <cstring>comboBoxReplicationBaseTimeUnit</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QComboBox" name="comboBoxReplicationBaseTimeUnit"/>
-     </item>
-     <item row="2" column="0">
-      <widget class="QLabel" name="labelReplicationLength">
-       <property name="text">
-        <string>Replication Length:</string>
-       </property>
-       <property name="buddy">
-        <cstring>doubleSpinBoxReplicationLength</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="2" column="1">
-      <layout class="QHBoxLayout" name="horizontalLayoutReplicationLength">
+     <widget class="QWidget" name="tabModelSimulation">
+      <attribute name="title">
+       <string>Model Simulation</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayoutModelSimulation">
        <item>
-        <widget class="QDoubleSpinBox" name="doubleSpinBoxReplicationLength">
-         <property name="decimals">
-          <number>12</number>
+        <layout class="QFormLayout" name="formLayout">
+         <property name="leftMargin">
+          <number>0</number>
          </property>
-         <property name="minimum">
-          <double>0.000001000000000</double>
+         <property name="bottomMargin">
+          <number>2</number>
          </property>
-         <property name="maximum">
-          <double>1000000000000.000000000000000</double>
+         <item row="0" column="0">
+          <widget class="QLabel" name="labelNumberOfReplications">
+           <property name="text">
+            <string>Number of Replications:</string>
+           </property>
+           <property name="buddy">
+            <cstring>spinBoxNumberOfReplications</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="0" column="1">
+          <widget class="QSpinBox" name="spinBoxNumberOfReplications">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>2147483647</number>
+           </property>
+           <property name="value">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="labelReplicationBaseTimeUnit">
+           <property name="text">
+            <string>Replication Base Time Unit:</string>
+           </property>
+           <property name="buddy">
+            <cstring>comboBoxReplicationBaseTimeUnit</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QComboBox" name="comboBoxReplicationBaseTimeUnit"/>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="labelReplicationLength">
+           <property name="text">
+            <string>Replication Length:</string>
+           </property>
+           <property name="buddy">
+            <cstring>doubleSpinBoxReplicationLength</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayoutReplicationLength">
+           <item>
+            <widget class="QDoubleSpinBox" name="doubleSpinBoxReplicationLength">
+             <property name="decimals">
+              <number>12</number>
+             </property>
+             <property name="minimum">
+              <double>0.000001000000000</double>
+             </property>
+             <property name="maximum">
+              <double>1000000000000.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>1.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboBoxReplicationLengthTimeUnit"/>
+           </item>
+          </layout>
+         </item>
+         <item row="3" column="0">
+          <widget class="QLabel" name="labelWarmUpPeriod">
+           <property name="text">
+            <string>Warmup Period:</string>
+           </property>
+           <property name="buddy">
+            <cstring>doubleSpinBoxWarmUpPeriod</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="1">
+          <layout class="QHBoxLayout" name="horizontalLayoutWarmUpPeriod">
+           <item>
+            <widget class="QDoubleSpinBox" name="doubleSpinBoxWarmUpPeriod">
+             <property name="decimals">
+              <number>12</number>
+             </property>
+             <property name="minimum">
+              <double>0.000000000000000</double>
+             </property>
+             <property name="maximum">
+              <double>1000000000000.000000000000000</double>
+             </property>
+             <property name="singleStep">
+              <double>1.000000000000000</double>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboBoxWarmUpPeriodTimeUnit"/>
+           </item>
+          </layout>
+         </item>
+         <item row="4" column="0">
+          <widget class="QLabel" name="labelTerminatingCondition">
+           <property name="text">
+            <string>Terminating Condition:</string>
+           </property>
+           <property name="buddy">
+            <cstring>plainTextTerminatingCondition</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="4" column="1">
+          <widget class="QPlainTextEdit" name="plainTextTerminatingCondition"/>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayoutInitializers">
+         <item>
+          <widget class="QCheckBox" name="checkBoxInitializeSystem">
+           <property name="text">
+            <string>Initialize system</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBoxInitializeStatistics">
+           <property name="text">
+            <string>Initialize statistics between replications</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QHBoxLayout" name="horizontalLayoutExecution">
+         <item>
+          <widget class="QCheckBox" name="checkBoxStepByStep">
+           <property name="text">
+            <string>Step by step</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBoxPauseOnEvent">
+           <property name="text">
+            <string>Pause on event</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QCheckBox" name="checkBoxPauseOnReplication">
+           <property name="text">
+            <string>Pause on replication</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <spacer name="verticalSpacerModelSimulation">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
          </property>
-         <property name="singleStep">
-          <double>1.000000000000000</double>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabSimulationReport">
+      <attribute name="title">
+       <string>Simulation Report</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayoutSimulationReport">
+       <item>
+        <widget class="QLabel" name="labelSimulationReporterStatus">
+         <property name="text">
+          <string>No SimulationReporter_if instance is loaded.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comboBoxReplicationLengthTimeUnit"/>
-       </item>
-      </layout>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="labelWarmUpPeriod">
-       <property name="text">
-        <string>Warmup Period:</string>
-       </property>
-       <property name="buddy">
-        <cstring>doubleSpinBoxWarmUpPeriod</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="1">
-      <layout class="QHBoxLayout" name="horizontalLayoutWarmUpPeriod">
-       <item>
-        <widget class="QDoubleSpinBox" name="doubleSpinBoxWarmUpPeriod">
-         <property name="decimals">
-          <number>12</number>
+        <widget class="QLabel" name="labelSimulationReporterPlaceholder">
+         <property name="text">
+          <string>This tab is reserved for editable SimulationReporter_if settings when reporter implementations expose GUI-editable options.</string>
          </property>
-         <property name="minimum">
-          <double>0.000000000000000</double>
-         </property>
-         <property name="maximum">
-          <double>1000000000000.000000000000000</double>
-         </property>
-         <property name="singleStep">
-          <double>1.000000000000000</double>
+         <property name="wordWrap">
+          <bool>true</bool>
          </property>
         </widget>
        </item>
        <item>
-        <widget class="QComboBox" name="comboBoxWarmUpPeriodTimeUnit"/>
+        <spacer name="verticalSpacerSimulationReport">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
-     </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="labelTerminatingCondition">
-       <property name="text">
-        <string>Terminating Condition:</string>
-       </property>
-       <property name="buddy">
-        <cstring>plainTextTerminatingCondition</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="1">
-      <widget class="QPlainTextEdit" name="plainTextTerminatingCondition"/>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayoutInitializers">
-     <item>
-      <widget class="QCheckBox" name="checkBoxInitializeSystem">
-       <property name="text">
-        <string>Initialize system</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="checkBoxInitializeStatistics">
-       <property name="text">
-        <string>Initialize statistics between replications</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayoutExecution">
-     <item>
-      <widget class="QCheckBox" name="checkBoxStepByStep">
-       <property name="text">
-        <string>Step by step</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="checkBoxPauseOnEvent">
-       <property name="text">
-        <string>Pause on event</string>
-       </property>
-      </widget>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="checkBoxPauseOnReplication">
-       <property name="text">
-        <string>Pause on replication</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+     </widget>
+     <widget class="QWidget" name="tabExperimentManager">
+      <attribute name="title">
+       <string>Experiment Manager</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayoutExperimentManager">
+       <item>
+        <widget class="QLabel" name="labelExperimentManagerStatus">
+         <property name="text">
+          <string>No ExperimentManager instance is loaded.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="labelExperimentManagerPlaceholder">
+         <property name="text">
+          <string>This tab is reserved for editable ExperimentManager settings as the experiment kernel API stabilizes.</string>
+         </property>
+         <property name="wordWrap">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacerExperimentManager">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
@@ -198,6 +305,7 @@
   </layout>
  </widget>
  <tabstops>
+  <tabstop>tabWidgetSimulationConfigure</tabstop>
   <tabstop>spinBoxNumberOfReplications</tabstop>
   <tabstop>comboBoxReplicationBaseTimeUnit</tabstop>
   <tabstop>doubleSpinBoxReplicationLength</tabstop>
@@ -221,7 +329,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>240</x>
-     <y>398</y>
+     <y>478</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
@@ -237,7 +345,7 @@
    <hints>
     <hint type="sourcelabel">
      <x>308</x>
-     <y>398</y>
+     <y>478</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>
