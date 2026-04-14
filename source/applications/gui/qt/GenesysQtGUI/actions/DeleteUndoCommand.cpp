@@ -1,8 +1,9 @@
 #include "DeleteUndoCommand.h"
+#include <QSet>
 #include "graphicals/GraphicalModelDataDefinition.h"
 
 DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphicsScene *scene, QUndoCommand *parent)
-    : QUndoCommand(parent), _myComponentItems(new QList<ComponentItem>()), _myConnectionItems(new QList<GraphicalConnection *>()), _myDrawingItems(new QList<DrawingItem>()), _myGroupItems(new QList<GroupItem>()), _myInternalDataDefinitionItems(new QList<DataDefinitionItem>()), _myInternalDataDefinitions(new QList<ModelDataDefinition *>()), _myGraphicsScene(scene) {
+    : QUndoCommand(parent), _myComponentItems(new QList<ComponentItem>()), _myConnectionItems(new QList<GraphicalConnection *>()), _myDrawingItems(new QList<DrawingItem>()), _myGroupItems(new QList<GroupItem>()), _myDataDefinitionItems(new QList<DataDefinitionItem>()), _myDataDefinitions(new QList<ModelDataDefinition *>()), _myGraphicsScene(scene) {
 
     // filtra cada tipo de item possível em sua respectiva lista
     for (QGraphicsItem *item : items) {
@@ -33,7 +34,6 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
             }
 
             _myComponentItems->append(componentItem);
-            captureInternalDataDefinitions(component);
         } else if (GraphicalConnection *connection = dynamic_cast<GraphicalConnection *>(item)) {
             _myConnectionItems->append(connection);
         } else if (QGraphicsItemGroup *group = dynamic_cast<QGraphicsItemGroup *> (item)){
@@ -67,7 +67,6 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
                 }
 
                 groupItem.myComponentItems.append(componentItem);
-                captureInternalDataDefinitions(component);
             }
 
             _myGroupItems->append(groupItem);
@@ -81,6 +80,7 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
         }
     }
 
+    captureDataDefinitionsRemovedWithSelectedItems();
     setText(QObject::tr("Delete"));
 }
 
@@ -89,8 +89,8 @@ DeleteUndoCommand::~DeleteUndoCommand() {
     delete _myConnectionItems;
     delete _myDrawingItems;
     delete _myGroupItems;
-    delete _myInternalDataDefinitionItems;
-    delete _myInternalDataDefinitions;
+    delete _myDataDefinitionItems;
+    delete _myDataDefinitions;
 }
 
 void DeleteUndoCommand::undo() {
@@ -212,8 +212,8 @@ void DeleteUndoCommand::undo() {
         _myGraphicsScene->addDrawing(drawingItem.myDrawingItem);
     }
 
-    restoreInternalDataDefinitionsToModel();
-    restoreInternalDataDefinitionItems();
+    restoreDataDefinitionsToModel();
+    restoreDataDefinitionItems();
 
     GraphicalModelEvent::EventType eventType = GraphicalModelEvent::EventType::CREATE;
     GraphicalModelEvent::EventObjectType eventObjectType = GraphicalModelEvent::EventObjectType::OTHER;
@@ -228,8 +228,8 @@ void DeleteUndoCommand::undo() {
 void DeleteUndoCommand::redo() {
     // remove tudo que é gráfico
 
-    detachInternalDataDefinitionItems();
-    removeInternalDataDefinitionsFromModel();
+    detachDataDefinitionItems();
+    removeDataDefinitionsFromModel();
 
     // remove as conexões selecionadas individualmente
     for (int i = 0; i < _myConnectionItems->size(); ++i) {
@@ -314,19 +314,49 @@ void DeleteUndoCommand::redo() {
     _myGraphicsScene->update();
 }
 
-void DeleteUndoCommand::captureInternalDataDefinitions(GraphicalModelComponent *component) {
-    if (component == nullptr || component->getComponent() == nullptr) {
+void DeleteUndoCommand::captureDataDefinitionsRemovedWithSelectedItems() {
+    if (_myGraphicsScene == nullptr || _myGraphicsScene->getSimulator() == nullptr ||
+        _myGraphicsScene->getSimulator()->getModelManager() == nullptr ||
+        _myGraphicsScene->getSimulator()->getModelManager()->current() == nullptr) {
         return;
     }
 
-    QSet<ModelDataDefinition *> internalDataDefinitions;
-    collectInternalDataDefinitions(component->getComponent(), &internalDataDefinitions);
+    Model *model = _myGraphicsScene->getSimulator()->getModelManager()->current();
+    std::list<ModelDataDefinition *> roots;
+    QSet<ModelDataDefinition *> rootSet;
 
-    for (ModelDataDefinition *dataDefinition : internalDataDefinitions) {
-        if (dataDefinition == nullptr || _myInternalDataDefinitions->contains(dataDefinition)) {
+    for (const ComponentItem &componentItem : *_myComponentItems) {
+        if (componentItem.graphicalComponent == nullptr ||
+            componentItem.graphicalComponent->getComponent() == nullptr) {
             continue;
         }
-        _myInternalDataDefinitions->append(dataDefinition);
+        ModelDataDefinition *root = componentItem.graphicalComponent->getComponent();
+        if (!rootSet.contains(root)) {
+            rootSet.insert(root);
+            roots.push_back(root);
+        }
+    }
+
+    for (const GroupItem &groupItem : *_myGroupItems) {
+        for (const ComponentItem &componentItem : groupItem.myComponentItems) {
+            if (componentItem.graphicalComponent == nullptr ||
+                componentItem.graphicalComponent->getComponent() == nullptr) {
+                continue;
+            }
+            ModelDataDefinition *root = componentItem.graphicalComponent->getComponent();
+            if (!rootSet.contains(root)) {
+                rootSet.insert(root);
+                roots.push_back(root);
+            }
+        }
+    }
+
+    std::list<ModelDataDefinition *> removableDataDefinitions = model->collectDataDefinitionsRemovedWith(roots);
+    for (ModelDataDefinition *dataDefinition : removableDataDefinitions) {
+        if (dataDefinition == nullptr || _myDataDefinitions->contains(dataDefinition)) {
+            continue;
+        }
+        _myDataDefinitions->append(dataDefinition);
 
         GraphicalModelDataDefinition *graphicalDataDefinition = nullptr;
         for (GraphicalModelDataDefinition *candidate : *_myGraphicsScene->getAllDataDefinitions()) {
@@ -343,27 +373,11 @@ void DeleteUndoCommand::captureInternalDataDefinitions(GraphicalModelComponent *
         dataDefinitionItem.graphicalDataDefinition = graphicalDataDefinition;
         dataDefinitionItem.initialPosition = graphicalDataDefinition->pos();
         dataDefinitionItem.initiallySelected = graphicalDataDefinition->isSelected();
-        _myInternalDataDefinitionItems->append(dataDefinitionItem);
+        _myDataDefinitionItems->append(dataDefinitionItem);
     }
 }
 
-void DeleteUndoCommand::collectInternalDataDefinitions(ModelDataDefinition *owner,
-                                                       QSet<ModelDataDefinition *> *visited) {
-    if (owner == nullptr || visited == nullptr || owner->getInternalData() == nullptr) {
-        return;
-    }
-
-    for (const auto &internalData : *owner->getInternalData()) {
-        ModelDataDefinition *dataDefinition = internalData.second;
-        if (dataDefinition == nullptr || visited->contains(dataDefinition)) {
-            continue;
-        }
-        visited->insert(dataDefinition);
-        collectInternalDataDefinitions(dataDefinition, visited);
-    }
-}
-
-void DeleteUndoCommand::removeInternalDataDefinitionsFromModel() {
+void DeleteUndoCommand::removeDataDefinitionsFromModel() {
     if (_myGraphicsScene == nullptr || _myGraphicsScene->getSimulator() == nullptr ||
         _myGraphicsScene->getSimulator()->getModelManager() == nullptr ||
         _myGraphicsScene->getSimulator()->getModelManager()->current() == nullptr) {
@@ -371,14 +385,14 @@ void DeleteUndoCommand::removeInternalDataDefinitionsFromModel() {
     }
 
     Model *model = _myGraphicsScene->getSimulator()->getModelManager()->current();
-    for (ModelDataDefinition *dataDefinition : *_myInternalDataDefinitions) {
+    for (ModelDataDefinition *dataDefinition : *_myDataDefinitions) {
         if (dataDefinition != nullptr) {
             model->getDataManager()->remove(dataDefinition);
         }
     }
 }
 
-void DeleteUndoCommand::restoreInternalDataDefinitionsToModel() {
+void DeleteUndoCommand::restoreDataDefinitionsToModel() {
     if (_myGraphicsScene == nullptr || _myGraphicsScene->getSimulator() == nullptr ||
         _myGraphicsScene->getSimulator()->getModelManager() == nullptr ||
         _myGraphicsScene->getSimulator()->getModelManager()->current() == nullptr) {
@@ -386,31 +400,31 @@ void DeleteUndoCommand::restoreInternalDataDefinitionsToModel() {
     }
 
     Model *model = _myGraphicsScene->getSimulator()->getModelManager()->current();
-    for (ModelDataDefinition *dataDefinition : *_myInternalDataDefinitions) {
+    for (ModelDataDefinition *dataDefinition : *_myDataDefinitions) {
         if (dataDefinition != nullptr) {
             model->getDataManager()->insert(dataDefinition);
         }
     }
 }
 
-void DeleteUndoCommand::detachInternalDataDefinitionItems() {
+void DeleteUndoCommand::detachDataDefinitionItems() {
     if (_myGraphicsScene == nullptr) {
         return;
     }
 
     // Diagram connections are derived from the live model graph, so they can be rebuilt after the compound edit.
     _myGraphicsScene->clearGraphicalDiagramConnections();
-    for (DataDefinitionItem &dataDefinitionItem : *_myInternalDataDefinitionItems) {
+    for (DataDefinitionItem &dataDefinitionItem : *_myDataDefinitionItems) {
         _myGraphicsScene->detachGraphicalModelDataDefinition(dataDefinitionItem.graphicalDataDefinition);
     }
 }
 
-void DeleteUndoCommand::restoreInternalDataDefinitionItems() {
+void DeleteUndoCommand::restoreDataDefinitionItems() {
     if (_myGraphicsScene == nullptr) {
         return;
     }
 
-    for (DataDefinitionItem &dataDefinitionItem : *_myInternalDataDefinitionItems) {
+    for (DataDefinitionItem &dataDefinitionItem : *_myDataDefinitionItems) {
         GraphicalModelDataDefinition *graphicalDataDefinition = dataDefinitionItem.graphicalDataDefinition;
         if (graphicalDataDefinition == nullptr) {
             continue;

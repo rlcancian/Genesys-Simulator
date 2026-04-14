@@ -53,6 +53,59 @@ void SetDataDefinitionChanged(ModelDataDefinition* dataDefinition,
         SetDataDefinitionChanged(child.second, hasChanged, visited);
     }
 }
+
+bool IsRegisteredDataDefinition(ModelDataManager* manager, ModelDataDefinition* dataDefinition) {
+    if (manager == nullptr || dataDefinition == nullptr) {
+        return false;
+    }
+    List<ModelDataDefinition*>* typedList = manager->getDataDefinitionList(dataDefinition->getClassname());
+    if (typedList == nullptr) {
+        return false;
+    }
+    return typedList->find(dataDefinition) != typedList->list()->end();
+}
+
+bool HasAttachedReferenceOutsideRemoval(ModelDataDefinition* candidate,
+                                        ModelDataManager* dataManager,
+                                        ComponentManager* componentManager,
+                                        const std::unordered_set<ModelDataDefinition*>& removedDataDefinitions,
+                                        const std::unordered_set<ModelComponent*>& removedComponents) {
+    if (candidate == nullptr || dataManager == nullptr || componentManager == nullptr) {
+        return false;
+    }
+
+    // Attached references are non-owning shares; only other live attached references keep a candidate alive.
+    const std::list<std::string> dataTypes = dataManager->getDataDefinitionClassnames();
+    for (const std::string& dataType : dataTypes) {
+        List<ModelDataDefinition*>* dataDefinitionList = dataManager->getDataDefinitionList(dataType);
+        if (dataDefinitionList == nullptr) {
+            continue;
+        }
+        for (ModelDataDefinition* owner : *dataDefinitionList->list()) {
+            if (owner == nullptr || removedDataDefinitions.find(owner) != removedDataDefinitions.end()) {
+                continue;
+            }
+            for (const auto& attachedData : *owner->getAttachedData()) {
+                if (attachedData.second == candidate) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    for (ModelComponent* component : *componentManager->getAllComponents()) {
+        if (component == nullptr || removedComponents.find(component) != removedComponents.end()) {
+            continue;
+        }
+        for (const auto& attachedData : *component->getAttachedData()) {
+            if (attachedData.second == candidate) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
 }
 
 Model::Model(Simulator* simulator, unsigned int level) {
@@ -340,6 +393,69 @@ void Model::remove(ModelDataDefinition* elemOrComp) {
         this->getDataManager()->remove(elemOrComp);
     else // it's a ModelComponent
         this->getComponentManager()->remove(comp);
+}
+
+std::list<ModelDataDefinition*> Model::collectDataDefinitionsRemovedWith(
+    const std::list<ModelDataDefinition*>& roots) const {
+    std::list<ModelDataDefinition*> removableDataDefinitions;
+    std::unordered_set<ModelDataDefinition*> removedDataDefinitions;
+    std::unordered_set<ModelDataDefinition*> processedOwners;
+    std::unordered_set<ModelDataDefinition*> attachedCandidates;
+    std::unordered_set<ModelComponent*> removedComponents;
+
+    auto collectOwner = [&](ModelDataDefinition* owner, auto&& collectOwnerRef) -> void {
+        if (owner == nullptr || processedOwners.find(owner) != processedOwners.end()) {
+            return;
+        }
+        processedOwners.insert(owner);
+
+        if (ModelComponent* component = dynamic_cast<ModelComponent*>(owner)) {
+            removedComponents.insert(component);
+        }
+        if (IsRegisteredDataDefinition(_modeldataManager, owner) &&
+            removedDataDefinitions.insert(owner).second) {
+            removableDataDefinitions.push_back(owner);
+        }
+
+        // Internal data definitions are composed by the owner and leave with it.
+        for (const auto& internalData : *owner->getInternalData()) {
+            collectOwnerRef(internalData.second, collectOwnerRef);
+        }
+        // Attached data definitions become candidates; they are removed only if no other live owner shares them.
+        for (const auto& attachedData : *owner->getAttachedData()) {
+            if (attachedData.second != nullptr) {
+                attachedCandidates.insert(attachedData.second);
+            }
+        }
+    };
+
+    for (ModelDataDefinition* root : roots) {
+        collectOwner(root, collectOwner);
+    }
+
+    bool changed = true;
+    while (changed) {
+        changed = false;
+        const std::unordered_set<ModelDataDefinition*> currentCandidates = attachedCandidates;
+        for (ModelDataDefinition* candidate : currentCandidates) {
+            if (candidate == nullptr || processedOwners.find(candidate) != processedOwners.end()) {
+                continue;
+            }
+            if (!IsRegisteredDataDefinition(_modeldataManager, candidate)) {
+                continue;
+            }
+            if (!HasAttachedReferenceOutsideRemoval(candidate,
+                                                   _modeldataManager,
+                                                   _componentManager,
+                                                   removedDataDefinitions,
+                                                   removedComponents)) {
+                collectOwner(candidate, collectOwner);
+                changed = true;
+            }
+        }
+    }
+
+    return removableDataDefinitions;
 }
 
 void Model::_showElements() const {

@@ -14,6 +14,7 @@
 #ifndef SIMULATIONMODEL_H
 #define SIMULATIONMODEL_H
 
+#include <list>
 #include <string>
 
 #include "../util/List.h"
@@ -86,6 +87,8 @@ public: // model control
 	 * \param elemOrComp
 	 */
 	void remove(ModelDataDefinition* elemOrComp); //!< Remove a new ModelDataDefinition or ModelComponent into the model (since 20191015). It's a generic access to ComponentManager->remove() or ModelDatao->remove()
+	/*! \brief Computes data definitions that become removable with a localized root removal. */
+	std::list<ModelDataDefinition*> collectDataDefinitionsRemovedWith(const std::list<ModelDataDefinition*>& roots) const;
 	/*!
 	 * \brief createEntity
 	 * \param name
