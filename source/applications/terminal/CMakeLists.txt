@@ -7,7 +7,7 @@ set_property(CACHE GENESYS_TERMINAL_APP PROPERTY STRINGS
     Smart_SeizeDelayReleaseNoDataDefs
     AnElectronicAssemblyAndTestSystem
 )
-set(GENESYS_TERMINAL_EXAMPLE "smarts/Smart_AssignWriteSeizes.cpp" CACHE STRING "Relative .cpp path under source/applications/terminal/examples to compile as terminal application")
+set(GENESYS_TERMINAL_EXAMPLE "" CACHE STRING "Relative .cpp path under source/applications/terminal/examples to compile as terminal application")
 set(GENESYS_TERMINAL_EXAMPLE_CLASS "" CACHE STRING "Optional class name override for GENESYS_TERMINAL_EXAMPLE")
 
 set(GENESYS_TERMINAL_APPLICATION_SOURCES
