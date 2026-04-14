@@ -214,6 +214,8 @@ void ModelLifecycleController::onActionModelCloseTriggered() const {
 // Move model-information dialog trigger out of MainWindow while keeping dialog behavior unchanged.
 void ModelLifecycleController::onActionModelInformationTriggered() const {
     DialogModelInformation* diag = new DialogModelInformation(_ownerWidget);
+    // Edit the information object owned by the currently open model.
+    diag->setModelInfo(_simulator->getModelManager()->current()->getInfos());
     diag->show();
 }
 
