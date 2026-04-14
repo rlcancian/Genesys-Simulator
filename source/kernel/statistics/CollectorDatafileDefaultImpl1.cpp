@@ -124,9 +124,7 @@ void CollectorDatafileDefaultImpl1::setDataFilename(std::string filename) {
 }
 
 void CollectorDatafileDefaultImpl1::setAddValueHandler(CollectorAddValueHandler addValueHandler) {
-	// @TODO: just to use it
 }
 
 void CollectorDatafileDefaultImpl1::setClearHandler(CollectorClearHandler clearHandler) {
-	// @TODO: just to use it
 }

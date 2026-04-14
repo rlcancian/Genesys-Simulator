@@ -82,7 +82,6 @@ SOURCES += \
     ../../../../kernel/simulator/XmlSerializer.cpp \
     ../../../../kernel/statistics/CollectorDatafileDefaultImpl1.cpp \
     ../../../../kernel/statistics/CollectorDefaultImpl1.cpp \
-    ../../../../kernel/statistics/SamplerBoostImpl.cpp \
     ../../../../kernel/statistics/SamplerDefaultImpl1.cpp \
     ../../../../kernel/statistics/SorttFile.cpp \
     ../../../../kernel/statistics/StatisticsDataFileDefaultImpl.cpp \
@@ -400,7 +399,6 @@ HEADERS += \
     ../../../../kernel/statistics/CollectorDatafile_if.h \
     ../../../../kernel/statistics/CollectorDefaultImpl1.h \
     ../../../../kernel/statistics/Collector_if.h \
-    ../../../../kernel/statistics/SamplerBoostImpl.h \
     ../../../../kernel/statistics/SamplerDefaultImpl1.h \
     ../../../../kernel/statistics/Sampler_if.h \
     ../../../../kernel/statistics/SorttFile.h \
