@@ -227,8 +227,8 @@ void ModelLifecycleController::onActionModelCheckTriggered() const {
 // Move simulation-configure dialog trigger out of MainWindow while preserving simulator wiring.
 void ModelLifecycleController::onActionSimulationConfigureTriggered() const {
     DialogSimulationConfigure* dialog = new DialogSimulationConfigure(_ownerWidget);
-    dialog->setSimulator(_simulator);
-    dialog->previousConfiguration();
+    // Edit the simulation object owned by the currently open model.
+    dialog->setModelSimulation(_simulator->getModelManager()->current()->getSimulation());
     dialog->show();
 }
 

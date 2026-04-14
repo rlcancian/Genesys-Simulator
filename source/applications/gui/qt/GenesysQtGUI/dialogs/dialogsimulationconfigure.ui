@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>534</width>
-    <height>416</height>
+    <width>560</width>
+    <height>420</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -26,281 +26,133 @@
       <number>2</number>
      </property>
      <item row="0" column="0">
-      <widget class="QLabel" name="label">
-       <property name="text">
-        <string>Experiment Name:</string>
-       </property>
-       <property name="buddy">
-        <cstring>plainTextEdit</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="0">
-      <widget class="QLabel" name="label_2">
+      <widget class="QLabel" name="labelNumberOfReplications">
        <property name="text">
         <string>Number of Replications:</string>
        </property>
        <property name="buddy">
-        <cstring>spinBox</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="3" column="0">
-      <widget class="QLabel" name="label_3">
-       <property name="text">
-        <string>Replication Length</string>
-       </property>
-       <property name="buddy">
-        <cstring>spinBox_3</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="4" column="0">
-      <widget class="QLabel" name="label_4">
-       <property name="text">
-        <string>Warmup Period:</string>
-       </property>
-       <property name="buddy">
-        <cstring>spinBox_2</cstring>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="0">
-      <widget class="QLabel" name="label_5">
-       <property name="text">
-        <string>Terminating Condition:</string>
-       </property>
-       <property name="buddy">
-        <cstring>plainTextEdit_2</cstring>
+        <cstring>spinBoxNumberOfReplications</cstring>
        </property>
       </widget>
      </item>
      <item row="0" column="1">
-      <widget class="QPlainTextEdit" name="plainTextEdit">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-       <property name="maximumSize">
-        <size>
-         <width>16777215</width>
-         <height>32</height>
-        </size>
-       </property>
-      </widget>
-     </item>
-     <item row="5" column="1">
-      <widget class="QPlainTextEdit" name="plainTextEdit_2">
-       <property name="sizePolicy">
-        <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-         <horstretch>0</horstretch>
-         <verstretch>0</verstretch>
-        </sizepolicy>
-       </property>
-      </widget>
-     </item>
-     <item row="1" column="1">
-      <widget class="QSpinBox" name="spinBox">
+      <widget class="QSpinBox" name="spinBoxNumberOfReplications">
        <property name="minimum">
         <number>1</number>
        </property>
        <property name="maximum">
-        <number>5000</number>
+        <number>2147483647</number>
        </property>
        <property name="value">
         <number>1</number>
        </property>
       </widget>
      </item>
-     <item row="3" column="1">
-      <layout class="QHBoxLayout" name="horizontalLayout">
-       <item>
-        <widget class="QSpinBox" name="spinBox_3">
-         <property name="minimum">
-          <number>1</number>
-         </property>
-         <property name="maximum">
-          <number>100000</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="comboBox">
-         <item>
-          <property name="text">
-           <string>picosecond</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>nanosecond</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>microsecond</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>milisecond</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>second</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>minute</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>hour</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>day</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>week</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="4" column="1">
-      <layout class="QHBoxLayout" name="horizontalLayout_2">
-       <item>
-        <widget class="QSpinBox" name="spinBox_2">
-         <property name="maximum">
-          <number>100000</number>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QComboBox" name="comboBox_2">
-         <item>
-          <property name="text">
-           <string>picosecond</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>nanosecond</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>microsecond</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>milisecond</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>second</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>minute</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>hour</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>day</string>
-          </property>
-         </item>
-         <item>
-          <property name="text">
-           <string>week</string>
-          </property>
-         </item>
-        </widget>
-       </item>
-      </layout>
-     </item>
-     <item row="6" column="0">
-      <widget class="QLabel" name="label_6">
+     <item row="1" column="0">
+      <widget class="QLabel" name="labelReplicationBaseTimeUnit">
        <property name="text">
-        <string>Trace Level:</string>
+        <string>Replication Base Time Unit:</string>
+       </property>
+       <property name="buddy">
+        <cstring>comboBoxReplicationBaseTimeUnit</cstring>
        </property>
       </widget>
      </item>
-     <item row="6" column="1">
-      <widget class="QComboBox" name="comboBox_3">
-       <item>
-        <property name="text">
-         <string>L0</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>L1</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>L2</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>L3</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>L4</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>L5</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>L6</string>
-        </property>
-       </item>
-       <item>
-        <property name="text">
-         <string>L7</string>
-        </property>
-       </item>
+     <item row="1" column="1">
+      <widget class="QComboBox" name="comboBoxReplicationBaseTimeUnit"/>
+     </item>
+     <item row="2" column="0">
+      <widget class="QLabel" name="labelReplicationLength">
+       <property name="text">
+        <string>Replication Length:</string>
+       </property>
+       <property name="buddy">
+        <cstring>doubleSpinBoxReplicationLength</cstring>
+       </property>
       </widget>
+     </item>
+     <item row="2" column="1">
+      <layout class="QHBoxLayout" name="horizontalLayoutReplicationLength">
+       <item>
+        <widget class="QDoubleSpinBox" name="doubleSpinBoxReplicationLength">
+         <property name="decimals">
+          <number>12</number>
+         </property>
+         <property name="minimum">
+          <double>0.000001000000000</double>
+         </property>
+         <property name="maximum">
+          <double>1000000000000.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="comboBoxReplicationLengthTimeUnit"/>
+       </item>
+      </layout>
+     </item>
+     <item row="3" column="0">
+      <widget class="QLabel" name="labelWarmUpPeriod">
+       <property name="text">
+        <string>Warmup Period:</string>
+       </property>
+       <property name="buddy">
+        <cstring>doubleSpinBoxWarmUpPeriod</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="3" column="1">
+      <layout class="QHBoxLayout" name="horizontalLayoutWarmUpPeriod">
+       <item>
+        <widget class="QDoubleSpinBox" name="doubleSpinBoxWarmUpPeriod">
+         <property name="decimals">
+          <number>12</number>
+         </property>
+         <property name="minimum">
+          <double>0.000000000000000</double>
+         </property>
+         <property name="maximum">
+          <double>1000000000000.000000000000000</double>
+         </property>
+         <property name="singleStep">
+          <double>1.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="comboBoxWarmUpPeriodTimeUnit"/>
+       </item>
+      </layout>
+     </item>
+     <item row="4" column="0">
+      <widget class="QLabel" name="labelTerminatingCondition">
+       <property name="text">
+        <string>Terminating Condition:</string>
+       </property>
+       <property name="buddy">
+        <cstring>plainTextTerminatingCondition</cstring>
+       </property>
+      </widget>
+     </item>
+     <item row="4" column="1">
+      <widget class="QPlainTextEdit" name="plainTextTerminatingCondition"/>
      </item>
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_4">
+    <layout class="QHBoxLayout" name="horizontalLayoutInitializers">
      <item>
-      <widget class="QCheckBox" name="checkBox">
+      <widget class="QCheckBox" name="checkBoxInitializeSystem">
        <property name="text">
         <string>Initialize system</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="checkBox_4">
+      <widget class="QCheckBox" name="checkBoxInitializeStatistics">
        <property name="text">
         <string>Initialize statistics between replications</string>
        </property>
@@ -309,34 +161,28 @@
     </layout>
    </item>
    <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_3">
+    <layout class="QHBoxLayout" name="horizontalLayoutExecution">
      <item>
-      <widget class="QCheckBox" name="checkBox_3">
+      <widget class="QCheckBox" name="checkBoxStepByStep">
        <property name="text">
-        <string>Show reports after replication</string>
+        <string>Step by step</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QCheckBox" name="checkBox_2">
+      <widget class="QCheckBox" name="checkBoxPauseOnEvent">
        <property name="text">
-        <string>Show reports after simulation</string>
+        <string>Pause on event</string>
        </property>
       </widget>
      </item>
-    </layout>
-   </item>
-   <item>
-    <layout class="QHBoxLayout" name="horizontalLayout_5">
-     <property name="leftMargin">
-      <number>0</number>
-     </property>
-     <property name="topMargin">
-      <number>10</number>
-     </property>
-     <property name="bottomMargin">
-      <number>0</number>
-     </property>
+     <item>
+      <widget class="QCheckBox" name="checkBoxPauseOnReplication">
+       <property name="text">
+        <string>Pause on replication</string>
+       </property>
+      </widget>
+     </item>
     </layout>
    </item>
    <item>
@@ -352,17 +198,18 @@
   </layout>
  </widget>
  <tabstops>
-  <tabstop>plainTextEdit</tabstop>
-  <tabstop>spinBox</tabstop>
-  <tabstop>spinBox_3</tabstop>
-  <tabstop>comboBox</tabstop>
-  <tabstop>spinBox_2</tabstop>
-  <tabstop>comboBox_2</tabstop>
-  <tabstop>plainTextEdit_2</tabstop>
-  <tabstop>checkBox</tabstop>
-  <tabstop>checkBox_4</tabstop>
-  <tabstop>checkBox_3</tabstop>
-  <tabstop>checkBox_2</tabstop>
+  <tabstop>spinBoxNumberOfReplications</tabstop>
+  <tabstop>comboBoxReplicationBaseTimeUnit</tabstop>
+  <tabstop>doubleSpinBoxReplicationLength</tabstop>
+  <tabstop>comboBoxReplicationLengthTimeUnit</tabstop>
+  <tabstop>doubleSpinBoxWarmUpPeriod</tabstop>
+  <tabstop>comboBoxWarmUpPeriodTimeUnit</tabstop>
+  <tabstop>plainTextTerminatingCondition</tabstop>
+  <tabstop>checkBoxInitializeSystem</tabstop>
+  <tabstop>checkBoxInitializeStatistics</tabstop>
+  <tabstop>checkBoxStepByStep</tabstop>
+  <tabstop>checkBoxPauseOnEvent</tabstop>
+  <tabstop>checkBoxPauseOnReplication</tabstop>
  </tabstops>
  <resources/>
  <connections>
@@ -373,8 +220,8 @@
    <slot>accept()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>228</x>
-     <y>280</y>
+     <x>240</x>
+     <y>398</y>
     </hint>
     <hint type="destinationlabel">
      <x>157</x>
@@ -389,8 +236,8 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>296</x>
-     <y>286</y>
+     <x>308</x>
+     <y>398</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>

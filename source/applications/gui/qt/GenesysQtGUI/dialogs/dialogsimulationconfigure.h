@@ -1,81 +1,57 @@
 #ifndef DIALOGSIMULATIONCONFIGURE_H
 #define DIALOGSIMULATIONCONFIGURE_H
 
-#include "../../../../../kernel/simulator/Simulator.h"
+#include "../../../../../kernel/simulator/ModelSimulation.h"
 
 #include <QDialog>
+#include <string>
+
+class QComboBox;
 
 namespace Ui {
-    class DialogSimulationConfigure;
+	class DialogSimulationConfigure;
 }
 
 class DialogSimulationConfigure : public QDialog
 {
-    Q_OBJECT
+	Q_OBJECT
 
 public:
-    explicit DialogSimulationConfigure(QWidget *parent = nullptr);
-    ~DialogSimulationConfigure();
-    void setSimulator(Simulator * sim);
-    void previousConfiguration();
+	explicit DialogSimulationConfigure(QWidget *parent = nullptr);
+	~DialogSimulationConfigure();
+	void setModelSimulation(ModelSimulation* modelSimulation);
 
-
-private slots:
-    // Experiment Name
-    void on_plainTextEdit_textChanged();
-    // Number of replication
-    void on_spinBox_valueChanged(int arg1);
-    // Replication Length time unit
-    void on_comboBox_currentIndexChanged(int index);
-    // Warm up Period
-    void on_spinBox_2_textChanged(const QString &arg1);
-    // Replication Length
-    void on_spinBox_3_textChanged(const QString &arg1);
-    // Warm up Period time unit
-    void on_comboBox_2_currentIndexChanged(int index);
-    // Terminating Codition
-    void on_plainTextEdit_2_textChanged();
-    // Trace Level
-    void on_comboBox_3_currentIndexChanged(int index);
-    // Initialize System
-    void on_checkBox_stateChanged(int arg1);
-    // initialize Statistics
-    void on_checkBox_4_stateChanged(int arg1);
-    // Show Reports after Replication
-    void on_checkBox_3_stateChanged(int arg1);
-    // Show Reports after Simulation
-    void on_checkBox_2_stateChanged(int arg1);
-    // OK button
-    void on_buttonBox_accepted();
-    // Cancel button
-    void on_buttonBox_rejected();
-
-
+public slots:
+	void accept() override;
+	void reject() override;
 
 private:
+	struct SimulationConfiguration {
+		unsigned int numberOfReplications = 1;
+		Util::TimeUnit replicationBaseTimeUnit = Util::TimeUnit::unknown;
+		double replicationLength = 0.0;
+		Util::TimeUnit replicationLengthTimeUnit = Util::TimeUnit::unknown;
+		double warmUpPeriod = 0.0;
+		Util::TimeUnit warmUpPeriodTimeUnit = Util::TimeUnit::unknown;
+		std::string terminatingCondition;
+		bool initializeSystem = true;
+		bool initializeStatistics = true;
+		bool stepByStep = false;
+		bool pauseOnEvent = false;
+		bool pauseOnReplication = false;
+	};
 
-    // Attributes required to save in Model
-    Ui::DialogSimulationConfigure *ui;
-    ModelSimulation * ms;
-    TraceManager * trace;
-    ModelInfo * infos;
-    Model * model;
+	void _populateTimeUnitComboBoxes();
+	void _loadModelSimulation();
+	SimulationConfiguration _configurationFromUi() const;
+	bool _hasPendingChanges() const;
+	Util::TimeUnit _timeUnitFromComboBox(const QComboBox* comboBox) const;
+	void _setTimeUnitComboBoxIndex(QComboBox* comboBox, Util::TimeUnit timeUnit);
+	void _applyIfChanged(const SimulationConfiguration& edited);
 
-
-    std::string experimentName;
-    unsigned int numberOfReplication;
-    double replicationLength;
-    Util::TimeUnit replicationLengthtimeUnit;
-    double warmUpPeriod;
-    Util::TimeUnit warmUpPeriodTimeUnit;
-    std::string terminatingCondition;
-    TraceManager::Level traceLevel;
-    bool initializeSystem;
-    bool initializeStatistics;
-    bool showReportsAfterReplication;
-    bool showReportsAfterSimulation;
-
-
+	Ui::DialogSimulationConfigure *ui;
+	ModelSimulation* _modelSimulation = nullptr;
+	SimulationConfiguration _originalConfiguration;
 };
 
 #endif // DIALOGSIMULATIONCONFIGURE_H

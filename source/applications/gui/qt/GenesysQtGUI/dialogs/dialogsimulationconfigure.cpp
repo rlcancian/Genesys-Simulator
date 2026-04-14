@@ -1,253 +1,198 @@
 #include "dialogsimulationconfigure.h"
 #include "ui_dialogsimulationconfigure.h"
 
+#include <QComboBox>
+#include <QMessageBox>
+
 DialogSimulationConfigure::DialogSimulationConfigure(QWidget *parent) :
-    QDialog(parent),
-    ui(new Ui::DialogSimulationConfigure)
+	QDialog(parent),
+	ui(new Ui::DialogSimulationConfigure)
 {
-    ui->setupUi(this);
+	ui->setupUi(this);
+	_populateTimeUnitComboBoxes();
 }
 
 DialogSimulationConfigure::~DialogSimulationConfigure()
 {
-    delete ui;
+	delete ui;
 }
 
-// Set the attributes required to save in model
-void DialogSimulationConfigure::setSimulator(Simulator * sim) {
-    ms = sim->getModelManager()->current()->getSimulation();
-    trace = sim->getTraceManager();
-    infos = sim->getModelManager()->current()->getInfos();
-
-}
-
-// Exeperiment name
-void DialogSimulationConfigure::on_plainTextEdit_textChanged()
+void DialogSimulationConfigure::setModelSimulation(ModelSimulation* modelSimulation)
 {
-    experimentName = ui->plainTextEdit->toPlainText().toStdString();
+	_modelSimulation = modelSimulation;
+	_loadModelSimulation();
 }
 
-// Number of replication
-void DialogSimulationConfigure::on_spinBox_valueChanged(int arg1)
+void DialogSimulationConfigure::accept()
 {
-    numberOfReplication = arg1;
+	if (_modelSimulation != nullptr) {
+		_applyIfChanged(_configurationFromUi());
+	}
+
+	QDialog::accept();
 }
 
-// Replication Length
-void DialogSimulationConfigure::on_spinBox_3_textChanged(const QString &arg1)
+void DialogSimulationConfigure::reject()
 {
-    replicationLength = arg1.toDouble();
+	if (_hasPendingChanges()) {
+		const QMessageBox::StandardButton answer = QMessageBox::question(
+			this,
+			tr("Discard changes?"),
+			tr("The simulation configuration has unsaved changes. Do you want to discard them?"),
+			QMessageBox::Discard | QMessageBox::Cancel,
+			QMessageBox::Cancel
+		);
+		if (answer != QMessageBox::Discard) {
+			return;
+		}
+	}
+
+	QDialog::reject();
 }
 
-// Replication Length time unit
-void DialogSimulationConfigure::on_comboBox_currentIndexChanged(int index)
+void DialogSimulationConfigure::_populateTimeUnitComboBoxes()
 {
-    switch (index) {
-    case 0:
-        replicationLengthtimeUnit = Util::TimeUnit::unknown;
-        break;
-    case 1:
-        replicationLengthtimeUnit = Util::TimeUnit::picosecond;
-        break;
-    case 2:
-        replicationLengthtimeUnit = Util::TimeUnit::nanosecond;
-        break;
-    case 3:
-        replicationLengthtimeUnit = Util::TimeUnit::microsecond;
-        break;
-    case 4:
-        replicationLengthtimeUnit = Util::TimeUnit::milisecond;
-        break;
-    case 5:
-        replicationLengthtimeUnit = Util::TimeUnit::second;
-        break;
-    case 6:
-        replicationLengthtimeUnit = Util::TimeUnit::minute;
-        break;
-    case 7:
-        replicationLengthtimeUnit = Util::TimeUnit::hour;
-        break;
-    case 8:
-        replicationLengthtimeUnit = Util::TimeUnit::day;
-        break;
-    case 9:
-        replicationLengthtimeUnit = Util::TimeUnit::week;
-        break;
-    default:
-        replicationLengthtimeUnit = Util::TimeUnit::unknown;
-        break;
-    }
+	const QList<QComboBox*> comboBoxes = {
+		ui->comboBoxReplicationBaseTimeUnit,
+		ui->comboBoxReplicationLengthTimeUnit,
+		ui->comboBoxWarmUpPeriodTimeUnit
+	};
+
+	for (QComboBox* comboBox : comboBoxes) {
+		comboBox->addItem(tr("unknown"), static_cast<int>(Util::TimeUnit::unknown));
+		comboBox->addItem(tr("picosecond"), static_cast<int>(Util::TimeUnit::picosecond));
+		comboBox->addItem(tr("nanosecond"), static_cast<int>(Util::TimeUnit::nanosecond));
+		comboBox->addItem(tr("microsecond"), static_cast<int>(Util::TimeUnit::microsecond));
+		comboBox->addItem(tr("milisecond"), static_cast<int>(Util::TimeUnit::milisecond));
+		comboBox->addItem(tr("second"), static_cast<int>(Util::TimeUnit::second));
+		comboBox->addItem(tr("minute"), static_cast<int>(Util::TimeUnit::minute));
+		comboBox->addItem(tr("hour"), static_cast<int>(Util::TimeUnit::hour));
+		comboBox->addItem(tr("day"), static_cast<int>(Util::TimeUnit::day));
+		comboBox->addItem(tr("week"), static_cast<int>(Util::TimeUnit::week));
+	}
 }
 
-// Warm up Period
-void DialogSimulationConfigure::on_spinBox_2_textChanged(const QString &arg1)
+void DialogSimulationConfigure::_loadModelSimulation()
 {
-    warmUpPeriod = arg1.toDouble();
+	if (_modelSimulation == nullptr) {
+		return;
+	}
+
+	_originalConfiguration.numberOfReplications = _modelSimulation->getNumberOfReplications();
+	_originalConfiguration.replicationBaseTimeUnit = _modelSimulation->getReplicationBaseTimeUnit();
+	_originalConfiguration.replicationLength = _modelSimulation->getReplicationLength();
+	_originalConfiguration.replicationLengthTimeUnit = _modelSimulation->getReplicationLengthTimeUnit();
+	_originalConfiguration.warmUpPeriod = _modelSimulation->getWarmUpPeriod();
+	_originalConfiguration.warmUpPeriodTimeUnit = _modelSimulation->getWarmUpPeriodTimeUnit();
+	_originalConfiguration.terminatingCondition = _modelSimulation->getTerminatingCondition();
+	_originalConfiguration.initializeSystem = _modelSimulation->isInitializeSystem();
+	_originalConfiguration.initializeStatistics = _modelSimulation->isInitializeStatistics();
+	_originalConfiguration.stepByStep = _modelSimulation->isStepByStep();
+	_originalConfiguration.pauseOnEvent = _modelSimulation->isPauseOnEvent();
+	_originalConfiguration.pauseOnReplication = _modelSimulation->isPauseOnReplication();
+
+	// Keep the widgets as a direct view of the editable ModelSimulation attributes.
+	ui->spinBoxNumberOfReplications->setValue(static_cast<int>(_originalConfiguration.numberOfReplications));
+	_setTimeUnitComboBoxIndex(ui->comboBoxReplicationBaseTimeUnit, _originalConfiguration.replicationBaseTimeUnit);
+	ui->doubleSpinBoxReplicationLength->setValue(_originalConfiguration.replicationLength);
+	_setTimeUnitComboBoxIndex(ui->comboBoxReplicationLengthTimeUnit, _originalConfiguration.replicationLengthTimeUnit);
+	ui->doubleSpinBoxWarmUpPeriod->setValue(_originalConfiguration.warmUpPeriod);
+	_setTimeUnitComboBoxIndex(ui->comboBoxWarmUpPeriodTimeUnit, _originalConfiguration.warmUpPeriodTimeUnit);
+	ui->plainTextTerminatingCondition->setPlainText(QString::fromStdString(_originalConfiguration.terminatingCondition));
+	ui->checkBoxInitializeSystem->setChecked(_originalConfiguration.initializeSystem);
+	ui->checkBoxInitializeStatistics->setChecked(_originalConfiguration.initializeStatistics);
+	ui->checkBoxStepByStep->setChecked(_originalConfiguration.stepByStep);
+	ui->checkBoxPauseOnEvent->setChecked(_originalConfiguration.pauseOnEvent);
+	ui->checkBoxPauseOnReplication->setChecked(_originalConfiguration.pauseOnReplication);
 }
 
-// Warm up Period time unit
-void DialogSimulationConfigure::on_comboBox_2_currentIndexChanged(int index)
+DialogSimulationConfigure::SimulationConfiguration DialogSimulationConfigure::_configurationFromUi() const
 {
-    switch (index) {
-    case 0:
-        warmUpPeriodTimeUnit = Util::TimeUnit::unknown;
-        break;
-    case 1:
-        warmUpPeriodTimeUnit = Util::TimeUnit::picosecond;
-        break;
-    case 2:
-        warmUpPeriodTimeUnit = Util::TimeUnit::nanosecond;
-        break;
-    case 3:
-        warmUpPeriodTimeUnit = Util::TimeUnit::microsecond;
-        break;
-    case 4:
-        warmUpPeriodTimeUnit = Util::TimeUnit::milisecond;
-        break;
-    case 5:
-        warmUpPeriodTimeUnit = Util::TimeUnit::second;
-        break;
-    case 6:
-        warmUpPeriodTimeUnit = Util::TimeUnit::minute;
-        break;
-    case 7:
-        warmUpPeriodTimeUnit = Util::TimeUnit::hour;
-        break;
-    case 8:
-        warmUpPeriodTimeUnit = Util::TimeUnit::day;
-        break;
-    case 9:
-        warmUpPeriodTimeUnit = Util::TimeUnit::week;
-        break;
-    }
+	SimulationConfiguration configuration;
+	configuration.numberOfReplications = static_cast<unsigned int>(ui->spinBoxNumberOfReplications->value());
+	configuration.replicationBaseTimeUnit = _timeUnitFromComboBox(ui->comboBoxReplicationBaseTimeUnit);
+	configuration.replicationLength = ui->doubleSpinBoxReplicationLength->value();
+	configuration.replicationLengthTimeUnit = _timeUnitFromComboBox(ui->comboBoxReplicationLengthTimeUnit);
+	configuration.warmUpPeriod = ui->doubleSpinBoxWarmUpPeriod->value();
+	configuration.warmUpPeriodTimeUnit = _timeUnitFromComboBox(ui->comboBoxWarmUpPeriodTimeUnit);
+	configuration.terminatingCondition = ui->plainTextTerminatingCondition->toPlainText().toStdString();
+	configuration.initializeSystem = ui->checkBoxInitializeSystem->isChecked();
+	configuration.initializeStatistics = ui->checkBoxInitializeStatistics->isChecked();
+	configuration.stepByStep = ui->checkBoxStepByStep->isChecked();
+	configuration.pauseOnEvent = ui->checkBoxPauseOnEvent->isChecked();
+	configuration.pauseOnReplication = ui->checkBoxPauseOnReplication->isChecked();
+	return configuration;
 }
 
-// Terminating Codition
-void DialogSimulationConfigure::on_plainTextEdit_2_textChanged()
+bool DialogSimulationConfigure::_hasPendingChanges() const
 {
-   terminatingCondition = ui->plainTextEdit_2->toPlainText().toStdString();
+	if (_modelSimulation == nullptr) {
+		return false;
+	}
+
+	const SimulationConfiguration edited = _configurationFromUi();
+	return edited.numberOfReplications != _originalConfiguration.numberOfReplications
+		|| edited.replicationBaseTimeUnit != _originalConfiguration.replicationBaseTimeUnit
+		|| edited.replicationLength != _originalConfiguration.replicationLength
+		|| edited.replicationLengthTimeUnit != _originalConfiguration.replicationLengthTimeUnit
+		|| edited.warmUpPeriod != _originalConfiguration.warmUpPeriod
+		|| edited.warmUpPeriodTimeUnit != _originalConfiguration.warmUpPeriodTimeUnit
+		|| edited.terminatingCondition != _originalConfiguration.terminatingCondition
+		|| edited.initializeSystem != _originalConfiguration.initializeSystem
+		|| edited.initializeStatistics != _originalConfiguration.initializeStatistics
+		|| edited.stepByStep != _originalConfiguration.stepByStep
+		|| edited.pauseOnEvent != _originalConfiguration.pauseOnEvent
+		|| edited.pauseOnReplication != _originalConfiguration.pauseOnReplication;
 }
 
-// Trace Level
-void DialogSimulationConfigure::on_comboBox_3_currentIndexChanged(int index)
+Util::TimeUnit DialogSimulationConfigure::_timeUnitFromComboBox(const QComboBox* comboBox) const
 {
-   switch (index) {
-   case 0:
-        traceLevel = TraceManager::Level::L0_noTraces;
-        break;
-   case 1:
-        traceLevel = TraceManager::Level::L1_errorFatal;
-        break;
-   case 2:
-        traceLevel = TraceManager::Level::L2_results;
-        break;
-   case 3:
-        traceLevel = TraceManager::Level::L3_errorRecover;
-        break;
-   case 4:
-        traceLevel = TraceManager::Level::L4_warning;
-        break;
-   case 5:
-        traceLevel = TraceManager::Level::L5_event;
-        break;
-   case 6:
-        traceLevel = TraceManager::Level::L6_arrival;
-        break;
-   case 7:
-        traceLevel = TraceManager::Level::L7_internal;
-        break;
-   case 8:
-        traceLevel = TraceManager::Level::L8_detailed;
-        break;
-   case 9:
-        traceLevel = TraceManager::Level::L9_mostDetailed;
-        break;
-   default:
-        traceLevel = TraceManager::Level::L0_noTraces;
-        break;
-   }
+	const QVariant value = comboBox->currentData();
+	return value.isValid() ? static_cast<Util::TimeUnit>(value.toInt()) : Util::TimeUnit::unknown;
 }
 
-// InitializeSystem
-void DialogSimulationConfigure::on_checkBox_stateChanged(int arg1)
+void DialogSimulationConfigure::_setTimeUnitComboBoxIndex(QComboBox* comboBox, Util::TimeUnit timeUnit)
 {
-   initializeSystem = arg1;
+	const int index = comboBox->findData(static_cast<int>(timeUnit));
+	comboBox->setCurrentIndex(index >= 0 ? index : 0);
 }
 
-// initialize Statistics
-void DialogSimulationConfigure::on_checkBox_4_stateChanged(int arg1)
+void DialogSimulationConfigure::_applyIfChanged(const SimulationConfiguration& edited)
 {
-   initializeStatistics = arg1;
+	if (edited.numberOfReplications != _originalConfiguration.numberOfReplications) {
+		_modelSimulation->setNumberOfReplications(edited.numberOfReplications);
+	}
+	if (edited.replicationBaseTimeUnit != _originalConfiguration.replicationBaseTimeUnit) {
+		_modelSimulation->setReplicationReportBaseTimeUnit(edited.replicationBaseTimeUnit);
+	}
+	if (edited.replicationLength != _originalConfiguration.replicationLength) {
+		_modelSimulation->setReplicationLength(edited.replicationLength);
+	}
+	if (edited.replicationLengthTimeUnit != _originalConfiguration.replicationLengthTimeUnit) {
+		_modelSimulation->setReplicationLengthTimeUnit(edited.replicationLengthTimeUnit);
+	}
+	if (edited.warmUpPeriod != _originalConfiguration.warmUpPeriod) {
+		_modelSimulation->setWarmUpPeriod(edited.warmUpPeriod);
+	}
+	if (edited.warmUpPeriodTimeUnit != _originalConfiguration.warmUpPeriodTimeUnit) {
+		_modelSimulation->setWarmUpPeriodTimeUnit(edited.warmUpPeriodTimeUnit);
+	}
+	if (edited.terminatingCondition != _originalConfiguration.terminatingCondition) {
+		_modelSimulation->setTerminatingCondition(edited.terminatingCondition);
+	}
+	if (edited.initializeSystem != _originalConfiguration.initializeSystem) {
+		_modelSimulation->setInitializeSystem(edited.initializeSystem);
+	}
+	if (edited.initializeStatistics != _originalConfiguration.initializeStatistics) {
+		_modelSimulation->setInitializeStatistics(edited.initializeStatistics);
+	}
+	if (edited.stepByStep != _originalConfiguration.stepByStep) {
+		_modelSimulation->setStepByStep(edited.stepByStep);
+	}
+	if (edited.pauseOnEvent != _originalConfiguration.pauseOnEvent) {
+		_modelSimulation->setPauseOnEvent(edited.pauseOnEvent);
+	}
+	if (edited.pauseOnReplication != _originalConfiguration.pauseOnReplication) {
+		_modelSimulation->setPauseOnReplication(edited.pauseOnReplication);
+	}
 }
-
-// Show Reports after Replication
-void DialogSimulationConfigure::on_checkBox_3_stateChanged(int arg1)
-{
-   showReportsAfterReplication = arg1;
-}
-
-// Show Reports after Simulation
-void DialogSimulationConfigure::on_checkBox_2_stateChanged(int arg1)
-{
-   showReportsAfterSimulation = arg1;
-}
-
-// Ok Button
-void DialogSimulationConfigure::on_buttonBox_accepted()
-{
-   infos->setName(experimentName);
-
-   ms->setNumberOfReplications(numberOfReplication);
-
-   ms->setReplicationLength(replicationLength);
-   ms->setReplicationLengthTimeUnit(replicationLengthtimeUnit);
-
-   ms->setWarmUpPeriod(warmUpPeriod);
-   ms->setWarmUpPeriodTimeUnit(warmUpPeriodTimeUnit);
-
-   ms->setTerminatingCondition(terminatingCondition);
-   trace->setTraceLevel(traceLevel);
-   ms->setInitializeSystem(initializeSystem);
-   ms->setInitializeStatistics(initializeStatistics);
-   ms->setShowReportsAfterReplication(showReportsAfterReplication);
-   ms->setShowReportsAfterSimulation(showReportsAfterSimulation);
-}
-
-// Set previous configuration when it's cancel
-void DialogSimulationConfigure::on_buttonBox_rejected()
-{
-   previousConfiguration();
-}
-// Get previous configuration from model and update ui
-void DialogSimulationConfigure::previousConfiguration() {
-
-   // Missing name
-   experimentName = infos->getName();
-   numberOfReplication = ms->getNumberOfReplications();
-   replicationLength = ms->getReplicationLength();
-   replicationLengthtimeUnit = ms->getReplicationLengthTimeUnit();
-   warmUpPeriod = ms->getWarmUpPeriod();
-   warmUpPeriodTimeUnit = ms->getWarmUpPeriodTimeUnit();
-   terminatingCondition =  ms->getTerminatingCondition();
-   traceLevel = trace->getTraceLevel();
-
-   initializeSystem =   ms->isInitializeSystem();
-   initializeStatistics = ms->isInitializeStatistics();
-   showReportsAfterReplication =  ms->isShowReportsAfterReplication();
-   showReportsAfterSimulation = ms->isShowReportsAfterSimulation();
-
-   ui->plainTextEdit->setPlainText(QString::fromStdString(experimentName));
-   ui->spinBox->setValue(numberOfReplication);
-   ui->spinBox_3->setValue(replicationLength);
-   ui->comboBox->setCurrentIndex(static_cast<int>(replicationLengthtimeUnit));
-   ui->spinBox_2->setValue(warmUpPeriod);
-   ui->comboBox_2->setCurrentIndex(static_cast<int>(warmUpPeriodTimeUnit));
-   ui->plainTextEdit_2->setPlainText(QString::fromStdString(terminatingCondition));
-   ui->comboBox_3->setCurrentIndex(static_cast<int>(traceLevel));
-
-   ui->checkBox->setChecked(initializeSystem);
-   ui->checkBox_2->setChecked(showReportsAfterSimulation);
-   ui->checkBox_3->setChecked(showReportsAfterReplication);
-   ui->checkBox_4->setChecked(initializeStatistics);
-}
-

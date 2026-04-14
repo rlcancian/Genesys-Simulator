@@ -587,6 +587,7 @@ void ModelSimulation::stop() {
 
 void ModelSimulation::setPauseOnEvent(bool _pauseOnEvent) {
 	this->_pauseOnEvent = _pauseOnEvent;
+	_hasChanged = true;
 }
 
 bool ModelSimulation::isPauseOnEvent() const {
@@ -595,6 +596,7 @@ bool ModelSimulation::isPauseOnEvent() const {
 
 void ModelSimulation::setInitializeStatistics(bool _initializeStatistics) {
 	this->_initializeStatisticsBetweenReplications = _initializeStatistics;
+	_hasChanged = true;
 }
 
 bool ModelSimulation::isInitializeStatistics() const {
@@ -603,6 +605,7 @@ bool ModelSimulation::isInitializeStatistics() const {
 
 void ModelSimulation::setInitializeSystem(bool _initializeSystem) {
 	this->_initializeSystem = _initializeSystem;
+	_hasChanged = true;
 }
 
 bool ModelSimulation::isInitializeSystem() const {
@@ -611,6 +614,7 @@ bool ModelSimulation::isInitializeSystem() const {
 
 void ModelSimulation::setStepByStep(bool _stepByStep) {
 	this->_stepByStep = _stepByStep;
+	_hasChanged = true;
 }
 
 bool ModelSimulation::isStepByStep() const {
@@ -619,6 +623,7 @@ bool ModelSimulation::isStepByStep() const {
 
 void ModelSimulation::setPauseOnReplication(bool _pauseOnReplication) {
 	this->_pauseOnReplication = _pauseOnReplication;
+	_hasChanged = true;
 }
 
 bool ModelSimulation::isPauseOnReplication() const {
@@ -772,6 +777,11 @@ void ModelSimulation::loadInstance(PersistenceRecord *fields) {
 	this->_terminatingCondition = fields->loadField("terminatingCondition", DEFAULT.terminatingCondition);
 	this->_warmUpPeriod = fields->loadField("warmUpTime", DEFAULT.warmUpPeriod);
 	this->_warmUpPeriodTimeUnit = fields->loadField("warmUpTimeTimeUnit", DEFAULT.warmUpPeriodTimeUnit);
+	this->_initializeStatisticsBetweenReplications = fields->loadField("initializeStatistics", DEFAULT.initializeStatisticsBetweenReplications);
+	this->_initializeSystem = fields->loadField("initializeSystem", DEFAULT.initializeSystem);
+	this->_stepByStep = fields->loadField("stepByStep", false);
+	this->_pauseOnEvent = fields->loadField("pauseOnEvent", false);
+	this->_pauseOnReplication = fields->loadField("pauseOnReplication", false);
 	this->_showReportsAfterReplication = fields->loadField("showReportsAfterReplication", DEFAULT.showReportsAfterReplication);
 	this->_showReportsAfterSimulation = fields->loadField("showReportsAfterSimulation", DEFAULT.showReportsAfterSimulation);
 	this->_showSimulationControlsInReport = fields->loadField("showSimulationControlsInReport", DEFAULT.showSimulationControlsInReport);
@@ -794,6 +804,11 @@ void ModelSimulation::saveInstance(PersistenceRecord *fields, bool saveDefaults)
 	fields->saveField("terminatingCondition", _terminatingCondition, DEFAULT.terminatingCondition, saveDefaults);
 	fields->saveField("warmUpTime", _warmUpPeriod, DEFAULT.warmUpPeriod, saveDefaults);
 	fields->saveField("warmUpTimeTimeUnit", _warmUpPeriodTimeUnit, DEFAULT.warmUpPeriodTimeUnit, saveDefaults);
+	fields->saveField("initializeStatistics", _initializeStatisticsBetweenReplications, DEFAULT.initializeStatisticsBetweenReplications, saveDefaults);
+	fields->saveField("initializeSystem", _initializeSystem, DEFAULT.initializeSystem, saveDefaults);
+	fields->saveField("stepByStep", _stepByStep, false, saveDefaults);
+	fields->saveField("pauseOnEvent", _pauseOnEvent, false, saveDefaults);
+	fields->saveField("pauseOnReplication", _pauseOnReplication, false, saveDefaults);
 	fields->saveField("showReportsAfterReplicaton", _showReportsAfterReplication, DEFAULT.showReportsAfterReplication, saveDefaults);
 	fields->saveField("showReportsAfterSimulation", _showReportsAfterSimulation, DEFAULT.showReportsAfterSimulation, saveDefaults);
 	fields->saveField("showSimulationControlsInReport", _showSimulationControlsInReport, DEFAULT.showSimulationControlsInReport, saveDefaults);
@@ -825,6 +840,7 @@ bool ModelSimulation::isShowSimulationControlsInReport() const {
 
 void ModelSimulation::setReplicationReportBaseTimeUnit(Util::TimeUnit _replicationReportBaseTimeUnit) {
 	this->_replicationBaseTimeUnit = _replicationReportBaseTimeUnit;
+	_hasChanged = true;
 }
 
 Util::TimeUnit ModelSimulation::getReplicationBaseTimeUnit() const {
