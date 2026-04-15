@@ -49,17 +49,16 @@ public:
 	 * \param changes
 	 * \return
 	 */
-	/// @todo Implement parser generation workflow and define the expected filesystem/toolchain contract.
+	// @ToDo: (importante): Implement parser generation workflow and define the expected filesystem/toolchain contract.
 	ParserManager::GenerateNewParserResult generateNewParser(ParserChangesInformation* changes);
 	/*!
 	 * \brief connectNewParser
 	 * \param newParser
 	 * \return
 	 */
-	/// @todo Implement parser loading/activation and define ownership/lifetime rules for connected parsers.
+	// @ToDo: (importante): Implement parser loading/activation and define ownership/lifetime rules for connected parsers.
 	bool connectNewParser(ParserManager::NewParser newParser);
 private:
 };
 //namespace\\}
 #endif /* PARSERMANAGER_H */
-

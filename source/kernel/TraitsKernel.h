@@ -99,7 +99,7 @@ template <> struct TraitsKernel<ModelPersistence_if> {
  *  Statistics
  */
 template <> struct TraitsKernel<Statistics_if> {
-	typedef double DataType; // TODO: not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
+	typedef double DataType; // @ToDo: (importante): not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
 	static constexpr double SignificanceLevel = 0.05;
 };
 
@@ -116,7 +116,7 @@ template <> struct TraitsKernel<Sampler_if> {
 
 template <> struct TraitsKernel<Collector_if> {
 	typedef CollectorDatafileDefaultImpl1 Implementation;
-	typedef double DataType; // TODO: not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
+	typedef double DataType; // @ToDo: (importante): not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
 };
 //namespace\\}
 

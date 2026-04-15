@@ -51,11 +51,6 @@ public:
 	 * \return
 	 */
 	virtual bool checkLimits() = 0; /*!< Checks if the model (its components and elements) fits the limits based on the activation code */
-	/*!
-	 * \brief checkOrphaned
-	 * \return
-	 */
-	virtual bool checkOrphaned() = 0; /*!< Checks if there are ModelDataDefinitions not referred by any ModelComponent, which means they are orphan ModelDataDefinitions */
 };
 
 #endif /* MODELCHECKER_IF_H */

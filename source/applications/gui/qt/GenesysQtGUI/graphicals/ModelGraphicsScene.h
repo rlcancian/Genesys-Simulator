@@ -127,6 +127,8 @@ public: // editing graphic model
     bool addDrawingGeometry(QGraphicsItem * item);
     bool addDrawingAnimation(QGraphicsItem * item);
     void removeGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd);
+    void detachGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd);
+    void restoreGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd);
     void removeGraphicalDiagramConnection(GraphicalDiagramConnection* connection);
     void clearGraphicalModelDataDefinitions();
     void clearGraphicalDiagramConnections();

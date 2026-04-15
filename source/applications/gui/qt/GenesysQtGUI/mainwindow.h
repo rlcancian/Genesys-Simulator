@@ -39,6 +39,7 @@ class ModelLifecycleController;
 class SimulationCommandController;
 class EditCommandController;
 class SceneToolController;
+class GraphicalContextMenuController;
 class DialogUtilityController;
 
 // Document MainWindow as composition root and incremental compatibility façade.
@@ -253,6 +254,8 @@ private: // simulator event handlers
 	void _onModelCheckSuccessHandler(ModelEvent* re);
     /** @brief Compatibility wrapper for replication-start event handling delegation. */
 	void _onReplicationStartHandler(SimulationEvent* re);
+    /** @brief Compatibility wrapper for replication-end event handling delegation. */
+	void _onReplicationEndHandler(SimulationEvent* re);
     /** @brief Compatibility wrapper for simulation-start event handling delegation. */
 	void _onSimulationStartHandler(SimulationEvent* re);
     /** @brief Compatibility wrapper for simulation-pause event handling delegation. */
@@ -415,6 +418,8 @@ private: // interface and model main elements to join
     std::unique_ptr<EditCommandController> _editCommandController;
     // Add the Phase 10 scene-tool controller owned by MainWindow.
     std::unique_ptr<SceneToolController> _sceneToolController;
+    // Add the graphical context-menu controller owned by MainWindow.
+    std::unique_ptr<GraphicalContextMenuController> _graphicalContextMenuController;
     // Add the Phase 11 dialog-utility controller owned by MainWindow.
     std::unique_ptr<DialogUtilityController> _dialogUtilityController;
 	PropertyEditorGenesys* propertyGenesys;

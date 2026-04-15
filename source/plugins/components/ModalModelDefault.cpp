@@ -25,7 +25,7 @@
 //#include "../../kernel/simulator/PluginManager.h"
 
 
-/// Externalize function GetPluginInformation to be accessible throught dynamic linked library
+/// Externalize function GetPluginInformation to be accessible through dynamic linked library
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {
 	return &ModalModelDefault::GetPluginInformation;
@@ -148,7 +148,7 @@ void ModalModelDefault::removeOutputExpressionReference(DefaultNodeTransition* e
 
 
 //
-// protected: /// virtual method that must be overriden
+// protected: /// virtual method that must be overridden
 //
 
 bool ModalModelDefault::_loadInstance(PersistenceRecord* fields) {
@@ -294,7 +294,7 @@ bool ModalModelDefault::_check(std::string& errorMessage) {
 		}
 		std::string output = transition->getOutputExpression();
 		if (output != "") {
-			resultAll &= _parentModel->checkExpression(output, "ouput expression[" + transition->getName() + "]",
+			resultAll &= _parentModel->checkExpression(output, "output expression[" + transition->getName() + "]",
 			                                           errorMessage);
 		}
 	}
@@ -448,7 +448,7 @@ ParserChangesInformation* ModalModelDefault::_getParserChangesInformation() {
 	changes->getassignments().append("");
 	changes->getexpressionProductions().append("");
 	changes->getexpressions().append("");
-	changes->getfunctionProdutions().append("");
+	changes->getfunctionProductions().append("");
 	changes->getassignments().append("");
 	changes->getincludes().append("");
 	changes->gettokens().append("");

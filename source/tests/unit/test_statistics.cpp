@@ -1,8 +1,10 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <stdexcept>
 
 #include "kernel/statistics/CollectorDefaultImpl1.h"
+#include "kernel/statistics/SamplerDefaultImpl1.h"
 #include "kernel/statistics/StatisticsDefaultImpl1.h"
 
 namespace {
@@ -146,6 +148,21 @@ TEST(StatisticsTest, NewSampleSizeCurrentlyReturnsZero) {
     collector.addValue(2.0);
 
     EXPECT_EQ(stats.newSampleSize(0.25), 0u);
+}
+
+TEST(SamplerDefaultImpl1Test, VariadicDiscreteUsesCumulativeProbabilities) {
+    SamplerDefaultImpl1 sampler;
+
+    EXPECT_DOUBLE_EQ(sampler.sampleDiscrete(0.25, 1.0, 0.75, 2.0, 1.0, 3.0), 2.0);
+}
+
+TEST(SamplerDefaultImpl1Test, VariadicDiscreteValidatesCumulativeProbabilities) {
+    SamplerDefaultImpl1 sampler;
+
+    EXPECT_THROW(
+        sampler.sampleDiscrete(1.25, 1.0),
+        std::invalid_argument
+    );
 }
 
 } // namespace

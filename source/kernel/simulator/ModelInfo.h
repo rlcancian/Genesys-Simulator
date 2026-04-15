@@ -96,6 +96,8 @@ public:
 	 * \return
 	 */
 	bool hasChanged() const;
+	/*! \brief Updates the changed flag for model metadata. */
+	void setHasChanged(bool hasChanged);
 private: // with public access (get & set)
 	// model general information
 	std::string _name;
@@ -107,4 +109,3 @@ private: // with public access (get & set)
 };
 //namespace\\}
 #endif /* MODELINFO_H */
-

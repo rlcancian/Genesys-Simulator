@@ -120,7 +120,8 @@ void SceneToolController::onActionDrawLineTriggered() {
         _ui->actionDrawLine->setChecked(true);
         scene->setAction(_ui->actionDrawLine);
         scene->setDrawingMode(ModelGraphicsScene::DrawingMode::LINE);
-    } else {
+    }
+    else {
         _unselectDrawIcons();
     }
 }
@@ -137,7 +138,8 @@ void SceneToolController::onActionDrawRectangleTriggered() {
         _ui->actionDrawRectangle->setChecked(true);
         scene->setAction(_ui->actionDrawRectangle);
         scene->setDrawingMode(ModelGraphicsScene::DrawingMode::RECTANGLE);
-    } else {
+    }
+    else {
         _unselectDrawIcons();
     }
 }
@@ -154,7 +156,8 @@ void SceneToolController::onActionDrawEllipseTriggered() {
         _ui->actionDrawEllipse->setChecked(true);
         scene->setAction(_ui->actionDrawEllipse);
         scene->setDrawingMode(ModelGraphicsScene::DrawingMode::ELLIPSE);
-    } else {
+    }
+    else {
         _unselectDrawIcons();
     }
 }
@@ -170,7 +173,8 @@ void SceneToolController::onActionDrawTextTriggered() {
         _ui->actionDrawText->setChecked(true);
         scene->setAction(_ui->actionDrawText);
         scene->setDrawingMode(ModelGraphicsScene::DrawingMode::TEXT);
-    } else {
+    }
+    else {
         _unselectDrawIcons();
     }
 }
@@ -187,7 +191,8 @@ void SceneToolController::onActionDrawPoligonTriggered() {
         _ui->actionDrawPoligon->setChecked(true);
         scene->setAction(_ui->actionDrawPoligon);
         scene->setDrawingMode(ModelGraphicsScene::DrawingMode::POLYGON);
-    } else {
+    }
+    else {
         _unselectDrawIcons();
     }
 }
@@ -203,7 +208,8 @@ void SceneToolController::onActionAnimateSimulatedTimeTriggered() {
         _graphicsView->setCursor(Qt::CrossCursor);
         scene->setAction(_ui->actionAnimateSimulatedTime);
         scene->drawingTimer();
-    } else {
+    }
+    else {
         _unselectDrawIcons();
     }
 }
@@ -219,7 +225,8 @@ void SceneToolController::onActionAnimateVariableTriggered() {
         _graphicsView->setCursor(Qt::CrossCursor);
         scene->setAction(_ui->actionAnimateVariable);
         scene->drawingVariable();
-    } else {
+    }
+    else {
         _unselectDrawIcons();
     }
 }
@@ -235,7 +242,8 @@ void SceneToolController::onActionAnimateCounterTriggered() {
         _graphicsView->setCursor(Qt::CrossCursor);
         scene->setAction(_ui->actionAnimateCounter);
         scene->drawingCounter();
-    } else {
+    }
+    else {
         _unselectDrawIcons();
     }
 }
@@ -300,7 +308,8 @@ void SceneToolController::onActionActivateGraphicalSimulationTriggered() {
     if (!_ui->actionActivateGraphicalSimulation->isChecked()) {
         AnimationTransition::setRunning(false);
         visivible = false;
-    } else {
+    }
+    else {
         AnimationTransition::setRunning(true);
     }
 
@@ -319,7 +328,7 @@ void SceneToolController::onActionActivateGraphicalSimulationTriggered() {
 
 // Preserve animation speed slider conversion to execution time value.
 void SceneToolController::onHorizontalSliderAnimationSpeedValueChanged(int value) {
-    const double newValue = static_cast<double>(value) / 2.0;
+    const double newValue = static_cast<double>(value) / 50.0; // 100/50 = max 2 seconds per animation
     AnimationTransition::setTimeExecution(newValue);
 }
 
@@ -335,7 +344,8 @@ void SceneToolController::onActionDiagramsTriggered() {
             scene->createDiagrams();
         }
         scene->showDiagrams();
-    } else {
+    }
+    else {
         if (scene->existDiagram()) {
             scene->hideDiagrams();
         }
@@ -365,7 +375,8 @@ void SceneToolController::onActionShowInternalElementsTriggered() {
     const bool checked = _ui->actionShowInternalElements->isChecked();
     if (_ui->checkBox_ShowInternals->isChecked() != checked) {
         _ui->checkBox_ShowInternals->setChecked(checked);
-    } else {
+    }
+    else {
         _createModelImage();
     }
 }
@@ -375,7 +386,8 @@ void SceneToolController::onActionShowAttachedElementsTriggered() {
     const bool checked = _ui->actionShowAttachedElements->isChecked();
     if (_ui->checkBox_ShowElements->isChecked() != checked) {
         _ui->checkBox_ShowElements->setChecked(checked);
-    } else {
+    }
+    else {
         _createModelImage();
     }
 }
@@ -416,7 +428,8 @@ void SceneToolController::onActionGModelShowConnectTriggered() {
         _ui->actionGModelShowConnect->setChecked(false);
         scene->setConnectingStep(0);
         _graphicsView->setCursor(Qt::ArrowCursor);
-    } else {
+    }
+    else {
         qInfo() << "Connection tool activated";
         _ui->actionGModelShowConnect->setChecked(true);
         scene->beginConnection();

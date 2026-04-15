@@ -66,6 +66,7 @@ DialogUtilityController::DialogUtilityController(MainWindow* ownerWidget,
                                                  std::function<bool()> createModelImage,
                                                  std::function<void()> actualizeActions,
                                                  std::function<void()> actualizeTabPanes,
+                                                 std::function<void()> reloadPluginCatalog,
                                                  std::function<ModelGraphicsScene*()> currentScene,
                                                  double& optimizerPrecision,
                                                  unsigned int& optimizerMaxSteps,
@@ -82,6 +83,7 @@ DialogUtilityController::DialogUtilityController(MainWindow* ownerWidget,
       _createModelImage(std::move(createModelImage)),
       _actualizeActions(std::move(actualizeActions)),
       _actualizeTabPanes(std::move(actualizeTabPanes)),
+      _reloadPluginCatalog(std::move(reloadPluginCatalog)),
       _currentScene(std::move(currentScene)),
       _optimizerPrecision(optimizerPrecision),
       _optimizerMaxSteps(optimizerMaxSteps),
@@ -543,6 +545,8 @@ void DialogUtilityController::onActionSimulatorPreferencesTriggered() {
 // Preserve plugin manager dialog parenting and non-blocking show behavior.
 void DialogUtilityController::onActionSimulatorsPluginManagerTriggered() {
     DialogPluginManager* dialog = new DialogPluginManager(_ownerWidget);
+    dialog->setSimulator(_simulator);
+    dialog->setPluginCatalogRefreshCallback(_reloadPluginCatalog);
     dialog->show();
 }
 

@@ -31,7 +31,7 @@ PlugIns are NOT implemented yet
 class Plugin {
 public:
 	Plugin(std::string filename_so_dll);
-	Plugin(StaticGetPluginInformation getInformation); // @TODO: temporary. Just while compiled together
+	Plugin(StaticGetPluginInformation getInformation); // @ToDo: (importante): temporary. Just while compiled together
 	// Destroy plugin-owned metadata allocated by the plugin-information callback.
 	virtual ~Plugin();
 public:

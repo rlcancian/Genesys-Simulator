@@ -14,6 +14,7 @@
 #ifndef SIMULATIONMODEL_H
 #define SIMULATIONMODEL_H
 
+#include <list>
 #include <string>
 
 #include "../util/List.h"
@@ -86,6 +87,8 @@ public: // model control
 	 * \param elemOrComp
 	 */
 	void remove(ModelDataDefinition* elemOrComp); //!< Remove a new ModelDataDefinition or ModelComponent into the model (since 20191015). It's a generic access to ComponentManager->remove() or ModelDatao->remove()
+	/*! \brief Computes data definitions that become removable with a localized root removal. */
+	std::list<ModelDataDefinition*> collectDataDefinitionsRemovedWith(const std::list<ModelDataDefinition*>& roots) const;
 	/*!
 	 * \brief createEntity
 	 * \param name
@@ -141,6 +144,7 @@ public: // model control
 	 * \param referencedDataDefinitions
 	 */
 	void checkReferencesToDataDefinitions(std::string expression, std::map<std::string, std::list<std::string>*>* referencedDataDefinitions);
+
 public: // only gets
 	/*!
 	 * \brief getId
@@ -152,6 +156,8 @@ public: // only gets
 	 * \return
 	 */
 	bool hasChanged() const;
+	/*! \brief Updates the changed flag for the model and its owned persistent objects. */
+	void setHasChanged(bool hasChanged);
 	// 1:1
 	/*!
 	 * \brief getOnEvents
@@ -238,14 +244,14 @@ private:
 	void _showElements() const;
 	void _showSimulationControls() const;
 	void _showSimulationResponses() const;
-	void _createModelInternalElements();
 	void _destroyFutureEvents();
 	void _destroyTransientEntities();
 	void _destroyComponents();
 	void _destroyModelDataDefinitions();
+    void _clearOrphanedDataDefinitions();
+    void _createInternalDataDefinitions();
 private:
 	bool _hasChanged = false;
-    //bool _isChecked = false; // @TODO: Not implemented yet. First, _hasChanged should be trustful
 	bool _automaticallyCreatesModelDataDefinitions; // default will come from Traits in the constructor
 private: // read only public access (gets)
 	Util::identification _id;

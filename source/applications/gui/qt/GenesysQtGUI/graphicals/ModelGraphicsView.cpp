@@ -178,12 +178,20 @@ void ModelGraphicsView::clearEventHandlers() {
     _sceneWheelInEventHandler = nullptr;
     _sceneWheelOutEventHandler = nullptr;
     _sceneGraphicalModelEventHandler = nullptr;
+    _contextMenuEventHandler = nullptr;
 }
 
 //---------------------------------------------------------
 
 void ModelGraphicsView::contextMenuEvent(QContextMenuEvent *event) {
-	QGraphicsView::contextMenuEvent(event);
+    if (_contextMenuEventHandler) {
+        // Let the MainWindow-owned controller decide which action menu matches the clicked scene context.
+        _contextMenuEventHandler(event);
+        if (event->isAccepted()) {
+            return;
+        }
+    }
+    QGraphicsView::contextMenuEvent(event);
 }
 
 void ModelGraphicsView::dragEnterEvent(QDragEnterEvent *event) {

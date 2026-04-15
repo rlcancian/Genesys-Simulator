@@ -2,6 +2,7 @@
 
 #include "../../../../../kernel/simulator/Plugin.h"
 #include "../../../../../kernel/simulator/PluginInformation.h"
+#include "../../../../../kernel/simulator/PluginManager.h"
 #include "../../../../../kernel/simulator/Simulator.h"
 
 #include <QBrush>
@@ -70,6 +71,7 @@ void PluginCatalogController::insertPluginUI(Plugin* plugin) const {
         delete treeItemChild;
         return;
     }
+    treeItemChild->setData(0, Qt::UserRole, treeRootItem->background(0).color());
 
     // Keep legacy icon color selection based on root category color.
     if (plugin->getPluginInfo()->isComponent()
@@ -95,6 +97,20 @@ void PluginCatalogController::insertPluginUI(Plugin* plugin) const {
     treeItemChild->setToolTip(0, QString::fromStdString(plugtextAdds));
     treeItemChild->setStatusTip(0, QString::fromStdString(plugin->getPluginInfo()->getLanguageTemplate()));
     treeRootItem->addChild(treeItemChild);
+}
+
+void PluginCatalogController::reloadFromPluginManager() const {
+    if (_pluginsTree == nullptr || _simulator == nullptr || _simulator->getPluginManager() == nullptr) {
+        return;
+    }
+
+    // Rebuild the palette from kernel plugin state after plugin-manager mutations.
+    _pluginsTree->clear();
+    for (unsigned int i = 0; i < _simulator->getPluginManager()->size(); i++) {
+        insertPluginUI(_simulator->getPluginManager()->getAtRank(i));
+    }
+    _pluginsTree->sortByColumn(0, Qt::AscendingOrder);
+    _pluginsTree->expandAll();
 }
 
 // Keep fake-plugin entry point available even when no fake plugins are inserted.
@@ -152,11 +168,13 @@ QTreeWidgetItem* PluginCatalogController::ensureCategoryRoot(const QString& cate
     }
     treeRootItem->setBackground(0, bbackground);
     treeRootItem->setFont(0, QFont("Nimbus Sans", 12, QFont::Bold));
-    treeRootItem->setExpanded(false);
+    treeRootItem->setExpanded(true);
 
     // Preserve category-color map updates for graphical-model integration.
-    if (_pluginCategoryColor != nullptr && pluginCategoryName == category.toStdString()) {
-        _pluginCategoryColor->insert({pluginCategoryName, bbackground.color()});
+    if (_pluginCategoryColor != nullptr) {
+        const QColor categoryColor = bbackground.color();
+        _pluginCategoryColor->insert({category.toStdString(), categoryColor});
+        _pluginCategoryColor->insert({pluginCategoryName, categoryColor});
     }
     return treeRootItem;
 }

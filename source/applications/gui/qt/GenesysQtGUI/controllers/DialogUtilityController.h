@@ -43,6 +43,7 @@ public:
                             std::function<bool()> createModelImage,
                             std::function<void()> actualizeActions,
                             std::function<void()> actualizeTabPanes,
+                            std::function<void()> reloadPluginCatalog,
                             std::function<ModelGraphicsScene*()> currentScene,
                             double& optimizerPrecision,
                             unsigned int& optimizerMaxSteps,
@@ -92,6 +93,7 @@ private:
     std::function<bool()> _createModelImage;
     std::function<void()> _actualizeActions;
     std::function<void()> _actualizeTabPanes;
+    std::function<void()> _reloadPluginCatalog;
     std::function<ModelGraphicsScene*()> _currentScene;
     double& _optimizerPrecision;
     unsigned int& _optimizerMaxSteps;

@@ -288,11 +288,11 @@ private: // events listener for handlers that are class members (methods)
 //
 // implementation for template methods
 //
-// 	// @TODO: (!!) Complicated: if handlerMethod already insert, should not insert it again. Problem to solve <...> for function
+// 	// @ToDo: (importante): (!!) Complicated: if handlerMethod already insert, should not insert it again. Problem to solve <...> for function
 //if (_onProcessEventHandlerMethods->find(handlerMethod) == _onProcessEventHandlerMethods->list()->end())
 // trying unique to solve the issue
 //this->_onProcessEventHandlerMethods->list()->unique(); // does not work
-//  @TODO: probabily to override == operator for type simulationEventHandlerMethod
+//  @ToDo: (importante): probabily to override == operator for type simulationEventHandlerMethod
 // ...
 
 template<typename Class> void OnEventManager::addOnModelCheckSuccessHandler(Class * object, void (Class::*function)(ModelEvent*)) {
