@@ -615,6 +615,22 @@ public:
     virtual bool supportsObjectCreation() const override { return !_readonly; }
     // This method marks class references as non-inline object payloads.
     virtual bool isInlineObjectProperty() const override { return false; }
+    // Property Editor advanced editing experiment, step 1:
+    // ModelDataDefinition references must report whether the referenced object
+    // actually exists. Previously the base implementation always returned true,
+    // so the GUI could not distinguish "empty reference" from "loaded object".
+    // Revert this override to restore the old always-available reference behavior.
+    virtual bool hasObjectInstance() const override {
+        return static_cast<T>(_getter()) != nullptr;
+    }
+    // Property Editor advanced editing experiment, step 1:
+    // Do not auto-create ModelDataDefinition references while expanding the tree.
+    // Unlike inline helper objects, Queue/Resource/Set references need an explicit
+    // name or an existing target chosen by the user before creation is safe.
+    // Revert this override if implicit expansion should create references again.
+    virtual bool ensureObjectInstance() override {
+        return hasObjectInstance();
+    }
     // This method performs explicit object creation for class references.
     virtual bool createObjectInstance(const std::string& value = "") override {
         _ensureWritable("create instance for");
