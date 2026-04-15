@@ -29,6 +29,12 @@ void MoveUndoCommand::redo() {
     for (int i = 0; i < _myGraphicalItem.size(); i++) {
         QPointF newPos = _myNewPos[i];
         _myGraphicalItem[i]->setPos(newPos);
+
+        if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *> (_myGraphicalItem[i])) {
+            component->setOldPosition(newPos);
+        } else {
+            _myGraphicsScene->insertOldPositionItem(_myGraphicalItem[i], newPos);
+        }
     }
 
     // atualiza a cena

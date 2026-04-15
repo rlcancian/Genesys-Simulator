@@ -69,7 +69,7 @@ public:
 	 * documentation for lifetime/ownership details of the underlying instance.
 	 */
 	virtual Sampler_if* getSampler() const = 0;
-	// ...? // TODO: Implement a method to get the TOKENS parsed. Example: If parsing "nq(queue1) < var1" return a list containing something like "fNQ tLPAR eQUEUE tRPAR tLESS eVARIABLE"
+	// @ToDo: (pequena alteração): Implement a method to get the TOKENS parsed. Example: If parsing "nq(queue1) < var1" return a list containing something like "fNQ tLPAR eQUEUE tRPAR tLESS eVARIABLE"
 	/*!
 	 * \brief getParser
 	 * \return

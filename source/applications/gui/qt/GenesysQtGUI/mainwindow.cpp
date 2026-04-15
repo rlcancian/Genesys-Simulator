@@ -39,6 +39,8 @@
 #include "controllers/EditCommandController.h"
 // Add Phase 10 controller include for scene/view/drawing command orchestration.
 #include "controllers/SceneToolController.h"
+// Add graphical context-menu controller include for canvas popup orchestration.
+#include "controllers/GraphicalContextMenuController.h"
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
 #include "services/ModelLanguageSynchronizer.h"
@@ -79,6 +81,8 @@
 #include <QRegularExpression>
 #include <QRandomGenerator>
 #include <QAction>
+#include <QSignalBlocker>
+#include <QTabBar>
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -131,6 +135,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QSizePolicy policy = ui->dockWidgetConsole->sizePolicy();
     policy.setVerticalPolicy(QSizePolicy::Minimum);
     ui->dockWidgetConsole->setSizePolicy(policy);
+    splitDockWidget(ui->dockWidgetPropertyEditor, ui->dockWidgetConsole, Qt::Vertical);
     //...
     // plugins
     ui->treeWidget_Plugins->sortByColumn(0, Qt::AscendingOrder);
@@ -188,6 +193,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->tabWidgetModel->setCurrentIndex(CONST.TabModelSimLangIndex);
     ui->tabWidgetSimulation->setCurrentIndex(CONST.TabSimulationBreakpointsIndex);
     ui->tabWidgetReports->setCurrentIndex(CONST.TabReportReportIndex);
+    {
+        const QSignalBlocker tabWidgetModelBlocker(ui->tabWidgetModel);
+        const QSignalBlocker tabBarBlocker(ui->tabWidgetModel->tabBar());
+        const int modelDiagramTabIndex = ui->tabWidgetModel->indexOf(ui->tabModelDiagram);
+        if (modelDiagramTabIndex >= 0) {
+            ui->tabWidgetModel->setTabVisible(modelDiagramTabIndex, false);
+        }
+    }
     //
     // adjust toolbars position and ranking
     //
@@ -329,6 +342,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         _zoomValue,
         _firstClickShowConnection);
 
+    // Initialize the graphical context-menu controller after edit and scene actions are wired.
+    _graphicalContextMenuController = std::make_unique<GraphicalContextMenuController>(
+        ui->graphicsView,
+        ui,
+        [this]() { return ui->graphicsView->getScene(); },
+        [this]() { _actualizeActions(); });
+    ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
+                                                 &GraphicalContextMenuController::handleGraphicsViewContextMenu);
+
     // Initialize the Phase 11 dialog-utility controller after UI/simulator dependencies and callbacks are ready.
     _dialogUtilityController = std::make_unique<DialogUtilityController>(
         this,
@@ -340,6 +362,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         [this]() { return _createModelImage(); },
         [this]() { _actualizeActions(); },
         [this]() { _actualizeTabPanes(); },
+        [this]() {
+            if (_pluginCatalogController != nullptr) {
+                _pluginCatalogController->reloadFromPluginManager();
+            }
+        },
         [this]() { return myScene(); },
         _optimizerPrecision,
         _optimizerMaxSteps,
@@ -355,6 +382,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         ui,
         &_modelfilename,
         &_textModelHasChanged,
+        &_graphicalModelHasChanged,
         &_closingApproved,
         &_loaded,
         ModelLifecycleController::Callbacks{
@@ -381,6 +409,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             //@TODO: now it's the opportunity to adjust template
             _insertPluginUI(simulator->getPluginManager()->getAtRank(i));
         }
+        ui->treeWidget_Plugins->expandAll();
     }
     if (SystemPreferences::startMaximized()) {
         // another try to start maximized (it should not be that hard)

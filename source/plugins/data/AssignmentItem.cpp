@@ -41,13 +41,12 @@ Assignment::Assignment(Model* model, std::string destination, std::string expres
 		if (model->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), destination) == nullptr) {
 			model->getDataManager()->insert(Util::TypeOf<Attribute>(), new Attribute(model, destination));
 		}
-		_typeDC = Util::TypeOf<Attribute>();
 	} else {
 		if (model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), destination) == nullptr) {
 			model->getDataManager()->insert(Util::TypeOf<Variable>(), new Variable(model, destination));
 		}
-		_typeDC = Util::TypeOf<Variable>();
 	}
+	_updateTypeDC();
 
 	SimulationControlGeneric<std::string>* propDestination = new SimulationControlGeneric<std::string>(
 				std::bind(&Assignment::getDestination, this),
@@ -78,7 +77,12 @@ Assignment::Assignment(std::string destination, std::string expression, bool isA
 	this->_isAttributeNotVariable = isAttributeNotVariable;
 	// an assignment is always in the form:
 	// (destinationType) destination = expression
+	_updateTypeDC();
 };
+
+Assignment::~Assignment() {
+	delete _properties;
+}
 
 void Assignment::setDestination(std::string _destination) {
 	this->_destination = _destination;
@@ -102,12 +106,7 @@ std::string Assignment::getExpression() const {
 
 void Assignment::setAttributeNotVariable(bool isAttributeNotVariable) {
 	this->_isAttributeNotVariable = isAttributeNotVariable;
-
-	if (_isAttributeNotVariable) {
-		_typeDC = Util::TypeOf<Attribute>();
-	} else {
-		_typeDC = Util::TypeOf<Variable>();
-	}
+	_updateTypeDC();
 }
 
 bool Assignment::isAttributeNotVariable() const {
@@ -126,12 +125,20 @@ bool Assignment::loadInstance(PersistenceRecord *fields, unsigned int parentInde
 	_destination = fields->loadField("assignDest" + Util::StrIndex(parentIndex), "");
 	_expression = fields->loadField("assignExpr" + Util::StrIndex(parentIndex), "");
 	_isAttributeNotVariable = fields->loadField("assignIsAttrib" + Util::StrIndex(parentIndex), true);
+	_updateTypeDC();
 	return true;
 }
 
 void Assignment::saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefaultValues) {
-	std::string num = Util::StrIndex(parentIndex);
 	fields->saveField("assignDest" + Util::StrIndex(parentIndex), getDestination(), "", saveDefaultValues);
 	fields->saveField("assignExpr" + Util::StrIndex(parentIndex), getExpression(), "", saveDefaultValues);
 	fields->saveField("assignIsAttrib" + Util::StrIndex(parentIndex), isAttributeNotVariable(), true, saveDefaultValues);
+}
+
+void Assignment::_updateTypeDC() {
+	if (_isAttributeNotVariable) {
+		_typeDC = Util::TypeOf<Attribute>();
+	} else {
+		_typeDC = Util::TypeOf<Variable>();
+	}
 }

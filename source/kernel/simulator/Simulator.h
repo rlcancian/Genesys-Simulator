@@ -95,7 +95,7 @@ public: // only get
 
 private:
 	List<Plugin*>* _completePluginsFieldsAndTemplate();
-	friend class PluginManager; //@TODO: should be only member function PluginManager::completePluginsFieldsAndTemplate()
+	friend class PluginManager; // @ToDo: (pequena alteração): should be only member function PluginManager::completePluginsFieldsAndTemplate()
 
 private: // attributes 1:1 objects
 	LicenceManager* _licenceManager;

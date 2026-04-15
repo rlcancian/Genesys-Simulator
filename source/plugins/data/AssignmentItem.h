@@ -41,6 +41,7 @@ class Assignment {
 public:
 	Assignment(Model* model, std::string destination, std::string expression="1", bool isAttributeNotVariable = true);
 	Assignment(std::string destination, std::string expression, bool isAttributeNotVariable = true);
+	virtual ~Assignment();
 	void setDestination(std::string _destination);
 	std::string getDestination() const;
 	void setExpression(std::string _expression);
@@ -59,6 +60,7 @@ public:
 	bool loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
 	void saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefault);
 private:
+	void _updateTypeDC();
 	std::string _destination = "";
 	std::string _expression = "";
 	bool _isAttributeNotVariable = true;
@@ -69,4 +71,3 @@ private:
 
 
 #endif /* ASSIGNMENTITEM_H */
-

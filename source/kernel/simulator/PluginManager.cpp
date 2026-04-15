@@ -69,7 +69,7 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 		loadedPlugins = new List<Plugin*>();
 		while (std::getline(file, line)) {
 			if (line.length()>=1) {
-                // TODO 2500701 why [0-2] are special chars?
+                // @ToDo: (pequena alteração): 2500701 why [0-2] are special chars?
                 while (line[0]>126 || line[0]<32) {
                     line.erase(0,1);
                 }
@@ -172,7 +172,9 @@ bool PluginManager::check(std::string dynamicLibraryFilename) {
 	} catch (...) {
 		return false;
 	}
-	return (plugin != nullptr);
+	const bool checked = plugin != nullptr && plugin->isIsValidPlugin();
+	delete plugin;
+	return checked;
 }
 
 Plugin * PluginManager::insert(std::string dynamicLibraryFilename) {
@@ -200,12 +202,15 @@ bool PluginManager::remove(std::string dynamicLibraryFilename) {
 
 bool PluginManager::remove(Plugin * plugin) {
 	if (plugin != nullptr) {
-		_plugins->remove(plugin);
 		try {
-			_pluginConnector->disconnect(plugin);
+			if (!_pluginConnector->disconnect(plugin)) {
+				return false;
+			}
 		} catch (...) {
 			return false;
 		}
+		_plugins->remove(plugin);
+		delete plugin;
 		_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin successfully removed");
 		return true;
 	}

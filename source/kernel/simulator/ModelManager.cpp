@@ -59,7 +59,7 @@ void ModelManager::insert(Model* model) {
 void ModelManager::remove(Model* model) {
 	_models->remove(model);
 	if (_currentModel == model) {
-		//Util::ResetAllIds(); // @TODO!!!! Util::ResetAllIds() should be MODEL BASED!!!
+		//Util::ResetAllIds(); // @ToDo: (importante): Util::ResetAllIds() should be MODEL BASED!!!
 		_currentModel = this->front();
 	}
 	delete model; //->~Model();
@@ -100,7 +100,7 @@ Model* ModelManager::createFromLanguage(std::string modelSpecification) {
 	for (unsigned short i = 0; i < 16; i++) {
 		randomTempFilename += alphanum[rand() % stringLength];
 	}
-	randomTempFilename = "__TEMPFILEMODELO.GEN"; //@TODO: Remove this line
+	randomTempFilename = "__TEMPFILEMODELO.GEN"; // @ToDo: (pequena alteração): Remove this line
 	std::ofstream savefile;
 	savefile.open(randomTempFilename, std::ofstream::out);
 	savefile << modelSpecification;

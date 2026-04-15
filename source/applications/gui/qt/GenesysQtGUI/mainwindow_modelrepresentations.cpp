@@ -105,7 +105,9 @@ void MainWindow::setGraphicalModelHasChanged(bool graphicalModelHasChanged) {
 
 bool MainWindow::_createModelImage() {
     // Keep this wrapper as part of the final compatibility façade for model image creation.
-    return _graphvizModelExporter->createModelImage();
+    // The Graphviz diagram tab is no longer visible, so this rendered PNG does not need to be regenerated.
+    // return _graphvizModelExporter->createModelImage();
+    return false;
 }
 
 //-----------------------------------------------------------------

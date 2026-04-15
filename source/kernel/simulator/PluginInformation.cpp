@@ -15,6 +15,47 @@
 
 //using namespace GenesysKernel;
 
+SystemDependency::SystemDependency(OS os, std::string name, std::string installCommand, std::string checkCommand) {
+	_os = os;
+	_name = name;
+	_installCommand = installCommand;
+	_checkCommand = checkCommand;
+}
+
+SystemDependency::OS SystemDependency::getOS() const {
+	return _os;
+}
+
+std::string SystemDependency::getName() const {
+	return _name;
+}
+
+std::string SystemDependency::getInstallCommand() const {
+	return _installCommand;
+}
+
+std::string SystemDependency::getCheckCommand() const {
+	return _checkCommand;
+}
+
+std::string SystemDependency::show() const {
+	return "os=\"" + osToString(_os) + "\"" +
+			",name=\"" + _name + "\"" +
+			",installCommand=\"" + _installCommand + "\"" +
+			",checkCommand=\"" + _checkCommand + "\"";
+}
+
+std::string SystemDependency::osToString(OS os) {
+	switch (os) {
+		case OS::Any: return "Any";
+		case OS::Linux: return "Linux";
+		case OS::Windows: return "Windows";
+		case OS::MacOS: return "MacOS";
+		case OS::Unknown: return "Unknown";
+		default: return "Unknown";
+	}
+}
+
 PluginInformation::PluginInformation(std::string pluginTypename, StaticLoaderComponentInstance componentloader, StaticConstructorDataDefinitionInstance elementConstructor) {
 	this->_componentloader = componentloader;
 	this->_elementloader = nullptr;
@@ -34,6 +75,7 @@ PluginInformation::PluginInformation(std::string pluginTypename, StaticLoaderDat
 // Free dependency and field containers owned by plugin metadata instances.
 PluginInformation::~PluginInformation() {
 	delete _dynamicLibFilenameDependencies;
+	delete _systemDependencies;
 	delete _fields;
 }
 
@@ -103,6 +145,18 @@ void PluginInformation::setDynamicLibFilenameDependencies(std::list<std::string>
 
 std::list<std::string>* PluginInformation::getDynamicLibFilenameDependencies() const {
 	return _dynamicLibFilenameDependencies;
+}
+
+void PluginInformation::insertSystemDependency(const SystemDependency& dependency) {
+	_systemDependencies->insert(_systemDependencies->end(), dependency);
+}
+
+const std::list<SystemDependency>* PluginInformation::getSystemDependencies() const {
+	return _systemDependencies;
+}
+
+bool PluginInformation::hasSystemDependencies() const {
+	return !_systemDependencies->empty();
 }
 
 void PluginInformation::setGenerateReport(bool generateReport) {
@@ -204,4 +258,3 @@ void PluginInformation::setCategory(std::string _category) {
 std::string PluginInformation::getCategory() const {
 	return _category;
 }
-

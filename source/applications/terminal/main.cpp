@@ -3,20 +3,18 @@
 //
 
 #include <memory>
-#include "TraitsTerminalApp.h"
 
-#if defined(GENESYS_TERMINAL_USE_TRAITS_APP)
-using SelectedTerminalApplication = TraitsTerminalApp<GenesysApplication_if>::Application;
-#else
-class SelectedTerminalApplication : public GenesysApplication_if {
-public:
-    int main(int argc, char* argv[]) override {
-        (void) argc;
-        (void) argv;
-        return 0;
-    }
-};
+#ifndef GENESYS_TERMINAL_APP_HEADER
+#define GENESYS_TERMINAL_APP_HEADER "GenesysShell/GenesysShell.h"
 #endif
+
+#ifndef GENESYS_TERMINAL_APP_CLASS
+#define GENESYS_TERMINAL_APP_CLASS GenesysShell
+#endif
+
+#include GENESYS_TERMINAL_APP_HEADER
+
+using SelectedTerminalApplication = GENESYS_TERMINAL_APP_CLASS;
 
 int main(int argc, char *argv[]) {
     auto app = std::make_unique<SelectedTerminalApplication>();

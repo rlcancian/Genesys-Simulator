@@ -11,6 +11,8 @@
  */
 
 #include "DummyElement.h"
+#include "../../kernel/simulator/Model.h"
+#include "../../kernel/simulator/SimulationControlAndResponse.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -25,6 +27,18 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 //
 
 DummyElement::DummyElement(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<DummyElement>(), name) {
+	SimulationControlString* propSomeString = new SimulationControlString(
+					 std::bind(&DummyElement::getSomeString, this),
+					 std::bind(&DummyElement::setSomeString, this, std::placeholders::_1),
+					 Util::TypeOf<DummyElement>(), getName(), "SomeString");
+	SimulationControlDouble* propSomeUint = new SimulationControlDouble(
+					 [this]() { return static_cast<double>(this->getSomeUint()); },
+					 [this](double value) { this->setSomeUint(value < 0.0 ? 0u : static_cast<unsigned int>(value)); },
+					 Util::TypeOf<DummyElement>(), getName(), "SomeUint");
+	_parentModel->getControls()->insert(propSomeString);
+	_parentModel->getControls()->insert(propSomeUint);
+	_addProperty(propSomeString);
+	_addProperty(propSomeUint);
 }
 
 
@@ -32,7 +46,21 @@ DummyElement::DummyElement(Model* model, std::string name) : ModelDataDefinition
 // public: /// new public user methods for this component
 //
 
-// ...
+void DummyElement::setSomeString(const std::string& someString) {
+	_someString = someString;
+}
+
+std::string DummyElement::getSomeString() const {
+	return _someString;
+}
+
+void DummyElement::setSomeUint(unsigned int someUint) {
+	_someUint = someUint;
+}
+
+unsigned int DummyElement::getSomeUint() const {
+	return _someUint;
+}
 
 
 //
@@ -40,7 +68,9 @@ DummyElement::DummyElement(Model* model, std::string name) : ModelDataDefinition
 //
 
 std::string DummyElement::show() {
-	return ModelDataDefinition::show();
+	return ModelDataDefinition::show() +
+			", someString=\"" + _someString + "\"" +
+			", someUint=" + std::to_string(_someUint);
 }
 
 
@@ -52,7 +82,9 @@ std::string DummyElement::show() {
 
 PluginInformation* DummyElement::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<DummyElement>(), &DummyElement::LoadInstance, &DummyElement::NewInstance);
-	//info->setCategory("Discrete Processing");
+	info->setCategory("Data Definition");
+	info->setDescriptionHelp("Template/example ModelDataDefinition plugin used as a base for creating new data definitions.");
+	info->setObservation("This plugin is a skeleton/template and not a final domain-specific data element.");
 	//info->setMinimumInputs(1);
 	//info->setMinimumOutputs(1);
 	//info->setMaximumInputs(1);
@@ -114,14 +146,15 @@ void DummyElement::_saveInstance(PersistenceRecord *fields, bool saveDefaultValu
 // protected: /// virtual methods that could be overriden by derived classes, if needed
 //
 
-/*
-bool DummyElementt::_check(std::string& errorMessage) {
-	bool resultAll = true;
-	resultAll &= _someString != "";
-	resultAll &= _someUint > 0;
-	return resultAll;
+bool DummyElement::_check(std::string& errorMessage) {
+	if (_someString.empty()) {
+		errorMessage += "SomeString must not be empty. ";
+	}
+	if (_someUint == 0u) {
+		errorMessage += "SomeUint must be greater than zero. ";
+	}
+	return errorMessage.empty();
 }
-*/
 
 /*
 ParserChangesInformation* DummyElementt::_getParserChangesInformation() {

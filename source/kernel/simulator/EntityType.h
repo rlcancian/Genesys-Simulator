@@ -37,7 +37,7 @@ public: //static
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public: //get & set
-	//!@TODO: Change categories Waiting, Others, Transfer, etc to customizable ones
+	// @ToDo: (importante): Change categories Waiting, Others, Transfer, etc to customizable ones
 	void setInitialWaitingCost(double _initialWaitingCost);
 	double initialWaitingCost() const;
 	void setInitialOtherCost(double _initialOtherCost);
@@ -80,4 +80,3 @@ private: //1:n
 };
 //namespace\\}
 #endif /* ENTITYTYPE_H */
-

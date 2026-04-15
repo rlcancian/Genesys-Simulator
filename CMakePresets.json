@@ -19,7 +19,7 @@
         "GENESYS_BUILD_PLUGINS": "ON",
         "GENESYS_BUILD_PARSER": "ON",
         "GENESYS_BUILD_KERNEL": "ON",
-        "GENESYS_TERMINAL_APPLICATION": "OFF"
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
@@ -33,105 +33,91 @@
       }
     },
     {
-      "name": "debug",
-      "displayName": "Debug",
-      "inherits": "debug-base"
-    },
-    {
-      "name": "debug-kernel",
-      "displayName": "Debug Kernel Only",
-      "inherits": "debug-base",
-      "binaryDir": "${sourceDir}/build/debug-kernel",
-      "cacheVariables": {
-        "GENESYS_BUILD_TESTS": "OFF"
-      }
-    },
-    {
       "name": "tests-unit",
-      "displayName": "Unit Tests Only (Debug)",
+      "displayName": "Tests - Unit",
       "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/tests-unit",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "OFF",
-        "GENESYS_TERMINAL_APPLICATION": "OFF"
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
       "name": "tests-kernel-unit",
-      "displayName": "Kernel Unit Tests (Debug)",
+      "displayName": "Tests - Kernel Unit",
       "inherits": "tests-unit",
       "binaryDir": "${sourceDir}/build/tests-kernel-unit",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "OFF",
-        "GENESYS_TERMINAL_APPLICATION": "OFF"
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
       "name": "terminal-app",
-      "displayName": "Terminal Application (Debug)",
+      "displayName": "Application - Terminal (GenesysShell)",
       "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/terminal-app",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "OFF",
-        "GENESYS_TERMINAL_APPLICATION": "ON"
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "ON",
+        "GENESYS_TERMINAL_APP": "GenesysShell"
+      }
+    },
+    {
+      "name": "terminal-example",
+      "displayName": "Application - Terminal Example",
+      "inherits": "terminal-app",
+      "binaryDir": "${sourceDir}/build/terminal-example",
+      "cacheVariables": {
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_AssignWriteSeizes.cpp"
+      }
+    },
+    {
+      "name": "terminal-smart-hold-search-remove",
+      "displayName": "Application - Terminal Example (Smart_HoldSearchRemove)",
+      "inherits": "terminal-app",
+      "binaryDir": "${sourceDir}/build/terminal-smart-hold-search-remove",
+      "cacheVariables": {
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_HoldSearchRemove.cpp"
+      }
+    },
+    {
+      "name": "web-app",
+      "displayName": "Application - Web",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/web-app",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_WEB_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
+    },
+    {
+      "name": "gui-app",
+      "displayName": "Application - GUI",
+      "inherits": "debug-base",
+      "binaryDir": "${sourceDir}/build/gui-app",
+      "cacheVariables": {
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
     {
       "name": "tests-smoke",
-      "displayName": "Smoke Tests Only (Debug)",
+      "displayName": "Tests - Smoke",
       "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/tests-smoke",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "ON",
-        "GENESYS_TERMINAL_APPLICATION": "OFF"
-      }
-    },
-    {
-      "name": "release",
-      "displayName": "Release",
-      "inherits": "base",
-      "binaryDir": "${sourceDir}/build/release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release",
-        "GENESYS_BUILD_TESTS": "ON"
-      }
-    },
-    {
-      "name": "asan",
-      "displayName": "AddressSanitizer",
-      "inherits": "debug-base",
-      "binaryDir": "${sourceDir}/build/asan",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g3 -fsanitize=address,undefined -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=address,undefined"
-      }
-    },
-    {
-      "name": "ubsan",
-      "displayName": "UndefinedBehaviorSanitizer",
-      "inherits": "debug-base",
-      "binaryDir": "${sourceDir}/build/ubsan",
-      "cacheVariables": {
-        "CMAKE_CXX_FLAGS_DEBUG": "-O0 -g3 -fsanitize=undefined -fno-omit-frame-pointer",
-        "CMAKE_EXE_LINKER_FLAGS_DEBUG": "-fsanitize=undefined"
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     }
   ],
   "buildPresets": [
-    {
-      "name": "debug",
-      "configurePreset": "debug"
-    },
-    {
-      "name": "debug-kernel",
-      "configurePreset": "debug-kernel",
-      "targets": [
-        "genesys_kernel"
-      ]
-    },
     {
       "name": "tests-unit",
       "configurePreset": "tests-unit",
@@ -154,40 +140,42 @@
       ]
     },
     {
+      "name": "terminal-example",
+      "configurePreset": "terminal-example",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "terminal-smart-hold-search-remove",
+      "configurePreset": "terminal-smart-hold-search-remove",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "web-app",
+      "configurePreset": "web-app",
+      "targets": [
+        "genesys_webhook"
+      ]
+    },
+    {
+      "name": "gui-app",
+      "configurePreset": "gui-app",
+      "targets": [
+        "genesys_gui"
+      ]
+    },
+    {
       "name": "tests-smoke",
       "configurePreset": "tests-smoke",
       "targets": [
         "genesys_smoke_tests"
       ]
-    },
-    {
-      "name": "release",
-      "configurePreset": "release"
-    },
-    {
-      "name": "asan",
-      "configurePreset": "asan"
-    },
-    {
-      "name": "ubsan",
-      "configurePreset": "ubsan"
     }
   ],
   "testPresets": [
-    {
-      "name": "debug",
-      "configurePreset": "debug",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "asan",
-      "configurePreset": "asan",
-      "output": {
-        "outputOnFailure": true
-      }
-    },
     {
       "name": "tests-unit",
       "configurePreset": "tests-unit",
@@ -215,13 +203,6 @@
           "label": "smoke"
         }
       },
-      "output": {
-        "outputOnFailure": true
-      }
-    },
-    {
-      "name": "ubsan",
-      "configurePreset": "ubsan",
       "output": {
         "outputOnFailure": true
       }

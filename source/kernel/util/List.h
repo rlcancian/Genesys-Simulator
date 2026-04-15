@@ -86,8 +86,6 @@ public: // improved (easier) methods
 	T current(); // get current modeldatum on the list (the last used)
 	/*! \brief Sets the comparison function used for ordered insertions. */
 	void setSortFunc(CompFunct _sortFunc);
-	//public: // @TODO: Shoul in a specialized class classed ObservableList
-	//	void addObserverHandler();
 protected:
 	//std::map<Util::identitifcation, T>* _map;
 	std::list<T>* _list;
@@ -157,7 +155,11 @@ std::string List<T>::show() {
 
 template <typename T>
 void List<T>::insert(T element) {
+	const bool wasEmpty = _list->empty();
 	_list->insert(std::upper_bound(_list->begin(), _list->end(), element, _sortFunc), element);
+	if (wasEmpty) {
+		_it = _list->begin();
+	}
 }
 
 template <typename T>
@@ -167,9 +169,12 @@ bool List<T>::empty() {
 
 template <typename T>
 void List<T>::pop_front() {
-	typename std::list<T>::iterator itTemp = _list->begin();
+	if (_list->empty()) {
+		return;
+	}
+	const bool cursorAtFront = _it == _list->begin();
 	_list->pop_front();
-	if (_it == itTemp) { /*  @TODO: +: check this */
+	if (cursorAtFront) {
 		_it = _list->begin(); // if it points to the removed modeldatum, then changes to begin
 	}
 }
@@ -189,6 +194,7 @@ T List<T>::create() {
 template <typename T>
 void List<T>::clear() {
 	_list->clear();
+	_it = _list->begin();
 }
 
 template <typename T>
@@ -201,7 +207,7 @@ T List<T>::getAtRank(unsigned int rank) {
 			thisRank++;
 		}
 	}
-	return 0; /* @TODO: Invalid return depends on T. If T is pointer, nullptr works fine. If T is double, it does not. I just let (*it), but it is not nice*/
+	return T{};
 }
 
 template <typename T>
@@ -223,11 +229,14 @@ void List<T>::setAtRank(unsigned int rank, T element) {
 
 template <typename T>
 T List<T>::next() {
+	if (_list->empty() || _it == _list->end()) {
+		return T{};
+	}
 	_it++;
 	if (_it != _list->end())
 		return (*_it);
 	else
-		return nullptr;
+		return T{};
 
 }
 
@@ -238,8 +247,7 @@ typename std::list<T>::iterator List<T>::find(const T element) {
 			return it;
 		}
 	}
-	return _list->end(); /*  @TODO:+-: check nullptr or invalid iterator when not found */
-	//return nullptr;
+	return _list->end();
 }
 
 /*
@@ -258,6 +266,9 @@ int List<T>::rankOf(T modeldatum) {
 
 template <typename T>
 T List<T>::front() {
+	if (_list->empty()) {
+		return T{};
+	}
 	_it = _list->begin();
 	//if (_it != _list->end())
 	return (*_it);
@@ -267,22 +278,29 @@ T List<T>::front() {
 
 template <typename T>
 T List<T>::last() {
+	if (_list->empty()) {
+		return T{};
+	}
 	_it = _list->end();
 	_it--;
-	//if (_it != _list->end()) // @TODO: CHECK!!!
 	return (*_it);
 	//else return nullptr;
 }
 
 template <typename T>
 T List<T>::previous() {
-	_it--; // @TODO: CHECK!!!
+	if (_list->empty() || _it == _list->begin()) {
+		return T{};
+	}
+	_it--;
 	return (*_it);
 }
 
 template <typename T>
 T List<T>::current() {
-	/* @TODO: To implement (i thing it's just to check). Must actualize _it on other methods when other elements are accessed */
+	if (_list->empty() || _it == _list->end()) {
+		return T{};
+	}
 	return (*_it);
 }
 

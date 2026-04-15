@@ -90,9 +90,8 @@ PluginConnectorDummyImpl1::PluginConnectorDummyImpl1() {
 }
 
 Plugin* PluginConnectorDummyImpl1::check(const std::string dynamicLibraryFilename) {
-	// @TODO: not implemented yet!
-	//dynamicLibraryFilename = ""; // just to use it
-	return nullptr; /**@ @TODO:To implement */
+	// Dummy check creates metadata from the built-in plugin table without connecting a library.
+	return connect(dynamicLibraryFilename);
 }
 
 bool PluginConnectorDummyImpl1::disconnect(const std::string dynamicLibraryFilename) {

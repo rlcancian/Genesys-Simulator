@@ -5,6 +5,7 @@
 #include "http/SimpleHttpServer.h"
 #include "service/SimulatorSessionService.h"
 #include "session/SessionManager.h"
+#include "worker/WorkerJobManager.h"
 
 #include <charconv>
 #include <iostream>
@@ -20,7 +21,8 @@ int BaseGenesysWebApplication::main(int argc, char** argv) {
     SessionManager sessionManager(tokenService, [] {
         return std::make_unique<Simulator>();
     });
-    SimulatorSessionService simulatorSessionService(sessionManager);
+    WorkerJobManager workerJobManager;
+    SimulatorSessionService simulatorSessionService(sessionManager, workerJobManager);
     ApiRouter router(simulatorSessionService);
     SimpleHttpServer server(port);
 

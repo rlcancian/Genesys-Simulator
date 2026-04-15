@@ -141,7 +141,7 @@ void Entity::setAttributeValue(std::string attributeName, double value, std::str
 		} else { // not found
 			map->insert({index, value}); // (map->end(), std::pair<std::string, double>(index, value));
 		}
-		//@ TODO: Check if it is a special attribute, eg Entity.Type
+		// @ToDo: (importante): Check if it is a special attribute, eg Entity.Type
 	}
 }
 

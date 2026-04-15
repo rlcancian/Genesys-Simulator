@@ -8,9 +8,14 @@
 #include <optional>
 #include <sstream>
 #include <sys/socket.h>
+#include <sys/time.h>
 #include <unistd.h>
 
 namespace {
+constexpr std::size_t kMaxRequestBytes = 1024 * 1024;  // 1 MiB transport guardrail.
+constexpr int kSocketTimeoutSeconds = 5;
+constexpr std::size_t kReadChunkSize = 4096;
+
 std::string statusText(int status) {
     switch (status) {
         case 200:
@@ -25,6 +30,10 @@ std::string statusText(int status) {
             return "Not Found";
         case 405:
             return "Method Not Allowed";
+        case 408:
+            return "Request Timeout";
+        case 413:
+            return "Payload Too Large";
         case 500:
             return "Internal Server Error";
         default:
@@ -37,6 +46,50 @@ std::string toLower(std::string value) {
         c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
     }
     return value;
+}
+
+std::optional<std::size_t> parseContentLengthFromHeaders(const std::string& requestText) {
+    const std::string separator = "\r\n\r\n";
+    const auto headersEnd = requestText.find(separator);
+    if (headersEnd == std::string::npos) {
+        return std::nullopt;
+    }
+
+    std::istringstream headerStream(requestText.substr(0, headersEnd));
+    std::string line;
+    std::getline(headerStream, line);  // Skip request line.
+
+    while (std::getline(headerStream, line)) {
+        if (!line.empty() && line.back() == '\r') {
+            line.pop_back();
+        }
+        if (line.empty()) {
+            continue;
+        }
+
+        const auto colonPos = line.find(':');
+        if (colonPos == std::string::npos) {
+            continue;
+        }
+
+        std::string name = toLower(line.substr(0, colonPos));
+        if (name != "content-length") {
+            continue;
+        }
+
+        std::string value = line.substr(colonPos + 1);
+        while (!value.empty() && value.front() == ' ') {
+            value.erase(value.begin());
+        }
+
+        try {
+            return static_cast<std::size_t>(std::stoul(value));
+        } catch (...) {
+            return std::nullopt;
+        }
+    }
+
+    return 0;
 }
 
 std::optional<HttpRequest> parseRequest(const std::string& requestText) {
@@ -105,6 +158,67 @@ std::optional<HttpRequest> parseRequest(const std::string& requestText) {
     return request;
 }
 
+enum class ReadRequestResult {
+    Complete,
+    Timeout,
+    TooLarge,
+    Invalid,
+    SocketError,
+    Closed
+};
+
+ReadRequestResult readHttpRequest(int clientFd, std::string& requestText) {
+    requestText.clear();
+    requestText.reserve(kReadChunkSize);
+
+    std::optional<std::size_t> contentLength;
+    std::size_t expectedTotalSize = 0;
+
+    while (true) {
+        char chunk[kReadChunkSize];
+        const ssize_t bytesRead = recv(clientFd, chunk, sizeof(chunk), 0);
+        if (bytesRead == 0) {
+            return requestText.empty() ? ReadRequestResult::Closed : ReadRequestResult::Invalid;
+        }
+        if (bytesRead < 0) {
+            // Timeout from SO_RCVTIMEO.
+            if (errno == EAGAIN || errno == EWOULDBLOCK) {
+                return ReadRequestResult::Timeout;
+            }
+            if (errno == EINTR) {
+                continue;
+            }
+            return ReadRequestResult::SocketError;
+        }
+
+        requestText.append(chunk, static_cast<std::size_t>(bytesRead));
+        if (requestText.size() > kMaxRequestBytes) {
+            return ReadRequestResult::TooLarge;
+        }
+
+        if (!contentLength.has_value()) {
+            const std::string separator = "\r\n\r\n";
+            const auto headersEnd = requestText.find(separator);
+            if (headersEnd != std::string::npos) {
+                contentLength = parseContentLengthFromHeaders(requestText);
+                if (!contentLength.has_value()) {
+                    return ReadRequestResult::Invalid;
+                }
+
+                expectedTotalSize = headersEnd + separator.size() + *contentLength;
+                if (expectedTotalSize > kMaxRequestBytes) {
+                    return ReadRequestResult::TooLarge;
+                }
+            }
+        }
+
+        if (contentLength.has_value() && requestText.size() >= expectedTotalSize) {
+            requestText.resize(expectedTotalSize);
+            return ReadRequestResult::Complete;
+        }
+    }
+}
+
 std::string buildResponse(const HttpResponse& response) {
     const std::string payload = response.body;
     std::ostringstream builder;
@@ -123,8 +237,28 @@ HttpResponse badRequestResponse() {
     return HttpResponse{400, "application/json", "{\"ok\":false,\"error\":{\"code\":\"BAD_REQUEST\",\"message\":\"Invalid HTTP request\"}}"};
 }
 
+HttpResponse requestTimeoutResponse() {
+    return HttpResponse{408,
+                        "application/json",
+                        "{\"ok\":false,\"error\":{\"code\":\"REQUEST_TIMEOUT\",\"message\":\"Timed out while reading HTTP request\"}}"};
+}
+
+HttpResponse payloadTooLargeResponse() {
+    return HttpResponse{413,
+                        "application/json",
+                        "{\"ok\":false,\"error\":{\"code\":\"PAYLOAD_TOO_LARGE\",\"message\":\"HTTP request exceeds transport limit\"}}"};
+}
+
 HttpResponse internalErrorResponse() {
     return HttpResponse{500, "application/json", "{\"ok\":false,\"error\":{\"code\":\"INTERNAL_SERVER_ERROR\",\"message\":\"Unhandled server error\"}}"};
+}
+
+void configureSocketTimeouts(int fd) {
+    timeval timeout{};
+    timeout.tv_sec = kSocketTimeoutSeconds;
+    timeout.tv_usec = 0;
+    (void)setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+    (void)setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 }
 }  // namespace
 
@@ -167,23 +301,33 @@ bool SimpleHttpServer::serve(const RequestHandler& handler, unsigned long maxReq
             return false;
         }
 
-        char buffer[16384];
-        const ssize_t bytesRead = recv(clientFd, buffer, sizeof(buffer) - 1, 0);
-        if (bytesRead <= 0) {
-            close(clientFd);
-            continue;
-        }
-        buffer[bytesRead] = '\0';
+        configureSocketTimeouts(clientFd);
+
+        std::string requestText;
+        const ReadRequestResult readResult = readHttpRequest(clientFd, requestText);
 
         HttpResponse response;
-        if (auto request = parseRequest(std::string(buffer, static_cast<std::size_t>(bytesRead))); request.has_value()) {
-            try {
-                response = handler(*request);
-            } catch (...) {
-                response = internalErrorResponse();
+        if (readResult == ReadRequestResult::Complete) {
+            if (auto request = parseRequest(requestText); request.has_value()) {
+                try {
+                    response = handler(*request);
+                } catch (...) {
+                    response = internalErrorResponse();
+                }
+            } else {
+                response = badRequestResponse();
             }
-        } else {
+        } else if (readResult == ReadRequestResult::Timeout) {
+            response = requestTimeoutResponse();
+        } else if (readResult == ReadRequestResult::TooLarge) {
+            response = payloadTooLargeResponse();
+        } else if (readResult == ReadRequestResult::Invalid) {
             response = badRequestResponse();
+        } else if (readResult == ReadRequestResult::SocketError) {
+            response = internalErrorResponse();
+        } else {
+            close(clientFd);
+            continue;
         }
 
         const std::string wire = buildResponse(response);

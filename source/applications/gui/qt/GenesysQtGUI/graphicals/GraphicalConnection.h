@@ -5,6 +5,7 @@
 
 #include <QGraphicsItem>
 #include <QGraphicsObject>
+#include <QPainterPath>
 #include <QPen>
 #include <QBrush>
 #include "GraphicalComponentPort.h"
@@ -34,6 +35,8 @@ public:
 public:
 	/** @brief Returns item bounding rectangle for Qt painting system. */
 	QRectF boundingRect() const override;
+	/** @brief Returns the precise clickable shape around the visible connection path. */
+	QPainterPath shape() const override;
     /** @brief Paints connection path and selection handles. */
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     /** @brief Returns auxiliary source Connection metadata. */
@@ -73,6 +76,7 @@ protected: // virtual
 	//virtual void	mouseReleaseEvent(QGraphicsSceneMouseEvent * event)
 private:
     bool canRefreshGeometry() const;
+    QPainterPath connectionPath() const;
 	qreal _width = 0.0;
 	qreal _height = 0.0;
     QPointF _sourcePointLocal;

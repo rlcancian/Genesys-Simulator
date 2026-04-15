@@ -33,7 +33,7 @@ Smart_SeizeDelayReleaseNoDataDefs::Smart_SeizeDelayReleaseNoDataDefs() {
  */
 int Smart_SeizeDelayReleaseNoDataDefs::main(int argc, char** argv) {
 	Simulator* genesys = new Simulator();
-	//genesys->getTracer()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+    genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L4_warning);
 	setDefaultTraceHandlers(genesys->getTraceManager());
 	PluginManager* plugins = genesys->getPluginManager();
 	plugins->autoInsertPlugins("autoloadplugins.txt");
@@ -52,10 +52,14 @@ int Smart_SeizeDelayReleaseNoDataDefs::main(int argc, char** argv) {
 	Seize* seize1 = plugins->newInstance<Seize>(model);
 	seize1->getSeizeRequests()->insert(new SeizableItem(model, "Machine_1"));
 	seize1->setQueueableItem(new QueueableItem(model, "Seize_1.Queue"));
+    seize1->defineTraceLevelSpecific(TraceManager::Level::L9_mostDetailed);
+    seize1->setTraceLevelSpecificEnabled(true);
 	Delay* delay1 = plugins->newInstance<Delay>(model);
 	delay1->setDelayExpression("unif(15,30)", Util::TimeUnit::second);
 	Release* release1 = plugins->newInstance<Release>(model);
-	////////////////////	release1->getReleaseRequests()->insert(new SeizableItem(machine1, "1"));
+    // release1->getReleaseRequests()->insert(new SeizableItem(machine1, "1"));
+    release1->defineTraceLevelSpecific(TraceManager::Level::L9_mostDetailed);
+    release1->setTraceLevelSpecificEnabled(true);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
 	create1->getConnectionManager()->insert(seize1);

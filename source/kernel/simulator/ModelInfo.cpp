@@ -81,7 +81,7 @@ void ModelInfo::loadInstance(PersistenceRecord *fields) {
 	_hasChanged = false;
 }
 
-// @TODO:!: implement check method (to check things like terminating condition)
+// @ToDo: (importante): implement check method (to check things like terminating condition)
 
 void ModelInfo::saveInstance(PersistenceRecord *fields) {
 	fields->saveField("typename", "ModelInfo");
@@ -95,4 +95,8 @@ void ModelInfo::saveInstance(PersistenceRecord *fields) {
 
 bool ModelInfo::hasChanged() const {
 	return _hasChanged;
+}
+
+void ModelInfo::setHasChanged(bool hasChanged) {
+	_hasChanged = hasChanged;
 }

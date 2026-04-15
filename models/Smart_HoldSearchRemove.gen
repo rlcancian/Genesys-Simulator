@@ -1,21 +1,21 @@
 # Genesys Simulation Model
 # Simulator, Model and Simulation infos
-0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=220517 
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
 0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
 0   ModelSimulation "" traceLevel=9 replicationLength=10.000000 
 
 # Model Data Definitions
-64  Variable   "vid" 
-65  Attribute  "id" 
-66  Queue      "HoldQueue" 
+86  Variable   "vid" 
+87  Attribute  "id" 
+88  Queue      "HoldQueue" 
 
 # Model Components
-61  Create     "Create_1" entityType="entitytype" nextId=63 
-62  Create     "Create_2" entityType="entitytype" nextId=68 
-63  Assign     "Assign_1" assignIsAttrib[0]=0 assignExpr[0]="vid+1" assignments=2 nextId=67 assignExpr[2]="vid" assignDest[2]="id" assignDest[0]="vid" 
-67  Wait       "Wait_1" nextId=72 
-68  Search     "Search_1" nextId[0]=70 nextId[1]=69 nexts=2 
-69  Remove     "Remove_1" nextId[0]=70 nextId[1]=71 nexts=2 
-70  Dispose    "Dispose_1" nexts=0 
-71  Dispose    "Dispose_2" nexts=0 
-72  Dispose    "No entity will ever arrive here" nexts=0 
+83  Create     "Create_1" entityType="entitytype" nextId=85 
+84  Create     "Create_2" entityType="entitytype" nextId=90 
+85  Assign     "Assign_1" assignExpr[1]="vid" assignIsAttrib[0]=0 assignExpr[0]="vid+1" assignments=2 nextId=89 assignDest[0]="vid" assignDest[1]="id" 
+89  Wait       "Wait_1" queue="HoldQueue" waitType=1 nextId=94 
+90  Search     "Search_1" nextId[0]=92 searchIn="HoldQueue" saveFounRankAttribute="rankFound" searchCondition="id>5" startRank="2" nextId[1]=91 nexts=2 endRank="NQ(HoldQueue)-1" 
+91  Remove     "Remove_1" removeEndRank="rankFound" removeFrom="HoldQueue" nextId[0]=92 nextId[1]=93 nexts=2 removeStartRank="rankFound" 
+92  Dispose    "Dispose_1" nexts=0 
+93  Dispose    "Dispose_2" nexts=0 
+94  Dispose    "No_entity_will_ever_arrive_here" nexts=0 

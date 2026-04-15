@@ -352,6 +352,50 @@ TEST(SimulatorSupportTest, PluginInformationStoresMetadataAndLimits) {
     EXPECT_EQ(info.getDynamicLibFilenameDependencies()->size(), 1u);
 }
 
+TEST(SimulatorSupportTest, SystemDependencyStoresDeclarativeCommands) {
+    SystemDependency dependency(
+        SystemDependency::OS::Linux,
+        "libSBML",
+        "sudo apt install libsbml5-dev -y",
+        "pkg-config --exists libsbml");
+
+    EXPECT_EQ(dependency.getOS(), SystemDependency::OS::Linux);
+    EXPECT_EQ(dependency.getName(), "libSBML");
+    EXPECT_EQ(dependency.getInstallCommand(), "sudo apt install libsbml5-dev -y");
+    EXPECT_EQ(dependency.getCheckCommand(), "pkg-config --exists libsbml");
+    EXPECT_EQ(SystemDependency::osToString(SystemDependency::OS::Linux), "Linux");
+    EXPECT_NE(dependency.show().find("name=\"libSBML\""), std::string::npos);
+    EXPECT_NE(dependency.show().find("checkCommand=\"pkg-config --exists libsbml\""), std::string::npos);
+}
+
+TEST(SimulatorSupportTest, PluginInformationStoresSystemDependenciesInOrder) {
+    PluginInformation info("BioSimulatorRunner", static_cast<StaticLoaderDataDefinitionInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
+
+    EXPECT_FALSE(info.hasSystemDependencies());
+    ASSERT_NE(info.getSystemDependencies(), nullptr);
+    EXPECT_TRUE(info.getSystemDependencies()->empty());
+
+    info.insertSystemDependency(SystemDependency(
+        SystemDependency::OS::Linux,
+        "libSBML",
+        "sudo apt install libsbml5-dev -y",
+        "pkg-config --exists libsbml"));
+    info.insertSystemDependency(SystemDependency(
+        SystemDependency::OS::Linux,
+        "COPASI",
+        "sudo apt install copasi -y",
+        "CopasiSE --version"));
+
+    ASSERT_TRUE(info.hasSystemDependencies());
+    ASSERT_NE(info.getSystemDependencies(), nullptr);
+    ASSERT_EQ(info.getSystemDependencies()->size(), 2u);
+
+    auto it = info.getSystemDependencies()->begin();
+    EXPECT_EQ(it->getName(), "libSBML");
+    ++it;
+    EXPECT_EQ(it->getName(), "COPASI");
+}
+
 TEST(SimulatorSupportTest, PluginInformationDefaultsAndContainerReplacementWork) {
     PluginInformation info("Delay", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
 

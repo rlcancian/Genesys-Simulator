@@ -82,7 +82,6 @@ SOURCES += \
     ../../../../kernel/simulator/XmlSerializer.cpp \
     ../../../../kernel/statistics/CollectorDatafileDefaultImpl1.cpp \
     ../../../../kernel/statistics/CollectorDefaultImpl1.cpp \
-    ../../../../kernel/statistics/SamplerBoostImpl.cpp \
     ../../../../kernel/statistics/SamplerDefaultImpl1.cpp \
     ../../../../kernel/statistics/SorttFile.cpp \
     ../../../../kernel/statistics/StatisticsDataFileDefaultImpl.cpp \
@@ -144,6 +143,7 @@ SOURCES += \
     ../../../../plugins/components/network/FSMState.cpp \
     ../../../../plugins/components/network/PetriPlace.cpp \
     ../../../../plugins/data/AssignmentItem.cpp \
+    ../../../../plugins/data/BioSimulatorRunner.cpp \
     ../../../../plugins/data/CppCompiler.cpp \
     ../../../../plugins/data/DummyElement.cpp \
     ../../../../plugins/data/EntityGroup.cpp \
@@ -255,6 +255,13 @@ SOURCES += \
     ../../../terminal/examples/teaching/OperatingSystem02.cpp \
     ../../../terminal/examples/teaching/OperatingSystem03.cpp \
     ../../../terminal/examples/teaching/Rectifier.cpp \
+    ../../../web/BaseGenesysWebApplication.cpp \
+    ../../../web/api/ApiRouter.cpp \
+    ../../../web/auth/TokenService.cpp \
+    ../../../web/http/SimpleHttpServer.cpp \
+    ../../../web/service/SimulatorSessionService.cpp \
+    ../../../web/session/SessionManager.cpp \
+    ../../../web/worker/WorkerJobManager.cpp \
     codeeditor/CodeEditor.cpp \
     controllers/SimulationController.cpp \
     # Phase-3 GUI refactor controller for model-inspector responsibilities.
@@ -274,6 +281,8 @@ SOURCES += \
     controllers/EditCommandController.cpp \
     # Phase-10 GUI refactor controller for scene/view/drawing responsibilities.
     controllers/SceneToolController.cpp \
+    # Graphical context-menu controller for canvas popup actions.
+    controllers/GraphicalContextMenuController.cpp \
     # Phase-11 GUI refactor controller for dialog/utility responsibilities.
     controllers/DialogUtilityController.cpp \
     # Phase-1 GUI refactor services for model representations.
@@ -392,7 +401,6 @@ HEADERS += \
     ../../../../kernel/statistics/CollectorDatafile_if.h \
     ../../../../kernel/statistics/CollectorDefaultImpl1.h \
     ../../../../kernel/statistics/Collector_if.h \
-    ../../../../kernel/statistics/SamplerBoostImpl.h \
     ../../../../kernel/statistics/SamplerDefaultImpl1.h \
     ../../../../kernel/statistics/Sampler_if.h \
     ../../../../kernel/statistics/SorttFile.h \
@@ -464,6 +472,7 @@ HEADERS += \
     ../../../../plugins/components/network/FSMState.h \
     ../../../../plugins/components/network/PetriPlace.h \
     ../../../../plugins/data/AssignmentItem.h \
+    ../../../../plugins/data/BioSimulatorRunner.h \
     ../../../../plugins/data/CppCompiler.h \
     ../../../../plugins/data/DummyElement.h \
     ../../../../plugins/data/EntityGroup.h \
@@ -594,6 +603,17 @@ HEADERS += \
     ../../../terminal/examples/teaching/OperatingSystem02.h \
     ../../../terminal/examples/teaching/OperatingSystem03.h \
     ../../../terminal/examples/teaching/Rectifier.h \
+    ../../../web/BaseGenesysWebApplication.h \
+    ../../../web/api/ApiRouter.h \
+    ../../../web/auth/TokenService.h \
+    ../../../web/http/HttpRequest.h \
+    ../../../web/http/HttpResponse.h \
+    ../../../web/http/SimpleHttpServer.h \
+    ../../../web/service/SimulatorSessionService.h \
+    ../../../web/session/SessionContext.h \
+    ../../../web/session/SessionManager.h \
+    ../../../web/worker/WorkerJob.h \
+    ../../../web/worker/WorkerJobManager.h \
     codeeditor/CodeEditor.h \
     codeeditor/LineNumberArea.h \
     graphicals/ModelGraphicsScene.h \
@@ -623,6 +643,8 @@ HEADERS += \
     controllers/EditCommandController.h \
     # Phase-10 GUI refactor controller header for scene/view/drawing responsibilities.
     controllers/SceneToolController.h \
+    # Graphical context-menu controller header for canvas popup actions.
+    controllers/GraphicalContextMenuController.h \
     # Phase-11 GUI refactor controller header for dialog/utility responsibilities.
     controllers/DialogUtilityController.h \
     # Phase-1 GUI refactor service headers.
