@@ -83,6 +83,48 @@ namespace {
         bool* _flag = nullptr;
     };
 
+    bool isPlaceholderAnimationMode(ModelGraphicsScene::DrawingMode mode) {
+        switch (mode) {
+        case ModelGraphicsScene::ATTRIBUTE:
+        case ModelGraphicsScene::ENTITY:
+        case ModelGraphicsScene::EVENT:
+        case ModelGraphicsScene::EXPRESSION:
+        case ModelGraphicsScene::PLOT:
+        case ModelGraphicsScene::QUEUE_PLACEHOLDER:
+        case ModelGraphicsScene::RESOURCE:
+        case ModelGraphicsScene::STATION:
+        case ModelGraphicsScene::STATISTICS:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode) {
+        switch (mode) {
+        case ModelGraphicsScene::ATTRIBUTE:
+            return new AnimationAttribute();
+        case ModelGraphicsScene::ENTITY:
+            return new AnimationEntity();
+        case ModelGraphicsScene::EVENT:
+            return new AnimationEvent();
+        case ModelGraphicsScene::EXPRESSION:
+            return new AnimationExpression();
+        case ModelGraphicsScene::PLOT:
+            return new AnimationPlot();
+        case ModelGraphicsScene::QUEUE_PLACEHOLDER:
+            return new AnimationQueueDisplay();
+        case ModelGraphicsScene::RESOURCE:
+            return new AnimationResource();
+        case ModelGraphicsScene::STATION:
+            return new AnimationStation();
+        case ModelGraphicsScene::STATISTICS:
+            return new AnimationStatistics();
+        default:
+            return nullptr;
+        }
+    }
+
     // Safely cast the scene parent to a generic graphics view.
     QGraphicsView* sceneParentGraphicsView(ModelGraphicsScene* scene) {
         if (scene == nullptr) {
@@ -1319,6 +1361,10 @@ bool ModelGraphicsScene::addDrawingAnimation(QGraphicsItem* item) {
         _animationsTimer->append(animationTimer);
         return true;
     }
+    else if (AnimationPlaceholder* animationPlaceholder = dynamic_cast<AnimationPlaceholder*>(item)) {
+        _animationsPlaceholder->append(animationPlaceholder);
+        return true;
+    }
 
     return false;
 }
@@ -1358,6 +1404,8 @@ bool ModelGraphicsScene::removeDrawingAnimation(QGraphicsItem* item) {
         return _animationsVariable->removeOne(animationVariable);
     else if (AnimationTimer* animationTimer = dynamic_cast<AnimationTimer*>(item))
         return _animationsTimer->removeOne(animationTimer);
+    else if (AnimationPlaceholder* animationPlaceholder = dynamic_cast<AnimationPlaceholder*>(item))
+        return _animationsPlaceholder->removeOne(animationPlaceholder);
 
     return false;
 }
@@ -1985,6 +2033,7 @@ void ModelGraphicsScene::clearAnimations() {
     this->clearAnimationsCounter();
     this->clearAnimationsVariable();
     this->clearAnimationsTimer();
+    this->clearAnimationsPlaceholder();
 }
 
 void ModelGraphicsScene::clearAnimationsTransition() {
@@ -2045,6 +2094,13 @@ void ModelGraphicsScene::clearAnimationsTimer() {
         _animationsTimer->clear();
 
     _currentTimer = nullptr;
+}
+
+void ModelGraphicsScene::clearAnimationsPlaceholder() {
+    if (_animationsPlaceholder)
+        _animationsPlaceholder->clear();
+
+    _currentPlaceholderAnimation = nullptr;
 }
 
 void ModelGraphicsScene::clearAnimationsQueue() {
@@ -2698,7 +2754,7 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) {
                 _drawing = true;
             }
 
-            if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER) {
+            if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER || isPlaceholderAnimationMode(_drawingMode)) {
                 initializeAnimationDrawing(mouseEvent);
             }
         }
@@ -2799,7 +2855,7 @@ void ModelGraphicsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
 
 
     if (mouseEvent->button() == Qt::LeftButton && _drawingMode != NONE) {
-        if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER) {
+        if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER || isPlaceholderAnimationMode(_drawingMode)) {
             finishAnimationDrawing(mouseEvent);
         }
         else {
@@ -2969,6 +3025,14 @@ void ModelGraphicsScene::initializeAnimationDrawing(QGraphicsSceneMouseEvent* mo
         _currentTimer->startDrawing(mouseEvent);
         addItem(_currentTimer);
     }
+
+    if (isPlaceholderAnimationMode(_drawingMode)) {
+        _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode);
+        if (_currentPlaceholderAnimation != nullptr) {
+            _currentPlaceholderAnimation->startDrawing(mouseEvent);
+            addItem(_currentPlaceholderAnimation);
+        }
+    }
 }
 
 void ModelGraphicsScene::continueAnimationDrawing(QGraphicsSceneMouseEvent* mouseEvent) {
@@ -3010,6 +3074,19 @@ void ModelGraphicsScene::continueAnimationDrawing(QGraphicsSceneMouseEvent* mous
             }
         }
     }
+
+    if (isPlaceholderAnimationMode(_drawingMode)) {
+        if (_currentPlaceholderAnimation) {
+            if (_currentPlaceholderAnimation->isDrawingInicialized() && !_currentPlaceholderAnimation->isDrawingFinalized()) {
+                removeItem(_currentPlaceholderAnimation);
+                _currentPlaceholderAnimation->continueDrawing(mouseEvent);
+                addItem(_currentPlaceholderAnimation);
+            }
+        }
+        else {
+            _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode);
+        }
+    }
 }
 
 void ModelGraphicsScene::finishAnimationDrawing(QGraphicsSceneMouseEvent* mouseEvent) {
@@ -3047,6 +3124,18 @@ void ModelGraphicsScene::finishAnimationDrawing(QGraphicsSceneMouseEvent* mouseE
                 addItem(_currentTimer);
                 animatedItem = _currentTimer;
                 _currentTimer = nullptr;
+            }
+        }
+    }
+
+    if (isPlaceholderAnimationMode(_drawingMode)) {
+        if (_currentPlaceholderAnimation) {
+            if (_currentPlaceholderAnimation->isDrawingInicialized() && !_currentPlaceholderAnimation->isDrawingFinalized()) {
+                removeItem(_currentPlaceholderAnimation);
+                _currentPlaceholderAnimation->stopDrawing(mouseEvent);
+                addItem(_currentPlaceholderAnimation);
+                animatedItem = _currentPlaceholderAnimation;
+                _currentPlaceholderAnimation = nullptr;
             }
         }
     }
@@ -3127,7 +3216,7 @@ void ModelGraphicsScene::mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent) {
         }
     }
     else if (_drawingMode != NONE && _drawing) {
-        if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER) {
+        if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER || isPlaceholderAnimationMode(_drawingMode)) {
             continueAnimationDrawing(mouseEvent);
             // Keep drawing cursor only when the parent model view exists.
             if (parentView != nullptr) {
@@ -3332,6 +3421,42 @@ void ModelGraphicsScene::drawingTimer() {
     _drawingMode = DrawingMode::TIMER;
 }
 
+void ModelGraphicsScene::drawingAttribute() {
+    _drawingMode = DrawingMode::ATTRIBUTE;
+}
+
+void ModelGraphicsScene::drawingEntity() {
+    _drawingMode = DrawingMode::ENTITY;
+}
+
+void ModelGraphicsScene::drawingEvent() {
+    _drawingMode = DrawingMode::EVENT;
+}
+
+void ModelGraphicsScene::drawingExpression() {
+    _drawingMode = DrawingMode::EXPRESSION;
+}
+
+void ModelGraphicsScene::drawingPlot() {
+    _drawingMode = DrawingMode::PLOT;
+}
+
+void ModelGraphicsScene::drawingQueue() {
+    _drawingMode = DrawingMode::QUEUE_PLACEHOLDER;
+}
+
+void ModelGraphicsScene::drawingResource() {
+    _drawingMode = DrawingMode::RESOURCE;
+}
+
+void ModelGraphicsScene::drawingStation() {
+    _drawingMode = DrawingMode::STATION;
+}
+
+void ModelGraphicsScene::drawingStatistics() {
+    _drawingMode = DrawingMode::STATISTICS;
+}
+
 void ModelGraphicsScene::setObjectBeingDragged(QTreeWidgetItem* objectBeingDragged) {
     _objectBeingDragged = objectBeingDragged;
 }
@@ -3420,6 +3545,10 @@ QList<AnimationVariable*>* ModelGraphicsScene::getAnimationsVariable() {
 
 QList<AnimationTimer*>* ModelGraphicsScene::getAnimationsTimer() {
     return _animationsTimer;
+}
+
+QList<AnimationPlaceholder*>* ModelGraphicsScene::getAnimationsPlaceholder() {
+    return _animationsPlaceholder;
 }
 
 QMap<Event*, QList<AnimationTransition*>*>* ModelGraphicsScene::getAnimationPaused() {

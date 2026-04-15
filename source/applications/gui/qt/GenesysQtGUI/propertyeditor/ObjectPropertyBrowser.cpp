@@ -1,6 +1,7 @@
 #include "ObjectPropertyBrowser.h"
 #include "../GuiScopeTrace.h"
 #include "../animations/AnimationCounter.h"
+#include "../animations/AnimationPlaceholder.h"
 #include "../animations/AnimationTimer.h"
 #include "../animations/AnimationVariable.h"
 #include "../actions/DeleteUndoCommand.h"
@@ -1335,6 +1336,29 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                 [timer, this](const QVariant& value) {
                     timer->setInitialSeconds(static_cast<unsigned int>(value.toInt()));
                     _notifyGraphicsChangeApplied(timer);
+                },
+                true
+                ));
+        } else if (AnimationPlaceholder* placeholder = dynamic_cast<AnimationPlaceholder*>(rectItem)) {
+            QtProperty* animationGroup = _groupManager->addProperty("Animation " + placeholder->getAnimationType().toLower());
+            addProperty(animationGroup);
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Type",
+                QVariant::String,
+                placeholder->getAnimationType(),
+                [placeholder, this](const QVariant& value) {
+                    Q_UNUSED(value);
+                    _notifyGraphicsChangeApplied(placeholder);
+                },
+                false
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Target",
+                QVariant::String,
+                placeholder->getTargetName(),
+                [placeholder, this](const QVariant& value) {
+                    placeholder->setTargetName(value.toString());
+                    _notifyGraphicsChangeApplied(placeholder);
                 },
                 true
                 ));

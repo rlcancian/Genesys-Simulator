@@ -684,6 +684,15 @@ void MainWindow::_actualizeTabPanes() {
         ui->actionAnimateCounter->setChecked(false);
         ui->actionAnimateVariable->setChecked(false);
         ui->actionAnimateSimulatedTime->setChecked(false);
+        ui->actionAnimateExpression->setChecked(false);
+        ui->actionAnimateResource->setChecked(false);
+        ui->actionAnimateQueue->setChecked(false);
+        ui->actionAnimateStation->setChecked(false);
+        ui->actionAnimateEntity->setChecked(false);
+        ui->actionAnimateEvent->setChecked(false);
+        ui->actionAnimateAttribute->setChecked(false);
+        ui->actionAnimateStatistics->setChecked(false);
+        ui->actionAnimatePlot->setChecked(false);
     }
 }
 
@@ -1014,6 +1023,15 @@ bool MainWindow::checkSelectedDrawIcons() {
     if(ui->actionAnimateCounter->isChecked()) alreadyChecked++;
     if(ui->actionAnimateVariable->isChecked()) alreadyChecked++;
     if(ui->actionAnimateSimulatedTime->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateExpression->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateResource->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateQueue->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateStation->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateEntity->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateEvent->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateAttribute->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateStatistics->isChecked()) alreadyChecked++;
+    if(ui->actionAnimatePlot->isChecked()) alreadyChecked++;
     if (alreadyChecked > 1) return true;
     else return false;
 }
@@ -1028,6 +1046,15 @@ void MainWindow::unselectDrawIcons() {
     ui->actionAnimateCounter->setChecked(false);
     ui->actionAnimateVariable->setChecked(false);
     ui->actionAnimateSimulatedTime->setChecked(false);
+    ui->actionAnimateExpression->setChecked(false);
+    ui->actionAnimateResource->setChecked(false);
+    ui->actionAnimateQueue->setChecked(false);
+    ui->actionAnimateStation->setChecked(false);
+    ui->actionAnimateEntity->setChecked(false);
+    ui->actionAnimateEvent->setChecked(false);
+    ui->actionAnimateAttribute->setChecked(false);
+    ui->actionAnimateStatistics->setChecked(false);
+    ui->actionAnimatePlot->setChecked(false);
     scene->clearDrawingMode();
 }
 

@@ -6,6 +6,7 @@
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../animations/AnimationCounter.h"
+#include "../animations/AnimationPlaceholder.h"
 #include "../animations/AnimationVariable.h"
 #include "../animations/AnimationTimer.h"
 #include "../../../../../kernel/simulator/Simulator.h"
@@ -533,6 +534,28 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     id++;
                 }
             }
+
+            QList<AnimationPlaceholder*>* placeholders = scene->getAnimationsPlaceholder();
+            if (placeholders && !placeholders->empty()) {
+                out << Qt::endl;
+                out << "#AnimationPlaceholders" << Qt::endl;
+                int id = 0;
+                for (AnimationPlaceholder* placeholder : *placeholders) {
+                    if (placeholder == nullptr) {
+                        continue;
+                    }
+                    line = QString("AnimationPlaceholder_%1 \t type=%2 \t target=%3 \t position=(%4,%5) \t width=%6 \t height=%7")
+                               .arg(id)
+                               .arg(encodeGuiText(placeholder->getAnimationType()))
+                               .arg(encodeGuiText(placeholder->getTargetName()))
+                               .arg(placeholder->scenePos().x(), 0, 'f', 2)
+                               .arg(placeholder->scenePos().y(), 0, 'f', 2)
+                               .arg(placeholder->boundingRect().width(), 0, 'f', 2)
+                               .arg(placeholder->boundingRect().height(), 0, 'f', 2);
+                    out << line << Qt::endl;
+                    id++;
+                }
+            }
         }
 
         saveFile.close();
@@ -574,6 +597,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QStringList counters;
     QStringList variables;
     QStringList timers;
+    QStringList placeholders;
     QStringList geometries;
     QStringList groups;
     QStringList dataDefinitions;
@@ -582,6 +606,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     bool counterFlag = false;
     bool variableFlag = false;
     bool timerFlag = false;
+    bool placeholderFlag = false;
     bool geometryFlag = false;
     bool groupFlag = false;
     bool dataDefinitionFlag = false;
@@ -592,6 +617,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             counterFlag = false;
             variableFlag = false;
             timerFlag = false;
+            placeholderFlag = false;
             continue;
         }
         if (line.startsWith("#Counters")) {
@@ -599,6 +625,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             guiFlag = false;
             variableFlag = false;
             timerFlag = false;
+            placeholderFlag = false;
             dataDefinitionFlag = false;
             geometryFlag = false;
             groupFlag = false;
@@ -609,6 +636,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             guiFlag = false;
             counterFlag = false;
             timerFlag = false;
+            placeholderFlag = false;
             dataDefinitionFlag = false;
             geometryFlag = false;
             groupFlag = false;
@@ -619,6 +647,18 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             guiFlag = false;
             counterFlag = false;
             variableFlag = false;
+            placeholderFlag = false;
+            dataDefinitionFlag = false;
+            geometryFlag = false;
+            groupFlag = false;
+            continue;
+        }
+        if (line.startsWith("#AnimationPlaceholders")) {
+            placeholderFlag = true;
+            guiFlag = false;
+            counterFlag = false;
+            variableFlag = false;
+            timerFlag = false;
             dataDefinitionFlag = false;
             geometryFlag = false;
             groupFlag = false;
@@ -630,6 +670,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             counterFlag = false;
             variableFlag = false;
             timerFlag = false;
+            placeholderFlag = false;
             geometryFlag = false;
             groupFlag = false;
             continue;
@@ -640,6 +681,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             counterFlag = false;
             variableFlag = false;
             timerFlag = false;
+            placeholderFlag = false;
             dataDefinitionFlag = false;
             groupFlag = false;
             continue;
@@ -650,12 +692,13 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             counterFlag = false;
             variableFlag = false;
             timerFlag = false;
+            placeholderFlag = false;
             dataDefinitionFlag = false;
             geometryFlag = false;
             continue;
         }
 
-        if (!guiFlag && !timerFlag && !counterFlag && !variableFlag && !geometryFlag && !groupFlag && !dataDefinitionFlag) {
+        if (!guiFlag && !timerFlag && !counterFlag && !variableFlag && !placeholderFlag && !geometryFlag && !groupFlag && !dataDefinitionFlag) {
             simulLang.append(line);
         } else if (counterFlag) {
             counters.append(line);
@@ -663,6 +706,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             variables.append(line);
         } else if (timerFlag) {
             timers.append(line);
+        } else if (placeholderFlag) {
+            placeholders.append(line);
         } else if (dataDefinitionFlag) {
             dataDefinitions.append(line);
         } else if (geometryFlag) {
@@ -975,6 +1020,25 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 } else {
                     delete timer;
                 }
+            }
+        }
+
+        if (!placeholders.empty()) {
+            QRegularExpression regex("AnimationPlaceholder_(\\d+) \\t type=([^\\t]+) \\t target=([^\\t]*) \\t position=\\(([^,]+),([^\\)]+)\\) \\t width=([^\\t]+) \\t height=([^\\t]+)");
+            for (const QString& line : placeholders) {
+                if (line.trimmed().isEmpty()) {
+                    continue;
+                }
+                QRegularExpressionMatch match = regex.match(line);
+                if (!match.hasMatch()) {
+                    continue;
+                }
+                AnimationPlaceholder* placeholder = new AnimationPlaceholder(decodeGuiText(match.captured(2).trimmed()));
+                placeholder->setTargetName(decodeGuiText(match.captured(3).trimmed()));
+                placeholder->setRect(QRectF(0, 0, match.captured(6).toDouble(), match.captured(7).toDouble()).normalized());
+                placeholder->setPos(QPointF(match.captured(4).toDouble(), match.captured(5).toDouble()));
+                _graphicsView->getScene()->getAnimationsPlaceholder()->append(placeholder);
+                _graphicsView->getScene()->addItem(placeholder);
             }
         }
 

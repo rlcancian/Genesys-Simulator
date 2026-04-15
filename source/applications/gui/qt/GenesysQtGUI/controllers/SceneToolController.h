@@ -5,6 +5,7 @@
 
 class ModelGraphicsView;
 class ModelGraphicsScene;
+class QAction;
 
 namespace Ui {
 class MainWindow;
@@ -76,6 +77,24 @@ public:
     void onActionAnimateVariableTriggered();
     /** @brief Toggles counter animation overlays in the current scene. */
     void onActionAnimateCounterTriggered();
+    /** @brief Activates attribute animation placeholder drawing. */
+    void onActionAnimateAttributeTriggered();
+    /** @brief Activates entity animation placeholder drawing. */
+    void onActionAnimateEntityTriggered();
+    /** @brief Activates event animation placeholder drawing. */
+    void onActionAnimateEventTriggered();
+    /** @brief Activates expression animation placeholder drawing. */
+    void onActionAnimateExpressionTriggered();
+    /** @brief Activates plot animation placeholder drawing. */
+    void onActionAnimatePlotTriggered();
+    /** @brief Activates queue animation placeholder drawing. */
+    void onActionAnimateQueueTriggered();
+    /** @brief Activates resource animation placeholder drawing. */
+    void onActionAnimateResourceTriggered();
+    /** @brief Activates station animation placeholder drawing. */
+    void onActionAnimateStationTriggered();
+    /** @brief Activates statistics animation placeholder drawing. */
+    void onActionAnimateStatisticsTriggered();
     /** @brief Activates connection-creation mode and resets first-click compatibility state. */
     void onActionConnectTriggered();
     /** @brief Aligns selected graphical items to the left boundary. */
@@ -114,6 +133,8 @@ public:
     void onActionGModelShowConnectTriggered();
 
 private:
+    void activateAnimationDrawingTool(QAction* action, void (ModelGraphicsScene::*drawingFunction)());
+
     ModelGraphicsView* _graphicsView;
     Ui::MainWindow* _ui;
     std::function<ModelGraphicsScene*()> _currentScene;

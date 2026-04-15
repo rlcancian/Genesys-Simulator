@@ -37,6 +37,22 @@ SceneToolController::SceneToolController(ModelGraphicsView* graphicsView,
       _firstClickShowConnection(firstClickShowConnection) {
 }
 
+void SceneToolController::activateAnimationDrawingTool(QAction* action, void (ModelGraphicsScene::*drawingFunction)()) {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr || action == nullptr || drawingFunction == nullptr) {
+        return;
+    }
+
+    if (!_checkSelectedDrawIcons() && action->isChecked()) {
+        _graphicsView->setCursor(Qt::CrossCursor);
+        scene->setAction(action);
+        (scene->*drawingFunction)();
+    }
+    else {
+        _unselectDrawIcons();
+    }
+}
+
 // Preserve deterministic action-to-scene grid synchronization.
 void SceneToolController::onActionShowGridTriggered() {
     ModelGraphicsScene* scene = _currentScene();
@@ -199,53 +215,53 @@ void SceneToolController::onActionDrawPoligonTriggered() {
 
 // Preserve simulated-time animation tool activation behavior.
 void SceneToolController::onActionAnimateSimulatedTimeTriggered() {
-    ModelGraphicsScene* scene = _currentScene();
-    if (scene == nullptr) {
-        return;
-    }
-
-    if (!_checkSelectedDrawIcons() && _ui->actionAnimateSimulatedTime->isChecked()) {
-        _graphicsView->setCursor(Qt::CrossCursor);
-        scene->setAction(_ui->actionAnimateSimulatedTime);
-        scene->drawingTimer();
-    }
-    else {
-        _unselectDrawIcons();
-    }
+    activateAnimationDrawingTool(_ui->actionAnimateSimulatedTime, &ModelGraphicsScene::drawingTimer);
 }
 
 // Preserve variable animation tool activation behavior.
 void SceneToolController::onActionAnimateVariableTriggered() {
-    ModelGraphicsScene* scene = _currentScene();
-    if (scene == nullptr) {
-        return;
-    }
-
-    if (!_checkSelectedDrawIcons() && _ui->actionAnimateVariable->isChecked()) {
-        _graphicsView->setCursor(Qt::CrossCursor);
-        scene->setAction(_ui->actionAnimateVariable);
-        scene->drawingVariable();
-    }
-    else {
-        _unselectDrawIcons();
-    }
+    activateAnimationDrawingTool(_ui->actionAnimateVariable, &ModelGraphicsScene::drawingVariable);
 }
 
 // Preserve counter animation tool activation behavior.
 void SceneToolController::onActionAnimateCounterTriggered() {
-    ModelGraphicsScene* scene = _currentScene();
-    if (scene == nullptr) {
-        return;
-    }
+    activateAnimationDrawingTool(_ui->actionAnimateCounter, &ModelGraphicsScene::drawingCounter);
+}
 
-    if (!_checkSelectedDrawIcons() && _ui->actionAnimateCounter->isChecked()) {
-        _graphicsView->setCursor(Qt::CrossCursor);
-        scene->setAction(_ui->actionAnimateCounter);
-        scene->drawingCounter();
-    }
-    else {
-        _unselectDrawIcons();
-    }
+void SceneToolController::onActionAnimateAttributeTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateAttribute, &ModelGraphicsScene::drawingAttribute);
+}
+
+void SceneToolController::onActionAnimateEntityTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateEntity, &ModelGraphicsScene::drawingEntity);
+}
+
+void SceneToolController::onActionAnimateEventTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateEvent, &ModelGraphicsScene::drawingEvent);
+}
+
+void SceneToolController::onActionAnimateExpressionTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateExpression, &ModelGraphicsScene::drawingExpression);
+}
+
+void SceneToolController::onActionAnimatePlotTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimatePlot, &ModelGraphicsScene::drawingPlot);
+}
+
+void SceneToolController::onActionAnimateQueueTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateQueue, &ModelGraphicsScene::drawingQueue);
+}
+
+void SceneToolController::onActionAnimateResourceTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateResource, &ModelGraphicsScene::drawingResource);
+}
+
+void SceneToolController::onActionAnimateStationTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateStation, &ModelGraphicsScene::drawingStation);
+}
+
+void SceneToolController::onActionAnimateStatisticsTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateStatistics, &ModelGraphicsScene::drawingStatistics);
 }
 
 // Preserve connect-tool activation through the existing graphics-view flow.

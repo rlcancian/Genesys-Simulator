@@ -1781,6 +1781,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateExpression">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/resources/ToolBar/_animvalor.bmp</normaloff>:/resources/ToolBar/_animvalor.bmp</iconset>
@@ -1790,6 +1793,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateResource">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/question.ico</normaloff>:/icons3/resources/icons/pack3/ico/question.ico</iconset>
@@ -1799,6 +1805,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateQueue">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/resources/ToolBar/_animfila.bmp</normaloff>:/resources/ToolBar/_animfila.bmp</iconset>
@@ -1808,6 +1817,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateStation">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/question.ico</normaloff>:/icons3/resources/icons/pack3/ico/question.ico</iconset>
@@ -2003,6 +2015,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateEntity">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/person.ico</normaloff>:/icons3/resources/icons/pack3/ico/person.ico</iconset>
@@ -2015,6 +2030,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateEvent">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/calendar.ico</normaloff>:/icons3/resources/icons/pack3/ico/calendar.ico</iconset>
@@ -2027,6 +2045,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateAttribute">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/sum.ico</normaloff>:/icons3/resources/icons/pack3/ico/sum.ico</iconset>
@@ -2039,6 +2060,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateStatistics">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/pie chart.ico</normaloff>:/icons3/resources/icons/pack3/ico/pie chart.ico</iconset>
@@ -2147,6 +2171,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimatePlot">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/3d bar chart.ico</normaloff>:/icons3/resources/icons/pack3/ico/3d bar chart.ico</iconset>

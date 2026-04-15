@@ -319,22 +319,30 @@ void MainWindow::on_actionDrawPoligon_triggered() {
 
 
 void MainWindow::on_actionAnimateExpression_triggered() {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateExpressionTriggered();
+    }
 }
 
 
 void MainWindow::on_actionAnimateResource_triggered() {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateResourceTriggered();
+    }
 }
 
 
 void MainWindow::on_actionAnimateQueue_triggered() {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateQueueTriggered();
+    }
 }
 
 
 void MainWindow::on_actionAnimateStation_triggered() {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateStationTriggered();
+    }
 }
 
 
@@ -413,25 +421,33 @@ void MainWindow::on_actionAnimateSimulatedTime_triggered() {
 
 void MainWindow::on_actionAnimateEntity_triggered()
 {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateEntityTriggered();
+    }
 }
 
 
 void MainWindow::on_actionAnimateEvent_triggered()
 {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateEventTriggered();
+    }
 }
 
 
 void MainWindow::on_actionAnimateAttribute_triggered()
 {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateAttributeTriggered();
+    }
 }
 
 
 void MainWindow::on_actionAnimateStatistics_triggered()
 {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimateStatisticsTriggered();
+    }
 }
 
 
@@ -489,7 +505,9 @@ void MainWindow::on_actionToolsDataAnalyzer_triggered() {
 
 void MainWindow::on_actionAnimatePlot_triggered()
 {
-    _showMessageNotImplemented();
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionAnimatePlotTriggered();
+    }
 }
 
 

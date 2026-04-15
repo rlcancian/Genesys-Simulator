@@ -52,6 +52,7 @@
 #include "animations/AnimationVariable.h"
 #include "animations/AnimationCounter.h"
 #include "animations/AnimationTimer.h"
+#include "animations/AnimationPlaceholder.h"
 #include "../../../../kernel/simulator/Counter.h"
 #include "../../../../kernel/simulator/PropertyGenesys.h"
 #include "../../../../plugins/data/Variable.h"
@@ -99,7 +100,9 @@ public:
     virtual ~ModelGraphicsScene();
 public: // editing graphic model
     enum DrawingMode{
-        NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED, COUNTER, VARIABLE, TIMER
+        NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED,
+        COUNTER, VARIABLE, TIMER,
+        ATTRIBUTE, ENTITY, EVENT, EXPRESSION, PLOT, QUEUE_PLACEHOLDER, RESOURCE, STATION, STATISTICS
     };
     GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false, GraphicalModelComponent* autoConnectSource = nullptr);
     GraphicalConnection* addGraphicalConnection(GraphicalComponentPort* sourcePort, GraphicalComponentPort* destinationPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, bool notify = false);
@@ -215,6 +218,7 @@ public:
     QList<AnimationCounter *> *getAnimationsCounter();
     QList<AnimationVariable *> *getAnimationsVariable();
     QList<AnimationTimer *> *getAnimationsTimer();
+    QList<AnimationPlaceholder *> *getAnimationsPlaceholder();
     QMap<Event *, QList<AnimationTransition *> *> *getAnimationPaused();
     bool checkIgnoreEvent();
     void clearAnimations();
@@ -222,11 +226,21 @@ public:
     void clearAnimationsCounter();
     void clearAnimationsVariable();
     void clearAnimationsTimer();
+    void clearAnimationsPlaceholder();
     void clearAnimationsQueue();
     QList<QString> *getImagesAnimation();
     void drawingCounter();
     void drawingVariable();
     void drawingTimer();
+    void drawingAttribute();
+    void drawingEntity();
+    void drawingEvent();
+    void drawingExpression();
+    void drawingPlot();
+    void drawingQueue();
+    void drawingResource();
+    void drawingStation();
+    void drawingStatistics();
     void clearAnimationsValues();
     void setCounters();
     void setVariables();
@@ -331,6 +345,7 @@ private:
     AnimationVariable *_currentVariable = nullptr;
     // Initialize the current timer drawing pointer to avoid indeterminate access.
     AnimationTimer *_currentTimer = nullptr;
+    AnimationPlaceholder *_currentPlaceholderAnimation = nullptr;
     QMap<Event *, QList<AnimationTransition *> *> *_animationPaused = new QMap<Event *, QList<AnimationTransition *> *>();
 
 private:
@@ -339,6 +354,7 @@ private:
     QList<AnimationCounter *> *_animationsCounter = new QList<AnimationCounter*>();
     QList<AnimationVariable *> *_animationsVariable = new QList<AnimationVariable*>();
     QList<AnimationTimer *> *_animationsTimer = new QList<AnimationTimer*>();
+    QList<AnimationPlaceholder *> *_animationsPlaceholder = new QList<AnimationPlaceholder*>();
 private:
     // IMPORTANT. MUST BE CONSISTENT WITH SIMULATOR->MODEL
     QList<QGraphicsItem*>* _graphicalModelComponents = new QList<QGraphicsItem*>();
