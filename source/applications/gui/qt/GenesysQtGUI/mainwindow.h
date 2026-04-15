@@ -227,8 +227,6 @@ private slots:
     void on_horizontalSliderAnimationSpeed_valueChanged(int value);
     void on_actionSelectAll_triggered();
 
-    void on_actionDiagrams_triggered();
-
     void on_actionParallelization_triggered();
 
     void on_horizontalSlider_ZoomGraphical_actionTriggered(int action);

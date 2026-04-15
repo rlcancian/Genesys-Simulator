@@ -113,8 +113,6 @@ public:
     void onActionActivateGraphicalSimulationTriggered();
     /** @brief Applies animation-speed slider values to scene animation pacing. */
     void onHorizontalSliderAnimationSpeedValueChanged(int value);
-    /** @brief Toggles diagram overlays and refreshes model-image representation. */
-    void onActionDiagramsTriggered();
     /** @brief Selects all graphical items in the active scene context. */
     void onActionSelectAllTriggered();
     /** @brief Toggles rendering of internal elements and triggers representation refresh. */

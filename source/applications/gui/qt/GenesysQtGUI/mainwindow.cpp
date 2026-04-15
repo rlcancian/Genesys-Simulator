@@ -280,14 +280,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                                                             ui->actionShowGuides,
                                                                             ui->actionShowInternalElements,
                                                                             ui->actionShowAttachedElements,
-                                                                            ui->actionDiagrams,
                                                                             ui->textEdit_Console,
                                                                             &_modelfilename,
                                                                             [this]() { _clearModelEditors(); },
                                                                             [this]() { _generateGraphicalModelFromModel(); },
                                                                             [this]() { on_actionShowInternalElements_triggered(); },
-                                                                            [this]() { on_actionShowAttachedElements_triggered(); },
-                                                                            [this]() { on_actionDiagrams_triggered(); });
+                                                                            [this]() { on_actionShowAttachedElements_triggered(); });
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);

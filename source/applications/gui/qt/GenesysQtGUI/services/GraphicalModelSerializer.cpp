@@ -113,14 +113,12 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
                                                    QAction* actionShowGuides,
                                                    QAction* actionShowInternalElements,
                                                    QAction* actionShowAttachedElements,
-                                                   QAction* actionDiagrams,
                                                    QTextEdit* console,
                                                    QString* modelFilename,
                                                    std::function<void()> clearModelEditors,
                                                    std::function<void()> rebuildGraphicalModelFromModel,
                                                    std::function<void()> applyShowInternalElements,
-                                                   std::function<void()> applyShowAttachedElements,
-                                                   std::function<void()> applyDiagramsVisibility)
+                                                   std::function<void()> applyShowAttachedElements)
     : _simulator(simulator),
       _ownerWidget(ownerWidget),
       _modelTextEditor(modelTextEditor),
@@ -132,14 +130,12 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
       _actionShowGuides(actionShowGuides),
       _actionShowInternalElements(actionShowInternalElements),
       _actionShowAttachedElements(actionShowAttachedElements),
-      _actionDiagrams(actionDiagrams),
       _console(console),
       _modelFilename(modelFilename),
       _clearModelEditors(std::move(clearModelEditors)),
       _rebuildGraphicalModelFromModel(std::move(rebuildGraphicalModelFromModel)),
       _applyShowInternalElements(std::move(applyShowInternalElements)),
-      _applyShowAttachedElements(std::move(applyShowAttachedElements)),
-      _applyDiagramsVisibility(std::move(applyDiagramsVisibility)) {}
+      _applyShowAttachedElements(std::move(applyShowAttachedElements)) {}
 
 // Encode free-form GUI text safely for persistence records.
 QString GraphicalModelSerializer::encodeGuiText(const QString& text) {
@@ -325,7 +321,6 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
         line += ", guides=" + QString::number(_actionShowGuides->isChecked());
         line += ", internals=" + QString::number(_actionShowInternalElements->isChecked());
         line += ", attached=" + QString::number(_actionShowAttachedElements->isChecked());
-        line += ", diagrams=" + QString::number(_actionDiagrams->isChecked());
         line += ", viewpoint=(" + QString::number(_graphicsView->horizontalScrollBar()->value()) + "," + QString::number(_graphicsView->verticalScrollBar()->value()) + ")";
         out << line << Qt::endl;
 
@@ -783,7 +778,6 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     const int guides = QRegularExpression("guides=(\\d+)").match(attributes).captured(1).toInt();
                     const int internals = QRegularExpression("internals=(\\d+)").match(attributes).captured(1).toInt();
                     const int attached = QRegularExpression("attached=(\\d+)").match(attributes).captured(1).toInt();
-                    const int diagrams = QRegularExpression("diagrams=(\\d+)").match(attributes).captured(1).toInt();
                     QRegularExpressionMatch viewpointMatch = QRegularExpression("viewpoint=\\(([-+]?\\d+\\.?\\d*),([-+]?\\d+\\.?\\d*)\\)").match(attributes);
                     int viewpointX = 0;
                     int viewpointY = 0;
@@ -804,7 +798,6 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     _applyShowInternalElements();
                     _actionShowAttachedElements->setChecked(attached != 0);
                     _applyShowAttachedElements();
-                    _actionDiagrams->setChecked(diagrams != 0);
 
                     if (zoom > 0) {
                         _zoomSlider->setValue(zoom + TraitsGUI<GMainWindow>::zoomButtonChange);
@@ -1220,7 +1213,6 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             }
         }
 
-        _applyDiagramsVisibility();
         scene->setRestoringPersistedGuiLayout(false);
         if (hasPersistedViewState) {
             QTimer::singleShot(0, _ownerWidget, [this, restoredViewpointX, restoredViewpointY]() {

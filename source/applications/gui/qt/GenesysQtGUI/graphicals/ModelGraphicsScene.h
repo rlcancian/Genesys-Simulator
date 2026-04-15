@@ -252,6 +252,10 @@ public:
     void requestGraphicalDataDefinitionsSync();
     void scheduleGraphicalDataDefinitionsSync();
     bool isGraphicalDataDefinitionsSyncInProgress() const;
+    void setShowInternalDataDefinitions(bool show);
+    bool showInternalDataDefinitions() const;
+    void setShowAttachedDataDefinitions(bool show);
+    bool showAttachedDataDefinitions() const;
     void setConnectionGeometryUpdatesBlocked(bool blocked);
     bool areConnectionGeometryUpdatesBlocked() const;
 
@@ -334,6 +338,9 @@ private:
     bool _persistedGuiRestoreInProgress = false;
     unsigned short _connectingStep = 0; //0:nothing, 1:waiting click on source or destination, 2: click on source, 3: click on destination
     bool _controlIsPressed = false;
+    bool _shiftSelectionInProgress = false;
+    QGraphicsItem* _shiftClickedSelectableItem = nullptr;
+    QList<QGraphicsItem*> _shiftSelectionBeforeClick;
     bool _snapToGrid = false;
     // Initialize the source port pointer before connection drawing starts.
     GraphicalComponentPort* _sourceGraphicalComponentPort = nullptr;
@@ -370,6 +377,8 @@ private:
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
     bool _connectionGeometryUpdatesBlocked = false;
+    bool _showInternalDataDefinitions = false;
+    bool _showAttachedDataDefinitions = false;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

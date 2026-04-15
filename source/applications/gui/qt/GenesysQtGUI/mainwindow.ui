@@ -69,7 +69,7 @@
         <enum>QTabWidget::Triangular</enum>
        </property>
        <property name="currentIndex">
-        <number>0</number>
+        <number>2</number>
        </property>
        <property name="tabBarAutoHide">
         <bool>true</bool>
@@ -88,7 +88,7 @@
             <enum>QTabWidget::Triangular</enum>
            </property>
            <property name="currentIndex">
-            <number>2</number>
+            <number>4</number>
            </property>
            <property name="tabBarAutoHide">
             <bool>true</bool>
@@ -153,8 +153,8 @@
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>514</width>
-                     <height>138</height>
+                     <width>98</width>
+                     <height>36</height>
                     </rect>
                    </property>
                    <property name="autoFillBackground">
@@ -812,6 +812,7 @@
      <string>Simulation</string>
     </property>
     <addaction name="actionSimulationConfigure"/>
+    <addaction name="actionParallelization"/>
     <addaction name="separator"/>
     <addaction name="actionSimulationStart"/>
     <addaction name="actionSimulationStep"/>
@@ -887,10 +888,10 @@
      <addaction name="actionShowRule"/>
      <addaction name="actionShowSnap"/>
      <addaction name="actionShowGuides"/>
-     <addaction name="actionDiagrams"/>
      <addaction name="separator"/>
      <addaction name="actionShowInternalElements"/>
      <addaction name="actionShowAttachedElements"/>
+     <addaction name="actionShowRecursiveElements"/>
     </widget>
     <addaction name="menuViewShow"/>
     <addaction name="menuZoom"/>
@@ -927,27 +928,26 @@
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
-     <string>Tools</string>
+     <string>Results</string>
     </property>
     <addaction name="actionToolsDataAnalyzer"/>
     <addaction name="actionToolsOptimizator"/>
-    <addaction name="actionToolsParserGrammarChecker"/>
-    <addaction name="actionParallelization"/>
    </widget>
    <widget class="QMenu" name="menuSimulator">
     <property name="title">
      <string>Simulator</string>
     </property>
     <addaction name="actionSimulatorsPluginManager"/>
+    <addaction name="actionToolsParserGrammarChecker"/>
     <addaction name="separator"/>
     <addaction name="actionSimulatorPreferences"/>
     <addaction name="separator"/>
     <addaction name="actionSimulatorExit"/>
    </widget>
    <addaction name="menuSimulator"/>
-   <addaction name="menuModel"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
+   <addaction name="menuModel"/>
    <addaction name="menuSimulation"/>
    <addaction name="menuTools"/>
    <addaction name="menuAbout"/>
@@ -1528,6 +1528,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -1541,6 +1544,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </action>
   <action name="actionShowSnap">
    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
     <bool>true</bool>
    </property>
    <property name="icon">
@@ -1658,6 +1664,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </action>
   <action name="actionShowRule">
    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
     <bool>true</bool>
    </property>
    <property name="icon">
@@ -1937,6 +1946,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
@@ -1947,6 +1959,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </action>
   <action name="actionShowAttachedElements">
    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
     <bool>true</bool>
    </property>
    <property name="icon">
@@ -2122,7 +2137,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/lightning.ico</normaloff>:/icons3/resources/icons/pack3/ico/lightning.ico</iconset>
    </property>
    <property name="text">
-    <string>Optimizator</string>
+    <string>Optimization</string>
    </property>
   </action>
   <action name="actionToolsParserGrammarChecker">
@@ -2131,7 +2146,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/percent.ico</normaloff>:/icons3/resources/icons/pack3/ico/percent.ico</iconset>
    </property>
    <property name="text">
-    <string>Parser Grammar</string>
+    <string>Parser Manager</string>
    </property>
   </action>
   <action name="actionViewGroup">
@@ -2182,18 +2197,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Plot</string>
    </property>
   </action>
-  <action name="actionDiagrams">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset theme="window-new">
-     <normaloff>.</normaloff>.</iconset>
-   </property>
-   <property name="text">
-    <string>Diagrams</string>
-   </property>
-  </action>
   <action name="actionActivateGraphicalSimulation">
    <property name="checkable">
     <bool>true</bool>
@@ -2234,6 +2237,20 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="text">
     <string>Parallelization</string>
+   </property>
+  </action>
+  <action name="actionShowRecursiveElements">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="x-office-address-book"/>
+   </property>
+   <property name="text">
+    <string>Recursive Elements</string>
    </property>
   </action>
  </widget>

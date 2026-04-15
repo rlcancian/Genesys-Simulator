@@ -55,6 +55,7 @@
 #include "animations/AnimationQueue.h"
 #include "services/GraphicalModelBuilder.h"
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QThread>
 #include <QPointer>
 #include <QTimer>
@@ -82,6 +83,35 @@ namespace {
     private:
         bool* _flag = nullptr;
     };
+
+    QGraphicsItem* selectableItemAt(QGraphicsScene* scene, const QPointF& scenePos) {
+        if (scene == nullptr) {
+            return nullptr;
+        }
+
+        QGraphicsItem* candidate = scene->itemAt(scenePos, QTransform());
+        while (candidate != nullptr && !candidate->flags().testFlag(QGraphicsItem::ItemIsSelectable)) {
+            candidate = candidate->parentItem();
+        }
+        return candidate;
+    }
+
+    void restoreExtendedSelection(QGraphicsScene* scene,
+                                  const QList<QGraphicsItem*>& selectionBeforeClick,
+                                  QGraphicsItem* clickedSelectableItem) {
+        if (scene == nullptr) {
+            return;
+        }
+
+        for (QGraphicsItem* selectedItem : selectionBeforeClick) {
+            if (selectedItem != nullptr && selectedItem->scene() == scene) {
+                selectedItem->setSelected(true);
+            }
+        }
+        if (clickedSelectableItem != nullptr && clickedSelectableItem->scene() == scene) {
+            clickedSelectableItem->setSelected(true);
+        }
+    }
 
     bool isPlaceholderAnimationMode(ModelGraphicsScene::DrawingMode mode) {
         switch (mode) {
@@ -2474,161 +2504,84 @@ void ModelGraphicsScene::removeGroup(QGraphicsItemGroup* group, bool notify) {
 
 void ModelGraphicsScene::arranjeModels(int direction) {
     QList<QGraphicsItem*> items;
+    QList<QGraphicsItem*> alignedItems;
     QList<QPointF> newPositions;
     QList<QPointF> oldPositions;
 
-    for (unsigned int i = 0; i < (unsigned int)selectedItems().size(); i++) {
-        if (GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(selectedItems().at(i))) {
-            items.append(component);
+    const QList<QGraphicsItem*> selected = selectedItems();
+    for (QGraphicsItem* item : selected) {
+        if (item == nullptr) {
+            continue;
         }
-        else if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(selectedItems().at(i))) {
-            items.append(group);
+        if (dynamic_cast<GraphicalComponentPort*>(item) != nullptr ||
+            dynamic_cast<GraphicalDiagramConnection*>(item) != nullptr ||
+            dynamic_cast<GraphicalConnection*>(item) != nullptr) {
+            continue;
         }
-        else if (AnimationVariable* animationVariable = dynamic_cast<AnimationVariable*>(selectedItems().at(i))) {
-            items.append(animationVariable);
+
+        bool hasSelectedAncestor = false;
+        QGraphicsItem* parent = item->parentItem();
+        while (parent != nullptr) {
+            if (selected.contains(parent)) {
+                hasSelectedAncestor = true;
+                break;
+            }
+            parent = parent->parentItem();
+        }
+        if (!hasSelectedAncestor) {
+            items.append(item);
         }
     }
 
-    int size = items.size();
-    qreal most_direction;
-    qreal most_up;
-    qreal most_down;
-    qreal most_left;
-    qreal most_right;
-    qreal middle;
-    qreal center;
+    if (items.size() < 2) {
+        return;
+    }
 
-    if (size >= 2) {
+    QRectF selectionBounds = items.first()->sceneBoundingRect();
+    for (int i = 1; i < items.size(); ++i) {
+        selectionBounds = selectionBounds.united(items.at(i)->sceneBoundingRect());
+    }
+
+    for (QGraphicsItem* item : items) {
+        const QRectF itemBounds = item->sceneBoundingRect();
+        QPointF delta;
         switch (direction) {
-        case 0: //left
-            most_direction = sceneRect().right();
+        case 0: // left
+            delta.setX(selectionBounds.left() - itemBounds.left());
             break;
-        case 1: //right
-            most_direction = sceneRect().left();
+        case 1: // right
+            delta.setX(selectionBounds.right() - itemBounds.right());
             break;
-        case 2: //top
-            most_direction = sceneRect().bottom();
+        case 2: // top
+            delta.setY(selectionBounds.top() - itemBounds.top());
             break;
-        case 3: //bottom
-            most_direction = sceneRect().top();
+        case 3: // bottom
+            delta.setY(selectionBounds.bottom() - itemBounds.bottom());
             break;
-        case 4: //center
-            most_left = sceneRect().right();
-            most_right = sceneRect().left();
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = items.at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item) && !dynamic_cast<QGraphicsItemGroup*>(item)) {
-                    qreal item_posX = item->x();
-                    if (item_posX < most_left) {
-                        most_left = item_posX;
-                    }
-                    if (item_posX > most_right) {
-                        most_right = item_posX;
-                    }
-                }
-            }
-            center = (most_right + most_left) / 2;
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = selectedItems().at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item)) {
-                    if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                        insertOldPositionItem(item, item->pos());
-                        oldPositions.append(item->pos());
-                    }
-                    else {
-                        oldPositions.append(item->pos());
-                    }
-                    item->setX(center);
-                    newPositions.append(item->pos());
-                }
-            }
+        case 4: // center
+            delta.setX(selectionBounds.center().x() - itemBounds.center().x());
             break;
-        case 5: //middle
-            most_up = sceneRect().bottom();
-            most_down = sceneRect().top();
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = items.at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item) && !dynamic_cast<QGraphicsItemGroup*>(item)) {
-                    qreal item_posY = item->y();
-                    if (item_posY < most_up) {
-                        most_up = item_posY;
-                    }
-                    if (item_posY > most_down) {
-                        most_down = item_posY;
-                    }
-                }
-            }
-            middle = (most_up + most_down) / 2;
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = selectedItems().at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item)) {
-                    if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                        insertOldPositionItem(item, item->pos());
-                        oldPositions.append(item->pos());
-                    }
-                    else {
-                        oldPositions.append(item->pos());
-                    }
-                    item->setX(middle);
-                    newPositions.append(item->pos());
-                }
-            }
+        case 5: // middle
+            delta.setY(selectionBounds.center().y() - itemBounds.center().y());
             break;
+        default:
+            return;
         }
-        if (direction < 4) {
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = selectedItems().at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item) && !dynamic_cast<GraphicalConnection*>(item)) {
-                    if (direction < 2) {
-                        qreal item_posX = item->x();
-                        if ((item_posX < most_direction && direction == 0) || (item_posX > most_direction && direction
-                            == 1)) {
-                            most_direction = item_posX;
-                        }
-                    }
-                    else {
-                        qreal item_posY = item->y();
-                        if ((item_posY < most_direction && direction == 2) || (item_posY > most_direction && direction
-                            == 3)) {
-                            most_direction = item_posY;
-                        }
-                    }
-                }
-            }
-            if (direction < 2) {
-                for (int i = 0; i < size; i++) {
-                    QGraphicsItem* item = selectedItems().at(i);
-                    if (!dynamic_cast<GraphicalConnection*>(item)) {
-                        if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                            insertOldPositionItem(item, item->pos());
-                            oldPositions.append(item->pos());
-                        }
-                        else {
-                            oldPositions.append(item->pos());
-                        }
-                        item->setX(most_direction);
-                        newPositions.append(item->pos());
-                    }
-                }
-            }
-            else {
-                for (int i = 0; i < size; i++) {
-                    QGraphicsItem* item = selectedItems().at(i);
-                    if (!dynamic_cast<GraphicalConnection*>(item)) {
-                        if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                            insertOldPositionItem(item, item->pos());
-                            oldPositions.append(item->pos());
-                        }
-                        else {
-                            oldPositions.append(item->pos());
-                        }
-                        item->setY(most_direction);
-                        newPositions.append(item->pos());
-                    }
-                }
-            }
+
+        const QPointF oldPosition = item->pos();
+        const QPointF newPosition = oldPosition + delta;
+        if (newPosition == oldPosition) {
+            continue;
         }
-        QUndoCommand* moveUndoCommand = new MoveUndoCommand(items, this, oldPositions, newPositions);
+
+        oldPositions.append(oldPosition);
+        item->setPos(newPosition);
+        alignedItems.append(item);
+        newPositions.append(newPosition);
+    }
+
+    if (!alignedItems.isEmpty() && _undoStack != nullptr) {
+        QUndoCommand* moveUndoCommand = new MoveUndoCommand(alignedItems, this, oldPositions, newPositions);
         _undoStack->push(moveUndoCommand);
     }
 }
@@ -2714,7 +2667,24 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) {
             }
         }
 
+        const Qt::KeyboardModifiers modifiers = mouseEvent->modifiers() | QGuiApplication::keyboardModifiers();
+        _shiftSelectionInProgress = modifiers.testFlag(Qt::ShiftModifier) && _drawingMode == NONE;
+        _shiftSelectionBeforeClick = _shiftSelectionInProgress ? selectedItems() : QList<QGraphicsItem*>();
+        _shiftClickedSelectableItem = _shiftSelectionInProgress ? selectableItemAt(this, mouseEvent->scenePos()) : nullptr;
+
         QGraphicsScene::mousePressEvent(mouseEvent);
+
+        if (_shiftSelectionInProgress) {
+            restoreExtendedSelection(this, _shiftSelectionBeforeClick, _shiftClickedSelectableItem);
+            QPointer<ModelGraphicsScene> guardedScene(this);
+            const QList<QGraphicsItem*> selectionBeforeClick = _shiftSelectionBeforeClick;
+            QGraphicsItem* clickedSelectableItem = _shiftClickedSelectableItem;
+            QTimer::singleShot(0, this, [guardedScene, selectionBeforeClick, clickedSelectableItem]() {
+                if (guardedScene != nullptr) {
+                    restoreExtendedSelection(guardedScene.data(), selectionBeforeClick, clickedSelectableItem);
+                }
+            });
+        }
 
         item = this->itemAt(mouseEvent->scenePos(), QTransform());
         if (GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(item)) {
@@ -2771,6 +2741,12 @@ void ModelGraphicsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
     }
 
     QGraphicsScene::mouseReleaseEvent(mouseEvent);
+    if (_shiftSelectionInProgress) {
+        restoreExtendedSelection(this, _shiftSelectionBeforeClick, _shiftClickedSelectableItem);
+        _shiftSelectionInProgress = false;
+        _shiftClickedSelectableItem = nullptr;
+        _shiftSelectionBeforeClick.clear();
+    }
 
     snapItemsToGrid();
     if (existDiagram()) {
@@ -3001,6 +2977,22 @@ QList<QGraphicsItem*>* ModelGraphicsScene::getGraphicalModelDataDefinitions() co
 
 QList<QGraphicsItem*>* ModelGraphicsScene::getGraphicalDiagramsConnections() const {
     return _graphicalDiagramConnections;
+}
+
+void ModelGraphicsScene::setShowInternalDataDefinitions(bool show) {
+    _showInternalDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showInternalDataDefinitions() const {
+    return _showInternalDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowAttachedDataDefinitions(bool show) {
+    _showAttachedDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showAttachedDataDefinitions() const {
+    return _showAttachedDataDefinitions;
 }
 
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {

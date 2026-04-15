@@ -712,14 +712,6 @@ void MainWindow::on_horizontalSliderAnimationSpeed_valueChanged(int value) {
 }
 
 
-void MainWindow::on_actionDiagrams_triggered() {
-    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
-    if (_sceneToolController != nullptr) {
-        _sceneToolController->onActionDiagramsTriggered();
-    }
-}
-
-
 void MainWindow::on_actionSelectAll_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {
