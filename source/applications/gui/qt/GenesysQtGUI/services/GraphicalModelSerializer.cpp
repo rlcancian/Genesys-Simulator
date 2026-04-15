@@ -17,12 +17,14 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QGraphicsEllipseItem>
+#include <QGraphicsItem>
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
 #include <QGraphicsPolygonItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsTextItem>
 #include <QHash>
+#include <QFont>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QRegularExpression>
@@ -164,6 +166,141 @@ bool GraphicalModelSerializer::saveTextModel(QFile* saveFile, const QString& dat
     }
 }
 
+QString encodePersistedText(const QString& text) {
+    return QString::fromUtf8(QUrl::toPercentEncoding(text));
+}
+
+QString decodePersistedText(const QString& text) {
+    return QUrl::fromPercentEncoding(text.toUtf8());
+}
+
+QString commonGraphicsState(QGraphicsItem* item) {
+    if (item == nullptr) {
+        return {};
+    }
+    return QString("rotation=%1 \t scale=%2 \t z=%3 \t visible=%4 \t opacity=%5")
+        .arg(item->rotation(), 0, 'f', 4)
+        .arg(item->scale(), 0, 'f', 4)
+        .arg(item->zValue(), 0, 'f', 4)
+        .arg(item->isVisible() ? 1 : 0)
+        .arg(item->opacity(), 0, 'f', 4);
+}
+
+QString penState(const QPen& pen) {
+    return QString("pen=(%1,%2,%3)")
+        .arg(pen.color().name(QColor::HexArgb))
+        .arg(pen.widthF(), 0, 'f', 4)
+        .arg(static_cast<int>(pen.style()));
+}
+
+QString brushState(const QBrush& brush) {
+    return QString("brush=(%1,%2)")
+        .arg(brush.color().name(QColor::HexArgb))
+        .arg(static_cast<int>(brush.style()));
+}
+
+void applyCommonGraphicsState(const QString& line, QGraphicsItem* item) {
+    if (item == nullptr) {
+        return;
+    }
+
+    QRegularExpression regexRotation("\\brotation=([^\\t]+)");
+    QRegularExpression regexScale("\\bscale=([^\\t]+)");
+    QRegularExpression regexZ("\\bz=([^\\t]+)");
+    QRegularExpression regexVisible("\\bvisible=([^\\t]+)");
+    QRegularExpression regexOpacity("\\bopacity=([^\\t]+)");
+
+    QRegularExpressionMatch match = regexRotation.match(line);
+    if (match.hasMatch()) {
+        item->setRotation(match.captured(1).trimmed().toDouble());
+    }
+    match = regexScale.match(line);
+    if (match.hasMatch()) {
+        item->setScale(match.captured(1).trimmed().toDouble());
+    }
+    match = regexZ.match(line);
+    if (match.hasMatch()) {
+        item->setZValue(match.captured(1).trimmed().toDouble());
+    }
+    match = regexVisible.match(line);
+    if (match.hasMatch()) {
+        item->setVisible(match.captured(1).trimmed().toInt() != 0);
+    }
+    match = regexOpacity.match(line);
+    if (match.hasMatch()) {
+        item->setOpacity(match.captured(1).trimmed().toDouble());
+    }
+}
+
+bool decodePenState(const QString& line, QPen* pen) {
+    if (pen == nullptr) {
+        return false;
+    }
+    QRegularExpression regexPen("\\bpen=\\((#[0-9A-Fa-f]{6,8}),([^,]+),(\\d+)\\)");
+    QRegularExpressionMatch match = regexPen.match(line);
+    if (!match.hasMatch()) {
+        return false;
+    }
+    pen->setColor(QColor(match.captured(1)));
+    pen->setWidthF(match.captured(2).toDouble());
+    pen->setStyle(static_cast<Qt::PenStyle>(match.captured(3).toInt()));
+    return true;
+}
+
+bool decodeBrushState(const QString& line, QBrush* brush) {
+    if (brush == nullptr) {
+        return false;
+    }
+    QRegularExpression regexBrush("\\bbrush=\\((#[0-9A-Fa-f]{6,8}),(\\d+)\\)");
+    QRegularExpressionMatch match = regexBrush.match(line);
+    if (!match.hasMatch()) {
+        return false;
+    }
+    brush->setColor(QColor(match.captured(1)));
+    brush->setStyle(static_cast<Qt::BrushStyle>(match.captured(2).toInt()));
+    return true;
+}
+
+void applyShapeStyleState(const QString& line, QAbstractGraphicsShapeItem* item) {
+    if (item == nullptr) {
+        return;
+    }
+    QPen pen = item->pen();
+    if (decodePenState(line, &pen)) {
+        item->setPen(pen);
+    }
+    QBrush brush = item->brush();
+    if (decodeBrushState(line, &brush)) {
+        item->setBrush(brush);
+    }
+}
+
+void applyTextStyleState(const QString& line, QGraphicsTextItem* item) {
+    if (item == nullptr) {
+        return;
+    }
+
+    QRegularExpression regexColor("\\btextcolor=(#[0-9A-Fa-f]{6,8})");
+    QRegularExpression regexFont("\\bfont=([^\\t]+)");
+    QRegularExpression regexWidth("\\btextwidth=([^\\t]+)");
+
+    QRegularExpressionMatch match = regexColor.match(line);
+    if (match.hasMatch()) {
+        item->setDefaultTextColor(QColor(match.captured(1)));
+    }
+    match = regexFont.match(line);
+    if (match.hasMatch()) {
+        QFont font;
+        if (font.fromString(decodePersistedText(match.captured(1).trimmed()))) {
+            item->setFont(font);
+        }
+    }
+    match = regexWidth.match(line);
+    if (match.hasMatch()) {
+        item->setTextWidth(match.captured(1).trimmed().toDouble());
+    }
+}
+
 // Persist the complete graphical model, including view options and overlays.
 bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const {
     QFile saveFile(filename);
@@ -251,27 +388,35 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
 
                     if (QGraphicsLineItem* lineItem = dynamic_cast<QGraphicsLineItem*>(item)) {
                         const QLineF l = lineItem->line();
-                        line = QString("Geometry \t id=%1 \t type=line \t line=(%2,%3,%4,%5) \t pos=(%6,%7)")
+                        line = QString("Geometry \t id=%1 \t type=line \t line=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9")
                                    .arg(persistedId)
                                    .arg(l.x1(), 0, 'f', 4).arg(l.y1(), 0, 'f', 4)
                                    .arg(l.x2(), 0, 'f', 4).arg(l.y2(), 0, 'f', 4)
-                                   .arg(lineItem->pos().x(), 0, 'f', 4).arg(lineItem->pos().y(), 0, 'f', 4);
+                                   .arg(lineItem->pos().x(), 0, 'f', 4).arg(lineItem->pos().y(), 0, 'f', 4)
+                                   .arg(commonGraphicsState(lineItem))
+                                   .arg(penState(lineItem->pen()));
                         out << line << Qt::endl;
                     } else if (QGraphicsRectItem* rectItem = dynamic_cast<QGraphicsRectItem*>(item)) {
                         QRectF r = rectItem->rect().normalized();
-                        line = QString("Geometry \t id=%1 \t type=rect \t rect=(%2,%3,%4,%5) \t pos=(%6,%7)")
+                        line = QString("Geometry \t id=%1 \t type=rect \t rect=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9 \t %10")
                                    .arg(persistedId)
                                    .arg(r.x(), 0, 'f', 4).arg(r.y(), 0, 'f', 4)
                                    .arg(r.width(), 0, 'f', 4).arg(r.height(), 0, 'f', 4)
-                                   .arg(rectItem->pos().x(), 0, 'f', 4).arg(rectItem->pos().y(), 0, 'f', 4);
+                                   .arg(rectItem->pos().x(), 0, 'f', 4).arg(rectItem->pos().y(), 0, 'f', 4)
+                                   .arg(commonGraphicsState(rectItem))
+                                   .arg(penState(rectItem->pen()))
+                                   .arg(brushState(rectItem->brush()));
                         out << line << Qt::endl;
                     } else if (QGraphicsEllipseItem* ellipseItem = dynamic_cast<QGraphicsEllipseItem*>(item)) {
                         QRectF r = ellipseItem->rect().normalized();
-                        line = QString("Geometry \t id=%1 \t type=ellipse \t rect=(%2,%3,%4,%5) \t pos=(%6,%7)")
+                        line = QString("Geometry \t id=%1 \t type=ellipse \t rect=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9 \t %10")
                                    .arg(persistedId)
                                    .arg(r.x(), 0, 'f', 4).arg(r.y(), 0, 'f', 4)
                                    .arg(r.width(), 0, 'f', 4).arg(r.height(), 0, 'f', 4)
-                                   .arg(ellipseItem->pos().x(), 0, 'f', 4).arg(ellipseItem->pos().y(), 0, 'f', 4);
+                                   .arg(ellipseItem->pos().x(), 0, 'f', 4).arg(ellipseItem->pos().y(), 0, 'f', 4)
+                                   .arg(commonGraphicsState(ellipseItem))
+                                   .arg(penState(ellipseItem->pen()))
+                                   .arg(brushState(ellipseItem->brush()));
                         out << line << Qt::endl;
                     } else if (QGraphicsPolygonItem* polygonItem = dynamic_cast<QGraphicsPolygonItem*>(item)) {
                         QStringList points;
@@ -279,16 +424,23 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                         for (const QPointF& p : polygon) {
                             points << QString("%1,%2").arg(p.x(), 0, 'f', 4).arg(p.y(), 0, 'f', 4);
                         }
-                        line = QString("Geometry \t id=%1 \t type=polygon \t points=%2 \t pos=(%3,%4)")
+                        line = QString("Geometry \t id=%1 \t type=polygon \t points=%2 \t pos=(%3,%4) \t %5 \t %6 \t %7")
                                    .arg(persistedId)
                                    .arg(points.join(";"))
-                                   .arg(polygonItem->pos().x(), 0, 'f', 4).arg(polygonItem->pos().y(), 0, 'f', 4);
+                                   .arg(polygonItem->pos().x(), 0, 'f', 4).arg(polygonItem->pos().y(), 0, 'f', 4)
+                                   .arg(commonGraphicsState(polygonItem))
+                                   .arg(penState(polygonItem->pen()))
+                                   .arg(brushState(polygonItem->brush()));
                         out << line << Qt::endl;
                     } else if (QGraphicsTextItem* textItem = dynamic_cast<QGraphicsTextItem*>(item)) {
-                        line = QString("Text \t id=%1 \t value=%2 \t pos=(%3,%4)")
+                        line = QString("Text \t id=%1 \t value=%2 \t pos=(%3,%4) \t %5 \t textcolor=%6 \t font=%7 \t textwidth=%8")
                                    .arg(persistedId)
                                    .arg(encodeGuiText(textItem->toPlainText()))
-                                   .arg(textItem->pos().x(), 0, 'f', 4).arg(textItem->pos().y(), 0, 'f', 4);
+                                   .arg(textItem->pos().x(), 0, 'f', 4).arg(textItem->pos().y(), 0, 'f', 4)
+                                   .arg(commonGraphicsState(textItem))
+                                   .arg(textItem->defaultTextColor().name(QColor::HexArgb))
+                                   .arg(encodePersistedText(textItem->font().toString()))
+                                   .arg(textItem->textWidth(), 0, 'f', 4);
                         out << line << Qt::endl;
                     }
                 }
@@ -849,7 +1001,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
                 QRegularExpressionMatch idMatch = regexId.match(tokens[1]);
                 int persistedId = idMatch.hasMatch() ? idMatch.captured(1).toInt() : -1;
-                QRegularExpressionMatch posMatch = regexPos.match(tokens.last());
+                QRegularExpressionMatch posMatch = regexPos.match(rawLine);
                 QPointF itemPos(0.0, 0.0);
                 if (posMatch.hasMatch()) {
                     itemPos.setX(posMatch.captured(1).toDouble());
@@ -925,6 +1077,17 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 }
 
                 if (persistedId > 0 && loadedItem != nullptr) {
+                    applyCommonGraphicsState(rawLine, loadedItem);
+                    if (QGraphicsLineItem* lineItem = dynamic_cast<QGraphicsLineItem*>(loadedItem)) {
+                        QPen pen = lineItem->pen();
+                        if (decodePenState(rawLine, &pen)) {
+                            lineItem->setPen(pen);
+                        }
+                    } else if (QAbstractGraphicsShapeItem* shapeItem = dynamic_cast<QAbstractGraphicsShapeItem*>(loadedItem)) {
+                        applyShapeStyleState(rawLine, shapeItem);
+                    } else if (QGraphicsTextItem* textItem = dynamic_cast<QGraphicsTextItem*>(loadedItem)) {
+                        applyTextStyleState(rawLine, textItem);
+                    }
                     persistedItems.insert(persistedId, loadedItem);
                 }
             }

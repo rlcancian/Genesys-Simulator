@@ -3,13 +3,40 @@
 
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/ModelGraphicsScene.h"
+#include "graphicals/GraphicalComponentPort.h"
+#include "graphicals/GraphicalConnection.h"
+#include "graphicals/GraphicalDiagramConnection.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 
 #include <QGraphicsItem>
 #include <QDebug>
+#include <QSet>
 #include <QTimer>
+
+namespace {
+bool isSceneInfrastructureItem(QGraphicsItem* item) {
+    return dynamic_cast<GraphicalComponentPort*>(item) != nullptr
+        || dynamic_cast<GraphicalDiagramConnection*>(item) != nullptr
+        || dynamic_cast<GraphicalConnection*>(item) != nullptr;
+}
+
+QSet<QString> graphicallyRepresentedDataDefinitionNames(ModelGraphicsScene* scene) {
+    QSet<QString> names;
+    if (scene == nullptr || scene->getAllDataDefinitions() == nullptr) {
+        return names;
+    }
+
+    for (GraphicalModelDataDefinition* graphicalDataDefinition : *scene->getAllDataDefinitions()) {
+        if (graphicalDataDefinition == nullptr || graphicalDataDefinition->getDataDefinition() == nullptr) {
+            continue;
+        }
+        names.insert(QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName()));
+    }
+    return names;
+}
+} // namespace
 
 // Build the Phase 6 controller with narrow dependencies for property-editor orchestration.
 PropertyEditorController::PropertyEditorController(
@@ -80,12 +107,16 @@ void PropertyEditorController::sceneSelectionChanged() const {
     qInfo() << "[PropertyEditorController] sceneSelectionChanged selectedItems=" << selectedItems.size();
     if (selectedItems.size() == 1) {
         QGraphicsItem* item = selectedItems.at(0);
+        ModelGraphicsScene* scene = _graphicsView->getScene();
+        const QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
+
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(item);
         if (gmc != nullptr) {
             qInfo() << "[PropertyEditorController] sceneSelectionChanged binding single GraphicalModelComponent";
             _propertyBrowser->setActiveObject(
                 gmc,
                 gmc->getComponent(),
+                graphicalDataDefinitions,
                 _propertyGenesys,
                 _propertyList,
                 _propertyEditorUI,
@@ -100,10 +131,19 @@ void PropertyEditorController::sceneSelectionChanged() const {
             _propertyBrowser->setActiveObject(
                 gmdd,
                 gmdd->getDataDefinition(),
+                graphicalDataDefinitions,
                 _propertyGenesys,
                 _propertyList,
                 _propertyEditorUI,
                 _propertyBox);
+            return;
+        }
+
+        if (item != nullptr
+            && item->flags().testFlag(QGraphicsItem::ItemIsSelectable)
+            && !isSceneInfrastructureItem(item)) {
+            qInfo() << "[PropertyEditorController] sceneSelectionChanged binding single pure graphics item";
+            _propertyBrowser->setActiveGraphicsItem(item);
             return;
         }
     }

@@ -7,13 +7,17 @@
 #include <functional>
 
 #include <QObject>
+#include <QBrush>
+#include <QPen>
 #include <QPointer>
 #include <QMap>
 #include <QSet>
 #include <QStringList>
 #include <QContextMenuEvent>
+#include <QGraphicsItem>
 #include <QKeyEvent>
 #include <QMouseEvent>
+#include <QVariant>
 
 #include "qtpropertybrowser/qttreepropertybrowser.h"
 #include "qtpropertybrowser/qtvariantproperty.h"
@@ -38,22 +42,41 @@ public:
     void setActiveObject(
         QObject *obj,
         ModelDataDefinition* mdd = nullptr,
+        const QSet<QString>& graphicallyRepresentedModelObjects = {},
         PropertyEditorGenesys* peg = nullptr,
         std::map<SimulationControl*, DataComponentProperty*>* pl = nullptr,
         std::map<SimulationControl*, DataComponentEditor*>* peUI = nullptr,
         std::map<SimulationControl*, ComboBoxEnum*>* pb = nullptr
         );
+    void setActiveGraphicsItem(QGraphicsItem* item);
 
     void clearCurrentlyConnectedObject();
     void setModelChangedCallback(ModelChangedCallback callback);
     bool isCommitPipelineBusy() const;
 
 private:
+    enum class ActiveMode {
+        None,
+        KernelObject,
+        GraphicsItem
+    };
+
+    enum class BindingKind {
+        Kernel,
+        GraphicsVariant,
+        GraphicsEnum
+    };
+
     struct Binding {
+        BindingKind kind = BindingKind::Kernel;
         ModelDataDefinition* owner = nullptr;
         SimulationControl* control = nullptr;
         GenesysPropertyDescriptor descriptor;
         bool isObjectSelector = false;
+        QGraphicsItem* graphicsItem = nullptr;
+        bool graphicsRequiresCommit = false;
+        std::function<void(const QVariant&)> graphicsVariantSetter;
+        std::function<void(int)> graphicsEnumSetter;
     };
 
 private:
@@ -63,6 +86,7 @@ private:
     void _clearAll();
     void _rebuildProperties();
     void _populateKernelProperties(ModelDataDefinition* mdd);
+    void _populateGraphicsProperties(QGraphicsItem* item);
     void _appendDescriptorRecursively(
         QtProperty* parent,
         SimulationControl* control,
@@ -71,6 +95,27 @@ private:
         );
 
     QtProperty* _createLeafProperty(const GenesysPropertyDescriptor& desc);
+    QtProperty* _createGraphicalReferenceProperty(const GenesysPropertyDescriptor& desc);
+    bool _hasGraphicalRepresentation(const GenesysPropertyDescriptor& desc) const;
+    QtVariantProperty* _createGraphicsVariantProperty(
+        const QString& name,
+        int variantType,
+        const QVariant& value,
+        std::function<void(const QVariant&)> setter,
+        bool requiresCommit = false,
+        bool enabled = true
+        );
+    QtProperty* _createGraphicsEnumProperty(
+        const QString& name,
+        const QStringList& choices,
+        int value,
+        std::function<void(int)> setter,
+        bool enabled = true
+        );
+    void _appendCommonGraphicsProperties(QtProperty* group, QGraphicsItem* item);
+    void _appendPenProperties(QtProperty* group, const QPen& pen, std::function<void(const QPen&)> setter);
+    void _appendBrushProperties(QtProperty* group, const QBrush& brush, std::function<void(const QBrush&)> setter);
+    void _notifyGraphicsChangeApplied(QGraphicsItem* item);
     QVariant _toVariant(const GenesysPropertyDescriptor& desc) const;
     std::string _fromVariant(const GenesysPropertyDescriptor& desc, const QVariant& value) const;
     int _enumIndexFor(const GenesysPropertyDescriptor& desc) const;
@@ -110,7 +155,10 @@ private:
 private:
     // Track the selected graphical object safely in case Qt destroys it during callbacks.
     QPointer<QObject> _graphicalObject = nullptr;
+    QGraphicsItem* _graphicalItem = nullptr;
     ModelDataDefinition* _modelObject = nullptr;
+    ActiveMode _activeMode = ActiveMode::None;
+    QSet<QString> _graphicallyRepresentedModelObjects;
     PropertyEditorGenesys* _propertyEditor = nullptr;
 
     std::map<SimulationControl*, DataComponentProperty*>* _propertyList = nullptr;
@@ -135,6 +183,8 @@ private:
 private:
     bool _requiresCommitConfirmation(const Binding& binding) const;
     bool _applyVariantChange(QtProperty* property, const QVariant& value, bool committed);
+    bool _applyGraphicsVariantChange(QtProperty* property, const QVariant& value, bool committed);
+    bool _applyGraphicsEnumChange(QtProperty* property, int value);
 
 private slots:
     void valueChanged(QtProperty *property, const QVariant &value);
