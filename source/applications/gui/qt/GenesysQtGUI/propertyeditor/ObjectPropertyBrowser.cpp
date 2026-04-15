@@ -3,6 +3,10 @@
 #include "../animations/AnimationCounter.h"
 #include "../animations/AnimationTimer.h"
 #include "../animations/AnimationVariable.h"
+#include "../actions/DeleteUndoCommand.h"
+#include "../graphicals/GraphicalModelDataDefinition.h"
+#include "../graphicals/ModelGraphicsScene.h"
+#include "../services/GraphicalModelBuilder.h"
 
 #include <map>
 #include <set>
@@ -29,6 +33,12 @@
 #include <QMetaObject>
 #include <QLineEdit>
 #include <QAbstractSpinBox>
+#include <QUndoStack>
+
+#include "../../../../kernel/simulator/Model.h"
+#include "../../../../kernel/simulator/ModelDataManager.h"
+#include "../../../../kernel/simulator/ModelManager.h"
+#include "../../../../kernel/simulator/Simulator.h"
 
 namespace {
 class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
@@ -638,24 +648,34 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
     return property;
 }
 
-QtProperty* ObjectPropertyBrowser::_createGraphicalReferenceProperty(const GenesysPropertyDescriptor& desc) {
+QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const GenesysPropertyDescriptor& desc) {
     QtVariantProperty* property = _variantManager->addProperty(
         QVariant::String,
         QString::fromStdString(desc.displayName)
         );
-    QString value = QString::fromStdString(desc.currentValue);
-    if (value.trimmed().isEmpty()) {
-        value = "Edit this property by selecting the corresponding object in the model";
+
+    ModelDataDefinition* referencedDataDefinition = desc.control != nullptr
+                                                        ? desc.control->getReferencedModelDataDefinition()
+                                                        : nullptr;
+    const ModelObjectRelation relation = _relationForDataDefinition(referencedDataDefinition);
+    const bool objectExists = referencedDataDefinition != nullptr && relation.exists;
+    QString value;
+    if (objectExists) {
+        value = QString("%1 - use o menu de contexto para selecionar ou excluir")
+            .arg(QString::fromStdString(referencedDataDefinition->getName()));
     } else {
-        value = QString("%1 - Edit this object by selecting it in the model").arg(value);
+        value = QString("Use o menu de contexto para criar %1").arg(_modelObjectTypeName(desc));
     }
     property->setValue(value);
-    property->setEnabled(false);
+    property->setEnabled(true);
+    property->setToolTip("Use o menu de contexto desta propriedade para criar, selecionar ou excluir o objeto.");
+    property->setStatusTip("Propriedade de objeto do modelo");
 
     Binding binding;
     binding.owner = _modelObject;
     binding.control = desc.control;
     binding.descriptor = desc;
+    binding.isModelObjectAction = true;
     _bindings[property] = binding;
 
     return property;
@@ -666,7 +686,158 @@ bool ObjectPropertyBrowser::_hasGraphicalRepresentation(const GenesysPropertyDes
         return false;
     }
 
-    return _graphicallyRepresentedModelObjects.contains(QString::fromStdString(desc.currentValue));
+    if (_modelObject == nullptr) {
+        return false;
+    }
+
+    ModelDataDefinition* relatedDataDefinition = nullptr;
+    for (const auto& internalData : *_modelObject->getInternalData()) {
+        if (internalData.second != nullptr && internalData.second->getName() == desc.currentValue) {
+            relatedDataDefinition = internalData.second;
+            break;
+        }
+    }
+    if (relatedDataDefinition == nullptr) {
+        for (const auto& attachedData : *_modelObject->getAttachedData()) {
+            if (attachedData.second != nullptr && attachedData.second->getName() == desc.currentValue) {
+                relatedDataDefinition = attachedData.second;
+                break;
+            }
+        }
+    }
+    if (relatedDataDefinition == nullptr) {
+        return false;
+    }
+
+    return _graphicallyRepresentedModelObjects.contains(QString::fromStdString(relatedDataDefinition->getName()));
+}
+
+bool ObjectPropertyBrowser::_isModelObjectActionProperty(
+    const GenesysPropertyDescriptor& desc,
+    SimulationControl* control
+    ) const {
+    if (!desc.isModelDataDefinitionReference || control == nullptr || _modelObject == nullptr) {
+        return false;
+    }
+
+    ModelDataDefinition* referencedDataDefinition = control->getReferencedModelDataDefinition();
+    if (_relationForDataDefinition(referencedDataDefinition).exists) {
+        return true;
+    }
+
+    // Empty model-object references are action rows so users can create the missing child from the parent.
+    return desc.supportsObjectCreation && !control->hasObjectInstance();
+}
+
+ObjectPropertyBrowser::ModelObjectRelation ObjectPropertyBrowser::_relationForDataDefinition(
+    ModelDataDefinition* dataDefinition
+    ) const {
+    ModelObjectRelation relation;
+    if (_modelObject == nullptr || dataDefinition == nullptr) {
+        return relation;
+    }
+
+    for (const auto& internalData : *_modelObject->getInternalData()) {
+        if (internalData.second == dataDefinition) {
+            relation.exists = true;
+            relation.internal = true;
+            relation.key = internalData.first;
+            relation.dataDefinition = dataDefinition;
+            return relation;
+        }
+    }
+    for (const auto& attachedData : *_modelObject->getAttachedData()) {
+        if (attachedData.second == dataDefinition) {
+            relation.exists = true;
+            relation.internal = false;
+            relation.key = attachedData.first;
+            relation.dataDefinition = dataDefinition;
+            return relation;
+        }
+    }
+    return relation;
+}
+
+ModelDataDefinition* ObjectPropertyBrowser::_referencedModelDataDefinition(const Binding& binding) const {
+    if (binding.control != nullptr) {
+        ModelDataDefinition* referenced = binding.control->getReferencedModelDataDefinition();
+        if (referenced != nullptr) {
+            return referenced;
+        }
+    }
+
+    const QString currentName = QString::fromStdString(binding.descriptor.currentValue);
+    if (currentName.trimmed().isEmpty() || _modelObject == nullptr) {
+        return nullptr;
+    }
+
+    for (const auto& internalData : *_modelObject->getInternalData()) {
+        if (internalData.second != nullptr &&
+            QString::fromStdString(internalData.second->getName()) == currentName) {
+            return internalData.second;
+        }
+    }
+    for (const auto& attachedData : *_modelObject->getAttachedData()) {
+        if (attachedData.second != nullptr &&
+            QString::fromStdString(attachedData.second->getName()) == currentName) {
+            return attachedData.second;
+        }
+    }
+
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
+                    scene->getSimulator()->getModelManager() != nullptr)
+                       ? scene->getSimulator()->getModelManager()->current()
+                       : nullptr;
+    if (model == nullptr || model->getDataManager() == nullptr || binding.descriptor.technicalTypeName.empty()) {
+        return nullptr;
+    }
+    return model->getDataManager()->getDataDefinition(
+        binding.descriptor.technicalTypeName,
+        binding.descriptor.currentValue
+        );
+}
+
+QString ObjectPropertyBrowser::_modelObjectTypeName(const GenesysPropertyDescriptor& desc) const {
+    if (!desc.technicalTypeName.empty()) {
+        return QString::fromStdString(desc.technicalTypeName);
+    }
+    return QString::fromStdString(desc.displayName);
+}
+
+QString ObjectPropertyBrowser::_defaultModelObjectName(const GenesysPropertyDescriptor& desc) const {
+    const QString objectType = _modelObjectTypeName(desc);
+    const QString ownerName = _modelObject != nullptr
+                                  ? QString::fromStdString(_modelObject->getName())
+                                  : QStringLiteral("Object");
+    return QString("%1.%2").arg(ownerName, objectType);
+}
+
+bool ObjectPropertyBrowser::_isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const {
+    if (dataDefinition == nullptr || _graphicalItem == nullptr || _graphicalItem->scene() == nullptr) {
+        return false;
+    }
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene());
+    Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
+                    scene->getSimulator()->getModelManager() != nullptr)
+                       ? scene->getSimulator()->getModelManager()->current()
+                       : nullptr;
+    if (model == nullptr || model->getDataManager() == nullptr) {
+        return false;
+    }
+    List<ModelDataDefinition*>* dataList = model->getDataManager()->getDataDefinitionList(dataDefinition->getClassname());
+    return dataList != nullptr && dataList->find(dataDefinition) != dataList->list()->end();
+}
+
+void ObjectPropertyBrowser::_synchronizeGraphicalModelDataDefinitionsNow() const {
+    if (_graphicalItem == nullptr || _graphicalItem->scene() == nullptr) {
+        return;
+    }
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene());
+    if (scene == nullptr || scene->getSimulator() == nullptr) {
+        return;
+    }
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(scene->getSimulator(), scene);
 }
 
 QtVariantProperty* ObjectPropertyBrowser::_createGraphicsVariantProperty(
@@ -894,8 +1065,8 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
 
     GenesysPropertyDescriptor desc = GenesysPropertyIntrospection::describe(control);
 
-    if (_hasGraphicalRepresentation(desc)) {
-        QtProperty* reference = _createGraphicalReferenceProperty(desc);
+    if (_isModelObjectActionProperty(desc, control) || _hasGraphicalRepresentation(desc)) {
+        QtProperty* reference = _createModelObjectActionProperty(desc);
         if (reference != nullptr) {
             parent->addSubProperty(reference);
         }
@@ -1373,6 +1544,129 @@ bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
     return true;
 }
 
+bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property) {
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] createModelObjectForProperty aborted due to invalid binding context";
+        return false;
+    }
+
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        return false;
+    }
+
+    const Binding binding = it.value();
+    if (binding.control == nullptr || !binding.descriptor.supportsObjectCreation) {
+        return false;
+    }
+
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
+                    scene->getSimulator()->getModelManager() != nullptr)
+                       ? scene->getSimulator()->getModelManager()->current()
+                       : nullptr;
+    if (model == nullptr || model->getDataManager() == nullptr || _modelObject == nullptr) {
+        return false;
+    }
+
+    ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
+    bool created = referencedDataDefinition != nullptr;
+    if (referencedDataDefinition == nullptr) {
+        try {
+            created = binding.control->createObjectInstance(_defaultModelObjectName(binding.descriptor).toStdString());
+        } catch (...) {
+            created = false;
+        }
+        referencedDataDefinition = _referencedModelDataDefinition(binding);
+    }
+
+    if (!created || referencedDataDefinition == nullptr) {
+        return false;
+    }
+
+    if (!_isRegisteredModelDataDefinition(referencedDataDefinition)) {
+        model->getDataManager()->insert(referencedDataDefinition);
+    }
+
+    // Let the owner re-establish the semantic internal/attached relationship using its own kernel policy.
+    ModelDataDefinition::CreateInternalData(_modelObject);
+    _synchronizeGraphicalModelDataDefinitionsNow();
+    _notifyModelChangeApplied();
+    return true;
+}
+
+bool ObjectPropertyBrowser::_selectModelObjectForProperty(QtProperty* property) {
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] selectModelObjectForProperty aborted due to invalid binding context";
+        return false;
+    }
+
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        return false;
+    }
+
+    const Binding binding = it.value();
+    ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
+    if (referencedDataDefinition == nullptr || _graphicalItem == nullptr || _graphicalItem->scene() == nullptr) {
+        return false;
+    }
+
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene());
+    if (scene == nullptr) {
+        return false;
+    }
+    _synchronizeGraphicalModelDataDefinitionsNow();
+
+    GraphicalModelDataDefinition* graphicalDataDefinition =
+        scene->findGraphicalModelDataDefinition(referencedDataDefinition);
+    if (graphicalDataDefinition == nullptr) {
+        return false;
+    }
+
+    scene->clearSelection();
+    graphicalDataDefinition->setSelected(true);
+    graphicalDataDefinition->setFocus();
+    return true;
+}
+
+bool ObjectPropertyBrowser::_deleteModelObjectForProperty(QtProperty* property) {
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] deleteModelObjectForProperty aborted due to invalid binding context";
+        return false;
+    }
+
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        return false;
+    }
+
+    const Binding binding = it.value();
+    ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
+    if (referencedDataDefinition == nullptr || _graphicalItem == nullptr || _graphicalItem->scene() == nullptr) {
+        return false;
+    }
+
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem->scene());
+    if (scene == nullptr || scene->getUndoStack() == nullptr) {
+        return false;
+    }
+    _synchronizeGraphicalModelDataDefinitionsNow();
+
+    GraphicalModelDataDefinition* graphicalDataDefinition =
+        scene->findGraphicalModelDataDefinition(referencedDataDefinition);
+    if (graphicalDataDefinition == nullptr) {
+        return false;
+    }
+
+    QList<QGraphicsItem*> items;
+    items.append(graphicalDataDefinition);
+    QUndoCommand* deleteUndoCommand = new DeleteUndoCommand(items, scene);
+    scene->getUndoStack()->push(deleteUndoCommand);
+    _notifyModelChangeApplied();
+    return true;
+}
+
 
 bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) const {
     if (binding.kind == BindingKind::GraphicsVariant) {
@@ -1737,6 +2031,38 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
         QtTreePropertyBrowser::contextMenuEvent(event);
         return;
     }
+
+    if (binding.isModelObjectAction) {
+        QMenu menu(this);
+        QAction* createAction = nullptr;
+        QAction* selectAction = nullptr;
+        QAction* deleteAction = nullptr;
+
+        ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
+        const ModelObjectRelation relation = _relationForDataDefinition(referencedDataDefinition);
+        const bool objectExists = referencedDataDefinition != nullptr
+                && relation.exists
+                && _isRegisteredModelDataDefinition(referencedDataDefinition);
+
+        if (objectExists) {
+            const QString objectName = QString::fromStdString(referencedDataDefinition->getName());
+            selectAction = menu.addAction(QString("Selecionar %1 e editá-lo").arg(objectName));
+            deleteAction = menu.addAction(QString("Excluir %1").arg(objectName));
+        } else {
+            createAction = menu.addAction(QString("Criar %1").arg(_modelObjectTypeName(binding.descriptor)));
+        }
+
+        QAction* chosen = menu.exec(event->globalPos());
+        if (chosen == createAction && createAction != nullptr) {
+            _createModelObjectForProperty(item->property());
+        } else if (chosen == selectAction && selectAction != nullptr) {
+            _selectModelObjectForProperty(item->property());
+        } else if (chosen == deleteAction && deleteAction != nullptr) {
+            _deleteModelObjectForProperty(item->property());
+        }
+        return;
+    }
+
     QMenu menu(this);
     QAction* editAction = nullptr;
     QAction* createAction = nullptr;

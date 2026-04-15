@@ -157,6 +157,7 @@ public: // editing graphic model
     // Return model component items by value to avoid heap ownership transfer.
     QList<GraphicalModelComponent*> graphicalModelComponentItems();
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
+    GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
 public:
     struct GRID {
         unsigned int interval;

@@ -73,10 +73,18 @@ private:
         SimulationControl* control = nullptr;
         GenesysPropertyDescriptor descriptor;
         bool isObjectSelector = false;
+        bool isModelObjectAction = false;
         QGraphicsItem* graphicsItem = nullptr;
         bool graphicsRequiresCommit = false;
         std::function<void(const QVariant&)> graphicsVariantSetter;
         std::function<void(int)> graphicsEnumSetter;
+    };
+
+    struct ModelObjectRelation {
+        bool exists = false;
+        bool internal = false;
+        std::string key;
+        ModelDataDefinition* dataDefinition = nullptr;
     };
 
 private:
@@ -95,8 +103,18 @@ private:
         );
 
     QtProperty* _createLeafProperty(const GenesysPropertyDescriptor& desc);
-    QtProperty* _createGraphicalReferenceProperty(const GenesysPropertyDescriptor& desc);
+    QtProperty* _createModelObjectActionProperty(const GenesysPropertyDescriptor& desc);
     bool _hasGraphicalRepresentation(const GenesysPropertyDescriptor& desc) const;
+    bool _isModelObjectActionProperty(const GenesysPropertyDescriptor& desc, SimulationControl* control) const;
+    ModelObjectRelation _relationForDataDefinition(ModelDataDefinition* dataDefinition) const;
+    ModelDataDefinition* _referencedModelDataDefinition(const Binding& binding) const;
+    QString _modelObjectTypeName(const GenesysPropertyDescriptor& desc) const;
+    QString _defaultModelObjectName(const GenesysPropertyDescriptor& desc) const;
+    bool _isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const;
+    bool _createModelObjectForProperty(QtProperty* property);
+    bool _selectModelObjectForProperty(QtProperty* property);
+    bool _deleteModelObjectForProperty(QtProperty* property);
+    void _synchronizeGraphicalModelDataDefinitionsNow() const;
     QtVariantProperty* _createGraphicsVariantProperty(
         const QString& name,
         int variantType,

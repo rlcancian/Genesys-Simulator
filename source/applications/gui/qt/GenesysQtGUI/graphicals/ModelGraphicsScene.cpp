@@ -3468,6 +3468,19 @@ GraphicalModelComponent* ModelGraphicsScene::findGraphicalModelComponent(Util::i
     return nullptr;
 }
 
+GraphicalModelDataDefinition* ModelGraphicsScene::findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition) {
+    if (dataDefinition == nullptr) {
+        return nullptr;
+    }
+
+    for (GraphicalModelDataDefinition* item : _allGraphicalModelDataDefinitions) {
+        if (item != nullptr && item->getDataDefinition() == dataDefinition) {
+            return item;
+        }
+    }
+    return nullptr;
+}
+
 void ModelGraphicsScene::clearAnimationsValues() {
     for (AnimationCounter* counter : *_animationsCounter) {
         counter->setValue(0.0);
