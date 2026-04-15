@@ -18,9 +18,12 @@ GraphicalComponentPort::GraphicalComponentPort(GraphicalModelComponent* componen
 		_height *= 1.15;
 	}
 	//setPos(0,0);
-    setFlag(QGraphicsItem::ItemIsSelectable, false);
-    setFlag(QGraphicsItem::ItemIsFocusable, false);
-    setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
+	// Stage 1 of port repositioning: allow the user to select and move ports locally around their component.
+	setFlag(QGraphicsItem::ItemIsSelectable, true);
+	setFlag(QGraphicsItem::ItemIsMovable, true);
+	setFlag(QGraphicsItem::ItemIsFocusable, true);
+	setFlag(QGraphicsItem::ItemSendsGeometryChanges, true);
+	setFlag(QGraphicsItem::ItemSendsScenePositionChanges, true);
 	setAcceptHoverEvents(true);
 	setAcceptTouchEvents(true);
 	setActive(true);
@@ -53,6 +56,23 @@ void GraphicalComponentPort::mouseMoveEvent(QGraphicsSceneMouseEvent *mouseEvent
  */
 
 QVariant GraphicalComponentPort::itemChange(QGraphicsItem::GraphicsItemChange change, const QVariant &value) {
+	if (change == QGraphicsItem::ItemPositionChange && _componentGraph != nullptr) {
+		// Stage 2 of port repositioning: keep at least a small part of the port inside the component bounds.
+		static constexpr qreal minimumVisibleOverlap = 1.0;
+		QPointF requestedPosition = value.toPointF();
+		QRectF componentRect = _componentGraph->boundingRect();
+		QRectF portRect = boundingRect();
+
+		const qreal minX = componentRect.left() - portRect.width() + minimumVisibleOverlap;
+		const qreal maxX = componentRect.right() - minimumVisibleOverlap;
+		const qreal minY = componentRect.top() - portRect.height() + minimumVisibleOverlap;
+		const qreal maxY = componentRect.bottom() - minimumVisibleOverlap;
+
+		requestedPosition.setX(qBound(minX, requestedPosition.x(), maxX));
+		requestedPosition.setY(qBound(minY, requestedPosition.y(), maxY));
+		return requestedPosition;
+	}
+
 	QVariant res = QGraphicsObject::itemChange(change, value);
 	// Avoid connection geometry updates while scene membership or parentage is changing.
 	if (change == QGraphicsItem::ItemSceneChange

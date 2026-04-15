@@ -2668,7 +2668,11 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) {
             GraphicalComponentPort* port = dynamic_cast<GraphicalComponentPort*>(item);
             GraphicalConnection* conn = dynamic_cast<GraphicalConnection*>(item);
 
-            if ((!conn) && (!port) && item) {
+            if (port) {
+                // Stage 1 of port repositioning: remember the local position so port moves can be undone.
+                insertOldPositionItem(port, port->pos());
+            }
+            else if ((!conn) && item) {
                 insertOldPositionItem(item, item->pos());
             }
         }
@@ -2750,7 +2754,17 @@ void ModelGraphicsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
                 newPositions.append(group->pos());
             }
         }
-        else if (component == nullptr && group == nullptr && port == nullptr && connection == nullptr) {
+        else if (port) {
+            myQPointF = port->pos();
+            QPointF oldPos = _oldPositionsItems[port];
+
+            if (!(qAbs(oldPos.x() - myQPointF.x()) <= 1.5 && qAbs(oldPos.y() - myQPointF.y()) <= 1.5)) {
+                items.append(port);
+                oldPositions.append(oldPos);
+                newPositions.append(myQPointF);
+            }
+        }
+        else if (component == nullptr && group == nullptr && connection == nullptr) {
             QRectF rectScenePost = item->sceneBoundingRect();
 
             qreal rectX = rectScenePost.bottomLeft().x();

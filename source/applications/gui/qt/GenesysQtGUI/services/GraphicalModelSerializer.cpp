@@ -22,6 +22,7 @@
 #include <QGraphicsPolygonItem>
 #include <QGraphicsRectItem>
 #include <QGraphicsTextItem>
+#include <QHash>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QRegularExpression>
@@ -31,6 +32,71 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
+
+namespace {
+
+QString encodePortPositions(GraphicalModelComponent* component) {
+    QStringList positions;
+    auto appendPorts = [&positions](const QList<GraphicalComponentPort*>& ports, const QString& prefix) {
+        for (GraphicalComponentPort* port : ports) {
+            if (port == nullptr) {
+                continue;
+            }
+            positions << QString("%1%2=(%3,%4)")
+                             .arg(prefix)
+                             .arg(port->portNum())
+                             .arg(port->pos().x(), 0, 'f', 4)
+                             .arg(port->pos().y(), 0, 'f', 4);
+        }
+    };
+
+    if (component != nullptr) {
+        appendPorts(component->getGraphicalInputPorts(), "in");
+        appendPorts(component->getGraphicalOutputPorts(), "out");
+    }
+    return positions.join(";");
+}
+
+QHash<QString, QPointF> decodePortPositions(const QString& token) {
+    QHash<QString, QPointF> positions;
+    QRegularExpression portsTokenRegex("\\s*ports=(.*)");
+    QRegularExpressionMatch portsTokenMatch = portsTokenRegex.match(token);
+    if (!portsTokenMatch.hasMatch()) {
+        return positions;
+    }
+
+    QRegularExpression portRegex("(in|out)(\\d+)=\\(([-+]?\\d+\\.?\\d*),([-+]?\\d+\\.?\\d*)\\)");
+    QRegularExpressionMatchIterator matches = portRegex.globalMatch(portsTokenMatch.captured(1));
+    while (matches.hasNext()) {
+        QRegularExpressionMatch match = matches.next();
+        const QString key = match.captured(1) + match.captured(2);
+        positions.insert(key, QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
+    }
+    return positions;
+}
+
+void restorePortPositions(GraphicalModelComponent* component, const QHash<QString, QPointF>& positions) {
+    if (component == nullptr || positions.isEmpty()) {
+        return;
+    }
+
+    auto restorePorts = [&positions](const QList<GraphicalComponentPort*>& ports, const QString& prefix) {
+        for (GraphicalComponentPort* port : ports) {
+            if (port == nullptr) {
+                continue;
+            }
+            const QString key = prefix + QString::number(port->portNum());
+            if (positions.contains(key)) {
+                port->setPos(positions.value(key));
+            }
+        }
+    };
+
+    restorePorts(component->getGraphicalInputPorts(), "in");
+    restorePorts(component->getGraphicalOutputPorts(), "out");
+}
+
+}
 
 // Build the serializer with explicit, narrow dependencies from MainWindow.
 GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
@@ -138,6 +204,7 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     persistedItemIds.insert(gmc, persistedId);
                     line = QString::fromStdString(std::to_string(gmc->getComponent()->getId()) + "\t" + gmc->getComponent()->getClassname() + "\t" + gmc->getComponent()->getName() + "\t" + "color=" + gmc->getColor().name().toStdString() + "\t" + "position=(" + std::to_string(gmc->scenePos().x()) + "," + std::to_string(gmc->scenePos().y() + gmc->getHeight()/2) + ")");
                     line += "\titemid=" + QString::number(persistedId);
+                    line += "\tports=" + encodePortPositions(gmc);
                     out << line << Qt::endl;
                 }
             }
@@ -483,6 +550,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             Util::identification componentId = 0;
             QPointF position;
             int itemId = -1;
+            QHash<QString, QPointF> portPositions;
         };
 
         struct PersistedDataDefinitionState {
@@ -582,6 +650,12 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     state.itemId = itemIdMatch.captured(1).toInt();
                 }
             }
+            for (int i = 6; i < split.size(); ++i) {
+                if (split[i].trimmed().startsWith("ports=")) {
+                    state.portPositions = decodePortPositions(split[i]);
+                    break;
+                }
+            }
             persistedComponentsById.insert(state.componentId, state);
         }
 
@@ -595,6 +669,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             QPointF componentPos(state.position.x(), state.position.y() - existingComponent->getHeight() / 2.0);
             existingComponent->setPos(componentPos);
             existingComponent->setOldPosition(componentPos);
+            restorePortPositions(existingComponent, state.portPositions);
             if (state.itemId > 0) {
                 persistedItems.insert(state.itemId, existingComponent);
             }
