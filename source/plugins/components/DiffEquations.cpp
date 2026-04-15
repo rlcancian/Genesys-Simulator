@@ -278,11 +278,15 @@ void DiffEquations::_initBetweenReplications() {
 
 
 void DiffEquations::_createInternalAndAttachedData() {
-	if (_cppCompiler == nullptr) {
+	if (_cppCompiler == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
 		_cppCompiler->setSourceFilename(getName() + ".cpp");
 		_cppCompiler->setOutputFilename(getName() + ".so");
+	}
+	if (_cppCompiler != nullptr) {
 		_internalDataInsert("CppCompiler", _cppCompiler);
+	} else {
+		_internalDataRemove("CppCompiler");
 	}
 }
 

@@ -439,30 +439,32 @@ void Resource::_onReplicationEnd(SimulationEvent* se) {
 }
 
 void Resource::_createInternalAndAttachedData() {
-    if (_reportStatistics && _cstatTimeSeized == nullptr) {
+    if (_reportStatistics && _cstatTimeSeized == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
         _cstatProportionSeized = new StatisticsCollector(_parentModel, getName() + "." + "ProportionSeized", this);
-        _internalDataInsert("ProportionSeized", _cstatProportionSeized);
         _cstatCapacityUtilization = new StatisticsCollector(_parentModel, getName() + "." + "CapacityUtilization", this);
-        _internalDataInsert("CapacityUtilization", _cstatCapacityUtilization);
         _cstatTimeSeized = new StatisticsCollector(_parentModel, getName() + "." + "TimeSeized", this);
-        _internalDataInsert("TimeSeized", _cstatTimeSeized);
         _cstatTimeFailed = new StatisticsCollector(_parentModel, getName() + "." + "TimeFailed", this);
-        _internalDataInsert("TimeFailed", _cstatTimeFailed);
         _counterTotalTimeSeized = new Counter(_parentModel, getName() + "." + "TotalTimeSeized", this);
-        _internalDataInsert("TotalTimeSeized", _counterTotalTimeSeized);
         _counterTotalTimeFailed = new Counter(_parentModel, getName() + "." + "TotalTimeFailed", this);
-        _internalDataInsert("TotalTimeFailed", _counterTotalTimeFailed);
         _counterNumSeizes = new Counter(_parentModel, getName() + "." + "Seizes", this);
-        _internalDataInsert("Seizes", _counterNumSeizes);
         _counterNumReleases = new Counter(_parentModel, getName() + "." + "Releases", this);
-        _internalDataInsert("Releases", _counterNumReleases);
         _counterTotalCostBusy = new Counter(_parentModel, getName() + "." + "CostBusy", this);
-        _internalDataInsert("CostBusy", _counterTotalCostBusy);
         _counterTotalCostIdle = new Counter(_parentModel, getName() + "." + "CostIdle", this);
-        _internalDataInsert("CostIdle", _counterTotalCostIdle);
         _counterTotalCostPerUse = new Counter(_parentModel, getName() + "." + "CostPerUse", this);
-        _internalDataInsert("CostPerUse", _counterTotalCostPerUse);
         _parentModel->getOnEventManager()->addOnReplicationEndHandler(this, &Resource::_onReplicationEnd);
+    }
+    if (_reportStatistics) {
+        if (_cstatProportionSeized != nullptr) _internalDataInsert("ProportionSeized", _cstatProportionSeized);
+        if (_cstatCapacityUtilization != nullptr) _internalDataInsert("CapacityUtilization", _cstatCapacityUtilization);
+        if (_cstatTimeSeized != nullptr) _internalDataInsert("TimeSeized", _cstatTimeSeized);
+        if (_cstatTimeFailed != nullptr) _internalDataInsert("TimeFailed", _cstatTimeFailed);
+        if (_counterTotalTimeSeized != nullptr) _internalDataInsert("TotalTimeSeized", _counterTotalTimeSeized);
+        if (_counterTotalTimeFailed != nullptr) _internalDataInsert("TotalTimeFailed", _counterTotalTimeFailed);
+        if (_counterNumSeizes != nullptr) _internalDataInsert("Seizes", _counterNumSeizes);
+        if (_counterNumReleases != nullptr) _internalDataInsert("Releases", _counterNumReleases);
+        if (_counterTotalCostBusy != nullptr) _internalDataInsert("CostBusy", _counterTotalCostBusy);
+        if (_counterTotalCostIdle != nullptr) _internalDataInsert("CostIdle", _counterTotalCostIdle);
+        if (_counterTotalCostPerUse != nullptr) _internalDataInsert("CostPerUse", _counterTotalCostPerUse);
     } else if (!_reportStatistics && _cstatTimeSeized != nullptr) {
         _internalDataClear();
         _cstatTimeSeized = nullptr;

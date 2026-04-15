@@ -71,7 +71,7 @@ template <> struct TraitsKernel<Parser_if> {
 template <> struct TraitsKernel<Model> {
 	typedef StatisticsDefaultImpl1 StatisticsCollector_StatisticsImplementation;
 	typedef CollectorDefaultImpl1 StatisticsCollector_CollectorImplementation;
-	static constexpr bool automaticallyCreatesModelData = true;
+	static constexpr bool automaticallyCreatesModelData = false;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L5_event;
 };
 

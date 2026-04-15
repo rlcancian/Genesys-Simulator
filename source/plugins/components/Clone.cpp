@@ -126,9 +126,11 @@ void Clone::_initBetweenReplications() {
 
 void Clone::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
-		if (_counter == nullptr) {
+		if (_counter == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			//PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
 			_counter = new Counter(_parentModel, getName() + "." + "CountClones", this);//pm->newInstance<Counter>(_parentModel, getName() + "." + "CountClones", this);
+		}
+		if (_counter != nullptr) {
 			_internalDataInsert("CountClones", _counter);
 		}
 	} else {

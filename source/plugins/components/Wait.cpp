@@ -214,18 +214,26 @@ void Wait::_createInternalAndAttachedData() {
 
 	// internal
 	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-	if (_queue == nullptr) {
+	if (_queue == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		_queue = pm->newInstance<Queue>(_parentModel, getName() + ".Queue");
 	}
-	_internalDataInsert("Queue", _queue);
+	if (_queue != nullptr) {
+		_internalDataInsert("Queue", _queue);
+	} else {
+		_internalDataRemove("Queue");
+	}
 	//attached
 	if (previouslyAttachedSignalData != nullptr && (_waitType != Wait::WaitType::WaitForSignal || previouslyAttachedSignalData != _signalData)) {
 		previouslyAttachedSignalData->removeSignalDataEventHandler(this);
 	}
 
 	if (_waitType == Wait::WaitType::WaitForSignal) {
-		if (_signalData == nullptr) {
+		if (_signalData == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_signalData = pm->newInstance<SignalData>(_parentModel);
+		}
+		if (_signalData == nullptr) {
+			_attachedDataRemove("SignalData");
+			return;
 		}
 		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Wait>(&Wait::_handlerForSignalDataEvent, this);
 		_signalData->addSignalDataEventHandler(handler, this);

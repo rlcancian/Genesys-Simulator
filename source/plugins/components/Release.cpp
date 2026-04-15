@@ -264,13 +264,17 @@ void Release::_createInternalAndAttachedData() {
 		if (seizable->getSeizableType() == SeizableItem::SeizableType::RESOURCE) {
 			Resource* resource = seizable->getResource();
 			if (resource == nullptr) {
-				resource = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Resource>(_parentModel);
+				_attachedDataRemove("SeizableItem" + Util::StrIndex(i));
+				i++;
+				continue;
 			}
 			_attachedDataInsert("SeizableItem" + Util::StrIndex(i), resource);
 		} else if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
 			Set* set = seizable->getSet();
 			if (set == nullptr) {
-				set = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Set>(_parentModel);
+				_attachedDataRemove("SeizableItem" + Util::StrIndex(i));
+				i++;
+				continue;
 			}
 			_attachedDataInsert("SeizableItem" + Util::StrIndex(i), set);
 		}

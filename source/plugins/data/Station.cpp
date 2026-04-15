@@ -144,11 +144,17 @@ void Station::_createInternalAndAttachedData() {
 	_attachedAttributesInsert({"Entity.Station", currentArrivalAttributeName});
 
 	if (_reportStatistics) {
-		if (_cstatNumberInStation == nullptr) {
+		if (_cstatNumberInStation == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_cstatNumberInStation = new StatisticsCollector(_parentModel, getName() + "." + "NumberInStation", this);
 			_cstatTimeInStation = new StatisticsCollector(_parentModel, getName() + "." + "TimeInStation", this);
+		}
+		if (_cstatNumberInStation != nullptr) {
 			_internalDataInsert("NumberInStation", _cstatNumberInStation);
+		}
+		if (_cstatTimeInStation != nullptr) {
 			_internalDataInsert("TimeInStation", _cstatTimeInStation);
+		}
+		if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
 			//
 			// include StatisticsCollector needed in EntityType
 			std::list<ModelDataDefinition*>* enttypes = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();

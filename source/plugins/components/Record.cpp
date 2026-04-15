@@ -153,9 +153,11 @@ bool Record::_check(std::string& errorMessage) {
 }
 
 void Record::_createInternalAndAttachedData() {
-	if (_reportStatistics && _cstatExpression == nullptr) {
+	if (_reportStatistics && _cstatExpression == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		_cstatExpression = new StatisticsCollector(_parentModel, getName() + "." + _expressionName, this);
 		//_parentModel->getDataDefinition()->insert(_cstatExpression);
+	}
+	if (_reportStatistics && _cstatExpression != nullptr) {
 		_internalDataInsert(_expressionName, _cstatExpression);
 	} else if (!_reportStatistics && _cstatExpression != nullptr) {
 		this->_internalDataClear();

@@ -22,9 +22,9 @@
 
 class SeizableItem {
 public:
-
 	enum class SelectionRule : int {
-		CYCLICAL = 0, RANDOM = 1, SPECIFICMEMBER = 2, LARGESTREMAININGCAPACITY = 3, SMALLESTNUMBERBUSY = 4, PREFEREDORDER = 5, num_elements = 6
+		CYCLICAL = 0, RANDOM = 1, SPECIFICMEMBER = 2, LARGESTREMAININGCAPACITY = 3, SMALLESTNUMBERBUSY = 4,
+		PREFEREDORDER = 5, num_elements = 6
 	};
 
 	enum class SeizableType : int {
@@ -35,14 +35,20 @@ public:
 	static std::string convertEnumToStr(SeizableType type);
 
 public:
-	SeizableItem(ModelDataDefinition* resourceOrSet, std::string quantityExpression = "1", SeizableItem::SelectionRule selectionRule = SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY, std::string saveAttribute = "", std::string index = "0");
-	SeizableItem(Model* model, std::string resourceName, std::string quantityExpression = "1", SeizableItem::SelectionRule selectionRule = SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY, std::string saveAttribute = "", std::string index = "0");
+	SeizableItem(ModelDataDefinition* resourceOrSet, std::string quantityExpression = "1",
+	             SeizableItem::SelectionRule selectionRule = SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY,
+	             std::string saveAttribute = "", std::string index = "0");
+	SeizableItem(Model* model, std::string resourceName, std::string quantityExpression = "1",
+	             SeizableItem::SelectionRule selectionRule = SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY,
+	             std::string saveAttribute = "", std::string index = "0");
 	SeizableItem(SeizableItem* original);
+
 public:
-	bool loadInstance(PersistenceRecord *fields, unsigned int parentIndex);
-	void saveInstance(PersistenceRecord *fields, unsigned int parentIndex, bool saveDefault);
-	bool loadInstance(PersistenceRecord *fields);
-	void saveInstance(PersistenceRecord *fields, bool saveDefaults);
+	bool loadInstance(PersistenceRecord* fields, unsigned int parentIndex);
+	void saveInstance(PersistenceRecord* fields, unsigned int parentIndex, bool saveDefault);
+	bool loadInstance(PersistenceRecord* fields);
+	void saveInstance(PersistenceRecord* fields, bool saveDefaults);
+
 public:
 	std::string show();
 	void setIndex(std::string index);
@@ -54,7 +60,7 @@ public:
 	void setQuantityExpression(std::string quantityExpression);
 	std::string getQuantityExpression() const;
 	std::string getResourceName() const;
-    std::string getName() const;
+	std::string getName() const;
 	void setResource(Resource* resource);
 	Resource* getResource() const;
 	void setSet(Set* set);
@@ -69,13 +75,13 @@ public:
 	unsigned int getLastPreferedOrder() const;
 	//void setComponentManager(ComponentManager* _componentManager);
 	List<PropertyBase*>* getSimulationControls() const;
-    List<PropertyBase*>* getProperties() const;
+	List<PropertyBase*>* getProperties() const;
 	void _addSimulationControl(PropertyBase* control);
-    void _addProperty(PropertyBase* property);
+	void _addProperty(PropertyBase* property);
 
-	std::string getTypeDC() {return _typeDC;};
+	std::string getTypeDC() { return _typeDC; };
+
 private:
-
 	const struct DEFAULT_VALUES {
 		const std::string quantityExpression = "1";
 		const SeizableItem::SeizableType seizableType = SeizableItem::SeizableType::RESOURCE;
@@ -88,12 +94,13 @@ private:
 	SelectionRule _selectionRule = DEFAULT.selectionRule;
 	std::string _saveAttribute = DEFAULT.saveAttribute;
 	std::string _index = DEFAULT.index;
-	ModelDataDefinition* _resourceOrSet;
+	ModelDataDefinition* _resourceOrSet = nullptr;
 	std::string _seizableName;
 	std::string _quantityExpression;
 	unsigned int _lastMemberSeized = 0;
 	unsigned int _lastPreferedOrder = 0;
 	std::string _typeDC = Util::TypeOf<Resource>();
+
 private:
 	ModelDataManager* _modeldataManager;
 	List<PropertyBase*>* _simulationControls = new List<PropertyBase*>();

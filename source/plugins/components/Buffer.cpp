@@ -235,13 +235,17 @@ void Buffer::_createInternalAndAttachedData() {
 			_signalWithRegisteredHandler->removeSignalDataEventHandler(this);
 			_signalWithRegisteredHandler = nullptr;
 		}
-		if (_attachedSignal  == nullptr) {
+		if (_attachedSignal  == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_attachedSignal = pm->newInstance<SignalData>(_parentModel, getName() + "." + "SignalData");
 			if (_attachedSignal == nullptr) {
 				traceError("Buffer \"" + getName() + "\" failed to create SignalData while configured with AdvanceOn=Signal");
 				_attachedDataRemove("SignalData");
 				return;
 			}
+		}
+		if (_attachedSignal == nullptr) {
+			_attachedDataRemove("SignalData");
+			return;
 		}
 		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Buffer>(&Buffer::_handlerForSignalDataEvent, this);
 		if (!_attachedSignal->hasSignalDataEventHandler(this)) {

@@ -338,23 +338,43 @@ void Batch::_createInternalAndAttachedData() {
 	// Keep attached-data keys stable across rechecks and remove stale aliases.
 	_attachedAttributesInsert({"Entity.Group"});
 	_attachedDataRemove("GroupdEntityType");
-	_attachedDataInsert("GroupedEntityType", _groupedEntityType);
-	if (_queue == nullptr) {
+	if (_groupedEntityType != nullptr) {
+		_attachedDataInsert("GroupedEntityType", _groupedEntityType);
+	} else {
+		_attachedDataRemove("GroupedEntityType");
+	}
+	if ((_queue == nullptr || _entityGroup == nullptr) && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
-		_queue = plugins->newInstance<Queue>(_parentModel, this->getName() + ".Queue");
 		if (_queue == nullptr) {
+			_queue = plugins->newInstance<Queue>(_parentModel, this->getName() + ".Queue");
+		}
+		if (_queue == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			// Fallback for runtime contexts where plugin lookup is unavailable but Queue is linked in-process.
 			_queue = new Queue(_parentModel, this->getName() + ".Queue");
 		}
-		ModelDataDefinition::CreateInternalData(_queue);
-		_internalDataInsert("EntityQueue", _queue);
-		_entityGroup = plugins->newInstance<EntityGroup>(_parentModel, this->getName() + ".EntiyGroup");
+		if (_queue != nullptr) {
+			ModelDataDefinition::CreateInternalData(_queue);
+		}
 		if (_entityGroup == nullptr) {
+			_entityGroup = plugins->newInstance<EntityGroup>(_parentModel, this->getName() + ".EntiyGroup");
+		}
+		if (_entityGroup == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			// Fallback for runtime contexts where plugin lookup is unavailable but EntityGroup is linked in-process.
 			_entityGroup = new EntityGroup(_parentModel, this->getName() + ".EntiyGroup");
 		}
-		ModelDataDefinition::CreateInternalData(_entityGroup);
+		if (_entityGroup != nullptr) {
+			ModelDataDefinition::CreateInternalData(_entityGroup);
+		}
+	}
+	if (_queue != nullptr) {
+		_internalDataInsert("EntityQueue", _queue);
+	} else {
+		_internalDataRemove("EntityQueue");
+	}
+	if (_entityGroup != nullptr) {
 		_internalDataInsert("EntityGroup", _entityGroup);
+	} else {
+		_internalDataRemove("EntityGroup");
 	}
 	if (_attributeName != "") {
 		ModelDataManager* elements = _parentModel->getDataManager();

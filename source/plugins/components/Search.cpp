@@ -320,13 +320,17 @@ void Search::_createInternalAndAttachedData() {
 	}
 	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_searchInType == Search::SearchInType::QUEUE) {
-		if (_searchIn == nullptr) {
+		if (_searchIn == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_searchIn = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
 			if (_searchIn == nullptr) {
 				_searchIn = new Queue(_parentModel, getName() + ".Queue");
 			}
 		}
-		_attachedDataInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
+		if (_searchIn != nullptr) {
+			_attachedDataInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
+		} else {
+			_attachedDataRemove("Queue");
+		}
 	}
 	if (_searchInType == Search::SearchInType::ENTITYGROUP) {
 		// Not supported in this implementation batch. Explicitly validated in _check().

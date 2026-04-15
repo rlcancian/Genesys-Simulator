@@ -275,15 +275,23 @@ void DefaultNode::_initBetweenReplications() {
 
 /*
 void DefaultNode::_createInternalAndAttachedData() {
-	if (_internalDataDefinition == nullptr) {
+	if (_internalDataDefinition == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
 		_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
-		_internalDataInsert("JustaDummy", _internalDataDefinition);
 	}
-	if (_attachedDataDefinition == nullptr) {
+	if (_internalDataDefinition != nullptr) {
+		_internalDataInsert("JustaDummy", _internalDataDefinition);
+	} else {
+		_internalDataRemove("JustaDummy");
+	}
+	if (_attachedDataDefinition == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
 		_attachedDataDefinition = pm->newInstance<DummyElement>(_parentModel);
+	}
+	if (_attachedDataDefinition != nullptr) {
 		_attachedDataInsert("JustaDummy", _attachedDataDefinition);
+	} else {
+		_attachedDataRemove("JustaDummy");
 	}
 }
 */

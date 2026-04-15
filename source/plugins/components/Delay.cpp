@@ -192,8 +192,10 @@ void Delay::_createInternalAndAttachedData() {
 	_reconcileAllocationAttachedAttributes();
 
 	if (_reportStatistics) {
-		if (_cstatWaitTime == nullptr) {
+		if (_cstatWaitTime == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
+		}
+		if (_cstatWaitTime != nullptr) {
 			_internalDataInsert("DelayTime", _cstatWaitTime);
 			// include StatisticsCollector needed in EntityType
 			//ModelDataManager* elements = _parentModel->getDataManager();

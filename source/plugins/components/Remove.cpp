@@ -230,13 +230,17 @@ bool Remove::_check(std::string& errorMessage) {
 void Remove::_createInternalAndAttachedData() {
 	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_removeFromType == Remove::RemoveFromType::QUEUE) {
-		if (_removeFrom == nullptr) {
+		if (_removeFrom == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_removeFrom = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
 			if (_removeFrom == nullptr) {
 				_removeFrom = new Queue(_parentModel, getName() + ".Queue");
 			}
 		}
-		_attachedDataInsert("Queue", _removeFrom);
+		if (_removeFrom != nullptr) {
+			_attachedDataInsert("Queue", _removeFrom);
+		} else {
+			_attachedDataRemove("Queue");
+		}
 	}
 	if (_removeFromType == Remove::RemoveFromType::ENTITYGROUP) {
 		// Not supported in this implementation batch. Explicitly validated in _check().

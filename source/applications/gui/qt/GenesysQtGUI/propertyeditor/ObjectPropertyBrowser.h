@@ -74,6 +74,7 @@ private:
         GenesysPropertyDescriptor descriptor;
         bool isObjectSelector = false;
         bool isModelObjectAction = false;
+        bool isObjectListAction = false;
         QGraphicsItem* graphicsItem = nullptr;
         bool graphicsRequiresCommit = false;
         std::function<void(const QVariant&)> graphicsVariantSetter;
@@ -103,7 +104,14 @@ private:
         );
 
     QtProperty* _createLeafProperty(const GenesysPropertyDescriptor& desc);
+    QtProperty* _createObjectListProperty(
+        SimulationControl* control,
+        const GenesysPropertyDescriptor& desc,
+        std::set<const SimulationControl*>& recursionPath,
+        int depth
+        );
     QtProperty* _createModelObjectActionProperty(const GenesysPropertyDescriptor& desc);
+    bool _isObjectListProperty(const GenesysPropertyDescriptor& desc) const;
     bool _hasGraphicalRepresentation(const GenesysPropertyDescriptor& desc) const;
     bool _isModelObjectActionProperty(const GenesysPropertyDescriptor& desc, SimulationControl* control) const;
     ModelObjectRelation _relationForDataDefinition(ModelDataDefinition* dataDefinition) const;
@@ -111,9 +119,14 @@ private:
     QString _modelObjectTypeName(const GenesysPropertyDescriptor& desc) const;
     QString _defaultModelObjectName(const GenesysPropertyDescriptor& desc) const;
     bool _isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const;
+    bool _createNewListElementForProperty(QtProperty* property);
     bool _createModelObjectForProperty(QtProperty* property);
+    bool _setModelObjectReferenceForProperty(QtProperty* property, const QString& objectName);
     bool _selectModelObjectForProperty(QtProperty* property);
+    bool _removeModelObjectReferenceForProperty(QtProperty* property);
     bool _deleteModelObjectForProperty(QtProperty* property);
+    bool _applyObjectListSelection(QtProperty* property, int value);
+    bool _applyModelObjectReferenceSelection(QtProperty* property, int value);
     void _synchronizeGraphicalModelDataDefinitionsNow() const;
     QtVariantProperty* _createGraphicsVariantProperty(
         const QString& name,

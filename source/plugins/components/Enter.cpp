@@ -114,18 +114,24 @@ PluginInformation* Enter::GetPluginInformation() {
 
 void Enter::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
-		if (_numberIn == nullptr) {
+		if (_numberIn == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+		}
+		if (_numberIn != nullptr) {
 			_internalDataInsert("CountNumberIn", _numberIn);
 		}
 	} else
 		if (_numberIn != nullptr) {
 			_internalDataClear();
 		}
-	if (_station == nullptr) {
+	if (_station == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
 	}
-	_attachedDataInsert("Station", _station);
+	if (_station != nullptr) {
+		_attachedDataInsert("Station", _station);
+	} else {
+		_attachedDataRemove("Station");
+	}
 }
 
 bool Enter::_check(std::string& errorMessage) {

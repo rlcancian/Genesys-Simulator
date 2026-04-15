@@ -274,8 +274,10 @@ PluginInformation* Route::GetPluginInformation() {
 
 void Route::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
-		if (_numberIn == nullptr) {
+		if (_numberIn == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+		}
+		if (_numberIn != nullptr) {
 			_internalDataInsert("CountNumberIn", _numberIn);
 		}
 	} else
@@ -283,14 +285,24 @@ void Route::_createInternalAndAttachedData() {
 			_internalDataClear();
 		}
 	_attachedAttributesInsert({"Entity.TotalTransferTime", "Entity.Station", "Entity.Sequence", "Entity.SequenceStep"});
-	if (_station == nullptr && this->_routeDestinationType == Route::DestinationType::Station && this->_stationExpression == "") {
+	if (_station == nullptr && this->_routeDestinationType == Route::DestinationType::Station && this->_stationExpression == "" &&
+		_parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
 	}
-	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label) {
+	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label &&
+		_parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Label>(_parentModel);
 	}
-	_attachedDataInsert("Station", _station);
-	_attachedDataInsert("Label", _label);
+	if (_station != nullptr) {
+		_attachedDataInsert("Station", _station);
+	} else {
+		_attachedDataRemove("Station");
+	}
+	if (_label != nullptr) {
+		_attachedDataInsert("Label", _label);
+	} else {
+		_attachedDataRemove("Label");
+	}
 }
 
 bool Route::_check(std::string& errorMessage) {

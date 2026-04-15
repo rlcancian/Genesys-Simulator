@@ -215,10 +215,14 @@ bool Queue::_check(std::string& errorMessage) {
 
 void Queue::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
-		if (_cstatNumberInQueue == nullptr) {
+		if (_cstatNumberInQueue == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_cstatNumberInQueue = new StatisticsCollector(_parentModel, getName() + "." + "NumberInQueue", this);
 			_cstatTimeInQueue = new StatisticsCollector(_parentModel, getName() + "." + "TimeInQueue", this);
+		}
+		if (_cstatNumberInQueue != nullptr) {
 			_internalDataInsert("NumberInQueue", _cstatNumberInQueue);
+		}
+		if (_cstatTimeInQueue != nullptr) {
 			_internalDataInsert("TimeInQueue", _cstatTimeInQueue);
 		}
 	} else if (_cstatNumberInQueue != nullptr) {

@@ -582,6 +582,10 @@ public:
 		if (!_setter) {
 			throw std::logic_error("SimulationControlGenericClass setter is not defined");
 		}
+        if (remove) {
+            _setter(nullptr);
+            return;
+        }
 		bool exists = false;
         // value.pop_back();
 		T newVal;

@@ -123,12 +123,19 @@ void SourceModelComponent::_createInternalAndAttachedData() {
 		for (ModelDataDefinition* elem : *_parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list()) {
 			if (elem->getName() == defaulName) { // there is an entitytype wich the same default name.
 				_entityType = static_cast<EntityType*>(elem);
-				return;
+				break;
 			}
 		}
-		_entityType = new EntityType(_parentModel, DEFAULT.entityTypename);
+		if (_entityType == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+			_entityType = new EntityType(_parentModel, DEFAULT.entityTypename);
+		}
 	}
-	_attachedDataInsert("EntityType", _entityType);
+	if (_entityType != nullptr) {
+		_attachedDataInsert("EntityType", _entityType);
+	}
+	else {
+		_attachedDataRemove("EntityType");
+	}
 }
 
 void SourceModelComponent::setFirstCreation(double _firstCreation) {

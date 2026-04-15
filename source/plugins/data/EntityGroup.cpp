@@ -128,8 +128,10 @@ ModelDataDefinition * EntityGroup::LoadInstance(Model* model, PersistenceRecord 
 void EntityGroup::_createInternalAndAttachedData() {
 	this->_attachedAttributesInsert({"Entity.Group"});
 	if (_reportStatistics) {
-		if (_cstatNumberInGroup == nullptr) {
+		if (_cstatNumberInGroup == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 			_cstatNumberInGroup = new StatisticsCollector(_parentModel, "NumberInGroup", this);
+		}
+		if (_cstatNumberInGroup != nullptr) {
 			_internalDataInsert("NumberInGroup", _cstatNumberInGroup);
 		}
 	} else if (_cstatNumberInGroup != nullptr) {
