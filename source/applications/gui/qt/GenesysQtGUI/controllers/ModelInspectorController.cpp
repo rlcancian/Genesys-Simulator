@@ -136,6 +136,13 @@ void ModelInspectorController::applyDataDefinitionNameChange(QTreeWidgetItem* it
 
 // Preserve tree-to-scene selection synchronization and viewport centering behavior.
 void ModelInspectorController::syncSelectedComponentTreeItemToScene() const {
+    if (_componentsTree == nullptr || _graphicsView == nullptr) {
+        return;
+    }
+    if (!_componentsTree->hasFocus() && !_componentsTree->viewport()->hasFocus()) {
+        return;
+    }
+
     QList<QTreeWidgetItem*> selectedItems = _componentsTree->selectedItems();
     if (selectedItems.isEmpty()) {
         return;

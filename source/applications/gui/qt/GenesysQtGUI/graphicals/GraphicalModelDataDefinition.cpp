@@ -248,7 +248,15 @@ void GraphicalModelDataDefinition::paint(QPainter *painter, const QStyleOptionGr
 }
 
 ModelDataDefinition* GraphicalModelDataDefinition::getDataDefinition() const {
-	return _element;
+    return _element;
+}
+
+bool GraphicalModelDataDefinition::isEditableInPropertyEditor() const {
+    return _editableInPropertyEditor;
+}
+
+void GraphicalModelDataDefinition::setEditableInPropertyEditor(bool editable) {
+    _editableInPropertyEditor = editable;
 }
 
 QPointF GraphicalModelDataDefinition::getOldPosition() const {

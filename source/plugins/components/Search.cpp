@@ -124,9 +124,14 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	SimulationControlGeneric<std::string>* propSearchInName = new SimulationControlGeneric<std::string>(
 									std::bind(&Search::getSearchInName, this), std::bind(&Search::setSearchInName, this, std::placeholders::_1),
 									Util::TypeOf<Search>(), getName(), "SearchInName", "");
-	// SimulationControlGeneric<ModelDataDefinition*>* propSearchIn = new SimulationControlGeneric<ModelDataDefinition*>(
-	// 								std::bind(&Search::getSearchIn, this), std::bind(&Search::setSearchIn, this, std::placeholders::_1),
-	// 								Util::TypeOf<Search>(), getName(), "SearchIn", "");
+	SimulationControlGenericClass<ModelDataDefinition*, Model*, Queue>* propSearchIn = new SimulationControlGenericClass<ModelDataDefinition*, Model*, Queue>(
+									_parentModel,
+									std::bind(&Search::getSearchIn, this),
+									[this](ModelDataDefinition* searchIn) {
+										this->setSearchInType(Search::SearchInType::QUEUE);
+										this->setSearchIn(searchIn);
+									},
+									Util::TypeOf<Search>(), getName(), "SearchIn", "");
     SimulationControlGenericEnum<Search::SearchInType, Search>* propSearchInType = new SimulationControlGenericEnum<Search::SearchInType, Search>(
                                     std::bind(&Search::getSearchInType, this), std::bind(&Search::setSearchInType, this, std::placeholders::_1),
                                     Util::TypeOf<Search>(), getName(), "SearchInType", "");
@@ -137,7 +142,7 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_parentModel->getControls()->insert(propCondition);
 	_parentModel->getControls()->insert(propSaveAttribute);
 	_parentModel->getControls()->insert(propSearchInName);
-	// _parentModel->getControls()->insert(propSearchIn);
+	_parentModel->getControls()->insert(propSearchIn);
     _parentModel->getControls()->insert(propSearchInType);
 
 	// setting properties
@@ -146,7 +151,7 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_addProperty(propCondition);
 	_addProperty(propSaveAttribute);
 	_addProperty(propSearchInName);
-	// _addProperty(propSearchIn);
+	_addProperty(propSearchIn);
     _addProperty(propSearchInType);
 }
 
@@ -326,7 +331,11 @@ void Search::_createInternalAndAttachedData() {
 				_searchIn = new Queue(_parentModel, getName() + ".Queue");
 			}
 		}
-		_attachedDataInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
+		if (_searchIn != nullptr) {
+			_attachedDataInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
+		} else {
+			_attachedDataRemove("Queue");
+		}
 	}
 	if (_searchInType == Search::SearchInType::ENTITYGROUP) {
 		// Not supported in this implementation batch. Explicitly validated in _check().

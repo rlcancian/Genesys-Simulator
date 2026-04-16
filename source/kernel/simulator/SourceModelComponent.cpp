@@ -40,6 +40,11 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 				std::bind(&SourceModelComponent::getTimeUnit, this),
 				std::bind(&SourceModelComponent::setTimeUnit, this, std::placeholders::_1),
 				className, name, "TimeUnit", "The time unit of time between arrivals");
+	SimulationControlGenericClass<EntityType*, Model*, EntityType>* propEntityType = new SimulationControlGenericClass<EntityType*, Model*, EntityType>(
+				_parentModel,
+				std::bind(&SourceModelComponent::getEntityType, this),
+				std::bind(&SourceModelComponent::setEntityType, this, std::placeholders::_1),
+				className, name, "EntityType", "The entity type created by this source component");
 
 
 	_parentModel->getControls()->insert(propFirstCreation);
@@ -47,6 +52,7 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 	// _parentModel->getControls()->insert(propMaxCreation);
 	_parentModel->getControls()->insert(propTimeBetweenCreations);
 	_parentModel->getControls()->insert(propTimeUnit);
+	_parentModel->getControls()->insert(propEntityType);
 
 	// setting properties
 	_addProperty(propFirstCreation);
@@ -54,6 +60,7 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 	// _addProperty(propMaxCreation);
 	_addProperty(propTimeBetweenCreations);
 	_addProperty(propTimeUnit);
+	_addProperty(propEntityType);
 }
 
 std::string SourceModelComponent::show() {
@@ -123,12 +130,19 @@ void SourceModelComponent::_createInternalAndAttachedData() {
 		for (ModelDataDefinition* elem : *_parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list()) {
 			if (elem->getName() == defaulName) { // there is an entitytype wich the same default name.
 				_entityType = static_cast<EntityType*>(elem);
-				return;
+				break;
 			}
 		}
-		_entityType = new EntityType(_parentModel, DEFAULT.entityTypename);
+		if (_entityType == nullptr) {
+			_entityType = new EntityType(_parentModel, DEFAULT.entityTypename);
+		}
 	}
-	_attachedDataInsert("EntityType", _entityType);
+	if (_entityType != nullptr) {
+		_attachedDataInsert("EntityType", _entityType);
+	}
+	else {
+		_attachedDataRemove("EntityType");
+	}
 }
 
 void SourceModelComponent::setFirstCreation(double _firstCreation) {

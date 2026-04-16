@@ -15,12 +15,11 @@ namespace Ui {
 	class DialogPluginManager;
 }
 
-class DialogPluginManager : public QDialog
-{
+class DialogPluginManager : public QDialog {
 	Q_OBJECT
 
 public:
-	explicit DialogPluginManager(QWidget *parent = nullptr);
+	explicit DialogPluginManager(QWidget* parent = nullptr);
 	~DialogPluginManager();
 	void setSimulator(Simulator* simulator);
 	void setPluginCatalogRefreshCallback(std::function<void()> refreshCallback);
@@ -49,7 +48,7 @@ private:
 	QString _formatFields(const PluginInformation* info) const;
 	void _showOperationResult(const QString& title, const QString& message) const;
 
-	Ui::DialogPluginManager *ui;
+	Ui::DialogPluginManager* ui;
 	Simulator* _simulator = nullptr;
 	std::function<void()> _refreshPluginCatalogCallback;
 };

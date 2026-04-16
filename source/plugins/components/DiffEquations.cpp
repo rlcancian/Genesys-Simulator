@@ -282,7 +282,11 @@ void DiffEquations::_createInternalAndAttachedData() {
 		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
 		_cppCompiler->setSourceFilename(getName() + ".cpp");
 		_cppCompiler->setOutputFilename(getName() + ".so");
+	}
+	if (_cppCompiler != nullptr) {
 		_internalDataInsert("CppCompiler", _cppCompiler);
+	} else {
+		_internalDataRemove("CppCompiler");
 	}
 }
 

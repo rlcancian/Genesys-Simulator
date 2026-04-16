@@ -37,7 +37,6 @@ ModelDataManager::~ModelDataManager() {
 bool ModelDataManager::insert(ModelDataDefinition* anElement) {
 	std::string datadefinitionTypename = anElement->getClassname();
 	bool result = insert(datadefinitionTypename, anElement);
-	//if (result && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
 	//	ModelDataDefinition::CreateInternalData(anElement);
 	//}
 	return result;

@@ -37,6 +37,22 @@ SceneToolController::SceneToolController(ModelGraphicsView* graphicsView,
       _firstClickShowConnection(firstClickShowConnection) {
 }
 
+void SceneToolController::activateAnimationDrawingTool(QAction* action, void (ModelGraphicsScene::*drawingFunction)()) {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene == nullptr || action == nullptr || drawingFunction == nullptr) {
+        return;
+    }
+
+    if (!_checkSelectedDrawIcons() && action->isChecked()) {
+        _graphicsView->setCursor(Qt::CrossCursor);
+        scene->setAction(action);
+        (scene->*drawingFunction)();
+    }
+    else {
+        _unselectDrawIcons();
+    }
+}
+
 // Preserve deterministic action-to-scene grid synchronization.
 void SceneToolController::onActionShowGridTriggered() {
     ModelGraphicsScene* scene = _currentScene();
@@ -199,53 +215,53 @@ void SceneToolController::onActionDrawPoligonTriggered() {
 
 // Preserve simulated-time animation tool activation behavior.
 void SceneToolController::onActionAnimateSimulatedTimeTriggered() {
-    ModelGraphicsScene* scene = _currentScene();
-    if (scene == nullptr) {
-        return;
-    }
-
-    if (!_checkSelectedDrawIcons() && _ui->actionAnimateSimulatedTime->isChecked()) {
-        _graphicsView->setCursor(Qt::CrossCursor);
-        scene->setAction(_ui->actionAnimateSimulatedTime);
-        scene->drawingTimer();
-    }
-    else {
-        _unselectDrawIcons();
-    }
+    activateAnimationDrawingTool(_ui->actionAnimateSimulatedTime, &ModelGraphicsScene::drawingTimer);
 }
 
 // Preserve variable animation tool activation behavior.
 void SceneToolController::onActionAnimateVariableTriggered() {
-    ModelGraphicsScene* scene = _currentScene();
-    if (scene == nullptr) {
-        return;
-    }
-
-    if (!_checkSelectedDrawIcons() && _ui->actionAnimateVariable->isChecked()) {
-        _graphicsView->setCursor(Qt::CrossCursor);
-        scene->setAction(_ui->actionAnimateVariable);
-        scene->drawingVariable();
-    }
-    else {
-        _unselectDrawIcons();
-    }
+    activateAnimationDrawingTool(_ui->actionAnimateVariable, &ModelGraphicsScene::drawingVariable);
 }
 
 // Preserve counter animation tool activation behavior.
 void SceneToolController::onActionAnimateCounterTriggered() {
-    ModelGraphicsScene* scene = _currentScene();
-    if (scene == nullptr) {
-        return;
-    }
+    activateAnimationDrawingTool(_ui->actionAnimateCounter, &ModelGraphicsScene::drawingCounter);
+}
 
-    if (!_checkSelectedDrawIcons() && _ui->actionAnimateCounter->isChecked()) {
-        _graphicsView->setCursor(Qt::CrossCursor);
-        scene->setAction(_ui->actionAnimateCounter);
-        scene->drawingCounter();
-    }
-    else {
-        _unselectDrawIcons();
-    }
+void SceneToolController::onActionAnimateAttributeTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateAttribute, &ModelGraphicsScene::drawingAttribute);
+}
+
+void SceneToolController::onActionAnimateEntityTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateEntity, &ModelGraphicsScene::drawingEntity);
+}
+
+void SceneToolController::onActionAnimateEventTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateEvent, &ModelGraphicsScene::drawingEvent);
+}
+
+void SceneToolController::onActionAnimateExpressionTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateExpression, &ModelGraphicsScene::drawingExpression);
+}
+
+void SceneToolController::onActionAnimatePlotTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimatePlot, &ModelGraphicsScene::drawingPlot);
+}
+
+void SceneToolController::onActionAnimateQueueTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateQueue, &ModelGraphicsScene::drawingQueue);
+}
+
+void SceneToolController::onActionAnimateResourceTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateResource, &ModelGraphicsScene::drawingResource);
+}
+
+void SceneToolController::onActionAnimateStationTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateStation, &ModelGraphicsScene::drawingStation);
+}
+
+void SceneToolController::onActionAnimateStatisticsTriggered() {
+    activateAnimationDrawingTool(_ui->actionAnimateStatistics, &ModelGraphicsScene::drawingStatistics);
 }
 
 // Preserve connect-tool activation through the existing graphics-view flow.
@@ -332,31 +348,6 @@ void SceneToolController::onHorizontalSliderAnimationSpeedValueChanged(int value
     AnimationTransition::setTimeExecution(newValue);
 }
 
-// Preserve diagram visibility logic and effective QAction re-synchronization.
-void SceneToolController::onActionDiagramsTriggered() {
-    ModelGraphicsScene* scene = _currentScene();
-    if (scene == nullptr) {
-        return;
-    }
-
-    if (_ui->actionDiagrams->isChecked()) {
-        if (!scene->existDiagram()) {
-            scene->createDiagrams();
-        }
-        scene->showDiagrams();
-    }
-    else {
-        if (scene->existDiagram()) {
-            scene->hideDiagrams();
-        }
-    }
-
-    const bool diagramsVisible = scene->existDiagram() && scene->visibleDiagram();
-    if (_ui->actionDiagrams->isChecked() != diagramsVisible) {
-        _ui->actionDiagrams->setChecked(diagramsVisible);
-    }
-}
-
 // Preserve select-all semantics while ignoring non-operable internal infrastructure items.
 void SceneToolController::onActionSelectAllTriggered() {
     ModelGraphicsScene* scene = _currentScene();
@@ -373,6 +364,11 @@ void SceneToolController::onActionSelectAllTriggered() {
 // Preserve action-checkbox synchronization for internals image visibility.
 void SceneToolController::onActionShowInternalElementsTriggered() {
     const bool checked = _ui->actionShowInternalElements->isChecked();
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowInternalDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
     if (_ui->checkBox_ShowInternals->isChecked() != checked) {
         _ui->checkBox_ShowInternals->setChecked(checked);
     }
@@ -384,6 +380,11 @@ void SceneToolController::onActionShowInternalElementsTriggered() {
 // Preserve action-checkbox synchronization for attached-elements image visibility.
 void SceneToolController::onActionShowAttachedElementsTriggered() {
     const bool checked = _ui->actionShowAttachedElements->isChecked();
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowAttachedDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
     if (_ui->checkBox_ShowElements->isChecked() != checked) {
         _ui->checkBox_ShowElements->setChecked(checked);
     }
@@ -394,13 +395,25 @@ void SceneToolController::onActionShowAttachedElementsTriggered() {
 
 // Preserve checkbox-to-action synchronization for attached-elements visibility.
 void SceneToolController::onCheckBoxShowElementsStateChanged(int arg1) {
-    _ui->actionShowAttachedElements->setChecked(arg1 == Qt::Checked);
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowAttachedElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowAttachedDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
     _createModelImage();
 }
 
 // Preserve checkbox-to-action synchronization for internals visibility.
 void SceneToolController::onCheckBoxShowInternalsStateChanged(int arg1) {
-    _ui->actionShowInternalElements->setChecked(arg1 == Qt::Checked);
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowInternalElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowInternalDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
     _createModelImage();
 }
 

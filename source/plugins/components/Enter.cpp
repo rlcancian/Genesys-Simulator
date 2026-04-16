@@ -116,6 +116,8 @@ void Enter::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
 		if (_numberIn == nullptr) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+		}
+		if (_numberIn != nullptr) {
 			_internalDataInsert("CountNumberIn", _numberIn);
 		}
 	} else
@@ -125,7 +127,11 @@ void Enter::_createInternalAndAttachedData() {
 	if (_station == nullptr) {
 		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
 	}
-	_attachedDataInsert("Station", _station);
+	if (_station != nullptr) {
+		_attachedDataInsert("Station", _station);
+	} else {
+		_attachedDataRemove("Station");
+	}
 }
 
 bool Enter::_check(std::string& errorMessage) {

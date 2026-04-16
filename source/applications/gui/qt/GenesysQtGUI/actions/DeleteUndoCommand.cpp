@@ -3,14 +3,24 @@
 #include "graphicals/GraphicalModelDataDefinition.h"
 
 DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphicsScene *scene, QUndoCommand *parent)
-    : QUndoCommand(parent), _myComponentItems(new QList<ComponentItem>()), _myConnectionItems(new QList<GraphicalConnection *>()), _myDrawingItems(new QList<DrawingItem>()), _myGroupItems(new QList<GroupItem>()), _myDataDefinitionItems(new QList<DataDefinitionItem>()), _myDataDefinitions(new QList<ModelDataDefinition *>()), _myGraphicsScene(scene) {
+    : QUndoCommand(parent), _myComponentItems(new QList<ComponentItem>()), _myConnectionItems(new QList<GraphicalConnection *>()), _myDrawingItems(new QList<DrawingItem>()), _myGroupItems(new QList<GroupItem>()), _myDataDefinitionItems(new QList<DataDefinitionItem>()), _myDataDefinitionRelationItems(new QList<DataDefinitionRelationItem>()), _myDataDefinitions(new QList<ModelDataDefinition *>()), _myGraphicsScene(scene) {
 
     // filtra cada tipo de item possível em sua respectiva lista
     for (QGraphicsItem *item : items) {
-        // Keep data definitions managed by model reconstruction instead of direct delete actions.
         const bool isDataDefinition = dynamic_cast<GraphicalModelDataDefinition *>(item) != nullptr;
         const bool isComponent = dynamic_cast<GraphicalModelComponent *>(item) != nullptr;
         if (isDataDefinition && !isComponent) {
+            GraphicalModelDataDefinition *dataDefinitionItem = dynamic_cast<GraphicalModelDataDefinition *>(item);
+            if (dataDefinitionItem != nullptr && dataDefinitionItem->getDataDefinition() != nullptr) {
+                DataDefinitionItem capturedItem;
+                capturedItem.graphicalDataDefinition = dataDefinitionItem;
+                capturedItem.initialPosition = dataDefinitionItem->pos();
+                capturedItem.initiallySelected = dataDefinitionItem->isSelected();
+                _myDataDefinitionItems->append(capturedItem);
+                if (!_myDataDefinitions->contains(dataDefinitionItem->getDataDefinition())) {
+                    _myDataDefinitions->append(dataDefinitionItem->getDataDefinition());
+                }
+            }
             continue;
         }
         if (GraphicalModelComponent *component = isComponent ? dynamic_cast<GraphicalModelComponent *>(item) : nullptr) {
@@ -81,6 +91,7 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
     }
 
     captureDataDefinitionsRemovedWithSelectedItems();
+    captureDataDefinitionRelations();
     setText(QObject::tr("Delete"));
 }
 
@@ -90,6 +101,7 @@ DeleteUndoCommand::~DeleteUndoCommand() {
     delete _myDrawingItems;
     delete _myGroupItems;
     delete _myDataDefinitionItems;
+    delete _myDataDefinitionRelationItems;
     delete _myDataDefinitions;
 }
 
@@ -213,6 +225,7 @@ void DeleteUndoCommand::undo() {
     }
 
     restoreDataDefinitionsToModel();
+    restoreDataDefinitionRelations();
     restoreDataDefinitionItems();
 
     GraphicalModelEvent::EventType eventType = GraphicalModelEvent::EventType::CREATE;
@@ -229,6 +242,7 @@ void DeleteUndoCommand::redo() {
     // remove tudo que é gráfico
 
     detachDataDefinitionItems();
+    removeDataDefinitionRelations();
     removeDataDefinitionsFromModel();
 
     // remove as conexões selecionadas individualmente
@@ -374,6 +388,85 @@ void DeleteUndoCommand::captureDataDefinitionsRemovedWithSelectedItems() {
         dataDefinitionItem.initialPosition = graphicalDataDefinition->pos();
         dataDefinitionItem.initiallySelected = graphicalDataDefinition->isSelected();
         _myDataDefinitionItems->append(dataDefinitionItem);
+    }
+}
+
+void DeleteUndoCommand::captureDataDefinitionRelations() {
+    if (_myGraphicsScene == nullptr || _myGraphicsScene->getSimulator() == nullptr ||
+        _myGraphicsScene->getSimulator()->getModelManager() == nullptr ||
+        _myGraphicsScene->getSimulator()->getModelManager()->current() == nullptr) {
+        return;
+    }
+
+    Model *model = _myGraphicsScene->getSimulator()->getModelManager()->current();
+    auto captureOwner = [this](ModelDataDefinition *owner) {
+        if (owner == nullptr) {
+            return;
+        }
+        for (const auto &internalData : *owner->getInternalData()) {
+            if (internalData.second == nullptr || !_myDataDefinitions->contains(internalData.second)) {
+                continue;
+            }
+            DataDefinitionRelationItem relation;
+            relation.owner = owner;
+            relation.dataDefinition = internalData.second;
+            relation.key = internalData.first;
+            relation.internal = true;
+            _myDataDefinitionRelationItems->append(relation);
+        }
+        for (const auto &attachedData : *owner->getAttachedData()) {
+            if (attachedData.second == nullptr || !_myDataDefinitions->contains(attachedData.second)) {
+                continue;
+            }
+            DataDefinitionRelationItem relation;
+            relation.owner = owner;
+            relation.dataDefinition = attachedData.second;
+            relation.key = attachedData.first;
+            relation.internal = false;
+            _myDataDefinitionRelationItems->append(relation);
+        }
+    };
+
+    for (GraphicalModelComponent *component : *_myGraphicsScene->getAllComponents()) {
+        if (component != nullptr) {
+            captureOwner(component->getComponent());
+        }
+    }
+
+    for (const std::string &dataType : model->getDataManager()->getDataDefinitionClassnames()) {
+        List<ModelDataDefinition *> *dataList = model->getDataManager()->getDataDefinitionList(dataType);
+        if (dataList == nullptr) {
+            continue;
+        }
+        for (ModelDataDefinition *dataDefinition : *dataList->list()) {
+            captureOwner(dataDefinition);
+        }
+    }
+}
+
+void DeleteUndoCommand::removeDataDefinitionRelations() {
+    for (const DataDefinitionRelationItem &relation : *_myDataDefinitionRelationItems) {
+        if (relation.owner == nullptr) {
+            continue;
+        }
+        if (relation.internal) {
+            relation.owner->getInternalData()->erase(relation.key);
+        } else {
+            relation.owner->getAttachedData()->erase(relation.key);
+        }
+    }
+}
+
+void DeleteUndoCommand::restoreDataDefinitionRelations() {
+    for (const DataDefinitionRelationItem &relation : *_myDataDefinitionRelationItems) {
+        if (relation.owner == nullptr || relation.dataDefinition == nullptr) {
+            continue;
+        }
+        if (relation.internal) {
+            (*relation.owner->getInternalData())[relation.key] = relation.dataDefinition;
+        } else {
+            (*relation.owner->getAttachedData())[relation.key] = relation.dataDefinition;
+        }
     }
 }
 

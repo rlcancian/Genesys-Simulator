@@ -52,6 +52,7 @@
 #include "animations/AnimationVariable.h"
 #include "animations/AnimationCounter.h"
 #include "animations/AnimationTimer.h"
+#include "animations/AnimationPlaceholder.h"
 #include "../../../../kernel/simulator/Counter.h"
 #include "../../../../kernel/simulator/PropertyGenesys.h"
 #include "../../../../plugins/data/Variable.h"
@@ -99,7 +100,9 @@ public:
     virtual ~ModelGraphicsScene();
 public: // editing graphic model
     enum DrawingMode{
-        NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED, COUNTER, VARIABLE, TIMER
+        NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED,
+        COUNTER, VARIABLE, TIMER,
+        ATTRIBUTE, ENTITY, EVENT, EXPRESSION, PLOT, QUEUE_PLACEHOLDER, RESOURCE, STATION, STATISTICS
     };
     GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false, GraphicalModelComponent* autoConnectSource = nullptr);
     GraphicalConnection* addGraphicalConnection(GraphicalComponentPort* sourcePort, GraphicalComponentPort* destinationPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, bool notify = false);
@@ -157,6 +160,7 @@ public: // editing graphic model
     // Return model component items by value to avoid heap ownership transfer.
     QList<GraphicalModelComponent*> graphicalModelComponentItems();
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
+    GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
 public:
     struct GRID {
         unsigned int interval;
@@ -214,6 +218,7 @@ public:
     QList<AnimationCounter *> *getAnimationsCounter();
     QList<AnimationVariable *> *getAnimationsVariable();
     QList<AnimationTimer *> *getAnimationsTimer();
+    QList<AnimationPlaceholder *> *getAnimationsPlaceholder();
     QMap<Event *, QList<AnimationTransition *> *> *getAnimationPaused();
     bool checkIgnoreEvent();
     void clearAnimations();
@@ -221,11 +226,21 @@ public:
     void clearAnimationsCounter();
     void clearAnimationsVariable();
     void clearAnimationsTimer();
+    void clearAnimationsPlaceholder();
     void clearAnimationsQueue();
     QList<QString> *getImagesAnimation();
     void drawingCounter();
     void drawingVariable();
     void drawingTimer();
+    void drawingAttribute();
+    void drawingEntity();
+    void drawingEvent();
+    void drawingExpression();
+    void drawingPlot();
+    void drawingQueue();
+    void drawingResource();
+    void drawingStation();
+    void drawingStatistics();
     void clearAnimationsValues();
     void setCounters();
     void setVariables();
@@ -237,6 +252,10 @@ public:
     void requestGraphicalDataDefinitionsSync();
     void scheduleGraphicalDataDefinitionsSync();
     bool isGraphicalDataDefinitionsSyncInProgress() const;
+    void setShowInternalDataDefinitions(bool show);
+    bool showInternalDataDefinitions() const;
+    void setShowAttachedDataDefinitions(bool show);
+    bool showAttachedDataDefinitions() const;
     void setConnectionGeometryUpdatesBlocked(bool blocked);
     bool areConnectionGeometryUpdatesBlocked() const;
 
@@ -319,6 +338,9 @@ private:
     bool _persistedGuiRestoreInProgress = false;
     unsigned short _connectingStep = 0; //0:nothing, 1:waiting click on source or destination, 2: click on source, 3: click on destination
     bool _controlIsPressed = false;
+    bool _shiftSelectionInProgress = false;
+    QGraphicsItem* _shiftClickedSelectableItem = nullptr;
+    QList<QGraphicsItem*> _shiftSelectionBeforeClick;
     bool _snapToGrid = false;
     // Initialize the source port pointer before connection drawing starts.
     GraphicalComponentPort* _sourceGraphicalComponentPort = nullptr;
@@ -330,6 +352,7 @@ private:
     AnimationVariable *_currentVariable = nullptr;
     // Initialize the current timer drawing pointer to avoid indeterminate access.
     AnimationTimer *_currentTimer = nullptr;
+    AnimationPlaceholder *_currentPlaceholderAnimation = nullptr;
     QMap<Event *, QList<AnimationTransition *> *> *_animationPaused = new QMap<Event *, QList<AnimationTransition *> *>();
 
 private:
@@ -338,6 +361,7 @@ private:
     QList<AnimationCounter *> *_animationsCounter = new QList<AnimationCounter*>();
     QList<AnimationVariable *> *_animationsVariable = new QList<AnimationVariable*>();
     QList<AnimationTimer *> *_animationsTimer = new QList<AnimationTimer*>();
+    QList<AnimationPlaceholder *> *_animationsPlaceholder = new QList<AnimationPlaceholder*>();
 private:
     // IMPORTANT. MUST BE CONSISTENT WITH SIMULATOR->MODEL
     QList<QGraphicsItem*>* _graphicalModelComponents = new QList<QGraphicsItem*>();
@@ -353,6 +377,8 @@ private:
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
     bool _connectionGeometryUpdatesBlocked = false;
+    bool _showInternalDataDefinitions = false;
+    bool _showAttachedDataDefinitions = false;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

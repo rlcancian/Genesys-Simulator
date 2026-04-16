@@ -5150,7 +5150,8 @@ QIcon QtEnumPropertyManager::valueIcon(const QtProperty* property) const
 	Sets the value of the given  \a property to \a value.
 
 	The specified \a value must be less than the size of the given \a
-	property's enumNames() list, and larger than (or equal to) 0.
+	property's enumNames() list. Use -1 to leave the editor without a
+	current selection.
 
 	\sa value(), valueChanged()
 */
@@ -5165,7 +5166,7 @@ void QtEnumPropertyManager::setValue(QtProperty* property, int val)
 	if (val >= data.enumNames.count())
 		return;
 
-	if (val < 0 && data.enumNames.count() > 0)
+	if (val < -1)
 		return;
 
 	if (val < 0)

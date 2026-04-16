@@ -55,6 +55,7 @@
 #include "animations/AnimationQueue.h"
 #include "services/GraphicalModelBuilder.h"
 #include <QCoreApplication>
+#include <QGuiApplication>
 #include <QThread>
 #include <QPointer>
 #include <QTimer>
@@ -82,6 +83,77 @@ namespace {
     private:
         bool* _flag = nullptr;
     };
+
+    QGraphicsItem* selectableItemAt(QGraphicsScene* scene, const QPointF& scenePos) {
+        if (scene == nullptr) {
+            return nullptr;
+        }
+
+        QGraphicsItem* candidate = scene->itemAt(scenePos, QTransform());
+        while (candidate != nullptr && !candidate->flags().testFlag(QGraphicsItem::ItemIsSelectable)) {
+            candidate = candidate->parentItem();
+        }
+        return candidate;
+    }
+
+    void restoreExtendedSelection(QGraphicsScene* scene,
+                                  const QList<QGraphicsItem*>& selectionBeforeClick,
+                                  QGraphicsItem* clickedSelectableItem) {
+        if (scene == nullptr) {
+            return;
+        }
+
+        for (QGraphicsItem* selectedItem : selectionBeforeClick) {
+            if (selectedItem != nullptr && selectedItem->scene() == scene) {
+                selectedItem->setSelected(true);
+            }
+        }
+        if (clickedSelectableItem != nullptr && clickedSelectableItem->scene() == scene) {
+            clickedSelectableItem->setSelected(true);
+        }
+    }
+
+    bool isPlaceholderAnimationMode(ModelGraphicsScene::DrawingMode mode) {
+        switch (mode) {
+        case ModelGraphicsScene::ATTRIBUTE:
+        case ModelGraphicsScene::ENTITY:
+        case ModelGraphicsScene::EVENT:
+        case ModelGraphicsScene::EXPRESSION:
+        case ModelGraphicsScene::PLOT:
+        case ModelGraphicsScene::QUEUE_PLACEHOLDER:
+        case ModelGraphicsScene::RESOURCE:
+        case ModelGraphicsScene::STATION:
+        case ModelGraphicsScene::STATISTICS:
+            return true;
+        default:
+            return false;
+        }
+    }
+
+    AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode) {
+        switch (mode) {
+        case ModelGraphicsScene::ATTRIBUTE:
+            return new AnimationAttribute();
+        case ModelGraphicsScene::ENTITY:
+            return new AnimationEntity();
+        case ModelGraphicsScene::EVENT:
+            return new AnimationEvent();
+        case ModelGraphicsScene::EXPRESSION:
+            return new AnimationExpression();
+        case ModelGraphicsScene::PLOT:
+            return new AnimationPlot();
+        case ModelGraphicsScene::QUEUE_PLACEHOLDER:
+            return new AnimationQueueDisplay();
+        case ModelGraphicsScene::RESOURCE:
+            return new AnimationResource();
+        case ModelGraphicsScene::STATION:
+            return new AnimationStation();
+        case ModelGraphicsScene::STATISTICS:
+            return new AnimationStatistics();
+        default:
+            return nullptr;
+        }
+    }
 
     // Safely cast the scene parent to a generic graphics view.
     QGraphicsView* sceneParentGraphicsView(ModelGraphicsScene* scene) {
@@ -1319,6 +1391,10 @@ bool ModelGraphicsScene::addDrawingAnimation(QGraphicsItem* item) {
         _animationsTimer->append(animationTimer);
         return true;
     }
+    else if (AnimationPlaceholder* animationPlaceholder = dynamic_cast<AnimationPlaceholder*>(item)) {
+        _animationsPlaceholder->append(animationPlaceholder);
+        return true;
+    }
 
     return false;
 }
@@ -1358,6 +1434,8 @@ bool ModelGraphicsScene::removeDrawingAnimation(QGraphicsItem* item) {
         return _animationsVariable->removeOne(animationVariable);
     else if (AnimationTimer* animationTimer = dynamic_cast<AnimationTimer*>(item))
         return _animationsTimer->removeOne(animationTimer);
+    else if (AnimationPlaceholder* animationPlaceholder = dynamic_cast<AnimationPlaceholder*>(item))
+        return _animationsPlaceholder->removeOne(animationPlaceholder);
 
     return false;
 }
@@ -1985,6 +2063,7 @@ void ModelGraphicsScene::clearAnimations() {
     this->clearAnimationsCounter();
     this->clearAnimationsVariable();
     this->clearAnimationsTimer();
+    this->clearAnimationsPlaceholder();
 }
 
 void ModelGraphicsScene::clearAnimationsTransition() {
@@ -2045,6 +2124,13 @@ void ModelGraphicsScene::clearAnimationsTimer() {
         _animationsTimer->clear();
 
     _currentTimer = nullptr;
+}
+
+void ModelGraphicsScene::clearAnimationsPlaceholder() {
+    if (_animationsPlaceholder)
+        _animationsPlaceholder->clear();
+
+    _currentPlaceholderAnimation = nullptr;
 }
 
 void ModelGraphicsScene::clearAnimationsQueue() {
@@ -2418,161 +2504,84 @@ void ModelGraphicsScene::removeGroup(QGraphicsItemGroup* group, bool notify) {
 
 void ModelGraphicsScene::arranjeModels(int direction) {
     QList<QGraphicsItem*> items;
+    QList<QGraphicsItem*> alignedItems;
     QList<QPointF> newPositions;
     QList<QPointF> oldPositions;
 
-    for (unsigned int i = 0; i < (unsigned int)selectedItems().size(); i++) {
-        if (GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(selectedItems().at(i))) {
-            items.append(component);
+    const QList<QGraphicsItem*> selected = selectedItems();
+    for (QGraphicsItem* item : selected) {
+        if (item == nullptr) {
+            continue;
         }
-        else if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(selectedItems().at(i))) {
-            items.append(group);
+        if (dynamic_cast<GraphicalComponentPort*>(item) != nullptr ||
+            dynamic_cast<GraphicalDiagramConnection*>(item) != nullptr ||
+            dynamic_cast<GraphicalConnection*>(item) != nullptr) {
+            continue;
         }
-        else if (AnimationVariable* animationVariable = dynamic_cast<AnimationVariable*>(selectedItems().at(i))) {
-            items.append(animationVariable);
+
+        bool hasSelectedAncestor = false;
+        QGraphicsItem* parent = item->parentItem();
+        while (parent != nullptr) {
+            if (selected.contains(parent)) {
+                hasSelectedAncestor = true;
+                break;
+            }
+            parent = parent->parentItem();
+        }
+        if (!hasSelectedAncestor) {
+            items.append(item);
         }
     }
 
-    int size = items.size();
-    qreal most_direction;
-    qreal most_up;
-    qreal most_down;
-    qreal most_left;
-    qreal most_right;
-    qreal middle;
-    qreal center;
+    if (items.size() < 2) {
+        return;
+    }
 
-    if (size >= 2) {
+    QRectF selectionBounds = items.first()->sceneBoundingRect();
+    for (int i = 1; i < items.size(); ++i) {
+        selectionBounds = selectionBounds.united(items.at(i)->sceneBoundingRect());
+    }
+
+    for (QGraphicsItem* item : items) {
+        const QRectF itemBounds = item->sceneBoundingRect();
+        QPointF delta;
         switch (direction) {
-        case 0: //left
-            most_direction = sceneRect().right();
+        case 0: // left
+            delta.setX(selectionBounds.left() - itemBounds.left());
             break;
-        case 1: //right
-            most_direction = sceneRect().left();
+        case 1: // right
+            delta.setX(selectionBounds.right() - itemBounds.right());
             break;
-        case 2: //top
-            most_direction = sceneRect().bottom();
+        case 2: // top
+            delta.setY(selectionBounds.top() - itemBounds.top());
             break;
-        case 3: //bottom
-            most_direction = sceneRect().top();
+        case 3: // bottom
+            delta.setY(selectionBounds.bottom() - itemBounds.bottom());
             break;
-        case 4: //center
-            most_left = sceneRect().right();
-            most_right = sceneRect().left();
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = items.at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item) && !dynamic_cast<QGraphicsItemGroup*>(item)) {
-                    qreal item_posX = item->x();
-                    if (item_posX < most_left) {
-                        most_left = item_posX;
-                    }
-                    if (item_posX > most_right) {
-                        most_right = item_posX;
-                    }
-                }
-            }
-            center = (most_right + most_left) / 2;
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = selectedItems().at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item)) {
-                    if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                        insertOldPositionItem(item, item->pos());
-                        oldPositions.append(item->pos());
-                    }
-                    else {
-                        oldPositions.append(item->pos());
-                    }
-                    item->setX(center);
-                    newPositions.append(item->pos());
-                }
-            }
+        case 4: // center
+            delta.setX(selectionBounds.center().x() - itemBounds.center().x());
             break;
-        case 5: //middle
-            most_up = sceneRect().bottom();
-            most_down = sceneRect().top();
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = items.at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item) && !dynamic_cast<QGraphicsItemGroup*>(item)) {
-                    qreal item_posY = item->y();
-                    if (item_posY < most_up) {
-                        most_up = item_posY;
-                    }
-                    if (item_posY > most_down) {
-                        most_down = item_posY;
-                    }
-                }
-            }
-            middle = (most_up + most_down) / 2;
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = selectedItems().at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item)) {
-                    if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                        insertOldPositionItem(item, item->pos());
-                        oldPositions.append(item->pos());
-                    }
-                    else {
-                        oldPositions.append(item->pos());
-                    }
-                    item->setX(middle);
-                    newPositions.append(item->pos());
-                }
-            }
+        case 5: // middle
+            delta.setY(selectionBounds.center().y() - itemBounds.center().y());
             break;
+        default:
+            return;
         }
-        if (direction < 4) {
-            for (int i = 0; i < size; i++) {
-                QGraphicsItem* item = selectedItems().at(i);
-                if (!dynamic_cast<GraphicalConnection*>(item) && !dynamic_cast<GraphicalConnection*>(item)) {
-                    if (direction < 2) {
-                        qreal item_posX = item->x();
-                        if ((item_posX < most_direction && direction == 0) || (item_posX > most_direction && direction
-                            == 1)) {
-                            most_direction = item_posX;
-                        }
-                    }
-                    else {
-                        qreal item_posY = item->y();
-                        if ((item_posY < most_direction && direction == 2) || (item_posY > most_direction && direction
-                            == 3)) {
-                            most_direction = item_posY;
-                        }
-                    }
-                }
-            }
-            if (direction < 2) {
-                for (int i = 0; i < size; i++) {
-                    QGraphicsItem* item = selectedItems().at(i);
-                    if (!dynamic_cast<GraphicalConnection*>(item)) {
-                        if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                            insertOldPositionItem(item, item->pos());
-                            oldPositions.append(item->pos());
-                        }
-                        else {
-                            oldPositions.append(item->pos());
-                        }
-                        item->setX(most_direction);
-                        newPositions.append(item->pos());
-                    }
-                }
-            }
-            else {
-                for (int i = 0; i < size; i++) {
-                    QGraphicsItem* item = selectedItems().at(i);
-                    if (!dynamic_cast<GraphicalConnection*>(item)) {
-                        if (QGraphicsItemGroup* group = dynamic_cast<QGraphicsItemGroup*>(item)) {
-                            insertOldPositionItem(item, item->pos());
-                            oldPositions.append(item->pos());
-                        }
-                        else {
-                            oldPositions.append(item->pos());
-                        }
-                        item->setY(most_direction);
-                        newPositions.append(item->pos());
-                    }
-                }
-            }
+
+        const QPointF oldPosition = item->pos();
+        const QPointF newPosition = oldPosition + delta;
+        if (newPosition == oldPosition) {
+            continue;
         }
-        QUndoCommand* moveUndoCommand = new MoveUndoCommand(items, this, oldPositions, newPositions);
+
+        oldPositions.append(oldPosition);
+        item->setPos(newPosition);
+        alignedItems.append(item);
+        newPositions.append(newPosition);
+    }
+
+    if (!alignedItems.isEmpty() && _undoStack != nullptr) {
+        QUndoCommand* moveUndoCommand = new MoveUndoCommand(alignedItems, this, oldPositions, newPositions);
         _undoStack->push(moveUndoCommand);
     }
 }
@@ -2658,7 +2667,24 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) {
             }
         }
 
+        const Qt::KeyboardModifiers modifiers = mouseEvent->modifiers() | QGuiApplication::keyboardModifiers();
+        _shiftSelectionInProgress = modifiers.testFlag(Qt::ShiftModifier) && _drawingMode == NONE;
+        _shiftSelectionBeforeClick = _shiftSelectionInProgress ? selectedItems() : QList<QGraphicsItem*>();
+        _shiftClickedSelectableItem = _shiftSelectionInProgress ? selectableItemAt(this, mouseEvent->scenePos()) : nullptr;
+
         QGraphicsScene::mousePressEvent(mouseEvent);
+
+        if (_shiftSelectionInProgress) {
+            restoreExtendedSelection(this, _shiftSelectionBeforeClick, _shiftClickedSelectableItem);
+            QPointer<ModelGraphicsScene> guardedScene(this);
+            const QList<QGraphicsItem*> selectionBeforeClick = _shiftSelectionBeforeClick;
+            QGraphicsItem* clickedSelectableItem = _shiftClickedSelectableItem;
+            QTimer::singleShot(0, this, [guardedScene, selectionBeforeClick, clickedSelectableItem]() {
+                if (guardedScene != nullptr) {
+                    restoreExtendedSelection(guardedScene.data(), selectionBeforeClick, clickedSelectableItem);
+                }
+            });
+        }
 
         item = this->itemAt(mouseEvent->scenePos(), QTransform());
         if (GraphicalModelComponent* component = dynamic_cast<GraphicalModelComponent*>(item)) {
@@ -2698,7 +2724,7 @@ void ModelGraphicsScene::mousePressEvent(QGraphicsSceneMouseEvent* mouseEvent) {
                 _drawing = true;
             }
 
-            if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER) {
+            if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER || isPlaceholderAnimationMode(_drawingMode)) {
                 initializeAnimationDrawing(mouseEvent);
             }
         }
@@ -2715,6 +2741,12 @@ void ModelGraphicsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
     }
 
     QGraphicsScene::mouseReleaseEvent(mouseEvent);
+    if (_shiftSelectionInProgress) {
+        restoreExtendedSelection(this, _shiftSelectionBeforeClick, _shiftClickedSelectableItem);
+        _shiftSelectionInProgress = false;
+        _shiftClickedSelectableItem = nullptr;
+        _shiftSelectionBeforeClick.clear();
+    }
 
     snapItemsToGrid();
     if (existDiagram()) {
@@ -2799,7 +2831,7 @@ void ModelGraphicsScene::mouseReleaseEvent(QGraphicsSceneMouseEvent* mouseEvent)
 
 
     if (mouseEvent->button() == Qt::LeftButton && _drawingMode != NONE) {
-        if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER) {
+        if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER || isPlaceholderAnimationMode(_drawingMode)) {
             finishAnimationDrawing(mouseEvent);
         }
         else {
@@ -2947,6 +2979,22 @@ QList<QGraphicsItem*>* ModelGraphicsScene::getGraphicalDiagramsConnections() con
     return _graphicalDiagramConnections;
 }
 
+void ModelGraphicsScene::setShowInternalDataDefinitions(bool show) {
+    _showInternalDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showInternalDataDefinitions() const {
+    return _showInternalDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowAttachedDataDefinitions(bool show) {
+    _showAttachedDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showAttachedDataDefinitions() const {
+    return _showAttachedDataDefinitions;
+}
+
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {
     return _graphicalGroups;
 }
@@ -2968,6 +3016,14 @@ void ModelGraphicsScene::initializeAnimationDrawing(QGraphicsSceneMouseEvent* mo
         _currentTimer = new AnimationTimer(this);
         _currentTimer->startDrawing(mouseEvent);
         addItem(_currentTimer);
+    }
+
+    if (isPlaceholderAnimationMode(_drawingMode)) {
+        _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode);
+        if (_currentPlaceholderAnimation != nullptr) {
+            _currentPlaceholderAnimation->startDrawing(mouseEvent);
+            addItem(_currentPlaceholderAnimation);
+        }
     }
 }
 
@@ -3010,6 +3066,19 @@ void ModelGraphicsScene::continueAnimationDrawing(QGraphicsSceneMouseEvent* mous
             }
         }
     }
+
+    if (isPlaceholderAnimationMode(_drawingMode)) {
+        if (_currentPlaceholderAnimation) {
+            if (_currentPlaceholderAnimation->isDrawingInicialized() && !_currentPlaceholderAnimation->isDrawingFinalized()) {
+                removeItem(_currentPlaceholderAnimation);
+                _currentPlaceholderAnimation->continueDrawing(mouseEvent);
+                addItem(_currentPlaceholderAnimation);
+            }
+        }
+        else {
+            _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode);
+        }
+    }
 }
 
 void ModelGraphicsScene::finishAnimationDrawing(QGraphicsSceneMouseEvent* mouseEvent) {
@@ -3047,6 +3116,18 @@ void ModelGraphicsScene::finishAnimationDrawing(QGraphicsSceneMouseEvent* mouseE
                 addItem(_currentTimer);
                 animatedItem = _currentTimer;
                 _currentTimer = nullptr;
+            }
+        }
+    }
+
+    if (isPlaceholderAnimationMode(_drawingMode)) {
+        if (_currentPlaceholderAnimation) {
+            if (_currentPlaceholderAnimation->isDrawingInicialized() && !_currentPlaceholderAnimation->isDrawingFinalized()) {
+                removeItem(_currentPlaceholderAnimation);
+                _currentPlaceholderAnimation->stopDrawing(mouseEvent);
+                addItem(_currentPlaceholderAnimation);
+                animatedItem = _currentPlaceholderAnimation;
+                _currentPlaceholderAnimation = nullptr;
             }
         }
     }
@@ -3127,7 +3208,7 @@ void ModelGraphicsScene::mouseMoveEvent(QGraphicsSceneMouseEvent* mouseEvent) {
         }
     }
     else if (_drawingMode != NONE && _drawing) {
-        if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER) {
+        if (_drawingMode == COUNTER || _drawingMode == VARIABLE || _drawingMode == TIMER || isPlaceholderAnimationMode(_drawingMode)) {
             continueAnimationDrawing(mouseEvent);
             // Keep drawing cursor only when the parent model view exists.
             if (parentView != nullptr) {
@@ -3332,6 +3413,42 @@ void ModelGraphicsScene::drawingTimer() {
     _drawingMode = DrawingMode::TIMER;
 }
 
+void ModelGraphicsScene::drawingAttribute() {
+    _drawingMode = DrawingMode::ATTRIBUTE;
+}
+
+void ModelGraphicsScene::drawingEntity() {
+    _drawingMode = DrawingMode::ENTITY;
+}
+
+void ModelGraphicsScene::drawingEvent() {
+    _drawingMode = DrawingMode::EVENT;
+}
+
+void ModelGraphicsScene::drawingExpression() {
+    _drawingMode = DrawingMode::EXPRESSION;
+}
+
+void ModelGraphicsScene::drawingPlot() {
+    _drawingMode = DrawingMode::PLOT;
+}
+
+void ModelGraphicsScene::drawingQueue() {
+    _drawingMode = DrawingMode::QUEUE_PLACEHOLDER;
+}
+
+void ModelGraphicsScene::drawingResource() {
+    _drawingMode = DrawingMode::RESOURCE;
+}
+
+void ModelGraphicsScene::drawingStation() {
+    _drawingMode = DrawingMode::STATION;
+}
+
+void ModelGraphicsScene::drawingStatistics() {
+    _drawingMode = DrawingMode::STATISTICS;
+}
+
 void ModelGraphicsScene::setObjectBeingDragged(QTreeWidgetItem* objectBeingDragged) {
     _objectBeingDragged = objectBeingDragged;
 }
@@ -3422,6 +3539,10 @@ QList<AnimationTimer*>* ModelGraphicsScene::getAnimationsTimer() {
     return _animationsTimer;
 }
 
+QList<AnimationPlaceholder*>* ModelGraphicsScene::getAnimationsPlaceholder() {
+    return _animationsPlaceholder;
+}
+
 QMap<Event*, QList<AnimationTransition*>*>* ModelGraphicsScene::getAnimationPaused() {
     return _animationPaused;
 }
@@ -3462,6 +3583,19 @@ GraphicalModelComponent* ModelGraphicsScene::findGraphicalModelComponent(Util::i
 
     for (GraphicalModelComponent* item : allComponents) {
         if (item->getComponent()->getId() == id) {
+            return item;
+        }
+    }
+    return nullptr;
+}
+
+GraphicalModelDataDefinition* ModelGraphicsScene::findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition) {
+    if (dataDefinition == nullptr) {
+        return nullptr;
+    }
+
+    for (GraphicalModelDataDefinition* item : _allGraphicalModelDataDefinitions) {
+        if (item != nullptr && item->getDataDefinition() == dataDefinition) {
             return item;
         }
     }

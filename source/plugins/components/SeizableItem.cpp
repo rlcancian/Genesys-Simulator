@@ -39,7 +39,7 @@ std::string SeizableItem::convertEnumToStr(SelectionRule rule) {
 }
 
 SeizableItem::SeizableItem(ModelDataDefinition* resourceOrSet, std::string quantityExpression, SeizableItem::SelectionRule selectionRule, std::string saveAttribute, std::string index) {
-    SeizableItem::SeizableType resourceType;
+    SeizableItem::SeizableType resourceType = DEFAULT.seizableType;
     if (dynamic_cast<Resource*> (resourceOrSet) != nullptr) {
         resourceType = SeizableItem::SeizableType::RESOURCE;
     } else if (dynamic_cast<Set*> (resourceOrSet) != nullptr) {
@@ -49,6 +49,7 @@ SeizableItem::SeizableItem(ModelDataDefinition* resourceOrSet, std::string quant
     }
     _seizableType = resourceType;
     _resourceOrSet = resourceOrSet;
+    _seizableName = resourceOrSet != nullptr ? resourceOrSet->getName() : "";
     _quantityExpression = quantityExpression;
     _selectionRule = selectionRule;
     _saveAttribute = saveAttribute;
@@ -56,11 +57,19 @@ SeizableItem::SeizableItem(ModelDataDefinition* resourceOrSet, std::string quant
 }
 
 SeizableItem::SeizableItem(Model* model, std::string resourceName, std::string quantityExpression, SeizableItem::SelectionRule selectionRule, std::string saveAttribute, std::string index) {
-    ModelDataDefinition* resource = model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), resourceName);
-    if (resource == nullptr) {
-        resource = model->getParentSimulator()->getPluginManager()->newInstance<Resource>(model, resourceName);
+    ModelDataDefinition* resource = nullptr;
+    if (!resourceName.empty()) {
+        resource = model->getDataManager()->getDataDefinition(Util::TypeOf<Resource>(), resourceName);
+        if (resource == nullptr) {
+            resource = model->getParentSimulator()->getPluginManager()->newInstance<Resource>(model, resourceName);
+        }
     }
     _seizableName = resourceName;
+    _resourceOrSet = resource;
+    _quantityExpression = quantityExpression;
+    _selectionRule = selectionRule;
+    _saveAttribute = saveAttribute;
+    _index = index;
 
     SimulationControlGeneric<std::string>* propIndex = new SimulationControlGeneric<std::string>(
                                     std::bind(&SeizableItem::getIndex, this), std::bind(&SeizableItem::setIndex, this, std::placeholders::_1),
@@ -114,8 +123,6 @@ SeizableItem::SeizableItem(Model* model, std::string resourceName, std::string q
     _addSimulationControl(propSet);
     _addSimulationControl(propLastMemberSeized);
     _addSimulationControl(propLastPreferedOrder);
-
-    SeizableItem(resource, quantityExpression, selectionRule, saveAttribute, index);
 }
 
 SeizableItem::SeizableItem(SeizableItem* original) {
@@ -191,7 +198,7 @@ void SeizableItem::saveInstance(PersistenceRecord *fields, unsigned int parentIn
     std::string num = Util::StrIndex(parentIndex);
     fields->saveField("requestSeizableType" + num, static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
     //_resourceOrSet->getName();
-    fields->saveField("requestSeizable" + num, _resourceOrSet->getName(), "", saveDefaults);
+    fields->saveField("requestSeizable" + num, _resourceOrSet != nullptr ? _resourceOrSet->getName() : "", "", saveDefaults);
     fields->saveField("requestQuantityExpression" + num, _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
     fields->saveField("requestSelectionRule" + num, static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
     fields->saveField("requestSaveAttribute" + num, _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
@@ -201,7 +208,7 @@ void SeizableItem::saveInstance(PersistenceRecord *fields, unsigned int parentIn
 void SeizableItem::saveInstance(PersistenceRecord *fields, bool saveDefaults) {
     fields->saveField("requestSeizableType", static_cast<int> (_seizableType), static_cast<int> (DEFAULT.seizableType), saveDefaults);
     //fields->saveField("resourceId", _resourceOrSet->getId());
-    fields->saveField("requestSeizable", _resourceOrSet->getName(), "", saveDefaults);
+    fields->saveField("requestSeizable", _resourceOrSet != nullptr ? _resourceOrSet->getName() : "", "", saveDefaults);
     fields->saveField("requestQuantityExpression", _quantityExpression, DEFAULT.quantityExpression, saveDefaults);
     fields->saveField("requestSelectionRule", static_cast<int> (_selectionRule), static_cast<int> (DEFAULT.selectionRule), saveDefaults);
     fields->saveField("requestSaveAttribute", _saveAttribute, DEFAULT.saveAttribute, saveDefaults);
@@ -209,7 +216,7 @@ void SeizableItem::saveInstance(PersistenceRecord *fields, bool saveDefaults) {
 }
 
 std::string SeizableItem::show() {
-    return "resourceType=" + std::to_string(static_cast<int> (_seizableType)) + ",resource=\"" + _resourceOrSet->getName() + "\",quantityExpression=\"" + _quantityExpression + "\", selectionRule=" + std::to_string(static_cast<int> (_selectionRule)) + ", _saveAttribute=\"" + _saveAttribute + "\",index=\"" + _index + "\"";
+    return "resourceType=" + std::to_string(static_cast<int> (_seizableType)) + ",resource=\"" + (_resourceOrSet != nullptr ? _resourceOrSet->getName() : "") + "\",quantityExpression=\"" + _quantityExpression + "\", selectionRule=" + std::to_string(static_cast<int> (_selectionRule)) + ", _saveAttribute=\"" + _saveAttribute + "\",index=\"" + _index + "\"";
 }
 
 void SeizableItem::_addSimulationControl(PropertyBase* control) {
@@ -272,20 +279,22 @@ std::string SeizableItem::getName() const {
 
 void SeizableItem::setResource(Resource* resource) {
     _resourceOrSet = resource;
-    _seizableName = resource->getName();
+    _seizableType = SeizableType::RESOURCE;
+    _seizableName = resource != nullptr ? resource->getName() : "";
 }
 
 Resource* SeizableItem::getResource() const {
-    return static_cast<Resource*> (_resourceOrSet);
+    return dynamic_cast<Resource*> (_resourceOrSet);
 }
 
 void SeizableItem::setSet(Set* set) {
     _resourceOrSet = set;
-    _seizableName = set->getName();
+    _seizableType = SeizableType::SET;
+    _seizableName = set != nullptr ? set->getName() : "";
 }
 
 Set* SeizableItem::getSet() const {
-    return static_cast<Set*> (_resourceOrSet);
+    return dynamic_cast<Set*> (_resourceOrSet);
 }
 
 void SeizableItem::setSeizableType(SeizableItem::SeizableType resourceType) {

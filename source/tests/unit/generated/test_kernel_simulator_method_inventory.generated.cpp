@@ -869,16 +869,6 @@ TEST(KernelSimulatorMethodInventory, Model_173) {
     SUCCEED();
 }
 
-TEST(KernelSimulatorMethodInventory, Model_174) {
-    // Model.h :: Model :: void setAutomaticallyCreatesModelDataDefinitions(bool _automaticallyCreatesModelDataDefinitions);
-    SUCCEED();
-}
-
-TEST(KernelSimulatorMethodInventory, Model_175) {
-    // Model.h :: Model :: bool isAutomaticallyCreatesModelDataDefinitions() const;
-    SUCCEED();
-}
-
 TEST(KernelSimulatorMethodInventory, ModelCheckerDefaultImpl1_176) {
     // ModelCheckerDefaultImpl1.h :: ModelCheckerDefaultImpl1 :: ModelCheckerDefaultImpl1(Model* model);
     SUCCEED();

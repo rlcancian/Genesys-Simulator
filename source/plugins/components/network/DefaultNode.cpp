@@ -278,12 +278,20 @@ void DefaultNode::_createInternalAndAttachedData() {
 	if (_internalDataDefinition == nullptr) {
 		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
 		_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
+	}
+	if (_internalDataDefinition != nullptr) {
 		_internalDataInsert("JustaDummy", _internalDataDefinition);
+	} else {
+		_internalDataRemove("JustaDummy");
 	}
 	if (_attachedDataDefinition == nullptr) {
 		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
 		_attachedDataDefinition = pm->newInstance<DummyElement>(_parentModel);
+	}
+	if (_attachedDataDefinition != nullptr) {
 		_attachedDataInsert("JustaDummy", _attachedDataDefinition);
+	} else {
+		_attachedDataRemove("JustaDummy");
 	}
 }
 */

@@ -217,7 +217,11 @@ void Wait::_createInternalAndAttachedData() {
 	if (_queue == nullptr) {
 		_queue = pm->newInstance<Queue>(_parentModel, getName() + ".Queue");
 	}
-	_internalDataInsert("Queue", _queue);
+	if (_queue != nullptr) {
+		_internalDataInsert("Queue", _queue);
+	} else {
+		_internalDataRemove("Queue");
+	}
 	//attached
 	if (previouslyAttachedSignalData != nullptr && (_waitType != Wait::WaitType::WaitForSignal || previouslyAttachedSignalData != _signalData)) {
 		previouslyAttachedSignalData->removeSignalDataEventHandler(this);
@@ -226,6 +230,10 @@ void Wait::_createInternalAndAttachedData() {
 	if (_waitType == Wait::WaitType::WaitForSignal) {
 		if (_signalData == nullptr) {
 			_signalData = pm->newInstance<SignalData>(_parentModel);
+		}
+		if (_signalData == nullptr) {
+			_attachedDataRemove("SignalData");
+			return;
 		}
 		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Wait>(&Wait::_handlerForSignalDataEvent, this);
 		_signalData->addSignalDataEventHandler(handler, this);

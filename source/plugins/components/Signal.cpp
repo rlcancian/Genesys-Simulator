@@ -134,7 +134,11 @@ void Signal::_createInternalAndAttachedData() {
 	if (_signalData == nullptr) {
 		_signalData = pm->newInstance<SignalData>(_parentModel);
 	}
-	_attachedDataInsert("SignalData", _signalData);
+	if (_signalData != nullptr) {
+		_attachedDataInsert("SignalData", _signalData);
+	} else {
+		_attachedDataRemove("SignalData");
+	}
 }
 
 const std::string&Signal::limitExpression() const
