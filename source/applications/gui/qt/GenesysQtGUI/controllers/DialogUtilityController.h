@@ -66,7 +66,7 @@ public:
     void onActionToolsParserGrammarCheckerTriggered();
     /** @brief Opens optimization settings dialog and stores lightweight preferences. */
     void onActionToolsOptimizatorTriggered();
-    /** @brief Launches data analyzer workflow using persisted last-path compatibility state. */
+    /** @brief Launches the Data Analyzer workstation using persisted last-path compatibility state. */
     void onActionToolsDataAnalyzerTriggered();
     /** @brief Opens view configuration dialog and applies delegated scene/UI refreshes. */
     void onActionViewConfigureTriggered();

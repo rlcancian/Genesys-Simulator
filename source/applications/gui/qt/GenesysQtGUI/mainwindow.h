@@ -350,6 +350,16 @@ private: // view
     void _clearReportsResultsTable();
     /** @brief Fills the simulation results table with final aggregated simulation statistics. */
     void _actualizeReportsResultsTable();
+    /** @brief Configures the simulation results plot pane. */
+    void _prepareReportsPlots();
+    /** @brief Clears all widgets from the simulation results plot pane. */
+    void _clearReportsPlots();
+    /** @brief Fills the simulation results plot pane with grouped aggregate charts. */
+    void _actualizeReportsPlots();
+    /** @brief Emits a replication text report from the GUI when the model suppresses it. */
+    void _showReplicationReportIfSuppressed();
+    /** @brief Emits a simulation text report from the GUI when the model suppresses it. */
+    void _showSimulationReportIfSuppressed();
     /** @brief Compatibility wrapper delegating model-components tree synchronization. */
 	void _actualizeModelComponents(bool force);
     /** @brief Compatibility wrapper delegating data-definitions tree synchronization. */

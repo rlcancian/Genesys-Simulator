@@ -223,7 +223,6 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     _entitiesTable->setRowCount(0);
     _variablesTable->setRowCount(0);
     _simulationText->clear();
-    _reportsText->clear();
 
     Util::TimeUnit replicationBaseTimeUnit =
         _simulator->getModelManager()->current()->getSimulation()->getReplicationBaseTimeUnit();

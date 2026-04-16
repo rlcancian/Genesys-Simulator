@@ -24,6 +24,9 @@ ModelLifecycleController::ModelLifecycleController(QWidget* ownerWidget,
                                                    bool* graphicalModelHasChanged,
                                                    bool* closingApproved,
                                                    bool* loaded,
+                                                   bool& parallelizationEnabled,
+                                                   int& parallelizationThreads,
+                                                   int& parallelizationBatchSize,
                                                    Callbacks callbacks)
     : _ownerWidget(ownerWidget),
       _simulator(simulator),
@@ -33,6 +36,9 @@ ModelLifecycleController::ModelLifecycleController(QWidget* ownerWidget,
       _graphicalModelHasChanged(graphicalModelHasChanged),
       _closingApproved(closingApproved),
       _loaded(loaded),
+      _parallelizationEnabled(parallelizationEnabled),
+      _parallelizationThreads(parallelizationThreads),
+      _parallelizationBatchSize(parallelizationBatchSize),
       _callbacks(std::move(callbacks)) {
 }
 
@@ -230,6 +236,7 @@ void ModelLifecycleController::onActionSimulationConfigureTriggered() const {
     // Edit the simulation object owned by the currently open model.
     dialog->setModelSimulation(_simulator->getModelManager()->current()->getSimulation());
     dialog->setExperimentManager(_simulator->getExperimentManager());
+    dialog->setParallelizationSettings(&_parallelizationEnabled, &_parallelizationThreads, &_parallelizationBatchSize);
     dialog->show();
 }
 
