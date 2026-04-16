@@ -454,12 +454,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                                                             ui->actionShowSnap,
                                                                             ui->actionShowGuides,
                                                                             ui->actionShowInternalElements,
+                                                                            ui->actionShowEditableElements,
                                                                             ui->actionShowAttachedElements,
+                                                                            ui->actionShowRecursiveElements,
                                                                             ui->textEdit_Console,
                                                                             &_modelfilename,
                                                                             [this]() { _clearModelEditors(); },
                                                                             [this]() { _generateGraphicalModelFromModel(); },
                                                                             [this]() { on_actionShowInternalElements_triggered(); },
+                                                                            [this]() { on_actionShowEditableElements_triggered(); },
                                                                             [this]() { on_actionShowAttachedElements_triggered(); });
     //
     // property editor

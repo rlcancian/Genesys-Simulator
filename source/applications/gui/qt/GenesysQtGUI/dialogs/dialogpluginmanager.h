@@ -8,6 +8,7 @@
 
 class Plugin;
 class PluginInformation;
+class SystemDependencyCheckResult;
 class Simulator;
 class QTableWidgetItem;
 
@@ -45,7 +46,11 @@ private:
 	QString _formatPluginDetails(const Plugin* plugin) const;
 	QString _formatDependencies(const PluginInformation* info) const;
 	QString _formatSystemDependencies(const PluginInformation* info) const;
+	/*! \brief Formats a system dependency preflight result for confirmation and diagnostic dialogs. */
+	QString _formatSystemDependencyPreflight(const SystemDependencyCheckResult& result) const;
 	QString _formatFields(const PluginInformation* info) const;
+	/*! \brief Asks the user whether missing installable system dependencies may be installed. */
+	bool _confirmSystemDependencyInstallation(const SystemDependencyCheckResult& result) const;
 	void _showOperationResult(const QString& title, const QString& message) const;
 
 	Ui::DialogPluginManager* ui;

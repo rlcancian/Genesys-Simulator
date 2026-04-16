@@ -17,7 +17,10 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationScenario.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/SystemDependencyResolver.h"
+#include <map>
 #include <type_traits>
+#include <vector>
 
 
 // Test-only link shim:
@@ -36,6 +39,9 @@ Model::Model(Simulator* simulator, unsigned int level) {
 
 // Provides a trivial out-of-line destructor for the test double after Model gained an explicit virtual destructor.
 Model::~Model() = default;
+
+void ModelDataDefinition::CreateInternalData(ModelDataDefinition*) {
+}
 
 bool Model::save(std::string filename) {
     (void)filename;
@@ -134,10 +140,48 @@ public:
     bool save(std::string) override { return false; }
     bool load(std::string) override { return false; }
     bool hasChanged() override { return false; }
+    void setHasChanged(bool) override {}
     bool getOption(ModelPersistence_if::Options) override { return false; }
     void setOption(ModelPersistence_if::Options, bool) override {}
     std::string getFormatedField(PersistenceRecord*) override { return ""; }
 };
+
+class FakeSystemCommandExecutor : public SystemCommandExecutor_if {
+public:
+    std::map<std::string, SystemCommandResult> results;
+    std::vector<std::string> commands;
+
+    SystemCommandResult run(const std::string& command) override {
+        commands.push_back(command);
+        auto it = results.find(command);
+        if (it != results.end()) {
+            return it->second;
+        }
+        return {};
+    }
+};
+
+SystemCommandResult CommandResultWithExitCode(int exitCode) {
+    SystemCommandResult result;
+    result.started = true;
+    result.exitCode = exitCode;
+    return result;
+}
+
+SystemDependency::OS NonHostOS() {
+    switch (SystemDependencyResolver::currentOS()) {
+        case SystemDependency::OS::Linux:
+            return SystemDependency::OS::Windows;
+        case SystemDependency::OS::Windows:
+            return SystemDependency::OS::Linux;
+        case SystemDependency::OS::MacOS:
+            return SystemDependency::OS::Linux;
+        case SystemDependency::OS::Any:
+        case SystemDependency::OS::Unknown:
+            return SystemDependency::OS::Linux;
+    }
+    return SystemDependency::OS::Linux;
+}
 
 
 
@@ -394,6 +438,79 @@ TEST(SimulatorSupportTest, PluginInformationStoresSystemDependenciesInOrder) {
     EXPECT_EQ(it->getName(), "libSBML");
     ++it;
     EXPECT_EQ(it->getName(), "COPASI");
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksSatisfiedDependency) {
+    FakeSystemCommandExecutor executor;
+    executor.results["pkg-config --exists libsbml"] = CommandResultWithExitCode(0);
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "libSBML",
+        "sudo apt install libsbml5-dev -y",
+        "pkg-config --exists libsbml");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_TRUE(result.canInsertPlugin());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::Satisfied);
+    ASSERT_EQ(executor.commands.size(), 1u);
+    EXPECT_EQ(executor.commands.front(), "pkg-config --exists libsbml");
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksMissingDependency) {
+    FakeSystemCommandExecutor executor;
+    executor.results["missing-tool --version"] = CommandResultWithExitCode(1);
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "MissingTool",
+        "sudo apt install missing-tool -y",
+        "missing-tool --version");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_FALSE(result.canInsertPlugin());
+    EXPECT_TRUE(result.hasBlockingEntries());
+    EXPECT_TRUE(result.canAttemptInstallForAllMissing());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::Missing);
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverIgnoresDifferentOperatingSystem) {
+    FakeSystemCommandExecutor executor;
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        NonHostOS(),
+        "OtherOSTool",
+        "install-other-os-tool",
+        "other-os-tool --version");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_TRUE(result.canInsertPlugin());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::IgnoredDifferentOS);
+    EXPECT_TRUE(executor.commands.empty());
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksApplicableDependencyWithoutCheckCommandAsNotVerifiable) {
+    FakeSystemCommandExecutor executor;
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "ManualOnlyTool",
+        "sudo apt install manual-only-tool -y",
+        "");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_FALSE(result.canInsertPlugin());
+    EXPECT_FALSE(result.canAttemptInstallForAllMissing());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::NotVerifiable);
+    EXPECT_TRUE(executor.commands.empty());
 }
 
 TEST(SimulatorSupportTest, PluginInformationDefaultsAndContainerReplacementWork) {

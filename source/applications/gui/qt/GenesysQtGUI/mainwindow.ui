@@ -937,6 +937,7 @@
      <addaction name="actionShowGuides"/>
      <addaction name="separator"/>
      <addaction name="actionShowInternalElements"/>
+     <addaction name="actionShowEditableElements"/>
      <addaction name="actionShowAttachedElements"/>
      <addaction name="actionShowRecursiveElements"/>
     </widget>
@@ -2001,7 +2002,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
    </property>
    <property name="text">
-    <string>Internal Elements</string>
+    <string>Statistics Elements</string>
+   </property>
+  </action>
+  <action name="actionShowEditableElements">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
+   </property>
+   <property name="text">
+    <string>Editable Elements</string>
    </property>
   </action>
   <action name="actionShowAttachedElements">
@@ -2016,7 +2032,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/yellow pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/yellow pin.ico</iconset>
    </property>
    <property name="text">
-    <string>Attached Elements</string>
+    <string>Shared Elements</string>
    </property>
   </action>
   <action name="actionSimulationConfigure">
@@ -2297,7 +2313,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <iconset theme="x-office-address-book"/>
    </property>
    <property name="text">
-    <string>Recursive Elements</string>
+    <string>Recursive Expansion</string>
    </property>
   </action>
  </widget>

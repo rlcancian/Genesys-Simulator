@@ -888,10 +888,24 @@ void MainWindow::on_actionShowInternalElements_triggered() {
     }
 }
 
+void MainWindow::on_actionShowEditableElements_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowEditableElementsTriggered();
+    }
+}
+
 void MainWindow::on_actionShowAttachedElements_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {
         _sceneToolController->onActionShowAttachedElementsTriggered();
+    }
+}
+
+void MainWindow::on_actionShowRecursiveElements_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowRecursiveElementsTriggered();
     }
 }
 

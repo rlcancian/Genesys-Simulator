@@ -252,6 +252,14 @@ public:
     void requestGraphicalDataDefinitionsSync();
     void scheduleGraphicalDataDefinitionsSync();
     bool isGraphicalDataDefinitionsSyncInProgress() const;
+    void setShowStatisticsDataDefinitions(bool show);
+    bool showStatisticsDataDefinitions() const;
+    void setShowEditableDataDefinitions(bool show);
+    bool showEditableDataDefinitions() const;
+    void setShowSharedDataDefinitions(bool show);
+    bool showSharedDataDefinitions() const;
+    void setShowRecursiveDataDefinitions(bool show);
+    bool showRecursiveDataDefinitions() const;
     void setShowInternalDataDefinitions(bool show);
     bool showInternalDataDefinitions() const;
     void setShowAttachedDataDefinitions(bool show);
@@ -377,8 +385,10 @@ private:
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
     bool _connectionGeometryUpdatesBlocked = false;
-    bool _showInternalDataDefinitions = false;
-    bool _showAttachedDataDefinitions = false;
+    bool _showStatisticsDataDefinitions = false;
+    bool _showEditableDataDefinitions = false;
+    bool _showSharedDataDefinitions = false;
+    bool _showRecursiveDataDefinitions = false;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

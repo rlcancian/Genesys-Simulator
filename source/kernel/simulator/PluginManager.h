@@ -14,6 +14,7 @@
 #ifndef PLUGINMANAGER_H
 #define PLUGINMANAGER_H
 
+#include <functional>
 #include <string>
 
 #include "Model.h"
@@ -21,9 +22,23 @@
 #include "../util/Util.h"
 #include "Plugin.h"
 #include "PluginConnector_if.h"
+#include "SystemDependencyResolver.h"
 
 class Simulator;
 class Model;
+
+/*!
+ * \brief Optional policy hooks used while inserting a plugin.
+ *
+ * The kernel reports dependency diagnostics through this structure and leaves
+ * user confirmation to the caller. An empty callback means non-interactive
+ * insertion: missing dependencies are reported through traces and no install
+ * command is executed.
+ */
+struct PluginInsertionOptions {
+	/*! \brief Called before running any install command for missing system dependencies. */
+	std::function<bool(const SystemDependencyCheckResult&)> confirmSystemDependencyInstallation;
+};
 
 //namespace GenesysKernel {
 
@@ -38,6 +53,13 @@ class PluginManager {
 public:
 	/*! \brief Creates a plugin manager bound to a simulator instance. */
 	PluginManager(Simulator* simulator);
+	/*!
+	 * \brief Creates a plugin manager with injectable connector and command executor.
+	 *
+	 * Ownership of both injected pointers is transferred to the manager. This
+	 * constructor exists primarily for unit tests and narrow integration seams.
+	 */
+	PluginManager(Simulator* simulator, PluginConnector_if* pluginConnector, SystemCommandExecutor_if* systemCommandExecutor);
 	/*! \brief Destroys owned plugin wrappers and connector resources. */
 	virtual ~PluginManager();
 
@@ -52,8 +74,12 @@ public:
 public:
 	/*! \brief Validates whether a dynamic library provides a compatible plugin. */
 	bool check(const std::string dynamicLibraryFilename);
+	/*! \brief Evaluates system dependencies declared by a dynamic-library plugin without inserting it. */
+	SystemDependencyCheckResult checkSystemDependencies(const std::string dynamicLibraryFilename);
 	/*! \brief Loads and inserts a plugin from a dynamic library file. */
 	Plugin* insert(const std::string dynamicLibraryFilename);
+	/*! \brief Loads and inserts a plugin, optionally asking the caller to authorize dependency installation. */
+	Plugin* insert(const std::string dynamicLibraryFilename, const PluginInsertionOptions& options);
 	/*! \brief Removes/disconnects a plugin by its dynamic library filename. */
 	bool remove(const std::string dynamicLibraryFilename);
 	/*! \brief Removes/disconnects a plugin by pointer. */
@@ -106,14 +132,20 @@ public:
 	}
 
 private:
-	bool _insert(Plugin* plugin);
+	/*! \brief Inserts a connected plugin after recursive dynamic dependency and system dependency checks. */
+	bool _insert(Plugin* plugin, const PluginInsertionOptions& options);
+	/*! \brief Runs system dependency preflight and optional confirmed installation for one plugin. */
+	bool _preflightAndMaybeInstallSystemDependencies(PluginInformation* plugInfo, const PluginInsertionOptions& options);
+	/*! \brief Registers kernel built-in plugins that do not come from dynamic libraries. */
 	void _insertDefaultKernelElements();
+	/*! \brief Finds and attempts to load plugins from connector discovery. */
 	List<Plugin*>* _autoFindPlugins();
 
 private:
 	List<Plugin*>* _plugins = new List<Plugin*>();
 	Simulator* _simulator;
 	PluginConnector_if* _pluginConnector;
+	SystemCommandExecutor_if* _systemCommandExecutor;
 };
 
 //namespace\\}

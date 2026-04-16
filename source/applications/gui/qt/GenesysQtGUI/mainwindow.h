@@ -177,7 +177,9 @@ private slots:
 
 	void on_actionGModelComponentBreakpoint_triggered();
 	void on_actionShowInternalElements_triggered();
+	void on_actionShowEditableElements_triggered();
 	void on_actionShowAttachedElements_triggered();
+	void on_actionShowRecursiveElements_triggered();
 
 
     // widget events

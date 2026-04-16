@@ -26,6 +26,14 @@
 PluginManager::PluginManager(Simulator* simulator) {
 	_simulator = simulator;
 	_pluginConnector = new TraitsKernel<PluginConnector_if>::Implementation();
+	_systemCommandExecutor = new SystemShellCommandExecutor();
+	_insertDefaultKernelElements();
+}
+
+PluginManager::PluginManager(Simulator* simulator, PluginConnector_if* pluginConnector, SystemCommandExecutor_if* systemCommandExecutor) {
+	_simulator = simulator;
+	_pluginConnector = pluginConnector;
+	_systemCommandExecutor = systemCommandExecutor;
 	_insertDefaultKernelElements();
 }
 
@@ -36,6 +44,7 @@ PluginManager::~PluginManager() {
 	}
 	delete _plugins;
 	delete _pluginConnector;
+	delete _systemCommandExecutor;
 }
 
 List<Plugin*>* PluginManager::_autoFindPlugins() {
@@ -115,7 +124,64 @@ List<Plugin*>* PluginManager::completePluginsFieldsAndTemplates() {
 //    return true;
 //}
 
-bool PluginManager::_insert(Plugin * plugin) {
+bool PluginManager::_preflightAndMaybeInstallSystemDependencies(PluginInformation* plugInfo, const PluginInsertionOptions& options) {
+	if (plugInfo == nullptr || !plugInfo->hasSystemDependencies()) {
+		return true;
+	}
+
+	SystemDependencyCheckResult preflight = SystemDependencyResolver::evaluate(
+		plugInfo->getSystemDependencies(),
+		*_systemCommandExecutor);
+	if (preflight.canInsertPlugin()) {
+		return true;
+	}
+
+	// In headless or startup/autoload flows there is no callback, so install commands are never run silently.
+	_simulator->getTraceManager()->traceError(
+		"Plugin system dependencies are not satisfied: " + preflight.summary(),
+		TraceManager::Level::L3_errorRecover);
+	if (!options.confirmSystemDependencyInstallation) {
+		_simulator->getTraceManager()->traceError(
+			"No interactive confirmation callback is available; plugin will not be inserted.",
+			TraceManager::Level::L3_errorRecover);
+		return false;
+	}
+
+	// The GUI callback is the only place allowed to ask the user before package installation.
+	if (!options.confirmSystemDependencyInstallation(preflight)) {
+		_simulator->getTraceManager()->traceError(
+			"User did not authorize system dependency installation; plugin will not be inserted.",
+			TraceManager::Level::L3_errorRecover);
+		return false;
+	}
+
+	SystemDependencyInstallResult installResult = SystemDependencyResolver::installMissingDependencies(
+		preflight,
+		*_systemCommandExecutor);
+	if (!installResult.succeeded()) {
+		_simulator->getTraceManager()->traceError(
+			"System dependency installation failed: " + installResult.summary(),
+			TraceManager::Level::L3_errorRecover);
+		return false;
+	}
+
+	// Revalidation after installation prevents inserting a plugin after a partial or ineffective install.
+	SystemDependencyCheckResult validation = SystemDependencyResolver::evaluate(
+		plugInfo->getSystemDependencies(),
+		*_systemCommandExecutor);
+	if (!validation.canInsertPlugin()) {
+		_simulator->getTraceManager()->traceError(
+			"System dependencies are still not satisfied after installation: " + validation.summary(),
+			TraceManager::Level::L3_errorRecover);
+		return false;
+	}
+	return true;
+}
+
+bool PluginManager::_insert(Plugin * plugin, const PluginInsertionOptions& options) {
+	if (plugin == nullptr) {
+		return false;
+	}
 	PluginInformation *plugInfo = plugin->getPluginInfo();
 	if (plugin->isIsValidPlugin() && plugInfo != nullptr) {
 		std::string msg = "Inserting ";
@@ -125,6 +191,12 @@ bool PluginManager::_insert(Plugin * plugin) {
 			msg += "modeldatum";
 		msg += " plugin \"" + plugin->getPluginInfo()->getPluginTypename() + "\"";
 		_simulator->getTraceManager()->trace(msg);
+		if (this->find(plugInfo->getPluginTypename()) != nullptr) { // plugin alread exists
+			Util::IncIndent();
+			_simulator->getTraceManager()->trace("The plugin already exists and was not inserted again");
+			Util::DecIndent();
+			return true; // It already exists. It was NOT inserted again, BUT it has been inserted BEFORE, therefore returns TRUE
+		}
 		// insert all dependencies before to insert this plugin
 		bool allDependenciesInserted = true;
 		if (plugInfo->getDynamicLibFilenameDependencies()->size() > 0) {
@@ -134,7 +206,7 @@ bool PluginManager::_insert(Plugin * plugin) {
 				Util::IncIndent();
 				{
 					for (std::string str : *plugInfo->getDynamicLibFilenameDependencies()) {
-						allDependenciesInserted &= (this->insert(str) != nullptr);
+						allDependenciesInserted &= (this->insert(str, options) != nullptr);
 					}
 				}
 				Util::DecIndent();
@@ -145,11 +217,8 @@ bool PluginManager::_insert(Plugin * plugin) {
 			_simulator->getTraceManager()->traceError("Plugin dependencies could not be inserted; therefore, the plugin will not be inserted", TraceManager::Level::L3_errorRecover);
 			return false;
 		}
-		if (this->find(plugInfo->getPluginTypename()) != nullptr) { // plugin alread exists
-			Util::IncIndent();
-			_simulator->getTraceManager()->trace("The plugin already exists and was not inserted again");
-			Util::DecIndent();
-			return true; // It already exists. It was NOT inserted again, BUT it has been inserted BEFORE, therefore returns TRUE
+		if (!_preflightAndMaybeInstallSystemDependencies(plugInfo, options)) {
+			return false;
 		}
 		_plugins->insert(plugin);
 		Util::IncIndent();
@@ -177,12 +246,37 @@ bool PluginManager::check(std::string dynamicLibraryFilename) {
 	return checked;
 }
 
+SystemDependencyCheckResult PluginManager::checkSystemDependencies(std::string dynamicLibraryFilename) {
+	SystemDependencyCheckResult result;
+	Plugin* plugin = nullptr;
+	try {
+		plugin = _pluginConnector->check(dynamicLibraryFilename);
+	} catch (...) {
+		return result;
+	}
+	if (plugin != nullptr && plugin->isIsValidPlugin() && plugin->getPluginInfo() != nullptr) {
+		result = SystemDependencyResolver::evaluate(plugin->getPluginInfo()->getSystemDependencies(), *_systemCommandExecutor);
+	}
+	delete plugin;
+	return result;
+}
+
 Plugin * PluginManager::insert(std::string dynamicLibraryFilename) {
+	PluginInsertionOptions options;
+	return insert(dynamicLibraryFilename, options);
+}
+
+Plugin * PluginManager::insert(std::string dynamicLibraryFilename, const PluginInsertionOptions& options) {
 	Plugin* plugin = nullptr;
 	try {
 		plugin = _pluginConnector->connect(dynamicLibraryFilename);
 		if (plugin != nullptr) {
-			if (!_insert(plugin)) {
+			const bool validBeforeInsert = plugin->isIsValidPlugin();
+			if (!_insert(plugin, options)) {
+				if (validBeforeInsert) {
+					// A connected but rejected plugin must be released by the connector.
+					_pluginConnector->disconnect(plugin);
+				}
 				plugin = nullptr;
 			}
 		} else {

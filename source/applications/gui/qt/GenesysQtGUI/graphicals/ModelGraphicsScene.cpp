@@ -2980,19 +2980,52 @@ QList<QGraphicsItem*>* ModelGraphicsScene::getGraphicalDiagramsConnections() con
 }
 
 void ModelGraphicsScene::setShowInternalDataDefinitions(bool show) {
-    _showInternalDataDefinitions = show;
+    _showStatisticsDataDefinitions = show;
+    _showEditableDataDefinitions = show;
 }
 
 bool ModelGraphicsScene::showInternalDataDefinitions() const {
-    return _showInternalDataDefinitions;
+    return _showStatisticsDataDefinitions || _showEditableDataDefinitions;
 }
 
 void ModelGraphicsScene::setShowAttachedDataDefinitions(bool show) {
-    _showAttachedDataDefinitions = show;
+    _showSharedDataDefinitions = show;
 }
 
 bool ModelGraphicsScene::showAttachedDataDefinitions() const {
-    return _showAttachedDataDefinitions;
+    return _showSharedDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowStatisticsDataDefinitions(bool show) {
+    _showStatisticsDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showStatisticsDataDefinitions() const {
+    return _showStatisticsDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowEditableDataDefinitions(bool show) {
+    _showEditableDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showEditableDataDefinitions() const {
+    return _showEditableDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowSharedDataDefinitions(bool show) {
+    _showSharedDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showSharedDataDefinitions() const {
+    return _showSharedDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowRecursiveDataDefinitions(bool show) {
+    _showRecursiveDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showRecursiveDataDefinitions() const {
+    return _showRecursiveDataDefinitions;
 }
 
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {

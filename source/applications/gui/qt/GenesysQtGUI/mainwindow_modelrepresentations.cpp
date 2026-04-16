@@ -179,8 +179,10 @@ void MainWindow::_initModelGraphicsView() {
     ui->graphicsView->setRuleVisible(ui->actionShowRule->isChecked());
     ui->graphicsView->getScene()->setSnapToGrid(ui->actionShowSnap->isChecked());
     ui->graphicsView->setGuidesVisible(ui->actionShowGuides->isChecked());
-    ui->graphicsView->getScene()->setShowInternalDataDefinitions(ui->actionShowInternalElements->isChecked());
-    ui->graphicsView->getScene()->setShowAttachedDataDefinitions(ui->actionShowAttachedElements->isChecked());
+    ui->graphicsView->getScene()->setShowStatisticsDataDefinitions(ui->actionShowInternalElements->isChecked());
+    ui->graphicsView->getScene()->setShowEditableDataDefinitions(ui->actionShowEditableElements->isChecked());
+    ui->graphicsView->getScene()->setShowSharedDataDefinitions(ui->actionShowAttachedElements->isChecked());
+    ui->graphicsView->getScene()->setShowRecursiveDataDefinitions(ui->actionShowRecursiveElements->isChecked());
 
     // Cria uma stack undo/redo
     ui->graphicsView->getScene()->setUndoStack(new QUndoStack(this));

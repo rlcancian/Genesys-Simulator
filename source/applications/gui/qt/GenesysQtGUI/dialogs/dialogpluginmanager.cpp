@@ -14,6 +14,7 @@
 #include <QFileDialog>
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QStringList>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextEdit>
@@ -98,6 +99,17 @@ void DialogPluginManager::on_pushButtonCheck_clicked()
 	}
 
 	const bool valid = _simulator->getPluginManager()->check(filename);
+	if (valid) {
+		const SystemDependencyCheckResult preflight = _simulator->getPluginManager()->checkSystemDependencies(filename);
+		if (!preflight.entries().empty() && !preflight.canInsertPlugin()) {
+			_showOperationResult(
+				tr("Check plugin"),
+				tr("The selected plugin is structurally valid, but its system dependencies are not satisfied:\n\n%1")
+					.arg(_formatSystemDependencyPreflight(preflight))
+			);
+			return;
+		}
+	}
 	_showOperationResult(
 		tr("Check plugin"),
 		valid ? tr("The selected plugin can be inserted.") : tr("The selected plugin could not be checked as a valid plugin.")
@@ -115,7 +127,11 @@ void DialogPluginManager::on_pushButtonInsert_clicked()
 		return;
 	}
 
-	Plugin* plugin = _simulator->getPluginManager()->insert(filename);
+	PluginInsertionOptions options;
+	options.confirmSystemDependencyInstallation = [this](const SystemDependencyCheckResult& result) {
+		return _confirmSystemDependencyInstallation(result);
+	};
+	Plugin* plugin = _simulator->getPluginManager()->insert(filename, options);
 	_simulator->getPluginManager()->completePluginsFieldsAndTemplates();
 	_refreshPluginTable();
 	_refreshPluginCatalog();
@@ -357,6 +373,34 @@ QString DialogPluginManager::_formatSystemDependencies(const PluginInformation* 
 	return text + "\n";
 }
 
+QString DialogPluginManager::_formatSystemDependencyPreflight(const SystemDependencyCheckResult& result) const
+{
+	QString text;
+	for (const SystemDependencyCheckEntry& entry : result.entries()) {
+		const SystemDependency& dependency = entry.dependency();
+		text += tr("Dependency: %1\n").arg(QString::fromStdString(dependency.getName()));
+		text += tr("  OS: %1\n").arg(QString::fromStdString(SystemDependency::osToString(dependency.getOS())));
+		text += tr("  Status: %1\n").arg(QString::fromStdString(SystemDependencyCheckEntry::statusToString(entry.status())));
+		text += tr("  Check command: %1\n").arg(dependency.getCheckCommand().empty()
+			? tr("<not declared>")
+			: QString::fromStdString(dependency.getCheckCommand()));
+		text += tr("  Install command: %1\n").arg(dependency.getInstallCommand().empty()
+			? tr("<not declared>")
+			: QString::fromStdString(dependency.getInstallCommand()));
+		if (entry.checkResult().started) {
+			text += tr("  Check exit code: %1\n").arg(entry.checkResult().exitCode);
+			if (!entry.checkResult().output.empty()) {
+				text += tr("  Check output: %1\n").arg(QString::fromStdString(entry.checkResult().output).trimmed());
+			}
+		}
+		if (!entry.message().empty()) {
+			text += tr("  Diagnostic: %1\n").arg(QString::fromStdString(entry.message()));
+		}
+		text += "\n";
+	}
+	return text.trimmed();
+}
+
 QString DialogPluginManager::_formatFields(const PluginInformation* info) const
 {
 	QString text = tr("Fields:\n");
@@ -367,6 +411,38 @@ QString DialogPluginManager::_formatFields(const PluginInformation* info) const
 		text += "  " + QString::fromStdString(field.first) + ": " + QString::fromStdString(field.second) + "\n";
 	}
 	return text;
+}
+
+bool DialogPluginManager::_confirmSystemDependencyInstallation(const SystemDependencyCheckResult& result) const
+{
+	const QString diagnostics = _formatSystemDependencyPreflight(result);
+	if (!result.canAttemptInstallForAllMissing()) {
+		QMessageBox::warning(
+			const_cast<DialogPluginManager*>(this),
+			tr("System dependencies"),
+			tr("The plugin declares missing or unverifiable system dependencies that cannot all be installed automatically.\n\n%1\n\nThe plugin will not be inserted.")
+				.arg(diagnostics)
+		);
+		return false;
+	}
+
+	QStringList installCommands;
+	for (const SystemDependencyCheckEntry& entry : result.entries()) {
+		if (entry.canAttemptInstall()) {
+			installCommands << QString::fromStdString(entry.dependency().getInstallCommand());
+		}
+	}
+
+	// This is the GUI boundary for package installation: the kernel has only reported diagnostics.
+	const QMessageBox::StandardButton answer = QMessageBox::question(
+		const_cast<DialogPluginManager*>(this),
+		tr("Install system dependencies"),
+		tr("The plugin needs additional system dependencies before it can be inserted.\n\n%1\n\nInstall command(s):\n%2\n\nRun these command(s) now?")
+			.arg(diagnostics, installCommands.join("\n")),
+		QMessageBox::Yes | QMessageBox::No,
+		QMessageBox::No
+	);
+	return answer == QMessageBox::Yes;
 }
 
 void DialogPluginManager::_showOperationResult(const QString& title, const QString& message) const

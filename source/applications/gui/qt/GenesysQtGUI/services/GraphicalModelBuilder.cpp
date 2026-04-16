@@ -22,6 +22,12 @@
 namespace {
     constexpr qreal minimumAutomaticLayoutCoordinate = 20.0;
 
+    enum class DataDefinitionDisplayCategory {
+        Statistics,
+        Editable,
+        Shared
+    };
+
     QPointF stableComponentPosition(GraphicalModelComponent* component) {
         if (component == nullptr) {
             return QPointF();
@@ -78,6 +84,54 @@ namespace {
         const QPointF position = visibleAutomaticPosition(dataDefinition, requestedPosition);
         dataDefinition->setPos(position);
         dataDefinition->setOldPosition(position.x(), position.y());
+    }
+
+    bool isStatisticsDataDefinition(ModelDataDefinition* dataDefinition) {
+        if (dataDefinition == nullptr) {
+            return false;
+        }
+        const std::string classname = dataDefinition->getClassname();
+        return classname == "Counter"
+               || classname == "StatisticsCollector";
+    }
+
+    DataDefinitionDisplayCategory internalDataDefinitionCategory(ModelDataDefinition* dataDefinition) {
+        return isStatisticsDataDefinition(dataDefinition)
+                   ? DataDefinitionDisplayCategory::Statistics
+                   : DataDefinitionDisplayCategory::Editable;
+    }
+
+    DataDefinitionDisplayCategory attachedDataDefinitionCategory(ModelDataDefinition* dataDefinition) {
+        return isStatisticsDataDefinition(dataDefinition)
+                   ? DataDefinitionDisplayCategory::Statistics
+                   : DataDefinitionDisplayCategory::Shared;
+    }
+
+    bool categoryIsVisible(ModelGraphicsScene* scene, DataDefinitionDisplayCategory category) {
+        if (scene == nullptr) {
+            return false;
+        }
+        switch (category) {
+        case DataDefinitionDisplayCategory::Statistics:
+            return scene->showStatisticsDataDefinitions();
+        case DataDefinitionDisplayCategory::Editable:
+            return scene->showEditableDataDefinitions();
+        case DataDefinitionDisplayCategory::Shared:
+            return scene->showSharedDataDefinitions();
+        }
+        return false;
+    }
+
+    QColor categoryColor(DataDefinitionDisplayCategory category) {
+        switch (category) {
+        case DataDefinitionDisplayCategory::Statistics:
+            return QColor(80, 145, 205);
+        case DataDefinitionDisplayCategory::Editable:
+            return QColor(105, 105, 105);
+        case DataDefinitionDisplayCategory::Shared:
+            return QColor(128, 0, 128);
+        }
+        return QColor(220, 220, 220);
     }
 }
 
@@ -288,38 +342,43 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         componentMap[gmc->getComponent()] = gmc;
     }
 
-    const bool showInternalDataDefinitions = scene->showInternalDataDefinitions();
-    const bool showAttachedDataDefinitions = scene->showAttachedDataDefinitions();
     QSet<ModelDataDefinition*> visibleDataDefinitions;
     QSet<ModelDataDefinition*> expandedDataDefinitions;
+    std::map<ModelDataDefinition*, DataDefinitionDisplayCategory> visibleCategories;
 
     std::function<void(ModelDataDefinition*)> expandVisibleDataDefinition =
         [&](ModelDataDefinition* owner) {
-        if (owner == nullptr || expandedDataDefinitions.contains(owner)) {
+        if (owner == nullptr || !scene->showRecursiveDataDefinitions() || expandedDataDefinitions.contains(owner)) {
             return;
         }
         expandedDataDefinitions.insert(owner);
 
-        if (showAttachedDataDefinitions) {
-            for (const auto& attachedData : *owner->getAttachedData()) {
-                ModelDataDefinition* child = attachedData.second;
-                if (child == nullptr) {
-                    continue;
-                }
-                visibleDataDefinitions.insert(child);
-                expandVisibleDataDefinition(child);
+        for (const auto& attachedData : *owner->getAttachedData()) {
+            ModelDataDefinition* child = attachedData.second;
+            if (child == nullptr) {
+                continue;
             }
+            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(child);
+            if (!categoryIsVisible(scene, category)) {
+                continue;
+            }
+            visibleDataDefinitions.insert(child);
+            visibleCategories[child] = category;
+            expandVisibleDataDefinition(child);
         }
 
-        if (showInternalDataDefinitions) {
-            for (const auto& internalData : *owner->getInternalData()) {
-                ModelDataDefinition* child = internalData.second;
-                if (child == nullptr) {
-                    continue;
-                }
-                visibleDataDefinitions.insert(child);
-                expandVisibleDataDefinition(child);
+        for (const auto& internalData : *owner->getInternalData()) {
+            ModelDataDefinition* child = internalData.second;
+            if (child == nullptr) {
+                continue;
             }
+            const DataDefinitionDisplayCategory category = internalDataDefinitionCategory(child);
+            if (!categoryIsVisible(scene, category)) {
+                continue;
+            }
+            visibleDataDefinitions.insert(child);
+            visibleCategories[child] = category;
+            expandVisibleDataDefinition(child);
         }
     };
 
@@ -329,26 +388,32 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             continue;
         }
 
-        if (showAttachedDataDefinitions) {
-            for (const auto& attachedData : *component->getAttachedData()) {
-                ModelDataDefinition* dataDefinition = attachedData.second;
-                if (dataDefinition == nullptr) {
-                    continue;
-                }
-                visibleDataDefinitions.insert(dataDefinition);
-                expandVisibleDataDefinition(dataDefinition);
+        for (const auto& attachedData : *component->getAttachedData()) {
+            ModelDataDefinition* dataDefinition = attachedData.second;
+            if (dataDefinition == nullptr) {
+                continue;
             }
+            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(dataDefinition);
+            if (!categoryIsVisible(scene, category)) {
+                continue;
+            }
+            visibleDataDefinitions.insert(dataDefinition);
+            visibleCategories[dataDefinition] = category;
+            expandVisibleDataDefinition(dataDefinition);
         }
 
-        if (showInternalDataDefinitions) {
-            for (const auto& internalData : *component->getInternalData()) {
-                ModelDataDefinition* dataDefinition = internalData.second;
-                if (dataDefinition == nullptr) {
-                    continue;
-                }
-                visibleDataDefinitions.insert(dataDefinition);
-                expandVisibleDataDefinition(dataDefinition);
+        for (const auto& internalData : *component->getInternalData()) {
+            ModelDataDefinition* dataDefinition = internalData.second;
+            if (dataDefinition == nullptr) {
+                continue;
             }
+            const DataDefinitionDisplayCategory category = internalDataDefinitionCategory(dataDefinition);
+            if (!categoryIsVisible(scene, category)) {
+                continue;
+            }
+            visibleDataDefinitions.insert(dataDefinition);
+            visibleCategories[dataDefinition] = category;
+            expandVisibleDataDefinition(dataDefinition);
         }
     }
 
@@ -372,7 +437,6 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     }
 
     PluginManager* pluginManager = simulator->getPluginManager();
-    QColor purple(128, 0, 128);
     QColor grey(220, 220, 220);
 
     std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> dataDefinitionMap;
@@ -393,6 +457,10 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             auto existingIt = existingDataDefinitions.find(dataDefinition);
             if (existingIt != existingDataDefinitions.end()) {
                 dataDefinitionMap[dataDefinition] = existingIt->second;
+                const auto categoryIt = visibleCategories.find(dataDefinition);
+                if (categoryIt != visibleCategories.end() && existingIt->second != nullptr) {
+                    existingIt->second->setColor(categoryColor(categoryIt->second));
+                }
                 continue;
             }
 
@@ -400,8 +468,12 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (plugin == nullptr) {
                 continue;
             }
+            const auto categoryIt = visibleCategories.find(dataDefinition);
+            const QColor color = categoryIt != visibleCategories.end()
+                                     ? categoryColor(categoryIt->second)
+                                     : grey;
             GraphicalModelDataDefinition* graphicalDataDefinition = scene->addGraphicalModelDataDefinition(
-                plugin, dataDefinition, QPointF(0, 0), grey);
+                plugin, dataDefinition, QPointF(0, 0), color);
             if (graphicalDataDefinition != nullptr) {
                 dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
                 newDataDefinitions.insert(dataDefinition);
@@ -457,7 +529,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 yAttached -= 150;
                 gdd->setParentItem(nullptr);
                 setVisibleAutomaticPosition(gdd, QPointF(componentPosition.x(), yAttached));
-                gdd->setColor(purple);
+                gdd->setColor(categoryColor(visibleCategories[attachedData.second]));
             }
             scene->addGraphicalDiagramConnection(gdd, graphicalComponent,
                                                  GraphicalDiagramConnection::ConnectionType::ATTACHED);
@@ -517,7 +589,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 yAttached -= 150;
                 childGraphicalDefinition->setParentItem(nullptr);
                 setVisibleAutomaticPosition(childGraphicalDefinition, QPointF(parentPosition.x(), yAttached));
-                childGraphicalDefinition->setColor(purple);
+                childGraphicalDefinition->setColor(categoryColor(visibleCategories[attachedData.second]));
             }
             scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition,
                                                  GraphicalDiagramConnection::ConnectionType::ATTACHED);

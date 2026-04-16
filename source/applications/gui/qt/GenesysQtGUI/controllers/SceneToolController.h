@@ -115,14 +115,18 @@ public:
     void onHorizontalSliderAnimationSpeedValueChanged(int value);
     /** @brief Selects all graphical items in the active scene context. */
     void onActionSelectAllTriggered();
-    /** @brief Toggles rendering of internal elements and triggers representation refresh. */
+    /** @brief Toggles rendering of statistics data definitions and triggers representation refresh. */
     void onActionShowInternalElementsTriggered();
-    /** @brief Toggles rendering of attached elements and triggers representation refresh. */
+    /** @brief Toggles rendering of editable data definitions and triggers representation refresh. */
+    void onActionShowEditableElementsTriggered();
+    /** @brief Toggles rendering of shared data definitions and triggers representation refresh. */
     void onActionShowAttachedElementsTriggered();
     /** @brief Bridges checkbox state changes to the show-elements action wrapper. */
     void onCheckBoxShowElementsStateChanged(int arg1);
     /** @brief Bridges checkbox state changes to the show-internals action wrapper. */
     void onCheckBoxShowInternalsStateChanged(int arg1);
+    /** @brief Toggles recursive data-definition expansion and triggers representation refresh. */
+    void onActionShowRecursiveElementsTriggered();
     /** @brief Bridges recursive-render checkbox changes to model-image refresh workflow. */
     void onCheckBoxShowRecursiveStateChanged(int arg1);
     /** @brief Bridges level-annotation checkbox changes to model-image refresh workflow. */
