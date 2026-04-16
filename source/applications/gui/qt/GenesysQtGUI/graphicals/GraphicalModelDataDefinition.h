@@ -24,6 +24,8 @@ public:
 	QRectF boundingRect() const override;
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     ModelDataDefinition* getDataDefinition() const;
+    bool isEditableInPropertyEditor() const;
+    void setEditableInPropertyEditor(bool editable);
     QPointF getOldPosition() const;
     void setOldPosition(qreal x, qreal y);
     QColor getColor() const;
@@ -52,6 +54,7 @@ protected:
 	unsigned int _margin = TraitsGUI<GModelDataDefinition>::margin;//8;
 	unsigned int _selWidth = TraitsGUI<GModelDataDefinition>::selectionWidth;//8;
 	ModelDataDefinition* _element;
+    bool _editableInPropertyEditor = false;
 	QColor _color;
     QPointF _oldPosition;
 	qreal _stretchPosTop = TraitsGUI<GModelDataDefinition>::stretchPos;//0.5;
@@ -70,4 +73,3 @@ private:
 };
 
 #endif /* GRAPHICALMODELDATADEFINITION_H */
-

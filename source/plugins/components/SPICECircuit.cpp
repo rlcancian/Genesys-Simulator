@@ -13,6 +13,7 @@
 
 #include "SPICECircuit.h"
 #include "../../kernel/simulator/Model.h"
+#include "../../kernel/simulator/SimulationControlAndResponse.h"
 
 
 
@@ -60,7 +61,16 @@ unsigned int XNOR::counter = 0;
 //
 
 SPICECircuit::SPICECircuit(Model* model, std::string name)
-	: ModelComponent(model, Util::TypeOf<SPICECircuit>(), name) { }
+	: ModelComponent(model, Util::TypeOf<SPICECircuit>(), name) {
+	SimulationControlGenericClass<SPICERunner*, Model*, SPICERunner>* propRunner = new SimulationControlGenericClass<SPICERunner*, Model*, SPICERunner>(
+		_parentModel,
+		std::bind(&SPICECircuit::getRunner, this),
+		std::bind(&SPICECircuit::setRunner, this, std::placeholders::_1),
+		Util::TypeOf<SPICECircuit>(), getName(), "Runner", "");
+
+	_parentModel->getControls()->insert(propRunner);
+	_addProperty(propRunner);
+}
 
 
 //
@@ -129,7 +139,9 @@ void SPICECircuit::UpdateConnections() {
 void SPICECircuit::setRunner(SPICERunner* runner) {
 	compiler = runner;
 
-	compiler->SendCallback([this]() {this->UpdateConnections(); });
+	if (compiler != nullptr) {
+		compiler->SendCallback([this]() {this->UpdateConnections(); });
+	}
 }
 
 SPICERunner* SPICECircuit::getRunner() {
@@ -1122,17 +1134,30 @@ ModelDataDefinition* SPICECircuit::NewInstance(Model* model, std::string name) {
 bool SPICECircuit::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
-		// @TODO: not implemented yet
+		const std::string runnerName = fields->loadField("runner", "");
+		if (!runnerName.empty()) {
+			compiler = dynamic_cast<SPICERunner*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<SPICERunner>(), runnerName));
+		}
 	}
 	return res;
 }
 
 void SPICECircuit::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+	if (compiler != nullptr) {
+		fields->saveField("runner", compiler->getName(), "", saveDefaultValues);
+	}
 }
 
 void SPICECircuit::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	traceSimulation(this, "I'm just an electric circuit model and I'm not event oriented.");
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
+}
+
+void SPICECircuit::_createInternalAndAttachedData() {
+	if (compiler != nullptr) {
+		_attachedDataInsert("Runner", compiler);
+	} else {
+		_attachedDataRemove("Runner");
+	}
 }

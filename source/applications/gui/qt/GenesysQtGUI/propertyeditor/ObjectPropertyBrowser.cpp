@@ -37,6 +37,7 @@
 #include <QUndoStack>
 
 #include "../../../../kernel/simulator/Model.h"
+#include "../../../../kernel/simulator/ModelComponent.h"
 #include "../../../../kernel/simulator/ModelDataManager.h"
 #include "../../../../kernel/simulator/ModelManager.h"
 #include "../../../../kernel/simulator/Simulator.h"
@@ -271,6 +272,8 @@ void ObjectPropertyBrowser::clearCurrentlyConnectedObject() {
     _modelObject = nullptr;
     _activeMode = ActiveMode::None;
     _graphicallyRepresentedModelObjects.clear();
+    _editableModelObjects.clear();
+    _activeKernelObjectReadOnly = false;
     _propertyEditor = nullptr;
     _isRebuildingProperties = false;
     _isNotifyingModelChange = false;
@@ -303,6 +306,7 @@ void ObjectPropertyBrowser::setActiveObject(
     QObject *obj,
     ModelDataDefinition* mdd,
     const QSet<QString>& graphicallyRepresentedModelObjects,
+    const QSet<QString>& editableModelObjects,
     PropertyEditorGenesys* peg,
     std::map<SimulationControl*, DataComponentProperty*>* pl,
     std::map<SimulationControl*, DataComponentEditor*>* peUI,
@@ -325,6 +329,19 @@ void ObjectPropertyBrowser::setActiveObject(
     _modelObject = mdd;
     _activeMode = (mdd != nullptr) ? ActiveMode::KernelObject : ActiveMode::None;
     _graphicallyRepresentedModelObjects = graphicallyRepresentedModelObjects;
+    _editableModelObjects = editableModelObjects;
+    _activeKernelObjectReadOnly = false;
+    const bool activeModelObjectIsComponent = dynamic_cast<ModelComponent*>(mdd) != nullptr;
+    if (!activeModelObjectIsComponent) {
+        auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(obj);
+        if (graphicalDataDefinition != nullptr) {
+            if (graphicalDataDefinition->getDataDefinition() != nullptr) {
+                const QString name = QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName());
+                graphicalDataDefinition->setEditableInPropertyEditor(_editableModelObjects.contains(name));
+            }
+            _activeKernelObjectReadOnly = !graphicalDataDefinition->isEditableInPropertyEditor();
+        }
+    }
     _propertyEditor = peg;
     _propertyList = pl;
     _propertyEditorUI = peUI;
@@ -592,7 +609,7 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
         _enumNames[property] = _toQStringList(desc.choices);
         _enumManager->setEnumNames(property, _enumNames[property]);
         _enumManager->setValue(property, _enumIndexFor(desc));
-        property->setEnabled(!desc.readOnly);
+        property->setEnabled(_isKernelEditingEnabled(desc));
 
         Binding binding;
         binding.owner = _modelObject;
@@ -627,7 +644,7 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
 
     // This block enables direct inline editing only for scalar-like properties handled by variant editors.
     const bool editableInline =
-        !desc.readOnly &&
+        _isKernelEditingEnabled(desc) &&
         !desc.supportsListEditor &&
         !desc.supportsInlineExpansion &&
         !(desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit);
@@ -665,14 +682,14 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
 
     QStringList choices;
     choices << countLabel;
-    if (desc.supportsNewListElementCreation && !desc.readOnly) {
+    if (desc.supportsNewListElementCreation && _isKernelEditingEnabled(desc)) {
         choices << QString("Criar novo %1").arg(_modelObjectTypeName(desc));
     }
 
     _enumNames[property] = choices;
     _enumManager->setEnumNames(property, choices);
     _enumManager->setValue(property, 0);
-    property->setEnabled(true);
+    property->setEnabled(!_activeKernelObjectReadOnly);
     property->setToolTip("Expanda para editar os elementos da lista ou selecione a ação para criar um novo elemento.");
     property->setStatusTip("Lista de objetos");
 
@@ -767,7 +784,7 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
     _enumNames[property] = choices;
     _enumManager->setEnumNames(property, choices);
     _enumManager->setValue(property, currentIndex);
-    property->setEnabled(true);
+    property->setEnabled(!_activeKernelObjectReadOnly);
     property->setToolTip("Selecione uma opção para vincular, criar, selecionar ou remover a referência do objeto.");
     property->setStatusTip("Referência para objeto gráfico do modelo");
 
@@ -783,6 +800,10 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
 
 bool ObjectPropertyBrowser::_isObjectListProperty(const GenesysPropertyDescriptor& desc) const {
     return desc.isList && desc.isClass && desc.supportsListEditor;
+}
+
+bool ObjectPropertyBrowser::_isKernelEditingEnabled(const GenesysPropertyDescriptor& desc) const {
+    return !_activeKernelObjectReadOnly && !desc.readOnly;
 }
 
 bool ObjectPropertyBrowser::_hasGraphicalRepresentation(const GenesysPropertyDescriptor& desc) const {
@@ -1225,7 +1246,7 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
         _enumNames[refProperty] = _toQStringList(desc.choices);
         _enumManager->setEnumNames(refProperty, _enumNames[refProperty]);
         _enumManager->setValue(refProperty, _enumIndexFor(desc));
-        refProperty->setEnabled(!desc.readOnly);
+        refProperty->setEnabled(_isKernelEditingEnabled(desc));
 
         Binding refBinding = groupBinding;
         refBinding.isObjectSelector = true;
@@ -1237,10 +1258,10 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
     if (childrenList == nullptr) {
         QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
         emptyNode->setEnabled(false);
-        if (desc.supportsObjectCreation && !desc.readOnly) {
+        if (desc.supportsObjectCreation && _isKernelEditingEnabled(desc)) {
             emptyNode->setValue("Object not available yet. Select or create an object reference to continue.");
         } else {
-            emptyNode->setValue(desc.readOnly ? "Read-only object" : "Object not available");
+            emptyNode->setValue(!_isKernelEditingEnabled(desc) ? "Read-only object" : "Object not available");
         }
         group->addSubProperty(emptyNode);
         return;
@@ -1605,6 +1626,9 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     if (binding.isObjectListAction) {
         return false;
     }
@@ -1661,6 +1685,9 @@ bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     if (binding.control == nullptr) {
         return false;
     }
@@ -1695,6 +1722,9 @@ bool ObjectPropertyBrowser::_createNewListElementForProperty(QtProperty* propert
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     if (binding.control == nullptr || !binding.descriptor.supportsNewListElementCreation) {
         return false;
     }
@@ -1732,6 +1762,9 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property) 
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     if (binding.control == nullptr || !binding.descriptor.supportsObjectCreation) {
         return false;
     }
@@ -1783,6 +1816,9 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     if (binding.control == nullptr || objectName.isEmpty() || _modelObject == nullptr) {
         return false;
     }
@@ -1820,6 +1856,9 @@ bool ObjectPropertyBrowser::_selectModelObjectForProperty(QtProperty* property) 
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
     if (referencedDataDefinition == nullptr || _graphicalItem == nullptr || _graphicalItem->scene() == nullptr) {
         return false;
@@ -1855,6 +1894,9 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     if (binding.control == nullptr || _modelObject == nullptr) {
         return false;
     }
@@ -1897,6 +1939,9 @@ bool ObjectPropertyBrowser::_deleteModelObjectForProperty(QtProperty* property) 
     }
 
     const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        return false;
+    }
     ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
     if (referencedDataDefinition == nullptr || _graphicalItem == nullptr || _graphicalItem->scene() == nullptr) {
         return false;
@@ -1932,6 +1977,9 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
     if (it == _bindings.end()) {
         return false;
     }
+    if (!_isKernelEditingEnabled(it.value().descriptor)) {
+        return false;
+    }
 
     const QStringList choices = _enumNames.value(property);
     if (value < 0 || value >= choices.size()) {
@@ -1957,6 +2005,9 @@ bool ObjectPropertyBrowser::_applyModelObjectReferenceSelection(QtProperty* prop
 
     auto it = _bindings.find(property);
     if (it == _bindings.end()) {
+        return false;
+    }
+    if (!_isKernelEditingEnabled(it.value().descriptor)) {
         return false;
     }
 
@@ -2030,6 +2081,10 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
     Binding& binding = it.value();
     if (binding.control == nullptr) {
         qWarning() << "[PropertyEditor] variant apply ignored due to null binding control";
+        return false;
+    }
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        qInfo() << "[PropertyEditor] variant apply ignored because kernel object is read-only";
         return false;
     }
 
@@ -2268,6 +2323,10 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 
     if (binding.control == nullptr) {
         qWarning() << "[PropertyEditor] enumValueChanged ignored due to null binding control";
+        return;
+    }
+    if (!_isKernelEditingEnabled(binding.descriptor)) {
+        qInfo() << "[PropertyEditor] enumValueChanged ignored because kernel object is read-only";
         return;
     }
     if (!_hasValidActiveBindingContext(property)) {

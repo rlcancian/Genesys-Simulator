@@ -28,18 +28,18 @@ ModelDataDefinition* Resource::NewInstance(Model* model, std::string name) {
 }
 
 std::string Resource::convertEnumToStr(ResourceState state) {
-    switch (static_cast<int> (state)) {
-        case 0: return "IDLE";
-        case 1: return "BUSY";
-        case 2: return "FAILED";
-        case 3: return "INACTIVE";
-        case 4: return "OTHER";
+    switch (static_cast<int>(state)) {
+    case 0: return "IDLE";
+    case 1: return "BUSY";
+    case 2: return "FAILED";
+    case 3: return "INACTIVE";
+    case 4: return "OTHER";
     }
     return "Unknown";
 }
 
 Resource::Resource(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<Resource>(), name) {
-    _resourceEventHandlers->setSortFunc([](const SortedResourceEventHandler* a, const SortedResourceEventHandler * b) {
+    _resourceEventHandlers->setSortFunc([](const SortedResourceEventHandler* a, const SortedResourceEventHandler* b) {
         return a->second < b->second; /// Handlers are sorted by priority
     });
     // OLD
@@ -50,37 +50,39 @@ Resource::Resource(Model* model, std::string name) : ModelDataDefinition(model, 
     //SetterMemberDouble setter2 = DefineSetterMember<Resource>(this, &Resource::setCostPerUse);
     //model->getControls()->insert(new SimulationControl(Util::TypeOf<Resource>(), getName() + ".CostPerUse", getter2, setter2));
     // ...
-//	PropertyT<unsigned int>* prop1 = new PropertyT<unsigned int>(Util::TypeOf<Resource>(), "Capacity",
-//			DefineGetter<Resource, unsigned int>(this, &Resource::getCapacity),
-//			DefineSetter<Resource, unsigned int>(this, &Resource::setCapacity));
-//	_parentModel->getControls()->insert(prop1);
-//	_addProperty(prop1);
+    //	PropertyT<unsigned int>* prop1 = new PropertyT<unsigned int>(Util::TypeOf<Resource>(), "Capacity",
+    //			DefineGetter<Resource, unsigned int>(this, &Resource::getCapacity),
+    //			DefineSetter<Resource, unsigned int>(this, &Resource::setCapacity));
+    //	_parentModel->getControls()->insert(prop1);
+    //	_addProperty(prop1);
 
-    SimulationControlGenericEnum<Resource::ResourceState, Resource>* propResourceState = new SimulationControlGenericEnum<Resource::ResourceState, Resource>(
-                std::bind(&Resource::getResourceState, this),
-                std::bind(&Resource::setResourceState, this, std::placeholders::_1),
-                Util::TypeOf<Resource>(), getName(), "ResourceState", "");
+    SimulationControlGenericEnum<Resource::ResourceState, Resource>* propResourceState = new
+        SimulationControlGenericEnum<Resource::ResourceState, Resource>(
+            std::bind(&Resource::getResourceState, this),
+            std::bind(&Resource::setResourceState, this, std::placeholders::_1),
+            Util::TypeOf<Resource>(), getName(), "ResourceState", "");
     SimulationControlGeneric<unsigned int>* propCapacity = new SimulationControlGeneric<unsigned int>(
-                std::bind(&Resource::getCapacity, this),
-                std::bind(&Resource::setCapacity, this, std::placeholders::_1),
-                Util::TypeOf<Resource>(), getName(), "Capacity", "");
+        std::bind(&Resource::getCapacity, this),
+        std::bind(&Resource::setCapacity, this, std::placeholders::_1),
+        Util::TypeOf<Resource>(), getName(), "Capacity", "");
     SimulationControlGeneric<double>* propCostBusyTimeUnit = new SimulationControlGeneric<double>(
-                std::bind(&Resource::getCostBusyTimeUnit, this),
-                std::bind(&Resource::setCostBusyTimeUnit, this, std::placeholders::_1),
-                Util::TypeOf<Resource>(), getName(), "CostBusyTimeUnit", "");
+        std::bind(&Resource::getCostBusyTimeUnit, this),
+        std::bind(&Resource::setCostBusyTimeUnit, this, std::placeholders::_1),
+        Util::TypeOf<Resource>(), getName(), "CostBusyTimeUnit", "");
     SimulationControlGeneric<double>* propCostIdleTimeUnit = new SimulationControlGeneric<double>(
-                std::bind(&Resource::getCostIdleTimeUnit, this),
-                std::bind(&Resource::setCostIdleTimeUnit, this, std::placeholders::_1),
-                Util::TypeOf<Resource>(), getName(), "CostIdleTimeUnit", "");
+        std::bind(&Resource::getCostIdleTimeUnit, this),
+        std::bind(&Resource::setCostIdleTimeUnit, this, std::placeholders::_1),
+        Util::TypeOf<Resource>(), getName(), "CostIdleTimeUnit", "");
     SimulationControlGeneric<double>* propCostPerUse = new SimulationControlGeneric<double>(
-                std::bind(&Resource::getCostPerUse, this),
-                std::bind(&Resource::setCostPerUse, this, std::placeholders::_1),
-                Util::TypeOf<Resource>(), getName(), "CostPerUse", "");
-    SimulationControlGenericClass<Schedule*, Model*, Schedule>* propCapacitySchedule = new SimulationControlGenericClass<Schedule*, Model*, Schedule>(
-                _parentModel,
-                std::bind(&Resource::getCapacitySchedule, this),
-                std::bind(&Resource::setCapacitySchedule, this, std::placeholders::_1),
-                Util::TypeOf<Resource>(), getName(), "CapacitySchedule", "");
+        std::bind(&Resource::getCostPerUse, this),
+        std::bind(&Resource::setCostPerUse, this, std::placeholders::_1),
+        Util::TypeOf<Resource>(), getName(), "CostPerUse", "");
+    SimulationControlGenericClass<Schedule*, Model*, Schedule>* propCapacitySchedule = new SimulationControlGenericClass
+        <Schedule*, Model*, Schedule>(
+            _parentModel,
+            std::bind(&Resource::getCapacitySchedule, this),
+            std::bind(&Resource::setCapacitySchedule, this, std::placeholders::_1),
+            Util::TypeOf<Resource>(), getName(), "CapacitySchedule", "");
 
     _parentModel->getControls()->insert(propResourceState);
     _parentModel->getControls()->insert(propCapacity);
@@ -122,14 +124,15 @@ Resource::~Resource() {
 
 std::string Resource::show() {
     return ModelDataDefinition::show() +
-            ",capacity=" + Util::StrTruncIfInt(std::to_string(_capacity)) +
-            ",costBusyByTimeUnit=" + Util::StrTruncIfInt(std::to_string(_costBusyTimeUnit)) +
-            ",costIdleByTimeUnit=" + Util::StrTruncIfInt(std::to_string(_costIdleTimeUnit)) +
-            ",costPerUse=" + Util::StrTruncIfInt(std::to_string(_costPerUse)) +
-            ",state=" + Util::StrTruncIfInt(std::to_string(static_cast<int> (_resourceState)));
+        ",capacity=" + Util::StrTruncIfInt(std::to_string(_capacity)) +
+        ",costBusyByTimeUnit=" + Util::StrTruncIfInt(std::to_string(_costBusyTimeUnit)) +
+        ",costIdleByTimeUnit=" + Util::StrTruncIfInt(std::to_string(_costIdleTimeUnit)) +
+        ",costPerUse=" + Util::StrTruncIfInt(std::to_string(_costPerUse)) +
+        ",state=" + Util::StrTruncIfInt(std::to_string(static_cast<int>(_resourceState)));
 }
 
-bool Resource::seize(unsigned int quantity, double priority) {  //@ TODO: Considere priority. (Is it here??)
+bool Resource::seize(unsigned int quantity, double priority) {
+    //@ TODO: Considere priority. (Is it here??)
     double tnow = _parentModel->getSimulation()->getSimulatedTime();
     _sumCapacityOverTime += _lastTimeCapacityEvaluated * getCapacity();
     _lastTimeCapacityEvaluated = tnow;
@@ -159,7 +162,8 @@ void Resource::release(unsigned int quantity) {
     _lastTimeCapacityEvaluated = tnow;
     if (_numberBusy >= quantity) {
         _numberBusy -= quantity;
-    } else {
+    }
+    else {
         _numberBusy = 0;
     }
     if (_numberBusy == 0) {
@@ -188,7 +192,9 @@ void Resource::_fail() {
     _capacity = 0;
     _isActive = false;
     _resourceState = ResourceState::FAILED;
-    traceSimulation(this, "Resource \"" + getName() + "\" has failed. Capacity " + std::to_string(_originalCapacity) + " changed to 0");
+    traceSimulation(
+        this, "Resource \"" + getName() + "\" has failed. Capacity " + std::to_string(_originalCapacity) +
+        " changed to 0");
 }
 
 void Resource::_active() {
@@ -205,7 +211,8 @@ void Resource::_active() {
         _resourceState = ResourceState::IDLE;
     else
         _resourceState = ResourceState::BUSY;
-    traceSimulation(this, "Resource \"" + getName() + "\" has been activated. Capacity set back to " + std::to_string(_capacity));
+    traceSimulation(
+        this, "Resource \"" + getName() + "\" has been activated. Capacity set back to " + std::to_string(_capacity));
 }
 
 //
@@ -259,9 +266,10 @@ unsigned int Resource::getNumberBusy() const {
     return _numberBusy;
 }
 
-void Resource::addReleaseResourceEventHandler(ResourceEventHandler eventHandler, ModelComponent* component, unsigned int priority) {
+void Resource::addReleaseResourceEventHandler(ResourceEventHandler eventHandler, ModelComponent* component,
+                                              unsigned int priority) {
     ModelComponent* compHandler;
-    for (SortedResourceEventHandler* sreh : * _resourceEventHandlers->list()) {
+    for (SortedResourceEventHandler* sreh : *_resourceEventHandlers->list()) {
         compHandler = sreh->first.second;
         if (compHandler == component) {
             return; // already exists. Do not insert again
@@ -356,17 +364,19 @@ void Resource::_notifyReleaseEventHandlers() {
     }
 }
 
-bool Resource::_loadInstance(PersistenceRecord *fields) {
+bool Resource::_loadInstance(PersistenceRecord* fields) {
     bool res = ModelDataDefinition::_loadInstance(fields);
     if (res) {
         _capacity = fields->loadField("capacity", DEFAULT.capacity);
         _costBusyTimeUnit = fields->loadField("costBusyTimeUnit", DEFAULT.cost);
         _costIdleTimeUnit = fields->loadField("costIdleTimeUnit", DEFAULT.cost);
         _costPerUse = fields->loadField("costPerUse", DEFAULT.cost);
-        _resourceState = static_cast<Resource::ResourceState> (fields->loadField("resourceState", static_cast<int> (DEFAULT.resourceState)));
+        _resourceState = static_cast<Resource::ResourceState>(fields->loadField(
+            "resourceState", static_cast<int>(DEFAULT.resourceState)));
 
         std::string scheduleName = fields->loadField("capacitySchedule", std::string(""));
-        _capacitySchedule = static_cast<Schedule*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Schedule>(), scheduleName));
+        _capacitySchedule = static_cast<Schedule*>(_parentModel->getDataManager()->getDataDefinition(
+            Util::TypeOf<Schedule>(), scheduleName));
 
         for (Failure* failure : *_failures->list()) {
             if (failure != nullptr) {
@@ -377,7 +387,8 @@ bool Resource::_loadInstance(PersistenceRecord *fields) {
         unsigned int failuresSize = fields->loadField("failures", 0u);
         for (unsigned int i = 0; i < failuresSize; i++) {
             std::string failureName = fields->loadField("failure" + Util::StrIndex(i), std::string(""));
-            Failure* failure = static_cast<Failure*> (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Failure>(), failureName));
+            Failure* failure = static_cast<Failure*>(_parentModel->getDataManager()->getDataDefinition(
+                Util::TypeOf<Failure>(), failureName));
             if (failure != nullptr) {
                 insertFailure(failure);
             }
@@ -386,18 +397,21 @@ bool Resource::_loadInstance(PersistenceRecord *fields) {
     return res;
 }
 
-void Resource::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+void Resource::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
     ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
     fields->saveField("capacity", _capacity, DEFAULT.capacity, saveDefaultValues);
     fields->saveField("costBusyTimeUnit", _costBusyTimeUnit, DEFAULT.cost, saveDefaultValues);
     fields->saveField("costIdleTimeUnit", _costIdleTimeUnit, DEFAULT.cost, saveDefaultValues);
     fields->saveField("costPerUse", _costPerUse, DEFAULT.cost, saveDefaultValues);
-    fields->saveField("resourceState", static_cast<int> (_resourceState), static_cast<int> (DEFAULT.resourceState), saveDefaultValues);
-    fields->saveField("capacitySchedule", _capacitySchedule != nullptr ? _capacitySchedule->getName() : std::string(""), std::string(""), saveDefaultValues);
+    fields->saveField("resourceState", static_cast<int>(_resourceState), static_cast<int>(DEFAULT.resourceState),
+                      saveDefaultValues);
+    fields->saveField("capacitySchedule", _capacitySchedule != nullptr ? _capacitySchedule->getName() : std::string(""),
+                      std::string(""), saveDefaultValues);
     fields->saveField("failures", _failures->size(), 0u, saveDefaultValues);
     unsigned int i = 0;
     for (Failure* failure : *_failures->list()) {
-        fields->saveField("failure" + Util::StrIndex(i), failure != nullptr ? failure->getName() : std::string(""), std::string(""), saveDefaultValues);
+        fields->saveField("failure" + Util::StrIndex(i), failure != nullptr ? failure->getName() : std::string(""),
+                          std::string(""), saveDefaultValues);
         i++;
     }
 }
@@ -416,14 +430,16 @@ bool Resource::_check(std::string& errorMessage) {
         resultAll = false;
     }
     if (_capacitySchedule != nullptr) {
-        bool scheduleOk = _parentModel->getDataManager()->check(Util::TypeOf<Schedule>(), _capacitySchedule, getName() + ".CapacitySchedule", errorMessage);
+        bool scheduleOk = _parentModel->getDataManager()->check(Util::TypeOf<Schedule>(), _capacitySchedule,
+                                                                getName() + ".CapacitySchedule", errorMessage);
         if (scheduleOk) {
             scheduleOk &= ModelDataDefinition::Check(_capacitySchedule, errorMessage);
         }
         resultAll &= scheduleOk;
     }
     for (Failure* failure : *_failures->list()) {
-        resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Failure>(), failure, getName() + ".Failure", errorMessage);
+        resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Failure>(), failure, getName() + ".Failure",
+                                                           errorMessage);
         if (failure != nullptr) {
             resultAll &= ModelDataDefinition::Check(failure, errorMessage);
         }
@@ -435,13 +451,15 @@ void Resource::_onReplicationEnd(SimulationEvent* se) {
     double totalTime = se->getSimulatedTime();
     double seizedTime = _counterTotalTimeSeized->getCountValue();
     double finalProportionSeized = seizedTime / totalTime;
-    _cstatProportionSeized->getStatistics()->getCollector()->addValue(finalProportionSeized); // final proportionSeized is just one more value to this cstat
+    _cstatProportionSeized->getStatistics()->getCollector()->addValue(finalProportionSeized);
+    // final proportionSeized is just one more value to this cstat
 }
 
 void Resource::_createInternalAndAttachedData() {
-    if (_reportStatistics && _cstatTimeSeized == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+    if (_reportStatistics && _cstatTimeSeized == nullptr) {
         _cstatProportionSeized = new StatisticsCollector(_parentModel, getName() + "." + "ProportionSeized", this);
-        _cstatCapacityUtilization = new StatisticsCollector(_parentModel, getName() + "." + "CapacityUtilization", this);
+        _cstatCapacityUtilization = new
+            StatisticsCollector(_parentModel, getName() + "." + "CapacityUtilization", this);
         _cstatTimeSeized = new StatisticsCollector(_parentModel, getName() + "." + "TimeSeized", this);
         _cstatTimeFailed = new StatisticsCollector(_parentModel, getName() + "." + "TimeFailed", this);
         _counterTotalTimeSeized = new Counter(_parentModel, getName() + "." + "TotalTimeSeized", this);
@@ -465,7 +483,8 @@ void Resource::_createInternalAndAttachedData() {
         if (_counterTotalCostBusy != nullptr) _internalDataInsert("CostBusy", _counterTotalCostBusy);
         if (_counterTotalCostIdle != nullptr) _internalDataInsert("CostIdle", _counterTotalCostIdle);
         if (_counterTotalCostPerUse != nullptr) _internalDataInsert("CostPerUse", _counterTotalCostPerUse);
-    } else if (!_reportStatistics && _cstatTimeSeized != nullptr) {
+    }
+    else if (!_reportStatistics && _cstatTimeSeized != nullptr) {
         _internalDataClear();
         _cstatTimeSeized = nullptr;
         _cstatTimeFailed = nullptr;
@@ -483,7 +502,8 @@ void Resource::_createInternalAndAttachedData() {
     const std::string scheduleKey = getName() + ".CapacitySchedule";
     if (_capacitySchedule != nullptr) {
         _attachedDataInsert(scheduleKey, _capacitySchedule);
-    } else {
+    }
+    else {
         _attachedDataRemove(scheduleKey);
     }
 
@@ -511,19 +531,20 @@ void Resource::_createInternalAndAttachedData() {
 //
 
 PluginInformation* Resource::GetPluginInformation() {
-    PluginInformation* info = new PluginInformation(Util::TypeOf<Resource>(), &Resource::LoadInstance, &Resource::NewInstance);
+    PluginInformation* info = new PluginInformation(Util::TypeOf<Resource>(), &Resource::LoadInstance,
+                                                    &Resource::NewInstance);
     info->insertDynamicLibFileDependence("failure.so");
     info->insertDynamicLibFileDependence("schedule.so");
     //info->set...
     return info;
 }
 
-ModelDataDefinition* Resource::LoadInstance(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* Resource::LoadInstance(Model* model, PersistenceRecord* fields) {
     Resource* newElement = new Resource(model);
     try {
         newElement->_loadInstance(fields);
-    } catch (const std::exception& e) {
-
+    }
+    catch (const std::exception& e) {
     }
     return newElement;
 }

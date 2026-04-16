@@ -43,6 +43,7 @@ public:
         QObject *obj,
         ModelDataDefinition* mdd = nullptr,
         const QSet<QString>& graphicallyRepresentedModelObjects = {},
+        const QSet<QString>& editableModelObjects = {},
         PropertyEditorGenesys* peg = nullptr,
         std::map<SimulationControl*, DataComponentProperty*>* pl = nullptr,
         std::map<SimulationControl*, DataComponentEditor*>* peUI = nullptr,
@@ -112,6 +113,7 @@ private:
         );
     QtProperty* _createModelObjectActionProperty(const GenesysPropertyDescriptor& desc);
     bool _isObjectListProperty(const GenesysPropertyDescriptor& desc) const;
+    bool _isKernelEditingEnabled(const GenesysPropertyDescriptor& desc) const;
     bool _hasGraphicalRepresentation(const GenesysPropertyDescriptor& desc) const;
     bool _isModelObjectActionProperty(const GenesysPropertyDescriptor& desc, SimulationControl* control) const;
     ModelObjectRelation _relationForDataDefinition(ModelDataDefinition* dataDefinition) const;
@@ -190,6 +192,8 @@ private:
     ModelDataDefinition* _modelObject = nullptr;
     ActiveMode _activeMode = ActiveMode::None;
     QSet<QString> _graphicallyRepresentedModelObjects;
+    QSet<QString> _editableModelObjects;
+    bool _activeKernelObjectReadOnly = false;
     PropertyEditorGenesys* _propertyEditor = nullptr;
 
     std::map<SimulationControl*, DataComponentProperty*>* _propertyList = nullptr;

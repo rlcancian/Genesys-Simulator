@@ -10,10 +10,21 @@
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 
+#include "../../../../kernel/simulator/ComponentManager.h"
+#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
+#include "../../../../kernel/simulator/Model.h"
+#include "../../../../kernel/simulator/ModelComponent.h"
+#include "../../../../kernel/simulator/ModelDataDefinition.h"
+#include "../../../../kernel/simulator/ModelDataManager.h"
+#include "../../../../kernel/simulator/ModelManager.h"
+#include "../../../../kernel/simulator/Simulator.h"
+
 #include <QGraphicsItem>
 #include <QDebug>
 #include <QSet>
 #include <QTimer>
+
+#include <set>
 
 namespace {
 bool isSceneInfrastructureItem(QGraphicsItem* item) {
@@ -35,6 +46,115 @@ QSet<QString> graphicallyRepresentedDataDefinitionNames(ModelGraphicsScene* scen
         names.insert(QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName()));
     }
     return names;
+}
+
+void collectEditableReferencedDataDefinitions(
+    List<SimulationControl*>* controls,
+    QSet<QString>& names,
+    std::set<const SimulationControl*>& recursionPath,
+    int depth = 0
+    ) {
+    if (controls == nullptr || depth > 10) {
+        return;
+    }
+
+    for (SimulationControl* control : *controls->list()) {
+        if (control == nullptr || recursionPath.find(control) != recursionPath.end()) {
+            continue;
+        }
+
+        const GenesysPropertyDescriptor desc = GenesysPropertyIntrospection::describe(control);
+        if (desc.isModelDataDefinitionReference && !desc.readOnly) {
+            ModelDataDefinition* referenced = control->getReferencedModelDataDefinition();
+            if (referenced != nullptr) {
+                names.insert(QString::fromStdString(referenced->getName()));
+            }
+        }
+
+        recursionPath.insert(control);
+        if (desc.supportsListEditor && desc.isClass) {
+            const int itemCount = static_cast<int>(desc.choices.size());
+            for (int index = 0; index < itemCount; ++index) {
+                collectEditableReferencedDataDefinitions(
+                    control->getProperties(index),
+                    names,
+                    recursionPath,
+                    depth + 1
+                    );
+            }
+        } else if (desc.supportsInlineExpansion && control->hasObjectInstance()) {
+            collectEditableReferencedDataDefinitions(
+                control->getProperties(),
+                names,
+                recursionPath,
+                depth + 1
+                );
+        }
+        recursionPath.erase(control);
+    }
+}
+
+QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
+    QSet<QString> names;
+    if (scene == nullptr || scene->getSimulator() == nullptr ||
+        scene->getSimulator()->getModelManager() == nullptr) {
+        return names;
+    }
+
+    Model* model = scene->getSimulator()->getModelManager()->current();
+    if (model == nullptr) {
+        return names;
+    }
+
+    std::set<const SimulationControl*> recursionPath;
+    if (model->getComponentManager() != nullptr) {
+        for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
+            if (component != nullptr) {
+                collectEditableReferencedDataDefinitions(
+                    component->getProperties(),
+                    names,
+                    recursionPath
+                    );
+            }
+        }
+    }
+
+    if (model->getDataManager() != nullptr) {
+        for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+            List<ModelDataDefinition*>* dataDefinitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+            if (dataDefinitions == nullptr) {
+                continue;
+            }
+            for (ModelDataDefinition* dataDefinition : *dataDefinitions->list()) {
+                if (dataDefinition != nullptr) {
+                    collectEditableReferencedDataDefinitions(
+                        dataDefinition->getProperties(),
+                        names,
+                        recursionPath
+                        );
+                }
+            }
+        }
+    }
+
+    return names;
+}
+
+void refreshGraphicalDataDefinitionEditability(
+    ModelGraphicsScene* scene,
+    const QSet<QString>& editableDataDefinitions
+    ) {
+    if (scene == nullptr || scene->getAllDataDefinitions() == nullptr) {
+        return;
+    }
+
+    for (GraphicalModelDataDefinition* graphicalDataDefinition : *scene->getAllDataDefinitions()) {
+        if (graphicalDataDefinition == nullptr || graphicalDataDefinition->getDataDefinition() == nullptr) {
+            continue;
+        }
+        const QString name = QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName());
+        graphicalDataDefinition->setEditableInPropertyEditor(editableDataDefinitions.contains(name));
+    }
 }
 } // namespace
 
@@ -109,6 +229,8 @@ void PropertyEditorController::sceneSelectionChanged() const {
         QGraphicsItem* item = selectedItems.at(0);
         ModelGraphicsScene* scene = _graphicsView->getScene();
         const QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
+        const QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
+        refreshGraphicalDataDefinitionEditability(scene, editableDataDefinitions);
 
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(item);
         if (gmc != nullptr) {
@@ -117,6 +239,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
                 gmc,
                 gmc->getComponent(),
                 graphicalDataDefinitions,
+                editableDataDefinitions,
                 _propertyGenesys,
                 _propertyList,
                 _propertyEditorUI,
@@ -132,6 +255,7 @@ void PropertyEditorController::sceneSelectionChanged() const {
                 gmdd,
                 gmdd->getDataDefinition(),
                 graphicalDataDefinitions,
+                editableDataDefinitions,
                 _propertyGenesys,
                 _propertyList,
                 _propertyEditorUI,
