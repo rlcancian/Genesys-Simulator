@@ -607,6 +607,54 @@
             <attribute name="title">
              <string>Plots</string>
             </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_ReportsPlots">
+             <property name="leftMargin">
+              <number>2</number>
+             </property>
+             <property name="topMargin">
+              <number>2</number>
+             </property>
+             <property name="rightMargin">
+              <number>2</number>
+             </property>
+             <property name="bottomMargin">
+              <number>2</number>
+             </property>
+             <item>
+              <widget class="QScrollArea" name="scrollArea_ReportsPlots">
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="widget_ReportsPlotsContent">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>98</width>
+                  <height>28</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_ReportsPlotsContent">
+                 <property name="leftMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </widget>
          </item>
@@ -812,7 +860,6 @@
      <string>Simulation</string>
     </property>
     <addaction name="actionSimulationConfigure"/>
-    <addaction name="actionParallelization"/>
     <addaction name="separator"/>
     <addaction name="actionSimulationStart"/>
     <addaction name="actionSimulationStep"/>

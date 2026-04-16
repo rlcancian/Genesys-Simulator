@@ -6,6 +6,8 @@
 
 #include <QComboBox>
 #include <QMessageBox>
+#include <QPushButton>
+#include <algorithm>
 
 DialogSimulationConfigure::DialogSimulationConfigure(QWidget *parent) :
 	QDialog(parent),
@@ -13,6 +15,13 @@ DialogSimulationConfigure::DialogSimulationConfigure(QWidget *parent) :
 {
 	ui->setupUi(this);
 	_populateTimeUnitComboBoxes();
+	connect(ui->pushButtonConfigureDistributedParallelization, &QPushButton::clicked, this, [this]() {
+		QMessageBox::information(
+			this,
+			tr("Distributed Parallelization"),
+			tr("This button is a placeholder for a future Genesys distributed execution service or web application. "
+			   "For now, local parallelization settings can be saved in this dialog."));
+	});
 }
 
 DialogSimulationConfigure::~DialogSimulationConfigure()
@@ -34,9 +43,17 @@ void DialogSimulationConfigure::setExperimentManager(ExperimentManager* experime
 	_loadExperimentManager();
 }
 
+void DialogSimulationConfigure::setParallelizationSettings(bool* enabled, int* localThreads, int* batchSize)
+{
+	_parallelizationEnabled = enabled;
+	_parallelizationThreads = localThreads;
+	_parallelizationBatchSize = batchSize;
+	_loadParallelizationSettings();
+}
+
 void DialogSimulationConfigure::accept()
 {
-	if (_modelSimulation != nullptr) {
+	if (_modelSimulation != nullptr || _parallelizationEnabled != nullptr || _parallelizationThreads != nullptr || _parallelizationBatchSize != nullptr) {
 		_applyIfChanged(_configurationFromUi());
 	}
 
@@ -141,6 +158,23 @@ void DialogSimulationConfigure::_loadExperimentManager()
 	);
 }
 
+void DialogSimulationConfigure::_loadParallelizationSettings()
+{
+	_originalConfiguration.parallelizationEnabled = _parallelizationEnabled != nullptr ? *_parallelizationEnabled : false;
+	_originalConfiguration.parallelizationThreads = _parallelizationThreads != nullptr ? *_parallelizationThreads : 1;
+	_originalConfiguration.parallelizationBatchSize = _parallelizationBatchSize != nullptr ? *_parallelizationBatchSize : 100;
+	_originalConfiguration.distributedParallelizationEnabled = false;
+	_originalConfiguration.distributedCoordinatorUrl.clear();
+	_originalConfiguration.distributedToken.clear();
+
+	ui->checkBoxParallelizationEnabled->setChecked(_originalConfiguration.parallelizationEnabled);
+	ui->spinBoxParallelizationThreads->setValue(std::max(1, _originalConfiguration.parallelizationThreads));
+	ui->spinBoxParallelizationBatchSize->setValue(std::max(1, _originalConfiguration.parallelizationBatchSize));
+	ui->checkBoxDistributedParallelizationEnabled->setChecked(_originalConfiguration.distributedParallelizationEnabled);
+	ui->lineEditDistributedCoordinatorUrl->setText(QString::fromStdString(_originalConfiguration.distributedCoordinatorUrl));
+	ui->lineEditDistributedToken->setText(QString::fromStdString(_originalConfiguration.distributedToken));
+}
+
 DialogSimulationConfigure::SimulationConfiguration DialogSimulationConfigure::_configurationFromUi() const
 {
 	SimulationConfiguration configuration;
@@ -156,12 +190,18 @@ DialogSimulationConfigure::SimulationConfiguration DialogSimulationConfigure::_c
 	configuration.stepByStep = ui->checkBoxStepByStep->isChecked();
 	configuration.pauseOnEvent = ui->checkBoxPauseOnEvent->isChecked();
 	configuration.pauseOnReplication = ui->checkBoxPauseOnReplication->isChecked();
+	configuration.parallelizationEnabled = ui->checkBoxParallelizationEnabled->isChecked();
+	configuration.parallelizationThreads = ui->spinBoxParallelizationThreads->value();
+	configuration.parallelizationBatchSize = ui->spinBoxParallelizationBatchSize->value();
+	configuration.distributedParallelizationEnabled = ui->checkBoxDistributedParallelizationEnabled->isChecked();
+	configuration.distributedCoordinatorUrl = ui->lineEditDistributedCoordinatorUrl->text().toStdString();
+	configuration.distributedToken = ui->lineEditDistributedToken->text().toStdString();
 	return configuration;
 }
 
 bool DialogSimulationConfigure::_hasPendingChanges() const
 {
-	if (_modelSimulation == nullptr) {
+	if (_modelSimulation == nullptr && _parallelizationEnabled == nullptr && _parallelizationThreads == nullptr && _parallelizationBatchSize == nullptr) {
 		return false;
 	}
 
@@ -177,7 +217,13 @@ bool DialogSimulationConfigure::_hasPendingChanges() const
 		|| edited.initializeStatistics != _originalConfiguration.initializeStatistics
 		|| edited.stepByStep != _originalConfiguration.stepByStep
 		|| edited.pauseOnEvent != _originalConfiguration.pauseOnEvent
-		|| edited.pauseOnReplication != _originalConfiguration.pauseOnReplication;
+		|| edited.pauseOnReplication != _originalConfiguration.pauseOnReplication
+		|| edited.parallelizationEnabled != _originalConfiguration.parallelizationEnabled
+		|| edited.parallelizationThreads != _originalConfiguration.parallelizationThreads
+		|| edited.parallelizationBatchSize != _originalConfiguration.parallelizationBatchSize
+		|| edited.distributedParallelizationEnabled != _originalConfiguration.distributedParallelizationEnabled
+		|| edited.distributedCoordinatorUrl != _originalConfiguration.distributedCoordinatorUrl
+		|| edited.distributedToken != _originalConfiguration.distributedToken;
 }
 
 Util::TimeUnit DialogSimulationConfigure::_timeUnitFromComboBox(const QComboBox* comboBox) const
@@ -194,40 +240,50 @@ void DialogSimulationConfigure::_setTimeUnitComboBoxIndex(QComboBox* comboBox, U
 
 void DialogSimulationConfigure::_applyIfChanged(const SimulationConfiguration& edited)
 {
-	if (edited.numberOfReplications != _originalConfiguration.numberOfReplications) {
+	if (_modelSimulation != nullptr && edited.numberOfReplications != _originalConfiguration.numberOfReplications) {
 		_modelSimulation->setNumberOfReplications(edited.numberOfReplications);
 	}
-	if (edited.replicationBaseTimeUnit != _originalConfiguration.replicationBaseTimeUnit) {
+	if (_modelSimulation != nullptr && edited.replicationBaseTimeUnit != _originalConfiguration.replicationBaseTimeUnit) {
 		_modelSimulation->setReplicationReportBaseTimeUnit(edited.replicationBaseTimeUnit);
 	}
-	if (edited.replicationLength != _originalConfiguration.replicationLength) {
+	if (_modelSimulation != nullptr && edited.replicationLength != _originalConfiguration.replicationLength) {
 		_modelSimulation->setReplicationLength(edited.replicationLength);
 	}
-	if (edited.replicationLengthTimeUnit != _originalConfiguration.replicationLengthTimeUnit) {
+	if (_modelSimulation != nullptr && edited.replicationLengthTimeUnit != _originalConfiguration.replicationLengthTimeUnit) {
 		_modelSimulation->setReplicationLengthTimeUnit(edited.replicationLengthTimeUnit);
 	}
-	if (edited.warmUpPeriod != _originalConfiguration.warmUpPeriod) {
+	if (_modelSimulation != nullptr && edited.warmUpPeriod != _originalConfiguration.warmUpPeriod) {
 		_modelSimulation->setWarmUpPeriod(edited.warmUpPeriod);
 	}
-	if (edited.warmUpPeriodTimeUnit != _originalConfiguration.warmUpPeriodTimeUnit) {
+	if (_modelSimulation != nullptr && edited.warmUpPeriodTimeUnit != _originalConfiguration.warmUpPeriodTimeUnit) {
 		_modelSimulation->setWarmUpPeriodTimeUnit(edited.warmUpPeriodTimeUnit);
 	}
-	if (edited.terminatingCondition != _originalConfiguration.terminatingCondition) {
+	if (_modelSimulation != nullptr && edited.terminatingCondition != _originalConfiguration.terminatingCondition) {
 		_modelSimulation->setTerminatingCondition(edited.terminatingCondition);
 	}
-	if (edited.initializeSystem != _originalConfiguration.initializeSystem) {
+	if (_modelSimulation != nullptr && edited.initializeSystem != _originalConfiguration.initializeSystem) {
 		_modelSimulation->setInitializeSystem(edited.initializeSystem);
 	}
-	if (edited.initializeStatistics != _originalConfiguration.initializeStatistics) {
+	if (_modelSimulation != nullptr && edited.initializeStatistics != _originalConfiguration.initializeStatistics) {
 		_modelSimulation->setInitializeStatistics(edited.initializeStatistics);
 	}
-	if (edited.stepByStep != _originalConfiguration.stepByStep) {
+	if (_modelSimulation != nullptr && edited.stepByStep != _originalConfiguration.stepByStep) {
 		_modelSimulation->setStepByStep(edited.stepByStep);
 	}
-	if (edited.pauseOnEvent != _originalConfiguration.pauseOnEvent) {
+	if (_modelSimulation != nullptr && edited.pauseOnEvent != _originalConfiguration.pauseOnEvent) {
 		_modelSimulation->setPauseOnEvent(edited.pauseOnEvent);
 	}
-	if (edited.pauseOnReplication != _originalConfiguration.pauseOnReplication) {
+	if (_modelSimulation != nullptr && edited.pauseOnReplication != _originalConfiguration.pauseOnReplication) {
 		_modelSimulation->setPauseOnReplication(edited.pauseOnReplication);
 	}
+	if (_parallelizationEnabled != nullptr) {
+		*_parallelizationEnabled = edited.parallelizationEnabled;
+	}
+	if (_parallelizationThreads != nullptr) {
+		*_parallelizationThreads = edited.parallelizationThreads;
+	}
+	if (_parallelizationBatchSize != nullptr) {
+		*_parallelizationBatchSize = edited.parallelizationBatchSize;
+	}
+	_originalConfiguration = edited;
 }

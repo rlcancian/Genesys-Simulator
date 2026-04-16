@@ -62,6 +62,9 @@
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 //#include <streambuf>
 // QT
 #include <QMessageBox>
@@ -81,8 +84,179 @@
 #include <QRegularExpression>
 #include <QRandomGenerator>
 #include <QAction>
+#include <QFrame>
+#include <QLabel>
+#include <QMap>
+#include <QPainter>
+#include <QScrollArea>
 #include <QSignalBlocker>
+#include <QSizePolicy>
 #include <QTabBar>
+#include <QVBoxLayout>
+
+namespace {
+struct ReportPlotItem {
+    QString label;
+    double minimum = 0.0;
+    double average = 0.0;
+    double maximum = 0.0;
+};
+
+class ResultsBoxPlotWidget : public QFrame {
+public:
+    explicit ResultsBoxPlotWidget(const QVector<ReportPlotItem>& items, QWidget* parent = nullptr)
+        : QFrame(parent), _items(items) {
+        setMinimumHeight(260);
+        setMinimumWidth(std::max(480, 90 * static_cast<int>(_items.size()) + 120));
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.fillRect(rect(), palette().base());
+
+        if (_items.isEmpty()) {
+            painter.drawText(rect(), Qt::AlignCenter, QObject::tr("No plottable results."));
+            return;
+        }
+
+        const int left = 76;
+        const int right = 24;
+        const int top = 18;
+        const int bottom = 82;
+        const QRect plotRect(left, top, width() - left - right, height() - top - bottom);
+        if (plotRect.width() <= 0 || plotRect.height() <= 0) {
+            return;
+        }
+
+        double minValue = std::numeric_limits<double>::infinity();
+        double maxValue = -std::numeric_limits<double>::infinity();
+        for (const ReportPlotItem& item : _items) {
+            minValue = std::min(minValue, item.minimum);
+            maxValue = std::max(maxValue, item.maximum);
+        }
+        if (!std::isfinite(minValue) || !std::isfinite(maxValue)) {
+            return;
+        }
+        if (minValue == maxValue) {
+            const double pad = std::max(1.0, std::abs(minValue) * 0.1);
+            minValue -= pad;
+            maxValue += pad;
+        } else {
+            const double pad = (maxValue - minValue) * 0.08;
+            minValue -= pad;
+            maxValue += pad;
+        }
+
+        auto toY = [plotRect, minValue, maxValue](double value) {
+            const double ratio = (value - minValue) / (maxValue - minValue);
+            return plotRect.bottom() - ratio * plotRect.height();
+        };
+
+        painter.setPen(QPen(QColor(210, 210, 210), 1));
+        const int tickCount = 5;
+        for (int tick = 0; tick <= tickCount; ++tick) {
+            const double ratio = static_cast<double>(tick) / tickCount;
+            const double value = minValue + ratio * (maxValue - minValue);
+            const int y = static_cast<int>(toY(value));
+            painter.drawLine(plotRect.left(), y, plotRect.right(), y);
+            painter.setPen(QPen(QColor(80, 80, 80), 1));
+            painter.drawText(4, y - 9, left - 10, 18, Qt::AlignRight | Qt::AlignVCenter,
+                             QString::number(value, 'g', 5));
+            painter.setPen(QPen(QColor(210, 210, 210), 1));
+        }
+
+        painter.setPen(QPen(QColor(70, 70, 70), 1));
+        painter.drawLine(plotRect.bottomLeft(), plotRect.bottomRight());
+        painter.drawLine(plotRect.bottomLeft(), plotRect.topLeft());
+
+        const double slotWidth = static_cast<double>(plotRect.width()) / _items.size();
+        const int boxWidth = std::max(12, std::min(42, static_cast<int>(slotWidth * 0.45)));
+        const QColor boxColor(100, 149, 237, 95);
+        const QPen boxPen(QColor(49, 92, 156), 1.4);
+        const QPen meanPen(QColor(190, 70, 55), 2.0);
+
+        for (int index = 0; index < _items.size(); ++index) {
+            const ReportPlotItem& item = _items.at(index);
+            const double average = std::max(item.minimum, std::min(item.average, item.maximum));
+            const double q1 = item.minimum + (average - item.minimum) * 0.5;
+            const double q3 = average + (item.maximum - average) * 0.5;
+            const int x = plotRect.left() + static_cast<int>((index + 0.5) * slotWidth);
+            const int yMin = static_cast<int>(toY(item.minimum));
+            const int yMax = static_cast<int>(toY(item.maximum));
+            const int yQ1 = static_cast<int>(toY(q1));
+            const int yQ3 = static_cast<int>(toY(q3));
+            const int yAvg = static_cast<int>(toY(average));
+
+            painter.setPen(boxPen);
+            painter.drawLine(x, yMax, x, yMin);
+            painter.drawLine(x - boxWidth / 3, yMax, x + boxWidth / 3, yMax);
+            painter.drawLine(x - boxWidth / 3, yMin, x + boxWidth / 3, yMin);
+            painter.setBrush(boxColor);
+            painter.drawRect(QRect(QPoint(x - boxWidth / 2, yQ3),
+                                   QPoint(x + boxWidth / 2, yQ1)).normalized());
+            painter.setPen(meanPen);
+            painter.drawLine(x - boxWidth / 2, yAvg, x + boxWidth / 2, yAvg);
+
+            painter.save();
+            painter.translate(x - 6, plotRect.bottom() + 12);
+            painter.rotate(-35);
+            painter.setPen(QPen(QColor(65, 65, 65), 1));
+            painter.drawText(QRect(0, 0, 130, 34), Qt::AlignLeft | Qt::AlignVCenter, item.label);
+            painter.restore();
+        }
+    }
+
+private:
+    QVector<ReportPlotItem> _items;
+};
+
+static bool fillPlotItem(ModelDataDefinition* data, QString* category, ReportPlotItem* item) {
+    if (data == nullptr || category == nullptr || item == nullptr) {
+        return false;
+    }
+
+    ModelDataDefinition* parent = nullptr;
+    if (StatisticsCollector* collector = dynamic_cast<StatisticsCollector*>(data)) {
+        parent = collector->getParent();
+        Statistics_if* stats = collector->getStatistics();
+        if (stats == nullptr || stats->numElements() == 0) {
+            return false;
+        }
+        item->minimum = stats->min();
+        item->average = stats->average();
+        item->maximum = stats->max();
+    } else if (Counter* counter = dynamic_cast<Counter*>(data)) {
+        parent = counter->getParent();
+        item->minimum = counter->getCountValue();
+        item->average = counter->getCountValue();
+        item->maximum = counter->getCountValue();
+    } else {
+        return false;
+    }
+
+    if (!std::isfinite(item->minimum) || !std::isfinite(item->average) || !std::isfinite(item->maximum)) {
+        return false;
+    }
+    if (item->minimum > item->maximum) {
+        std::swap(item->minimum, item->maximum);
+    }
+
+    const QString parentType = parent != nullptr
+            ? QString::fromStdString(parent->getClassname())
+            : QObject::tr("Global");
+    const QString parentName = parent != nullptr
+            ? QString::fromStdString(parent->getName())
+            : QString();
+    *category = parentType;
+    item->label = parentName.isEmpty()
+            ? QString::fromStdString(data->getName())
+            : parentName + "." + QString::fromStdString(data->getName());
+    return true;
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
@@ -163,6 +337,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->tableWidget_Entities->setHorizontalHeaderLabels(headers);
     ui->tableWidget_Entities->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     _prepareReportsResultsTable();
+    _prepareReportsPlots();
     ui->tableWidget_Simulation_Event->setContentsMargins(1, 0, 1, 0);
     //
     // Trees
@@ -314,7 +489,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         [this](const std::string& command) { _insertCommandInConsole(command); },
         [this]() { _actualizeActions(); },
         [this]() { return _check(false); },
-        [this]() { return _setSimulationModelBasedOnText(); });
+        [this]() { return _setSimulationModelBasedOnText(); },
+        [this]() {
+            ui->textEdit_Reports->clear();
+            _clearReportsResultsTable();
+            _clearReportsPlots();
+        });
     // Initialize the Phase 9 edit-command controller after scene and copy-buffer dependencies are available.
     _editCommandController = std::make_unique<EditCommandController>(
         simulator,
@@ -383,6 +563,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         &_graphicalModelHasChanged,
         &_closingApproved,
         &_loaded,
+        _parallelizationEnabled,
+        _parallelizationThreads,
+        _parallelizationBatchSize,
         ModelLifecycleController::Callbacks{
             [this](const std::string& command) { _insertCommandInConsole(command); },
             [this](Model* model) { _initUiForNewModel(model); },
@@ -676,6 +859,8 @@ void MainWindow::_actualizeTabPanes() {
             index = ui->tabWidgetReports->currentIndex();
             if (index == CONST.TabReportResultIndex) {
                 _actualizeReportsResultsTable();
+            } else if (index == CONST.TabReportPlotIndex) {
+                _actualizeReportsPlots();
             }
         }
     } else {
@@ -718,6 +903,108 @@ void MainWindow::_prepareReportsResultsTable() {
 
 void MainWindow::_clearReportsResultsTable() {
     ui->tableWidget_ReportsResults->setRowCount(0);
+}
+
+void MainWindow::_prepareReportsPlots() {
+    if (ui->tabReportsPlots->layout() == nullptr) {
+        QVBoxLayout* outerLayout = new QVBoxLayout(ui->tabReportsPlots);
+        outerLayout->setContentsMargins(2, 2, 2, 2);
+
+        QScrollArea* scrollArea = new QScrollArea(ui->tabReportsPlots);
+        scrollArea->setObjectName("scrollArea_ReportsPlots");
+        scrollArea->setWidgetResizable(true);
+
+        QWidget* content = new QWidget(scrollArea);
+        content->setObjectName("widget_ReportsPlotsContent");
+        QVBoxLayout* contentLayout = new QVBoxLayout(content);
+        contentLayout->setContentsMargins(8, 8, 8, 8);
+        contentLayout->setSpacing(12);
+
+        scrollArea->setWidget(content);
+        outerLayout->addWidget(scrollArea);
+    }
+
+    _clearReportsPlots();
+}
+
+void MainWindow::_clearReportsPlots() {
+    QWidget* content = ui->tabReportsPlots->findChild<QWidget*>("widget_ReportsPlotsContent");
+    if (content == nullptr || content->layout() == nullptr) {
+        return;
+    }
+
+    QLayout* layout = content->layout();
+    while (QLayoutItem* child = layout->takeAt(0)) {
+        if (QWidget* widget = child->widget()) {
+            delete widget;
+        }
+        delete child;
+    }
+}
+
+void MainWindow::_actualizeReportsPlots() {
+    _clearReportsPlots();
+
+    QWidget* content = ui->tabReportsPlots->findChild<QWidget*>("widget_ReportsPlotsContent");
+    if (content == nullptr || content->layout() == nullptr) {
+        return;
+    }
+
+    QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(content->layout());
+    if (layout == nullptr) {
+        return;
+    }
+
+    if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+        QLabel* emptyLabel = new QLabel(tr("No simulation results are available."), content);
+        layout->addWidget(emptyLabel);
+        layout->addStretch();
+        return;
+    }
+
+    ModelSimulation* simulation = simulator->getModelManager()->current()->getSimulation();
+    const List<ModelDataDefinition*>* aggregates = simulation != nullptr
+            ? simulation->getSimulationStatisticsAggregates()
+            : nullptr;
+    if (aggregates == nullptr) {
+        QLabel* emptyLabel = new QLabel(tr("No simulation results are available."), content);
+        layout->addWidget(emptyLabel);
+        layout->addStretch();
+        return;
+    }
+
+    QMap<QString, QVector<ReportPlotItem>> groupedItems;
+    for (ModelDataDefinition* data : *aggregates->list()) {
+        QString category;
+        ReportPlotItem item;
+        if (fillPlotItem(data, &category, &item)) {
+            groupedItems[category].append(item);
+        }
+    }
+
+    if (groupedItems.isEmpty()) {
+        QLabel* emptyLabel = new QLabel(tr("No plottable simulation results are available."), content);
+        layout->addWidget(emptyLabel);
+        layout->addStretch();
+        return;
+    }
+
+    QLabel* note = new QLabel(tr("Each chart groups one result category. Whiskers show min/max; the red center line shows the average."), content);
+    note->setWordWrap(true);
+    layout->addWidget(note);
+
+    for (auto it = groupedItems.cbegin(); it != groupedItems.cend(); ++it) {
+        QLabel* title = new QLabel(it.key(), content);
+        QFont titleFont = title->font();
+        titleFont.setBold(true);
+        title->setFont(titleFont);
+        layout->addWidget(title);
+
+        ResultsBoxPlotWidget* plot = new ResultsBoxPlotWidget(it.value(), content);
+        plot->setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
+        layout->addWidget(plot);
+    }
+    layout->addStretch();
 }
 
 void MainWindow::_actualizeReportsResultsTable() {
