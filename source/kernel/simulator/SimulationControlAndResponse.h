@@ -11,6 +11,8 @@
 
 //namespace GenesysKernel {
 
+class ModelDataDefinition;
+
 
 /**
  * @brief Base metadata for kernel-side control/response abstractions.
@@ -156,6 +158,7 @@ public:
     virtual bool hasObjectInstance() const { return true; }
     virtual bool ensureObjectInstance() { return hasObjectInstance(); }
     virtual bool isModelDataDefinitionReference() const { return false; }
+    virtual ModelDataDefinition* getReferencedModelDataDefinition() const { return nullptr; }
     // This method exposes whether the property should be rendered as an inline expandable object tree.
     virtual bool supportsInlineExpansion() const { return getIsClass() && !getIsList(); }
     // This method exposes whether the property should be edited by the dedicated list editor.
@@ -579,6 +582,10 @@ public:
 		if (!_setter) {
 			throw std::logic_error("SimulationControlGenericClass setter is not defined");
 		}
+        if (remove) {
+            _setter(nullptr);
+            return;
+        }
 		bool exists = false;
         // value.pop_back();
 		T newVal;
@@ -607,6 +614,9 @@ public:
 	};
 
     virtual bool isModelDataDefinitionReference() const override { return true; }
+    virtual ModelDataDefinition* getReferencedModelDataDefinition() const override {
+        return static_cast<T>(_getter());
+    }
     // This method marks class references as inline-expandable in the universal contract.
     virtual bool supportsInlineExpansion() const override { return true; }
     // This method marks class references as selectable from existing ModelDataDefinition instances.

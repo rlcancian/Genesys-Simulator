@@ -16,6 +16,9 @@ void MoveUndoCommand::undo() {
 
         if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *> (_myGraphicalItem[i])) {
             component->setOldPosition(oldPos);
+        } else if (GraphicalModelDataDefinition *dataDefinition =
+                       dynamic_cast<GraphicalModelDataDefinition *> (_myGraphicalItem[i])) {
+            dataDefinition->setOldPosition(oldPos.x(), oldPos.y());
         } else {
             _myGraphicsScene->insertOldPositionItem(_myGraphicalItem[i], oldPos);
         }
@@ -32,6 +35,9 @@ void MoveUndoCommand::redo() {
 
         if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *> (_myGraphicalItem[i])) {
             component->setOldPosition(newPos);
+        } else if (GraphicalModelDataDefinition *dataDefinition =
+                       dynamic_cast<GraphicalModelDataDefinition *> (_myGraphicalItem[i])) {
+            dataDefinition->setOldPosition(newPos.x(), newPos.y());
         } else {
             _myGraphicsScene->insertOldPositionItem(_myGraphicalItem[i], newPos);
         }

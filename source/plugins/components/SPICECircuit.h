@@ -46,6 +46,7 @@ protected: /// virtual protected method that must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override; ///< This method is only for ModelComponents, not ModelDataElements
+	virtual void _createInternalAndAttachedData() override;
 
 
 protected: /// virtual protected methods that could be overriden by derived classes, if needed
@@ -75,7 +76,7 @@ private: /// new private user methods
     std::string model;
     std::string model_file;
     // Spice compiler
-    SPICERunner *compiler;
+    SPICERunner *compiler = nullptr;
 
 	static unsigned int counter;
 	bool plain_circuit;
@@ -583,5 +584,4 @@ private:
 	float NMOSLength = DEFAULT.someNMOSLength;
 	std::string electricalModel = DEFAULT.someElectricalModel;
 };
-
 

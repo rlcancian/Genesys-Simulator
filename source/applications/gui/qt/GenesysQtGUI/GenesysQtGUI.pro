@@ -309,6 +309,7 @@ SOURCES += \
     actions/PasteUndoCommand.cpp \
     actions/UngroupUndoCommand.cpp \
     animations/AnimationCounter.cpp \
+    animations/AnimationPlaceholder.cpp \
     animations/AnimationQueue.cpp \
     animations/AnimationTimer.cpp \
     animations/AnimationTransition.cpp \
@@ -660,6 +661,7 @@ HEADERS += \
     actions/PasteUndoCommand.h \
     actions/UngroupUndoCommand.h \
     animations/AnimationCounter.h \
+    animations/AnimationPlaceholder.h \
     animations/AnimationQueue.h \
     animations/AnimationTimer.h \
     animations/AnimationTransition.h \

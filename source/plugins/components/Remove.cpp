@@ -82,17 +82,22 @@ Remove::Remove(Model* model, std::string name) : ModelComponent(model, Util::Typ
     SimulationControlGenericEnum<Remove::RemoveFromType, Remove>* propRemoveType = new SimulationControlGenericEnum<Remove::RemoveFromType, Remove>(
                                     std::bind(&Remove::getRemoveFromType, this), std::bind(&Remove::setRemoveFromType, this, std::placeholders::_1),
                                     Util::TypeOf<Remove>(), getName(), "RemoveFromType", "");
-	// SimulationControlGeneric<ModelDataDefinition*>* propRemoveFrom = new SimulationControlGeneric<ModelDataDefinition*>(
-	// 								std::bind(&Remove::getRemoveFrom, this), std::bind(&Remove::setRemoveFrom, this, std::placeholders::_1),
-	// 								Util::TypeOf<Remove>(), getName(), "RemoveFrom", "");								
+	SimulationControlGenericClass<ModelDataDefinition*, Model*, Queue>* propRemoveFrom = new SimulationControlGenericClass<ModelDataDefinition*, Model*, Queue>(
+									_parentModel,
+									std::bind(&Remove::getRemoveFrom, this),
+									[this](ModelDataDefinition* removeFrom) {
+										this->setRemoveFromType(Remove::RemoveFromType::QUEUE);
+										this->setRemoveFrom(removeFrom);
+									},
+									Util::TypeOf<Remove>(), getName(), "RemoveFrom", "");
 
 	
-	// _parentModel->getControls()->insert(propRemoveFrom);
+	_parentModel->getControls()->insert(propRemoveFrom);
     _parentModel->getControls()->insert(propRemoveType);
 	_parentModel->getControls()->insert(propRemoveStart);
 	_parentModel->getControls()->insert(propRemoveEnd);
 
-	// _addProperty(propRemoveFrom);
+	_addProperty(propRemoveFrom);
     _addProperty(propRemoveType);
 	_addProperty(propRemoveStart);
 	_addProperty(propRemoveEnd);
@@ -236,7 +241,11 @@ void Remove::_createInternalAndAttachedData() {
 				_removeFrom = new Queue(_parentModel, getName() + ".Queue");
 			}
 		}
-		_attachedDataInsert("Queue", _removeFrom);
+		if (_removeFrom != nullptr) {
+			_attachedDataInsert("Queue", _removeFrom);
+		} else {
+			_attachedDataRemove("Queue");
+		}
 	}
 	if (_removeFromType == Remove::RemoveFromType::ENTITYGROUP) {
 		// Not supported in this implementation batch. Explicitly validated in _check().

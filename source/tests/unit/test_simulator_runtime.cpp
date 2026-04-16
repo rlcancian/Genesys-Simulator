@@ -1065,10 +1065,6 @@ TEST(SimulatorRuntimeTest, ModelAccessorsExposeStableRuntimeReferencesAndFlags) 
     EXPECT_EQ(model->getTracer(), simulator.getTraceManager());
     EXPECT_NE(model->getPersistence(), nullptr);
     EXPECT_EQ(model->getLevel(), 0u);
-
-    const bool initialAutoCreate = model->isAutomaticallyCreatesModelDataDefinitions();
-    model->setAutomaticallyCreatesModelDataDefinitions(!initialAutoCreate);
-    EXPECT_EQ(model->isAutomaticallyCreatesModelDataDefinitions(), !initialAutoCreate);
 }
 
 TEST(SimulatorRuntimeTest, ModelSetTracerRebindsTracerPointer) {

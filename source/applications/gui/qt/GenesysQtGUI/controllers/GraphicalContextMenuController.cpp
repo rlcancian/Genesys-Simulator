@@ -211,7 +211,6 @@ void GraphicalContextMenuController::addShowMenu(QMenu* menu) const {
     showMenu->addAction(_ui->actionShowRule);
     showMenu->addAction(_ui->actionShowSnap);
     showMenu->addAction(_ui->actionShowGuides);
-    showMenu->addAction(_ui->actionDiagrams);
     showMenu->addSeparator();
     showMenu->addAction(_ui->actionShowInternalElements);
     showMenu->addAction(_ui->actionShowAttachedElements);

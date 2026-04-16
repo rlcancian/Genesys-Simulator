@@ -43,24 +43,28 @@ struct TraitsKernel {
  *  Simulation and Simulation Parts
  */
 
-template <> struct TraitsKernel<Simulator> {
+template <>
+struct TraitsKernel<Simulator> {
 	static const TraceManager::Level traceLevel = TraceManager::Level::L9_mostDetailed;
 };
 
-template <> struct TraitsKernel<SimulationReporter_if> {
+template <>
+struct TraitsKernel<SimulationReporter_if> {
 	typedef SimulationReporterDefaultImpl1 Implementation;
 	typedef Counter CounterImplementation;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L2_results;
 };
 
-template <> struct TraitsKernel<PluginConnector_if> {
+template <>
+struct TraitsKernel<PluginConnector_if> {
 	//typedef PluginConnectorStaticImpl1 Implementation;
 	typedef PluginConnectorDummyImpl1 Implementation;
 	//typedef PluginConnectorDynamicLibraryLoader Implementation;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L4_warning;
 };
 
-template <> struct TraitsKernel<Parser_if> {
+template <>
+struct TraitsKernel<Parser_if> {
 	typedef ParserDefaultImpl2 Implementation;
 };
 
@@ -68,29 +72,33 @@ template <> struct TraitsKernel<Parser_if> {
  *  Model and Model Parts
  */
 
-template <> struct TraitsKernel<Model> {
+template <>
+struct TraitsKernel<Model> {
 	typedef StatisticsDefaultImpl1 StatisticsCollector_StatisticsImplementation;
 	typedef CollectorDefaultImpl1 StatisticsCollector_CollectorImplementation;
-	static constexpr bool automaticallyCreatesModelData = true;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L5_event;
 };
 
-template <> struct TraitsKernel<ModelComponent> {
+template <>
+struct TraitsKernel<ModelComponent> {
 	static constexpr bool reportStatistics = true;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L2_results;
 };
 
-template <> struct TraitsKernel<ModelDataDefinition> {
+template <>
+struct TraitsKernel<ModelDataDefinition> {
 	static constexpr bool reportStatistics = true;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L2_results;
 };
 
-template <> struct TraitsKernel<ModelChecker_if> {
+template <>
+struct TraitsKernel<ModelChecker_if> {
 	typedef ModelCheckerDefaultImpl1 Implementation;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L2_results;
 };
 
-template <> struct TraitsKernel<ModelPersistence_if> {
+template <>
+struct TraitsKernel<ModelPersistence_if> {
 	typedef ModelPersistenceDefaultImpl2 Implementation;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L2_results;
 };
@@ -98,26 +106,33 @@ template <> struct TraitsKernel<ModelPersistence_if> {
 /*
  *  Statistics
  */
-template <> struct TraitsKernel<Statistics_if> {
-	typedef double DataType; // @ToDo: (importante): not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
+template <>
+struct TraitsKernel<Statistics_if> {
+	typedef double DataType;
+	// @ToDo: (importante): not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
 	static constexpr double SignificanceLevel = 0.05;
 };
 
-template <> struct TraitsKernel<StatisticsDatafile_if> {
+template <>
+struct TraitsKernel<StatisticsDatafile_if> {
 	typedef StatisticsDatafileDefaultImpl1 Implementation;
 	typedef CollectorDatafileDefaultImpl1 CollectorImplementation;
 	static constexpr double SignificanceLevel = 0.05;
 };
 
-template <> struct TraitsKernel<Sampler_if> {
+template <>
+struct TraitsKernel<Sampler_if> {
 	typedef SamplerDefaultImpl1 Implementation;
 	typedef SamplerDefaultImpl1::DefaultImpl1RNG_Parameters Parameters;
 };
 
-template <> struct TraitsKernel<Collector_if> {
+template <>
+struct TraitsKernel<Collector_if> {
 	typedef CollectorDatafileDefaultImpl1 Implementation;
-	typedef double DataType; // @ToDo: (importante): not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
+	typedef double DataType;
+	// @ToDo: (importante): not used yet. Change all classes that collect statistics to this type (so classes that deal with erros and bit limits can be assigned to it
 };
+
 //namespace\\}
 
 #endif /* TRAITSKERNEL_H */

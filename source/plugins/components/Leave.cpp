@@ -108,13 +108,18 @@ void Leave::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
 		if (_numberIn == nullptr) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
-			_internalDataInsert("CountNumberIn", _numberIn);
-		} else
-			if (_numberIn != nullptr) {
-			_internalDataClear();
 		}
+		if (_numberIn != nullptr) {
+			_internalDataInsert("CountNumberIn", _numberIn);
+		}
+	} else if (_numberIn != nullptr) {
+			_internalDataClear();
 	}
-	_attachedDataInsert("Station", _station);
+	if (_station != nullptr) {
+		_attachedDataInsert("Station", _station);
+	} else {
+		_attachedDataRemove("Station");
+	}
 }
 
 bool Leave::_check(std::string& errorMessage) {
