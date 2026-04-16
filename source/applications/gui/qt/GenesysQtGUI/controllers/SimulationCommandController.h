@@ -34,7 +34,8 @@ public:
         const std::function<void(const std::string&)>& insertCommandInConsole,
         const std::function<void()>& actualizeActions,
         const std::function<bool()>& checkModel,
-        const std::function<bool()>& setSimulationModelBasedOnText);
+        const std::function<bool()>& setSimulationModelBasedOnText,
+        const std::function<void()>& prepareNewSimulationOutputs);
 
     /** @brief Delegates the start simulation command flow. */
     void onActionSimulationStartTriggered(bool modelChecked) const;
@@ -53,6 +54,7 @@ private:
     std::function<void()> _actualizeActions;
     std::function<bool()> _checkModel;
     std::function<bool()> _setSimulationModelBasedOnText;
+    std::function<void()> _prepareNewSimulationOutputs;
 };
 
 #endif // SIMULATIONCOMMANDCONTROLLER_H

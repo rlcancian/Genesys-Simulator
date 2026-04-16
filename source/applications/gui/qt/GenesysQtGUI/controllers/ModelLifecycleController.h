@@ -61,6 +61,9 @@ public:
                              bool* graphicalModelHasChanged,
                              bool* closingApproved,
                              bool* loaded,
+                             bool& parallelizationEnabled,
+                             int& parallelizationThreads,
+                             int& parallelizationBatchSize,
                              Callbacks callbacks);
 
     /** @brief Starts the new-model lifecycle flow and reinitializes GUI/model state. */
@@ -94,6 +97,9 @@ private:
     bool* _graphicalModelHasChanged;
     bool* _closingApproved;
     bool* _loaded;
+    bool& _parallelizationEnabled;
+    int& _parallelizationThreads;
+    int& _parallelizationBatchSize;
     Callbacks _callbacks;
 };
 

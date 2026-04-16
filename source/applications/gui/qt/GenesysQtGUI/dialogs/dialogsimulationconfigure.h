@@ -23,6 +23,7 @@ public:
 	~DialogSimulationConfigure();
 	void setModelSimulation(ModelSimulation* modelSimulation);
 	void setExperimentManager(ExperimentManager* experimentManager);
+	void setParallelizationSettings(bool* enabled, int* localThreads, int* batchSize);
 
 public slots:
 	void accept() override;
@@ -42,12 +43,19 @@ private:
 		bool stepByStep = false;
 		bool pauseOnEvent = false;
 		bool pauseOnReplication = false;
+		bool parallelizationEnabled = false;
+		int parallelizationThreads = 1;
+		int parallelizationBatchSize = 100;
+		bool distributedParallelizationEnabled = false;
+		std::string distributedCoordinatorUrl;
+		std::string distributedToken;
 	};
 
 	void _populateTimeUnitComboBoxes();
 	void _loadModelSimulation();
 	void _loadSimulationReporter();
 	void _loadExperimentManager();
+	void _loadParallelizationSettings();
 	SimulationConfiguration _configurationFromUi() const;
 	bool _hasPendingChanges() const;
 	Util::TimeUnit _timeUnitFromComboBox(const QComboBox* comboBox) const;
@@ -58,6 +66,9 @@ private:
 	ModelSimulation* _modelSimulation = nullptr;
 	SimulationReporter_if* _simulationReporter = nullptr;
 	ExperimentManager* _experimentManager = nullptr;
+	bool* _parallelizationEnabled = nullptr;
+	int* _parallelizationThreads = nullptr;
+	int* _parallelizationBatchSize = nullptr;
 	SimulationConfiguration _originalConfiguration;
 };
 
