@@ -4,6 +4,7 @@ add_library(genesys_web_core STATIC
     http/SimpleHttpServer.cpp
     service/SimulatorSessionService.cpp
     session/SessionManager.cpp
+    worker/WorkerJobManager.cpp
 )
 
 target_include_directories(genesys_web_core

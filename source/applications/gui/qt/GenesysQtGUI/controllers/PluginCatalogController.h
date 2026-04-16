@@ -41,6 +41,8 @@ public:
 
     /** @brief Inserts one plugin entry into the categorized plugin tree representation. */
     void insertPluginUI(Plugin* plugin) const;
+    /** @brief Rebuilds the categorized plugin tree from the current PluginManager state. */
+    void reloadFromPluginManager() const;
     /** @brief Inserts compatibility fake plugins used by legacy GUI flows. */
     void insertFakePlugins() const;
     /** @brief Handles plugin double-click by delegating insertion/selection behavior. */

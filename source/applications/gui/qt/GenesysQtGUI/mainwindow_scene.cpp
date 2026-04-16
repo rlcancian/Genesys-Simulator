@@ -50,6 +50,8 @@ void MainWindow::_onSceneWheelOutEvent() {
  * @param event Graphical change event (currently unused by this compatibility wrapper).
  */
 void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*/) {
+    // Any structural graphical event changes the persisted .gui representation.
+    _graphicalModelHasChanged = true;
     _actualizeTabPanes();
 }
 

@@ -58,6 +58,7 @@ public:
                              Ui::MainWindow* ui,
                              QString* modelFilename,
                              bool* textModelHasChanged,
+                             bool* graphicalModelHasChanged,
                              bool* closingApproved,
                              bool* loaded,
                              Callbacks callbacks);
@@ -90,6 +91,7 @@ private:
     Ui::MainWindow* _ui;
     QString* _modelFilename;
     bool* _textModelHasChanged;
+    bool* _graphicalModelHasChanged;
     bool* _closingApproved;
     bool* _loaded;
     Callbacks _callbacks;

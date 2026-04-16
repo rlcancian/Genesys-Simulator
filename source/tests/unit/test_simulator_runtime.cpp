@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <fstream>
 #include <memory>
+#include <sstream>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <vector>
@@ -29,6 +30,10 @@
 #include "plugins/data/Storage.h"
 #include "plugins/data/File.h"
 #include "plugins/data/CppCompiler.h"
+#include "plugins/data/SPICERunner.h"
+#include "plugins/data/BioSimulatorRunner.h"
+#include "plugins/data/AssignmentItem.h"
+#include "plugins/data/DummyElement.h"
 #include "kernel/util/Util.h"
 #define private public
 #define protected public
@@ -36,6 +41,7 @@
 #undef protected
 #undef private
 #include "plugins/components/Delay.h"
+#include "plugins/components/Dispose.h"
 #include "plugins/components/Batch.h"
 #include "plugins/components/Separate.h"
 #include "plugins/components/Match.h"
@@ -252,6 +258,23 @@ public:
 
     void InitBetweenReplicationsProbe() {
         _initBetweenReplications();
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class DummyElementProbe : public DummyElement {
+public:
+    DummyElementProbe(Model* model, const std::string& name = "") : DummyElement(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
     }
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
@@ -814,6 +837,44 @@ public:
 
     CompilationResult InvokeCompilerProbe(const std::string& command) {
         return _invokeCompiler(command);
+    }
+};
+
+class SPICERunnerProbe : public SPICERunner {
+public:
+    SPICERunnerProbe(Model* model, const std::string& name = "") : SPICERunner(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class BioSimulatorRunnerProbe : public BioSimulatorRunner {
+public:
+    BioSimulatorRunnerProbe(Model* model, const std::string& name = "") : BioSimulatorRunner(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
     }
 };
 
@@ -2622,6 +2683,113 @@ TEST(SimulatorRuntimeTest, StorageRegistersMainControlsAsOwnedProperties) {
     EXPECT_TRUE(hasUnitsPerArea);
 }
 
+TEST(SimulatorRuntimeTest, DummyElementDefaultsAreInitializedAsExpected) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElement element(model, "DummyDefaults");
+    EXPECT_EQ(element.getSomeString(), "Test");
+    EXPECT_EQ(element.getSomeUint(), 1u);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementSettersAndGettersRemainCoherent) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElement element(model, "DummySetters");
+    element.setSomeString("TemplateValue");
+    element.setSomeUint(42u);
+
+    EXPECT_EQ(element.getSomeString(), "TemplateValue");
+    EXPECT_EQ(element.getSomeUint(), 42u);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementCheckFailsForInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElementProbe element(model, "DummyInvalid");
+    element.setSomeString("");
+    element.setSomeUint(0u);
+
+    std::string errorMessage;
+    EXPECT_FALSE(element.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("SomeString must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("SomeUint must be greater than zero"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementCheckPassesForValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElementProbe element(model, "DummyValid");
+    element.setSomeString("Ok");
+    element.setSomeUint(3u);
+
+    std::string errorMessage;
+    EXPECT_TRUE(element.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, DummyElementShowIncludesMainConfiguredFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElement element(model, "DummyShow");
+    element.setSomeString("Alpha");
+    element.setSomeUint(8u);
+
+    const std::string info = element.show();
+    EXPECT_NE(info.find("someString=\"Alpha\""), std::string::npos);
+    EXPECT_NE(info.find("someUint=8"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementSaveAndLoadRoundTripPreservesParameters) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElementProbe source(model, "DummySource");
+    source.setSomeString("Persisted");
+    source.setSomeUint(77u);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    DummyElementProbe loaded(model, "DummyLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getSomeString(), "Persisted");
+    EXPECT_EQ(loaded.getSomeUint(), 77u);
+}
+
+TEST(SimulatorRuntimeTest, DummyElementRegistersMainControlsAsOwnedProperties) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    DummyElement element(model, "DummyProperties");
+    auto* controls = element.getSimulationControls();
+    ASSERT_NE(controls, nullptr);
+    EXPECT_GE(controls->size(), 2u);
+
+    bool hasSomeString = false;
+    bool hasSomeUint = false;
+    for (SimulationControl* control : *controls->list()) {
+        ASSERT_NE(control, nullptr);
+        hasSomeString = hasSomeString || control->getName() == "SomeString";
+        hasSomeUint = hasSomeUint || control->getName() == "SomeUint";
+    }
+
+    EXPECT_TRUE(hasSomeString);
+    EXPECT_TRUE(hasSomeUint);
+}
+
 TEST(SimulatorRuntimeTest, StationCreateInternalInitiallyCreatesCollectorsWhenStatisticsEnabled) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -4313,6 +4481,69 @@ TEST(SimulatorRuntimeTest, AssignSaveLoadPreservesMultipleAssignmentsWithoutInde
     EXPECT_FALSE((*it)->isAttributeNotVariable());
 }
 
+TEST(SimulatorRuntimeTest, AssignmentConstructorInitializesTypeConsistently) {
+    Assignment asAttribute("Entity.attrCtor", "1", true);
+    EXPECT_TRUE(asAttribute.isAttributeNotVariable());
+    EXPECT_EQ(asAttribute.getTypeDC(), Util::TypeOf<Attribute>());
+
+    Assignment asVariable("varCtor", "2", false);
+    EXPECT_FALSE(asVariable.isAttributeNotVariable());
+    EXPECT_EQ(asVariable.getTypeDC(), Util::TypeOf<Variable>());
+}
+
+TEST(SimulatorRuntimeTest, AssignmentSetterUpdatesTypeConsistently) {
+    Assignment assignment("Entity.attrSetter", "1", true);
+    EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Attribute>());
+
+    assignment.setAttributeNotVariable(false);
+    EXPECT_FALSE(assignment.isAttributeNotVariable());
+    EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Variable>());
+
+    assignment.setAttributeNotVariable(true);
+    EXPECT_TRUE(assignment.isAttributeNotVariable());
+    EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Attribute>());
+}
+
+TEST(SimulatorRuntimeTest, AssignmentSaveLoadRoundTripPreservesDestinationExpressionAndType) {
+    Assignment source("Entity.attrRoundTrip", "3+4", true);
+    source.setAttributeNotVariable(false);
+    source.setDestination("varRoundTrip");
+    source.setExpression("5*6");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.saveInstance(&fields, 0, true);
+
+    Assignment loaded("placeholder", "0", true);
+    ASSERT_TRUE(loaded.loadInstance(&fields, 0));
+    EXPECT_EQ(loaded.getDestination(), "varRoundTrip");
+    EXPECT_EQ(loaded.getExpression(), "5*6");
+    EXPECT_FALSE(loaded.isAttributeNotVariable());
+    EXPECT_EQ(loaded.getTypeDC(), Util::TypeOf<Variable>());
+}
+
+TEST(SimulatorRuntimeTest, AssignmentPropertiesContainerLifecycleWithModelConstructorIsSafe) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* assignment = new Assignment(model, "Entity.attrProps", "1", true);
+    auto* properties = assignment->getProperties();
+    ASSERT_NE(properties, nullptr);
+    EXPECT_EQ(properties->size(), 3u);
+
+    delete assignment;
+    SUCCEED();
+}
+
+TEST(SimulatorRuntimeTest, AssignmentSimpleConstructorWithoutModelKeepsCoherentState) {
+    Assignment assignment("varSimpleCtor", "9", false);
+    EXPECT_EQ(assignment.getDestination(), "varSimpleCtor");
+    EXPECT_EQ(assignment.getExpression(), "9");
+    EXPECT_FALSE(assignment.isAttributeNotVariable());
+    EXPECT_EQ(assignment.getTypeDC(), Util::TypeOf<Variable>());
+}
+
 TEST(SimulatorRuntimeTest, AssignCheckFailsForInvalidExpression) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -4712,4 +4943,554 @@ TEST(SimulatorRuntimeTest, CppCompilerUnloadLibraryIsSafeWhenNoLibraryIsLoaded) 
     EXPECT_FALSE(compiler.IsLibraryLoaded());
     EXPECT_TRUE(compiler.unloadLibrary());
     EXPECT_FALSE(compiler.IsLibraryLoaded());
+}
+
+TEST(SimulatorRuntimeTest, CppCompilerUnloadLibraryNormalizesStateWhenFlagSetWithoutHandle) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    CppCompilerProbe compiler(model, "CppCompilerUnloadInconsistent");
+    compiler.setLibraryLoaded(true);
+    EXPECT_TRUE(compiler.unloadLibrary());
+    EXPECT_FALSE(compiler.IsLibraryLoaded());
+    EXPECT_EQ(compiler.getDynamicLibraryHandler(), nullptr);
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerDefaultsExposeOperationalConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerDefaults");
+    EXPECT_EQ(runner.getRunnerCommand(), "ngspice");
+    EXPECT_EQ(runner.getModelsPath(), "./");
+    EXPECT_EQ(runner.getWorkingInputFilename(), "input.cir");
+    EXPECT_EQ(runner.getWorkingOutputFilename(), "output");
+    EXPECT_EQ(runner.getWorkingDirectory(), "");
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerSettersAndGettersPreserveMainFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerSetGet");
+    runner.setRunnerCommand("xyce");
+    runner.setModelsPath("models/");
+    runner.setWorkingInputFilename("custom_input.cir");
+    runner.setWorkingOutputFilename("custom_output.log");
+    runner.setWorkingDirectory("workdir");
+
+    EXPECT_EQ(runner.getRunnerCommand(), "xyce");
+    EXPECT_EQ(runner.getModelsPath(), "models/");
+    EXPECT_EQ(runner.getWorkingInputFilename(), "custom_input.cir");
+    EXPECT_EQ(runner.getWorkingOutputFilename(), "custom_output.log");
+    EXPECT_EQ(runner.getWorkingDirectory(), "workdir");
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerCheckRejectsInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerCheckInvalid");
+    runner.setRunnerCommand("");
+    runner.setWorkingInputFilename("");
+    runner.setWorkingOutputFilename("");
+    std::string instance = "R1 a b 1k";
+    runner.SendComponent(&instance, "", "nmosp");
+    runner.setModelsPath("");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("RunnerCommand must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("WorkingInputFilename must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("WorkingOutputFilename must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("ModelsPath must not be empty"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerCheckAcceptsMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerCheckValid");
+    runner.setRunnerCommand("ngspice");
+    runner.setWorkingInputFilename("input_valid.cir");
+    runner.setWorkingOutputFilename("output_valid.log");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerShowIncludesOperationalObservability) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerShow");
+    runner.setRunnerCommand("xyce");
+    runner.setModelsPath("models/");
+    runner.setWorkingInputFilename("show_input.cir");
+    runner.setWorkingOutputFilename("show_output.log");
+    std::string instance = "Rshow in out 1k";
+    runner.SendComponent(&instance);
+    runner.PlotV("out");
+    runner.MeasurePeak("p1", "max", "v", "out", 0.0f, 1.0f);
+
+    const std::string shown = runner.show();
+    EXPECT_NE(shown.find("runnerCommand=\"xyce\""), std::string::npos);
+    EXPECT_NE(shown.find("modelsPath=\"models/\""), std::string::npos);
+    EXPECT_NE(shown.find("workingInputFilename=\"show_input.cir\""), std::string::npos);
+    EXPECT_NE(shown.find("workingOutputFilename=\"show_output.log\""), std::string::npos);
+    EXPECT_NE(shown.find("instances=1"), std::string::npos);
+    EXPECT_NE(shown.find("plots=1"), std::string::npos);
+    EXPECT_NE(shown.find("measures=1"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerPersistenceRoundTripPreservesOperationalFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe source(model, "SPICERunnerPersistSource");
+    source.setRunnerCommand("xyce");
+    source.setModelsPath("persist_models/");
+    source.setWorkingInputFilename("persist_input.cir");
+    source.setWorkingOutputFilename("persist_output.log");
+    source.setWorkingDirectory("persist_workdir");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    SPICERunnerProbe loaded(model, "SPICERunnerPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRunnerCommand(), "xyce");
+    EXPECT_EQ(loaded.getModelsPath(), "persist_models/");
+    EXPECT_EQ(loaded.getWorkingInputFilename(), "persist_input.cir");
+    EXPECT_EQ(loaded.getWorkingOutputFilename(), "persist_output.log");
+    EXPECT_EQ(loaded.getWorkingDirectory(), "persist_workdir");
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerCompileSpiceFileStillBuildsExpectedNetlistSegments) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SPICERunnerProbe runner(model, "SPICERunnerCompile");
+    runner.setModelsPath("my_models/");
+    std::string instance = "R1 in out 1k";
+    runner.SendComponent(&instance, ".subckt my_sub in out\nRsub in out 2k\n.ends", "my_model");
+    runner.ConfigSim(1.0, 0.1);
+
+    const std::string compiled = runner.CompileSpiceFile();
+    EXPECT_NE(compiled.find(".include my_models/my_model.cir"), std::string::npos);
+    EXPECT_NE(compiled.find(".subckt my_sub in out"), std::string::npos);
+    EXPECT_NE(compiled.find("R1 in out 1k"), std::string::npos);
+    EXPECT_NE(compiled.find("tran"), std::string::npos);
+    EXPECT_NE(compiled.find(".end"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, SPICERunnerRunUsesConfiguredOperationalFilenamesInCommand) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const std::string workingDir = Util::RunningPath() + Util::DirSeparator() + "spice_runner_runtime";
+    ::mkdir(workingDir.c_str(), 0755);
+
+    SPICERunnerProbe runner(model, "SPICERunnerRunCommand");
+    runner.setRunnerCommand("true");
+    runner.setWorkingDirectory(workingDir);
+    runner.setWorkingInputFilename("runtime_input_test.cir");
+    runner.setWorkingOutputFilename("runtime_output_test.log");
+    runner.Run();
+
+    const std::string command = runner.getLastRunCommand();
+    EXPECT_NE(command.find("runtime_input_test.cir"), std::string::npos);
+    EXPECT_NE(command.find("runtime_output_test.log"), std::string::npos);
+    EXPECT_NE(command.find(" -b -o "), std::string::npos);
+
+    const std::string inputPath = workingDir + Util::DirSeparator() + "runtime_input_test.cir";
+    EXPECT_TRUE(Util::FileExists(inputPath));
+
+    Util::FileDelete(inputPath);
+    const std::string outputPath = workingDir + Util::DirSeparator() + "runtime_output_test.log";
+    Util::FileDelete(outputPath);
+    ::rmdir(workingDir.c_str());
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerDefaultsExposeStructuralConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorDefaults");
+    EXPECT_EQ(runner.getBackend(), "RoadRunnerEmbedded");
+    EXPECT_EQ(runner.getModelSourceType(), "SBMLString");
+    EXPECT_EQ(runner.getModelSource(), "");
+    EXPECT_EQ(runner.getCommand(), "");
+    EXPECT_EQ(runner.getLastStatus(), "Idle");
+    EXPECT_EQ(runner.getLastErrorMessage(), "");
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+    EXPECT_EQ(runner.getLastResponseFilename(), "");
+    EXPECT_EQ(runner.getWorkingDirectory(), "");
+    EXPECT_EQ(runner.getWorkingInputFilename(), "biosim_input.xml");
+    EXPECT_EQ(runner.getWorkingOutputFilename(), "biosim_output.json");
+    EXPECT_EQ(runner.getEndpointOrLibrary(), "");
+    EXPECT_EQ(runner.getTimeoutSeconds(), 30u);
+    EXPECT_TRUE(runner.getAutoValidateModel());
+    EXPECT_GE(runner.getSimulationControls()->size(), 14u);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerPluginInformationDeclaresLibSBMLDependency) {
+    std::unique_ptr<PluginInformation> info(BioSimulatorRunner::GetPluginInformation());
+
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<BioSimulatorRunner>());
+    ASSERT_TRUE(info->hasSystemDependencies());
+    ASSERT_NE(info->getSystemDependencies(), nullptr);
+
+    bool foundLibSBML = false;
+    for (const SystemDependency& dependency : *info->getSystemDependencies()) {
+        if (dependency.getOS() == SystemDependency::OS::Linux && dependency.getName() == "libSBML") {
+            foundLibSBML = true;
+            EXPECT_EQ(dependency.getInstallCommand(), "sudo apt install libsbml5-dev -y");
+            EXPECT_EQ(dependency.getCheckCommand(), "pkg-config --exists libsbml");
+        }
+    }
+    EXPECT_TRUE(foundLibSBML);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerSettersAndGettersPreserveValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorSetGet");
+    runner.setBackend("CopasiSEExternal");
+    runner.setModelSourceType("SBMLFile");
+    runner.setModelSource("model.xml");
+    runner.setCommand("simulate(0,10,5)");
+    runner.setWorkingDirectory("biosim_work");
+    runner.setWorkingInputFilename("custom_input.xml");
+    runner.setWorkingOutputFilename("custom_output.json");
+    runner.setEndpointOrLibrary("/opt/copasi/CopasiSE");
+    runner.setTimeoutSeconds(45u);
+    runner.setAutoValidateModel(false);
+
+    EXPECT_EQ(runner.getBackend(), "CopasiSEExternal");
+    EXPECT_EQ(runner.getModelSourceType(), "SBMLFile");
+    EXPECT_EQ(runner.getModelSource(), "model.xml");
+    EXPECT_EQ(runner.getCommand(), "simulate(0,10,5)");
+    EXPECT_EQ(runner.getWorkingDirectory(), "biosim_work");
+    EXPECT_EQ(runner.getWorkingInputFilename(), "custom_input.xml");
+    EXPECT_EQ(runner.getWorkingOutputFilename(), "custom_output.json");
+    EXPECT_EQ(runner.getEndpointOrLibrary(), "/opt/copasi/CopasiSE");
+    EXPECT_EQ(runner.getTimeoutSeconds(), 45u);
+    EXPECT_FALSE(runner.getAutoValidateModel());
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerCheckRejectsInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe emptyFields(model, "BioSimulatorCheckEmpty");
+    emptyFields.setBackend("");
+    emptyFields.setModelSourceType("");
+    emptyFields.setTimeoutSeconds(0u);
+    emptyFields.setWorkingInputFilename("");
+    emptyFields.setWorkingOutputFilename("");
+
+    std::string emptyFieldsError;
+    EXPECT_FALSE(emptyFields.CheckProbe(emptyFieldsError));
+    EXPECT_NE(emptyFieldsError.find("non-empty backend"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("non-empty modelSourceType"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("timeoutSeconds greater than zero"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("non-empty workingInputFilename"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("non-empty workingOutputFilename"), std::string::npos);
+
+    BioSimulatorRunnerProbe invalidType(model, "BioSimulatorCheckInvalidType");
+    invalidType.setModelSourceType("CellMLString");
+    std::string invalidTypeError;
+    EXPECT_FALSE(invalidType.CheckProbe(invalidTypeError));
+    EXPECT_NE(invalidTypeError.find("unsupported modelSourceType"), std::string::npos);
+
+    BioSimulatorRunnerProbe missingFileSource(model, "BioSimulatorCheckMissingFile");
+    missingFileSource.setModelSourceType("SBMLFile");
+    missingFileSource.setModelSource("");
+    std::string missingFileSourceError;
+    EXPECT_FALSE(missingFileSource.CheckProbe(missingFileSourceError));
+    EXPECT_NE(missingFileSourceError.find("must define modelSource when modelSourceType is SBMLFile"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerCheckAcceptsMinimalValidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorCheckValid");
+    std::string errorMessage;
+    EXPECT_TRUE(runner.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerPersistenceRoundTripPreservesMainFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe source(model, "BioSimulatorPersistSource");
+    source.setBackend("VCellRest");
+    source.setModelSourceType("SBMLFile");
+    source.setModelSource("persist_model.xml");
+    source.setCommand("steadyState()");
+    source.setLastStatus("Completed");
+    source.setLastErrorMessage("none");
+    source.setLastResponsePayload("{\"ok\":true}");
+    source.setLastResponseFilename("persist_response.json");
+    source.setWorkingDirectory("persist_workdir");
+    source.setWorkingInputFilename("persist_input.xml");
+    source.setWorkingOutputFilename("persist_output.json");
+    source.setEndpointOrLibrary("https://example.invalid/stub");
+    source.setTimeoutSeconds(75u);
+    source.setAutoValidateModel(false);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    BioSimulatorRunnerProbe loaded(model, "BioSimulatorPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getBackend(), "VCellRest");
+    EXPECT_EQ(loaded.getModelSourceType(), "SBMLFile");
+    EXPECT_EQ(loaded.getModelSource(), "persist_model.xml");
+    EXPECT_EQ(loaded.getCommand(), "steadyState()");
+    EXPECT_EQ(loaded.getLastStatus(), "Completed");
+    EXPECT_EQ(loaded.getLastErrorMessage(), "none");
+    EXPECT_EQ(loaded.getLastResponsePayload(), "{\"ok\":true}");
+    EXPECT_EQ(loaded.getLastResponseFilename(), "persist_response.json");
+    EXPECT_EQ(loaded.getWorkingDirectory(), "persist_workdir");
+    EXPECT_EQ(loaded.getWorkingInputFilename(), "persist_input.xml");
+    EXPECT_EQ(loaded.getWorkingOutputFilename(), "persist_output.json");
+    EXPECT_EQ(loaded.getEndpointOrLibrary(), "https://example.invalid/stub");
+    EXPECT_EQ(loaded.getTimeoutSeconds(), 75u);
+    EXPECT_FALSE(loaded.getAutoValidateModel());
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerShowIncludesMainObservabilityFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorShow");
+    runner.setBackend("CopasiSEExternal");
+    runner.setModelSourceType("SBMLFile");
+    runner.setCommand("simulate(0,1,2)");
+    runner.setLastStatus("Completed");
+    runner.setWorkingDirectory("show_work");
+    runner.setWorkingInputFilename("show_input.xml");
+    runner.setWorkingOutputFilename("show_output.json");
+    runner.setEndpointOrLibrary("copasi");
+    runner.setTimeoutSeconds(12u);
+
+    const std::string shown = runner.show();
+    EXPECT_NE(shown.find("backend=\"CopasiSEExternal\""), std::string::npos);
+    EXPECT_NE(shown.find("modelSourceType=\"SBMLFile\""), std::string::npos);
+    EXPECT_NE(shown.find("command=\"simulate(0,1,2)\""), std::string::npos);
+    EXPECT_NE(shown.find("lastStatus=\"Completed\""), std::string::npos);
+    EXPECT_NE(shown.find("workingDirectory=\"show_work\""), std::string::npos);
+    EXPECT_NE(shown.find("workingInputFilename=\"show_input.xml\""), std::string::npos);
+    EXPECT_NE(shown.find("workingOutputFilename=\"show_output.json\""), std::string::npos);
+    EXPECT_NE(shown.find("endpointOrLibrary=\"copasi\""), std::string::npos);
+    EXPECT_NE(shown.find("timeoutSeconds=12"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerUnknownCommandFailsPredictably) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorUnknownCommand");
+    runner.setCommand("unknown()");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.executeCommand(errorMessage));
+    EXPECT_EQ(runner.getLastStatus(), "Failed");
+    EXPECT_NE(errorMessage.find("Unknown BioSimulatorRunner command"), std::string::npos);
+    EXPECT_EQ(runner.getLastErrorMessage(), errorMessage);
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelWithEmptySourceFailsCoherently) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorValidateEmpty");
+    runner.setCommand("validateModel()");
+    runner.setModelSource("");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.executeCommand(errorMessage));
+    EXPECT_EQ(runner.getLastStatus(), "Failed");
+    EXPECT_NE(errorMessage.find("requires a non-empty modelSource"), std::string::npos);
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelProducesStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorValidateStub");
+    runner.setModelSource("<sbml/>");
+    runner.setCommand("validateModel()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_EQ(runner.getLastErrorMessage(), "");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_validation\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"modelSourceType\":\"SBMLString\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerSimulateProducesDeterministicStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorSimulateStub");
+    runner.setCommand("simulate(0,10,101)");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_EQ(runner.getLastResponseFilename(), "biosim_output.json");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_time_course\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"start\":0"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"stop\":10"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"steps\":101"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerSteadyStateProducesStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorSteadyStateStub");
+    runner.setCommand("steadyState()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_steady_state\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"converged\":true"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerGetValueProducesStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorGetValueStub");
+    runner.setCommand("getValue(\"S1\")");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_value\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"symbol\":\"S1\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"value\":0.0"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerSetValueProducesStubPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorSetValueStub");
+    runner.setCommand("setValue(\"S1\", 2.5)");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_set_value\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"symbol\":\"S1\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"value\":2.5"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"updated\":true"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReset");
+    runner.setLastStatus("Completed");
+    runner.setLastErrorMessage("previous error");
+    runner.setLastResponsePayload("{\"previous\":true}");
+    runner.setLastResponseFilename("previous.json");
+    runner.setCommand("reset()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Idle");
+    EXPECT_EQ(runner.getLastErrorMessage(), "");
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+    EXPECT_EQ(runner.getLastResponseFilename(), "");
+    EXPECT_EQ(errorMessage, "");
+}
+
+TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* create = new Create(model, "Create A");
+    auto* delay = new Delay(model, "Delay A");
+    auto* dispose = new Dispose(model, "Dispose A");
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(delay, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setFirstCreation(2.5);
+    create->setEntitiesPerCreation(3);
+    create->setTimeBetweenCreationsExpression("expo(5)", Util::TimeUnit::minute);
+    delay->setDelayExpression("tria(1,2,3)", Util::TimeUnit::hour);
+    create->connectTo(delay);
+    delay->connectTo(dispose);
+
+    model->getSimulation()->setNumberOfReplications(7);
+    model->getSimulation()->setReplicationLength(42, Util::TimeUnit::minute);
+
+    const std::string filename = "/tmp/genesys_cppserializer_runtime_test_" + std::to_string(::getpid()) + ".cpp";
+    ASSERT_TRUE(model->save(filename));
+
+    std::ifstream file(filename);
+    ASSERT_TRUE(file.good());
+    std::ostringstream buffer;
+    buffer << file.rdbuf();
+    const std::string generated = buffer.str();
+    ::unlink(filename.c_str());
+
+    EXPECT_NE(generated.find("genesys->getTraceManager()->setTraceLevel"), std::string::npos);
+    EXPECT_NE(generated.find("genesys->getPluginManager()"), std::string::npos);
+    EXPECT_NE(generated.find("genesys->getModelManager()->newModel()"), std::string::npos);
+    EXPECT_EQ(generated.find("getTracer()->setTraceLevel"), std::string::npos);
+    EXPECT_EQ(generated.find("genesys->getPlugins()"), std::string::npos);
+    EXPECT_EQ(generated.find("genesys->getModels()"), std::string::npos);
+
+    EXPECT_NE(generated.find("setProperty(Create_A, \"FirstCreation\", \"2.5\")"), std::string::npos);
+    EXPECT_NE(generated.find("setProperty(Create_A, \"EntitiesPerCreation\", \"3\")"), std::string::npos);
+    EXPECT_NE(generated.find("setProperty(Create_A, \"TimeBetweenArrivals\", \"expo(5)\")"), std::string::npos);
+    EXPECT_EQ(generated.find("setProperty(Create_A, \"TimeBetweenCreationsFormula\", \"\")"), std::string::npos);
+    EXPECT_EQ(generated.find("setProperty(Create_A, \"TimeBetweenCreationsSchedule\", \"\")"), std::string::npos);
+    EXPECT_NE(generated.find("setProperty(Delay_A, \"DelayExpression\", \"tria(1,2,3)\")"), std::string::npos);
+    EXPECT_NE(generated.find("Create_A->connectTo(Delay_A, 0);"), std::string::npos);
+    EXPECT_NE(generated.find("Delay_A->connectTo(Dispose_A, 0);"), std::string::npos);
+    EXPECT_NE(generated.find("sim->setNumberOfReplications(7);"), std::string::npos);
+    EXPECT_NE(generated.find("sim->setReplicationLength(42.000000, Util::TimeUnit::minute);"), std::string::npos);
 }

@@ -103,7 +103,7 @@ template <typename T>
 void ListObservable<T>::pop_front() {
 	typename std::list<T>::iterator itTemp = _list->begin();
 	_list->pop_front();
-	if (_it == itTemp) { /*  \todo: +: check this */
+	if (_it == itTemp) { /* @ToDo: (importante): check this */
 		_it = _list->begin(); // if it points to the removed element, then changes to begin
 	}
 }
@@ -111,7 +111,7 @@ void ListObservable<T>::pop_front() {
 template <typename T>
 void ListObservable<T>::remove(T element) {
 	_list->remove(element);
-	if ((*_it) == element) { /*  \todo: +: check this */
+	if ((*_it) == element) { /* @ToDo: (importante): check this */
 		_it = _list->begin(); // if it points to the removed element, then changes to begin
 	}
 }
@@ -136,7 +136,7 @@ T ListObservable<T>::getAtRank(unsigned int rank) {
 			thisRank++;
 		}
 	}
-	return 0; /* \todo: Invalid return depends on T. If T is pointer, nullptr works fine. If T is double, it does not. I just let (*it), buut it is not nice*/
+	return 0; /* @ToDo: (importante): Invalid return depends on T. If T is pointer, nullptr works fine. If T is double, it does not. I just let (*it), buut it is not nice */
 }
 
 template <typename T>
@@ -173,7 +173,7 @@ typename std::list<T>::iterator ListObservable<T>::find(T element) {
 			return it;
 		}
 	}
-	return _list->end(); /*  \todo:+-: check nullptr or invalid iterator when not found */
+	return _list->end(); /* @ToDo: (importante): check nullptr or invalid iterator when not found */
 	//return nullptr;
 }
 
@@ -204,20 +204,20 @@ template <typename T>
 T ListObservable<T>::last() {
 	_it = _list->end();
 	_it--;
-	//if (_it != _list->end()) // \todo: CHECK!!!
+	//if (_it != _list->end()) // @ToDo: (importante): CHECK!!!
 	return (*_it);
 	//else return nullptr;
 }
 
 template <typename T>
 T ListObservable<T>::previous() {
-	_it--; // \todo: CHECK!!!
+	_it--; // @ToDo: (importante): CHECK!!!
 	return (*_it);
 }
 
 template <typename T>
 T ListObservable<T>::current() {
-	/* \todo: To implement (i thing it's just to check). Must actualize _it on other methods when other elements are accessed */
+	/* @ToDo: (importante): To implement (i thing it's just to check). Must actualize _it on other methods when other elements are accessed */
 	return (*_it);
 }
 

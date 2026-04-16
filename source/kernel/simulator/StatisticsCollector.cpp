@@ -60,7 +60,7 @@ std::string StatisticsCollector::show() {
 		try {
 			parentStr = _parent->getName();
 		} catch (...) { // if parent changed or deleted, can cause seg fault
-			parentStr = "<<INCONSISTENT>>"; /* @TODO: ++*/
+			parentStr = "<<INCONSISTENT>>"; /* @ToDo: (importante): ++ */
 		}
 	}
 	return ModelDataDefinition::show() +
@@ -118,7 +118,7 @@ void StatisticsCollector::_saveInstance(PersistenceRecord *fields, bool saveDefa
 }
 
 bool StatisticsCollector::_check(std::string& errorMessage) {
-	// @TODO: To implement!
+	// @ToDo: (importante): To implement!
 	errorMessage += "";
 	return true;
 }

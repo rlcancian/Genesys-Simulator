@@ -73,7 +73,7 @@ public: // continuous probability distributions
 	/*! \brief Samples Weibull distribution. */
 	virtual double sampleWeibull(double alpha, double scale) override;
 public: // discrete probability distributions
-	//TODO: Poisson, si vous plait!!!!
+	// @ToDo: (pequena alteração): Poisson, si vous plait!!!!
 	/*! \brief Samples Binomial distribution. */
 	virtual double sampleBinomial(int trials, double p) override;
 	/*! \brief Samples Bernoulli distribution. */
