@@ -144,7 +144,7 @@ void Station::_createInternalAndAttachedData() {
 	_attachedAttributesInsert({"Entity.Station", currentArrivalAttributeName});
 
 	if (_reportStatistics) {
-		if (_cstatNumberInStation == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_cstatNumberInStation == nullptr) {
 			_cstatNumberInStation = new StatisticsCollector(_parentModel, getName() + "." + "NumberInStation", this);
 			_cstatTimeInStation = new StatisticsCollector(_parentModel, getName() + "." + "TimeInStation", this);
 		}

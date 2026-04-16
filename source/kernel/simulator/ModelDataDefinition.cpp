@@ -162,9 +162,6 @@ void ModelDataDefinition::_attachedAttributesInsert(std::vector<std::string> nee
 		neededName = neededNames[i];
 		ModelDataDefinition* attr1 = elements->getDataDefinition(Util::TypeOf<Attribute>(), neededName);
 		if (attr1 == nullptr) {
-			if (!_parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
-				continue;
-			}
 			attr1 = new Attribute(_parentModel, neededName);
 		}
 		_attachedDataInsert(neededName, attr1);

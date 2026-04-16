@@ -117,13 +117,13 @@ bool Decide::_check(std::string& errorMessage) {
 
 void Decide::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
-		if (_numberOuts == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_numberOuts == nullptr) {
 			_numberOuts = new List<Counter*>();
 		}
 		if (_numberOuts == nullptr) {
 			return;
 		}
-		for (unsigned int i = _numberOuts->size(); i<this->_connections->size() && _parentModel->isAutomaticallyCreatesModelDataDefinitions(); i++) {
+		for (unsigned int i = _numberOuts->size(); i<this->_connections->size(); i++) {
 			Counter* counter = new Counter(_parentModel, getName() + "." + "CountNumberOut" + Util::StrIndex(i), this);
 			_numberOuts->insert(counter);
 			_internalDataInsert("CountNumberOut" + Util::StrIndex(i), counter);

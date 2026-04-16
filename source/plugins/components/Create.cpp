@@ -190,7 +190,7 @@ void Create::_createInternalAndAttachedData() {
 		_attachedDataRemove("TimeBetweenCreationsFormula");
 	}
 
-	if (_reportStatistics && _numberOut == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_reportStatistics && _numberOut == nullptr) {
 		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberOut", this);
 		_internalDataInsert("CountNumberOut", _numberOut);
 	} else if (_reportStatistics && _numberOut != nullptr) {

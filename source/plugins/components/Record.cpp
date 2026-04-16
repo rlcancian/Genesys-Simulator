@@ -153,7 +153,7 @@ bool Record::_check(std::string& errorMessage) {
 }
 
 void Record::_createInternalAndAttachedData() {
-	if (_reportStatistics && _cstatExpression == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_reportStatistics && _cstatExpression == nullptr) {
 		_cstatExpression = new StatisticsCollector(_parentModel, getName() + "." + _expressionName, this);
 		//_parentModel->getDataDefinition()->insert(_cstatExpression);
 	}

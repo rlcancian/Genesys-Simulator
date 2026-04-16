@@ -192,7 +192,7 @@ void Delay::_createInternalAndAttachedData() {
 	_reconcileAllocationAttachedAttributes();
 
 	if (_reportStatistics) {
-		if (_cstatWaitTime == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_cstatWaitTime == nullptr) {
 			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
 		}
 		if (_cstatWaitTime != nullptr) {

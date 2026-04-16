@@ -935,7 +935,29 @@ QString ObjectPropertyBrowser::_defaultModelObjectName(const GenesysPropertyDesc
     const QString ownerName = _modelObject != nullptr
                                   ? QString::fromStdString(_modelObject->getName())
                                   : QStringLiteral("Object");
-    return QString("%1.%2").arg(ownerName, objectType);
+    const QString baseName = QString("%1.%2").arg(ownerName, objectType);
+
+    ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
+    Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
+                    scene->getSimulator()->getModelManager() != nullptr)
+                       ? scene->getSimulator()->getModelManager()->current()
+                       : nullptr;
+    if (model == nullptr || model->getDataManager() == nullptr || desc.technicalTypeName.empty()) {
+        return baseName;
+    }
+
+    std::string candidate = baseName.toStdString();
+    if (model->getDataManager()->getDataDefinition(desc.technicalTypeName, candidate) == nullptr) {
+        return QString::fromStdString(candidate);
+    }
+
+    unsigned int suffix = 2;
+    do {
+        candidate = QString("%1 %2").arg(baseName).arg(suffix).toStdString();
+        suffix++;
+    } while (model->getDataManager()->getDataDefinition(desc.technicalTypeName, candidate) != nullptr);
+
+    return QString::fromStdString(candidate);
 }
 
 bool ObjectPropertyBrowser::_isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const {

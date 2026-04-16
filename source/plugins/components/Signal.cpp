@@ -131,7 +131,7 @@ bool Signal::_check(std::string& errorMessage) {
 void Signal::_createInternalAndAttachedData() {
 	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
 	// Preserve loaded/configured association; only create SignalData if none is already associated.
-	if (_signalData == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_signalData == nullptr) {
 		_signalData = pm->newInstance<SignalData>(_parentModel);
 	}
 	if (_signalData != nullptr) {

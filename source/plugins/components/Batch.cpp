@@ -343,12 +343,12 @@ void Batch::_createInternalAndAttachedData() {
 	} else {
 		_attachedDataRemove("GroupedEntityType");
 	}
-	if ((_queue == nullptr || _entityGroup == nullptr) && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if ((_queue == nullptr || _entityGroup == nullptr)) {
 		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 		if (_queue == nullptr) {
 			_queue = plugins->newInstance<Queue>(_parentModel, this->getName() + ".Queue");
 		}
-		if (_queue == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_queue == nullptr) {
 			// Fallback for runtime contexts where plugin lookup is unavailable but Queue is linked in-process.
 			_queue = new Queue(_parentModel, this->getName() + ".Queue");
 		}
@@ -358,7 +358,7 @@ void Batch::_createInternalAndAttachedData() {
 		if (_entityGroup == nullptr) {
 			_entityGroup = plugins->newInstance<EntityGroup>(_parentModel, this->getName() + ".EntiyGroup");
 		}
-		if (_entityGroup == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_entityGroup == nullptr) {
 			// Fallback for runtime contexts where plugin lookup is unavailable but EntityGroup is linked in-process.
 			_entityGroup = new EntityGroup(_parentModel, this->getName() + ".EntiyGroup");
 		}

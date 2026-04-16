@@ -235,7 +235,7 @@ bool Remove::_check(std::string& errorMessage) {
 void Remove::_createInternalAndAttachedData() {
 	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_removeFromType == Remove::RemoveFromType::QUEUE) {
-		if (_removeFrom == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_removeFrom == nullptr) {
 			_removeFrom = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
 			if (_removeFrom == nullptr) {
 				_removeFrom = new Queue(_parentModel, getName() + ".Queue");

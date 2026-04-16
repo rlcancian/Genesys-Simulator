@@ -214,7 +214,7 @@ void Wait::_createInternalAndAttachedData() {
 
 	// internal
 	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-	if (_queue == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_queue == nullptr) {
 		_queue = pm->newInstance<Queue>(_parentModel, getName() + ".Queue");
 	}
 	if (_queue != nullptr) {
@@ -228,7 +228,7 @@ void Wait::_createInternalAndAttachedData() {
 	}
 
 	if (_waitType == Wait::WaitType::WaitForSignal) {
-		if (_signalData == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_signalData == nullptr) {
 			_signalData = pm->newInstance<SignalData>(_parentModel);
 		}
 		if (_signalData == nullptr) {

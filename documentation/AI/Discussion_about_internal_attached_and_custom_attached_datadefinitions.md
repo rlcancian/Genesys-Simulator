@@ -73,7 +73,7 @@ Typical behavior:
 
 Important conclusion:
 
-- These should not depend on `Model::isAutomaticallyCreatesModelDataDefinitions()`.
+- These should always be reconciled by `_createInternalAndAttachedData()`.
 - If `_reportStatistics` is true and the support object is missing, it is legitimate for `_createInternalAndAttachedData()` to create it.
 
 ### 2. Shared/expression/support data
@@ -118,27 +118,28 @@ Typical behavior:
 
 Important conclusion:
 
-- This is the category that `Model::isAutomaticallyCreatesModelDataDefinitions()` historically targeted.
-- In the GUI era, this automatic creation should be disabled by default.
-- The user should create or choose these references explicitly through the GUI, not indirectly during unrelated property synchronization.
+- This is the category that the legacy auto-create flag historically targeted.
+- The flag has now been removed from `Model`; the remaining code behaves as if the old flag were always enabled.
+- This is a transitional state. The longer-term GUI direction may still require distinguishing automatic relation reconciliation from explicit user-driven creation of editable references.
 
-## Role of `Model::isAutomaticallyCreatesModelDataDefinitions()`
+## Removed legacy auto-create flag
 
 Historical purpose:
 
 - Before the GUI workflow matured, missing model data definitions caused check failures.
-- `Model::isAutomaticallyCreatesModelDataDefinitions()` allowed plugins to create missing nature/semantic data automatically.
+- The legacy auto-create flag allowed plugins to create missing nature/semantic data automatically.
 
-Current GUI direction:
+Current state:
 
-- `TraitsKernel<Model>::automaticallyCreatesModelData` should remain `false` for the GUI-oriented workflow.
-- Missing nature/semantic references should not be created implicitly by a model check or by unrelated property edits.
-- Instead, the Property Editor should expose explicit creation/selection controls for these properties.
+- `TraitsKernel<Model>` no longer defines an auto-create switch.
+- `Model` no longer stores an auto-create attribute and no longer exposes getter/setter methods for it.
+- Every old check of the flag was collapsed as if the flag returned `true`.
+- `_createInternalAndAttachedData()` implementations now always get their former creation branch when that flag was the only blocker.
 
 Important distinction:
 
-- Turning automatic creation off must not prevent statistics/internal support data from being created when `_reportStatistics` requires them.
-- The previous broad interpretation was too aggressive: it incorrectly gated some category 1 objects behind `isAutomaticallyCreatesModelDataDefinitions()`.
+- Removing the flag simplifies the kernel contract, but it does not solve the deeper modeling distinction between support data and user-editable semantic references.
+- Future work may need a more explicit per-property or per-relation policy instead of a model-wide switch.
 
 ## Property Editor hypothesis
 
@@ -219,8 +220,8 @@ This metadata should remain GUI-layer state. It should not force GUI editability
 
 Several current changes or patterns need revision:
 
-1. Some category 1 statistics objects were incorrectly gated by `isAutomaticallyCreatesModelDataDefinitions()`. That can break expected internal support objects.
-2. `_attachedAttributesInsert()` currently skips missing attributes when automatic creation is disabled. This may be too broad if those attributes belong to category 2 support data.
+1. Some category 1 statistics objects were historically gated by the legacy auto-create flag. That has now been collapsed to always create when the surrounding semantic condition holds.
+2. `_attachedAttributesInsert()` now creates missing attributes whenever they are needed.
 3. The Property Editor currently calls `ModelDataDefinition::CreateInternalData(_modelObject)` after creating or selecting references. That is necessary for relation registration, but dangerous if `_createInternalAndAttachedData()` still creates unrelated missing nature/semantic data.
 4. Some `_check()` methods mutate attached data, which conflicts with the intended separation between validation and relation registration.
 5. `GraphicalModelDataDefinition` has no editability flag today, so selecting support/statistics data currently risks making it editable if the browser is given normal kernel edit controls.
@@ -233,12 +234,11 @@ Kernel/plugins:
 - It should always register existing used data definitions in `_internalData` or `_attachedData`.
 - It should create category 1 statistics/internal support data when plugin semantics require it.
 - It should create category 2 shared/support data when plugin semantics require it.
-- It should create category 3 user-selectable nature/semantic data only if `isAutomaticallyCreatesModelDataDefinitions()` is enabled.
-- It should not create unrelated missing category 3 references as a side effect of editing another property.
+- With the legacy flag removed, existing category 3 creation code now also executes when its other semantic conditions hold.
+- This behavior is accepted as the current checkpoint, but it remains conceptually distinct from the future GUI goal of explicit user-driven reference creation.
 
 GUI:
 
-- Keep `TraitsKernel<Model>::automaticallyCreatesModelData = false`.
 - Let the Property Editor explicitly create category 3 references through combo actions.
 - After explicit creation/selection, call `_createInternalAndAttachedData()` for the owner to register relations and support data.
 - Mark/infer which graphical data definitions are editable.
@@ -258,10 +258,10 @@ GUI:
 
 ### Phase 2: Restore kernel/plugin semantics
 
-1. Revisit the broad changes that gated statistics/support objects behind `isAutomaticallyCreatesModelDataDefinitions()`.
-2. Restore automatic creation for category 1 objects where `_reportStatistics` requires it.
-3. Decide case by case whether category 2 support objects should be created even with automatic nature-data creation disabled.
-4. Keep category 3 auto-creation behind `isAutomaticallyCreatesModelDataDefinitions()` or remove that legacy path later.
+1. Review every `_createInternalAndAttachedData()` now that the model-wide auto-create flag has been removed.
+2. Confirm that category 1 objects are created only when `_reportStatistics` or equivalent semantics require it.
+3. Confirm that category 2 support objects are created only when plugin semantics require them.
+4. Identify category 3 references that should eventually become explicit GUI-created references instead of implicit plugin-created references.
 5. Ensure every existing referenced data definition is reinserted into internal/attached maps even when no new object is created.
 
 ### Phase 3: Property Editor editability model
@@ -275,7 +275,7 @@ GUI:
 
 1. Move attached/internal registration out of `_check()` where feasible.
 2. Make `_createInternalAndAttachedData()` overrides idempotent and structurally consistent.
-3. Consider deprecating/removing `Model::isAutomaticallyCreatesModelDataDefinitions()` once the GUI workflow reliably creates category 3 references explicitly.
+3. Replace broad implicit category 3 creation with explicit GUI/property policies where appropriate.
 4. Add tests for:
    - orphan protection through internal/attached maps
    - no implicit creation of unrelated category 3 references
@@ -284,12 +284,12 @@ GUI:
 
 ## Open questions
 
-1. Should category 2 support data always be created automatically, even with `automaticallyCreatesModelData` false?
+1. Which category 3 references should stop being created implicitly once the Property Editor workflow is mature enough?
 2. Should editability be inferred dynamically every rebuild, persisted in graphical serialization, or both?
 3. How should inline helper classes such as `QueueableItem` and `SeizableItem` advertise their model data reference properties in a way that is robust and not dependent on tree traversal details?
-4. Should `Model::_createInternalDataDefinitions()` still skip all `_createInternalAndAttachedData()` calls when automatic creation is disabled, or should it be split into:
+4. Should `Model::_createInternalDataDefinitions()` eventually be split into:
    - relation/support reconciliation
-   - legacy nature-data auto-creation?
+   - nature-data auto-creation?
 
 ## Implementation note: GUI editability inference
 
@@ -320,6 +320,6 @@ Affected paths:
 1. `Plugin::newInstance(Model*, std::string)`
 2. `PluginManager::newInstance<T>(Model*, std::string)`
 
-These paths no longer guard `ModelDataDefinition::CreateInternalData(instance)` with `Model::isAutomaticallyCreatesModelDataDefinitions()`.
+These paths no longer guard `ModelDataDefinition::CreateInternalData(instance)` with `the legacy auto-create flag`.
 
-The reason is conceptual: creating and registering internal/attached data is not the same thing as legacy automatic creation of user-editable nature/semantic data. Every new element must have a chance to reconcile its internal/attached relationships immediately after creation. The `isAutomaticallyCreatesModelDataDefinitions()` flag may still be used inside individual `_createInternalAndAttachedData()` implementations to decide whether specific category 3 references should be auto-created, but it must not prevent the method itself from running.
+The reason is conceptual: creating and registering internal/attached data is not the same thing as legacy automatic creation of user-editable nature/semantic data. Every new element must have a chance to reconcile its internal/attached relationships immediately after creation. As of the later cleanup, the legacy flag no longer exists in `Model`, so individual `_createInternalAndAttachedData()` implementations must encode their own semantic conditions directly.

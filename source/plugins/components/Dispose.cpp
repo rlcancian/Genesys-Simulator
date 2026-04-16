@@ -71,7 +71,7 @@ bool Dispose::_check(std::string& errorMessage) {
 
 void Dispose::_createInternalAndAttachedData() {
 	_attachedAttributesInsert({"Entity.ArrivalTime"});
-	if (_reportStatistics && _numberOut == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_reportStatistics && _numberOut == nullptr) {
 		// creates the counter (and then the CStats)
 		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 	}

@@ -114,7 +114,7 @@ PluginInformation* Enter::GetPluginInformation() {
 
 void Enter::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
-		if (_numberIn == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_numberIn == nullptr) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		}
 		if (_numberIn != nullptr) {
@@ -124,7 +124,7 @@ void Enter::_createInternalAndAttachedData() {
 		if (_numberIn != nullptr) {
 			_internalDataClear();
 		}
-	if (_station == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_station == nullptr) {
 		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
 	}
 	if (_station != nullptr) {

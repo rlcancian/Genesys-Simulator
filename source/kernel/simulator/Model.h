@@ -223,16 +223,6 @@ public: // gets and sets
 	 */
 	ModelPersistence_if* getPersistence() const;
 	/*!
-	 * \brief setAutomaticallyCreatesModelDataDefinitions
-	 * \param _automaticallyCreatesModelDataDefinitions
-	 */
-	void setAutomaticallyCreatesModelDataDefinitions(bool _automaticallyCreatesModelDataDefinitions);
-	/*!
-	 * \brief isAutomaticallyCreatesModelDataDefinitions
-	 * \return
-	 */
-	bool isAutomaticallyCreatesModelDataDefinitions() const;
-	/*!
 	 * \brief getLevel
 	 * \return
 	 */
@@ -252,7 +242,6 @@ private:
     void _createInternalDataDefinitions();
 private:
 	bool _hasChanged = false;
-	bool _automaticallyCreatesModelDataDefinitions; // default will come from Traits in the constructor
 private: // read only public access (gets)
 	Util::identification _id;
 	unsigned int _level = 0;

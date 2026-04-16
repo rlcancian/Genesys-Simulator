@@ -133,7 +133,7 @@ void SourceModelComponent::_createInternalAndAttachedData() {
 				break;
 			}
 		}
-		if (_entityType == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_entityType == nullptr) {
 			_entityType = new EntityType(_parentModel, DEFAULT.entityTypename);
 		}
 	}

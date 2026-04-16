@@ -106,7 +106,7 @@ PluginInformation* Leave::GetPluginInformation() {
 
 void Leave::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
-		if (_numberIn == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_numberIn == nullptr) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		}
 		if (_numberIn != nullptr) {

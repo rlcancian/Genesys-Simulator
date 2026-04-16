@@ -274,7 +274,7 @@ PluginInformation* Route::GetPluginInformation() {
 
 void Route::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
-		if (_numberIn == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+		if (_numberIn == nullptr) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		}
 		if (_numberIn != nullptr) {
@@ -285,12 +285,10 @@ void Route::_createInternalAndAttachedData() {
 			_internalDataClear();
 		}
 	_attachedAttributesInsert({"Entity.TotalTransferTime", "Entity.Station", "Entity.Sequence", "Entity.SequenceStep"});
-	if (_station == nullptr && this->_routeDestinationType == Route::DestinationType::Station && this->_stationExpression == "" &&
-		_parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_station == nullptr && this->_routeDestinationType == Route::DestinationType::Station && this->_stationExpression == "") {
 		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
 	}
-	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label &&
-		_parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label) {
 		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Label>(_parentModel);
 	}
 	if (_station != nullptr) {

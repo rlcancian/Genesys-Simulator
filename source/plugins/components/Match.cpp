@@ -254,7 +254,7 @@ void Match::_createInternalAndAttachedData() {
 		_queues->remove(_queues->last());
 		_entitiesByAttrib->erase(obsoleteQueue);
 	}
-	while (_queues->size() < _numberOfQueues && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	while (_queues->size() < _numberOfQueues) {
 		Queue* newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
 		if (newQueue == nullptr) {
 			newQueue = new Queue(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));

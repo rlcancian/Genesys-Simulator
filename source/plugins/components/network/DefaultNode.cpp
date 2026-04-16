@@ -275,7 +275,7 @@ void DefaultNode::_initBetweenReplications() {
 
 /*
 void DefaultNode::_createInternalAndAttachedData() {
-	if (_internalDataDefinition == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_internalDataDefinition == nullptr) {
 		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
 		_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
 	}
@@ -284,7 +284,7 @@ void DefaultNode::_createInternalAndAttachedData() {
 	} else {
 		_internalDataRemove("JustaDummy");
 	}
-	if (_attachedDataDefinition == nullptr && _parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
+	if (_attachedDataDefinition == nullptr) {
 		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
 		_attachedDataDefinition = pm->newInstance<DummyElement>(_parentModel);
 	}
