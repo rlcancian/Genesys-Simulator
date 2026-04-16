@@ -129,6 +129,8 @@ void Clone::_createInternalAndAttachedData() {
 		if (_counter == nullptr) {
 			//PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
 			_counter = new Counter(_parentModel, getName() + "." + "CountClones", this);//pm->newInstance<Counter>(_parentModel, getName() + "." + "CountClones", this);
+		}
+		if (_counter != nullptr) {
 			_internalDataInsert("CountClones", _counter);
 		}
 	} else {

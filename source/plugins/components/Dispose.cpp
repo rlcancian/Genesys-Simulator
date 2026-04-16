@@ -74,6 +74,8 @@ void Dispose::_createInternalAndAttachedData() {
 	if (_reportStatistics && _numberOut == nullptr) {
 		// creates the counter (and then the CStats)
 		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+	}
+	if (_reportStatistics && _numberOut != nullptr) {
 		_internalDataInsert("CountNumberIn", _numberOut);
 		// include StatisticsCollector needed for each EntityType
 		std::list<ModelDataDefinition*>* enttypes = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();

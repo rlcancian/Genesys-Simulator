@@ -127,7 +127,6 @@ Model::Model(Simulator* simulator, unsigned int level) {
     _parser = new TraitsKernel<Parser_if>::Implementation(this, new TraitsKernel<Sampler_if>::Implementation());
     _modelChecker = new TraitsKernel<ModelChecker_if>::Implementation(this);
     _modelPersistence = new TraitsKernel<ModelPersistence_if>::Implementation(this);
-    _automaticallyCreatesModelDataDefinitions = TraitsKernel<Model>::automaticallyCreatesModelData;
     // 1:n associations
     _futureEvents = new List<Event*>(); // The future events list must be chronologicaly sorted
     //_events->setSortFunc(&EventCompare); // It works too
@@ -596,54 +595,49 @@ void Model::_destroyModelDataDefinitions() {
 }
 
 void Model::_createInternalDataDefinitions() {
-    if (!_automaticallyCreatesModelDataDefinitions) {
-        getTracer()->trace("Automatically creating internal elements disabled", TraceManager::Level::L7_internal);
-    }
-    else {
-        getTracer()->trace("Automatically creating internal elements", TraceManager::Level::L7_internal);
+    getTracer()->trace("Automatically creating internal elements", TraceManager::Level::L7_internal);
+    Util::IncIndent();
+
+    for (ModelComponent* component : *_componentManager) {
+        getTracer()->trace("Internals for " + component->getClassname() + " \"" + component->getName() + "\"");
         Util::IncIndent();
-
-        for (ModelComponent* component : *_componentManager) {
-            getTracer()->trace("Internals for " + component->getClassname() + " \"" + component->getName() + "\"");
-            Util::IncIndent();
-            ModelComponent::CreateInternalData(component);
-            Util::DecIndent();
-        }
-
-        std::list<ModelDataDefinition*>* modelElements;
-        // Cache a value snapshot of class names and refresh it when dynamic insertions change the type registry.
-        std::list<std::string> elementTypes = getDataManager()->getDataDefinitionClassnames();
-        unsigned int originalSize = elementTypes.size(), pos = 1;
-        std::list<std::string>::iterator itty = elementTypes.begin();
-        while (itty != elementTypes.end() && pos <= originalSize) {
-            modelElements = getDataManager()->getDataDefinitionList((*itty))->list();
-            for (std::list<ModelDataDefinition*>::iterator itel = modelElements->begin(); itel != modelElements->end();
-                 itel++) {
-                getTracer()->trace("Internals for " + (*itel)->getClassname() + " \"" + (*itel)->getName() + "\"");
-                // (" + std::to_string(pos) + "/" + std::to_string(originalSize) + ")");
-                Util::IncIndent();
-                ModelDataDefinition::CreateInternalData((*itel));
-                Util::DecIndent();
-            }
-            // Compare against a fresh value snapshot size to detect registry growth during internal-data creation.
-            std::list<std::string> currentTypes = getDataManager()->getDataDefinitionClassnames();
-            unsigned int currentSize = currentTypes.size();
-            if (originalSize == currentSize) {
-                itty++;
-                pos++;
-            }
-            else {
-                // Refresh the cached snapshot after dynamic insertions so iteration restarts from a coherent list.
-                elementTypes = getDataManager()->getDataDefinitionClassnames();
-                originalSize = elementTypes.size();
-                itty = elementTypes.begin();
-                pos = 1;
-                getTracer()->trace("Restarting to create internal elements (due to previous creations)",
-                                   TraceManager::Level::L7_internal);
-            }
-        }
+        ModelComponent::CreateInternalData(component);
         Util::DecIndent();
     }
+
+    std::list<ModelDataDefinition*>* modelElements;
+    // Cache a value snapshot of class names and refresh it when dynamic insertions change the type registry.
+    std::list<std::string> elementTypes = getDataManager()->getDataDefinitionClassnames();
+    unsigned int originalSize = elementTypes.size(), pos = 1;
+    std::list<std::string>::iterator itty = elementTypes.begin();
+    while (itty != elementTypes.end() && pos <= originalSize) {
+        modelElements = getDataManager()->getDataDefinitionList((*itty))->list();
+        for (std::list<ModelDataDefinition*>::iterator itel = modelElements->begin(); itel != modelElements->end();
+             itel++) {
+            getTracer()->trace("Internals for " + (*itel)->getClassname() + " \"" + (*itel)->getName() + "\"");
+            // (" + std::to_string(pos) + "/" + std::to_string(originalSize) + ")");
+            Util::IncIndent();
+            ModelDataDefinition::CreateInternalData((*itel));
+            Util::DecIndent();
+        }
+        // Compare against a fresh value snapshot size to detect registry growth during internal-data creation.
+        std::list<std::string> currentTypes = getDataManager()->getDataDefinitionClassnames();
+        unsigned int currentSize = currentTypes.size();
+        if (originalSize == currentSize) {
+            itty++;
+            pos++;
+        }
+        else {
+            // Refresh the cached snapshot after dynamic insertions so iteration restarts from a coherent list.
+            elementTypes = getDataManager()->getDataDefinitionClassnames();
+            originalSize = elementTypes.size();
+            itty = elementTypes.begin();
+            pos = 1;
+            getTracer()->trace("Restarting to create internal elements (due to previous creations)",
+                               TraceManager::Level::L7_internal);
+        }
+    }
+    Util::DecIndent();
 }
 
 void Model::_clearOrphanedDataDefinitions() {
@@ -797,14 +791,6 @@ TraceManager* Model::getTracer() const {
 
 ModelPersistence_if* Model::getPersistence() const {
     return _modelPersistence;
-}
-
-void Model::setAutomaticallyCreatesModelDataDefinitions(bool _automaticallyCreatesModelDataDefinitions) {
-    this->_automaticallyCreatesModelDataDefinitions = _automaticallyCreatesModelDataDefinitions;
-}
-
-bool Model::isAutomaticallyCreatesModelDataDefinitions() const {
-    return _automaticallyCreatesModelDataDefinitions;
 }
 
 unsigned int Model::getLevel() const {

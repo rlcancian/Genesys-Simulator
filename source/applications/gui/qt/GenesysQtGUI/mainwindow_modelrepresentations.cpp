@@ -175,8 +175,12 @@ void MainWindow::_initModelGraphicsView() {
     _connectSceneSignals();
 
     // Applies persisted overlay states to the graphics view when initializing a scene.
+    ui->graphicsView->getScene()->setGridVisible(ui->actionShowGrid->isChecked());
     ui->graphicsView->setRuleVisible(ui->actionShowRule->isChecked());
+    ui->graphicsView->getScene()->setSnapToGrid(ui->actionShowSnap->isChecked());
     ui->graphicsView->setGuidesVisible(ui->actionShowGuides->isChecked());
+    ui->graphicsView->getScene()->setShowInternalDataDefinitions(ui->actionShowInternalElements->isChecked());
+    ui->graphicsView->getScene()->setShowAttachedDataDefinitions(ui->actionShowAttachedElements->isChecked());
 
     // Cria uma stack undo/redo
     ui->graphicsView->getScene()->setUndoStack(new QUndoStack(this));

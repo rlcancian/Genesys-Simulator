@@ -263,6 +263,11 @@ void Match::_createInternalAndAttachedData() {
 		_queues->insert(newQueue);
 		_internalDataInsert(newQueue->getName(), newQueue);
 	}
+	for (Queue* queue : *_queues->list()) {
+		if (queue != nullptr) {
+			_internalDataInsert(queue->getName(), queue);
+		}
+	}
 }
 
 PluginInformation * Match::GetPluginInformation() {

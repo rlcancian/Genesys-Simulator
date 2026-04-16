@@ -1,104 +1,87 @@
 # GenESyS Docker
 
-## Guia Rápido
+Este diretório contém o ambiente Docker para executar o GenESyS sem instalar Qt,
+CMake, compiladores ou bibliotecas do projeto na máquina do usuário.
 
-Para configurar variáveis específicas de projeto, pode-se utilizar o arquivo `config.sh`. Neste arquivo é possível alterar propriedades da execução.
+## Uso
 
-Por padrão a execução via comandos make é local, ou seja, utiliza o código do repositório disponível localmente para desenvolvimento e execução. Para utilizar diretamente o código remoto (do repositório) e não o código local, utiliza-se a variável `REMOTE=1`.
-
-Para abrir menu interativo:
-```bash
-make selector
-```
-
-Para buildar a imagem docker:
-```bash
-make build_image
-```
-
-Para  publicar imagem docker:
-```bash
-make push_image
-```
-
-Para debugar a imagem docker:
-```bash
-make run_debug
-```
-
-Para rodar a interface grafica do GenESyS:
-```bash
-make run_gui
-```
-
-Para rodar a CLI do GenESyS:
-```bash
-make run_shell
-```
-
-Para abrir o GenESyS no Qt Creator via Docker:
-```bash
-make run_qt
-```
-
-## Executando Remotamente
-
-Caso seja necessário executar o a imagem sem os scripts e comandos disponíveis aqui, é possível fazê-lo da seguinte forma:
-
-1. Exporte as variáveis desejadas:
+Execute:
 
 ```bash
-# Nome da imagem Docker
-export GENESYS_IMAGE="genesys-image"
-
-# Driver gráfico
-export MESA_LOADER_DRIVER_OVERRIDE=zink
+bash docker/exec_genesys.sh
 ```
 
-2. Para fazer a inspeção da imagem:
+O script mostra três opções:
+
+1. **Usar o GenESyS como usuário**
+   - usa o branch padrão do repositório remoto, resolvido pelo `HEAD` simbólico;
+   - baixa ou atualiza o repositório Docker-local;
+   - compila o alvo `genesys_gui`;
+   - abre a aplicação `GenesysQtGUI` em um desktop virtual acessível pelo navegador.
+
+2. **Usar o GenESyS como desenvolvedor**
+   - usa o branch remoto `currentStable`;
+   - baixa ou atualiza o repositório Docker-local;
+   - pré-configura o projeto com o preset CMake `gui-app`;
+   - abre o QtCreator com o projeto GenESyS.
+
+3. **Iniciar o servidor web do GenESyS**
+   - usa o branch padrão do repositório remoto, resolvido pelo `HEAD` simbólico;
+   - baixa ou atualiza o repositório Docker-local;
+   - compila o alvo `genesys_webhook`;
+   - inicia o servidor web na porta `8080`.
+
+Na primeira execução, se a imagem Docker ainda não existir, o script avisa o
+usuário e monta a imagem automaticamente.
+
+## Interface Gráfica
+
+As opções gráficas rodam dentro do container com `Xvfb`, `x11vnc` e `noVNC`.
+Depois de escolher a opção 1 ou 2, abra:
+
+```text
+http://localhost:6080/vnc.html?autoconnect=1&resize=scale
+```
+
+O script tenta abrir esse endereço automaticamente quando o sistema possui
+`xdg-open` ou `open`.
+
+## Servidor Web
+
+A opção 3 expõe o servidor em:
+
+```text
+http://localhost:8080
+```
+
+Enquanto o servidor estiver rodando, o terminal fica ocupado exibindo o processo.
+Para parar, pressione `Ctrl+C`.
+
+## Variáveis Opcionais
+
+As variáveis abaixo podem ser usadas antes de executar o script:
 
 ```bash
-docker run --name genesys --rm -ti --net=host --ipc=host \
-    -e DISPLAY=$DISPLAY \
-    -e MESA_LOADER_DRIVER_OVERRIDE=$MESA_LOADER_DRIVER_OVERRIDE \
-    -e QT_X11_NO_MITSHM=1 \
-    -e XDG_RUNTIME_DIR=/run/user/1001 \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    $GENESYS_IMAGE debug
+export GENESYS_IMAGE="genesys-simulator:local"
+export GENESYS_REPO_URL="https://github.com/rlcancian/Genesys-Simulator.git"
+export GENESYS_STATE_DIR="/caminho/para/cache/genesys"
+export GENESYS_NOVNC_PORT=6080
+export GENESYS_WEB_PORT=8080
 ```
 
-3. Para rodar o Shell:
+O diretório `GENESYS_STATE_DIR` guarda os clones dos branches usados pelo Docker.
+Ele é persistente para evitar baixar e recompilar tudo a cada execução.
 
-```bash
-docker run --name genesys --rm -ti --net=host --ipc=host \
-    -e DISPLAY=$DISPLAY \
-    -e MESA_LOADER_DRIVER_OVERRIDE=$MESA_LOADER_DRIVER_OVERRIDE \
-    -e QT_X11_NO_MITSHM=1 \
-    -e XDG_RUNTIME_DIR=/run/user/1001 \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    $GENESYS_IMAGE shell
-```
+## Observação Sobre Branches
 
-4. Para rodar o GUI:
+O script valida a existência do branch remoto antes de clonar ou atualizar o
+repositório.
 
-```bash
-docker run --name genesys --rm -ti --net=host --ipc=host \
-    -e DISPLAY=$DISPLAY \
-    -e MESA_LOADER_DRIVER_OVERRIDE=$MESA_LOADER_DRIVER_OVERRIDE \
-    -e QT_X11_NO_MITSHM=1 \
-    -e XDG_RUNTIME_DIR=/run/user/1001 \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    $GENESYS_IMAGE gui
-```
+As opções de usuário e servidor web usam o `HEAD` simbólico do remoto para
+detectar automaticamente o branch padrão configurado no GitHub. No repositório
+consultado em abril de 2026, esse branch padrão é `master`.
 
-5. Para rodar o QtCreator:
-
-```bash
-docker run --name genesys --rm -ti --net=host --ipc=host \
-    -e DISPLAY=$DISPLAY \
-    -e MESA_LOADER_DRIVER_OVERRIDE=$MESA_LOADER_DRIVER_OVERRIDE \
-    -e QT_X11_NO_MITSHM=1 \
-    -e XDG_RUNTIME_DIR=/run/user/1001 \
-    -v /tmp/.X11-unix:/tmp/.X11-unix \
-    $GENESYS_IMAGE qt
-```
+A opção de desenvolvedor usa explicitamente o branch remoto `currentStable`.
+`origin` não é um branch: é apenas o nome local dado pelo Git ao repositório
+remoto. Se o branch necessário não existir no repositório remoto configurado, a
+execução para com uma mensagem de erro explícita.

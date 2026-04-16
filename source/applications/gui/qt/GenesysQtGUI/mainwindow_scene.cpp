@@ -101,8 +101,9 @@ bool MainWindow::_checkItemsScene() {
     QList<AnimationCounter *> *counters = myScene()->getAnimationsCounter();
     QList<AnimationVariable *> *variables = myScene()->getAnimationsVariable();
     QList<AnimationTimer *> *timers = myScene()->getAnimationsTimer();
+    QList<AnimationPlaceholder *> *placeholders = myScene()->getAnimationsPlaceholder();
 
-    if (!components->empty() || !geometries->empty() || !counters->empty() || !variables->empty() || !timers->empty()) {
+    if (!components->empty() || !geometries->empty() || !counters->empty() || !variables->empty() || !timers->empty() || !placeholders->empty()) {
         res = true;
     }
 

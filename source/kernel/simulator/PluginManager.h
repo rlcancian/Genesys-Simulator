@@ -96,9 +96,7 @@ public:
 				                                                              getDataDefinitionConstructor();
 				instance = static_cast<T*>(constructor(model, name));
 				if (model != nullptr) {
-					if (model->isAutomaticallyCreatesModelDataDefinitions()) {
-						ModelDataDefinition::CreateInternalData(instance);
-					}
+					ModelDataDefinition::CreateInternalData(instance);
 				}
 				return instance;
 			}

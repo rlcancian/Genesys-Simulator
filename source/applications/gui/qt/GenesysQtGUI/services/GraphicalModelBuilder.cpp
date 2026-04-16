@@ -17,8 +17,11 @@
 #include <QTextEdit>
 #include <QSet>
 #include <QDebug>
+#include <functional>
 
 namespace {
+    constexpr qreal minimumAutomaticLayoutCoordinate = 20.0;
+
     QPointF stableComponentPosition(GraphicalModelComponent* component) {
         if (component == nullptr) {
             return QPointF();
@@ -45,6 +48,36 @@ namespace {
             return dataDefinition->scenePos();
         }
         return dataDefinition->pos();
+    }
+
+    QPointF visibleAutomaticPosition(GraphicalModelDataDefinition* dataDefinition, const QPointF& requestedPosition) {
+        QPointF position = requestedPosition;
+        QRectF bounds;
+        if (dataDefinition != nullptr) {
+            bounds = dataDefinition->boundingRect();
+        }
+
+        const qreal itemLeft = position.x() + bounds.left();
+        if (itemLeft < minimumAutomaticLayoutCoordinate) {
+            position.setX(position.x() + minimumAutomaticLayoutCoordinate - itemLeft);
+        }
+
+        const qreal itemTop = position.y() + bounds.top();
+        if (itemTop < minimumAutomaticLayoutCoordinate) {
+            position.setY(position.y() + minimumAutomaticLayoutCoordinate - itemTop);
+        }
+
+        return position;
+    }
+
+    void setVisibleAutomaticPosition(GraphicalModelDataDefinition* dataDefinition, const QPointF& requestedPosition) {
+        if (dataDefinition == nullptr) {
+            return;
+        }
+
+        const QPointF position = visibleAutomaticPosition(dataDefinition, requestedPosition);
+        dataDefinition->setPos(position);
+        dataDefinition->setOldPosition(position.x(), position.y());
     }
 }
 
@@ -255,6 +288,70 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         componentMap[gmc->getComponent()] = gmc;
     }
 
+    const bool showInternalDataDefinitions = scene->showInternalDataDefinitions();
+    const bool showAttachedDataDefinitions = scene->showAttachedDataDefinitions();
+    QSet<ModelDataDefinition*> visibleDataDefinitions;
+    QSet<ModelDataDefinition*> expandedDataDefinitions;
+
+    std::function<void(ModelDataDefinition*)> expandVisibleDataDefinition =
+        [&](ModelDataDefinition* owner) {
+        if (owner == nullptr || expandedDataDefinitions.contains(owner)) {
+            return;
+        }
+        expandedDataDefinitions.insert(owner);
+
+        if (showAttachedDataDefinitions) {
+            for (const auto& attachedData : *owner->getAttachedData()) {
+                ModelDataDefinition* child = attachedData.second;
+                if (child == nullptr) {
+                    continue;
+                }
+                visibleDataDefinitions.insert(child);
+                expandVisibleDataDefinition(child);
+            }
+        }
+
+        if (showInternalDataDefinitions) {
+            for (const auto& internalData : *owner->getInternalData()) {
+                ModelDataDefinition* child = internalData.second;
+                if (child == nullptr) {
+                    continue;
+                }
+                visibleDataDefinitions.insert(child);
+                expandVisibleDataDefinition(child);
+            }
+        }
+    };
+
+    for (const auto& componentEntry : componentMap) {
+        ModelComponent* component = componentEntry.first;
+        if (component == nullptr) {
+            continue;
+        }
+
+        if (showAttachedDataDefinitions) {
+            for (const auto& attachedData : *component->getAttachedData()) {
+                ModelDataDefinition* dataDefinition = attachedData.second;
+                if (dataDefinition == nullptr) {
+                    continue;
+                }
+                visibleDataDefinitions.insert(dataDefinition);
+                expandVisibleDataDefinition(dataDefinition);
+            }
+        }
+
+        if (showInternalDataDefinitions) {
+            for (const auto& internalData : *component->getInternalData()) {
+                ModelDataDefinition* dataDefinition = internalData.second;
+                if (dataDefinition == nullptr) {
+                    continue;
+                }
+                visibleDataDefinitions.insert(dataDefinition);
+                expandVisibleDataDefinition(dataDefinition);
+            }
+        }
+    }
+
     // Build the live graphical data-definition snapshot strictly from scene-owned items.
     std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> existingDataDefinitions;
     const QList<QGraphicsItem*> liveItems = scene->items();
@@ -286,6 +383,9 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         std::list<ModelDataDefinition*>* listDataDefinitions = dataManager->getDataDefinitionList(dataTypename)->list();
         for (ModelDataDefinition* dataDefinition : *listDataDefinitions) {
             if (dataDefinition == nullptr) {
+                continue;
+            }
+            if (!visibleDataDefinitions.contains(dataDefinition)) {
                 continue;
             }
             seenInModel.insert(dataDefinition);
@@ -356,8 +456,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 }
                 yAttached -= 150;
                 gdd->setParentItem(nullptr);
-                gdd->setPos(componentPosition.x(), yAttached);
-                gdd->setOldPosition(componentPosition.x(), yAttached);
+                setVisibleAutomaticPosition(gdd, QPointF(componentPosition.x(), yAttached));
                 gdd->setColor(purple);
             }
             scene->addGraphicalDiagramConnection(gdd, graphicalComponent,
@@ -382,8 +481,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                     hasComponentPosition = true;
                 }
                 yInternal += 150;
-                gdd->setPos(componentPosition.x(), yInternal);
-                gdd->setOldPosition(componentPosition.x(), yInternal);
+                setVisibleAutomaticPosition(gdd, QPointF(componentPosition.x(), yInternal));
                 // do NOT group
                 //scene->ensureInitialInternalDataDefinitionGrouping(gdd, graphicalComponent);
             }
@@ -400,7 +498,31 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
         QPointF parentPosition;
         qreal x = 0.0;
+        qreal yAttached = 0.0;
         bool hasParentPosition = false;
+        for (const auto& attachedData : *parentDefinition->getAttachedData()) {
+            auto childIt = dataDefinitionMap.find(attachedData.second);
+            if (childIt == dataDefinitionMap.end() || childIt->second == nullptr) {
+                continue;
+            }
+            GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
+            if (newDataDefinitions.contains(attachedData.second)) {
+                // Read parent geometry only when placing newly created child data definitions.
+                if (!hasParentPosition) {
+                    parentPosition = stableDataDefinitionPosition(parentGraphicalDefinition);
+                    x = parentPosition.x();
+                    yAttached = parentPosition.y();
+                    hasParentPosition = true;
+                }
+                yAttached -= 150;
+                childGraphicalDefinition->setParentItem(nullptr);
+                setVisibleAutomaticPosition(childGraphicalDefinition, QPointF(parentPosition.x(), yAttached));
+                childGraphicalDefinition->setColor(purple);
+            }
+            scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition,
+                                                 GraphicalDiagramConnection::ConnectionType::ATTACHED);
+        }
+
         for (const auto& internalData : *parentDefinition->getInternalData()) {
             auto childIt = dataDefinitionMap.find(internalData.second);
             if (childIt == dataDefinitionMap.end() || childIt->second == nullptr) {
@@ -416,8 +538,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 }
                 x -= 200;
                 childGraphicalDefinition->setParentItem(nullptr);
-                childGraphicalDefinition->setPos(x, parentPosition.y());
-                childGraphicalDefinition->setOldPosition(x, parentPosition.y());
+                setVisibleAutomaticPosition(childGraphicalDefinition, QPointF(x, parentPosition.y()));
             }
             scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition,
                                                  GraphicalDiagramConnection::ConnectionType::INTERNAL);

@@ -243,6 +243,10 @@ void Buffer::_createInternalAndAttachedData() {
 				return;
 			}
 		}
+		if (_attachedSignal == nullptr) {
+			_attachedDataRemove("SignalData");
+			return;
+		}
 		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Buffer>(&Buffer::_handlerForSignalDataEvent, this);
 		if (!_attachedSignal->hasSignalDataEventHandler(this)) {
 			_attachedSignal->addSignalDataEventHandler(handler, this);

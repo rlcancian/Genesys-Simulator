@@ -130,6 +130,8 @@ void EntityGroup::_createInternalAndAttachedData() {
 	if (_reportStatistics) {
 		if (_cstatNumberInGroup == nullptr) {
 			_cstatNumberInGroup = new StatisticsCollector(_parentModel, "NumberInGroup", this);
+		}
+		if (_cstatNumberInGroup != nullptr) {
 			_internalDataInsert("NumberInGroup", _cstatNumberInGroup);
 		}
 	} else if (_cstatNumberInGroup != nullptr) {

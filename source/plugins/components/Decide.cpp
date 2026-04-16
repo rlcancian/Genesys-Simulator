@@ -120,10 +120,19 @@ void Decide::_createInternalAndAttachedData() {
 		if (_numberOuts == nullptr) {
 			_numberOuts = new List<Counter*>();
 		}
+		if (_numberOuts == nullptr) {
+			return;
+		}
 		for (unsigned int i = _numberOuts->size(); i<this->_connections->size(); i++) {
 			Counter* counter = new Counter(_parentModel, getName() + "." + "CountNumberOut" + Util::StrIndex(i), this);
 			_numberOuts->insert(counter);
 			_internalDataInsert("CountNumberOut" + Util::StrIndex(i), counter);
+		}
+		for (unsigned int i = 0; i < _numberOuts->size(); i++) {
+			Counter* counter = _numberOuts->getAtRank(i);
+			if (counter != nullptr) {
+				_internalDataInsert("CountNumberOut" + Util::StrIndex(i), counter);
+			}
 		}
 	} else if (!_reportStatistics && _numberOuts != nullptr) {
 		this->_internalDataClear();

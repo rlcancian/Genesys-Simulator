@@ -47,14 +47,12 @@ public:
                              QAction* actionShowGuides,
                              QAction* actionShowInternalElements,
                              QAction* actionShowAttachedElements,
-                             QAction* actionDiagrams,
                              QTextEdit* console,
                              QString* modelFilename,
                              std::function<void()> clearModelEditors,
                              std::function<void()> rebuildGraphicalModelFromModel,
                              std::function<void()> applyShowInternalElements,
-                             std::function<void()> applyShowAttachedElements,
-                             std::function<void()> applyDiagramsVisibility);
+                             std::function<void()> applyShowAttachedElements);
 
     /**
      * @brief Saves textual model language using the established compatibility format.
@@ -90,14 +88,12 @@ private:
     QAction* _actionShowGuides;
     QAction* _actionShowInternalElements;
     QAction* _actionShowAttachedElements;
-    QAction* _actionDiagrams;
     QTextEdit* _console;
     QString* _modelFilename;
     std::function<void()> _clearModelEditors;
     std::function<void()> _rebuildGraphicalModelFromModel;
     std::function<void()> _applyShowInternalElements;
     std::function<void()> _applyShowAttachedElements;
-    std::function<void()> _applyDiagramsVisibility;
 };
 
 #endif // GRAPHICALMODELSERIALIZER_H

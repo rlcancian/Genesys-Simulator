@@ -139,9 +139,7 @@ ModelDataDefinition* Plugin::newInstance(Model* model, std::string name) {
 	StaticConstructorDataDefinitionInstance constructor = this->getPluginInfo()->getDataDefinitionConstructor();
 	ModelDataDefinition* instance = (constructor(model, name));
 	if (model != nullptr && instance != nullptr) {
-		if (model->isAutomaticallyCreatesModelDataDefinitions()) {
-			ModelDataDefinition::CreateInternalData(instance);
-		}
+		ModelDataDefinition::CreateInternalData(instance);
 	}
 	return instance;
 }
