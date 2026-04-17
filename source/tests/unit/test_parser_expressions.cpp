@@ -9,7 +9,7 @@
 #include "kernel/simulator/ParserDefaultImpl2.h"
 #include "kernel/statistics/SamplerDefaultImpl1.h"
 #include "parser/Genesys++-driver.h"
-#include "plugins/data/Variable.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 
 class ParserExpressionsTest : public ::testing::Test {
 protected:

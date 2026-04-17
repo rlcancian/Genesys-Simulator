@@ -147,6 +147,104 @@ Intent:
 - Retry plugin insertion after dependency repair and remove the plugin from the
   problem list on success.
 
+### Latest Plugin Manager UX Refinement
+
+Files:
+
+- `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.cpp`
+- `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.h`
+- `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.ui`
+
+Intent:
+
+- Make `Resolve / Load Selected` always try to advance selected problem plugins,
+  not only install missing system dependencies.
+- For each selected issue row, recheck current system dependency state, run install
+  commands only when there is still an installable missing system dependency, and
+  always call `PluginManager::insert(filename)` afterward.
+- Support multiple selected problem rows by copying selected `PluginLoadIssue`
+  values before mutating the manager state.
+- Keep the operation scoped to the visible `Plugins with problems` tab so stale
+  hidden selections from another tab are not processed.
+- Let `PluginManager::insert()` handle already-loaded plugins, dynamic plugin
+  dependencies, revalidation, issue replacement, and successful issue clearing.
+- Rebuild both tables and refresh the main plugin catalog after the resolve/load
+  pass.
+- Report loaded plugins, still-blocked files, install command failures or
+  cancellations, and captured install feedback in the final operation dialog.
+
+UI/layout changes:
+
+- Removed the `TextEdit Plugin Details` side panel and the horizontal splitter from
+  the Plugin Manager dialog.
+- Gave `groupBoxAutoload` a vertical `Maximum` size policy so it does not consume
+  the main dialog growth.
+- Gave the plugin table container and `tabWidgetPluginTables` expanding size
+  policies so the tables are the primary resizable area.
+- Moved relevant plugin metadata into `TableWidgetPlugins` columns:
+  plugin, state, kind, category, version, date, author, inputs, outputs, flags,
+  dynamic dependencies, system dependencies, fields, observation, description, and
+  language template.
+- Moved problem diagnostics into `TableWidgetPluginIssues` columns:
+  plugin/file, plugin type, problem, system dependency, status, check command,
+  install command, diagnostic, and suggested action.
+- Long table values are compacted in cells and kept available through tooltips.
+- `TableWidgetPluginIssues` now uses extended row selection for predictable
+  multi-plugin resolve/load operations.
+
+Important behavior consequence:
+
+- A plugin like `R Simulator` that remains blocked after its base/system dependency
+  was resolved can now be selected and retried. If the dependency chain is now
+  satisfiable, it should move from the problem table to the loaded plugin table.
+  If it is still blocked, the issue remains visible with refreshed diagnostics.
+
+### Latest Plugin Directory Structural Refactor
+
+Intent:
+
+- Reorganize plugin implementation files into category folders derived from each
+  plugin's `PluginInformation::getCategory()` value.
+- Apply the structure to both component plugins under `source/plugins/components`
+  and data-definition plugins under `source/plugins/data`.
+- Keep helper files near the plugin category that owns them, including
+  `CellularAutomata` helpers under `components/Logic/CellularAutomata`.
+- Keep source includes stable by using paths rooted at the repository `source`
+  include directory, such as `plugins/components/Decisions/Decide.h`, instead of
+  adding deeper relative `../../..` paths.
+
+Key implementation details:
+
+- `source/plugins/data/CMakeLists.txt` now uses `GLOB_RECURSE`, matching the
+  existing recursive component build behavior.
+- `PluginConnectorDummyImpl1.cpp` and code/tests/examples that include plugin
+  headers were updated to the categorized paths.
+- `PluginInformation::categoryFolderName()` centralizes category-to-folder
+  normalization.
+- `PluginManager::sourceIncludePathFor()` resolves future generated C++ include
+  paths from loaded plugin metadata, including built-in kernel data definitions.
+- `CppSerializer` and the Qt `CppModelExporter` now use the plugin manager include
+  resolver instead of constructing `plugins/components/<Class>.h` and
+  `plugins/data/<Class>.h` paths directly.
+
+Validation:
+
+- `cmake --preset gui-app`
+- `cmake --build --preset gui-app`
+- `cmake --preset tests-kernel-unit`
+- `cmake --build --preset tests-kernel-unit-run`
+- `git diff --check`
+
+Known structural notes:
+
+- `Match` declares category `Decision` while most related decision plugins declare
+  `Decisions`; it was kept in folder `Decision` to avoid silently recategorizing it.
+- `DefaultNode` does not call `setCategory()`, so it uses the default
+  `Discrete Processing` category and was placed under `components/DiscreteProcessing`.
+- Some old terminal examples still reference obsolete plugins such as `EFSM`,
+  `FSM_State`, and `OLD_FiniteStateMachine`; those plugin files were already absent
+  from the current tree and were not part of this structural move.
+
 ### PluginManager Changes
 
 Files:
@@ -224,6 +322,12 @@ Intent:
   - `fee82a90 Update KERNEL_GUI memory for base sync`
   - `2d74347b Merge remote-tracking branch 'origin/WiP20261' into WiP20261_KERNEL_GUI`
   - `f13d7c9b Merge remote-tracking branch 'origin/WiP20261' into WiP20261_KERNEL_GUI`
+- After the latest local Plugin Manager UX refinement, the working tree has
+  uncommitted changes in:
+  - `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.cpp`
+  - `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.h`
+  - `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.ui`
+  - `KERNEL_GUI_ContextMemory.md`
 - The latest merge from `origin/WiP20261` completed without conflicts and only
   brought base-side updates to `TINKERCELL_ContextMemory.md`.
 - `source/tests/unit/test_runtime_pluginmanager.cpp` now contains both the KERNEL_GUI
@@ -332,6 +436,38 @@ Observed status:
 - No old `CMakeCache.txt` files pointing to `/home/rafaelcancian/Genesys-Simulator`
   were found in the canonical clone root during the latest check.
 
+## Validation After Plugin Manager Resolve/Load UX Refinement
+
+The following validation was run after the local Plugin Manager dialog changes that
+make `Resolve / Load Selected` retry selected problem plugins and remove the details
+side panel:
+
+```bash
+cmake --preset gui-app
+cmake --build --preset gui-app
+cmake --preset tests-kernel-unit
+cmake --build --preset tests-kernel-unit-run
+```
+
+Observed status:
+
+- The first `cmake --build --preset gui-app` failed because the edited `.ui` file
+  used unsupported `stretch` attributes on layout `<item>` elements. The `.ui` was
+  corrected to express the layout priority through `QSizePolicy` instead.
+- The subsequent GUI build passed. `uic`, `moc`, `dialogpluginmanager.cpp`, and the
+  final `genesys_qt_gui_application` link completed successfully.
+- `cmake --build --preset tests-kernel-unit-run` passed after configuring
+  `build/tests-kernel-unit`.
+- The kernel test run included `genesys_test_runtime_pluginmanager`, preserving the
+  existing coverage for retrying plugin insertion and clearing stored
+  `PluginLoadIssue` records.
+- The build emitted only pre-existing warnings outside the modified dialog, such as
+  missing return statements in `FitterDummyImpl.cpp` and deprecated
+  `QString::count()` use in the bundled Qt property browser.
+- The specific local R dependency scenario was not manually reproduced in the GUI,
+  but the generic path that retries selected problem plugins now compiles and is
+  backed by the existing `PluginManager` retry/issue-clearing tests.
+
 ## Open Pending Items
 
 - Continue future KERNEL_GUI work only on `WiP20261_KERNEL_GUI`.
@@ -340,8 +476,8 @@ Observed status:
   `ContextMemmory.md` as active memory.
 - Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
-- Commit this memory update and push the synchronized branch to
-  `origin/WiP20261_KERNEL_GUI`.
+- Commit the structural plugin directory refactor and this memory update, then push
+  `WiP20261_KERNEL_GUI` to `origin/WiP20261_KERNEL_GUI` when ready.
 - Proceed with final merge into the base when the maintainer is ready.
 - PR `#371` is ready for final merge unless GitHub reports a new base update or
   repository policy change.

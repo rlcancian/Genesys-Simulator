@@ -7,10 +7,10 @@
 
 #include "Smart_R_Simulator.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/RSimulator.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/ExternalStatisticalIntegration/RSimulator.h"
 #include "../../../TraitsApp.h"
 
 Smart_R_Simulator::Smart_R_Simulator() {

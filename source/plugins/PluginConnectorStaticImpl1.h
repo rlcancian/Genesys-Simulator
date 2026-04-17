@@ -1,7 +1,7 @@
 #ifndef PLUGINCONNECTORSTATICIMPL1_H
 #define PLUGINCONNECTORSTATICIMPL1_H
 
-#include "../kernel/simulator/PluginConnector_if.h"
+#include "kernel/simulator/PluginConnector_if.h"
 
 class PluginConnectorStaticImpl1 : public PluginConnector_if {
 public:

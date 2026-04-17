@@ -45,17 +45,17 @@
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/Plugin.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Plugin.h"
 #include "animations/AnimationTransition.h"
 #include "animations/AnimationVariable.h"
 #include "animations/AnimationCounter.h"
 #include "animations/AnimationTimer.h"
 #include "animations/AnimationPlaceholder.h"
-#include "../../../../kernel/simulator/Counter.h"
-#include "../../../../kernel/simulator/PropertyGenesys.h"
-#include "../../../../plugins/data/Variable.h"
+#include "kernel/simulator/Counter.h"
+#include "kernel/simulator/PropertyGenesys.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 
 class GraphicalModelEvent {
 public:

@@ -16,18 +16,18 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Write.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/data/Set.h"
-#include "../../../../plugins/data/Formula.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/InputOutput/Write.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/data/DiscreteProcessing/Set.h"
+#include "plugins/data/DiscreteProcessing/Formula.h"
 
 // Model data definitions
-#include "../../../../kernel/simulator/Attribute.h"
+#include "kernel/simulator/Attribute.h"
 #include "../../../TraitsApp.h"
 
 Smart_ParserModelFunctions::Smart_ParserModelFunctions() {

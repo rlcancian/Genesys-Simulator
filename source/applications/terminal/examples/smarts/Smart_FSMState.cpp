@@ -1,11 +1,11 @@
 #include "Smart_FSMState.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/ModalModelFSM.h"
-#include "../../../../plugins/components/network/FSMState.h"
-#include "../../../../plugins/components/network/DefaultTransitionExtensions.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Network/ModalModelFSM.h"
+#include "plugins/components/Network/FSMState.h"
+#include "plugins/components/Network/DefaultTransitionExtensions.h"
 #include "../../../TraitsApp.h"
 
 Smart_FSMState::Smart_FSMState() {

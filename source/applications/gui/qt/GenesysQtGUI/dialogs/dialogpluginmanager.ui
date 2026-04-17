@@ -19,6 +19,12 @@
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QGroupBox" name="groupBoxAutoload">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
      <property name="title">
       <string>Auto Load</string>
      </property>
@@ -68,14 +74,22 @@
     </widget>
    </item>
    <item>
-    <widget class="QSplitter" name="splitterPlugins">
-     <property name="orientation">
-      <enum>Qt::Horizontal</enum>
+    <widget class="QWidget" name="layoutWidgetPlugins">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>1</verstretch>
+      </sizepolicy>
      </property>
-     <widget class="QWidget" name="layoutWidgetPlugins">
       <layout class="QVBoxLayout" name="verticalLayoutPlugins">
        <item>
         <widget class="QTabWidget" name="tabWidgetPluginTables">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>1</verstretch>
+          </sizepolicy>
+         </property>
          <property name="currentIndex">
           <number>0</number>
          </property>
@@ -168,12 +182,6 @@
        </item>
       </layout>
      </widget>
-     <widget class="QTextEdit" name="textEditPluginDetails">
-      <property name="readOnly">
-       <bool>true</bool>
-      </property>
-     </widget>
-    </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
@@ -200,7 +208,6 @@
   <tabstop>pushButtonResolveSelected</tabstop>
   <tabstop>pushButtonRemove</tabstop>
   <tabstop>pushButtonRefresh</tabstop>
-  <tabstop>textEditPluginDetails</tabstop>
  </tabstops>
  <resources/>
  <connections>

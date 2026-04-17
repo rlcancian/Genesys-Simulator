@@ -540,6 +540,22 @@ Plugin * PluginManager::find(std::string pluginTypeName) {
 	return nullptr;
 }
 
+std::string PluginManager::sourceIncludePathFor(std::string pluginTypeName) {
+	Plugin* plugin = find(pluginTypeName);
+	if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+		return "";
+	}
+
+	if (pluginTypeName == "Attribute" || pluginTypeName == "Counter" || pluginTypeName == "EntityType" ||
+	    pluginTypeName == "StatisticsCollector") {
+		return "kernel/simulator/" + pluginTypeName + ".h";
+	}
+
+	PluginInformation* info = plugin->getPluginInfo();
+	const std::string pluginRoot = info->isComponent() ? "plugins/components" : "plugins/data";
+	return pluginRoot + "/" + PluginInformation::categoryFolderName(info->getCategory()) + "/" + pluginTypeName + ".h";
+}
+
 Plugin * PluginManager::front() {
 	return this->_plugins->front();
 }

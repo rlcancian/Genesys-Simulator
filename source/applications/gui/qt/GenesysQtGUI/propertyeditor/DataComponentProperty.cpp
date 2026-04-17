@@ -11,7 +11,7 @@
 #include <Qt>
 
 #include "DataComponentEditor.h"
-#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 
 DataComponentProperty::DataComponentProperty(
     PropertyEditorGenesys* editor,

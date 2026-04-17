@@ -11,9 +11,9 @@
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/ModelGraphicsView.h"
-#include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/Plugin.h"
-#include "../../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/Simulator.h"
 
 #include <QGraphicsEllipseItem>
 #include <QGraphicsItemGroup>

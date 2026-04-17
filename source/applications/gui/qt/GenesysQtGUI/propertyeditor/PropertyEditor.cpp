@@ -1,5 +1,5 @@
 #include "PropertyEditor.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataDefinition.h"
 #include <QLineEdit>
 
 PropertyEditor::PropertyEditor(QWidget *parent)

@@ -12,8 +12,8 @@
  */
 
 #include "GenesysShell.h"
-#include "../../../kernel/simulator/PluginManager.h"
-#include "../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Simulator.h"
 #include <regex>
 #include <assert.h>
 #include <algorithm>

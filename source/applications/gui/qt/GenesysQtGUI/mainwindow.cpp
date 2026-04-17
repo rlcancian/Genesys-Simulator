@@ -13,11 +13,11 @@
 
 // Dialogs
 // Kernel
-#include "../../../../kernel/simulator/SinkModelComponent.h"
-#include "../../../../kernel/simulator/Attribute.h"
-#include "../../../../kernel/simulator/Counter.h"
-#include "../../../../kernel/simulator/StatisticsCollector.h"
-#include "../../../../kernel/simulator/PluginManager.h"
+#include "kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/Counter.h"
+#include "kernel/simulator/StatisticsCollector.h"
+#include "kernel/simulator/PluginManager.h"
 #include "../../../TraitsApp.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
@@ -57,7 +57,7 @@
 //#include "actions/PasteUndoCommand.h"
 //#include "actions/DeleteUndoCommand.h"
 // @TODO: Should NOT be hardcoded!!! (Used to visualize variables)
-#include "../../../../plugins/data/Variable.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 // std
 #include <string>
 #include <fstream>

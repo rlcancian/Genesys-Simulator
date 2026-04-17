@@ -11,10 +11,10 @@
  */
 
 #include "Book_Cap02_Example01.h"
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Dispose.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 
 Book_Cap02_Example01::Book_Cap02_Example01() {
 }

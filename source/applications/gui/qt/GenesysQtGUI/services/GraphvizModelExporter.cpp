@@ -2,15 +2,15 @@
 
 // This include gives access to generated Qt widgets consumed by the exporter.
 // These includes provide kernel/model types required by DOT generation.
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ConnectionManager.h"
-#include "../../../../kernel/simulator/SourceModelComponent.h"
-#include "../../../../kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ConnectionManager.h"
+#include "kernel/simulator/SourceModelComponent.h"
+#include "kernel/simulator/SinkModelComponent.h"
 
 // This include provides utility string helpers used by legacy DOT-name normalization.
-#include "../../../../kernel/util/Util.h"
+#include "kernel/util/Util.h"
 
 // These includes provide Qt classes used by image generation and UI updates.
 #include <QCheckBox>
