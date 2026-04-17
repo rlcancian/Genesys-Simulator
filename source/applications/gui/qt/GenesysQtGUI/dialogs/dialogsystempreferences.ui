@@ -184,12 +184,12 @@
            <widget class="QComboBox" name="comboBoxInterfaceStyle">
             <item>
              <property name="text">
-              <string>Classic desktop</string>
+              <string>Classic rectangular</string>
              </property>
             </item>
             <item>
              <property name="text">
-              <string>Modern Fusion</string>
+              <string>Modern organic</string>
              </property>
             </item>
            </widget>

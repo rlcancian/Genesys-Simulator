@@ -151,168 +151,45 @@ QColor GraphicalModelComponent::myrgba(uint64_t color) {
 }
 
 void GraphicalModelComponent::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
-	int _penWidth = TraitsGUI<GModelComponent>::penWidth; //1;
-	int _raise = TraitsGUI<GModelComponent>::raise; // 5;
-	int wi = _width - 2 * _margin - _penWidth;
-	int hi = _height - 2 * _margin - _penWidth;
-	int wt2 = _width * _stretchPosTop;
-	int wb2 = _width * _stretchPosBottom;
-	int hl2 = _height * _stretchPosLeft;
-	int hr2 = _height * _stretchPosRigth;
-	qreal sfr = hi * _stretchRigth;
-	qreal sfl = hi * _stretchLeft;
-	qreal sfrm = hi * _stretchRigthMidle;
-	qreal sflm = hi * _stretchLeftMidle;
-	qreal sft = wi * _stretchTop;
-	qreal sfb = wi * _stretchBottom;
-	qreal sftm = wi * _stretchTopMidle;
-	qreal sfbm = wi * _stretchBottomMidle;
-	int shiftt = (_stretchRigth == 0 && _stretchLeft == 0) || (_stretchRigth > 0 && _stretchLeft > 0)
-		             ? 0
-		             : (_stretchRigth > 0 ? _raise : -_raise);
-	int shiftb = shiftt;
-	int shiftr = (_stretchTop == 0 && _stretchBottom == 0) || (_stretchTop > 0 && _stretchBottom > 0)
-		             ? 0
-		             : (_stretchBottom > 0 ? _raise : -_raise);
-	int shiftl = shiftr;
-	QPen pen;
-	QBrush brush;
-	QRect rect;
-	QPointF pp1, pp2, pp3, pp4, pp5, pp6, pp7, pp8, pp9, pp10, pp11, pp12, pp13, pp14, pp15, pp16;
-	// points
-	pp1 = QPointF(_margin + sft, _margin + sfl);
-	pp2 = QPointF(_margin + sflm, hl2 + shiftl);
-	pp3 = QPointF(_margin + sfb, _margin + hi - sfl);
-	pp4 = QPointF(_margin + _raise + sfb, _margin + hi - _raise - sfl);
-	pp5 = QPointF(_margin + _raise + sflm, hl2);
-	pp6 = QPointF(_margin + _raise + sft, _margin + _raise + sfl);
-	pp7 = QPointF(wt2, _margin + _raise + sftm);
-	pp8 = QPointF(_margin + wi - _raise - sft, _margin + _raise + sfr);
-	pp9 = QPointF(_margin + wi - sft, _margin + sfr);
-	pp10 = QPointF(wt2 + shiftt, _margin + sftm);
-	pp11 = QPointF(_margin + wi - sfb, _margin + hi - sfr);
-	pp12 = QPointF(_margin + wi - sfrm, hr2 + shiftr);
-	pp13 = QPointF(_margin + wi - _raise - sfrm, hr2);
-	pp14 = QPointF(_margin + wi - _raise - sfb, _margin + hi - _raise - sfr);
-	pp15 = QPointF(wb2, _margin + hi - _raise - sfbm);
-	pp16 = QPointF(wb2 + shiftb, _margin + hi - sfbm);
-	// pen
-	pen = QPen(myrgba(TraitsGUI<GModelComponent>::borderColor));
-	//pen = QPen(Qt::black);
-	pen.setWidth(_penWidth);
-	painter->setPen(pen);
-	// Path raised
-	brush = QBrush(Qt::SolidPattern);
-	brush.setColor(myrgba(TraitsGUI<GModelComponent>::pathRaised)); // default white
-	painter->setBrush(brush);
-	QPainterPath path;
-	path.moveTo(pp1);
-	path.lineTo(pp2);
-	if (_stretchTop > 0 || _stretchBottom > 0) {
-		path.lineTo(pp5);
-		path.lineTo(pp2);
-	}
-	path.lineTo(pp3);
-	path.lineTo(pp4);
-	path.lineTo(pp5);
-	path.lineTo(pp6);
-	path.lineTo(pp7);
-	path.lineTo(pp8);
-	path.lineTo(pp9);
-	path.lineTo(pp10);
-	if (_stretchRigth > 0 || _stretchLeft > 0) {
-		path.lineTo(pp7);
-		path.lineTo(pp10);
-	}
-	path.lineTo(pp1);
-	path.lineTo(pp6);
-	painter->drawPath(path);
-	// path stunken
-	brush = QBrush(Qt::SolidPattern);
-	brush.setColor(myrgba(TraitsGUI<GModelComponent>::pathStunken)); //Qt::darkGray);
-	painter->setBrush(brush);
-	QPainterPath path2;
-	path2.moveTo(pp11);
-	path2.lineTo(pp12);
-	path2.lineTo(pp9);
-	path2.lineTo(pp8);
-	path2.lineTo(pp13);
-	if (_stretchTop > 0 || _stretchBottom > 0) {
-		path2.lineTo(pp12);
-		path2.lineTo(pp13);
-	}
-	path2.lineTo(pp14);
-	path2.lineTo(pp15);
-	if (_stretchRigth > 0 || _stretchLeft > 0) {
-		path2.lineTo(pp16);
-		path2.lineTo(pp15);
-	}
-	path2.lineTo(pp4);
-	path2.lineTo(pp3);
-	path2.lineTo(pp16);
-	path2.lineTo(pp11);
-	path2.lineTo(pp14);
-	painter->drawPath(path2);
-	// fill
-	QLinearGradient gradient(0, 0, _width, _height);
-	gradient.setColorAt(0.0, Qt::white);
-	gradient.setColorAt(0.33, _color.lighter());
-	gradient.setColorAt(0.67, _color);
-	gradient.setColorAt(1.0, _color.darker());
-	//brush.setColor(_color);
-	brush = QBrush(gradient); //Qt::SolidPattern);//@TODO: Oportunity do improve LinearGradientPattern);
-	painter->setBrush(brush);
-	QPainterPath pathFill;
-	pathFill.moveTo(pp6);
-	pathFill.lineTo(pp7);
-	pathFill.lineTo(pp8);
-	pathFill.lineTo(pp13);
-	pathFill.lineTo(pp14);
-	pathFill.lineTo(pp15);
-	pathFill.lineTo(pp4);
-	pathFill.lineTo(pp5);
-	pathFill.lineTo(pp6);
-	painter->drawPath(pathFill);
-	// text
-	QString text = QString::fromStdString(_component->getName());
-	QRect rect2 = QRect(_margin + _raise + 1, _margin + _raise + 1, _margin + wi - 2 * _raise - _margin,
-	                    _margin + hi - 2 * _raise - _margin);
-	brush = QBrush(Qt::NoBrush);
-	painter->setBrush(brush);
-	pen = QPen(myrgba(TraitsGUI<GModelComponent>::textColor));
-	pen.setWidth(2);
-	pen.setCosmetic(true);
-	painter->setPen(pen);
-	painter->drawText(rect2, Qt::AlignCenter, text);
-	pen.setColor(myrgba(TraitsGUI<GModelComponent>::textShadowColor));
-	painter->setPen(pen);
-	painter->drawText(rect2.adjusted(0, 2, 2, 0), Qt::AlignCenter, text);
-	// text shadow
-	//
-	if (isSelected()) {
-		//draw squares on corners
-		brush = QBrush(Qt::SolidPattern);
-		brush.setColor(myrgba(TraitsGUI<GModelComponent>::selectionSquaresColor));
-		painter->setBrush(brush);
-		rect = QRect(0, 0, _selWidth, _selWidth);
-		painter->drawRect(rect);
-		rect = QRect(_width - _selWidth, 0, _selWidth, _selWidth);
-		painter->drawRect(rect);
-		rect = QRect(0, _height - _selWidth, _selWidth, _selWidth);
-		painter->drawRect(rect);
-		rect = QRect(_width - _selWidth, _height - _selWidth, _selWidth, _selWidth);
-		painter->drawRect(rect);
-	}
-	ModelComponent* mc = getComponent();
-	if (mc->hasBreakpointAt()) {
-		brush = QBrush(Qt::NoBrush);
-		painter->setBrush(brush);
-		pen = QPen(myrgba(TraitsGUI<GModelComponent>::breakpointColor));
-		pen.setWidth(1);
-		painter->setPen(pen);
-		rect = QRect(0, 0, _width, _height);
-		painter->drawRect(rect);
-	}
+	(void) option;
+	(void) widget;
+	GraphicalModelItemRenderer::paint(painter, renderContext());
+}
+
+GraphicalModelItemRenderContext GraphicalModelComponent::renderContext() const {
+	GraphicalModelItemRenderContext context;
+	context.kind = GraphicalModelItemRenderContext::ItemKind::Component;
+	context.bounds = boundingRect();
+	context.fillColor = _color;
+	context.primaryText = QString::fromStdString(_component->getName());
+	context.selected = isSelected();
+	context.breakpoint = _component != nullptr && _component->hasBreakpointAt();
+	context.width = _width;
+	context.height = _height;
+	context.penWidth = TraitsGUI<GModelComponent>::penWidth;
+	context.raise = TraitsGUI<GModelComponent>::raise;
+	context.margin = _margin;
+	context.selectionWidth = _selWidth;
+	context.stretchPosTop = _stretchPosTop;
+	context.stretchPosBottom = _stretchPosBottom;
+	context.stretchPosLeft = _stretchPosLeft;
+	context.stretchPosRight = _stretchPosRigth;
+	context.stretchRight = _stretchRigth;
+	context.stretchLeft = _stretchLeft;
+	context.stretchRightMiddle = _stretchRigthMidle;
+	context.stretchLeftMiddle = _stretchLeftMidle;
+	context.stretchTop = _stretchTop;
+	context.stretchBottom = _stretchBottom;
+	context.stretchTopMiddle = _stretchTopMidle;
+	context.stretchBottomMiddle = _stretchBottomMidle;
+	context.borderColor = TraitsGUI<GModelComponent>::borderColor;
+	context.raisedColor = TraitsGUI<GModelComponent>::pathRaised;
+	context.sunkenColor = TraitsGUI<GModelComponent>::pathStunken;
+	context.textColor = TraitsGUI<GModelComponent>::textColor;
+	context.textShadowColor = TraitsGUI<GModelComponent>::textShadowColor;
+	context.selectionColor = TraitsGUI<GModelComponent>::selectionSquaresColor;
+	context.breakpointColor = TraitsGUI<GModelComponent>::breakpointColor;
+	return context;
 }
 
 ModelComponent* GraphicalModelComponent::getComponent() const {
