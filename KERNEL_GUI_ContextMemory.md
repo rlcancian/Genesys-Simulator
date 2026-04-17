@@ -526,3 +526,44 @@ Observed status:
 - The user then clarified that each AI must use its own root memory file named
   `<NOME_DA_IA>_ContextMemory.md`.
 - KERNEL_GUI migrated useful active memory into `KERNEL_GUI_ContextMemory.md`.
+
+## Latest Runtime Preferences And Visual Theme Work
+
+- The active user protocol now requires every assistant response to start with the
+  exact line `KERNEL_GUI` and end with the exact line `----------`.
+- A runtime preferences architecture was implemented for GenesysQtGUI.
+- `SystemPreferences::load()` and `SystemPreferences::save()` no longer act as
+  stubs; they read/write JSON at Qt's `QStandardPaths::AppConfigLocation`, file
+  name `preferences.json`, with fallback to `~/.genesys/preferences.json` when Qt
+  cannot resolve a config location.
+- The JSON schema currently has top-level sections:
+  - `startup`: `startMaximized`, `modelAtStart`, `specificModelFile`,
+    `lastModelFile`.
+  - `plugins`: `autoLoad`, `checkSystemPackagesAtStart`.
+  - `diagnostics`: `traceLevel`.
+  - `view`: `theme`, `interfaceStyle`, `fontPointSize`,
+    `diagramUsesThemeColors`.
+- Startup model modes are `none`, `new`, `specific`, and `last`.
+- Theme modes are `light` and `dark`; interface styles are `classic` and
+  `modern`.
+- `GuiThemeManager` applies Qt application palette/stylesheet choices and updates
+  model canvas/grid colors when diagram theme colors are enabled.
+- `main.cpp` now loads preferences and applies application theme before creating
+  `MainWindow`; the previous compile-time GUI start-maximized trait no longer
+  controls startup window state.
+- `mainwindow.cpp` now reads trace level from `SystemPreferences` instead of the
+  compiled `TraitsApp` default and uses the new startup model mode enum.
+- `DialogSystemPreferences` was expanded into functional General and View tabs
+  bound to runtime preferences.
+- Opening/saving a model records the last successful model path for future
+  startup.
+- Validation performed:
+  - `cmake --build --preset gui-app` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed.
+  - `git diff --check` passed.
+  - Offscreen smoke test with temporary JSON under `/tmp/genesys-pref-test`
+    loaded dark/modern/no-model startup preferences and stayed running until the
+    expected timeout without startup crash.
+- Deliberate limitation: component and `ModelDataDefinition` body painting still
+  mostly uses existing `TraitsGUI` colors; this iteration only creates the safe
+  runtime preference and canvas/grid theme base for future drawing-style work.
