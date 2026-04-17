@@ -151,6 +151,37 @@ void DialogPluginManager::on_pushButtonInsert_clicked()
 	);
 }
 
+void DialogPluginManager::on_pushButtonResolveSelected_clicked()
+{
+	if (_simulator == nullptr || _simulator->getPluginManager() == nullptr) {
+		return;
+	}
+
+	const std::string filename = _selectedDependencyIssueFilename();
+	if (filename.empty()) {
+		_showOperationResult(
+			tr("Resolve plugin dependencies"),
+			tr("Select a blocked plugin row to resolve its system dependencies and load it.")
+		);
+		return;
+	}
+
+	PluginInsertionOptions options;
+	options.confirmSystemDependencyInstallation = [this](const SystemDependencyCheckResult& result) {
+		return _confirmSystemDependencyInstallation(result);
+	};
+	Plugin* plugin = _simulator->getPluginManager()->insert(filename, options);
+	_simulator->getPluginManager()->completePluginsFieldsAndTemplates();
+	_refreshPluginTable();
+	_refreshPluginCatalog();
+	_showOperationResult(
+		tr("Resolve plugin dependencies"),
+		plugin != nullptr
+			? tr("System dependencies were satisfied and the plugin is now loaded.")
+			: tr("The plugin is still blocked. See the diagnostic row or trace output for the check and install command.")
+	);
+}
+
 void DialogPluginManager::on_pushButtonRemove_clicked()
 {
 	if (_simulator == nullptr || _simulator->getPluginManager() == nullptr) {
@@ -295,6 +326,7 @@ void DialogPluginManager::_appendPluginDependencyIssueRow(const std::string& fil
 	const QString detailedDiagnostic = QString::fromStdString(preflight.diagnosticText(false)).trimmed();
 	fileItem->setData(Qt::UserRole + 1, tr("Plugin candidate was not inserted because system dependencies are missing or unverifiable:\n\n%1")
 		.arg(detailedDiagnostic));
+	fileItem->setData(Qt::UserRole + 2, QString::fromStdString(filename));
 	ui->tableWidgetPlugins->setItem(row, 0, fileItem);
 	ui->tableWidgetPlugins->setItem(row, 1, makeItem(tr("Blocked")));
 	ui->tableWidgetPlugins->setItem(row, 2, makeItem(tr("Not loaded")));
@@ -349,6 +381,19 @@ Plugin* DialogPluginManager::_selectedPlugin() const
 	}
 	const quintptr pointer = typeItem->data(Qt::UserRole).value<quintptr>();
 	return reinterpret_cast<Plugin*>(pointer);
+}
+
+std::string DialogPluginManager::_selectedDependencyIssueFilename() const
+{
+	const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPlugins->selectedItems();
+	if (selectedItems.isEmpty()) {
+		return "";
+	}
+	QTableWidgetItem* typeItem = ui->tableWidgetPlugins->item(selectedItems.first()->row(), 0);
+	if (typeItem == nullptr) {
+		return "";
+	}
+	return typeItem->data(Qt::UserRole + 2).toString().toStdString();
 }
 
 bool DialogPluginManager::_isKernelPlugin(const Plugin* plugin) const

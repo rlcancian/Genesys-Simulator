@@ -57,6 +57,7 @@ public:
     }
 
     Plugin* connect(const std::string) override {
+        connectCalls++;
         return new Plugin(&BuildPluginWithMissingSystemDependency);
     }
 
@@ -75,6 +76,7 @@ public:
     }
 
     unsigned int disconnectedPlugins = 0;
+    unsigned int connectCalls = 0;
 };
 
 }
@@ -115,7 +117,8 @@ TEST(RuntimePluginManagerClassTest, InsertRefusesPluginWhenSystemDependencyIsMis
     EXPECT_EQ(manager.size(), before);
     ASSERT_EQ(executor->commands.size(), 1u);
     EXPECT_EQ(executor->commands.front(), "check-missing-dependency");
-    EXPECT_EQ(connector->disconnectedPlugins, 1u);
+    EXPECT_EQ(connector->disconnectedPlugins, 0u);
+    EXPECT_EQ(connector->connectCalls, 0u);
 }
 
 TEST(RuntimePluginManagerClassTest, InsertInstallsAndRevalidatesSystemDependencyWhenUserConfirms) {
@@ -123,10 +126,12 @@ TEST(RuntimePluginManagerClassTest, InsertInstallsAndRevalidatesSystemDependency
     auto* executor = new RuntimeFakeCommandExecutor();
     executor->results["check-missing-dependency"] = {
         RuntimeCommandResultWithExitCode(1),
+        RuntimeCommandResultWithExitCode(0),
         RuntimeCommandResultWithExitCode(0)
     };
     executor->results["install-missing-dependency"] = {RuntimeCommandResultWithExitCode(0)};
-    PluginManager manager(&simulator, new RuntimeFakePluginConnector(), executor);
+    auto* connector = new RuntimeFakePluginConnector();
+    PluginManager manager(&simulator, connector, executor);
     PluginInsertionOptions options;
     bool confirmationAsked = false;
     options.confirmSystemDependencyInstallation = [&confirmationAsked](const SystemDependencyCheckResult& result) {
@@ -141,10 +146,12 @@ TEST(RuntimePluginManagerClassTest, InsertInstallsAndRevalidatesSystemDependency
     ASSERT_NE(inserted, nullptr);
     EXPECT_TRUE(confirmationAsked);
     EXPECT_EQ(manager.size(), before + 1);
-    ASSERT_EQ(executor->commands.size(), 3u);
+    EXPECT_EQ(connector->connectCalls, 1u);
+    ASSERT_EQ(executor->commands.size(), 4u);
     EXPECT_EQ(executor->commands[0], "check-missing-dependency");
     EXPECT_EQ(executor->commands[1], "install-missing-dependency");
     EXPECT_EQ(executor->commands[2], "check-missing-dependency");
+    EXPECT_EQ(executor->commands[3], "check-missing-dependency");
 }
 
 TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins) {

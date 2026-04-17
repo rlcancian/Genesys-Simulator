@@ -30,6 +30,7 @@ private slots:
 	void on_pushButtonAutoLoadNow_clicked();
 	void on_pushButtonCheck_clicked();
 	void on_pushButtonInsert_clicked();
+	void on_pushButtonResolveSelected_clicked();
 	void on_pushButtonRemove_clicked();
 	void on_pushButtonRefresh_clicked();
 	void on_tableWidgetPlugins_itemSelectionChanged();
@@ -47,6 +48,8 @@ private:
 	void _showNoPluginDetails();
 	/*! \brief Returns the currently selected loaded plugin, or nullptr for issue rows. */
 	Plugin* _selectedPlugin() const;
+	/*! \brief Returns the selected blocked plugin filename, or an empty string when none is selected. */
+	std::string _selectedDependencyIssueFilename() const;
 	/*! \brief Returns true when the selected plugin is one of the built-in kernel plugins. */
 	bool _isKernelPlugin(const Plugin* plugin) const;
 	/*! \brief Returns true when the current model contains instances from this plugin. */

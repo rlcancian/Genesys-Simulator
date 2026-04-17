@@ -207,6 +207,24 @@ const SystemCommandResult& SystemDependencyInstallEntry::installResult() const {
 	return _installResult;
 }
 
+std::string SystemDependencyInstallEntry::diagnosticText() const {
+	std::ostringstream text;
+	text << "Dependency: " << _dependency.getName() << "\n";
+	text << "  Install command: " << (_dependency.getInstallCommand().empty() ? "<not declared>" : _dependency.getInstallCommand()) << "\n";
+	text << "  Install started: " << (_installResult.started ? "yes" : "no") << "\n";
+	text << "  Install exit code: " << _installResult.exitCode << "\n";
+	if (!_installResult.output.empty()) {
+		text << "  Install output: " << _installResult.output;
+		if (_installResult.output.back() != '\n') {
+			text << "\n";
+		}
+	}
+	if (!_installResult.errorMessage.empty()) {
+		text << "  Install error: " << _installResult.errorMessage << "\n";
+	}
+	return text.str();
+}
+
 void SystemDependencyInstallResult::add(SystemDependencyInstallEntry entry) {
 	_entries.push_back(std::move(entry));
 }
@@ -235,6 +253,19 @@ std::string SystemDependencyInstallResult::summary() const {
 		text << entry.dependency().getName() << " install exit=" << entry.installResult().exitCode;
 	}
 	return text.str();
+}
+
+std::string SystemDependencyInstallResult::diagnosticText() const {
+	std::ostringstream text;
+	bool first = true;
+	for (const SystemDependencyInstallEntry& entry : _entries) {
+		if (!first) {
+			text << "\n";
+		}
+		first = false;
+		text << entry.diagnosticText();
+	}
+	return first ? summary() : text.str();
 }
 
 SystemDependency::OS SystemDependencyResolver::currentOS() {

@@ -150,10 +150,14 @@ bool PluginManager::_preflightAndMaybeInstallSystemDependencies(PluginInformatio
 		return true;
 	}
 
+	_simulator->getTraceManager()->trace(
+		"Checking system dependencies for plugin \"" + plugInfo->getPluginTypename() + "\"");
 	SystemDependencyCheckResult preflight = SystemDependencyResolver::evaluate(
 		plugInfo->getSystemDependencies(),
 		*_systemCommandExecutor);
 	if (preflight.canInsertPlugin()) {
+		_simulator->getTraceManager()->trace(
+			"System dependencies satisfied: " + preflight.summary());
 		return true;
 	}
 
@@ -182,10 +186,12 @@ bool PluginManager::_preflightAndMaybeInstallSystemDependencies(PluginInformatio
 		*_systemCommandExecutor);
 	if (!installResult.succeeded()) {
 		_simulator->getTraceManager()->traceError(
-			"System dependency installation failed: " + installResult.summary(),
+			"System dependency installation failed:\n" + installResult.diagnosticText(),
 			TraceManager::Level::L3_errorRecover);
 		return false;
 	}
+	_simulator->getTraceManager()->trace(
+		"System dependency installation command(s) finished:\n" + installResult.diagnosticText());
 
 	// Revalidation after installation prevents inserting a plugin after a partial or ineffective install.
 	SystemDependencyCheckResult validation = SystemDependencyResolver::evaluate(
@@ -298,6 +304,25 @@ Plugin * PluginManager::insert(std::string dynamicLibraryFilename) {
 Plugin * PluginManager::insert(std::string dynamicLibraryFilename, const PluginInsertionOptions& options) {
 	Plugin* plugin = nullptr;
 	try {
+		std::unique_ptr<Plugin> checkedPlugin(_pluginConnector->check(dynamicLibraryFilename));
+		if (checkedPlugin == nullptr || !checkedPlugin->isIsValidPlugin() || checkedPlugin->getPluginInfo() == nullptr) {
+			_simulator->getTraceManager()->traceError(
+				"Plugin from file \"" + dynamicLibraryFilename + "\" could not be checked as a valid plugin.",
+				TraceManager::Level::L3_errorRecover);
+			return nullptr;
+		}
+		PluginInformation* checkedInfo = checkedPlugin->getPluginInfo();
+		Plugin* alreadyInserted = find(checkedInfo->getPluginTypename());
+		if (alreadyInserted != nullptr) {
+			_simulator->getTraceManager()->trace(
+				"Plugin \"" + checkedInfo->getPluginTypename() + "\" already exists and was not connected again");
+			return alreadyInserted;
+		}
+		// Preflight before connect prevents loading/connecting plugins whose system prerequisites are absent.
+		if (!_preflightAndMaybeInstallSystemDependencies(checkedInfo, options)) {
+			return nullptr;
+		}
+
 		plugin = _pluginConnector->connect(dynamicLibraryFilename);
 		if (plugin != nullptr) {
 			const bool validBeforeInsert = plugin->isIsValidPlugin();

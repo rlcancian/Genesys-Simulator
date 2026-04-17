@@ -125,6 +125,8 @@ public:
 	const SystemDependency& dependency() const;
 	/*! \brief Returns the result produced by the install command. */
 	const SystemCommandResult& installResult() const;
+	/*! \brief Returns command, exit code and captured output for trace or GUI feedback. */
+	std::string diagnosticText() const;
 
 private:
 	SystemDependency _dependency;
@@ -144,6 +146,8 @@ public:
 	bool succeeded() const;
 	/*! \brief Returns a compact diagnostic summary suitable for trace logs. */
 	std::string summary() const;
+	/*! \brief Returns detailed diagnostic text for every executed install command. */
+	std::string diagnosticText() const;
 
 private:
 	std::list<SystemDependencyInstallEntry> _entries;

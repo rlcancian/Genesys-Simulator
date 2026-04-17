@@ -518,6 +518,36 @@ TEST(SimulatorSupportTest, SystemDependencyResolverMarksApplicableDependencyWith
     EXPECT_TRUE(executor.commands.empty());
 }
 
+TEST(SimulatorSupportTest, SystemDependencyResolverInstallDiagnosticIncludesCommandAndOutput) {
+    FakeSystemCommandExecutor executor;
+    executor.results["missing-tool --version"] = CommandResultWithExitCode(1);
+    SystemCommandResult failedInstall = CommandResultWithExitCode(100);
+    failedInstall.output = "package not found\n";
+    failedInstall.errorMessage = "apt failed\n";
+    executor.results["sudo apt install missing-tool -y"] = failedInstall;
+
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "MissingTool",
+        "sudo apt install missing-tool -y",
+        "missing-tool --version");
+
+    const SystemDependencyCheckResult check = SystemDependencyResolver::evaluate(&dependencies, executor);
+    const SystemDependencyInstallResult result = SystemDependencyResolver::installMissingDependencies(check, executor);
+    const std::string diagnostic = result.diagnosticText();
+
+    EXPECT_FALSE(result.succeeded());
+    EXPECT_NE(diagnostic.find("Dependency: MissingTool"), std::string::npos);
+    EXPECT_NE(diagnostic.find("Install command: sudo apt install missing-tool -y"), std::string::npos);
+    EXPECT_NE(diagnostic.find("Install exit code: 100"), std::string::npos);
+    EXPECT_NE(diagnostic.find("package not found"), std::string::npos);
+    EXPECT_NE(diagnostic.find("apt failed"), std::string::npos);
+    ASSERT_EQ(executor.commands.size(), 2u);
+    EXPECT_EQ(executor.commands.at(0), "missing-tool --version");
+    EXPECT_EQ(executor.commands.at(1), "sudo apt install missing-tool -y");
+}
+
 TEST(SimulatorSupportTest, PluginInformationDefaultsAndContainerReplacementWork) {
     PluginInformation info("Delay", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
 

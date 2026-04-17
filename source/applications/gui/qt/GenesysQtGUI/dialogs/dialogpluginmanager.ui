@@ -107,6 +107,13 @@
           </widget>
          </item>
          <item>
+          <widget class="QPushButton" name="pushButtonResolveSelected">
+           <property name="text">
+            <string>Resolve / Load Selected</string>
+           </property>
+          </widget>
+         </item>
+         <item>
           <widget class="QPushButton" name="pushButtonRemove">
            <property name="text">
             <string>Remove Selected</string>
@@ -151,6 +158,7 @@
   <tabstop>tableWidgetPlugins</tabstop>
   <tabstop>pushButtonCheck</tabstop>
   <tabstop>pushButtonInsert</tabstop>
+  <tabstop>pushButtonResolveSelected</tabstop>
   <tabstop>pushButtonRemove</tabstop>
   <tabstop>pushButtonRefresh</tabstop>
   <tabstop>textEditPluginDetails</tabstop>
