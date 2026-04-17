@@ -396,7 +396,7 @@ Validacao executada no momento da implementacao:
   - build de `genesys_terminal_application` para `Smart_BioKineticLawRegulation`: passou;
   - execucao de `Smart_BioKineticLawRegulation`: passou, salvou `./models/Smart_BioKineticLawRegulation.gen`, status `Completed`, payload final com `Protein=3.24249268786054` e `Activator=3`.
 - Observacao de execucao: os executaveis emitiram aviso de `autoloadplugins.txt` ausente no diretorio de build em `/tmp`, mas a insercao estatica dos plugins prosseguiu e os exemplos executaram com sucesso.
-- Commit local da fase: `Add biochemical terminal smart examples`; nao fazer push sem pedido explicito.
+- Commit da fase: `24a8435d Add biochemical terminal smart examples`; publicacao remota autorizada pelo usuario em 2026-04-17.
 
 ## Fase De Exemplo Com Lei Cinetica Reversa Executada Em 2026-04-17
 
@@ -416,13 +416,24 @@ Validacao executada no momento da implementacao:
   - execucao de `Smart_BioReversibleKineticLaw`: passou, salvou `./models/Smart_BioReversibleKineticLaw.gen`, status `Completed`, payload final com `Substrate=3.61517214395755`, `Product=6.38482785604245` e `Enzyme=2`;
   - o `.gen` salvo expos `reverseKineticLawExpression` no `BioReaction`.
 - Observacao de execucao: o executavel em `/tmp` emitiu aviso de `autoloadplugins.txt` ausente, mas a insercao estatica dos plugins prosseguiu e o exemplo executou com sucesso.
-- Commit local da fase: `Add reversible kinetic law smart example`; nao fazer push sem pedido explicito.
+- Commit da fase: `7c0efb9e Add reversible kinetic law smart example`; publicacao remota autorizada pelo usuario em 2026-04-17.
+
+## Encerramento Do Checkpoint Em 2026-04-17
+
+- O usuario pediu push dos checkpoints locais e atualizacao final desta memoria antes de encerrar o dia.
+- Branch local usada: `WiP20261`.
+- Branch remota de destino: `origin/WiP20261`.
+- Commits de exemplo a publicar:
+  - `24a8435d Add biochemical terminal smart examples`;
+  - `7c0efb9e Add reversible kinetic law smart example`.
+- Esta atualizacao de memoria deve ser commitada junto ao encerramento antes do push.
 
 ## Estado Atual Do Branch
 
 - `WiP20261` e a base consolidada atual para TINKERCELL.
 - O conteudo relevante de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
 - As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas, sintese/degradacao, reversibilidade mass-action, leis cineticas reversas customizadas, exemplos bioquimicos executaveis e exemplo com lei cinetica reversa foram implementadas e validadas.
+- O checkpoint de exemplos bioquimicos executaveis deve ser publicado no remoto `origin/WiP20261` conforme pedido do usuario em 2026-04-17.
 - A IA `TINKERCELL` deve aguardar confirmacao explicita antes de iniciar a proxima fase.
 - Qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo local.
 - Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
