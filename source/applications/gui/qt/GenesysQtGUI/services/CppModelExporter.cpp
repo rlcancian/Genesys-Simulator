@@ -2,14 +2,14 @@
 
 // This include gives access to generated Qt widgets where generated C++ text is displayed.
 // These includes provide kernel model APIs used by C++ code generation.
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/Model.h"
-#include "../../../../kernel/simulator/ModelSimulation.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ConnectionManager.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/util/List.h"
-#include "../../../../kernel/util/Util.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ConnectionManager.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/util/List.h"
+#include "kernel/util/Util.h"
 
 // This include provides QString conversion APIs used by the target text widget.
 #include <QPlainTextEdit>
@@ -67,18 +67,18 @@ void CppModelExporter::actualizeModelCppCode() const {
             name = comp->getClassname();
             if (included.find(name) == included.list()->end()) {
                 included.insert(name);
-                text += addCppCodeLine("#include \"plugins/components/" + name + ".h\"");
+                text += addCppCodeLine("#include \"" + m->getParentSimulator()->getPluginManager()->sourceIncludePathFor(name) + "\"");
             }
         }
         // Iterate over a value snapshot of data-definition class names to remove manual delete semantics.
         for (std::string ddClassname : m->getDataManager()->getDataDefinitionClassnames()) {
-            text += addCppCodeLine("#include \"plugins/data/" + ddClassname + ".h\"");
+            text += addCppCodeLine("#include \"" + m->getParentSimulator()->getPluginManager()->sourceIncludePathFor(ddClassname) + "\"");
             for (ModelDataDefinition* modeldata : *m->getDataManager()->getDataDefinitionList(ddClassname)->list()) {
                 name = modeldata->getName();
                 if (name.find(".") == std::string::npos) {
                     if (included.find(name) == included.list()->end()) {
                         included.insert(ddClassname);
-                        text += addCppCodeLine("#include \"plugins/data/" + ddClassname + "\"");
+                        text += addCppCodeLine("#include \"" + m->getParentSimulator()->getPluginManager()->sourceIncludePathFor(ddClassname) + "\"");
                     }
                 }
             }

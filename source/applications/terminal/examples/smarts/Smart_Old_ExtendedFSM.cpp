@@ -16,13 +16,13 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
 //#include "../../../../plugins/components/ExtendedFinishStateMachine.h"
 #include "../../../../plugins/components/OLD_FiniteStateMachine.h"
-#include "../../../../plugins/components/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 
 Smart_Old_ExtendedFSM::Smart_Old_ExtendedFSM() {
 }

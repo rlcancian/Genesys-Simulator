@@ -361,12 +361,12 @@ void SceneToolController::onActionSelectAllTriggered() {
     }
 }
 
-// Preserve action-checkbox synchronization for internals image visibility.
+// Preserve action-checkbox synchronization for statistics data-definition visibility.
 void SceneToolController::onActionShowInternalElementsTriggered() {
     const bool checked = _ui->actionShowInternalElements->isChecked();
     ModelGraphicsScene* scene = _currentScene();
     if (scene != nullptr) {
-        scene->setShowInternalDataDefinitions(checked);
+        scene->setShowStatisticsDataDefinitions(checked);
         scene->requestGraphicalDataDefinitionsSync();
     }
     if (_ui->checkBox_ShowInternals->isChecked() != checked) {
@@ -377,12 +377,28 @@ void SceneToolController::onActionShowInternalElementsTriggered() {
     }
 }
 
-// Preserve action-checkbox synchronization for attached-elements image visibility.
+// Preserve action synchronization for editable data-definition visibility.
+void SceneToolController::onActionShowEditableElementsTriggered() {
+    const bool checked = _ui->actionShowEditableElements->isChecked();
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowEditableDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    if (_ui->checkBox_ShowEditableElements->isChecked() != checked) {
+        _ui->checkBox_ShowEditableElements->setChecked(checked);
+    }
+    else {
+        _createModelImage();
+    }
+}
+
+// Preserve action-checkbox synchronization for shared data-definition visibility.
 void SceneToolController::onActionShowAttachedElementsTriggered() {
     const bool checked = _ui->actionShowAttachedElements->isChecked();
     ModelGraphicsScene* scene = _currentScene();
     if (scene != nullptr) {
-        scene->setShowAttachedDataDefinitions(checked);
+        scene->setShowSharedDataDefinitions(checked);
         scene->requestGraphicalDataDefinitionsSync();
     }
     if (_ui->checkBox_ShowElements->isChecked() != checked) {
@@ -393,33 +409,67 @@ void SceneToolController::onActionShowAttachedElementsTriggered() {
     }
 }
 
-// Preserve checkbox-to-action synchronization for attached-elements visibility.
+// Preserve checkbox-to-action synchronization for shared-elements visibility.
 void SceneToolController::onCheckBoxShowElementsStateChanged(int arg1) {
     const bool checked = arg1 == Qt::Checked;
     _ui->actionShowAttachedElements->setChecked(checked);
     ModelGraphicsScene* scene = _currentScene();
     if (scene != nullptr) {
-        scene->setShowAttachedDataDefinitions(checked);
+        scene->setShowSharedDataDefinitions(checked);
         scene->requestGraphicalDataDefinitionsSync();
     }
     _createModelImage();
 }
 
-// Preserve checkbox-to-action synchronization for internals visibility.
+// Preserve checkbox-to-action synchronization for statistics visibility.
 void SceneToolController::onCheckBoxShowInternalsStateChanged(int arg1) {
     const bool checked = arg1 == Qt::Checked;
     _ui->actionShowInternalElements->setChecked(checked);
     ModelGraphicsScene* scene = _currentScene();
     if (scene != nullptr) {
-        scene->setShowInternalDataDefinitions(checked);
+        scene->setShowStatisticsDataDefinitions(checked);
         scene->requestGraphicalDataDefinitionsSync();
     }
     _createModelImage();
 }
 
-// Preserve recursive image-toggle behavior by regenerating model image.
+// Preserve checkbox-to-action synchronization for editable data-definition visibility.
+void SceneToolController::onCheckBoxShowEditableElementsStateChanged(int arg1) {
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowEditableElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowEditableDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    _createModelImage();
+}
+
+// Preserve action-checkbox synchronization for recursive data-definition expansion.
+void SceneToolController::onActionShowRecursiveElementsTriggered() {
+    const bool checked = _ui->actionShowRecursiveElements->isChecked();
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowRecursiveDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    if (_ui->checkBox_ShowRecursive->isChecked() != checked) {
+        _ui->checkBox_ShowRecursive->setChecked(checked);
+    }
+    else {
+        _createModelImage();
+    }
+}
+
+// Preserve checkbox-to-action synchronization for recursive visibility.
 void SceneToolController::onCheckBoxShowRecursiveStateChanged(int arg1) {
-    Q_UNUSED(arg1)
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowRecursiveElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowRecursiveDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
     _createModelImage();
 }
 

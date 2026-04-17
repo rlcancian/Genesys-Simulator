@@ -13,11 +13,11 @@
 
 // Dialogs
 // Kernel
-#include "../../../../kernel/simulator/SinkModelComponent.h"
-#include "../../../../kernel/simulator/Attribute.h"
-#include "../../../../kernel/simulator/Counter.h"
-#include "../../../../kernel/simulator/StatisticsCollector.h"
-#include "../../../TraitsApp.h"
+#include "kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/Counter.h"
+#include "kernel/simulator/StatisticsCollector.h"
+#include "kernel/simulator/PluginManager.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
@@ -49,6 +49,7 @@
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
 #include "UtilGUI.h"
+#include "guithememanager.h"
 // PropEditor
 #include "propertyeditor/qtpropertybrowser/qttreepropertybrowser.h"
 #include "animations/AnimationVariable.h"
@@ -56,7 +57,7 @@
 //#include "actions/PasteUndoCommand.h"
 //#include "actions/DeleteUndoCommand.h"
 // @TODO: Should NOT be hardcoded!!! (Used to visualize variables)
-#include "../../../../plugins/data/Variable.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 // std
 #include <string>
 #include <fstream>
@@ -92,6 +93,7 @@
 #include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QTabBar>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace {
@@ -278,13 +280,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _graphvizModelExporter = std::make_unique<GraphvizModelExporter>(simulator,
                                                                      ui->label_ModelGraphic,
                                                                      ui->checkBox_ShowInternals,
+                                                                     ui->checkBox_ShowEditableElements,
                                                                      ui->checkBox_ShowElements,
                                                                      ui->checkBox_ShowRecursive,
                                                                      ui->checkBox_ShowLevels,
                                                                      // Keep synchronization behavior unchanged via a narrow callback dependency.
                                                                      [this]() { return this->_setSimulationModelBasedOnText(); });
     _cppModelExporter = std::make_unique<CppModelExporter>(simulator, ui->plainTextEditCppCode);
-    simulator->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+    simulator->getTraceManager()->setTraceLevel(SystemPreferences::traceLevel());
     simulator->getTraceManager()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);
     simulator->getTraceManager()->addTraceErrorHandler<MainWindow>(this, &MainWindow::_simulatorTraceErrorHandler);
     simulator->getTraceManager()->addTraceReportHandler<MainWindow>(this, &MainWindow::_simulatorTraceReportsHandler);
@@ -454,12 +457,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                                                             ui->actionShowSnap,
                                                                             ui->actionShowGuides,
                                                                             ui->actionShowInternalElements,
+                                                                            ui->actionShowEditableElements,
                                                                             ui->actionShowAttachedElements,
+                                                                            ui->actionShowRecursiveElements,
                                                                             ui->textEdit_Console,
                                                                             &_modelfilename,
                                                                             [this]() { _clearModelEditors(); },
                                                                             [this]() { _generateGraphicalModelFromModel(); },
                                                                             [this]() { on_actionShowInternalElements_triggered(); },
+                                                                            [this]() { on_actionShowEditableElements_triggered(); },
                                                                             [this]() { on_actionShowAttachedElements_triggered(); });
     //
     // property editor
@@ -583,8 +589,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // system preferences
     SystemPreferences::load();
+    GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
     if (SystemPreferences::autoLoadPlugins()) {
-        simulator->getPluginManager()->autoInsertPlugins(_autoLoadPluginsFilename.toStdString());
+        PluginInsertionOptions options;
+        // The main window is still being built here, so autoload must not open install dialogs.
+        // Missing dependency diagnostics are recorded and handled later by DialogPluginManager.
+        simulator->getPluginManager()->autoInsertPlugins(_autoLoadPluginsFilename.toStdString(), true, options);
         // now complete the information
         for (unsigned int i = 0; i < simulator->getPluginManager()->size(); i++) {
             //@TODO: now it's the opportunity to adjust template
@@ -597,10 +607,27 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QRect screenGeometry = QApplication::primaryScreen()->availableGeometry();
         this->resize(screenGeometry.width(), screenGeometry.height());
     }
-    if (SystemPreferences::modelAtStart() == 1) { // NEW MODEL (should be enum
+    if (SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::NewModel) {
         this->on_actionModelNew_triggered();
-    } else  if (SystemPreferences::modelAtStart() == 2) { // LOAD MODEL (should be enum
-        this->_loadGraphicalModel(SystemPreferences::modelfilename());
+    } else if (SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenSpecificModel ||
+               SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenLastModel) {
+        const std::string fileName = SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenLastModel
+                                         ? SystemPreferences::lastModelFilename()
+                                         : SystemPreferences::modelfilename();
+        if (!fileName.empty()) {
+            Model* model = this->_loadGraphicalModel(fileName);
+            if (model != nullptr) {
+                _loaded = true;
+                _initUiForNewModel(model);
+                _actualizeModelTextHasChanged(false);
+                _graphicalModelHasChanged = false;
+                model->setHasChanged(false);
+                SystemPreferences::setLastModelFilename(fileName);
+                SystemPreferences::save();
+            } else {
+                qWarning() << "Could not open startup model from preferences:" << QString::fromStdString(fileName);
+            }
+        }
     }
 
     for (QAction* action : this->findChildren<QAction*>()) {
@@ -616,6 +643,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // finally
     _actualizeActions();
+    QTimer::singleShot(0, this, [this]() {
+        if (_dialogUtilityController == nullptr || simulator == nullptr || simulator->getPluginManager() == nullptr) {
+            return;
+        }
+        List<PluginLoadIssue>* issues = simulator->getPluginManager()->getPluginLoadIssues();
+        if (issues != nullptr && !issues->empty()) {
+            _dialogUtilityController->onActionSimulatorsPluginManagerTriggered(true);
+        }
+    });
     //_actualizeTabPanes();
 }
 

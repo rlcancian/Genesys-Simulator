@@ -16,15 +16,15 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/DummyComponent.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Wait.h"
-#include "../../../../plugins/components/Decide.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/DummyComponent.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Decisions/Wait.h"
+#include "plugins/components/Decisions/Decide.h"
 #include "../../../TraitsApp.h"
 
 Smart_PlacingEntitiesInQueueSets::Smart_PlacingEntitiesInQueueSets() {

@@ -1,7 +1,7 @@
 #ifndef DIALOGMODELINFORMATION_H
 #define DIALOGMODELINFORMATION_H
 
-#include "../../../../../kernel/simulator/ModelInfo.h"
+#include "kernel/simulator/ModelInfo.h"
 
 #include <QDialog>
 #include <string>

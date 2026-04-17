@@ -36,11 +36,11 @@
 #include <QAbstractSpinBox>
 #include <QUndoStack>
 
-#include "../../../../kernel/simulator/Model.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../kernel/simulator/ModelManager.h"
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
 
 namespace {
 class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {

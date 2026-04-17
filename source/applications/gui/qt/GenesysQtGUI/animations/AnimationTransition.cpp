@@ -4,6 +4,7 @@
 #include <QDebug>
 
 #include "AnimationTransition.h"
+#include "graphicals/GraphicalConnectionStyle.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalImageAnimation.h"
 
@@ -28,7 +29,8 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
     _viewSimulation(viewSimulation),
     // Initialize lifecycle flags for idempotent terminal cleanup paths.
     _isStopping(false),
-    _isFinishedHandled(false) {
+    _isFinishedHandled(false),
+    _usesPathAnimation(false) {
     // Abort construction when required input pointers are missing.
     if (_myScene == nullptr || graphicalStartComponent == nullptr || graphicalEndComponent == nullptr) {
         // Log constructor early exit with transition correlation fields.
@@ -87,39 +89,55 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
         destinationComponent = connection->getDestination()->component;
         _graphicalEndComponent = _myScene->findGraphicalModelComponent(destinationComponent->getId());
 
-        // Pega os pontos na tela em que a animação deve ocorrer
-        QList<QPointF> pointsConnection = connection->getPoints();
-
-        // Abort transition setup when the connection geometry does not provide the required points.
-        if (pointsConnection.size() < 4) {
-            _graphicalEndComponent = nullptr;
-            _graphicalConnection = nullptr;
-            // Log constructor early exit when connection geometry cannot build animation path.
-            qInfo() << "GUI AnimationTransition ctor earlyExit reason=insufficientPoints transitionPtr=" << this
-                << "sourceId=" << graphicalStartComponent->getId()
-                << "destinationId=" << graphicalEndComponent->getId()
-                << "pointsCount=" << pointsConnection.size();
-            return;
-        }
-
         // Tamanho para imagem
         const int imageWidth = 50;
         const int imageHeight = 50;
 
-        // Configurando pontos a serem percorridos na animação
-        QPointF startPoint = QPointF(pointsConnection.first().x(), pointsConnection.first().y() - (imageHeight / 2));
-        QPointF firstIntermediatePoint = QPointF(pointsConnection.at(1).x() - (imageWidth / 4),
-                                                 pointsConnection.at(1).y() - (imageHeight / 2));
-        QPointF secondIntermediatePoint = QPointF(pointsConnection.at(2).x() - (imageWidth / 4),
-                                                  pointsConnection.at(2).y() - (imageHeight / 2));
-        QPointF endPoint = QPointF(pointsConnection.last().x() - imageWidth,
-                                   pointsConnection.last().y() - imageHeight / 2);
+        // Pega os pontos na tela em que a animação deve ocorrer
+        QList<QPointF> pointsConnection = connection->getPoints();
+        QPointF startPoint;
+        _usesPathAnimation = connection->usesCurvedStyle();
+        if (_usesPathAnimation) {
+            _pathForAnimation = connection->animationPathForImage(imageWidth, imageHeight);
+            if (_pathForAnimation.length() <= 0.0) {
+                _graphicalEndComponent = nullptr;
+                _graphicalConnection = nullptr;
+                qInfo() << "GUI AnimationTransition ctor earlyExit reason=invalidCurvedPath transitionPtr=" << this
+                    << "sourceId=" << graphicalStartComponent->getId()
+                    << "destinationId=" << graphicalEndComponent->getId();
+                return;
+            }
+            startPoint = GraphicalConnectionStyle::pointAtProgress(_pathForAnimation, 0.0);
+            _pointsForAnimation.append(startPoint);
+            _pointsForAnimation.append(GraphicalConnectionStyle::pointAtProgress(_pathForAnimation, 1.0));
+        } else {
+            // Abort transition setup when the connection geometry does not provide the required points.
+            if (pointsConnection.size() < 4) {
+                _graphicalEndComponent = nullptr;
+                _graphicalConnection = nullptr;
+                // Log constructor early exit when connection geometry cannot build animation path.
+                qInfo() << "GUI AnimationTransition ctor earlyExit reason=insufficientPoints transitionPtr=" << this
+                    << "sourceId=" << graphicalStartComponent->getId()
+                    << "destinationId=" << graphicalEndComponent->getId()
+                    << "pointsCount=" << pointsConnection.size();
+                return;
+            }
 
-        // Adiciona novos pontos à lista
-        _pointsForAnimation.append(startPoint);
-        _pointsForAnimation.append(firstIntermediatePoint);
-        _pointsForAnimation.append(secondIntermediatePoint);
-        _pointsForAnimation.append(endPoint);
+            // Configurando pontos a serem percorridos na animação
+            startPoint = QPointF(pointsConnection.first().x(), pointsConnection.first().y() - (imageHeight / 2));
+            QPointF firstIntermediatePoint = QPointF(pointsConnection.at(1).x() - (imageWidth / 4),
+                                                     pointsConnection.at(1).y() - (imageHeight / 2));
+            QPointF secondIntermediatePoint = QPointF(pointsConnection.at(2).x() - (imageWidth / 4),
+                                                      pointsConnection.at(2).y() - (imageHeight / 2));
+            QPointF endPoint = QPointF(pointsConnection.last().x() - imageWidth,
+                                       pointsConnection.last().y() - imageHeight / 2);
+
+            // Adiciona novos pontos à lista
+            _pointsForAnimation.append(startPoint);
+            _pointsForAnimation.append(firstIntermediatePoint);
+            _pointsForAnimation.append(secondIntermediatePoint);
+            _pointsForAnimation.append(endPoint);
+        }
 
         // Carrega uma imagem
         _imageAnimation = new GraphicalImageAnimation(startPoint, imageWidth, imageHeight,
@@ -133,7 +151,8 @@ AnimationTransition::AnimationTransition(ModelGraphicsScene* myScene, ModelCompo
             << "destinationId=" << graphicalEndComponent->getId()
             << "ready=" << isReadyToRun()
             << "hasImage=" << (_imageAnimation != nullptr)
-            << "pointsCount=" << _pointsForAnimation.size();
+            << "pointsCount=" << _pointsForAnimation.size()
+            << "usesPathAnimation=" << _usesPathAnimation;
     }
 }
 
@@ -362,6 +381,17 @@ void AnimationTransition::onAnimationValueChanged(const QVariant& value) {
 
     // Progresso atual da animação (valor entre startValue e endValue)
     _currentProgress = value.toReal();
+
+    if (_usesPathAnimation) {
+        if (_pathForAnimation.length() <= 0.0) {
+            qInfo() << "GUI AnimationTransition onAnimationValueChanged deviation=invalidCurvedPath"
+                << "transitionPtr=" << this;
+            return;
+        }
+        _imageAnimation->setPos(GraphicalConnectionStyle::pointAtProgress(_pathForAnimation, _currentProgress));
+        _myScene->update();
+        return;
+    }
 
     // Compute total path distance and exit on degenerate geometry.
     int numSegments = _pointsForAnimation.size() - 1;

@@ -12,14 +12,14 @@
 
 #include "Smart_BatchSeparate.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/Attribute.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Batch.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Separate.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Attribute.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Grouping/Batch.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/Grouping/Separate.h"
 #include "../../../TraitsApp.h"
 
 Smart_BatchSeparate::Smart_BatchSeparate() {

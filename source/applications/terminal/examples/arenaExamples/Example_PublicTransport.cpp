@@ -16,24 +16,24 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/DummyComponent.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Wait.h"
-#include "../../../../plugins/components/Route.h"
-#include "../../../../plugins/components/Enter.h"
-#include "../../../../plugins/components/PickUp.h"
-#include "../../../../plugins/components/DropOff.h"
-#include "../../../../plugins/components/Search.h"
-#include "../../../../plugins/data/EntityGroup.h"
-#include "../../../../plugins/data/Station.h"
-#include "../../../../plugins/data/Queue.h"
-#include "../../../../plugins/data/Variable.h"
+#include "plugins/components/DiscreteProcessing/DummyComponent.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Decisions/Wait.h"
+#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/MaterialHandling/Enter.h"
+#include "plugins/components/Decisions/PickUp.h"
+#include "plugins/components/Decisions/DropOff.h"
+#include "plugins/components/Decisions/Search.h"
+#include "plugins/data/DiscreteProcessing/EntityGroup.h"
+#include "plugins/data/DiscreteProcessing/Station.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 
 Example_PublicTransport::Example_PublicTransport() {
 }

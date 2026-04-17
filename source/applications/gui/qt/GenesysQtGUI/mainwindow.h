@@ -13,9 +13,9 @@
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/PropertyGenesys.h"
-#include "../../../../kernel/simulator/TraceManager.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/PropertyGenesys.h"
+#include "kernel/simulator/TraceManager.h"
 #include "graphicals/ModelGraphicsScene.h"
 
 QT_BEGIN_NAMESPACE
@@ -177,7 +177,9 @@ private slots:
 
 	void on_actionGModelComponentBreakpoint_triggered();
 	void on_actionShowInternalElements_triggered();
+	void on_actionShowEditableElements_triggered();
 	void on_actionShowAttachedElements_triggered();
+	void on_actionShowRecursiveElements_triggered();
 
 
     // widget events
@@ -200,6 +202,7 @@ private slots:
 
 	void on_checkBox_ShowElements_stateChanged(int arg1);
 	void on_checkBox_ShowInternals_stateChanged(int arg1);
+	void on_checkBox_ShowEditableElements_stateChanged(int arg1);
 	void on_checkBox_ShowRecursive_stateChanged(int arg1);
 	void on_checkBox_ShowLevels_stateChanged(int arg1);
 

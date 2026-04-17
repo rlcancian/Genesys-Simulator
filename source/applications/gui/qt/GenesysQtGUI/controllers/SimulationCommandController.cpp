@@ -2,7 +2,7 @@
 
 #include "controllers/SimulationController.h"
 #include "animations/AnimationTransition.h"
-#include "../../../../../kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelSimulation.h"
 #include <QDebug>
 
 SimulationCommandController::SimulationCommandController(

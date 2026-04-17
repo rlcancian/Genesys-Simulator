@@ -6,26 +6,28 @@
 #include "../dialogs/dialogBreakpoint.h"
 #include "../dialogs/dialogpluginmanager.h"
 #include "../dialogs/dialogsystempreferences.h"
+#include "../guithememanager.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../tools/dataanalyzer/DataAnalyzerWindow.h"
 #include "../tools/optimizer/OptimizerWindow.h"
 
-#include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/simulator/Model.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
-#include "../../../../../kernel/simulator/ModelSimulation.h"
-#include "../../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/SimulationControlAndResponse.h"
-#include "../../../../../kernel/simulator/LicenceManager.h"
-#include "../../../../../kernel/simulator/Entity.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/LicenceManager.h"
+#include "kernel/simulator/Entity.h"
 #include "../../../../../tools/FitterDefaultImpl.h"
 #include "../../../../../tools/HypothesisTesterDefaultImpl1.h"
 #include "../../../../../tools/OptimizerDefaultImpl1.h"
 #include "../../../../../tools/SolverDefaultImpl1.h"
 
+#include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -61,6 +63,7 @@
 #include <QRegularExpression>
 #include <QShortcut>
 #include <QSet>
+#include <QSignalBlocker>
 #include <QSpinBox>
 #include <QStatusBar>
 #include <QTableWidget>
@@ -1164,6 +1167,10 @@ void DialogUtilityController::onActionViewConfigureTriggered() {
     auto* showRule = new QCheckBox(QObject::tr("Show ruler"), &dialog);
     auto* showGuides = new QCheckBox(QObject::tr("Show guides"), &dialog);
     auto* snapToGrid = new QCheckBox(QObject::tr("Snap to grid"), &dialog);
+    auto* showStatistics = new QCheckBox(QObject::tr("Statistics elements"), &dialog);
+    auto* showEditable = new QCheckBox(QObject::tr("Editable elements"), &dialog);
+    auto* showShared = new QCheckBox(QObject::tr("Shared elements"), &dialog);
+    auto* showRecursive = new QCheckBox(QObject::tr("Recursive expansion"), &dialog);
     auto* gridInterval = new QSpinBox(&dialog);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
 
@@ -1171,6 +1178,10 @@ void DialogUtilityController::onActionViewConfigureTriggered() {
     showRule->setChecked(_graphicsView->isRuleVisible());
     showGuides->setChecked(_graphicsView->isGuidesVisible());
     snapToGrid->setChecked(_ui->actionShowSnap->isChecked());
+    showStatistics->setChecked(_ui->actionShowInternalElements->isChecked());
+    showEditable->setChecked(_ui->actionShowEditableElements->isChecked());
+    showShared->setChecked(_ui->actionShowAttachedElements->isChecked());
+    showRecursive->setChecked(_ui->actionShowRecursiveElements->isChecked());
     gridInterval->setRange(5, 200);
     gridInterval->setValue(static_cast<int>(scene->grid()->interval));
 
@@ -1179,10 +1190,15 @@ void DialogUtilityController::onActionViewConfigureTriggered() {
     layout->addRow(showGuides);
     layout->addRow(snapToGrid);
     layout->addRow(QObject::tr("Grid interval"), gridInterval);
+    layout->addRow(new QLabel(QObject::tr("Model data definitions"), &dialog));
+    layout->addRow(showStatistics);
+    layout->addRow(showEditable);
+    layout->addRow(showShared);
+    layout->addRow(showRecursive);
     layout->addRow(buttons);
 
     // Keep the same application path by toggling existing QAction handlers.
-    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, scene, showGrid, showRule, showGuides, snapToGrid, gridInterval, &dialog]() {
+    QObject::connect(buttons, &QDialogButtonBox::accepted, &dialog, [this, scene, showGrid, showRule, showGuides, snapToGrid, showStatistics, showEditable, showShared, showRecursive, gridInterval, &dialog]() {
         scene->grid()->interval = static_cast<unsigned int>(gridInterval->value());
         if (scene->isGridVisible()) {
             scene->setGridVisible(false);
@@ -1196,6 +1212,41 @@ void DialogUtilityController::onActionViewConfigureTriggered() {
         _ui->actionShowGuides->trigger();
         _ui->actionShowSnap->setChecked(snapToGrid->isChecked());
         scene->setSnapToGrid(snapToGrid->isChecked());
+
+        const bool statisticsVisible = showStatistics->isChecked();
+        const bool editableVisible = showEditable->isChecked();
+        const bool sharedVisible = showShared->isChecked();
+        const bool recursiveVisible = showRecursive->isChecked();
+
+        // Apply data-definition category visibility directly so Configure View does not rely on action toggling order.
+        {
+            const QSignalBlocker blockStatisticsAction(_ui->actionShowInternalElements);
+            const QSignalBlocker blockEditableAction(_ui->actionShowEditableElements);
+            const QSignalBlocker blockSharedAction(_ui->actionShowAttachedElements);
+            const QSignalBlocker blockRecursiveAction(_ui->actionShowRecursiveElements);
+            const QSignalBlocker blockStatisticsCheckbox(_ui->checkBox_ShowInternals);
+            const QSignalBlocker blockEditableCheckbox(_ui->checkBox_ShowEditableElements);
+            const QSignalBlocker blockSharedCheckbox(_ui->checkBox_ShowElements);
+            const QSignalBlocker blockRecursiveCheckbox(_ui->checkBox_ShowRecursive);
+
+            _ui->actionShowInternalElements->setChecked(statisticsVisible);
+            _ui->actionShowEditableElements->setChecked(editableVisible);
+            _ui->actionShowAttachedElements->setChecked(sharedVisible);
+            _ui->actionShowRecursiveElements->setChecked(recursiveVisible);
+            _ui->checkBox_ShowInternals->setChecked(statisticsVisible);
+            _ui->checkBox_ShowEditableElements->setChecked(editableVisible);
+            _ui->checkBox_ShowElements->setChecked(sharedVisible);
+            _ui->checkBox_ShowRecursive->setChecked(recursiveVisible);
+        }
+
+        scene->setShowStatisticsDataDefinitions(statisticsVisible);
+        scene->setShowEditableDataDefinitions(editableVisible);
+        scene->setShowSharedDataDefinitions(sharedVisible);
+        scene->setShowRecursiveDataDefinitions(recursiveVisible);
+        scene->requestGraphicalDataDefinitionsSync();
+        if (_createModelImage) {
+            _createModelImage();
+        }
         dialog.accept();
     });
     QObject::connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
@@ -1204,15 +1255,21 @@ void DialogUtilityController::onActionViewConfigureTriggered() {
 
 // Preserve simulator preferences dialog parenting and non-blocking show behavior.
 void DialogUtilityController::onActionSimulatorPreferencesTriggered() {
-    DialogSystemPreferences* dialog = new DialogSystemPreferences(_ownerWidget);
+    DialogSystemPreferences* dialog = new DialogSystemPreferences(_simulator, _ownerWidget);
+    QObject::connect(dialog, &QDialog::accepted, dialog, [this]() {
+        GuiThemeManager::applyModelGraphicsTheme(_graphicsView);
+    });
     dialog->show();
 }
 
 // Preserve plugin manager dialog parenting and non-blocking show behavior.
-void DialogUtilityController::onActionSimulatorsPluginManagerTriggered() {
+void DialogUtilityController::onActionSimulatorsPluginManagerTriggered(bool showProblemPlugins) {
     DialogPluginManager* dialog = new DialogPluginManager(_ownerWidget);
     dialog->setSimulator(_simulator);
     dialog->setPluginCatalogRefreshCallback(_reloadPluginCatalog);
+    if (showProblemPlugins) {
+        dialog->showProblemPluginsTab();
+    }
     dialog->show();
 }
 
