@@ -63,6 +63,7 @@
 #include "components/Write.h"
 #include "components/LSODE.h"
 #include "components/OLD_ODEelement.h"
+#include "components/bacteria/BacteriaColony.h"
 #include "components/network/DefaultNode.h"
 #include "components/network/PetriPlace.h"
 
@@ -79,6 +80,7 @@
 #include "data/Failure.h"
 #include "data/File.h"
 #include "data/Formula.h"
+#include "data/GroProgram.h"
 #include "data/Label.h"
 #include "data/Schedule.h"
 #include "data/Sequence.h"
@@ -128,11 +130,13 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
     filenames->insert("formula.so");
+    filenames->insert("groprogram.so");
     filenames->insert("label.so");
     filenames->insert("queue.so");
     filenames->insert("resource.so");
     filenames->insert("variable.so");
     filenames->insert("batch.so");
+    filenames->insert("bacteriacolony.so");
     filenames->insert("bionetwork.so");
     filenames->insert("bioparameter.so");
     filenames->insert("bioreaction.so");
@@ -246,6 +250,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Failure::GetPluginInformation;
     else if (fn == "formula.so")
         GetInfo = &Formula::GetPluginInformation;
+    else if (fn == "groprogram.so")
+        GetInfo = &GroProgram::GetPluginInformation;
     else if (fn == "label.so")
         GetInfo = &Label::GetPluginInformation;
     else if (fn == "queue.so")
@@ -256,6 +262,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Variable::GetPluginInformation;
     else if (fn == "batch.so")
         GetInfo = &Batch::GetPluginInformation;
+    else if (fn == "bacteriacolony.so")
+        GetInfo = &BacteriaColony::GetPluginInformation;
     else if (fn == "bionetwork.so")
         GetInfo = &BioNetwork::GetPluginInformation;
     else if (fn == "bioparameter.so")
