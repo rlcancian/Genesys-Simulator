@@ -20,6 +20,7 @@
 #include <QSet>
 #include <QDebug>
 #include <functional>
+#include <cctype>
 #include <set>
 
 namespace {
@@ -169,6 +170,68 @@ namespace {
         }
     }
 
+    bool isPositiveIndexSuffix(const std::string& suffix) {
+        if (suffix.empty()) {
+            return false;
+        }
+
+        std::string indexText = suffix;
+        if (indexText.size() > 2 && indexText.front() == '[' && indexText.back() == ']') {
+            indexText = indexText.substr(1, indexText.size() - 2);
+        }
+
+        if (indexText.empty()) {
+            return false;
+        }
+
+        for (const char character : indexText) {
+            if (!std::isdigit(static_cast<unsigned char>(character))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool attachmentNameMatchesEditableControl(const std::string& attachmentName,
+                                              const GenesysPropertyDescriptor& descriptor) {
+        if (attachmentName.empty() || descriptor.readOnly || !descriptor.isClass) {
+            return false;
+        }
+
+        if (attachmentName == descriptor.displayName || attachmentName == descriptor.technicalTypeName) {
+            return true;
+        }
+
+        if (descriptor.isList
+            && !descriptor.technicalTypeName.empty()
+            && attachmentName.rfind(descriptor.technicalTypeName, 0) == 0) {
+            return isPositiveIndexSuffix(attachmentName.substr(descriptor.technicalTypeName.size()));
+        }
+
+        return false;
+    }
+
+    void collectEditableAttachedDataDefinitionsFromComponent(ModelComponent* component,
+                                                             QSet<ModelDataDefinition*>* editableDefinitions) {
+        if (component == nullptr || editableDefinitions == nullptr
+            || component->getProperties() == nullptr || component->getAttachedData() == nullptr) {
+            return;
+        }
+
+        for (SimulationControl* control : *component->getProperties()->list()) {
+            const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
+            for (const auto& attachedData : *component->getAttachedData()) {
+                ModelDataDefinition* dataDefinition = attachedData.second;
+                if (dataDefinition == nullptr || isStatisticsDataDefinition(dataDefinition)) {
+                    continue;
+                }
+                if (attachmentNameMatchesEditableControl(attachedData.first, descriptor)) {
+                    editableDefinitions->insert(dataDefinition);
+                }
+            }
+        }
+    }
+
     QSet<ModelDataDefinition*> editableDataDefinitionsForModel(Model* model) {
         QSet<ModelDataDefinition*> editableDefinitions;
         if (model == nullptr) {
@@ -182,6 +245,7 @@ namespace {
                     collectEditableReferencedDataDefinitions(component->getProperties(),
                                                              &editableDefinitions,
                                                              &recursionPath);
+                    collectEditableAttachedDataDefinitionsFromComponent(component, &editableDefinitions);
                 }
             }
         }
