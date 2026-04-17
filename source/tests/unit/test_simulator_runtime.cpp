@@ -5809,6 +5809,19 @@ TEST(SimulatorRuntimeTest, BioReactionRejectsUnsupportedReversibleFlag) {
     EXPECT_EQ(network.getLastStatus(), "Failed");
 }
 
+TEST(SimulatorRuntimeTest, BioReactionRejectsEmptyStoichiometricEffect) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioReactionProbe reaction(model, "NoStoichiometry");
+    reaction.setRateConstant(0.1);
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("at least one reactant or product"), std::string::npos);
+}
+
 TEST(SimulatorRuntimeTest, BioReactionPersistencePreservesKineticLawExpression) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -5861,6 +5874,48 @@ TEST(SimulatorRuntimeTest, BioNetworkSimulatesFirstOrderMassActionReaction) {
     EXPECT_NEAR(b.getAmount(), 10.0 - 10.0 * std::exp(-0.1), 1e-4);
     EXPECT_NE(network.getLastResponsePayload().find("\"A\""), std::string::npos);
     EXPECT_NE(network.getLastResponsePayload().find("\"B\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesZeroOrderSynthesisReaction) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe product(model, "P");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "SynthesisToP");
+    reaction.addProduct("P", 1.0);
+    reaction.setRateConstant(2.0);
+
+    BioNetworkProbe network(model, "SynthesisNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(product.getAmount(), 2.0, 1e-9);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesDegradationReactionWithoutProducts) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe substrate(model, "S");
+    substrate.setInitialAmount(10.0);
+    substrate.setAmount(10.0);
+
+    BioReactionProbe reaction(model, "SDegradation");
+    reaction.addReactant("S", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "DegradationNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(substrate.getAmount(), 10.0 * std::exp(-0.1), 1e-4);
 }
 
 TEST(SimulatorRuntimeTest, BioNetworkUsesExplicitSpeciesAndReactionMembership) {

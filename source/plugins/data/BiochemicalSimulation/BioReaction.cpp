@@ -76,7 +76,7 @@ BioReaction::BioReaction(Model* model, std::string name) : ModelDataDefinition(m
 PluginInformation* BioReaction::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioReaction>(), &BioReaction::LoadInstance, &BioReaction::NewInstance);
 	info->setCategory("Biochemical simulation");
-	info->setDescriptionHelp("Irreversible biochemical reaction with reactants, products, stoichiometry, mass-action rate constants, and optional kinetic-law expressions.");
+	info->setDescriptionHelp("Irreversible biochemical reaction with reactants, products, modifiers, stoichiometry, mass-action rate constants, and optional kinetic-law expressions.");
 	return info;
 }
 
@@ -156,12 +156,8 @@ bool BioReaction::_check(std::string& errorMessage) {
 		errorMessage += "BioReaction must define a non-empty name. ";
 		resultAll = false;
 	}
-	if (_reactants.empty()) {
-		errorMessage += "BioReaction \"" + getName() + "\" must define at least one reactant. ";
-		resultAll = false;
-	}
-	if (_products.empty()) {
-		errorMessage += "BioReaction \"" + getName() + "\" must define at least one product. ";
+	if (_reactants.empty() && _products.empty()) {
+		errorMessage += "BioReaction \"" + getName() + "\" must define at least one reactant or product. ";
 		resultAll = false;
 	}
 	resultAll = checkTerms(_reactants, "reactant", errorMessage) && resultAll;

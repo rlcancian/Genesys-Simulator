@@ -8,16 +8,17 @@
 #include "kernel/simulator/PluginInformation.h"
 
 /**
- * Irreversible mass-action reaction definition.
+ * Irreversible biochemical reaction definition.
  *
  * Reactants, products, and modifiers are stored by species name so the reaction
  * can be persisted independently from runtime pointers. Modifiers participate in
- * kinetic laws without being consumed or produced. The current execution contract
- * supports direct rate constants, a BioParameter reference, or an optional
- * kinetic-law expression that resolves BioSpecies/BioParameter names at
- * BioNetwork execution time. Reversible reactions are represented for future
- * compatibility but are rejected by validation and by BioNetwork execution until
- * reverse kinetics are defined.
+ * kinetic laws without being consumed or produced. Reactions may omit reactants
+ * for synthesis or omit products for degradation, but must define at least one
+ * reactant or product. The current execution contract supports direct rate
+ * constants, a BioParameter reference, or an optional kinetic-law expression that
+ * resolves BioSpecies/BioParameter names at BioNetwork execution time. Reversible
+ * reactions are represented for future compatibility but are rejected by
+ * validation and by BioNetwork execution until reverse kinetics are defined.
  */
 class BioReaction : public ModelDataDefinition {
 public:
