@@ -1,27 +1,28 @@
 # GRO Context Memory
 
+This is the canonical and only active context memory file for the GRO AI line.
+
+Older or generic memory files must not be used as active context memory for this
+AI. In particular, `ContextMemory.md`, `ContextMemmory.md`, and
+`documentation/developers/GRO_context.md` are obsolete for active GRO memory.
+If older memory files contain instructions that contradict this file, those
+instructions are considered obsolete or consolidated here.
+
 ## Canonical Status
 
 - **Agent name:** GRO.
-- **Primary role:** coordinated AI developer responsible for the Gro language and
-  bacteria/colony simulation integration line in GenESyS.
-- **Current objective:** evolve GenESyS toward plugin-based execution of
-  Gro-like microorganism behavior without making the simulation kernel depend on
-  Gro syntax, biological semantics, or Gro-specific runtime state.
+- **Primary role:** coordinated AI developer responsible for the Gro language
+  and bacteria/colony simulation integration line in GenESyS.
+- **Canonical memory file:** `GRO_ContextMemory.md` in the repository root.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
-- **Integration PR status:** integration pull request `#370` from
-  `WiP20261_GRO` to `WiP20261` exists for this work line, but GitHub reports it
-  as closed and merged. As of the latest synchronization recorded below,
-  `origin/WiP20261` already contains the previous GRO branch history through
-  merge commit `2114c92c`; the current GRO branch now only differs from
-  `origin/WiP20261` by later context-only synchronization commits.
-- **Immediate branch objective:** keep `WiP20261_GRO` synchronized with
-  `origin/WiP20261` so the branch remains cleanly integrable into the shared
-  base.
-- **Only persistent memory file:** `documentation/developers/GRO_context.md`.
-- **Deprecated file:** `documentation/developers/communication.md` is no longer
-  used and must not exist on the GRO branch.
+- **Immediate objective:** keep `WiP20261_GRO` synchronized with
+  `origin/WiP20261` and ready for clean integration while continuing future
+  plugin-only Gro work.
+- **Integration PR status:** PR `#370` from `WiP20261_GRO` to `WiP20261` exists
+  and GitHub reported it closed and merged. Its merge commit is `2114c92c`.
+  After that merge, `WiP20261_GRO` received context-only commits so the current
+  branch differs from `origin/WiP20261` only by GRO memory updates.
 
 ## Git Policy
 
@@ -30,12 +31,11 @@
 - Use the existing `origin` remote.
 - Do not merge `WiP20261_GRO` back into `WiP20261` unless the user explicitly
   asks for that integration.
-- Before each important push, run `git fetch origin` and merge
+- Before important pushes, run `git fetch origin` and merge
   `origin/WiP20261` into `WiP20261_GRO` using merge, not rebase.
-- Make small, frequent, coherent commits.
+- Make small, coherent commits.
 - GRO has autonomy to run routine Git operations without asking the user:
   stage, commit, fetch, merge, pull, and push.
-- Do not wait for user confirmation for routine Git operations.
 - Ask for confirmation only for destructive operations, relevant ambiguity, or
   exceptional risk.
 - If local unfinished work blocks synchronization, use a temporary stash instead
@@ -46,13 +46,10 @@
 - Conversation with the user is in Portuguese.
 - Source code, identifiers, Doxygen, code comments, and internal technical
   documentation added to the repository must remain in English.
-- `GRO_context.md` is the single reliable memory between sessions. It must stay
-  concise, cumulative, and operationally useful.
-- Do not use `documentation/developers/communication.md`.
+- Do not use shared or generic root memory files as active memory for GRO.
+- Do not use `documentation/developers/GRO_context.md` as active memory.
 - Do not implement product code before inspecting the relevant current code and
   restoring context from this file.
-- For ordinary approved follow-up implementation on `WiP20261_GRO`, proceed with
-  pragmatic autonomy and record the resulting decisions here.
 
 ## Technical Background
 
@@ -61,20 +58,20 @@
 - `ModelComponent` is the base class for simulation behavior blocks.
 - `ModelDataDefinition` is the base class for reusable model data and supporting
   infrastructure.
-- `ModelSimulation` owns the global event-driven simulation progression and
-  exposes `getSimulatedTime()`.
+- `ModelSimulation` owns global event-driven simulation progression and exposes
+  `getSimulatedTime()`.
 - `PluginManager`, `Plugin`, `PluginInformation`, and `PluginConnector_if`
   handle plugin discovery, registration, metadata, and instantiation.
 - `PluginConnectorDummyImpl1` is the current static connector table for built-in
-  plugin registration. It is an integration-sensitive file because multiple
-  plugin lines may need to register new plugin filenames and factories there.
+  plugin registration. It is integration-sensitive because multiple plugin
+  lines may register new plugin filenames and factories there.
 - Existing parser infrastructure (`Parser_if`, `ParserDefaultImpl2`,
   `genesyspp_driver`, Flex/Bison sources) is expression-oriented and model-aware;
   it is not the intended place for the Gro parser.
 - Gro parsing and Gro runtime support should remain plugin-side unless a future
   kernel integration need is explicitly justified.
 
-## Product Decisions So Far
+## Product Decisions
 
 - Start with `BacteriaColony` rather than individual `Bacteria` as the first
   product component.
@@ -116,8 +113,8 @@
 - **Purpose:** first Gro-inspired biological simulation component for bacteria
   colony behavior.
 - **Current properties/state:** `GroProgram` reference, `SimulationStep`,
-  `InitialColonyTime`, current internal colony time, `InitialPopulation`, current
-  population summary, `GridWidth`, and `GridHeight`.
+  `InitialColonyTime`, current internal colony time, `InitialPopulation`,
+  current population summary, `GridWidth`, and `GridHeight`.
 - **Current behavior:** can initialize colony runtime state between replications
   and advance internal colony time by one configured simulation step.
 - **Connectivity metadata:** registered as a self-contained source/sink-style
@@ -138,41 +135,53 @@
 ### Tests
 
 - **File:** `source/tests/unit/test_runtime_pluginmanager.cpp`.
-- **Changes:** runtime plugin manager coverage now checks discovery/connection
-  of `groprogram.so` and `bacteriacolony.so`; it also creates `GroProgram` and
+- **Changes:** runtime plugin manager coverage checks discovery/connection of
+  `groprogram.so` and `bacteriacolony.so`; it also creates `GroProgram` and
   `BacteriaColony`, configures the colony, initializes replication state, and
   verifies internal time advancement from `2.0` to `2.25`.
+
+## Relevant Files Changed By GRO
+
+- `GRO_ContextMemory.md`
+- `documentation/developers/GRO_context.md` (obsolete memory file removed after
+  migration)
+- `source/plugins/data/GroProgram.h`
+- `source/plugins/data/GroProgram.cpp`
+- `source/plugins/components/bacteria/BacteriaColony.h`
+- `source/plugins/components/bacteria/BacteriaColony.cpp`
+- `source/plugins/PluginConnectorDummyImpl1.cpp`
+- `source/tests/unit/test_runtime_pluginmanager.cpp`
 
 ## Branch And Commit State
 
 - `WiP20261_GRO` was created from updated `WiP20261` and published to
   `origin/WiP20261_GRO`.
 - The branch tracks `origin/WiP20261_GRO`.
-- The shared base branch is `WiP20261`.
-- The GRO branch is `WiP20261_GRO`.
-- Integration PR `#370` from `WiP20261_GRO` into `WiP20261` exists for the
-  branch line and is closed/merged. If a later PR is opened and GitHub reports it
-  as not mergeable, first synchronize `WiP20261_GRO` with `origin/WiP20261`,
-  resolve conflicts locally, validate, and push the synchronized branch.
-- Published commits before this cleanup:
+- Historical GRO commits:
   - `41666d6f Add GRO developer coordination memory`
   - `b42c572f Add initial Gro bacteria colony plugins`
   - `6d1281d1 Record GRO branch workflow validation`
   - `a169884b Record GRO branch publication`
-- A prior temporary stash used during branch splitting was dropped after the
-  work was committed.
-- The previous merge conflict in `source/plugins/PluginConnectorDummyImpl1.cpp`
-  was resolved by preserving upstream biological plugin registrations and adding
-  GRO plugin registrations.
+  - `b5a6f9d8 Consolidate GRO context memory`
+  - `ec689a3b Record GRO session closure`
+- Base synchronization commits:
+  - `2114c92c Merge WiP20261_GRO into WiP20261 (#370)`
+  - `d2e1255b Record GRO base synchronization`
+  - `9994d96c Record GRO synchronization commit hash`
+  - `8a50089d Record actual GRO PR state`
+- Latest known validation before this migration:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
 
-## Validation Status
+## Current Branch State
 
-- `cmake --preset tests-kernel-unit` succeeded on `WiP20261_GRO`.
-- `cmake --build --preset tests-kernel-unit-run` succeeded on
-  `WiP20261_GRO`.
-- Focused runtime validation succeeded:
-  `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
-  passed 6/6 tests.
+- Current branch: `WiP20261_GRO`.
+- Current base: `origin/WiP20261`.
+- The branch was confirmed up to date with `origin/WiP20261` immediately before
+  this memory migration.
+- The current changes are memory-only: create root `GRO_ContextMemory.md` and
+  remove obsolete `documentation/developers/GRO_context.md`.
+- No new product functionality is part of this migration.
 
 ## Pending Work
 
@@ -224,59 +233,43 @@
 - Resolved a connector conflict with upstream biological plugins.
 - Pushed branch-local commits.
 
-### 2026-04-17 - Canonical Memory Cleanup
+### 2026-04-17 - Canonical Memory Cleanup In `documentation/developers`
 
-- `GRO_context.md` became the only canonical persistent memory file.
+- `documentation/developers/GRO_context.md` became the temporary canonical
+  persistent memory file at that time.
 - `documentation/developers/communication.md` was deprecated and removed from
   the branch.
 - Git policy was updated to allow autonomous routine stage, commit, fetch,
   merge, pull, and push operations.
 
-### 2026-04-17 - Session Closure
-
-- The user ended the current conversation and asked to confirm the persistent
-  memory file used by GRO.
-- The canonical memory file is `documentation/developers/GRO_context.md`.
-- `documentation/developers/communication.md` remains deprecated and absent
-  from `WiP20261_GRO`.
-- Current working branch is `WiP20261_GRO`, tracking
-  `origin/WiP20261_GRO`.
-- The branch is ready for the next GRO session to restore context from this
-  file before continuing technical work.
-- The next session should begin by reading this file, checking branch status,
-  fetching `origin`, and merging `origin/WiP20261` into `WiP20261_GRO` if
-  needed before further implementation.
-
 ### 2026-04-17 - Base Synchronization For Integration
 
 - User reported that the shared base branch `WiP20261` advanced and that the
   integration PR `WiP20261_GRO` -> `WiP20261` was not mergeable at that moment.
-- Objective for this session: prepare `WiP20261_GRO` for clean integration into
-  `WiP20261`; no new product functionality should be implemented.
 - Ran `git fetch origin`; `origin/WiP20261` advanced from `758127ef` to
   `2114c92c`.
-- Observed that `origin/WiP20261` already contains the GRO branch history via
+- Observed that `origin/WiP20261` already contained the GRO branch history via
   merge commit `2114c92c` (`Merge WiP20261_GRO into WiP20261 (#370)`).
 - Merged `origin/WiP20261` into local `WiP20261_GRO`.
 - Merge result: fast-forward from `ec689a3b` to `2114c92c`.
 - Conflict status: no conflicts occurred.
 - Conflicted files: none.
 - Files brought in by the fast-forward: `documentation/developers/TINKERCELL_context.md`.
-- Resolution approach: no manual conflict resolution was needed; the branch was
-  moved forward to the current shared base while preserving all GRO functional
-  changes and context files.
-- Relevant commit hashes:
-  - Previous local `WiP20261_GRO` head before synchronization: `ec689a3b`.
-  - Synchronized base and local head after merge: `2114c92c`.
-  - Context update commit recording this synchronization: `d2e1255b`
-    (`Record GRO base synchronization`).
-  - Context hash-record commit: `9994d96c`
-    (`Record GRO synchronization commit hash`).
-- Expected branch state after committing this context update and pushing:
-  `WiP20261_GRO` is synchronized with `origin/WiP20261` plus this operational
-  context record, and should be ready for merge unless GitHub reports a
-  non-code policy/check blocker.
 - GitHub verification after push found PR `#370`
   (`WiP20261_GRO` -> `WiP20261`) closed and merged, with merge commit
   `2114c92c`. A search for an open PR with head `WiP20261_GRO` and base
   `WiP20261` returned no results.
+
+### 2026-04-17 - Root Canonical Memory Migration
+
+- User instructed that this AI must no longer use a generic shared root
+  `ContextMemory.md` or a memory file under `documentation/developers/`.
+- Identified the previously active memory file:
+  `documentation/developers/GRO_context.md`.
+- No generic root `ContextMemory.md` existed in the GenESyS repository at the
+  time of migration.
+- Migrated useful GRO context into root `GRO_ContextMemory.md`.
+- `GRO_ContextMemory.md` is now the canonical and only active memory file for
+  this AI.
+- `documentation/developers/GRO_context.md` was removed from this branch after
+  migration and must not be used as active memory.
