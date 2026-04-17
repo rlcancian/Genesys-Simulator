@@ -14,14 +14,14 @@
 #include "./Smart_ResourceSets.h"
 
 // Including the GEnSys Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Components for the model
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Decide.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Decisions/Decide.h"
 #include "../../../TraitsApp.h"
 
 Smart_ResourceSets::Smart_ResourceSets() {

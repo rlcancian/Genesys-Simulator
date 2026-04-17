@@ -16,15 +16,15 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Wait.h"
-#include "../../../../plugins/components/Search.h"
-#include "../../../../plugins/components/Remove.h"
-#include "../../../../plugins/components/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Decisions/Wait.h"
+#include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 
 Smart_HoldSearchRemove::Smart_HoldSearchRemove() {
 }

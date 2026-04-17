@@ -1,5 +1,7 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cmath>
+#include <cstdlib>
 #include <fstream>
 #include <memory>
 #include <sstream>
@@ -16,59 +18,69 @@
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Persistence.h"
-#include "plugins/data/Queue.h"
-#include "plugins/data/Variable.h"
-#include "plugins/data/Resource.h"
-#include "plugins/data/Failure.h"
-#include "plugins/data/Formula.h"
-#include "plugins/data/Schedule.h"
-#include "plugins/data/Sequence.h"
-#include "plugins/data/SignalData.h"
-#include "plugins/data/Station.h"
-#include "plugins/data/Set.h"
-#include "plugins/data/Label.h"
-#include "plugins/data/Storage.h"
-#include "plugins/data/File.h"
-#include "plugins/data/CppCompiler.h"
-#include "plugins/data/SPICERunner.h"
-#include "plugins/data/BioSimulatorRunner.h"
-#include "plugins/data/AssignmentItem.h"
-#include "plugins/data/DummyElement.h"
+#include "kernel/simulator/Plugin.h"
+#include "plugins/PluginConnectorDummyImpl1.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Failure.h"
+#include "plugins/data/DiscreteProcessing/Formula.h"
+#include "plugins/data/DiscreteProcessing/Schedule.h"
+#include "plugins/data/DiscreteProcessing/Sequence.h"
+#include "plugins/data/DiscreteProcessing/SignalData.h"
+#include "plugins/data/DiscreteProcessing/Station.h"
+#include "plugins/data/DiscreteProcessing/Set.h"
+#include "plugins/data/DiscreteProcessing/Label.h"
+#include "plugins/data/DiscreteProcessing/Storage.h"
+#include "plugins/data/DiscreteProcessing/File.h"
+#include "plugins/data/DiscreteProcessing/CppCompiler.h"
+#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
+#include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
+#include "plugins/data/BiochemicalSimulation/BioNetwork.h"
+#include "plugins/data/BiochemicalSimulation/BioParameter.h"
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/ExternalStatisticalIntegration/RSimulatorRunner.h"
+#include "plugins/data/DiscreteProcessing/AssignmentItem.h"
+#include "plugins/data/DataDefinition/DummyElement.h"
 #include "kernel/util/Util.h"
+#include "tools/MassActionOdeSystem.h"
+#include "tools/RungeKutta4OdeSolver.h"
 #define private public
 #define protected public
-#include "plugins/data/EntityGroup.h"
+#include "plugins/data/DiscreteProcessing/EntityGroup.h"
 #undef protected
 #undef private
-#include "plugins/components/Delay.h"
-#include "plugins/components/Dispose.h"
-#include "plugins/components/Batch.h"
-#include "plugins/components/Separate.h"
-#include "plugins/components/Match.h"
-#include "plugins/components/Search.h"
-#include "plugins/components/Remove.h"
-#include "plugins/components/Assign.h"
-#include "plugins/components/Write.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Grouping/Batch.h"
+#include "plugins/components/Grouping/Separate.h"
+#include "plugins/components/Decision/Match.h"
+#include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/InputOutput/Write.h"
+#include "plugins/components/ExternalStatisticalIntegration/RSimulator.h"
 #define private public
 #define protected public
-#include "plugins/components/Buffer.h"
-#include "plugins/components/PickStation.h"
-#undef protected
-#undef private
-#define private public
-#define protected public
-#include "plugins/components/Create.h"
-#undef protected
-#undef private
-#define private public
-#define protected public
-#include "plugins/components/Process.h"
+#include "plugins/components/DiscreteProcessing/Buffer.h"
+#include "plugins/components/Decisions/PickStation.h"
 #undef protected
 #undef private
 #define private public
 #define protected public
-#include "plugins/components/Wait.h"
-#include "plugins/components/Signal.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#undef protected
+#undef private
+#define private public
+#define protected public
+#include "plugins/components/DiscreteProcessing/Process.h"
+#undef protected
+#undef private
+#define private public
+#define protected public
+#include "plugins/components/Decisions/Wait.h"
+#include "plugins/components/Decisions/Signal.h"
 #undef protected
 #undef private
 
@@ -259,6 +271,19 @@ public:
     void InitBetweenReplicationsProbe() {
         _initBetweenReplications();
     }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
+class AttributeLifecycleProbe : public Attribute {
+public:
+    AttributeLifecycleProbe(Model* model, const std::string& name = "") : Attribute(model, name) {}
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
         _saveInstance(fields, saveDefaultValues);
@@ -878,6 +903,103 @@ public:
     }
 };
 
+class BioSpeciesProbe : public BioSpecies {
+public:
+    BioSpeciesProbe(Model* model, const std::string& name = "") : BioSpecies(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class BioReactionProbe : public BioReaction {
+public:
+    BioReactionProbe(Model* model, const std::string& name = "") : BioReaction(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class BioNetworkProbe : public BioNetwork {
+public:
+    BioNetworkProbe(Model* model, const std::string& name = "") : BioNetwork(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class RSimulatorRunnerProbe : public RSimulatorRunner {
+public:
+    RSimulatorRunnerProbe(Model* model, const std::string& name = "") : RSimulatorRunner(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class RSimulatorProbe : public RSimulator {
+public:
+    RSimulatorProbe(Model* model, const std::string& name = "") : RSimulator(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
 struct ReplicationStartEventInjector {
     Model* model = nullptr;
     ScheduleProbe* owner = nullptr;
@@ -911,6 +1033,7 @@ public:
     bool save(std::string) override { return false; }
     bool load(std::string) override { return false; }
     bool hasChanged() override { return false; }
+    void setHasChanged(bool) override {}
     bool getOption(ModelPersistence_if::Options) override { return false; }
     void setOption(ModelPersistence_if::Options, bool) override {}
     std::string getFormatedField(PersistenceRecord*) override { return ""; }
@@ -1184,6 +1307,48 @@ TEST(SimulatorRuntimeTest, EntityAttributeValuesRoundTripByNameAndIndex) {
     model->removeEntity(entity);
 }
 
+TEST(SimulatorRuntimeTest, EntityAttributeValuesSupportSparseNDIndexes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Entity* entity = model->createEntity("EntitySparseND", true);
+    ASSERT_NE(entity, nullptr);
+
+    entity->setAttributeValue("AttrND", 12.75, "1,2,3,4", true);
+
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("AttrND", "1,2,3,4"), 12.75);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("AttrND", "1,2,3,5"), 0.0);
+
+    model->removeEntity(entity);
+}
+
+TEST(SimulatorRuntimeTest, EntityCopiesAttributeSparseInitialValuesOnCreation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* attribute = new Attribute(model, "InitialMatrix");
+    ASSERT_NE(attribute, nullptr);
+    attribute->insertDimentionSize(2u);
+    attribute->insertDimentionSize(3u);
+    attribute->insertDimentionSize(4u);
+    attribute->setInitialValue(9.5, "1,2,3");
+
+    Entity* entity = model->createEntity("EntityWithInitialMatrix", true);
+    ASSERT_NE(entity, nullptr);
+
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("InitialMatrix", "1,2,3"), 9.5);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("InitialMatrix", "1,2,4"), 0.0);
+
+    entity->setAttributeValue("InitialMatrix", 3.25, "1,2,3");
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("InitialMatrix", "1,2,3"), 3.25);
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue("1,2,3"), 9.5);
+
+    model->removeEntity(entity);
+    delete attribute;
+}
+
 TEST(SimulatorRuntimeTest, RemovingEntityRemovesItFromDataManagerRegistry) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -1221,6 +1386,36 @@ TEST(SimulatorRuntimeTest, EntityAttributesCanBeSetAndReadByAttributeId) {
     model->removeEntity(first);
     model->removeEntity(second);
     delete attribute;
+}
+
+TEST(SimulatorRuntimeTest, AttributeSupportsSparseInitialValuesAndPersistence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AttributeLifecycleProbe source(model, "AttributeSparseSource");
+    source.insertDimentionSize(2u);
+    source.insertDimentionSize(3u);
+    source.insertDimentionSize(5u);
+    source.setInitialValue(1.5, "");
+    source.setInitialValue(8.25, "1,2,3,4");
+
+    EXPECT_DOUBLE_EQ(source.getInitialValue(""), 1.5);
+    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,3,4"), 8.25);
+    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,3,5"), 0.0);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    AttributeLifecycleProbe loaded(model, "AttributeSparseLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    ASSERT_NE(loaded.getDimensionSizes(), nullptr);
+    EXPECT_EQ(loaded.getDimensionSizes()->size(), 3u);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue(""), 1.5);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,4"), 8.25);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,5"), 0.0);
 }
 
 TEST(SimulatorRuntimeTest, ModelDataDefinitionAccessorsExposeStableStateAndMetadata) {
@@ -1637,6 +1832,24 @@ TEST(SimulatorRuntimeTest, VariableInitBetweenReplicationsCopiesWithoutAliasingI
     EXPECT_DOUBLE_EQ(variable.getInitialValue("idx"), 10.0);
 }
 
+TEST(SimulatorRuntimeTest, VariableSupportsScalarOneTwoAndNDIndexesWithSparseDefault) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariableSparseND");
+    variable.setValue(1.0, "");
+    variable.setValue(2.0, "4");
+    variable.setValue(3.0, "1,2");
+    variable.setValue(4.0, "1,2,3,4,5");
+
+    EXPECT_DOUBLE_EQ(variable.getValue(""), 1.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("4"), 2.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("1,2"), 3.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("1,2,3,4,5"), 4.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("1,2,3,4,6"), 0.0);
+}
+
 TEST(SimulatorRuntimeTest, VariableInitBetweenReplicationsRestoresCurrentValueFromInitial) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -1689,6 +1902,30 @@ TEST(SimulatorRuntimeTest, VariableSaveAndLoadPreservesInitialValues) {
 
     EXPECT_DOUBLE_EQ(loaded.getInitialValue(""), 4.25);
     EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,1"), 8.5);
+}
+
+TEST(SimulatorRuntimeTest, VariableSaveAndLoadPreservesNDInitialValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe source(model, "VariablePersistNDSource");
+    source.insertDimentionSize(2u);
+    source.insertDimentionSize(3u);
+    source.insertDimentionSize(4u);
+    source.insertDimentionSize(5u);
+    source.setInitialValue(17.75, "1,2,3,4");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    VariableLifecycleProbe loaded(model, "VariablePersistNDLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    EXPECT_EQ(loaded.getDimensionSizes()->size(), 4u);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,4"), 17.75);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,5"), 0.0);
 }
 
 TEST(SimulatorRuntimeTest, VariableLoadedCurrentAndInitialContainersRemainIndependentAfterReset) {
@@ -5438,6 +5675,1024 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
     EXPECT_EQ(runner.getLastResponsePayload(), "");
     EXPECT_EQ(runner.getLastResponseFilename(), "");
     EXPECT_EQ(errorMessage, "");
+}
+
+TEST(SimulatorRuntimeTest, MassActionOdeSystemEvaluatesIrreversibleReaction) {
+    MassActionOdeSystem system(
+            {
+                    {"A", 10.0, false, false},
+                    {"B", 0.0, false, false}
+            },
+            {
+                    {"A_to_B", 0.5, {{0u, 1.0}}, {{1u, 1.0}}}
+            });
+
+    const double y[] = {10.0, 0.0};
+    double dydt[] = {0.0, 0.0};
+    system.evaluate(0.0, y, dydt);
+
+    EXPECT_DOUBLE_EQ(dydt[0], -5.0);
+    EXPECT_DOUBLE_EQ(dydt[1], 5.0);
+}
+
+TEST(SimulatorRuntimeTest, RungeKutta4OdeSolverAdvancesMassActionDecay) {
+    MassActionOdeSystem system(
+            {
+                    {"A", 10.0, false, false},
+                    {"B", 0.0, false, false}
+            },
+            {
+                    {"A_to_B", 0.1, {{0u, 1.0}}, {{1u, 1.0}}}
+            });
+    RungeKutta4OdeSolver solver;
+
+    double y0[] = {10.0, 0.0};
+    double y1[] = {0.0, 0.0};
+    ASSERT_TRUE(solver.advance(system, 0.0, 1.0, y0, y1));
+
+    EXPECT_NEAR(y1[0], 10.0 * std::exp(-0.1), 1e-5);
+    EXPECT_NEAR(y1[1], 10.0 - 10.0 * std::exp(-0.1), 1e-5);
+}
+
+TEST(SimulatorRuntimeTest, BioSpeciesPersistenceAndReplicationResetPreserveAmounts) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe source(model, "S1");
+    source.setInitialAmount(3.5);
+    source.setAmount(1.25);
+    source.setConstant(true);
+    source.setBoundaryCondition(true);
+    source.setUnit("mmol");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    BioSpeciesProbe loaded(model, "LoadedS1");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getName(), "S1");
+    EXPECT_DOUBLE_EQ(loaded.getInitialAmount(), 3.5);
+    EXPECT_DOUBLE_EQ(loaded.getAmount(), 1.25);
+    EXPECT_TRUE(loaded.isConstant());
+    EXPECT_TRUE(loaded.isBoundaryCondition());
+    EXPECT_EQ(loaded.getUnit(), "mmol");
+
+    loaded.setAmount(0.0);
+    loaded.InitBetweenReplicationsProbe();
+    EXPECT_DOUBLE_EQ(loaded.getAmount(), 3.5);
+}
+
+TEST(SimulatorRuntimeTest, BioReactionResolvesRateConstantFromBioParameter) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+    BioParameter k(model, "k1");
+    k.setValue(0.25);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(99.0);
+    reaction.setRateConstantParameterName("k1");
+
+    std::string errorMessage;
+    EXPECT_TRUE(reaction.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_DOUBLE_EQ(reaction.resolveRateConstant(), 0.25);
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsMissingRateParameterReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstantParameterName("missingK");
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("missingK"), std::string::npos);
+    EXPECT_NE(errorMessage.find("BioParameter"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesReversibleMassActionReaction) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+    reaction.setReverseRateConstant(0.05);
+    reaction.setReversible(true);
+
+    std::string errorMessage;
+    ASSERT_TRUE(reaction.CheckProbe(errorMessage)) << errorMessage;
+
+    BioNetworkProbe network(model, "ReversibleNetwork");
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.001, errorMessage)) << errorMessage;
+
+    const double total = 10.0;
+    const double forwardRate = 0.1;
+    const double reverseRate = 0.05;
+    const double equilibriumA = reverseRate * total / (forwardRate + reverseRate);
+    const double expectedA = equilibriumA + (10.0 - equilibriumA) * std::exp(-(forwardRate + reverseRate));
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), expectedA, 1e-4);
+    EXPECT_NEAR(b.getAmount(), total - expectedA, 1e-4);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesReversibleCustomKineticLawExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+    BioParameter kf(model, "kf");
+    kf.setValue(0.1);
+    BioParameter kr(model, "kr");
+    kr.setValue(0.05);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("kf * A");
+    reaction.setReverseKineticLawExpression("kr * B");
+    reaction.setReversible(true);
+
+    std::string errorMessage;
+    ASSERT_TRUE(reaction.CheckProbe(errorMessage)) << errorMessage;
+
+    BioNetworkProbe network(model, "ReversibleCustomKineticLawNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("A_to_B");
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.001, errorMessage)) << errorMessage;
+
+    const double total = 10.0;
+    const double forwardRate = 0.1;
+    const double reverseRate = 0.05;
+    const double equilibriumA = reverseRate * total / (forwardRate + reverseRate);
+    const double expectedA = equilibriumA + (10.0 - equilibriumA) * std::exp(-(forwardRate + reverseRate));
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), expectedA, 1e-4);
+    EXPECT_NEAR(b.getAmount(), total - expectedA, 1e-4);
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsMissingReverseRateParameterReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+    reaction.setReverseRateConstantParameterName("missingKr");
+    reaction.setReversible(true);
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("missingKr"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reverse BioParameter"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsEmptyStoichiometricEffect) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioReactionProbe reaction(model, "NoStoichiometry");
+    reaction.setRateConstant(0.1);
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("at least one reactant or product"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioReactionPersistencePreservesKineticLawExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+    BioSpeciesProbe enzyme(model, "E");
+
+    BioReactionProbe source(model, "MichaelisMenten");
+    source.addReactant("A", 1.0);
+    source.addProduct("B", 1.0);
+    source.addModifier("E");
+    source.setKineticLawExpression("vmax * A / (km + A)");
+    source.setReverseKineticLawExpression("kr * B");
+    source.setReverseRateConstant(0.25);
+    source.setReversible(true);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    BioReactionProbe loaded(model, "LoadedReaction");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getKineticLawExpression(), "vmax * A / (km + A)");
+    ASSERT_EQ(loaded.getModifiers().size(), 1u);
+    EXPECT_EQ(loaded.getModifiers()[0], "E");
+    EXPECT_EQ(loaded.getReverseKineticLawExpression(), "kr * B");
+    EXPECT_DOUBLE_EQ(loaded.getReverseRateConstant(), 0.25);
+    EXPECT_TRUE(loaded.isReversible());
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesFirstOrderMassActionReaction) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "NativeMassAction");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_NEAR(b.getAmount(), 10.0 - 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_NE(network.getLastResponsePayload().find("\"A\""), std::string::npos);
+    EXPECT_NE(network.getLastResponsePayload().find("\"B\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesZeroOrderSynthesisReaction) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe product(model, "P");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "SynthesisToP");
+    reaction.addProduct("P", 1.0);
+    reaction.setRateConstant(2.0);
+
+    BioNetworkProbe network(model, "SynthesisNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(product.getAmount(), 2.0, 1e-9);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesDegradationReactionWithoutProducts) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe substrate(model, "S");
+    substrate.setInitialAmount(10.0);
+    substrate.setAmount(10.0);
+
+    BioReactionProbe reaction(model, "SDegradation");
+    reaction.addReactant("S", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "DegradationNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(substrate.getAmount(), 10.0 * std::exp(-0.1), 1e-4);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkUsesExplicitSpeciesAndReactionMembership) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setInitialAmount(10.0);
+    c.setAmount(10.0);
+
+    BioReactionProbe aToB(model, "A_to_B");
+    aToB.addReactant("A", 1.0);
+    aToB.addProduct("B", 1.0);
+    aToB.setRateConstant(0.1);
+
+    BioReactionProbe cToB(model, "C_to_B");
+    cToB.addReactant("C", 1.0);
+    cToB.addProduct("B", 1.0);
+    cToB.setRateConstant(0.5);
+
+    BioNetworkProbe network(model, "ScopedNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("A_to_B");
+
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_NEAR(b.getAmount(), 10.0 - 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_DOUBLE_EQ(c.getAmount(), 10.0);
+    EXPECT_NE(network.getLastResponsePayload().find("\"A\""), std::string::npos);
+    EXPECT_NE(network.getLastResponsePayload().find("\"B\""), std::string::npos);
+    EXPECT_EQ(network.getLastResponsePayload().find("\"C\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesParserBackedKineticLawExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+    BioParameter k(model, "k");
+    k.setValue(0.01);
+
+    BioReactionProbe reaction(model, "SecondOrderAtoB");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.0);
+    reaction.setKineticLawExpression("k * pow(A, 2)");
+
+    BioNetworkProbe network(model, "KineticLawNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("SecondOrderAtoB");
+
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), 10.0 / (1.0 + 0.01 * 10.0), 1e-3);
+    EXPECT_NEAR(b.getAmount(), 10.0 - (10.0 / (1.0 + 0.01 * 10.0)), 1e-3);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesKineticLawWithModifierSpecies) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe substrate(model, "S");
+    substrate.setInitialAmount(10.0);
+    substrate.setAmount(10.0);
+    BioSpeciesProbe product(model, "P");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+    BioSpeciesProbe enzyme(model, "E");
+    enzyme.setInitialAmount(2.0);
+    enzyme.setAmount(2.0);
+
+    BioParameter k(model, "k");
+    k.setValue(0.05);
+
+    BioReactionProbe reaction(model, "CatalyzedConversion");
+    reaction.addReactant("S", 1.0);
+    reaction.addProduct("P", 1.0);
+    reaction.addModifier("E");
+    reaction.setKineticLawExpression("k * E * S");
+
+    BioNetworkProbe network(model, "ModifierNetwork");
+    network.addSpecies("S");
+    network.addSpecies("P");
+    network.addSpecies("E");
+    network.addReaction("CatalyzedConversion");
+
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(substrate.getAmount(), 10.0 * std::exp(-0.05 * 2.0), 1e-4);
+    EXPECT_NEAR(product.getAmount(), 10.0 - 10.0 * std::exp(-0.05 * 2.0), 1e-4);
+    EXPECT_DOUBLE_EQ(enzyme.getAmount(), 2.0);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideMembership) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "ModifierReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.addModifier("C");
+    reaction.setKineticLawExpression("C * A");
+
+    std::string reactionError;
+    ASSERT_TRUE(reaction.CheckProbe(reactionError)) << reactionError;
+
+    BioNetworkProbe network(model, "ScopedKineticLawNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("ModifierReaction");
+
+    std::string errorMessage;
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("modifier"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsKineticLawSpeciesOutsideFormalParticipants) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "UnscopedKineticSpeciesReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("C * A");
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideReactionParticipants) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "NetworkScopedButReactionUnscoped");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("C * A");
+
+    BioNetworkProbe network(model, "FormalParticipantNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addSpecies("C");
+    network.addReaction("NetworkScopedButReactionUnscoped");
+
+    std::string errorMessage;
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsReverseKineticLawSpeciesOutsideFormalParticipants) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "UnscopedReverseKineticSpeciesReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("A");
+    reaction.setReverseKineticLawExpression("C * B");
+    reaction.setReversible(true);
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reverseKineticLawExpression"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsReverseKineticLawSpeciesOutsideReactionParticipants) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "NetworkScopedButReverseReactionUnscoped");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("A");
+    reaction.setReverseKineticLawExpression("C * B");
+    reaction.setReversible(true);
+
+    BioNetworkProbe network(model, "ReverseFormalParticipantNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addSpecies("C");
+    network.addReaction("NetworkScopedButReverseReactionUnscoped");
+
+    std::string errorMessage;
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reverseKineticLawExpression"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsMissingModifierSpecies) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+
+    BioReactionProbe reaction(model, "MissingModifierReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.addModifier("MissingE");
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingE"), std::string::npos);
+    EXPECT_NE(errorMessage.find("modifier"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkPersistencePreservesExplicitMembership) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioNetworkProbe source(model, "PersistedScopedNetwork");
+    source.addSpecies("A");
+    source.addSpecies("B");
+    source.addReaction("A_to_B");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    BioNetworkProbe loaded(model, "LoadedScopedNetwork");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    ASSERT_EQ(loaded.getSpeciesNames().size(), 2u);
+    EXPECT_EQ(loaded.getSpeciesNames()[0], "A");
+    EXPECT_EQ(loaded.getSpeciesNames()[1], "B");
+    ASSERT_EQ(loaded.getReactionNames().size(), 1u);
+    EXPECT_EQ(loaded.getReactionNames()[0], "A_to_B");
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsMissingExplicitMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioNetworkProbe network(model, "InvalidScopedNetwork");
+    network.addSpecies("MissingA");
+    network.addReaction("MissingReaction");
+
+    std::string errorMessage;
+    EXPECT_FALSE(network.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingA"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingReaction"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkPreservesBoundaryAndConstantSpeciesDuringSimulation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe source(model, "Source");
+    source.setInitialAmount(10.0);
+    source.setAmount(10.0);
+    source.setBoundaryCondition(true);
+
+    BioSpeciesProbe product(model, "Product");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+    product.setConstant(true);
+
+    BioReactionProbe reaction(model, "Source_to_Product");
+    reaction.addReactant("Source", 1.0);
+    reaction.addProduct("Product", 1.0);
+    reaction.setRateConstant(0.5);
+
+    BioNetworkProbe network(model, "BoundaryConstantNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.1, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_DOUBLE_EQ(source.getAmount(), 10.0);
+    EXPECT_DOUBLE_EQ(product.getAmount(), 0.0);
+    EXPECT_NE(network.getLastResponsePayload().find("\"Source\":10"), std::string::npos);
+    EXPECT_NE(network.getLastResponsePayload().find("\"Product\":0"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsMissingSpeciesReferences) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioReactionProbe reaction(model, "InvalidReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("MissingB", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "InvalidNetwork");
+    std::string errorMessage;
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("MissingB"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioPluginsAreAvailableThroughDummyConnector) {
+    PluginConnectorDummyImpl1 connector;
+
+    std::unique_ptr<Plugin> speciesPlugin(connector.connect("biospecies.so"));
+    std::unique_ptr<Plugin> parameterPlugin(connector.connect("bioparameter.so"));
+    std::unique_ptr<Plugin> reactionPlugin(connector.connect("bioreaction.so"));
+    std::unique_ptr<Plugin> networkPlugin(connector.connect("bionetwork.so"));
+
+    ASSERT_NE(speciesPlugin, nullptr);
+    ASSERT_NE(parameterPlugin, nullptr);
+    ASSERT_NE(reactionPlugin, nullptr);
+    ASSERT_NE(networkPlugin, nullptr);
+    EXPECT_EQ(speciesPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioSpecies>());
+    EXPECT_EQ(parameterPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioParameter>());
+    EXPECT_EQ(reactionPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioReaction>());
+    EXPECT_EQ(networkPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioNetwork>());
+}
+
+bool RscriptAvailableForRuntimeTest() {
+    return std::system("Rscript --version >/dev/null 2>&1") == 0;
+}
+
+void CleanupRRunnerArtifacts(const RSimulatorRunner& runner) {
+    Util::FileDelete(runner.getLastScriptFilename());
+    Util::FileDelete(runner.getLastResponseFilename());
+    const std::string response = runner.getLastResponseFilename();
+    const std::string suffix = ".stdout";
+    if (response.size() >= suffix.size() && response.substr(response.size() - suffix.size()) == suffix) {
+        Util::FileDelete(response.substr(0, response.size() - suffix.size()) + ".stderr");
+    }
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerDefaultsExposeConfigurationAndResults) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RDefaults");
+
+    EXPECT_EQ(runner.getRExecutable(), "Rscript");
+    EXPECT_EQ(runner.getWorkingDirectory(), "");
+    EXPECT_EQ(runner.getPreludeScript(), "");
+    EXPECT_EQ(runner.getCommand(), "");
+    EXPECT_EQ(runner.getLastStatus(), "Idle");
+    EXPECT_EQ(runner.getLastExitCode(), -1);
+    EXPECT_EQ(runner.getLastStdout(), "");
+    EXPECT_EQ(runner.getLastStderr(), "");
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+    EXPECT_EQ(runner.getLastScriptFilename(), "");
+    EXPECT_EQ(runner.getLastResponseFilename(), "");
+    EXPECT_GE(runner.getSimulationControls()->size(), 11u);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerPluginInformationDeclaresRDependency) {
+    std::unique_ptr<PluginInformation> info(RSimulatorRunner::GetPluginInformation());
+
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<RSimulatorRunner>());
+    EXPECT_EQ(info->getCategory(), "External statistical integration");
+    EXPECT_NE(info->getDescriptionHelp().find("Rscript --vanilla"), std::string::npos);
+    ASSERT_TRUE(info->hasSystemDependencies());
+    ASSERT_NE(info->getSystemDependencies(), nullptr);
+
+    bool foundR = false;
+    for (const SystemDependency& dependency : *info->getSystemDependencies()) {
+        if (dependency.getOS() == SystemDependency::OS::Linux && dependency.getName() == "R") {
+            foundR = true;
+            EXPECT_EQ(dependency.getInstallCommand(), "sudo apt install -y r-base");
+            EXPECT_EQ(dependency.getCheckCommand(), "Rscript --version");
+        }
+    }
+    EXPECT_TRUE(foundR);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerCheckRejectsInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe emptyFields(model, "RCheckEmpty");
+    emptyFields.setRExecutable("");
+    emptyFields.setCommand("");
+
+    std::string emptyFieldsError;
+    EXPECT_FALSE(emptyFields.CheckProbe(emptyFieldsError));
+    EXPECT_NE(emptyFieldsError.find("non-empty RExecutable"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("non-empty command"), std::string::npos);
+
+    RSimulatorRunnerProbe missingWorkingDir(model, "RCheckMissingWorkingDir");
+    missingWorkingDir.setCommand("cat('ok')");
+    missingWorkingDir.setWorkingDirectory("/definitely/missing/genesys/r/workdir");
+    std::string workingDirError;
+    EXPECT_FALSE(missingWorkingDir.CheckProbe(workingDirError));
+    EXPECT_NE(workingDirError.find("workingDirectory must exist"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerPersistenceRoundTripPreservesConfigurationAndResults) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe source(model, "RPersistSource");
+    source.setRExecutable("/usr/bin/Rscript");
+    source.setWorkingDirectory("/tmp");
+    source.setPreludeScript("x <- 40");
+    source.setCommand("cat(x + 2, '\\n')");
+    source.setLastStatus("Completed");
+    source.setLastExitCode(0);
+    source.setLastStdout("42\n");
+    source.setLastStderr("");
+    source.setLastResponsePayload("42\n");
+    source.setLastScriptFilename("/tmp/genesys_r_test.R");
+    source.setLastResponseFilename("/tmp/genesys_r_test.stdout");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    RSimulatorRunnerProbe loaded(model, "RPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRExecutable(), "/usr/bin/Rscript");
+    EXPECT_EQ(loaded.getWorkingDirectory(), "/tmp");
+    EXPECT_EQ(loaded.getPreludeScript(), "x <- 40");
+    EXPECT_EQ(loaded.getCommand(), "cat(x + 2, '\\n')");
+    EXPECT_EQ(loaded.getLastStatus(), "Completed");
+    EXPECT_EQ(loaded.getLastExitCode(), 0);
+    EXPECT_EQ(loaded.getLastStdout(), "42\n");
+    EXPECT_EQ(loaded.getLastStderr(), "");
+    EXPECT_EQ(loaded.getLastResponsePayload(), "42\n");
+    EXPECT_EQ(loaded.getLastScriptFilename(), "/tmp/genesys_r_test.R");
+    EXPECT_EQ(loaded.getLastResponseFilename(), "/tmp/genesys_r_test.stdout");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerShowIncludesObservabilityFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RShow");
+    runner.setWorkingDirectory("/tmp");
+    runner.setCommand("cat('ok')");
+    runner.setPreludeScript("x <- 1");
+    runner.setLastStatus("Completed");
+    runner.setLastExitCode(0);
+    runner.setLastStdout("ok");
+    runner.setLastStderr("");
+    runner.setLastResponsePayload("ok");
+    runner.setLastScriptFilename("/tmp/rshow.R");
+    runner.setLastResponseFilename("/tmp/rshow.stdout");
+
+    const std::string shown = runner.show();
+    EXPECT_NE(shown.find("rExecutable=\"Rscript\""), std::string::npos);
+    EXPECT_NE(shown.find("workingDirectory=\"/tmp\""), std::string::npos);
+    EXPECT_NE(shown.find("lastStatus=\"Completed\""), std::string::npos);
+    EXPECT_NE(shown.find("lastExitCode=0"), std::string::npos);
+    EXPECT_NE(shown.find("lastScriptFilename=\"/tmp/rshow.R\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerMissingExecutableFailsCleanly) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RMissingExecutable");
+    runner.setRExecutable("definitely_missing_Rscript_binary_for_genesys_tests");
+    runner.setCommand("cat('unreachable')");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.executeCommand(errorMessage));
+    EXPECT_EQ(runner.getLastStatus(), "Failed");
+    EXPECT_EQ(runner.getLastExitCode(), -1);
+    EXPECT_NE(errorMessage.find("was not found"), std::string::npos);
+    EXPECT_EQ(runner.getLastStdout(), "");
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerExecutesSimpleScriptWhenRscriptIsAvailable) {
+    if (!RscriptAvailableForRuntimeTest()) {
+        GTEST_SKIP() << "Rscript is not available on this machine.";
+    }
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RExecuteSimple");
+    runner.setPreludeScript("x <- 40");
+    runner.setCommand("cat(x + 2, '\\n')");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_EQ(runner.getLastExitCode(), 0);
+    EXPECT_NE(runner.getLastStdout().find("42"), std::string::npos);
+    EXPECT_EQ(runner.getLastResponsePayload(), runner.getLastStdout());
+    EXPECT_TRUE(Util::FileExists(runner.getLastScriptFilename()));
+    EXPECT_TRUE(Util::FileExists(runner.getLastResponseFilename()));
+
+    CleanupRRunnerArtifacts(runner);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerCapturesRFailureWhenRscriptIsAvailable) {
+    if (!RscriptAvailableForRuntimeTest()) {
+        GTEST_SKIP() << "Rscript is not available on this machine.";
+    }
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RExecuteFailure");
+    runner.setCommand("stop('genesys expected R failure')");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.executeCommand(errorMessage));
+    EXPECT_EQ(runner.getLastStatus(), "Failed");
+    EXPECT_NE(runner.getLastExitCode(), 0);
+    EXPECT_NE(runner.getLastStderr().find("genesys expected R failure"), std::string::npos);
+    EXPECT_NE(errorMessage.find("genesys expected R failure"), std::string::npos);
+
+    CleanupRRunnerArtifacts(runner);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorDefaultsExposeEditableCommandList) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe component(model, "RComponentDefaults");
+
+    EXPECT_EQ(component.getRExecutable(), "Rscript");
+    EXPECT_EQ(component.getWorkingDirectory(), "");
+    EXPECT_EQ(component.getPreludeScript(), "");
+    EXPECT_EQ(component.getCommandList(), "");
+    ASSERT_NE(component.getCommands(), nullptr);
+    EXPECT_EQ(component.getCommands()->size(), 0u);
+    EXPECT_GE(component.getSimulationControls()->size(), 4u);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorCommandListUsesOneNonEmptyCommandPerLine) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe component(model, "RComponentCommands");
+    component.setCommandList("cat('first')\n\ncat('second')\n   \nprint(3)");
+
+    ASSERT_NE(component.getCommands(), nullptr);
+    EXPECT_EQ(component.getCommands()->size(), 3u);
+    EXPECT_EQ(component.getCommands()->getAtRank(0), "cat('first')");
+    EXPECT_EQ(component.getCommands()->getAtRank(1), "cat('second')");
+    EXPECT_EQ(component.getCommands()->getAtRank(2), "print(3)");
+    EXPECT_EQ(component.getCommandList(), "cat('first')\ncat('second')\nprint(3)");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorPersistenceRoundTripPreservesConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe source(model, "RComponentPersistSource");
+    source.setRExecutable("/usr/bin/Rscript");
+    source.setWorkingDirectory("/tmp");
+    source.setPreludeScript("base <- 40");
+    source.insertCommand("cat(base + 1)");
+    source.insertCommand("cat(base + 2)");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    RSimulatorProbe loaded(model, "RComponentPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRExecutable(), "/usr/bin/Rscript");
+    EXPECT_EQ(loaded.getWorkingDirectory(), "/tmp");
+    EXPECT_EQ(loaded.getPreludeScript(), "base <- 40");
+    EXPECT_EQ(loaded.getCommandList(), "cat(base + 1)\ncat(base + 2)");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorCheckRejectsMissingExecutableAndCommandList) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe component(model, "RComponentInvalid");
+    component.setRExecutable("");
+    component.setCommandList("");
+
+    std::string errorMessage;
+    EXPECT_FALSE(component.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("non-empty RExecutable"), std::string::npos);
+    EXPECT_NE(errorMessage.find("at least one R command"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorCreatesInternalRunnerAndSynchronizesConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe component(model, "RComponentInternal");
+    component.setRExecutable("/usr/bin/Rscript");
+    component.setWorkingDirectory("/tmp");
+    component.setPreludeScript("seed <- 10");
+    component.setCommandList("cat(seed)");
+
+    component.CreateInternalAndAttachedDataProbe();
+
+    ModelDataDefinition* internalData = component.getInternalData("RSimulatorRunner");
+    ASSERT_NE(internalData, nullptr);
+    RSimulatorRunner* runner = dynamic_cast<RSimulatorRunner*>(internalData);
+    ASSERT_NE(runner, nullptr);
+    EXPECT_EQ(runner->getName(), "RComponentInternal.RSimulatorRunner");
+    EXPECT_EQ(runner->getRExecutable(), "/usr/bin/Rscript");
+    EXPECT_EQ(runner->getWorkingDirectory(), "/tmp");
+    EXPECT_EQ(runner->getPreludeScript(), "seed <- 10");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorPluginInformationDeclaresRunnerDependency) {
+    std::unique_ptr<PluginInformation> info(RSimulator::GetPluginInformation());
+
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<RSimulator>());
+    EXPECT_EQ(info->getCategory(), "External statistical integration");
+    EXPECT_NE(info->getDescriptionHelp().find("RSimulatorRunner"), std::string::npos);
+    ASSERT_NE(info->getDynamicLibFilenameDependencies(), nullptr);
+    EXPECT_NE(std::find(info->getDynamicLibFilenameDependencies()->begin(),
+                        info->getDynamicLibFilenameDependencies()->end(),
+                        "rsimulatorrunner.so"),
+              info->getDynamicLibFilenameDependencies()->end());
 }
 
 TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {

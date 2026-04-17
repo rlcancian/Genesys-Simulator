@@ -28,9 +28,9 @@
 #include "DataComponentEditor.h"
 #include "ComboBoxEnum.h"
 
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/simulator/PropertyGenesys.h"
-#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/PropertyGenesys.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 
 class ObjectPropertyBrowser : public QtTreePropertyBrowser {
     Q_OBJECT

@@ -110,6 +110,49 @@ genesys_add_unit_test(genesys_test_statistics
     genesys_kernel_util
 )
 
+find_package(Qt6 QUIET COMPONENTS Core Gui Widgets)
+if(Qt6_FOUND)
+    set(GENESYS_QT_TEST_PACKAGE Qt6)
+else()
+    find_package(Qt5 QUIET COMPONENTS Core Gui Widgets)
+    if(Qt5_FOUND)
+        set(GENESYS_QT_TEST_PACKAGE Qt5)
+    endif()
+endif()
+
+if(DEFINED GENESYS_QT_TEST_PACKAGE)
+    add_executable(genesys_test_gui_render_strategy
+        test_gui_render_strategy.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/graphicals/GraphicalConnectionStyle.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/graphicals/GraphicalModelItemRenderStrategy.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/services/GraphicalDataDefinitionLayout.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/systempreferences.cpp
+    )
+
+    target_include_directories(genesys_test_gui_render_strategy
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/source
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI
+    )
+
+    target_link_libraries(genesys_test_gui_render_strategy
+        PRIVATE
+            GTest::gtest
+            ${GENESYS_QT_TEST_PACKAGE}::Core
+            ${GENESYS_QT_TEST_PACKAGE}::Gui
+            ${GENESYS_QT_TEST_PACKAGE}::Widgets
+    )
+
+    gtest_discover_tests(genesys_test_gui_render_strategy
+        PROPERTIES
+            LABELS "unit;gui"
+    )
+
+    set_property(TARGET genesys_test_gui_render_strategy PROPERTY FOLDER tests/unit)
+else()
+    message(STATUS "Qt was not found; skipping GUI render strategy unit test.")
+endif()
+
 add_executable(genesys_test_tools_hypothesistester
     test_tools_hypothesistester.cpp
     ${CMAKE_SOURCE_DIR}/source/tools/HypothesisTesterDefaultImpl1.cpp
@@ -164,6 +207,10 @@ if(GENESYS_BUILD_WEB_APPLICATION)
     )
 
     add_dependencies(genesys_kernel_unit_tests genesys_test_web_api_router)
+endif()
+
+if(TARGET genesys_test_gui_render_strategy)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_gui_render_strategy)
 endif()
 
 set(GENESYS_KERNEL_SIMULATOR_HEADERS_DIR "${CMAKE_SOURCE_DIR}/source/kernel/simulator")
@@ -234,6 +281,13 @@ if(GENESYS_BUILD_WEB_APPLICATION)
     add_custom_command(TARGET genesys_kernel_unit_tests_run
         POST_BUILD
         COMMAND $<TARGET_FILE:genesys_test_web_api_router>
+    )
+endif()
+
+if(TARGET genesys_test_gui_render_strategy)
+    add_custom_command(TARGET genesys_kernel_unit_tests_run
+        POST_BUILD
+        COMMAND $<TARGET_FILE:genesys_test_gui_render_strategy>
     )
 endif()
 

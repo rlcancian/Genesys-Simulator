@@ -7,7 +7,7 @@
 #include <QWidget>
 #include <QComboBox>
 
-#include "../../../../kernel/simulator/PropertyGenesys.h"
+#include "kernel/simulator/PropertyGenesys.h"
 
 class ComboBoxEnum : public QObject {
 public:

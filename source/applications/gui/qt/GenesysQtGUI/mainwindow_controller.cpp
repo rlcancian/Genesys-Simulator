@@ -79,7 +79,7 @@
 #include <QPainter>
 #include <QFileInfo>
 #include <QCoreApplication>
-#include "../../../../kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelSimulation.h"
 #include "../../../../tools/SolverDefaultImpl1.h"
 
 
@@ -756,6 +756,13 @@ void MainWindow::on_checkBox_ShowInternals_stateChanged(int arg1) {
     }
 }
 
+void MainWindow::on_checkBox_ShowEditableElements_stateChanged(int arg1) {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowEditableElementsStateChanged(arg1);
+    }
+}
+
 void MainWindow::on_horizontalSlider_Zoom_valueChanged(int value) {
     double factor = ((double) value / 100.0)*(2 - 0.5) + 0.5;
     double scaleFactor = 1.0;
@@ -888,10 +895,24 @@ void MainWindow::on_actionShowInternalElements_triggered() {
     }
 }
 
+void MainWindow::on_actionShowEditableElements_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowEditableElementsTriggered();
+    }
+}
+
 void MainWindow::on_actionShowAttachedElements_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {
         _sceneToolController->onActionShowAttachedElementsTriggered();
+    }
+}
+
+void MainWindow::on_actionShowRecursiveElements_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowRecursiveElementsTriggered();
     }
 }
 

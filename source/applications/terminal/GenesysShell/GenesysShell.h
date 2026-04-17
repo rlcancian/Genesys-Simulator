@@ -15,8 +15,8 @@
 #define GENESYSSHELL_H
 
 #include "../../BaseGenesysTerminalApplication.h"
-#include "../../../kernel/simulator/Simulator.h"
-#include "../../../kernel/util/List.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/util/List.h"
 #include <regex>
 #include <fstream>
 #include <assert.h>

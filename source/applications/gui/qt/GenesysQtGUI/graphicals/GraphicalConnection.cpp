@@ -179,34 +179,28 @@ QRectF GraphicalConnection::boundingRect() const {
 }
 
 QPainterPath GraphicalConnection::connectionPath() const {
-	QPainterPath path;
 	if (!canRefreshGeometry()) {
-		return path;
+		return QPainterPath();
 	}
 
-	const qreal x1 = _sourcePointLocal.x();
-	const qreal y1 = _sourcePointLocal.y();
-	const qreal x2 = _destinationPointLocal.x();
-	const qreal y2 = _destinationPointLocal.y();
+	return GraphicalConnectionStyle::modelConnectionPath(_sourcePointLocal,
+	                                                     _destinationPointLocal,
+	                                                     routeTypeForStyle(),
+	                                                     usesCurvedStyle());
+}
 
-	path.moveTo(_sourcePointLocal);
+GraphicalConnectionStyle::RouteType GraphicalConnection::routeTypeForStyle() const {
 	switch (_connectionType) {
-		case ConnectionType::HORIZONTAL:
-			path.lineTo((x1 + x2) / 2, y1);
-			path.lineTo((x1 + x2) / 2, y2);
-			break;
-		case ConnectionType::VERTICAL:
-			path.lineTo(x1, (y1 + y2) / 2);
-			path.lineTo(x2, (y1 + y2) / 2);
-			break;
-		case ConnectionType::DIRECT:
-			break;
-		case ConnectionType::USERDEFINED:
-			//@TODO: draw intermediate points
-			break;
+	case ConnectionType::HORIZONTAL:
+		return GraphicalConnectionStyle::RouteType::Horizontal;
+	case ConnectionType::VERTICAL:
+		return GraphicalConnectionStyle::RouteType::Vertical;
+	case ConnectionType::DIRECT:
+		return GraphicalConnectionStyle::RouteType::Direct;
+	case ConnectionType::USERDEFINED:
+	default:
+		return GraphicalConnectionStyle::RouteType::UserDefined;
 	}
-	path.lineTo(_destinationPointLocal);
-	return path;
 }
 
 QPainterPath GraphicalConnection::shape() const {
@@ -225,7 +219,16 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 		return;
 	}
 	QPen pen = QPen(_color);
-	pen.setWidth(2);
+	const bool curvedStyle = usesCurvedStyle();
+	if (curvedStyle) {
+		painter->setRenderHint(QPainter::Antialiasing, true);
+		pen.setColor(QColor(47, 128, 237, 220));
+		pen.setWidth(isSelected() ? 4 : 3);
+		pen.setCapStyle(Qt::RoundCap);
+		pen.setJoinStyle(Qt::RoundJoin);
+	} else {
+		pen.setWidth(2);
+	}
 	painter->setPen(pen);
 
 	/**
@@ -248,17 +251,29 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	 * Bloco 5: desenha “handles” quando selecionado.
 	 */
 	if (isSelected()) {
-		pen = QPen(Qt::black);
+		pen = QPen(curvedStyle ? QColor(47, 128, 237) : Qt::black);
 		pen.setWidth(1);
 		painter->setPen(pen);
 		QBrush brush = QBrush(Qt::SolidPattern);
-		brush.setColor(Qt::black);
+		brush.setColor(curvedStyle ? QColor(47, 128, 237) : Qt::black);
 		painter->setBrush(brush);
-		//@TODO Check this out to see if it solves the move redraw issue
-		painter->drawRect(QRectF(x1 < x2 ? x1 : x1 - _selWidth, y1 - _selWidth / 2, _selWidth, _selWidth));
-		painter->drawRect(QRectF(x2 < x1 ? x2 : x2 - _selWidth, y2 - _selWidth / 2, _selWidth, _selWidth));
-		painter->drawRect(QRectF((x1 + x2) / 2 - _selWidth / 2, y1 - _selWidth / 2, _selWidth, _selWidth));
-		painter->drawRect(QRectF((x1 + x2) / 2 - _selWidth / 2, y2 - _selWidth / 2, _selWidth, _selWidth));
+		if (curvedStyle) {
+			const QRectF startHandle(x1 - _selWidth / 2.0, y1 - _selWidth / 2.0, _selWidth, _selWidth);
+			const QRectF midHandle(path.pointAtPercent(0.5).x() - _selWidth / 2.0,
+			                       path.pointAtPercent(0.5).y() - _selWidth / 2.0,
+			                       _selWidth,
+			                       _selWidth);
+			const QRectF endHandle(x2 - _selWidth / 2.0, y2 - _selWidth / 2.0, _selWidth, _selWidth);
+			painter->drawEllipse(startHandle);
+			painter->drawEllipse(midHandle);
+			painter->drawEllipse(endHandle);
+		} else {
+			//@TODO Check this out to see if it solves the move redraw issue
+			painter->drawRect(QRectF(x1 < x2 ? x1 : x1 - _selWidth, y1 - _selWidth / 2, _selWidth, _selWidth));
+			painter->drawRect(QRectF(x2 < x1 ? x2 : x2 - _selWidth, y2 - _selWidth / 2, _selWidth, _selWidth));
+			painter->drawRect(QRectF((x1 + x2) / 2 - _selWidth / 2, y1 - _selWidth / 2, _selWidth, _selWidth));
+			painter->drawRect(QRectF((x1 + x2) / 2 - _selWidth / 2, y2 - _selWidth / 2, _selWidth, _selWidth));
+		}
 	}
 	//
 	//pen = QPen(Qt::yellow);
@@ -269,6 +284,17 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 
 QList<QPointF> GraphicalConnection::getPoints() const {
     return _points;
+}
+
+bool GraphicalConnection::usesCurvedStyle() const {
+	return GraphicalConnectionStyle::usesModernCurves();
+}
+
+QPainterPath GraphicalConnection::animationPathForImage(qreal imageWidth, qreal imageHeight) const {
+	if (!canRefreshGeometry()) {
+		return QPainterPath();
+	}
+	return mapToScene(connectionPath()).translated(-imageWidth / 2.0, -imageHeight / 2.0);
 }
 
 Connection* GraphicalConnection::getSource() const {

@@ -12,11 +12,11 @@
 
 #include "Smart_LSODE.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/LSODE.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/data/Variable.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Continuous/LSODE.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 #include "../../../TraitsApp.h"
 
 Smart_LSODE::Smart_LSODE() {

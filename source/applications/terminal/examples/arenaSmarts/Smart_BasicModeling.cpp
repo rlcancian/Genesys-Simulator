@@ -4,10 +4,10 @@
  */
 
 #include "Smart_BasicModeling.h"
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Dispose.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "../../../TraitsApp.h"
 
 Smart_BasicModeling::Smart_BasicModeling() {

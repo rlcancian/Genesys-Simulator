@@ -10,12 +10,12 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/SPICECircuit.h"
-#include "../../../../plugins/components/SPICENode.h"
-#include "../../../../plugins/data/SPICERunner.h"
+#include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
+#include "plugins/components/ElectronicsSimulation/SPICENode.h"
+#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
 #include "../../../TraitsApp.h"
 
 Rectifier::Rectifier() {

@@ -2,15 +2,15 @@
 
 // This include gives access to generated Qt widgets consumed by the exporter.
 // These includes provide kernel/model types required by DOT generation.
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ConnectionManager.h"
-#include "../../../../kernel/simulator/SourceModelComponent.h"
-#include "../../../../kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ConnectionManager.h"
+#include "kernel/simulator/SourceModelComponent.h"
+#include "kernel/simulator/SinkModelComponent.h"
 
 // This include provides utility string helpers used by legacy DOT-name normalization.
-#include "../../../../kernel/util/Util.h"
+#include "kernel/util/Util.h"
 
 // These includes provide Qt classes used by image generation and UI updates.
 #include <QCheckBox>
@@ -52,19 +52,30 @@ static std::string _escapeDotLabelText(const std::string& text) {
     return escaped;
 }
 
+// Keep the Graphviz representation aligned with the graphics-view data-definition categories.
+static bool _isStatisticsDataDefinition(ModelDataDefinition* dataDefinition) {
+    if (dataDefinition == nullptr) {
+        return false;
+    }
+    const std::string classname = dataDefinition->getClassname();
+    return classname == "Counter" || classname == "StatisticsCollector";
+}
+
 
 // Capture only Graphviz-related UI controls required by the exporter.
 GraphvizModelExporter::GraphvizModelExporter(Simulator* simulator,
                                              QLabel* modelGraphicLabel,
-                                             QCheckBox* showInternals,
-                                             QCheckBox* showElements,
+                                             QCheckBox* showStatistics,
+                                             QCheckBox* showEditable,
+                                             QCheckBox* showShared,
                                              QCheckBox* showRecursive,
                                              QCheckBox* showLevels,
                                              std::function<bool()> ensureModelSynchronized)
     : _simulator(simulator)
     , _modelGraphicLabel(modelGraphicLabel)
-    , _showInternals(showInternals)
-    , _showElements(showElements)
+    , _showStatistics(showStatistics)
+    , _showEditable(showEditable)
+    , _showShared(showShared)
     , _showRecursive(showRecursive)
     , _showLevels(showLevels)
     // Keep model-text synchronization callback local to this service dependency set.
@@ -160,43 +171,53 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(ModelDataDefiniti
     // This block emits attached/internal data definitions and related edges.
     std::string dataname;
     std::string componentName = parentComponentSuperLevel != nullptr ? parentComponentSuperLevel->getName() : componentOrData->getName();
-    if (_showInternals->isChecked()) {
-        for (std::pair<std::string, ModelDataDefinition*> dataPair : *componentOrData->getInternalData()) {
-            dataname = adjustDotName(dataPair.second->getName());
-            level = dataPair.second->getLevel();
-            visitedIt = std::find(visited->begin(), visited->end(), dataPair.second);
-            if (visitedIt == visited->end()) {
-                if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
-                    text = "  " + dataname + " [" + DOT.nodeDataDefInternal + ", label=\"" + _escapeDotLabelText(dataPair.second->getClassname()) + "|" + _escapeDotLabelText(dataPair.second->getName()) + "\"]" + ";\n";
-                    insertTextInDot(text, level, DOT.rankDataDefInternal, dotmap, true);
-                    if (_showRecursive->isChecked()) {
-                        recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
-                    }
-                }
-            }
-            if (dataPair.second->getLevel() == modellevel || _showLevels->isChecked()) {
-                text = "    " + dataname + "->" + adjustDotName(componentName) + " [" + DOT.edgeDataDefInternal + ", label=\"" + _escapeDotLabelText(dataPair.first) + "\"];\n";
-                insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
-            }
+    for (std::pair<std::string, ModelDataDefinition*> dataPair : *componentOrData->getInternalData()) {
+        const bool isStatistics = _isStatisticsDataDefinition(dataPair.second);
+        const bool categoryVisible = isStatistics
+                                         ? _showStatistics->isChecked()
+                                         : _showEditable->isChecked();
+        if (!categoryVisible) {
+            continue;
         }
-    }
-    if (_showElements->isChecked()) {
-        for (std::pair<std::string, ModelDataDefinition*> dataPair : *componentOrData->getAttachedData()) {
-            dataname = adjustDotName(dataPair.second->getName());
-            level = dataPair.second->getLevel();
-            visitedIt = std::find(visited->begin(), visited->end(), dataPair.second);
-            if (visitedIt == visited->end()) {
-                if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
-                    text = "  " + dataname + " [" + DOT.nodeDataDefAttached + ", label=\"" + _escapeDotLabelText(dataPair.second->getClassname()) + "|" + _escapeDotLabelText(dataPair.second->getName()) + "\"]" + ";\n";
-                    insertTextInDot(text, level, DOT.rankDataDefAttached, dotmap, true);
-                }
+        dataname = adjustDotName(dataPair.second->getName());
+        level = dataPair.second->getLevel();
+        visitedIt = std::find(visited->begin(), visited->end(), dataPair.second);
+        if (visitedIt == visited->end()) {
+            if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
+                text = "  " + dataname + " [" + DOT.nodeDataDefInternal + ", label=\"" + _escapeDotLabelText(dataPair.second->getClassname()) + "|" + _escapeDotLabelText(dataPair.second->getName()) + "\"]" + ";\n";
+                insertTextInDot(text, level, DOT.rankDataDefInternal, dotmap, true);
                 if (_showRecursive->isChecked()) {
                     recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
                 }
             }
-            text = "    " + dataname + "->" + adjustDotName(componentName) + " [" + DOT.edgeDataDefAttached + ", label=\"" + _escapeDotLabelText(dataPair.first) + "\"];\n";
+        }
+        if (dataPair.second->getLevel() == modellevel || _showLevels->isChecked()) {
+            text = "    " + dataname + "->" + adjustDotName(componentName) + " [" + DOT.edgeDataDefInternal + ", label=\"" + _escapeDotLabelText(dataPair.first) + "\"];\n";
             insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
         }
+    }
+    for (std::pair<std::string, ModelDataDefinition*> dataPair : *componentOrData->getAttachedData()) {
+        const bool isStatistics = _isStatisticsDataDefinition(dataPair.second);
+        const bool categoryVisible = isStatistics
+                                         ? _showStatistics->isChecked()
+                                         : _showShared->isChecked();
+        if (!categoryVisible) {
+            continue;
+        }
+        dataname = adjustDotName(dataPair.second->getName());
+        level = dataPair.second->getLevel();
+        visitedIt = std::find(visited->begin(), visited->end(), dataPair.second);
+        if (visitedIt == visited->end()) {
+            if (dynamic_cast<ModelComponent*> (dataPair.second) == nullptr) {
+                text = "  " + dataname + " [" + DOT.nodeDataDefAttached + ", label=\"" + _escapeDotLabelText(dataPair.second->getClassname()) + "|" + _escapeDotLabelText(dataPair.second->getName()) + "\"]" + ";\n";
+                insertTextInDot(text, level, DOT.rankDataDefAttached, dotmap, true);
+            }
+            if (_showRecursive->isChecked()) {
+                recursiveCreateModelGraphicPicture(dataPair.second, visited, dotmap);
+            }
+        }
+        text = "    " + dataname + "->" + adjustDotName(componentName) + " [" + DOT.edgeDataDefAttached + ", label=\"" + _escapeDotLabelText(dataPair.first) + "\"];\n";
+        insertTextInDot(text, modellevel, DOT.rankEdge, dotmap);
     }
 
     // This block emits component-to-component connections and continues traversal.
@@ -220,7 +241,7 @@ void GraphvizModelExporter::recursiveCreateModelGraphicPicture(ModelDataDefiniti
 bool GraphvizModelExporter::createModelImage() const {
     // This block preserves model synchronization precondition prior to DOT generation.
     bool res = _ensureModelSynchronized ? _ensureModelSynchronized() : false;
-    if (!res || _simulator == nullptr || _modelGraphicLabel == nullptr || _showInternals == nullptr || _showElements == nullptr || _showRecursive == nullptr || _showLevels == nullptr || _simulator->getModelManager()->current() == nullptr) {
+    if (!res || _simulator == nullptr || _modelGraphicLabel == nullptr || _showStatistics == nullptr || _showEditable == nullptr || _showShared == nullptr || _showRecursive == nullptr || _showLevels == nullptr || _simulator->getModelManager()->current() == nullptr) {
         return false;
     }
 

@@ -10,9 +10,11 @@
 
 #include <QGraphicsItem>
 #include <QGraphicsObject>
+#include <QPainterPath>
 #include <QPen>
 #include <QBrush>
-#include "../../../../kernel/simulator/Plugin.h"
+#include "kernel/simulator/Plugin.h"
+#include "graphicals/GraphicalModelItemRenderStrategy.h"
 #include "TraitsGUI.h"
 
 class GraphicalModelDataDefinition : public QGraphicsObject {
@@ -22,6 +24,7 @@ public:
 	virtual ~GraphicalModelDataDefinition();
 public:
 	QRectF boundingRect() const override;
+	QPainterPath shape() const override;
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     ModelDataDefinition* getDataDefinition() const;
     bool isEditableInPropertyEditor() const;
@@ -34,6 +37,7 @@ public:
 
 protected:
 	QColor myrgba(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
+	virtual GraphicalModelItemRenderContext renderContext() const;
 protected: // virtual
 	virtual bool sceneEvent(QEvent *event) override;
 	//virtual void	hoverEnterEvent(QGraphicsSceneHoverEvent * event)

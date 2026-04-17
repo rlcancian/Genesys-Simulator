@@ -16,13 +16,13 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Clone.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Clone.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "../../../TraitsApp.h"
 
 Smart_DefiningResourceCapacity::Smart_DefiningResourceCapacity() {

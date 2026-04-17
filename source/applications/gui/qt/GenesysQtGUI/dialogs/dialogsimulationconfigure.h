@@ -1,7 +1,7 @@
 #ifndef DIALOGSIMULATIONCONFIGURE_H
 #define DIALOGSIMULATIONCONFIGURE_H
 
-#include "../../../../../kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelSimulation.h"
 
 #include <QDialog>
 #include <string>

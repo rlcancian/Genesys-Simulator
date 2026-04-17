@@ -16,8 +16,8 @@
 #include <string>
 #include "Fitter_if.h"
 #include "HypothesisTester_if.h"
-#include "../kernel/statistics/Sampler_if.h"
-#include "../kernel/simulator/ExperimetManager_if.h"
+#include "kernel/statistics/Sampler_if.h"
+#include "kernel/simulator/ExperimetManager_if.h"
 
 /**
  * @brief High-level façade for applied statistical analysis over datasets.

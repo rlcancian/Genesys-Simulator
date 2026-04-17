@@ -12,11 +12,11 @@
 
 #include "Smart_CppForG.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/CppForG.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/CppForG.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "kernel/simulator/ModelSimulation.h"
 #include "../../../TraitsApp.h"
 
 Smart_CppForG::Smart_CppForG() {
