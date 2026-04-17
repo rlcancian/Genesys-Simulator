@@ -267,7 +267,8 @@
 - Relevant commit hashes:
   - Previous local `WiP20261_GRO` head before synchronization: `ec689a3b`.
   - Synchronized base and local head after merge: `2114c92c`.
-  - Context update commit: to be recorded after this file is committed.
+  - Context update commit recording this synchronization: `d2e1255b`
+    (`Record GRO base synchronization`).
 - Expected branch state after committing this context update and pushing:
   `WiP20261_GRO` is synchronized with `origin/WiP20261` plus this operational
   context record, and should be ready for merge unless GitHub reports a
