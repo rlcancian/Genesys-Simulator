@@ -234,6 +234,23 @@ Intent:
   - `ContextMemmory.md` was previously renamed to `KERNEL_GUI_ContextMemory.md`;
   - no generic `ContextMemory.md` exists in the root.
 
+## Pull Request State
+
+- Final integration PR: `#371`
+- PR title: `Merge WiP20261_KERNEL_GUI into WiP20261`
+- PR branch pair: `WiP20261_KERNEL_GUI` -> `WiP20261`
+- PR URL: `https://github.com/rlcancian/Genesys-Simulator/pull/371`
+- Latest inspected PR head: `86a7dfff794055897a6bb79380c659dea2184640`
+- Latest inspected base: `2e439a6235f57b3feeb615292d3f133e4c63a514`
+- GitHub API state at inspection: open, not draft, `mergeable: true`.
+- Local Git state at inspection: `origin/WiP20261` is an ancestor of `HEAD`, and
+  `HEAD` matches `origin/WiP20261_KERNEL_GUI`.
+- No reviews or review threads were present.
+- No commit status checks or workflow runs were reported for the PR head.
+- Diagnosis: the previous GitHub non-mergeable report was transient mergeability
+  calculation state, not a real branch conflict, stale branch, or technical blocker.
+- Corrective action required: none beyond recording this diagnosis.
+
 ## Validation Already Run
 
 The following commands passed after the plugin diagnostics implementation:
@@ -322,6 +339,8 @@ Observed status:
 - Commit this memory update and push the synchronized branch to
   `origin/WiP20261_KERNEL_GUI`.
 - Proceed with final merge into the base when the maintainer is ready.
+- PR `#371` is ready for final merge unless GitHub reports a new base update or
+  repository policy change.
 - If plugin dependency recovery receives more changes, keep them small and preserve
   kernel/GUI separation.
 - Future work may refine terminal handling and password/sudo feedback during
@@ -348,6 +367,9 @@ Observed status:
 - Final integration into `WiP20261` can proceed from the synchronized branch.
 - If another base update happens before final integration, repeat the fetch/merge and
   focused validation cycle.
+- Monitor PR `#371`; if GitHub temporarily reports unknown/non-mergeable again,
+  recheck after the mergeability calculation refreshes before assuming a real
+  conflict.
 
 ## Interaction Log Summary
 
