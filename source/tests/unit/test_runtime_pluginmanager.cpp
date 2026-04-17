@@ -4,6 +4,8 @@
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/SystemDependencyResolver.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
+#include "plugins/components/bacteria/BacteriaColony.h"
+#include "plugins/data/GroProgram.h"
 
 #include <algorithm>
 #include <map>
@@ -160,10 +162,12 @@ TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins)
     ASSERT_NE(filenames, nullptr);
 
     const std::vector<std::string> expectedPluginFiles = {
+        "bacteriacolony.so",
         "biosimulatorrunner.so",
         "cellularautomata.so",
         "defaultnode.so",
         "dummyelement.so",
+        "groprogram.so",
         "old_odeelement.so",
         "petriplace.so",
         "rsimulator.so",
@@ -180,4 +184,37 @@ TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins)
         EXPECT_TRUE(plugin->isIsValidPlugin()) << filename;
         EXPECT_FALSE(plugin->getPluginInfo()->getPluginTypename().empty()) << filename;
     }
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndStepped) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_1");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode("program main() { tick(); }");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_1");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.25);
+    colony->setInitialColonyTime(2.0);
+    colony->setInitialPopulation(8);
+    colony->setGridWidth(4);
+    colony->setGridHeight(5);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 2.0);
+    EXPECT_EQ(colony->getPopulationSize(), 8u);
+    EXPECT_DOUBLE_EQ(colony->advanceColonyTime(), 2.25);
+
+    std::string errorMessage;
+    EXPECT_TRUE(ModelDataDefinition::Check(program, errorMessage)) << errorMessage;
+    EXPECT_TRUE(ModelDataDefinition::Check(colony, errorMessage)) << errorMessage;
 }
