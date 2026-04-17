@@ -347,6 +347,12 @@ Intent:
   (`Organize plugins by declared category`).
 - The runtime GUI preferences and visual theme phase is local and remote at commit
   `a1c2d9fa` (`Add runtime GUI preferences and themes`).
+- The operating memory normalization phase is local at commit `6baa2cc3`
+  (`Normalize KERNEL_GUI operating memory`) and has not been pushed unless a later
+  user request explicitly publishes it.
+- The diagram item render strategy phase is local at commit `107a6539`
+  (`Add diagram item render strategies`) and has not been pushed unless a later
+  user request explicitly publishes it.
 - Recent branch commits include:
   - `6a02e61f Track plugin load diagnostics in PluginManager`
   - `f0a4bfb9 Show recoverable plugin dependency issues in GUI`
@@ -361,8 +367,11 @@ Intent:
   - `1fe51d47 Improve plugin manager resolve load workflow`
   - `f232882e Organize plugins by declared category`
   - `a1c2d9fa Add runtime GUI preferences and themes`
-- At the start of the current memory-normalization phase, the working tree was
-  clean. During this phase, only `KERNEL_GUI_ContextMemory.md` should be modified.
+  - `6baa2cc3 Normalize KERNEL_GUI operating memory`
+  - `107a6539 Add diagram item render strategies`
+- At the start of the diagram item render strategy phase, the branch was one commit
+  ahead of `origin/WiP20261_KERNEL_GUI` because of the local memory-normalization
+  commit `6baa2cc3`; the functional working tree was otherwise clean.
 - The latest merge from `origin/WiP20261` completed without conflicts and only
   brought base-side updates to `TINKERCELL_ContextMemory.md`.
 - `source/tests/unit/test_runtime_pluginmanager.cpp` now contains both the KERNEL_GUI
@@ -513,9 +522,9 @@ Observed status:
   `ContextMemmory.md` as active memory.
 - Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
-- Current active phase: normalize this memory file and consolidate the operating
-  protocol. Do not start another technical phase until the user explicitly confirms
-  the next step.
+- Current active phase: record the completed diagram item render strategy work in
+  this memory. Do not start another technical phase until the user explicitly
+  confirms the next step.
 - The structural plugin directory refactor is already complete in `f232882e`.
 - The runtime GUI preferences/theme phase is already complete in `a1c2d9fa`.
 - Proceed with final merge into the base only when the maintainer explicitly directs
@@ -543,10 +552,12 @@ Observed status:
 
 ## Likely Next Steps
 
-- Finish the current memory-normalization phase with a coherent local commit.
-- Do not push the memory commit unless the user explicitly asks for publication.
 - Ask the user to confirm the next technical phase before changing GUI, kernel,
   plugin, build, or test code again.
+- Possible next phase: add focused automated GUI-rendering tests or a screenshot
+  harness for classic versus organic diagram rendering, if the user wants visual
+  regression coverage beyond compile and smoke validation.
+- Do not push local commits unless the user explicitly asks for publication.
 - When a next phase is confirmed, first re-read the real repository state and the
   relevant source/build/test files, then execute only that phase.
 
@@ -604,6 +615,38 @@ Observed status:
   - Offscreen smoke test with temporary JSON under `/tmp/genesys-pref-test`
     loaded dark/modern/no-model startup preferences and stayed running until the
     expected timeout without startup crash.
-- Deliberate limitation: component and `ModelDataDefinition` body painting still
-  mostly uses existing `TraitsGUI` colors; this iteration only creates the safe
-  runtime preference and canvas/grid theme base for future drawing-style work.
+- Follow-up completed in `107a6539`: component and `ModelDataDefinition` body
+  painting now delegates to a runtime-selected render strategy.
+
+## Latest Diagram Item Render Strategy Work
+
+- Commit: `107a6539` (`Add diagram item render strategies`).
+- Introduced `GraphicalModelItemRenderStrategy` and `GraphicalModelItemRenderer`
+  under `source/applications/gui/qt/GenesysQtGUI/graphicals/`.
+- `GraphicalModelDataDefinition` and `GraphicalModelComponent` now build a
+  `GraphicalModelItemRenderContext` and delegate `paint()` and `shape()` to the
+  renderer.
+- The classic strategy preserves the existing rectangular/raised-path visual and
+  keeps rectangular hit shape for compatibility.
+- The organic strategy uses antialiased oval/capsule bodies, radial gradients,
+  softer highlights, oval selection handles, and strategy-specific `shape()` for
+  hit testing while keeping the existing `boundingRect()` and port geometry stable.
+- Strategy selection is tied to `SystemPreferences::interfaceStyle()`:
+  - `classic` uses the traditional strategy.
+  - `modern` uses the organic strategy.
+- `DialogSystemPreferences` now labels the options as `Classic rectangular` and
+  `Modern organic`.
+- `GuiThemeManager::applyModelGraphicsTheme()` now always updates the scene after
+  preference changes, even when only the render style changed and diagram theme
+  colors are disabled.
+- Validation performed:
+  - `git diff --check` passed.
+  - `cmake --build --preset gui-app` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed.
+  - Offscreen smoke test with temporary JSON under
+    `/tmp/genesys-render-pref/GenESyS/Genesys-Simulator/preferences.json` loaded
+    dark/modern/no-model preferences and stayed running until the expected timeout
+    without startup crash.
+- Remaining limitation: no automated screenshot/pixel regression test exists yet
+  for comparing classic and organic rendering. Validation is currently build,
+  code-path, preference-load, and startup-smoke based.
