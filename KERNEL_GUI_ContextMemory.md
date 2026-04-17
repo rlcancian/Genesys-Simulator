@@ -928,3 +928,56 @@ Observed status:
   scene-level visual validation harness that creates a compact model with multiple
   editable/shared recursive GMDDs and captures before/after screenshots to tune
   spacing constants empirically.
+
+## Latest Plugin Tree Expansion Policy Refinement
+
+- Functional commit: `55289ecb4094764ed9d0ecfae0191bd96a2b4df0`
+  (`Apply plugin tree expansion policy`).
+- User-confirmed continuation request:
+  - proceed after the GMDD visual/layout phase;
+  - additionally ensure plugin category roots in the plugin tree start expanded,
+    except the `Data Definition` category, which must remain collapsed.
+- Diagnosis:
+  - the plugin palette tree is `treeWidget_Plugins` in `MainWindow`;
+  - plugin category roots and plugin children are populated by
+    `PluginCatalogController::insertPluginUI()`;
+  - root creation happens in `PluginCatalogController::ensureCategoryRoot()`;
+  - reload/autoload previously used `expandAll()`, which also expanded
+    `Data Definition`;
+  - the double-click handler previously collapsed all top-level categories and
+    expanded only the clicked item, which conflicted with the requested persistent
+    category policy.
+- Implementation:
+  - added `PluginCatalogController::applyCategoryExpansionPolicy()`;
+  - added `PluginCatalogController::shouldExpandCategoryRoot()`, where every root
+    category expands except exactly `Data Definition`;
+  - `insertPluginUI()` now reapplies the policy to the affected category root after
+    inserting a child;
+  - `reloadFromPluginManager()` now sorts the tree and applies the category policy
+    instead of calling `expandAll()`;
+  - the `MainWindow` autoload path now delegates to the same policy instead of
+    using `ui->treeWidget_Plugins->expandAll()`;
+  - the double-click handler no longer collapses all category roots and instead
+    reapplies the default category policy.
+- Validation performed:
+  - `git diff --check` passed for the modified plugin-tree files;
+  - `cmake --build --preset gui-app` passed and linked
+    `genesys_qt_gui_application`;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_gui_render_strategy`
+    passed with 9 GUI render/layout tests, preserving the previous GMDD layout
+    validation;
+  - offscreen startup smoke was run with
+    `QT_QPA_PLATFORM=offscreen` and a temporary `XDG_CONFIG_HOME`; the GUI started,
+    autoloaded plugins, and stayed running until the expected `timeout 5` exit code
+    `124`.
+- Current state:
+  - the local branch has the GMDD visual/layout commits plus the plugin-tree policy
+    commit;
+  - no push was performed;
+  - an unrelated pre-existing local modification remains in
+    `source/plugins/data/BiochemicalSimulation/BioNetwork.cpp` and was not staged
+    or committed by KERNEL_GUI.
+- Suggested next phase, only after explicit user confirmation: add a focused
+  automated widget-level test or screenshot harness for `treeWidget_Plugins`,
+  asserting category expansion state after autoload/reload and preserving
+  `Data Definition` as collapsed.
