@@ -305,11 +305,69 @@ Validacao executada no momento da implementacao:
   - `git diff --check`: sem problemas.
 - Commit local da fase: `Allow biochemical synthesis and degradation`; nao fazer push sem pedido explicito.
 
+## Fase De Reacoes Reversiveis Mass-Action Executada Em 2026-04-17
+
+- O usuario autorizou avancar ate o proximo checkpoint em poucas fases.
+- Decisao tecnica: implementar reversibilidade mass-action basica, sem abrir GUI, SBML/TinkerCell ou leis reversas customizadas nesta fase.
+- `BioReaction` deixou de rejeitar `reversible=true`.
+- `BioReaction` recebeu cinetica reversa explicita:
+  - `reverseRateConstant`;
+  - `reverseRateConstantParameterName`;
+  - getters, setters e `resolveReverseRateConstant`.
+- A persistencia de `BioReaction` salva e carrega os campos reversos.
+- `BioReaction::show()` passou a expor os campos reversos.
+- `BioNetwork::buildSystem()` agora monta reacoes reversiveis para o ODE, validando constantes reversas nao negativas e parametros reversos existentes.
+- `MassActionOdeSystem` passou a calcular fluxo liquido:
+  - fluxo direto por lei cinetica direta ou mass-action dos reagentes;
+  - fluxo reverso mass-action dos produtos quando `reversible=true`;
+  - derivadas aplicadas como `reverse - forward` nos reagentes e `forward - reverse` nos produtos.
+- Escopo mantido intencionalmente fora desta fase:
+  - expressao cinetica reversa customizada;
+  - GUI/editor para campos reversos;
+  - importacao/exportacao SBML/TinkerCell.
+- Testes adicionados ou ajustados:
+  - simulacao de `A <-> B` com solucao analitica esperada;
+  - rejeicao de parametro reverso ausente;
+  - persistencia de `reverseRateConstant` e `reversible`.
+- Validacao executada:
+  - `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime`: passou;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.Bio*'`: 37 testes passaram;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.MassActionOdeSystem*:SimulatorRuntimeTest.RungeKutta4OdeSolver*'`: 2 testes passaram;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.CppSerializerEmitsCurrentApiAndPropertySetters'`: 1 teste passou;
+  - `git diff --check`: sem problemas.
+- Commit local da fase: `Add reversible biochemical mass-action kinetics`; nao fazer push sem pedido explicito.
+
+## Fase De Leis Cineticas Reversas Customizadas Executada Em 2026-04-17
+
+- O usuario pediu prosseguir ate o proximo checkpoint estavel.
+- Decisao tecnica: completar a reversibilidade ja existente com uma expressao cinetica reversa opcional, sem abrir GUI/editor, SBML/TinkerCell ou reorganizacao estrutural de plugins.
+- `BioReaction` recebeu `reverseKineticLawExpression` opcional, com getter/setter, `SimulationControl`, persistencia, `show()` e validacao.
+- Semantica adotada:
+  - `reverseKineticLawExpression` so afeta a execucao quando `reversible=true`;
+  - se `reverseKineticLawExpression` estiver vazia, o fluxo reverso continua usando mass-action com `reverseRateConstant` ou `reverseRateConstantParameterName`;
+  - se `reverseKineticLawExpression` estiver preenchida, ela substitui a cinetica reversa mass-action durante a montagem e avaliacao ODE;
+  - especies usadas na lei reversa precisam pertencer ao `BioNetwork` e ser participantes formais da `BioReaction` como reagentes, produtos ou modificadores;
+  - parametros usados na lei reversa continuam sendo resolvidos por `BioParameter`.
+- `BioNetwork::buildSystem()` agora valida leis cineticas direta e reversa por uma rotina comum de escopo de rede e participantes formais.
+- `MassActionOdeSystem` agora avalia taxa direta e taxa reversa pela mesma rotina, alternando entre expressao cinetica e mass-action conforme o campo preenchido.
+- Testes adicionados ou ajustados:
+  - simulacao de `A <-> B` usando `kf * A` e `kr * B`;
+  - persistencia de `reverseKineticLawExpression`;
+  - rejeicao de especie usada na lei cinetica reversa mas fora dos participantes formais em `BioReaction`;
+  - rejeicao do mesmo caso em `BioNetwork`, mesmo quando a especie pertence a rede.
+- Validacao executada:
+  - `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime`: passou;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.Bio*'`: 40 testes passaram;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.MassActionOdeSystem*:SimulatorRuntimeTest.RungeKutta4OdeSolver*'`: 2 testes passaram;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.CppSerializerEmitsCurrentApiAndPropertySetters'`: 1 teste passou;
+  - `git diff --check`: sem problemas.
+- Commit local da fase: `Add reversible biochemical kinetic laws`; nao fazer push sem pedido explicito.
+
 ## Estado Atual Do Branch
 
 - `WiP20261` e a base consolidada atual para TINKERCELL.
 - O conteudo relevante de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
-- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas e sintese/degradacao foram implementadas localmente e validadas.
+- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas, sintese/degradacao, reversibilidade mass-action e leis cineticas reversas customizadas foram implementadas e validadas.
 - A IA `TINKERCELL` deve aguardar confirmacao explicita antes de iniciar a proxima fase.
 - Qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo local.
 - Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
@@ -317,10 +375,12 @@ Validacao executada no momento da implementacao:
 ## Pendencias
 
 - Confirmar com o usuario antes de iniciar a proxima fase.
-- Proxima fase candidata: definir o proximo eixo apos sintese/degradacao, possivelmente GUI/editor, importacao/exportacao SBML/TinkerCell, ou semantica de reacoes reversiveis.
+- Proxima fase candidata: definir o proximo eixo apos leis cineticas reversas customizadas, possivelmente GUI/editor para campos bioquimicos, importacao/exportacao SBML/TinkerCell, ou suporte de comandos no runner.
 - Ainda falta fluxo GUI/editor para editar listas explicitas de membros em `BioNetwork`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `kineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
+- Ainda falta fluxo GUI/editor para editar `reverseKineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar modificadores de `BioReaction`; a fase atual cobriu API, persistencia, validacao e runtime.
+- Ainda falta fluxo GUI/editor para editar campos reversos de `BioReaction`; a fase atual cobriu API, persistencia, validacao e runtime.
 
 ## Riscos E Cuidados
 

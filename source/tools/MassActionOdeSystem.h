@@ -34,6 +34,9 @@ public:
 		std::vector<StoichiometricTerm> products;
 		std::string kineticLawExpression;
 		std::vector<std::pair<std::string, double>> parameters;
+		std::string reverseKineticLawExpression;
+		double reverseRateConstant = 0.0;
+		bool reversible = false;
 	};
 
 	MassActionOdeSystem() = default;
@@ -57,13 +60,14 @@ public:
 		}
 
 		for (const Reaction& reaction : _reactions) {
-			double rate = evaluateRate(reaction, y);
+			const double forwardRate = evaluateRate(reaction, reaction.kineticLawExpression, reaction.rateConstant, reaction.reactants, y);
+			const double reverseRate = reaction.reversible ? evaluateRate(reaction, reaction.reverseKineticLawExpression, reaction.reverseRateConstant, reaction.products, y) : 0.0;
 
 			for (const StoichiometricTerm& reactant : reaction.reactants) {
-				applyDerivative(reactant.speciesIndex, -reactant.stoichiometry * rate, dydt);
+				applyDerivative(reactant.speciesIndex, reactant.stoichiometry * (reverseRate - forwardRate), dydt);
 			}
 			for (const StoichiometricTerm& product : reaction.products) {
-				applyDerivative(product.speciesIndex, product.stoichiometry * rate, dydt);
+				applyDerivative(product.speciesIndex, product.stoichiometry * (forwardRate - reverseRate), dydt);
 			}
 		}
 	}
@@ -77,23 +81,15 @@ public:
 	}
 
 private:
-	double evaluateRate(const Reaction& reaction, const double* y) const {
-		if (reaction.kineticLawExpression.empty()) {
-			double rate = reaction.rateConstant;
-			for (const StoichiometricTerm& reactant : reaction.reactants) {
-				if (reactant.speciesIndex >= _species.size()) {
-					return 0.0;
-				}
-				const double amount = std::max(0.0, y[reactant.speciesIndex]);
-				rate *= std::pow(amount, reactant.stoichiometry);
-			}
-			return std::max(0.0, rate);
+	double evaluateRate(const Reaction& reaction, const std::string& kineticLawExpression, double rateConstant, const std::vector<StoichiometricTerm>& massActionTerms, const double* y) const {
+		if (kineticLawExpression.empty()) {
+			return evaluateMassActionRate(rateConstant, massActionTerms, y);
 		}
 
 		BioKineticLawExpression expression;
 		double rate = 0.0;
 		std::string errorMessage;
-		const bool ok = expression.evaluate(reaction.kineticLawExpression,
+		const bool ok = expression.evaluate(kineticLawExpression,
 				[this, &reaction, y](const std::string& name, double& value) {
 					for (unsigned int i = 0; i < _species.size(); ++i) {
 						if (_species[i].name == name) {
@@ -111,6 +107,18 @@ private:
 				},
 				rate, errorMessage);
 		return ok ? std::max(0.0, rate) : 0.0;
+	}
+
+	double evaluateMassActionRate(double rateConstant, const std::vector<StoichiometricTerm>& terms, const double* y) const {
+		double rate = rateConstant;
+		for (const StoichiometricTerm& term : terms) {
+			if (term.speciesIndex >= _species.size()) {
+				return 0.0;
+			}
+			const double amount = std::max(0.0, y[term.speciesIndex]);
+			rate *= std::pow(amount, term.stoichiometry);
+		}
+		return std::max(0.0, rate);
 	}
 
 	void applyDerivative(unsigned int speciesIndex, double value, double* dydt) const {
