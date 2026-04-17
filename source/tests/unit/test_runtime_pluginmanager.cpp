@@ -8,6 +8,7 @@
 #include "plugins/data/BiologicalModeling/GroProgram.h"
 #include "plugins/data/BiologicalModeling/GroProgramCompiler.h"
 #include "plugins/data/BiologicalModeling/GroProgramParser.h"
+#include "plugins/data/BiologicalModeling/GroProgramRuntime.h"
 
 #include <algorithm>
 #include <map>
@@ -315,4 +316,38 @@ TEST(RuntimePluginManagerClassTest, GroProgramCompilerBuildsInitialSemanticIr) {
 
     EXPECT_FALSE(ir.commands[3].isFunctionCall());
     EXPECT_EQ(ir.commands[3].sourceText, "raw + expression");
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand) {
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse(
+        "program colony() { tick(); observe(); raw + expression; tick(); }");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+
+    GroProgramRuntimeState state;
+    state.colonyTime = 2.0;
+    state.simulationStep = 0.25;
+
+    GroProgramRuntime runtime;
+    GroProgramRuntime::ExecutionResult result = runtime.execute(ir, state);
+
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_EQ(result.executedCommands, 2u);
+    EXPECT_DOUBLE_EQ(state.colonyTime, 2.5);
+    EXPECT_EQ(state.tickCount, 2u);
+    ASSERT_EQ(result.unsupportedCommands.size(), 1u);
+    EXPECT_EQ(result.unsupportedCommands[0], "observe()");
+    ASSERT_EQ(result.skippedRawStatements.size(), 1u);
+    EXPECT_EQ(result.skippedRawStatements[0], "raw + expression");
+
+    GroProgramParser::Result invalidTick = parser.parse("tick(1);");
+    ASSERT_TRUE(invalidTick.accepted) << invalidTick.errorMessage;
+    GroProgramIr invalidIr = compiler.compile(invalidTick.ast);
+
+    GroProgramRuntime::ExecutionResult invalidResult = runtime.execute(invalidIr, state);
+    EXPECT_FALSE(invalidResult.succeeded);
+    EXPECT_NE(invalidResult.errorMessage.find("tick command does not accept arguments"), std::string::npos);
 }

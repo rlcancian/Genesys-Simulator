@@ -393,6 +393,37 @@ instructions are considered obsolete or consolidated here.
   - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
     succeeded with 8 tests.
 
+### 2026-04-17 - Gro Isolated Runtime Helper Phase
+
+- User confirmed continuation after the initial semantic IR phase.
+- Revalidated current branch state on `WiP20261_GRO`; the branch was clean and
+  matched `origin/WiP20261_GRO` before changes.
+- Ran `git fetch origin`; `origin/WiP20261` advanced from `76c938a6` to
+  `f769ec61` with GUI preference/theme work.
+- Merged `origin/WiP20261` into local `WiP20261_GRO` before continuing GRO
+  implementation.
+- Merge result: merge commit with no conflicts.
+- No GUI files brought by the base merge were modified by GRO.
+- Executed only the next phase: create an isolated runtime helper that consumes
+  `GroProgramIr` without binding to `BacteriaColony` or the GenESyS event
+  scheduler.
+- Added `GroProgramRuntime` under the existing current path
+  `source/plugins/data/BiologicalModeling/`, without moving plugin files or
+  changing category layout.
+- `GroProgramRuntime::execute` currently supports:
+  - `tick()` as the first executable command, advancing caller-provided
+    runtime state by `simulationStep`.
+  - reporting unsupported function calls without failing execution.
+  - reporting raw statements skipped by the runtime.
+  - rejecting invalid `tick(...)` arguments and non-positive simulation steps.
+- No `BacteriaColony` scheduler binding, bacteria state, cellular automata, GUI
+  work, or plugin directory reorganization was added in this phase.
+- Validation after this phase:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 10 tests.
+
 ### 2026-04-17 - Gro Initial Semantic IR Phase
 
 - User confirmed continuation after the minimal AST/IR phase.
