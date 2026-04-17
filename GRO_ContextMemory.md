@@ -16,10 +16,10 @@ instructions are considered obsolete or consolidated here.
 - **Canonical memory file:** `GRO_ContextMemory.md` in the repository root.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
-- **Current consolidated base:** `origin/WiP20261` at `dca0397f` as of the
+- **Current consolidated base:** `origin/WiP20261` at `0f72b673` as of the
   latest GRO synchronization.
-- **Current GRO branch head:** local `WiP20261_GRO` has the Gro `die()`
-  command checkpoint committed on top of `origin/WiP20261_GRO` at `e2c68795`.
+- **Current GRO branch head:** local `WiP20261_GRO` has the Gro colony flow
+  examples checkpoint committed on top of `origin/WiP20261_GRO` at `8ca92ff7`.
 - **Current state:** the GRO work line is active again and is proceeding in
   explicit, user-confirmed phases on `WiP20261_GRO`.
 - **Immediate objective:** continue the Gro biosimulator integration only one
@@ -221,9 +221,10 @@ instructions are considered obsolete or consolidated here.
 - **Dispatch behavior:** when a `GroProgram` is configured, `_onDispatchEvent`
   executes that program once and traces success/failure. When no `GroProgram` is
   configured, it preserves the previous fallback behavior of advancing internal
-  colony time by `SimulationStep`.
-- **Connectivity metadata:** registered as a self-contained source/sink-style
-  component with zero required inputs and outputs for the first plugin slice.
+  colony time by `SimulationStep`. After processing an arriving entity, it sends
+  the entity through the front output connection.
+- **Connectivity metadata:** registered as a normal flow component with one
+  required input and one required output.
 - **Current limitation:** it does not yet schedule periodic events in the
   GenESyS future event calendar and does not yet model per-bacterium command
   behavior, spatial cellular automata, signals, reactions, or complete Gro
@@ -303,6 +304,8 @@ instructions are considered obsolete or consolidated here.
   - `ba9c182a Add bacteria lifecycle metrics`
   - `e2c68795 Record bacteria lifecycle metrics checkpoint`
   - `3101d042 Add Gro die command support`
+  - `8ca92ff7 Record Gro die command checkpoint`
+  - `61c75ed3 Add Gro colony flow examples`
 - Latest known validation after active GRO phases:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
@@ -321,15 +324,15 @@ instructions are considered obsolete or consolidated here.
 ## Current Branch State
 
 - Current branch: `WiP20261_GRO`.
-- Current consolidated base: `origin/WiP20261` at `dca0397f`.
-- Current GRO branch head: local `WiP20261_GRO` after the Gro `die()`
-  command checkpoint; `origin/WiP20261_GRO` remains at `e2c68795` until
+- Current consolidated base: `origin/WiP20261` at `0f72b673`.
+- Current GRO branch head: local `WiP20261_GRO` after the Gro colony flow
+  examples checkpoint; `origin/WiP20261_GRO` remains at `8ca92ff7` until
   explicit publication is requested.
 - Latest synchronization with `origin/WiP20261` fast-forwarded local
-  `WiP20261_GRO` to `dca0397f`; no conflicts occurred.
+  `WiP20261_GRO` to `0f72b673`; no conflicts occurred.
 - Conflict status during the latest synchronization: no conflicts occurred.
-- Latest completed GRO phase: minimal Gro `die()` command support in the
-  isolated runtime and `BacteriaColony` internal bacteria state.
+- Latest completed GRO phase: demonstration examples for the stable GRO slice
+  and minimal flow-port enablement for `BacteriaColony`.
 - Recent user-authorized work completed:
   1. expanded the isolated runtime command set;
   2. connected the isolated runtime pipeline to `BacteriaColony`;
@@ -340,9 +343,11 @@ instructions are considered obsolete or consolidated here.
   5. added bacterium age access, parent division count, and last division time.
   6. added minimal `die()` / `die(n)` support that removes bacteria from the
      current live colony state.
-- The lifecycle metrics checkpoint was published to `origin/WiP20261_GRO` at
-  `e2c68795`.
-- The `die()` command checkpoint is local only until explicit publication is
+  7. exposed `BacteriaColony` as a one-input/one-output flow component and
+     added two executable terminal smart examples.
+- The `die()` command checkpoint was published to `origin/WiP20261_GRO` at
+  `8ca92ff7`.
+- The flow examples checkpoint is local only until explicit publication is
   requested.
 - Ask the user for explicit confirmation before proceeding to the next technical
   phase.
@@ -351,10 +356,10 @@ instructions are considered obsolete or consolidated here.
 
 - Do not continue automatically. Wait for explicit user confirmation before the
   next technical phase.
-- Suggested next technical phase: either add event scheduler integration around
-  the now stateful colony or preserve richer per-cell death/history semantics
-  before adding broader Gro biological behavior. Keep cellular automata,
-  signals, reactions, and complete Gro semantics as later phases.
+- Suggested next technical phase: either add a small example/preset discovery
+  improvement for terminal GRO examples, or return to product work with event
+  scheduler integration around the now stateful flow component. Keep cellular
+  automata, signals, reactions, and complete Gro semantics as later phases.
 - Decide whether `BacteriaColony` should schedule periodic internal events using
   `SimulationStep` or remain API/plugin-driven until parser/runtime semantics
   are clearer.
@@ -728,6 +733,57 @@ instructions are considered obsolete or consolidated here.
 - Suggested next phase: either add scheduler integration for repeated colony
   execution, or refine death semantics if dead-cell history must be retained
   before scheduler work.
+
+### 2026-04-17 - Gro Colony Flow Examples Checkpoint
+
+- User redirected the next phase away from expanding biosimulator semantics and
+  toward executable demonstration examples for the already stable GRO slice.
+- Ran `git fetch origin`; `origin/WiP20261` advanced to `0f72b673`.
+- Local `WiP20261_GRO` fast-forwarded to `0f72b673` before product changes,
+  preserving the consolidated base and already published GRO history.
+- Analyzed terminal smart examples, using `Smart_Process`, `Smart_Delay`, and
+  `Smart_CellularAutomata` as style references for programmatic model creation,
+  plugin lookup, component insertion, connection, save, and simulation.
+- Reanalyzed `BacteriaColony` and found that it was still exposed as a
+  source/sink-style component with zero inputs and zero outputs, and that its
+  dispatch path removed received entities after processing.
+- Updated `BacteriaColony` to expose one required input and one required output.
+- Updated `BacteriaColony` dispatch semantics so an arriving entity triggers one
+  configured Gro/runtime step, or the fallback internal time step, and then is
+  forwarded through the front output connection.
+- Added focused unit coverage proving the plugin metadata exposes one input and
+  one output and that a `Create -> BacteriaColony -> Dispose` model forwards an
+  entity after a runtime step.
+- Added executable terminal smart examples:
+  - `Smart_GroColonyGrowth`, demonstrating `tick()` and `grow(2)` through a
+    flow model;
+  - `Smart_GroColonyLifecycle`, demonstrating `tick()`, `divide()`, and
+    `die(1)` through a flow model with lifecycle metrics.
+- Validation after this checkpoint:
+  - `git diff --check` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `cmake --preset terminal-example -DGENESYS_TERMINAL_EXAMPLE=smarts/Smart_GroColonyGrowth.cpp`
+    succeeded.
+  - `cmake --build --preset terminal-example` succeeded for
+    `Smart_GroColonyGrowth`.
+  - `./build/terminal-example/source/applications/terminal/genesys_terminal_application`
+    succeeded for `Smart_GroColonyGrowth`, forwarding three entities to
+    `Dispose_GrowthPulse` and printing colony time `1.5`, population `8`, and
+    bacteria count `8`.
+  - `cmake --preset terminal-example -DGENESYS_TERMINAL_EXAMPLE=smarts/Smart_GroColonyLifecycle.cpp`
+    succeeded.
+  - `cmake --build --preset terminal-example` succeeded for
+    `Smart_GroColonyLifecycle`.
+  - `./build/terminal-example/source/applications/terminal/genesys_terminal_application`
+    succeeded for `Smart_GroColonyLifecycle`, forwarding two entities to
+    `Dispose_LifecyclePulse` and printing colony time `7`, population `9`,
+    first division count `2`, and youngest generation `2`.
+- Functional checkpoint commit:
+  - `61c75ed3 Add Gro colony flow examples`
+- No push/publication was performed for this checkpoint yet.
+- Suggested next phase: either add a small terminal example discovery/preset
+  improvement for GRO examples, or return to event scheduler integration around
+  the now stateful flow component.
 
 ### 2026-04-17 - Gro Initial Semantic IR Phase
 
