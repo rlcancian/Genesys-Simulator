@@ -168,6 +168,14 @@ const BacteriaColony::BacteriumState& BacteriaColony::getBacteriumState(std::siz
 	return _bacteria[index];
 }
 
+double BacteriaColony::getBacteriumAge(std::size_t index) const {
+	const BacteriumState& bacterium = getBacteriumState(index);
+	if (_colonyTime < bacterium.birthTime) {
+		return 0.0;
+	}
+	return _colonyTime - bacterium.birthTime;
+}
+
 void BacteriaColony::setGridWidth(unsigned int gridWidth) {
 	_gridWidth = gridWidth;
 	_rebuildBacteriaGridPositions();
@@ -343,8 +351,11 @@ void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgr
 		if (mutation.type == GroProgramRuntime::PopulationMutationType::Divide) {
 			const std::size_t parentCount = _bacteria.size();
 			for (std::size_t index = 0; index < parentCount; ++index) {
-				const BacteriumState& parent = _bacteria[index];
-				_appendBacterium(parent.id, parent.generation + 1);
+				const unsigned int parentId = _bacteria[index].id;
+				const unsigned int childGeneration = _bacteria[index].generation + 1;
+				++_bacteria[index].divisionCount;
+				_bacteria[index].lastDivisionTime = _colonyTime;
+				_appendBacterium(parentId, childGeneration);
 			}
 			continue;
 		}
@@ -368,8 +379,10 @@ void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int genera
 	bacterium.id = _nextBacteriumId++;
 	bacterium.parentId = parentId;
 	bacterium.generation = generation;
+	bacterium.divisionCount = 0;
 	bacterium.birthTime = _colonyTime;
 	bacterium.lastUpdateTime = _colonyTime;
+	bacterium.lastDivisionTime = 0.0;
 	bacterium.alive = true;
 	_assignBacteriumGridPosition(bacterium, _bacteria.size());
 	_bacteria.push_back(bacterium);

@@ -30,8 +30,10 @@ public:
 		unsigned int id = 0;
 		unsigned int parentId = 0;
 		unsigned int generation = 0;
+		unsigned int divisionCount = 0;
 		double birthTime = 0.0;
 		double lastUpdateTime = 0.0;
+		double lastDivisionTime = 0.0;
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
 		bool alive = true;
@@ -74,6 +76,8 @@ public:
 	std::size_t getInternalBacteriaCount() const;
 	/*! \brief Returns one internal bacterium state by zero-based index. */
 	const BacteriumState& getBacteriumState(std::size_t index) const;
+	/*! \brief Returns the age of one internal bacterium at the current colony time. */
+	double getBacteriumAge(std::size_t index) const;
 	/*! \brief Sets the discrete spatial grid width reserved for the first colony model. */
 	void setGridWidth(unsigned int gridWidth);
 	/*! \brief Returns the discrete spatial grid width. */
