@@ -73,6 +73,7 @@ private:
     void importSimulationResponsesSnapshot();
     void loadDatasetFromFile(const QString& fileName);
     void addDataset(const DatasetDescriptor& dataset);
+    void filterDataset();
     void refreshDatasetList();
     void refreshScopeSelector();
     void showAnalysisSetupDialog(const QString& analysisName, int targetTabIndex);

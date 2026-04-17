@@ -458,7 +458,7 @@ void DataAnalyzerWindow::buildMenus() {
         });
     });
     dataMenu->addAction(tr("Transformar / filtrar dados"), this,
-                        [this]() { showSkeletonMessage(tr("data transformation")); });
+                        [this]() { filterDataset(); });
     dataMenu->addAction(tr("Gerenciar datasets"), this, [this]() { _workspaceTabs->setCurrentIndex(0); });
 
     QMenu* analysisMenu = menuBar()->addMenu(tr("Analises"));
@@ -1062,6 +1062,168 @@ void DataAnalyzerWindow::addDataset(const DatasetDescriptor& dataset) {
     refreshScopeSelector();
     refreshAnalysisViews();
     _workspaceTabs->setCurrentIndex(2);
+}
+
+void DataAnalyzerWindow::filterDataset() {
+    const QList<DatasetObservation> observations = scopedObservations();
+    if (observations.isEmpty()) {
+        QMessageBox::information(this, tr("Data Analyzer"), tr("Load or import a dataset before filtering data."));
+        return;
+    }
+
+    double minValue = observations.first().value;
+    double maxValue = observations.first().value;
+    int minReplication = observations.first().replication;
+    int maxReplication = observations.first().replication;
+    bool hasTime = false;
+    double minTime = 0.0;
+    double maxTime = 0.0;
+    for (const DatasetObservation& observation : observations) {
+        minValue = std::min(minValue, observation.value);
+        maxValue = std::max(maxValue, observation.value);
+        minReplication = std::min(minReplication, observation.replication);
+        maxReplication = std::max(maxReplication, observation.replication);
+        if (observation.hasTime) {
+            if (!hasTime) {
+                minTime = observation.time;
+                maxTime = observation.time;
+                hasTime = true;
+            } else {
+                minTime = std::min(minTime, observation.time);
+                maxTime = std::max(maxTime, observation.time);
+            }
+        }
+    }
+
+    QDialog dialog(this);
+    dialog.setWindowTitle(tr("Filter dataset"));
+    auto* form = new QFormLayout(&dialog);
+    auto* nameEdit = new QLineEdit(tr("%1 filtered").arg(scopedDatasetLabel()), &dialog);
+    auto* replicationFilter = new QCheckBox(tr("Restrict replication interval"), &dialog);
+    auto* timeFilter = new QCheckBox(tr("Restrict time interval"), &dialog);
+    auto* valueFilter = new QCheckBox(tr("Restrict value interval"), &dialog);
+    timeFilter->setEnabled(hasTime);
+    auto* replicationRange = new QWidget(&dialog);
+    auto* replicationLayout = new QHBoxLayout(replicationRange);
+    replicationLayout->setContentsMargins(0, 0, 0, 0);
+    auto* minReplicationSpin = new QSpinBox(replicationRange);
+    auto* maxReplicationSpin = new QSpinBox(replicationRange);
+    minReplicationSpin->setRange(minReplication, maxReplication);
+    maxReplicationSpin->setRange(minReplication, maxReplication);
+    minReplicationSpin->setValue(minReplication);
+    maxReplicationSpin->setValue(maxReplication);
+    replicationLayout->addWidget(minReplicationSpin);
+    replicationLayout->addWidget(new QLabel(tr("to"), replicationRange));
+    replicationLayout->addWidget(maxReplicationSpin);
+
+    auto* timeRange = new QWidget(&dialog);
+    auto* timeLayout = new QHBoxLayout(timeRange);
+    timeLayout->setContentsMargins(0, 0, 0, 0);
+    auto* minTimeSpin = new QDoubleSpinBox(timeRange);
+    auto* maxTimeSpin = new QDoubleSpinBox(timeRange);
+    minTimeSpin->setDecimals(6);
+    maxTimeSpin->setDecimals(6);
+    minTimeSpin->setRange(-1.0e12, 1.0e12);
+    maxTimeSpin->setRange(-1.0e12, 1.0e12);
+    minTimeSpin->setValue(minTime);
+    maxTimeSpin->setValue(maxTime);
+    timeLayout->addWidget(minTimeSpin);
+    timeLayout->addWidget(new QLabel(tr("to"), timeRange));
+    timeLayout->addWidget(maxTimeSpin);
+
+    auto* valueRange = new QWidget(&dialog);
+    auto* valueLayout = new QHBoxLayout(valueRange);
+    valueLayout->setContentsMargins(0, 0, 0, 0);
+    auto* minValueSpin = new QDoubleSpinBox(valueRange);
+    auto* maxValueSpin = new QDoubleSpinBox(valueRange);
+    minValueSpin->setDecimals(6);
+    maxValueSpin->setDecimals(6);
+    minValueSpin->setRange(-1.0e12, 1.0e12);
+    maxValueSpin->setRange(-1.0e12, 1.0e12);
+    minValueSpin->setValue(minValue);
+    maxValueSpin->setValue(maxValue);
+    valueLayout->addWidget(minValueSpin);
+    valueLayout->addWidget(new QLabel(tr("to"), valueRange));
+    valueLayout->addWidget(maxValueSpin);
+
+    replicationRange->setEnabled(false);
+    timeRange->setEnabled(false);
+    valueRange->setEnabled(false);
+    connect(replicationFilter, &QCheckBox::toggled, replicationRange, &QWidget::setEnabled);
+    connect(timeFilter, &QCheckBox::toggled, timeRange, &QWidget::setEnabled);
+    connect(valueFilter, &QCheckBox::toggled, valueRange, &QWidget::setEnabled);
+
+    form->addRow(tr("Source scope:"), new QLabel(scopedDatasetLabel(), &dialog));
+    form->addRow(tr("New dataset name:"), nameEdit);
+    form->addRow(replicationFilter, replicationRange);
+    form->addRow(timeFilter, timeRange);
+    form->addRow(valueFilter, valueRange);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    form->addRow(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, &QDialog::accept);
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    const int selectedMinReplication = std::min(minReplicationSpin->value(), maxReplicationSpin->value());
+    const int selectedMaxReplication = std::max(minReplicationSpin->value(), maxReplicationSpin->value());
+    const double selectedMinTime = std::min(minTimeSpin->value(), maxTimeSpin->value());
+    const double selectedMaxTime = std::max(minTimeSpin->value(), maxTimeSpin->value());
+    const double selectedMinValue = std::min(minValueSpin->value(), maxValueSpin->value());
+    const double selectedMaxValue = std::max(minValueSpin->value(), maxValueSpin->value());
+
+    QList<DatasetObservation> filteredObservations;
+    QList<double> filteredValues;
+    QStringList previewLines;
+    for (const DatasetObservation& observation : observations) {
+        if (replicationFilter->isChecked()
+            && (observation.replication < selectedMinReplication || observation.replication > selectedMaxReplication)) {
+            continue;
+        }
+        if (timeFilter->isChecked()
+            && (!observation.hasTime || observation.time < selectedMinTime || observation.time > selectedMaxTime)) {
+            continue;
+        }
+        if (valueFilter->isChecked()
+            && (observation.value < selectedMinValue || observation.value > selectedMaxValue)) {
+            continue;
+        }
+        filteredObservations.append(observation);
+        filteredValues.append(observation.value);
+        if (previewLines.size() < 20) {
+            previewLines << (observation.hasTime
+                                     ? tr("replication=%1,time=%2,value=%3")
+                                               .arg(observation.replication)
+                                               .arg(formatNumber(observation.time), formatNumber(observation.value))
+                                     : tr("replication=%1,value=%2")
+                                               .arg(observation.replication)
+                                               .arg(formatNumber(observation.value)));
+        }
+    }
+
+    if (filteredValues.isEmpty()) {
+        QMessageBox::information(this, tr("Data Analyzer"), tr("The selected filters did not keep any observations."));
+        return;
+    }
+
+    addDataset({
+            nameEdit->text().trimmed().isEmpty() ? tr("Filtered dataset") : nameEdit->text().trimmed(),
+            tr("Filtered values"),
+            tr("Filtered from %1; %2 of %3 observations kept.")
+                    .arg(scopedDatasetLabel())
+                    .arg(filteredValues.size())
+                    .arg(observations.size()),
+            tr("Continuous numeric"),
+            tr("Filtered Data Analyzer scope"),
+            previewLines,
+            filteredValues,
+            true,
+            filteredObservations,
+            true,
+            hasTime
+    });
+    statusBar()->showMessage(tr("Created filtered dataset with %1 observation(s).").arg(filteredValues.size()), 4000);
 }
 
 void DataAnalyzerWindow::refreshDatasetList() {
