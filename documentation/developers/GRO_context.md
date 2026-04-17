@@ -190,3 +190,21 @@ on Gro syntax or biology-specific semantics.
 - **Next steps:** commit the coordination update and the Gro plugin slice in
   small commits, validate, fetch/merge from `origin/WiP20261`, and push
   `WiP20261_GRO`.
+
+### 2026-04-17 - GRO - Branch-Local Commits And Validation
+
+- **Theme:** first clean `WiP20261_GRO` commits.
+- **Context extracted:** `origin/WiP20261` now contains upstream biological data
+  plugins (`BioNetwork`, `BioParameter`, `BioReaction`, `BioSpecies`) and a fix
+  for the earlier persistence unit-test compile blocker.
+- **Decision:** keep branch history split into small commits: one coordination
+  commit and one implementation commit.
+- **Action taken:** committed `documentation/developers/communication.md` and
+  `documentation/developers/GRO_context.md` as `41666d6f`; committed
+  `GroProgram`, `BacteriaColony`, static connector registration, and runtime
+  plugin-manager tests as `b42c572f`.
+- **Validation:** fetched `origin`, merged `origin/WiP20261` into
+  `WiP20261_GRO` with no new changes, ran `cmake --preset tests-kernel-unit`,
+  and ran `cmake --build --preset tests-kernel-unit-run` successfully.
+- **Next steps:** push `WiP20261_GRO` to `origin` and continue all future GRO
+  development on that branch only.
