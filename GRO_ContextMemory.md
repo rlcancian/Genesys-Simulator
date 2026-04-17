@@ -16,10 +16,10 @@ instructions are considered obsolete or consolidated here.
 - **Canonical memory file:** `GRO_ContextMemory.md` in the repository root.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
-- **Current consolidated base:** `origin/WiP20261` at `f769ec61` as of the
+- **Current consolidated base:** `origin/WiP20261` at `dca0397f` as of the
   latest GRO synchronization.
-- **Current GRO branch head:** local `WiP20261_GRO` has active post-runtime
-  GRO work on top of `origin/WiP20261_GRO` at `be4d0337`.
+- **Current GRO branch head:** local `WiP20261_GRO` has the Gro `die()`
+  command checkpoint committed on top of `origin/WiP20261_GRO` at `e2c68795`.
 - **Current state:** the GRO work line is active again and is proceeding in
   explicit, user-confirmed phases on `WiP20261_GRO`.
 - **Immediate objective:** continue the Gro biosimulator integration only one
@@ -184,11 +184,15 @@ instructions are considered obsolete or consolidated here.
   - `grow()` and `grow(n)`: increase population by one or by a positive integer
     amount;
   - `divide()`: doubles the current population;
+  - `die()` and `die(n)`: decrease population by one or by a positive integer
+    amount, failing if the command would remove more bacteria than available;
   - `set_population(n)`: replaces the current population with a positive
     integer value.
 - **Current limitation:** runtime execution is intentionally minimal and is not
-  yet connected to the GenESyS event scheduler, internal bacteria state,
-  cellular automata, full Gro biological semantics, or GUI editing workflows.
+  yet connected to the GenESyS event scheduler, cellular automata, full Gro
+  biological semantics, or GUI editing workflows. It now reports structured
+  population mutations so `BacteriaColony` can apply them to owned bacteria
+  state.
 
 ### `BacteriaColony`
 
@@ -208,10 +212,12 @@ instructions are considered obsolete or consolidated here.
   On successful execution, the colony copies back internal colony time and
   population size from `GroProgramRuntimeState`.
 - **Internal bacteria state:** each bacterium currently has a stable per-
-  replication id, birth time, last update time, alive flag, and deterministic
-  discrete grid coordinates. Population-changing runtime commands resize this
-  internal vector so the population summary and owned bacteria state remain
-  synchronized.
+  replication id, parent id, generation, division count, birth time, last update
+  time, last division time, alive flag, and deterministic discrete grid
+  coordinates. Population-changing runtime commands now carry mutation records
+  that let the colony preserve simple lineage for `divide()`, remove live
+  bacteria for `die()`, and keep the population summary and owned bacteria
+  state synchronized.
 - **Dispatch behavior:** when a `GroProgram` is configured, `_onDispatchEvent`
   executes that program once and traces success/failure. When no `GroProgram` is
   configured, it preserves the previous fallback behavior of advancing internal
@@ -293,6 +299,10 @@ instructions are considered obsolete or consolidated here.
   - `3b59b3c2 Expand Gro runtime commands`
   - `8985889e Connect Gro runtime to bacteria colony`
   - `24d4be21 Add internal bacteria colony state`
+  - `85d146de Track Gro population mutations in colony state`
+  - `ba9c182a Add bacteria lifecycle metrics`
+  - `e2c68795 Record bacteria lifecycle metrics checkpoint`
+  - `3101d042 Add Gro die command support`
 - Latest known validation after active GRO phases:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
@@ -311,20 +321,29 @@ instructions are considered obsolete or consolidated here.
 ## Current Branch State
 
 - Current branch: `WiP20261_GRO`.
-- Current consolidated base: `origin/WiP20261` at `f769ec61`.
-- Current GRO branch head: local `WiP20261_GRO` after the active runtime command
-  expansion and colony connection work; `origin/WiP20261_GRO` remains at
-  `be4d0337` until explicit publication is requested.
-- Latest synchronization with `origin/WiP20261` produced merge commit
-  `55058527` and brought in GUI preferences/theme work.
+- Current consolidated base: `origin/WiP20261` at `dca0397f`.
+- Current GRO branch head: local `WiP20261_GRO` after the Gro `die()`
+  command checkpoint; `origin/WiP20261_GRO` remains at `e2c68795` until
+  explicit publication is requested.
+- Latest synchronization with `origin/WiP20261` fast-forwarded local
+  `WiP20261_GRO` to `dca0397f`; no conflicts occurred.
 - Conflict status during the latest synchronization: no conflicts occurred.
-- Latest completed GRO phase: internal bacteria state inside `BacteriaColony`.
+- Latest completed GRO phase: minimal Gro `die()` command support in the
+  isolated runtime and `BacteriaColony` internal bacteria state.
 - Recent user-authorized work completed:
   1. expanded the isolated runtime command set;
   2. connected the isolated runtime pipeline to `BacteriaColony`;
   3. added the first owned per-bacterium state vector synchronized with colony
-     population changes.
-- These changes are local only until explicit publication is requested.
+     population changes;
+  4. added runtime population mutation records and simple colony lineage
+     metadata for `divide()`;
+  5. added bacterium age access, parent division count, and last division time.
+  6. added minimal `die()` / `die(n)` support that removes bacteria from the
+     current live colony state.
+- The lifecycle metrics checkpoint was published to `origin/WiP20261_GRO` at
+  `e2c68795`.
+- The `die()` command checkpoint is local only until explicit publication is
+  requested.
 - Ask the user for explicit confirmation before proceeding to the next technical
   phase.
 
@@ -332,10 +351,10 @@ instructions are considered obsolete or consolidated here.
 
 - Do not continue automatically. Wait for explicit user confirmation before the
   next technical phase.
-- Suggested next technical phase: decide whether to evolve this internal
-  bacteria state toward command-level per-bacterium behavior first, or to add
-  event scheduler integration around the now stateful colony. Keep cellular
-  automata, signals, reactions, and complete Gro semantics as later phases.
+- Suggested next technical phase: either add event scheduler integration around
+  the now stateful colony or preserve richer per-cell death/history semantics
+  before adding broader Gro biological behavior. Keep cellular automata,
+  signals, reactions, and complete Gro semantics as later phases.
 - Decide whether `BacteriaColony` should schedule periodic internal events using
   `SimulationStep` or remain API/plugin-driven until parser/runtime semantics
   are clearer.
@@ -618,6 +637,97 @@ instructions are considered obsolete or consolidated here.
 - No push/publication was performed.
 - Suggested next phase: either add the first per-bacterium behavior fields and
   command effects, or wire scheduler execution around the now stateful colony.
+
+### 2026-04-17 - Population Mutation Lineage Checkpoint
+
+- User asked whether GRO could advance to the next checkpoint in one to three
+  phases and authorized proceeding if feasible.
+- Ran `git fetch origin`; `origin/WiP20261` advanced to `dca0397f`.
+- Fast-forwarded local `WiP20261_GRO` to `dca0397f`, which already contains the
+  previously published GRO checkpoint and newer KERNEL_GUI/TINKERCELL work.
+- No conflicts occurred during the fast-forward.
+- Executed a bounded checkpoint in two technical subphases:
+  1. `GroProgramRuntime::ExecutionResult` now exposes structured population
+     mutation records for `grow`, `divide`, and `set_population`;
+  2. `BacteriaColony` applies those mutation records to the owned
+     `BacteriumState` vector instead of blindly resizing after runtime
+     execution.
+- `BacteriumState` now records `parentId` and `generation`.
+- `divide()` now creates daughter bacteria with parent id and generation
+  derived from the current parents.
+- `grow()` and `set_population()` remain explicit population operations:
+  `grow()` appends unparented generation-zero bacteria and `set_population()`
+  truncates or extends to the requested count.
+- Added unit coverage for runtime mutation records and simple colony lineage
+  after combined `tick`, `grow`, `divide`, and `set_population` execution.
+- Validation after this checkpoint:
+  - `git diff --check` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Functional checkpoint commit:
+  - `85d146de Track Gro population mutations in colony state`
+- No push/publication was performed.
+- Suggested next phase: either begin actual per-bacterium command behavior
+  beyond lineage metadata, or integrate the stateful colony with scheduler
+  execution.
+
+### 2026-04-17 - Bacteria Lifecycle Metrics Checkpoint
+
+- User instructed GRO to continue to the next stable checkpoint because the
+  previous checkpoint had been committed.
+- Ran `git fetch origin`; `origin/WiP20261` did not advance, while
+  `origin/WiP20261_KERNEL_GUI` advanced independently.
+- Executed one bounded technical phase over the existing stateful colony:
+  enrich each internal bacterium with lifecycle metrics without touching
+  scheduler integration, cellular automata, signals, reactions, or plugin
+  directory layout.
+- Added `divisionCount` and `lastDivisionTime` to `BacteriumState`.
+- Added `BacteriaColony::getBacteriumAge(std::size_t)` for current internal
+  colony-time age calculation.
+- During `divide()` mutation application, parent bacteria now increment
+  `divisionCount` and record `lastDivisionTime`; daughter bacteria remain
+  generation +1 with `divisionCount == 0`.
+- Added focused unit assertions for initial age, parent division metrics, and
+  daughter lifecycle defaults.
+- Validation after this checkpoint:
+  - `git diff --check` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Functional checkpoint commit:
+  - `ba9c182a Add bacteria lifecycle metrics`
+- No push/publication was performed.
+- Suggested next phase: either add the first per-bacterium behavior command
+  effects beyond lifecycle metrics, or add event scheduler integration around
+  the now stateful colony.
+
+### 2026-04-17 - Gro Die Command Checkpoint
+
+- User requested a push first and then continuation to the next phase.
+- Pushed `WiP20261_GRO` to `origin/WiP20261_GRO`, publishing the previous
+  lifecycle metrics checkpoint at `e2c68795`.
+- Ran `git fetch origin`; `origin/WiP20261` did not advance, while
+  `origin/WiP20261_KERNEL_GUI` advanced independently.
+- Executed one bounded technical phase: add minimal Gro `die()` semantics to
+  the isolated runtime and connect the resulting mutation to
+  `BacteriaColony`.
+- Added `PopulationMutationType::Die`.
+- `GroProgramRuntime::execute` now supports:
+  - `die()`: removes one bacterium from the runtime population;
+  - `die(n)`: removes a positive integer amount;
+  - failure when the command would remove more bacteria than currently
+    available.
+- `BacteriaColony` now applies `Die` population mutations by removing bacteria
+  from the owned internal vector, keeping the live population summary and
+  internal bacteria count synchronized.
+- Added focused unit coverage for isolated runtime `die()` behavior, invalid
+  over-removal, and colony-side internal state after `die(2)`.
+- Validation after this checkpoint:
+  - `git diff --check` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Functional checkpoint commit:
+  - `3101d042 Add Gro die command support`
+- No push/publication was performed for the `die()` checkpoint yet.
+- Suggested next phase: either add scheduler integration for repeated colony
+  execution, or refine death semantics if dead-cell history must be retained
+  before scheduler work.
 
 ### 2026-04-17 - Gro Initial Semantic IR Phase
 

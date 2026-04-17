@@ -32,10 +32,25 @@ struct GroProgramRuntimeState {
  */
 class GroProgramRuntime {
 public:
+	enum class PopulationMutationType {
+		Grow,
+		Divide,
+		Die,
+		SetPopulation
+	};
+
+	struct PopulationMutation {
+		PopulationMutationType type = PopulationMutationType::Grow;
+		unsigned int value = 0;
+		unsigned int previousPopulationSize = 0;
+		unsigned int resultingPopulationSize = 0;
+	};
+
 	struct ExecutionResult {
 		bool succeeded = true;
 		std::string errorMessage = "";
 		unsigned int executedCommands = 0;
+		std::vector<PopulationMutation> populationMutations;
 		std::vector<std::string> unsupportedCommands;
 		std::vector<std::string> skippedRawStatements;
 	};

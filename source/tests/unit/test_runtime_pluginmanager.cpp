@@ -283,8 +283,13 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     ModelDataDefinition::InitBetweenReplications(colony);
     ASSERT_EQ(colony->getInternalBacteriaCount(), 3u);
     EXPECT_EQ(colony->getBacteriumState(0).id, 1u);
+    EXPECT_EQ(colony->getBacteriumState(0).parentId, 0u);
+    EXPECT_EQ(colony->getBacteriumState(0).generation, 0u);
+    EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 0u);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).birthTime, 1.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastDivisionTime, 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumAge(0), 0.0);
     EXPECT_EQ(colony->getBacteriumState(0).gridX, 0u);
     EXPECT_EQ(colony->getBacteriumState(0).gridY, 0u);
     EXPECT_EQ(colony->getBacteriumState(1).gridX, 1u);
@@ -298,18 +303,85 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     EXPECT_EQ(result.executedCommands, 4u);
     EXPECT_DOUBLE_EQ(colony->getColonyTime(), 1.5);
     EXPECT_EQ(colony->getPopulationSize(), 9u);
+    ASSERT_EQ(result.populationMutations.size(), 3u);
+    EXPECT_EQ(result.populationMutations[0].type, GroProgramRuntime::PopulationMutationType::Grow);
+    EXPECT_EQ(result.populationMutations[0].value, 2u);
+    EXPECT_EQ(result.populationMutations[0].previousPopulationSize, 3u);
+    EXPECT_EQ(result.populationMutations[0].resultingPopulationSize, 5u);
+    EXPECT_EQ(result.populationMutations[1].type, GroProgramRuntime::PopulationMutationType::Divide);
+    EXPECT_EQ(result.populationMutations[1].value, 5u);
+    EXPECT_EQ(result.populationMutations[1].previousPopulationSize, 5u);
+    EXPECT_EQ(result.populationMutations[1].resultingPopulationSize, 10u);
+    EXPECT_EQ(result.populationMutations[2].type, GroProgramRuntime::PopulationMutationType::SetPopulation);
+    EXPECT_EQ(result.populationMutations[2].value, 9u);
+    EXPECT_EQ(result.populationMutations[2].previousPopulationSize, 10u);
+    EXPECT_EQ(result.populationMutations[2].resultingPopulationSize, 9u);
     ASSERT_EQ(colony->getInternalBacteriaCount(), 9u);
     EXPECT_EQ(colony->getBacteriumState(0).id, 1u);
+    EXPECT_EQ(colony->getBacteriumState(0).parentId, 0u);
+    EXPECT_EQ(colony->getBacteriumState(0).generation, 0u);
+    EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 1u);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).birthTime, 1.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastDivisionTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumAge(0), 0.5);
     EXPECT_EQ(colony->getBacteriumState(3).id, 4u);
+    EXPECT_EQ(colony->getBacteriumState(3).parentId, 0u);
+    EXPECT_EQ(colony->getBacteriumState(3).generation, 0u);
+    EXPECT_EQ(colony->getBacteriumState(3).divisionCount, 1u);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).birthTime, 1.5);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).lastUpdateTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).lastDivisionTime, 1.5);
     EXPECT_EQ(colony->getBacteriumState(8).id, 9u);
+    EXPECT_EQ(colony->getBacteriumState(8).parentId, 4u);
+    EXPECT_EQ(colony->getBacteriumState(8).generation, 1u);
+    EXPECT_EQ(colony->getBacteriumState(8).divisionCount, 0u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(8).birthTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(8).lastDivisionTime, 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumAge(8), 0.0);
     EXPECT_EQ(colony->getBacteriumState(8).gridX, 0u);
     EXPECT_EQ(colony->getBacteriumState(8).gridY, 0u);
     EXPECT_TRUE(result.unsupportedCommands.empty());
     EXPECT_TRUE(result.skippedRawStatements.empty());
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesDieCommandToInternalState) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_Die");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode("program colony() { tick(); die(2); }");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_Die");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialColonyTime(1.0);
+    colony->setInitialPopulation(5);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_EQ(result.executedCommands, 2u);
+    ASSERT_EQ(result.populationMutations.size(), 1u);
+    EXPECT_EQ(result.populationMutations[0].type, GroProgramRuntime::PopulationMutationType::Die);
+    EXPECT_EQ(result.populationMutations[0].value, 2u);
+    EXPECT_EQ(result.populationMutations[0].previousPopulationSize, 5u);
+    EXPECT_EQ(result.populationMutations[0].resultingPopulationSize, 3u);
+    EXPECT_EQ(colony->getPopulationSize(), 3u);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 3u);
+    EXPECT_EQ(colony->getBacteriumState(0).id, 1u);
+    EXPECT_EQ(colony->getBacteriumState(1).id, 2u);
+    EXPECT_EQ(colony->getBacteriumState(2).id, 3u);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 1.5);
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramParserKeepsLexicalValidationBoundary) {
@@ -396,6 +468,23 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand)
 	EXPECT_DOUBLE_EQ(state.colonyTime, 2.5);
 	EXPECT_EQ(state.tickCount, 2u);
 	EXPECT_EQ(state.populationSize, 7u);
+	ASSERT_EQ(result.populationMutations.size(), 4u);
+	EXPECT_EQ(result.populationMutations[0].type, GroProgramRuntime::PopulationMutationType::Grow);
+	EXPECT_EQ(result.populationMutations[0].value, 1u);
+	EXPECT_EQ(result.populationMutations[0].previousPopulationSize, 2u);
+	EXPECT_EQ(result.populationMutations[0].resultingPopulationSize, 3u);
+	EXPECT_EQ(result.populationMutations[1].type, GroProgramRuntime::PopulationMutationType::Grow);
+	EXPECT_EQ(result.populationMutations[1].value, 3u);
+	EXPECT_EQ(result.populationMutations[1].previousPopulationSize, 3u);
+	EXPECT_EQ(result.populationMutations[1].resultingPopulationSize, 6u);
+	EXPECT_EQ(result.populationMutations[2].type, GroProgramRuntime::PopulationMutationType::Divide);
+	EXPECT_EQ(result.populationMutations[2].value, 6u);
+	EXPECT_EQ(result.populationMutations[2].previousPopulationSize, 6u);
+	EXPECT_EQ(result.populationMutations[2].resultingPopulationSize, 12u);
+	EXPECT_EQ(result.populationMutations[3].type, GroProgramRuntime::PopulationMutationType::SetPopulation);
+	EXPECT_EQ(result.populationMutations[3].value, 7u);
+	EXPECT_EQ(result.populationMutations[3].previousPopulationSize, 12u);
+	EXPECT_EQ(result.populationMutations[3].resultingPopulationSize, 7u);
 	ASSERT_EQ(result.unsupportedCommands.size(), 1u);
 	EXPECT_EQ(result.unsupportedCommands[0], "observe()");
     ASSERT_EQ(result.skippedRawStatements.size(), 1u);
@@ -417,4 +506,40 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand)
 	EXPECT_FALSE(invalidPopulationResult.succeeded);
 	EXPECT_NE(invalidPopulationResult.errorMessage.find("set_population command expects one positive integer argument"),
 	          std::string::npos);
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeSupportsDieCommand) {
+	GroProgramParser parser;
+	GroProgramParser::Result parsed = parser.parse("program colony() { die(); die(2); }");
+	ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+
+	GroProgramCompiler compiler;
+	GroProgramIr ir = compiler.compile(parsed.ast);
+
+	GroProgramRuntimeState state;
+	state.populationSize = 5;
+
+	GroProgramRuntime runtime;
+	GroProgramRuntime::ExecutionResult result = runtime.execute(ir, state);
+
+	EXPECT_TRUE(result.succeeded) << result.errorMessage;
+	EXPECT_EQ(result.executedCommands, 2u);
+	EXPECT_EQ(state.populationSize, 2u);
+	ASSERT_EQ(result.populationMutations.size(), 2u);
+	EXPECT_EQ(result.populationMutations[0].type, GroProgramRuntime::PopulationMutationType::Die);
+	EXPECT_EQ(result.populationMutations[0].value, 1u);
+	EXPECT_EQ(result.populationMutations[0].previousPopulationSize, 5u);
+	EXPECT_EQ(result.populationMutations[0].resultingPopulationSize, 4u);
+	EXPECT_EQ(result.populationMutations[1].type, GroProgramRuntime::PopulationMutationType::Die);
+	EXPECT_EQ(result.populationMutations[1].value, 2u);
+	EXPECT_EQ(result.populationMutations[1].previousPopulationSize, 4u);
+	EXPECT_EQ(result.populationMutations[1].resultingPopulationSize, 2u);
+
+	GroProgramParser::Result invalidDeath = parser.parse("die(3);");
+	ASSERT_TRUE(invalidDeath.accepted) << invalidDeath.errorMessage;
+	GroProgramIr invalidIr = compiler.compile(invalidDeath.ast);
+
+	GroProgramRuntime::ExecutionResult invalidResult = runtime.execute(invalidIr, state);
+	EXPECT_FALSE(invalidResult.succeeded);
+	EXPECT_NE(invalidResult.errorMessage.find("die command would remove more bacteria"), std::string::npos);
 }
