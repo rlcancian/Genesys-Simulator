@@ -78,6 +78,8 @@ public:
 	bool blocksInsertion() const;
 	/*! \brief Returns true when this missing dependency has an installation command. */
 	bool canAttemptInstall() const;
+	/*! \brief Returns a multi-line diagnostic with check/install commands and command results. */
+	std::string diagnosticText() const;
 	/*! \brief Converts a status value into a stable textual representation. */
 	static std::string statusToString(Status status);
 
@@ -105,6 +107,8 @@ public:
 	bool canAttemptInstallForAllMissing() const;
 	/*! \brief Returns a compact diagnostic summary suitable for trace logs. */
 	std::string summary() const;
+	/*! \brief Returns a multi-line diagnostic suitable for terminal, GUI and trace details. */
+	std::string diagnosticText(bool includeSatisfied = false) const;
 
 private:
 	std::list<SystemDependencyCheckEntry> _entries;

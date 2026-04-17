@@ -20,6 +20,7 @@
 #include "components/Assign.h"
 #include "components/Batch.h"
 #include "components/Buffer.h"
+#include "components/CellularAutomataComp.h"
 #include "components/Clone.h"
 #include "components/CppForG.h"
 #include "components/Create.h"
@@ -47,6 +48,7 @@
 #include "components/Process.h"
 #include "components/Record.h"
 #include "components/Route.h"
+#include "components/RSimulator.h"
 #include "components/Start.h"
 #include "components/Search.h"
 #include "components/Signal.h"
@@ -60,10 +62,15 @@
 #include "components/Wait.h"
 #include "components/Write.h"
 #include "components/LSODE.h"
+#include "components/OLD_ODEelement.h"
+#include "components/network/DefaultNode.h"
+#include "components/network/PetriPlace.h"
 
 
 // Model data definitions
+#include "data/BioSimulatorRunner.h"
 #include "data/CppCompiler.h"
+#include "data/DummyElement.h"
 #include "data/EntityGroup.h"
 #include "data/Failure.h"
 #include "data/File.h"
@@ -74,6 +81,7 @@
 #include "data/Set.h"
 #include "data/SignalData.h"
 #include "data/SPICERunner.h"
+#include "data/RSimulatorRunner.h"
 #include "data/Station.h"
 #include "data/Storage.h"
 #include "data/Variable.h"
@@ -112,6 +120,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("create.so");
     filenames->insert("dispose.so");
     filenames->insert("dummy.so");
+    filenames->insert("dummyelement.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
     filenames->insert("formula.so");
@@ -120,6 +129,8 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("resource.so");
     filenames->insert("variable.so");
     filenames->insert("batch.so");
+    filenames->insert("biosimulatorrunner.so");
+    filenames->insert("cellularautomata.so");
     filenames->insert("clone.so");
     filenames->insert("ModalModelDefault.so");
     filenames->insert("decide.so");
@@ -134,7 +145,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("release.so");
     filenames->insert("storage.so");
     filenames->insert("separate.so");
-    //filenames->insert("submodel.so");
+    filenames->insert("submodel.so");
     filenames->insert("seize.so");
     filenames->insert("search.so");
     filenames->insert("signal.so");
@@ -147,6 +158,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("diffequations.so");
     filenames->insert("lsode.so");
     //filenames->insert("finiteelement.so");
+    filenames->insert("old_odeelement.so");
     filenames->insert("modalmodelfsm.so");
     filenames->insert("fsmstate.so");
     filenames->insert("modalmodelpetrinet.so");
@@ -156,16 +168,20 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("spicecircuit.so");
     filenames->insert("spicenode.so");
     filenames->insert("spicerunner.so");
+    filenames->insert("rsimulatorrunner.so");
     //filenames->insert("octave.so");
     filenames->insert("file.so");
     //filenames->insert("read.so");
     filenames->insert("write.so");
     filenames->insert("access.so");
+    filenames->insert("defaultnode.so");
     filenames->insert("enter.so");
     filenames->insert("exit.so");
     filenames->insert("leave.so");
     filenames->insert("pickstation.so");
+    filenames->insert("petriplace.so");
     filenames->insert("route.so");
+    filenames->insert("rsimulator.so");
     filenames->insert("start.so");
     filenames->insert("stop.so");
     filenames->insert("station.so");
@@ -214,6 +230,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Dispose::GetPluginInformation;
     else if (fn == "dummy.so")
         GetInfo = &DummyComponent::GetPluginInformation;
+    else if (fn == "dummyelement.so")
+        GetInfo = &DummyElement::GetPluginInformation;
     else if (fn == "entitygroup.so")
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")
@@ -230,6 +248,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Variable::GetPluginInformation;
     else if (fn == "batch.so")
         GetInfo = &Batch::GetPluginInformation;
+    else if (fn == "biosimulatorrunner.so")
+        GetInfo = &BioSimulatorRunner::GetPluginInformation;
+    else if (fn == "cellularautomata.so")
+        GetInfo = &CellularAutomataComp::GetPluginInformation;
     else if (fn == "clone.so")
         GetInfo = &Clone::GetPluginInformation;
     else if (fn == "ModalModelDefault.so")
@@ -258,8 +280,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Storage::GetPluginInformation;
     else if (fn == "separate.so")
         GetInfo = &Separate::GetPluginInformation;
-    //else if (fn == "submodel.so")
-    //    GetInfo = &Submodel::GetPluginInformation;
+    else if (fn == "submodel.so")
+        GetInfo = &Submodel::GetPluginInformation;
     else if (fn == "seize.so")
         GetInfo = &Seize::GetPluginInformation;
     else if (fn == "search.so")
@@ -283,6 +305,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
     else if (fn == "lsode.so")
         GetInfo = &LSODE::GetPluginInformation;
     //else if (fn == "finiteelement.so")
+    else if (fn == "old_odeelement.so")
+        GetInfo = &OLD_ODEelement::GetPluginInformation;
     else if (fn == "modalmodelfsm.so")
         GetInfo = &ModalModelFSM::GetPluginInformation;
     else if (fn == "fsmstate.so")
@@ -302,6 +326,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &SPICENode::GetPluginInformation;
     else if (fn == "spicerunner.so")
         GetInfo = &SPICERunner::GetPluginInformation;
+    else if (fn == "rsimulatorrunner.so")
+        GetInfo = &RSimulatorRunner::GetPluginInformation;
     //else if (fn == "octave.so")
     //	GetInfo = &Octave::GetPluginInformation;
     else if (fn == "file.so")
@@ -312,6 +338,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Write::GetPluginInformation;
     else if (fn == "access.so")
         GetInfo = &Access::GetPluginInformation;
+    else if (fn == "defaultnode.so")
+        GetInfo = &DefaultNode::GetPluginInformation;
     else if (fn == "enter.so")
         GetInfo = &Enter::GetPluginInformation;
     else if (fn == "exit.so")
@@ -320,8 +348,12 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Leave::GetPluginInformation;
     else if (fn == "pickstation.so")
         GetInfo = &PickStation::GetPluginInformation;
+    else if (fn == "petriplace.so")
+        GetInfo = &PetriPlace::GetPluginInformation;
     else if (fn == "route.so")
         GetInfo = &Route::GetPluginInformation;
+    else if (fn == "rsimulator.so")
+        GetInfo = &RSimulator::GetPluginInformation;
     else if (fn == "start.so")
         GetInfo = &Start::GetPluginInformation;
     else if (fn == "stop.so")

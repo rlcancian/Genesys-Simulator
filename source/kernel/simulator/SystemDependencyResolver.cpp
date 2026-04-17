@@ -85,6 +85,33 @@ bool SystemDependencyCheckEntry::canAttemptInstall() const {
 	return _status == Status::Missing && !_dependency.getInstallCommand().empty();
 }
 
+std::string SystemDependencyCheckEntry::diagnosticText() const {
+	std::ostringstream text;
+	text << "Dependency: " << _dependency.getName() << "\n";
+	text << "  OS: " << SystemDependency::osToString(_dependency.getOS()) << "\n";
+	text << "  Status: " << statusToString(_status) << "\n";
+	text << "  Check command: " << (_dependency.getCheckCommand().empty() ? "<not declared>" : _dependency.getCheckCommand()) << "\n";
+	text << "  Install command: " << (_dependency.getInstallCommand().empty() ? "<not declared>" : _dependency.getInstallCommand()) << "\n";
+
+	// Command details are preserved so headless callers can explain what failed without rerunning commands.
+	if (_checkResult.started) {
+		text << "  Check exit code: " << _checkResult.exitCode << "\n";
+		if (!_checkResult.output.empty()) {
+			text << "  Check output: " << _checkResult.output;
+			if (_checkResult.output.back() != '\n') {
+				text << "\n";
+			}
+		}
+	}
+	if (!_checkResult.errorMessage.empty()) {
+		text << "  Check error: " << _checkResult.errorMessage << "\n";
+	}
+	if (!_message.empty()) {
+		text << "  Diagnostic: " << _message << "\n";
+	}
+	return text.str();
+}
+
 std::string SystemDependencyCheckEntry::statusToString(Status status) {
 	switch (status) {
 		case Status::Satisfied:
@@ -144,6 +171,25 @@ std::string SystemDependencyCheckResult::summary() const {
 		if (!entry.message().empty()) {
 			text << " (" << entry.message() << ")";
 		}
+	}
+	return text.str();
+}
+
+std::string SystemDependencyCheckResult::diagnosticText(bool includeSatisfied) const {
+	std::ostringstream text;
+	bool first = true;
+	for (const SystemDependencyCheckEntry& entry : _entries) {
+		if (!includeSatisfied && !entry.blocksInsertion()) {
+			continue;
+		}
+		if (!first) {
+			text << "\n";
+		}
+		first = false;
+		text << entry.diagnosticText();
+	}
+	if (first) {
+		return summary();
 	}
 	return text.str();
 }

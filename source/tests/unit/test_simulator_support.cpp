@@ -461,7 +461,9 @@ TEST(SimulatorSupportTest, SystemDependencyResolverMarksSatisfiedDependency) {
 
 TEST(SimulatorSupportTest, SystemDependencyResolverMarksMissingDependency) {
     FakeSystemCommandExecutor executor;
-    executor.results["missing-tool --version"] = CommandResultWithExitCode(1);
+    SystemCommandResult failedCheck = CommandResultWithExitCode(1);
+    failedCheck.output = "missing-tool: command not found\n";
+    executor.results["missing-tool --version"] = failedCheck;
     std::list<SystemDependency> dependencies;
     dependencies.emplace_back(
         SystemDependency::OS::Any,
@@ -476,6 +478,9 @@ TEST(SimulatorSupportTest, SystemDependencyResolverMarksMissingDependency) {
     EXPECT_TRUE(result.hasBlockingEntries());
     EXPECT_TRUE(result.canAttemptInstallForAllMissing());
     EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::Missing);
+    EXPECT_NE(result.diagnosticText(false).find("Check command: missing-tool --version"), std::string::npos);
+    EXPECT_NE(result.diagnosticText(false).find("Install command: sudo apt install missing-tool -y"), std::string::npos);
+    EXPECT_NE(result.diagnosticText(false).find("missing-tool: command not found"), std::string::npos);
 }
 
 TEST(SimulatorSupportTest, SystemDependencyResolverIgnoresDifferentOperatingSystem) {

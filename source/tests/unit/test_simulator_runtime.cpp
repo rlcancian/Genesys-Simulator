@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cstdlib>
 #include <fstream>
 #include <memory>
 #include <sstream>
@@ -32,6 +33,7 @@
 #include "plugins/data/CppCompiler.h"
 #include "plugins/data/SPICERunner.h"
 #include "plugins/data/BioSimulatorRunner.h"
+#include "plugins/data/RSimulatorRunner.h"
 #include "plugins/data/AssignmentItem.h"
 #include "plugins/data/DummyElement.h"
 #include "kernel/util/Util.h"
@@ -49,6 +51,7 @@
 #include "plugins/components/Remove.h"
 #include "plugins/components/Assign.h"
 #include "plugins/components/Write.h"
+#include "plugins/components/RSimulator.h"
 #define private public
 #define protected public
 #include "plugins/components/Buffer.h"
@@ -878,6 +881,44 @@ public:
     }
 };
 
+class RSimulatorRunnerProbe : public RSimulatorRunner {
+public:
+    RSimulatorRunnerProbe(Model* model, const std::string& name = "") : RSimulatorRunner(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class RSimulatorProbe : public RSimulator {
+public:
+    RSimulatorProbe(Model* model, const std::string& name = "") : RSimulator(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
 struct ReplicationStartEventInjector {
     Model* model = nullptr;
     ScheduleProbe* owner = nullptr;
@@ -911,6 +952,7 @@ public:
     bool save(std::string) override { return false; }
     bool load(std::string) override { return false; }
     bool hasChanged() override { return false; }
+    void setHasChanged(bool) override {}
     bool getOption(ModelPersistence_if::Options) override { return false; }
     void setOption(ModelPersistence_if::Options, bool) override {}
     std::string getFormatedField(PersistenceRecord*) override { return ""; }
@@ -5438,6 +5480,319 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
     EXPECT_EQ(runner.getLastResponsePayload(), "");
     EXPECT_EQ(runner.getLastResponseFilename(), "");
     EXPECT_EQ(errorMessage, "");
+}
+
+bool RscriptAvailableForRuntimeTest() {
+    return std::system("Rscript --version >/dev/null 2>&1") == 0;
+}
+
+void CleanupRRunnerArtifacts(const RSimulatorRunner& runner) {
+    Util::FileDelete(runner.getLastScriptFilename());
+    Util::FileDelete(runner.getLastResponseFilename());
+    const std::string response = runner.getLastResponseFilename();
+    const std::string suffix = ".stdout";
+    if (response.size() >= suffix.size() && response.substr(response.size() - suffix.size()) == suffix) {
+        Util::FileDelete(response.substr(0, response.size() - suffix.size()) + ".stderr");
+    }
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerDefaultsExposeConfigurationAndResults) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RDefaults");
+
+    EXPECT_EQ(runner.getRExecutable(), "Rscript");
+    EXPECT_EQ(runner.getWorkingDirectory(), "");
+    EXPECT_EQ(runner.getPreludeScript(), "");
+    EXPECT_EQ(runner.getCommand(), "");
+    EXPECT_EQ(runner.getLastStatus(), "Idle");
+    EXPECT_EQ(runner.getLastExitCode(), -1);
+    EXPECT_EQ(runner.getLastStdout(), "");
+    EXPECT_EQ(runner.getLastStderr(), "");
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+    EXPECT_EQ(runner.getLastScriptFilename(), "");
+    EXPECT_EQ(runner.getLastResponseFilename(), "");
+    EXPECT_GE(runner.getSimulationControls()->size(), 11u);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerPluginInformationDeclaresRDependency) {
+    std::unique_ptr<PluginInformation> info(RSimulatorRunner::GetPluginInformation());
+
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<RSimulatorRunner>());
+    EXPECT_EQ(info->getCategory(), "External statistical integration");
+    EXPECT_NE(info->getDescriptionHelp().find("Rscript --vanilla"), std::string::npos);
+    ASSERT_TRUE(info->hasSystemDependencies());
+    ASSERT_NE(info->getSystemDependencies(), nullptr);
+
+    bool foundR = false;
+    for (const SystemDependency& dependency : *info->getSystemDependencies()) {
+        if (dependency.getOS() == SystemDependency::OS::Linux && dependency.getName() == "R") {
+            foundR = true;
+            EXPECT_EQ(dependency.getInstallCommand(), "sudo apt install -y r-base");
+            EXPECT_EQ(dependency.getCheckCommand(), "Rscript --version");
+        }
+    }
+    EXPECT_TRUE(foundR);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerCheckRejectsInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe emptyFields(model, "RCheckEmpty");
+    emptyFields.setRExecutable("");
+    emptyFields.setCommand("");
+
+    std::string emptyFieldsError;
+    EXPECT_FALSE(emptyFields.CheckProbe(emptyFieldsError));
+    EXPECT_NE(emptyFieldsError.find("non-empty RExecutable"), std::string::npos);
+    EXPECT_NE(emptyFieldsError.find("non-empty command"), std::string::npos);
+
+    RSimulatorRunnerProbe missingWorkingDir(model, "RCheckMissingWorkingDir");
+    missingWorkingDir.setCommand("cat('ok')");
+    missingWorkingDir.setWorkingDirectory("/definitely/missing/genesys/r/workdir");
+    std::string workingDirError;
+    EXPECT_FALSE(missingWorkingDir.CheckProbe(workingDirError));
+    EXPECT_NE(workingDirError.find("workingDirectory must exist"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerPersistenceRoundTripPreservesConfigurationAndResults) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe source(model, "RPersistSource");
+    source.setRExecutable("/usr/bin/Rscript");
+    source.setWorkingDirectory("/tmp");
+    source.setPreludeScript("x <- 40");
+    source.setCommand("cat(x + 2, '\\n')");
+    source.setLastStatus("Completed");
+    source.setLastExitCode(0);
+    source.setLastStdout("42\n");
+    source.setLastStderr("");
+    source.setLastResponsePayload("42\n");
+    source.setLastScriptFilename("/tmp/genesys_r_test.R");
+    source.setLastResponseFilename("/tmp/genesys_r_test.stdout");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    RSimulatorRunnerProbe loaded(model, "RPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRExecutable(), "/usr/bin/Rscript");
+    EXPECT_EQ(loaded.getWorkingDirectory(), "/tmp");
+    EXPECT_EQ(loaded.getPreludeScript(), "x <- 40");
+    EXPECT_EQ(loaded.getCommand(), "cat(x + 2, '\\n')");
+    EXPECT_EQ(loaded.getLastStatus(), "Completed");
+    EXPECT_EQ(loaded.getLastExitCode(), 0);
+    EXPECT_EQ(loaded.getLastStdout(), "42\n");
+    EXPECT_EQ(loaded.getLastStderr(), "");
+    EXPECT_EQ(loaded.getLastResponsePayload(), "42\n");
+    EXPECT_EQ(loaded.getLastScriptFilename(), "/tmp/genesys_r_test.R");
+    EXPECT_EQ(loaded.getLastResponseFilename(), "/tmp/genesys_r_test.stdout");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerShowIncludesObservabilityFields) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RShow");
+    runner.setWorkingDirectory("/tmp");
+    runner.setCommand("cat('ok')");
+    runner.setPreludeScript("x <- 1");
+    runner.setLastStatus("Completed");
+    runner.setLastExitCode(0);
+    runner.setLastStdout("ok");
+    runner.setLastStderr("");
+    runner.setLastResponsePayload("ok");
+    runner.setLastScriptFilename("/tmp/rshow.R");
+    runner.setLastResponseFilename("/tmp/rshow.stdout");
+
+    const std::string shown = runner.show();
+    EXPECT_NE(shown.find("rExecutable=\"Rscript\""), std::string::npos);
+    EXPECT_NE(shown.find("workingDirectory=\"/tmp\""), std::string::npos);
+    EXPECT_NE(shown.find("lastStatus=\"Completed\""), std::string::npos);
+    EXPECT_NE(shown.find("lastExitCode=0"), std::string::npos);
+    EXPECT_NE(shown.find("lastScriptFilename=\"/tmp/rshow.R\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerMissingExecutableFailsCleanly) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RMissingExecutable");
+    runner.setRExecutable("definitely_missing_Rscript_binary_for_genesys_tests");
+    runner.setCommand("cat('unreachable')");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.executeCommand(errorMessage));
+    EXPECT_EQ(runner.getLastStatus(), "Failed");
+    EXPECT_EQ(runner.getLastExitCode(), -1);
+    EXPECT_NE(errorMessage.find("was not found"), std::string::npos);
+    EXPECT_EQ(runner.getLastStdout(), "");
+    EXPECT_EQ(runner.getLastResponsePayload(), "");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerExecutesSimpleScriptWhenRscriptIsAvailable) {
+    if (!RscriptAvailableForRuntimeTest()) {
+        GTEST_SKIP() << "Rscript is not available on this machine.";
+    }
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RExecuteSimple");
+    runner.setPreludeScript("x <- 40");
+    runner.setCommand("cat(x + 2, '\\n')");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_EQ(runner.getLastExitCode(), 0);
+    EXPECT_NE(runner.getLastStdout().find("42"), std::string::npos);
+    EXPECT_EQ(runner.getLastResponsePayload(), runner.getLastStdout());
+    EXPECT_TRUE(Util::FileExists(runner.getLastScriptFilename()));
+    EXPECT_TRUE(Util::FileExists(runner.getLastResponseFilename()));
+
+    CleanupRRunnerArtifacts(runner);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorRunnerCapturesRFailureWhenRscriptIsAvailable) {
+    if (!RscriptAvailableForRuntimeTest()) {
+        GTEST_SKIP() << "Rscript is not available on this machine.";
+    }
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorRunnerProbe runner(model, "RExecuteFailure");
+    runner.setCommand("stop('genesys expected R failure')");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runner.executeCommand(errorMessage));
+    EXPECT_EQ(runner.getLastStatus(), "Failed");
+    EXPECT_NE(runner.getLastExitCode(), 0);
+    EXPECT_NE(runner.getLastStderr().find("genesys expected R failure"), std::string::npos);
+    EXPECT_NE(errorMessage.find("genesys expected R failure"), std::string::npos);
+
+    CleanupRRunnerArtifacts(runner);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorDefaultsExposeEditableCommandList) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe component(model, "RComponentDefaults");
+
+    EXPECT_EQ(component.getRExecutable(), "Rscript");
+    EXPECT_EQ(component.getWorkingDirectory(), "");
+    EXPECT_EQ(component.getPreludeScript(), "");
+    EXPECT_EQ(component.getCommandList(), "");
+    ASSERT_NE(component.getCommands(), nullptr);
+    EXPECT_EQ(component.getCommands()->size(), 0u);
+    EXPECT_GE(component.getSimulationControls()->size(), 4u);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorCommandListUsesOneNonEmptyCommandPerLine) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe component(model, "RComponentCommands");
+    component.setCommandList("cat('first')\n\ncat('second')\n   \nprint(3)");
+
+    ASSERT_NE(component.getCommands(), nullptr);
+    EXPECT_EQ(component.getCommands()->size(), 3u);
+    EXPECT_EQ(component.getCommands()->getAtRank(0), "cat('first')");
+    EXPECT_EQ(component.getCommands()->getAtRank(1), "cat('second')");
+    EXPECT_EQ(component.getCommands()->getAtRank(2), "print(3)");
+    EXPECT_EQ(component.getCommandList(), "cat('first')\ncat('second')\nprint(3)");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorPersistenceRoundTripPreservesConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe source(model, "RComponentPersistSource");
+    source.setRExecutable("/usr/bin/Rscript");
+    source.setWorkingDirectory("/tmp");
+    source.setPreludeScript("base <- 40");
+    source.insertCommand("cat(base + 1)");
+    source.insertCommand("cat(base + 2)");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    RSimulatorProbe loaded(model, "RComponentPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getRExecutable(), "/usr/bin/Rscript");
+    EXPECT_EQ(loaded.getWorkingDirectory(), "/tmp");
+    EXPECT_EQ(loaded.getPreludeScript(), "base <- 40");
+    EXPECT_EQ(loaded.getCommandList(), "cat(base + 1)\ncat(base + 2)");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorCheckRejectsMissingExecutableAndCommandList) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe component(model, "RComponentInvalid");
+    component.setRExecutable("");
+    component.setCommandList("");
+
+    std::string errorMessage;
+    EXPECT_FALSE(component.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("non-empty RExecutable"), std::string::npos);
+    EXPECT_NE(errorMessage.find("at least one R command"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorCreatesInternalRunnerAndSynchronizesConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    RSimulatorProbe component(model, "RComponentInternal");
+    component.setRExecutable("/usr/bin/Rscript");
+    component.setWorkingDirectory("/tmp");
+    component.setPreludeScript("seed <- 10");
+    component.setCommandList("cat(seed)");
+
+    component.CreateInternalAndAttachedDataProbe();
+
+    ModelDataDefinition* internalData = component.getInternalData("RSimulatorRunner");
+    ASSERT_NE(internalData, nullptr);
+    RSimulatorRunner* runner = dynamic_cast<RSimulatorRunner*>(internalData);
+    ASSERT_NE(runner, nullptr);
+    EXPECT_EQ(runner->getName(), "RComponentInternal.RSimulatorRunner");
+    EXPECT_EQ(runner->getRExecutable(), "/usr/bin/Rscript");
+    EXPECT_EQ(runner->getWorkingDirectory(), "/tmp");
+    EXPECT_EQ(runner->getPreludeScript(), "seed <- 10");
+}
+
+TEST(SimulatorRuntimeTest, RSimulatorPluginInformationDeclaresRunnerDependency) {
+    std::unique_ptr<PluginInformation> info(RSimulator::GetPluginInformation());
+
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<RSimulator>());
+    EXPECT_EQ(info->getCategory(), "External statistical integration");
+    EXPECT_NE(info->getDescriptionHelp().find("RSimulatorRunner"), std::string::npos);
+    ASSERT_NE(info->getDynamicLibFilenameDependencies(), nullptr);
+    EXPECT_NE(std::find(info->getDynamicLibFilenameDependencies()->begin(),
+                        info->getDynamicLibFilenameDependencies()->end(),
+                        "rsimulatorrunner.so"),
+              info->getDynamicLibFilenameDependencies()->end());
 }
 
 TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {

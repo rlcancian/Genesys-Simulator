@@ -76,6 +76,8 @@ public:
 	bool check(const std::string dynamicLibraryFilename);
 	/*! \brief Evaluates system dependencies declared by a dynamic-library plugin without inserting it. */
 	SystemDependencyCheckResult checkSystemDependencies(const std::string dynamicLibraryFilename);
+	/*! \brief Discovers plugin filenames through the configured connector without inserting them. */
+	List<std::string>* discoverPluginFilenames() const;
 	/*! \brief Loads and inserts a plugin from a dynamic library file. */
 	Plugin* insert(const std::string dynamicLibraryFilename);
 	/*! \brief Loads and inserts a plugin, optionally asking the caller to authorize dependency installation. */
@@ -89,8 +91,14 @@ public:
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */
 	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename,
 	                                 const bool lookForPluginsIfFilenameNotFound = true);
+	/*! \brief Auto-loads plugins listed in file using insertion policy hooks. */
+	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename,
+	                                 const bool lookForPluginsIfFilenameNotFound,
+	                                 const PluginInsertionOptions& options);
 	/*! \brief Auto-loads plugins discovered automatically). */
 	List<Plugin*>* autoInsertPlugins();
+	/*! \brief Auto-loads plugins discovered automatically using insertion policy hooks. */
+	List<Plugin*>* autoInsertPlugins(const PluginInsertionOptions& options);
 
 public:
 	/*! \brief Returns the first plugin in the internal plugin list. */
@@ -139,7 +147,7 @@ private:
 	/*! \brief Registers kernel built-in plugins that do not come from dynamic libraries. */
 	void _insertDefaultKernelElements();
 	/*! \brief Finds and attempts to load plugins from connector discovery. */
-	List<Plugin*>* _autoFindPlugins();
+	List<Plugin*>* _autoFindPlugins(const PluginInsertionOptions& options);
 
 private:
 	List<Plugin*>* _plugins = new List<Plugin*>();

@@ -14,12 +14,15 @@
 #include <QFileDialog>
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QBrush>
+#include <QColor>
 #include <QStringList>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextEdit>
 
 #include <map>
+#include <memory>
 #include <sstream>
 
 DialogPluginManager::DialogPluginManager(QWidget *parent) :
@@ -27,16 +30,19 @@ DialogPluginManager::DialogPluginManager(QWidget *parent) :
 	ui(new Ui::DialogPluginManager)
 {
 	ui->setupUi(this);
-	ui->tableWidgetPlugins->setColumnCount(8);
+	ui->tableWidgetPlugins->setColumnCount(11);
 	ui->tableWidgetPlugins->setHorizontalHeaderLabels({
-		tr("Type"),
+		tr("Plugin/File"),
+		tr("State"),
 		tr("Kind"),
 		tr("Category"),
 		tr("Version"),
 		tr("Author"),
 		tr("Inputs"),
 		tr("Outputs"),
-		tr("Flags")
+		tr("Flags"),
+		tr("Dynamic deps"),
+		tr("System deps")
 	});
 	ui->tableWidgetPlugins->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
 	ui->tableWidgetPlugins->horizontalHeader()->setStretchLastSection(true);
@@ -81,7 +87,11 @@ void DialogPluginManager::on_pushButtonAutoLoadNow_clicked()
 	}
 
 	const std::string filename = ui->lineEditAutoloadFilename->text().toStdString();
-	_simulator->getPluginManager()->autoInsertPlugins(filename, ui->checkBoxFallbackDiscovery->isChecked());
+	PluginInsertionOptions options;
+	options.confirmSystemDependencyInstallation = [this](const SystemDependencyCheckResult& result) {
+		return _confirmSystemDependencyInstallation(result);
+	};
+	_simulator->getPluginManager()->autoInsertPlugins(filename, ui->checkBoxFallbackDiscovery->isChecked(), options);
 	_refreshPluginTable();
 	_refreshPluginCatalog();
 	_showOperationResult(tr("Auto load plugins"), tr("Plugin auto-load operation finished."));
@@ -189,6 +199,17 @@ void DialogPluginManager::on_pushButtonRefresh_clicked()
 
 void DialogPluginManager::on_tableWidgetPlugins_itemSelectionChanged()
 {
+	const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPlugins->selectedItems();
+	if (!selectedItems.isEmpty()) {
+		QTableWidgetItem* typeItem = ui->tableWidgetPlugins->item(selectedItems.first()->row(), 0);
+		if (typeItem != nullptr) {
+			const QString dependencyIssueDetails = typeItem->data(Qt::UserRole + 1).toString();
+			if (!dependencyIssueDetails.isEmpty()) {
+				ui->textEditPluginDetails->setPlainText(dependencyIssueDetails);
+				return;
+			}
+		}
+	}
 	_showPluginDetails(_selectedPlugin());
 }
 
@@ -213,12 +234,13 @@ void DialogPluginManager::_refreshPluginTable()
 		auto* typeItem = new QTableWidgetItem(QString::fromStdString(info->getPluginTypename()));
 		typeItem->setData(Qt::UserRole, QVariant::fromValue<quintptr>(reinterpret_cast<quintptr>(plugin)));
 		ui->tableWidgetPlugins->setItem(row, 0, typeItem);
-		ui->tableWidgetPlugins->setItem(row, 1, new QTableWidgetItem(info->isComponent() ? tr("Component") : tr("DataDefinition")));
-		ui->tableWidgetPlugins->setItem(row, 2, new QTableWidgetItem(QString::fromStdString(info->getCategory())));
-		ui->tableWidgetPlugins->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(info->getVersion())));
-		ui->tableWidgetPlugins->setItem(row, 4, new QTableWidgetItem(QString::fromStdString(info->getAuthor())));
-		ui->tableWidgetPlugins->setItem(row, 5, new QTableWidgetItem(QString("%1..%2").arg(info->getMinimumInputs()).arg(info->getMaximumInputs())));
-		ui->tableWidgetPlugins->setItem(row, 6, new QTableWidgetItem(QString("%1..%2").arg(info->getMinimumOutputs()).arg(info->getMaximumOutputs())));
+		ui->tableWidgetPlugins->setItem(row, 1, new QTableWidgetItem(tr("Loaded")));
+		ui->tableWidgetPlugins->setItem(row, 2, new QTableWidgetItem(info->isComponent() ? tr("Component") : tr("DataDefinition")));
+		ui->tableWidgetPlugins->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(info->getCategory())));
+		ui->tableWidgetPlugins->setItem(row, 4, new QTableWidgetItem(QString::fromStdString(info->getVersion())));
+		ui->tableWidgetPlugins->setItem(row, 5, new QTableWidgetItem(QString::fromStdString(info->getAuthor())));
+		ui->tableWidgetPlugins->setItem(row, 6, new QTableWidgetItem(QString("%1..%2").arg(info->getMinimumInputs()).arg(info->getMaximumInputs())));
+		ui->tableWidgetPlugins->setItem(row, 7, new QTableWidgetItem(QString("%1..%2").arg(info->getMinimumOutputs()).arg(info->getMaximumOutputs())));
 
 		QStringList flags;
 		if (info->isSource()) flags << tr("Source");
@@ -226,7 +248,19 @@ void DialogPluginManager::_refreshPluginTable()
 		if (info->isSendTransfer()) flags << tr("SendTransfer");
 		if (info->isReceiveTransfer()) flags << tr("ReceiveTransfer");
 		if (info->isGenerateReport()) flags << tr("Report");
-		ui->tableWidgetPlugins->setItem(row, 7, new QTableWidgetItem(flags.join(", ")));
+		ui->tableWidgetPlugins->setItem(row, 8, new QTableWidgetItem(flags.join(", ")));
+		ui->tableWidgetPlugins->setItem(row, 9, new QTableWidgetItem(_formatDynamicDependencyTableText(info)));
+		ui->tableWidgetPlugins->setItem(row, 10, new QTableWidgetItem(_formatSystemDependencyTableText(info)));
+	}
+
+	std::unique_ptr<List<std::string>> availablePlugins(pluginManager->discoverPluginFilenames());
+	if (availablePlugins != nullptr) {
+		for (const std::string& filename : *availablePlugins->list()) {
+			const SystemDependencyCheckResult preflight = pluginManager->checkSystemDependencies(filename);
+			if (!preflight.entries().empty() && !preflight.canInsertPlugin()) {
+				_appendPluginDependencyIssueRow(filename, preflight);
+			}
+		}
 	}
 
 	ui->tableWidgetPlugins->sortItems(0);
@@ -242,6 +276,51 @@ void DialogPluginManager::_refreshPluginCatalog()
 	if (_refreshPluginCatalogCallback) {
 		_refreshPluginCatalogCallback();
 	}
+}
+
+void DialogPluginManager::_appendPluginDependencyIssueRow(const std::string& filename, const SystemDependencyCheckResult& preflight)
+{
+	const int row = ui->tableWidgetPlugins->rowCount();
+	ui->tableWidgetPlugins->insertRow(row);
+	const QColor dependencyProblemColor(255, 210, 210);
+
+	auto makeItem = [dependencyProblemColor](const QString& text) {
+		auto* item = new QTableWidgetItem(text);
+		item->setBackground(QBrush(dependencyProblemColor));
+		return item;
+	};
+
+	auto* fileItem = makeItem(QString::fromStdString(filename));
+	fileItem->setData(Qt::UserRole, QVariant::fromValue<quintptr>(0));
+	const QString detailedDiagnostic = QString::fromStdString(preflight.diagnosticText(false)).trimmed();
+	fileItem->setData(Qt::UserRole + 1, tr("Plugin candidate was not inserted because system dependencies are missing or unverifiable:\n\n%1")
+		.arg(detailedDiagnostic));
+	ui->tableWidgetPlugins->setItem(row, 0, fileItem);
+	ui->tableWidgetPlugins->setItem(row, 1, makeItem(tr("Blocked")));
+	ui->tableWidgetPlugins->setItem(row, 2, makeItem(tr("Not loaded")));
+	ui->tableWidgetPlugins->setItem(row, 3, makeItem(""));
+	ui->tableWidgetPlugins->setItem(row, 4, makeItem(""));
+	ui->tableWidgetPlugins->setItem(row, 5, makeItem(""));
+	ui->tableWidgetPlugins->setItem(row, 6, makeItem(""));
+	ui->tableWidgetPlugins->setItem(row, 7, makeItem(""));
+	ui->tableWidgetPlugins->setItem(row, 8, makeItem(""));
+	ui->tableWidgetPlugins->setItem(row, 9, makeItem(""));
+
+	QStringList dependencies;
+	for (const SystemDependencyCheckEntry& entry : preflight.entries()) {
+		if (!entry.blocksInsertion()) {
+			continue;
+		}
+		QString dependency = QString::fromStdString(entry.dependency().getName())
+			+ " = " + QString::fromStdString(SystemDependencyCheckEntry::statusToString(entry.status()));
+		if (!entry.dependency().getInstallCommand().empty()) {
+			dependency += tr(" | install: %1").arg(QString::fromStdString(entry.dependency().getInstallCommand()));
+		}
+		dependencies << dependency;
+	}
+	QTableWidgetItem* systemDepsItem = makeItem(dependencies.join("; "));
+	systemDepsItem->setToolTip(detailedDiagnostic);
+	ui->tableWidgetPlugins->setItem(row, 10, systemDepsItem);
 }
 
 void DialogPluginManager::_showPluginDetails(Plugin* plugin)
@@ -349,6 +428,34 @@ QString DialogPluginManager::_formatPluginDetails(const Plugin* plugin) const
 	return details;
 }
 
+QString DialogPluginManager::_formatDynamicDependencyTableText(const PluginInformation* info) const
+{
+	if (info == nullptr || info->getDynamicLibFilenameDependencies()->empty()) {
+		return tr("none");
+	}
+	QStringList dependencies;
+	for (const std::string& dependency : *info->getDynamicLibFilenameDependencies()) {
+		dependencies << QString::fromStdString(dependency);
+	}
+	return dependencies.join(", ");
+}
+
+QString DialogPluginManager::_formatSystemDependencyTableText(const PluginInformation* info) const
+{
+	if (info == nullptr || info->getSystemDependencies()->empty()) {
+		return tr("none");
+	}
+	QStringList dependencies;
+	for (const SystemDependency& dependency : *info->getSystemDependencies()) {
+		QString item = QString::fromStdString(dependency.getName());
+		if (!dependency.getInstallCommand().empty()) {
+			item += tr(" (install: %1)").arg(QString::fromStdString(dependency.getInstallCommand()));
+		}
+		dependencies << item;
+	}
+	return dependencies.join("; ");
+}
+
 QString DialogPluginManager::_formatDependencies(const PluginInformation* info) const
 {
 	QString text = tr("Dynamic library dependencies:\n");
@@ -375,30 +482,7 @@ QString DialogPluginManager::_formatSystemDependencies(const PluginInformation* 
 
 QString DialogPluginManager::_formatSystemDependencyPreflight(const SystemDependencyCheckResult& result) const
 {
-	QString text;
-	for (const SystemDependencyCheckEntry& entry : result.entries()) {
-		const SystemDependency& dependency = entry.dependency();
-		text += tr("Dependency: %1\n").arg(QString::fromStdString(dependency.getName()));
-		text += tr("  OS: %1\n").arg(QString::fromStdString(SystemDependency::osToString(dependency.getOS())));
-		text += tr("  Status: %1\n").arg(QString::fromStdString(SystemDependencyCheckEntry::statusToString(entry.status())));
-		text += tr("  Check command: %1\n").arg(dependency.getCheckCommand().empty()
-			? tr("<not declared>")
-			: QString::fromStdString(dependency.getCheckCommand()));
-		text += tr("  Install command: %1\n").arg(dependency.getInstallCommand().empty()
-			? tr("<not declared>")
-			: QString::fromStdString(dependency.getInstallCommand()));
-		if (entry.checkResult().started) {
-			text += tr("  Check exit code: %1\n").arg(entry.checkResult().exitCode);
-			if (!entry.checkResult().output.empty()) {
-				text += tr("  Check output: %1\n").arg(QString::fromStdString(entry.checkResult().output).trimmed());
-			}
-		}
-		if (!entry.message().empty()) {
-			text += tr("  Diagnostic: %1\n").arg(QString::fromStdString(entry.message()));
-		}
-		text += "\n";
-	}
-	return text.trimmed();
+	return QString::fromStdString(result.diagnosticText(false)).trimmed();
 }
 
 QString DialogPluginManager::_formatFields(const PluginInformation* info) const

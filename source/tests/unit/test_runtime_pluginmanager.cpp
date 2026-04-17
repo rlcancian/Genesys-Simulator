@@ -3,8 +3,11 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/SystemDependencyResolver.h"
+#include "plugins/PluginConnectorDummyImpl1.h"
 
+#include <algorithm>
 #include <map>
+#include <memory>
 #include <vector>
 
 namespace {
@@ -142,4 +145,32 @@ TEST(RuntimePluginManagerClassTest, InsertInstallsAndRevalidatesSystemDependency
     EXPECT_EQ(executor->commands[0], "check-missing-dependency");
     EXPECT_EQ(executor->commands[1], "install-missing-dependency");
     EXPECT_EQ(executor->commands[2], "check-missing-dependency");
+}
+
+TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins) {
+    PluginConnectorDummyImpl1 connector;
+    std::unique_ptr<List<std::string>> filenames(connector.find());
+    ASSERT_NE(filenames, nullptr);
+
+    const std::vector<std::string> expectedPluginFiles = {
+        "biosimulatorrunner.so",
+        "cellularautomata.so",
+        "defaultnode.so",
+        "dummyelement.so",
+        "old_odeelement.so",
+        "petriplace.so",
+        "rsimulator.so",
+        "rsimulatorrunner.so",
+        "submodel.so"
+    };
+
+    for (const std::string& filename : expectedPluginFiles) {
+        EXPECT_NE(std::find(filenames->list()->begin(), filenames->list()->end(), filename), filenames->list()->end()) << filename;
+
+        std::unique_ptr<Plugin> plugin(connector.connect(filename));
+        ASSERT_NE(plugin, nullptr) << filename;
+        ASSERT_NE(plugin->getPluginInfo(), nullptr) << filename;
+        EXPECT_TRUE(plugin->isIsValidPlugin()) << filename;
+        EXPECT_FALSE(plugin->getPluginInfo()->getPluginTypename().empty()) << filename;
+    }
 }

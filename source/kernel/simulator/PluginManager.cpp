@@ -12,6 +12,7 @@
  */
 
 #include <fstream>
+#include <memory>
 #include "PluginManager.h"
 #include "Simulator.h"
 #include "../TraitsKernel.h"
@@ -47,24 +48,44 @@ PluginManager::~PluginManager() {
 	delete _systemCommandExecutor;
 }
 
-List<Plugin*>* PluginManager::_autoFindPlugins() {
-	List<std::string>* filenames = _pluginConnector->find();
+List<Plugin*>* PluginManager::_autoFindPlugins(const PluginInsertionOptions& options) {
+	if (_pluginConnector == nullptr) {
+		return completePluginsFieldsAndTemplates();
+	}
+	std::unique_ptr<List<std::string>> filenames(_pluginConnector->find());
+	if (filenames == nullptr) {
+		return completePluginsFieldsAndTemplates();
+	}
 	for (std::string filename: *filenames->list()) {
-		insert(filename);
+		insert(filename, options);
 	}
 	return  completePluginsFieldsAndTemplates();
 }
 
 List<Plugin*>* PluginManager::autoInsertPlugins() {
-    return autoInsertPlugins("", true);
+	PluginInsertionOptions options;
+    return autoInsertPlugins("", true, options);
+}
+
+List<Plugin*>* PluginManager::autoInsertPlugins(const PluginInsertionOptions& options) {
+    return autoInsertPlugins("", true, options);
 }
 
 List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)
 {
+	PluginInsertionOptions options;
+	return autoInsertPlugins(pluginsListFilename, lookForPluginsIfFilenameNotFound, options);
+}
+
+List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename,
+                                                const bool lookForPluginsIfFilenameNotFound,
+                                                const PluginInsertionOptions& options)
+{
 	List<Plugin*>* loadedPlugins = nullptr;
 	if (pluginsListFilename.empty()) {
-		 if (lookForPluginsIfFilenameNotFound)
-		 	loadedPlugins = _autoFindPlugins();
+		if (lookForPluginsIfFilenameNotFound) {
+			loadedPlugins = _autoFindPlugins(options);
+		}
 		return loadedPlugins;
 	}
 	std::string line;
@@ -83,7 +104,7 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
                     line.erase(0,1);
                 }
 				if (line[0] != '#') { // not a comment
-					insert(line);
+					insert(line, options);
 				}
 			}
 		}
@@ -93,7 +114,7 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 	{
 		_simulator->getTraceManager()->traceError("Could not open file \""+pluginsListFilename+"\" (\""+fullFilename+"\")");
 		if (lookForPluginsIfFilenameNotFound) {
-			loadedPlugins = _autoFindPlugins();
+			loadedPlugins = _autoFindPlugins(options);
 		}
 	}
 	return loadedPlugins;
@@ -138,11 +159,12 @@ bool PluginManager::_preflightAndMaybeInstallSystemDependencies(PluginInformatio
 
 	// In headless or startup/autoload flows there is no callback, so install commands are never run silently.
 	_simulator->getTraceManager()->traceError(
-		"Plugin system dependencies are not satisfied: " + preflight.summary(),
+		"Plugin system dependencies are not satisfied:\n" + preflight.diagnosticText(false),
 		TraceManager::Level::L3_errorRecover);
 	if (!options.confirmSystemDependencyInstallation) {
 		_simulator->getTraceManager()->traceError(
-			"No interactive confirmation callback is available; plugin will not be inserted.",
+			"No interactive confirmation callback is available; plugin will not be inserted. "
+			"To satisfy the dependencies manually, run the install command(s) listed above and try again.",
 			TraceManager::Level::L3_errorRecover);
 		return false;
 	}
@@ -171,7 +193,7 @@ bool PluginManager::_preflightAndMaybeInstallSystemDependencies(PluginInformatio
 		*_systemCommandExecutor);
 	if (!validation.canInsertPlugin()) {
 		_simulator->getTraceManager()->traceError(
-			"System dependencies are still not satisfied after installation: " + validation.summary(),
+			"System dependencies are still not satisfied after installation:\n" + validation.diagnosticText(false),
 			TraceManager::Level::L3_errorRecover);
 		return false;
 	}
@@ -259,6 +281,13 @@ SystemDependencyCheckResult PluginManager::checkSystemDependencies(std::string d
 	}
 	delete plugin;
 	return result;
+}
+
+List<std::string>* PluginManager::discoverPluginFilenames() const {
+	if (_pluginConnector == nullptr) {
+		return new List<std::string>();
+	}
+	return _pluginConnector->find();
 }
 
 Plugin * PluginManager::insert(std::string dynamicLibraryFilename) {
