@@ -18,7 +18,6 @@
 #include "kernel/simulator/Counter.h"
 #include "kernel/simulator/StatisticsCollector.h"
 #include "kernel/simulator/PluginManager.h"
-#include "../../../TraitsApp.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
@@ -50,6 +49,7 @@
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
 #include "UtilGUI.h"
+#include "guithememanager.h"
 // PropEditor
 #include "propertyeditor/qtpropertybrowser/qttreepropertybrowser.h"
 #include "animations/AnimationVariable.h"
@@ -287,7 +287,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                                                      // Keep synchronization behavior unchanged via a narrow callback dependency.
                                                                      [this]() { return this->_setSimulationModelBasedOnText(); });
     _cppModelExporter = std::make_unique<CppModelExporter>(simulator, ui->plainTextEditCppCode);
-    simulator->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+    simulator->getTraceManager()->setTraceLevel(SystemPreferences::traceLevel());
     simulator->getTraceManager()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);
     simulator->getTraceManager()->addTraceErrorHandler<MainWindow>(this, &MainWindow::_simulatorTraceErrorHandler);
     simulator->getTraceManager()->addTraceReportHandler<MainWindow>(this, &MainWindow::_simulatorTraceReportsHandler);
@@ -589,6 +589,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // system preferences
     SystemPreferences::load();
+    GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
     if (SystemPreferences::autoLoadPlugins()) {
         PluginInsertionOptions options;
         // The main window is still being built here, so autoload must not open install dialogs.
@@ -606,10 +607,27 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         QRect screenGeometry = QApplication::primaryScreen()->availableGeometry();
         this->resize(screenGeometry.width(), screenGeometry.height());
     }
-    if (SystemPreferences::modelAtStart() == 1) { // NEW MODEL (should be enum
+    if (SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::NewModel) {
         this->on_actionModelNew_triggered();
-    } else  if (SystemPreferences::modelAtStart() == 2) { // LOAD MODEL (should be enum
-        this->_loadGraphicalModel(SystemPreferences::modelfilename());
+    } else if (SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenSpecificModel ||
+               SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenLastModel) {
+        const std::string fileName = SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenLastModel
+                                         ? SystemPreferences::lastModelFilename()
+                                         : SystemPreferences::modelfilename();
+        if (!fileName.empty()) {
+            Model* model = this->_loadGraphicalModel(fileName);
+            if (model != nullptr) {
+                _loaded = true;
+                _initUiForNewModel(model);
+                _actualizeModelTextHasChanged(false);
+                _graphicalModelHasChanged = false;
+                model->setHasChanged(false);
+                SystemPreferences::setLastModelFilename(fileName);
+                SystemPreferences::save();
+            } else {
+                qWarning() << "Could not open startup model from preferences:" << QString::fromStdString(fileName);
+            }
+        }
     }
 
     for (QAction* action : this->findChildren<QAction*>()) {

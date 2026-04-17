@@ -5,6 +5,7 @@
 #include "../dialogs/Dialogmodelinformation.h"
 #include "../dialogs/dialogsimulationconfigure.h"
 #include "../graphicals/ModelGraphicsScene.h"
+#include "../systempreferences.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Model.h"
 
@@ -109,6 +110,8 @@ void ModelLifecycleController::onActionModelOpenTriggered() const {
             *_graphicalModelHasChanged = false;
         }
         model->setHasChanged(false);
+        SystemPreferences::setLastModelFilename(fileName.toStdString());
+        SystemPreferences::save();
         QMessageBox::information(_ownerWidget, "Open Model", "Model successfully oppened");
     } else {
         QMessageBox::warning(_ownerWidget, "Open Model", "Error while opening model");
@@ -159,6 +162,8 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
             // A successful save makes the current in-memory model state the new clean baseline.
             currentModel->setHasChanged(false);
         }
+        SystemPreferences::setLastModelFilename((fileName + ".gui").toStdString());
+        SystemPreferences::save();
         QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
     }
     _callbacks.actualizeActions();

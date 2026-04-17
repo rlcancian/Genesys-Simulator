@@ -335,6 +335,7 @@ SOURCES += \
     graphicals/GraphicalImageAnimation.cpp \
     graphicals/GraphicalModelComponent.cpp \
     graphicals/GraphicalModelDataDefinition.cpp \
+    guithememanager.cpp \
     GuiCrashDiagnostics.cpp \
     GuiScopeTrace.cpp \
     main.cpp \
@@ -753,6 +754,7 @@ HEADERS += \
     propertyeditor/qtpropertybrowser/qtpropertymanager.h \
     propertyeditor/qtpropertybrowser/qttreepropertybrowser.h \
     propertyeditor/qtpropertybrowser/qtvariantproperty.h \
+    guithememanager.h \
     systempreferences.h
 
 FORMS += \

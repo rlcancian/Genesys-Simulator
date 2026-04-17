@@ -34,6 +34,7 @@
 #include "graphicals/GraphicalModelComponent.h"
 #include "UtilGUI.h"
 #include "TraitsGUI.h"
+#include "systempreferences.h"
 #include <Qt>
 #include <QTreeWidget>
 #include <QTreeWidgetItem>
@@ -126,11 +127,15 @@ void ModelGraphicsView::setEnabled(bool enabled) {
 		// background
 		//unsigned int colorVal1 = 255 * 13.0 / 16.0;
 		//unsigned int colorVal2 = 255 * 15.0 / 16.0;
-		background = QColor(UtilGUI::rgbaFromPacked(TraitsGUI<GView>::backgroundEnabledColor));//255, 255, 128, 64);
+        background = QColor(UtilGUI::rgbaFromPacked(SystemPreferences::diagramUsesThemeColors()
+                                                        ? SystemPreferences::canvasBackgroundColor()
+                                                        : TraitsGUI<GView>::backgroundEnabledColor));//255, 255, 128, 64);
 		//getScene()->showGrid();
 	} else {
 		// background
-		background = UtilGUI::rgbaFromPacked(TraitsGUI<GView>::backgroundDisabledColor);//Qt::lightGray;
+        background = UtilGUI::rgbaFromPacked(SystemPreferences::diagramUsesThemeColors()
+                                                 ? SystemPreferences::canvasDisabledBackgroundColor()
+                                                 : TraitsGUI<GView>::backgroundDisabledColor);//Qt::lightGray;
 	}
 	background.setStyle(Qt::SolidPattern);
 	setBackgroundBrush(background);
