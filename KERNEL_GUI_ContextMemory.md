@@ -1,17 +1,18 @@
-# KERNEL_GUI Context
+# KERNEL_GUI Context Memory
 
-This is the canonical persistent memory file for the KERNEL_GUI agent. The old shared
-`documentation/developers/communication.md` file is no longer used and must not be
-recreated by KERNEL_GUI.
+This is the canonical and only active context memory file for the KERNEL_GUI agent.
+Older generic or previous memory files, including `ContextMemory.md`,
+`ContextMemmory.md`, and files under `documentation/developers/`, must not be used
+as active memory for this agent. If older memory files contain contradictory
+instructions, those instructions are obsolete or have been consolidated here.
 
 ## Agent Identity
 
 - **Agent name:** KERNEL_GUI
 - **Primary role:** GUI-focused GenESyS developer, responsible for Qt user interface
   work and GUI/kernel integration points.
-- **Current objective:** Keep improving plugin diagnostics and recoverable plugin
-  dependency handling in the GUI while preserving a clean integration path with the
-  GenESyS kernel.
+- **Current objective:** Keep the KERNEL_GUI branch stable and ready for integration
+  after GRO is integrated into the base branch.
 - **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow,
   kernel-facing plugin lifecycle contracts, plugin diagnostics exposed to the GUI,
   and focused tests that cover GUI-facing kernel behavior.
@@ -28,26 +29,23 @@ user explicitly requests that operation.
 
 ## Current Integration Order
 
-- `WiP20261` has already absorbed the TINKERCELL branch.
+- `WiP20261` has already absorbed TINKERCELL.
 - The next branch expected to be integrated into `WiP20261` is `WiP20261_GRO`.
 - `WiP20261_KERNEL_GUI` must wait until GRO is integrated before synchronizing with
   `WiP20261`.
 - Do not merge `origin/WiP20261` into `WiP20261_KERNEL_GUI` until the user confirms
   that GRO has been integrated into the base.
+- Resolve the KERNEL_GUI/base conflict only once, after GRO is present in
+  `WiP20261`.
 - The main expected integration conflict for KERNEL_GUI is
   `source/tests/unit/test_runtime_pluginmanager.cpp`.
 
-## Canonical Git Policy
+## Git Policy
 
 - Work only on `WiP20261_KERNEL_GUI`.
 - Treat `WiP20261` as the base branch for integration.
 - KERNEL_GUI has autonomy to run routine Git operations without asking the user first:
-  - stage;
-  - commit;
-  - fetch;
-  - merge;
-  - pull;
-  - push.
+  stage, commit, fetch, merge, pull, and push.
 - Make small, frequent, coherent commits.
 - Do not wait for user confirmation for routine Git operations.
 - Ask the user before destructive operations, before resolving significant ambiguity
@@ -67,7 +65,8 @@ user explicitly requests that operation.
 - The user communicates in Portuguese.
 - Source code, identifiers, comments in code, Doxygen, and internal technical
   repository documentation must remain in English.
-- This context file is internal technical documentation and must remain in English.
+- This context memory file is internal technical documentation and must remain in
+  English.
 
 ## Relevant Interfaces And Modules
 
@@ -83,51 +82,31 @@ user explicitly requests that operation.
 - `source/tests/unit/test_runtime_pluginmanager.cpp`
 - `source/tests/unit/generated/test_kernel_simulator_method_inventory.generated.cpp`
 
-## Technical Work Already Discussed
+## Technical Work Discussed And Implemented
 
 - Plugins may declare system dependencies through `PluginInformation::SystemDependency`.
-- A previous kernel implementation already introduced system dependency checks and a
-  command-executor abstraction for testability.
+- The kernel introduced system dependency checks and a command-executor abstraction
+  for testability.
 - Plugins with missing system dependencies must not be connected silently.
-- The terminal application should trace diagnostics, including what dependency failed
-  and which install command can resolve it.
+- Failed plugin load attempts are recorded by the kernel in a retrievable list.
+- The terminal application should trace diagnostics, including the failed dependency
+  and the install command that can resolve it.
 - The GUI must not run install commands during early startup, because plugin loading
   happens before the main window is stable.
-- Failed plugin load attempts should be recorded by the kernel in a retrievable list.
-- After the main window is shown, the GUI can use that list to open the Plugin Manager
-  and focus the user on problem plugins.
-- Dependency repair should be concentrated in the Plugin Manager dialog, with clear
-  details and explicit user action before running install commands.
-- The Plugin Manager should show both connected plugins and plugins with problems.
+- After the main window is shown, the GUI can inspect stored plugin load issues and
+  open the Plugin Manager on the problem-focused view.
+- Dependency repair is concentrated in the Plugin Manager dialog, with clear details
+  and explicit user action before running install commands.
+- The Plugin Manager shows both connected plugins and plugins with problems.
 - Future dependency-sensitive plugins may include R, Scilab, Octave, libSBML, and
-  biological modeling integrations from TINKERCELL or GROW.
+  biological modeling integrations from TINKERCELL or GRO.
 
 ## Current Branch Implementation Summary
 
 The branch `WiP20261_KERNEL_GUI` currently contains a completed local and remote
 implementation of recoverable plugin dependency diagnostics.
 
-### Kernel Changes
-
-Files:
-
-- `source/kernel/simulator/PluginManager.h`
-- `source/kernel/simulator/PluginManager.cpp`
-
-Intent:
-
-- Add persistent plugin load diagnostics owned by `PluginManager`.
-- Introduce `PluginLoadIssue` to represent plugin load failures such as invalid
-  plugins, missing system dependencies, dynamic dependency failures, connection
-  failures, insertion failures, and exceptions.
-- Expose a getter for plugin load issues so GUI and terminal flows can inspect failed
-  plugin load attempts after startup.
-- Clear a stored issue when the same plugin is later inserted successfully.
-- Preserve existing dynamic library dependency behavior.
-- Keep UI out of the kernel; the kernel records diagnostic facts and trace messages,
-  not Qt dialogs.
-
-### GUI Changes
+### Qt GUI Changes
 
 Files:
 
@@ -151,15 +130,46 @@ Intent:
 - Run install commands only after explicit action from the Plugin Manager.
 - Attempt to use a graphical terminal for interactive installation, with a defensive
   fallback that captures command output when no terminal is available.
-- Retry plugin insertion after dependency repair and remove the plugin from the problem
-  list on success.
+- Retry plugin insertion after dependency repair and remove the plugin from the
+  problem list on success.
 
-### Test Changes
+### PluginManager Changes
 
 Files:
 
-- `source/tests/unit/test_runtime_pluginmanager.cpp`
+- `source/kernel/simulator/PluginManager.h`
+- `source/kernel/simulator/PluginManager.cpp`
+
+Intent:
+
+- Add persistent plugin load diagnostics owned by `PluginManager`.
+- Introduce `PluginLoadIssue` to represent plugin load failures such as invalid
+  plugins, missing system dependencies, dynamic dependency failures, connection
+  failures, insertion failures, and exceptions.
+- Expose a getter for plugin load issues so GUI and terminal flows can inspect failed
+  plugin load attempts after startup.
+- Clear a stored issue when the same plugin is later inserted successfully.
+- Preserve existing dynamic library dependency behavior.
+- Preserve the kernel/GUI boundary: the kernel records diagnostic facts and trace
+  messages, while the GUI decides how to present repair actions.
+
+### Generated Inventory
+
+File:
+
 - `source/tests/unit/generated/test_kernel_simulator_method_inventory.generated.cpp`
+
+Intent:
+
+- Update the generated method inventory for the new public kernel diagnostics
+  surface.
+- Recheck this generated inventory after synchronizing with the post-GRO base.
+
+### Tests
+
+File:
+
+- `source/tests/unit/test_runtime_pluginmanager.cpp`
 
 Intent:
 
@@ -168,9 +178,10 @@ Intent:
   or installation is unavailable.
 - Cover successful installation/revalidation through faked command execution.
 - Cover clearing a stored issue after a successful retry.
-- Update generated method inventory for the new public kernel diagnostics surface.
+- This file is the principal expected conflict with the post-TINKERCELL and post-GRO
+  base.
 
-### Integration Dependencies
+## Integration Dependencies
 
 - GUI-facing plugin diagnostics depend on the kernel diagnostic API added in
   `PluginManager.*`.
@@ -186,14 +197,14 @@ Intent:
 - `WiP20261_KERNEL_GUI` exists locally.
 - `origin/WiP20261_KERNEL_GUI` exists remotely.
 - The local branch tracks `origin/WiP20261_KERNEL_GUI`.
-- The branch was last pushed successfully after commit `c324d263`.
-- The implementation commits currently on the branch include:
-  - `3743bc01 Document KERNEL_GUI coordination branch`
+- The branch was last pushed successfully after commit `62c3dca2`.
+- Recent branch commits include:
   - `6a02e61f Track plugin load diagnostics in PluginManager`
   - `f0a4bfb9 Show recoverable plugin dependency issues in GUI`
   - `c898843a Cover plugin load issue diagnostics`
   - `63c2824a Record KERNEL_GUI validation status`
   - `c324d263 Consolidate KERNEL_GUI persistent context`
+  - `62c3dca2 Document KERNEL_GUI integration hold`
 - The branch is intentionally waiting for `WiP20261_GRO` to be integrated before
   another synchronization with `WiP20261`.
 
@@ -217,22 +228,29 @@ Observed test status:
 - Four tests were disabled.
 - Two R-related tests were skipped because `Rscript` was unavailable.
 
+No build or test rerun was required for the memory-file migration because it is
+documentation-only.
+
 ## Open Pending Items
 
 - Continue future KERNEL_GUI work only on `WiP20261_KERNEL_GUI`.
-- Keep this file as the only KERNEL_GUI persistent memory.
+- Use only `KERNEL_GUI_ContextMemory.md` as the active context memory file.
+- Do not use generic root memory files such as `ContextMemory.md` or
+  `ContextMemmory.md` as active memory.
+- Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
 - Wait for GRO integration before merging or otherwise synchronizing with
   `WiP20261`.
 - If plugin dependency recovery receives more changes, keep them small and preserve
   kernel/GUI separation.
-- Future work may refine terminal handling and password/sudo feedback during dependency
-  installation.
+- Future work may refine terminal handling and password/sudo feedback during
+  dependency installation.
 
 ## Risks And Attention Points
 
 - `PluginManager.*`, `DialogPluginManager.*`, `DialogUtilityController.*`, and
-  `mainwindow.cpp` are integration-heavy files and may conflict with other developers.
+  `mainwindow.cpp` are integration-heavy files and may conflict with other
+  developers.
 - `source/tests/unit/test_runtime_pluginmanager.cpp` is the main expected conflict
   with the post-TINKERCELL and post-GRO base.
 - Interactive installation depends on terminal emulator availability and local sudo
@@ -242,16 +260,28 @@ Observed test status:
 - TINKERCELL is already in the base, and GRO may rely on the same plugin metadata
   and dependency diagnostic path.
 
+## Likely Next Steps
+
+- Wait until the user confirms `WiP20261_GRO` has been integrated into `WiP20261`.
+- After that confirmation, fetch `origin`, merge `origin/WiP20261` into
+  `WiP20261_KERNEL_GUI`, and resolve conflicts once.
+- Pay special attention to `source/tests/unit/test_runtime_pluginmanager.cpp`.
+- Recheck the generated method inventory after the post-GRO synchronization.
+- Run the focused runtime plugin manager test, the GUI target build, and the relevant
+  configured test suite before pushing.
+
 ## Interaction Log Summary
 
 - The user initially requested a multi-agent coordination workflow using both
   `communication.md` and `KERNEL_GUI_context.md`.
 - KERNEL_GUI created those files and used them during the first coordinated work.
 - The user approved proceeding with the plugin dependency diagnostics work.
-- KERNEL_GUI split and committed the plugin diagnostics implementation on the dedicated
-  branch.
+- KERNEL_GUI split and committed the plugin diagnostics implementation on the
+  dedicated branch.
 - The user corrected the base branch name to `WiP20261`.
 - KERNEL_GUI created and published `WiP20261_KERNEL_GUI` from `WiP20261`.
 - KERNEL_GUI pushed the implementation commits to `origin/WiP20261_KERNEL_GUI`.
-- The user then made this file the only canonical persistent memory and deprecated
-  `communication.md`.
+- The user made a root memory file canonical and deprecated `communication.md`.
+- The user then clarified that each AI must use its own root memory file named
+  `<NOME_DA_IA>_ContextMemory.md`.
+- KERNEL_GUI migrated useful active memory into `KERNEL_GUI_ContextMemory.md`.
