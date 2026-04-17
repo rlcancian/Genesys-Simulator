@@ -10,6 +10,14 @@
   Gro syntax, biological semantics, or Gro-specific runtime state.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
+- **Integration PR status:** an integration pull request from
+  `WiP20261_GRO` to `WiP20261` exists for this work line. As of the latest
+  synchronization recorded below, `origin/WiP20261` already contains the current
+  GRO branch history through merge commit `2114c92c`; keep verifying the PR
+  state against GitHub before assuming additional integration work is needed.
+- **Immediate branch objective:** keep `WiP20261_GRO` synchronized with
+  `origin/WiP20261` so the branch remains cleanly integrable into the shared
+  base.
 - **Only persistent memory file:** `documentation/developers/GRO_context.md`.
 - **Deprecated file:** `documentation/developers/communication.md` is no longer
   used and must not exist on the GRO branch.
@@ -139,6 +147,12 @@
 - `WiP20261_GRO` was created from updated `WiP20261` and published to
   `origin/WiP20261_GRO`.
 - The branch tracks `origin/WiP20261_GRO`.
+- The shared base branch is `WiP20261`.
+- The GRO branch is `WiP20261_GRO`.
+- An integration PR from `WiP20261_GRO` into `WiP20261` exists for the branch
+  line. If GitHub reports the PR as not mergeable, first synchronize
+  `WiP20261_GRO` with `origin/WiP20261`, resolve conflicts locally, validate,
+  and push the synchronized branch.
 - Published commits before this cleanup:
   - `41666d6f Add GRO developer coordination memory`
   - `b42c572f Add initial Gro bacteria colony plugins`
@@ -231,3 +245,30 @@
 - The next session should begin by reading this file, checking branch status,
   fetching `origin`, and merging `origin/WiP20261` into `WiP20261_GRO` if
   needed before further implementation.
+
+### 2026-04-17 - Base Synchronization For Integration
+
+- User reported that the shared base branch `WiP20261` advanced and that the
+  integration PR `WiP20261_GRO` -> `WiP20261` was not mergeable at that moment.
+- Objective for this session: prepare `WiP20261_GRO` for clean integration into
+  `WiP20261`; no new product functionality should be implemented.
+- Ran `git fetch origin`; `origin/WiP20261` advanced from `758127ef` to
+  `2114c92c`.
+- Observed that `origin/WiP20261` already contains the GRO branch history via
+  merge commit `2114c92c` (`Merge WiP20261_GRO into WiP20261 (#370)`).
+- Merged `origin/WiP20261` into local `WiP20261_GRO`.
+- Merge result: fast-forward from `ec689a3b` to `2114c92c`.
+- Conflict status: no conflicts occurred.
+- Conflicted files: none.
+- Files brought in by the fast-forward: `documentation/developers/TINKERCELL_context.md`.
+- Resolution approach: no manual conflict resolution was needed; the branch was
+  moved forward to the current shared base while preserving all GRO functional
+  changes and context files.
+- Relevant commit hashes:
+  - Previous local `WiP20261_GRO` head before synchronization: `ec689a3b`.
+  - Synchronized base and local head after merge: `2114c92c`.
+  - Context update commit: to be recorded after this file is committed.
+- Expected branch state after committing this context update and pushing:
+  `WiP20261_GRO` is synchronized with `origin/WiP20261` plus this operational
+  context record, and should be ready for merge unless GitHub reports a
+  non-code policy/check blocker.
