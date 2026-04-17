@@ -147,6 +147,8 @@ public:
 	bool remove(Plugin* plugin);
 	/*! \brief Finds a connected plugin by plugin type name. */
 	Plugin* find(std::string pluginTypeName);
+	/*! \brief Returns the source include path for a connected plugin type. */
+	std::string sourceIncludePathFor(std::string pluginTypeName);
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */
 	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename,
 	                                 const bool lookForPluginsIfFilenameNotFound = true);

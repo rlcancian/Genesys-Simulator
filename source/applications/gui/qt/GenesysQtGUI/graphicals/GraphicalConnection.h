@@ -9,9 +9,9 @@
 #include <QPen>
 #include <QBrush>
 #include "GraphicalComponentPort.h"
-//#include "../../../../kernel/simulator/ModelComponent.h"
-//#include "../../../../kernel/simulator/Plugin.h"
-#include "../../../../kernel/simulator/ConnectionManager.h"
+//#include "kernel/simulator/ModelComponent.h"
+//#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/ConnectionManager.h"
 
 /**
  * @brief Graphical edge that represents model-level component connections.

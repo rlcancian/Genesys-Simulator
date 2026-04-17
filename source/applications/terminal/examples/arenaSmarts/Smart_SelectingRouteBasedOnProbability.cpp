@@ -17,22 +17,22 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/util/Util.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/util/Util.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Route.h"
-#include "../../../../plugins/components/Enter.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Decide.h"
-#include "../../../../plugins/components/Process.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/MaterialHandling/Enter.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
 
-#include "../../../../plugins/components/QueueableItem.h"
-#include "../../../../plugins/components/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/QueueableItem.h"
+#include "plugins/components/DiscreteProcessing/SeizableItem.h"
 
-#include "../../../../plugins/data/Resource.h"
-#include "../../../../plugins/data/Queue.h"
+#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
 #include "../../../TraitsApp.h"
 
 // Model data definitions

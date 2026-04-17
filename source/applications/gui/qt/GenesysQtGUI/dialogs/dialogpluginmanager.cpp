@@ -1,15 +1,15 @@
 #include "dialogpluginmanager.h"
 #include "ui_dialogpluginmanager.h"
 
-#include "../../../../../kernel/simulator/ComponentManager.h"
-#include "../../../../../kernel/simulator/Model.h"
-#include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
-#include "../../../../../kernel/simulator/Plugin.h"
-#include "../../../../../kernel/simulator/PluginInformation.h"
-#include "../../../../../kernel/simulator/PluginManager.h"
-#include "../../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/ComponentManager.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Simulator.h"
 
 #include <QFileDialog>
 #include <QHeaderView>

@@ -117,6 +117,7 @@ public:
 	std::string getLanguageTemplate() const;
 	void setCategory(std::string _category);
 	std::string getCategory() const;
+	static std::string categoryFolderName(const std::string& category);
 public:
 private:
 	std::string _author = "prof. Dr. Ing. Rafael Luiz Cancian";

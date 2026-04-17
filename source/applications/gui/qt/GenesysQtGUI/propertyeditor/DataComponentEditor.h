@@ -11,7 +11,7 @@
 #include <QPushButton>
 #include <QInputDialog>
 
-#include "../../../../kernel/simulator/PropertyGenesys.h"
+#include "kernel/simulator/PropertyGenesys.h"
 
 class DataComponentProperty;
 class ComboBoxEnum;

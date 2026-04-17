@@ -5,13 +5,13 @@
 
 #include "Smart_ResourceScheduleCosting.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/QueueableItem.h"
-#include "../../../../plugins/data/Resource.h"
-#include "../../../../plugins/data/Schedule.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/QueueableItem.h"
+#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Schedule.h"
 #include "../../../TraitsApp.h"
 
 Smart_ResourceScheduleCosting::Smart_ResourceScheduleCosting() {

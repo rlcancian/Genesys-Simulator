@@ -5,7 +5,7 @@
 #include <QComboBox>
 #include <QPushButton>
 
-#include "../../../../../plugins/data/Variable.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 
 class DialogSelectVariable : public QDialog {
     Q_OBJECT

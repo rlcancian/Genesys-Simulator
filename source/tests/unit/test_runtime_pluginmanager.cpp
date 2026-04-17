@@ -4,8 +4,8 @@
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/SystemDependencyResolver.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
-#include "plugins/components/bacteria/BacteriaColony.h"
-#include "plugins/data/GroProgram.h"
+#include "plugins/components/BiologicalModeling/BacteriaColony.h"
+#include "plugins/data/BiologicalModeling/GroProgram.h"
 
 #include <algorithm>
 #include <map>

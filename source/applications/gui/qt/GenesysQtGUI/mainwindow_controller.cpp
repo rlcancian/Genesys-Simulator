@@ -79,7 +79,7 @@
 #include <QPainter>
 #include <QFileInfo>
 #include <QCoreApplication>
-#include "../../../../kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelSimulation.h"
 #include "../../../../tools/SolverDefaultImpl1.h"
 
 

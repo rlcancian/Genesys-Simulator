@@ -19,7 +19,7 @@
 #include "services/GraphicalModelBuilder.h"
 
 // Kernel
-#include "../../../../kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/SinkModelComponent.h"
 
 #include <string>
 #include <fstream>

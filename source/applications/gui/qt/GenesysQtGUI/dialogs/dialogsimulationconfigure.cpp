@@ -1,8 +1,8 @@
 #include "dialogsimulationconfigure.h"
 #include "ui_dialogsimulationconfigure.h"
 
-#include "../../../../../kernel/simulator/ExperimentManager.h"
-#include "../../../../../kernel/simulator/SimulationReporter_if.h"
+#include "kernel/simulator/ExperimentManager.h"
+#include "kernel/simulator/SimulationReporter_if.h"
 
 #include <QComboBox>
 #include <QMessageBox>

@@ -6,16 +6,16 @@
 
 #include "Smart_ArrivalsEntityTypeVsAttribute.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/Attribute.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/QueueableItem.h"
-#include "../../../../plugins/components/SeizableItem.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Decide.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Attribute.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/QueueableItem.h"
+#include "plugins/components/DiscreteProcessing/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/Decisions/Decide.h"
 #include "../../../TraitsApp.h"
 
 Smart_ArrivalsEntityTypeVsAttribute::Smart_ArrivalsEntityTypeVsAttribute() {

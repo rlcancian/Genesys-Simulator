@@ -199,6 +199,52 @@ Important behavior consequence:
   satisfiable, it should move from the problem table to the loaded plugin table.
   If it is still blocked, the issue remains visible with refreshed diagnostics.
 
+### Latest Plugin Directory Structural Refactor
+
+Intent:
+
+- Reorganize plugin implementation files into category folders derived from each
+  plugin's `PluginInformation::getCategory()` value.
+- Apply the structure to both component plugins under `source/plugins/components`
+  and data-definition plugins under `source/plugins/data`.
+- Keep helper files near the plugin category that owns them, including
+  `CellularAutomata` helpers under `components/Logic/CellularAutomata`.
+- Keep source includes stable by using paths rooted at the repository `source`
+  include directory, such as `plugins/components/Decisions/Decide.h`, instead of
+  adding deeper relative `../../..` paths.
+
+Key implementation details:
+
+- `source/plugins/data/CMakeLists.txt` now uses `GLOB_RECURSE`, matching the
+  existing recursive component build behavior.
+- `PluginConnectorDummyImpl1.cpp` and code/tests/examples that include plugin
+  headers were updated to the categorized paths.
+- `PluginInformation::categoryFolderName()` centralizes category-to-folder
+  normalization.
+- `PluginManager::sourceIncludePathFor()` resolves future generated C++ include
+  paths from loaded plugin metadata, including built-in kernel data definitions.
+- `CppSerializer` and the Qt `CppModelExporter` now use the plugin manager include
+  resolver instead of constructing `plugins/components/<Class>.h` and
+  `plugins/data/<Class>.h` paths directly.
+
+Validation:
+
+- `cmake --preset gui-app`
+- `cmake --build --preset gui-app`
+- `cmake --preset tests-kernel-unit`
+- `cmake --build --preset tests-kernel-unit-run`
+- `git diff --check`
+
+Known structural notes:
+
+- `Match` declares category `Decision` while most related decision plugins declare
+  `Decisions`; it was kept in folder `Decision` to avoid silently recategorizing it.
+- `DefaultNode` does not call `setCategory()`, so it uses the default
+  `Discrete Processing` category and was placed under `components/DiscreteProcessing`.
+- Some old terminal examples still reference obsolete plugins such as `EFSM`,
+  `FSM_State`, and `OLD_FiniteStateMachine`; those plugin files were already absent
+  from the current tree and were not part of this structural move.
+
 ### PluginManager Changes
 
 Files:
@@ -430,8 +476,8 @@ Observed status:
   `ContextMemmory.md` as active memory.
 - Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
-- Commit the latest Plugin Manager resolve/load UX refinement and this memory update,
-  then push `WiP20261_KERNEL_GUI` to `origin/WiP20261_KERNEL_GUI` when ready.
+- Commit the structural plugin directory refactor and this memory update, then push
+  `WiP20261_KERNEL_GUI` to `origin/WiP20261_KERNEL_GUI` when ready.
 - Proceed with final merge into the base when the maintainer is ready.
 - PR `#371` is ready for final merge unless GitHub reports a new base update or
   repository policy change.

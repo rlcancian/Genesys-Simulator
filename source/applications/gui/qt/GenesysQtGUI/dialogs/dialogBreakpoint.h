@@ -33,7 +33,7 @@
 #define _DIALOGBREAKPOINT_H
 
 #include "ui_dialogBreakpoint.h"
-#include "../../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 class dialogBreakpoint : public QDialog {
 

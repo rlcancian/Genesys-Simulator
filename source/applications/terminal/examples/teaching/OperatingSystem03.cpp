@@ -13,23 +13,23 @@
 
 #include "OperatingSystem03.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/Model.h"
-#include "../../../../kernel/simulator/Attribute.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/Attribute.h"
 
-#include "../../../../plugins/data/Queue.h"
-#include "../../../../plugins/data/Resource.h"
-#include "../../../../plugins/data/Station.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
+#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Station.h"
 
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Seize.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Release.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Decide.h"
-#include "../../../../plugins/components/Enter.h"
-#include "../../../../plugins/components/Route.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/MaterialHandling/Enter.h"
+#include "plugins/components/MaterialHandling/Route.h"
 
 #include <iostream>
 

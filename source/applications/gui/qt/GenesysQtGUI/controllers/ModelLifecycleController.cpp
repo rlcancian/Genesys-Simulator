@@ -5,8 +5,8 @@
 #include "../dialogs/Dialogmodelinformation.h"
 #include "../dialogs/dialogsimulationconfigure.h"
 #include "../graphicals/ModelGraphicsScene.h"
-#include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/simulator/Model.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
 
 #include <QCoreApplication>
 #include <QDir>
