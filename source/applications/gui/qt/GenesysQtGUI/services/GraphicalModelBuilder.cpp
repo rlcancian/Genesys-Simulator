@@ -12,6 +12,7 @@
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/SourceModelComponent.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 #include "kernel/simulator/ModelDataManager.h"
 #include "kernel/simulator/ModelDataDefinition.h"
 
@@ -19,6 +20,7 @@
 #include <QSet>
 #include <QDebug>
 #include <functional>
+#include <set>
 
 namespace {
     constexpr qreal minimumAutomaticLayoutCoordinate = 20.0;
@@ -100,12 +102,6 @@ namespace {
                    : DataDefinitionDisplayCategory::Editable;
     }
 
-    DataDefinitionDisplayCategory attachedDataDefinitionCategory(ModelDataDefinition* dataDefinition) {
-        return isStatisticsDataDefinition(dataDefinition)
-                   ? DataDefinitionDisplayCategory::Statistics
-                   : DataDefinitionDisplayCategory::Shared;
-    }
-
     bool categoryIsVisible(ModelGraphicsScene* scene, DataDefinitionDisplayCategory category) {
         if (scene == nullptr) {
             return false;
@@ -133,8 +129,99 @@ namespace {
         return QColor(220, 220, 220);
     }
 
-    bool categoryIsEditable(DataDefinitionDisplayCategory category) {
-        return category == DataDefinitionDisplayCategory::Editable;
+    void collectEditableReferencedDataDefinitions(List<SimulationControl*>* controls,
+                                                  QSet<ModelDataDefinition*>* editableDefinitions,
+                                                  std::set<const SimulationControl*>* recursionPath,
+                                                  int depth = 0) {
+        if (controls == nullptr || editableDefinitions == nullptr || recursionPath == nullptr || depth > 10) {
+            return;
+        }
+
+        for (SimulationControl* control : *controls->list()) {
+            if (control == nullptr || recursionPath->find(control) != recursionPath->end()) {
+                continue;
+            }
+
+            const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
+            if (descriptor.isModelDataDefinitionReference && !descriptor.readOnly) {
+                ModelDataDefinition* referenced = control->getReferencedModelDataDefinition();
+                if (referenced != nullptr && !isStatisticsDataDefinition(referenced)) {
+                    editableDefinitions->insert(referenced);
+                }
+            }
+
+            recursionPath->insert(control);
+            if (descriptor.supportsListEditor && descriptor.isClass) {
+                const int itemCount = static_cast<int>(descriptor.choices.size());
+                for (int index = 0; index < itemCount; ++index) {
+                    collectEditableReferencedDataDefinitions(control->getProperties(index),
+                                                             editableDefinitions,
+                                                             recursionPath,
+                                                             depth + 1);
+                }
+            } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
+                collectEditableReferencedDataDefinitions(control->getProperties(),
+                                                         editableDefinitions,
+                                                         recursionPath,
+                                                         depth + 1);
+            }
+            recursionPath->erase(control);
+        }
+    }
+
+    QSet<ModelDataDefinition*> editableDataDefinitionsForModel(Model* model) {
+        QSet<ModelDataDefinition*> editableDefinitions;
+        if (model == nullptr) {
+            return editableDefinitions;
+        }
+
+        std::set<const SimulationControl*> recursionPath;
+        if (model->getComponentManager() != nullptr) {
+            for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
+                if (component != nullptr) {
+                    collectEditableReferencedDataDefinitions(component->getProperties(),
+                                                             &editableDefinitions,
+                                                             &recursionPath);
+                }
+            }
+        }
+
+        if (model->getDataManager() != nullptr) {
+            for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+                List<ModelDataDefinition*>* definitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+                if (definitions == nullptr) {
+                    continue;
+                }
+                for (ModelDataDefinition* dataDefinition : *definitions->list()) {
+                    if (dataDefinition != nullptr) {
+                        collectEditableReferencedDataDefinitions(dataDefinition->getProperties(),
+                                                                 &editableDefinitions,
+                                                                 &recursionPath);
+                    }
+                }
+            }
+        }
+
+        return editableDefinitions;
+    }
+
+    bool dataDefinitionIsEditableInPropertyEditor(
+        ModelDataDefinition* dataDefinition,
+        const QSet<ModelDataDefinition*>& editableDefinitions) {
+        return dataDefinition != nullptr
+               && !isStatisticsDataDefinition(dataDefinition)
+               && editableDefinitions.contains(dataDefinition);
+    }
+
+    DataDefinitionDisplayCategory attachedDataDefinitionCategory(
+        ModelDataDefinition* dataDefinition,
+        const QSet<ModelDataDefinition*>& editableDefinitions) {
+        if (isStatisticsDataDefinition(dataDefinition)) {
+            return DataDefinitionDisplayCategory::Statistics;
+        }
+        return dataDefinitionIsEditableInPropertyEditor(dataDefinition, editableDefinitions)
+                   ? DataDefinitionDisplayCategory::Editable
+                   : DataDefinitionDisplayCategory::Shared;
     }
 
     struct DataDefinitionLayoutLink {
@@ -167,7 +254,8 @@ namespace {
                                          bool upperArc,
                                          const QSet<ModelDataDefinition*>& newDataDefinitions,
                                          QSet<ModelDataDefinition*>* positionedDataDefinitions,
-                                         QList<QRectF>* occupiedLayoutRects) {
+                                         QList<QRectF>* occupiedLayoutRects,
+                                         int baseRadialLayer = 0) {
         if (positionedDataDefinitions == nullptr) {
             return;
         }
@@ -190,12 +278,12 @@ namespace {
             child->setParentItem(nullptr);
             QPointF selectedPosition = visibleAutomaticPosition(
                 child,
-                dataDefinitionArcPosition(anchorBounds, child, index, count, upperArc));
+                dataDefinitionArcPosition(anchorBounds, child, index, count, upperArc, baseRadialLayer));
             QRectF selectedRect = paddedLayoutRect(dataDefinitionLayoutRect(child, selectedPosition));
 
             if (occupiedLayoutRects != nullptr) {
-                for (int radialLayer = 1;
-                     radialLayer <= maximumAutomaticLayoutCollisionSteps
+                for (int radialLayer = baseRadialLayer + 1;
+                     radialLayer <= baseRadialLayer + maximumAutomaticLayoutCollisionSteps
                      && intersectsOccupiedLayout(selectedRect, *occupiedLayoutRects);
                      ++radialLayer) {
                     selectedPosition = visibleAutomaticPosition(
@@ -395,6 +483,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         return;
     }
     ModelDataManager* dataManager = model->getDataManager();
+    const QSet<ModelDataDefinition*> editablePropertyDataDefinitions = editableDataDefinitionsForModel(model);
 
     // Exit early when no model data definitions exist, avoiding unnecessary scene scans and geometry reads.
     bool hasAnyModelDataDefinition = false;
@@ -437,7 +526,9 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (child == nullptr) {
                 continue;
             }
-            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(child);
+            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(
+                child,
+                editablePropertyDataDefinitions);
             if (!categoryIsVisible(scene, category)) {
                 continue;
             }
@@ -472,7 +563,9 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (dataDefinition == nullptr) {
                 continue;
             }
-            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(dataDefinition);
+            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(
+                dataDefinition,
+                editablePropertyDataDefinitions);
             if (!categoryIsVisible(scene, category)) {
                 continue;
             }
@@ -539,7 +632,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 const auto categoryIt = visibleCategories.find(dataDefinition);
                 if (categoryIt != visibleCategories.end() && existingIt->second != nullptr) {
                     existingIt->second->setColor(categoryColor(categoryIt->second));
-                    existingIt->second->setEditableInPropertyEditor(categoryIsEditable(categoryIt->second));
+                    existingIt->second->setEditableInPropertyEditor(
+                        dataDefinitionIsEditableInPropertyEditor(dataDefinition, editablePropertyDataDefinitions));
                 }
                 continue;
             }
@@ -556,9 +650,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 plugin, dataDefinition, QPointF(0, 0), color);
             if (graphicalDataDefinition != nullptr) {
                 dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
-                graphicalDataDefinition->setEditableInPropertyEditor(categoryIsEditable(categoryIt != visibleCategories.end()
-                                                                                           ? categoryIt->second
-                                                                                           : DataDefinitionDisplayCategory::Shared));
+                graphicalDataDefinition->setEditableInPropertyEditor(
+                    dataDefinitionIsEditableInPropertyEditor(dataDefinition, editablePropertyDataDefinitions));
                 newDataDefinitions.insert(dataDefinition);
             }
         }
@@ -607,7 +700,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
 
         QList<DataDefinitionLayoutLink> upperLinks;
-        QList<DataDefinitionLayoutLink> lowerLinks;
+        QList<DataDefinitionLayoutLink> lowerStatisticsLinks;
+        QList<DataDefinitionLayoutLink> lowerSharedLinks;
 
         for (const auto& attachedData : *component->getAttachedData()) {
             auto attachedIt = dataDefinitionMap.find(attachedData.second);
@@ -619,9 +713,21 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 continue;
             }
             const DataDefinitionDisplayCategory category = visibleCategories[attachedData.second];
-            gdd->setEditableInPropertyEditor(categoryIsEditable(category));
+            const bool editable = dataDefinitionIsEditableInPropertyEditor(attachedData.second,
+                                                                           editablePropertyDataDefinitions);
+            gdd->setEditableInPropertyEditor(editable);
             gdd->setColor(categoryColor(category));
-            lowerLinks.append({attachedData.second, gdd, GraphicalDiagramConnection::ConnectionType::ATTACHED});
+            const DataDefinitionLayoutLink link{
+                attachedData.second,
+                gdd,
+                GraphicalDiagramConnection::ConnectionType::ATTACHED};
+            if (editable) {
+                upperLinks.append(link);
+            } else if (category == DataDefinitionDisplayCategory::Statistics) {
+                lowerStatisticsLinks.append(link);
+            } else {
+                lowerSharedLinks.append(link);
+            }
         }
 
         for (const auto& internalData : *component->getInternalData()) {
@@ -634,12 +740,20 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 continue;
             }
             const DataDefinitionDisplayCategory category = visibleCategories[internalData.second];
-            gdd->setEditableInPropertyEditor(categoryIsEditable(category));
+            const bool editable = dataDefinitionIsEditableInPropertyEditor(internalData.second,
+                                                                           editablePropertyDataDefinitions);
+            gdd->setEditableInPropertyEditor(editable);
             gdd->setColor(categoryColor(category));
-            if (categoryIsEditable(category)) {
-                upperLinks.append({internalData.second, gdd, GraphicalDiagramConnection::ConnectionType::INTERNAL});
+            const DataDefinitionLayoutLink link{
+                internalData.second,
+                gdd,
+                GraphicalDiagramConnection::ConnectionType::INTERNAL};
+            if (editable) {
+                upperLinks.append(link);
+            } else if (category == DataDefinitionDisplayCategory::Statistics) {
+                lowerStatisticsLinks.append(link);
             } else {
-                lowerLinks.append({internalData.second, gdd, GraphicalDiagramConnection::ConnectionType::INTERNAL});
+                lowerSharedLinks.append(link);
             }
         }
 
@@ -651,22 +765,29 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                                         &positionedDataDefinitions,
                                         &occupiedLayoutRects);
         positionNewDataDefinitionsInArc(componentBounds,
-                                        lowerLinks,
+                                        lowerStatisticsLinks,
                                         false,
                                         newDataDefinitions,
                                         &positionedDataDefinitions,
                                         &occupiedLayoutRects);
+        positionNewDataDefinitionsInArc(componentBounds,
+                                        lowerSharedLinks,
+                                        false,
+                                        newDataDefinitions,
+                                        &positionedDataDefinitions,
+                                        &occupiedLayoutRects,
+                                        1);
 
-        for (const DataDefinitionLayoutLink& link : upperLinks) {
-            scene->addGraphicalDiagramConnection(link.graphicalDefinition,
-                                                 graphicalComponent,
-                                                 link.connectionType);
-        }
-        for (const DataDefinitionLayoutLink& link : lowerLinks) {
-            scene->addGraphicalDiagramConnection(link.graphicalDefinition,
-                                                 graphicalComponent,
-                                                 link.connectionType);
-        }
+        const auto addComponentConnections = [&](const QList<DataDefinitionLayoutLink>& links) {
+            for (const DataDefinitionLayoutLink& link : links) {
+                scene->addGraphicalDiagramConnection(link.graphicalDefinition,
+                                                     graphicalComponent,
+                                                     link.connectionType);
+            }
+        };
+        addComponentConnections(upperLinks);
+        addComponentConnections(lowerStatisticsLinks);
+        addComponentConnections(lowerSharedLinks);
     }
 
     for (const auto& dataDefinitionEntry : dataDefinitionMap) {
@@ -676,6 +797,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             continue;
         }
         QList<DataDefinitionLayoutLink> childLinks;
+        QList<DataDefinitionLayoutLink> lowerStatisticsChildLinks;
+        QList<DataDefinitionLayoutLink> lowerSharedChildLinks;
 
         for (const auto& attachedData : *parentDefinition->getAttachedData()) {
             auto childIt = dataDefinitionMap.find(attachedData.second);
@@ -684,11 +807,18 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             }
             GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
             const DataDefinitionDisplayCategory category = visibleCategories[attachedData.second];
-            childGraphicalDefinition->setEditableInPropertyEditor(categoryIsEditable(category));
+            childGraphicalDefinition->setEditableInPropertyEditor(
+                dataDefinitionIsEditableInPropertyEditor(attachedData.second, editablePropertyDataDefinitions));
             childGraphicalDefinition->setColor(categoryColor(category));
-            childLinks.append({attachedData.second,
-                               childGraphicalDefinition,
-                               GraphicalDiagramConnection::ConnectionType::ATTACHED});
+            const DataDefinitionLayoutLink link{attachedData.second,
+                                                childGraphicalDefinition,
+                                                GraphicalDiagramConnection::ConnectionType::ATTACHED};
+            childLinks.append(link);
+            if (category == DataDefinitionDisplayCategory::Statistics) {
+                lowerStatisticsChildLinks.append(link);
+            } else {
+                lowerSharedChildLinks.append(link);
+            }
         }
 
         for (const auto& internalData : *parentDefinition->getInternalData()) {
@@ -698,20 +828,44 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             }
             GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
             const DataDefinitionDisplayCategory category = visibleCategories[internalData.second];
-            childGraphicalDefinition->setEditableInPropertyEditor(categoryIsEditable(category));
+            childGraphicalDefinition->setEditableInPropertyEditor(
+                dataDefinitionIsEditableInPropertyEditor(internalData.second, editablePropertyDataDefinitions));
             childGraphicalDefinition->setColor(categoryColor(category));
-            childLinks.append({internalData.second,
-                               childGraphicalDefinition,
-                               GraphicalDiagramConnection::ConnectionType::INTERNAL});
+            const DataDefinitionLayoutLink link{internalData.second,
+                                                childGraphicalDefinition,
+                                                GraphicalDiagramConnection::ConnectionType::INTERNAL};
+            childLinks.append(link);
+            if (category == DataDefinitionDisplayCategory::Statistics) {
+                lowerStatisticsChildLinks.append(link);
+            } else {
+                lowerSharedChildLinks.append(link);
+            }
         }
 
         const bool parentUsesUpperArc = parentGraphicalDefinition->isEditableInPropertyEditor();
-        positionNewDataDefinitionsInArc(parentGraphicalDefinition->sceneBoundingRect(),
-                                        childLinks,
-                                        parentUsesUpperArc,
-                                        newDataDefinitions,
-                                        &positionedDataDefinitions,
-                                        &occupiedLayoutRects);
+        const QRectF parentBounds = parentGraphicalDefinition->sceneBoundingRect();
+        if (parentUsesUpperArc) {
+            positionNewDataDefinitionsInArc(parentBounds,
+                                            childLinks,
+                                            true,
+                                            newDataDefinitions,
+                                            &positionedDataDefinitions,
+                                            &occupiedLayoutRects);
+        } else {
+            positionNewDataDefinitionsInArc(parentBounds,
+                                            lowerStatisticsChildLinks,
+                                            false,
+                                            newDataDefinitions,
+                                            &positionedDataDefinitions,
+                                            &occupiedLayoutRects);
+            positionNewDataDefinitionsInArc(parentBounds,
+                                            lowerSharedChildLinks,
+                                            false,
+                                            newDataDefinitions,
+                                            &positionedDataDefinitions,
+                                            &occupiedLayoutRects,
+                                            1);
+        }
 
         for (const DataDefinitionLayoutLink& link : childLinks) {
             scene->addGraphicalDiagramConnection(link.graphicalDefinition,
