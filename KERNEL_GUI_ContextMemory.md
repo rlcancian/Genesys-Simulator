@@ -650,3 +650,33 @@ Observed status:
 - Remaining limitation: no automated screenshot/pixel regression test exists yet
   for comparing classic and organic rendering. Validation is currently build,
   code-path, preference-load, and startup-smoke based.
+
+## Latest GUI Render Strategy Test Work
+
+- Commit: `77f86538` (`Add GUI render strategy unit test`).
+- Added `source/tests/unit/test_gui_render_strategy.cpp`, a focused Qt offscreen
+  unit test for the diagram item render strategy infrastructure.
+- The test covers:
+  - runtime strategy selection from `SystemPreferences::InterfaceStyle`;
+  - shape/hit-area difference between classic rectangular and organic
+    oval/capsule rendering;
+  - nonblank pixel rendering and visible pixel-level difference between classic
+    and organic output.
+- `source/tests/unit/CMakeLists.txt` now creates `genesys_test_gui_render_strategy`
+  when Qt Core/Gui/Widgets is available. The target compiles only the render
+  strategy and `SystemPreferences` implementation needed for this focused GUI
+  check, without building the full Qt application under the kernel-unit preset.
+- The test is integrated into `genesys_kernel_unit_tests` and into
+  `genesys_kernel_unit_tests_run` as an additional command when the Qt target
+  exists.
+- Validation performed:
+  - `cmake --preset tests-kernel-unit` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed, including the 3 new
+    `GuiRenderStrategy` tests.
+  - `git diff --check` passed.
+  - `cmake --build --preset gui-app` passed with no work required.
+- Current state: this phase has a stable local checkpoint. No push was performed.
+- Suggested next phase, only after explicit user confirmation: either pause at
+  this checkpoint, or continue with a manual/screenshot-level GUI validation
+  harness for the actual scene if visual regression coverage needs to move
+  beyond unit-level QImage pixel checks.
