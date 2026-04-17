@@ -6,6 +6,14 @@
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
+/**
+ * Biochemical state variable used by BioReaction and BioNetwork.
+ *
+ * A BioSpecies stores an initial amount for replication reset and a current
+ * amount for simulation. Constant and boundary-condition flags follow SBML-like
+ * semantics: BioNetwork still uses the current amount as kinetic input, but it
+ * must not overwrite the species amount while advancing the ODE state.
+ */
 class BioSpecies : public ModelDataDefinition {
 public:
 	BioSpecies(Model* model, std::string name = "");

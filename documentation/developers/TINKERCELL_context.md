@@ -12,7 +12,7 @@ This is the only persistent memory file for the TINKERCELL AI workstream in GenE
 
 Safely evolve GenESyS toward native and/or integrated biochemical simulation capabilities inspired by TinkerCell, including biochemical species, parameters, reactions, stoichiometry, kinetic laws, ODE solving, external biochemical backends, and future GUI/user-facing workflows.
 
-No new biochemical feature implementation is currently approved in this memory-cleanup step. The current task is branch hygiene, memory consolidation, and removal of the obsolete shared communication file.
+The active 2026-04-17 phases implemented explicit BioNetwork membership for BioSpecies/BioReaction references and parser-backed biochemical kinetic-law expressions. TINKERCELL must now wait for explicit user confirmation before starting another phase.
 
 ## Canonical Branches
 
@@ -84,33 +84,36 @@ Routine Git expectations:
 - `WiP20261_TINKERCELL` was published to `origin` and configured to track `origin/WiP20261_TINKERCELL`.
 - A previous commit, `c00279a Add native biochemical mass-action module`, added a native biochemical MVP before the stricter branch/workflow policy was established.
 - That MVP introduced native biochemical classes and tools:
-  - `source/plugins/data/BioSpecies.{h,cpp}`
-  - `source/plugins/data/BioParameter.{h,cpp}`
-  - `source/plugins/data/BioReaction.{h,cpp}`
-  - `source/plugins/data/BioNetwork.{h,cpp}`
+  - `source/plugins/data/BiochemicalSimulation/BioSpecies.{h,cpp}`
+  - `source/plugins/data/BiochemicalSimulation/BioParameter.{h,cpp}`
+  - `source/plugins/data/BiochemicalSimulation/BioReaction.{h,cpp}`
+  - `source/plugins/data/BiochemicalSimulation/BioNetwork.{h,cpp}`
   - `source/tools/MassActionOdeSystem.h`
   - `source/tools/RungeKutta4OdeSolver.h`
 - The biochemical MVP is registered through plugin discovery and covered by runtime tests.
 - TINKERCELL later audited the MVP and identified it as functional for simple deterministic irreversible mass-action simulation, but not yet a final architecture for TinkerCell/SBML-like integration.
 - `BioNetwork` currently discovers all `BioSpecies` and `BioReaction` instances globally from the model data manager, which is simple but may become limiting for multiple biochemical networks/submodels.
-- `BioReaction` stores reactants/products by species name and stoichiometry, supports a direct rate constant or a `BioParameter` reference, and has a reversible flag that is not yet executable.
+- `BioNetwork` now also supports optional explicit BioSpecies and BioReaction membership lists by name, while preserving global discovery when each list is empty for compatibility.
+- `BioReaction` stores reactants/products by species name and stoichiometry, supports a direct rate constant, a `BioParameter` reference, or an optional `kineticLawExpression`, and has a reversible flag that is not yet executable.
 - `MassActionOdeSystem` implements fixed mass-action kinetics.
+- `MassActionOdeSystem` now also evaluates optional reaction-level kinetic-law expressions through `BioKineticLawExpression`.
 - `RungeKutta4OdeSolver` implements a fixed-step RK4 solver.
 - `SparseValueStore` was identified as relevant for future multidimensional/indexed biological state support.
 - No concrete GROW subsystem/API was found in this repository beyond unrelated "grow" text; GROW remains an external or future integration hypothesis to validate.
+- The official plugin directory organization commit `f232882e Organize plugins by declared category` moved the biochemical data definitions under `source/plugins/data/BiochemicalSimulation`.
 
 ## Files Changed by TINKERCELL Workstream
 
 Known prior biochemical MVP files:
 
-- `source/plugins/data/BioSpecies.h`
-- `source/plugins/data/BioSpecies.cpp`
-- `source/plugins/data/BioParameter.h`
-- `source/plugins/data/BioParameter.cpp`
-- `source/plugins/data/BioReaction.h`
-- `source/plugins/data/BioReaction.cpp`
-- `source/plugins/data/BioNetwork.h`
-- `source/plugins/data/BioNetwork.cpp`
+- `source/plugins/data/BiochemicalSimulation/BioSpecies.h`
+- `source/plugins/data/BiochemicalSimulation/BioSpecies.cpp`
+- `source/plugins/data/BiochemicalSimulation/BioParameter.h`
+- `source/plugins/data/BiochemicalSimulation/BioParameter.cpp`
+- `source/plugins/data/BiochemicalSimulation/BioReaction.h`
+- `source/plugins/data/BiochemicalSimulation/BioReaction.cpp`
+- `source/plugins/data/BiochemicalSimulation/BioNetwork.h`
+- `source/plugins/data/BiochemicalSimulation/BioNetwork.cpp`
 - `source/tools/MassActionOdeSystem.h`
 - `source/tools/RungeKutta4OdeSolver.h`
 - plugin connector registrations for `biospecies.so`, `bioparameter.so`, `bioreaction.so`, and `bionetwork.so`
@@ -129,6 +132,7 @@ Current branch hygiene/memory files:
 - The branch tracks `origin/WiP20261_TINKERCELL`.
 - The branch contains documentation commits that created and then refined TINKERCELL persistent memory.
 - The current cleanup task consolidated memory into `TINKERCELL_context.md` and deleted `communication.md`.
+- The official structural base `f232882e` has been incorporated locally for compatibility work; biochemical source paths now follow the category-based plugin layout.
 
 ## Validation Already Performed
 
@@ -150,6 +154,36 @@ During memory consolidation on 2026-04-17:
 - `documentation/developers/TINKERCELL_context.md` was made the only canonical persistent memory file.
 - `documentation/developers/communication.md` was removed from `WiP20261_TINKERCELL`.
 - Commit `8aea78c27be42f3652eef0db94689fe58e1b64d0` was pushed to `origin/WiP20261_TINKERCELL`.
+
+During contract/test hardening on 2026-04-17:
+
+- BioSpecies, BioParameter, BioReaction, and BioNetwork headers received concise contract documentation.
+- Runtime tests were added for missing BioParameter references, unsupported reversible reactions, and preservation of boundary/constant species during BioNetwork simulation.
+- `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime` succeeded.
+- 10 focused biochemical runtime tests passed.
+
+During explicit BioNetwork membership implementation on 2026-04-17:
+
+- `BioNetwork` gained persistent optional membership lists for species and reactions.
+- New public APIs: `addSpecies`, `addReaction`, `clearSpecies`, `clearReactions`, `getSpeciesNames`, and `getReactionNames`.
+- Empty membership lists preserve the previous global model discovery behavior.
+- Explicit missing or empty references now fail coherently during validation/simulation.
+- Runtime tests were added for scoped simulation, persistence round trip, and missing explicit members.
+- `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime` succeeded.
+- `SimulatorRuntimeTest.Bio*` passed 26 focused tests.
+
+During kinetic-law expression implementation on 2026-04-17:
+
+- TINKERCELL chose a small biochemical-specific evaluator instead of modifying the generated global GenESyS parser.
+- Added `source/tools/BioKineticLawExpression.h`.
+- Supported syntax: numeric literals, BioSpecies/BioParameter identifiers, parentheses, unary signs, `+`, `-`, `*`, `/`, `^`, and functions `abs`, `exp`, `log`, `sqrt`, `min`, `max`, and `pow`.
+- `BioReaction` gained persistent optional `kineticLawExpression` support.
+- `BioNetwork` validates kinetic-law symbols against the network species membership and available BioParameters.
+- Empty `kineticLawExpression` keeps legacy mass-action behavior.
+- Added runtime tests for kinetic-law persistence, expression-based simulation, and rejection of species referenced outside the explicit network membership.
+- `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime` succeeded.
+- `SimulatorRuntimeTest.Bio*` passed 29 focused tests.
+- `SimulatorRuntimeTest.MassActionOdeSystem*` and `SimulatorRuntimeTest.RungeKutta4OdeSolver*` passed 2 focused tests.
 
 ## Decisions Taken
 
@@ -183,15 +217,19 @@ During memory consolidation on 2026-04-17:
 - GUI and GROW may require metadata not present in the current kernel data classes.
 - External biochemical backend integration may introduce dependency, licensing, and platform issues.
 - Global `BioNetwork` discovery may be unsuitable for multiple biochemical networks in one model.
+- Explicit `BioNetwork` membership is now available at API/persistence/runtime level, but GUI/editor controls for editing those lists are not implemented yet.
+- Kinetic-law expressions are available at API/persistence/runtime level, but GUI/editor controls for editing them are not implemented yet.
 - Reversible reactions are represented but not executable in the current MVP.
 - Synthesis/degradation reactions may be limited by current `BioReaction` validation expectations.
+- Missing kinetic parameter references and unsupported reversible reactions are now explicitly covered by tests.
+- Boundary-condition and constant species preservation is now explicitly covered by tests.
 
 ## Probable Next Steps
 
 1. Keep working on `WiP20261_TINKERCELL`.
 2. Keep `TINKERCELL_context.md` updated as the single memory source.
 3. For the next technical task, inspect the current code again before planning or implementing.
-4. Prefer the next implementation to be a small, contract-focused biochemical documentation and test-hardening step before changing architecture.
+4. Wait for explicit user confirmation before starting the next phase after kinetic-law expressions.
 
 ## Interaction Log
 
@@ -262,3 +300,19 @@ During memory consolidation on 2026-04-17:
 - **Action requested:** Save everything discussed so far before the next session.
 - **Response given:** TINKERCELL updated this context file with the latest session state and prepared a final documentation-only commit and push.
 - **Next steps:** In the next session, start by reading `documentation/developers/TINKERCELL_context.md`, continue only on `WiP20261_TINKERCELL`, and avoid using `documentation/developers/communication.md`.
+
+### 2026-04-17 - USER - Official plugin category structure
+
+- **Main topic:** Synchronize TINKERCELL with the official plugin directory reorganization produced by `KERNEL_GUI`.
+- **Context extracted:** Commit `f232882e Organize plugins by declared category` is the official structural base and must not be reverted or reinterpreted.
+- **Action performed:** TINKERCELL incorporated `f232882e`, preserved the category-based layout, and verified that biochemical files now live under `source/plugins/data/BiochemicalSimulation`.
+- **Compatibility status:** `PluginConnectorDummyImpl1.cpp`, `GenesysQtGUI.pro`, `source/plugins/data/CMakeLists.txt`, and `test_simulator_runtime.cpp` already reference the new biochemical paths after the structural merge.
+- **Validation performed:** `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime` succeeded; focused biochemical runtime tests and `BioPluginsAreAvailableThroughDummyConnector` passed.
+
+### 2026-04-17 - USER - Resume phased TinkerCell integration
+
+- **Main topic:** Continue TinkerCell-inspired biochemical integration without plugin directory reorganization.
+- **Context extracted:** The next logical phase from memory was a small, contract-focused documentation and test-hardening step before changing architecture.
+- **Action performed:** TINKERCELL documented the BioSpecies, BioParameter, BioReaction, and BioNetwork contracts in their headers and added focused tests for known current limitations/guarantees.
+- **Validation performed:** `genesys_test_simulator_runtime` rebuilt successfully and 10 focused biochemical runtime tests passed.
+- **Next phase candidate:** Decide whether to improve network membership semantics, kinetic-law expressiveness, or SBML/TinkerCell interoperability scope; do not proceed without explicit user confirmation.
