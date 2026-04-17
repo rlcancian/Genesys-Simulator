@@ -981,3 +981,72 @@ Observed status:
   automated widget-level test or screenshot harness for `treeWidget_Plugins`,
   asserting category expansion state after autoload/reload and preserving
   `Data Definition` as collapsed.
+
+## Latest GMDD Component Layout Refinement
+
+- Functional commit: `a2a99d82` (`Refine GMDD layout around components`).
+- User continuation request:
+  - after testing a `Seize`, an editable GMDD appeared below the component when it
+    should appear above it;
+  - GMDDs below the component were too horizontally spread;
+  - statistic collection GMDDs (`Counter` and `StatisticsCollector`) should appear
+    in the first row below the component, while other non-editable/shared GMDDs
+    should use a second row below.
+- Diagnosis:
+  - the active positioning code is
+    `GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer()`;
+  - direct component-attached GMDDs were always appended to the lower placement
+    list, even when the data definition was editable from a component property;
+  - attached non-statistic GMDDs were categorized as `Shared`, so they could keep
+    the shared visibility/color semantics but were not distinguished for upper
+    placement;
+  - collision fallback already used radial layers, but the lower component region
+    had only one logical row.
+- Implementation:
+  - `GraphicalModelBuilder` now computes the set of model data definitions
+    referenced by editable `SimulationControl` properties using
+    `GenesysPropertyIntrospection`;
+  - `Counter` and `StatisticsCollector` remain explicitly non-editable for GMDD
+    presentation, even if encountered through model references;
+  - attached GMDDs that are referenced by editable properties are categorized as
+    `Editable`, remain governed by the editable visibility toggle, and are placed
+    in the upper arc above the component;
+  - attached GMDDs that are not editable remain `Shared` and, when shown below,
+    use a second lower radial layer;
+  - direct lower placement is now split into `lowerStatisticsLinks` and
+    `lowerSharedLinks`, placing statistic collection GMDDs immediately below the
+    component and other lower/shared GMDDs one controlled radial layer farther
+    down;
+  - recursive children keep the previous parent-side rule: children of editable
+    GMDDs stay above that GMDD, while children of non-editable GMDDs stay below;
+  - recursive lower children also use the two-row split for statistic versus
+    other lower/shared child GMDDs;
+  - `positionNewDataDefinitionsInArc()` now accepts a base radial layer so a row
+    can intentionally start on the second lower layer while preserving collision
+    fallback beyond that row.
+- Validation performed:
+  - `git diff --check -- source/applications/gui/qt/GenesysQtGUI/services/GraphicalModelBuilder.cpp`
+    passed;
+  - `cmake --build --preset gui-app` passed and linked
+    `genesys_qt_gui_application`;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_gui_render_strategy`
+    passed with 9 GUI render/layout tests;
+  - offscreen startup smoke was run with
+    `QT_QPA_PLATFORM=offscreen` and a temporary `XDG_CONFIG_HOME`; the GUI started,
+    autoloaded plugins including `Seize`, and stayed running until the expected
+    `timeout 5` exit code `124`.
+- Current state:
+  - a Seize-attached GMDD that is editable through component properties should now
+    be presented above the component instead of below it;
+  - direct lower GMDDs are no longer forced into one wide row: statistic collectors
+    use the first lower row and other lower/shared GMDDs use a second lower row;
+  - existing/persisted GMDD positions are still not forcibly rearranged unless the
+    GMDD is newly created by the synchronization pass;
+  - no push was performed;
+  - an unrelated pre-existing local modification remains in
+    `source/plugins/data/BiochemicalSimulation/BioNetwork.cpp` and was not staged
+    or committed by KERNEL_GUI.
+- Suggested next phase, only after explicit user confirmation: add a targeted
+  scene-level visual/regression harness that instantiates a compact `Seize` model
+  with queue/resource references and statistic children, then asserts or captures
+  the resulting GMDD upper/lower two-row layout.
