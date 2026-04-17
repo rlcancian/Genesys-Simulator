@@ -363,11 +363,46 @@ Validacao executada no momento da implementacao:
   - `git diff --check`: sem problemas.
 - Commit local da fase: `Add reversible biochemical kinetic laws`; nao fazer push sem pedido explicito.
 
+## Fase De Exemplos Bioquimicos Executaveis Executada Em 2026-04-17
+
+- O usuario mudou o foco da fase: nao expandir o biossimulador, mas demonstrar por exemplos executaveis o que ja foi integrado pela linha TINKERCELL.
+- Foram usados como referencia de estilo os exemplos em `source/applications/terminal/examples/smarts`, especialmente:
+  - `Smart_ODE`, pela execucao terminal de um modelo continuo;
+  - `Smart_Process` e `Smart_Dummy`, pela estrutura simples de aplicacao terminal que instancia `Simulator`, carrega plugins, monta modelo, salva `.gen` e executa.
+- Exemplos criados:
+  - `Smart_BioReversibleMassAction`;
+  - `Smart_BioKineticLawRegulation`.
+- `Smart_BioReversibleMassAction` demonstra:
+  - `BioSpecies`;
+  - `BioParameter`;
+  - `BioReaction` reversivel;
+  - constantes cineticas direta e reversa via nomes de `BioParameter`;
+  - pertencimento explicito em `BioNetwork`;
+  - simulacao deterministica por `BioNetwork::simulate`;
+  - payload final com quantidades de especies.
+- `Smart_BioKineticLawRegulation` demonstra:
+  - sintese sem reagentes;
+  - degradacao sem produtos;
+  - modificador formal de reacao;
+  - especie constante;
+  - `kineticLawExpression` customizada com parametro e especie modificadora;
+  - pertencimento explicito em `BioNetwork`;
+  - simulacao deterministica por `BioNetwork::simulate`.
+- Validacao executada:
+  - configuracao CMake em `/tmp/genesys-terminal-smart-bio-reversible` com `GENESYS_TERMINAL_EXAMPLE=smarts/Smart_BioReversibleMassAction.cpp`: passou;
+  - build de `genesys_terminal_application` para `Smart_BioReversibleMassAction`: passou;
+  - execucao de `Smart_BioReversibleMassAction`: passou, salvou `./models/Smart_BioReversibleMassAction.gen`, status `Completed`, payload final com `A=4.82086773432292` e `B=5.17913226567708`;
+  - configuracao CMake em `/tmp/genesys-terminal-smart-bio-kinetic-law` com `GENESYS_TERMINAL_EXAMPLE=smarts/Smart_BioKineticLawRegulation.cpp`: passou;
+  - build de `genesys_terminal_application` para `Smart_BioKineticLawRegulation`: passou;
+  - execucao de `Smart_BioKineticLawRegulation`: passou, salvou `./models/Smart_BioKineticLawRegulation.gen`, status `Completed`, payload final com `Protein=3.24249268786054` e `Activator=3`.
+- Observacao de execucao: os executaveis emitiram aviso de `autoloadplugins.txt` ausente no diretorio de build em `/tmp`, mas a insercao estatica dos plugins prosseguiu e os exemplos executaram com sucesso.
+- Commit local da fase: `Add biochemical terminal smart examples`; nao fazer push sem pedido explicito.
+
 ## Estado Atual Do Branch
 
 - `WiP20261` e a base consolidada atual para TINKERCELL.
 - O conteudo relevante de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
-- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas, sintese/degradacao, reversibilidade mass-action e leis cineticas reversas customizadas foram implementadas e validadas.
+- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas, sintese/degradacao, reversibilidade mass-action, leis cineticas reversas customizadas e exemplos bioquimicos executaveis foram implementadas e validadas.
 - A IA `TINKERCELL` deve aguardar confirmacao explicita antes de iniciar a proxima fase.
 - Qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo local.
 - Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
@@ -375,7 +410,7 @@ Validacao executada no momento da implementacao:
 ## Pendencias
 
 - Confirmar com o usuario antes de iniciar a proxima fase.
-- Proxima fase candidata: definir o proximo eixo apos leis cineticas reversas customizadas, possivelmente GUI/editor para campos bioquimicos, importacao/exportacao SBML/TinkerCell, ou suporte de comandos no runner.
+- Proxima fase candidata: definir o proximo eixo apos exemplos bioquimicos executaveis, possivelmente adicionar exemplos mais ricos, criar documentacao curta de uso dos smarts bioquimicos, GUI/editor para campos bioquimicos, importacao/exportacao SBML/TinkerCell, ou suporte de comandos no runner.
 - Ainda falta fluxo GUI/editor para editar listas explicitas de membros em `BioNetwork`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `kineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `reverseKineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
