@@ -18,8 +18,8 @@ instructions are considered obsolete or consolidated here.
 - **GRO working branch:** `WiP20261_GRO`.
 - **Current consolidated base:** `origin/WiP20261` at `0f72b673` as of the
   latest GRO synchronization.
-- **Current GRO branch head:** local `WiP20261_GRO` has the Gro colony flow
-  examples checkpoint committed on top of `origin/WiP20261_GRO` at `8ca92ff7`.
+- **Current GRO branch head:** `origin/WiP20261_GRO` has the Gro colony flow
+  examples checkpoint published at `8a3a42f0`.
 - **Current state:** the GRO work line is active again and is proceeding in
   explicit, user-confirmed phases on `WiP20261_GRO`.
 - **Immediate objective:** continue the Gro biosimulator integration only one
@@ -306,6 +306,7 @@ instructions are considered obsolete or consolidated here.
   - `3101d042 Add Gro die command support`
   - `8ca92ff7 Record Gro die command checkpoint`
   - `61c75ed3 Add Gro colony flow examples`
+  - `8a3a42f0 Record Gro colony examples checkpoint`
 - Latest known validation after active GRO phases:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
@@ -325,9 +326,8 @@ instructions are considered obsolete or consolidated here.
 
 - Current branch: `WiP20261_GRO`.
 - Current consolidated base: `origin/WiP20261` at `0f72b673`.
-- Current GRO branch head: local `WiP20261_GRO` after the Gro colony flow
-  examples checkpoint; `origin/WiP20261_GRO` remains at `8ca92ff7` until
-  explicit publication is requested.
+- Current GRO branch head: `origin/WiP20261_GRO` after the Gro colony flow
+  examples checkpoint publication at `8a3a42f0`.
 - Latest synchronization with `origin/WiP20261` fast-forwarded local
   `WiP20261_GRO` to `0f72b673`; no conflicts occurred.
 - Conflict status during the latest synchronization: no conflicts occurred.
@@ -347,8 +347,8 @@ instructions are considered obsolete or consolidated here.
      added two executable terminal smart examples.
 - The `die()` command checkpoint was published to `origin/WiP20261_GRO` at
   `8ca92ff7`.
-- The flow examples checkpoint is local only until explicit publication is
-  requested.
+- The flow examples checkpoint was published to `origin/WiP20261_GRO` at
+  `8a3a42f0`.
 - Ask the user for explicit confirmation before proceeding to the next technical
   phase.
 
@@ -780,10 +780,27 @@ instructions are considered obsolete or consolidated here.
     first division count `2`, and youngest generation `2`.
 - Functional checkpoint commit:
   - `61c75ed3 Add Gro colony flow examples`
-- No push/publication was performed for this checkpoint yet.
+- Publication after this checkpoint:
+  - pushed `WiP20261_GRO` to `origin/WiP20261_GRO`;
+  - remote advanced from `8ca92ff7` to `8a3a42f0`.
 - Suggested next phase: either add a small terminal example discovery/preset
   improvement for GRO examples, or return to event scheduler integration around
   the now stateful flow component.
+
+### 2026-04-17 - End-Of-Day Publication And Pause
+
+- User requested publication of the current local commits, memory update, and
+  end-of-day pause.
+- Published `WiP20261_GRO` to `origin/WiP20261_GRO`.
+- Published range: `8ca92ff7..8a3a42f0`.
+- Published checkpoint commits:
+  - `61c75ed3 Add Gro colony flow examples`
+  - `8a3a42f0 Record Gro colony examples checkpoint`
+- Current working rule after closure: do not start a new technical phase until
+  the user explicitly resumes.
+- Suggested next phase remains unchanged: either a small terminal example
+  discovery/preset improvement for GRO examples, or event scheduler integration
+  around the now stateful flow component.
 
 ### 2026-04-17 - Gro Initial Semantic IR Phase
 
