@@ -6,6 +6,13 @@
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
+/**
+ * Scalar biochemical parameter, typically used as a kinetic constant.
+ *
+ * BioReaction may reference a BioParameter by name. Parameter lookup remains a
+ * model-data responsibility, so missing references are reported by BioReaction
+ * validation rather than by this value object.
+ */
 class BioParameter : public ModelDataDefinition {
 public:
 	BioParameter(Model* model, std::string name = "");

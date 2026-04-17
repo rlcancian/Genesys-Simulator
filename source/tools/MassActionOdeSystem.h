@@ -7,6 +7,7 @@
 #include <utility>
 #include <vector>
 
+#include "BioKineticLawExpression.h"
 #include "OdeSystem_if.h"
 
 /**
@@ -31,6 +32,8 @@ public:
 		double rateConstant = 0.0;
 		std::vector<StoichiometricTerm> reactants;
 		std::vector<StoichiometricTerm> products;
+		std::string kineticLawExpression;
+		std::vector<std::pair<std::string, double>> parameters;
 	};
 
 	MassActionOdeSystem() = default;
@@ -54,15 +57,7 @@ public:
 		}
 
 		for (const Reaction& reaction : _reactions) {
-			double rate = reaction.rateConstant;
-			for (const StoichiometricTerm& reactant : reaction.reactants) {
-				if (reactant.speciesIndex >= n) {
-					rate = 0.0;
-					break;
-				}
-				const double amount = std::max(0.0, y[reactant.speciesIndex]);
-				rate *= std::pow(amount, reactant.stoichiometry);
-			}
+			double rate = evaluateRate(reaction, y);
 
 			for (const StoichiometricTerm& reactant : reaction.reactants) {
 				applyDerivative(reactant.speciesIndex, -reactant.stoichiometry * rate, dydt);
@@ -82,6 +77,42 @@ public:
 	}
 
 private:
+	double evaluateRate(const Reaction& reaction, const double* y) const {
+		if (reaction.kineticLawExpression.empty()) {
+			double rate = reaction.rateConstant;
+			for (const StoichiometricTerm& reactant : reaction.reactants) {
+				if (reactant.speciesIndex >= _species.size()) {
+					return 0.0;
+				}
+				const double amount = std::max(0.0, y[reactant.speciesIndex]);
+				rate *= std::pow(amount, reactant.stoichiometry);
+			}
+			return std::max(0.0, rate);
+		}
+
+		BioKineticLawExpression expression;
+		double rate = 0.0;
+		std::string errorMessage;
+		const bool ok = expression.evaluate(reaction.kineticLawExpression,
+				[this, &reaction, y](const std::string& name, double& value) {
+					for (unsigned int i = 0; i < _species.size(); ++i) {
+						if (_species[i].name == name) {
+							value = std::max(0.0, y[i]);
+							return true;
+						}
+					}
+					for (const auto& parameter : reaction.parameters) {
+						if (parameter.first == name) {
+							value = parameter.second;
+							return true;
+						}
+					}
+					return false;
+				},
+				rate, errorMessage);
+		return ok ? std::max(0.0, rate) : 0.0;
+	}
+
 	void applyDerivative(unsigned int speciesIndex, double value, double* dydt) const {
 		if (speciesIndex >= _species.size() || _species[speciesIndex].boundaryCondition || _species[speciesIndex].constant) {
 			return;

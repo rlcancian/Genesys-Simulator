@@ -7,10 +7,12 @@
 #include <sstream>
 
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "kernel/simulator/Event.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataManager.h"
+#include "tools/BioKineticLawExpression.h"
 #include "tools/MassActionOdeSystem.h"
 #include "tools/RungeKutta4OdeSolver.h"
 
@@ -54,6 +56,18 @@ std::string formatDouble(double value) {
 	std::ostringstream out;
 	out << std::setprecision(15) << value;
 	return out.str();
+}
+
+std::vector<std::pair<std::string, double>> collectParameterValues(ModelDataManager* dataManager) {
+	std::vector<std::pair<std::string, double>> parameterValues;
+	List<ModelDataDefinition*>* list = dataManager->getDataDefinitionList(Util::TypeOf<BioParameter>());
+	for (ModelDataDefinition* definition : *list->list()) {
+		auto* parameter = dynamic_cast<BioParameter*>(definition);
+		if (parameter != nullptr) {
+			parameterValues.push_back({parameter->getName(), parameter->getValue()});
+		}
+	}
+	return parameterValues;
 }
 
 } // namespace
@@ -110,7 +124,7 @@ BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(mod
 PluginInformation* BioNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioNetwork>(), &BioNetwork::LoadInstance, &BioNetwork::NewInstance);
 	info->setCategory("Biochemical simulation");
-	info->setDescriptionHelp("Native biochemical network runner. It discovers BioSpecies and BioReaction data definitions in the model and advances them with mass-action kinetics using a fixed-step RK4 solver.");
+	info->setDescriptionHelp("Native biochemical network runner. It advances BioSpecies and BioReaction data definitions with mass-action kinetics using a fixed-step RK4 solver, optionally constrained to explicit network membership.");
 	return info;
 }
 
@@ -130,6 +144,8 @@ std::string BioNetwork::show() {
 			",stepSize=" + Util::StrTruncIfInt(std::to_string(_stepSize)) +
 			",currentTime=" + Util::StrTruncIfInt(std::to_string(_currentTime)) +
 			",autoSchedule=" + std::to_string(_autoSchedule ? 1 : 0) +
+			",species=" + std::to_string(_speciesNames.size()) +
+			",reactions=" + std::to_string(_reactionNames.size()) +
 			",lastStatus=\"" + _lastStatus + "\"" +
 			",lastResponsePayloadSize=" + std::to_string(_lastResponsePayload.size());
 }
@@ -145,6 +161,16 @@ bool BioNetwork::_loadInstance(PersistenceRecord *fields) {
 		_lastStatus = fields->loadField("lastStatus", DEFAULT.lastStatus);
 		_lastErrorMessage = fields->loadField("lastErrorMessage", DEFAULT.lastErrorMessage);
 		_lastResponsePayload = fields->loadField("lastResponsePayload", DEFAULT.lastResponsePayload);
+		_speciesNames.clear();
+		const unsigned int speciesCount = fields->loadField("species", 0u);
+		for (unsigned int i = 0; i < speciesCount; ++i) {
+			_speciesNames.push_back(fields->loadField("speciesName" + Util::StrIndex(i), ""));
+		}
+		_reactionNames.clear();
+		const unsigned int reactionCount = fields->loadField("reactions", 0u);
+		for (unsigned int i = 0; i < reactionCount; ++i) {
+			_reactionNames.push_back(fields->loadField("reactionName" + Util::StrIndex(i), ""));
+		}
 	}
 	return res;
 }
@@ -159,6 +185,14 @@ void BioNetwork::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues
 	fields->saveField("lastStatus", _lastStatus, DEFAULT.lastStatus, saveDefaultValues);
 	fields->saveField("lastErrorMessage", _lastErrorMessage, DEFAULT.lastErrorMessage, saveDefaultValues);
 	fields->saveField("lastResponsePayload", _lastResponsePayload, DEFAULT.lastResponsePayload, saveDefaultValues);
+	fields->saveField("species", static_cast<unsigned int>(_speciesNames.size()), 0u, saveDefaultValues);
+	for (unsigned int i = 0; i < _speciesNames.size(); ++i) {
+		fields->saveField("speciesName" + Util::StrIndex(i), _speciesNames[i], "", saveDefaultValues);
+	}
+	fields->saveField("reactions", static_cast<unsigned int>(_reactionNames.size()), 0u, saveDefaultValues);
+	for (unsigned int i = 0; i < _reactionNames.size(); ++i) {
+		fields->saveField("reactionName" + Util::StrIndex(i), _reactionNames[i], "", saveDefaultValues);
+	}
 }
 
 bool BioNetwork::_check(std::string& errorMessage) {
@@ -277,10 +311,29 @@ bool BioNetwork::advanceOneStep(std::string& errorMessage) {
 
 bool BioNetwork::collectSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const {
 	species.clear();
-	List<ModelDataDefinition*>* list = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<BioSpecies>());
-	for (ModelDataDefinition* definition : *list->list()) {
-		auto* bioSpecies = dynamic_cast<BioSpecies*>(definition);
-		if (bioSpecies != nullptr) {
+	bool resultAll = true;
+	if (_speciesNames.empty()) {
+		List<ModelDataDefinition*>* list = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<BioSpecies>());
+		for (ModelDataDefinition* definition : *list->list()) {
+			auto* bioSpecies = dynamic_cast<BioSpecies*>(definition);
+			if (bioSpecies != nullptr) {
+				species.push_back(bioSpecies);
+			}
+		}
+	} else {
+		for (const std::string& speciesName : _speciesNames) {
+			if (speciesName.empty()) {
+				errorMessage += "BioNetwork \"" + getName() + "\" has an empty BioSpecies reference. ";
+				resultAll = false;
+				continue;
+			}
+			ModelDataDefinition* definition = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), speciesName);
+			auto* bioSpecies = dynamic_cast<BioSpecies*>(definition);
+			if (bioSpecies == nullptr) {
+				errorMessage += "BioNetwork \"" + getName() + "\" references missing BioSpecies \"" + speciesName + "\". ";
+				resultAll = false;
+				continue;
+			}
 			species.push_back(bioSpecies);
 		}
 	}
@@ -288,15 +341,34 @@ bool BioNetwork::collectSpecies(std::vector<BioSpecies*>& species, std::string& 
 		errorMessage += "BioNetwork \"" + getName() + "\" requires at least one BioSpecies. ";
 		return false;
 	}
-	return true;
+	return resultAll;
 }
 
 bool BioNetwork::collectReactions(std::vector<BioReaction*>& reactions, std::string& errorMessage) const {
 	reactions.clear();
-	List<ModelDataDefinition*>* list = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<BioReaction>());
-	for (ModelDataDefinition* definition : *list->list()) {
-		auto* reaction = dynamic_cast<BioReaction*>(definition);
-		if (reaction != nullptr) {
+	bool resultAll = true;
+	if (_reactionNames.empty()) {
+		List<ModelDataDefinition*>* list = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<BioReaction>());
+		for (ModelDataDefinition* definition : *list->list()) {
+			auto* reaction = dynamic_cast<BioReaction*>(definition);
+			if (reaction != nullptr) {
+				reactions.push_back(reaction);
+			}
+		}
+	} else {
+		for (const std::string& reactionName : _reactionNames) {
+			if (reactionName.empty()) {
+				errorMessage += "BioNetwork \"" + getName() + "\" has an empty BioReaction reference. ";
+				resultAll = false;
+				continue;
+			}
+			ModelDataDefinition* definition = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioReaction>(), reactionName);
+			auto* reaction = dynamic_cast<BioReaction*>(definition);
+			if (reaction == nullptr) {
+				errorMessage += "BioNetwork \"" + getName() + "\" references missing BioReaction \"" + reactionName + "\". ";
+				resultAll = false;
+				continue;
+			}
 			reactions.push_back(reaction);
 		}
 	}
@@ -304,7 +376,7 @@ bool BioNetwork::collectReactions(std::vector<BioReaction*>& reactions, std::str
 		errorMessage += "BioNetwork \"" + getName() + "\" requires at least one BioReaction. ";
 		return false;
 	}
-	return true;
+	return resultAll;
 }
 
 bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std::vector<BioReaction*>& reactions, MassActionOdeSystem* system, std::string& errorMessage) const {
@@ -326,20 +398,25 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 	}
 
 	std::vector<MassActionOdeSystem::Reaction> odeReactions;
+	std::vector<std::pair<std::string, double>> parameterValues = collectParameterValues(_parentModel->getDataManager());
 	for (BioReaction* reaction : reactions) {
 		if (reaction->isReversible()) {
 			errorMessage += "BioNetwork \"" + getName() + "\" cannot run reversible BioReaction \"" + reaction->getName() + "\" yet. ";
 			return false;
 		}
-		const double rateConstant = reaction->resolveRateConstant();
-		if (rateConstant < 0.0) {
-			errorMessage += "BioReaction \"" + reaction->getName() + "\" must resolve to a non-negative rate constant. ";
-			return false;
-		}
 
 		MassActionOdeSystem::Reaction odeReaction;
 		odeReaction.name = reaction->getName();
-		odeReaction.rateConstant = rateConstant;
+		odeReaction.kineticLawExpression = reaction->getKineticLawExpression();
+		odeReaction.parameters = parameterValues;
+		if (odeReaction.kineticLawExpression.empty()) {
+			const double rateConstant = reaction->resolveRateConstant();
+			if (rateConstant < 0.0) {
+				errorMessage += "BioReaction \"" + reaction->getName() + "\" must resolve to a non-negative rate constant. ";
+				return false;
+			}
+			odeReaction.rateConstant = rateConstant;
+		}
 
 		for (const BioReaction::StoichiometricTerm& term : reaction->getReactants()) {
 			auto it = indexes.find(term.speciesName);
@@ -356,6 +433,35 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 				return false;
 			}
 			odeReaction.products.push_back({it->second, term.stoichiometry});
+		}
+		if (!odeReaction.kineticLawExpression.empty()) {
+			BioKineticLawExpression expression;
+			double initialRate = 0.0;
+			std::string kineticLawError;
+			const bool ok = expression.evaluate(odeReaction.kineticLawExpression,
+					[&species, &indexes, &odeReaction](const std::string& symbolName, double& value) {
+						auto speciesIt = indexes.find(symbolName);
+						if (speciesIt != indexes.end()) {
+							value = species[speciesIt->second]->getAmount();
+							return true;
+						}
+						for (const auto& parameter : odeReaction.parameters) {
+							if (parameter.first == symbolName) {
+								value = parameter.second;
+								return true;
+							}
+						}
+						return false;
+					},
+					initialRate, kineticLawError);
+			if (!ok) {
+				errorMessage += "BioReaction \"" + reaction->getName() + "\" has invalid kineticLawExpression \"" + odeReaction.kineticLawExpression + "\" in BioNetwork \"" + getName() + "\": " + kineticLawError + " ";
+				return false;
+			}
+			if (initialRate < 0.0) {
+				errorMessage += "BioReaction \"" + reaction->getName() + "\" kineticLawExpression must evaluate to a non-negative rate. ";
+				return false;
+			}
 		}
 		odeReactions.push_back(odeReaction);
 	}
@@ -457,4 +563,28 @@ void BioNetwork::setLastResponsePayload(std::string lastResponsePayload) {
 
 std::string BioNetwork::getLastResponsePayload() const {
 	return _lastResponsePayload;
+}
+
+void BioNetwork::addSpecies(std::string speciesName) {
+	_speciesNames.push_back(speciesName);
+}
+
+void BioNetwork::addReaction(std::string reactionName) {
+	_reactionNames.push_back(reactionName);
+}
+
+void BioNetwork::clearSpecies() {
+	_speciesNames.clear();
+}
+
+void BioNetwork::clearReactions() {
+	_reactionNames.clear();
+}
+
+const std::vector<std::string>& BioNetwork::getSpeciesNames() const {
+	return _speciesNames;
+}
+
+const std::vector<std::string>& BioNetwork::getReactionNames() const {
+	return _reactionNames;
 }

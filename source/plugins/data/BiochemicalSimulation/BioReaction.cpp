@@ -7,6 +7,7 @@
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataManager.h"
+#include "tools/BioKineticLawExpression.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -42,23 +43,28 @@ BioReaction::BioReaction(Model* model, std::string name) : ModelDataDefinition(m
 	auto* propRateConstantParameterName = new SimulationControlGeneric<std::string>(
 			std::bind(&BioReaction::getRateConstantParameterName, this), std::bind(&BioReaction::setRateConstantParameterName, this, std::placeholders::_1),
 			Util::TypeOf<BioReaction>(), getName(), "RateConstantParameterName", "");
+	auto* propKineticLawExpression = new SimulationControlGeneric<std::string>(
+			std::bind(&BioReaction::getKineticLawExpression, this), std::bind(&BioReaction::setKineticLawExpression, this, std::placeholders::_1),
+			Util::TypeOf<BioReaction>(), getName(), "KineticLawExpression", "");
 	auto* propReversible = new SimulationControlGeneric<bool>(
 			std::bind(&BioReaction::isReversible, this), std::bind(&BioReaction::setReversible, this, std::placeholders::_1),
 			Util::TypeOf<BioReaction>(), getName(), "Reversible", "");
 
 	_parentModel->getControls()->insert(propRateConstant);
 	_parentModel->getControls()->insert(propRateConstantParameterName);
+	_parentModel->getControls()->insert(propKineticLawExpression);
 	_parentModel->getControls()->insert(propReversible);
 
 	_addProperty(propRateConstant);
 	_addProperty(propRateConstantParameterName);
+	_addProperty(propKineticLawExpression);
 	_addProperty(propReversible);
 }
 
 PluginInformation* BioReaction::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioReaction>(), &BioReaction::LoadInstance, &BioReaction::NewInstance);
 	info->setCategory("Biochemical simulation");
-	info->setDescriptionHelp("Irreversible biochemical reaction with reactants, products, stoichiometry, and mass-action rate constant.");
+	info->setDescriptionHelp("Irreversible biochemical reaction with reactants, products, stoichiometry, mass-action rate constants, and optional kinetic-law expressions.");
 	return info;
 }
 
@@ -77,6 +83,7 @@ std::string BioReaction::show() {
 			",products=" + termsToString(_products) +
 			",rateConstant=" + Util::StrTruncIfInt(std::to_string(resolveRateConstant())) +
 			",rateConstantParameterName=\"" + _rateConstantParameterName + "\"" +
+			",kineticLawExpression=\"" + _kineticLawExpression + "\"" +
 			",reversible=" + std::to_string(_reversible ? 1 : 0);
 }
 
@@ -97,6 +104,7 @@ bool BioReaction::_loadInstance(PersistenceRecord *fields) {
 		}
 		_rateConstant = fields->loadField("rateConstant", DEFAULT.rateConstant);
 		_rateConstantParameterName = fields->loadField("rateConstantParameterName", DEFAULT.rateConstantParameterName);
+		_kineticLawExpression = fields->loadField("kineticLawExpression", DEFAULT.kineticLawExpression);
 		_reversible = fields->loadField("reversible", DEFAULT.reversible ? 1u : 0u) != 0u;
 	}
 	return res;
@@ -116,6 +124,7 @@ void BioReaction::_saveInstance(PersistenceRecord *fields, bool saveDefaultValue
 	}
 	fields->saveField("rateConstant", _rateConstant, DEFAULT.rateConstant, saveDefaultValues);
 	fields->saveField("rateConstantParameterName", _rateConstantParameterName, DEFAULT.rateConstantParameterName, saveDefaultValues);
+	fields->saveField("kineticLawExpression", _kineticLawExpression, DEFAULT.kineticLawExpression, saveDefaultValues);
 	fields->saveField("reversible", _reversible ? 1u : 0u, DEFAULT.reversible ? 1u : 0u, saveDefaultValues);
 }
 
@@ -135,7 +144,9 @@ bool BioReaction::_check(std::string& errorMessage) {
 	}
 	resultAll = checkTerms(_reactants, "reactant", errorMessage) && resultAll;
 	resultAll = checkTerms(_products, "product", errorMessage) && resultAll;
-	if (!_rateConstantParameterName.empty()) {
+	if (!_kineticLawExpression.empty()) {
+		resultAll = validateKineticLawExpression(errorMessage) && resultAll;
+	} else if (!_rateConstantParameterName.empty()) {
 		auto* parameter = dynamic_cast<BioParameter*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioParameter>(), _rateConstantParameterName));
 		if (parameter == nullptr) {
 			errorMessage += "BioReaction \"" + getName() + "\" references missing BioParameter \"" + _rateConstantParameterName + "\". ";
@@ -150,6 +161,40 @@ bool BioReaction::_check(std::string& errorMessage) {
 		resultAll = false;
 	}
 	return resultAll;
+}
+
+bool BioReaction::validateKineticLawExpression(std::string& errorMessage) const {
+	BioKineticLawExpression expression;
+	double value = 0.0;
+	std::string kineticLawError;
+	const bool ok = expression.evaluate(_kineticLawExpression,
+			[this](const std::string& symbolName, double& symbolValue) {
+				return resolveKineticLawSymbol(symbolName, symbolValue);
+			},
+			value, kineticLawError);
+	if (!ok) {
+		errorMessage += "BioReaction \"" + getName() + "\" has invalid kineticLawExpression \"" + _kineticLawExpression + "\": " + kineticLawError + " ";
+		return false;
+	}
+	if (value < 0.0) {
+		errorMessage += "BioReaction \"" + getName() + "\" kineticLawExpression must evaluate to a non-negative rate. ";
+		return false;
+	}
+	return true;
+}
+
+bool BioReaction::resolveKineticLawSymbol(const std::string& symbolName, double& value) const {
+	auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), symbolName));
+	if (species != nullptr) {
+		value = species->getAmount();
+		return true;
+	}
+	auto* parameter = dynamic_cast<BioParameter*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioParameter>(), symbolName));
+	if (parameter != nullptr) {
+		value = parameter->getValue();
+		return true;
+	}
+	return false;
 }
 
 bool BioReaction::checkTerms(const std::vector<StoichiometricTerm>& terms, const std::string& side, std::string& errorMessage) const {
@@ -218,6 +263,14 @@ double BioReaction::resolveRateConstant() const {
 	}
 	auto* parameter = dynamic_cast<BioParameter*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioParameter>(), _rateConstantParameterName));
 	return parameter == nullptr ? _rateConstant : parameter->getValue();
+}
+
+void BioReaction::setKineticLawExpression(std::string kineticLawExpression) {
+	_kineticLawExpression = kineticLawExpression;
+}
+
+std::string BioReaction::getKineticLawExpression() const {
+	return _kineticLawExpression;
 }
 
 void BioReaction::setReversible(bool reversible) {

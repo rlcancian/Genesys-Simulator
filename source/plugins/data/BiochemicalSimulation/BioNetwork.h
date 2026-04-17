@@ -11,6 +11,15 @@ class BioReaction;
 class BioSpecies;
 class MassActionOdeSystem;
 
+/**
+ * Native deterministic biochemical network runner.
+ *
+ * BioNetwork advances BioSpecies with fixed-step RK4 over a mass-action ODE
+ * system. Networks may define explicit BioSpecies and BioReaction membership by
+ * name; when a membership list is empty, the runner falls back to discovering
+ * every registered definition of that type in the owning model for compatibility
+ * with existing models.
+ */
 class BioNetwork : public ModelDataDefinition {
 public:
 	BioNetwork(Model* model, std::string name = "");
@@ -38,6 +47,12 @@ public:
 	std::string getLastErrorMessage() const;
 	void setLastResponsePayload(std::string lastResponsePayload);
 	std::string getLastResponsePayload() const;
+	void addSpecies(std::string speciesName);
+	void addReaction(std::string reactionName);
+	void clearSpecies();
+	void clearReactions();
+	const std::vector<std::string>& getSpeciesNames() const;
+	const std::vector<std::string>& getReactionNames() const;
 
 	bool simulate(std::string& errorMessage);
 	bool simulate(double startTime, double stopTime, double stepSize, std::string& errorMessage);
@@ -79,6 +94,8 @@ private:
 	std::string _lastStatus = DEFAULT.lastStatus;
 	std::string _lastErrorMessage = DEFAULT.lastErrorMessage;
 	std::string _lastResponsePayload = DEFAULT.lastResponsePayload;
+	std::vector<std::string> _speciesNames;
+	std::vector<std::string> _reactionNames;
 };
 
 #endif /* BIONETWORK_H */

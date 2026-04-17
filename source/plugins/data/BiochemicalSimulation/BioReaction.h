@@ -7,6 +7,17 @@
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
+/**
+ * Irreversible mass-action reaction definition.
+ *
+ * Reactants and products are stored as species-name plus stoichiometry pairs so
+ * the reaction can be persisted independently from runtime pointers. The current
+ * execution contract supports direct rate constants, a BioParameter reference,
+ * or an optional kinetic-law expression that resolves BioSpecies/BioParameter
+ * names at BioNetwork execution time. Reversible reactions are represented for
+ * future compatibility but are rejected by validation and by BioNetwork execution
+ * until reverse kinetics are defined.
+ */
 class BioReaction : public ModelDataDefinition {
 public:
 	struct StoichiometricTerm {
@@ -35,6 +46,8 @@ public:
 	void setRateConstantParameterName(std::string rateConstantParameterName);
 	std::string getRateConstantParameterName() const;
 	double resolveRateConstant() const;
+	void setKineticLawExpression(std::string kineticLawExpression);
+	std::string getKineticLawExpression() const;
 	void setReversible(bool reversible);
 	bool isReversible() const;
 
@@ -47,11 +60,14 @@ protected:
 
 private:
 	bool checkTerms(const std::vector<StoichiometricTerm>& terms, const std::string& side, std::string& errorMessage) const;
+	bool validateKineticLawExpression(std::string& errorMessage) const;
+	bool resolveKineticLawSymbol(const std::string& symbolName, double& value) const;
 
 private:
 	const struct DEFAULT_VALUES {
 		double rateConstant = 0.0;
 		std::string rateConstantParameterName = "";
+		std::string kineticLawExpression = "";
 		bool reversible = false;
 	} DEFAULT;
 
@@ -59,6 +75,7 @@ private:
 	std::vector<StoichiometricTerm> _products;
 	double _rateConstant = DEFAULT.rateConstant;
 	std::string _rateConstantParameterName = DEFAULT.rateConstantParameterName;
+	std::string _kineticLawExpression = DEFAULT.kineticLawExpression;
 	bool _reversible = DEFAULT.reversible;
 };
 

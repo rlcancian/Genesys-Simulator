@@ -5765,6 +5765,69 @@ TEST(SimulatorRuntimeTest, BioReactionResolvesRateConstantFromBioParameter) {
     EXPECT_DOUBLE_EQ(reaction.resolveRateConstant(), 0.25);
 }
 
+TEST(SimulatorRuntimeTest, BioReactionRejectsMissingRateParameterReference) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstantParameterName("missingK");
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("missingK"), std::string::npos);
+    EXPECT_NE(errorMessage.find("BioParameter"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsUnsupportedReversibleFlag) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+    reaction.setReversible(true);
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("reversible=true"), std::string::npos);
+
+    BioNetworkProbe network(model, "ReversibleNetwork");
+    errorMessage.clear();
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("cannot run reversible BioReaction"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioReactionPersistencePreservesKineticLawExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioReactionProbe source(model, "MichaelisMenten");
+    source.addReactant("A", 1.0);
+    source.addProduct("B", 1.0);
+    source.setKineticLawExpression("vmax * A / (km + A)");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    BioReactionProbe loaded(model, "LoadedReaction");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getKineticLawExpression(), "vmax * A / (km + A)");
+}
+
 TEST(SimulatorRuntimeTest, BioNetworkSimulatesFirstOrderMassActionReaction) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -5791,6 +5854,183 @@ TEST(SimulatorRuntimeTest, BioNetworkSimulatesFirstOrderMassActionReaction) {
     EXPECT_NEAR(b.getAmount(), 10.0 - 10.0 * std::exp(-0.1), 1e-4);
     EXPECT_NE(network.getLastResponsePayload().find("\"A\""), std::string::npos);
     EXPECT_NE(network.getLastResponsePayload().find("\"B\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkUsesExplicitSpeciesAndReactionMembership) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setInitialAmount(10.0);
+    c.setAmount(10.0);
+
+    BioReactionProbe aToB(model, "A_to_B");
+    aToB.addReactant("A", 1.0);
+    aToB.addProduct("B", 1.0);
+    aToB.setRateConstant(0.1);
+
+    BioReactionProbe cToB(model, "C_to_B");
+    cToB.addReactant("C", 1.0);
+    cToB.addProduct("B", 1.0);
+    cToB.setRateConstant(0.5);
+
+    BioNetworkProbe network(model, "ScopedNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("A_to_B");
+
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_NEAR(b.getAmount(), 10.0 - 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_DOUBLE_EQ(c.getAmount(), 10.0);
+    EXPECT_NE(network.getLastResponsePayload().find("\"A\""), std::string::npos);
+    EXPECT_NE(network.getLastResponsePayload().find("\"B\""), std::string::npos);
+    EXPECT_EQ(network.getLastResponsePayload().find("\"C\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesParserBackedKineticLawExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+    BioParameter k(model, "k");
+    k.setValue(0.01);
+
+    BioReactionProbe reaction(model, "SecondOrderAtoB");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.0);
+    reaction.setKineticLawExpression("k * pow(A, 2)");
+
+    BioNetworkProbe network(model, "KineticLawNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("SecondOrderAtoB");
+
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), 10.0 / (1.0 + 0.01 * 10.0), 1e-3);
+    EXPECT_NEAR(b.getAmount(), 10.0 - (10.0 / (1.0 + 0.01 * 10.0)), 1e-3);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideMembership) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "ModifierReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("C * A");
+
+    std::string reactionError;
+    ASSERT_TRUE(reaction.CheckProbe(reactionError)) << reactionError;
+
+    BioNetworkProbe network(model, "ScopedKineticLawNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("ModifierReaction");
+
+    std::string errorMessage;
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("kineticLawExpression"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkPersistencePreservesExplicitMembership) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioNetworkProbe source(model, "PersistedScopedNetwork");
+    source.addSpecies("A");
+    source.addSpecies("B");
+    source.addReaction("A_to_B");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    BioNetworkProbe loaded(model, "LoadedScopedNetwork");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    ASSERT_EQ(loaded.getSpeciesNames().size(), 2u);
+    EXPECT_EQ(loaded.getSpeciesNames()[0], "A");
+    EXPECT_EQ(loaded.getSpeciesNames()[1], "B");
+    ASSERT_EQ(loaded.getReactionNames().size(), 1u);
+    EXPECT_EQ(loaded.getReactionNames()[0], "A_to_B");
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsMissingExplicitMembers) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioNetworkProbe network(model, "InvalidScopedNetwork");
+    network.addSpecies("MissingA");
+    network.addReaction("MissingReaction");
+
+    std::string errorMessage;
+    EXPECT_FALSE(network.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingA"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingReaction"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkPreservesBoundaryAndConstantSpeciesDuringSimulation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe source(model, "Source");
+    source.setInitialAmount(10.0);
+    source.setAmount(10.0);
+    source.setBoundaryCondition(true);
+
+    BioSpeciesProbe product(model, "Product");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+    product.setConstant(true);
+
+    BioReactionProbe reaction(model, "Source_to_Product");
+    reaction.addReactant("Source", 1.0);
+    reaction.addProduct("Product", 1.0);
+    reaction.setRateConstant(0.5);
+
+    BioNetworkProbe network(model, "BoundaryConstantNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.1, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_DOUBLE_EQ(source.getAmount(), 10.0);
+    EXPECT_DOUBLE_EQ(product.getAmount(), 0.0);
+    EXPECT_NE(network.getLastResponsePayload().find("\"Source\":10"), std::string::npos);
+    EXPECT_NE(network.getLastResponsePayload().find("\"Product\":0"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioNetworkRejectsMissingSpeciesReferences) {
