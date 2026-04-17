@@ -14,9 +14,12 @@
 #include <QFileDialog>
 #include <QHeaderView>
 #include <QMessageBox>
+#include <QProcess>
 #include <QBrush>
 #include <QColor>
+#include <QStandardPaths>
 #include <QStringList>
+#include <QTabWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextEdit>
@@ -25,30 +28,29 @@
 #include <memory>
 #include <sstream>
 
+namespace {
+
+QString ShellSingleQuote(const QString& text)
+{
+	QString escaped = text;
+	escaped.replace("'", "'\\''");
+	return "'" + escaped + "'";
+}
+
+}
+
 DialogPluginManager::DialogPluginManager(QWidget *parent) :
 	QDialog(parent),
 	ui(new Ui::DialogPluginManager)
 {
 	ui->setupUi(this);
-	ui->tableWidgetPlugins->setColumnCount(11);
-	ui->tableWidgetPlugins->setHorizontalHeaderLabels({
-		tr("Plugin/File"),
-		tr("State"),
-		tr("Kind"),
-		tr("Category"),
-		tr("Version"),
-		tr("Author"),
-		tr("Inputs"),
-		tr("Outputs"),
-		tr("Flags"),
-		tr("Dynamic deps"),
-		tr("System deps")
-	});
-	ui->tableWidgetPlugins->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
-	ui->tableWidgetPlugins->horizontalHeader()->setStretchLastSection(true);
-	ui->tableWidgetPlugins->setSelectionBehavior(QAbstractItemView::SelectRows);
-	ui->tableWidgetPlugins->setSelectionMode(QAbstractItemView::SingleSelection);
+	_configureLoadedPluginTable();
+	_configurePluginIssuesTable();
 	ui->textEditPluginDetails->setReadOnly(true);
+	connect(ui->tableWidgetPluginIssues, &QTableWidget::itemSelectionChanged,
+	        this, &DialogPluginManager::on_tableWidgetPlugins_itemSelectionChanged);
+	connect(ui->tabWidgetPluginTables, &QTabWidget::currentChanged,
+	        this, &DialogPluginManager::on_tableWidgetPlugins_itemSelectionChanged);
 }
 
 DialogPluginManager::~DialogPluginManager()
@@ -65,6 +67,14 @@ void DialogPluginManager::setSimulator(Simulator* simulator)
 void DialogPluginManager::setPluginCatalogRefreshCallback(std::function<void()> refreshCallback)
 {
 	_refreshPluginCatalogCallback = std::move(refreshCallback);
+}
+
+void DialogPluginManager::showProblemPluginsTab()
+{
+	ui->tabWidgetPluginTables->setCurrentWidget(ui->tabPluginIssues);
+	if (ui->tableWidgetPluginIssues->rowCount() > 0) {
+		ui->tableWidgetPluginIssues->selectRow(0);
+	}
 }
 
 void DialogPluginManager::on_pushButtonBrowseAutoload_clicked()
@@ -88,11 +98,12 @@ void DialogPluginManager::on_pushButtonAutoLoadNow_clicked()
 
 	const std::string filename = ui->lineEditAutoloadFilename->text().toStdString();
 	PluginInsertionOptions options;
-	options.confirmSystemDependencyInstallation = [this](const SystemDependencyCheckResult& result) {
-		return _confirmSystemDependencyInstallation(result);
-	};
 	_simulator->getPluginManager()->autoInsertPlugins(filename, ui->checkBoxFallbackDiscovery->isChecked(), options);
 	_refreshPluginTable();
+	if (_simulator->getPluginManager()->getPluginLoadIssues() != nullptr
+	        && !_simulator->getPluginManager()->getPluginLoadIssues()->empty()) {
+		showProblemPluginsTab();
+	}
 	_refreshPluginCatalog();
 	_showOperationResult(tr("Auto load plugins"), tr("Plugin auto-load operation finished."));
 }
@@ -138,12 +149,13 @@ void DialogPluginManager::on_pushButtonInsert_clicked()
 	}
 
 	PluginInsertionOptions options;
-	options.confirmSystemDependencyInstallation = [this](const SystemDependencyCheckResult& result) {
-		return _confirmSystemDependencyInstallation(result);
-	};
 	Plugin* plugin = _simulator->getPluginManager()->insert(filename, options);
 	_simulator->getPluginManager()->completePluginsFieldsAndTemplates();
 	_refreshPluginTable();
+	if (plugin == nullptr && _simulator->getPluginManager()->getPluginLoadIssues() != nullptr
+	        && !_simulator->getPluginManager()->getPluginLoadIssues()->empty()) {
+		showProblemPluginsTab();
+	}
 	_refreshPluginCatalog();
 	_showOperationResult(
 		tr("Insert plugin"),
@@ -157,19 +169,44 @@ void DialogPluginManager::on_pushButtonResolveSelected_clicked()
 		return;
 	}
 
-	const std::string filename = _selectedDependencyIssueFilename();
-	if (filename.empty()) {
+	const PluginLoadIssue* selectedIssue = _selectedPluginLoadIssue();
+	if (selectedIssue == nullptr) {
 		_showOperationResult(
 			tr("Resolve plugin dependencies"),
 			tr("Select a blocked plugin row to resolve its system dependencies and load it.")
 		);
 		return;
 	}
+	const PluginLoadIssue issue = *selectedIssue;
+	const std::string filename = issue.getFilename();
+
+	if (!issue.hasSystemDependencyResult()) {
+		_showOperationResult(
+			tr("Resolve plugin dependencies"),
+			tr("This plugin was not blocked by a system dependency that can be resolved automatically.\n\n%1")
+				.arg(QString::fromStdString(issue.diagnosticText()))
+		);
+		return;
+	}
+	if (!issue.getSystemDependencyResult().canAttemptInstallForAllMissing()) {
+		_showOperationResult(
+			tr("Resolve plugin dependencies"),
+			tr("The selected plugin has missing or unverifiable dependencies that cannot all be installed automatically.\n\n%1")
+				.arg(QString::fromStdString(issue.diagnosticText()))
+		);
+		return;
+	}
+
+	if (!_runInstallCommandsForIssue(issue)) {
+		_refreshPluginTable();
+		_showOperationResult(
+			tr("Resolve plugin dependencies"),
+			tr("The install command did not complete successfully or the dependency is still unresolved. See the problem details for diagnostics.")
+		);
+		return;
+	}
 
 	PluginInsertionOptions options;
-	options.confirmSystemDependencyInstallation = [this](const SystemDependencyCheckResult& result) {
-		return _confirmSystemDependencyInstallation(result);
-	};
 	Plugin* plugin = _simulator->getPluginManager()->insert(filename, options);
 	_simulator->getPluginManager()->completePluginsFieldsAndTemplates();
 	_refreshPluginTable();
@@ -230,6 +267,22 @@ void DialogPluginManager::on_pushButtonRefresh_clicked()
 
 void DialogPluginManager::on_tableWidgetPlugins_itemSelectionChanged()
 {
+	if (ui->tabWidgetPluginTables->currentWidget() == ui->tabPluginIssues) {
+		const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPluginIssues->selectedItems();
+		if (!selectedItems.isEmpty()) {
+			QTableWidgetItem* fileItem = ui->tableWidgetPluginIssues->item(selectedItems.first()->row(), 0);
+			if (fileItem != nullptr) {
+				const QString details = fileItem->data(Qt::UserRole + 1).toString();
+				if (!details.isEmpty()) {
+					ui->textEditPluginDetails->setPlainText(details);
+					return;
+				}
+			}
+		}
+		_showNoPluginDetails();
+		return;
+	}
+
 	const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPlugins->selectedItems();
 	if (!selectedItems.isEmpty()) {
 		QTableWidgetItem* typeItem = ui->tableWidgetPlugins->item(selectedItems.first()->row(), 0);
@@ -244,9 +297,45 @@ void DialogPluginManager::on_tableWidgetPlugins_itemSelectionChanged()
 	_showPluginDetails(_selectedPlugin());
 }
 
+void DialogPluginManager::_configureLoadedPluginTable()
+{
+	ui->tableWidgetPlugins->setColumnCount(11);
+	ui->tableWidgetPlugins->setHorizontalHeaderLabels({
+		tr("Plugin/File"),
+		tr("State"),
+		tr("Kind"),
+		tr("Category"),
+		tr("Version"),
+		tr("Author"),
+		tr("Inputs"),
+		tr("Outputs"),
+		tr("Flags"),
+		tr("Dynamic deps"),
+		tr("System deps")
+	});
+	_configureCommonTable(ui->tableWidgetPlugins);
+}
+
+void DialogPluginManager::_configurePluginIssuesTable()
+{
+	ui->tableWidgetPluginIssues->setColumnCount(8);
+	ui->tableWidgetPluginIssues->setHorizontalHeaderLabels({
+		tr("Plugin/File"),
+		tr("Plugin type"),
+		tr("Problem"),
+		tr("Dependency"),
+		tr("Status"),
+		tr("Check command"),
+		tr("Install command"),
+		tr("Diagnostic")
+	});
+	_configureCommonTable(ui->tableWidgetPluginIssues);
+}
+
 void DialogPluginManager::_refreshPluginTable()
 {
 	ui->tableWidgetPlugins->setRowCount(0);
+	ui->tableWidgetPluginIssues->setRowCount(0);
 	if (_simulator == nullptr || _simulator->getPluginManager() == nullptr) {
 		_showNoPluginDetails();
 		return;
@@ -284,17 +373,19 @@ void DialogPluginManager::_refreshPluginTable()
 		ui->tableWidgetPlugins->setItem(row, 10, new QTableWidgetItem(_formatSystemDependencyTableText(info)));
 	}
 
-	std::unique_ptr<List<std::string>> availablePlugins(pluginManager->discoverPluginFilenames());
-	if (availablePlugins != nullptr) {
-		for (const std::string& filename : *availablePlugins->list()) {
-			const SystemDependencyCheckResult preflight = pluginManager->checkSystemDependencies(filename);
-			if (!preflight.entries().empty() && !preflight.canInsertPlugin()) {
-				_appendPluginDependencyIssueRow(filename, preflight);
-			}
+	List<PluginLoadIssue>* issues = pluginManager->getPluginLoadIssues();
+	if (issues != nullptr) {
+		for (const PluginLoadIssue& issue : *issues->list()) {
+			_appendPluginIssueRow(issue);
 		}
 	}
 
 	ui->tableWidgetPlugins->sortItems(0);
+	ui->tableWidgetPluginIssues->sortItems(0);
+	if (ui->tableWidgetPluginIssues->rowCount() > 0 && ui->tabWidgetPluginTables->currentWidget() == ui->tabPluginIssues) {
+		ui->tableWidgetPluginIssues->selectRow(0);
+		return;
+	}
 	if (ui->tableWidgetPlugins->rowCount() > 0) {
 		ui->tableWidgetPlugins->selectRow(0);
 	} else {
@@ -309,10 +400,10 @@ void DialogPluginManager::_refreshPluginCatalog()
 	}
 }
 
-void DialogPluginManager::_appendPluginDependencyIssueRow(const std::string& filename, const SystemDependencyCheckResult& preflight)
+void DialogPluginManager::_appendPluginIssueRow(const PluginLoadIssue& issue)
 {
-	const int row = ui->tableWidgetPlugins->rowCount();
-	ui->tableWidgetPlugins->insertRow(row);
+	const int row = ui->tableWidgetPluginIssues->rowCount();
+	ui->tableWidgetPluginIssues->insertRow(row);
 	const QColor dependencyProblemColor(255, 210, 210);
 
 	auto makeItem = [dependencyProblemColor](const QString& text) {
@@ -321,38 +412,34 @@ void DialogPluginManager::_appendPluginDependencyIssueRow(const std::string& fil
 		return item;
 	};
 
-	auto* fileItem = makeItem(QString::fromStdString(filename));
-	fileItem->setData(Qt::UserRole, QVariant::fromValue<quintptr>(0));
-	const QString detailedDiagnostic = QString::fromStdString(preflight.diagnosticText(false)).trimmed();
-	fileItem->setData(Qt::UserRole + 1, tr("Plugin candidate was not inserted because system dependencies are missing or unverifiable:\n\n%1")
-		.arg(detailedDiagnostic));
-	fileItem->setData(Qt::UserRole + 2, QString::fromStdString(filename));
-	ui->tableWidgetPlugins->setItem(row, 0, fileItem);
-	ui->tableWidgetPlugins->setItem(row, 1, makeItem(tr("Blocked")));
-	ui->tableWidgetPlugins->setItem(row, 2, makeItem(tr("Not loaded")));
-	ui->tableWidgetPlugins->setItem(row, 3, makeItem(""));
-	ui->tableWidgetPlugins->setItem(row, 4, makeItem(""));
-	ui->tableWidgetPlugins->setItem(row, 5, makeItem(""));
-	ui->tableWidgetPlugins->setItem(row, 6, makeItem(""));
-	ui->tableWidgetPlugins->setItem(row, 7, makeItem(""));
-	ui->tableWidgetPlugins->setItem(row, 8, makeItem(""));
-	ui->tableWidgetPlugins->setItem(row, 9, makeItem(""));
+	const QString detailedDiagnostic = QString::fromStdString(issue.diagnosticText()).trimmed();
+	auto* fileItem = makeItem(QString::fromStdString(issue.getFilename()));
+	fileItem->setData(Qt::UserRole + 1, detailedDiagnostic);
+	fileItem->setData(Qt::UserRole + 2, QString::fromStdString(issue.getFilename()));
+	ui->tableWidgetPluginIssues->setItem(row, 0, fileItem);
+	ui->tableWidgetPluginIssues->setItem(row, 1, makeItem(QString::fromStdString(issue.getPluginTypename())));
+	ui->tableWidgetPluginIssues->setItem(row, 2, makeItem(QString::fromStdString(PluginLoadIssue::reasonToString(issue.getReason()))));
 
 	QStringList dependencies;
-	for (const SystemDependencyCheckEntry& entry : preflight.entries()) {
+	QStringList statuses;
+	QStringList checkCommands;
+	QStringList installCommands;
+	for (const SystemDependencyCheckEntry& entry : issue.getSystemDependencyResult().entries()) {
 		if (!entry.blocksInsertion()) {
 			continue;
 		}
-		QString dependency = QString::fromStdString(entry.dependency().getName())
-			+ " = " + QString::fromStdString(SystemDependencyCheckEntry::statusToString(entry.status()));
-		if (!entry.dependency().getInstallCommand().empty()) {
-			dependency += tr(" | install: %1").arg(QString::fromStdString(entry.dependency().getInstallCommand()));
-		}
-		dependencies << dependency;
+		dependencies << QString::fromStdString(entry.dependency().getName());
+		statuses << QString::fromStdString(SystemDependencyCheckEntry::statusToString(entry.status()));
+		checkCommands << QString::fromStdString(entry.dependency().getCheckCommand());
+		installCommands << QString::fromStdString(entry.dependency().getInstallCommand());
 	}
-	QTableWidgetItem* systemDepsItem = makeItem(dependencies.join("; "));
-	systemDepsItem->setToolTip(detailedDiagnostic);
-	ui->tableWidgetPlugins->setItem(row, 10, systemDepsItem);
+	ui->tableWidgetPluginIssues->setItem(row, 3, makeItem(dependencies.join("; ")));
+	ui->tableWidgetPluginIssues->setItem(row, 4, makeItem(statuses.join("; ")));
+	ui->tableWidgetPluginIssues->setItem(row, 5, makeItem(checkCommands.join("; ")));
+	ui->tableWidgetPluginIssues->setItem(row, 6, makeItem(installCommands.join("; ")));
+	QTableWidgetItem* diagnosticItem = makeItem(QString::fromStdString(issue.getMessage()));
+	diagnosticItem->setToolTip(detailedDiagnostic);
+	ui->tableWidgetPluginIssues->setItem(row, 7, diagnosticItem);
 }
 
 void DialogPluginManager::_showPluginDetails(Plugin* plugin)
@@ -385,15 +472,36 @@ Plugin* DialogPluginManager::_selectedPlugin() const
 
 std::string DialogPluginManager::_selectedDependencyIssueFilename() const
 {
-	const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPlugins->selectedItems();
+	const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPluginIssues->selectedItems();
 	if (selectedItems.isEmpty()) {
 		return "";
 	}
-	QTableWidgetItem* typeItem = ui->tableWidgetPlugins->item(selectedItems.first()->row(), 0);
+	QTableWidgetItem* typeItem = ui->tableWidgetPluginIssues->item(selectedItems.first()->row(), 0);
 	if (typeItem == nullptr) {
 		return "";
 	}
 	return typeItem->data(Qt::UserRole + 2).toString().toStdString();
+}
+
+const PluginLoadIssue* DialogPluginManager::_selectedPluginLoadIssue() const
+{
+	if (_simulator == nullptr || _simulator->getPluginManager() == nullptr) {
+		return nullptr;
+	}
+	const std::string filename = _selectedDependencyIssueFilename();
+	if (filename.empty()) {
+		return nullptr;
+	}
+	List<PluginLoadIssue>* issues = _simulator->getPluginManager()->getPluginLoadIssues();
+	if (issues == nullptr) {
+		return nullptr;
+	}
+	for (const PluginLoadIssue& issue : *issues->list()) {
+		if (issue.getFilename() == filename) {
+			return &issue;
+		}
+	}
+	return nullptr;
 }
 
 bool DialogPluginManager::_isKernelPlugin(const Plugin* plugin) const
@@ -572,6 +680,135 @@ bool DialogPluginManager::_confirmSystemDependencyInstallation(const SystemDepen
 		QMessageBox::No
 	);
 	return answer == QMessageBox::Yes;
+}
+
+bool DialogPluginManager::_runInstallCommandsForIssue(const PluginLoadIssue& issue)
+{
+	QStringList installCommands;
+	for (const SystemDependencyCheckEntry& entry : issue.getSystemDependencyResult().entries()) {
+		if (entry.canAttemptInstall()) {
+			installCommands << QString::fromStdString(entry.dependency().getInstallCommand());
+		}
+	}
+	if (installCommands.isEmpty()) {
+		return false;
+	}
+
+	const QMessageBox::StandardButton answer = QMessageBox::question(
+		this,
+		tr("Install plugin system dependencies"),
+		tr("The selected plugin needs system dependencies before it can be loaded.\n\n%1\n\nCommand(s) to run:\n%2\n\nRun these command(s) now?")
+			.arg(QString::fromStdString(issue.diagnosticText()), installCommands.join("\n")),
+		QMessageBox::Yes | QMessageBox::No,
+		QMessageBox::No);
+	if (answer != QMessageBox::Yes) {
+		return false;
+	}
+
+	QString feedback;
+	bool allSucceeded = true;
+	for (const QString& command : installCommands) {
+		QString commandFeedback;
+		const bool succeeded = _runInstallCommandInteractive(command, &commandFeedback);
+		allSucceeded = allSucceeded && succeeded;
+		feedback += commandFeedback + "\n";
+	}
+	ui->textEditPluginDetails->setPlainText(feedback.trimmed());
+	return allSucceeded;
+}
+
+bool DialogPluginManager::_runInstallCommandInteractive(const QString& command, QString* feedback)
+{
+	if (feedback != nullptr) {
+		*feedback += tr("Running install command:\n%1\n\n").arg(command);
+	}
+
+	const QString script =
+		command + "\n"
+		"status=$?\n"
+		"echo\n"
+		"echo \"Command finished with exit code $status.\"\n"
+		"echo \"Press Enter to close this terminal.\"\n"
+		"read _\n"
+		"exit $status\n";
+	QString terminalProgram;
+	QStringList terminalArguments;
+	if (_terminalCommandForScript(script, &terminalProgram, &terminalArguments)) {
+		const int exitCode = QProcess::execute(terminalProgram, terminalArguments);
+		if (feedback != nullptr) {
+			*feedback += tr("Terminal: %1\nExit code: %2\n").arg(terminalProgram).arg(exitCode);
+		}
+		return exitCode == 0;
+	}
+
+	QProcess process;
+	process.setProgram("/bin/bash");
+	process.setArguments({"-lc", command});
+	process.start();
+	const bool finished = process.waitForFinished(-1);
+	const QString output = QString::fromLocal8Bit(process.readAllStandardOutput());
+	const QString error = QString::fromLocal8Bit(process.readAllStandardError());
+	const int exitCode = finished ? process.exitCode() : -1;
+	if (feedback != nullptr) {
+		*feedback += tr("No supported terminal emulator was found. The command was executed without an interactive terminal.\n");
+		*feedback += tr("Exit code: %1\n\nOutput:\n%2\nErrors:\n%3\n").arg(exitCode).arg(output, error);
+	}
+	return finished && exitCode == 0;
+}
+
+bool DialogPluginManager::_terminalCommandForScript(const QString& script, QString* program, QStringList* arguments) const
+{
+	if (program == nullptr || arguments == nullptr) {
+		return false;
+	}
+	const QString bash = QStandardPaths::findExecutable("bash");
+	if (bash.isEmpty()) {
+		return false;
+	}
+	const QString quotedScript = ShellSingleQuote(script);
+
+	const QString xTerminal = QStandardPaths::findExecutable("x-terminal-emulator");
+	if (!xTerminal.isEmpty()) {
+		*program = xTerminal;
+		*arguments = {"-e", bash, "-lc", script};
+		return true;
+	}
+	const QString gnomeTerminal = QStandardPaths::findExecutable("gnome-terminal");
+	if (!gnomeTerminal.isEmpty()) {
+		*program = gnomeTerminal;
+		*arguments = {"--wait", "--", bash, "-lc", script};
+		return true;
+	}
+	const QString konsole = QStandardPaths::findExecutable("konsole");
+	if (!konsole.isEmpty()) {
+		*program = konsole;
+		*arguments = {"--nofork", "-e", bash, "-lc", script};
+		return true;
+	}
+	const QString xterm = QStandardPaths::findExecutable("xterm");
+	if (!xterm.isEmpty()) {
+		*program = xterm;
+		*arguments = {"-e", bash, "-lc", script};
+		return true;
+	}
+	const QString xfceTerminal = QStandardPaths::findExecutable("xfce4-terminal");
+	if (!xfceTerminal.isEmpty()) {
+		*program = xfceTerminal;
+		*arguments = {"--disable-server", "--command", bash + " -lc " + quotedScript};
+		return true;
+	}
+	return false;
+}
+
+void DialogPluginManager::_configureCommonTable(QTableWidget* table) const
+{
+	if (table == nullptr) {
+		return;
+	}
+	table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+	table->horizontalHeader()->setStretchLastSection(true);
+	table->setSelectionBehavior(QAbstractItemView::SelectRows);
+	table->setSelectionMode(QAbstractItemView::SingleSelection);
 }
 
 void DialogPluginManager::_showOperationResult(const QString& title, const QString& message) const
