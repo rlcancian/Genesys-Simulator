@@ -16,9 +16,11 @@ instructions are considered obsolete or consolidated here.
 - **Canonical memory file:** `GRO_ContextMemory.md` in the repository root.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
-- **Immediate objective:** keep `WiP20261_GRO` synchronized with
-  `origin/WiP20261` and ready for clean integration while continuing future
-  plugin-only Gro work.
+- **Current state:** the relevant functional GRO content has already been
+  absorbed by the base branch `WiP20261`.
+- **Immediate objective:** keep `WiP20261_GRO` stable and in standby. Do not
+  implement new functionality and do not attempt a new integration unless the
+  user explicitly reactivates this work line.
 - **Integration PR status:** PR `#370` from `WiP20261_GRO` to `WiP20261` exists
   and GitHub reported it closed and merged. Its merge commit is `2114c92c`.
   After that merge, `WiP20261_GRO` received context-only commits so the current
@@ -31,6 +33,9 @@ instructions are considered obsolete or consolidated here.
 - Use the existing `origin` remote.
 - Do not merge `WiP20261_GRO` back into `WiP20261` unless the user explicitly
   asks for that integration.
+- Do not implement new GRO functionality while the branch is in standby.
+- Do not open or attempt a new integration while the base already contains the
+  relevant functional content, unless the user explicitly asks for it.
 - Before important pushes, run `git fetch origin` and merge
   `origin/WiP20261` into `WiP20261_GRO` using merge, not rebase.
 - Make small, coherent commits.
@@ -169,6 +174,8 @@ instructions are considered obsolete or consolidated here.
   - `d2e1255b Record GRO base synchronization`
   - `9994d96c Record GRO synchronization commit hash`
   - `8a50089d Record actual GRO PR state`
+  - `2f280158 Move GRO context memory to repository root`
+  - `10e6937c Merge remote-tracking branch 'origin/WiP20261' into WiP20261_GRO`
 - Latest known validation before this migration:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
@@ -177,14 +184,21 @@ instructions are considered obsolete or consolidated here.
 
 - Current branch: `WiP20261_GRO`.
 - Current base: `origin/WiP20261`.
-- The branch was confirmed up to date with `origin/WiP20261` immediately before
-  this memory migration.
-- The current changes are memory-only: create root `GRO_ContextMemory.md` and
-  remove obsolete `documentation/developers/GRO_context.md`.
-- No new product functionality is part of this migration.
+- The relevant functional content from `WiP20261_GRO` has already been absorbed
+  by `WiP20261`.
+- The branch is in standby. It should remain stable, synchronized, and
+  available for future GRO work, but no new product functionality should be
+  added now.
+- Latest synchronization with `origin/WiP20261` produced merge commit
+  `10e6937c` and brought in `TINKERCELL_ContextMemory.md`.
+- Conflict status during the latest synchronization: no conflicts occurred.
+- The current changes after that synchronization are memory-only updates to
+  `GRO_ContextMemory.md`.
 
 ## Pending Work
 
+- No immediate implementation should be performed while the branch is in
+  standby.
 - Define the Gro parser/helper boundary under plugin-side code.
 - Decide the first grammar target: full syntax recognition with partial
   semantics, or a narrower MVP syntax subset.
@@ -213,6 +227,11 @@ instructions are considered obsolete or consolidated here.
 - Internal colony time must not be confused with `ModelSimulation` global time.
 - Upstream biological data plugins introduced on `WiP20261` may overlap with
   future Gro biochemical modeling concepts; inspect before duplicating concepts.
+- Stale memory files are a coordination risk. GRO must use only
+  `GRO_ContextMemory.md` in the repository root as active memory.
+- Because the base already absorbed the functional GRO content, future work
+  should begin from a fresh synchronization decision rather than assuming this
+  branch still needs integration.
 
 ## Session Log
 
@@ -273,3 +292,21 @@ instructions are considered obsolete or consolidated here.
   this AI.
 - `documentation/developers/GRO_context.md` was removed from this branch after
   migration and must not be used as active memory.
+
+### 2026-04-17 - Standby After Base Absorption
+
+- User stated that the base branch `WiP20261` has already absorbed the relevant
+  functional content from `WiP20261_GRO`.
+- New canonical operating mode: do not implement new functionality and do not
+  attempt a new integration now.
+- Confirmed active memory remains root `GRO_ContextMemory.md`.
+- Confirmed old active memory files must not be used:
+  `documentation/developers/GRO_context.md`, generic `ContextMemory.md`, and any
+  other older memory/context file.
+- Ran `git fetch origin`; `origin/WiP20261` advanced to `5df02726`.
+- Merged `origin/WiP20261` into `WiP20261_GRO`.
+- Merge result: merge commit `10e6937c`.
+- Conflict status: no conflicts occurred.
+- Files brought in by the merge: `TINKERCELL_ContextMemory.md`.
+- Branch state after this session should be stable and in standby, with only
+  memory consolidation committed after the base synchronization.
