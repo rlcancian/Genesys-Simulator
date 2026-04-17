@@ -11,9 +11,9 @@ instructions, those instructions are obsolete or have been consolidated here.
 - **Agent name:** KERNEL_GUI
 - **Primary role:** GUI-focused GenESyS developer, responsible for Qt user interface
   work and GUI/kernel integration points.
-- **Current objective:** Synchronize `WiP20261_KERNEL_GUI` with `origin/WiP20261`
-  after TINKERCELL and GRO have entered the base, then prepare the branch for final
-  integration.
+- **Current objective:** Keep `WiP20261_KERNEL_GUI` ready for final integration into
+  `WiP20261` after synchronizing with the base that already contains TINKERCELL and
+  GRO.
 - **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow,
   kernel-facing plugin lifecycle contracts, plugin diagnostics exposed to the GUI,
   and focused tests that cover GUI-facing kernel behavior.
@@ -33,8 +33,10 @@ user explicitly requests that operation.
 - `WiP20261` has already absorbed TINKERCELL.
 - `WiP20261` has already absorbed GRO.
 - `WiP20261_KERNEL_GUI` is not yet integrated into `WiP20261`.
-- The immediate goal is to synchronize `WiP20261_KERNEL_GUI` with `origin/WiP20261`
-  and prepare it for final merge into the base.
+- `WiP20261_KERNEL_GUI` has been synchronized with `origin/WiP20261` at
+  `5df02726` through merge commit `2d74347b`.
+- The branch is prepared for final merge into the base, pending any final reviewer or
+  maintainer action.
 - The main expected integration conflict for KERNEL_GUI is
   `source/tests/unit/test_runtime_pluginmanager.cpp`.
 
@@ -48,8 +50,8 @@ user explicitly requests that operation.
 - Do not wait for user confirmation for routine Git operations.
 - Ask the user before destructive operations, before resolving significant ambiguity
   with high impact, or when there is exceptional risk.
-- TINKERCELL and GRO are now in the base, so synchronizing with `origin/WiP20261`
-  is authorized for final integration preparation.
+- TINKERCELL and GRO are now in the base, so synchronization with
+  `origin/WiP20261` is authorized for final integration preparation.
 - Before important pushes, prefer this routine:
   - fetch `origin`;
   - merge the latest `origin/WiP20261` into `WiP20261_KERNEL_GUI`;
@@ -161,7 +163,7 @@ Intent:
 
 - Update the generated method inventory for the new public kernel diagnostics
   surface.
-- Recheck this generated inventory after synchronizing with the base.
+- The generated inventory was rechecked after synchronizing with the base.
 
 ### Tests
 
@@ -183,8 +185,8 @@ Intent:
 
 - GUI-facing plugin diagnostics depend on the kernel diagnostic API added in
   `PluginManager.*`.
-- The generated method inventory must remain aligned with the public kernel surface
-  once KERNEL_GUI is synchronized with the base.
+- The generated method inventory was regenerated during validation and remained
+  unchanged after synchronizing with the base.
 - `source/tests/unit/test_runtime_pluginmanager.cpp` is the highest-risk conflict
   point because TINKERCELL and GRO have already changed the base.
 - Conflict resolution should preserve both the base coverage from TINKERCELL/GRO
@@ -195,7 +197,8 @@ Intent:
 - `WiP20261_KERNEL_GUI` exists locally.
 - `origin/WiP20261_KERNEL_GUI` exists remotely.
 - The local branch tracks `origin/WiP20261_KERNEL_GUI`.
-- The branch was last pushed successfully after commit `71db615c`.
+- The branch was last pushed successfully after commit `71db615c` before the current
+  synchronization work.
 - Recent branch commits include:
   - `6a02e61f Track plugin load diagnostics in PluginManager`
   - `f0a4bfb9 Show recoverable plugin dependency issues in GUI`
@@ -204,8 +207,16 @@ Intent:
   - `c324d263 Consolidate KERNEL_GUI persistent context`
   - `62c3dca2 Document KERNEL_GUI integration hold`
   - `71db615c Move KERNEL_GUI memory to agent-specific file`
-- The branch is being synchronized with `origin/WiP20261` for final integration
-  preparation.
+  - `fee82a90 Update KERNEL_GUI memory for base sync`
+  - `2d74347b Merge remote-tracking branch 'origin/WiP20261' into WiP20261_KERNEL_GUI`
+- The merge from `origin/WiP20261` completed without conflicts.
+- `source/tests/unit/test_runtime_pluginmanager.cpp` now contains both the KERNEL_GUI
+  plugin load diagnostics tests and the GRO `GroProgram`/`BacteriaColony` runtime
+  plugin coverage.
+- Obsolete KERNEL_GUI memory files have been removed from active use:
+  - `documentation/developers/KERNEL_GUI_context.md` was deleted;
+  - `ContextMemmory.md` was previously renamed to `KERNEL_GUI_ContextMemory.md`;
+  - no generic `ContextMemory.md` exists in the root.
 
 ## Validation Already Run
 
@@ -230,6 +241,31 @@ Observed test status:
 No build or test rerun was required for the memory-file migration because it is
 documentation-only.
 
+## Validation After Base Synchronization
+
+The following validation was run after merging `origin/WiP20261`:
+
+```bash
+cmake -S . -B /tmp/genesys-kernel-unit -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF -DGENESYS_BUILD_GUI_APPLICATION=OFF -DGENESYS_BUILD_WEB_APPLICATION=OFF -DGENESYS_BUILD_PLUGINS=ON -DGENESYS_BUILD_PARSER=ON -DGENESYS_BUILD_KERNEL=ON -DGENESYS_BUILD_TERMINAL_APPLICATION=OFF -DGENESYS_BUILD_TESTS=ON -DGENESYS_BUILD_SMOKE_TESTS=OFF
+cmake --build /tmp/genesys-kernel-unit --target genesys_kernel_unit_tests
+/tmp/genesys-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager
+ctest --test-dir /tmp/genesys-kernel-unit --output-on-failure
+cmake -S . -B /tmp/genesys-gui-app -G Ninja -DCMAKE_BUILD_TYPE=Debug -DCMAKE_CXX_STANDARD=23 -DCMAKE_CXX_STANDARD_REQUIRED=ON -DCMAKE_CXX_EXTENSIONS=OFF -DGENESYS_BUILD_GUI_APPLICATION=ON -DGENESYS_BUILD_WEB_APPLICATION=OFF -DGENESYS_BUILD_PLUGINS=ON -DGENESYS_BUILD_PARSER=ON -DGENESYS_BUILD_KERNEL=ON -DGENESYS_BUILD_TERMINAL_APPLICATION=OFF -DGENESYS_BUILD_TESTS=OFF
+cmake --build /tmp/genesys-gui-app --target genesys_gui
+```
+
+Observed test status:
+
+- The GUI application target `genesys_gui` built successfully from a fresh `/tmp`
+  build directory.
+- The focused runtime plugin manager test passed with 7 tests.
+- The configured kernel-unit `ctest` run passed with 1257 executed tests and 0
+  failures.
+- Four tests were disabled.
+- Two R-related tests were skipped because `Rscript` was unavailable.
+- Existing local build directories were not reused because their CMake caches point
+  to `/home/rafaelcancian/Genesys-Simulator`, a different checkout path.
+
 ## Open Pending Items
 
 - Continue future KERNEL_GUI work only on `WiP20261_KERNEL_GUI`.
@@ -238,7 +274,8 @@ documentation-only.
   `ContextMemmory.md` as active memory.
 - Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
-- Synchronize with `origin/WiP20261` and prepare for final merge into the base.
+- Push the synchronized branch to `origin/WiP20261_KERNEL_GUI`.
+- Proceed with final merge into the base when the maintainer is ready.
 - If plugin dependency recovery receives more changes, keep them small and preserve
   kernel/GUI separation.
 - Future work may refine terminal handling and password/sudo feedback during
@@ -260,12 +297,10 @@ documentation-only.
 
 ## Likely Next Steps
 
-- Fetch `origin`, merge `origin/WiP20261` into `WiP20261_KERNEL_GUI`, and resolve
-  conflicts once.
-- Pay special attention to `source/tests/unit/test_runtime_pluginmanager.cpp`.
-- Recheck the generated method inventory after synchronization.
-- Run the focused runtime plugin manager test, the GUI target build, and the relevant
-  configured test suite before pushing.
+- Push `WiP20261_KERNEL_GUI` after the synchronization commit is recorded.
+- Final integration into `WiP20261` can proceed from the synchronized branch.
+- If another base update happens before final integration, repeat the fetch/merge and
+  focused validation cycle.
 
 ## Interaction Log Summary
 
