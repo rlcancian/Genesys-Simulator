@@ -34,3 +34,17 @@ This file is the persistent coordination channel for developers and AI agents wo
 **Potential impact on GROW and GUI:** No direct runtime, GROW, or GUI impact. Future TINKERCELL changes will be isolated in `WiP20261_TINKERCELL` and should merge the latest `origin/WiP20261` before important pushes.
 
 **Coordination notes:** Local untracked developer documentation was temporarily stashed before synchronizing `WiP20261`, then restored after creating `WiP20261_TINKERCELL`. This branch must not be merged back into `WiP20261` unless the user explicitly requests it.
+
+### 2026-04-17 - TINKERCELL - Dedicated branch publication complete
+
+**What changed:** `WiP20261_TINKERCELL` was created from the synchronized `WiP20261` base, published to `origin`, and configured to track `origin/WiP20261_TINKERCELL`.
+
+**Files modified:** `documentation/developers/communication.md` and `documentation/developers/TINKERCELL_context.md`.
+
+**Build and test status:** `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime` succeeded with no rebuild needed; `SimulatorRuntimeTest.Bio*` passed 20 tests.
+
+**Limitations:** This step only established branch isolation and persistent coordination documentation. It did not change biochemical source code, GUI behavior, parser behavior, build scripts, or runtime semantics.
+
+**Residual risks:** Future TINKERCELL work must continue merging the latest `origin/WiP20261` into `WiP20261_TINKERCELL` before important pushes to reduce integration drift.
+
+**Recommended next steps:** Continue planning and implementation only on `WiP20261_TINKERCELL`; do not merge into `WiP20261` unless the user explicitly requests it.

@@ -50,6 +50,7 @@ Study and safely evolve GenESyS toward native and/or integrated biochemical simu
 - The shared base branch is `WiP20261`.
 - The exclusive TINKERCELL working branch is `WiP20261_TINKERCELL`.
 - On 2026-04-17, `WiP20261_TINKERCELL` was created locally from the up-to-date `WiP20261` base after temporarily stashing untracked developer documentation.
+- On 2026-04-17, `WiP20261_TINKERCELL` was published to `origin` and configured to track `origin/WiP20261_TINKERCELL`.
 - On 2026-04-17, the branch was fast-forwarded to `origin/WiP20261` at commit `758127e`.
 - Remote commits after the previous local base changed GUI, parser, serializer, plugin dependency diagnostics, multidimensional values, and tests.
 - A previous commit, `c00279a Add native biochemical mass-action module`, added native biochemical classes and mass-action/RK4 support. The user later clarified that future changes must not be implemented, staged, committed, pushed, or merged without the explicit staged workflow.
@@ -120,6 +121,6 @@ Study and safely evolve GenESyS toward native and/or integrated biochemical simu
 - **Context extracted:** The user instructed TINKERCELL to stop working directly on `WiP20261` and use `WiP20261_TINKERCELL` as the exclusive work branch, published to the existing `origin` remote.
 - **Decision:** Treat `WiP20261` as the shared base and `WiP20261_TINKERCELL` as the only branch for future TINKERCELL work.
 - **Requested action:** Check status, stash local incomplete changes if needed, synchronize `WiP20261`, create/switch to `WiP20261_TINKERCELL`, publish it with upstream, and record the branch policy in the coordination files.
-- **Response given:** TINKERCELL temporarily stashed untracked developer documentation, verified `WiP20261` was up to date with `origin/WiP20261`, created `WiP20261_TINKERCELL`, restored the documentation there, and prepared the branch for publication.
+- **Response given:** TINKERCELL temporarily stashed untracked developer documentation, verified `WiP20261` was up to date with `origin/WiP20261`, created `WiP20261_TINKERCELL`, restored the documentation there, committed the coordination documentation, published the branch to `origin`, and confirmed tracking against `origin/WiP20261_TINKERCELL`.
 - **Next steps agreed:** Continue all future TINKERCELL development only on `WiP20261_TINKERCELL`; do not merge into `WiP20261` unless explicitly requested.
 - **Open questions/hypotheses:** None for branch setup; future implementation work still requires plan approval before source changes.
