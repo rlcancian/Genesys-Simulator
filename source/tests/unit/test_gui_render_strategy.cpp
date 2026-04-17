@@ -1,5 +1,6 @@
 #include "graphicals/GraphicalConnectionStyle.h"
 #include "graphicals/GraphicalModelItemRenderStrategy.h"
+#include "services/GraphicalDataDefinitionLayout.h"
 #include "systempreferences.h"
 
 #include <gtest/gtest.h>
@@ -168,6 +169,42 @@ TEST(GuiConnectionStyle, ModernDiagramPathCurvesAwayFromStraightLine) {
     EXPECT_EQ(classicPath.elementCount(), 2);
     EXPECT_GT(modernPath.elementCount(), classicPath.elementCount());
     EXPECT_GT(std::abs(GraphicalConnectionStyle::pointAtProgress(modernPath, 0.5).y() - source.y()), 10.0);
+}
+
+TEST(GuiDataDefinitionLayout, UpperArcPlacesEditableChildrenAboveAnchorWithoutOverlap) {
+    const QRectF componentBounds(300.0, 260.0, 150.0, 100.0);
+    const QSizeF gmddSize(180.0, 63.0);
+
+    const QPointF left = GraphicalDataDefinitionLayout::arcPosition(componentBounds, gmddSize, 0, 3, true);
+    const QPointF center = GraphicalDataDefinitionLayout::arcPosition(componentBounds, gmddSize, 1, 3, true);
+    const QPointF right = GraphicalDataDefinitionLayout::arcPosition(componentBounds, gmddSize, 2, 3, true);
+
+    EXPECT_LT(left.y() + gmddSize.height(), componentBounds.top());
+    EXPECT_LT(center.y() + gmddSize.height(), componentBounds.top());
+    EXPECT_LT(right.y() + gmddSize.height(), componentBounds.top());
+    EXPECT_LT(left.x(), center.x());
+    EXPECT_LT(center.x(), right.x());
+    EXPECT_NEAR(center.x() + gmddSize.width() / 2.0, componentBounds.center().x(), 0.001);
+    EXPECT_LT(center.y(), left.y());
+    EXPECT_GT(right.x() - left.x(), gmddSize.width());
+}
+
+TEST(GuiDataDefinitionLayout, LowerArcPlacesNonEditableChildrenBelowAnchorWithoutOverlap) {
+    const QRectF parentBounds(300.0, 260.0, 180.0, 63.0);
+    const QSizeF gmddSize(180.0, 63.0);
+
+    const QPointF left = GraphicalDataDefinitionLayout::arcPosition(parentBounds, gmddSize, 0, 3, false);
+    const QPointF center = GraphicalDataDefinitionLayout::arcPosition(parentBounds, gmddSize, 1, 3, false);
+    const QPointF right = GraphicalDataDefinitionLayout::arcPosition(parentBounds, gmddSize, 2, 3, false);
+
+    EXPECT_GT(left.y(), parentBounds.bottom());
+    EXPECT_GT(center.y(), parentBounds.bottom());
+    EXPECT_GT(right.y(), parentBounds.bottom());
+    EXPECT_LT(left.x(), center.x());
+    EXPECT_LT(center.x(), right.x());
+    EXPECT_NEAR(center.x() + gmddSize.width() / 2.0, parentBounds.center().x(), 0.001);
+    EXPECT_GT(center.y(), left.y());
+    EXPECT_GT(right.x() - left.x(), gmddSize.width());
 }
 
 int main(int argc, char** argv) {

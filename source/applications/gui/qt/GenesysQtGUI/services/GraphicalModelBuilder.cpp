@@ -1,5 +1,6 @@
 #include "GraphicalModelBuilder.h"
 
+#include "GraphicalDataDefinitionLayout.h"
 #include "../TraitsGUI.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -17,8 +18,6 @@
 #include <QTextEdit>
 #include <QSet>
 #include <QDebug>
-#include <algorithm>
-#include <cmath>
 #include <functional>
 
 namespace {
@@ -118,13 +117,6 @@ namespace {
         GraphicalDiagramConnection::ConnectionType connectionType = GraphicalDiagramConnection::ConnectionType::ATTACHED;
     };
 
-    qreal normalizedSiblingPosition(int index, int count) {
-        if (count <= 1) {
-            return 0.0;
-        }
-        return (2.0 * static_cast<qreal>(index) / static_cast<qreal>(count - 1)) - 1.0;
-    }
-
     QPointF dataDefinitionArcPosition(const QRectF& anchorBounds,
                                       GraphicalModelDataDefinition* child,
                                       int index,
@@ -135,20 +127,11 @@ namespace {
         }
 
         const QRectF childBounds = child->boundingRect();
-        const qreal childWidth = childBounds.width();
-        const qreal childHeight = childBounds.height();
-        const qreal spacing = std::max<qreal>(childWidth + 34.0, 214.0);
-        const qreal normalized = normalizedSiblingPosition(index, count);
-        const qreal horizontalOffset = (static_cast<qreal>(index) - (static_cast<qreal>(count - 1) / 2.0)) * spacing;
-        const qreal verticalGap = std::max<qreal>(52.0, childHeight * 0.72);
-        const qreal arcLift = std::min<qreal>(60.0, std::abs(normalized) < 0.001 ? 44.0 : 18.0);
-
-        const qreal centerX = anchorBounds.center().x() + horizontalOffset;
-        const qreal centerY = upperArc
-                                  ? anchorBounds.top() - verticalGap - childHeight / 2.0 - arcLift
-                                  : anchorBounds.bottom() + verticalGap + childHeight / 2.0 + arcLift;
-
-        return QPointF(centerX - childWidth / 2.0, centerY - childHeight / 2.0);
+        return GraphicalDataDefinitionLayout::arcPosition(anchorBounds,
+                                                          childBounds.size(),
+                                                          index,
+                                                          count,
+                                                          upperArc);
     }
 
     void positionNewDataDefinitionsInArc(const QRectF& anchorBounds,
