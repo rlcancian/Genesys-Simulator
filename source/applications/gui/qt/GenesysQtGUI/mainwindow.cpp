@@ -600,7 +600,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             //@TODO: now it's the opportunity to adjust template
             _insertPluginUI(simulator->getPluginManager()->getAtRank(i));
         }
-        ui->treeWidget_Plugins->expandAll();
+        _pluginCatalogController->applyCategoryExpansionPolicy();
     }
     if (SystemPreferences::startMaximized()) {
         // another try to start maximized (it should not be that hard)
