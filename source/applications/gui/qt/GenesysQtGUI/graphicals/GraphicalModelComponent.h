@@ -48,6 +48,7 @@ private:
 protected: // virtual
 	virtual bool sceneEvent(QEvent *event) override;
     QVariant itemChange(GraphicsItemChange change, const QVariant& value) override;
+    GraphicalModelItemRenderContext renderContext() const override;
 	//virtual void	hoverEnterEvent(QGraphicsSceneHoverEvent * event)
 	//virtual void	hoverLeaveEvent(QGraphicsSceneHoverEvent * event)
 	//virtual void	hoverMoveEvent(QGraphicsSceneHoverEvent * event)

@@ -102,7 +102,7 @@ void GuiThemeManager::applyApplicationTheme(QApplication* application) {
 }
 
 void GuiThemeManager::applyModelGraphicsTheme(ModelGraphicsView* graphicsView) {
-    if (graphicsView == nullptr || !SystemPreferences::diagramUsesThemeColors()) {
+    if (graphicsView == nullptr) {
         return;
     }
 
@@ -112,13 +112,15 @@ void GuiThemeManager::applyModelGraphicsTheme(ModelGraphicsView* graphicsView) {
         return;
     }
 
-    QPen gridPen(UtilGUI::rgbaFromPacked(SystemPreferences::gridColor()));
-    gridPen.setWidth(scene->grid()->pen.width());
-    gridPen.setStyle(scene->grid()->pen.style());
-    scene->grid()->pen = gridPen;
-    for (QGraphicsLineItem* line : *scene->grid()->lines) {
-        if (line != nullptr) {
-            line->setPen(gridPen);
+    if (SystemPreferences::diagramUsesThemeColors()) {
+        QPen gridPen(UtilGUI::rgbaFromPacked(SystemPreferences::gridColor()));
+        gridPen.setWidth(scene->grid()->pen.width());
+        gridPen.setStyle(scene->grid()->pen.style());
+        scene->grid()->pen = gridPen;
+        for (QGraphicsLineItem* line : *scene->grid()->lines) {
+            if (line != nullptr) {
+                line->setPen(gridPen);
+            }
         }
     }
     scene->update();

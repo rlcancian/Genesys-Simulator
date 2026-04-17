@@ -12,12 +12,46 @@ instructions, those instructions are obsolete or have been consolidated here.
 - **Primary role:** Main GenESyS AI for GUI, kernel, and cross-cutting integrations
   when needed, with primary responsibility for Qt user interface work and GUI/kernel
   integration points.
-- **Current objective:** Keep `WiP20261_KERNEL_GUI` ready for final integration into
-  `WiP20261` after re-synchronizing with the latest base that already contains
-  TINKERCELL and GRO.
+- **Current objective:** Continue KERNEL_GUI work on `WiP20261_KERNEL_GUI` through
+  explicit, user-confirmed phases. The latest completed structural base is
+  `f232882e` (`Organize plugins by declared category`), and the latest completed
+  runtime GUI preferences/theme phase is `a1c2d9fa` (`Add runtime GUI preferences
+  and themes`).
 - **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow,
   kernel-facing plugin lifecycle contracts, plugin diagnostics exposed to the GUI,
   and focused tests that cover GUI-facing kernel behavior.
+
+## Permanent Operating Protocol
+
+- **Response format:** every assistant response must start with a first line
+  containing only `KERNEL_GUI`; the technical body follows; the final line must
+  contain only `----------`.
+- **Phase policy:** before acting, recover the current plan and state from this
+  memory and reanalyze the real repository state. Identify the next logical phase,
+  execute only that phase, then stop and request explicit user confirmation before
+  advancing to another phase. Do not automatically continue into the following
+  phase.
+- **Context memory policy:** at the end of every completed phase, update this file
+  with what was done, the current state, relevant commits, remaining limitations,
+  and the suggested next phase.
+- **Repository reality policy:** do not rely only on remembered state. Re-read the
+  working tree, branch state, relevant source files, build files, and tests before
+  proposing or implementing technical changes.
+- **Stage policy:** stage changes intentionally and in coherent groups. Do not mix
+  unrelated changes in the same staged set. Do not leave important completed phase
+  changes untracked or unstaged without an explicit technical reason.
+- **Commit policy:** create clear, auditable commits for completed phases or
+  validated logical subunits. Commit messages must be objective and technically
+  representative. Do not mix independent changes in one commit, and record created
+  commits in the response.
+- **Push/publication policy:** push is separate from stage and commit. Do not push
+  automatically just because a commit was created. Publish to the remote only when
+  explicitly requested by the user or when an already defined operational flow
+  requires publication. Responses must distinguish local commits from remote
+  publication.
+- **Continuity policy:** preserve continuity with the current plan recorded in this
+  memory. If the user changes scope, update the memory and only then proceed within
+  the new confirmed phase.
 
 ## Canonical Branches
 
@@ -31,37 +65,37 @@ user explicitly requests that operation.
 
 ## Current Integration State
 
-- `WiP20261` has already absorbed TINKERCELL.
-- `WiP20261` has already absorbed GRO.
-- `WiP20261_KERNEL_GUI` is not yet integrated into `WiP20261`.
-- `WiP20261_KERNEL_GUI` was synchronized with `origin/WiP20261` at `5df02726`
-  through merge commit `2d74347b`.
-- `WiP20261` advanced again to `2e439a62`.
-- `WiP20261_KERNEL_GUI` has now been re-synchronized with `origin/WiP20261` at
-  `2e439a62` through merge commit `f13d7c9b`.
-- The branch is prepared for final merge into the base, pending any final reviewer or
-  maintainer action.
-- The main expected integration conflict for KERNEL_GUI is
-  `source/tests/unit/test_runtime_pluginmanager.cpp`.
+- The branch currently carries KERNEL_GUI work on top of the latest locally recorded
+  base synchronization, plus later KERNEL_GUI commits.
+- The official plugin structural refactor is `f232882e`
+  (`Organize plugins by declared category`).
+- The latest completed runtime preferences/theme commit is `a1c2d9fa`
+  (`Add runtime GUI preferences and themes`).
+- Final integration into `WiP20261`, PR state, and remote mergeability must always be
+  checked fresh before taking integration action.
+- Historical conflict attention remains around
+  `source/tests/unit/test_runtime_pluginmanager.cpp`, because multiple plugin-related
+  branches have touched that coverage.
 
 ## Git Policy
 
 - Work only on `WiP20261_KERNEL_GUI`.
 - Treat `WiP20261` as the base branch for integration.
-- KERNEL_GUI has autonomy to run routine Git operations without asking the user first:
-  stage, commit, fetch, merge, pull, and push.
-- Make small, frequent, coherent commits.
-- Do not wait for user confirmation for routine Git operations.
+- Use `git status`, diffs, and relevant source inspection before staging or
+  committing.
+- Stage only coherent sets of changes that belong to the current phase or logical
+  subunit.
+- Make small, frequent, coherent commits when a phase or validated subunit is
+  complete.
+- Do not leave a completed phase without a commit unless there is an explicit
+  technical reason, and record that reason in the response and in this memory.
+- Do not push automatically. Pushing is publication and requires explicit user
+  request or a previously established operational flow that clearly calls for it.
 - Ask the user before destructive operations, before resolving significant ambiguity
   with high impact, or when there is exceptional risk.
-- TINKERCELL and GRO are now in the base, so synchronization with
-  `origin/WiP20261` is authorized for final integration preparation.
-- Before important pushes, prefer this routine:
-  - fetch `origin`;
-  - merge the latest `origin/WiP20261` into `WiP20261_KERNEL_GUI`;
-  - resolve conflicts if any;
-  - run relevant build/tests;
-  - push `WiP20261_KERNEL_GUI`.
+- Synchronization with `origin/WiP20261` may be used for integration preparation
+  when it is part of the confirmed phase, but it must not silently expand the phase
+  scope.
 - Do not rebase shared work unless explicitly instructed.
 
 ## Repository Language Policy
@@ -74,8 +108,8 @@ user explicitly requests that operation.
 
 ## Canonical Workspace And Build Paths
 
-- **Workspace area:** `/home/rafaelcancian/Laboratory/Software/Educational_Projects/GenESyS/github_repository`
-- **Canonical clone root:** `/home/rafaelcancian/Laboratory/Software/Educational_Projects/GenESyS/github_repository/WiP20261_KERNEL_GUI/Genesys-Simulator`
+- **Workspace area:** `/home/rafaelcancian/Laboratory/Software/Educational_Projects/GenESyS/GitHub`
+- **Canonical clone root:** `/home/rafaelcancian/Laboratory/Software/Educational_Projects/GenESyS/GitHub/WiP20261_KERNEL_GUI/Genesys-Simulator`
 - Do not use old build/cache paths that point to `/home/rafaelcancian/Genesys-Simulator`.
 - If old CMake caches pointing to `/home/rafaelcancian/Genesys-Simulator` are found,
   discard them and regenerate the build from the canonical clone root.
@@ -309,8 +343,16 @@ Intent:
 - `WiP20261_KERNEL_GUI` exists locally.
 - `origin/WiP20261_KERNEL_GUI` exists remotely.
 - The local branch tracks `origin/WiP20261_KERNEL_GUI`.
-- The branch was last pushed successfully after commit `71db615c` before the current
-  synchronization work.
+- The official plugin structural refactor is local and remote at commit `f232882e`
+  (`Organize plugins by declared category`).
+- The runtime GUI preferences and visual theme phase is local and remote at commit
+  `a1c2d9fa` (`Add runtime GUI preferences and themes`).
+- The operating memory normalization phase is local at commit `6baa2cc3`
+  (`Normalize KERNEL_GUI operating memory`) and has not been pushed unless a later
+  user request explicitly publishes it.
+- The diagram item render strategy phase is local at commit `107a6539`
+  (`Add diagram item render strategies`) and has not been pushed unless a later
+  user request explicitly publishes it.
 - Recent branch commits include:
   - `6a02e61f Track plugin load diagnostics in PluginManager`
   - `f0a4bfb9 Show recoverable plugin dependency issues in GUI`
@@ -322,12 +364,14 @@ Intent:
   - `fee82a90 Update KERNEL_GUI memory for base sync`
   - `2d74347b Merge remote-tracking branch 'origin/WiP20261' into WiP20261_KERNEL_GUI`
   - `f13d7c9b Merge remote-tracking branch 'origin/WiP20261' into WiP20261_KERNEL_GUI`
-- After the latest local Plugin Manager UX refinement, the working tree has
-  uncommitted changes in:
-  - `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.cpp`
-  - `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.h`
-  - `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.ui`
-  - `KERNEL_GUI_ContextMemory.md`
+  - `1fe51d47 Improve plugin manager resolve load workflow`
+  - `f232882e Organize plugins by declared category`
+  - `a1c2d9fa Add runtime GUI preferences and themes`
+  - `6baa2cc3 Normalize KERNEL_GUI operating memory`
+  - `107a6539 Add diagram item render strategies`
+- At the start of the diagram item render strategy phase, the branch was one commit
+  ahead of `origin/WiP20261_KERNEL_GUI` because of the local memory-normalization
+  commit `6baa2cc3`; the functional working tree was otherwise clean.
 - The latest merge from `origin/WiP20261` completed without conflicts and only
   brought base-side updates to `TINKERCELL_ContextMemory.md`.
 - `source/tests/unit/test_runtime_pluginmanager.cpp` now contains both the KERNEL_GUI
@@ -338,7 +382,7 @@ Intent:
   - `ContextMemmory.md` was previously renamed to `KERNEL_GUI_ContextMemory.md`;
   - no generic `ContextMemory.md` exists in the root.
 
-## Pull Request State
+## Historical Pull Request State
 
 - Final integration PR: `#371`
 - PR title: `Merge WiP20261_KERNEL_GUI into WiP20261`
@@ -357,7 +401,9 @@ Intent:
 - Diagnosis: the GitHub non-mergeable reports observed immediately after branch
   updates were transient mergeability calculation state, not a real branch conflict,
   stale branch, or technical blocker.
-- Corrective action required: none beyond recording this diagnosis.
+- Corrective action required at the time: none beyond recording this diagnosis.
+- This section is historical context only. Do not treat this PR state as current
+  without fresh GitHub and repository inspection.
 
 ## Validation Already Run
 
@@ -476,11 +522,15 @@ Observed status:
   `ContextMemmory.md` as active memory.
 - Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
-- Commit the structural plugin directory refactor and this memory update, then push
-  `WiP20261_KERNEL_GUI` to `origin/WiP20261_KERNEL_GUI` when ready.
-- Proceed with final merge into the base when the maintainer is ready.
-- PR `#371` is ready for final merge unless GitHub reports a new base update or
-  repository policy change.
+- Current active phase: record the completed diagram item render strategy work in
+  this memory. Do not start another technical phase until the user explicitly
+  confirms the next step.
+- The structural plugin directory refactor is already complete in `f232882e`.
+- The runtime GUI preferences/theme phase is already complete in `a1c2d9fa`.
+- Proceed with final merge into the base only when the maintainer explicitly directs
+  that operation.
+- PR `#371` historical notes remain useful as integration context, but future PR or
+  merge decisions must be based on fresh repository and GitHub state.
 - If plugin dependency recovery receives more changes, keep them small and preserve
   kernel/GUI separation.
 - Future work may refine terminal handling and password/sudo feedback during
@@ -502,14 +552,14 @@ Observed status:
 
 ## Likely Next Steps
 
-- Push `WiP20261_KERNEL_GUI` after the latest synchronization and validation memory
-  update are recorded.
-- Final integration into `WiP20261` can proceed from the synchronized branch.
-- If another base update happens before final integration, repeat the fetch/merge and
-  focused validation cycle.
-- Monitor PR `#371`; if GitHub temporarily reports unknown/non-mergeable again,
-  recheck after the mergeability calculation refreshes before assuming a real
-  conflict.
+- Ask the user to confirm the next technical phase before changing GUI, kernel,
+  plugin, build, or test code again.
+- Possible next phase: add focused automated GUI-rendering tests or a screenshot
+  harness for classic versus organic diagram rendering, if the user wants visual
+  regression coverage beyond compile and smoke validation.
+- Do not push local commits unless the user explicitly asks for publication.
+- When a next phase is confirmed, first re-read the real repository state and the
+  relevant source/build/test files, then execute only that phase.
 
 ## Interaction Log Summary
 
@@ -529,6 +579,7 @@ Observed status:
 
 ## Latest Runtime Preferences And Visual Theme Work
 
+- Commit: `a1c2d9fa` (`Add runtime GUI preferences and themes`).
 - The active user protocol now requires every assistant response to start with the
   exact line `KERNEL_GUI` and end with the exact line `----------`.
 - A runtime preferences architecture was implemented for GenesysQtGUI.
@@ -564,6 +615,68 @@ Observed status:
   - Offscreen smoke test with temporary JSON under `/tmp/genesys-pref-test`
     loaded dark/modern/no-model startup preferences and stayed running until the
     expected timeout without startup crash.
-- Deliberate limitation: component and `ModelDataDefinition` body painting still
-  mostly uses existing `TraitsGUI` colors; this iteration only creates the safe
-  runtime preference and canvas/grid theme base for future drawing-style work.
+- Follow-up completed in `107a6539`: component and `ModelDataDefinition` body
+  painting now delegates to a runtime-selected render strategy.
+
+## Latest Diagram Item Render Strategy Work
+
+- Commit: `107a6539` (`Add diagram item render strategies`).
+- Introduced `GraphicalModelItemRenderStrategy` and `GraphicalModelItemRenderer`
+  under `source/applications/gui/qt/GenesysQtGUI/graphicals/`.
+- `GraphicalModelDataDefinition` and `GraphicalModelComponent` now build a
+  `GraphicalModelItemRenderContext` and delegate `paint()` and `shape()` to the
+  renderer.
+- The classic strategy preserves the existing rectangular/raised-path visual and
+  keeps rectangular hit shape for compatibility.
+- The organic strategy uses antialiased oval/capsule bodies, radial gradients,
+  softer highlights, oval selection handles, and strategy-specific `shape()` for
+  hit testing while keeping the existing `boundingRect()` and port geometry stable.
+- Strategy selection is tied to `SystemPreferences::interfaceStyle()`:
+  - `classic` uses the traditional strategy.
+  - `modern` uses the organic strategy.
+- `DialogSystemPreferences` now labels the options as `Classic rectangular` and
+  `Modern organic`.
+- `GuiThemeManager::applyModelGraphicsTheme()` now always updates the scene after
+  preference changes, even when only the render style changed and diagram theme
+  colors are disabled.
+- Validation performed:
+  - `git diff --check` passed.
+  - `cmake --build --preset gui-app` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed.
+  - Offscreen smoke test with temporary JSON under
+    `/tmp/genesys-render-pref/GenESyS/Genesys-Simulator/preferences.json` loaded
+    dark/modern/no-model preferences and stayed running until the expected timeout
+    without startup crash.
+- Remaining limitation: no automated screenshot/pixel regression test exists yet
+  for comparing classic and organic rendering. Validation is currently build,
+  code-path, preference-load, and startup-smoke based.
+
+## Latest GUI Render Strategy Test Work
+
+- Commit: `77f86538` (`Add GUI render strategy unit test`).
+- Added `source/tests/unit/test_gui_render_strategy.cpp`, a focused Qt offscreen
+  unit test for the diagram item render strategy infrastructure.
+- The test covers:
+  - runtime strategy selection from `SystemPreferences::InterfaceStyle`;
+  - shape/hit-area difference between classic rectangular and organic
+    oval/capsule rendering;
+  - nonblank pixel rendering and visible pixel-level difference between classic
+    and organic output.
+- `source/tests/unit/CMakeLists.txt` now creates `genesys_test_gui_render_strategy`
+  when Qt Core/Gui/Widgets is available. The target compiles only the render
+  strategy and `SystemPreferences` implementation needed for this focused GUI
+  check, without building the full Qt application under the kernel-unit preset.
+- The test is integrated into `genesys_kernel_unit_tests` and into
+  `genesys_kernel_unit_tests_run` as an additional command when the Qt target
+  exists.
+- Validation performed:
+  - `cmake --preset tests-kernel-unit` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed, including the 3 new
+    `GuiRenderStrategy` tests.
+  - `git diff --check` passed.
+  - `cmake --build --preset gui-app` passed with no work required.
+- Current state: this phase has a stable local checkpoint. No push was performed.
+- Suggested next phase, only after explicit user confirmation: either pause at
+  this checkpoint, or continue with a manual/screenshot-level GUI validation
+  harness for the actual scene if visual regression coverage needs to move
+  beyond unit-level QImage pixel checks.

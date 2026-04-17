@@ -333,6 +333,7 @@ SOURCES += \
     graphicals/GraphicalConnection.cpp \
     graphicals/GraphicalDiagramConnection.cpp \
     graphicals/GraphicalImageAnimation.cpp \
+    graphicals/GraphicalModelItemRenderStrategy.cpp \
     graphicals/GraphicalModelComponent.cpp \
     graphicals/GraphicalModelDataDefinition.cpp \
     guithememanager.cpp \
@@ -692,6 +693,7 @@ HEADERS += \
     graphicals/GraphicalConnection.h \
     graphicals/GraphicalDiagramConnection.h \
     graphicals/GraphicalImageAnimation.h \
+    graphicals/GraphicalModelItemRenderStrategy.h \
     graphicals/GraphicalModelComponent.h \
     GuiCrashDiagnostics.h \
     GuiScopeTrace.h \
