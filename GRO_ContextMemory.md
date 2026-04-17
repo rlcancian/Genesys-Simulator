@@ -16,20 +16,60 @@ instructions are considered obsolete or consolidated here.
 - **Canonical memory file:** `GRO_ContextMemory.md` in the repository root.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
-- **Current consolidated base:** `WiP20261`.
-- **Current state:** the relevant functional GRO content has already been
-  absorbed by the base branch `WiP20261`; there is no pending GRO integration at
-  this moment.
-- **Immediate objective:** keep `WiP20261_GRO` stable and in standby. Do not
-  implement new functionality and do not attempt a new integration unless the
-  user explicitly reactivates this work line.
+- **Current consolidated base:** `origin/WiP20261` at `f769ec61` as of the
+  latest GRO synchronization.
+- **Current GRO branch head:** local `WiP20261_GRO` has active post-runtime
+  GRO work on top of `origin/WiP20261_GRO` at `be4d0337`.
+- **Current state:** the GRO work line is active again and is proceeding in
+  explicit, user-confirmed phases on `WiP20261_GRO`.
+- **Immediate objective:** continue the Gro biosimulator integration only one
+  phase at a time, preserving the existing plan and stopping after each phase
+  for explicit user confirmation.
 - **Future work rule:** any future GRO work must start from the updated
   consolidated base `WiP20261`, not from stale local branch state or older
   memory assumptions.
-- **Integration PR status:** PR `#370` from `WiP20261_GRO` to `WiP20261` exists
-  and GitHub reported it closed and merged. Its merge commit is `2114c92c`.
-  After that merge, `WiP20261_GRO` received context-only commits so the current
-  branch differs from `origin/WiP20261` only by GRO memory updates.
+- **Integration PR status:** historical PR `#370` from `WiP20261_GRO` to
+  `WiP20261` was closed and merged. Current post-merge GRO work is newer than
+  that PR and must not be assumed integrated into `WiP20261` until explicitly
+  requested and verified.
+
+## Operational Working Protocol
+
+- **Response format:** every GRO response must use this exact envelope:
+  - first line contains only `GRO`;
+  - technical body follows after that;
+  - last line contains only `----------`.
+- **Repository reality check:** before acting, re-read this memory as needed and
+  reanalyze the real repository state with Git/status/file inspection. Do not
+  rely on stale memory alone.
+- **Continuity rule:** recover the current plan from this memory, identify what
+  has already been completed, and preserve continuity with that plan unless the
+  user explicitly changes direction.
+- **Phased work rule:** work phase by phase. Execute only the next logical phase
+  that is technically safe and in scope.
+- **Stop rule:** after completing a phase, stop. Report what was done, update
+  this memory, and ask for explicit user confirmation before starting the next
+  phase. Do not continue automatically.
+- **Memory update rule:** at the end of each completed phase, update
+  `GRO_ContextMemory.md` with the work completed, current state, relevant
+  commits, validations, limitations, and the suggested next phase.
+- **Stage policy:** stage changes intentionally. Group only coherent changes in
+  the same stage set, avoid staging unrelated files together, and do not leave
+  important phase-complete work untracked or unstaged without explaining why.
+- **Commit policy:** create clear, auditable commits for completed phases or
+  validated logical subunits. Commit messages must be objective and technical.
+  Do not mix independent changes in one commit. Do not leave a completed phase
+  without a commit unless there is an explicit technical reason.
+- **Push policy:** push/publication is separate from stage and commit. Do not
+  push automatically just because a commit was made. Push only when explicitly
+  requested by the user or when the current operational flow explicitly calls
+  for publication. Always state what is only local and what was published.
+- **Scope control:** do not open a new functional front while performing memory,
+  synchronization, or diagnostic work. Keep changes limited to the confirmed
+  phase.
+- **Plugin structure rule:** do not reorganize plugin directories or categories
+  unless the user explicitly reopens that structural work. Work on the current
+  repository structure as it exists.
 
 ## Git Policy
 
@@ -38,18 +78,20 @@ instructions are considered obsolete or consolidated here.
 - Use the existing `origin` remote.
 - Do not merge `WiP20261_GRO` back into `WiP20261` unless the user explicitly
   asks for that integration.
-- Do not implement new GRO functionality while the branch is in standby.
-- Do not open or attempt a new integration while the base already contains the
-  relevant functional content, unless the user explicitly asks for it.
+- Do not open or attempt a new integration into `WiP20261` unless the user
+  explicitly asks for it.
 - When the GRO line is reactivated for real technical work, begin from an
   updated `WiP20261` base. Do not continue from stale local branch state.
-- Before important future product pushes, run `git fetch origin` and merge
-  `origin/WiP20261` into `WiP20261_GRO` using merge, not rebase. While the
-  branch is explicitly in standby, do not perform another merge unless the user
-  asks for synchronization.
-- Make small, coherent commits.
-- GRO has autonomy to run routine Git operations without asking the user:
-  stage, commit, fetch, merge, pull, and push.
+- Before implementation phases and before requested product publication, run
+  `git fetch origin` and compare `origin/WiP20261` with `WiP20261_GRO`. Merge
+  `origin/WiP20261` into `WiP20261_GRO` with normal merge when synchronization
+  is needed; prefer merge over rebase for traceability.
+- Make small, coherent commits that represent completed phases or validated
+  logical subunits.
+- Stage and commit are routine local operations when they follow the operational
+  policy above.
+- Push is not automatic. It requires explicit user request or an explicit
+  publication step in the active workflow.
 - Ask for confirmation only for destructive operations, relevant ambiguity, or
   exceptional risk.
 - If local unfinished work blocks synchronization, use a temporary stash instead
@@ -116,8 +158,37 @@ instructions are considered obsolete or consolidated here.
 - **Current behavior:** stores `SourceCode` as a string and performs a
   permissive lexical sanity check: non-empty source, balanced delimiters, closed
   string literals, and closed block comments.
-- **Current limitation:** no full Gro parser, AST, interpreter, semantic model,
-  reaction semantics, or execution runtime exists yet.
+- **Current limitation:** no full Gro grammar, biological reaction semantics, or
+  integrated colony runtime binding exists yet.
+
+### Gro Parser, AST, IR, And Runtime Helpers
+
+- **Files:**
+  - `source/plugins/data/BiologicalModeling/GroProgramParser.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramParser.cpp`
+  - `source/plugins/data/BiologicalModeling/GroProgramAst.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramIr.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramCompiler.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramCompiler.cpp`
+  - `source/plugins/data/BiologicalModeling/GroProgramRuntime.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramRuntime.cpp`
+- **Current behavior:** the parser performs permissive lexical validation,
+  fills a minimal AST for `program name() { ... }` or raw balanced statements,
+  compiles top-level statements to a small IR, and executes `tick()` in an
+  isolated runtime helper over caller-provided state.
+- **Current behavior:** the parser performs permissive lexical validation,
+  fills a minimal AST for `program name() { ... }` or raw balanced statements,
+  compiles top-level statements to a small IR, and executes a first isolated
+  command set over caller-provided state:
+  - `tick()`: advances internal colony time by `simulationStep`;
+  - `grow()` and `grow(n)`: increase population by one or by a positive integer
+    amount;
+  - `divide()`: doubles the current population;
+  - `set_population(n)`: replaces the current population with a positive
+    integer value.
+- **Current limitation:** runtime execution is intentionally minimal and is not
+  yet connected to the GenESyS event scheduler, internal bacteria state,
+  cellular automata, full Gro biological semantics, or GUI editing workflows.
 
 ### `BacteriaColony`
 
@@ -128,13 +199,29 @@ instructions are considered obsolete or consolidated here.
   colony behavior.
 - **Current properties/state:** `GroProgram` reference, `SimulationStep`,
   `InitialColonyTime`, current internal colony time, `InitialPopulation`,
-  current population summary, `GridWidth`, and `GridHeight`.
-- **Current behavior:** can initialize colony runtime state between replications
-  and advance internal colony time by one configured simulation step.
+  current population summary, internal `BacteriumState` vector, `GridWidth`,
+  and `GridHeight`.
+- **Current behavior:** can initialize colony runtime state between replications,
+  advance internal colony time by one configured simulation step, and execute a
+  configured `GroProgram` once through the plugin-side
+  `GroProgramParser` -> `GroProgramCompiler` -> `GroProgramRuntime` pipeline.
+  On successful execution, the colony copies back internal colony time and
+  population size from `GroProgramRuntimeState`.
+- **Internal bacteria state:** each bacterium currently has a stable per-
+  replication id, birth time, last update time, alive flag, and deterministic
+  discrete grid coordinates. Population-changing runtime commands resize this
+  internal vector so the population summary and owned bacteria state remain
+  synchronized.
+- **Dispatch behavior:** when a `GroProgram` is configured, `_onDispatchEvent`
+  executes that program once and traces success/failure. When no `GroProgram` is
+  configured, it preserves the previous fallback behavior of advancing internal
+  colony time by `SimulationStep`.
 - **Connectivity metadata:** registered as a self-contained source/sink-style
   component with zero required inputs and outputs for the first plugin slice.
 - **Current limitation:** it does not yet schedule periodic events in the
-  GenESyS future event calendar and does not execute Gro biological semantics.
+  GenESyS future event calendar and does not yet model per-bacterium command
+  behavior, spatial cellular automata, signals, reactions, or complete Gro
+  biological semantics.
 
 ### Static Plugin Registration
 
@@ -161,6 +248,14 @@ instructions are considered obsolete or consolidated here.
   migration)
 - `source/plugins/data/BiologicalModeling/GroProgram.h`
 - `source/plugins/data/BiologicalModeling/GroProgram.cpp`
+- `source/plugins/data/BiologicalModeling/GroProgramParser.h`
+- `source/plugins/data/BiologicalModeling/GroProgramParser.cpp`
+- `source/plugins/data/BiologicalModeling/GroProgramAst.h`
+- `source/plugins/data/BiologicalModeling/GroProgramIr.h`
+- `source/plugins/data/BiologicalModeling/GroProgramCompiler.h`
+- `source/plugins/data/BiologicalModeling/GroProgramCompiler.cpp`
+- `source/plugins/data/BiologicalModeling/GroProgramRuntime.h`
+- `source/plugins/data/BiologicalModeling/GroProgramRuntime.cpp`
 - `source/plugins/components/BiologicalModeling/BacteriaColony.h`
 - `source/plugins/components/BiologicalModeling/BacteriaColony.cpp`
 - `source/plugins/PluginConnectorDummyImpl1.cpp`
@@ -188,6 +283,21 @@ instructions are considered obsolete or consolidated here.
 - Latest known validation before this migration:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Recent active GRO phase commits:
+  - `cc97c548 Normalize GRO operational memory`
+  - `ee855170 Add Gro program parser boundary`
+  - `799feb71 Add minimal Gro program AST`
+  - `e00c8108 Add initial Gro semantic IR`
+  - `55058527 Merge remote-tracking branch 'origin/WiP20261' into WiP20261_GRO`
+  - `be4d0337 Add isolated Gro runtime helper`
+  - `3b59b3c2 Expand Gro runtime commands`
+  - `8985889e Connect Gro runtime to bacteria colony`
+  - `24d4be21 Add internal bacteria colony state`
+- Latest known validation after active GRO phases:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 10 tests.
 - Latest structural synchronization:
   - merged `origin/WiP20261_KERNEL_GUI` at `f232882e` into
     `WiP20261_GRO`;
@@ -201,34 +311,36 @@ instructions are considered obsolete or consolidated here.
 ## Current Branch State
 
 - Current branch: `WiP20261_GRO`.
-- Current consolidated base: `WiP20261`.
-- The relevant functional content from `WiP20261_GRO` has already been absorbed
-  by `WiP20261`.
-- No GRO integration is pending at this moment.
-- The branch is in standby. It should remain stable, synchronized, and
-  available for future GRO work, but no new product functionality should be
-  added now.
-- Any future technical work should start from the updated consolidated base
-  `WiP20261`, not from stale local state preserved on `WiP20261_GRO`.
+- Current consolidated base: `origin/WiP20261` at `f769ec61`.
+- Current GRO branch head: local `WiP20261_GRO` after the active runtime command
+  expansion and colony connection work; `origin/WiP20261_GRO` remains at
+  `be4d0337` until explicit publication is requested.
 - Latest synchronization with `origin/WiP20261` produced merge commit
-  `10e6937c` and brought in `TINKERCELL_ContextMemory.md`.
+  `55058527` and brought in GUI preferences/theme work.
 - Conflict status during the latest synchronization: no conflicts occurred.
-- The current changes after that synchronization are memory-only updates to
-  `GRO_ContextMemory.md`.
+- Latest completed GRO phase: internal bacteria state inside `BacteriaColony`.
+- Recent user-authorized work completed:
+  1. expanded the isolated runtime command set;
+  2. connected the isolated runtime pipeline to `BacteriaColony`;
+  3. added the first owned per-bacterium state vector synchronized with colony
+     population changes.
+- These changes are local only until explicit publication is requested.
+- Ask the user for explicit confirmation before proceeding to the next technical
+  phase.
 
 ## Pending Work
 
-- No immediate implementation should be performed while the branch is in
-  standby.
-- Define the Gro parser/helper boundary under plugin-side code.
-- Decide the first grammar target: full syntax recognition with partial
-  semantics, or a narrower MVP syntax subset.
-- Define the AST or intermediate representation needed to connect Gro syntax to
-  GenESyS model data and components.
+- Do not continue automatically. Wait for explicit user confirmation before the
+  next technical phase.
+- Suggested next technical phase: decide whether to evolve this internal
+  bacteria state toward command-level per-bacterium behavior first, or to add
+  event scheduler integration around the now stateful colony. Keep cellular
+  automata, signals, reactions, and complete Gro semantics as later phases.
 - Decide whether `BacteriaColony` should schedule periodic internal events using
   `SimulationStep` or remain API/plugin-driven until parser/runtime semantics
   are clearer.
-- Define internal bacteria state representation inside a colony.
+- Extend internal bacteria state with behavior fields only after an explicit
+  phase decision.
 - Define discrete grid/cellular automata data structures and how they relate to
   existing cellular automata plugins.
 - Later, evaluate continuous 2D space support inspired by Gro.
@@ -257,6 +369,24 @@ instructions are considered obsolete or consolidated here.
   `WiP20261` as the source of truth for future starts.
 
 ## Session Log
+
+### 2026-04-17 - Operational Memory Normalization
+
+- User paused technical biosimulator work and requested operational memory
+  normalization before any next technical phase.
+- Re-read `GRO_ContextMemory.md` and found useful project context but several
+  operational points were incomplete or stale:
+  - response envelope was not explicit;
+  - phase/stop/confirmation policy was not centralized;
+  - stage/commit/push policy was not clearly separated;
+  - push policy still allowed automatic routine publication;
+  - branch status still contained obsolete standby wording;
+  - implemented parser/AST/IR/runtime helpers were not fully summarized in the
+    stable memory sections.
+- Added the `Operational Working Protocol` section.
+- Updated current branch/base state, implemented helper summaries, relevant
+  files, pending work, and recent commit/validation records.
+- No biosimulator product functionality was changed in this normalization pass.
 
 ### 2026-04-17 - Initial Gro Plugin Slice
 
@@ -366,3 +496,174 @@ instructions are considered obsolete or consolidated here.
 - Validation after merge:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
+
+### 2026-04-17 - Gro Parser Boundary Phase
+
+- User suspended any further plugin directory/category reorganization and
+  instructed GRO to continue phased integration on the repository structure as
+  currently present.
+- Re-read this canonical memory and resumed the existing GRO plan.
+- Current next phase selected: define the plugin-side Gro parser/helper boundary
+  before adding AST, semantic execution, bacteria state, cellular automata, or
+  GUI integration.
+- Ran `git fetch origin` and fast-forwarded local `WiP20261_GRO` from
+  `d1ec21c9` to `76c938a6`, matching the current consolidated `origin/WiP20261`
+  base that had already merged GRO.
+- Added `GroProgramParser` under the existing current path
+  `source/plugins/data/BiologicalModeling/`, without moving plugin files or
+  changing category layout.
+- `GroProgram::validateSyntax` now delegates to `GroProgramParser::parse`,
+  preserving the previous permissive lexical validation behavior and diagnostic
+  messages.
+- Added focused unit coverage for the parser boundary in
+  `source/tests/unit/test_runtime_pluginmanager.cpp`.
+- Validation after this phase:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 8 tests.
+
+### 2026-04-17 - Gro Isolated Runtime Helper Phase
+
+- User confirmed continuation after the initial semantic IR phase.
+- Revalidated current branch state on `WiP20261_GRO`; the branch was clean and
+  matched `origin/WiP20261_GRO` before changes.
+- Ran `git fetch origin`; `origin/WiP20261` advanced from `76c938a6` to
+  `f769ec61` with GUI preference/theme work.
+- Merged `origin/WiP20261` into local `WiP20261_GRO` before continuing GRO
+  implementation.
+- Merge result: merge commit with no conflicts.
+- No GUI files brought by the base merge were modified by GRO.
+- Executed only the next phase: create an isolated runtime helper that consumes
+  `GroProgramIr` without binding to `BacteriaColony` or the GenESyS event
+  scheduler.
+- Added `GroProgramRuntime` under the existing current path
+  `source/plugins/data/BiologicalModeling/`, without moving plugin files or
+  changing category layout.
+- `GroProgramRuntime::execute` currently supports:
+  - `tick()` as the first executable command, advancing caller-provided
+    runtime state by `simulationStep`.
+  - reporting unsupported function calls without failing execution.
+  - reporting raw statements skipped by the runtime.
+  - rejecting invalid `tick(...)` arguments and non-positive simulation steps.
+- No `BacteriaColony` scheduler binding, bacteria state, cellular automata, GUI
+  work, or plugin directory reorganization was added in this phase.
+- Validation after this phase:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 10 tests.
+
+### 2026-04-17 - Gro Runtime Command Expansion And Colony Bridge
+
+- User explicitly requested two ordered steps in the same turn: first expand the
+  Gro command set, then connect the isolated runtime to `BacteriaColony`.
+- Confirmed that the active environment root was the original Gro repository,
+  while the requested `BacteriaColony` work belongs to the GenESyS clone at
+  `/home/rafaelcancian/CLionProjects/Genesys-Simulator`; continued the
+  implementation in the GenESyS clone because that is where the active GRO
+  integration branch and `BacteriaColony` live.
+- Expanded `GroProgramRuntimeState` with `populationSize`.
+- Expanded `GroProgramRuntime::execute` to support:
+  - `tick()`;
+  - `grow()` and `grow(n)`;
+  - `divide()`;
+  - `set_population(n)`.
+- Added validation for positive integer command arguments and overflow checks
+  for population-changing commands.
+- Created local commit `3b59b3c2` (`Expand Gro runtime commands`) for the
+  command expansion subphase.
+- Connected `BacteriaColony` to the parser/compiler/runtime pipeline through
+  `BacteriaColony::executeGroProgram()`.
+- Updated `BacteriaColony::_onDispatchEvent` to execute the configured
+  `GroProgram` when one exists, while preserving the old internal-time advance
+  fallback when no program is configured.
+- Added focused unit coverage for executing a configured Gro program through
+  `BacteriaColony` and applying the resulting internal time and population
+  state.
+- Validation after both ordered steps:
+  - `git diff --check` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- No push/publication was performed.
+- Suggested next phase remains separate from this bridge: define the next
+  biological-state or scheduler integration step explicitly before continuing.
+
+### 2026-04-17 - Internal Bacteria State Checkpoint
+
+- User requested starting with internal bacteria state and authorized proceeding
+  until a stable checkpoint, with explicit stage/commit and a question about
+  pausing or continuing at the checkpoint.
+- Ran `git fetch origin`; `origin/WiP20261` remained at `f769ec61` and local
+  `WiP20261_GRO` already contained that base.
+- Added the first `BacteriaColony::BacteriumState` representation owned by the
+  colony instead of creating bacteria as separate `ModelComponent` instances.
+- Each internal bacterium currently stores:
+  - stable per-replication id;
+  - birth time;
+  - last update time;
+  - deterministic grid coordinates;
+  - alive flag.
+- `BacteriaColony` now initializes the internal bacteria vector between
+  replications, updates bacterium timestamps when colony time advances, and
+  resizes the internal vector after successful runtime population changes.
+- Grid coordinates are assigned deterministically from vector index over the
+  configured discrete grid, wrapping when population exceeds grid capacity.
+- Added unit coverage ensuring initial internal bacteria state is created and
+  remains synchronized after `tick()`, `grow`, `divide`, and `set_population`.
+- Validation after this checkpoint:
+  - `git diff --check` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Functional checkpoint commit:
+  - `24d4be21 Add internal bacteria colony state`
+- No push/publication was performed.
+- Suggested next phase: either add the first per-bacterium behavior fields and
+  command effects, or wire scheduler execution around the now stateful colony.
+
+### 2026-04-17 - Gro Initial Semantic IR Phase
+
+- User confirmed continuation after the minimal AST/IR phase.
+- Revalidated current branch state on `WiP20261_GRO`; the branch was clean and
+  matched `origin/WiP20261_GRO` before changes.
+- Ran `git fetch origin`; no new remote changes were reported.
+- Executed only the next phase: create a non-executable semantic IR layer from
+  the parsed `GroProgramAst`.
+- Added `GroProgramIr` and `GroProgramCompiler` under the existing current path
+  `source/plugins/data/BiologicalModeling/`, without moving plugin files or
+  changing category layout.
+- `GroProgramCompiler::compile` now converts AST statements into generic IR
+  commands:
+  - `FunctionCall` for recognized `identifier(...)` statements.
+  - `RawStatement` for balanced statements not yet understood semantically.
+  - top-level comma-separated function arguments are preserved as source text.
+- No execution binding, bacteria state, cellular automata, GUI work, or plugin
+  directory reorganization was added in this phase.
+- Validation after this phase:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 9 tests.
+
+### 2026-04-17 - Gro Minimal AST/IR Phase
+
+- User confirmed continuation after the parser boundary phase.
+- Revalidated current branch state on `WiP20261_GRO`; the branch was clean and
+  matched `origin/WiP20261_GRO` before changes.
+- Ran `git fetch origin`; no new remote changes were reported.
+- Executed only the next phase: define the first minimal AST/IR target for Gro
+  parsing.
+- Added `GroProgramAst` under the existing current path
+  `source/plugins/data/BiologicalModeling/`, without moving plugin files or
+  changing category layout.
+- `GroProgramParser::Result` now carries a `GroProgramAst`.
+- The parser now keeps the permissive lexical acceptance behavior but fills an
+  AST with:
+  - `ProgramBlock` when it recognizes `program name() { ... }`.
+  - `RawStatements` for other balanced source fragments.
+  - top-level semicolon-delimited statement source text.
+- No semantic execution, bacteria state, cellular automata, GUI work, or plugin
+  directory reorganization was added in this phase.
+- Validation after this phase:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 8 tests.
