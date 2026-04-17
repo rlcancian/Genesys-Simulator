@@ -6,6 +6,7 @@
 #include "../dialogs/dialogBreakpoint.h"
 #include "../dialogs/dialogpluginmanager.h"
 #include "../dialogs/dialogsystempreferences.h"
+#include "../guithememanager.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../tools/dataanalyzer/DataAnalyzerWindow.h"
@@ -1254,7 +1255,10 @@ void DialogUtilityController::onActionViewConfigureTriggered() {
 
 // Preserve simulator preferences dialog parenting and non-blocking show behavior.
 void DialogUtilityController::onActionSimulatorPreferencesTriggered() {
-    DialogSystemPreferences* dialog = new DialogSystemPreferences(_ownerWidget);
+    DialogSystemPreferences* dialog = new DialogSystemPreferences(_simulator, _ownerWidget);
+    QObject::connect(dialog, &QDialog::accepted, dialog, [this]() {
+        GuiThemeManager::applyModelGraphicsTheme(_graphicsView);
+    });
     dialog->show();
 }
 
