@@ -41,6 +41,13 @@ private:
         double kurtosis = 0.0;
     };
 
+    struct DatasetObservation {
+        int replication = 1;
+        double time = 0.0;
+        bool hasTime = false;
+        double value = 0.0;
+    };
+
     struct DatasetDescriptor {
         QString datasetName;
         QString randomVariableName;
@@ -50,6 +57,9 @@ private:
         QStringList previewLines;
         QList<double> values;
         bool raw = true;
+        QList<DatasetObservation> observations;
+        bool recordFile = false;
+        bool timeDependent = false;
     };
 
     class HistogramPreview;
@@ -68,6 +78,7 @@ private:
     void showAnalysisSetupDialog(const QString& analysisName, int targetTabIndex);
     void refreshAnalysisViews();
     QList<double> scopedValues() const;
+    QList<DatasetObservation> scopedObservations() const;
     QString scopedDatasetLabel() const;
     QString scopedDatasetDescription() const;
     QStringList scopedPreviewLines() const;
@@ -85,7 +96,6 @@ private:
     static QList<double> sortedValues(const QList<double>& values);
     static double percentile(const QList<double>& sorted, double probability);
     static QString exactMode(const QList<double>& values);
-    static bool parseNumericDataset(const QString& fileName, QList<double>* numericValues, QStringList* previewLines, QString* errorMessage);
     static QString formatNumber(double value);
 
 private:

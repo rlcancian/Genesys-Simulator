@@ -6,6 +6,7 @@
 #include "kernel/simulator/Simulator.h"
 #include "tools/FitterDefaultImpl.h"
 #include "tools/HypothesisTesterDefaultImpl1.h"
+#include "tools/SimulationResultsDataset.h"
 
 #include <QAction>
 #include <QCheckBox>
@@ -32,7 +33,7 @@
 #include <QPainterPath>
 #include <QPlainTextEdit>
 #include <QPushButton>
-#include <QRegularExpression>
+#include <QSet>
 #include <QSplitter>
 #include <QSpinBox>
 #include <QStatusBar>
@@ -44,6 +45,7 @@
 #include <QTextEdit>
 #include <QTextStream>
 #include <QToolBar>
+#include <QVariant>
 #include <QVBoxLayout>
 
 #include <algorithm>
@@ -135,6 +137,46 @@ namespace {
                                            : QObject::tr("suggest rejecting this distribution");
         return QObject::tr("The risk of rejecting this fit hypothesis is %1; %2.")
                 .arg(QString::number(pValue, 'g', 5), recommendation);
+    }
+
+    static QString datasetScopeKey(int datasetIndex) {
+        return QStringLiteral("dataset:%1").arg(datasetIndex);
+    }
+
+    static QString replicationScopeKey(int datasetIndex, int replication) {
+        return QStringLiteral("dataset:%1:rep:%2").arg(datasetIndex).arg(replication);
+    }
+
+    static bool parseScopeKey(const QString& key, int* datasetIndex, int* replication) {
+        if (datasetIndex != nullptr) {
+            *datasetIndex = -1;
+        }
+        if (replication != nullptr) {
+            *replication = 0;
+        }
+        const QStringList parts = key.split(QStringLiteral(":"));
+        if (parts.size() < 2 || parts.at(0) != QStringLiteral("dataset")) {
+            return false;
+        }
+        bool ok = false;
+        const int parsedDataset = parts.at(1).toInt(&ok);
+        if (!ok) {
+            return false;
+        }
+        int parsedReplication = 0;
+        if (parts.size() >= 4 && parts.at(2) == QStringLiteral("rep")) {
+            parsedReplication = parts.at(3).toInt(&ok);
+            if (!ok) {
+                return false;
+            }
+        }
+        if (datasetIndex != nullptr) {
+            *datasetIndex = parsedDataset;
+        }
+        if (replication != nullptr) {
+            *replication = parsedReplication;
+        }
+        return true;
     }
 
     static QString dataAnalyzerStyleSheet() {
@@ -525,9 +567,10 @@ void DataAnalyzerWindow::buildWorkspace() {
     _datasetPreview = new QPlainTextEdit(datasetTab);
     _datasetPreview->setReadOnly(true);
     _studySummaryTable = new QTableWidget(datasetTab);
-    _studySummaryTable->setColumnCount(9);
+    _studySummaryTable->setColumnCount(11);
     _studySummaryTable->setHorizontalHeaderLabels({
-            tr("Scope"), tr("Variable"), tr("Type"), tr("Samples"), tr("Mean"), tr("Std dev"), tr("Min"), tr("Max"), tr("CV")
+            tr("Scope"), tr("Variable"), tr("Type"), tr("Replications"), tr("Time"), tr("Samples"), tr("Mean"),
+            tr("Std dev"), tr("Min"), tr("Max"), tr("CV")
     });
     _studySummaryTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     _studySummaryTable->verticalHeader()->setVisible(false);
@@ -559,8 +602,8 @@ void DataAnalyzerWindow::buildWorkspace() {
     _histogramPreview = new HistogramPreview(descriptiveTab);
     auto* rawLayout = new QHBoxLayout();
     _rawDataTable = new QTableWidget(descriptiveTab);
-    _rawDataTable->setColumnCount(2);
-    _rawDataTable->setHorizontalHeaderLabels({tr("Index"), tr("Raw value")});
+    _rawDataTable->setColumnCount(4);
+    _rawDataTable->setHorizontalHeaderLabels({tr("Index"), tr("Replication"), tr("Time"), tr("Raw value")});
     _rawDataTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     _movingAverageTable = new QTableWidget(descriptiveTab);
     _movingAverageTable->setColumnCount(2);
@@ -801,7 +844,10 @@ void DataAnalyzerWindow::connectActions() {
     });
     connect(_datasetsList, &QListWidget::currentRowChanged, this, [this](int row) {
         if (row >= 0 && row < _datasets.size()) {
-            _scopeCombo->setCurrentIndex(row);
+            const int scopeIndex = _scopeCombo->findData(datasetScopeKey(row));
+            if (scopeIndex >= 0) {
+                _scopeCombo->setCurrentIndex(scopeIndex);
+            }
         }
     });
     connect(_doePlotSelector, &QComboBox::currentTextChanged, this, [this](const QString& mode) {
@@ -866,7 +912,14 @@ void DataAnalyzerWindow::openDataset() {
 
 void DataAnalyzerWindow::importSimulationResponsesSnapshot() {
     refreshModelResponses();
+    Model* model = _simulator != nullptr && _simulator->getModelManager() != nullptr
+                       ? _simulator->getModelManager()->current()
+                       : nullptr;
+    const int replication = model != nullptr && model->getSimulation() != nullptr
+                                ? static_cast<int>(model->getSimulation()->getCurrentReplicationNumber())
+                                : 1;
     QList<double> values;
+    QList<DatasetObservation> observations;
     QStringList preview;
     for (int row = 0; row < _modelResponsesTable->rowCount(); ++row) {
         QTableWidgetItem* valueItem = _modelResponsesTable->item(row, 3);
@@ -877,6 +930,10 @@ void DataAnalyzerWindow::importSimulationResponsesSnapshot() {
         const double value = valueItem->text().toDouble(&ok);
         if (ok && std::isfinite(value)) {
             values.append(value);
+            DatasetObservation observation;
+            observation.replication = std::max(1, replication);
+            observation.value = value;
+            observations.append(observation);
             const QString name = _modelResponsesTable->item(row, 2) != nullptr
                                      ? _modelResponsesTable->item(row, 2)->text()
                                      : tr("response");
@@ -891,32 +948,66 @@ void DataAnalyzerWindow::importSimulationResponsesSnapshot() {
             tr("Genesys current model snapshot"),
             preview,
             values,
-            true
+            true,
+            observations
     });
     statusBar()->showMessage(tr("Imported %1 numeric response value(s).").arg(values.size()), 4000);
 }
 
 void DataAnalyzerWindow::loadDatasetFromFile(const QString& fileName) {
-    QList<double> numericValues;
-    QStringList previewLines;
-    QString errorMessage;
-    if (!parseNumericDataset(fileName, &numericValues, &previewLines, &errorMessage)) {
-        QMessageBox::warning(this, tr("Data Analyzer"), errorMessage);
+    SimulationResultsDataset parsedDataset;
+    std::string errorMessage;
+    if (!SimulationResultsDatasetParser::loadFromTextFile(fileName.toStdString(), &parsedDataset, &errorMessage)) {
+        QMessageBox::warning(this, tr("Data Analyzer"), QString::fromStdString(errorMessage));
         return;
     }
+
+    QList<double> numericValues;
+    QList<DatasetObservation> observations;
+    for (const SimulationResultsObservation& parsedObservation : parsedDataset.observations) {
+        DatasetObservation observation;
+        observation.replication = static_cast<int>(parsedObservation.replication);
+        observation.time = parsedObservation.time;
+        observation.hasTime = parsedObservation.hasTime;
+        observation.value = parsedObservation.value;
+        observations.append(observation);
+        numericValues.append(parsedObservation.value);
+    }
+    QStringList previewLines;
+    for (const std::string& line : parsedDataset.previewLines) {
+        previewLines.append(QString::fromStdString(line));
+    }
+    const QString detectedVariableName = !parsedDataset.expressionName.empty()
+                                             ? QString::fromStdString(parsedDataset.expressionName)
+                                             : QFileInfo(fileName).completeBaseName();
+    const QString detectedDescription = parsedDataset.recordFile
+                                            ? tr("Genesys Record output loaded from %1; %2 replication(s) detected.")
+                                                      .arg(QFileInfo(fileName).fileName())
+                                                      .arg(static_cast<int>(parsedDataset.replications().size()))
+                                            : tr("Raw observations loaded from %1").arg(QFileInfo(fileName).fileName());
+
     QDialog metadataDialog(this);
     metadataDialog.setWindowTitle(tr("Dataset metadata"));
     auto* form = new QFormLayout(&metadataDialog);
     auto* datasetName = new QLineEdit(QFileInfo(fileName).fileName(), &metadataDialog);
-    auto* variableName = new QLineEdit(QFileInfo(fileName).completeBaseName(), &metadataDialog);
+    auto* variableName = new QLineEdit(detectedVariableName, &metadataDialog);
     auto* variableType = new QComboBox(&metadataDialog);
     variableType->addItems({tr("Continuous numeric"), tr("Discrete numeric")});
-    auto* description = new QLineEdit(tr("Raw observations loaded from %1").arg(QFileInfo(fileName).fileName()),
-                                      &metadataDialog);
+    auto* description = new QLineEdit(detectedDescription, &metadataDialog);
+    auto* detectedFormat = new QLabel(
+            parsedDataset.recordFile
+                    ? tr("Genesys Record file, %1 observation(s), %2 replication(s), %3 time column.")
+                              .arg(numericValues.size())
+                              .arg(static_cast<int>(parsedDataset.replications().size()))
+                              .arg(parsedDataset.timeDependent ? tr("with") : tr("without"))
+                    : tr("Numeric text file, %1 observation(s).").arg(numericValues.size()),
+            &metadataDialog);
+    detectedFormat->setWordWrap(true);
     form->addRow(tr("Dataset name:"), datasetName);
     form->addRow(tr("Random variable name:"), variableName);
     form->addRow(tr("Random variable type:"), variableType);
     form->addRow(tr("Description:"), description);
+    form->addRow(tr("Detected format:"), detectedFormat);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &metadataDialog);
     form->addRow(buttons);
     connect(buttons, &QDialogButtonBox::accepted, &metadataDialog, &QDialog::accept);
@@ -936,7 +1027,10 @@ void DataAnalyzerWindow::loadDatasetFromFile(const QString& fileName) {
             fileName,
             previewLines,
             numericValues,
-            true
+            true,
+            observations,
+            parsedDataset.recordFile,
+            parsedDataset.timeDependent
     });
 }
 
@@ -958,14 +1052,28 @@ void DataAnalyzerWindow::refreshDatasetList() {
 }
 
 void DataAnalyzerWindow::refreshScopeSelector() {
-    const int previousIndex = _scopeCombo->currentIndex();
+    const QString previousKey = _scopeCombo->currentData().toString();
     _scopeCombo->blockSignals(true);
     _scopeCombo->clear();
-    for (const DatasetDescriptor& dataset: _datasets) {
-        _scopeCombo->addItem(dataset.datasetName);
+    for (int datasetIndex = 0; datasetIndex < _datasets.size(); ++datasetIndex) {
+        const DatasetDescriptor& dataset = _datasets.at(datasetIndex);
+        _scopeCombo->addItem(dataset.datasetName, datasetScopeKey(datasetIndex));
+        QSet<int> replications;
+        for (const DatasetObservation& observation : dataset.observations) {
+            replications.insert(observation.replication);
+        }
+        if (replications.size() > 1) {
+            QList<int> sortedReplications = replications.values();
+            std::sort(sortedReplications.begin(), sortedReplications.end());
+            for (int replication : sortedReplications) {
+                _scopeCombo->addItem(tr("  %1 / replication %2").arg(dataset.datasetName).arg(replication),
+                                     replicationScopeKey(datasetIndex, replication));
+            }
+        }
     }
-    _scopeCombo->addItem(tr("All datasets together"));
-    _scopeCombo->setCurrentIndex(_scopeCombo->count() > 0 ? _scopeCombo->count() - 1 : previousIndex);
+    _scopeCombo->addItem(tr("All datasets together"), QStringLiteral("all"));
+    const int restoredIndex = previousKey.isEmpty() ? -1 : _scopeCombo->findData(previousKey);
+    _scopeCombo->setCurrentIndex(restoredIndex >= 0 ? restoredIndex : _scopeCombo->count() - 1);
     _scopeCombo->blockSignals(false);
 }
 
@@ -1015,38 +1123,73 @@ void DataAnalyzerWindow::refreshStudySummaryView() {
     }
 
     auto addSummaryRow = [this](const QString& scope, const QString& variable, const QString& type,
+                                const QString& replications, const QString& timeColumn,
                                 const DataSummary& summary) {
         const int row = _studySummaryTable->rowCount();
         _studySummaryTable->insertRow(row);
         _studySummaryTable->setItem(row, 0, readOnlyItem(scope));
         _studySummaryTable->setItem(row, 1, readOnlyItem(variable));
         _studySummaryTable->setItem(row, 2, readOnlyItem(type));
-        _studySummaryTable->setItem(row, 3, readOnlyItem(QString::number(summary.count)));
-        _studySummaryTable->setItem(row, 4, readOnlyItem(formatNumber(summary.mean)));
-        _studySummaryTable->setItem(row, 5, readOnlyItem(formatNumber(summary.stddev)));
-        _studySummaryTable->setItem(row, 6, readOnlyItem(formatNumber(summary.min)));
-        _studySummaryTable->setItem(row, 7, readOnlyItem(formatNumber(summary.max)));
-        _studySummaryTable->setItem(row, 8, readOnlyItem(formatNumber(summary.cv)));
+        _studySummaryTable->setItem(row, 3, readOnlyItem(replications));
+        _studySummaryTable->setItem(row, 4, readOnlyItem(timeColumn));
+        _studySummaryTable->setItem(row, 5, readOnlyItem(QString::number(summary.count)));
+        _studySummaryTable->setItem(row, 6, readOnlyItem(formatNumber(summary.mean)));
+        _studySummaryTable->setItem(row, 7, readOnlyItem(formatNumber(summary.stddev)));
+        _studySummaryTable->setItem(row, 8, readOnlyItem(formatNumber(summary.min)));
+        _studySummaryTable->setItem(row, 9, readOnlyItem(formatNumber(summary.max)));
+        _studySummaryTable->setItem(row, 10, readOnlyItem(formatNumber(summary.cv)));
     };
 
     _studySummaryTable->setRowCount(0);
     for (const DatasetDescriptor& dataset : _datasets) {
+        QSet<int> replications;
+        for (const DatasetObservation& observation : dataset.observations) {
+            replications.insert(observation.replication);
+        }
         addSummaryRow(dataset.datasetName, dataset.randomVariableName, dataset.variableType,
+                      replications.isEmpty() ? QStringLiteral("1") : QString::number(replications.size()),
+                      dataset.timeDependent ? tr("yes") : tr("no"),
                       summarizeValues(dataset.values));
+        if (replications.size() > 1) {
+            QList<int> sortedReplications = replications.values();
+            std::sort(sortedReplications.begin(), sortedReplications.end());
+            for (int replication : sortedReplications) {
+                QList<double> replicationValues;
+                for (const DatasetObservation& observation : dataset.observations) {
+                    if (observation.replication == replication) {
+                        replicationValues.append(observation.value);
+                    }
+                }
+                addSummaryRow(tr("%1 / replication %2").arg(dataset.datasetName).arg(replication),
+                              dataset.randomVariableName, dataset.variableType, QString::number(replication),
+                              dataset.timeDependent ? tr("yes") : tr("no"), summarizeValues(replicationValues));
+            }
+        }
     }
     QList<double> pooledValues;
     for (const DatasetDescriptor& dataset : _datasets) {
         pooledValues.append(dataset.values);
     }
-    addSummaryRow(tr("All datasets together"), tr("Pooled random variable values"), tr("Mixed numeric"),
+    addSummaryRow(tr("All datasets together"), tr("Pooled random variable values"), tr("Mixed numeric"), tr("-"), tr("-"),
                   summarizeValues(pooledValues));
 }
 
 QList<double> DataAnalyzerWindow::scopedValues() const {
     QList<double> values;
-    const int scopeIndex = _scopeCombo != nullptr ? _scopeCombo->currentIndex() : -1;
-    if (scopeIndex >= 0 && scopeIndex < _datasets.size()) {
-        return _datasets.at(scopeIndex).values;
+    int datasetIndex = -1;
+    int replication = 0;
+    const QString scopeKey = _scopeCombo != nullptr ? _scopeCombo->currentData().toString() : QStringLiteral("all");
+    if (parseScopeKey(scopeKey, &datasetIndex, &replication) && datasetIndex >= 0 && datasetIndex < _datasets.size()) {
+        const DatasetDescriptor& dataset = _datasets.at(datasetIndex);
+        if (replication > 0 && !dataset.observations.isEmpty()) {
+            for (const DatasetObservation& observation : dataset.observations) {
+                if (observation.replication == replication) {
+                    values.append(observation.value);
+                }
+            }
+            return values;
+        }
+        return dataset.values;
     }
     for (const DatasetDescriptor& dataset: _datasets) {
         values.append(dataset.values);
@@ -1054,22 +1197,73 @@ QList<double> DataAnalyzerWindow::scopedValues() const {
     return values;
 }
 
+QList<DataAnalyzerWindow::DatasetObservation> DataAnalyzerWindow::scopedObservations() const {
+    QList<DatasetObservation> observations;
+    int datasetIndex = -1;
+    int replication = 0;
+    const QString scopeKey = _scopeCombo != nullptr ? _scopeCombo->currentData().toString() : QStringLiteral("all");
+    if (parseScopeKey(scopeKey, &datasetIndex, &replication) && datasetIndex >= 0 && datasetIndex < _datasets.size()) {
+        const DatasetDescriptor& dataset = _datasets.at(datasetIndex);
+        if (!dataset.observations.isEmpty()) {
+            for (const DatasetObservation& observation : dataset.observations) {
+                if (replication <= 0 || observation.replication == replication) {
+                    observations.append(observation);
+                }
+            }
+        } else {
+            for (double value : dataset.values) {
+                DatasetObservation observation;
+                observation.value = value;
+                observations.append(observation);
+            }
+        }
+        return observations;
+    }
+    for (const DatasetDescriptor& dataset : _datasets) {
+        if (!dataset.observations.isEmpty()) {
+            observations.append(dataset.observations);
+        } else {
+            for (double value : dataset.values) {
+                DatasetObservation observation;
+                observation.value = value;
+                observations.append(observation);
+            }
+        }
+    }
+    return observations;
+}
+
 QString DataAnalyzerWindow::scopedDatasetLabel() const {
-    const int scopeIndex = _scopeCombo != nullptr ? _scopeCombo->currentIndex() : -1;
-    if (scopeIndex >= 0 && scopeIndex < _datasets.size()) {
-        const DatasetDescriptor& dataset = _datasets.at(scopeIndex);
+    int datasetIndex = -1;
+    int replication = 0;
+    const QString scopeKey = _scopeCombo != nullptr ? _scopeCombo->currentData().toString() : QStringLiteral("all");
+    if (parseScopeKey(scopeKey, &datasetIndex, &replication) && datasetIndex >= 0 && datasetIndex < _datasets.size()) {
+        const DatasetDescriptor& dataset = _datasets.at(datasetIndex);
+        if (replication > 0) {
+            return tr("%1 (%2), replication %3").arg(dataset.datasetName, dataset.randomVariableName).arg(replication);
+        }
         return tr("%1 (%2)").arg(dataset.datasetName, dataset.randomVariableName);
     }
     return tr("All datasets together");
 }
 
 QString DataAnalyzerWindow::scopedDatasetDescription() const {
-    const int scopeIndex = _scopeCombo != nullptr ? _scopeCombo->currentIndex() : -1;
-    if (scopeIndex >= 0 && scopeIndex < _datasets.size()) {
-        const DatasetDescriptor& dataset = _datasets.at(scopeIndex);
-        return tr("Dataset: %1\nRandom variable: %2\nType: %3\nSource: %4\nDescription: %5")
+    int datasetIndex = -1;
+    int replication = 0;
+    const QString scopeKey = _scopeCombo != nullptr ? _scopeCombo->currentData().toString() : QStringLiteral("all");
+    if (parseScopeKey(scopeKey, &datasetIndex, &replication) && datasetIndex >= 0 && datasetIndex < _datasets.size()) {
+        const DatasetDescriptor& dataset = _datasets.at(datasetIndex);
+        QSet<int> replications;
+        for (const DatasetObservation& observation : dataset.observations) {
+            replications.insert(observation.replication);
+        }
+        return tr("Dataset: %1\nRandom variable: %2\nType: %3\nSource: %4\nDescription: %5\nFormat: %6, %7 replication(s), %8 time column%9")
                 .arg(dataset.datasetName, dataset.randomVariableName, dataset.variableType, dataset.source,
-                     dataset.description);
+                     dataset.description,
+                     dataset.recordFile ? tr("Genesys Record") : tr("numeric text"))
+                .arg(replications.isEmpty() ? 1 : replications.size())
+                .arg(dataset.timeDependent ? tr("with") : tr("without"))
+                .arg(replication > 0 ? tr("\nCurrent subset: replication %1").arg(replication) : QString());
     }
     return tr("Analysis Study: %1\nDatasets: %2\nScope: all datasets pooled together.")
            .arg(_studyName)
@@ -1077,9 +1271,29 @@ QString DataAnalyzerWindow::scopedDatasetDescription() const {
 }
 
 QStringList DataAnalyzerWindow::scopedPreviewLines() const {
-    const int scopeIndex = _scopeCombo != nullptr ? _scopeCombo->currentIndex() : -1;
-    if (scopeIndex >= 0 && scopeIndex < _datasets.size()) {
-        return _datasets.at(scopeIndex).previewLines;
+    int datasetIndex = -1;
+    int replication = 0;
+    const QString scopeKey = _scopeCombo != nullptr ? _scopeCombo->currentData().toString() : QStringLiteral("all");
+    if (parseScopeKey(scopeKey, &datasetIndex, &replication) && datasetIndex >= 0 && datasetIndex < _datasets.size()) {
+        const DatasetDescriptor& dataset = _datasets.at(datasetIndex);
+        if (replication > 0 && !dataset.observations.isEmpty()) {
+            QStringList lines;
+            lines << tr("Replication %1 observations:").arg(replication);
+            for (const DatasetObservation& observation : dataset.observations) {
+                if (observation.replication != replication) {
+                    continue;
+                }
+                if (lines.size() >= 21) {
+                    break;
+                }
+                lines << (observation.hasTime
+                                  ? tr("time=%1, value=%2").arg(formatNumber(observation.time),
+                                                                formatNumber(observation.value))
+                                  : tr("value=%1").arg(formatNumber(observation.value)));
+            }
+            return lines;
+        }
+        return dataset.previewLines;
     }
     QStringList lines;
     for (const DatasetDescriptor& dataset: _datasets) {
@@ -1091,6 +1305,7 @@ QStringList DataAnalyzerWindow::scopedPreviewLines() const {
 
 void DataAnalyzerWindow::refreshDescriptiveView(const DataSummary& summary) {
     const QList<double> values = scopedValues();
+    const QList<DatasetObservation> observations = scopedObservations();
     _datasetSourceLabel->setText(scopedDatasetDescription());
     _datasetPreview->setPlainText(scopedPreviewLines().join(QStringLiteral("\n")));
 
@@ -1134,7 +1349,16 @@ void DataAnalyzerWindow::refreshDescriptiveView(const DataSummary& summary) {
         int row = _rawDataTable->rowCount();
         _rawDataTable->insertRow(row);
         _rawDataTable->setItem(row, 0, readOnlyItem(QString::number(i + 1)));
-        _rawDataTable->setItem(row, 1, readOnlyItem(formatNumber(values.at(i))));
+        if (i < observations.size()) {
+            const DatasetObservation& observation = observations.at(i);
+            _rawDataTable->setItem(row, 1, readOnlyItem(QString::number(observation.replication)));
+            _rawDataTable->setItem(row, 2, readOnlyItem(observation.hasTime ? formatNumber(observation.time) : tr("n/a")));
+            _rawDataTable->setItem(row, 3, readOnlyItem(formatNumber(observation.value)));
+        } else {
+            _rawDataTable->setItem(row, 1, readOnlyItem(tr("n/a")));
+            _rawDataTable->setItem(row, 2, readOnlyItem(tr("n/a")));
+            _rawDataTable->setItem(row, 3, readOnlyItem(formatNumber(values.at(i))));
+        }
 
         const int first = std::max(0, i - 4);
         double sum = 0.0;
@@ -1653,33 +1877,6 @@ QString DataAnalyzerWindow::exactMode(const QList<double>& values) {
         return QObject::tr("%1 values tied, frequency %2").arg(modes.size()).arg(bestFrequency);
     }
     return QObject::tr("%1 (frequency %2)").arg(modes.join(QStringLiteral(", "))).arg(bestFrequency);
-}
-
-bool DataAnalyzerWindow::parseNumericDataset(const QString& fileName, QList<double>* numericValues,
-                                             QStringList* previewLines, QString* errorMessage) {
-    QFile file(fileName);
-    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        if (errorMessage != nullptr) {
-            *errorMessage = QObject::tr("Could not open selected file.");
-        }
-        return false;
-    }
-    QTextStream stream(&file);
-    while (!stream.atEnd()) {
-        const QString line = stream.readLine();
-        if (previewLines != nullptr && previewLines->size() < 20) {
-            *previewLines << line;
-        }
-        const QStringList tokens = line.split(QRegularExpression("[,;\\s]+"), Qt::SkipEmptyParts);
-        for (const QString& token: tokens) {
-            bool ok = false;
-            const double value = token.toDouble(&ok);
-            if (ok && std::isfinite(value)) {
-                numericValues->append(value);
-            }
-        }
-    }
-    return true;
 }
 
 QString DataAnalyzerWindow::formatNumber(double value) {

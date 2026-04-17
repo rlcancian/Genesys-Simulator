@@ -171,6 +171,7 @@ SOURCES += \
     ../../../../tools/OptimizerDefaultImpl1.cpp \
     ../../../../tools/ProbabilityDistribution.cpp \
     ../../../../tools/ProbabilityDistributionBase.cpp \
+    ../../../../tools/SimulationResultsDataset.cpp \
     ../../../../tools/SolverDefaultImpl1.cpp \
     ../../../BaseGenesysTerminalApplication.cpp \
     ../../../terminal/GenesysShell/GenesysShell.cpp \
@@ -518,6 +519,7 @@ HEADERS += \
     ../../../../tools/OptimizerDefaultImpl1.h \
     ../../../../tools/Optimizer_if.h \
     ../../../../tools/ProbabilityDistribution.h \
+    ../../../../tools/SimulationResultsDataset.h \
     ../../../../tools/ProbabilityDistributionBase.h \
     ../../../../tools/Quadrature_if.h \
     ../../../../tools/RootFinder_if.h \
