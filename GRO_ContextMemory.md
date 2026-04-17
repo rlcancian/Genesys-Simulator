@@ -199,13 +199,19 @@ instructions are considered obsolete or consolidated here.
   colony behavior.
 - **Current properties/state:** `GroProgram` reference, `SimulationStep`,
   `InitialColonyTime`, current internal colony time, `InitialPopulation`,
-  current population summary, `GridWidth`, and `GridHeight`.
+  current population summary, internal `BacteriumState` vector, `GridWidth`,
+  and `GridHeight`.
 - **Current behavior:** can initialize colony runtime state between replications,
   advance internal colony time by one configured simulation step, and execute a
   configured `GroProgram` once through the plugin-side
   `GroProgramParser` -> `GroProgramCompiler` -> `GroProgramRuntime` pipeline.
   On successful execution, the colony copies back internal colony time and
   population size from `GroProgramRuntimeState`.
+- **Internal bacteria state:** each bacterium currently has a stable per-
+  replication id, birth time, last update time, alive flag, and deterministic
+  discrete grid coordinates. Population-changing runtime commands resize this
+  internal vector so the population summary and owned bacteria state remain
+  synchronized.
 - **Dispatch behavior:** when a `GroProgram` is configured, `_onDispatchEvent`
   executes that program once and traces success/failure. When no `GroProgram` is
   configured, it preserves the previous fallback behavior of advancing internal
@@ -213,9 +219,9 @@ instructions are considered obsolete or consolidated here.
 - **Connectivity metadata:** registered as a self-contained source/sink-style
   component with zero required inputs and outputs for the first plugin slice.
 - **Current limitation:** it does not yet schedule periodic events in the
-  GenESyS future event calendar and does not yet model per-bacterium state,
-  spatial cellular automata, signals, reactions, or complete Gro biological
-  semantics.
+  GenESyS future event calendar and does not yet model per-bacterium command
+  behavior, spatial cellular automata, signals, reactions, or complete Gro
+  biological semantics.
 
 ### Static Plugin Registration
 
@@ -285,6 +291,8 @@ instructions are considered obsolete or consolidated here.
   - `55058527 Merge remote-tracking branch 'origin/WiP20261' into WiP20261_GRO`
   - `be4d0337 Add isolated Gro runtime helper`
   - `3b59b3c2 Expand Gro runtime commands`
+  - `8985889e Connect Gro runtime to bacteria colony`
+  - `24d4be21 Add internal bacteria colony state`
 - Latest known validation after active GRO phases:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
@@ -310,11 +318,12 @@ instructions are considered obsolete or consolidated here.
 - Latest synchronization with `origin/WiP20261` produced merge commit
   `55058527` and brought in GUI preferences/theme work.
 - Conflict status during the latest synchronization: no conflicts occurred.
-- Latest completed GRO phase before the current user request: isolated
-  `GroProgramRuntime` helper.
-- Current user-authorized work completed two ordered subphases:
+- Latest completed GRO phase: internal bacteria state inside `BacteriaColony`.
+- Recent user-authorized work completed:
   1. expanded the isolated runtime command set;
-  2. connected the isolated runtime pipeline to `BacteriaColony`.
+  2. connected the isolated runtime pipeline to `BacteriaColony`;
+  3. added the first owned per-bacterium state vector synchronized with colony
+     population changes.
 - These changes are local only until explicit publication is requested.
 - Ask the user for explicit confirmation before proceeding to the next technical
   phase.
@@ -323,15 +332,15 @@ instructions are considered obsolete or consolidated here.
 
 - Do not continue automatically. Wait for explicit user confirmation before the
   next technical phase.
-- Suggested next technical phase: decide and implement the first scheduler or
-  biological-state step after the runtime-to-colony bridge. A conservative next
-  option is to keep scheduler integration separate and define internal
-  per-bacterium colony state first, so population mutations can evolve beyond a
-  summary counter.
+- Suggested next technical phase: decide whether to evolve this internal
+  bacteria state toward command-level per-bacterium behavior first, or to add
+  event scheduler integration around the now stateful colony. Keep cellular
+  automata, signals, reactions, and complete Gro semantics as later phases.
 - Decide whether `BacteriaColony` should schedule periodic internal events using
   `SimulationStep` or remain API/plugin-driven until parser/runtime semantics
   are clearer.
-- Define internal bacteria state representation inside a colony.
+- Extend internal bacteria state with behavior fields only after an explicit
+  phase decision.
 - Define discrete grid/cellular automata data structures and how they relate to
   existing cellular automata plugins.
 - Later, evaluate continuous 2D space support inspired by Gro.
@@ -578,6 +587,37 @@ instructions are considered obsolete or consolidated here.
 - No push/publication was performed.
 - Suggested next phase remains separate from this bridge: define the next
   biological-state or scheduler integration step explicitly before continuing.
+
+### 2026-04-17 - Internal Bacteria State Checkpoint
+
+- User requested starting with internal bacteria state and authorized proceeding
+  until a stable checkpoint, with explicit stage/commit and a question about
+  pausing or continuing at the checkpoint.
+- Ran `git fetch origin`; `origin/WiP20261` remained at `f769ec61` and local
+  `WiP20261_GRO` already contained that base.
+- Added the first `BacteriaColony::BacteriumState` representation owned by the
+  colony instead of creating bacteria as separate `ModelComponent` instances.
+- Each internal bacterium currently stores:
+  - stable per-replication id;
+  - birth time;
+  - last update time;
+  - deterministic grid coordinates;
+  - alive flag.
+- `BacteriaColony` now initializes the internal bacteria vector between
+  replications, updates bacterium timestamps when colony time advances, and
+  resizes the internal vector after successful runtime population changes.
+- Grid coordinates are assigned deterministically from vector index over the
+  configured discrete grid, wrapping when population exceeds grid capacity.
+- Added unit coverage ensuring initial internal bacteria state is created and
+  remains synchronized after `tick()`, `grow`, `divide`, and `set_population`.
+- Validation after this checkpoint:
+  - `git diff --check` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Functional checkpoint commit:
+  - `24d4be21 Add internal bacteria colony state`
+- No push/publication was performed.
+- Suggested next phase: either add the first per-bacterium behavior fields and
+  command effects, or wire scheduler execution around the now stateful colony.
 
 ### 2026-04-17 - Gro Initial Semantic IR Phase
 
