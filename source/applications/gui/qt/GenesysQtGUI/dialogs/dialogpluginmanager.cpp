@@ -22,11 +22,12 @@
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
-#include <QTextEdit>
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <sstream>
+#include <vector>
 
 namespace {
 
@@ -46,11 +47,6 @@ DialogPluginManager::DialogPluginManager(QWidget *parent) :
 	ui->setupUi(this);
 	_configureLoadedPluginTable();
 	_configurePluginIssuesTable();
-	ui->textEditPluginDetails->setReadOnly(true);
-	connect(ui->tableWidgetPluginIssues, &QTableWidget::itemSelectionChanged,
-	        this, &DialogPluginManager::on_tableWidgetPlugins_itemSelectionChanged);
-	connect(ui->tabWidgetPluginTables, &QTabWidget::currentChanged,
-	        this, &DialogPluginManager::on_tableWidgetPlugins_itemSelectionChanged);
 }
 
 DialogPluginManager::~DialogPluginManager()
@@ -169,54 +165,74 @@ void DialogPluginManager::on_pushButtonResolveSelected_clicked()
 		return;
 	}
 
-	const PluginLoadIssue* selectedIssue = _selectedPluginLoadIssue();
-	if (selectedIssue == nullptr) {
+	const std::vector<PluginLoadIssue> selectedIssues = _selectedPluginLoadIssues();
+	if (selectedIssues.empty()) {
 		_showOperationResult(
-			tr("Resolve plugin dependencies"),
-			tr("Select a blocked plugin row to resolve its system dependencies and load it.")
-		);
-		return;
-	}
-	const PluginLoadIssue issue = *selectedIssue;
-	const std::string filename = issue.getFilename();
-
-	if (!issue.hasSystemDependencyResult()) {
-		_showOperationResult(
-			tr("Resolve plugin dependencies"),
-			tr("This plugin was not blocked by a system dependency that can be resolved automatically.\n\n%1")
-				.arg(QString::fromStdString(issue.diagnosticText()))
-		);
-		return;
-	}
-	if (!issue.getSystemDependencyResult().canAttemptInstallForAllMissing()) {
-		_showOperationResult(
-			tr("Resolve plugin dependencies"),
-			tr("The selected plugin has missing or unverifiable dependencies that cannot all be installed automatically.\n\n%1")
-				.arg(QString::fromStdString(issue.diagnosticText()))
+			tr("Resolve / load plugins"),
+			tr("Select one or more blocked plugin rows to resolve their system dependencies and retry loading.")
 		);
 		return;
 	}
 
-	if (!_runInstallCommandsForIssue(issue)) {
-		_refreshPluginTable();
-		_showOperationResult(
-			tr("Resolve plugin dependencies"),
-			tr("The install command did not complete successfully or the dependency is still unresolved. See the problem details for diagnostics.")
-		);
-		return;
+	PluginManager* pluginManager = _simulator->getPluginManager();
+	QStringList loadedPlugins;
+	QStringList stillBlockedPlugins;
+	QStringList installFailures;
+	QStringList feedback;
+
+	for (const PluginLoadIssue& selectedIssue : selectedIssues) {
+		const std::string filename = selectedIssue.getFilename();
+		PluginLoadIssue issueForInstall = selectedIssue;
+
+		if (selectedIssue.hasSystemDependencyResult()) {
+			const SystemDependencyCheckResult currentSystemDependencies =
+				pluginManager->checkSystemDependencies(filename);
+			if (!currentSystemDependencies.entries().empty() && !currentSystemDependencies.canInsertPlugin()) {
+				issueForInstall = PluginLoadIssue(
+					selectedIssue.getFilename(),
+					selectedIssue.getPluginTypename(),
+					selectedIssue.getReason(),
+					selectedIssue.getMessage(),
+					currentSystemDependencies);
+				if (currentSystemDependencies.canAttemptInstallForAllMissing()) {
+					QString issueFeedback;
+					if (!_runInstallCommandsForIssue(issueForInstall, &issueFeedback)) {
+						installFailures << QString::fromStdString(filename);
+					}
+					if (!issueFeedback.trimmed().isEmpty()) {
+						feedback << issueFeedback.trimmed();
+					}
+				}
+			}
+		}
+
+		PluginInsertionOptions options;
+		Plugin* plugin = pluginManager->insert(filename, options);
+		if (plugin != nullptr && plugin->getPluginInfo() != nullptr) {
+			loadedPlugins << QString::fromStdString(plugin->getPluginInfo()->getPluginTypename());
+		} else {
+			stillBlockedPlugins << QString::fromStdString(filename);
+		}
 	}
 
-	PluginInsertionOptions options;
-	Plugin* plugin = _simulator->getPluginManager()->insert(filename, options);
-	_simulator->getPluginManager()->completePluginsFieldsAndTemplates();
+	pluginManager->completePluginsFieldsAndTemplates();
 	_refreshPluginTable();
 	_refreshPluginCatalog();
-	_showOperationResult(
-		tr("Resolve plugin dependencies"),
-		plugin != nullptr
-			? tr("System dependencies were satisfied and the plugin is now loaded.")
-			: tr("The plugin is still blocked. See the diagnostic row or trace output for the check and install command.")
-	);
+
+	QString message = tr("Resolve/load operation finished.");
+	if (!loadedPlugins.isEmpty()) {
+		message += tr("\n\nLoaded:\n%1").arg(loadedPlugins.join("\n"));
+	}
+	if (!stillBlockedPlugins.isEmpty()) {
+		message += tr("\n\nStill blocked:\n%1").arg(stillBlockedPlugins.join("\n"));
+	}
+	if (!installFailures.isEmpty()) {
+		message += tr("\n\nInstall command failed or was cancelled for:\n%1").arg(installFailures.join("\n"));
+	}
+	if (!feedback.isEmpty()) {
+		message += tr("\n\nInstall command feedback:\n%1").arg(feedback.join("\n\n"));
+	}
+	_showOperationResult(tr("Resolve / load plugins"), message);
 }
 
 void DialogPluginManager::on_pushButtonRemove_clicked()
@@ -265,71 +281,46 @@ void DialogPluginManager::on_pushButtonRefresh_clicked()
 	_refreshPluginTable();
 }
 
-void DialogPluginManager::on_tableWidgetPlugins_itemSelectionChanged()
-{
-	if (ui->tabWidgetPluginTables->currentWidget() == ui->tabPluginIssues) {
-		const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPluginIssues->selectedItems();
-		if (!selectedItems.isEmpty()) {
-			QTableWidgetItem* fileItem = ui->tableWidgetPluginIssues->item(selectedItems.first()->row(), 0);
-			if (fileItem != nullptr) {
-				const QString details = fileItem->data(Qt::UserRole + 1).toString();
-				if (!details.isEmpty()) {
-					ui->textEditPluginDetails->setPlainText(details);
-					return;
-				}
-			}
-		}
-		_showNoPluginDetails();
-		return;
-	}
-
-	const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPlugins->selectedItems();
-	if (!selectedItems.isEmpty()) {
-		QTableWidgetItem* typeItem = ui->tableWidgetPlugins->item(selectedItems.first()->row(), 0);
-		if (typeItem != nullptr) {
-			const QString dependencyIssueDetails = typeItem->data(Qt::UserRole + 1).toString();
-			if (!dependencyIssueDetails.isEmpty()) {
-				ui->textEditPluginDetails->setPlainText(dependencyIssueDetails);
-				return;
-			}
-		}
-	}
-	_showPluginDetails(_selectedPlugin());
-}
-
 void DialogPluginManager::_configureLoadedPluginTable()
 {
-	ui->tableWidgetPlugins->setColumnCount(11);
+	ui->tableWidgetPlugins->setColumnCount(16);
 	ui->tableWidgetPlugins->setHorizontalHeaderLabels({
-		tr("Plugin/File"),
+		tr("Plugin"),
 		tr("State"),
 		tr("Kind"),
 		tr("Category"),
 		tr("Version"),
+		tr("Date"),
 		tr("Author"),
 		tr("Inputs"),
 		tr("Outputs"),
 		tr("Flags"),
 		tr("Dynamic deps"),
-		tr("System deps")
+		tr("System deps"),
+		tr("Fields"),
+		tr("Observation"),
+		tr("Description"),
+		tr("Template")
 	});
 	_configureCommonTable(ui->tableWidgetPlugins);
 }
 
 void DialogPluginManager::_configurePluginIssuesTable()
 {
-	ui->tableWidgetPluginIssues->setColumnCount(8);
+	ui->tableWidgetPluginIssues->setColumnCount(9);
 	ui->tableWidgetPluginIssues->setHorizontalHeaderLabels({
 		tr("Plugin/File"),
 		tr("Plugin type"),
 		tr("Problem"),
-		tr("Dependency"),
+		tr("System dependency"),
 		tr("Status"),
 		tr("Check command"),
 		tr("Install command"),
-		tr("Diagnostic")
+		tr("Diagnostic"),
+		tr("Suggested action")
 	});
 	_configureCommonTable(ui->tableWidgetPluginIssues);
+	ui->tableWidgetPluginIssues->setSelectionMode(QAbstractItemView::ExtendedSelection);
 }
 
 void DialogPluginManager::_refreshPluginTable()
@@ -337,11 +328,23 @@ void DialogPluginManager::_refreshPluginTable()
 	ui->tableWidgetPlugins->setRowCount(0);
 	ui->tableWidgetPluginIssues->setRowCount(0);
 	if (_simulator == nullptr || _simulator->getPluginManager() == nullptr) {
-		_showNoPluginDetails();
 		return;
 	}
 
 	PluginManager* pluginManager = _simulator->getPluginManager();
+	auto makeItem = [](const QString& text, const QString& tooltip = QString()) {
+		QString displayText = text.simplified();
+		if (displayText.size() > 120) {
+			displayText = displayText.left(117) + "...";
+		}
+		auto* item = new QTableWidgetItem(displayText);
+		const QString fullTooltip = tooltip.isEmpty() ? text : tooltip;
+		if (!fullTooltip.trimmed().isEmpty()) {
+			item->setToolTip(fullTooltip.trimmed());
+		}
+		return item;
+	};
+
 	for (unsigned int i = 0; i < pluginManager->size(); i++) {
 		Plugin* plugin = pluginManager->getAtRank(i);
 		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
@@ -353,14 +356,16 @@ void DialogPluginManager::_refreshPluginTable()
 
 		auto* typeItem = new QTableWidgetItem(QString::fromStdString(info->getPluginTypename()));
 		typeItem->setData(Qt::UserRole, QVariant::fromValue<quintptr>(reinterpret_cast<quintptr>(plugin)));
+		typeItem->setToolTip(QString::fromStdString(info->getPluginTypename()));
 		ui->tableWidgetPlugins->setItem(row, 0, typeItem);
-		ui->tableWidgetPlugins->setItem(row, 1, new QTableWidgetItem(tr("Loaded")));
-		ui->tableWidgetPlugins->setItem(row, 2, new QTableWidgetItem(info->isComponent() ? tr("Component") : tr("DataDefinition")));
-		ui->tableWidgetPlugins->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(info->getCategory())));
-		ui->tableWidgetPlugins->setItem(row, 4, new QTableWidgetItem(QString::fromStdString(info->getVersion())));
-		ui->tableWidgetPlugins->setItem(row, 5, new QTableWidgetItem(QString::fromStdString(info->getAuthor())));
-		ui->tableWidgetPlugins->setItem(row, 6, new QTableWidgetItem(QString("%1..%2").arg(info->getMinimumInputs()).arg(info->getMaximumInputs())));
-		ui->tableWidgetPlugins->setItem(row, 7, new QTableWidgetItem(QString("%1..%2").arg(info->getMinimumOutputs()).arg(info->getMaximumOutputs())));
+		ui->tableWidgetPlugins->setItem(row, 1, makeItem(tr("Loaded")));
+		ui->tableWidgetPlugins->setItem(row, 2, makeItem(info->isComponent() ? tr("Component") : tr("DataDefinition")));
+		ui->tableWidgetPlugins->setItem(row, 3, makeItem(QString::fromStdString(info->getCategory())));
+		ui->tableWidgetPlugins->setItem(row, 4, makeItem(QString::fromStdString(info->getVersion())));
+		ui->tableWidgetPlugins->setItem(row, 5, makeItem(QString::fromStdString(info->getDate())));
+		ui->tableWidgetPlugins->setItem(row, 6, makeItem(QString::fromStdString(info->getAuthor())));
+		ui->tableWidgetPlugins->setItem(row, 7, makeItem(QString("%1..%2").arg(info->getMinimumInputs()).arg(info->getMaximumInputs())));
+		ui->tableWidgetPlugins->setItem(row, 8, makeItem(QString("%1..%2").arg(info->getMinimumOutputs()).arg(info->getMaximumOutputs())));
 
 		QStringList flags;
 		if (info->isSource()) flags << tr("Source");
@@ -368,9 +373,13 @@ void DialogPluginManager::_refreshPluginTable()
 		if (info->isSendTransfer()) flags << tr("SendTransfer");
 		if (info->isReceiveTransfer()) flags << tr("ReceiveTransfer");
 		if (info->isGenerateReport()) flags << tr("Report");
-		ui->tableWidgetPlugins->setItem(row, 8, new QTableWidgetItem(flags.join(", ")));
-		ui->tableWidgetPlugins->setItem(row, 9, new QTableWidgetItem(_formatDynamicDependencyTableText(info)));
-		ui->tableWidgetPlugins->setItem(row, 10, new QTableWidgetItem(_formatSystemDependencyTableText(info)));
+		ui->tableWidgetPlugins->setItem(row, 9, makeItem(flags.join(", ")));
+		ui->tableWidgetPlugins->setItem(row, 10, makeItem(_formatDynamicDependencyTableText(info)));
+		ui->tableWidgetPlugins->setItem(row, 11, makeItem(_formatSystemDependencyTableText(info)));
+		ui->tableWidgetPlugins->setItem(row, 12, makeItem(_formatFields(info)));
+		ui->tableWidgetPlugins->setItem(row, 13, makeItem(QString::fromStdString(info->getObservation())));
+		ui->tableWidgetPlugins->setItem(row, 14, makeItem(QString::fromStdString(info->getDescriptionHelp())));
+		ui->tableWidgetPlugins->setItem(row, 15, makeItem(QString::fromStdString(info->getLanguageTemplate())));
 	}
 
 	List<PluginLoadIssue>* issues = pluginManager->getPluginLoadIssues();
@@ -382,14 +391,17 @@ void DialogPluginManager::_refreshPluginTable()
 
 	ui->tableWidgetPlugins->sortItems(0);
 	ui->tableWidgetPluginIssues->sortItems(0);
+	ui->tableWidgetPlugins->resizeColumnsToContents();
+	ui->tableWidgetPluginIssues->resizeColumnsToContents();
 	if (ui->tableWidgetPluginIssues->rowCount() > 0 && ui->tabWidgetPluginTables->currentWidget() == ui->tabPluginIssues) {
 		ui->tableWidgetPluginIssues->selectRow(0);
 		return;
 	}
+	if (ui->tableWidgetPluginIssues->rowCount() == 0 && ui->tabWidgetPluginTables->currentWidget() == ui->tabPluginIssues) {
+		ui->tabWidgetPluginTables->setCurrentWidget(ui->tabLoadedPlugins);
+	}
 	if (ui->tableWidgetPlugins->rowCount() > 0) {
 		ui->tableWidgetPlugins->selectRow(0);
-	} else {
-		_showNoPluginDetails();
 	}
 }
 
@@ -407,8 +419,15 @@ void DialogPluginManager::_appendPluginIssueRow(const PluginLoadIssue& issue)
 	const QColor dependencyProblemColor(255, 210, 210);
 
 	auto makeItem = [dependencyProblemColor](const QString& text) {
-		auto* item = new QTableWidgetItem(text);
+		QString displayText = text.simplified();
+		if (displayText.size() > 120) {
+			displayText = displayText.left(117) + "...";
+		}
+		auto* item = new QTableWidgetItem(displayText);
 		item->setBackground(QBrush(dependencyProblemColor));
+		if (!text.trimmed().isEmpty()) {
+			item->setToolTip(text.trimmed());
+		}
 		return item;
 	};
 
@@ -440,20 +459,19 @@ void DialogPluginManager::_appendPluginIssueRow(const PluginLoadIssue& issue)
 	QTableWidgetItem* diagnosticItem = makeItem(QString::fromStdString(issue.getMessage()));
 	diagnosticItem->setToolTip(detailedDiagnostic);
 	ui->tableWidgetPluginIssues->setItem(row, 7, diagnosticItem);
-}
-
-void DialogPluginManager::_showPluginDetails(Plugin* plugin)
-{
-	if (plugin == nullptr) {
-		_showNoPluginDetails();
-		return;
+	QString suggestedAction;
+	if (issue.hasSystemDependencyResult()) {
+		if (issue.getSystemDependencyResult().canAttemptInstallForAllMissing()) {
+			suggestedAction = tr("Install missing system dependencies, then retry load.");
+		} else {
+			suggestedAction = tr("Resolve system dependencies manually, then retry load.");
+		}
+	} else if (issue.getReason() == PluginLoadIssue::Reason::DynamicDependencyFailure) {
+		suggestedAction = tr("Load or repair the dependent plugin/library, then retry load.");
+	} else {
+		suggestedAction = tr("Retry load after correcting the diagnostic condition.");
 	}
-	ui->textEditPluginDetails->setPlainText(_formatPluginDetails(plugin));
-}
-
-void DialogPluginManager::_showNoPluginDetails()
-{
-	ui->textEditPluginDetails->setPlainText(tr("Select a plugin to see its read-only PluginInformation."));
+	ui->tableWidgetPluginIssues->setItem(row, 8, makeItem(suggestedAction));
 }
 
 Plugin* DialogPluginManager::_selectedPlugin() const
@@ -470,38 +488,46 @@ Plugin* DialogPluginManager::_selectedPlugin() const
 	return reinterpret_cast<Plugin*>(pointer);
 }
 
-std::string DialogPluginManager::_selectedDependencyIssueFilename() const
+std::vector<PluginLoadIssue> DialogPluginManager::_selectedPluginLoadIssues() const
 {
-	const QList<QTableWidgetItem*> selectedItems = ui->tableWidgetPluginIssues->selectedItems();
-	if (selectedItems.isEmpty()) {
-		return "";
+	std::vector<PluginLoadIssue> selectedIssues;
+	if (ui->tabWidgetPluginTables->currentWidget() != ui->tabPluginIssues) {
+		return selectedIssues;
 	}
-	QTableWidgetItem* typeItem = ui->tableWidgetPluginIssues->item(selectedItems.first()->row(), 0);
-	if (typeItem == nullptr) {
-		return "";
-	}
-	return typeItem->data(Qt::UserRole + 2).toString().toStdString();
-}
-
-const PluginLoadIssue* DialogPluginManager::_selectedPluginLoadIssue() const
-{
 	if (_simulator == nullptr || _simulator->getPluginManager() == nullptr) {
-		return nullptr;
-	}
-	const std::string filename = _selectedDependencyIssueFilename();
-	if (filename.empty()) {
-		return nullptr;
+		return selectedIssues;
 	}
 	List<PluginLoadIssue>* issues = _simulator->getPluginManager()->getPluginLoadIssues();
 	if (issues == nullptr) {
-		return nullptr;
+		return selectedIssues;
 	}
-	for (const PluginLoadIssue& issue : *issues->list()) {
-		if (issue.getFilename() == filename) {
-			return &issue;
+
+	std::vector<int> selectedRows;
+	for (QTableWidgetItem* item : ui->tableWidgetPluginIssues->selectedItems()) {
+		if (item != nullptr) {
+			selectedRows.push_back(item->row());
 		}
 	}
-	return nullptr;
+	std::sort(selectedRows.begin(), selectedRows.end());
+	selectedRows.erase(std::unique(selectedRows.begin(), selectedRows.end()), selectedRows.end());
+
+	for (int row : selectedRows) {
+		QTableWidgetItem* fileItem = ui->tableWidgetPluginIssues->item(row, 0);
+		if (fileItem == nullptr) {
+			continue;
+		}
+		const std::string filename = fileItem->data(Qt::UserRole + 2).toString().toStdString();
+		if (filename.empty()) {
+			continue;
+		}
+		for (const PluginLoadIssue& issue : *issues->list()) {
+			if (issue.getFilename() == filename) {
+				selectedIssues.push_back(issue);
+				break;
+			}
+		}
+	}
+	return selectedIssues;
 }
 
 bool DialogPluginManager::_isKernelPlugin(const Plugin* plugin) const
@@ -551,36 +577,6 @@ bool DialogPluginManager::_choosePluginFilename(std::string& filename) const
 	return true;
 }
 
-QString DialogPluginManager::_formatPluginDetails(const Plugin* plugin) const
-{
-	if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
-		return tr("No plugin selected.");
-	}
-
-	const PluginInformation* info = plugin->getPluginInfo();
-	QString details;
-	details += tr("Type: %1\n").arg(QString::fromStdString(info->getPluginTypename()));
-	details += tr("Kind: %1\n").arg(info->isComponent() ? tr("Component") : tr("DataDefinition"));
-	details += tr("Category: %1\n").arg(QString::fromStdString(info->getCategory()));
-	details += tr("Version: %1\n").arg(QString::fromStdString(info->getVersion()));
-	details += tr("Author: %1\n").arg(QString::fromStdString(info->getAuthor()));
-	details += tr("Date: %1\n").arg(QString::fromStdString(info->getDate()));
-	details += tr("Inputs: %1..%2\n").arg(info->getMinimumInputs()).arg(info->getMaximumInputs());
-	details += tr("Outputs: %1..%2\n").arg(info->getMinimumOutputs()).arg(info->getMaximumOutputs());
-	details += tr("Source: %1\n").arg(info->isSource() ? tr("yes") : tr("no"));
-	details += tr("Sink: %1\n").arg(info->isSink() ? tr("yes") : tr("no"));
-	details += tr("Send transfer: %1\n").arg(info->isSendTransfer() ? tr("yes") : tr("no"));
-	details += tr("Receive transfer: %1\n").arg(info->isReceiveTransfer() ? tr("yes") : tr("no"));
-	details += tr("Generate report: %1\n\n").arg(info->isGenerateReport() ? tr("yes") : tr("no"));
-	details += tr("Observation:\n%1\n\n").arg(QString::fromStdString(info->getObservation()));
-	details += tr("Description help:\n%1\n\n").arg(QString::fromStdString(info->getDescriptionHelp()));
-	details += tr("Language template:\n%1\n\n").arg(QString::fromStdString(info->getLanguageTemplate()));
-	details += _formatDependencies(info);
-	details += _formatSystemDependencies(info);
-	details += _formatFields(info);
-	return details;
-}
-
 QString DialogPluginManager::_formatDynamicDependencyTableText(const PluginInformation* info) const
 {
 	if (info == nullptr || info->getDynamicLibFilenameDependencies()->empty()) {
@@ -607,30 +603,6 @@ QString DialogPluginManager::_formatSystemDependencyTableText(const PluginInform
 		dependencies << item;
 	}
 	return dependencies.join("; ");
-}
-
-QString DialogPluginManager::_formatDependencies(const PluginInformation* info) const
-{
-	QString text = tr("Dynamic library dependencies:\n");
-	if (info == nullptr || info->getDynamicLibFilenameDependencies()->empty()) {
-		return text + tr("  none\n\n");
-	}
-	for (const std::string& dependency : *info->getDynamicLibFilenameDependencies()) {
-		text += "  " + QString::fromStdString(dependency) + "\n";
-	}
-	return text + "\n";
-}
-
-QString DialogPluginManager::_formatSystemDependencies(const PluginInformation* info) const
-{
-	QString text = tr("System dependencies:\n");
-	if (info == nullptr || info->getSystemDependencies()->empty()) {
-		return text + tr("  none\n\n");
-	}
-	for (const SystemDependency& dependency : *info->getSystemDependencies()) {
-		text += "  " + QString::fromStdString(dependency.show()) + "\n";
-	}
-	return text + "\n";
 }
 
 QString DialogPluginManager::_formatSystemDependencyPreflight(const SystemDependencyCheckResult& result) const
@@ -682,7 +654,7 @@ bool DialogPluginManager::_confirmSystemDependencyInstallation(const SystemDepen
 	return answer == QMessageBox::Yes;
 }
 
-bool DialogPluginManager::_runInstallCommandsForIssue(const PluginLoadIssue& issue)
+bool DialogPluginManager::_runInstallCommandsForIssue(const PluginLoadIssue& issue, QString* feedback)
 {
 	QStringList installCommands;
 	for (const SystemDependencyCheckEntry& entry : issue.getSystemDependencyResult().entries()) {
@@ -705,15 +677,15 @@ bool DialogPluginManager::_runInstallCommandsForIssue(const PluginLoadIssue& iss
 		return false;
 	}
 
-	QString feedback;
 	bool allSucceeded = true;
 	for (const QString& command : installCommands) {
 		QString commandFeedback;
 		const bool succeeded = _runInstallCommandInteractive(command, &commandFeedback);
 		allSucceeded = allSucceeded && succeeded;
-		feedback += commandFeedback + "\n";
+		if (feedback != nullptr) {
+			*feedback += commandFeedback + "\n";
+		}
 	}
-	ui->textEditPluginDetails->setPlainText(feedback.trimmed());
 	return allSucceeded;
 }
 
@@ -805,10 +777,12 @@ void DialogPluginManager::_configureCommonTable(QTableWidget* table) const
 	if (table == nullptr) {
 		return;
 	}
-	table->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
+	table->horizontalHeader()->setSectionResizeMode(QHeaderView::Interactive);
 	table->horizontalHeader()->setStretchLastSection(true);
+	table->setHorizontalScrollMode(QAbstractItemView::ScrollPerPixel);
 	table->setSelectionBehavior(QAbstractItemView::SelectRows);
 	table->setSelectionMode(QAbstractItemView::SingleSelection);
+	table->setWordWrap(false);
 }
 
 void DialogPluginManager::_showOperationResult(const QString& title, const QString& message) const
