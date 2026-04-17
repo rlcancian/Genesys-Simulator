@@ -8,6 +8,7 @@
 #include <QPainterPath>
 #include <QPen>
 #include <QBrush>
+#include "GraphicalConnectionStyle.h"
 #include "GraphicalComponentPort.h"
 //#include "kernel/simulator/ModelComponent.h"
 //#include "kernel/simulator/Plugin.h"
@@ -59,6 +60,10 @@ public:
 	void setConnectionType(GraphicalConnection::ConnectionType newConnectionType);
     /** @brief Returns sampled scene points used for serialization/inspection. */
     QList<QPointF> getPoints() const;
+    /** @brief Returns true when the current visual style uses curved model connection paths. */
+    bool usesCurvedStyle() const;
+    /** @brief Returns the scene path followed by entity animation in modern connection style. */
+    QPainterPath animationPathForImage(qreal imageWidth, qreal imageHeight) const;
 
 protected: // virtual
 	virtual bool sceneEvent(QEvent *event) override;
@@ -77,6 +82,7 @@ protected: // virtual
 private:
     bool canRefreshGeometry() const;
     QPainterPath connectionPath() const;
+    GraphicalConnectionStyle::RouteType routeTypeForStyle() const;
 	qreal _width = 0.0;
 	qreal _height = 0.0;
     QPointF _sourcePointLocal;

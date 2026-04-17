@@ -2,6 +2,7 @@
 #include "GraphicalModelDataDefinition.h"
 #include "GraphicalModelComponent.h"
 #include <QPainter>
+#include <QPainterPathStroker>
 
 
 GraphicalDiagramConnection::GraphicalDiagramConnection(QGraphicsItem* dataDefinition, QGraphicsItem* linkedTo, ConnectionType type) : QGraphicsLineItem() {
@@ -46,6 +47,24 @@ void GraphicalDiagramConnection::refreshGeometry() {
     setLine(QLineF(startPoint, endPoint));
 }
 
+QPainterPath GraphicalDiagramConnection::connectionPath() const {
+    return GraphicalConnectionStyle::diagramConnectionPath(line().p1(),
+                                                           line().p2(),
+                                                           GraphicalConnectionStyle::usesModernCurves());
+}
+
+QRectF GraphicalDiagramConnection::boundingRect() const {
+    const QRectF pathBounds = connectionPath().boundingRect();
+    return pathBounds.adjusted(-18.0, -18.0, 18.0, 18.0);
+}
+
+QPainterPath GraphicalDiagramConnection::shape() const {
+    QPainterPathStroker stroker;
+    stroker.setWidth(10.0);
+    stroker.setCapStyle(Qt::RoundCap);
+    stroker.setJoinStyle(Qt::RoundJoin);
+    return stroker.createStroke(connectionPath());
+}
 
 void GraphicalDiagramConnection::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     Q_UNUSED(option);
@@ -56,31 +75,51 @@ void GraphicalDiagramConnection::paint(QPainter* painter, const QStyleOptionGrap
         return;
     }
 
-    double angle = ::acos(line().dx() / line().length());
-    if (line().dy() >= 0)
+    const bool modernCurve = GraphicalConnectionStyle::usesModernCurves();
+    const QPainterPath path = connectionPath();
+    const QPointF tip = path.pointAtPercent(1.0);
+    const QPointF tangentStart = path.pointAtPercent(0.98);
+    const QLineF tangent(tangentStart, tip);
+    if (qFuzzyIsNull(tangent.length())) {
+        return;
+    }
+
+    double angle = ::acos(tangent.dx() / tangent.length());
+    if (tangent.dy() >= 0) {
         angle = (M_PI * 2) - angle;
+    }
 
     const double diamondLength = 16.0;
     const double diamondHalfWidth = 7.0;
 
-    const QPointF tip = line().p2();
     const QPointF back = tip - QPointF(::cos(angle) * diamondLength, -::sin(angle) * diamondLength);
     const QPointF center = tip - QPointF(::cos(angle) * diamondLength / 2.0, -::sin(angle) * diamondLength / 2.0);
     const QPointF perpendicular(::sin(angle) * diamondHalfWidth, ::cos(angle) * diamondHalfWidth);
     const QPointF side1 = center + perpendicular;
     const QPointF side2 = center - perpendicular;
 
-    QPen pen_line(Qt::black, 1.5, Qt::DashLine, Qt::RoundCap, Qt::RoundJoin);
-    QPen pen_final(Qt::black, 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    const QColor connectionColor = modernCurve ? QColor(47, 128, 237, 210) : QColor(Qt::black);
+    QPen pen_line(connectionColor, modernCurve ? 2.2 : 1.5, Qt::DashLine, Qt::RoundCap, Qt::RoundJoin);
+    QPen pen_final(connectionColor, modernCurve ? 2.0 : 1.5, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    painter->setRenderHint(QPainter::Antialiasing, modernCurve);
     painter->setPen(pen_line);
-    painter->drawLine(QLineF(line().p1(), back));
+    if (modernCurve) {
+        QPainterPath bodyPath = path;
+        const qreal backPercent = path.percentAtLength(qMax<qreal>(0.0, path.length() - diamondLength));
+        bodyPath.setElementPositionAt(bodyPath.elementCount() - 1,
+                                      path.pointAtPercent(backPercent).x(),
+                                      path.pointAtPercent(backPercent).y());
+        painter->drawPath(bodyPath);
+    } else {
+        painter->drawLine(QLineF(line().p1(), back));
+    }
 
     QPolygonF diamond;
     diamond << tip << side1 << back << side2;
 
     painter->setPen(pen_final);
     if (_type == ConnectionType::INTERNAL) {
-        painter->setBrush(Qt::black);
+        painter->setBrush(connectionColor);
     } else {
         painter->setBrush(Qt::NoBrush);
     }
