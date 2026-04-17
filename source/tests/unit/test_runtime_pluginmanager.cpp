@@ -1,10 +1,13 @@
 #include <gtest/gtest.h>
 
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Counter.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/SystemDependencyResolver.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
 #include "plugins/components/BiologicalModeling/BacteriaColony.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "plugins/data/BiologicalModeling/GroProgram.h"
 #include "plugins/data/BiologicalModeling/GroProgramCompiler.h"
 #include "plugins/data/BiologicalModeling/GroProgramParser.h"
@@ -223,6 +226,21 @@ TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins)
     }
 }
 
+TEST(RuntimePluginManagerClassTest, BacteriaColonyPluginExposesFlowPorts) {
+    PluginConnectorDummyImpl1 connector;
+    std::unique_ptr<Plugin> plugin(connector.connect("bacteriacolony.so"));
+    ASSERT_NE(plugin, nullptr);
+    ASSERT_NE(plugin->getPluginInfo(), nullptr);
+
+    PluginInformation* info = plugin->getPluginInfo();
+    EXPECT_FALSE(info->isSource());
+    EXPECT_FALSE(info->isSink());
+    EXPECT_EQ(info->getMinimumInputs(), 1u);
+    EXPECT_EQ(info->getMaximumInputs(), 1u);
+    EXPECT_EQ(info->getMinimumOutputs(), 1u);
+    EXPECT_EQ(info->getMaximumOutputs(), 1u);
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndStepped) {
     Simulator simulator;
     PluginManager* manager = simulator.getPluginManager();
@@ -343,6 +361,50 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     EXPECT_EQ(colony->getBacteriumState(8).gridY, 0u);
     EXPECT_TRUE(result.unsupportedCommands.empty());
     EXPECT_TRUE(result.skippedRawStatements.empty());
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyForwardsEntityAfterRuntimeStep) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_Flow");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode("program colony() { tick(); grow(2); }");
+
+    Create* create = manager->newInstance<Create>(model, "Create_Flow");
+    ASSERT_NE(create, nullptr);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1.0");
+    create->setMaxCreations(1);
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_Flow");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.25);
+    colony->setInitialColonyTime(2.0);
+    colony->setInitialPopulation(4);
+
+    Dispose* dispose = manager->newInstance<Dispose>(model, "Dispose_Flow");
+    ASSERT_NE(dispose, nullptr);
+
+    create->connectTo(colony);
+    colony->connectTo(dispose);
+
+    model->getSimulation()->setReplicationLength(1.0);
+    model->getSimulation()->start();
+
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 2.25);
+    EXPECT_EQ(colony->getPopulationSize(), 6u);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 6u);
+
+    Counter* disposed = dynamic_cast<Counter*>(dispose->getInternalData("CountNumberIn"));
+    ASSERT_NE(disposed, nullptr);
+    EXPECT_DOUBLE_EQ(disposed->getCountValue(), 1.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesDieCommandToInternalState) {
