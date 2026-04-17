@@ -398,11 +398,31 @@ Validacao executada no momento da implementacao:
 - Observacao de execucao: os executaveis emitiram aviso de `autoloadplugins.txt` ausente no diretorio de build em `/tmp`, mas a insercao estatica dos plugins prosseguiu e os exemplos executaram com sucesso.
 - Commit local da fase: `Add biochemical terminal smart examples`; nao fazer push sem pedido explicito.
 
+## Fase De Exemplo Com Lei Cinetica Reversa Executada Em 2026-04-17
+
+- O usuario pediu mais um exemplo demonstrando explicitamente lei cinetica reversa.
+- Foi criado `Smart_BioReversibleKineticLaw`.
+- O exemplo demonstra:
+  - `BioSpecies` para `Substrate`, `Product` e `Enzyme`;
+  - `BioParameter` para `kForward` e `kReverse`;
+  - `BioReaction` reversivel com modificador formal `Enzyme`;
+  - `kineticLawExpression="kForward * Enzyme * Substrate"`;
+  - `reverseKineticLawExpression="kReverse * Enzyme * Product"`;
+  - `BioNetwork` com pertencimento explicito de especies e reacao;
+  - simulacao deterministica por `BioNetwork::simulate`.
+- Validacao executada:
+  - configuracao CMake em `/tmp/genesys-terminal-smart-bio-reversible-kinetic-law` com `GENESYS_TERMINAL_EXAMPLE=smarts/Smart_BioReversibleKineticLaw.cpp`: passou;
+  - build de `genesys_terminal_application` para `Smart_BioReversibleKineticLaw`: passou;
+  - execucao de `Smart_BioReversibleKineticLaw`: passou, salvou `./models/Smart_BioReversibleKineticLaw.gen`, status `Completed`, payload final com `Substrate=3.61517214395755`, `Product=6.38482785604245` e `Enzyme=2`;
+  - o `.gen` salvo expos `reverseKineticLawExpression` no `BioReaction`.
+- Observacao de execucao: o executavel em `/tmp` emitiu aviso de `autoloadplugins.txt` ausente, mas a insercao estatica dos plugins prosseguiu e o exemplo executou com sucesso.
+- Commit local da fase: `Add reversible kinetic law smart example`; nao fazer push sem pedido explicito.
+
 ## Estado Atual Do Branch
 
 - `WiP20261` e a base consolidada atual para TINKERCELL.
 - O conteudo relevante de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
-- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas, sintese/degradacao, reversibilidade mass-action, leis cineticas reversas customizadas e exemplos bioquimicos executaveis foram implementadas e validadas.
+- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas, sintese/degradacao, reversibilidade mass-action, leis cineticas reversas customizadas, exemplos bioquimicos executaveis e exemplo com lei cinetica reversa foram implementadas e validadas.
 - A IA `TINKERCELL` deve aguardar confirmacao explicita antes de iniciar a proxima fase.
 - Qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo local.
 - Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
@@ -410,7 +430,7 @@ Validacao executada no momento da implementacao:
 ## Pendencias
 
 - Confirmar com o usuario antes de iniciar a proxima fase.
-- Proxima fase candidata: definir o proximo eixo apos exemplos bioquimicos executaveis, possivelmente adicionar exemplos mais ricos, criar documentacao curta de uso dos smarts bioquimicos, GUI/editor para campos bioquimicos, importacao/exportacao SBML/TinkerCell, ou suporte de comandos no runner.
+- Proxima fase candidata: definir o proximo eixo apos os exemplos bioquimicos executaveis, possivelmente criar documentacao curta de uso dos smarts bioquimicos, GUI/editor para campos bioquimicos, importacao/exportacao SBML/TinkerCell, ou suporte de comandos no runner.
 - Ainda falta fluxo GUI/editor para editar listas explicitas de membros em `BioNetwork`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `kineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `reverseKineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
