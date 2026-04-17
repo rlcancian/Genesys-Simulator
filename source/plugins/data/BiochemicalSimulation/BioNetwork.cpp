@@ -70,6 +70,25 @@ std::vector<std::pair<std::string, double>> collectParameterValues(ModelDataMana
 	return parameterValues;
 }
 
+bool reactionHasParticipantSpecies(const BioReaction* reaction, const std::string& speciesName) {
+	for (const BioReaction::StoichiometricTerm& term : reaction->getReactants()) {
+		if (term.speciesName == speciesName) {
+			return true;
+		}
+	}
+	for (const BioReaction::StoichiometricTerm& term : reaction->getProducts()) {
+		if (term.speciesName == speciesName) {
+			return true;
+		}
+	}
+	for (const std::string& modifierName : reaction->getModifiers()) {
+		if (modifierName == speciesName) {
+			return true;
+		}
+	}
+	return false;
+}
+
 } // namespace
 
 ModelDataDefinition* BioNetwork::NewInstance(Model* model, std::string name) {
@@ -444,10 +463,15 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 			BioKineticLawExpression expression;
 			double initialRate = 0.0;
 			std::string kineticLawError;
+			std::string nonParticipantSpecies;
 			const bool ok = expression.evaluate(odeReaction.kineticLawExpression,
-					[&species, &indexes, &odeReaction](const std::string& symbolName, double& value) {
+					[&species, &indexes, &odeReaction, reaction, &nonParticipantSpecies](const std::string& symbolName, double& value) {
 						auto speciesIt = indexes.find(symbolName);
 						if (speciesIt != indexes.end()) {
+							if (!reactionHasParticipantSpecies(reaction, symbolName)) {
+								nonParticipantSpecies = symbolName;
+								return false;
+							}
 							value = species[speciesIt->second]->getAmount();
 							return true;
 						}
@@ -461,6 +485,10 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 					},
 					initialRate, kineticLawError);
 			if (!ok) {
+				if (!nonParticipantSpecies.empty()) {
+					errorMessage += "BioReaction \"" + reaction->getName() + "\" kineticLawExpression references BioSpecies \"" + nonParticipantSpecies + "\" that is not a reactant, product, or modifier in BioNetwork \"" + getName() + "\". ";
+					return false;
+				}
 				errorMessage += "BioReaction \"" + reaction->getName() + "\" has invalid kineticLawExpression \"" + odeReaction.kineticLawExpression + "\" in BioNetwork \"" + getName() + "\": " + kineticLawError + " ";
 				return false;
 			}

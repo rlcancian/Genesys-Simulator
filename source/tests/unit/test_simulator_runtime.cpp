@@ -6010,6 +6010,59 @@ TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideMembership) 
     EXPECT_EQ(network.getLastStatus(), "Failed");
 }
 
+TEST(SimulatorRuntimeTest, BioReactionRejectsKineticLawSpeciesOutsideFormalParticipants) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "UnscopedKineticSpeciesReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("C * A");
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideReactionParticipants) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "NetworkScopedButReactionUnscoped");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("C * A");
+
+    BioNetworkProbe network(model, "FormalParticipantNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addSpecies("C");
+    network.addReaction("NetworkScopedButReactionUnscoped");
+
+    std::string errorMessage;
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
 TEST(SimulatorRuntimeTest, BioReactionRejectsMissingModifierSpecies) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();

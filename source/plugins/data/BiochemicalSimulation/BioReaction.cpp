@@ -190,12 +190,22 @@ bool BioReaction::validateKineticLawExpression(std::string& errorMessage) const 
 	BioKineticLawExpression expression;
 	double value = 0.0;
 	std::string kineticLawError;
+	std::string nonParticipantSpecies;
 	const bool ok = expression.evaluate(_kineticLawExpression,
-			[this](const std::string& symbolName, double& symbolValue) {
+			[this, &nonParticipantSpecies](const std::string& symbolName, double& symbolValue) {
+				auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), symbolName));
+				if (species != nullptr && !hasParticipantSpecies(symbolName)) {
+					nonParticipantSpecies = symbolName;
+					return false;
+				}
 				return resolveKineticLawSymbol(symbolName, symbolValue);
 			},
 			value, kineticLawError);
 	if (!ok) {
+		if (!nonParticipantSpecies.empty()) {
+			errorMessage += "BioReaction \"" + getName() + "\" kineticLawExpression references BioSpecies \"" + nonParticipantSpecies + "\" that is not a reactant, product, or modifier. ";
+			return false;
+		}
 		errorMessage += "BioReaction \"" + getName() + "\" has invalid kineticLawExpression \"" + _kineticLawExpression + "\": " + kineticLawError + " ";
 		return false;
 	}
@@ -204,6 +214,25 @@ bool BioReaction::validateKineticLawExpression(std::string& errorMessage) const 
 		return false;
 	}
 	return true;
+}
+
+bool BioReaction::hasParticipantSpecies(const std::string& speciesName) const {
+	for (const StoichiometricTerm& term : _reactants) {
+		if (term.speciesName == speciesName) {
+			return true;
+		}
+	}
+	for (const StoichiometricTerm& term : _products) {
+		if (term.speciesName == speciesName) {
+			return true;
+		}
+	}
+	for (const std::string& modifierName : _modifiers) {
+		if (modifierName == speciesName) {
+			return true;
+		}
+	}
+	return false;
 }
 
 bool BioReaction::resolveKineticLawSymbol(const std::string& symbolName, double& value) const {

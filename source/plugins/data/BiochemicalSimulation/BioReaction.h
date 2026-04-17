@@ -66,6 +66,7 @@ private:
 	bool checkTerms(const std::vector<StoichiometricTerm>& terms, const std::string& side, std::string& errorMessage) const;
 	bool checkModifiers(std::string& errorMessage) const;
 	bool validateKineticLawExpression(std::string& errorMessage) const;
+	bool hasParticipantSpecies(const std::string& speciesName) const;
 	bool resolveKineticLawSymbol(const std::string& symbolName, double& value) const;
 
 private:
