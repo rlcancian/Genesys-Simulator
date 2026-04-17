@@ -216,3 +216,18 @@
   the branch.
 - Git policy was updated to allow autonomous routine stage, commit, fetch,
   merge, pull, and push operations.
+
+### 2026-04-17 - Session Closure
+
+- The user ended the current conversation and asked to confirm the persistent
+  memory file used by GRO.
+- The canonical memory file is `documentation/developers/GRO_context.md`.
+- `documentation/developers/communication.md` remains deprecated and absent
+  from `WiP20261_GRO`.
+- Current working branch is `WiP20261_GRO`, tracking
+  `origin/WiP20261_GRO`.
+- The branch is ready for the next GRO session to restore context from this
+  file before continuing technical work.
+- The next session should begin by reading this file, checking branch status,
+  fetching `origin`, and merging `origin/WiP20261` into `WiP20261_GRO` if
+  needed before further implementation.
