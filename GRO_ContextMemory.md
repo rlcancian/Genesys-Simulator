@@ -16,11 +16,16 @@ instructions are considered obsolete or consolidated here.
 - **Canonical memory file:** `GRO_ContextMemory.md` in the repository root.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
+- **Current consolidated base:** `WiP20261`.
 - **Current state:** the relevant functional GRO content has already been
-  absorbed by the base branch `WiP20261`.
+  absorbed by the base branch `WiP20261`; there is no pending GRO integration at
+  this moment.
 - **Immediate objective:** keep `WiP20261_GRO` stable and in standby. Do not
   implement new functionality and do not attempt a new integration unless the
   user explicitly reactivates this work line.
+- **Future work rule:** any future GRO work must start from the updated
+  consolidated base `WiP20261`, not from stale local branch state or older
+  memory assumptions.
 - **Integration PR status:** PR `#370` from `WiP20261_GRO` to `WiP20261` exists
   and GitHub reported it closed and merged. Its merge commit is `2114c92c`.
   After that merge, `WiP20261_GRO` received context-only commits so the current
@@ -36,8 +41,12 @@ instructions are considered obsolete or consolidated here.
 - Do not implement new GRO functionality while the branch is in standby.
 - Do not open or attempt a new integration while the base already contains the
   relevant functional content, unless the user explicitly asks for it.
-- Before important pushes, run `git fetch origin` and merge
-  `origin/WiP20261` into `WiP20261_GRO` using merge, not rebase.
+- When the GRO line is reactivated for real technical work, begin from an
+  updated `WiP20261` base. Do not continue from stale local branch state.
+- Before important future product pushes, run `git fetch origin` and merge
+  `origin/WiP20261` into `WiP20261_GRO` using merge, not rebase. While the
+  branch is explicitly in standby, do not perform another merge unless the user
+  asks for synchronization.
 - Make small, coherent commits.
 - GRO has autonomy to run routine Git operations without asking the user:
   stage, commit, fetch, merge, pull, and push.
@@ -183,12 +192,15 @@ instructions are considered obsolete or consolidated here.
 ## Current Branch State
 
 - Current branch: `WiP20261_GRO`.
-- Current base: `origin/WiP20261`.
+- Current consolidated base: `WiP20261`.
 - The relevant functional content from `WiP20261_GRO` has already been absorbed
   by `WiP20261`.
+- No GRO integration is pending at this moment.
 - The branch is in standby. It should remain stable, synchronized, and
   available for future GRO work, but no new product functionality should be
   added now.
+- Any future technical work should start from the updated consolidated base
+  `WiP20261`, not from stale local state preserved on `WiP20261_GRO`.
 - Latest synchronization with `origin/WiP20261` produced merge commit
   `10e6937c` and brought in `TINKERCELL_ContextMemory.md`.
 - Conflict status during the latest synchronization: no conflicts occurred.
@@ -232,6 +244,8 @@ instructions are considered obsolete or consolidated here.
 - Because the base already absorbed the functional GRO content, future work
   should begin from a fresh synchronization decision rather than assuming this
   branch still needs integration.
+- Local branch history can become misleading after base absorption. Treat
+  `WiP20261` as the source of truth for future starts.
 
 ## Session Log
 
@@ -310,3 +324,15 @@ instructions are considered obsolete or consolidated here.
 - Files brought in by the merge: `TINKERCELL_ContextMemory.md`.
 - Branch state after this session should be stable and in standby, with only
   memory consolidation committed after the base synchronization.
+
+### 2026-04-17 - Post-Merge Canonical Standby Memory
+
+- User reaffirmed that the base branch `WiP20261` has already absorbed the
+  relevant functional content from GRO.
+- Recorded `WiP20261` as the current consolidated base.
+- Recorded that there is no pending GRO integration at this moment.
+- Recorded that future GRO work must start from the updated consolidated base
+  `WiP20261`, not from stale local branch state or older memory assumptions.
+- No new functionality was implemented.
+- No new merge was attempted in this session.
+- Only `GRO_ContextMemory.md` was updated.
