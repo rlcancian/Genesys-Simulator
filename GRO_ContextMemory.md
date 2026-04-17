@@ -210,11 +210,11 @@ instructions are considered obsolete or consolidated here.
   On successful execution, the colony copies back internal colony time and
   population size from `GroProgramRuntimeState`.
 - **Internal bacteria state:** each bacterium currently has a stable per-
-  replication id, parent id, generation, birth time, last update time, alive
-  flag, and deterministic discrete grid coordinates. Population-changing runtime
-  commands now carry mutation records that let the colony preserve simple
-  lineage for `divide()` and keep the population summary and owned bacteria
-  state synchronized.
+  replication id, parent id, generation, division count, birth time, last update
+  time, last division time, alive flag, and deterministic discrete grid
+  coordinates. Population-changing runtime commands now carry mutation records
+  that let the colony preserve simple lineage for `divide()` and keep the
+  population summary and owned bacteria state synchronized.
 - **Dispatch behavior:** when a `GroProgram` is configured, `_onDispatchEvent`
   executes that program once and traces success/failure. When no `GroProgram` is
   configured, it preserves the previous fallback behavior of advancing internal
@@ -297,6 +297,7 @@ instructions are considered obsolete or consolidated here.
   - `8985889e Connect Gro runtime to bacteria colony`
   - `24d4be21 Add internal bacteria colony state`
   - `85d146de Track Gro population mutations in colony state`
+  - `ba9c182a Add bacteria lifecycle metrics`
 - Latest known validation after active GRO phases:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
@@ -322,15 +323,16 @@ instructions are considered obsolete or consolidated here.
 - Latest synchronization with `origin/WiP20261` fast-forwarded local
   `WiP20261_GRO` to `dca0397f`; no conflicts occurred.
 - Conflict status during the latest synchronization: no conflicts occurred.
-- Latest completed GRO phase: structured population mutation tracking applied
-  to internal bacteria state inside `BacteriaColony`.
+- Latest completed GRO phase: first per-bacterium lifecycle metrics inside
+  `BacteriaColony`.
 - Recent user-authorized work completed:
   1. expanded the isolated runtime command set;
   2. connected the isolated runtime pipeline to `BacteriaColony`;
   3. added the first owned per-bacterium state vector synchronized with colony
      population changes;
   4. added runtime population mutation records and simple colony lineage
-     metadata for `divide()`.
+     metadata for `divide()`;
+  5. added bacterium age access, parent division count, and last division time.
 - These changes are local only until explicit publication is requested.
 - Ask the user for explicit confirmation before proceeding to the next technical
   phase.
@@ -340,7 +342,7 @@ instructions are considered obsolete or consolidated here.
 - Do not continue automatically. Wait for explicit user confirmation before the
   next technical phase.
 - Suggested next technical phase: either add the first command-level
-  per-bacterium behavior fields/effects beyond population lineage, or add event
+  per-bacterium behavior fields/effects beyond lifecycle metrics, or add event
   scheduler integration around the now stateful colony. Keep cellular automata,
   signals, reactions, and complete Gro semantics as later phases.
 - Decide whether `BacteriaColony` should schedule periodic internal events using
@@ -657,6 +659,34 @@ instructions are considered obsolete or consolidated here.
 - Suggested next phase: either begin actual per-bacterium command behavior
   beyond lineage metadata, or integrate the stateful colony with scheduler
   execution.
+
+### 2026-04-17 - Bacteria Lifecycle Metrics Checkpoint
+
+- User instructed GRO to continue to the next stable checkpoint because the
+  previous checkpoint had been committed.
+- Ran `git fetch origin`; `origin/WiP20261` did not advance, while
+  `origin/WiP20261_KERNEL_GUI` advanced independently.
+- Executed one bounded technical phase over the existing stateful colony:
+  enrich each internal bacterium with lifecycle metrics without touching
+  scheduler integration, cellular automata, signals, reactions, or plugin
+  directory layout.
+- Added `divisionCount` and `lastDivisionTime` to `BacteriumState`.
+- Added `BacteriaColony::getBacteriumAge(std::size_t)` for current internal
+  colony-time age calculation.
+- During `divide()` mutation application, parent bacteria now increment
+  `divisionCount` and record `lastDivisionTime`; daughter bacteria remain
+  generation +1 with `divisionCount == 0`.
+- Added focused unit assertions for initial age, parent division metrics, and
+  daughter lifecycle defaults.
+- Validation after this checkpoint:
+  - `git diff --check` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Functional checkpoint commit:
+  - `ba9c182a Add bacteria lifecycle metrics`
+- No push/publication was performed.
+- Suggested next phase: either add the first per-bacterium behavior command
+  effects beyond lifecycle metrics, or add event scheduler integration around
+  the now stateful colony.
 
 ### 2026-04-17 - Gro Initial Semantic IR Phase
 
