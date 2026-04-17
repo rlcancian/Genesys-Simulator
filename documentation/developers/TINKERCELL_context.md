@@ -84,10 +84,10 @@ Routine Git expectations:
 - `WiP20261_TINKERCELL` was published to `origin` and configured to track `origin/WiP20261_TINKERCELL`.
 - A previous commit, `c00279a Add native biochemical mass-action module`, added a native biochemical MVP before the stricter branch/workflow policy was established.
 - That MVP introduced native biochemical classes and tools:
-  - `source/plugins/data/BioSpecies.{h,cpp}`
-  - `source/plugins/data/BioParameter.{h,cpp}`
-  - `source/plugins/data/BioReaction.{h,cpp}`
-  - `source/plugins/data/BioNetwork.{h,cpp}`
+  - `source/plugins/data/BiochemicalSimulation/BioSpecies.{h,cpp}`
+  - `source/plugins/data/BiochemicalSimulation/BioParameter.{h,cpp}`
+  - `source/plugins/data/BiochemicalSimulation/BioReaction.{h,cpp}`
+  - `source/plugins/data/BiochemicalSimulation/BioNetwork.{h,cpp}`
   - `source/tools/MassActionOdeSystem.h`
   - `source/tools/RungeKutta4OdeSolver.h`
 - The biochemical MVP is registered through plugin discovery and covered by runtime tests.
@@ -98,19 +98,20 @@ Routine Git expectations:
 - `RungeKutta4OdeSolver` implements a fixed-step RK4 solver.
 - `SparseValueStore` was identified as relevant for future multidimensional/indexed biological state support.
 - No concrete GROW subsystem/API was found in this repository beyond unrelated "grow" text; GROW remains an external or future integration hypothesis to validate.
+- The official plugin directory organization commit `f232882e Organize plugins by declared category` moved the biochemical data definitions under `source/plugins/data/BiochemicalSimulation`.
 
 ## Files Changed by TINKERCELL Workstream
 
 Known prior biochemical MVP files:
 
-- `source/plugins/data/BioSpecies.h`
-- `source/plugins/data/BioSpecies.cpp`
-- `source/plugins/data/BioParameter.h`
-- `source/plugins/data/BioParameter.cpp`
-- `source/plugins/data/BioReaction.h`
-- `source/plugins/data/BioReaction.cpp`
-- `source/plugins/data/BioNetwork.h`
-- `source/plugins/data/BioNetwork.cpp`
+- `source/plugins/data/BiochemicalSimulation/BioSpecies.h`
+- `source/plugins/data/BiochemicalSimulation/BioSpecies.cpp`
+- `source/plugins/data/BiochemicalSimulation/BioParameter.h`
+- `source/plugins/data/BiochemicalSimulation/BioParameter.cpp`
+- `source/plugins/data/BiochemicalSimulation/BioReaction.h`
+- `source/plugins/data/BiochemicalSimulation/BioReaction.cpp`
+- `source/plugins/data/BiochemicalSimulation/BioNetwork.h`
+- `source/plugins/data/BiochemicalSimulation/BioNetwork.cpp`
 - `source/tools/MassActionOdeSystem.h`
 - `source/tools/RungeKutta4OdeSolver.h`
 - plugin connector registrations for `biospecies.so`, `bioparameter.so`, `bioreaction.so`, and `bionetwork.so`
@@ -129,6 +130,7 @@ Current branch hygiene/memory files:
 - The branch tracks `origin/WiP20261_TINKERCELL`.
 - The branch contains documentation commits that created and then refined TINKERCELL persistent memory.
 - The current cleanup task consolidated memory into `TINKERCELL_context.md` and deleted `communication.md`.
+- The official structural base `f232882e` has been incorporated locally for compatibility work; biochemical source paths now follow the category-based plugin layout.
 
 ## Validation Already Performed
 
@@ -262,3 +264,11 @@ During memory consolidation on 2026-04-17:
 - **Action requested:** Save everything discussed so far before the next session.
 - **Response given:** TINKERCELL updated this context file with the latest session state and prepared a final documentation-only commit and push.
 - **Next steps:** In the next session, start by reading `documentation/developers/TINKERCELL_context.md`, continue only on `WiP20261_TINKERCELL`, and avoid using `documentation/developers/communication.md`.
+
+### 2026-04-17 - USER - Official plugin category structure
+
+- **Main topic:** Synchronize TINKERCELL with the official plugin directory reorganization produced by `KERNEL_GUI`.
+- **Context extracted:** Commit `f232882e Organize plugins by declared category` is the official structural base and must not be reverted or reinterpreted.
+- **Action performed:** TINKERCELL incorporated `f232882e`, preserved the category-based layout, and verified that biochemical files now live under `source/plugins/data/BiochemicalSimulation`.
+- **Compatibility status:** `PluginConnectorDummyImpl1.cpp`, `GenesysQtGUI.pro`, `source/plugins/data/CMakeLists.txt`, and `test_simulator_runtime.cpp` already reference the new biochemical paths after the structural merge.
+- **Validation performed:** `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime` succeeded; focused biochemical runtime tests and `BioPluginsAreAvailableThroughDummyConnector` passed.
