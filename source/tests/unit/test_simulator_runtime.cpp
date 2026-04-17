@@ -5819,6 +5819,48 @@ TEST(SimulatorRuntimeTest, BioNetworkSimulatesReversibleMassActionReaction) {
     EXPECT_NEAR(b.getAmount(), total - expectedA, 1e-4);
 }
 
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesReversibleCustomKineticLawExpression) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+    BioParameter kf(model, "kf");
+    kf.setValue(0.1);
+    BioParameter kr(model, "kr");
+    kr.setValue(0.05);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("kf * A");
+    reaction.setReverseKineticLawExpression("kr * B");
+    reaction.setReversible(true);
+
+    std::string errorMessage;
+    ASSERT_TRUE(reaction.CheckProbe(errorMessage)) << errorMessage;
+
+    BioNetworkProbe network(model, "ReversibleCustomKineticLawNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("A_to_B");
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.001, errorMessage)) << errorMessage;
+
+    const double total = 10.0;
+    const double forwardRate = 0.1;
+    const double reverseRate = 0.05;
+    const double equilibriumA = reverseRate * total / (forwardRate + reverseRate);
+    const double expectedA = equilibriumA + (10.0 - equilibriumA) * std::exp(-(forwardRate + reverseRate));
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), expectedA, 1e-4);
+    EXPECT_NEAR(b.getAmount(), total - expectedA, 1e-4);
+}
+
 TEST(SimulatorRuntimeTest, BioReactionRejectsMissingReverseRateParameterReference) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -5867,6 +5909,7 @@ TEST(SimulatorRuntimeTest, BioReactionPersistencePreservesKineticLawExpression) 
     source.addProduct("B", 1.0);
     source.addModifier("E");
     source.setKineticLawExpression("vmax * A / (km + A)");
+    source.setReverseKineticLawExpression("kr * B");
     source.setReverseRateConstant(0.25);
     source.setReversible(true);
 
@@ -5879,6 +5922,7 @@ TEST(SimulatorRuntimeTest, BioReactionPersistencePreservesKineticLawExpression) 
     EXPECT_EQ(loaded.getKineticLawExpression(), "vmax * A / (km + A)");
     ASSERT_EQ(loaded.getModifiers().size(), 1u);
     EXPECT_EQ(loaded.getModifiers()[0], "E");
+    EXPECT_EQ(loaded.getReverseKineticLawExpression(), "kr * B");
     EXPECT_DOUBLE_EQ(loaded.getReverseRateConstant(), 0.25);
     EXPECT_TRUE(loaded.isReversible());
 }
@@ -6149,6 +6193,65 @@ TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideReactionPart
     std::string errorMessage;
     EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
     EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsReverseKineticLawSpeciesOutsideFormalParticipants) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "UnscopedReverseKineticSpeciesReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("A");
+    reaction.setReverseKineticLawExpression("C * B");
+    reaction.setReversible(true);
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reverseKineticLawExpression"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsReverseKineticLawSpeciesOutsideReactionParticipants) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setAmount(0.0);
+    BioSpeciesProbe c(model, "C");
+    c.setAmount(2.0);
+
+    BioReactionProbe reaction(model, "NetworkScopedButReverseReactionUnscoped");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setKineticLawExpression("A");
+    reaction.setReverseKineticLawExpression("C * B");
+    reaction.setReversible(true);
+
+    BioNetworkProbe network(model, "ReverseFormalParticipantNetwork");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addSpecies("C");
+    network.addReaction("NetworkScopedButReverseReactionUnscoped");
+
+    std::string errorMessage;
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("C"), std::string::npos);
+    EXPECT_NE(errorMessage.find("reverseKineticLawExpression"), std::string::npos);
     EXPECT_NE(errorMessage.find("reactant, product, or modifier"), std::string::npos);
     EXPECT_EQ(network.getLastStatus(), "Failed");
 }

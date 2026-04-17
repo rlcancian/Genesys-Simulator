@@ -17,8 +17,8 @@
  * reactant or product. The current execution contract supports direct rate
  * constants, a BioParameter reference, or an optional kinetic-law expression that
  * resolves BioSpecies/BioParameter names at BioNetwork execution time. Reversible
- * reactions use a separate reverse mass-action rate constant over the product
- * side of the reaction.
+ * reactions use either a separate reverse kinetic-law expression or a reverse
+ * mass-action rate constant over the product side of the reaction.
  */
 class BioReaction : public ModelDataDefinition {
 public:
@@ -58,6 +58,8 @@ public:
 	double resolveReverseRateConstant() const;
 	void setKineticLawExpression(std::string kineticLawExpression);
 	std::string getKineticLawExpression() const;
+	void setReverseKineticLawExpression(std::string reverseKineticLawExpression);
+	std::string getReverseKineticLawExpression() const;
 	void setReversible(bool reversible);
 	bool isReversible() const;
 
@@ -72,6 +74,7 @@ private:
 	bool checkTerms(const std::vector<StoichiometricTerm>& terms, const std::string& side, std::string& errorMessage) const;
 	bool checkModifiers(std::string& errorMessage) const;
 	bool validateKineticLawExpression(std::string& errorMessage) const;
+	bool validateKineticLawExpression(const std::string& expression, const std::string& label, std::string& errorMessage) const;
 	bool hasParticipantSpecies(const std::string& speciesName) const;
 	bool resolveKineticLawSymbol(const std::string& symbolName, double& value) const;
 
@@ -82,6 +85,7 @@ private:
 		double reverseRateConstant = 0.0;
 		std::string reverseRateConstantParameterName = "";
 		std::string kineticLawExpression = "";
+		std::string reverseKineticLawExpression = "";
 		bool reversible = false;
 	} DEFAULT;
 
@@ -93,6 +97,7 @@ private:
 	double _reverseRateConstant = DEFAULT.reverseRateConstant;
 	std::string _reverseRateConstantParameterName = DEFAULT.reverseRateConstantParameterName;
 	std::string _kineticLawExpression = DEFAULT.kineticLawExpression;
+	std::string _reverseKineticLawExpression = DEFAULT.reverseKineticLawExpression;
 	bool _reversible = DEFAULT.reversible;
 };
 

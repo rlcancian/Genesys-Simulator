@@ -98,6 +98,57 @@ bool hasParameterValue(const std::vector<std::pair<std::string, double>>& parame
 	return false;
 }
 
+bool validateKineticLawInNetwork(
+		const std::string& expression,
+		const std::string& label,
+		const std::vector<BioSpecies*>& species,
+		const std::map<std::string, unsigned int>& indexes,
+		const MassActionOdeSystem::Reaction& odeReaction,
+		const BioReaction* reaction,
+		const std::string& networkName,
+		std::string& errorMessage) {
+	if (expression.empty()) {
+		return true;
+	}
+	BioKineticLawExpression evaluator;
+	double initialRate = 0.0;
+	std::string kineticLawError;
+	std::string nonParticipantSpecies;
+	const bool ok = evaluator.evaluate(expression,
+			[&species, &indexes, &odeReaction, reaction, &nonParticipantSpecies](const std::string& symbolName, double& value) {
+				auto speciesIt = indexes.find(symbolName);
+				if (speciesIt != indexes.end()) {
+					if (!reactionHasParticipantSpecies(reaction, symbolName)) {
+						nonParticipantSpecies = symbolName;
+						return false;
+					}
+					value = species[speciesIt->second]->getAmount();
+					return true;
+				}
+				for (const auto& parameter : odeReaction.parameters) {
+					if (parameter.first == symbolName) {
+						value = parameter.second;
+						return true;
+					}
+				}
+				return false;
+			},
+			initialRate, kineticLawError);
+	if (!ok) {
+		if (!nonParticipantSpecies.empty()) {
+			errorMessage += "BioReaction \"" + reaction->getName() + "\" " + label + " references BioSpecies \"" + nonParticipantSpecies + "\" that is not a reactant, product, or modifier in BioNetwork \"" + networkName + "\". ";
+			return false;
+		}
+		errorMessage += "BioReaction \"" + reaction->getName() + "\" has invalid " + label + " \"" + expression + "\" in BioNetwork \"" + networkName + "\": " + kineticLawError + " ";
+		return false;
+	}
+	if (initialRate < 0.0) {
+		errorMessage += "BioReaction \"" + reaction->getName() + "\" " + label + " must evaluate to a non-negative rate. ";
+		return false;
+	}
+	return true;
+}
+
 } // namespace
 
 ModelDataDefinition* BioNetwork::NewInstance(Model* model, std::string name) {
@@ -431,6 +482,7 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 		MassActionOdeSystem::Reaction odeReaction;
 		odeReaction.name = reaction->getName();
 		odeReaction.kineticLawExpression = reaction->getKineticLawExpression();
+		odeReaction.reverseKineticLawExpression = reaction->getReverseKineticLawExpression();
 		odeReaction.parameters = parameterValues;
 		odeReaction.reversible = reaction->isReversible();
 		if (odeReaction.kineticLawExpression.empty()) {
@@ -446,16 +498,18 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 			odeReaction.rateConstant = rateConstant;
 		}
 		if (odeReaction.reversible) {
-			if (!reaction->getReverseRateConstantParameterName().empty() && !hasParameterValue(parameterValues, reaction->getReverseRateConstantParameterName())) {
-				errorMessage += "BioReaction \"" + reaction->getName() + "\" references missing reverse BioParameter \"" + reaction->getReverseRateConstantParameterName() + "\". ";
-				return false;
+			if (odeReaction.reverseKineticLawExpression.empty()) {
+				if (!reaction->getReverseRateConstantParameterName().empty() && !hasParameterValue(parameterValues, reaction->getReverseRateConstantParameterName())) {
+					errorMessage += "BioReaction \"" + reaction->getName() + "\" references missing reverse BioParameter \"" + reaction->getReverseRateConstantParameterName() + "\". ";
+					return false;
+				}
+				const double reverseRateConstant = reaction->resolveReverseRateConstant();
+				if (reverseRateConstant < 0.0) {
+					errorMessage += "BioReaction \"" + reaction->getName() + "\" must resolve to a non-negative reverse rate constant. ";
+					return false;
+				}
+				odeReaction.reverseRateConstant = reverseRateConstant;
 			}
-			const double reverseRateConstant = reaction->resolveReverseRateConstant();
-			if (reverseRateConstant < 0.0) {
-				errorMessage += "BioReaction \"" + reaction->getName() + "\" must resolve to a non-negative reverse rate constant. ";
-				return false;
-			}
-			odeReaction.reverseRateConstant = reverseRateConstant;
 		}
 
 		for (const BioReaction::StoichiometricTerm& term : reaction->getReactants()) {
@@ -480,43 +534,11 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 				return false;
 			}
 		}
-		if (!odeReaction.kineticLawExpression.empty()) {
-			BioKineticLawExpression expression;
-			double initialRate = 0.0;
-			std::string kineticLawError;
-			std::string nonParticipantSpecies;
-			const bool ok = expression.evaluate(odeReaction.kineticLawExpression,
-					[&species, &indexes, &odeReaction, reaction, &nonParticipantSpecies](const std::string& symbolName, double& value) {
-						auto speciesIt = indexes.find(symbolName);
-						if (speciesIt != indexes.end()) {
-							if (!reactionHasParticipantSpecies(reaction, symbolName)) {
-								nonParticipantSpecies = symbolName;
-								return false;
-							}
-							value = species[speciesIt->second]->getAmount();
-							return true;
-						}
-						for (const auto& parameter : odeReaction.parameters) {
-							if (parameter.first == symbolName) {
-								value = parameter.second;
-								return true;
-							}
-						}
-						return false;
-					},
-					initialRate, kineticLawError);
-			if (!ok) {
-				if (!nonParticipantSpecies.empty()) {
-					errorMessage += "BioReaction \"" + reaction->getName() + "\" kineticLawExpression references BioSpecies \"" + nonParticipantSpecies + "\" that is not a reactant, product, or modifier in BioNetwork \"" + getName() + "\". ";
-					return false;
-				}
-				errorMessage += "BioReaction \"" + reaction->getName() + "\" has invalid kineticLawExpression \"" + odeReaction.kineticLawExpression + "\" in BioNetwork \"" + getName() + "\": " + kineticLawError + " ";
-				return false;
-			}
-			if (initialRate < 0.0) {
-				errorMessage += "BioReaction \"" + reaction->getName() + "\" kineticLawExpression must evaluate to a non-negative rate. ";
-				return false;
-			}
+		if (!validateKineticLawInNetwork(odeReaction.kineticLawExpression, "kineticLawExpression", species, indexes, odeReaction, reaction, getName(), errorMessage)) {
+			return false;
+		}
+		if (odeReaction.reversible && !validateKineticLawInNetwork(odeReaction.reverseKineticLawExpression, "reverseKineticLawExpression", species, indexes, odeReaction, reaction, getName(), errorMessage)) {
+			return false;
 		}
 		odeReactions.push_back(odeReaction);
 	}
