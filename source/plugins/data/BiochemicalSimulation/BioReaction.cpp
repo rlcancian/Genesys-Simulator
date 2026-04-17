@@ -30,6 +30,18 @@ std::string termsToString(const std::vector<BioReaction::StoichiometricTerm>& te
 	return text;
 }
 
+std::string namesToString(const std::vector<std::string>& names) {
+	std::string text = "{";
+	for (const std::string& name : names) {
+		text += name + ",";
+	}
+	if (!names.empty()) {
+		text.pop_back();
+	}
+	text += "}";
+	return text;
+}
+
 } // namespace
 
 ModelDataDefinition* BioReaction::NewInstance(Model* model, std::string name) {
@@ -81,6 +93,7 @@ std::string BioReaction::show() {
 	return ModelDataDefinition::show() +
 			",reactants=" + termsToString(_reactants) +
 			",products=" + termsToString(_products) +
+			",modifiers=" + namesToString(_modifiers) +
 			",rateConstant=" + Util::StrTruncIfInt(std::to_string(resolveRateConstant())) +
 			",rateConstantParameterName=\"" + _rateConstantParameterName + "\"" +
 			",kineticLawExpression=\"" + _kineticLawExpression + "\"" +
@@ -92,6 +105,7 @@ bool BioReaction::_loadInstance(PersistenceRecord *fields) {
 	if (res) {
 		_reactants.clear();
 		_products.clear();
+		_modifiers.clear();
 		const unsigned int reactants = fields->loadField("reactants", 0u);
 		for (unsigned int i = 0; i < reactants; ++i) {
 			addReactant(fields->loadField("reactantSpecies" + Util::StrIndex(i), ""),
@@ -101,6 +115,10 @@ bool BioReaction::_loadInstance(PersistenceRecord *fields) {
 		for (unsigned int i = 0; i < products; ++i) {
 			addProduct(fields->loadField("productSpecies" + Util::StrIndex(i), ""),
 					fields->loadField("productStoichiometry" + Util::StrIndex(i), 1.0));
+		}
+		const unsigned int modifiers = fields->loadField("modifiers", 0u);
+		for (unsigned int i = 0; i < modifiers; ++i) {
+			addModifier(fields->loadField("modifierSpecies" + Util::StrIndex(i), ""));
 		}
 		_rateConstant = fields->loadField("rateConstant", DEFAULT.rateConstant);
 		_rateConstantParameterName = fields->loadField("rateConstantParameterName", DEFAULT.rateConstantParameterName);
@@ -121,6 +139,10 @@ void BioReaction::_saveInstance(PersistenceRecord *fields, bool saveDefaultValue
 	for (unsigned int i = 0; i < _products.size(); ++i) {
 		fields->saveField("productSpecies" + Util::StrIndex(i), _products[i].speciesName, "", saveDefaultValues);
 		fields->saveField("productStoichiometry" + Util::StrIndex(i), _products[i].stoichiometry, 1.0, saveDefaultValues);
+	}
+	fields->saveField("modifiers", static_cast<unsigned int>(_modifiers.size()), 0u, saveDefaultValues);
+	for (unsigned int i = 0; i < _modifiers.size(); ++i) {
+		fields->saveField("modifierSpecies" + Util::StrIndex(i), _modifiers[i], "", saveDefaultValues);
 	}
 	fields->saveField("rateConstant", _rateConstant, DEFAULT.rateConstant, saveDefaultValues);
 	fields->saveField("rateConstantParameterName", _rateConstantParameterName, DEFAULT.rateConstantParameterName, saveDefaultValues);
@@ -144,6 +166,7 @@ bool BioReaction::_check(std::string& errorMessage) {
 	}
 	resultAll = checkTerms(_reactants, "reactant", errorMessage) && resultAll;
 	resultAll = checkTerms(_products, "product", errorMessage) && resultAll;
+	resultAll = checkModifiers(errorMessage) && resultAll;
 	if (!_kineticLawExpression.empty()) {
 		resultAll = validateKineticLawExpression(errorMessage) && resultAll;
 	} else if (!_rateConstantParameterName.empty()) {
@@ -217,12 +240,33 @@ bool BioReaction::checkTerms(const std::vector<StoichiometricTerm>& terms, const
 	return resultAll;
 }
 
+bool BioReaction::checkModifiers(std::string& errorMessage) const {
+	bool resultAll = true;
+	for (const std::string& speciesName : _modifiers) {
+		if (speciesName.empty()) {
+			errorMessage += "BioReaction \"" + getName() + "\" has an empty modifier species name. ";
+			resultAll = false;
+			continue;
+		}
+		auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), speciesName));
+		if (species == nullptr) {
+			errorMessage += "BioReaction \"" + getName() + "\" references missing modifier BioSpecies \"" + speciesName + "\". ";
+			resultAll = false;
+		}
+	}
+	return resultAll;
+}
+
 void BioReaction::addReactant(std::string speciesName, double stoichiometry) {
 	_reactants.push_back({speciesName, stoichiometry});
 }
 
 void BioReaction::addProduct(std::string speciesName, double stoichiometry) {
 	_products.push_back({speciesName, stoichiometry});
+}
+
+void BioReaction::addModifier(std::string speciesName) {
+	_modifiers.push_back(speciesName);
 }
 
 void BioReaction::clearReactants() {
@@ -233,12 +277,20 @@ void BioReaction::clearProducts() {
 	_products.clear();
 }
 
+void BioReaction::clearModifiers() {
+	_modifiers.clear();
+}
+
 const std::vector<BioReaction::StoichiometricTerm>& BioReaction::getReactants() const {
 	return _reactants;
 }
 
 const std::vector<BioReaction::StoichiometricTerm>& BioReaction::getProducts() const {
 	return _products;
+}
+
+const std::vector<std::string>& BioReaction::getModifiers() const {
+	return _modifiers;
 }
 
 void BioReaction::setRateConstant(double rateConstant) {

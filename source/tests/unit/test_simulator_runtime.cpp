@@ -5814,9 +5814,14 @@ TEST(SimulatorRuntimeTest, BioReactionPersistencePreservesKineticLawExpression) 
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+    BioSpeciesProbe enzyme(model, "E");
+
     BioReactionProbe source(model, "MichaelisMenten");
     source.addReactant("A", 1.0);
     source.addProduct("B", 1.0);
+    source.addModifier("E");
     source.setKineticLawExpression("vmax * A / (km + A)");
 
     FakeModelPersistenceRuntime persistence;
@@ -5826,6 +5831,8 @@ TEST(SimulatorRuntimeTest, BioReactionPersistencePreservesKineticLawExpression) 
     BioReactionProbe loaded(model, "LoadedReaction");
     ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
     EXPECT_EQ(loaded.getKineticLawExpression(), "vmax * A / (km + A)");
+    ASSERT_EQ(loaded.getModifiers().size(), 1u);
+    EXPECT_EQ(loaded.getModifiers()[0], "E");
 }
 
 TEST(SimulatorRuntimeTest, BioNetworkSimulatesFirstOrderMassActionReaction) {
@@ -5931,6 +5938,45 @@ TEST(SimulatorRuntimeTest, BioNetworkSimulatesParserBackedKineticLawExpression) 
     EXPECT_NEAR(b.getAmount(), 10.0 - (10.0 / (1.0 + 0.01 * 10.0)), 1e-3);
 }
 
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesKineticLawWithModifierSpecies) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe substrate(model, "S");
+    substrate.setInitialAmount(10.0);
+    substrate.setAmount(10.0);
+    BioSpeciesProbe product(model, "P");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+    BioSpeciesProbe enzyme(model, "E");
+    enzyme.setInitialAmount(2.0);
+    enzyme.setAmount(2.0);
+
+    BioParameter k(model, "k");
+    k.setValue(0.05);
+
+    BioReactionProbe reaction(model, "CatalyzedConversion");
+    reaction.addReactant("S", 1.0);
+    reaction.addProduct("P", 1.0);
+    reaction.addModifier("E");
+    reaction.setKineticLawExpression("k * E * S");
+
+    BioNetworkProbe network(model, "ModifierNetwork");
+    network.addSpecies("S");
+    network.addSpecies("P");
+    network.addSpecies("E");
+    network.addReaction("CatalyzedConversion");
+
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(substrate.getAmount(), 10.0 * std::exp(-0.05 * 2.0), 1e-4);
+    EXPECT_NEAR(product.getAmount(), 10.0 - 10.0 * std::exp(-0.05 * 2.0), 1e-4);
+    EXPECT_DOUBLE_EQ(enzyme.getAmount(), 2.0);
+}
+
 TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideMembership) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -5946,6 +5992,7 @@ TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideMembership) 
     BioReactionProbe reaction(model, "ModifierReaction");
     reaction.addReactant("A", 1.0);
     reaction.addProduct("B", 1.0);
+    reaction.addModifier("C");
     reaction.setKineticLawExpression("C * A");
 
     std::string reactionError;
@@ -5959,8 +6006,27 @@ TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideMembership) 
     std::string errorMessage;
     EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
     EXPECT_NE(errorMessage.find("C"), std::string::npos);
-    EXPECT_NE(errorMessage.find("kineticLawExpression"), std::string::npos);
+    EXPECT_NE(errorMessage.find("modifier"), std::string::npos);
     EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioReactionRejectsMissingModifierSpecies) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+
+    BioReactionProbe reaction(model, "MissingModifierReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.addModifier("MissingE");
+
+    std::string errorMessage;
+    EXPECT_FALSE(reaction.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingE"), std::string::npos);
+    EXPECT_NE(errorMessage.find("modifier"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioNetworkPersistencePreservesExplicitMembership) {

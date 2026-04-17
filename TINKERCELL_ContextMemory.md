@@ -230,11 +230,39 @@ Validacao executada no momento da implementacao:
   - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.MassActionOdeSystem*:SimulatorRuntimeTest.RungeKutta4OdeSolver*'`: 2 testes passaram;
   - `git diff --check`: sem problemas.
 
+## Fase De Modificadores Em BioReaction Executada Em 2026-04-17
+
+- O usuario escolheu seguir a recomendacao de tratar participantes nao consumidos antes de abrir nova frente de GUI/editor ou interoperabilidade.
+- `BioReaction` passou a armazenar modificadores por nome de `BioSpecies`, separados de reagentes e produtos.
+- APIs adicionadas em `BioReaction`:
+  - `addModifier`;
+  - `clearModifiers`;
+  - `getModifiers`.
+- Semantica adotada:
+  - modificadores sao participantes formais da reacao;
+  - modificadores precisam existir como `BioSpecies`;
+  - modificadores precisam pertencer ao `BioNetwork` quando a rede usa pertencimento explicito;
+  - modificadores podem ser usados por `kineticLawExpression`;
+  - modificadores nao sao consumidos nem produzidos no sistema ODE.
+- Persistencia de `BioReaction` agora salva e carrega a lista de modificadores.
+- `BioReaction::show()` passou a expor `modifiers={...}` para observabilidade.
+- Testes adicionados ou ajustados:
+  - persistencia de modificadores junto com `kineticLawExpression`;
+  - simulacao com lei cinetica dependente de modificador, mantendo o modificador inalterado;
+  - rejeicao de modificador ausente no modelo;
+  - rejeicao de modificador fora do pertencimento explicito da rede.
+- Validacao executada:
+  - `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime`: passou;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.Bio*'`: 31 testes passaram;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_simulator_runtime --gtest_filter='SimulatorRuntimeTest.MassActionOdeSystem*:SimulatorRuntimeTest.RungeKutta4OdeSolver*'`: 2 testes passaram;
+  - `git diff --check`: sem problemas.
+- Commit local da fase: `Add biochemical reaction modifiers`; nao fazer push sem pedido explicito.
+
 ## Estado Atual Do Branch
 
 - `WiP20261` e a base consolidada atual para TINKERCELL.
 - O conteudo relevante de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
-- As fases de pertencimento explicito em `BioNetwork` e leis cineticas especificas foram implementadas localmente e validadas.
+- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas e modificadores em `BioReaction` foram implementadas localmente e validadas.
 - A IA `TINKERCELL` deve aguardar confirmacao explicita antes de iniciar a proxima fase.
 - Qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo local.
 - Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
@@ -242,9 +270,10 @@ Validacao executada no momento da implementacao:
 ## Pendencias
 
 - Confirmar com o usuario antes de iniciar a proxima fase.
-- Proxima fase candidata: definir o proximo eixo apos leis cineticas, possivelmente GUI/editor, importacao/exportacao SBML/TinkerCell, suporte a modificadores, ou semantica de reacoes reversiveis.
+- Proxima fase candidata: definir o proximo eixo apos modificadores, possivelmente GUI/editor, importacao/exportacao SBML/TinkerCell, regras mais estritas para escopo de simbolos em leis cineticas, ou semantica de reacoes reversiveis.
 - Ainda falta fluxo GUI/editor para editar listas explicitas de membros em `BioNetwork`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `kineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
+- Ainda falta fluxo GUI/editor para editar modificadores de `BioReaction`; a fase atual cobriu API, persistencia, validacao e runtime.
 
 ## Riscos E Cuidados
 

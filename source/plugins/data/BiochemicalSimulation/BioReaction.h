@@ -10,13 +10,14 @@
 /**
  * Irreversible mass-action reaction definition.
  *
- * Reactants and products are stored as species-name plus stoichiometry pairs so
- * the reaction can be persisted independently from runtime pointers. The current
- * execution contract supports direct rate constants, a BioParameter reference,
- * or an optional kinetic-law expression that resolves BioSpecies/BioParameter
- * names at BioNetwork execution time. Reversible reactions are represented for
- * future compatibility but are rejected by validation and by BioNetwork execution
- * until reverse kinetics are defined.
+ * Reactants, products, and modifiers are stored by species name so the reaction
+ * can be persisted independently from runtime pointers. Modifiers participate in
+ * kinetic laws without being consumed or produced. The current execution contract
+ * supports direct rate constants, a BioParameter reference, or an optional
+ * kinetic-law expression that resolves BioSpecies/BioParameter names at
+ * BioNetwork execution time. Reversible reactions are represented for future
+ * compatibility but are rejected by validation and by BioNetwork execution until
+ * reverse kinetics are defined.
  */
 class BioReaction : public ModelDataDefinition {
 public:
@@ -37,10 +38,13 @@ public:
 public:
 	void addReactant(std::string speciesName, double stoichiometry = 1.0);
 	void addProduct(std::string speciesName, double stoichiometry = 1.0);
+	void addModifier(std::string speciesName);
 	void clearReactants();
 	void clearProducts();
+	void clearModifiers();
 	const std::vector<StoichiometricTerm>& getReactants() const;
 	const std::vector<StoichiometricTerm>& getProducts() const;
+	const std::vector<std::string>& getModifiers() const;
 	void setRateConstant(double rateConstant);
 	double getRateConstant() const;
 	void setRateConstantParameterName(std::string rateConstantParameterName);
@@ -60,6 +64,7 @@ protected:
 
 private:
 	bool checkTerms(const std::vector<StoichiometricTerm>& terms, const std::string& side, std::string& errorMessage) const;
+	bool checkModifiers(std::string& errorMessage) const;
 	bool validateKineticLawExpression(std::string& errorMessage) const;
 	bool resolveKineticLawSymbol(const std::string& symbolName, double& value) const;
 
@@ -73,6 +78,7 @@ private:
 
 	std::vector<StoichiometricTerm> _reactants;
 	std::vector<StoichiometricTerm> _products;
+	std::vector<std::string> _modifiers;
 	double _rateConstant = DEFAULT.rateConstant;
 	std::string _rateConstantParameterName = DEFAULT.rateConstantParameterName;
 	std::string _kineticLawExpression = DEFAULT.kineticLawExpression;

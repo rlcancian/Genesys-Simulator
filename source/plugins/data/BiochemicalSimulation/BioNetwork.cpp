@@ -434,6 +434,12 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 			}
 			odeReaction.products.push_back({it->second, term.stoichiometry});
 		}
+		for (const std::string& modifierName : reaction->getModifiers()) {
+			if (indexes.find(modifierName) == indexes.end()) {
+				errorMessage += "BioReaction \"" + reaction->getName() + "\" references missing modifier BioSpecies \"" + modifierName + "\" in BioNetwork \"" + getName() + "\". ";
+				return false;
+			}
+		}
 		if (!odeReaction.kineticLawExpression.empty()) {
 			BioKineticLawExpression expression;
 			double initialRate = 0.0;
