@@ -10,11 +10,12 @@
   Gro syntax, biological semantics, or Gro-specific runtime state.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
-- **Integration PR status:** an integration pull request from
-  `WiP20261_GRO` to `WiP20261` exists for this work line. As of the latest
-  synchronization recorded below, `origin/WiP20261` already contains the current
-  GRO branch history through merge commit `2114c92c`; keep verifying the PR
-  state against GitHub before assuming additional integration work is needed.
+- **Integration PR status:** integration pull request `#370` from
+  `WiP20261_GRO` to `WiP20261` exists for this work line, but GitHub reports it
+  as closed and merged. As of the latest synchronization recorded below,
+  `origin/WiP20261` already contains the previous GRO branch history through
+  merge commit `2114c92c`; the current GRO branch now only differs from
+  `origin/WiP20261` by later context-only synchronization commits.
 - **Immediate branch objective:** keep `WiP20261_GRO` synchronized with
   `origin/WiP20261` so the branch remains cleanly integrable into the shared
   base.
@@ -149,10 +150,10 @@
 - The branch tracks `origin/WiP20261_GRO`.
 - The shared base branch is `WiP20261`.
 - The GRO branch is `WiP20261_GRO`.
-- An integration PR from `WiP20261_GRO` into `WiP20261` exists for the branch
-  line. If GitHub reports the PR as not mergeable, first synchronize
-  `WiP20261_GRO` with `origin/WiP20261`, resolve conflicts locally, validate,
-  and push the synchronized branch.
+- Integration PR `#370` from `WiP20261_GRO` into `WiP20261` exists for the
+  branch line and is closed/merged. If a later PR is opened and GitHub reports it
+  as not mergeable, first synchronize `WiP20261_GRO` with `origin/WiP20261`,
+  resolve conflicts locally, validate, and push the synchronized branch.
 - Published commits before this cleanup:
   - `41666d6f Add GRO developer coordination memory`
   - `b42c572f Add initial Gro bacteria colony plugins`
@@ -269,7 +270,13 @@
   - Synchronized base and local head after merge: `2114c92c`.
   - Context update commit recording this synchronization: `d2e1255b`
     (`Record GRO base synchronization`).
+  - Context hash-record commit: `9994d96c`
+    (`Record GRO synchronization commit hash`).
 - Expected branch state after committing this context update and pushing:
   `WiP20261_GRO` is synchronized with `origin/WiP20261` plus this operational
   context record, and should be ready for merge unless GitHub reports a
   non-code policy/check blocker.
+- GitHub verification after push found PR `#370`
+  (`WiP20261_GRO` -> `WiP20261`) closed and merged, with merge commit
+  `2114c92c`. A search for an open PR with head `WiP20261_GRO` and base
+  `WiP20261` returned no results.
