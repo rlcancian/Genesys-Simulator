@@ -680,3 +680,47 @@ Observed status:
   this checkpoint, or continue with a manual/screenshot-level GUI validation
   harness for the actual scene if visual regression coverage needs to move
   beyond unit-level QImage pixel checks.
+
+## Latest Modern Fusion Visual Completion Work
+
+- Commit: `0b0d1d9c` (`Make Modern Fusion visually distinct`).
+- `GuiThemeManager::applyApplicationTheme()` now makes `SystemPreferences::Modern`
+  visibly different from classic desktop mode:
+  - captures the original application style before switching to Fusion so classic
+    light mode can return to the original desktop style;
+  - applies a dedicated Modern Fusion stylesheet for light and dark themes;
+  - restyles menus, menubars, toolbars, status bars, group boxes, tabs, table/tree
+    headers, editable controls, buttons, and scrollbars;
+  - increases the application font point size by one point in Modern Fusion when
+    no explicit font preference is configured;
+  - repolishes existing widgets so changes are visible immediately after applying
+    preferences.
+- `DialogSystemPreferences` now labels the interface style options as
+  `Classic Desktop` and `Modern Fusion`.
+- `GraphicalModelItemRenderStrategy` now makes the organic rendering more visibly
+  distinct:
+  - component bodies use stronger blue accent outlines;
+  - data definition bodies use green accent outlines;
+  - selected items have heavier accent strokes and stronger shadows;
+  - organic items draw an additional internal accent contour while preserving the
+    existing bounding rectangle and port geometry.
+- `GuiThemeManager::applyModelGraphicsTheme()` now explicitly updates every
+  `QGraphicsItem`, the scene, and the graphics view viewport, ensuring preference
+  changes repaint component and data-definition items immediately.
+- Diagnosis for this phase: the preference and render strategy existed, but Modern
+  Fusion was not perceptible enough because light modern mode only selected Fusion
+  style plus a nearly minimal stylesheet, and the scene refresh did not explicitly
+  update each item.
+- Validation performed:
+  - `git diff --check` passed.
+  - `cmake --build --preset gui-app` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed, including the
+    `GuiRenderStrategy` pixel-difference tests.
+  - Offscreen startup smoke with temporary JSON under
+    `/tmp/genesys-modern-fusion/GenESyS/Genesys-Simulator/preferences.json`
+    loaded `interfaceStyle=modern`, `theme=light`, `modelAtStart=none`, and stayed
+    running until the expected `timeout 5` exit code.
+- Current state: the phase is complete in local commits. No push was performed.
+- Suggested next phase, only after explicit user confirmation: add a real
+  scene-level screenshot regression harness that creates a small model, renders the
+  `QGraphicsScene`, and compares classic versus Modern Fusion image characteristics.

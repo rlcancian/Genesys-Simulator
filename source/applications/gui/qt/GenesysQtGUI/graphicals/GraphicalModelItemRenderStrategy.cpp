@@ -279,8 +279,12 @@ public:
         const QRectF body = bodyRect(context);
         const QPainterPath bodyPath = shape(context);
         const QColor border = colorFromRgba(context.borderColor);
+        QColor accent = context.kind == GraphicalModelItemRenderContext::ItemKind::Component
+                            ? QColor(47, 128, 237)
+                            : QColor(16, 185, 129);
+        accent.setAlpha(context.selected ? 230 : 180);
         QColor shadow = border;
-        shadow.setAlpha(context.selected ? 90 : 45);
+        shadow.setAlpha(context.selected ? 120 : 60);
 
         painter->setPen(Qt::NoPen);
         painter->setBrush(shadow);
@@ -293,8 +297,9 @@ public:
         gradient.setColorAt(1.0, context.fillColor.darker(135));
         painter->setBrush(QBrush(gradient));
 
-        QPen bodyPen(border);
-        bodyPen.setWidth(context.selected ? context.penWidth + 2 : context.penWidth);
+        QPen bodyPen(accent);
+        bodyPen.setWidth(context.selected ? context.penWidth + 3 : context.penWidth + 1);
+        bodyPen.setCosmetic(true);
         painter->setPen(bodyPen);
         painter->drawPath(bodyPath);
 
@@ -309,6 +314,26 @@ public:
         painter->setPen(Qt::NoPen);
         painter->setBrush(highlightColor);
         painter->drawPath(highlight);
+
+        QPainterPath accentPath;
+        if (context.kind == GraphicalModelItemRenderContext::ItemKind::Component) {
+            const QRectF accentRect = body.adjusted(body.width() * 0.08,
+                                                    body.height() * 0.18,
+                                                    -body.width() * 0.58,
+                                                    -body.height() * 0.62);
+            accentPath.addRoundedRect(accentRect, accentRect.height() / 2.0, accentRect.height() / 2.0);
+        } else {
+            const QRectF accentRect = body.adjusted(body.width() * 0.15,
+                                                    body.height() * 0.16,
+                                                    -body.width() * 0.15,
+                                                    -body.height() * 0.16);
+            accentPath.addEllipse(accentRect);
+        }
+        QPen accentPen(accent.lighter(135), 2);
+        accentPen.setCosmetic(true);
+        painter->setBrush(Qt::NoBrush);
+        painter->setPen(accentPen);
+        painter->drawPath(accentPath);
 
         const QRectF textRect = body.adjusted(context.raise + 2,
                                               context.raise + 2,
