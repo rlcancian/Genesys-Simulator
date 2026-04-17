@@ -11,8 +11,9 @@ instructions, those instructions are obsolete or have been consolidated here.
 - **Agent name:** KERNEL_GUI
 - **Primary role:** GUI-focused GenESyS developer, responsible for Qt user interface
   work and GUI/kernel integration points.
-- **Current objective:** Keep the KERNEL_GUI branch stable and ready for integration
-  after GRO is integrated into the base branch.
+- **Current objective:** Synchronize `WiP20261_KERNEL_GUI` with `origin/WiP20261`
+  after TINKERCELL and GRO have entered the base, then prepare the branch for final
+  integration.
 - **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow,
   kernel-facing plugin lifecycle contracts, plugin diagnostics exposed to the GUI,
   and focused tests that cover GUI-facing kernel behavior.
@@ -27,16 +28,13 @@ KERNEL_GUI must work only on `WiP20261_KERNEL_GUI`. The shared branch `WiP20261`
 the integration base and must not be modified or merged into directly unless the
 user explicitly requests that operation.
 
-## Current Integration Order
+## Current Integration State
 
 - `WiP20261` has already absorbed TINKERCELL.
-- The next branch expected to be integrated into `WiP20261` is `WiP20261_GRO`.
-- `WiP20261_KERNEL_GUI` must wait until GRO is integrated before synchronizing with
-  `WiP20261`.
-- Do not merge `origin/WiP20261` into `WiP20261_KERNEL_GUI` until the user confirms
-  that GRO has been integrated into the base.
-- Resolve the KERNEL_GUI/base conflict only once, after GRO is present in
-  `WiP20261`.
+- `WiP20261` has already absorbed GRO.
+- `WiP20261_KERNEL_GUI` is not yet integrated into `WiP20261`.
+- The immediate goal is to synchronize `WiP20261_KERNEL_GUI` with `origin/WiP20261`
+  and prepare it for final merge into the base.
 - The main expected integration conflict for KERNEL_GUI is
   `source/tests/unit/test_runtime_pluginmanager.cpp`.
 
@@ -50,9 +48,9 @@ user explicitly requests that operation.
 - Do not wait for user confirmation for routine Git operations.
 - Ask the user before destructive operations, before resolving significant ambiguity
   with high impact, or when there is exceptional risk.
-- While GRO is pending, do not synchronize with `origin/WiP20261`.
-- After GRO has been integrated and the user confirms synchronization is appropriate,
-  prefer this routine before important pushes:
+- TINKERCELL and GRO are now in the base, so synchronizing with `origin/WiP20261`
+  is authorized for final integration preparation.
+- Before important pushes, prefer this routine:
   - fetch `origin`;
   - merge the latest `origin/WiP20261` into `WiP20261_KERNEL_GUI`;
   - resolve conflicts if any;
@@ -99,7 +97,7 @@ user explicitly requests that operation.
   and explicit user action before running install commands.
 - The Plugin Manager shows both connected plugins and plugins with problems.
 - Future dependency-sensitive plugins may include R, Scilab, Octave, libSBML, and
-  biological modeling integrations from TINKERCELL or GRO.
+  biological modeling integrations related to TINKERCELL or GRO.
 
 ## Current Branch Implementation Summary
 
@@ -163,7 +161,7 @@ Intent:
 
 - Update the generated method inventory for the new public kernel diagnostics
   surface.
-- Recheck this generated inventory after synchronizing with the post-GRO base.
+- Recheck this generated inventory after synchronizing with the base.
 
 ### Tests
 
@@ -178,26 +176,26 @@ Intent:
   or installation is unavailable.
 - Cover successful installation/revalidation through faked command execution.
 - Cover clearing a stored issue after a successful retry.
-- This file is the principal expected conflict with the post-TINKERCELL and post-GRO
-  base.
+- This file is the principal expected conflict with the base after TINKERCELL and
+  GRO.
 
 ## Integration Dependencies
 
 - GUI-facing plugin diagnostics depend on the kernel diagnostic API added in
   `PluginManager.*`.
 - The generated method inventory must remain aligned with the public kernel surface
-  once KERNEL_GUI is synchronized with the post-GRO base.
+  once KERNEL_GUI is synchronized with the base.
 - `source/tests/unit/test_runtime_pluginmanager.cpp` is the highest-risk conflict
-  point because TINKERCELL has already changed the base and GRO is expected to be
-  integrated before KERNEL_GUI.
-- Conflict resolution should happen only once, after GRO is present in `WiP20261`.
+  point because TINKERCELL and GRO have already changed the base.
+- Conflict resolution should preserve both the base coverage from TINKERCELL/GRO
+  and the additional KERNEL_GUI plugin diagnostics coverage.
 
 ## Current Branch State
 
 - `WiP20261_KERNEL_GUI` exists locally.
 - `origin/WiP20261_KERNEL_GUI` exists remotely.
 - The local branch tracks `origin/WiP20261_KERNEL_GUI`.
-- The branch was last pushed successfully after commit `62c3dca2`.
+- The branch was last pushed successfully after commit `71db615c`.
 - Recent branch commits include:
   - `6a02e61f Track plugin load diagnostics in PluginManager`
   - `f0a4bfb9 Show recoverable plugin dependency issues in GUI`
@@ -205,8 +203,9 @@ Intent:
   - `63c2824a Record KERNEL_GUI validation status`
   - `c324d263 Consolidate KERNEL_GUI persistent context`
   - `62c3dca2 Document KERNEL_GUI integration hold`
-- The branch is intentionally waiting for `WiP20261_GRO` to be integrated before
-  another synchronization with `WiP20261`.
+  - `71db615c Move KERNEL_GUI memory to agent-specific file`
+- The branch is being synchronized with `origin/WiP20261` for final integration
+  preparation.
 
 ## Validation Already Run
 
@@ -239,8 +238,7 @@ documentation-only.
   `ContextMemmory.md` as active memory.
 - Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
-- Wait for GRO integration before merging or otherwise synchronizing with
-  `WiP20261`.
+- Synchronize with `origin/WiP20261` and prepare for final merge into the base.
 - If plugin dependency recovery receives more changes, keep them small and preserve
   kernel/GUI separation.
 - Future work may refine terminal handling and password/sudo feedback during
@@ -252,21 +250,20 @@ documentation-only.
   `mainwindow.cpp` are integration-heavy files and may conflict with other
   developers.
 - `source/tests/unit/test_runtime_pluginmanager.cpp` is the main expected conflict
-  with the post-TINKERCELL and post-GRO base.
+  with the base after TINKERCELL and GRO.
 - Interactive installation depends on terminal emulator availability and local sudo
   configuration.
 - External tools such as R, Scilab, Octave, and libSBML may have OS-specific install
   commands and verification behavior.
-- TINKERCELL is already in the base, and GRO may rely on the same plugin metadata
-  and dependency diagnostic path.
+- TINKERCELL and GRO are already in the base and may rely on the same plugin
+  metadata and dependency diagnostic path.
 
 ## Likely Next Steps
 
-- Wait until the user confirms `WiP20261_GRO` has been integrated into `WiP20261`.
-- After that confirmation, fetch `origin`, merge `origin/WiP20261` into
-  `WiP20261_KERNEL_GUI`, and resolve conflicts once.
+- Fetch `origin`, merge `origin/WiP20261` into `WiP20261_KERNEL_GUI`, and resolve
+  conflicts once.
 - Pay special attention to `source/tests/unit/test_runtime_pluginmanager.cpp`.
-- Recheck the generated method inventory after the post-GRO synchronization.
+- Recheck the generated method inventory after synchronization.
 - Run the focused runtime plugin manager test, the GUI target build, and the relevant
   configured test suite before pushing.
 
