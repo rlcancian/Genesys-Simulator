@@ -20,7 +20,8 @@ instructions, those instructions are obsolete or have been consolidated here.
   (`Add Modern Fusion curved connections`). The latest completed GMDD visual
   hierarchy phase is `0a0ec979` (`Improve GMDD visual hierarchy layout`), with
   focused layout-geometry validation extracted in `afa23c21`
-  (`Add GMDD layout geometry tests`).
+  (`Add GMDD layout geometry tests`) and scene-level Seize layout regression
+  coverage in `6a3dc9f2` (`Add GMDD Seize layout regression test`).
 - **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow,
   kernel-facing plugin lifecycle contracts, plugin diagnostics exposed to the GUI,
   and focused tests that cover GUI-facing kernel behavior.
@@ -1050,3 +1051,70 @@ Observed status:
   scene-level visual/regression harness that instantiates a compact `Seize` model
   with queue/resource references and statistic children, then asserts or captures
   the resulting GMDD upper/lower two-row layout.
+
+## Latest GMDD Seize Layout Regression Phase
+
+- Functional commit: `6a3dc9f2adfe4991a499737d6f8f8cdeb2038cb2`
+  (`Add GMDD Seize layout regression test`).
+- User continuation request:
+  - proceed with the suggested scene-level validation phase;
+  - when a stable set of changes exists, stage and commit it.
+- Diagnosis:
+  - the scene-level test initially reproduced the user's reported `Seize` issue:
+    `Queue` and `Resource` GMDDs could still be treated as non-editable and placed
+    below the component;
+  - the previous editable-reference scan depended on nested
+    `SimulationControl` properties being present under inline helper objects such
+    as `QueueableItem` and list entries such as `SeizableItem`;
+  - some legitimate `QueueableItem`/`SeizableItem` instances can already contain
+    the referenced model data definition but not expose the nested control list,
+    so the scan never reached the actual `Queue`/`Resource` reference;
+  - list-backed attachments use keys such as `SeizableItem[0]`, produced by
+    `Util::StrIndex()`, so fallback matching needed to understand bracketed list
+    indexes.
+- Implementation:
+  - `GraphicalModelBuilder` now has a conservative fallback that marks a
+    component-attached GMDD as editable when the attachment key matches a writable
+    class/list property descriptor:
+    - direct inline object names such as `QueueableItem`;
+    - list item technical names with numeric suffixes such as `SeizableItem[0]`;
+  - statistic GMDDs remain excluded from editable classification even if they are
+    encountered through the fallback;
+  - added `genesys_test_gui_gmdd_layout`, a Qt/GTest target that links the real
+    GUI builder and scene code;
+  - added a `Seize` scene regression test that creates a compact model with:
+    - editable `Queue` and `Resource` references;
+    - direct `Counter` and `StatisticsCollector` lower-row GMDDs;
+    - additional shared queues on the second lower row;
+  - the test asserts that editable GMDDs are marked editable and placed above the
+    component, statistic GMDDs are below the component, shared non-editable GMDDs
+    are below the statistic row, and the tested GMDD rectangles do not overlap.
+- Validation performed:
+  - `cmake --preset tests-kernel-unit` passed before building the new target;
+  - `cmake --build build/tests-kernel-unit --target genesys_test_gui_gmdd_layout`
+    passed;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_gui_gmdd_layout`
+    passed;
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_gui_render_strategy`
+    passed with 9 GUI render/layout tests;
+  - `git diff --check -- source/applications/gui/qt/GenesysQtGUI/services/GraphicalModelBuilder.cpp source/tests/unit/CMakeLists.txt source/tests/unit/test_gui_gmdd_layout.cpp`
+    passed;
+  - `cmake --build --preset gui-app` passed and linked
+    `genesys_qt_gui_application`;
+  - `gdb` was used once, with approved escalation, to diagnose an intermediate
+    test-only crash caused by automatic `Resource` internal-data creation through
+    `PluginManager::newInstance`; the final test avoids that by constructing test
+    data definitions directly and letting the model registry own them.
+- Current state:
+  - the Seize case now has executable regression coverage for the exact upper
+    editable / lower two-row non-editable layout rule;
+  - the runtime classification is more robust for existing inline/list helper
+    objects that expose valid component attachments but lack nested property lists;
+  - no push was performed;
+  - an unrelated pre-existing local modification remains in
+    `source/plugins/data/BiochemicalSimulation/BioNetwork.cpp` and was not staged
+    or committed by KERNEL_GUI.
+- Suggested next phase, only after explicit user confirmation: add a visual
+  screenshot harness for the same compact `Seize` scene to capture rendered
+  positions and visual opacity, complementing the current geometry assertions with
+  image-level evidence.
