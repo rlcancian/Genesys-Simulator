@@ -393,6 +393,30 @@ instructions are considered obsolete or consolidated here.
   - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
     succeeded with 8 tests.
 
+### 2026-04-17 - Gro Initial Semantic IR Phase
+
+- User confirmed continuation after the minimal AST/IR phase.
+- Revalidated current branch state on `WiP20261_GRO`; the branch was clean and
+  matched `origin/WiP20261_GRO` before changes.
+- Ran `git fetch origin`; no new remote changes were reported.
+- Executed only the next phase: create a non-executable semantic IR layer from
+  the parsed `GroProgramAst`.
+- Added `GroProgramIr` and `GroProgramCompiler` under the existing current path
+  `source/plugins/data/BiologicalModeling/`, without moving plugin files or
+  changing category layout.
+- `GroProgramCompiler::compile` now converts AST statements into generic IR
+  commands:
+  - `FunctionCall` for recognized `identifier(...)` statements.
+  - `RawStatement` for balanced statements not yet understood semantically.
+  - top-level comma-separated function arguments are preserved as source text.
+- No execution binding, bacteria state, cellular automata, GUI work, or plugin
+  directory reorganization was added in this phase.
+- Validation after this phase:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 9 tests.
+
 ### 2026-04-17 - Gro Minimal AST/IR Phase
 
 - User confirmed continuation after the parser boundary phase.

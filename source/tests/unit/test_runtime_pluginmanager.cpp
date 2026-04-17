@@ -6,6 +6,7 @@
 #include "plugins/PluginConnectorDummyImpl1.h"
 #include "plugins/components/BiologicalModeling/BacteriaColony.h"
 #include "plugins/data/BiologicalModeling/GroProgram.h"
+#include "plugins/data/BiologicalModeling/GroProgramCompiler.h"
 #include "plugins/data/BiologicalModeling/GroProgramParser.h"
 
 #include <algorithm>
@@ -281,4 +282,37 @@ TEST(RuntimePluginManagerClassTest, GroProgramParserKeepsLexicalValidationBounda
     GroProgramParser::Result rejected = parser.parse("program main() { tick(); ");
     EXPECT_FALSE(rejected.accepted);
     EXPECT_NE(rejected.errorMessage.find("unmatched opening delimiters"), std::string::npos);
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramCompilerBuildsInitialSemanticIr) {
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse(
+        "program colony() { tick(); set_rate(mu, 0.2); observe(\"a,b\"); raw + expression; }");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+
+    EXPECT_TRUE(ir.isProgramBlock());
+    EXPECT_EQ(ir.programName, "colony");
+    ASSERT_EQ(ir.commands.size(), 4u);
+
+    EXPECT_TRUE(ir.commands[0].isFunctionCall());
+    EXPECT_EQ(ir.commands[0].functionName, "tick");
+    EXPECT_TRUE(ir.commands[0].arguments.empty());
+    EXPECT_EQ(ir.commands[0].sourceText, "tick()");
+
+    EXPECT_TRUE(ir.commands[1].isFunctionCall());
+    EXPECT_EQ(ir.commands[1].functionName, "set_rate");
+    ASSERT_EQ(ir.commands[1].arguments.size(), 2u);
+    EXPECT_EQ(ir.commands[1].arguments[0], "mu");
+    EXPECT_EQ(ir.commands[1].arguments[1], "0.2");
+
+    EXPECT_TRUE(ir.commands[2].isFunctionCall());
+    EXPECT_EQ(ir.commands[2].functionName, "observe");
+    ASSERT_EQ(ir.commands[2].arguments.size(), 1u);
+    EXPECT_EQ(ir.commands[2].arguments[0], "\"a,b\"");
+
+    EXPECT_FALSE(ir.commands[3].isFunctionCall());
+    EXPECT_EQ(ir.commands[3].sourceText, "raw + expression");
 }
