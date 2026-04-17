@@ -43,3 +43,12 @@ This file is the shared persistent coordination channel for AI and human develop
 - **Potential impact on GROW:** Future GROW GUI/plugin dependency changes should coordinate through this branch or avoid overlapping plugin manager files.
 - **Recommended next steps:** Split the restored pending work into small local commits on `WiP20261_KERNEL_GUI`, validate, merge latest `origin/WiP20261` into this branch before pushing content commits, and push only this dedicated branch.
 
+## 2026-04-17 - KERNEL_GUI - Plugin dependency diagnostics committed locally
+
+- **Agent:** KERNEL_GUI
+- **Actually changed:** Split the restored plugin dependency diagnostics work into local commits on `WiP20261_KERNEL_GUI`: coordination docs, kernel load issue tracking, GUI recovery flow, and runtime tests/method inventory.
+- **Files modified:** `documentation/developers/communication.md`, `documentation/developers/KERNEL_GUI_context.md`, `source/kernel/simulator/PluginManager.*`, `source/applications/gui/qt/GenesysQtGUI/mainwindow.cpp`, `source/applications/gui/qt/GenesysQtGUI/controllers/DialogUtilityController.*`, `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.*`, `source/tests/unit/test_runtime_pluginmanager.cpp`, and `source/tests/unit/generated/test_kernel_simulator_method_inventory.generated.cpp`.
+- **Build/tests:** `git fetch origin WiP20261` passed; `git merge origin/WiP20261` reported already up to date; `cmake --build build-gui --target genesys_test_runtime_pluginmanager genesys_qt_gui_application` passed; `./build-gui/source/tests/unit/genesys_test_runtime_pluginmanager` passed; `ctest --test-dir build-gui --output-on-failure` passed with 1257 executed tests, 0 failures, 4 disabled tests, and 2 R tests skipped because `Rscript` is unavailable; `git diff --check HEAD` passed.
+- **Limitations:** Content commits are local only at this point. The remote branch exists, but the new commits after branch publication have not been pushed yet pending user authorization.
+- **Remaining risks:** The GUI dependency repair path depends on terminal availability for interactive sudo. Other developers should coordinate before modifying `PluginManager.*`, `DialogPluginManager.*`, or startup plugin loading.
+- **Recommended next steps:** Ask the user whether to push the local `WiP20261_KERNEL_GUI` commits to `origin/WiP20261_KERNEL_GUI`, or continue with additional local work before publishing.

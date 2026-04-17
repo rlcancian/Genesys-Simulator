@@ -8,9 +8,9 @@
 4. **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow, kernel plugin lifecycle diagnostics, and tests that cover GUI-facing kernel behavior.
 5. **Important restrictions:** Source code, identifiers, code comments, Doxygen, and internal technical documentation must remain in English. Conversation with the user is in Portuguese. Work only on `WiP20261_KERNEL_GUI`; use `WiP20261` as the shared base branch; do not merge into `WiP20261` unless explicitly requested. Do not push content changes without following the fetch/merge/build/test workflow.
 6. **Relevant interfaces/modules:** `PluginManager`, `PluginLoadIssue`, `SystemDependencyResolver`, `PluginInsertionOptions`, `DialogPluginManager`, `DialogUtilityController`, `MainWindow`, plugin connector dummy implementation, and plugin metadata declared through `PluginInformation`.
-7. **Current state summary:** The dedicated branch `WiP20261_KERNEL_GUI` has been created from `WiP20261` and published to `origin`. The local worktree contains restored uncommitted changes implementing a first version of stored plugin load issues and a two-tab Plugin Manager GUI with dependency-resolution workflow. The changes have been built and tested locally, but still need small local commits on the dedicated branch.
+7. **Current state summary:** The dedicated branch `WiP20261_KERNEL_GUI` has been created from `WiP20261` and published to `origin`. The restored plugin diagnostics work has been split into local commits covering coordination docs, kernel load issue tracking, GUI recovery flow, and runtime tests/method inventory. These content commits are local only until the user authorizes a push.
 8. **Main decisions already taken:** Startup autoload should not run install commands or show dependency dialogs. Failed plugin loads should be recorded by the kernel and presented later by the Plugin Manager GUI. Dependency repair should be explicit and user-authorized from the Plugin Manager dialog.
-9. **Open pending items:** Review the pending patch under the new coordination protocol, decide whether to refine/split/commit it, and ensure any further GUI behavior is approved before implementation.
+9. **Open pending items:** Ask the user whether to push the local `WiP20261_KERNEL_GUI` commits to the remote branch. Continue future work only on `WiP20261_KERNEL_GUI`.
 10. **Risks and attention points:** `PluginManager.*` and `dialogpluginmanager.*` are shared integration points likely to conflict with other AI or human changes. The terminal-based dependency installation workflow is platform-sensitive and should remain defensive. R, Scilab, Octave, libSBML, and future biological tooling may all rely on this diagnostic flow.
 
 ## Interaction Log
@@ -71,3 +71,14 @@
 - **Next steps:** Split the restored patch into small commits, validate again, merge the latest `origin/WiP20261` before pushing content commits, and keep all future KERNEL_GUI work on `WiP20261_KERNEL_GUI`.
 - **Open questions/hypotheses:** The restored pending work should be committed in logical groups: coordination docs, kernel diagnostics, GUI recovery flow, and tests/inventory.
 
+### 2026-04-17 - KERNEL_GUI - Local commits and validation on dedicated branch
+
+- **Sender:** KERNEL_GUI
+- **Main topic:** Completing branch setup and local commit split after confirming `WiP20261` as the base branch.
+- **Extracted context:** The dedicated branch was already created and published, but the restored plugin diagnostics patch needed local commits and validation.
+- **Decision:** Keep commits small: one for coordination docs, one for kernel diagnostics, one for GUI recovery flow, one for tests/inventory, and one final documentation update.
+- **Requested action:** None from the user during implementation; KERNEL_GUI continued the approved branch workflow.
+- **Response/action taken:** Committed kernel plugin load diagnostics, GUI Plugin Manager recovery UI, runtime tests, and generated method inventory locally on `WiP20261_KERNEL_GUI`.
+- **Validation:** `git fetch origin WiP20261`; `git merge origin/WiP20261` reported already up to date; `cmake --build build-gui --target genesys_test_runtime_pluginmanager genesys_qt_gui_application`; `./build-gui/source/tests/unit/genesys_test_runtime_pluginmanager`; `ctest --test-dir build-gui --output-on-failure`; `git diff --check HEAD`.
+- **Next steps:** Ask the user for explicit authorization before pushing the new local content commits to `origin/WiP20261_KERNEL_GUI`.
+- **Open questions/hypotheses:** Interactive dependency installation can still vary by desktop terminal availability and sudo configuration.
