@@ -1,11 +1,15 @@
 #include <cmath>
+#include <functional>
 #include <gtest/gtest.h>
 
+#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/Event.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/ParserDefaultImpl2.h"
 #include "kernel/statistics/SamplerDefaultImpl1.h"
 #include "parser/Genesys++-driver.h"
+#include "plugins/data/Variable.h"
 
 class ParserExpressionsTest : public ::testing::Test {
 protected:
@@ -15,6 +19,50 @@ protected:
     void SetUp() override {
         model = simulator.getModelManager()->newModel();
         ASSERT_NE(model, nullptr);
+    }
+};
+
+class ParserAttributeInternalEventOwner : public Attribute {
+public:
+    ParserAttributeInternalEventOwner(Model* model, const std::string& name = "")
+        : Attribute(model, name) {}
+
+    void Noop(void*) {}
+};
+
+struct ParserAttributeEventInjector {
+    Model* model = nullptr;
+    ParserAttributeInternalEventOwner* owner = nullptr;
+    bool inserted = false;
+
+    void OnReplicationStart(SimulationEvent*) {
+        if (inserted || model == nullptr || owner == nullptr) {
+            return;
+        }
+        Entity* entity = model->createEntity("ParserAttributeEntity", true);
+        entity->setAttributeValue("ParserAttrND", 31.0, "", true);
+        entity->setAttributeValue("ParserAttrND", 32.0, "1");
+        entity->setAttributeValue("ParserAttrND", 33.0, "1,2");
+        entity->setAttributeValue("ParserAttrND", 34.0, "1,2,3");
+        entity->setAttributeValue("ParserAttrND", 35.0, "1,2,3,4,5");
+        auto* event = new InternalEvent(0.0, "Parser attribute expression probe");
+        event->setEntity(entity);
+        event->setEventHandler(owner, &ParserAttributeInternalEventOwner::Noop, nullptr);
+        model->getFutureEvents()->insert(event);
+        inserted = true;
+    }
+};
+
+struct ParserAttributeProcessObserver {
+    std::function<void(Entity*)> onProcess;
+
+    void OnProcessEvent(SimulationEvent* event) {
+        if (event == nullptr || event->getCurrentEvent() == nullptr || event->getCurrentEvent()->getEntity() == nullptr) {
+            return;
+        }
+        if (onProcess) {
+            onProcess(event->getCurrentEvent()->getEntity());
+        }
     }
 };
 
@@ -39,6 +87,91 @@ TEST_F(ParserExpressionsTest, MathFunctionsRoundTruncFracAndSqrt) {
     EXPECT_DOUBLE_EQ(model->parseExpression("trunc(3.9)"), 3.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("frac(3.9)"), 0.9);
     EXPECT_DOUBLE_EQ(model->parseExpression("sqrt(9)"), 3.0);
+}
+
+TEST_F(ParserExpressionsTest, VariableIndexesSupportScalarLegacyAndNDReads) {
+    auto* variable = new Variable(model, "ParserVarND");
+    ASSERT_NE(variable, nullptr);
+    variable->setValue(10.0);
+    variable->setValue(11.0, "1");
+    variable->setValue(12.0, "1,2");
+    variable->setValue(13.0, "1,2,3");
+    variable->setValue(14.0, "1,2,3,4,5");
+
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserVarND"), 10.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserVarND[1]"), 11.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserVarND[1,2]"), 12.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserVarND[1,2,3]"), 13.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserVarND[1,2,3,4,5]"), 14.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserVarND[1,2,3,4,6]"), 0.0);
+
+    delete variable;
+}
+
+TEST_F(ParserExpressionsTest, AttributeIndexesSupportLegacyAndNDReadsAndAssignmentsDuringEvent) {
+    auto* attribute = new ParserAttributeInternalEventOwner(model, "ParserAttrND");
+    ASSERT_NE(attribute, nullptr);
+
+    bool dispatched = false;
+    double scalarRead = 0.0;
+    double oneDRead = 0.0;
+    double twoDRead = 0.0;
+    double threeDRead = 0.0;
+    double ndRead = 0.0;
+    double missingRead = -1.0;
+    double ndAssignmentResult = 0.0;
+    double ndAssignedValue = 0.0;
+
+    ParserAttributeProcessObserver observer;
+    observer.onProcess = [&](Entity* entity) {
+        ASSERT_NE(entity, nullptr);
+        dispatched = true;
+        scalarRead = model->parseExpression("ParserAttrND");
+        oneDRead = model->parseExpression("ParserAttrND[1]");
+        twoDRead = model->parseExpression("ParserAttrND[1,2]");
+        threeDRead = model->parseExpression("ParserAttrND[1,2,3]");
+        ndRead = model->parseExpression("ParserAttrND[1,2,3,4,5]");
+        missingRead = model->parseExpression("ParserAttrND[1,2,3,4,6]");
+        ndAssignmentResult = model->parseExpression("ParserAttrND[1,2,3,4,6]=36");
+        ndAssignedValue = entity->getAttributeValue("ParserAttrND", "1,2,3,4,6");
+    };
+
+    ParserAttributeEventInjector injector{model, attribute};
+    model->getOnEventManager()->addOnReplicationStartHandler(&injector, &ParserAttributeEventInjector::OnReplicationStart);
+    model->getOnEventManager()->addOnProcessEventHandler(&observer, &ParserAttributeProcessObserver::OnProcessEvent);
+    model->getSimulation()->setReplicationLength(1.0);
+    model->getSimulation()->start();
+
+    EXPECT_TRUE(dispatched);
+    EXPECT_DOUBLE_EQ(scalarRead, 31.0);
+    EXPECT_DOUBLE_EQ(oneDRead, 32.0);
+    EXPECT_DOUBLE_EQ(twoDRead, 33.0);
+    EXPECT_DOUBLE_EQ(threeDRead, 34.0);
+    EXPECT_DOUBLE_EQ(ndRead, 35.0);
+    EXPECT_DOUBLE_EQ(missingRead, 0.0);
+    EXPECT_DOUBLE_EQ(ndAssignmentResult, 36.0);
+    EXPECT_DOUBLE_EQ(ndAssignedValue, 36.0);
+
+    delete attribute;
+}
+
+TEST_F(ParserExpressionsTest, VariableIndexesSupportScalarLegacyAndNDAssignments) {
+    auto* variable = new Variable(model, "ParserAssignVarND");
+    ASSERT_NE(variable, nullptr);
+
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND=21"), 21.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND[1]=22"), 22.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND[1,2]=23"), 23.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND[1,2,3]=24"), 24.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ParserAssignVarND[1,2,3,4,5]=25"), 25.0);
+
+    EXPECT_DOUBLE_EQ(variable->getValue(""), 21.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1"), 22.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2"), 23.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2,3"), 24.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("1,2,3,4,5"), 25.0);
+
+    delete variable;
 }
 
 TEST_F(ParserExpressionsTest, ProbabilisticFunctionsValidExpressionsWithThrowsExceptionTrue) {

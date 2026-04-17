@@ -31,13 +31,20 @@ Variable::Variable(Model* model, std::string name) : ModelDataDefinition(model, 
 			std::bind(&Variable::getInitialValue, this, ""),
 			std::bind(&Variable::setInitialValue, this, std::placeholders::_1, ""),
 			Util::TypeOf<Variable>(), getName(), "InitialValue", "");
+	// this Control was infered from getters and setters
+	SimulationControlGenericClass<ModelDataDefinition*, Model*, ModelDataDefinition>* propScope =
+			new SimulationControlGenericClass<ModelDataDefinition*, Model*, ModelDataDefinition>(
+					_parentModel,
+					std::bind(&Variable::get_scope, this),
+					std::bind(&Variable::set_scope, this, std::placeholders::_1),
+					Util::TypeOf<Variable>(), getName(), "Scope", "");
 	_parentModel->getControls()->insert(propInitialValue);
+	_parentModel->getControls()->insert(propScope);
 	_addProperty(propInitialValue);
+	_addProperty(propScope);
 }
 
 Variable::~Variable() {
-	delete _dimensionSizes;
-	_dimensionSizes = nullptr;
 	delete _values;
 	_values = nullptr;
 	delete _initialValues;
@@ -45,15 +52,7 @@ Variable::~Variable() {
 }
 
 std::string Variable::show() {
-	std::string text = "values:{";
-	for (std::pair<std::string, double> var : * this->_values) {
-		text += var.first + "=" + Util::StrTruncIfInt(std::to_string(var.second)) + ", ";
-	}
-	if (!this->_values->empty()) {
-		text = text.substr(0, text.length() - 2);
-	}
-	text += "}";
-	return ModelDataDefinition::show() + ", " + text;
+	return ModelDataDefinition::show() + ", values:" + this->_values->showValues();
 }
 
 PluginInformation* Variable::GetPluginInformation() {
@@ -66,12 +65,7 @@ PluginInformation* Variable::GetPluginInformation() {
 //}
 
 double Variable::getValue(std::string index) {
-	std::map<std::string, double>::iterator it = _values->find(index);
-	if (it == _values->end()) {
-		return 0.0; // index does not exist. Assuming sparse matrix, it's zero.
-	} else {
-		return it->second;
-	}
+	return _values->value(index);
 }
 
 //void Variable::setValue(double value) {
@@ -79,13 +73,7 @@ double Variable::getValue(std::string index) {
 //}
 
 void Variable::setValue(double value,std::string index) {
-	std::map<std::string, double>::iterator it = _values->find(index);
-	if (it == _values->end()) {
-		// index does not exist. Create it.
-		_values->insert({index, value}); //(std::pair<std::string, double>(index, value));
-	} else {
-		it->second = value;
-	}
+	_values->setValue(value, index);
 }
 
 /*
@@ -99,22 +87,11 @@ void Variable::setInitialValue(double value) {
 */
 
 double Variable::getInitialValue(std::string index) {
-	std::map<std::string, double>::iterator it = _initialValues->find(index);
-	if (it == _initialValues->end()) {
-		return 0.0; // index does not exist. Assuming sparse matrix, it's zero.
-	} else {
-		return it->second;
-	}
+	return _initialValues->value(index);
 }
 
 void Variable::setInitialValue(double value, std::string index) {
-	std::map<std::string, double>::iterator it = _initialValues->find(index);
-	if (it == _initialValues->end()) {
-		// index does not exist. Create it.
-		_initialValues->insert(std::pair<std::string, double>(index, value));
-	} else {
-		it->second = value;
-	}
+	_initialValues->setValue(value, index);
 }
 
 void Variable::setInitialValues(const std::vector<std::pair<std::string, double>> values) {
@@ -124,11 +101,13 @@ void Variable::setInitialValues(const std::vector<std::pair<std::string, double>
 }
 
 void Variable::insertDimentionSize(unsigned int size) {
-	_dimensionSizes->insert(_dimensionSizes->end(), size);
+	// Dimension metadata applies both to initial values and runtime values.
+	_initialValues->insertDimensionSize(size);
+	_values->insertDimensionSize(size);
 }
 
 std::list<unsigned int>* Variable::getDimensionSizes() const {
-	return _dimensionSizes;
+	return _initialValues->dimensionSizes();
 }
 
 ModelDataDefinition* Variable::LoadInstance(Model* model, PersistenceRecord *fields) {
@@ -144,39 +123,18 @@ ModelDataDefinition* Variable::LoadInstance(Model* model, PersistenceRecord *fie
 bool Variable::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
-		std::string pos;
-		double value;
-		unsigned int nv;
-		nv = fields->loadField("dimensions", 0);
-		for (unsigned int i = 0; i < nv; i++) {
-			value = fields->loadField("dimension" + Util::StrIndex(i), 0);
-			//this->_dimensionSizes->insert(value);
-			this->insertDimentionSize(value);
-		}
-		nv = fields->loadField("values", 0);
-		for (unsigned int i = 0; i < nv; i++) {
-			pos = fields->loadField("valuePos" + Util::StrIndex(i), "");
-			value = fields->loadField("value" + Util::StrIndex(i), 0.0);
-			this->_initialValues->emplace(pos, value);
-		}
+		// Preserve the legacy persistence layout while centralizing sparse parsing.
+		this->_initialValues->loadDimensions(fields);
+		this->_initialValues->loadValues(fields, "values", "valuePos", "value");
+		*this->_values = *this->_initialValues;
 	}
 	return res;
 }
 
 void Variable::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
-	unsigned int i = 0;
-	fields->saveField("dimensions", _dimensionSizes->size(), 0u, saveDefaultValues);
-	for (unsigned int dimension : *_dimensionSizes) {
-		fields->saveField("dimension" + Util::StrIndex(i), dimension, 1u, saveDefaultValues);
-		i++;
-	}
-	i = 0;
-	fields->saveField("values", _initialValues->size(), 0);
-	for (std::map<std::string, double>::iterator it = _initialValues->begin(); it != _initialValues->end(); it++, i++) {
-		fields->saveField("valuePos" + Util::StrIndex(i), (*it).first, "0", saveDefaultValues);
-		fields->saveField("value" + Util::StrIndex(i), (*it).second, 0.0, saveDefaultValues);
-	}
+	_initialValues->saveDimensions(fields, saveDefaultValues);
+	_initialValues->saveValues(fields, "values", "valuePos", "value", saveDefaultValues);
 }
 
 bool Variable::_check(std::string& errorMessage) {
@@ -197,5 +155,13 @@ void Variable::set_scope(ModelDataDefinition* const scope) {
 }
 
 std::map<std::string, double> *Variable::getValues() const {
+	return _values->values();
+}
+
+SparseValueStore* Variable::getValueStore() {
 	return _values;
+}
+
+SparseValueStore* Variable::getInitialValueStore() {
+	return _initialValues;
 }

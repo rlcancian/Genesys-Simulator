@@ -32,7 +32,7 @@
 
 
 /**
- ** \file ../GenesysParser.h
+ ** \file GenesysParser.h
  ** Define the yy::parser class.
  */
 
@@ -45,7 +45,7 @@
 #ifndef YY_YY_GENESYSPARSER_H_INCLUDED
 # define YY_YY_GENESYSPARSER_H_INCLUDED
 // "%code requires" blocks.
-#line 9 "bisonparser.yy"
+#line 9 "parserBisonFlex/bisonparser.yy"
 
 	#include <string>
 	#include <cmath>
@@ -85,7 +85,7 @@
 
 	class genesyspp_driver;
 
-#line 89 "../GenesysParser.h"
+#line 89 "GenesysParser.h"
 
 # include <cassert>
 # include <cstdlib> // std::abort
@@ -225,7 +225,7 @@
 #endif
 
 namespace yy {
-#line 229 "../GenesysParser.h"
+#line 229 "GenesysParser.h"
 
 
 
@@ -555,6 +555,9 @@ namespace yy {
       // assigment
       // pluginFunction
       char dummy1[sizeof (obj_t)];
+
+      // indexList
+      char dummy2[sizeof (std::string)];
     };
 
     /// The size of the largest semantic type.
@@ -836,14 +839,15 @@ namespace yy {
         S_probFunction = 117,                    // probFunction
         S_userFunction = 118,                    // userFunction
         S_listaparm = 119,                       // listaparm
-        S_illegal = 120,                         // illegal
-        S_attribute = 121,                       // attribute
-        S_simulationResponse = 122,              // simulationResponse
-        S_simulationControl = 123,               // simulationControl
-        S_variable = 124,                        // variable
-        S_formula = 125,                         // formula
-        S_assigment = 126,                       // assigment
-        S_pluginFunction = 127                   // pluginFunction
+        S_indexList = 120,                       // indexList
+        S_illegal = 121,                         // illegal
+        S_attribute = 122,                       // attribute
+        S_simulationResponse = 123,              // simulationResponse
+        S_simulationControl = 124,               // simulationControl
+        S_variable = 125,                        // variable
+        S_formula = 126,                         // formula
+        S_assigment = 127,                       // assigment
+        S_pluginFunction = 128                   // pluginFunction
       };
     };
 
@@ -993,6 +997,10 @@ namespace yy {
         value.move< obj_t > (std::move (that.value));
         break;
 
+      case symbol_kind::S_indexList: // indexList
+        value.move< std::string > (std::move (that.value));
+        break;
+
       default:
         break;
     }
@@ -1024,6 +1032,20 @@ namespace yy {
       {}
 #else
       basic_symbol (typename Base::kind_type t, const obj_t& v, const location_type& l)
+        : Base (t)
+        , value (v)
+        , location (l)
+      {}
+#endif
+
+#if 201103L <= YY_CPLUSPLUS
+      basic_symbol (typename Base::kind_type t, std::string&& v, location_type&& l)
+        : Base (t)
+        , value (std::move (v))
+        , location (std::move (l))
+      {}
+#else
+      basic_symbol (typename Base::kind_type t, const std::string& v, const location_type& l)
         : Base (t)
         , value (v)
         , location (l)
@@ -1165,6 +1187,10 @@ switch (yykind)
       case symbol_kind::S_assigment: // assigment
       case symbol_kind::S_pluginFunction: // pluginFunction
         value.template destroy< obj_t > ();
+        break;
+
+      case symbol_kind::S_indexList: // indexList
+        value.template destroy< std::string > ();
         break;
 
       default:
@@ -2831,10 +2857,10 @@ switch (yykind)
 
     // YYSTOS[STATE-NUM] -- The symbol kind of the accessing symbol of
     // state STATE-NUM.
-    static const signed char yystos_[];
+    static const unsigned char yystos_[];
 
     // YYR1[RULE-NUM] -- Symbol kind of the left-hand side of rule RULE-NUM.
-    static const signed char yyr1_[];
+    static const unsigned char yyr1_[];
 
     // YYR2[RULE-NUM] -- Number of symbols on the right-hand side of rule RULE-NUM.
     static const signed char yyr2_[];
@@ -3069,8 +3095,8 @@ switch (yykind)
     /// Constants.
     enum
     {
-      yylast_ = 577,     ///< Last index in yytable_.
-      yynnts_ = 33,  ///< Number of nonterminal symbols.
+      yylast_ = 493,     ///< Last index in yytable_.
+      yynnts_ = 34,  ///< Number of nonterminal symbols.
       yyfinal_ = 142 ///< Termination state number.
     };
 
@@ -3259,6 +3285,10 @@ switch (yykind)
         value.copy< obj_t > (YY_MOVE (that.value));
         break;
 
+      case symbol_kind::S_indexList: // indexList
+        value.copy< std::string > (YY_MOVE (that.value));
+        break;
+
       default:
         break;
     }
@@ -3403,6 +3433,10 @@ switch (yykind)
         value.move< obj_t > (YY_MOVE (s.value));
         break;
 
+      case symbol_kind::S_indexList: // indexList
+        value.move< std::string > (YY_MOVE (s.value));
+        break;
+
       default:
         break;
     }
@@ -3469,7 +3503,7 @@ switch (yykind)
 
 
 } // yy
-#line 3473 "../GenesysParser.h"
+#line 3507 "GenesysParser.h"
 
 
 

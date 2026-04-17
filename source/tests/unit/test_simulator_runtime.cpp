@@ -272,6 +272,19 @@ public:
     }
 };
 
+class AttributeLifecycleProbe : public Attribute {
+public:
+    AttributeLifecycleProbe(Model* model, const std::string& name = "") : Attribute(model, name) {}
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+};
+
 class DummyElementProbe : public DummyElement {
 public:
     DummyElementProbe(Model* model, const std::string& name = "") : DummyElement(model, name) {}
@@ -1226,6 +1239,48 @@ TEST(SimulatorRuntimeTest, EntityAttributeValuesRoundTripByNameAndIndex) {
     model->removeEntity(entity);
 }
 
+TEST(SimulatorRuntimeTest, EntityAttributeValuesSupportSparseNDIndexes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Entity* entity = model->createEntity("EntitySparseND", true);
+    ASSERT_NE(entity, nullptr);
+
+    entity->setAttributeValue("AttrND", 12.75, "1,2,3,4", true);
+
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("AttrND", "1,2,3,4"), 12.75);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("AttrND", "1,2,3,5"), 0.0);
+
+    model->removeEntity(entity);
+}
+
+TEST(SimulatorRuntimeTest, EntityCopiesAttributeSparseInitialValuesOnCreation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* attribute = new Attribute(model, "InitialMatrix");
+    ASSERT_NE(attribute, nullptr);
+    attribute->insertDimentionSize(2u);
+    attribute->insertDimentionSize(3u);
+    attribute->insertDimentionSize(4u);
+    attribute->setInitialValue(9.5, "1,2,3");
+
+    Entity* entity = model->createEntity("EntityWithInitialMatrix", true);
+    ASSERT_NE(entity, nullptr);
+
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("InitialMatrix", "1,2,3"), 9.5);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("InitialMatrix", "1,2,4"), 0.0);
+
+    entity->setAttributeValue("InitialMatrix", 3.25, "1,2,3");
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("InitialMatrix", "1,2,3"), 3.25);
+    EXPECT_DOUBLE_EQ(attribute->getInitialValue("1,2,3"), 9.5);
+
+    model->removeEntity(entity);
+    delete attribute;
+}
+
 TEST(SimulatorRuntimeTest, RemovingEntityRemovesItFromDataManagerRegistry) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -1263,6 +1318,36 @@ TEST(SimulatorRuntimeTest, EntityAttributesCanBeSetAndReadByAttributeId) {
     model->removeEntity(first);
     model->removeEntity(second);
     delete attribute;
+}
+
+TEST(SimulatorRuntimeTest, AttributeSupportsSparseInitialValuesAndPersistence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AttributeLifecycleProbe source(model, "AttributeSparseSource");
+    source.insertDimentionSize(2u);
+    source.insertDimentionSize(3u);
+    source.insertDimentionSize(5u);
+    source.setInitialValue(1.5, "");
+    source.setInitialValue(8.25, "1,2,3,4");
+
+    EXPECT_DOUBLE_EQ(source.getInitialValue(""), 1.5);
+    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,3,4"), 8.25);
+    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,3,5"), 0.0);
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    AttributeLifecycleProbe loaded(model, "AttributeSparseLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    ASSERT_NE(loaded.getDimensionSizes(), nullptr);
+    EXPECT_EQ(loaded.getDimensionSizes()->size(), 3u);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue(""), 1.5);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,4"), 8.25);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,5"), 0.0);
 }
 
 TEST(SimulatorRuntimeTest, ModelDataDefinitionAccessorsExposeStableStateAndMetadata) {
@@ -1679,6 +1764,24 @@ TEST(SimulatorRuntimeTest, VariableInitBetweenReplicationsCopiesWithoutAliasingI
     EXPECT_DOUBLE_EQ(variable.getInitialValue("idx"), 10.0);
 }
 
+TEST(SimulatorRuntimeTest, VariableSupportsScalarOneTwoAndNDIndexesWithSparseDefault) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe variable(model, "VariableSparseND");
+    variable.setValue(1.0, "");
+    variable.setValue(2.0, "4");
+    variable.setValue(3.0, "1,2");
+    variable.setValue(4.0, "1,2,3,4,5");
+
+    EXPECT_DOUBLE_EQ(variable.getValue(""), 1.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("4"), 2.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("1,2"), 3.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("1,2,3,4,5"), 4.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("1,2,3,4,6"), 0.0);
+}
+
 TEST(SimulatorRuntimeTest, VariableInitBetweenReplicationsRestoresCurrentValueFromInitial) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -1731,6 +1834,30 @@ TEST(SimulatorRuntimeTest, VariableSaveAndLoadPreservesInitialValues) {
 
     EXPECT_DOUBLE_EQ(loaded.getInitialValue(""), 4.25);
     EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,1"), 8.5);
+}
+
+TEST(SimulatorRuntimeTest, VariableSaveAndLoadPreservesNDInitialValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    VariableLifecycleProbe source(model, "VariablePersistNDSource");
+    source.insertDimentionSize(2u);
+    source.insertDimentionSize(3u);
+    source.insertDimentionSize(4u);
+    source.insertDimentionSize(5u);
+    source.setInitialValue(17.75, "1,2,3,4");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    VariableLifecycleProbe loaded(model, "VariablePersistNDLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+
+    EXPECT_EQ(loaded.getDimensionSizes()->size(), 4u);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,4"), 17.75);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,5"), 0.0);
 }
 
 TEST(SimulatorRuntimeTest, VariableLoadedCurrentAndInitialContainersRemainIndependentAfterReset) {

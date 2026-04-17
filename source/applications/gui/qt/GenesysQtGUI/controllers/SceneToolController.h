@@ -125,6 +125,8 @@ public:
     void onCheckBoxShowElementsStateChanged(int arg1);
     /** @brief Bridges checkbox state changes to the show-internals action wrapper. */
     void onCheckBoxShowInternalsStateChanged(int arg1);
+    /** @brief Bridges checkbox state changes to the show-editable-elements action wrapper. */
+    void onCheckBoxShowEditableElementsStateChanged(int arg1);
     /** @brief Toggles recursive data-definition expansion and triggers representation refresh. */
     void onActionShowRecursiveElementsTriggered();
     /** @brief Bridges recursive-render checkbox changes to model-image refresh workflow. */

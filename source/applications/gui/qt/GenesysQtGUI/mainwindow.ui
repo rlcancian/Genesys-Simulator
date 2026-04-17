@@ -226,30 +226,40 @@
                 </item>
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout">
-                  <item>
-                   <widget class="QCheckBox" name="checkBox_ShowElements">
-                    <property name="text">
-                     <string>Show elements</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
+	                  <item>
+	                   <widget class="QCheckBox" name="checkBox_ShowElements">
+	                    <property name="text">
+	                     <string>Shared elements</string>
+	                    </property>
+	                    <property name="checked">
+	                     <bool>true</bool>
+	                    </property>
+	                   </widget>
                   </item>
-                  <item>
-                   <widget class="QCheckBox" name="checkBox_ShowInternals">
-                    <property name="text">
-                     <string>Show internals</string>
-                    </property>
-                    <property name="checked">
-                     <bool>true</bool>
-                    </property>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QCheckBox" name="checkBox_ShowLevels">
-                    <property name="text">
-                     <string>Show Levels</string>
+	                  <item>
+	                   <widget class="QCheckBox" name="checkBox_ShowInternals">
+	                    <property name="text">
+	                     <string>Statistics elements</string>
+	                    </property>
+	                    <property name="checked">
+	                     <bool>true</bool>
+	                    </property>
+	                   </widget>
+	                  </item>
+	                  <item>
+	                   <widget class="QCheckBox" name="checkBox_ShowEditableElements">
+	                    <property name="text">
+	                     <string>Editable elements</string>
+	                    </property>
+	                    <property name="checked">
+	                     <bool>true</bool>
+	                    </property>
+	                   </widget>
+	                  </item>
+	                  <item>
+	                   <widget class="QCheckBox" name="checkBox_ShowLevels">
+	                    <property name="text">
+	                     <string>Show Levels</string>
                     </property>
                     <property name="checked">
                      <bool>true</bool>

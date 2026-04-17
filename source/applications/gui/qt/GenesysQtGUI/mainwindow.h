@@ -202,6 +202,7 @@ private slots:
 
 	void on_checkBox_ShowElements_stateChanged(int arg1);
 	void on_checkBox_ShowInternals_stateChanged(int arg1);
+	void on_checkBox_ShowEditableElements_stateChanged(int arg1);
 	void on_checkBox_ShowRecursive_stateChanged(int arg1);
 	void on_checkBox_ShowLevels_stateChanged(int arg1);
 

@@ -17,6 +17,7 @@
 #include "../../kernel/simulator/ModelDataDefinition.h"
 #include "../../kernel/simulator/ModelDataManager.h"
 #include "../../kernel/simulator/Plugin.h"
+#include "../../kernel/simulator/SparseValueStore.h"
 
 /*!
 Variable module
@@ -98,14 +99,26 @@ public: //static
     static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
     static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
+	/*! \brief Reads the current sparse value, returning 0.0 when the index is absent. */
 	double getValue(std::string index="");
+	/*! \brief Writes the current sparse value at the scalar or indexed position. */
 	void setValue(double value, std::string index="");
+	/*! \brief Reads the initial sparse value, returning 0.0 when the index is absent. */
 	double getInitialValue(std::string index = "");
+	/*! \brief Writes the initial sparse value at the scalar or indexed position. */
 	void setInitialValue(double value, std::string index="");
+	/*! \brief Replaces/extends initial sparse values from textual index/value pairs. */
 	void setInitialValues(const std::vector<std::pair<std::string,double>> values);
+	/*! \brief Appends one dimension size to the variable definition. */
 	void insertDimentionSize(unsigned int size);
+	/*! \brief Returns dimension sizes for compatibility with existing callers. */
 	std::list<unsigned int>* getDimensionSizes() const;
+	/*! \brief Returns mutable current sparse values for compatibility with existing callers. */
 	std::map<std::string, double> *getValues() const;
+	/*! \brief Returns current value store used by this variable. */
+	SparseValueStore* getValueStore();
+	/*! \brief Returns initial value store used by this variable. */
+	SparseValueStore* getInitialValueStore();
 	ModelDataDefinition* get_scope();
 	void set_scope(ModelDataDefinition* const scope);
 
@@ -123,9 +136,8 @@ protected:
 
 private:
     //const struct DEFAULT_VALUES {	} DEFAULT;
-	std::list<unsigned int>* _dimensionSizes = new std::list<unsigned int>();
-    std::map<std::string, double>* _values = new std::map<std::string, double>();
-    std::map<std::string, double>* _initialValues = new std::map<std::string, double>();
+	SparseValueStore* _values = new SparseValueStore();
+	SparseValueStore* _initialValues = new SparseValueStore();
 	ModelDataDefinition* scope = nullptr; // not used so far
 };
 

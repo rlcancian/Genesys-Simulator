@@ -278,6 +278,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _graphvizModelExporter = std::make_unique<GraphvizModelExporter>(simulator,
                                                                      ui->label_ModelGraphic,
                                                                      ui->checkBox_ShowInternals,
+                                                                     ui->checkBox_ShowEditableElements,
                                                                      ui->checkBox_ShowElements,
                                                                      ui->checkBox_ShowRecursive,
                                                                      ui->checkBox_ShowLevels,

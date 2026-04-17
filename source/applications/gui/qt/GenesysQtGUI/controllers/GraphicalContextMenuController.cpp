@@ -213,7 +213,9 @@ void GraphicalContextMenuController::addShowMenu(QMenu* menu) const {
     showMenu->addAction(_ui->actionShowGuides);
     showMenu->addSeparator();
     showMenu->addAction(_ui->actionShowInternalElements);
+    showMenu->addAction(_ui->actionShowEditableElements);
     showMenu->addAction(_ui->actionShowAttachedElements);
+    showMenu->addAction(_ui->actionShowRecursiveElements);
 }
 
 void GraphicalContextMenuController::addZoomMenu(QMenu* menu) const {

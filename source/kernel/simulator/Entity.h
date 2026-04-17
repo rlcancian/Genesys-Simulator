@@ -21,6 +21,7 @@
 #include "../util/List.h"
 #include "ModelDataDefinition.h"
 #include "EntityType.h"
+#include "SparseValueStore.h"
 //namespace GenesysKernel {
 
 /*!
@@ -148,9 +149,12 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
 private:
+	/*! \brief Ensures the sparse store for an attribute rank exists and returns it. */
+	SparseValueStore* _ensureAttributeStore(unsigned int rank);
+
 	Util::identification _entityNumber;
 	EntityType* _entityType = nullptr;
-	List< std::map<std::string, double>* >* _attributeValues = new List<std::map<std::string, double>*>();
+	List<SparseValueStore*>* _attributeValues = new List<SparseValueStore*>();
 };
 //namespace\\}
 #endif /* ENTITY_H */

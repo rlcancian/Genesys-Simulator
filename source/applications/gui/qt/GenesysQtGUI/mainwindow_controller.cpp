@@ -756,6 +756,13 @@ void MainWindow::on_checkBox_ShowInternals_stateChanged(int arg1) {
     }
 }
 
+void MainWindow::on_checkBox_ShowEditableElements_stateChanged(int arg1) {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowEditableElementsStateChanged(arg1);
+    }
+}
+
 void MainWindow::on_horizontalSlider_Zoom_valueChanged(int value) {
     double factor = ((double) value / 100.0)*(2 - 0.5) + 0.5;
     double scaleFactor = 1.0;

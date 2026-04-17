@@ -385,7 +385,12 @@ void SceneToolController::onActionShowEditableElementsTriggered() {
         scene->setShowEditableDataDefinitions(checked);
         scene->requestGraphicalDataDefinitionsSync();
     }
-    _createModelImage();
+    if (_ui->checkBox_ShowEditableElements->isChecked() != checked) {
+        _ui->checkBox_ShowEditableElements->setChecked(checked);
+    }
+    else {
+        _createModelImage();
+    }
 }
 
 // Preserve action-checkbox synchronization for shared data-definition visibility.
@@ -423,6 +428,18 @@ void SceneToolController::onCheckBoxShowInternalsStateChanged(int arg1) {
     ModelGraphicsScene* scene = _currentScene();
     if (scene != nullptr) {
         scene->setShowStatisticsDataDefinitions(checked);
+        scene->requestGraphicalDataDefinitionsSync();
+    }
+    _createModelImage();
+}
+
+// Preserve checkbox-to-action synchronization for editable data-definition visibility.
+void SceneToolController::onCheckBoxShowEditableElementsStateChanged(int arg1) {
+    const bool checked = arg1 == Qt::Checked;
+    _ui->actionShowEditableElements->setChecked(checked);
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr) {
+        scene->setShowEditableDataDefinitions(checked);
         scene->requestGraphicalDataDefinitionsSync();
     }
     _createModelImage();
