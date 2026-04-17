@@ -1,5 +1,6 @@
 #include <gtest/gtest.h>
 #include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <fstream>
 #include <memory>
@@ -17,6 +18,8 @@
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Persistence.h"
+#include "kernel/simulator/Plugin.h"
+#include "plugins/PluginConnectorDummyImpl1.h"
 #include "plugins/data/Queue.h"
 #include "plugins/data/Variable.h"
 #include "plugins/data/Resource.h"
@@ -33,10 +36,16 @@
 #include "plugins/data/CppCompiler.h"
 #include "plugins/data/SPICERunner.h"
 #include "plugins/data/BioSimulatorRunner.h"
+#include "plugins/data/BioNetwork.h"
+#include "plugins/data/BioParameter.h"
+#include "plugins/data/BioReaction.h"
+#include "plugins/data/BioSpecies.h"
 #include "plugins/data/RSimulatorRunner.h"
 #include "plugins/data/AssignmentItem.h"
 #include "plugins/data/DummyElement.h"
 #include "kernel/util/Util.h"
+#include "tools/MassActionOdeSystem.h"
+#include "tools/RungeKutta4OdeSolver.h"
 #define private public
 #define protected public
 #include "plugins/data/EntityGroup.h"
@@ -878,6 +887,65 @@ public:
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
+    }
+};
+
+class BioSpeciesProbe : public BioSpecies {
+public:
+    BioSpeciesProbe(Model* model, const std::string& name = "") : BioSpecies(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+};
+
+class BioReactionProbe : public BioReaction {
+public:
+    BioReactionProbe(Model* model, const std::string& name = "") : BioReaction(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class BioNetworkProbe : public BioNetwork {
+public:
+    BioNetworkProbe(Model* model, const std::string& name = "") : BioNetwork(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
     }
 };
 
@@ -5480,6 +5548,159 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
     EXPECT_EQ(runner.getLastResponsePayload(), "");
     EXPECT_EQ(runner.getLastResponseFilename(), "");
     EXPECT_EQ(errorMessage, "");
+}
+
+TEST(SimulatorRuntimeTest, MassActionOdeSystemEvaluatesIrreversibleReaction) {
+    MassActionOdeSystem system(
+            {
+                    {"A", 10.0, false, false},
+                    {"B", 0.0, false, false}
+            },
+            {
+                    {"A_to_B", 0.5, {{0u, 1.0}}, {{1u, 1.0}}}
+            });
+
+    const double y[] = {10.0, 0.0};
+    double dydt[] = {0.0, 0.0};
+    system.evaluate(0.0, y, dydt);
+
+    EXPECT_DOUBLE_EQ(dydt[0], -5.0);
+    EXPECT_DOUBLE_EQ(dydt[1], 5.0);
+}
+
+TEST(SimulatorRuntimeTest, RungeKutta4OdeSolverAdvancesMassActionDecay) {
+    MassActionOdeSystem system(
+            {
+                    {"A", 10.0, false, false},
+                    {"B", 0.0, false, false}
+            },
+            {
+                    {"A_to_B", 0.1, {{0u, 1.0}}, {{1u, 1.0}}}
+            });
+    RungeKutta4OdeSolver solver;
+
+    double y0[] = {10.0, 0.0};
+    double y1[] = {0.0, 0.0};
+    ASSERT_TRUE(solver.advance(system, 0.0, 1.0, y0, y1));
+
+    EXPECT_NEAR(y1[0], 10.0 * std::exp(-0.1), 1e-5);
+    EXPECT_NEAR(y1[1], 10.0 - 10.0 * std::exp(-0.1), 1e-5);
+}
+
+TEST(SimulatorRuntimeTest, BioSpeciesPersistenceAndReplicationResetPreserveAmounts) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe source(model, "S1");
+    source.setInitialAmount(3.5);
+    source.setAmount(1.25);
+    source.setConstant(true);
+    source.setBoundaryCondition(true);
+    source.setUnit("mmol");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    BioSpeciesProbe loaded(model, "LoadedS1");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getName(), "S1");
+    EXPECT_DOUBLE_EQ(loaded.getInitialAmount(), 3.5);
+    EXPECT_DOUBLE_EQ(loaded.getAmount(), 1.25);
+    EXPECT_TRUE(loaded.isConstant());
+    EXPECT_TRUE(loaded.isBoundaryCondition());
+    EXPECT_EQ(loaded.getUnit(), "mmol");
+
+    loaded.setAmount(0.0);
+    loaded.InitBetweenReplicationsProbe();
+    EXPECT_DOUBLE_EQ(loaded.getAmount(), 3.5);
+}
+
+TEST(SimulatorRuntimeTest, BioReactionResolvesRateConstantFromBioParameter) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    BioSpeciesProbe b(model, "B");
+    BioParameter k(model, "k1");
+    k.setValue(0.25);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(99.0);
+    reaction.setRateConstantParameterName("k1");
+
+    std::string errorMessage;
+    EXPECT_TRUE(reaction.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_DOUBLE_EQ(reaction.resolveRateConstant(), 0.25);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkSimulatesFirstOrderMassActionReaction) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "NativeMassAction");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.01, errorMessage)) << errorMessage;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(a.getAmount(), 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_NEAR(b.getAmount(), 10.0 - 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_NE(network.getLastResponsePayload().find("\"A\""), std::string::npos);
+    EXPECT_NE(network.getLastResponsePayload().find("\"B\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkRejectsMissingSpeciesReferences) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setAmount(10.0);
+    BioReactionProbe reaction(model, "InvalidReaction");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("MissingB", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "InvalidNetwork");
+    std::string errorMessage;
+    EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
+    EXPECT_NE(errorMessage.find("MissingB"), std::string::npos);
+    EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, BioPluginsAreAvailableThroughDummyConnector) {
+    PluginConnectorDummyImpl1 connector;
+
+    std::unique_ptr<Plugin> speciesPlugin(connector.connect("biospecies.so"));
+    std::unique_ptr<Plugin> parameterPlugin(connector.connect("bioparameter.so"));
+    std::unique_ptr<Plugin> reactionPlugin(connector.connect("bioreaction.so"));
+    std::unique_ptr<Plugin> networkPlugin(connector.connect("bionetwork.so"));
+
+    ASSERT_NE(speciesPlugin, nullptr);
+    ASSERT_NE(parameterPlugin, nullptr);
+    ASSERT_NE(reactionPlugin, nullptr);
+    ASSERT_NE(networkPlugin, nullptr);
+    EXPECT_EQ(speciesPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioSpecies>());
+    EXPECT_EQ(parameterPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioParameter>());
+    EXPECT_EQ(reactionPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioReaction>());
+    EXPECT_EQ(networkPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioNetwork>());
 }
 
 bool RscriptAvailableForRuntimeTest() {

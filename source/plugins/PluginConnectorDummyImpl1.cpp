@@ -69,6 +69,10 @@
 
 // Model data definitions
 #include "data/BioSimulatorRunner.h"
+#include "data/BioNetwork.h"
+#include "data/BioParameter.h"
+#include "data/BioReaction.h"
+#include "data/BioSpecies.h"
 #include "data/CppCompiler.h"
 #include "data/DummyElement.h"
 #include "data/EntityGroup.h"
@@ -129,6 +133,10 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("resource.so");
     filenames->insert("variable.so");
     filenames->insert("batch.so");
+    filenames->insert("bionetwork.so");
+    filenames->insert("bioparameter.so");
+    filenames->insert("bioreaction.so");
+    filenames->insert("biospecies.so");
     filenames->insert("biosimulatorrunner.so");
     filenames->insert("cellularautomata.so");
     filenames->insert("clone.so");
@@ -248,6 +256,14 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Variable::GetPluginInformation;
     else if (fn == "batch.so")
         GetInfo = &Batch::GetPluginInformation;
+    else if (fn == "bionetwork.so")
+        GetInfo = &BioNetwork::GetPluginInformation;
+    else if (fn == "bioparameter.so")
+        GetInfo = &BioParameter::GetPluginInformation;
+    else if (fn == "bioreaction.so")
+        GetInfo = &BioReaction::GetPluginInformation;
+    else if (fn == "biospecies.so")
+        GetInfo = &BioSpecies::GetPluginInformation;
     else if (fn == "biosimulatorrunner.so")
         GetInfo = &BioSimulatorRunner::GetPluginInformation;
     else if (fn == "cellularautomata.so")

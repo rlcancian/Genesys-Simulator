@@ -143,6 +143,10 @@ SOURCES += \
     ../../../../plugins/components/network/FSMState.cpp \
     ../../../../plugins/components/network/PetriPlace.cpp \
     ../../../../plugins/data/AssignmentItem.cpp \
+    ../../../../plugins/data/BioNetwork.cpp \
+    ../../../../plugins/data/BioParameter.cpp \
+    ../../../../plugins/data/BioReaction.cpp \
+    ../../../../plugins/data/BioSpecies.cpp \
     ../../../../plugins/data/BioSimulatorRunner.cpp \
     ../../../../plugins/data/CppCompiler.cpp \
     ../../../../plugins/data/DummyElement.cpp \
@@ -473,6 +477,10 @@ HEADERS += \
     ../../../../plugins/components/network/FSMState.h \
     ../../../../plugins/components/network/PetriPlace.h \
     ../../../../plugins/data/AssignmentItem.h \
+    ../../../../plugins/data/BioNetwork.h \
+    ../../../../plugins/data/BioParameter.h \
+    ../../../../plugins/data/BioReaction.h \
+    ../../../../plugins/data/BioSpecies.h \
     ../../../../plugins/data/BioSimulatorRunner.h \
     ../../../../plugins/data/CppCompiler.h \
     ../../../../plugins/data/DummyElement.h \
@@ -502,6 +510,7 @@ HEADERS += \
     ../../../../tools/Fitter_if.h \
     ../../../../tools/HypothesisTesterDefaultImpl1.h \
     ../../../../tools/HypothesisTester_if.h \
+    ../../../../tools/MassActionOdeSystem.h \
     ../../../../tools/OdeSolver_if.h \
     ../../../../tools/OdeSystem_if.h \
     ../../../../tools/OptimizerDefaultImpl1.h \
@@ -510,6 +519,7 @@ HEADERS += \
     ../../../../tools/ProbabilityDistributionBase.h \
     ../../../../tools/Quadrature_if.h \
     ../../../../tools/RootFinder_if.h \
+    ../../../../tools/RungeKutta4OdeSolver.h \
     ../../../../tools/SolverDefaultImpl1.h \
     ../../../../tools/Solver_if.h \
     ../../../../tools/TraitsTools.h \
