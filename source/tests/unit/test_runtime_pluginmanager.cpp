@@ -256,6 +256,38 @@ TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndSt
     EXPECT_TRUE(ModelDataDefinition::Check(colony, errorMessage)) << errorMessage;
 }
 
+TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_2");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode("program colony() { tick(); grow(2); divide(); set_population(9); }");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_2");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setSimulationStep(0.5);
+    colony->setInitialColonyTime(1.0);
+    colony->setInitialPopulation(3);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_EQ(result.executedCommands, 4u);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 1.5);
+    EXPECT_EQ(colony->getPopulationSize(), 9u);
+    EXPECT_TRUE(result.unsupportedCommands.empty());
+    EXPECT_TRUE(result.skippedRawStatements.empty());
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramParserKeepsLexicalValidationBoundary) {
     GroProgramParser parser;
 

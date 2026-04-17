@@ -11,6 +11,7 @@
 #include "kernel/simulator/ModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/data/BiologicalModeling/GroProgram.h"
+#include "plugins/data/BiologicalModeling/GroProgramRuntime.h"
 
 /*!
  * \brief First GenESyS component for Gro-inspired bacteria colony simulation.
@@ -65,6 +66,8 @@ public:
 	unsigned int getGridHeight() const;
 	/*! \brief Advances the internal colony clock by one configured simulation step. */
 	double advanceColonyTime();
+	/*! \brief Executes the configured Gro program once against the current colony state. */
+	GroProgramRuntime::ExecutionResult executeGroProgram();
 
 protected:
 	virtual bool _loadInstance(PersistenceRecord* fields) override;

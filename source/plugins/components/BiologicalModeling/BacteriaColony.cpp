@@ -8,6 +8,8 @@
 #include "plugins/components/BiologicalModeling/BacteriaColony.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataManager.h"
+#include "plugins/data/BiologicalModeling/GroProgramCompiler.h"
+#include "plugins/data/BiologicalModeling/GroProgramParser.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -174,6 +176,36 @@ double BacteriaColony::advanceColonyTime() {
 	return _colonyTime;
 }
 
+GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
+	GroProgramRuntime::ExecutionResult result;
+
+	if (_groProgram == nullptr) {
+		result.succeeded = false;
+		result.errorMessage = "BacteriaColony requires a GroProgram before execution. ";
+		return result;
+	}
+
+	GroProgramParser::Result parseResult = GroProgramParser().parse(_groProgram->getSourceCode());
+	if (!parseResult.accepted) {
+		result.succeeded = false;
+		result.errorMessage = parseResult.errorMessage;
+		return result;
+	}
+
+	GroProgramIr ir = GroProgramCompiler().compile(parseResult.ast);
+	GroProgramRuntimeState runtimeState;
+	runtimeState.colonyTime = _colonyTime;
+	runtimeState.simulationStep = _simulationStep;
+	runtimeState.populationSize = _populationSize;
+
+	result = GroProgramRuntime().execute(ir, runtimeState);
+	if (result.succeeded) {
+		_colonyTime = runtimeState.colonyTime;
+		_populationSize = runtimeState.populationSize;
+	}
+	return result;
+}
+
 bool BacteriaColony::_loadInstance(PersistenceRecord* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
@@ -245,8 +277,18 @@ void BacteriaColony::_createInternalAndAttachedData() {
 
 void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
-	advanceColonyTime();
-	traceSimulation(this, "Bacteria colony internal time advanced to " + std::to_string(_colonyTime));
+	if (_groProgram != nullptr) {
+		GroProgramRuntime::ExecutionResult result = executeGroProgram();
+		if (result.succeeded) {
+			traceSimulation(this, "Bacteria colony Gro program executed " + std::to_string(result.executedCommands) +
+			                      " command(s)");
+		} else {
+			traceSimulation(this, "Bacteria colony Gro program execution failed: " + result.errorMessage);
+		}
+	} else {
+		advanceColonyTime();
+		traceSimulation(this, "Bacteria colony internal time advanced to " + std::to_string(_colonyTime));
+	}
 	if (entity != nullptr) {
 		_parentModel->removeEntity(entity);
 	}
