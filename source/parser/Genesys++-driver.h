@@ -4,10 +4,10 @@
 #include <string>
 #include <map>
 #include "GenesysParser.h"
-#include "../kernel/simulator/Model.h"
-#include "../kernel/simulator/SimulationControlAndResponse.h"
-#include "../kernel/util/Util.h"
-#include "../kernel/statistics/Sampler_if.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/util/Util.h"
+#include "kernel/statistics/Sampler_if.h"
 // Tell Flex the lexer's prototype ...
 
 

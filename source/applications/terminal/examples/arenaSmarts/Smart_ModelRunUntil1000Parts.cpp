@@ -14,17 +14,17 @@
 #include "./Smart_ModelRunUntil1000Parts.h"
 
 // Including the GEnSys Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Components for the model
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Record.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Assign.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/InputOutput/Record.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
 
-#include "../../../../plugins/data/Variable.h"
-#include "../../../../kernel/simulator/Attribute.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "kernel/simulator/Attribute.h"
 #include "../../../TraitsApp.h"
 
 

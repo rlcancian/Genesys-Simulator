@@ -13,18 +13,18 @@
 
 #include "Smart_Sequence.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Route.h"
-#include "../../../../plugins/components/Enter.h"
-#include "../../../../plugins/components/Leave.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Assign.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/MaterialHandling/Route.h"
+#include "plugins/components/MaterialHandling/Enter.h"
+#include "plugins/components/MaterialHandling/Leave.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
 
-#include "../../../../plugins/data/Sequence.h"
-#include "../../../../plugins/data/Station.h"
+#include "plugins/data/DiscreteProcessing/Sequence.h"
+#include "plugins/data/DiscreteProcessing/Station.h"
 #include "../../../TraitsApp.h"
 
 Smart_Sequence::Smart_Sequence() {

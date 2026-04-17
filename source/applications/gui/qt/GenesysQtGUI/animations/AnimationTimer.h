@@ -4,7 +4,7 @@
 #include <QGraphicsRectItem>
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
-#include "../../../../kernel/util/Util.h"
+#include "kernel/util/Util.h"
 
 class ModelGraphicsScene;
 

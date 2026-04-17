@@ -20,67 +20,67 @@
 #include "kernel/simulator/Persistence.h"
 #include "kernel/simulator/Plugin.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
-#include "plugins/data/Queue.h"
-#include "plugins/data/Variable.h"
-#include "plugins/data/Resource.h"
-#include "plugins/data/Failure.h"
-#include "plugins/data/Formula.h"
-#include "plugins/data/Schedule.h"
-#include "plugins/data/Sequence.h"
-#include "plugins/data/SignalData.h"
-#include "plugins/data/Station.h"
-#include "plugins/data/Set.h"
-#include "plugins/data/Label.h"
-#include "plugins/data/Storage.h"
-#include "plugins/data/File.h"
-#include "plugins/data/CppCompiler.h"
-#include "plugins/data/SPICERunner.h"
-#include "plugins/data/BioSimulatorRunner.h"
-#include "plugins/data/BioNetwork.h"
-#include "plugins/data/BioParameter.h"
-#include "plugins/data/BioReaction.h"
-#include "plugins/data/BioSpecies.h"
-#include "plugins/data/RSimulatorRunner.h"
-#include "plugins/data/AssignmentItem.h"
-#include "plugins/data/DummyElement.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Failure.h"
+#include "plugins/data/DiscreteProcessing/Formula.h"
+#include "plugins/data/DiscreteProcessing/Schedule.h"
+#include "plugins/data/DiscreteProcessing/Sequence.h"
+#include "plugins/data/DiscreteProcessing/SignalData.h"
+#include "plugins/data/DiscreteProcessing/Station.h"
+#include "plugins/data/DiscreteProcessing/Set.h"
+#include "plugins/data/DiscreteProcessing/Label.h"
+#include "plugins/data/DiscreteProcessing/Storage.h"
+#include "plugins/data/DiscreteProcessing/File.h"
+#include "plugins/data/DiscreteProcessing/CppCompiler.h"
+#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
+#include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
+#include "plugins/data/BiochemicalSimulation/BioNetwork.h"
+#include "plugins/data/BiochemicalSimulation/BioParameter.h"
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/ExternalStatisticalIntegration/RSimulatorRunner.h"
+#include "plugins/data/DiscreteProcessing/AssignmentItem.h"
+#include "plugins/data/DataDefinition/DummyElement.h"
 #include "kernel/util/Util.h"
 #include "tools/MassActionOdeSystem.h"
 #include "tools/RungeKutta4OdeSolver.h"
 #define private public
 #define protected public
-#include "plugins/data/EntityGroup.h"
+#include "plugins/data/DiscreteProcessing/EntityGroup.h"
 #undef protected
 #undef private
-#include "plugins/components/Delay.h"
-#include "plugins/components/Dispose.h"
-#include "plugins/components/Batch.h"
-#include "plugins/components/Separate.h"
-#include "plugins/components/Match.h"
-#include "plugins/components/Search.h"
-#include "plugins/components/Remove.h"
-#include "plugins/components/Assign.h"
-#include "plugins/components/Write.h"
-#include "plugins/components/RSimulator.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Grouping/Batch.h"
+#include "plugins/components/Grouping/Separate.h"
+#include "plugins/components/Decision/Match.h"
+#include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/InputOutput/Write.h"
+#include "plugins/components/ExternalStatisticalIntegration/RSimulator.h"
 #define private public
 #define protected public
-#include "plugins/components/Buffer.h"
-#include "plugins/components/PickStation.h"
-#undef protected
-#undef private
-#define private public
-#define protected public
-#include "plugins/components/Create.h"
+#include "plugins/components/DiscreteProcessing/Buffer.h"
+#include "plugins/components/Decisions/PickStation.h"
 #undef protected
 #undef private
 #define private public
 #define protected public
-#include "plugins/components/Process.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
 #undef protected
 #undef private
 #define private public
 #define protected public
-#include "plugins/components/Wait.h"
-#include "plugins/components/Signal.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#undef protected
+#undef private
+#define private public
+#define protected public
+#include "plugins/components/Decisions/Wait.h"
+#include "plugins/components/Decisions/Signal.h"
 #undef protected
 #undef private
 

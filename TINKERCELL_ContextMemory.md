@@ -4,13 +4,13 @@ Este e o arquivo canonico e unico de memoria de contexto da IA `TINKERCELL` nest
 
 Arquivos antigos, genericos ou compartilhados de memoria, como `ContextMemory.md`, `ContextMemmory.md` ou registros em `documentation/developers/`, nao devem mais ser usados como memoria ativa desta IA.
 
-Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem ser consideradas obsoletas ou consolidadas neste arquivo.
+Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem ser consideradas obsoletas, consolidadas neste arquivo ou removidas das memorias antigas.
 
 ## Identidade Da IA
 
 - Nome da IA: `TINKERCELL`.
 - Papel: preservar e aplicar o contexto tecnico obtido da analise do TinkerCell para orientar futuras adaptacoes de simulacao bioquimica no GenESyS.
-- Escopo atual: contexto tecnico e historico de integracao ja absorvida; nao ha nova funcionalidade autorizada neste momento.
+- Escopo atual: contexto tecnico e historico de integracao ja absorvida; nao implementar nova funcionalidade neste momento.
 
 ## Branches
 
@@ -21,14 +21,19 @@ Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem s
 
 ## Politica Atual De Git
 
-- Regra geral para proximas tarefas de codigo no GenESyS:
-  - Primeiro apresentar plano detalhado.
-  - Implementar localmente somente depois de confirmacao explicita do usuario.
-  - Fazer `git add`/stage somente quando o usuario pedir.
-  - Fazer commit somente quando o usuario pedir.
-  - Fazer push/merge/sincronizacao somente quando o usuario pedir explicitamente.
-- Excecao registrada em 2026-04-17: o usuario autorizou, para esta migracao de memoria, commit e push sem nova confirmacao caso houvesse mudanca real.
-- Nao resolver conflitos, reverter alteracoes ou mexer em arquivos fora do escopo sem instrucao clara.
+- A IA `TINKERCELL` tem autonomia para executar operacoes Git rotineiras quando tecnicamente necessario para manter o contexto, memoria ou branch em estado consistente:
+  - `stage`;
+  - `commit`;
+  - `fetch`;
+  - `pull`;
+  - `merge`;
+  - `push`.
+- A IA so deve pedir confirmacao ao usuario em caso de:
+  - operacao destrutiva;
+  - duvida real sobre a intencao;
+  - risco excepcional de sobrescrever trabalho importante.
+- Esta autonomia Git nao autoriza implementar nova funcionalidade sem nova instrucao.
+- Nao resolver conflitos, reverter alteracoes ou mexer em arquivos fora do escopo quando isso representar risco de sobrescrever trabalho importante.
 
 ## Resumo Tecnico Consolidado
 
@@ -110,25 +115,26 @@ Validacao executada no momento da implementacao:
 - O conteudo funcional de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
 - Nao ha acao de integracao pendente para TINKERCELL neste momento.
 - A IA `TINKERCELL` esta em estado de espera.
-- Em 2026-04-17, o working tree local de `WiP20261` apresentava um conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e nao deve ser resolvido por esta IA sem instrucao explicita.
+- O branch `WiP20261` deve ser considerado a base atual estavel para o conteudo TINKERCELL ja absorvido.
+- Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
 
 ## Pendencias
 
 - Nenhuma pendencia imediata de integracao TINKERCELL.
 - Nenhuma nova funcionalidade TINKERCELL autorizada.
-- Se o usuario retomar o assunto, primeiro confirmar se deseja apenas analise, plano ou implementacao.
+- Se o usuario retomar o assunto, avaliar se a proxima acao e apenas analise, planejamento, manutencao de memoria ou implementacao.
 
 ## Riscos E Cuidados
 
-- Nao repetir o comportamento anterior de implementar e publicar codigo sem confirmacao previa.
+- Nao implementar nova funcionalidade TINKERCELL sem nova instrucao.
 - Nao tratar especies/reacoes bioquimicas como entidades discretas por padrao; a abordagem recomendada continua sendo dados persistentes (`ModelDataDefinition`) mais servico numerico/runner.
-- Cuidado com o conflito local existente em `source/plugins/components/Enter.cpp`, que e fora do escopo desta IA.
-- Cuidado com a divergencia local/remota do branch `WiP20261`; qualquer sincronizacao futura deve ser explicitamente autorizada.
+- Cuidado com conflitos locais fora do escopo TINKERCELL, especialmente `source/plugins/components/Enter.cpp`, se ainda existir.
+- Operacoes Git rotineiras sao autorizadas, mas nao devem sobrescrever trabalho importante.
 - Evitar usar `ContextMemory.md`, `ContextMemmory.md` ou arquivos em `documentation/developers/` como memoria ativa desta IA.
 
 ## Proximos Passos Provaveis
 
 - Permanecer em espera ate nova instrucao.
 - Se houver nova tarefa de TINKERCELL, iniciar lendo este arquivo.
-- Caso a tarefa envolva codigo, apresentar plano antes de modificar qualquer arquivo.
-- Caso a tarefa envolva integracao Git, confirmar explicitamente a operacao, salvo se o usuario der autorizacao direta na propria solicitacao.
+- Caso a tarefa envolva codigo funcional, nao implementar ate haver instrucao clara para isso.
+- Caso a tarefa envolva manutencao de memoria ou Git rotineiro, executar com autonomia, salvo operacao destrutiva, duvida real ou risco excepcional.

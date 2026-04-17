@@ -7,7 +7,7 @@
  */
 
 #include "GraphicalModelDataDefinition.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataDefinition.h"
 #include <QPainter>
 #include <QRgba64>
 

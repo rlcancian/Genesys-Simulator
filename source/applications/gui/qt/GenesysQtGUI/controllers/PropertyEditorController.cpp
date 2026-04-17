@@ -10,14 +10,14 @@
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 
-#include "../../../../kernel/simulator/ComponentManager.h"
-#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
-#include "../../../../kernel/simulator/Model.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../kernel/simulator/ModelManager.h"
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/ComponentManager.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
 
 #include <QGraphicsItem>
 #include <QDebug>

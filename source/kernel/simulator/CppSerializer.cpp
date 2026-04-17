@@ -147,19 +147,21 @@ bool CppSerializer::dump(std::ostream& output) {
     for (auto& klass : dataDefinitionClassnames) {
         if (!typenames.count(klass)) continue;
         datadefs.insert(klass);
-        includes.insert("plugins/data/" + klass + ".h");
+        includes.insert(_model->getParentSimulator()->getPluginManager()->sourceIncludePathFor(klass));
     }
     for (auto& comp : *_model->getComponentManager()->getAllComponents()) {
         if (!typenames.count(comp->getClassname())) continue;
         components.insert(comp->getClassname());
-        includes.insert("plugins/components/" + comp->getClassname() + ".h");
+        includes.insert(_model->getParentSimulator()->getPluginManager()->sourceIncludePathFor(comp->getClassname()));
     }
     output << indent(0) << "#include \"kernel/simulator/Simulator.h\"\n";
     output << indent(0) << "#include <memory>\n";
     output << indent(0) << "#include <stdexcept>\n";
     output << indent(0) << "#include <string>\n";
     for (auto& path : includes) {
-        output << indent(0) << "#include \"" + path + "\"\n";
+        if (!path.empty()) {
+            output << indent(0) << "#include \"" + path + "\"\n";
+        }
     }
     output << indent(0) << "\n";
 

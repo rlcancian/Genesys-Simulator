@@ -11,16 +11,16 @@
 #include "../tools/dataanalyzer/DataAnalyzerWindow.h"
 #include "../tools/optimizer/OptimizerWindow.h"
 
-#include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/simulator/Model.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
-#include "../../../../../kernel/simulator/ModelSimulation.h"
-#include "../../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/SimulationControlAndResponse.h"
-#include "../../../../../kernel/simulator/LicenceManager.h"
-#include "../../../../../kernel/simulator/Entity.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/LicenceManager.h"
+#include "kernel/simulator/Entity.h"
 #include "../../../../../tools/FitterDefaultImpl.h"
 #include "../../../../../tools/HypothesisTesterDefaultImpl1.h"
 #include "../../../../../tools/OptimizerDefaultImpl1.h"
@@ -1259,10 +1259,13 @@ void DialogUtilityController::onActionSimulatorPreferencesTriggered() {
 }
 
 // Preserve plugin manager dialog parenting and non-blocking show behavior.
-void DialogUtilityController::onActionSimulatorsPluginManagerTriggered() {
+void DialogUtilityController::onActionSimulatorsPluginManagerTriggered(bool showProblemPlugins) {
     DialogPluginManager* dialog = new DialogPluginManager(_ownerWidget);
     dialog->setSimulator(_simulator);
     dialog->setPluginCatalogRefreshCallback(_reloadPluginCatalog);
+    if (showProblemPlugins) {
+        dialog->showProblemPluginsTab();
+    }
     dialog->show();
 }
 

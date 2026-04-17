@@ -9,8 +9,8 @@
 #include "../animations/AnimationPlaceholder.h"
 #include "../animations/AnimationVariable.h"
 #include "../animations/AnimationTimer.h"
-#include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ModelManager.h"
 
 #include <QAction>
 #include <QDateTime>

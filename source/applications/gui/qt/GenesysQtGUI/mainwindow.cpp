@@ -13,11 +13,11 @@
 
 // Dialogs
 // Kernel
-#include "../../../../kernel/simulator/SinkModelComponent.h"
-#include "../../../../kernel/simulator/Attribute.h"
-#include "../../../../kernel/simulator/Counter.h"
-#include "../../../../kernel/simulator/StatisticsCollector.h"
-#include "../../../../kernel/simulator/PluginManager.h"
+#include "kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/Counter.h"
+#include "kernel/simulator/StatisticsCollector.h"
+#include "kernel/simulator/PluginManager.h"
 #include "../../../TraitsApp.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
@@ -57,7 +57,7 @@
 //#include "actions/PasteUndoCommand.h"
 //#include "actions/DeleteUndoCommand.h"
 // @TODO: Should NOT be hardcoded!!! (Used to visualize variables)
-#include "../../../../plugins/data/Variable.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 // std
 #include <string>
 #include <fstream>
@@ -93,6 +93,7 @@
 #include <QSignalBlocker>
 #include <QSizePolicy>
 #include <QTabBar>
+#include <QTimer>
 #include <QVBoxLayout>
 
 namespace {
@@ -590,33 +591,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     SystemPreferences::load();
     if (SystemPreferences::autoLoadPlugins()) {
         PluginInsertionOptions options;
-        options.confirmSystemDependencyInstallation = [this](const SystemDependencyCheckResult& result) {
-            const QString diagnostics = QString::fromStdString(result.diagnosticText(false)).trimmed();
-            if (!result.canAttemptInstallForAllMissing()) {
-                QMessageBox::warning(
-                    this,
-                    tr("Plugin system dependencies"),
-                    tr("A plugin cannot be loaded because some system dependencies are missing or unverifiable.\n\n%1\n\nRun the listed install command manually, when available, and try again.")
-                        .arg(diagnostics));
-                return false;
-            }
-
-            QStringList installCommands;
-            for (const SystemDependencyCheckEntry& entry : result.entries()) {
-                if (entry.canAttemptInstall()) {
-                    installCommands << QString::fromStdString(entry.dependency().getInstallCommand());
-                }
-            }
-            // Startup autoload is still interactive in the GUI, but package installation remains opt-in.
-            const QMessageBox::StandardButton answer = QMessageBox::question(
-                this,
-                tr("Install plugin system dependencies"),
-                tr("A plugin needs additional system dependencies before it can be loaded.\n\n%1\n\nInstall command(s):\n%2\n\nRun these command(s) now?")
-                    .arg(diagnostics, installCommands.join("\n")),
-                QMessageBox::Yes | QMessageBox::No,
-                QMessageBox::No);
-            return answer == QMessageBox::Yes;
-        };
+        // The main window is still being built here, so autoload must not open install dialogs.
+        // Missing dependency diagnostics are recorded and handled later by DialogPluginManager.
         simulator->getPluginManager()->autoInsertPlugins(_autoLoadPluginsFilename.toStdString(), true, options);
         // now complete the information
         for (unsigned int i = 0; i < simulator->getPluginManager()->size(); i++) {
@@ -649,6 +625,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // finally
     _actualizeActions();
+    QTimer::singleShot(0, this, [this]() {
+        if (_dialogUtilityController == nullptr || simulator == nullptr || simulator->getPluginManager() == nullptr) {
+            return;
+        }
+        List<PluginLoadIssue>* issues = simulator->getPluginManager()->getPluginLoadIssues();
+        if (issues != nullptr && !issues->empty()) {
+            _dialogUtilityController->onActionSimulatorsPluginManagerTriggered(true);
+        }
+    });
     //_actualizeTabPanes();
 }
 

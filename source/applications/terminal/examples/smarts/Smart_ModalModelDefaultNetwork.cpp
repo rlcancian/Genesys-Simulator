@@ -1,10 +1,10 @@
 #include "Smart_ModalModelDefaultNetwork.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/ModalModelDefault.h"
-#include "../../../../plugins/components/network/DefaultNode.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Network/ModalModelDefault.h"
+#include "plugins/components/DiscreteProcessing/DefaultNode.h"
 #include "../../../TraitsApp.h"
 
 Smart_ModalModelDefaultNetwork::Smart_ModalModelDefaultNetwork() {

@@ -13,9 +13,9 @@
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/PropertyGenesys.h"
-#include "../../../../kernel/simulator/TraceManager.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/PropertyGenesys.h"
+#include "kernel/simulator/TraceManager.h"
 #include "graphicals/ModelGraphicsScene.h"
 
 QT_BEGIN_NAMESPACE

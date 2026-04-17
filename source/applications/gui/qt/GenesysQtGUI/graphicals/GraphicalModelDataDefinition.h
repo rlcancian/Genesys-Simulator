@@ -12,7 +12,7 @@
 #include <QGraphicsObject>
 #include <QPen>
 #include <QBrush>
-#include "../../../../kernel/simulator/Plugin.h"
+#include "kernel/simulator/Plugin.h"
 #include "TraitsGUI.h"
 
 class GraphicalModelDataDefinition : public QGraphicsObject {

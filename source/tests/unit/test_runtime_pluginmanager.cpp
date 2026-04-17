@@ -4,8 +4,8 @@
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/SystemDependencyResolver.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
-#include "plugins/components/bacteria/BacteriaColony.h"
-#include "plugins/data/GroProgram.h"
+#include "plugins/components/BiologicalModeling/BacteriaColony.h"
+#include "plugins/data/BiologicalModeling/GroProgram.h"
 
 #include <algorithm>
 #include <map>
@@ -103,6 +103,11 @@ TEST(RuntimePluginManagerClassTest, InsertReturnsNullptrAndDoesNotChangeSizeWhen
 
     EXPECT_EQ(inserted, nullptr);
     EXPECT_EQ(manager->size(), before);
+    ASSERT_EQ(manager->getPluginLoadIssues()->size(), 1u);
+    const PluginLoadIssue issue = manager->getPluginLoadIssues()->front();
+    EXPECT_EQ(issue.getFilename(), "definitely_missing_plugin_library.so");
+    EXPECT_EQ(issue.getReason(), PluginLoadIssue::Reason::InvalidPlugin);
+    EXPECT_FALSE(issue.getMessage().empty());
 }
 
 TEST(RuntimePluginManagerClassTest, InsertRefusesPluginWhenSystemDependencyIsMissingWithoutConfirmation) {
@@ -121,6 +126,13 @@ TEST(RuntimePluginManagerClassTest, InsertRefusesPluginWhenSystemDependencyIsMis
     EXPECT_EQ(executor->commands.front(), "check-missing-dependency");
     EXPECT_EQ(connector->disconnectedPlugins, 0u);
     EXPECT_EQ(connector->connectCalls, 0u);
+    ASSERT_EQ(manager.getPluginLoadIssues()->size(), 1u);
+    const PluginLoadIssue issue = manager.getPluginLoadIssues()->front();
+    EXPECT_EQ(issue.getFilename(), "fake_plugin_library.so");
+    EXPECT_EQ(issue.getPluginTypename(), "PluginWithMissingSystemDependency");
+    EXPECT_EQ(issue.getReason(), PluginLoadIssue::Reason::MissingSystemDependency);
+    EXPECT_TRUE(issue.hasSystemDependencyResult());
+    EXPECT_NE(issue.diagnosticText().find("install-missing-dependency"), std::string::npos);
 }
 
 TEST(RuntimePluginManagerClassTest, InsertInstallsAndRevalidatesSystemDependencyWhenUserConfirms) {
@@ -154,6 +166,28 @@ TEST(RuntimePluginManagerClassTest, InsertInstallsAndRevalidatesSystemDependency
     EXPECT_EQ(executor->commands[1], "install-missing-dependency");
     EXPECT_EQ(executor->commands[2], "check-missing-dependency");
     EXPECT_EQ(executor->commands[3], "check-missing-dependency");
+    EXPECT_TRUE(manager.getPluginLoadIssues()->empty());
+}
+
+TEST(RuntimePluginManagerClassTest, SuccessfulRetryClearsStoredPluginLoadIssue) {
+    Simulator simulator;
+    auto* executor = new RuntimeFakeCommandExecutor();
+    executor->results["check-missing-dependency"] = {
+        RuntimeCommandResultWithExitCode(1),
+        RuntimeCommandResultWithExitCode(0),
+        RuntimeCommandResultWithExitCode(0)
+    };
+    auto* connector = new RuntimeFakePluginConnector();
+    PluginManager manager(&simulator, connector, executor);
+
+    EXPECT_EQ(manager.insert("fake_plugin_library.so"), nullptr);
+    ASSERT_EQ(manager.getPluginLoadIssues()->size(), 1u);
+
+    Plugin* inserted = manager.insert("fake_plugin_library.so");
+
+    ASSERT_NE(inserted, nullptr);
+    EXPECT_TRUE(manager.getPluginLoadIssues()->empty());
+    EXPECT_EQ(connector->connectCalls, 1u);
 }
 
 TEST(RuntimePluginManagerClassTest, DummyConnectorRegistersConcreteModelPlugins) {

@@ -8,8 +8,8 @@
 #include <QPainter>
 #include <cmath>
 #include <QGraphicsLineItem>
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataDefinition.h"
 
 #include "GraphicalModelComponent.h"
 #include "GraphicalModelDataDefinition.h"

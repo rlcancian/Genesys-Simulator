@@ -7,7 +7,7 @@
 
 #include "OptimizerDefaultImpl1.h"
 
-#include "../kernel/simulator/Model.h"
+#include "kernel/simulator/Model.h"
 
 OptimizerDefaultImpl1::OptimizerDefaultImpl1() {
 	_availableControls = new List<SimulationControl*>();
