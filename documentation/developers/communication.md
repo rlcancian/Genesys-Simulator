@@ -135,3 +135,15 @@ developers working concurrently on GenESyS.
 - **Limitations:** full Gro parser/runtime semantics remain out of scope; this
   branch currently contains only the first reusable program and colony component
   scaffolding.
+
+## 2026-04-17 - GRO - Branch published after validation
+
+- **Agent:** GRO
+- **Changed:** pushed `WiP20261_GRO` to `origin` after the branch-local commits
+  were validated.
+- **Remote status:** `WiP20261_GRO` tracks `origin/WiP20261_GRO`; the remote was
+  updated through commit `6d1281d1` before this publication note.
+- **Conflict status:** no unresolved conflicts remain. The temporary stash used
+  during branch creation was dropped after the work was committed.
+- **Recommended next steps:** continue future GRO development only on
+  `WiP20261_GRO`; fetch and merge `origin/WiP20261` before each important push.

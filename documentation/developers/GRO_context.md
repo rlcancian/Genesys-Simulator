@@ -206,5 +206,8 @@ on Gro syntax or biology-specific semantics.
 - **Validation:** fetched `origin`, merged `origin/WiP20261` into
   `WiP20261_GRO` with no new changes, ran `cmake --preset tests-kernel-unit`,
   and ran `cmake --build --preset tests-kernel-unit-run` successfully.
-- **Next steps:** push `WiP20261_GRO` to `origin` and continue all future GRO
-  development on that branch only.
+- **Publication:** pushed `WiP20261_GRO` to `origin`; the branch tracks
+  `origin/WiP20261_GRO`. The temporary stash used during the branch split was
+  dropped after the work was committed.
+- **Next steps:** continue all future GRO development on `WiP20261_GRO` only;
+  fetch and merge `origin/WiP20261` before each important push.
