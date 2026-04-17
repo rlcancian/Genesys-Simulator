@@ -16,8 +16,9 @@ Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem s
 
 - Branch-base: `WiP20261`.
 - Branch proprio/contextual: `WiP20261_TINKERCELL`.
-- Estado funcional: o conteudo funcional do branch `WiP20261_TINKERCELL` ja foi absorvido pela base `WiP20261`.
+- Estado funcional: o conteudo funcional do branch `WiP20261_TINKERCELL` ja foi absorvido pela base consolidada atual `WiP20261`.
 - Estado operacional: a IA deve permanecer em espera ate nova instrucao explicita.
+- Regra de retomada: qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo, divergente ou conflitado de clone local.
 
 ## Politica Atual De Git
 
@@ -112,10 +113,11 @@ Validacao executada no momento da implementacao:
 
 ## Estado Atual Do Branch
 
-- O conteudo funcional de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
+- `WiP20261` e a base consolidada atual para TINKERCELL.
+- O conteudo relevante de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
 - Nao ha acao de integracao pendente para TINKERCELL neste momento.
 - A IA `TINKERCELL` esta em estado de espera.
-- O branch `WiP20261` deve ser considerado a base atual estavel para o conteudo TINKERCELL ja absorvido.
+- Qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo local.
 - Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
 
 ## Pendencias
@@ -127,6 +129,8 @@ Validacao executada no momento da implementacao:
 ## Riscos E Cuidados
 
 - Nao implementar nova funcionalidade TINKERCELL sem nova instrucao.
+- Nao tentar novo merge TINKERCELL neste estado; a base `WiP20261` ja absorveu o conteudo relevante.
+- Nao partir de clone local antigo, divergente ou conflitado para trabalho futuro; atualizar para a base consolidada `WiP20261` antes de qualquer retomada tecnica.
 - Nao tratar especies/reacoes bioquimicas como entidades discretas por padrao; a abordagem recomendada continua sendo dados persistentes (`ModelDataDefinition`) mais servico numerico/runner.
 - Cuidado com conflitos locais fora do escopo TINKERCELL, especialmente `source/plugins/components/Enter.cpp`, se ainda existir.
 - Operacoes Git rotineiras sao autorizadas, mas nao devem sobrescrever trabalho importante.
@@ -135,6 +139,6 @@ Validacao executada no momento da implementacao:
 ## Proximos Passos Provaveis
 
 - Permanecer em espera ate nova instrucao.
-- Se houver nova tarefa de TINKERCELL, iniciar lendo este arquivo.
+- Se houver nova tarefa de TINKERCELL, iniciar lendo este arquivo e partir da base atualizada `WiP20261`.
 - Caso a tarefa envolva codigo funcional, nao implementar ate haver instrucao clara para isso.
 - Caso a tarefa envolva manutencao de memoria ou Git rotineiro, executar com autonomia, salvo operacao destrutiva, duvida real ou risco excepcional.
