@@ -14,9 +14,10 @@ instructions, those instructions are obsolete or have been consolidated here.
   integration points.
 - **Current objective:** Continue KERNEL_GUI work on `WiP20261_KERNEL_GUI` through
   explicit, user-confirmed phases. The latest completed structural base is
-  `f232882e` (`Organize plugins by declared category`), and the latest completed
-  runtime GUI preferences/theme phase is `a1c2d9fa` (`Add runtime GUI preferences
-  and themes`).
+  `f232882e` (`Organize plugins by declared category`), the completed runtime GUI
+  preferences/theme phase is `a1c2d9fa` (`Add runtime GUI preferences and themes`),
+  and the latest completed visual connection phase is `36ffec62`
+  (`Add Modern Fusion curved connections`).
 - **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow,
   kernel-facing plugin lifecycle contracts, plugin diagnostics exposed to the GUI,
   and focused tests that cover GUI-facing kernel behavior.
@@ -347,11 +348,12 @@ Intent:
   (`Organize plugins by declared category`).
 - The runtime GUI preferences and visual theme phase is local and remote at commit
   `a1c2d9fa` (`Add runtime GUI preferences and themes`).
-- The operating memory normalization phase is local at commit `6baa2cc3`
-  (`Normalize KERNEL_GUI operating memory`) and has not been pushed unless a later
-  user request explicitly publishes it.
-- The diagram item render strategy phase is local at commit `107a6539`
-  (`Add diagram item render strategies`) and has not been pushed unless a later
+- The diagram item render strategy phase is local and remote at commit `107a6539`
+  (`Add diagram item render strategies`).
+- The Modern Fusion interface/body-rendering visual refinement is local and remote
+  through commit `366e25a6` (`Record Modern Fusion visual checkpoint`).
+- The Modern Fusion curved connection phase is local at commit `36ffec62`
+  (`Add Modern Fusion curved connections`) and has not been pushed unless a later
   user request explicitly publishes it.
 - Recent branch commits include:
   - `6a02e61f Track plugin load diagnostics in PluginManager`
@@ -369,6 +371,12 @@ Intent:
   - `a1c2d9fa Add runtime GUI preferences and themes`
   - `6baa2cc3 Normalize KERNEL_GUI operating memory`
   - `107a6539 Add diagram item render strategies`
+  - `83686a93 Record diagram render strategy phase`
+  - `77f86538 Add GUI render strategy unit test`
+  - `8cfb0249 Record GUI render strategy test checkpoint`
+  - `0b0d1d9c Make Modern Fusion visually distinct`
+  - `366e25a6 Record Modern Fusion visual checkpoint`
+  - `36ffec62 Add Modern Fusion curved connections`
 - At the start of the diagram item render strategy phase, the branch was one commit
   ahead of `origin/WiP20261_KERNEL_GUI` because of the local memory-normalization
   commit `6baa2cc3`; the functional working tree was otherwise clean.
@@ -522,8 +530,8 @@ Observed status:
   `ContextMemmory.md` as active memory.
 - Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
-- Current active phase: record the completed diagram item render strategy work in
-  this memory. Do not start another technical phase until the user explicitly
+- Current active phase: record the completed Modern Fusion curved connection work
+  in this memory. Do not start another technical phase until the user explicitly
   confirms the next step.
 - The structural plugin directory refactor is already complete in `f232882e`.
 - The runtime GUI preferences/theme phase is already complete in `a1c2d9fa`.
@@ -557,6 +565,9 @@ Observed status:
 - Possible next phase: add focused automated GUI-rendering tests or a screenshot
   harness for classic versus organic diagram rendering, if the user wants visual
   regression coverage beyond compile and smoke validation.
+- Possible next visual phase: refine connection arrowheads, labels, hit-shape
+  affordances, or screenshot-based regression coverage for Classic Desktop versus
+  Modern Fusion connection styles.
 - Do not push local commits unless the user explicitly asks for publication.
 - When a next phase is confirmed, first re-read the real repository state and the
   relevant source/build/test files, then execute only that phase.
@@ -617,6 +628,46 @@ Observed status:
     expected timeout without startup crash.
 - Follow-up completed in `107a6539`: component and `ModelDataDefinition` body
   painting now delegates to a runtime-selected render strategy.
+
+## Latest Modern Fusion Connection Style Work
+
+- Commit: `36ffec62` (`Add Modern Fusion curved connections`).
+- The connection visual phase was completed as a focused extension of the existing
+  runtime `SystemPreferences::interfaceStyle()` infrastructure.
+- `GraphicalConnectionStyle` was introduced as the central geometry/style helper for
+  connection paths:
+  - Classic Desktop model connections keep the traditional direct/orthogonal route.
+  - Modern Fusion model connections use cubic `QPainterPath` curves with a
+    perpendicular bend so the path is visibly distinct from straight or orthogonal
+    routes.
+  - Classic Desktop diagram/data-definition connections keep straight dashed lines.
+  - Modern Fusion diagram/data-definition connections use quadratic curved paths.
+  - `pointAtProgress()` samples `QPainterPath` by path length, so animation progress
+    follows the same geometric path that is painted.
+- `GraphicalConnection` now delegates path construction to `GraphicalConnectionStyle`
+  and exposes `animationPathForImage()` for animation code. Its selected handles and
+  pen styling remain classic in Classic Desktop and become rounded/blue/antialiased
+  in Modern Fusion.
+- `AnimationTransition` now preserves the legacy segment interpolation for Classic
+  Desktop and uses the actual curved `QPainterPath` for Modern Fusion entity
+  movement. This avoids the old mismatch where a curved visual edge could still have
+  an invisible segmented animation route.
+- `GraphicalDiagramConnection` now draws diagram/data-definition links from the same
+  style helper, overrides `boundingRect()` and `shape()` for curved hit geometry, and
+  orients its diamond marker from the curve tangent.
+- `source/tests/unit/test_gui_render_strategy.cpp` now covers modern curved model
+  connection geometry and modern curved diagram connection geometry.
+- Validation performed:
+  - `git diff --check` passed.
+  - `cmake --build --preset gui-app` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed, including the new GUI
+    connection style tests.
+  - Offscreen smoke test with temporary JSON preferences setting
+    `view.interfaceStyle = "modern"` and no plugin autoload started the GUI without
+    startup crash and ran until the expected timeout.
+- Remaining limitation:
+  - No screenshot-based visual regression harness exists yet for connection styles;
+    validation is currently compile/unit/smoke based.
 
 ## Latest Diagram Item Render Strategy Work
 
