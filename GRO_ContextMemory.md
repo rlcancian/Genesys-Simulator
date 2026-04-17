@@ -366,3 +366,29 @@ instructions are considered obsolete or consolidated here.
 - Validation after merge:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
+
+### 2026-04-17 - Gro Parser Boundary Phase
+
+- User suspended any further plugin directory/category reorganization and
+  instructed GRO to continue phased integration on the repository structure as
+  currently present.
+- Re-read this canonical memory and resumed the existing GRO plan.
+- Current next phase selected: define the plugin-side Gro parser/helper boundary
+  before adding AST, semantic execution, bacteria state, cellular automata, or
+  GUI integration.
+- Ran `git fetch origin` and fast-forwarded local `WiP20261_GRO` from
+  `d1ec21c9` to `76c938a6`, matching the current consolidated `origin/WiP20261`
+  base that had already merged GRO.
+- Added `GroProgramParser` under the existing current path
+  `source/plugins/data/BiologicalModeling/`, without moving plugin files or
+  changing category layout.
+- `GroProgram::validateSyntax` now delegates to `GroProgramParser::parse`,
+  preserving the previous permissive lexical validation behavior and diagnostic
+  messages.
+- Added focused unit coverage for the parser boundary in
+  `source/tests/unit/test_runtime_pluginmanager.cpp`.
+- Validation after this phase:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 8 tests.

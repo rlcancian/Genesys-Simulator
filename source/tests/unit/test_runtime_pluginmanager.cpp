@@ -6,6 +6,7 @@
 #include "plugins/PluginConnectorDummyImpl1.h"
 #include "plugins/components/BiologicalModeling/BacteriaColony.h"
 #include "plugins/data/BiologicalModeling/GroProgram.h"
+#include "plugins/data/BiologicalModeling/GroProgramParser.h"
 
 #include <algorithm>
 #include <map>
@@ -251,4 +252,16 @@ TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndSt
     std::string errorMessage;
     EXPECT_TRUE(ModelDataDefinition::Check(program, errorMessage)) << errorMessage;
     EXPECT_TRUE(ModelDataDefinition::Check(colony, errorMessage)) << errorMessage;
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramParserKeepsLexicalValidationBoundary) {
+    GroProgramParser parser;
+
+    GroProgramParser::Result accepted = parser.parse("program main() { tick(\"}\"); /* ignored { */ }");
+    EXPECT_TRUE(accepted.accepted) << accepted.errorMessage;
+    EXPECT_TRUE(accepted.errorMessage.empty());
+
+    GroProgramParser::Result rejected = parser.parse("program main() { tick(); ");
+    EXPECT_FALSE(rejected.accepted);
+    EXPECT_NE(rejected.errorMessage.find("unmatched opening delimiters"), std::string::npos);
 }
