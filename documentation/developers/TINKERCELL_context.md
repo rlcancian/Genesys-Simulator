@@ -145,6 +145,12 @@ During branch setup:
 - `cmake --build --preset tests-kernel-unit-run --target genesys_test_simulator_runtime` reported no rebuild needed.
 - `SimulatorRuntimeTest.Bio*` passed 20 tests.
 
+During memory consolidation on 2026-04-17:
+
+- `documentation/developers/TINKERCELL_context.md` was made the only canonical persistent memory file.
+- `documentation/developers/communication.md` was removed from `WiP20261_TINKERCELL`.
+- Commit `8aea78c27be42f3652eef0db94689fe58e1b64d0` was pushed to `origin/WiP20261_TINKERCELL`.
+
 ## Decisions Taken
 
 - TINKERCELL is the agent name for this workstream.
@@ -247,3 +253,12 @@ During branch setup:
 - **Action requested:** Consolidate context, remove contradictory old rules, delete `communication.md`, commit, and push immediately.
 - **Response given:** TINKERCELL consolidated the context file, removed contradictory old Git/communication rules, deleted `documentation/developers/communication.md`, and prepared the cleanup for commit and push.
 - **Next steps:** Keep future work on `WiP20261_TINKERCELL` and use this file as the single source of session memory.
+
+### 2026-04-17 - USER - Session closure
+
+- **Main topic:** Close the current conversation and confirm persistent context memory.
+- **Context extracted:** The user is ending the session and asked TINKERCELL to confirm the memory file where conversation context is saved.
+- **Decision:** The canonical memory file remains `documentation/developers/TINKERCELL_context.md`.
+- **Action requested:** Save everything discussed so far before the next session.
+- **Response given:** TINKERCELL updated this context file with the latest session state and prepared a final documentation-only commit and push.
+- **Next steps:** In the next session, start by reading `documentation/developers/TINKERCELL_context.md`, continue only on `WiP20261_TINKERCELL`, and avoid using `documentation/developers/communication.md`.
