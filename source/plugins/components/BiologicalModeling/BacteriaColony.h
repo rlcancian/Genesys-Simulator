@@ -28,6 +28,8 @@ class BacteriaColony : public ModelComponent {
 public:
 	struct BacteriumState {
 		unsigned int id = 0;
+		unsigned int parentId = 0;
+		unsigned int generation = 0;
 		double birthTime = 0.0;
 		double lastUpdateTime = 0.0;
 		unsigned int gridX = 0;
@@ -117,6 +119,9 @@ private:
 private:
 	void _rebuildInternalBacteria(unsigned int populationSize);
 	void _resizeInternalBacteria(unsigned int populationSize);
+	void _applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
+	                                      unsigned int finalPopulationSize);
+	void _appendBacterium(unsigned int parentId = 0, unsigned int generation = 0);
 	void _refreshBacteriaUpdateTime();
 	void _rebuildBacteriaGridPositions();
 	void _assignBacteriumGridPosition(BacteriumState& bacterium, std::size_t index) const;

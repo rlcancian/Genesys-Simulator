@@ -217,7 +217,7 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	result = GroProgramRuntime().execute(ir, runtimeState);
 	if (result.succeeded) {
 		_colonyTime = runtimeState.colonyTime;
-		_resizeInternalBacteria(runtimeState.populationSize);
+		_applyRuntimePopulationMutations(result.populationMutations, runtimeState.populationSize);
 	}
 	return result;
 }
@@ -322,18 +322,57 @@ void BacteriaColony::_resizeInternalBacteria(unsigned int populationSize) {
 	}
 
 	while (_bacteria.size() < populationSize) {
-		BacteriumState bacterium;
-		bacterium.id = _nextBacteriumId++;
-		bacterium.birthTime = _colonyTime;
-		bacterium.lastUpdateTime = _colonyTime;
-		bacterium.alive = true;
-		_assignBacteriumGridPosition(bacterium, _bacteria.size());
-		_bacteria.push_back(bacterium);
+		_appendBacterium();
 	}
 
 	_populationSize = static_cast<unsigned int>(_bacteria.size());
 	_refreshBacteriaUpdateTime();
 	_rebuildBacteriaGridPositions();
+}
+
+void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
+                                                       unsigned int finalPopulationSize) {
+	for (const GroProgramRuntime::PopulationMutation& mutation : mutations) {
+		if (mutation.type == GroProgramRuntime::PopulationMutationType::Grow) {
+			for (unsigned int i = 0; i < mutation.value; ++i) {
+				_appendBacterium();
+			}
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::PopulationMutationType::Divide) {
+			const std::size_t parentCount = _bacteria.size();
+			for (std::size_t index = 0; index < parentCount; ++index) {
+				const BacteriumState& parent = _bacteria[index];
+				_appendBacterium(parent.id, parent.generation + 1);
+			}
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::PopulationMutationType::SetPopulation) {
+			_resizeInternalBacteria(mutation.resultingPopulationSize);
+		}
+	}
+
+	if (_bacteria.size() != finalPopulationSize) {
+		_resizeInternalBacteria(finalPopulationSize);
+	}
+
+	_populationSize = static_cast<unsigned int>(_bacteria.size());
+	_refreshBacteriaUpdateTime();
+	_rebuildBacteriaGridPositions();
+}
+
+void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int generation) {
+	BacteriumState bacterium;
+	bacterium.id = _nextBacteriumId++;
+	bacterium.parentId = parentId;
+	bacterium.generation = generation;
+	bacterium.birthTime = _colonyTime;
+	bacterium.lastUpdateTime = _colonyTime;
+	bacterium.alive = true;
+	_assignBacteriumGridPosition(bacterium, _bacteria.size());
+	_bacteria.push_back(bacterium);
 }
 
 void BacteriaColony::_refreshBacteriaUpdateTime() {

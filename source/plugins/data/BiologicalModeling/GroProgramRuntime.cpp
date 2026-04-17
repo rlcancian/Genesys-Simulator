@@ -55,6 +55,18 @@ bool addPopulation(unsigned int currentPopulation, unsigned int amount, unsigned
 	return true;
 }
 
+GroProgramRuntime::PopulationMutation makePopulationMutation(GroProgramRuntime::PopulationMutationType type,
+                                                             unsigned int value,
+                                                             unsigned int previousPopulationSize,
+                                                             unsigned int resultingPopulationSize) {
+	GroProgramRuntime::PopulationMutation mutation;
+	mutation.type = type;
+	mutation.value = value;
+	mutation.previousPopulationSize = previousPopulationSize;
+	mutation.resultingPopulationSize = resultingPopulationSize;
+	return mutation;
+}
+
 }
 
 GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr& ir, GroProgramRuntimeState& state) const {
@@ -90,11 +102,16 @@ GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr
 				result.succeeded = false;
 				return result;
 			}
+			const unsigned int previousPopulationSize = state.populationSize;
 			if (!addPopulation(state.populationSize, amount, state.populationSize)) {
 				result.succeeded = false;
 				result.errorMessage = "GroProgramRuntime grow command would overflow population size. ";
 				return result;
 			}
+			result.populationMutations.push_back(makePopulationMutation(GroProgramRuntime::PopulationMutationType::Grow,
+			                                                            amount,
+			                                                            previousPopulationSize,
+			                                                            state.populationSize));
 			++result.executedCommands;
 			continue;
 		}
@@ -105,11 +122,16 @@ GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr
 				result.errorMessage = "GroProgramRuntime divide command does not accept arguments. ";
 				return result;
 			}
+			const unsigned int previousPopulationSize = state.populationSize;
 			if (!addPopulation(state.populationSize, state.populationSize, state.populationSize)) {
 				result.succeeded = false;
 				result.errorMessage = "GroProgramRuntime divide command would overflow population size. ";
 				return result;
 			}
+			result.populationMutations.push_back(makePopulationMutation(GroProgramRuntime::PopulationMutationType::Divide,
+			                                                            previousPopulationSize,
+			                                                            previousPopulationSize,
+			                                                            state.populationSize));
 			++result.executedCommands;
 			continue;
 		}
@@ -122,7 +144,12 @@ GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr
 				result.errorMessage = "GroProgramRuntime set_population command expects one positive integer argument. ";
 				return result;
 			}
+			const unsigned int previousPopulationSize = state.populationSize;
 			state.populationSize = populationSize;
+			result.populationMutations.push_back(makePopulationMutation(GroProgramRuntime::PopulationMutationType::SetPopulation,
+			                                                            populationSize,
+			                                                            previousPopulationSize,
+			                                                            state.populationSize));
 			++result.executedCommands;
 			continue;
 		}
