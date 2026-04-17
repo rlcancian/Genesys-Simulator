@@ -75,19 +75,56 @@
      <widget class="QWidget" name="layoutWidgetPlugins">
       <layout class="QVBoxLayout" name="verticalLayoutPlugins">
        <item>
-        <widget class="QTableWidget" name="tableWidgetPlugins">
-         <property name="editTriggers">
-          <set>QAbstractItemView::NoEditTriggers</set>
+        <widget class="QTabWidget" name="tabWidgetPluginTables">
+         <property name="currentIndex">
+          <number>0</number>
          </property>
-         <property name="alternatingRowColors">
-          <bool>true</bool>
-         </property>
-         <property name="selectionMode">
-          <enum>QAbstractItemView::SingleSelection</enum>
-         </property>
-         <property name="selectionBehavior">
-          <enum>QAbstractItemView::SelectRows</enum>
-         </property>
+         <widget class="QWidget" name="tabLoadedPlugins">
+          <attribute name="title">
+           <string>Loaded plugins</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayoutLoadedPlugins">
+           <item>
+            <widget class="QTableWidget" name="tableWidgetPlugins">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tabPluginIssues">
+          <attribute name="title">
+           <string>Plugins with problems</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayoutPluginIssues">
+           <item>
+            <widget class="QTableWidget" name="tableWidgetPluginIssues">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </widget>
        </item>
        <item>
@@ -155,7 +192,9 @@
   <tabstop>pushButtonBrowseAutoload</tabstop>
   <tabstop>checkBoxFallbackDiscovery</tabstop>
   <tabstop>pushButtonAutoLoadNow</tabstop>
+  <tabstop>tabWidgetPluginTables</tabstop>
   <tabstop>tableWidgetPlugins</tabstop>
+  <tabstop>tableWidgetPluginIssues</tabstop>
   <tabstop>pushButtonCheck</tabstop>
   <tabstop>pushButtonInsert</tabstop>
   <tabstop>pushButtonResolveSelected</tabstop>

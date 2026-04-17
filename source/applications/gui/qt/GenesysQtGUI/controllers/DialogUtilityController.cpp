@@ -1259,10 +1259,13 @@ void DialogUtilityController::onActionSimulatorPreferencesTriggered() {
 }
 
 // Preserve plugin manager dialog parenting and non-blocking show behavior.
-void DialogUtilityController::onActionSimulatorsPluginManagerTriggered() {
+void DialogUtilityController::onActionSimulatorsPluginManagerTriggered(bool showProblemPlugins) {
     DialogPluginManager* dialog = new DialogPluginManager(_ownerWidget);
     dialog->setSimulator(_simulator);
     dialog->setPluginCatalogRefreshCallback(_reloadPluginCatalog);
+    if (showProblemPlugins) {
+        dialog->showProblemPluginsTab();
+    }
     dialog->show();
 }
 
