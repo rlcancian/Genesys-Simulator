@@ -13,16 +13,28 @@
 #include "plugins/data/BiologicalModeling/GroProgram.h"
 #include "plugins/data/BiologicalModeling/GroProgramRuntime.h"
 
+#include <cstddef>
+#include <vector>
+
 /*!
  * \brief First GenESyS component for Gro-inspired bacteria colony simulation.
  *
  * BacteriaColony owns an internal biological simulation clock and a population
- * summary that are independent from ModelSimulation global event time in this
- * first slice. The component references a reusable GroProgram but currently
- * only validates and stores the program; complete Gro execution semantics are
- * intentionally deferred to plugin-side parser/runtime helpers.
+ * state that is independent from ModelSimulation global event time in this
+ * first slice. The component references a reusable GroProgram and executes the
+ * first supported runtime commands through plugin-side parser/runtime helpers.
  */
 class BacteriaColony : public ModelComponent {
+public:
+	struct BacteriumState {
+		unsigned int id = 0;
+		double birthTime = 0.0;
+		double lastUpdateTime = 0.0;
+		unsigned int gridX = 0;
+		unsigned int gridY = 0;
+		bool alive = true;
+	};
+
 public:
 	BacteriaColony(Model* model, std::string name = "");
 	virtual ~BacteriaColony() override = default;
@@ -56,6 +68,10 @@ public:
 	unsigned int getInitialPopulation() const;
 	/*! \brief Returns the current bacteria population summary. */
 	unsigned int getPopulationSize() const;
+	/*! \brief Returns the number of internal bacteria currently owned by the colony. */
+	std::size_t getInternalBacteriaCount() const;
+	/*! \brief Returns one internal bacterium state by zero-based index. */
+	const BacteriumState& getBacteriumState(std::size_t index) const;
 	/*! \brief Sets the discrete spatial grid width reserved for the first colony model. */
 	void setGridWidth(unsigned int gridWidth);
 	/*! \brief Returns the discrete spatial grid width. */
@@ -95,6 +111,15 @@ private:
 	unsigned int _populationSize = DEFAULT.initialPopulation;
 	unsigned int _gridWidth = DEFAULT.gridWidth;
 	unsigned int _gridHeight = DEFAULT.gridHeight;
+	unsigned int _nextBacteriumId = 1;
+	std::vector<BacteriumState> _bacteria;
+
+private:
+	void _rebuildInternalBacteria(unsigned int populationSize);
+	void _resizeInternalBacteria(unsigned int populationSize);
+	void _refreshBacteriaUpdateTime();
+	void _rebuildBacteriaGridPositions();
+	void _assignBacteriumGridPosition(BacteriumState& bacterium, std::size_t index) const;
 };
 
 #endif /* BACTERIACOLONY_H */

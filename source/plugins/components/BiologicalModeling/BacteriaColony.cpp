@@ -11,6 +11,8 @@
 #include "plugins/data/BiologicalModeling/GroProgramCompiler.h"
 #include "plugins/data/BiologicalModeling/GroProgramParser.h"
 
+#include <stdexcept>
+
 #ifdef PLUGINCONNECT_DYNAMIC
 
 extern "C" StaticGetPluginInformation GetPluginInformation() {
@@ -155,8 +157,20 @@ unsigned int BacteriaColony::getPopulationSize() const {
 	return _populationSize;
 }
 
+std::size_t BacteriaColony::getInternalBacteriaCount() const {
+	return _bacteria.size();
+}
+
+const BacteriaColony::BacteriumState& BacteriaColony::getBacteriumState(std::size_t index) const {
+	if (index >= _bacteria.size()) {
+		throw std::out_of_range("BacteriaColony bacterium index is out of range");
+	}
+	return _bacteria[index];
+}
+
 void BacteriaColony::setGridWidth(unsigned int gridWidth) {
 	_gridWidth = gridWidth;
+	_rebuildBacteriaGridPositions();
 }
 
 unsigned int BacteriaColony::getGridWidth() const {
@@ -165,6 +179,7 @@ unsigned int BacteriaColony::getGridWidth() const {
 
 void BacteriaColony::setGridHeight(unsigned int gridHeight) {
 	_gridHeight = gridHeight;
+	_rebuildBacteriaGridPositions();
 }
 
 unsigned int BacteriaColony::getGridHeight() const {
@@ -173,6 +188,7 @@ unsigned int BacteriaColony::getGridHeight() const {
 
 double BacteriaColony::advanceColonyTime() {
 	_colonyTime += _simulationStep;
+	_refreshBacteriaUpdateTime();
 	return _colonyTime;
 }
 
@@ -201,7 +217,7 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	result = GroProgramRuntime().execute(ir, runtimeState);
 	if (result.succeeded) {
 		_colonyTime = runtimeState.colonyTime;
-		_populationSize = runtimeState.populationSize;
+		_resizeInternalBacteria(runtimeState.populationSize);
 	}
 	return result;
 }
@@ -219,9 +235,9 @@ bool BacteriaColony::_loadInstance(PersistenceRecord* fields) {
 		_initialColonyTime = fields->loadField("initialColonyTime", DEFAULT.initialColonyTime);
 		_colonyTime = _initialColonyTime;
 		_initialPopulation = fields->loadField("initialPopulation", DEFAULT.initialPopulation);
-		_populationSize = _initialPopulation;
 		_gridWidth = fields->loadField("gridWidth", DEFAULT.gridWidth);
 		_gridHeight = fields->loadField("gridHeight", DEFAULT.gridHeight);
+		_rebuildInternalBacteria(_initialPopulation);
 	}
 	return res;
 }
@@ -264,7 +280,7 @@ bool BacteriaColony::_check(std::string& errorMessage) {
 
 void BacteriaColony::_initBetweenReplications() {
 	_colonyTime = _initialColonyTime;
-	_populationSize = _initialPopulation;
+	_rebuildInternalBacteria(_initialPopulation);
 }
 
 void BacteriaColony::_createInternalAndAttachedData() {
@@ -292,4 +308,55 @@ void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 	if (entity != nullptr) {
 		_parentModel->removeEntity(entity);
 	}
+}
+
+void BacteriaColony::_rebuildInternalBacteria(unsigned int populationSize) {
+	_bacteria.clear();
+	_nextBacteriumId = 1;
+	_resizeInternalBacteria(populationSize);
+}
+
+void BacteriaColony::_resizeInternalBacteria(unsigned int populationSize) {
+	while (_bacteria.size() > populationSize) {
+		_bacteria.pop_back();
+	}
+
+	while (_bacteria.size() < populationSize) {
+		BacteriumState bacterium;
+		bacterium.id = _nextBacteriumId++;
+		bacterium.birthTime = _colonyTime;
+		bacterium.lastUpdateTime = _colonyTime;
+		bacterium.alive = true;
+		_assignBacteriumGridPosition(bacterium, _bacteria.size());
+		_bacteria.push_back(bacterium);
+	}
+
+	_populationSize = static_cast<unsigned int>(_bacteria.size());
+	_refreshBacteriaUpdateTime();
+	_rebuildBacteriaGridPositions();
+}
+
+void BacteriaColony::_refreshBacteriaUpdateTime() {
+	for (BacteriumState& bacterium : _bacteria) {
+		if (bacterium.alive) {
+			bacterium.lastUpdateTime = _colonyTime;
+		}
+	}
+}
+
+void BacteriaColony::_rebuildBacteriaGridPositions() {
+	for (std::size_t index = 0; index < _bacteria.size(); ++index) {
+		_assignBacteriumGridPosition(_bacteria[index], index);
+	}
+}
+
+void BacteriaColony::_assignBacteriumGridPosition(BacteriumState& bacterium, std::size_t index) const {
+	if (_gridWidth == 0 || _gridHeight == 0) {
+		bacterium.gridX = 0;
+		bacterium.gridY = 0;
+		return;
+	}
+
+	bacterium.gridX = static_cast<unsigned int>(index % _gridWidth);
+	bacterium.gridY = static_cast<unsigned int>((index / _gridWidth) % _gridHeight);
 }

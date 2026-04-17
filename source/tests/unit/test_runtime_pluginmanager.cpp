@@ -249,7 +249,9 @@ TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndSt
 
     EXPECT_DOUBLE_EQ(colony->getColonyTime(), 2.0);
     EXPECT_EQ(colony->getPopulationSize(), 8u);
+    EXPECT_EQ(colony->getInternalBacteriaCount(), 8u);
     EXPECT_DOUBLE_EQ(colony->advanceColonyTime(), 2.25);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 2.25);
 
     std::string errorMessage;
     EXPECT_TRUE(ModelDataDefinition::Check(program, errorMessage)) << errorMessage;
@@ -275,8 +277,20 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     colony->setSimulationStep(0.5);
     colony->setInitialColonyTime(1.0);
     colony->setInitialPopulation(3);
+    colony->setGridWidth(2);
+    colony->setGridHeight(2);
 
     ModelDataDefinition::InitBetweenReplications(colony);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 3u);
+    EXPECT_EQ(colony->getBacteriumState(0).id, 1u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).birthTime, 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 1.0);
+    EXPECT_EQ(colony->getBacteriumState(0).gridX, 0u);
+    EXPECT_EQ(colony->getBacteriumState(0).gridY, 0u);
+    EXPECT_EQ(colony->getBacteriumState(1).gridX, 1u);
+    EXPECT_EQ(colony->getBacteriumState(1).gridY, 0u);
+    EXPECT_EQ(colony->getBacteriumState(2).gridX, 0u);
+    EXPECT_EQ(colony->getBacteriumState(2).gridY, 1u);
 
     GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
 
@@ -284,6 +298,16 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     EXPECT_EQ(result.executedCommands, 4u);
     EXPECT_DOUBLE_EQ(colony->getColonyTime(), 1.5);
     EXPECT_EQ(colony->getPopulationSize(), 9u);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 9u);
+    EXPECT_EQ(colony->getBacteriumState(0).id, 1u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).birthTime, 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 1.5);
+    EXPECT_EQ(colony->getBacteriumState(3).id, 4u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).birthTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).lastUpdateTime, 1.5);
+    EXPECT_EQ(colony->getBacteriumState(8).id, 9u);
+    EXPECT_EQ(colony->getBacteriumState(8).gridX, 0u);
+    EXPECT_EQ(colony->getBacteriumState(8).gridY, 0u);
     EXPECT_TRUE(result.unsupportedCommands.empty());
     EXPECT_TRUE(result.skippedRawStatements.empty());
 }
