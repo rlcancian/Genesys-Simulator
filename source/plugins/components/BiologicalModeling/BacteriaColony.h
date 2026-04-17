@@ -126,6 +126,7 @@ private:
 	void _applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
 	                                      unsigned int finalPopulationSize);
 	void _appendBacterium(unsigned int parentId = 0, unsigned int generation = 0);
+	void _removeBacteria(unsigned int amount);
 	void _refreshBacteriaUpdateTime();
 	void _rebuildBacteriaGridPositions();
 	void _assignBacteriumGridPosition(BacteriumState& bacterium, std::size_t index) const;

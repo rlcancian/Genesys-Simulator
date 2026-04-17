@@ -35,6 +35,7 @@ public:
 	enum class PopulationMutationType {
 		Grow,
 		Divide,
+		Die,
 		SetPopulation
 	};
 

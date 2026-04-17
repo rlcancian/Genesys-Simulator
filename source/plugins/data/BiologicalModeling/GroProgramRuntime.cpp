@@ -55,6 +55,14 @@ bool addPopulation(unsigned int currentPopulation, unsigned int amount, unsigned
 	return true;
 }
 
+bool removePopulation(unsigned int currentPopulation, unsigned int amount, unsigned int& populationSize) {
+	if (amount > currentPopulation) {
+		return false;
+	}
+	populationSize = currentPopulation - amount;
+	return true;
+}
+
 GroProgramRuntime::PopulationMutation makePopulationMutation(GroProgramRuntime::PopulationMutationType type,
                                                              unsigned int value,
                                                              unsigned int previousPopulationSize,
@@ -130,6 +138,26 @@ GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr
 			}
 			result.populationMutations.push_back(makePopulationMutation(GroProgramRuntime::PopulationMutationType::Divide,
 			                                                            previousPopulationSize,
+			                                                            previousPopulationSize,
+			                                                            state.populationSize));
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "die") {
+			unsigned int amount = 1;
+			if (!parseOptionalPositiveAmount(command, amount, result.errorMessage)) {
+				result.succeeded = false;
+				return result;
+			}
+			const unsigned int previousPopulationSize = state.populationSize;
+			if (!removePopulation(state.populationSize, amount, state.populationSize)) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime die command would remove more bacteria than available. ";
+				return result;
+			}
+			result.populationMutations.push_back(makePopulationMutation(GroProgramRuntime::PopulationMutationType::Die,
+			                                                            amount,
 			                                                            previousPopulationSize,
 			                                                            state.populationSize));
 			++result.executedCommands;

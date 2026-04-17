@@ -360,6 +360,11 @@ void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgr
 			continue;
 		}
 
+		if (mutation.type == GroProgramRuntime::PopulationMutationType::Die) {
+			_removeBacteria(mutation.value);
+			continue;
+		}
+
 		if (mutation.type == GroProgramRuntime::PopulationMutationType::SetPopulation) {
 			_resizeInternalBacteria(mutation.resultingPopulationSize);
 		}
@@ -386,6 +391,13 @@ void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int genera
 	bacterium.alive = true;
 	_assignBacteriumGridPosition(bacterium, _bacteria.size());
 	_bacteria.push_back(bacterium);
+}
+
+void BacteriaColony::_removeBacteria(unsigned int amount) {
+	for (unsigned int i = 0; i < amount && !_bacteria.empty(); ++i) {
+		_bacteria.back().alive = false;
+		_bacteria.pop_back();
+	}
 }
 
 void BacteriaColony::_refreshBacteriaUpdateTime() {
