@@ -19,6 +19,7 @@
 struct GroProgramRuntimeState {
 	double colonyTime = 0.0;
 	double simulationStep = 1.0;
+	unsigned int populationSize = 1;
 	unsigned int tickCount = 0;
 };
 

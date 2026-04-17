@@ -319,27 +319,29 @@ TEST(RuntimePluginManagerClassTest, GroProgramCompilerBuildsInitialSemanticIr) {
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand) {
-    GroProgramParser parser;
-    GroProgramParser::Result parsed = parser.parse(
-        "program colony() { tick(); observe(); raw + expression; tick(); }");
-    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+	GroProgramParser parser;
+	GroProgramParser::Result parsed = parser.parse(
+	    "program colony() { tick(); grow(); grow(3); divide(); set_population(7); observe(); raw + expression; tick(); }");
+	ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
 
     GroProgramCompiler compiler;
     GroProgramIr ir = compiler.compile(parsed.ast);
 
-    GroProgramRuntimeState state;
-    state.colonyTime = 2.0;
-    state.simulationStep = 0.25;
+	GroProgramRuntimeState state;
+	state.colonyTime = 2.0;
+	state.simulationStep = 0.25;
+	state.populationSize = 2;
 
-    GroProgramRuntime runtime;
-    GroProgramRuntime::ExecutionResult result = runtime.execute(ir, state);
+	GroProgramRuntime runtime;
+	GroProgramRuntime::ExecutionResult result = runtime.execute(ir, state);
 
-    EXPECT_TRUE(result.succeeded) << result.errorMessage;
-    EXPECT_EQ(result.executedCommands, 2u);
-    EXPECT_DOUBLE_EQ(state.colonyTime, 2.5);
-    EXPECT_EQ(state.tickCount, 2u);
-    ASSERT_EQ(result.unsupportedCommands.size(), 1u);
-    EXPECT_EQ(result.unsupportedCommands[0], "observe()");
+	EXPECT_TRUE(result.succeeded) << result.errorMessage;
+	EXPECT_EQ(result.executedCommands, 6u);
+	EXPECT_DOUBLE_EQ(state.colonyTime, 2.5);
+	EXPECT_EQ(state.tickCount, 2u);
+	EXPECT_EQ(state.populationSize, 7u);
+	ASSERT_EQ(result.unsupportedCommands.size(), 1u);
+	EXPECT_EQ(result.unsupportedCommands[0], "observe()");
     ASSERT_EQ(result.skippedRawStatements.size(), 1u);
     EXPECT_EQ(result.skippedRawStatements[0], "raw + expression");
 
@@ -347,7 +349,16 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand)
     ASSERT_TRUE(invalidTick.accepted) << invalidTick.errorMessage;
     GroProgramIr invalidIr = compiler.compile(invalidTick.ast);
 
-    GroProgramRuntime::ExecutionResult invalidResult = runtime.execute(invalidIr, state);
-    EXPECT_FALSE(invalidResult.succeeded);
-    EXPECT_NE(invalidResult.errorMessage.find("tick command does not accept arguments"), std::string::npos);
+	GroProgramRuntime::ExecutionResult invalidResult = runtime.execute(invalidIr, state);
+	EXPECT_FALSE(invalidResult.succeeded);
+	EXPECT_NE(invalidResult.errorMessage.find("tick command does not accept arguments"), std::string::npos);
+
+	GroProgramParser::Result invalidPopulation = parser.parse("set_population(0);");
+	ASSERT_TRUE(invalidPopulation.accepted) << invalidPopulation.errorMessage;
+	GroProgramIr invalidPopulationIr = compiler.compile(invalidPopulation.ast);
+
+	GroProgramRuntime::ExecutionResult invalidPopulationResult = runtime.execute(invalidPopulationIr, state);
+	EXPECT_FALSE(invalidPopulationResult.succeeded);
+	EXPECT_NE(invalidPopulationResult.errorMessage.find("set_population command expects one positive integer argument"),
+	          std::string::npos);
 }
