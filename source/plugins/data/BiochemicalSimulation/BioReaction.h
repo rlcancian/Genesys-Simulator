@@ -17,8 +17,8 @@
  * reactant or product. The current execution contract supports direct rate
  * constants, a BioParameter reference, or an optional kinetic-law expression that
  * resolves BioSpecies/BioParameter names at BioNetwork execution time. Reversible
- * reactions are represented for future compatibility but are rejected by
- * validation and by BioNetwork execution until reverse kinetics are defined.
+ * reactions use a separate reverse mass-action rate constant over the product
+ * side of the reaction.
  */
 class BioReaction : public ModelDataDefinition {
 public:
@@ -51,6 +51,11 @@ public:
 	void setRateConstantParameterName(std::string rateConstantParameterName);
 	std::string getRateConstantParameterName() const;
 	double resolveRateConstant() const;
+	void setReverseRateConstant(double reverseRateConstant);
+	double getReverseRateConstant() const;
+	void setReverseRateConstantParameterName(std::string reverseRateConstantParameterName);
+	std::string getReverseRateConstantParameterName() const;
+	double resolveReverseRateConstant() const;
 	void setKineticLawExpression(std::string kineticLawExpression);
 	std::string getKineticLawExpression() const;
 	void setReversible(bool reversible);
@@ -74,6 +79,8 @@ private:
 	const struct DEFAULT_VALUES {
 		double rateConstant = 0.0;
 		std::string rateConstantParameterName = "";
+		double reverseRateConstant = 0.0;
+		std::string reverseRateConstantParameterName = "";
 		std::string kineticLawExpression = "";
 		bool reversible = false;
 	} DEFAULT;
@@ -83,6 +90,8 @@ private:
 	std::vector<std::string> _modifiers;
 	double _rateConstant = DEFAULT.rateConstant;
 	std::string _rateConstantParameterName = DEFAULT.rateConstantParameterName;
+	double _reverseRateConstant = DEFAULT.reverseRateConstant;
+	std::string _reverseRateConstantParameterName = DEFAULT.reverseRateConstantParameterName;
 	std::string _kineticLawExpression = DEFAULT.kineticLawExpression;
 	bool _reversible = DEFAULT.reversible;
 };

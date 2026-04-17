@@ -89,6 +89,15 @@ bool reactionHasParticipantSpecies(const BioReaction* reaction, const std::strin
 	return false;
 }
 
+bool hasParameterValue(const std::vector<std::pair<std::string, double>>& parameterValues, const std::string& parameterName) {
+	for (const auto& parameter : parameterValues) {
+		if (parameter.first == parameterName) {
+			return true;
+		}
+	}
+	return false;
+}
+
 } // namespace
 
 ModelDataDefinition* BioNetwork::NewInstance(Model* model, std::string name) {
@@ -419,22 +428,34 @@ bool BioNetwork::buildSystem(const std::vector<BioSpecies*>& species, const std:
 	std::vector<MassActionOdeSystem::Reaction> odeReactions;
 	std::vector<std::pair<std::string, double>> parameterValues = collectParameterValues(_parentModel->getDataManager());
 	for (BioReaction* reaction : reactions) {
-		if (reaction->isReversible()) {
-			errorMessage += "BioNetwork \"" + getName() + "\" cannot run reversible BioReaction \"" + reaction->getName() + "\" yet. ";
-			return false;
-		}
-
 		MassActionOdeSystem::Reaction odeReaction;
 		odeReaction.name = reaction->getName();
 		odeReaction.kineticLawExpression = reaction->getKineticLawExpression();
 		odeReaction.parameters = parameterValues;
+		odeReaction.reversible = reaction->isReversible();
 		if (odeReaction.kineticLawExpression.empty()) {
+			if (!reaction->getRateConstantParameterName().empty() && !hasParameterValue(parameterValues, reaction->getRateConstantParameterName())) {
+				errorMessage += "BioReaction \"" + reaction->getName() + "\" references missing BioParameter \"" + reaction->getRateConstantParameterName() + "\". ";
+				return false;
+			}
 			const double rateConstant = reaction->resolveRateConstant();
 			if (rateConstant < 0.0) {
 				errorMessage += "BioReaction \"" + reaction->getName() + "\" must resolve to a non-negative rate constant. ";
 				return false;
 			}
 			odeReaction.rateConstant = rateConstant;
+		}
+		if (odeReaction.reversible) {
+			if (!reaction->getReverseRateConstantParameterName().empty() && !hasParameterValue(parameterValues, reaction->getReverseRateConstantParameterName())) {
+				errorMessage += "BioReaction \"" + reaction->getName() + "\" references missing reverse BioParameter \"" + reaction->getReverseRateConstantParameterName() + "\". ";
+				return false;
+			}
+			const double reverseRateConstant = reaction->resolveReverseRateConstant();
+			if (reverseRateConstant < 0.0) {
+				errorMessage += "BioReaction \"" + reaction->getName() + "\" must resolve to a non-negative reverse rate constant. ";
+				return false;
+			}
+			odeReaction.reverseRateConstant = reverseRateConstant;
 		}
 
 		for (const BioReaction::StoichiometricTerm& term : reaction->getReactants()) {
