@@ -109,8 +109,8 @@ instructions are considered obsolete or consolidated here.
 
 ### `GroProgram`
 
-- **Files:** `source/plugins/data/GroProgram.h`,
-  `source/plugins/data/GroProgram.cpp`.
+- **Files:** `source/plugins/data/BiologicalModeling/GroProgram.h`,
+  `source/plugins/data/BiologicalModeling/GroProgram.cpp`.
 - **Type:** `ModelDataDefinition`.
 - **Purpose:** store reusable Gro source code attached to a GenESyS model.
 - **Current behavior:** stores `SourceCode` as a string and performs a
@@ -121,8 +121,8 @@ instructions are considered obsolete or consolidated here.
 
 ### `BacteriaColony`
 
-- **Files:** `source/plugins/components/bacteria/BacteriaColony.h`,
-  `source/plugins/components/bacteria/BacteriaColony.cpp`.
+- **Files:** `source/plugins/components/BiologicalModeling/BacteriaColony.h`,
+  `source/plugins/components/BiologicalModeling/BacteriaColony.cpp`.
 - **Type:** `ModelComponent`.
 - **Purpose:** first Gro-inspired biological simulation component for bacteria
   colony behavior.
@@ -159,10 +159,10 @@ instructions are considered obsolete or consolidated here.
 - `GRO_ContextMemory.md`
 - `documentation/developers/GRO_context.md` (obsolete memory file removed after
   migration)
-- `source/plugins/data/GroProgram.h`
-- `source/plugins/data/GroProgram.cpp`
-- `source/plugins/components/bacteria/BacteriaColony.h`
-- `source/plugins/components/bacteria/BacteriaColony.cpp`
+- `source/plugins/data/BiologicalModeling/GroProgram.h`
+- `source/plugins/data/BiologicalModeling/GroProgram.cpp`
+- `source/plugins/components/BiologicalModeling/BacteriaColony.h`
+- `source/plugins/components/BiologicalModeling/BacteriaColony.cpp`
 - `source/plugins/PluginConnectorDummyImpl1.cpp`
 - `source/tests/unit/test_runtime_pluginmanager.cpp`
 
@@ -187,6 +187,15 @@ instructions are considered obsolete or consolidated here.
   - `10e6937c Merge remote-tracking branch 'origin/WiP20261' into WiP20261_GRO`
 - Latest known validation before this migration:
   - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Latest structural synchronization:
+  - merged `origin/WiP20261_KERNEL_GUI` at `f232882e` into
+    `WiP20261_GRO`;
+  - preserved the official plugin category organization;
+  - GRO plugin files now live under the official `BiologicalModeling`
+    category folders;
+  - no merge conflicts occurred;
+  - `cmake --preset tests-kernel-unit` succeeded;
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
 
 ## Current Branch State
@@ -336,3 +345,24 @@ instructions are considered obsolete or consolidated here.
 - No new functionality was implemented.
 - No new merge was attempted in this session.
 - Only `GRO_ContextMemory.md` was updated.
+
+### 2026-04-17 - Synchronization With Official Plugin Category Layout
+
+- User identified `f232882e` (`Organize plugins by declared category`) as the
+  official structural base from `KERNEL_GUI`.
+- Ran `git fetch origin`; `origin/WiP20261_KERNEL_GUI` advanced to `f232882e`.
+- Merged `origin/WiP20261_KERNEL_GUI` into `WiP20261_GRO`.
+- Merge result: merge commit `13f83fbd`.
+- Conflict status: no conflicts occurred.
+- The official layout moved GRO files to:
+  - `source/plugins/data/BiologicalModeling/GroProgram.h`
+  - `source/plugins/data/BiologicalModeling/GroProgram.cpp`
+  - `source/plugins/components/BiologicalModeling/BacteriaColony.h`
+  - `source/plugins/components/BiologicalModeling/BacteriaColony.cpp`
+- Includes and tests now reference the official `BiologicalModeling` paths.
+- `source/plugins/data/CMakeLists.txt` from the official base now uses recursive
+  plugin data source discovery, so `GroProgram.cpp` remains in the build after
+  the category move.
+- Validation after merge:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
