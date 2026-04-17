@@ -40,6 +40,59 @@ struct PluginInsertionOptions {
 	std::function<bool(const SystemDependencyCheckResult&)> confirmSystemDependencyInstallation;
 };
 
+/*!
+ * \brief Diagnostic record for a plugin candidate that could not be loaded.
+ *
+ * The manager keeps these records so interactive front-ends can explain startup
+ * autoload failures after the application UI is ready. The kernel stores only
+ * technical diagnostics; GUI code decides how to present and resolve them.
+ */
+class PluginLoadIssue {
+public:
+	/*! \brief High-level reason why a plugin candidate was not loaded. */
+	enum class Reason {
+		InvalidPlugin,
+		MissingSystemDependency,
+		DynamicDependencyFailure,
+		ConnectionFailure,
+		InsertionFailure,
+		Exception
+	};
+
+	/*! \brief Creates an empty diagnostic record. */
+	PluginLoadIssue() = default;
+	/*! \brief Creates a diagnostic record for a failed plugin load attempt. */
+	PluginLoadIssue(std::string filename,
+	                std::string pluginTypename,
+	                Reason reason,
+	                std::string message,
+	                SystemDependencyCheckResult systemDependencyResult = {});
+
+	/*! \brief Returns the filename passed to the plugin connector. */
+	const std::string& getFilename() const;
+	/*! \brief Returns the plugin typename when it could be read from PluginInformation. */
+	const std::string& getPluginTypename() const;
+	/*! \brief Returns the high-level failure reason. */
+	Reason getReason() const;
+	/*! \brief Returns the human-readable diagnostic message captured by the manager. */
+	const std::string& getMessage() const;
+	/*! \brief Returns dependency diagnostics captured during system dependency preflight. */
+	const SystemDependencyCheckResult& getSystemDependencyResult() const;
+	/*! \brief Returns true when this issue includes system dependency diagnostics. */
+	bool hasSystemDependencyResult() const;
+	/*! \brief Returns a stable textual label for a failure reason. */
+	static std::string reasonToString(Reason reason);
+	/*! \brief Formats the issue for trace logs or GUI details. */
+	std::string diagnosticText() const;
+
+private:
+	std::string _filename = "";
+	std::string _pluginTypename = "";
+	Reason _reason = Reason::Exception;
+	std::string _message = "";
+	SystemDependencyCheckResult _systemDependencyResult;
+};
+
 //namespace GenesysKernel {
 
 /*!
@@ -78,6 +131,12 @@ public:
 	SystemDependencyCheckResult checkSystemDependencies(const std::string dynamicLibraryFilename);
 	/*! \brief Discovers plugin filenames through the configured connector without inserting them. */
 	List<std::string>* discoverPluginFilenames() const;
+	/*! \brief Returns plugin candidates that failed to load during check/connect/preflight. */
+	List<PluginLoadIssue>* getPluginLoadIssues() const;
+	/*! \brief Clears all stored plugin load diagnostics. */
+	void clearPluginLoadIssues();
+	/*! \brief Removes stored diagnostics for one plugin candidate filename. */
+	void clearPluginLoadIssue(const std::string& dynamicLibraryFilename);
 	/*! \brief Loads and inserts a plugin from a dynamic library file. */
 	Plugin* insert(const std::string dynamicLibraryFilename);
 	/*! \brief Loads and inserts a plugin, optionally asking the caller to authorize dependency installation. */
@@ -141,9 +200,16 @@ public:
 
 private:
 	/*! \brief Inserts a connected plugin after recursive dynamic dependency and system dependency checks. */
-	bool _insert(Plugin* plugin, const PluginInsertionOptions& options);
+	bool _insert(Plugin* plugin, const PluginInsertionOptions& options, const std::string& dynamicLibraryFilename);
 	/*! \brief Runs system dependency preflight and optional confirmed installation for one plugin. */
-	bool _preflightAndMaybeInstallSystemDependencies(PluginInformation* plugInfo, const PluginInsertionOptions& options);
+	bool _preflightAndMaybeInstallSystemDependencies(PluginInformation* plugInfo,
+	                                                 const PluginInsertionOptions& options,
+	                                                 SystemDependencyCheckResult* blockingResult = nullptr,
+	                                                 std::string* failureMessage = nullptr);
+	/*! \brief Stores or replaces the diagnostic for a failed plugin candidate. */
+	void _recordLoadIssue(const PluginLoadIssue& issue);
+	/*! \brief Removes a diagnostic by filename or plugin typename after successful insertion. */
+	void _removeLoadIssue(const std::string& dynamicLibraryFilename, const std::string& pluginTypename);
 	/*! \brief Registers kernel built-in plugins that do not come from dynamic libraries. */
 	void _insertDefaultKernelElements();
 	/*! \brief Finds and attempts to load plugins from connector discovery. */
@@ -151,6 +217,7 @@ private:
 
 private:
 	List<Plugin*>* _plugins = new List<Plugin*>();
+	List<PluginLoadIssue>* _pluginLoadIssues = new List<PluginLoadIssue>();
 	Simulator* _simulator;
 	PluginConnector_if* _pluginConnector;
 	SystemCommandExecutor_if* _systemCommandExecutor;
