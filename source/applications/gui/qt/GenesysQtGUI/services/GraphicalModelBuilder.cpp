@@ -1,5 +1,6 @@
 #include "GraphicalModelBuilder.h"
 
+#include "GraphicalDataDefinitionLayout.h"
 #include "../TraitsGUI.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -27,34 +28,6 @@ namespace {
         Editable,
         Shared
     };
-
-    QPointF stableComponentPosition(GraphicalModelComponent* component) {
-        if (component == nullptr) {
-            return QPointF();
-        }
-        const QPointF oldPosition = component->getOldPosition();
-        if (!qFuzzyIsNull(oldPosition.x()) || !qFuzzyIsNull(oldPosition.y())) {
-            return oldPosition;
-        }
-        if (component->scene() != nullptr) {
-            return component->scenePos();
-        }
-        return component->pos();
-    }
-
-    QPointF stableDataDefinitionPosition(GraphicalModelDataDefinition* dataDefinition) {
-        if (dataDefinition == nullptr) {
-            return QPointF();
-        }
-        const QPointF oldPosition = dataDefinition->getOldPosition();
-        if (!qFuzzyIsNull(oldPosition.x()) || !qFuzzyIsNull(oldPosition.y())) {
-            return oldPosition;
-        }
-        if (dataDefinition->scene() != nullptr) {
-            return dataDefinition->scenePos();
-        }
-        return dataDefinition->pos();
-    }
 
     QPointF visibleAutomaticPosition(GraphicalModelDataDefinition* dataDefinition, const QPointF& requestedPosition) {
         QPointF position = requestedPosition;
@@ -132,6 +105,65 @@ namespace {
             return QColor(128, 0, 128);
         }
         return QColor(220, 220, 220);
+    }
+
+    bool categoryIsEditable(DataDefinitionDisplayCategory category) {
+        return category == DataDefinitionDisplayCategory::Editable;
+    }
+
+    struct DataDefinitionLayoutLink {
+        ModelDataDefinition* dataDefinition = nullptr;
+        GraphicalModelDataDefinition* graphicalDefinition = nullptr;
+        GraphicalDiagramConnection::ConnectionType connectionType = GraphicalDiagramConnection::ConnectionType::ATTACHED;
+    };
+
+    QPointF dataDefinitionArcPosition(const QRectF& anchorBounds,
+                                      GraphicalModelDataDefinition* child,
+                                      int index,
+                                      int count,
+                                      bool upperArc) {
+        if (child == nullptr) {
+            return QPointF();
+        }
+
+        const QRectF childBounds = child->boundingRect();
+        return GraphicalDataDefinitionLayout::arcPosition(anchorBounds,
+                                                          childBounds.size(),
+                                                          index,
+                                                          count,
+                                                          upperArc);
+    }
+
+    void positionNewDataDefinitionsInArc(const QRectF& anchorBounds,
+                                         const QList<DataDefinitionLayoutLink>& links,
+                                         bool upperArc,
+                                         const QSet<ModelDataDefinition*>& newDataDefinitions,
+                                         QSet<ModelDataDefinition*>* positionedDataDefinitions) {
+        if (positionedDataDefinitions == nullptr) {
+            return;
+        }
+
+        QList<DataDefinitionLayoutLink> newLinks;
+        for (const DataDefinitionLayoutLink& link : links) {
+            if (link.dataDefinition == nullptr || link.graphicalDefinition == nullptr) {
+                continue;
+            }
+            if (!newDataDefinitions.contains(link.dataDefinition)
+                || positionedDataDefinitions->contains(link.dataDefinition)) {
+                continue;
+            }
+            newLinks.append(link);
+        }
+
+        const int count = newLinks.size();
+        for (int index = 0; index < count; ++index) {
+            GraphicalModelDataDefinition* child = newLinks.at(index).graphicalDefinition;
+            child->setParentItem(nullptr);
+            setVisibleAutomaticPosition(
+                child,
+                dataDefinitionArcPosition(anchorBounds, child, index, count, upperArc));
+            positionedDataDefinitions->insert(newLinks.at(index).dataDefinition);
+        }
     }
 }
 
@@ -460,6 +492,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 const auto categoryIt = visibleCategories.find(dataDefinition);
                 if (categoryIt != visibleCategories.end() && existingIt->second != nullptr) {
                     existingIt->second->setColor(categoryColor(categoryIt->second));
+                    existingIt->second->setEditableInPropertyEditor(categoryIsEditable(categoryIt->second));
                 }
                 continue;
             }
@@ -476,6 +509,9 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 plugin, dataDefinition, QPointF(0, 0), color);
             if (graphicalDataDefinition != nullptr) {
                 dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
+                graphicalDataDefinition->setEditableInPropertyEditor(categoryIsEditable(categoryIt != visibleCategories.end()
+                                                                                           ? categoryIt->second
+                                                                                           : DataDefinitionDisplayCategory::Shared));
                 newDataDefinitions.insert(dataDefinition);
             }
         }
@@ -498,16 +534,17 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
 
     scene->clearGraphicalDiagramConnections();
 
+    QSet<ModelDataDefinition*> positionedDataDefinitions;
+
     for (const auto& componentEntry : componentMap) {
         ModelComponent* component = componentEntry.first;
         GraphicalModelComponent* graphicalComponent = componentEntry.second;
         if (component == nullptr || graphicalComponent == nullptr) {
             continue;
         }
-        qreal yInternal = 0.0;
-        qreal yAttached = 0.0;
-        QPointF componentPosition;
-        bool hasComponentPosition = false;
+
+        QList<DataDefinitionLayoutLink> upperLinks;
+        QList<DataDefinitionLayoutLink> lowerLinks;
 
         for (const auto& attachedData : *component->getAttachedData()) {
             auto attachedIt = dataDefinitionMap.find(attachedData.second);
@@ -518,21 +555,10 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (gdd == nullptr) {
                 continue;
             }
-            if (newDataDefinitions.contains(attachedData.second)) {
-                // Read component geometry only when a newly created attached data definition needs placement.
-                if (!hasComponentPosition) {
-                    componentPosition = stableComponentPosition(graphicalComponent);
-                    yInternal = componentPosition.y();
-                    yAttached = componentPosition.y();
-                    hasComponentPosition = true;
-                }
-                yAttached -= 150;
-                gdd->setParentItem(nullptr);
-                setVisibleAutomaticPosition(gdd, QPointF(componentPosition.x(), yAttached));
-                gdd->setColor(categoryColor(visibleCategories[attachedData.second]));
-            }
-            scene->addGraphicalDiagramConnection(gdd, graphicalComponent,
-                                                 GraphicalDiagramConnection::ConnectionType::ATTACHED);
+            const DataDefinitionDisplayCategory category = visibleCategories[attachedData.second];
+            gdd->setEditableInPropertyEditor(categoryIsEditable(category));
+            gdd->setColor(categoryColor(category));
+            lowerLinks.append({attachedData.second, gdd, GraphicalDiagramConnection::ConnectionType::ATTACHED});
         }
 
         for (const auto& internalData : *component->getInternalData()) {
@@ -544,21 +570,29 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (gdd == nullptr) {
                 continue;
             }
-            if (newDataDefinitions.contains(internalData.second)) {
-                // Read component geometry only when a newly created internal data definition needs placement.
-                if (!hasComponentPosition) {
-                    componentPosition = stableComponentPosition(graphicalComponent);
-                    yInternal = componentPosition.y();
-                    yAttached = componentPosition.y();
-                    hasComponentPosition = true;
-                }
-                yInternal += 150;
-                setVisibleAutomaticPosition(gdd, QPointF(componentPosition.x(), yInternal));
-                // do NOT group
-                //scene->ensureInitialInternalDataDefinitionGrouping(gdd, graphicalComponent);
+            const DataDefinitionDisplayCategory category = visibleCategories[internalData.second];
+            gdd->setEditableInPropertyEditor(categoryIsEditable(category));
+            gdd->setColor(categoryColor(category));
+            if (categoryIsEditable(category)) {
+                upperLinks.append({internalData.second, gdd, GraphicalDiagramConnection::ConnectionType::INTERNAL});
+            } else {
+                lowerLinks.append({internalData.second, gdd, GraphicalDiagramConnection::ConnectionType::INTERNAL});
             }
-            scene->addGraphicalDiagramConnection(gdd, graphicalComponent,
-                                                 GraphicalDiagramConnection::ConnectionType::INTERNAL);
+        }
+
+        const QRectF componentBounds = graphicalComponent->sceneBoundingRect();
+        positionNewDataDefinitionsInArc(componentBounds, upperLinks, true, newDataDefinitions, &positionedDataDefinitions);
+        positionNewDataDefinitionsInArc(componentBounds, lowerLinks, false, newDataDefinitions, &positionedDataDefinitions);
+
+        for (const DataDefinitionLayoutLink& link : upperLinks) {
+            scene->addGraphicalDiagramConnection(link.graphicalDefinition,
+                                                 graphicalComponent,
+                                                 link.connectionType);
+        }
+        for (const DataDefinitionLayoutLink& link : lowerLinks) {
+            scene->addGraphicalDiagramConnection(link.graphicalDefinition,
+                                                 graphicalComponent,
+                                                 link.connectionType);
         }
     }
 
@@ -568,31 +602,20 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         if (parentDefinition == nullptr || parentGraphicalDefinition == nullptr) {
             continue;
         }
-        QPointF parentPosition;
-        qreal x = 0.0;
-        qreal yAttached = 0.0;
-        bool hasParentPosition = false;
+        QList<DataDefinitionLayoutLink> childLinks;
+
         for (const auto& attachedData : *parentDefinition->getAttachedData()) {
             auto childIt = dataDefinitionMap.find(attachedData.second);
             if (childIt == dataDefinitionMap.end() || childIt->second == nullptr) {
                 continue;
             }
             GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
-            if (newDataDefinitions.contains(attachedData.second)) {
-                // Read parent geometry only when placing newly created child data definitions.
-                if (!hasParentPosition) {
-                    parentPosition = stableDataDefinitionPosition(parentGraphicalDefinition);
-                    x = parentPosition.x();
-                    yAttached = parentPosition.y();
-                    hasParentPosition = true;
-                }
-                yAttached -= 150;
-                childGraphicalDefinition->setParentItem(nullptr);
-                setVisibleAutomaticPosition(childGraphicalDefinition, QPointF(parentPosition.x(), yAttached));
-                childGraphicalDefinition->setColor(categoryColor(visibleCategories[attachedData.second]));
-            }
-            scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition,
-                                                 GraphicalDiagramConnection::ConnectionType::ATTACHED);
+            const DataDefinitionDisplayCategory category = visibleCategories[attachedData.second];
+            childGraphicalDefinition->setEditableInPropertyEditor(categoryIsEditable(category));
+            childGraphicalDefinition->setColor(categoryColor(category));
+            childLinks.append({attachedData.second,
+                               childGraphicalDefinition,
+                               GraphicalDiagramConnection::ConnectionType::ATTACHED});
         }
 
         for (const auto& internalData : *parentDefinition->getInternalData()) {
@@ -601,19 +624,25 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 continue;
             }
             GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
-            if (newDataDefinitions.contains(internalData.second)) {
-                // Read parent geometry only when placing newly created child data definitions.
-                if (!hasParentPosition) {
-                    parentPosition = stableDataDefinitionPosition(parentGraphicalDefinition);
-                    x = parentPosition.x();
-                    hasParentPosition = true;
-                }
-                x -= 200;
-                childGraphicalDefinition->setParentItem(nullptr);
-                setVisibleAutomaticPosition(childGraphicalDefinition, QPointF(x, parentPosition.y()));
-            }
-            scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition,
-                                                 GraphicalDiagramConnection::ConnectionType::INTERNAL);
+            const DataDefinitionDisplayCategory category = visibleCategories[internalData.second];
+            childGraphicalDefinition->setEditableInPropertyEditor(categoryIsEditable(category));
+            childGraphicalDefinition->setColor(categoryColor(category));
+            childLinks.append({internalData.second,
+                               childGraphicalDefinition,
+                               GraphicalDiagramConnection::ConnectionType::INTERNAL});
+        }
+
+        const bool parentUsesUpperArc = parentGraphicalDefinition->isEditableInPropertyEditor();
+        positionNewDataDefinitionsInArc(parentGraphicalDefinition->sceneBoundingRect(),
+                                        childLinks,
+                                        parentUsesUpperArc,
+                                        newDataDefinitions,
+                                        &positionedDataDefinitions);
+
+        for (const DataDefinitionLayoutLink& link : childLinks) {
+            scene->addGraphicalDiagramConnection(link.graphicalDefinition,
+                                                 parentGraphicalDefinition,
+                                                 link.connectionType);
         }
     }
 

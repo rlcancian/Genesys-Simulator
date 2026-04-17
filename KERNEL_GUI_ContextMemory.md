@@ -17,7 +17,10 @@ instructions, those instructions are obsolete or have been consolidated here.
   `f232882e` (`Organize plugins by declared category`), the completed runtime GUI
   preferences/theme phase is `a1c2d9fa` (`Add runtime GUI preferences and themes`),
   and the latest completed visual connection phase is `36ffec62`
-  (`Add Modern Fusion curved connections`).
+  (`Add Modern Fusion curved connections`). The latest completed GMDD visual
+  hierarchy phase is `0a0ec979` (`Improve GMDD visual hierarchy layout`), with
+  focused layout-geometry validation extracted in `afa23c21`
+  (`Add GMDD layout geometry tests`).
 - **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow,
   kernel-facing plugin lifecycle contracts, plugin diagnostics exposed to the GUI,
   and focused tests that cover GUI-facing kernel behavior.
@@ -352,9 +355,12 @@ Intent:
   (`Add diagram item render strategies`).
 - The Modern Fusion interface/body-rendering visual refinement is local and remote
   through commit `366e25a6` (`Record Modern Fusion visual checkpoint`).
-- The Modern Fusion curved connection phase is local at commit `36ffec62`
-  (`Add Modern Fusion curved connections`) and has not been pushed unless a later
-  user request explicitly publishes it.
+- The Modern Fusion curved connection phase is local and remote through commit
+  `97c15c66` (`Record curved connection visual checkpoint`).
+- The GMDD visual hierarchy phase is local through commit `0a0ec979`
+  (`Improve GMDD visual hierarchy layout`), with extracted layout validation in
+  `afa23c21` (`Add GMDD layout geometry tests`). The user explicitly requested
+  publishing this short phase before closing the day.
 - Recent branch commits include:
   - `6a02e61f Track plugin load diagnostics in PluginManager`
   - `f0a4bfb9 Show recoverable plugin dependency issues in GUI`
@@ -377,6 +383,10 @@ Intent:
   - `0b0d1d9c Make Modern Fusion visually distinct`
   - `366e25a6 Record Modern Fusion visual checkpoint`
   - `36ffec62 Add Modern Fusion curved connections`
+  - `97c15c66 Record curved connection visual checkpoint`
+  - `0a0ec979 Improve GMDD visual hierarchy layout`
+  - `3f1d5dc1 Record GMDD visual hierarchy checkpoint`
+  - `afa23c21 Add GMDD layout geometry tests`
 - At the start of the diagram item render strategy phase, the branch was one commit
   ahead of `origin/WiP20261_KERNEL_GUI` because of the local memory-normalization
   commit `6baa2cc3`; the functional working tree was otherwise clean.
@@ -530,8 +540,8 @@ Observed status:
   `ContextMemmory.md` as active memory.
 - Do not leave the primary active memory in `documentation/developers/`.
 - Do not recreate `documentation/developers/communication.md`.
-- Current active phase: record the completed Modern Fusion curved connection work
-  in this memory. Do not start another technical phase until the user explicitly
+- Current active phase: record the completed GMDD visual hierarchy work in this
+  memory. Do not start another technical phase until the user explicitly
   confirms the next step.
 - The structural plugin directory refactor is already complete in `f232882e`.
 - The runtime GUI preferences/theme phase is already complete in `a1c2d9fa`.
@@ -568,6 +578,9 @@ Observed status:
 - Possible next visual phase: refine connection arrowheads, labels, hit-shape
   affordances, or screenshot-based regression coverage for Classic Desktop versus
   Modern Fusion connection styles.
+- Possible next GMDD phase: add screenshot-based visual regression coverage or a
+  small scene-level harness that verifies GMDD upper/lower hierarchy placement with
+  concrete model fixtures.
 - Do not push local commits unless the user explicitly asks for publication.
 - When a next phase is confirmed, first re-read the real repository state and the
   relevant source/build/test files, then execute only that phase.
@@ -668,6 +681,75 @@ Observed status:
 - Remaining limitation:
   - No screenshot-based visual regression harness exists yet for connection styles;
     validation is currently compile/unit/smoke based.
+
+## Latest GMDD Visual Hierarchy Work
+
+- Commit: `0a0ec979` (`Improve GMDD visual hierarchy layout`).
+- Validation follow-up commit: `afa23c21` (`Add GMDD layout geometry tests`).
+- Scope: focused improvements to `GraphicalModelDataDefinition` presentation and
+  initial placement in `GraphicalModelBuilder`; no plugin structure or unrelated GUI
+  areas were changed.
+- Non-editable GMDD visual distinction:
+  - `GraphicalModelDataDefinition::renderContext()` now lowers only the fill alpha
+    for non-editable data definitions.
+  - Text, border, selection handles, and the render strategy remain opaque enough to
+    preserve readability.
+  - Selected non-editable GMDD use a slightly stronger fill alpha than unselected
+    non-editable GMDD, but remain less opaque than editable GMDD.
+  - `setEditableInPropertyEditor()` now schedules repaint so editability changes are
+    reflected immediately.
+- GMDD placement:
+  - `GraphicalModelBuilder` now marks GMDD editability during the data-definition
+    layer synchronization rather than waiting for later property-editor selection.
+  - Direct editable/internal GMDD are initially placed in an upper arc around their
+    owning `GraphicalModelComponent`.
+  - Direct shared/statistics/non-editable GMDD are initially placed in a lower arc
+    around their owning `GraphicalModelComponent`.
+  - Recursive children of editable GMDD are placed in an upper arc around the GMDD
+    parent.
+  - Recursive children of non-editable GMDD are placed in a lower arc around the
+    GMDD parent.
+  - Existing/manual/persisted positions are preserved because the new layout only
+    positions newly created GMDD during synchronization.
+  - A per-sync positioned set prevents the same new GMDD from being repositioned by
+    multiple relationships.
+- Validation performed:
+  - `git diff --check` passed.
+  - `cmake --build --preset gui-app` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed.
+  - Offscreen smoke test with temporary modern-style JSON preferences started the
+    GUI without startup crash and ran until the expected timeout.
+- Remaining limitation:
+  - There is still no screenshot-based visual regression harness for GMDD placement;
+    improvement was validated by code inspection, build, unit suite, and offscreen
+    startup smoke.
+
+## Latest GMDD Layout Validation Checkpoint
+
+- Commit: `afa23c21` (`Add GMDD layout geometry tests`).
+- Extracted the pure GMDD arc-placement geometry from `GraphicalModelBuilder` into
+  `GraphicalDataDefinitionLayout`, keeping the same upper/lower arc placement
+  behavior while making it directly unit-testable.
+- `GraphicalModelBuilder` now delegates newly created GMDD placement to
+  `GraphicalDataDefinitionLayout::arcPosition()`.
+- `source/tests/unit/test_gui_render_strategy.cpp` now includes focused Qt
+  offscreen tests for:
+  - editable GMDD children placed above their anchor in a non-overlapping upper arc;
+  - non-editable GMDD children placed below their anchor in a non-overlapping lower
+    arc.
+- `source/tests/unit/CMakeLists.txt` includes the new layout helper in the focused
+  GUI render/style test target.
+- Validation performed before this checkpoint:
+  - `git diff --check` passed.
+  - `cmake --build --preset gui-app` passed.
+  - `cmake --build --preset tests-kernel-unit-run` passed, including the expanded
+    GUI render/style test target with 7 tests.
+- Current state: this is a short stabilization checkpoint requested by the user.
+  The branch should be pushed immediately after the memory commit for this
+  checkpoint, then work pauses for today.
+- Suggested next phase, only after future explicit user confirmation: add
+  screenshot/scene-level visual regression coverage for GMDD hierarchy placement
+  and Modern Fusion styling, or resume a new narrowly scoped GUI visual refinement.
 
 ## Latest Diagram Item Render Strategy Work
 
