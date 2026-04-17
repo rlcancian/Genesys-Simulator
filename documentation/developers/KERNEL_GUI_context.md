@@ -1,84 +1,226 @@
 # KERNEL_GUI Context
 
+This is the canonical persistent memory file for the KERNEL_GUI agent. The old shared
+`documentation/developers/communication.md` file is no longer used and must not be
+recreated by KERNEL_GUI.
+
 ## Agent Identity
 
-1. **Agent name:** KERNEL_GUI
-2. **Primary role:** GUI-focused GenESyS developer coordinating Qt UI work with kernel contracts and plugin lifecycle behavior.
-3. **Current general objective:** Improve GUI/kernel integration for plugin diagnostics, system dependency reporting, and recoverable plugin loading without hiding failures during startup, working only on `WiP20261_KERNEL_GUI`.
-4. **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow, kernel plugin lifecycle diagnostics, and tests that cover GUI-facing kernel behavior.
-5. **Important restrictions:** Source code, identifiers, code comments, Doxygen, and internal technical documentation must remain in English. Conversation with the user is in Portuguese. Work only on `WiP20261_KERNEL_GUI`; use `WiP20261` as the shared base branch; do not merge into `WiP20261` unless explicitly requested. Do not push content changes without following the fetch/merge/build/test workflow.
-6. **Relevant interfaces/modules:** `PluginManager`, `PluginLoadIssue`, `SystemDependencyResolver`, `PluginInsertionOptions`, `DialogPluginManager`, `DialogUtilityController`, `MainWindow`, plugin connector dummy implementation, and plugin metadata declared through `PluginInformation`.
-7. **Current state summary:** The dedicated branch `WiP20261_KERNEL_GUI` has been created from `WiP20261` and published to `origin`. The restored plugin diagnostics work has been split into local commits covering coordination docs, kernel load issue tracking, GUI recovery flow, and runtime tests/method inventory. These content commits are local only until the user authorizes a push.
-8. **Main decisions already taken:** Startup autoload should not run install commands or show dependency dialogs. Failed plugin loads should be recorded by the kernel and presented later by the Plugin Manager GUI. Dependency repair should be explicit and user-authorized from the Plugin Manager dialog.
-9. **Open pending items:** Ask the user whether to push the local `WiP20261_KERNEL_GUI` commits to the remote branch. Continue future work only on `WiP20261_KERNEL_GUI`.
-10. **Risks and attention points:** `PluginManager.*` and `dialogpluginmanager.*` are shared integration points likely to conflict with other AI or human changes. The terminal-based dependency installation workflow is platform-sensitive and should remain defensive. R, Scilab, Octave, libSBML, and future biological tooling may all rely on this diagnostic flow.
+- **Agent name:** KERNEL_GUI
+- **Primary role:** GUI-focused GenESyS developer, responsible for Qt user interface
+  work and GUI/kernel integration points.
+- **Current objective:** Keep improving plugin diagnostics and recoverable plugin
+  dependency handling in the GUI while preserving a clean integration path with the
+  GenESyS kernel.
+- **Main technical scope:** Qt GUI, Plugin Manager dialog, MainWindow startup flow,
+  kernel-facing plugin lifecycle contracts, plugin diagnostics exposed to the GUI,
+  and focused tests that cover GUI-facing kernel behavior.
 
-## Interaction Log
+## Canonical Branches
 
-### 2026-04-17 - USER - Coordination protocol
+- **Integration base branch:** `WiP20261`
+- **KERNEL_GUI working branch:** `WiP20261_KERNEL_GUI`
+- **Remote:** `origin`
 
-- **Sender:** USER
-- **Main topic:** New mandatory multi-agent coordination workflow for KERNEL_GUI.
-- **Extracted context:** The user established that multiple AIs and humans may edit the GenESyS repository in parallel. KERNEL_GUI must coordinate through persistent files under `documentation/developers/`.
-- **Decision:** KERNEL_GUI must read and maintain `communication.md` and `KERNEL_GUI_context.md` before technical work.
-- **Requested action:** Inspect the repository, create/read/update required developer coordination files, provide only a grounded technical plan, and wait for approval before source modifications.
-- **Response/action taken:** Created `documentation/developers/communication.md` and this context file because they did not exist. No source-code changes were made as part of the coordination setup.
-- **Next steps:** Inspect pending local changes in plugin diagnostics and provide a technical plan for approval.
-- **Open questions/hypotheses:** The existing uncommitted plugin diagnostics patch may need to be committed, split, or refined depending on the user's next approval.
+KERNEL_GUI must work only on `WiP20261_KERNEL_GUI`. The shared branch `WiP20261` is
+the integration base and must not be modified or merged into directly unless the
+user explicitly requests that operation.
 
-### 2026-04-17 - KERNEL_GUI - Repository inspection under coordination workflow
+## Canonical Git Policy
 
-- **Sender:** KERNEL_GUI
-- **Main topic:** Initial inspection after creating coordination files.
-- **Extracted context:** `documentation/developers/` did not exist and was created. The repository is on branch `WiP20261`. The worktree contains pending source changes in plugin dependency diagnostics and GUI Plugin Manager files.
-- **Decision:** Do not make further source-code changes without approval. Treat the pending plugin diagnostics patch as existing local work that needs approval for refinement or commit.
-- **Requested action:** None from user yet; KERNEL_GUI will return a plan and wait.
-- **Response/action taken:** Read the newly created communication/context files, inspected dirty files, and identified the main integration points and conflict risks.
-- **Next steps:** Ask for approval to either finalize/refine the pending plugin dependency workflow or restrict work to documentation/coordination only.
-- **Open questions/hypotheses:** The pending patch appears functionally aligned with the previous user request, but it may need a focused review for UI behavior, terminal execution edge cases, and commit boundaries.
+- Work only on `WiP20261_KERNEL_GUI`.
+- Treat `WiP20261` as the base branch for integration.
+- KERNEL_GUI has autonomy to run routine Git operations without asking the user first:
+  - stage;
+  - commit;
+  - fetch;
+  - merge;
+  - pull;
+  - push.
+- Make small, frequent, coherent commits.
+- Do not wait for user confirmation for routine Git operations.
+- Ask the user before destructive operations, before resolving significant ambiguity
+  with high impact, or when there is exceptional risk.
+- Before important pushes, prefer this routine:
+  - fetch `origin`;
+  - merge the latest `origin/WiP20261` into `WiP20261_KERNEL_GUI`;
+  - resolve conflicts if any;
+  - run relevant build/tests;
+  - push `WiP20261_KERNEL_GUI`.
+- Do not rebase shared work unless explicitly instructed.
 
-### 2026-04-17 - USER - Approval to proceed
+## Repository Language Policy
 
-- **Sender:** USER
-- **Main topic:** Approval of the proposed coordinated plan.
-- **Extracted context:** The user approved proceeding after KERNEL_GUI presented the analysis and implementation plan.
-- **Decision:** KERNEL_GUI may refine the pending plugin dependency workflow locally, but must not push without explicit authorization.
-- **Requested action:** Proceed with the approved plan.
-- **Response/action taken:** Reviewed the pending patch and applied one small UX refinement in `DialogPluginManager`.
-- **Next steps:** Report completed validation and ask for the next repository action, likely commit splitting or staging.
-- **Open questions/hypotheses:** Whether the current patch should be committed as one change or split into smaller commits remains undecided.
+- The user communicates in Portuguese.
+- Source code, identifiers, comments in code, Doxygen, and internal technical
+  repository documentation must remain in English.
+- This context file is internal technical documentation and must remain in English.
 
-### 2026-04-17 - KERNEL_GUI - Approved refinement and validation
+## Relevant Interfaces And Modules
 
-- **Sender:** KERNEL_GUI
-- **Main topic:** Plugin dependency diagnostics refinement.
-- **Extracted context:** Manual plugin insertion and manual autoload should visibly surface newly recorded plugin issues, not leave the user on the loaded-plugin tab.
-- **Decision:** Make a low-risk UX adjustment in `DialogPluginManager` only.
-- **Requested action:** None; this records the completed local work.
-- **Response/action taken:** Changed manual insert/autoload flows to switch to the problem tab when `PluginManager::getPluginLoadIssues()` is non-empty after the operation.
-- **Validation:** `cmake --build build-gui --target genesys_test_runtime_pluginmanager genesys_qt_gui_application`, `./build-gui/source/tests/unit/genesys_test_runtime_pluginmanager`, `ctest --test-dir build-gui --output-on-failure`, and `git diff --check` passed.
-- **Next steps:** Await user decision on staging/commit structure. No push should be performed unless explicitly approved.
-- **Open questions/hypotheses:** The terminal execution fallback for dependency installation may still need future refinement for environments without graphical terminal support.
+- `source/kernel/simulator/PluginManager.h`
+- `source/kernel/simulator/PluginManager.cpp`
+- `source/kernel/simulator/PluginInformation.*`
+- `SystemDependencyResolver` and related system dependency diagnostics types
+- `PluginInsertionOptions`
+- `PluginConnectorDummyImpl1`
+- `source/applications/gui/qt/GenesysQtGUI/mainwindow.cpp`
+- `source/applications/gui/qt/GenesysQtGUI/controllers/DialogUtilityController.*`
+- `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.*`
+- `source/tests/unit/test_runtime_pluginmanager.cpp`
+- `source/tests/unit/generated/test_kernel_simulator_method_inventory.generated.cpp`
 
-### 2026-04-17 - USER - Dedicated branch policy
+## Technical Work Already Discussed
 
-- **Sender:** USER
-- **Main topic:** Branch isolation for KERNEL_GUI.
-- **Extracted context:** KERNEL_GUI must stop working directly on the shared base branch and use a dedicated branch derived from `WiP20261`.
-- **Decision:** The correct shared base branch is `WiP20261`, and the exclusive KERNEL_GUI branch is `WiP20261_KERNEL_GUI`.
-- **Requested action:** Fetch/sync `WiP20261`, create `WiP20261_KERNEL_GUI` if needed, publish it with upstream, and continue work only there.
-- **Response/action taken:** Preserved the pending local patch outside the worktree, reset the temporary worktree state, synced `WiP20261`, created and published `WiP20261_KERNEL_GUI`, then restored the pending patch onto the dedicated branch.
-- **Next steps:** Split the restored patch into small commits, validate again, merge the latest `origin/WiP20261` before pushing content commits, and keep all future KERNEL_GUI work on `WiP20261_KERNEL_GUI`.
-- **Open questions/hypotheses:** The restored pending work should be committed in logical groups: coordination docs, kernel diagnostics, GUI recovery flow, and tests/inventory.
+- Plugins may declare system dependencies through `PluginInformation::SystemDependency`.
+- A previous kernel implementation already introduced system dependency checks and a
+  command-executor abstraction for testability.
+- Plugins with missing system dependencies must not be connected silently.
+- The terminal application should trace diagnostics, including what dependency failed
+  and which install command can resolve it.
+- The GUI must not run install commands during early startup, because plugin loading
+  happens before the main window is stable.
+- Failed plugin load attempts should be recorded by the kernel in a retrievable list.
+- After the main window is shown, the GUI can use that list to open the Plugin Manager
+  and focus the user on problem plugins.
+- Dependency repair should be concentrated in the Plugin Manager dialog, with clear
+  details and explicit user action before running install commands.
+- The Plugin Manager should show both connected plugins and plugins with problems.
+- Future dependency-sensitive plugins may include R, Scilab, Octave, libSBML, and
+  biological modeling integrations from TINKERCELL or GROW.
 
-### 2026-04-17 - KERNEL_GUI - Local commits and validation on dedicated branch
+## Current Branch Implementation Summary
 
-- **Sender:** KERNEL_GUI
-- **Main topic:** Completing branch setup and local commit split after confirming `WiP20261` as the base branch.
-- **Extracted context:** The dedicated branch was already created and published, but the restored plugin diagnostics patch needed local commits and validation.
-- **Decision:** Keep commits small: one for coordination docs, one for kernel diagnostics, one for GUI recovery flow, one for tests/inventory, and one final documentation update.
-- **Requested action:** None from the user during implementation; KERNEL_GUI continued the approved branch workflow.
-- **Response/action taken:** Committed kernel plugin load diagnostics, GUI Plugin Manager recovery UI, runtime tests, and generated method inventory locally on `WiP20261_KERNEL_GUI`.
-- **Validation:** `git fetch origin WiP20261`; `git merge origin/WiP20261` reported already up to date; `cmake --build build-gui --target genesys_test_runtime_pluginmanager genesys_qt_gui_application`; `./build-gui/source/tests/unit/genesys_test_runtime_pluginmanager`; `ctest --test-dir build-gui --output-on-failure`; `git diff --check HEAD`.
-- **Next steps:** Ask the user for explicit authorization before pushing the new local content commits to `origin/WiP20261_KERNEL_GUI`.
-- **Open questions/hypotheses:** Interactive dependency installation can still vary by desktop terminal availability and sudo configuration.
+The branch `WiP20261_KERNEL_GUI` currently contains a completed local and remote
+implementation of recoverable plugin dependency diagnostics.
+
+### Kernel Changes
+
+Files:
+
+- `source/kernel/simulator/PluginManager.h`
+- `source/kernel/simulator/PluginManager.cpp`
+
+Intent:
+
+- Add persistent plugin load diagnostics owned by `PluginManager`.
+- Introduce `PluginLoadIssue` to represent plugin load failures such as invalid
+  plugins, missing system dependencies, dynamic dependency failures, connection
+  failures, insertion failures, and exceptions.
+- Expose a getter for plugin load issues so GUI and terminal flows can inspect failed
+  plugin load attempts after startup.
+- Clear a stored issue when the same plugin is later inserted successfully.
+- Preserve existing dynamic library dependency behavior.
+- Keep UI out of the kernel; the kernel records diagnostic facts and trace messages,
+  not Qt dialogs.
+
+### GUI Changes
+
+Files:
+
+- `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.cpp`
+- `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.h`
+- `source/applications/gui/qt/GenesysQtGUI/dialogs/dialogpluginmanager.ui`
+- `source/applications/gui/qt/GenesysQtGUI/controllers/DialogUtilityController.cpp`
+- `source/applications/gui/qt/GenesysQtGUI/controllers/DialogUtilityController.h`
+- `source/applications/gui/qt/GenesysQtGUI/mainwindow.cpp`
+
+Intent:
+
+- Replace the single plugin table with a two-tab Plugin Manager view:
+  - loaded plugins;
+  - plugins with problems.
+- Populate the problem tab from `PluginManager::getPluginLoadIssues()`.
+- Open the Plugin Manager on the problem tab when startup detects stored load issues.
+- Avoid install prompts during early startup/autoload.
+- Add a dependency resolution action in the Plugin Manager, where the user can inspect
+  missing dependencies, check commands, install commands, and diagnostic output.
+- Run install commands only after explicit action from the Plugin Manager.
+- Attempt to use a graphical terminal for interactive installation, with a defensive
+  fallback that captures command output when no terminal is available.
+- Retry plugin insertion after dependency repair and remove the plugin from the problem
+  list on success.
+
+### Test Changes
+
+Files:
+
+- `source/tests/unit/test_runtime_pluginmanager.cpp`
+- `source/tests/unit/generated/test_kernel_simulator_method_inventory.generated.cpp`
+
+Intent:
+
+- Cover stored plugin load issues for invalid plugin insertion.
+- Cover refusal to insert plugins with missing system dependencies when confirmation
+  or installation is unavailable.
+- Cover successful installation/revalidation through faked command execution.
+- Cover clearing a stored issue after a successful retry.
+- Update generated method inventory for the new public kernel diagnostics surface.
+
+## Current Branch State
+
+- `WiP20261_KERNEL_GUI` exists locally.
+- `origin/WiP20261_KERNEL_GUI` exists remotely.
+- The local branch tracks `origin/WiP20261_KERNEL_GUI`.
+- The branch was last pushed successfully after commit `63c2824a`.
+- The implementation commits currently on the branch include:
+  - `3743bc01 Document KERNEL_GUI coordination branch`
+  - `6a02e61f Track plugin load diagnostics in PluginManager`
+  - `f0a4bfb9 Show recoverable plugin dependency issues in GUI`
+  - `c898843a Cover plugin load issue diagnostics`
+  - `63c2824a Record KERNEL_GUI validation status`
+
+## Validation Already Run
+
+The following commands passed after the plugin diagnostics implementation:
+
+```bash
+git fetch origin WiP20261
+git merge origin/WiP20261
+cmake --build build-gui --target genesys_test_runtime_pluginmanager genesys_qt_gui_application
+./build-gui/source/tests/unit/genesys_test_runtime_pluginmanager
+ctest --test-dir build-gui --output-on-failure
+git diff --check HEAD
+```
+
+Observed test status:
+
+- The focused runtime plugin manager test passed with 6 tests.
+- The full configured `ctest` run passed with 1257 executed tests and 0 failures.
+- Four tests were disabled.
+- Two R-related tests were skipped because `Rscript` was unavailable.
+
+## Open Pending Items
+
+- Continue future KERNEL_GUI work only on `WiP20261_KERNEL_GUI`.
+- Keep this file as the only KERNEL_GUI persistent memory.
+- Do not recreate `documentation/developers/communication.md`.
+- If plugin dependency recovery receives more changes, keep them small and preserve
+  kernel/GUI separation.
+- Future work may refine terminal handling and password/sudo feedback during dependency
+  installation.
+
+## Risks And Attention Points
+
+- `PluginManager.*`, `DialogPluginManager.*`, `DialogUtilityController.*`, and
+  `mainwindow.cpp` are integration-heavy files and may conflict with other developers.
+- Interactive installation depends on terminal emulator availability and local sudo
+  configuration.
+- External tools such as R, Scilab, Octave, and libSBML may have OS-specific install
+  commands and verification behavior.
+- TINKERCELL and GROW integrations may later rely on the same plugin metadata and
+  dependency diagnostic path.
+
+## Interaction Log Summary
+
+- The user initially requested a multi-agent coordination workflow using both
+  `communication.md` and `KERNEL_GUI_context.md`.
+- KERNEL_GUI created those files and used them during the first coordinated work.
+- The user approved proceeding with the plugin dependency diagnostics work.
+- KERNEL_GUI split and committed the plugin diagnostics implementation on the dedicated
+  branch.
+- The user corrected the base branch name to `WiP20261`.
+- KERNEL_GUI created and published `WiP20261_KERNEL_GUI` from `WiP20261`.
+- KERNEL_GUI pushed the implementation commits to `origin/WiP20261_KERNEL_GUI`.
+- The user then made this file the only canonical persistent memory and deprecated
+  `communication.md`.
