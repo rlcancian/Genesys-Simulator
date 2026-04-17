@@ -257,9 +257,26 @@ TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndSt
 TEST(RuntimePluginManagerClassTest, GroProgramParserKeepsLexicalValidationBoundary) {
     GroProgramParser parser;
 
-    GroProgramParser::Result accepted = parser.parse("program main() { tick(\"}\"); /* ignored { */ }");
+    GroProgramParser::Result commented = parser.parse("program main() { tick(\"}\"); /* ignored { */ }");
+    EXPECT_TRUE(commented.accepted) << commented.errorMessage;
+    EXPECT_TRUE(commented.ast.isProgramBlock());
+
+    GroProgramParser::Result accepted = parser.parse("program main() { tick(\"}\"); divide(); }");
     EXPECT_TRUE(accepted.accepted) << accepted.errorMessage;
     EXPECT_TRUE(accepted.errorMessage.empty());
+    EXPECT_TRUE(accepted.ast.isProgramBlock());
+    EXPECT_EQ(accepted.ast.programName, "main");
+    EXPECT_EQ(accepted.ast.bodySource, "tick(\"}\"); divide();");
+    ASSERT_EQ(accepted.ast.statements.size(), 2u);
+    EXPECT_EQ(accepted.ast.statements[0].sourceText, "tick(\"}\")");
+    EXPECT_EQ(accepted.ast.statements[1].sourceText, "divide()");
+
+    GroProgramParser::Result rawStatements = parser.parse("tick(); grow();");
+    EXPECT_TRUE(rawStatements.accepted) << rawStatements.errorMessage;
+    EXPECT_EQ(rawStatements.ast.sourceForm, GroProgramAst::SourceForm::RawStatements);
+    ASSERT_EQ(rawStatements.ast.statements.size(), 2u);
+    EXPECT_EQ(rawStatements.ast.statements[0].sourceText, "tick()");
+    EXPECT_EQ(rawStatements.ast.statements[1].sourceText, "grow()");
 
     GroProgramParser::Result rejected = parser.parse("program main() { tick(); ");
     EXPECT_FALSE(rejected.accepted);

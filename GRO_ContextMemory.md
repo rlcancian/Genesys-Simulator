@@ -392,3 +392,28 @@ instructions are considered obsolete or consolidated here.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
   - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
     succeeded with 8 tests.
+
+### 2026-04-17 - Gro Minimal AST/IR Phase
+
+- User confirmed continuation after the parser boundary phase.
+- Revalidated current branch state on `WiP20261_GRO`; the branch was clean and
+  matched `origin/WiP20261_GRO` before changes.
+- Ran `git fetch origin`; no new remote changes were reported.
+- Executed only the next phase: define the first minimal AST/IR target for Gro
+  parsing.
+- Added `GroProgramAst` under the existing current path
+  `source/plugins/data/BiologicalModeling/`, without moving plugin files or
+  changing category layout.
+- `GroProgramParser::Result` now carries a `GroProgramAst`.
+- The parser now keeps the permissive lexical acceptance behavior but fills an
+  AST with:
+  - `ProgramBlock` when it recognizes `program name() { ... }`.
+  - `RawStatements` for other balanced source fragments.
+  - top-level semicolon-delimited statement source text.
+- No semantic execution, bacteria state, cellular automata, GUI work, or plugin
+  directory reorganization was added in this phase.
+- Validation after this phase:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 8 tests.

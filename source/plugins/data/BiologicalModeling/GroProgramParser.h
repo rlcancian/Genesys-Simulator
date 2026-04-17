@@ -8,6 +8,8 @@
 #ifndef GROPROGRAMPARSER_H
 #define GROPROGRAMPARSER_H
 
+#include "plugins/data/BiologicalModeling/GroProgramAst.h"
+
 #include <string>
 
 /*!
@@ -22,6 +24,7 @@ public:
 	struct Result {
 		bool accepted = false;
 		std::string errorMessage = "";
+		GroProgramAst ast;
 	};
 
 public:
