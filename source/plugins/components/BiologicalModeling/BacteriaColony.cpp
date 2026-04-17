@@ -26,9 +26,6 @@ ModelDataDefinition* BacteriaColony::NewInstance(Model* model, std::string name)
 
 BacteriaColony::BacteriaColony(Model* model, std::string name) :
 		ModelComponent(model, Util::TypeOf<BacteriaColony>(), name) {
-	_connections->setMinOutputConnections(0);
-	_connections->setMaxOutputConnections(0);
-
 	SimulationControlGenericClass<GroProgram*, Model*, GroProgram>* propGroProgram =
 			new SimulationControlGenericClass<GroProgram*, Model*, GroProgram>(
 					_parentModel,
@@ -94,17 +91,16 @@ PluginInformation* BacteriaColony::GetPluginInformation() {
 	                                                &BacteriaColony::LoadInstance,
 	                                                &BacteriaColony::NewInstance);
 	info->setCategory("Biological Modeling");
-	info->setSource(true);
-	info->setSink(true);
-	info->setMinimumInputs(0);
-	info->setMaximumInputs(0);
-	info->setMinimumOutputs(0);
-	info->setMaximumOutputs(0);
+	info->setMinimumInputs(1);
+	info->setMaximumInputs(1);
+	info->setMinimumOutputs(1);
+	info->setMaximumOutputs(1);
 	info->insertDynamicLibFileDependence("groprogram.so");
 	info->setDescriptionHelp("Self-contained biological simulation component for Gro-inspired bacteria colonies. "
-	                         "This first slice owns an internal colony clock, population summary, and discrete grid "
-	                         "configuration while leaving complete Gro parsing and execution semantics to future "
-	                         "plugin-side helpers.");
+	                         "When an entity arrives, the colony advances one configured Gro/runtime step and then "
+	                         "forwards the entity through its output connection. This first slice owns an internal "
+	                         "colony clock, population summary, and discrete grid configuration while leaving complete "
+	                         "Gro parsing and execution semantics to future plugin-side helpers.");
 	return info;
 }
 
@@ -313,9 +309,18 @@ void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 		advanceColonyTime();
 		traceSimulation(this, "Bacteria colony internal time advanced to " + std::to_string(_colonyTime));
 	}
-	if (entity != nullptr) {
-		_parentModel->removeEntity(entity);
+	if (entity == nullptr) {
+		return;
 	}
+
+	Connection* frontConnection = this->getConnectionManager()->getFrontConnection();
+	if (frontConnection == nullptr || frontConnection->component == nullptr) {
+		traceSimulation(this, "Bacteria colony dispatch skipped: invalid front connection");
+		_parentModel->removeEntity(entity);
+		return;
+	}
+
+	_parentModel->sendEntityToComponent(entity, frontConnection);
 }
 
 void BacteriaColony::_rebuildInternalBacteria(unsigned int populationSize) {
