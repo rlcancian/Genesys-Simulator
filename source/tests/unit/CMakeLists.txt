@@ -123,6 +123,7 @@ endif()
 if(DEFINED GENESYS_QT_TEST_PACKAGE)
     add_executable(genesys_test_gui_render_strategy
         test_gui_render_strategy.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/graphicals/GraphicalConnectionStyle.cpp
         ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/graphicals/GraphicalModelItemRenderStrategy.cpp
         ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/systempreferences.cpp
     )

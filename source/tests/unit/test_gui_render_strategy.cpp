@@ -1,3 +1,4 @@
+#include "graphicals/GraphicalConnectionStyle.h"
 #include "graphicals/GraphicalModelItemRenderStrategy.h"
 #include "systempreferences.h"
 
@@ -7,10 +8,12 @@
 #include <QByteArray>
 #include <QColor>
 #include <QImage>
+#include <QLineF>
 #include <QPainter>
 #include <QPointF>
 
 #include <algorithm>
+#include <cmath>
 
 namespace {
 
@@ -129,6 +132,42 @@ TEST(GuiRenderStrategy, OrganicRenderingIsNonBlankAndVisiblyDifferentFromClassic
     EXPECT_GT(countPaintedPixels(classicImage), 5000);
     EXPECT_GT(countPaintedPixels(organicImage), 5000);
     EXPECT_GT(countDifferentPixels(classicImage, organicImage), 2500);
+}
+
+TEST(GuiConnectionStyle, ModernModelPathUsesCurveAndSupportsDistanceBasedSampling) {
+    const QPointF source(0.0, 20.0);
+    const QPointF destination(180.0, 110.0);
+
+    const QPainterPath classicPath = GraphicalConnectionStyle::modelConnectionPath(
+        source,
+        destination,
+        GraphicalConnectionStyle::RouteType::Horizontal,
+        false);
+    const QPainterPath modernPath = GraphicalConnectionStyle::modelConnectionPath(
+        source,
+        destination,
+        GraphicalConnectionStyle::RouteType::Horizontal,
+        true);
+
+    EXPECT_GT(modernPath.length(), QLineF(source, destination).length());
+    EXPECT_NEAR(classicPath.pointAtPercent(0.0).x(), source.x(), 0.001);
+    EXPECT_NEAR(classicPath.pointAtPercent(1.0).y(), destination.y(), 0.001);
+
+    const QPointF curvedMidpoint = GraphicalConnectionStyle::pointAtProgress(modernPath, 0.5);
+    const QPointF straightMidpoint = (source + destination) / 2.0;
+    EXPECT_GT(QLineF(curvedMidpoint, straightMidpoint).length(), 5.0);
+}
+
+TEST(GuiConnectionStyle, ModernDiagramPathCurvesAwayFromStraightLine) {
+    const QPointF source(20.0, 20.0);
+    const QPointF destination(200.0, 20.0);
+
+    const QPainterPath classicPath = GraphicalConnectionStyle::diagramConnectionPath(source, destination, false);
+    const QPainterPath modernPath = GraphicalConnectionStyle::diagramConnectionPath(source, destination, true);
+
+    EXPECT_EQ(classicPath.elementCount(), 2);
+    EXPECT_GT(modernPath.elementCount(), classicPath.elementCount());
+    EXPECT_GT(std::abs(GraphicalConnectionStyle::pointAtProgress(modernPath, 0.5).y() - source.y()), 10.0);
 }
 
 int main(int argc, char** argv) {
