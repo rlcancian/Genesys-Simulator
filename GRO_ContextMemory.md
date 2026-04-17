@@ -16,20 +16,60 @@ instructions are considered obsolete or consolidated here.
 - **Canonical memory file:** `GRO_ContextMemory.md` in the repository root.
 - **Base branch:** `WiP20261`.
 - **GRO working branch:** `WiP20261_GRO`.
-- **Current consolidated base:** `WiP20261`.
-- **Current state:** the relevant functional GRO content has already been
-  absorbed by the base branch `WiP20261`; there is no pending GRO integration at
-  this moment.
-- **Immediate objective:** keep `WiP20261_GRO` stable and in standby. Do not
-  implement new functionality and do not attempt a new integration unless the
-  user explicitly reactivates this work line.
+- **Current consolidated base:** `origin/WiP20261` at `f769ec61` as of the
+  latest GRO synchronization.
+- **Current GRO branch head:** `origin/WiP20261_GRO` at `be4d0337` as of the
+  latest completed technical phase.
+- **Current state:** the GRO work line is active again and is proceeding in
+  explicit, user-confirmed phases on `WiP20261_GRO`.
+- **Immediate objective:** continue the Gro biosimulator integration only one
+  phase at a time, preserving the existing plan and stopping after each phase
+  for explicit user confirmation.
 - **Future work rule:** any future GRO work must start from the updated
   consolidated base `WiP20261`, not from stale local branch state or older
   memory assumptions.
-- **Integration PR status:** PR `#370` from `WiP20261_GRO` to `WiP20261` exists
-  and GitHub reported it closed and merged. Its merge commit is `2114c92c`.
-  After that merge, `WiP20261_GRO` received context-only commits so the current
-  branch differs from `origin/WiP20261` only by GRO memory updates.
+- **Integration PR status:** historical PR `#370` from `WiP20261_GRO` to
+  `WiP20261` was closed and merged. Current post-merge GRO work is newer than
+  that PR and must not be assumed integrated into `WiP20261` until explicitly
+  requested and verified.
+
+## Operational Working Protocol
+
+- **Response format:** every GRO response must use this exact envelope:
+  - first line contains only `GRO`;
+  - technical body follows after that;
+  - last line contains only `----------`.
+- **Repository reality check:** before acting, re-read this memory as needed and
+  reanalyze the real repository state with Git/status/file inspection. Do not
+  rely on stale memory alone.
+- **Continuity rule:** recover the current plan from this memory, identify what
+  has already been completed, and preserve continuity with that plan unless the
+  user explicitly changes direction.
+- **Phased work rule:** work phase by phase. Execute only the next logical phase
+  that is technically safe and in scope.
+- **Stop rule:** after completing a phase, stop. Report what was done, update
+  this memory, and ask for explicit user confirmation before starting the next
+  phase. Do not continue automatically.
+- **Memory update rule:** at the end of each completed phase, update
+  `GRO_ContextMemory.md` with the work completed, current state, relevant
+  commits, validations, limitations, and the suggested next phase.
+- **Stage policy:** stage changes intentionally. Group only coherent changes in
+  the same stage set, avoid staging unrelated files together, and do not leave
+  important phase-complete work untracked or unstaged without explaining why.
+- **Commit policy:** create clear, auditable commits for completed phases or
+  validated logical subunits. Commit messages must be objective and technical.
+  Do not mix independent changes in one commit. Do not leave a completed phase
+  without a commit unless there is an explicit technical reason.
+- **Push policy:** push/publication is separate from stage and commit. Do not
+  push automatically just because a commit was made. Push only when explicitly
+  requested by the user or when the current operational flow explicitly calls
+  for publication. Always state what is only local and what was published.
+- **Scope control:** do not open a new functional front while performing memory,
+  synchronization, or diagnostic work. Keep changes limited to the confirmed
+  phase.
+- **Plugin structure rule:** do not reorganize plugin directories or categories
+  unless the user explicitly reopens that structural work. Work on the current
+  repository structure as it exists.
 
 ## Git Policy
 
@@ -38,18 +78,20 @@ instructions are considered obsolete or consolidated here.
 - Use the existing `origin` remote.
 - Do not merge `WiP20261_GRO` back into `WiP20261` unless the user explicitly
   asks for that integration.
-- Do not implement new GRO functionality while the branch is in standby.
-- Do not open or attempt a new integration while the base already contains the
-  relevant functional content, unless the user explicitly asks for it.
+- Do not open or attempt a new integration into `WiP20261` unless the user
+  explicitly asks for it.
 - When the GRO line is reactivated for real technical work, begin from an
   updated `WiP20261` base. Do not continue from stale local branch state.
-- Before important future product pushes, run `git fetch origin` and merge
-  `origin/WiP20261` into `WiP20261_GRO` using merge, not rebase. While the
-  branch is explicitly in standby, do not perform another merge unless the user
-  asks for synchronization.
-- Make small, coherent commits.
-- GRO has autonomy to run routine Git operations without asking the user:
-  stage, commit, fetch, merge, pull, and push.
+- Before implementation phases and before requested product publication, run
+  `git fetch origin` and compare `origin/WiP20261` with `WiP20261_GRO`. Merge
+  `origin/WiP20261` into `WiP20261_GRO` with normal merge when synchronization
+  is needed; prefer merge over rebase for traceability.
+- Make small, coherent commits that represent completed phases or validated
+  logical subunits.
+- Stage and commit are routine local operations when they follow the operational
+  policy above.
+- Push is not automatic. It requires explicit user request or an explicit
+  publication step in the active workflow.
 - Ask for confirmation only for destructive operations, relevant ambiguity, or
   exceptional risk.
 - If local unfinished work blocks synchronization, use a temporary stash instead
@@ -116,8 +158,27 @@ instructions are considered obsolete or consolidated here.
 - **Current behavior:** stores `SourceCode` as a string and performs a
   permissive lexical sanity check: non-empty source, balanced delimiters, closed
   string literals, and closed block comments.
-- **Current limitation:** no full Gro parser, AST, interpreter, semantic model,
-  reaction semantics, or execution runtime exists yet.
+- **Current limitation:** no full Gro grammar, biological reaction semantics, or
+  integrated colony runtime binding exists yet.
+
+### Gro Parser, AST, IR, And Runtime Helpers
+
+- **Files:**
+  - `source/plugins/data/BiologicalModeling/GroProgramParser.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramParser.cpp`
+  - `source/plugins/data/BiologicalModeling/GroProgramAst.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramIr.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramCompiler.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramCompiler.cpp`
+  - `source/plugins/data/BiologicalModeling/GroProgramRuntime.h`
+  - `source/plugins/data/BiologicalModeling/GroProgramRuntime.cpp`
+- **Current behavior:** the parser performs permissive lexical validation,
+  fills a minimal AST for `program name() { ... }` or raw balanced statements,
+  compiles top-level statements to a small IR, and executes `tick()` in an
+  isolated runtime helper over caller-provided state.
+- **Current limitation:** runtime execution is not yet connected to
+  `BacteriaColony`, the GenESyS event scheduler, bacteria state, cellular
+  automata, or GUI editing workflows.
 
 ### `BacteriaColony`
 
@@ -161,6 +222,14 @@ instructions are considered obsolete or consolidated here.
   migration)
 - `source/plugins/data/BiologicalModeling/GroProgram.h`
 - `source/plugins/data/BiologicalModeling/GroProgram.cpp`
+- `source/plugins/data/BiologicalModeling/GroProgramParser.h`
+- `source/plugins/data/BiologicalModeling/GroProgramParser.cpp`
+- `source/plugins/data/BiologicalModeling/GroProgramAst.h`
+- `source/plugins/data/BiologicalModeling/GroProgramIr.h`
+- `source/plugins/data/BiologicalModeling/GroProgramCompiler.h`
+- `source/plugins/data/BiologicalModeling/GroProgramCompiler.cpp`
+- `source/plugins/data/BiologicalModeling/GroProgramRuntime.h`
+- `source/plugins/data/BiologicalModeling/GroProgramRuntime.cpp`
 - `source/plugins/components/BiologicalModeling/BacteriaColony.h`
 - `source/plugins/components/BiologicalModeling/BacteriaColony.cpp`
 - `source/plugins/PluginConnectorDummyImpl1.cpp`
@@ -188,6 +257,17 @@ instructions are considered obsolete or consolidated here.
 - Latest known validation before this migration:
   - `cmake --preset tests-kernel-unit` succeeded.
   - `cmake --build --preset tests-kernel-unit-run` succeeded.
+- Recent active GRO phase commits:
+  - `ee855170 Add Gro program parser boundary`
+  - `799feb71 Add minimal Gro program AST`
+  - `e00c8108 Add initial Gro semantic IR`
+  - `55058527 Merge remote-tracking branch 'origin/WiP20261' into WiP20261_GRO`
+  - `be4d0337 Add isolated Gro runtime helper`
+- Latest known validation after active GRO phases:
+  - `cmake --preset tests-kernel-unit` succeeded.
+  - `cmake --build --preset tests-kernel-unit-run` succeeded.
+  - `./build/tests-kernel-unit/source/tests/unit/genesys_test_runtime_pluginmanager`
+    succeeded with 10 tests.
 - Latest structural synchronization:
   - merged `origin/WiP20261_KERNEL_GUI` at `f232882e` into
     `WiP20261_GRO`;
@@ -201,30 +281,25 @@ instructions are considered obsolete or consolidated here.
 ## Current Branch State
 
 - Current branch: `WiP20261_GRO`.
-- Current consolidated base: `WiP20261`.
-- The relevant functional content from `WiP20261_GRO` has already been absorbed
-  by `WiP20261`.
-- No GRO integration is pending at this moment.
-- The branch is in standby. It should remain stable, synchronized, and
-  available for future GRO work, but no new product functionality should be
-  added now.
-- Any future technical work should start from the updated consolidated base
-  `WiP20261`, not from stale local state preserved on `WiP20261_GRO`.
+- Current consolidated base: `origin/WiP20261` at `f769ec61`.
+- Current GRO branch head: `origin/WiP20261_GRO` at `be4d0337`.
 - Latest synchronization with `origin/WiP20261` produced merge commit
-  `10e6937c` and brought in `TINKERCELL_ContextMemory.md`.
+  `55058527` and brought in GUI preferences/theme work.
 - Conflict status during the latest synchronization: no conflicts occurred.
-- The current changes after that synchronization are memory-only updates to
-  `GRO_ContextMemory.md`.
+- Latest completed GRO phase: isolated `GroProgramRuntime` helper that executes
+  `tick()` over `GroProgramRuntimeState`.
+- Current local memory maintenance work may create a local commit. Do not
+  publish it unless explicitly requested.
+- The next technical phase has not started. Ask the user for explicit
+  confirmation before proceeding.
 
 ## Pending Work
 
-- No immediate implementation should be performed while the branch is in
-  standby.
-- Define the Gro parser/helper boundary under plugin-side code.
-- Decide the first grammar target: full syntax recognition with partial
-  semantics, or a narrower MVP syntax subset.
-- Define the AST or intermediate representation needed to connect Gro syntax to
-  GenESyS model data and components.
+- Do not continue automatically. Wait for explicit user confirmation before the
+  next technical phase.
+- Suggested next technical phase: either connect the isolated runtime helper to
+  `BacteriaColony` in a controlled way, or expand the known Gro command set
+  before binding it to colony behavior.
 - Decide whether `BacteriaColony` should schedule periodic internal events using
   `SimulationStep` or remain API/plugin-driven until parser/runtime semantics
   are clearer.
@@ -257,6 +332,24 @@ instructions are considered obsolete or consolidated here.
   `WiP20261` as the source of truth for future starts.
 
 ## Session Log
+
+### 2026-04-17 - Operational Memory Normalization
+
+- User paused technical biosimulator work and requested operational memory
+  normalization before any next technical phase.
+- Re-read `GRO_ContextMemory.md` and found useful project context but several
+  operational points were incomplete or stale:
+  - response envelope was not explicit;
+  - phase/stop/confirmation policy was not centralized;
+  - stage/commit/push policy was not clearly separated;
+  - push policy still allowed automatic routine publication;
+  - branch status still contained obsolete standby wording;
+  - implemented parser/AST/IR/runtime helpers were not fully summarized in the
+    stable memory sections.
+- Added the `Operational Working Protocol` section.
+- Updated current branch/base state, implemented helper summaries, relevant
+  files, pending work, and recent commit/validation records.
+- No biosimulator product functionality was changed in this normalization pass.
 
 ### 2026-04-17 - Initial Gro Plugin Slice
 
