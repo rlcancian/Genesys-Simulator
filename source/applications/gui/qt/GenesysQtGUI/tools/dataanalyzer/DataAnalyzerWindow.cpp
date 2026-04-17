@@ -179,6 +179,27 @@ namespace {
         return true;
     }
 
+    static QString csvCell(QString text) {
+        text.replace(QStringLiteral("\""), QStringLiteral("\"\""));
+        return QStringLiteral("\"%1\"").arg(text);
+    }
+
+    static QString safeExportBaseName(QString text) {
+        text = text.trimmed();
+        if (text.isEmpty()) {
+            return QStringLiteral("genesys-data-analyzer-dataset");
+        }
+        for (QChar& ch : text) {
+            if (!ch.isLetterOrNumber() && ch != QLatin1Char('-') && ch != QLatin1Char('_')) {
+                ch = QLatin1Char('-');
+            }
+        }
+        while (text.contains(QStringLiteral("--"))) {
+            text.replace(QStringLiteral("--"), QStringLiteral("-"));
+        }
+        return text.left(80);
+    }
+
     static QString dataAnalyzerStyleSheet() {
         return QStringLiteral(
                 "QMainWindow { background: #f5f7f8; }"
@@ -465,7 +486,7 @@ void DataAnalyzerWindow::buildMenus() {
 
     QMenu* toolsMenu = menuBar()->addMenu(tr("Ferramentas"));
     _refreshModelResponsesAction = toolsMenu->addAction(tr("Atualizar respostas do modelo"));
-    toolsMenu->addAction(tr("Exportar dataset"), this, [this]() { showSkeletonMessage(tr("dataset export")); });
+    _exportDatasetAction = toolsMenu->addAction(tr("Exportar dataset..."));
 
     QMenu* helpMenu = menuBar()->addMenu(tr("Ajuda"));
     helpMenu->addAction(tr("Sobre o Data Analyzer"), this, [this]() {
@@ -834,6 +855,7 @@ void DataAnalyzerWindow::connectActions() {
             [this]() { importSimulationResponsesSnapshot(); });
     connect(_refreshModelResponsesAction, &QAction::triggered, this, [this]() { refreshModelResponses(); });
     connect(_saveReportAction, &QAction::triggered, this, [this]() { saveReport(); });
+    connect(_exportDatasetAction, &QAction::triggered, this, [this]() { exportDataset(); });
     connect(_analysisNavigator, &QListWidget::currentRowChanged, this, [this](int row) {
         if (row >= 0 && row < _workspaceTabs->count()) {
             _workspaceTabs->setCurrentIndex(row);
@@ -1766,6 +1788,74 @@ void DataAnalyzerWindow::refreshDoeDemoViews() {
         _doePreviewPlot->setMode(_doePlotSelector->currentText());
     }
     refreshDoePlanSummary();
+}
+
+void DataAnalyzerWindow::exportDataset() {
+    int datasetIndex = -1;
+    int replication = 0;
+    const QString scopeKey = _scopeCombo != nullptr ? _scopeCombo->currentData().toString() : QStringLiteral("all");
+    parseScopeKey(scopeKey, &datasetIndex, &replication);
+
+    const QList<double> values = scopedValues();
+    if (values.isEmpty()) {
+        QMessageBox::information(this, tr("Data Analyzer"), tr("There is no numeric data in the current scope to export."));
+        return;
+    }
+
+    const QString initialDir = _lastDataAnalyzerPath.isEmpty() ? QDir::currentPath() : _lastDataAnalyzerPath;
+    const QString suggestedName = safeExportBaseName(scopedDatasetLabel()) + QStringLiteral(".csv");
+    const QString exportPath = QFileDialog::getSaveFileName(
+            this,
+            tr("Export Dataset"),
+            QDir(initialDir).filePath(suggestedName),
+            tr("CSV files (*.csv);;Text files (*.txt);;All files (*.*)"),
+            nullptr,
+            QFileDialog::DontUseNativeDialog);
+    if (exportPath.isEmpty()) {
+        return;
+    }
+
+    QFile outputFile(exportPath);
+    if (!outputFile.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, tr("Data Analyzer"), tr("Could not save dataset file."));
+        return;
+    }
+
+    QTextStream out(&outputFile);
+    out << "dataset,variable,replication,time,value\n";
+    auto writeDatasetRows = [&out](const DatasetDescriptor& dataset, int selectedReplication) {
+        if (!dataset.observations.isEmpty()) {
+            for (const DatasetObservation& observation : dataset.observations) {
+                if (selectedReplication > 0 && observation.replication != selectedReplication) {
+                    continue;
+                }
+                out << csvCell(dataset.datasetName) << ','
+                    << csvCell(dataset.randomVariableName) << ','
+                    << observation.replication << ','
+                    << (observation.hasTime ? DataAnalyzerWindow::formatNumber(observation.time) : QString()) << ','
+                    << DataAnalyzerWindow::formatNumber(observation.value) << '\n';
+            }
+            return;
+        }
+        for (double value : dataset.values) {
+            const QString replicationText = selectedReplication > 0 ? QString::number(selectedReplication) : QString();
+            out << csvCell(dataset.datasetName) << ','
+                << csvCell(dataset.randomVariableName) << ','
+                << replicationText << ','
+                << ','
+                << DataAnalyzerWindow::formatNumber(value) << '\n';
+        }
+    };
+
+    if (datasetIndex >= 0 && datasetIndex < _datasets.size()) {
+        writeDatasetRows(_datasets.at(datasetIndex), replication);
+    } else {
+        for (const DatasetDescriptor& dataset : _datasets) {
+            writeDatasetRows(dataset, 0);
+        }
+    }
+    _lastDataAnalyzerPath = QFileInfo(exportPath).absolutePath();
+    statusBar()->showMessage(tr("Exported %1 value(s) to %2.").arg(values.size()).arg(exportPath), 4000);
 }
 
 void DataAnalyzerWindow::saveReport() {

@@ -89,6 +89,7 @@ private:
     void refreshReportView(const DataSummary& summary, const QString& fitConclusion);
     void refreshDoeDemoViews();
     void refreshDoePlanSummary();
+    void exportDataset();
     void saveReport();
     void showSkeletonMessage(const QString& featureName);
 
@@ -109,6 +110,7 @@ private:
     QAction* _saveReportAction = nullptr;
     QAction* _importSimulationResponsesAction = nullptr;
     QAction* _refreshModelResponsesAction = nullptr;
+    QAction* _exportDatasetAction = nullptr;
 
     QListWidget* _datasetsList = nullptr;
     QListWidget* _analysisNavigator = nullptr;
