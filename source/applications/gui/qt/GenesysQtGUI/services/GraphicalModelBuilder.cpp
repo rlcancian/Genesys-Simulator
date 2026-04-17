@@ -22,6 +22,8 @@
 
 namespace {
     constexpr qreal minimumAutomaticLayoutCoordinate = 20.0;
+    constexpr qreal automaticLayoutCollisionPadding = 12.0;
+    constexpr int maximumAutomaticLayoutCollisionSteps = 10;
 
     enum class DataDefinitionDisplayCategory {
         Statistics,
@@ -49,12 +51,36 @@ namespace {
         return position;
     }
 
-    void setVisibleAutomaticPosition(GraphicalModelDataDefinition* dataDefinition, const QPointF& requestedPosition) {
+    QRectF paddedLayoutRect(const QRectF& rect) {
+        return rect.adjusted(-automaticLayoutCollisionPadding,
+                             -automaticLayoutCollisionPadding,
+                             automaticLayoutCollisionPadding,
+                             automaticLayoutCollisionPadding);
+    }
+
+    QRectF dataDefinitionLayoutRect(GraphicalModelDataDefinition* dataDefinition, const QPointF& position) {
+        if (dataDefinition == nullptr) {
+            return QRectF();
+        }
+        return dataDefinition->boundingRect().translated(position);
+    }
+
+    bool intersectsOccupiedLayout(const QRectF& candidate, const QList<QRectF>& occupiedRects) {
+        if (!candidate.isValid()) {
+            return false;
+        }
+        for (const QRectF& occupied : occupiedRects) {
+            if (occupied.isValid() && candidate.intersects(occupied)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void setAutomaticPosition(GraphicalModelDataDefinition* dataDefinition, const QPointF& position) {
         if (dataDefinition == nullptr) {
             return;
         }
-
-        const QPointF position = visibleAutomaticPosition(dataDefinition, requestedPosition);
         dataDefinition->setPos(position);
         dataDefinition->setOldPosition(position.x(), position.y());
     }
@@ -121,7 +147,8 @@ namespace {
                                       GraphicalModelDataDefinition* child,
                                       int index,
                                       int count,
-                                      bool upperArc) {
+                                      bool upperArc,
+                                      int radialLayer = 0) {
         if (child == nullptr) {
             return QPointF();
         }
@@ -131,14 +158,16 @@ namespace {
                                                           childBounds.size(),
                                                           index,
                                                           count,
-                                                          upperArc);
+                                                          upperArc,
+                                                          radialLayer);
     }
 
     void positionNewDataDefinitionsInArc(const QRectF& anchorBounds,
                                          const QList<DataDefinitionLayoutLink>& links,
                                          bool upperArc,
                                          const QSet<ModelDataDefinition*>& newDataDefinitions,
-                                         QSet<ModelDataDefinition*>* positionedDataDefinitions) {
+                                         QSet<ModelDataDefinition*>* positionedDataDefinitions,
+                                         QList<QRectF>* occupiedLayoutRects) {
         if (positionedDataDefinitions == nullptr) {
             return;
         }
@@ -159,10 +188,28 @@ namespace {
         for (int index = 0; index < count; ++index) {
             GraphicalModelDataDefinition* child = newLinks.at(index).graphicalDefinition;
             child->setParentItem(nullptr);
-            setVisibleAutomaticPosition(
+            QPointF selectedPosition = visibleAutomaticPosition(
                 child,
                 dataDefinitionArcPosition(anchorBounds, child, index, count, upperArc));
+            QRectF selectedRect = paddedLayoutRect(dataDefinitionLayoutRect(child, selectedPosition));
+
+            if (occupiedLayoutRects != nullptr) {
+                for (int radialLayer = 1;
+                     radialLayer <= maximumAutomaticLayoutCollisionSteps
+                     && intersectsOccupiedLayout(selectedRect, *occupiedLayoutRects);
+                     ++radialLayer) {
+                    selectedPosition = visibleAutomaticPosition(
+                        child,
+                        dataDefinitionArcPosition(anchorBounds, child, index, count, upperArc, radialLayer));
+                    selectedRect = paddedLayoutRect(dataDefinitionLayoutRect(child, selectedPosition));
+                }
+            }
+
+            setAutomaticPosition(child, selectedPosition);
             positionedDataDefinitions->insert(newLinks.at(index).dataDefinition);
+            if (occupiedLayoutRects != nullptr) {
+                occupiedLayoutRects->append(selectedRect);
+            }
         }
     }
 }
@@ -535,6 +582,22 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     scene->clearGraphicalDiagramConnections();
 
     QSet<ModelDataDefinition*> positionedDataDefinitions;
+    QList<QRectF> occupiedLayoutRects;
+    for (const auto& componentEntry : componentMap) {
+        GraphicalModelComponent* graphicalComponent = componentEntry.second;
+        if (graphicalComponent != nullptr) {
+            occupiedLayoutRects.append(paddedLayoutRect(graphicalComponent->sceneBoundingRect()));
+        }
+    }
+    for (const auto& dataDefinitionEntry : dataDefinitionMap) {
+        ModelDataDefinition* dataDefinition = dataDefinitionEntry.first;
+        GraphicalModelDataDefinition* graphicalDefinition = dataDefinitionEntry.second;
+        if (dataDefinition == nullptr || graphicalDefinition == nullptr
+            || newDataDefinitions.contains(dataDefinition)) {
+            continue;
+        }
+        occupiedLayoutRects.append(paddedLayoutRect(graphicalDefinition->sceneBoundingRect()));
+    }
 
     for (const auto& componentEntry : componentMap) {
         ModelComponent* component = componentEntry.first;
@@ -581,8 +644,18 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
 
         const QRectF componentBounds = graphicalComponent->sceneBoundingRect();
-        positionNewDataDefinitionsInArc(componentBounds, upperLinks, true, newDataDefinitions, &positionedDataDefinitions);
-        positionNewDataDefinitionsInArc(componentBounds, lowerLinks, false, newDataDefinitions, &positionedDataDefinitions);
+        positionNewDataDefinitionsInArc(componentBounds,
+                                        upperLinks,
+                                        true,
+                                        newDataDefinitions,
+                                        &positionedDataDefinitions,
+                                        &occupiedLayoutRects);
+        positionNewDataDefinitionsInArc(componentBounds,
+                                        lowerLinks,
+                                        false,
+                                        newDataDefinitions,
+                                        &positionedDataDefinitions,
+                                        &occupiedLayoutRects);
 
         for (const DataDefinitionLayoutLink& link : upperLinks) {
             scene->addGraphicalDiagramConnection(link.graphicalDefinition,
@@ -637,7 +710,8 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                                         childLinks,
                                         parentUsesUpperArc,
                                         newDataDefinitions,
-                                        &positionedDataDefinitions);
+                                        &positionedDataDefinitions,
+                                        &occupiedLayoutRects);
 
         for (const DataDefinitionLayoutLink& link : childLinks) {
             scene->addGraphicalDiagramConnection(link.graphicalDefinition,

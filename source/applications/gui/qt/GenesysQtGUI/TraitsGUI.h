@@ -97,6 +97,8 @@ template <>
 struct TraitsGUI<GModelDataDefinition> {
 	//<GraphicalModelComponent> {
 	constexpr static const int opacity = 256 * 0.33;
+	constexpr static const int nonEditableOpacity = 58;
+	constexpr static const int selectedNonEditableOpacity = 72;
 	constexpr static const int width = 180;
 	constexpr static const int penWidth = 1;
 	constexpr static const int raise = 5;
