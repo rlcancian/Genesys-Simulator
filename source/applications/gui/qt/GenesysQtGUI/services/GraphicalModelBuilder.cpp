@@ -549,22 +549,6 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     ModelDataManager* dataManager = model->getDataManager();
     const QSet<ModelDataDefinition*> editablePropertyDataDefinitions = editableDataDefinitionsForModel(model);
 
-    // Exit early when no model data definitions exist, avoiding unnecessary scene scans and geometry reads.
-    bool hasAnyModelDataDefinition = false;
-    for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
-        List<ModelDataDefinition*>* modelDataDefinitionList = dataManager->getDataDefinitionList(dataTypename);
-        if (modelDataDefinitionList != nullptr && !modelDataDefinitionList->list()->empty()) {
-            hasAnyModelDataDefinition = true;
-            break;
-        }
-    }
-    if (!hasAnyModelDataDefinition) {
-        scene->clearGraphicalDiagramConnections();
-        scene->clearGraphicalModelDataDefinitions();
-        scene->setDiagramLayerState(false, false);
-        return;
-    }
-
     std::map<ModelComponent*, GraphicalModelComponent*> componentMap;
     const QList<GraphicalModelComponent*> liveGraphicalComponents = scene->graphicalModelComponentItems();
     for (GraphicalModelComponent* gmc : liveGraphicalComponents) {
@@ -653,6 +637,13 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
     }
 
+    if (visibleDataDefinitions.isEmpty()) {
+        scene->clearGraphicalDiagramConnections();
+        scene->clearGraphicalModelDataDefinitions();
+        scene->setDiagramLayerState(false, false);
+        return;
+    }
+
     // Build the live graphical data-definition snapshot strictly from scene-owned items.
     std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> existingDataDefinitions;
     const QList<QGraphicsItem*> liveItems = scene->items();
@@ -676,54 +667,59 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     QColor grey(220, 220, 220);
 
     std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> dataDefinitionMap;
-    QSet<ModelDataDefinition*> seenInModel;
     QSet<ModelDataDefinition*> newDataDefinitions;
+
+    const auto ensureVisibleGraphicalDataDefinition = [&](ModelDataDefinition* dataDefinition) {
+        if (dataDefinition == nullptr || !visibleDataDefinitions.contains(dataDefinition)) {
+            return;
+        }
+        if (dataDefinitionMap.find(dataDefinition) != dataDefinitionMap.end()) {
+            return;
+        }
+
+        auto existingIt = existingDataDefinitions.find(dataDefinition);
+        if (existingIt != existingDataDefinitions.end()) {
+            dataDefinitionMap[dataDefinition] = existingIt->second;
+            const auto categoryIt = visibleCategories.find(dataDefinition);
+            if (categoryIt != visibleCategories.end() && existingIt->second != nullptr) {
+                existingIt->second->setColor(categoryColor(categoryIt->second));
+                existingIt->second->setEditableInPropertyEditor(
+                    dataDefinitionIsEditableInPropertyEditor(dataDefinition, editablePropertyDataDefinitions));
+            }
+            return;
+        }
+
+        Plugin* plugin = pluginManager->find(dataDefinition->getClassname());
+        if (plugin == nullptr) {
+            return;
+        }
+        const auto categoryIt = visibleCategories.find(dataDefinition);
+        const QColor color = categoryIt != visibleCategories.end()
+                                 ? categoryColor(categoryIt->second)
+                                 : grey;
+        GraphicalModelDataDefinition* graphicalDataDefinition = scene->addGraphicalModelDataDefinition(
+            plugin, dataDefinition, QPointF(0, 0), color);
+        if (graphicalDataDefinition != nullptr) {
+            dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
+            graphicalDataDefinition->setEditableInPropertyEditor(
+                dataDefinitionIsEditableInPropertyEditor(dataDefinition, editablePropertyDataDefinitions));
+            newDataDefinitions.insert(dataDefinition);
+        }
+    };
 
     for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
         std::list<ModelDataDefinition*>* listDataDefinitions = dataManager->getDataDefinitionList(dataTypename)->list();
         for (ModelDataDefinition* dataDefinition : *listDataDefinitions) {
-            if (dataDefinition == nullptr) {
-                continue;
-            }
-            if (!visibleDataDefinitions.contains(dataDefinition)) {
-                continue;
-            }
-            seenInModel.insert(dataDefinition);
-
-            auto existingIt = existingDataDefinitions.find(dataDefinition);
-            if (existingIt != existingDataDefinitions.end()) {
-                dataDefinitionMap[dataDefinition] = existingIt->second;
-                const auto categoryIt = visibleCategories.find(dataDefinition);
-                if (categoryIt != visibleCategories.end() && existingIt->second != nullptr) {
-                    existingIt->second->setColor(categoryColor(categoryIt->second));
-                    existingIt->second->setEditableInPropertyEditor(
-                        dataDefinitionIsEditableInPropertyEditor(dataDefinition, editablePropertyDataDefinitions));
-                }
-                continue;
-            }
-
-            Plugin* plugin = pluginManager->find(dataDefinition->getClassname());
-            if (plugin == nullptr) {
-                continue;
-            }
-            const auto categoryIt = visibleCategories.find(dataDefinition);
-            const QColor color = categoryIt != visibleCategories.end()
-                                     ? categoryColor(categoryIt->second)
-                                     : grey;
-            GraphicalModelDataDefinition* graphicalDataDefinition = scene->addGraphicalModelDataDefinition(
-                plugin, dataDefinition, QPointF(0, 0), color);
-            if (graphicalDataDefinition != nullptr) {
-                dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
-                graphicalDataDefinition->setEditableInPropertyEditor(
-                    dataDefinitionIsEditableInPropertyEditor(dataDefinition, editablePropertyDataDefinitions));
-                newDataDefinitions.insert(dataDefinition);
-            }
+            ensureVisibleGraphicalDataDefinition(dataDefinition);
         }
+    }
+    for (ModelDataDefinition* dataDefinition : visibleDataDefinitions) {
+        ensureVisibleGraphicalDataDefinition(dataDefinition);
     }
 
     QList<GraphicalModelDataDefinition*> staleGraphicalDataDefinitions;
     for (auto it = existingDataDefinitions.begin(); it != existingDataDefinitions.end(); ++it) {
-        if (!seenInModel.contains(it->first) && it->second != nullptr) {
+        if (!visibleDataDefinitions.contains(it->first) && it->second != nullptr) {
             staleGraphicalDataDefinitions.append(it->second);
         }
     }

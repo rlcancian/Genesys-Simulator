@@ -27,6 +27,20 @@
 
 namespace {
 
+class QueueWithPublicAttachments : public Queue {
+public:
+    explicit QueueWithPublicAttachments(Model* model, const std::string& name)
+        : Queue(model, name) {}
+
+    void attachDataDefinition(const std::string& key, ModelDataDefinition* dataDefinition) {
+        _attachedDataInsert(key, dataDefinition);
+    }
+
+    void insertInternalDataDefinition(const std::string& key, ModelDataDefinition* dataDefinition) {
+        _internalDataInsert(key, dataDefinition);
+    }
+};
+
 GraphicalModelDataDefinition* findGraphicalDataDefinition(ModelGraphicsScene& scene,
                                                           ModelDataDefinition* dataDefinition) {
     if (scene.getAllDataDefinitions() == nullptr) {
@@ -35,6 +49,23 @@ GraphicalModelDataDefinition* findGraphicalDataDefinition(ModelGraphicsScene& sc
     for (GraphicalModelDataDefinition* graphicalDefinition : *scene.getAllDataDefinitions()) {
         if (graphicalDefinition != nullptr && graphicalDefinition->getDataDefinition() == dataDefinition) {
             return graphicalDefinition;
+        }
+    }
+    return nullptr;
+}
+
+GraphicalDiagramConnection* findDiagramConnection(ModelGraphicsScene& scene,
+                                                  GraphicalModelDataDefinition* dataDefinition,
+                                                  QGraphicsItem* linkedTo) {
+    if (scene.getGraphicalDiagramsConnections() == nullptr) {
+        return nullptr;
+    }
+    for (QGraphicsItem* item : *scene.getGraphicalDiagramsConnections()) {
+        auto* connection = dynamic_cast<GraphicalDiagramConnection*>(item);
+        if (connection != nullptr
+            && connection->getDataDefinition() == dataDefinition
+            && connection->getLinkedDataDefinition() == linkedTo) {
+            return connection;
         }
     }
     return nullptr;
@@ -154,6 +185,67 @@ TEST(GuiGmddLayout, SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRow
         sharedQueueAGmdd,
         sharedQueueBGmdd
     }));
+}
+
+TEST(GuiGmddLayout, RecursiveDataDefinitionExpansionShowsDataDefinitionsLinkedToDataDefinitions) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* queue = new QueueWithPublicAttachments(model, "ParentQueue");
+    auto* resource = new Resource(model, "ChildResource");
+    auto* childStatistic = new StatisticsCollector(model, "ChildStatistic", queue, false);
+    auto* seize = new Seize(model, "Seize_Recursive");
+    ASSERT_NE(queue, nullptr);
+    ASSERT_NE(resource, nullptr);
+    ASSERT_NE(childStatistic, nullptr);
+    ASSERT_NE(seize, nullptr);
+
+    queue->attachDataDefinition("ChildResource", resource);
+    queue->insertInternalDataDefinition("ChildStatistic", childStatistic);
+    seize->setQueueableItem(new QueueableItem(queue));
+    ModelDataDefinition::CreateInternalData(seize);
+
+    ModelGraphicsScene scene(0, 0, 2000, 2000);
+    scene.setSimulator(&simulator);
+    scene.setShowEditableDataDefinitions(true);
+    scene.setShowStatisticsDataDefinitions(true);
+    scene.setShowSharedDataDefinitions(true);
+    scene.setShowRecursiveDataDefinitions(false);
+
+    Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
+    ASSERT_NE(seizePlugin, nullptr);
+    auto* graphicalSeize = new GraphicalModelComponent(
+        seizePlugin,
+        seize,
+        QPointF(600.0, 600.0),
+        QColor(105, 105, 105));
+    scene.addItem(graphicalSeize);
+
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+
+    GraphicalModelDataDefinition* queueGmdd = findGraphicalDataDefinition(scene, queue);
+    GraphicalModelDataDefinition* resourceGmdd = findGraphicalDataDefinition(scene, resource);
+    GraphicalModelDataDefinition* statisticGmdd = findGraphicalDataDefinition(scene, childStatistic);
+    ASSERT_NE(queueGmdd, nullptr);
+    EXPECT_EQ(resourceGmdd, nullptr);
+    EXPECT_EQ(statisticGmdd, nullptr);
+
+    scene.setShowRecursiveDataDefinitions(true);
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, &scene);
+
+    queueGmdd = findGraphicalDataDefinition(scene, queue);
+    resourceGmdd = findGraphicalDataDefinition(scene, resource);
+    statisticGmdd = findGraphicalDataDefinition(scene, childStatistic);
+    ASSERT_NE(queueGmdd, nullptr);
+    ASSERT_NE(resourceGmdd, nullptr);
+    ASSERT_NE(statisticGmdd, nullptr);
+    EXPECT_NE(findDiagramConnection(scene, resourceGmdd, queueGmdd), nullptr);
+    EXPECT_NE(findDiagramConnection(scene, statisticGmdd, queueGmdd), nullptr);
 }
 
 int main(int argc, char** argv) {
