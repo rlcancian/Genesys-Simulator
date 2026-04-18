@@ -16,7 +16,7 @@
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Attribute.h"
 #include "kernel/simulator/Simulator.h"
-#include "plugins/data/DiscreteProcessing/Sequence.h"
+#include "../../data/MaterialHandling/Sequence.h"
 #include "plugins/data/DiscreteProcessing/Label.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

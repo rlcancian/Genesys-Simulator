@@ -15,7 +15,7 @@
 #define BUFFER_H
 
 #include "kernel/simulator/ModelComponent.h"
-#include "plugins/data/DiscreteProcessing/SignalData.h"
+#include "../../data/Synchronization/SignalData.h"
 
 /*!
  This component ...

@@ -16,7 +16,7 @@
 
 #include "kernel/simulator/ModelComponent.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/EntityGroup.h"
+#include "../../data/Grouping/EntityGroup.h"
 /*!
 Batch module
 DESCRIPTION

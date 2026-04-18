@@ -18,7 +18,7 @@
 
 #include "kernel/simulator/ModelComponent.h"
 #include "kernel/simulator/Plugin.h"
-#include "plugins/components/DiscreteProcessing/SeizableItem.h"
+#include "auxiliar/SeizableItem.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
 /*!
