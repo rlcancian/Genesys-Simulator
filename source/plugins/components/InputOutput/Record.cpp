@@ -199,7 +199,7 @@ void Record::setTimeDependent(bool timeDependent) {
 
 PluginInformation* Record::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Record>(), &Record::LoadInstance, &Record::NewInstance);
-	info->setCategory("Input Output");
+	info->setCategory("InputOutput");
 	return info;
 }
 

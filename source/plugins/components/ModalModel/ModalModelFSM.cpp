@@ -12,7 +12,7 @@ ModalModelFSM::ModalModelFSM(Model* model, std::string name) : ModalModelDefault
 
 PluginInformation* ModalModelFSM::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<ModalModelFSM>(), &ModalModelFSM::LoadInstance, &ModalModelFSM::NewInstance);
-	info->setCategory("Network");
+	info->setCategory("ModalModel");
 	info->setDescriptionHelp("Specialization of ModalModelDefault for finite-state machine style models.");
 	return info;
 }

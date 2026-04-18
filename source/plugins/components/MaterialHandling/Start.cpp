@@ -70,7 +70,7 @@ bool Start::_check(std::string& errorMessage) {
 
 PluginInformation* Start::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Start>(), &Start::LoadInstance, &Start::NewInstance);
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	// ...
 	return info;
 }

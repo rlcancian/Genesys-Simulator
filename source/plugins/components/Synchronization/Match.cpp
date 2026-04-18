@@ -272,7 +272,7 @@ void Match::_createInternalAndAttachedData() {
 
 PluginInformation * Match::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Match>(), &Match::LoadInstance, &Match::NewInstance);
-	info->setCategory("Decision");
+	info->setCategory("Synchronization");
 	info->setMaximumInputs(99);
 	//info->getDynamicLibFilenameDependencies()->insert("queue.so");
 	// ...

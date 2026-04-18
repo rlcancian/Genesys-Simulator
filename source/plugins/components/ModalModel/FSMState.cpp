@@ -22,7 +22,7 @@ std::string FSMState::getExitActionExpression() const {
 
 PluginInformation* FSMState::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<FSMState>(), &FSMState::LoadInstance, &FSMState::NewInstance);
-	info->setCategory("Network");
+	info->setCategory("ModalModel");
 	info->setDescriptionHelp("FSM node/state with optional entry and exit action expressions.");
 	info->setReceiveTransfer(true); // FSM nodes do not need to be connected from a source to a sink
 	info->setSendTransfer(true); // FSM nodes do not need to be connected in a process flow

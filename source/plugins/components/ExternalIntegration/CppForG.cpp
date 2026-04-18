@@ -257,7 +257,7 @@ void CppForG::_createInternalAndAttachedData() {
 
 PluginInformation* CppForG::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<CppForG>(), &CppForG::LoadInstance, &CppForG::NewInstance);
-	info->setCategory("Logic");
+	info->setCategory("ExternalIntegration");
 	info->insertDynamicLibFileDependence("cppcompiler.so");
 	info->setDescriptionHelp("//@TODO");
 	return info;

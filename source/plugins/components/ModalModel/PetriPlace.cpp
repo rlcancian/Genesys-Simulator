@@ -30,7 +30,7 @@ std::map<std::string, unsigned int>* PetriPlace::getAllTokens() {
 
 PluginInformation* PetriPlace::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<PetriPlace>(), &PetriPlace::LoadInstance, &PetriPlace::NewInstance);
-	info->setCategory("Network");
+	info->setCategory("ModalModel");
 	info->setDescriptionHelp("Petri net place with colored tokens.");
 	info->setReceiveTransfer(true); // Petri paces do not need to form a process flow
 	info->setSendTransfer(true);

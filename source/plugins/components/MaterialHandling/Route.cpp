@@ -257,7 +257,7 @@ void Route::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 PluginInformation* Route::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Route>(), &Route::LoadInstance, &Route::NewInstance);
 	info->setSendTransfer(true);
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	info->insertDynamicLibFileDependence("station.so");
 	info->insertDynamicLibFileDependence("sequence.so");
 	info->insertDynamicLibFileDependence("label.so");

@@ -82,7 +82,7 @@ std::string DummyElement::show() {
 
 PluginInformation* DummyElement::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<DummyElement>(), &DummyElement::LoadInstance, &DummyElement::NewInstance);
-	info->setCategory("Data Definition");
+	info->setCategory("Template");
 	info->setDescriptionHelp("Template/example ModelDataDefinition plugin used as a base for creating new data definitions.");
 	info->setObservation("This plugin is a skeleton/template and not a final domain-specific data element.");
 	//info->setMinimumInputs(1);

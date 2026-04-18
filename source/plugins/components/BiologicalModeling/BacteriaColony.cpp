@@ -90,7 +90,7 @@ PluginInformation* BacteriaColony::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BacteriaColony>(),
 	                                                &BacteriaColony::LoadInstance,
 	                                                &BacteriaColony::NewInstance);
-	info->setCategory("Biological Modeling");
+	info->setCategory("BiologicalModeling");
 	info->setMinimumInputs(1);
 	info->setMaximumInputs(1);
 	info->setMinimumOutputs(1);

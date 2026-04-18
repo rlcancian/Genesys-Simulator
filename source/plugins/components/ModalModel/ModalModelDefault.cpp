@@ -106,7 +106,7 @@ std::string ModalModelDefault::show() {
 PluginInformation* ModalModelDefault::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<ModalModelDefault>(), &ModalModelDefault::LoadInstance,
 	                                                &ModalModelDefault::NewInstance);
-	info->setCategory("Network");
+	info->setCategory("ModalModel");
 	//info->setMinimumInputs(1);
 	//info->setMinimumOutputs(1);
 	//info->setMaximumInputs(1);

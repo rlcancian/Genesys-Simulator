@@ -124,7 +124,7 @@ ModelComponent* Wait::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 PluginInformation* Wait::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Wait>(), &Wait::LoadInstance, &Wait::NewInstance);
-	info->setCategory("Decisions");
+	info->setCategory("Synchronization");
 	info->insertDynamicLibFileDependence("queue.so");
 	info->insertDynamicLibFileDependence("signal.so");
 	return info;

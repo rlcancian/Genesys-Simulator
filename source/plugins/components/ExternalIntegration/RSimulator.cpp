@@ -90,7 +90,7 @@ ModelComponent* RSimulator::LoadInstance(Model* model, PersistenceRecord *fields
 
 PluginInformation* RSimulator::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<RSimulator>(), &RSimulator::LoadInstance, &RSimulator::NewInstance);
-	info->setCategory("External statistical integration");
+	info->setCategory("ExternalIntegration");
 	info->insertDynamicLibFileDependence("rsimulatorrunner.so");
 	info->setDescriptionHelp("Executes a sequence of R commands whenever an entity reaches the component. Commands are delegated to an internal RSimulatorRunner, which writes a temporary R script, runs Rscript --vanilla and stores stdout, stderr, status and exit code. This first component version traces the runner result and then forwards the entity.");
 	info->setObservation("Requires the RSimulatorRunner data plugin and Rscript available in the operating system.");

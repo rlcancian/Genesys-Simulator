@@ -70,7 +70,7 @@ bool Stop::_check(std::string& errorMessage) {
 
 PluginInformation* Stop::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Stop>(), &Stop::LoadInstance, &Stop::NewInstance);
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	// ...
 	return info;
 }

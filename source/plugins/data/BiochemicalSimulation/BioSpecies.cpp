@@ -47,7 +47,7 @@ BioSpecies::BioSpecies(Model* model, std::string name) : ModelDataDefinition(mod
 
 PluginInformation* BioSpecies::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioSpecies>(), &BioSpecies::LoadInstance, &BioSpecies::NewInstance);
-	info->setCategory("Biochemical simulation");
+	info->setCategory("BiochemicalSimulation");
 	info->setDescriptionHelp("Biochemical species with initial amount, current amount, units, and SBML-like constant/boundary flags.");
 	return info;
 }

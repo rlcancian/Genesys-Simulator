@@ -37,7 +37,7 @@ std::string GroProgram::show() {
 PluginInformation* GroProgram::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GroProgram>(), &GroProgram::LoadInstance,
 	                                                &GroProgram::NewInstance);
-	info->setCategory("Biological Modeling");
+	info->setCategory("BiologicalModeling");
 	info->setDescriptionHelp("Stores reusable Gro source code for biological simulation components. "
 	                         "The initial implementation stores source text and performs permissive lexical checks; "
 	                         "complete Gro parsing and semantics are plugin-side future work.");

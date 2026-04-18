@@ -68,7 +68,7 @@ ModelComponent* Signal::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 PluginInformation* Signal::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Signal>(), &Signal::LoadInstance, &Signal::NewInstance);
-	info->setCategory("Decisions");
+	info->setCategory("Synchronization");
 	// ...
 	return info;
 }

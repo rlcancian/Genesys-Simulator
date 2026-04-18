@@ -212,7 +212,7 @@ void CellularAutomataComp::setBoundaryType(CellularAutomataComp::BoundaryType ne
 
 PluginInformation* CellularAutomataComp::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<CellularAutomataComp>(), &CellularAutomataComp::LoadInstance, &CellularAutomataComp::NewInstance);
-	info->setCategory("Logic");
+	info->setCategory("ModalModel");
 	info->setDescriptionHelp("//@TODO");
 	return info;
 }

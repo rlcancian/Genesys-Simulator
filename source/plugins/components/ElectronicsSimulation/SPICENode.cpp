@@ -66,7 +66,7 @@ std::string SPICENode::show() {
 
 PluginInformation* SPICENode::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<SPICENode>(), &SPICENode::LoadInstance, &SPICENode::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 

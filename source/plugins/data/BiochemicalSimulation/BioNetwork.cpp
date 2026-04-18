@@ -202,7 +202,7 @@ BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(mod
 
 PluginInformation* BioNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioNetwork>(), &BioNetwork::LoadInstance, &BioNetwork::NewInstance);
-	info->setCategory("Biochemical simulation");
+	info->setCategory("BiochemicalSimulation");
 	info->setDescriptionHelp("Native biochemical network runner. It advances BioSpecies and BioReaction data definitions with mass-action kinetics using a fixed-step RK4 solver, optionally constrained to explicit network membership.");
 	return info;
 }

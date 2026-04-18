@@ -32,7 +32,7 @@ BioParameter::BioParameter(Model* model, std::string name) : ModelDataDefinition
 
 PluginInformation* BioParameter::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioParameter>(), &BioParameter::LoadInstance, &BioParameter::NewInstance);
-	info->setCategory("Biochemical simulation");
+	info->setCategory("BiochemicalSimulation");
 	info->setDescriptionHelp("Scalar biochemical parameter, commonly used as a kinetic constant by BioReaction.");
 	return info;
 }

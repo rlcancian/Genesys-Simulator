@@ -12,7 +12,7 @@ ModalModelPetriNet::ModalModelPetriNet(Model* model, std::string name) : ModalMo
 
 PluginInformation* ModalModelPetriNet::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<ModalModelPetriNet>(), &ModalModelPetriNet::LoadInstance, &ModalModelPetriNet::NewInstance);
-	info->setCategory("Network");
+	info->setCategory("ModalModel");
 	info->setDescriptionHelp("Specialization of ModalModelDefault for colored Petri net style models.");
 	return info;
 }

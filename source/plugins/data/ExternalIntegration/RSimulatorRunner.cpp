@@ -179,7 +179,7 @@ RSimulatorRunner::RSimulatorRunner(Model* model, std::string name)
 
 PluginInformation* RSimulatorRunner::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<RSimulatorRunner>(), &RSimulatorRunner::LoadInstance, &RSimulatorRunner::NewInstance);
-	info->setCategory("External statistical integration");
+	info->setCategory("ExternalIntegration");
 	info->setDescriptionHelp("Executes R code through Rscript. The runner writes the configured prelude and command into a temporary .R script, runs Rscript --vanilla, captures stdout/stderr and stores status, exit code and response payload in the model data definition.");
 	info->setObservation("First R integration runner. It executes local R scripts through Rscript and does not require additional R packages.");
 	info->insertSystemDependency(SystemDependency(

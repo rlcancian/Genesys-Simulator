@@ -170,7 +170,7 @@ bool MarkovChain::_check(std::string& errorMessage) {
 
 PluginInformation* MarkovChain::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<MarkovChain>(), &MarkovChain::LoadInstance, &MarkovChain::NewInstance);
-	info->setCategory("Discrete Processing");
+	info->setCategory("AnalyticalModeling");
 	// ...
 	return info;
 }
