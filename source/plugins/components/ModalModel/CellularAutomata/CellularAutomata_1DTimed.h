@@ -1,10 +1,10 @@
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
-#include "plugins/components/Logic/CellularAutomata/CellularAutomataBase.h"
-#include "plugins/components/Logic/CellularAutomata/Lattice.h"
-#include "plugins/components/Logic/CellularAutomata/LocalRule.h"
-#include "plugins/components/Logic/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
 
 //! Complete uniform CA specific for unidimensional lattices where 2nd dimension is time (usefull for elementary CA)
 class CellularAutomata_1DTimed: public CellularAutomataBase {

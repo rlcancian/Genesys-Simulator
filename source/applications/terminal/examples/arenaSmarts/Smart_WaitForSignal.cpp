@@ -20,11 +20,11 @@
 // Model Components
 #include "plugins/components/DiscreteProcessing/Create.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/Decisions/Wait.h"
-#include "plugins/components/Decisions/Signal.h"
+#include "plugins/components/Synchronization/Wait.h"
+#include "plugins/components/Synchronization/Signal.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 
-#include "plugins/data/DiscreteProcessing/SignalData.h"
+#include "plugins/data/Synchronization/SignalData.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "../../../TraitsApp.h"
 

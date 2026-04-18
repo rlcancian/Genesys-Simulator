@@ -1,7 +1,7 @@
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/Lattice.h"
-//#include "plugins/components/Logic/CellularAutomata/Neighborhood.h"
+#include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
+//#include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
 #include <string>
 #include <vector>
 

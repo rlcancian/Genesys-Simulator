@@ -9,7 +9,7 @@
 #include "plugins/components/DiscreteProcessing/Create.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/DiscreteProcessing/QueueableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 #include "../../../TraitsApp.h"

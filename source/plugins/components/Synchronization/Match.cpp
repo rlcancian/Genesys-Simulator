@@ -11,7 +11,7 @@
  * Created on 03 de Junho de 2019, 15:14
  */
 
-#include "../Decisions/Match.h"
+#include "plugins/components/Synchronization/Match.h"
 
 #include <algorithm>
 #include "kernel/simulator/Model.h"

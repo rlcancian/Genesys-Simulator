@@ -2,8 +2,8 @@
 
 #include <string>
 #include <vector>
-#include "plugins/components/Logic/CellularAutomata/State.h"
-#include "plugins/components/Logic/CellularAutomata/StateSet.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/StateSet.h"
 
 class CellularAutomataBase;
 

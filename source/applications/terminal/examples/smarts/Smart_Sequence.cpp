@@ -23,8 +23,8 @@
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/DiscreteProcessing/Assign.h"
 
-#include "plugins/data/DiscreteProcessing/Sequence.h"
-#include "plugins/data/DiscreteProcessing/Station.h"
+#include "plugins/data/MaterialHandling/Sequence.h"
+#include "plugins/data/MaterialHandling/Station.h"
 #include "../../../TraitsApp.h"
 
 Smart_Sequence::Smart_Sequence() {

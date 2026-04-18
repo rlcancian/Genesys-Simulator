@@ -2,7 +2,7 @@
 
 #include <string>
 #include <vector>
-#include "plugins/components/Logic/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
 
 class CellularAutomataBase;
 

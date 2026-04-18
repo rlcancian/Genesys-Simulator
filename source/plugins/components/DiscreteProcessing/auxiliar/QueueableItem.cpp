@@ -11,7 +11,7 @@
  * Created on 23 de abril de 2021, 15:09
  */
 
-#include "plugins/components/DiscreteProcessing/QueueableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Simulator.h"

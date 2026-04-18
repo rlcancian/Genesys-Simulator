@@ -11,7 +11,7 @@
  * Created on 01 de Julho de 2025, 14:26
  */
 
-#include "plugins/components/DiscreteProcessing/DefaultNode.h"
+#include "plugins/components/ModalModel/DefaultNode.h"
 #include "kernel/simulator/Model.h"
 #include <algorithm>
 //#include "kernel/simulator/Simulator.h"

@@ -1,5 +1,5 @@
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
-#include "plugins/components/Logic/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
 
 /* **************
  *  PUBLIC

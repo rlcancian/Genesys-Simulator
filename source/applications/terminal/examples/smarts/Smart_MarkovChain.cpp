@@ -20,7 +20,7 @@
 
 // Model Components
 #include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/MarkovChain.h"
+#include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "../../../TraitsApp.h"
 

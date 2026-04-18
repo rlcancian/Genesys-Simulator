@@ -1,6 +1,6 @@
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
 #include <vector>
 #include <string>
 

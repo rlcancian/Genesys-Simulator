@@ -1,6 +1,6 @@
 #pragma once
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
-#include "plugins/components/Logic/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
 
 
 class LocalRule {

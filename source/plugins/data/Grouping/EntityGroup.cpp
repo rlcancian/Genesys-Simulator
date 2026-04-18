@@ -11,7 +11,7 @@
  * Created on 12 de Junho de 2019, 19:00
  */
 
-#include "plugins/data/DiscreteProcessing/EntityGroup.h"
+#include "plugins/data/Grouping/EntityGroup.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Attribute.h"
 

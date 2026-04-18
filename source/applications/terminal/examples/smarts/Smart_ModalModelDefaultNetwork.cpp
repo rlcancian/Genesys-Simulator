@@ -3,8 +3,8 @@
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/DiscreteProcessing/Create.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
-#include "plugins/components/Network/ModalModelDefault.h"
-#include "plugins/components/DiscreteProcessing/DefaultNode.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
+#include "plugins/components/ModalModel/DefaultNode.h"
 #include "../../../TraitsApp.h"
 
 Smart_ModalModelDefaultNetwork::Smart_ModalModelDefaultNetwork() {

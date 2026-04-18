@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/Lattice.h"
-#include "plugins/components/Logic/CellularAutomata/Neighborhood.h"
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
 
 class Neighborhood_Moore : public Neighborhood {
 public:

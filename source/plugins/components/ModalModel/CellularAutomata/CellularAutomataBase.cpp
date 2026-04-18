@@ -1,6 +1,6 @@
-#include "plugins/components/Logic/CellularAutomata/CellularAutomataBase.h"
-#include "plugins/components/Logic/CellularAutomata/Lattice.h"
-#include "plugins/components/Logic/CellularAutomata/LocalRule.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
 
 /* **************
  *  PUBLIC

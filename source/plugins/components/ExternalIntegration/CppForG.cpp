@@ -11,7 +11,7 @@
  */
 
 
-#include "plugins/components/Logic/CppForG.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 

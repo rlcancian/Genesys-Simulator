@@ -11,7 +11,7 @@
  * Created on 22 de Maio de 2019, 18:41
  */
 
-#include "plugins/components/DiscreteProcessing/DummyComponent.h"
+#include "plugins/components/Template/DummyComponent.h"
 #include "kernel/simulator/Model.h"
 //#include "kernel/simulator/Simulator.h"
 //#include "kernel/simulator/PluginManager.h"

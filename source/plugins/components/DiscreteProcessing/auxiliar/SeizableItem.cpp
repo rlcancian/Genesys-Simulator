@@ -11,7 +11,7 @@
  * Created on 10 de abril de 2021, 08:45
  */
 
-#include "plugins/components/DiscreteProcessing/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Simulator.h"

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/LocalRule.h"
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
-#include "plugins/components/Logic/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
 
 class LocalRule_GameOfLife: public LocalRule {
 public:

@@ -10,7 +10,7 @@
  * Created on 11 de janeiro de 2022, 22:24
  */
 
-#include "plugins/data/DiscreteProcessing/CppCompiler.h"
+#include "plugins/data/ExternalIntegration/CppCompiler.h"
 
 #include <stdio.h>
 #include <errno.h>

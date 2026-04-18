@@ -3,9 +3,9 @@
 #include <string>
 #include <vector>
 
-#include "plugins/components/Logic/CellularAutomata/Neighborhood.h"
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
-#include "plugins/components/Logic/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
 
 class Neighborhood_Center: public Neighborhood {
 public:

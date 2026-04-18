@@ -11,7 +11,7 @@
  * Created on 13 de Junho de 2019, 19:12
  */
 
-#include "plugins/components/DiscreteProcessing/OLD_ODEelement.h"
+#include "plugins/components/Continuous/OLD_ODEelement.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 

@@ -1,8 +1,8 @@
-#include "plugins/components/Logic/CellularAutomata/Lattice.h"
-#include "plugins/components/Logic/CellularAutomata/CellularAutomataBase.h"
-#include "plugins/components/Logic/CellularAutomata/State.h"
-#include "plugins/components/Logic/CellularAutomata/StateSet.h"
-#include "plugins/components/Logic/CellularAutomata/Neighborhood.h"
+#include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/StateSet.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
 
 #include <random>
 #include <cassert>

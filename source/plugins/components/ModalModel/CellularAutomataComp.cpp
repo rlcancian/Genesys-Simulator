@@ -11,18 +11,18 @@
  * Created on 03 de Junho de 2019, 15:14
  */
 
-#include "plugins/components/Logic/CellularAutomataComp.h"
+#include "plugins/components/ModalModel/CellularAutomataComp.h"
 #include "kernel/simulator/Model.h"
-#include "plugins/components/Logic/CellularAutomata/Boundary_Closed.h"
-#include "plugins/components/Logic/CellularAutomata/Boundary_Fixed.h"
-#include "plugins/components/Logic/CellularAutomata/CellularAutomata_Classic.h"
-#include "plugins/components/Logic/CellularAutomata/CellularAutomata_1DTimed.h"
-#include "plugins/components/Logic/CellularAutomata/LocalRule_Elementary.h"
-#include "plugins/components/Logic/CellularAutomata/LocalRule_GameOfLife.h"
-#include "plugins/components/Logic/CellularAutomata/LocalRule_Growty.h"
-#include "plugins/components/Logic/CellularAutomata/Neighborhood_Center.h"
-#include "plugins/components/Logic/CellularAutomata/Neighborhood_Moore.h"
-#include "plugins/components/Logic/CellularAutomata/Neighborhood_VonNeumann.h"
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_1DTimed.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_Elementary.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_Growty.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Center.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 

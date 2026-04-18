@@ -14,7 +14,7 @@
 
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/Logic/CppForG.h"
+#include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "kernel/simulator/ModelSimulation.h"
 #include "../../../TraitsApp.h"

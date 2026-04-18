@@ -1,6 +1,6 @@
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
 
 /*
 class State_Numerical: public State {

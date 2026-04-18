@@ -1,4 +1,4 @@
-#include "plugins/components/Logic/CellularAutomata/CellularAutomata.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata.h"
 
 /* **************
  *  PUBLIC

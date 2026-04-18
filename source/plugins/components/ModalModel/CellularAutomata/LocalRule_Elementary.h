@@ -1,8 +1,8 @@
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/LocalRule.h"
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
-#include "plugins/components/Logic/CellularAutomata/StateSet_Enumerable.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/StateSet_Enumerable.h"
 #include <cmath>
 
 class LocalRule_Elementary: public LocalRule {

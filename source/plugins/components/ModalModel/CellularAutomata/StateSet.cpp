@@ -1,5 +1,5 @@
-#include "plugins/components/Logic/CellularAutomata/StateSet.h"
-#include "plugins/components/Logic/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/StateSet.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
 
 /* **************
  *  PUBLIC

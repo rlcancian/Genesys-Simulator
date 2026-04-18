@@ -97,38 +97,38 @@ SOURCES += \
     ../../../../plugins/components/Grouping/Batch.cpp \
     ../../../../plugins/components/DiscreteProcessing/Buffer.cpp \
     ../../../../plugins/components/DiscreteProcessing/Clone.cpp \
-    ../../../../plugins/components/Logic/CppForG.cpp \
+    ../../../../plugins/components/ExternalIntegration/CppForG.cpp \
     ../../../../plugins/components/DiscreteProcessing/Create.cpp \
     ../../../../plugins/components/Decisions/Decide.cpp \
     ../../../../plugins/components/DiscreteProcessing/Delay.cpp \
     ../../../../plugins/components/Continuous/DiffEquations.cpp \
     ../../../../plugins/components/DiscreteProcessing/Dispose.cpp \
     ../../../../plugins/components/Decisions/DropOff.cpp \
-    ../../../../plugins/components/DiscreteProcessing/DummyComponent.cpp \
+    ../../../../plugins/components/Template/DummyComponent.cpp \
     ../../../../plugins/components/MaterialHandling/Enter.cpp \
     ../../../../plugins/components/MaterialHandling/Exit.cpp \
-    ../../../../plugins/components/Network/ModalModelDefault.cpp \
-    ../../../../plugins/components/Network/ModalModelFSM.cpp \
-    ../../../../plugins/components/Network/ModalModelPetriNet.cpp \
+    ../../../../plugins/components/ModalModel/ModalModelDefault.cpp \
+    ../../../../plugins/components/ModalModel/ModalModelFSM.cpp \
+    ../../../../plugins/components/ModalModel/ModalModelPetriNet.cpp \
     ../../../../plugins/components/Decisions/PickableStationItem.cpp \
     ../../../../plugins/components/ElectronicsSimulation/SPICECircuit.cpp \
     ../../../../plugins/components/ElectronicsSimulation/SPICENode.cpp \
     ../../../../plugins/components/Decisions/Wait.cpp \
     ../../../../plugins/components/Continuous/LSODE.cpp \
     ../../../../plugins/components/MaterialHandling/Leave.cpp \
-    ../../../../plugins/components/DiscreteProcessing/MarkovChain.cpp \
-    ../../../../plugins/components/Decision/Match.cpp \
-    ../../../../plugins/components/DiscreteProcessing/OLD_ODEelement.cpp \
+    ../../../../plugins/components/AnalyticalModeling/MarkovChain.cpp \
+    ../../../../plugins/components/Synchronization/Match.cpp \
+    ../../../../plugins/components/Continuous/OLD_ODEelement.cpp \
     ../../../../plugins/components/Decisions/PickStation.cpp \
     ../../../../plugins/components/Decisions/PickUp.cpp \
     ../../../../plugins/components/DiscreteProcessing/Process.cpp \
-    ../../../../plugins/components/DiscreteProcessing/QueueableItem.cpp \
+    ../../../../plugins/components/DiscreteProcessing/auxiliar/QueueableItem.cpp \
     ../../../../plugins/components/InputOutput/Record.cpp \
     ../../../../plugins/components/DiscreteProcessing/Release.cpp \
     ../../../../plugins/components/Decisions/Remove.cpp \
     ../../../../plugins/components/MaterialHandling/Route.cpp \
     ../../../../plugins/components/Decisions/Search.cpp \
-    ../../../../plugins/components/DiscreteProcessing/SeizableItem.cpp \
+    ../../../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.cpp \
     ../../../../plugins/components/DiscreteProcessing/Seize.cpp \
     ../../../../plugins/components/Grouping/Separate.cpp \
     ../../../../plugins/components/Decisions/Signal.cpp \
@@ -138,32 +138,32 @@ SOURCES += \
     ../../../../plugins/components/Logic/Submodel.cpp \
     ../../../../plugins/components/MaterialHandling/Unstore.cpp \
     ../../../../plugins/components/InputOutput/Write.cpp \
-    ../../../../plugins/components/DiscreteProcessing/DefaultNode.cpp \
-    ../../../../plugins/components/Network/DefaultTransitionExtensions.cpp \
-    ../../../../plugins/components/Network/FSMState.cpp \
-    ../../../../plugins/components/Network/PetriPlace.cpp \
+    ../../../../plugins/components/ModalModel/DefaultNode.cpp \
+    ../../../../plugins/components/ModalModel/DefaultTransitionExtensions.cpp \
+    ../../../../plugins/components/ModalModel/FSMState.cpp \
+    ../../../../plugins/components/ModalModel/PetriPlace.cpp \
     ../../../../plugins/data/DiscreteProcessing/AssignmentItem.cpp \
     ../../../../plugins/data/BiochemicalSimulation/BioNetwork.cpp \
     ../../../../plugins/data/BiochemicalSimulation/BioParameter.cpp \
     ../../../../plugins/data/BiochemicalSimulation/BioReaction.cpp \
     ../../../../plugins/data/BiochemicalSimulation/BioSpecies.cpp \
     ../../../../plugins/data/BiochemicalSimulation/BioSimulatorRunner.cpp \
-    ../../../../plugins/data/DiscreteProcessing/CppCompiler.cpp \
-    ../../../../plugins/data/DataDefinition/DummyElement.cpp \
-    ../../../../plugins/data/DiscreteProcessing/EntityGroup.cpp \
+    ../../../../plugins/data/ExternalIntegration/CppCompiler.cpp \
+    ../../../../plugins/data/Template/DummyElement.cpp \
+    ../../../../plugins/data/Grouping/EntityGroup.cpp \
     ../../../../plugins/data/DiscreteProcessing/Failure.cpp \
-    ../../../../plugins/data/DiscreteProcessing/File.cpp \
+    ../../../../plugins/data/InputOutput/File.cpp \
     ../../../../plugins/data/DiscreteProcessing/Formula.cpp \
     ../../../../plugins/data/DiscreteProcessing/Label.cpp \
     ../../../../plugins/data/DiscreteProcessing/Queue.cpp \
     ../../../../plugins/data/DiscreteProcessing/Resource.cpp \
     ../../../../plugins/data/ElectronicsSimulation/SPICERunner.cpp \
     ../../../../plugins/data/DiscreteProcessing/Schedule.cpp \
-    ../../../../plugins/data/DiscreteProcessing/Sequence.cpp \
+    ../../../../plugins/data/MaterialHandling/Sequence.cpp \
     ../../../../plugins/data/DiscreteProcessing/Set.cpp \
-    ../../../../plugins/data/DiscreteProcessing/SignalData.cpp \
-    ../../../../plugins/data/DiscreteProcessing/Station.cpp \
-    ../../../../plugins/data/DiscreteProcessing/Storage.cpp \
+    ../../../../plugins/data/Synchronization/SignalData.cpp \
+    ../../../../plugins/data/MaterialHandling/Station.cpp \
+    ../../../../plugins/data/MaterialHandling/Storage.cpp \
     ../../../../plugins/data/DiscreteProcessing/Variable.cpp \
     ../../../../tools/FactorialDesign/FactorialDesign.cpp \
     ../../../../tools/FitterDummyImpl.cpp \
@@ -434,73 +434,73 @@ HEADERS += \
     ../../../../plugins/components/Grouping/Batch.h \
     ../../../../plugins/components/DiscreteProcessing/Buffer.h \
     ../../../../plugins/components/DiscreteProcessing/Clone.h \
-    ../../../../plugins/components/Logic/CppForG.h \
+    ../../../../plugins/components/ExternalIntegration/CppForG.h \
     ../../../../plugins/components/DiscreteProcessing/Create.h \
     ../../../../plugins/components/Decisions/Decide.h \
     ../../../../plugins/components/DiscreteProcessing/Delay.h \
     ../../../../plugins/components/Continuous/DiffEquations.h \
     ../../../../plugins/components/DiscreteProcessing/Dispose.h \
     ../../../../plugins/components/Decisions/DropOff.h \
-    ../../../../plugins/components/DiscreteProcessing/DummyComponent.h \
+    ../../../../plugins/components/Template/DummyComponent.h \
     ../../../../plugins/components/MaterialHandling/Enter.h \
     ../../../../plugins/components/MaterialHandling/Exit.h \
-    ../../../../plugins/components/Network/ModalModelDefault.h \
-    ../../../../plugins/components/Network/ModalModelFSM.h \
-    ../../../../plugins/components/Network/ModalModelPetriNet.h \
+    ../../../../plugins/components/ModalModel/ModalModelDefault.h \
+    ../../../../plugins/components/ModalModel/ModalModelFSM.h \
+    ../../../../plugins/components/ModalModel/ModalModelPetriNet.h \
     ../../../../plugins/components/Decisions/PickableStationItem.h \
     ../../../../plugins/components/ElectronicsSimulation/SPICECircuit.h \
     ../../../../plugins/components/ElectronicsSimulation/SPICENode.h \
-    ../../../../plugins/components/Decisions/Wait.h \
+    ../../../../plugins/components/Synchronization/Wait.h \
     ../../../../plugins/components/Continuous/LSODE.h \
     ../../../../plugins/components/MaterialHandling/Leave.h \
-    ../../../../plugins/components/DiscreteProcessing/MarkovChain.h \
-    ../../../../plugins/components/Decision/Match.h \
-    ../../../../plugins/components/DiscreteProcessing/OLD_ODEelement.h \
+    ../../../../plugins/components/AnalyticalModeling/MarkovChain.h \
+    ../../../../plugins/components/Synchronization/Match.h \
+    ../../../../plugins/components/Continuous/OLD_ODEelement.h \
     ../../../../plugins/components/Decisions/PickStation.h \
     ../../../../plugins/components/Decisions/PickUp.h \
     ../../../../plugins/components/DiscreteProcessing/Process.h \
-    ../../../../plugins/components/DiscreteProcessing/QueueableItem.h \
+    ../../../../plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h \
     ../../../../plugins/components/InputOutput/Record.h \
     ../../../../plugins/components/DiscreteProcessing/Release.h \
     ../../../../plugins/components/Decisions/Remove.h \
     ../../../../plugins/components/MaterialHandling/Route.h \
     ../../../../plugins/components/Decisions/Search.h \
-    ../../../../plugins/components/DiscreteProcessing/SeizableItem.h \
+    ../../../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h \
     ../../../../plugins/components/DiscreteProcessing/Seize.h \
     ../../../../plugins/components/Grouping/Separate.h \
-    ../../../../plugins/components/Decisions/Signal.h \
+    ../../../../plugins/components/Synchronization/Signal.h \
     ../../../../plugins/components/MaterialHandling/Start.h \
     ../../../../plugins/components/MaterialHandling/Stop.h \
     ../../../../plugins/components/MaterialHandling/Store.h \
     ../../../../plugins/components/Logic/Submodel.h \
     ../../../../plugins/components/MaterialHandling/Unstore.h \
     ../../../../plugins/components/InputOutput/Write.h \
-    ../../../../plugins/components/DiscreteProcessing/DefaultNode.h \
-    ../../../../plugins/components/Network/DefaultTransitionExtensions.h \
-    ../../../../plugins/components/Network/FSMState.h \
-    ../../../../plugins/components/Network/PetriPlace.h \
+    ../../../../plugins/components/ModalModel/DefaultNode.h \
+    ../../../../plugins/components/ModalModel/DefaultTransitionExtensions.h \
+    ../../../../plugins/components/ModalModel/FSMState.h \
+    ../../../../plugins/components/ModalModel/PetriPlace.h \
     ../../../../plugins/data/DiscreteProcessing/AssignmentItem.h \
     ../../../../plugins/data/BiochemicalSimulation/BioNetwork.h \
     ../../../../plugins/data/BiochemicalSimulation/BioParameter.h \
     ../../../../plugins/data/BiochemicalSimulation/BioReaction.h \
     ../../../../plugins/data/BiochemicalSimulation/BioSpecies.h \
     ../../../../plugins/data/BiochemicalSimulation/BioSimulatorRunner.h \
-    ../../../../plugins/data/DiscreteProcessing/CppCompiler.h \
-    ../../../../plugins/data/DataDefinition/DummyElement.h \
-    ../../../../plugins/data/DiscreteProcessing/EntityGroup.h \
+    ../../../../plugins/data/ExternalIntegration/CppCompiler.h \
+    ../../../../plugins/data/Template/DummyElement.h \
+    ../../../../plugins/data/Grouping/EntityGroup.h \
     ../../../../plugins/data/DiscreteProcessing/Failure.h \
-    ../../../../plugins/data/DiscreteProcessing/File.h \
+    ../../../../plugins/data/InputOutput/File.h \
     ../../../../plugins/data/DiscreteProcessing/Formula.h \
     ../../../../plugins/data/DiscreteProcessing/Label.h \
     ../../../../plugins/data/DiscreteProcessing/Queue.h \
     ../../../../plugins/data/DiscreteProcessing/Resource.h \
     ../../../../plugins/data/ElectronicsSimulation/SPICERunner.h \
     ../../../../plugins/data/DiscreteProcessing/Schedule.h \
-    ../../../../plugins/data/DiscreteProcessing/Sequence.h \
+    ../../../../plugins/data/MaterialHandling/Sequence.h \
     ../../../../plugins/data/DiscreteProcessing/Set.h \
-    ../../../../plugins/data/DiscreteProcessing/SignalData.h \
-    ../../../../plugins/data/DiscreteProcessing/Station.h \
-    ../../../../plugins/data/DiscreteProcessing/Storage.h \
+    ../../../../plugins/data/Synchronization/SignalData.h \
+    ../../../../plugins/data/MaterialHandling/Station.h \
+    ../../../../plugins/data/MaterialHandling/Storage.h \
     ../../../../plugins/data/DiscreteProcessing/Variable.h \
     ../../../../tools/ContinuousDistribution_if.h \
     ../../../../tools/DataAnalyser_if.h \

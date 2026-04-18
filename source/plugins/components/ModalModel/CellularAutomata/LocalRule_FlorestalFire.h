@@ -2,8 +2,8 @@
 
 #include <random>
 
-#include "plugins/components/Logic/CellularAutomata/LocalRule.h"
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
 
 class LocalRule_FlorestalFire : public LocalRule {
 public:

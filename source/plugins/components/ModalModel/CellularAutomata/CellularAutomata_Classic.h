@@ -1,7 +1,7 @@
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/CellularAutomataBase.h"
-#include "plugins/components/Logic/CellularAutomata/LocalRule.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
 
 //! Complete uniform CA
 class CellularAutomata_Classic: public CellularAutomataBase {

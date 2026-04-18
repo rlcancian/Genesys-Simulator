@@ -11,7 +11,7 @@
  * Created on 24 de Outubro de 2019, 18:26
  */
 
-#include "plugins/components/DiscreteProcessing/MarkovChain.h"
+#include "plugins/components/AnalyticalModeling/MarkovChain.h"
 
 #include "kernel/simulator/Model.h"
 #include "plugins/data/DiscreteProcessing/Variable.h"

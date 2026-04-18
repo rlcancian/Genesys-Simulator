@@ -11,10 +11,10 @@
  */
 #pragma once
 
-#include "plugins/components/Logic/CellularAutomata/BoundaryCondition.h"
-#include "plugins/components/Logic/CellularAutomata/Cell.h"
-#include "plugins/components/Logic/CellularAutomata/Lattice.h"
-#include "plugins/components/Logic/CellularAutomata/State.h"
+#include "plugins/components/ModalModel/CellularAutomata/BoundaryCondition.h"
+#include "plugins/components/ModalModel/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
 
 class Boundary_Fixed : public BoundaryCondition {
 public:

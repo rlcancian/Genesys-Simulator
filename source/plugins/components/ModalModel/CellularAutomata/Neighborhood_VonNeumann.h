@@ -10,8 +10,8 @@
 #include <string>
 #include <vector>
 
-#include "plugins/components/Logic/CellularAutomata/Neighborhood.h"
-#include "plugins/components/Logic/CellularAutomata/Lattice.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
+#include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
 
 class Neighborhood_VonNeumann : public Neighborhood {
 public:

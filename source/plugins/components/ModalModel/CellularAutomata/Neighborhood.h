@@ -4,8 +4,8 @@
 
 
 class Cell;
-#include "plugins/components/Logic/CellularAutomata/BoundaryCondition.h"
-#include "plugins/components/Logic/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/BoundaryCondition.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
 
 //! Defines the complete neighborhood of a cell
 class Neighborhood {
