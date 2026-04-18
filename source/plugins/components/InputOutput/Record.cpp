@@ -16,7 +16,7 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include <fstream>
 #include <cstdio>
-#include <iostream>
+#include <iomanip>
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -63,7 +63,8 @@ std::string Record::show() {
 	return ModelComponent::show() +
 			",expressionName=\"" + this->_expressionName + "\"" +
 			",expression=\"" + _expression + "\"" +
-			"filename=\"" + _filename + "\"";
+			",filename=\"" + _filename + "\"" +
+			",timeDependent=" + std::string(_timeDependent ? "true" : "false");
 }
 
 void Record::setExpressionName(std::string expressionName) {
@@ -98,15 +99,20 @@ std::string Record::getExpression() const {
 
 void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	double value = _parentModel->parseExpression(_expression);
-	_cstatExpression->getStatistics()->getCollector()->addValue(value);
+	if (_cstatExpression != nullptr) {
+		_cstatExpression->getStatistics()->getCollector()->addValue(value);
+	}
 	if (_filename != "") {
 		// @TODO: open and close for every data is not a good idea. Should open when replication starts and close when it finishes.
 		std::ofstream file;
 		file.open(_filename, std::ofstream::out | std::ofstream::app);
-		if (_timeDependent)
-			file << _parentModel->getSimulation()->getSimulatedTime() << _separator << value << std::endl;
-		else
-			file << value << std::endl;
+		if (file.is_open()) {
+			file << std::setprecision(17);
+			if (_timeDependent)
+				file << _parentModel->getSimulation()->getSimulatedTime() << _separator << value << std::endl;
+			else
+				file << value << std::endl;
+		}
 		file.close();
 	}
 	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Recording value " + std::to_string(value));
@@ -119,6 +125,7 @@ void Record::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	fields->saveField("expression", this->_expression, "", saveDefaultValues);
 	fields->saveField("expressionName", this->_expressionName, "", saveDefaultValues);
 	fields->saveField("fileName", this->_filename, "", saveDefaultValues);
+	fields->saveField("timeDependent", static_cast<int>(this->_timeDependent), static_cast<int>(DEFAULT.timeDependent), saveDefaultValues);
 }
 
 bool Record::_loadInstance(PersistenceRecord *fields) {
@@ -127,19 +134,34 @@ bool Record::_loadInstance(PersistenceRecord *fields) {
 		this->_expression = fields->loadField("expression", "");
 		this->_expressionName = fields->loadField("expressionName", "");
 		this->_filename = fields->loadField("fileName", "");
+		if (this->_filename.empty()) {
+			this->_filename = fields->loadField("filename", "");
+		}
+		if (this->_filename.empty()) {
+			this->_filename = fields->loadField("Filename", "");
+		}
+		this->_timeDependent = fields->loadField("timeDependent", static_cast<int>(DEFAULT.timeDependent)) != 0;
 	}
 	return res;
 }
 
 void Record::_initBetweenReplications() {
+	if (_filename.empty()) {
+		return;
+	}
 		try {
 			unsigned int numRep =  _parentModel->getSimulation()->getCurrentReplicationNumber();
 			std::ofstream file;
 			file.open(_filename, std::ofstream::app);
-				if (numRep==1) { // header
+				if (file.is_open() && numRep==1) { // header
+					file << "#RecordFormat=GenesysRecordV1" << std::endl;
 					file << "#Expression=\""+_expression+"\", ExpressionName=\""+_expressionName+"\"" << std::endl;
+					file << "#TimeDependent=" << (_timeDependent ? "true" : "false") << std::endl;
+					file << "#Columns=" << (_timeDependent ? "time value" : "value") << std::endl;
 				}
-			file << "#ReplicationNumber=" <<numRep << std::endl; //"/" << _parentModel->getSimulation()->getNumberOfReplications() << std::endl;
+			if (file.is_open()) {
+				file << "#ReplicationNumber=" <<numRep << std::endl; //"/" << _parentModel->getSimulation()->getNumberOfReplications() << std::endl;
+			}
 			file.close();
 		} catch (...) {
 
@@ -148,7 +170,9 @@ void Record::_initBetweenReplications() {
 
 bool Record::_check(std::string& errorMessage) {
 	// when cheking the model (before simulating it), remove the file if exists
-	std::remove(_filename.c_str());
+	if (!_filename.empty()) {
+		std::remove(_filename.c_str());
+	}
 	return _parentModel->checkExpression(_expression, "expression", errorMessage);
 }
 
