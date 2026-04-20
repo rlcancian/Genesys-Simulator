@@ -44,6 +44,10 @@ SeizableItem::SeizableItem(ModelDataDefinition* resourceOrSet, std::string quant
         resourceType = SeizableItem::SeizableType::RESOURCE;
     } else if (dynamic_cast<Set*> (resourceOrSet) != nullptr) {
         resourceType = SeizableItem::SeizableType::SET;
+        // A SeizableItem consumes resources; therefore, a referenced Set should default to
+        // Resource members while still preserving any existing members already stored in the Set.
+        dynamic_cast<Set*> (resourceOrSet)->setAllowedElementTypes({Util::TypeOf<Resource>()});
+        dynamic_cast<Set*> (resourceOrSet)->setSetOfType(Util::TypeOf<Resource>());
     } else {
         //assert(false);//@TODO
     }
@@ -78,10 +82,10 @@ SeizableItem::SeizableItem(Model* model, std::string resourceName, std::string q
                                     std::bind(&SeizableItem::getSelectionRule, this),
                                     std::bind(&SeizableItem::setSelectionRule, this, std::placeholders::_1),
                                     Util::TypeOf<SeizableItem>(), getName(), "SelectionRule", "");
-    SimulationControlGenericEnum<SeizableItem::SeizableType, SeizableItem>* propType = new SimulationControlGenericEnum<SeizableItem::SeizableType, SeizableItem>(
-                                    std::bind(&SeizableItem::getSeizableType, this),
-                                    std::bind(&SeizableItem::setSeizableType, this, std::placeholders::_1),
-                                    Util::TypeOf<SeizableItem>(), getName(), "SeizableType", "");
+    //SimulationControlGenericEnum<SeizableItem::SeizableType, SeizableItem>* propType = new SimulationControlGenericEnum<SeizableItem::SeizableType, SeizableItem>(
+    //                                std::bind(&SeizableItem::getSeizableType, this),
+    //                                std::bind(&SeizableItem::setSeizableType, this, std::placeholders::_1),
+    //                                Util::TypeOf<SeizableItem>(), getName(), "SeizableType", "");
     SimulationControlGeneric<std::string>* propSaveAttribute = new SimulationControlGeneric<std::string>(
                                     std::bind(&SeizableItem::getSaveAttribute, this), std::bind(&SeizableItem::setSaveAttribute, this, std::placeholders::_1),
                                     Util::TypeOf<SeizableItem>(), getName(), "SaveAttribute", "");
@@ -102,27 +106,28 @@ SeizableItem::SeizableItem(Model* model, std::string resourceName, std::string q
     SimulationControlGeneric<unsigned int>* propLastPreferedOrder = new SimulationControlGeneric<unsigned int>(
                                     std::bind(&SeizableItem::getLastPreferedOrder, this), std::bind(&SeizableItem::setLastPreferedOrder, this, std::placeholders::_1),
                                     Util::TypeOf<SeizableItem>(), getName(), "LastPreferedOrder", "");
-
+/*
     model->getControls()->insert(propIndex);
     model->getControls()->insert(propRule);
-    model->getControls()->insert(propType);
+    //model->getControls()->insert(propType);
     model->getControls()->insert(propSaveAttribute);
     model->getControls()->insert(propQuantityExpression);
     model->getControls()->insert(propResource);
     model->getControls()->insert(propSet);
     model->getControls()->insert(propLastMemberSeized);
     model->getControls()->insert(propLastPreferedOrder);
-
+*/
     // Register editable controls.
     _addSimulationControl(propIndex);
     _addSimulationControl(propRule);
-    _addSimulationControl(propType);
+    //_addSimulationControl(propType);
     _addSimulationControl(propSaveAttribute);
     _addSimulationControl(propQuantityExpression);
     _addSimulationControl(propResource);
     _addSimulationControl(propSet);
     _addSimulationControl(propLastMemberSeized);
     _addSimulationControl(propLastPreferedOrder);
+
 }
 
 SeizableItem::SeizableItem(SeizableItem* original) {
@@ -151,6 +156,12 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Resource>(), _seizableName);
             } else if (_seizableType == SeizableItem::SeizableType::SET) {
                 _resourceOrSet = _modeldataManager->getDataDefinition(Util::TypeOf<Set>(), _seizableName);
+            }
+            if (Set* set = dynamic_cast<Set*>(_resourceOrSet)) {
+                // Loading a SeizableItem re-applies the contextual contract for the GUI editor:
+                // this Set reference is intended to create/select Resource members.
+                set->setAllowedElementTypes({Util::TypeOf<Resource>()});
+                set->setSetOfType(Util::TypeOf<Resource>());
             }
             //assert(_resourceOrSet != nullptr); // @TODO TraceError
         }
@@ -182,6 +193,11 @@ bool SeizableItem::loadInstance(PersistenceRecord *fields, unsigned int parentIn
                 if (_resourceOrSet == nullptr) {
                     auto model = _modeldataManager->getParentModel();
                     _resourceOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Set>(model, _seizableName);
+                }
+                if (Set* set = dynamic_cast<Set*>(_resourceOrSet)) {
+                    // Loading indexed SeizableItems uses the same Set contract as direct GUI editing.
+                    set->setAllowedElementTypes({Util::TypeOf<Resource>()});
+                    set->setSetOfType(Util::TypeOf<Resource>());
                 }
             } else {
                 _resourceOrSet = nullptr;
@@ -219,20 +235,20 @@ std::string SeizableItem::show() {
     return "resourceType=" + std::to_string(static_cast<int> (_seizableType)) + ",resource=\"" + (_resourceOrSet != nullptr ? _resourceOrSet->getName() : "") + "\",quantityExpression=\"" + _quantityExpression + "\", selectionRule=" + std::to_string(static_cast<int> (_selectionRule)) + ", _saveAttribute=\"" + _saveAttribute + "\",index=\"" + _index + "\"";
 }
 
-void SeizableItem::_addSimulationControl(PropertyBase* control) {
+void SeizableItem::_addSimulationControl(SimulationControl* control) {
     _simulationControls->insert(control);
 }
 
-void SeizableItem::_addProperty(PropertyBase* property) {
+void SeizableItem::_addProperty(SimulationControl* property) {
     // Legacy compatibility wrapper.
     _addSimulationControl(property);
 }
 
-List<PropertyBase*>* SeizableItem::getSimulationControls() const {
+List<SimulationControl*>* SeizableItem::getSimulationControls() const {
     return _simulationControls;
 }
 
-List<PropertyBase*>* SeizableItem::getProperties() const {
+List<SimulationControl*>* SeizableItem::getProperties() const {
     // Legacy compatibility wrapper.
     return getSimulationControls();
 }
@@ -291,15 +307,21 @@ void SeizableItem::setSet(Set* set) {
     _resourceOrSet = set;
     _seizableType = SeizableType::SET;
     _seizableName = set != nullptr ? set->getName() : "";
+    if (set != nullptr) {
+        // The Set remains a generic data definition, but this association narrows what the
+        // property editor should offer when the user creates new members through a SeizableItem.
+        set->setAllowedElementTypes({Util::TypeOf<Resource>()});
+        set->setSetOfType(Util::TypeOf<Resource>());
+    }
 }
 
 Set* SeizableItem::getSet() const {
     return dynamic_cast<Set*> (_resourceOrSet);
 }
 
-void SeizableItem::setSeizableType(SeizableItem::SeizableType resourceType) {
-    _seizableType = resourceType;
-}
+//void SeizableItem::setSeizableType(SeizableItem::SeizableType resourceType) {
+//    _seizableType = resourceType;
+//}
 
 SeizableItem::SeizableType SeizableItem::getSeizableType() const {
     return _seizableType;

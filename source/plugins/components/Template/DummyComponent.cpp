@@ -56,7 +56,7 @@ std::string DummyComponent::show() {
 
 PluginInformation* DummyComponent::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<DummyComponent>(), &DummyComponent::LoadInstance, &DummyComponent::NewInstance);
-	//info->setCategory("Discrete Processing");
+	//info->setCategory("DiscreteProcessing");
 	//info->setMinimumInputs(1);
 	//info->setMinimumOutputs(1);
 	//info->setMaximumInputs(1);

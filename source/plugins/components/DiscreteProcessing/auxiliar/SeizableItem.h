@@ -65,7 +65,7 @@ public:
 	Resource* getResource() const;
 	void setSet(Set* set);
 	Set* getSet() const;
-	void setSeizableType(SeizableType resourceType);
+	//void setSeizableType(SeizableType resourceType);
 	SeizableType getSeizableType() const;
 	void setLastMemberSeized(unsigned int lastMemberSeized);
 	unsigned int getLastMemberSeized() const;
@@ -74,10 +74,10 @@ public:
 	void setLastPreferedOrder(unsigned int lastPreferedOrder);
 	unsigned int getLastPreferedOrder() const;
 	//void setComponentManager(ComponentManager* _componentManager);
-	List<PropertyBase*>* getSimulationControls() const;
-	List<PropertyBase*>* getProperties() const;
-	void _addSimulationControl(PropertyBase* control);
-	void _addProperty(PropertyBase* property);
+	List<SimulationControl*>* getSimulationControls() const;
+	List<SimulationControl*>* getProperties() const;
+	void _addSimulationControl(SimulationControl* control);
+	void _addProperty(SimulationControl* property);
 
 	std::string getTypeDC() { return _typeDC; };
 
@@ -103,7 +103,7 @@ private:
 
 private:
 	ModelDataManager* _modeldataManager;
-	List<PropertyBase*>* _simulationControls = new List<PropertyBase*>();
+	List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
 };
 
 #endif /* SEIZABLEITEM_H */

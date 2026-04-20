@@ -203,6 +203,40 @@ bool PropertyEditorController::isPostCommitPipelineActive() const {
     return propertyEditorBusy || _isGlobalRefreshQueued || _isGlobalRefreshRunning || _pendingGlobalRefresh;
 }
 
+void PropertyEditorController::bindDataDefinitionFromInspector(
+    ModelDataDefinition* dataDefinition,
+    QObject* graphicalObject
+    ) const {
+    if (_propertyBrowser == nullptr) {
+        return;
+    }
+
+    if (dataDefinition == nullptr) {
+        clearPropertyEditorSelection();
+        return;
+    }
+
+    ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;
+    QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
+    QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
+
+    // The DataDefinitions tree is the authoritative editor entry point for model data objects,
+    // including GMDDs hidden by View/Show filters. Keep the selected object editable from here
+    // even when its current graphical visibility category would otherwise make the GMDD read-only.
+    editableDataDefinitions.insert(QString::fromStdString(dataDefinition->getName()));
+    refreshGraphicalDataDefinitionEditability(scene, editableDataDefinitions);
+
+    _propertyBrowser->setActiveObject(
+        graphicalObject,
+        dataDefinition,
+        graphicalDataDefinitions,
+        editableDataDefinitions,
+        _propertyGenesys,
+        _propertyList,
+        _propertyEditorUI,
+        _propertyBox);
+}
+
 // Preserve legacy single-selection behavior while moving orchestration out of MainWindow.
 void PropertyEditorController::sceneSelectionChanged() const {
     // Adds scoped tracing for property-controller selection synchronization diagnostics.

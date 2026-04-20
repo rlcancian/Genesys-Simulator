@@ -27,12 +27,15 @@ QPointF GraphicalDataDefinitionLayout::arcPosition(const QRectF& anchorBounds,
     const int safeRadialLayer = std::max(0, radialLayer);
     const qreal childWidth = childSize.width();
     const qreal childHeight = childSize.height();
-    const qreal spacing = std::max<qreal>(childWidth + 34.0, 214.0) + safeRadialLayer * 18.0;
+    //const qreal spacing = std::max<qreal>(childWidth + 34.0, 214.0) + safeRadialLayer * 18.0;
+    const qreal spacing = std::max<qreal>(childWidth + 15.0, 50.0) + safeRadialLayer * 10.0;
     const qreal normalized = normalizedSiblingPosition(index, count);
     const qreal horizontalOffset = (static_cast<qreal>(index) - (static_cast<qreal>(count - 1) / 2.0)) * spacing;
-    const qreal verticalGap = std::max<qreal>(52.0, childHeight * 0.72);
-    const qreal arcLift = std::min<qreal>(60.0, std::abs(normalized) < 0.001 ? 44.0 : 18.0);
-    const qreal radialGap = safeRadialLayer * (childHeight + 30.0);
+    //const qreal verticalGap = std::max<qreal>(52.0, childHeight * 0.72);
+    const qreal verticalGap = std::max<qreal>(30.0, childHeight * 0.5);
+    //const qreal arcLift = std::min<qreal>(60.0, std::abs(normalized) < 0.001 ? 44.0 : 18.0);
+    const qreal arcLift = std::min<qreal>(30.0, std::abs(normalized) < 0.001 ? 25.0 : 10.0);
+    const qreal radialGap = safeRadialLayer * (childHeight + 10.0);//(childHeight + 30.0)
 
     const qreal centerX = anchorBounds.center().x() + horizontalOffset;
     const qreal centerY = upperArc

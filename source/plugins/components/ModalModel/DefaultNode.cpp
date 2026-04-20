@@ -181,7 +181,7 @@ std::string DefaultNode::show() {
 
 PluginInformation* DefaultNode::GetPluginInformation() {
     PluginInformation* info = new PluginInformation(Util::TypeOf<DefaultNode>(), &DefaultNode::LoadInstance, &DefaultNode::NewInstance);
-	//info->setCategory("Discrete Processing");
+	//info->setCategory("DiscreteProcessing");
 	//info->setMinimumInputs(1);
 	//info->setMinimumOutputs(1);
 	//info->setMaximumInputs(1);

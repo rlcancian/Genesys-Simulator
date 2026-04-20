@@ -44,6 +44,14 @@ struct GenesysPropertyDescriptor {
 
     std::string currentValue;
     std::vector<std::string> choices;
+    // For polymorphic list controls, this is the currently selected concrete element type.
+    //
+    // Example: a Set physically stores ModelDataDefinition* but may currently be a Set of Resource.
+    // Empty means the list has not been typed yet.
+    std::string currentListElementType;
+    // For polymorphic list controls, these are the concrete element types that the kernel allows
+    // the GUI to select/create. Empty means the list should use its legacy single-type behavior.
+    std::vector<std::string> creatableListElementTypes;
 };
 
 class GenesysPropertyIntrospection {

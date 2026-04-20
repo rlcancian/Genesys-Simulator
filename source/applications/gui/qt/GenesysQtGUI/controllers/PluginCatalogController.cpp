@@ -168,7 +168,7 @@ QTreeWidgetItem* PluginCatalogController::ensureCategoryRoot(const QString& cate
     QBrush bbackground(Qt::black);
     if (category == "Data Definition") {
         bbackground.setColor(Qt::darkRed);
-    } else if (category == "Discrete Processing") {
+    } else if (category == "DiscreteProcessing") {
         bbackground.setColor(Qt::darkGreen);
     } else if (category == "Decisions") {
         bbackground.setColor(Qt::darkYellow);

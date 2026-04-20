@@ -2699,7 +2699,7 @@ TEST(SimulatorRuntimeTest, SetLoadInstanceReplacesStateWithoutResidualMembers) {
     EXPECT_EQ(set.getElementSet()->front(), &memberC);
 }
 
-TEST(SimulatorRuntimeTest, SetCheckFailsForMixedMemberTypes) {
+TEST(SimulatorRuntimeTest, SetRejectsMixedMemberTypesOnInsert) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
@@ -2711,10 +2711,94 @@ TEST(SimulatorRuntimeTest, SetCheckFailsForMixedMemberTypes) {
     set.addElementSet(&queue);
 
     std::string errorMessage;
-    EXPECT_FALSE(set.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("member["), std::string::npos);
-    EXPECT_NE(errorMessage.find("SetMixedQueue"), std::string::npos);
-    EXPECT_NE(errorMessage.find("Queue"), std::string::npos);
+    EXPECT_TRUE(set.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+    ASSERT_EQ(set.getElementSet()->size(), 1u);
+    EXPECT_EQ(set.getElementSet()->front(), &resource);
+    EXPECT_EQ(set.getSetOfType(), Util::TypeOf<Resource>());
+}
+
+TEST(SimulatorRuntimeTest, SetAllowedElementTypesDriveCurrentType) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SetProbe set(model, "SetTyped");
+    set.setAllowedElementTypes({Util::TypeOf<Resource>(), Util::TypeOf<Queue>()});
+
+    EXPECT_TRUE(set.canChangeSetOfType());
+    EXPECT_TRUE(set.setSetOfType(Util::TypeOf<Queue>()));
+    EXPECT_EQ(set.getSetOfType(), Util::TypeOf<Queue>());
+
+    Resource resource(model, "SetTypedResource");
+    Queue queue(model, "SetTypedQueue");
+    set.addElementSet(&resource);
+    EXPECT_EQ(set.getElementSet()->size(), 0u);
+
+    set.addElementSet(&queue);
+    ASSERT_EQ(set.getElementSet()->size(), 1u);
+    EXPECT_EQ(set.getElementSet()->front(), &queue);
+    EXPECT_FALSE(set.canChangeSetOfType());
+    EXPECT_FALSE(set.setSetOfType(Util::TypeOf<Resource>()));
+}
+
+TEST(SimulatorRuntimeTest, SetSimulationControlExposesTypedListContract) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SetProbe set(model, "SetControlTyped");
+    set.setAllowedElementTypes({Util::TypeOf<Resource>(), Util::TypeOf<Queue>()});
+
+    SimulationControl* elementSetControl = nullptr;
+    for (SimulationControl* control : *set.getProperties()->list()) {
+        if (control != nullptr && control->getName() == "ElementSet") {
+            elementSetControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(elementSetControl, nullptr);
+
+    List<std::string>* creatableTypes = elementSetControl->getCreatableListElementTypes();
+    ASSERT_NE(creatableTypes, nullptr);
+    EXPECT_EQ(creatableTypes->size(), 2u);
+    EXPECT_TRUE(creatableTypes->find(Util::TypeOf<Resource>()) != creatableTypes->list()->end());
+    EXPECT_TRUE(creatableTypes->find(Util::TypeOf<Queue>()) != creatableTypes->list()->end());
+    delete creatableTypes;
+
+    EXPECT_TRUE(elementSetControl->getCurrentListElementType().empty());
+    EXPECT_TRUE(elementSetControl->setCurrentListElementType(Util::TypeOf<Resource>()));
+    EXPECT_EQ(elementSetControl->getCurrentListElementType(), Util::TypeOf<Resource>());
+}
+
+TEST(SimulatorRuntimeTest, SeizableItemConfiguresReferencedSetForResources) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SetProbe set(model, "SeizableResourceSet");
+    SeizableItem item(&set);
+
+    EXPECT_EQ(item.getSet(), &set);
+    EXPECT_EQ(set.getSetOfType(), Util::TypeOf<Resource>());
+    const std::vector<std::string> allowedTypes = set.getAllowedElementTypes();
+    EXPECT_EQ(allowedTypes.size(), 1u);
+    EXPECT_EQ(allowedTypes.front(), Util::TypeOf<Resource>());
+}
+
+TEST(SimulatorRuntimeTest, QueueableItemConfiguresReferencedSetForQueues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SetProbe set(model, "QueueableQueueSet");
+    QueueableItem item(&set, QueueableItem::QueueableType::SET);
+
+    EXPECT_EQ(item.getSet(), &set);
+    EXPECT_EQ(set.getSetOfType(), Util::TypeOf<Queue>());
+    const std::vector<std::string> allowedTypes = set.getAllowedElementTypes();
+    EXPECT_EQ(allowedTypes.size(), 1u);
+    EXPECT_EQ(allowedTypes.front(), Util::TypeOf<Queue>());
 }
 
 TEST(SimulatorRuntimeTest, SetCheckPassesForHomogeneousMembersAndPreservesOrder) {

@@ -31,6 +31,12 @@ QueueableItem::QueueableItem(ModelDataDefinition* queueOrSet, QueueableItem::Que
 	_queueableType = queueableType;
 	_queueOrSet = queueOrSet;
 	_index = index;
+	if (Set* set = dynamic_cast<Set*>(queueOrSet)) {
+		// A QueueableItem operates on queues; this contextual contract tells the property
+		// editor that newly-created Set members should be Queue objects.
+		set->setAllowedElementTypes({Util::TypeOf<Queue>()});
+		set->setSetOfType(Util::TypeOf<Queue>());
+	}
 }
 
 QueueableItem::QueueableItem(Model* model, std::string queueName = "") {
@@ -95,6 +101,12 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 				} else {
 					_queueOrSet = model->getParentSimulator()->getPluginManager()->newInstance<Queue>(model, _queueableName);
 				}
+			}
+			if (Set* set = dynamic_cast<Set*>(_queueOrSet)) {
+				// Loading a QueueableItem re-applies the same Set member-type contract used by
+				// the editor, so empty loaded Sets still know they should create Queue members.
+				set->setAllowedElementTypes({Util::TypeOf<Queue>()});
+				set->setSetOfType(Util::TypeOf<Queue>());
 			}
 		}
 		assert(_queueOrSet != nullptr);
@@ -162,6 +174,12 @@ void QueueableItem::setSet(Set* set) {
 	this->_queueOrSet = set;
 	_queueableType = QueueableType::SET;
 	_queueableName = set != nullptr ? set->getName() : "";
+	if (set != nullptr) {
+		// The Set type remains configurable in the kernel, but this association provides the
+		// default and allowed type expected by QueueableItem-specific GUI editing.
+		set->setAllowedElementTypes({Util::TypeOf<Queue>()});
+		set->setSetOfType(Util::TypeOf<Queue>());
+	}
 }
 
 Set* QueueableItem::getSet() const {

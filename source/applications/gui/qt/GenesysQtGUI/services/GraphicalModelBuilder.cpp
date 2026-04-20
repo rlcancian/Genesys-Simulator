@@ -155,6 +155,14 @@ namespace {
             if (descriptor.supportsListEditor && descriptor.isClass) {
                 const int itemCount = static_cast<int>(descriptor.choices.size());
                 for (int index = 0; index < itemCount; ++index) {
+                    ModelDataDefinition* listElement = control->getListElementModelDataDefinition(index);
+                    if (listElement != nullptr && !isStatisticsDataDefinition(listElement)) {
+                        // The list member itself is an editable model object. This matters for
+                        // nested data-definition owners such as Set::ElementSet, where Resource
+                        // members should remain controlled by the Editable Elements visibility
+                        // category even though they are attached to another GMDD instead of a GMC.
+                        editableDefinitions->insert(listElement);
+                    }
                     collectEditableReferencedDataDefinitions(control->getProperties(index),
                                                              editableDefinitions,
                                                              recursionPath,
