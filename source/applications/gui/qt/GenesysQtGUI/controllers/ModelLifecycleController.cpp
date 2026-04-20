@@ -45,42 +45,13 @@ ModelLifecycleController::ModelLifecycleController(QWidget* ownerWidget,
 
 // Move model creation orchestration out of MainWindow while preserving prompts and console flow.
 void ModelLifecycleController::onActionModelNewTriggered() const {
-    Model* m;
-    if ((m = _simulator->getModelManager()->current()) != nullptr) {
-        QMessageBox::StandardButton reply = QMessageBox::question(_ownerWidget, "New Model", "There is a model already oppened. Do you want to close it and to create new model?", QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::No) {
-            return;
-        } else {
-            onActionModelCloseTriggered();
-        }
-    }
     _callbacks.insertCommandInConsole("new");
-    if (m != nullptr) {
-        _simulator->getModelManager()->remove(m);
-    }
-    m = _simulator->getModelManager()->newModel();
+    Model* m = _simulator->getModelManager()->newModel();
     _callbacks.initUiForNewModel(m);
 }
 
 // Move model open orchestration out of MainWindow while preserving file-dialog defaults and messages.
 void ModelLifecycleController::onActionModelOpenTriggered() const {
-    Model* m;
-    if ((m = _simulator->getModelManager()->current()) != nullptr) {
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setWindowTitle("New Model");
-        msgBox.setText("There is a model already opened. Do you want to close it and create a new model?");
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        int reply = msgBox.exec();
-
-        if (reply == QMessageBox::No) {
-            return;
-        } else {
-            onActionModelCloseTriggered();
-        }
-    }
-
     // Preserve the existing default directory behavior that points to the models folder.
     QString currentDirectory = QDir::currentPath();
     QDir parentDir(currentDirectory);

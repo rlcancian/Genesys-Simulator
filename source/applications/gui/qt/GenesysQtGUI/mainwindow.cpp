@@ -71,11 +71,13 @@
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QDateTime>
 #include <QEventLoop>
 #include <QTemporaryFile>
 #include <Qt>
 #include <QGraphicsPixmapItem>
+#include <QKeySequence>
 #include <QPropertyAnimation>
 // #include <qt5/QtWidgets/qgraphicsitem.h>
 #include <QtWidgets/qgraphicsitem.h>
@@ -92,7 +94,9 @@
 #include <QScrollArea>
 #include <QSignalBlocker>
 #include <QSizePolicy>
+#include <QSplitter>
 #include <QTabBar>
+#include <QTabWidget>
 #include <QTimer>
 #include <QVBoxLayout>
 
@@ -262,6 +266,15 @@ static bool fillPlotItem(ModelDataDefinition* data, QString* category, ReportPlo
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    _actionModelPrevious = new QAction(tr("Previous Model"), this);
+    _actionModelPrevious->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp));
+    connect(_actionModelPrevious, &QAction::triggered, this, [this]() { _activatePreviousModel(); });
+    _actionModelNext = new QAction(tr("Next Model"), this);
+    _actionModelNext->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
+    connect(_actionModelNext, &QAction::triggered, this, [this]() { _activateNextModel(); });
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
+    ui->menuModel->insertSeparator(ui->actionModelOpen);
     // Keep plugins tree as drag source only (never a drop target).
     ui->treeWidget_Plugins->setDragDropMode(QAbstractItemView::DragOnly);
     ui->treeWidget_Plugins->setAcceptDrops(false);
@@ -358,12 +371,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     treeHeader->setExpanded(true);
     //
     // ModelGraphic
-    ui->graphicsView->setParentWidget(ui->centralwidget);
-    ui->graphicsView->setSimulator(simulator);
-	ui->graphicsView->setPropertyEditor(propertyGenesys);
-    ui->graphicsView->setPropertyList(propertyList);
-    ui->graphicsView->setPropertyEditorUI(propertyEditorUI);
-    ui->graphicsView->setComboBox(propertyBox);
+    _configureModelGraphicsView(ui->graphicsView);
+    _initializeModelTabs();
     _zoomValue = ui->horizontalSlider_ZoomGraphical->maximum() / 2;
     //
     // set current tabs
@@ -404,87 +413,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // graphicsView
     _initModelGraphicsView();
-    // Initialize the Phase 3 model-inspector controller after view and simulator dependencies are ready.
-    _modelInspectorController = std::make_unique<ModelInspectorController>(simulator,
-                                                                           ui->treeWidgetComponents,
-                                                                           ui->treeWidgetDataDefnitions,
-                                                                           ui->graphicsView);
     // Initialize the Phase 4 trace controller after trace output widgets are available.
     _traceConsoleController = std::make_unique<TraceConsoleController>(ui->textEdit_Console,
                                                                         ui->textEdit_Simulation,
                                                                         ui->textEdit_Reports);
-    // Initialize the Phase 4 simulation-event controller after simulator and scene dependencies are available.
-    _simulationEventController = std::make_unique<SimulationEventController>(
-        simulator,
-        ui->graphicsView->getScene(),
-        ui->graphicsView,
-        ui->label_ReplicationNum,
-        ui->progressBarSimulation,
-        ui->tableWidget_Simulation_Event,
-        ui->tableWidget_Entities,
-        ui->tableWidget_Variables,
-        ui->textEdit_Simulation,
-        ui->textEdit_Reports,
-        ui->tabWidgetCentral,
-        ui->actionActivateGraphicalSimulation,
-        &_modelCheked,
-        CONST.TabCentralReportsIndex,
-        SimulationEventController::Callbacks{
-            [this]() { _actualizeActions(); },
-            [this](SimulationEvent* re) { _actualizeSimulationEvents(re); },
-            [this](bool force) { _actualizeDebugEntities(force); },
-            [this](bool force) { _actualizeDebugVariables(force); },
-            [this](SimulationEvent* re) { _actualizeGraphicalModel(re); }});
     // Initialize the Phase 5 plugin-catalog controller after simulator and plugin-tree dependencies are ready.
     _pluginCatalogController = std::make_unique<PluginCatalogController>(simulator,
                                                                          ui->treeWidget_Plugins,
                                                                          ui->TextCodeEditor,
                                                                          _pluginCategoryColor);
-    // Initialize Phase 2 services using narrow dependencies and compatibility callbacks.
-    _graphicalModelBuilder = std::make_unique<GraphicalModelBuilder>(simulator,
-                                                                      ui->graphicsView,
-                                                                      ui->graphicsView->getScene(),
-                                                                      _pluginCategoryColor,
-                                                                      ui->textEdit_Console);
-    // Keep MainWindow wrappers while delegating persistence and loading logic to Phase 2 service.
-    _graphicalModelSerializer = std::make_unique<GraphicalModelSerializer>(simulator,
-                                                                            this,
-                                                                            ui->TextCodeEditor,
-                                                                            ui->graphicsView,
-                                                                            ui->horizontalSlider_ZoomGraphical,
-                                                                            ui->actionShowGrid,
-                                                                            ui->actionShowRule,
-                                                                            ui->actionShowSnap,
-                                                                            ui->actionShowGuides,
-                                                                            ui->actionShowInternalElements,
-                                                                            ui->actionShowEditableElements,
-                                                                            ui->actionShowAttachedElements,
-                                                                            ui->actionShowRecursiveElements,
-                                                                            ui->textEdit_Console,
-                                                                            &_modelfilename,
-                                                                            [this]() { _clearModelEditors(); },
-                                                                            [this]() { _generateGraphicalModelFromModel(); },
-                                                                            [this]() { on_actionShowInternalElements_triggered(); },
-                                                                            [this]() { on_actionShowEditableElements_triggered(); },
-                                                                            [this]() { on_actionShowAttachedElements_triggered(); });
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);
-    // Initialize the Phase 6 property-editor controller after view/editor dependencies are available.
-    _propertyEditorController = std::make_unique<PropertyEditorController>(
-        ui->treeViewPropertyEditor,
-        ui->graphicsView,
-        propertyGenesys,
-        propertyList,
-        propertyEditorUI,
-        propertyBox,
-        [this]() { _actualizeModelSimLanguage(); },
-        [this](bool force) { _actualizeModelComponents(force); },
-        [this](bool force) { _actualizeModelDataDefinitions(force); },
-        [this]() { _actualizeModelCppCode(); },
-        [this]() { return _createModelImage(); },
-        [this]() { _actualizeTabPanes(); },
-        [this]() { _actualizeActions(); });
+    _rebuildViewDependentControllers();
     // Keep callback wiring in MainWindow while delegating behavior to the Phase 6 controller.
     ui->treeViewPropertyEditor->setModelChangedCallback([this]() {
         this->_onPropertyEditorModelChanged();
@@ -501,64 +442,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             _clearReportsResultsTable();
             _clearReportsPlots();
         });
-    // Initialize the Phase 9 edit-command controller after scene and copy-buffer dependencies are available.
-    _editCommandController = std::make_unique<EditCommandController>(
-        simulator,
-        ui->graphicsView,
-        [this]() { _actualizeActions(); },
-        &_cut,
-        &_gmc_copies,
-        &_ports_copies,
-        &_draw_copy,
-        &_group_copy);
-
-    // Initialize the Phase 10 scene-tool controller after scene/view widgets and callbacks are ready.
-    _sceneToolController = std::make_unique<SceneToolController>(
-        ui->graphicsView,
-        ui,
-        [this]() { return ui->graphicsView->getScene(); },
-        [this]() { return _createModelImage(); },
-        [this]() { unselectDrawIcons(); },
-        [this]() { return checkSelectedDrawIcons(); },
-        [this](double factor) { _gentle_zoom(factor); },
-        [this]() { _actualizeActions(); },
-        [this]() { _actualizeTabPanes(); },
-        _zoomValue,
-        _firstClickShowConnection);
-
-    // Initialize the graphical context-menu controller after edit and scene actions are wired.
-    _graphicalContextMenuController = std::make_unique<GraphicalContextMenuController>(
-        ui->graphicsView,
-        ui,
-        [this]() { return ui->graphicsView->getScene(); },
-        [this]() { _actualizeActions(); });
-    ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
-                                                 &GraphicalContextMenuController::handleGraphicsViewContextMenu);
-
-    // Initialize the Phase 11 dialog-utility controller after UI/simulator dependencies and callbacks are ready.
-    _dialogUtilityController = std::make_unique<DialogUtilityController>(
-        this,
-        simulator,
-        ui,
-        ui->graphicsView,
-        [this]() { _showMessageNotImplemented(); },
-        [this](bool force) { _actualizeDebugBreakpoints(force); },
-        [this]() { return _createModelImage(); },
-        [this]() { _actualizeActions(); },
-        [this]() { _actualizeTabPanes(); },
-        [this]() {
-            if (_pluginCatalogController != nullptr) {
-                _pluginCatalogController->reloadFromPluginManager();
-            }
-        },
-        [this]() { return myScene(); },
-        _optimizerPrecision,
-        _optimizerMaxSteps,
-        _parallelizationEnabled,
-        _parallelizationThreads,
-        _parallelizationBatchSize,
-        _lastDataAnalyzerPath);
-
     // Initialize the Phase 7 model-lifecycle controller after simulator/UI/callback dependencies are ready.
     _modelLifecycleController = std::make_unique<ModelLifecycleController>(
         this,
@@ -678,6 +561,655 @@ MainWindow::~MainWindow() {
     delete _draw_copy;
     delete _group_copy;
     delete undoView;
+}
+
+void MainWindow::_syncCurrentModelDocumentState() {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr) {
+        return;
+    }
+
+    // Multi-model editing keeps a lightweight document state beside each kernel model.
+    // The legacy booleans still exist because several extracted controllers receive pointers
+    // to them, but they now mirror only the currently selected model.
+    _modelFilenames[model] = _modelfilename;
+    if (ui != nullptr && ui->TextCodeEditor != nullptr) {
+        _modelTextContents[model] = ui->TextCodeEditor->toPlainText();
+    }
+    _modelTextHasChanged[model] = _textModelHasChanged;
+    _modelGraphicalHasChanged[model] = _graphicalModelHasChanged;
+}
+
+void MainWindow::_restoreModelDocumentState(Model* model) {
+    if (model == nullptr) {
+        _modelfilename.clear();
+        _textModelHasChanged = false;
+        _graphicalModelHasChanged = false;
+        return;
+    }
+
+    _modelfilename = _modelFilenames[model];
+    _textModelHasChanged = _modelTextHasChanged[model];
+    _graphicalModelHasChanged = _modelGraphicalHasChanged[model];
+
+    if (ui != nullptr && ui->TextCodeEditor != nullptr && _modelTextContents.find(model) != _modelTextContents.end()) {
+        const QSignalBlocker blocker(ui->TextCodeEditor);
+        ui->TextCodeEditor->setPlainText(_modelTextContents[model]);
+    }
+}
+
+QString MainWindow::_modelDisplayName(Model* model) const {
+    if (model == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return tr("Model");
+    }
+    if (model->getInfos() != nullptr && !model->getInfos()->getName().empty()) {
+        return QString::fromStdString(model->getInfos()->getName());
+    }
+    const int index = simulator->getModelManager()->indexOf(model);
+    return index >= 0 ? tr("Model %1").arg(index + 1) : tr("Model");
+}
+
+QString MainWindow::_modelSaveBaseFilename(QString filename) const {
+    filename = filename.trimmed();
+    if (filename.endsWith(".gen", Qt::CaseInsensitive) || filename.endsWith(".gui", Qt::CaseInsensitive)) {
+        filename.chop(4);
+    }
+    return filename;
+}
+
+bool MainWindow::_modelHasPendingChanges(Model* model) const {
+    if (model == nullptr) {
+        return false;
+    }
+    const auto textIt = _modelTextHasChanged.find(model);
+    const auto graphIt = _modelGraphicalHasChanged.find(model);
+    return (textIt != _modelTextHasChanged.end() && textIt->second)
+           || (graphIt != _modelGraphicalHasChanged.end() && graphIt->second)
+           || model->hasChanged();
+}
+
+bool MainWindow::_saveCurrentModel(bool promptForFilename) {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+        return false;
+    }
+
+    _syncCurrentModelDocumentState();
+    Model* model = simulator->getModelManager()->current();
+    QString baseFileName = _modelSaveBaseFilename(_modelFilenames[model]);
+
+    if (promptForFilename || baseFileName.isEmpty()) {
+        QString selectedFileName = QFileDialog::getSaveFileName(this,
+                                                                QObject::tr("Save Model"),
+                                                                baseFileName,
+                                                                QObject::tr("Genesys Model (*.gen)"),
+                                                                nullptr,
+                                                                QFileDialog::DontUseNativeDialog);
+        if (selectedFileName.isEmpty()) {
+            return false;
+        }
+        baseFileName = _modelSaveBaseFilename(selectedFileName);
+    }
+
+    _insertCommandInConsole("save " + baseFileName.toStdString());
+
+    const QString textFilename = baseFileName + ".gen";
+    QFile saveFile(textFilename);
+    if (!saveFile.open(QIODevice::WriteOnly)) {
+        QMessageBox::information(this, QObject::tr("Unable to access file to save"), saveFile.errorString());
+        return false;
+    }
+
+    const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
+    if (!_saveTextModel(&saveFile, textToSave)) {
+        saveFile.close();
+        QMessageBox::warning(this, "Save Model", "Error while saving model text.");
+        return false;
+    }
+    saveFile.close();
+
+    const QString graphicalFilename = baseFileName + ".gui";
+    if (!_saveGraphicalModel(graphicalFilename)) {
+        QMessageBox::warning(this, "Save Model", "Error while saving graphical model.");
+        return false;
+    }
+
+    _modelFilenames[model] = baseFileName;
+    _modelfilename = baseFileName;
+    _modelTextContents[model] = textToSave;
+    _modelTextHasChanged[model] = false;
+    _modelGraphicalHasChanged[model] = false;
+    _textModelHasChanged = false;
+    _graphicalModelHasChanged = false;
+    model->setHasChanged(false);
+
+    if (!_setSimulationModelBasedOnText()) {
+        QMessageBox::warning(this, "Save Model", "Model was saved, but the simulation model could not be synchronized.");
+        return false;
+    }
+
+    SystemPreferences::setLastModelFilename(graphicalFilename.toStdString());
+    SystemPreferences::save();
+    if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
+        ui->graphicsView->getScene()->getUndoStack() != nullptr) {
+        ui->graphicsView->getScene()->getUndoStack()->clear();
+    }
+    _updateModelTabs();
+    _actualizeActions();
+    return true;
+}
+
+bool MainWindow::_saveModelWithActivation(Model* model) {
+    if (model == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return false;
+    }
+    _syncCurrentModelDocumentState();
+    if (!simulator->getModelManager()->setCurrent(model)) {
+        return false;
+    }
+    _ensureModelTab(model);
+    _restoreModelDocumentState(model);
+    _actualizeTabPanes();
+    return _saveCurrentModel(false);
+}
+
+bool MainWindow::_confirmCloseModel(Model* model) {
+    if (model == nullptr) {
+        return true;
+    }
+    _syncCurrentModelDocumentState();
+    if (!_modelHasPendingChanges(model)) {
+        return true;
+    }
+
+    const QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "Close Model",
+        tr("%1 has changed. Do you want to save it?").arg(_modelDisplayName(model)),
+        QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+        QMessageBox::Yes);
+    if (reply == QMessageBox::Cancel) {
+        return false;
+    }
+    if (reply == QMessageBox::Yes) {
+        return _saveModelWithActivation(model) && !_modelHasPendingChanges(model);
+    }
+    return true;
+}
+
+void MainWindow::_clearModelGraphicsViewForClose(ModelGraphicsView* graphicsView) {
+    if (graphicsView == nullptr || graphicsView->getScene() == nullptr) {
+        return;
+    }
+    ModelGraphicsScene* scene = graphicsView->getScene();
+    scene->grid()->clear();
+    if (scene->getUndoStack() != nullptr) {
+        scene->getUndoStack()->clear();
+    }
+    scene->clearAnimationsQueue();
+    scene->getGraphicalModelComponents()->clear();
+    scene->getGraphicalConnections()->clear();
+    scene->getGraphicalModelDataDefinitions()->clear();
+    scene->getGraphicalDiagramsConnections()->clear();
+    scene->getAllComponents()->clear();
+    scene->getAllConnections()->clear();
+    scene->getAllDataDefinitions()->clear();
+    scene->getAllGraphicalDiagramsConnections()->clear();
+    scene->clearAnimations();
+    scene->clear();
+    graphicsView->clear();
+}
+
+bool MainWindow::_closeModel(Model* model) {
+    if (model == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr ||
+        !simulator->getModelManager()->hasModel(model)) {
+        return false;
+    }
+
+    if (!simulator->getModelManager()->setCurrent(model)) {
+        return false;
+    }
+    _ensureModelTab(model);
+    _restoreModelDocumentState(model);
+    if (!_confirmCloseModel(model)) {
+        _actualizeActions();
+        _updateModelTabs();
+        return false;
+    }
+
+    _disconnectSceneSignals("_closeModel(begin)");
+    _insertCommandInConsole("close");
+    ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
+
+    ModelGraphicsView* closingView = nullptr;
+    auto viewIt = _modelGraphicsViews.find(model);
+    if (viewIt != _modelGraphicsViews.end()) {
+        closingView = viewIt->second;
+    }
+    _clearModelGraphicsViewForClose(closingView);
+    _removeModelTab(model);
+    simulator->getModelManager()->remove(model);
+    ui->progressBarSimulation->setValue(0);
+    ui->actionActivateGraphicalSimulation->setChecked(false);
+
+    if (Model* current = simulator->getModelManager()->current()) {
+        _ensureModelTab(current);
+        _restoreModelDocumentState(current);
+    } else {
+        _clearModelEditors();
+        _restoreModelDocumentState(nullptr);
+    }
+
+    _updateModelTabs();
+    _connectSceneSignals();
+    _actualizeActions();
+    _actualizeTabPanes();
+    return true;
+}
+
+void MainWindow::_initializeModelTabs() {
+    if (_modelGraphicsTabs != nullptr || ui == nullptr || ui->graphicsView == nullptr) {
+        return;
+    }
+
+    QSplitter* splitter = qobject_cast<QSplitter*>(ui->graphicsView->parentWidget());
+    if (splitter == nullptr) {
+        qWarning() << "Could not create model graphics tabs because graphicsView parent is not a QSplitter";
+        return;
+    }
+
+    const int graphicsIndex = splitter->indexOf(ui->graphicsView);
+    _modelGraphicsTabs = new QTabWidget(splitter);
+    _modelGraphicsTabs->setObjectName("tabWidgetModelGraphics");
+    _modelGraphicsTabs->setTabsClosable(true);
+    _modelGraphicsTabs->setMovable(false);
+    _modelGraphicsTabs->setDocumentMode(true);
+    _modelGraphicsTabs->setMinimumSize(ui->graphicsView->minimumSize());
+    _modelGraphicsTabs->setSizePolicy(ui->graphicsView->sizePolicy());
+
+    splitter->insertWidget(graphicsIndex, _modelGraphicsTabs);
+    _modelGraphicsTabs->addTab(ui->graphicsView, tr("No model"));
+
+    connect(_modelGraphicsTabs, &QTabWidget::currentChanged, this, [this](int index) {
+        _activateModelTab(index);
+    });
+    connect(_modelGraphicsTabs, &QTabWidget::tabCloseRequested, this, [this](int index) {
+        if (_modelGraphicsTabs == nullptr || index < 0) {
+            return;
+        }
+        if (ModelGraphicsView* graphicsView = dynamic_cast<ModelGraphicsView*>(_modelGraphicsTabs->widget(index))) {
+            auto modelIt = _modelsByGraphicsView.find(graphicsView);
+            if (modelIt != _modelsByGraphicsView.end()) {
+                _closeModel(modelIt->second);
+            }
+        }
+    });
+}
+
+void MainWindow::_configureModelGraphicsView(ModelGraphicsView* graphicsView) {
+    if (graphicsView == nullptr) {
+        return;
+    }
+    graphicsView->setParentWidget(ui->centralwidget);
+    graphicsView->setSimulator(simulator);
+    graphicsView->setPropertyEditor(propertyGenesys);
+    graphicsView->setPropertyList(propertyList);
+    graphicsView->setPropertyEditorUI(propertyEditorUI);
+    graphicsView->setComboBox(propertyBox);
+    graphicsView->setFrameShape(QFrame::Box);
+    graphicsView->setFrameShadow(QFrame::Sunken);
+    graphicsView->setLineWidth(3);
+    graphicsView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    graphicsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+}
+
+ModelGraphicsView* MainWindow::_createModelGraphicsView(QWidget* parent) {
+    ModelGraphicsView* graphicsView = new ModelGraphicsView(parent);
+    graphicsView->setObjectName(QString("graphicsView_model_%1").arg(_modelGraphicsViews.size() + 1));
+    graphicsView->setMinimumSize(0, 250);
+    graphicsView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    _configureModelGraphicsView(graphicsView);
+    return graphicsView;
+}
+
+void MainWindow::_activateModelGraphicsView(ModelGraphicsView* graphicsView, bool rebuildControllers) {
+    if (graphicsView == nullptr || ui == nullptr) {
+        return;
+    }
+
+    if (ui->graphicsView != nullptr && ui->graphicsView != graphicsView) {
+        _disconnectSceneSignals("_activateModelGraphicsView");
+        ui->graphicsView->clearEventHandlers();
+    }
+
+    ui->graphicsView = graphicsView;
+    _configureModelGraphicsView(ui->graphicsView);
+    _initModelGraphicsView();
+    GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
+
+    if (rebuildControllers) {
+        _rebuildViewDependentControllers();
+    }
+}
+
+ModelGraphicsView* MainWindow::_ensureModelTab(Model* model) {
+    if (model == nullptr) {
+        return ui != nullptr ? ui->graphicsView : nullptr;
+    }
+
+    auto existing = _modelGraphicsViews.find(model);
+    if (existing != _modelGraphicsViews.end()) {
+        ModelGraphicsView* existingView = existing->second;
+        if (_modelGraphicsTabs != nullptr) {
+            const int tabIndex = _modelGraphicsTabs->indexOf(existingView);
+            if (tabIndex >= 0) {
+                QSignalBlocker blocker(_modelGraphicsTabs);
+                _changingModelTabProgrammatically = true;
+                _modelGraphicsTabs->setCurrentIndex(tabIndex);
+                _changingModelTabProgrammatically = false;
+            }
+        }
+        _activateModelGraphicsView(existingView);
+        return existingView;
+    }
+
+    ModelGraphicsView* graphicsView = nullptr;
+    if (_modelGraphicsTabs != nullptr && ui->graphicsView != nullptr &&
+        _modelsByGraphicsView.find(ui->graphicsView) == _modelsByGraphicsView.end()) {
+        graphicsView = ui->graphicsView;
+    } else {
+        graphicsView = _createModelGraphicsView(_modelGraphicsTabs);
+        if (_modelGraphicsTabs != nullptr) {
+            _modelGraphicsTabs->addTab(graphicsView, tr("Model"));
+        }
+    }
+
+    _modelGraphicsViews[model] = graphicsView;
+    _modelsByGraphicsView[graphicsView] = model;
+    if (_modelFilenames.find(model) == _modelFilenames.end()) {
+        _modelFilenames[model] = QString();
+    }
+    if (_modelTextHasChanged.find(model) == _modelTextHasChanged.end()) {
+        _modelTextHasChanged[model] = false;
+    }
+    if (_modelGraphicalHasChanged.find(model) == _modelGraphicalHasChanged.end()) {
+        _modelGraphicalHasChanged[model] = false;
+    }
+    if (_modelTextContents.find(model) == _modelTextContents.end()) {
+        _modelTextContents[model] = QString();
+    }
+
+    if (_modelGraphicsTabs != nullptr) {
+        const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
+        if (tabIndex >= 0) {
+            QSignalBlocker blocker(_modelGraphicsTabs);
+            _changingModelTabProgrammatically = true;
+            _modelGraphicsTabs->setCurrentIndex(tabIndex);
+            _changingModelTabProgrammatically = false;
+        }
+    }
+
+    _activateModelGraphicsView(graphicsView);
+    _updateModelTabs();
+    return graphicsView;
+}
+
+void MainWindow::_removeModelTab(Model* model) {
+    auto it = _modelGraphicsViews.find(model);
+    if (it == _modelGraphicsViews.end()) {
+        _modelFilenames.erase(model);
+        return;
+    }
+
+    ModelGraphicsView* graphicsView = it->second;
+    _modelGraphicsViews.erase(it);
+    _modelsByGraphicsView.erase(graphicsView);
+    _modelFilenames.erase(model);
+    _modelTextContents.erase(model);
+    _modelTextHasChanged.erase(model);
+    _modelGraphicalHasChanged.erase(model);
+
+    if (_modelGraphicsTabs != nullptr) {
+        const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
+        if (tabIndex >= 0) {
+            _modelGraphicsTabs->removeTab(tabIndex);
+        }
+    }
+
+    if (ui->graphicsView == graphicsView) {
+        ui->graphicsView = nullptr;
+    }
+    graphicsView->deleteLater();
+}
+
+void MainWindow::_updateModelTabs() {
+    if (_modelGraphicsTabs == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+
+    for (auto it = _modelGraphicsViews.begin(); it != _modelGraphicsViews.end();) {
+        Model* model = it->first;
+        if (!simulator->getModelManager()->hasModel(model)) {
+            Model* staleModel = model;
+            ++it;
+            _removeModelTab(staleModel);
+        } else {
+            ++it;
+        }
+    }
+
+    for (auto& pair : _modelGraphicsViews) {
+        Model* model = pair.first;
+        ModelGraphicsView* graphicsView = pair.second;
+        const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
+        if (tabIndex < 0) {
+            continue;
+        }
+        QString title = tr("Model %1").arg(simulator->getModelManager()->indexOf(model) + 1);
+        if (model->getInfos() != nullptr && !model->getInfos()->getName().empty()) {
+            title = QString::fromStdString(model->getInfos()->getName());
+        }
+        const bool dirty = _modelHasPendingChanges(model);
+        if (dirty) {
+            title += "*";
+        }
+        _modelGraphicsTabs->setTabText(tabIndex, title);
+        _modelGraphicsTabs->setTabToolTip(tabIndex, _modelFilenames[model]);
+    }
+
+    Model* current = simulator->getModelManager()->current();
+    if (current != nullptr) {
+        _ensureModelTab(current);
+    } else if (_modelGraphicsTabs->count() == 0) {
+        ModelGraphicsView* graphicsView = _createModelGraphicsView(_modelGraphicsTabs);
+        _modelGraphicsTabs->addTab(graphicsView, tr("No model"));
+        _activateModelGraphicsView(graphicsView);
+    } else if (ui->graphicsView == nullptr) {
+        if (ModelGraphicsView* graphicsView = dynamic_cast<ModelGraphicsView*>(_modelGraphicsTabs->widget(0))) {
+            _activateModelGraphicsView(graphicsView);
+        }
+    }
+
+    if (_actionModelPrevious != nullptr) {
+        _actionModelPrevious->setEnabled(simulator->getModelManager()->canGoPrevious());
+    }
+    if (_actionModelNext != nullptr) {
+        _actionModelNext->setEnabled(simulator->getModelManager()->canGoNext());
+    }
+}
+
+void MainWindow::_activateModelTab(int index) {
+    if (_changingModelTabProgrammatically || _modelGraphicsTabs == nullptr || index < 0 ||
+        simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+
+    ModelGraphicsView* graphicsView = dynamic_cast<ModelGraphicsView*>(_modelGraphicsTabs->widget(index));
+    if (graphicsView == nullptr) {
+        return;
+    }
+
+    _syncCurrentModelDocumentState();
+
+    auto modelIt = _modelsByGraphicsView.find(graphicsView);
+    if (modelIt != _modelsByGraphicsView.end()) {
+        Model* model = modelIt->second;
+        if (simulator->getModelManager()->setCurrent(model)) {
+            _restoreModelDocumentState(model);
+        }
+    }
+
+    _activateModelGraphicsView(graphicsView);
+    ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
+    _actualizeActions();
+    _actualizeTabPanes();
+}
+
+void MainWindow::_activatePreviousModel() {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->previous();
+    if (model != nullptr) {
+        _ensureModelTab(model);
+        _actualizeActions();
+        _actualizeTabPanes();
+    }
+}
+
+void MainWindow::_activateNextModel() {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->next();
+    if (model != nullptr) {
+        _ensureModelTab(model);
+        _actualizeActions();
+        _actualizeTabPanes();
+    }
+}
+
+void MainWindow::_rebuildViewDependentControllers() {
+    if (ui == nullptr || ui->graphicsView == nullptr || simulator == nullptr) {
+        return;
+    }
+
+    _modelInspectorController = std::make_unique<ModelInspectorController>(simulator,
+                                                                           ui->treeWidgetComponents,
+                                                                           ui->treeWidgetDataDefnitions,
+                                                                           ui->graphicsView);
+    _simulationEventController = std::make_unique<SimulationEventController>(
+        simulator,
+        ui->graphicsView->getScene(),
+        ui->graphicsView,
+        ui->label_ReplicationNum,
+        ui->progressBarSimulation,
+        ui->tableWidget_Simulation_Event,
+        ui->tableWidget_Entities,
+        ui->tableWidget_Variables,
+        ui->textEdit_Simulation,
+        ui->textEdit_Reports,
+        ui->tabWidgetCentral,
+        ui->actionActivateGraphicalSimulation,
+        &_modelCheked,
+        CONST.TabCentralReportsIndex,
+        SimulationEventController::Callbacks{
+            [this]() { _actualizeActions(); },
+            [this](SimulationEvent* re) { _actualizeSimulationEvents(re); },
+            [this](bool force) { _actualizeDebugEntities(force); },
+            [this](bool force) { _actualizeDebugVariables(force); },
+            [this](SimulationEvent* re) { _actualizeGraphicalModel(re); }});
+    _graphicalModelBuilder = std::make_unique<GraphicalModelBuilder>(simulator,
+                                                                      ui->graphicsView,
+                                                                      ui->graphicsView->getScene(),
+                                                                      _pluginCategoryColor,
+                                                                      ui->textEdit_Console);
+    _graphicalModelSerializer = std::make_unique<GraphicalModelSerializer>(simulator,
+                                                                            this,
+                                                                            ui->TextCodeEditor,
+                                                                            ui->graphicsView,
+                                                                            ui->horizontalSlider_ZoomGraphical,
+                                                                            ui->actionShowGrid,
+                                                                            ui->actionShowRule,
+                                                                            ui->actionShowSnap,
+                                                                            ui->actionShowGuides,
+                                                                            ui->actionShowInternalElements,
+                                                                            ui->actionShowEditableElements,
+                                                                            ui->actionShowAttachedElements,
+                                                                            ui->actionShowRecursiveElements,
+                                                                            ui->textEdit_Console,
+                                                                            &_modelfilename,
+                                                                            [this]() { _clearModelEditors(); },
+                                                                            [this]() { _generateGraphicalModelFromModel(); },
+                                                                            [this]() { on_actionShowInternalElements_triggered(); },
+                                                                            [this]() { on_actionShowEditableElements_triggered(); },
+                                                                            [this]() { on_actionShowAttachedElements_triggered(); });
+    _propertyEditorController = std::make_unique<PropertyEditorController>(
+        ui->treeViewPropertyEditor,
+        ui->graphicsView,
+        propertyGenesys,
+        propertyList,
+        propertyEditorUI,
+        propertyBox,
+        [this]() { _actualizeModelSimLanguage(); },
+        [this](bool force) { _actualizeModelComponents(force); },
+        [this](bool force) { _actualizeModelDataDefinitions(force); },
+        [this]() { _actualizeModelCppCode(); },
+        [this]() { return _createModelImage(); },
+        [this]() { _actualizeTabPanes(); },
+        [this]() { _actualizeActions(); });
+    _editCommandController = std::make_unique<EditCommandController>(
+        simulator,
+        ui->graphicsView,
+        [this]() { _actualizeActions(); },
+        &_cut,
+        &_gmc_copies,
+        &_ports_copies,
+        &_draw_copy,
+        &_group_copy);
+    _sceneToolController = std::make_unique<SceneToolController>(
+        ui->graphicsView,
+        ui,
+        [this]() { return ui->graphicsView->getScene(); },
+        [this]() { return _createModelImage(); },
+        [this]() { unselectDrawIcons(); },
+        [this]() { return checkSelectedDrawIcons(); },
+        [this](double factor) { _gentle_zoom(factor); },
+        [this]() { _actualizeActions(); },
+        [this]() { _actualizeTabPanes(); },
+        _zoomValue,
+        _firstClickShowConnection);
+    _graphicalContextMenuController = std::make_unique<GraphicalContextMenuController>(
+        ui->graphicsView,
+        ui,
+        [this]() { return ui->graphicsView->getScene(); },
+        [this]() { _actualizeActions(); });
+    ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
+                                                 &GraphicalContextMenuController::handleGraphicsViewContextMenu);
+    _dialogUtilityController = std::make_unique<DialogUtilityController>(
+        this,
+        simulator,
+        ui,
+        ui->graphicsView,
+        [this]() { _showMessageNotImplemented(); },
+        [this](bool force) { _actualizeDebugBreakpoints(force); },
+        [this]() { return _createModelImage(); },
+        [this]() { _actualizeActions(); },
+        [this]() { _actualizeTabPanes(); },
+        [this]() {
+            if (_pluginCatalogController != nullptr) {
+                _pluginCatalogController->reloadFromPluginManager();
+            }
+        },
+        [this]() { return myScene(); },
+        _optimizerPrecision,
+        _optimizerMaxSteps,
+        _parallelizationEnabled,
+        _parallelizationThreads,
+        _parallelizationBatchSize,
+        _lastDataAnalyzerPath);
 }
 
 void MainWindow::_disconnectSceneSignals(const char* context) {
@@ -800,6 +1332,12 @@ void MainWindow::_actualizeActions() {
     ui->actionModelClose->setEnabled(opened && !simulationInteractionLocked);
     ui->actionModelInformation->setEnabled(opened);
     ui->actionModelCheck->setEnabled(opened && !simulationInteractionLocked);
+    if (_actionModelPrevious != nullptr) {
+        _actionModelPrevious->setEnabled(opened && simulator->getModelManager()->canGoPrevious() && !simulationInteractionLocked);
+    }
+    if (_actionModelNext != nullptr) {
+        _actionModelNext->setEnabled(opened && simulator->getModelManager()->canGoNext() && !simulationInteractionLocked);
+    }
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.
     ui->toolBarEdit->setEnabled(opened && !simulationInteractionLocked);
@@ -1391,6 +1929,10 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 }
 
 void MainWindow::_initUiForNewModel(Model* m) {
+    if (m != nullptr) {
+        _ensureModelTab(m);
+        _modelfilename = _modelFilenames[m];
+    }
     _actualizeUndo();
     ui->graphicsView->getScene()->showGrid(); //@TODO: Bad place to be
     ui->textEdit_Simulation->clear();
@@ -1426,8 +1968,10 @@ void MainWindow::_initUiForNewModel(Model* m) {
     } else {	// beind loaded
         _setOnEventHandlers();
     }
+    _updateModelTabs();
     _actualizeActions();
     _actualizeTabPanes();
+    _syncCurrentModelDocumentState();
 }
 
 void MainWindow::_actualizeUndo() {
