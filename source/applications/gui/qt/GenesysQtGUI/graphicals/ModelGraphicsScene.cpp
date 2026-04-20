@@ -3032,6 +3032,24 @@ bool ModelGraphicsScene::showRecursiveDataDefinitions() const {
     return _showRecursiveDataDefinitions;
 }
 
+void ModelGraphicsScene::setModelLevelFilter(unsigned int modelLevel) {
+    _hasModelLevelFilter = true;
+    _modelLevelFilter = modelLevel;
+}
+
+void ModelGraphicsScene::clearModelLevelFilter() {
+    _hasModelLevelFilter = false;
+    _modelLevelFilter = 0;
+}
+
+bool ModelGraphicsScene::hasModelLevelFilter() const {
+    return _hasModelLevelFilter;
+}
+
+unsigned int ModelGraphicsScene::modelLevelFilter() const {
+    return _modelLevelFilter;
+}
+
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {
     return _graphicalGroups;
 }

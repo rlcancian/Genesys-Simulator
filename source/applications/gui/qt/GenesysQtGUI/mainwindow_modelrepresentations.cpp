@@ -172,6 +172,7 @@ Model *MainWindow::_loadGraphicalModel(std::string filename) {
     if (model != nullptr) {
         _modelGraphicsViews[model] = ui->graphicsView;
         _modelsByGraphicsView[ui->graphicsView] = model;
+        _ensureRootModelViewContext(model, ui->graphicsView);
         _modelFilenames[model] = _modelSaveBaseFilename(QString::fromStdString(filename));
         _updateModelTabs();
         return model;

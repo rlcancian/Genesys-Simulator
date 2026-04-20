@@ -8,6 +8,9 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 #endif
 
 ModalModelFSM::ModalModelFSM(Model* model, std::string name) : ModalModelDefault(model, name) {
+	_fsmInitialState = new FSMState(model);
+	_fsmInitialState->setModelLevel(_id);
+
 }
 
 PluginInformation* ModalModelFSM::GetPluginInformation() {
@@ -35,4 +38,12 @@ bool ModalModelFSM::_check(std::string& errorMessage) {
 		errorMessage += "ModalModelFSM requires at least one state node.";
 	}
 	return resultAll;
+}
+
+void ModalModelFSM::_initBetweenReplications() {
+
+}
+
+void ModalModelFSM::_createInternalAndAttachedData() {
+
 }

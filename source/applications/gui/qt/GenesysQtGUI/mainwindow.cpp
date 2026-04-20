@@ -18,10 +18,14 @@
 #include "kernel/simulator/Counter.h"
 #include "kernel/simulator/StatisticsCollector.h"
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ComponentManager.h"
+#include "kernel/simulator/ModelDataManager.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 #include "controllers/SimulationController.h"
 // Keep explicit controller includes to make MainWindow composition-root wiring clear.
 #include "controllers/ModelInspectorController.h"
@@ -272,8 +276,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _actionModelNext = new QAction(tr("Next Model"), this);
     _actionModelNext->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
     connect(_actionModelNext, &QAction::triggered, this, [this]() { _activateNextModel(); });
+    _actionOpenSelectedSubmodel = new QAction(tr("Open Submodel"), this);
+    _actionOpenSelectedSubmodel->setToolTip(tr("Open a graphical tab scoped to the selected item's internal model level."));
+    connect(_actionOpenSelectedSubmodel, &QAction::triggered, this, [this]() { _openSelectedSubmodel(); });
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionOpenSelectedSubmodel);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
     // Keep plugins tree as drag source only (never a drop target).
     ui->treeWidget_Plugins->setDragDropMode(QAbstractItemView::DragOnly);
@@ -563,6 +571,248 @@ MainWindow::~MainWindow() {
     delete undoView;
 }
 
+MainWindow::GraphicalModelViewContext* MainWindow::_activeViewContext() const {
+    return (ui != nullptr) ? _contextForView(ui->graphicsView) : nullptr;
+}
+
+MainWindow::GraphicalModelViewContext* MainWindow::_contextForView(ModelGraphicsView* graphicsView) const {
+    auto it = _viewContextsByGraphicsView.find(graphicsView);
+    return it != _viewContextsByGraphicsView.end() ? it->second.get() : nullptr;
+}
+
+MainWindow::GraphicalModelViewContext* MainWindow::_rootContextForModel(Model* model) const {
+    auto it = _rootViewContextsByModel.find(model);
+    return it != _rootViewContextsByModel.end() ? it->second : nullptr;
+}
+
+MainWindow::GraphicalModelViewContext* MainWindow::_ensureRootModelViewContext(Model* model,
+                                                                                ModelGraphicsView* graphicsView) {
+    if (model == nullptr || graphicsView == nullptr) {
+        return nullptr;
+    }
+
+    auto existing = _viewContextsByGraphicsView.find(graphicsView);
+    if (existing == _viewContextsByGraphicsView.end()) {
+        auto context = std::make_unique<GraphicalModelViewContext>();
+        context->graphicsView = graphicsView;
+        context->kind = GraphicalModelViewContextKind::RootModel;
+        existing = _viewContextsByGraphicsView.emplace(graphicsView, std::move(context)).first;
+    }
+
+    GraphicalModelViewContext* context = existing->second.get();
+    context->kind = GraphicalModelViewContextKind::RootModel;
+    context->rootModel = model;
+    context->modelLevel = model->getLevel();
+    context->ownerComponent = nullptr;
+    context->ownerDataDefinition = nullptr;
+    context->graphicsView = graphicsView;
+    if (graphicsView->getScene() != nullptr) {
+        graphicsView->getScene()->setModelLevelFilter(context->modelLevel);
+    }
+    _rootViewContextsByModel[model] = context;
+    return context;
+}
+
+ModelGraphicsView* MainWindow::_ensureSubmodelViewContext(ModelDataDefinition* owner) {
+    if (owner == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr || _modelGraphicsTabs == nullptr) {
+        return nullptr;
+    }
+
+    Model* rootModel = simulator->getModelManager()->current();
+    if (rootModel == nullptr || !_canOpenSubmodelFor(owner)) {
+        return nullptr;
+    }
+
+    for (const auto& contextEntry : _viewContextsByGraphicsView) {
+        GraphicalModelViewContext* context = contextEntry.second.get();
+        if (context != nullptr
+            && context->kind == GraphicalModelViewContextKind::Submodel
+            && context->rootModel == rootModel
+            && context->ownerDataDefinition == owner) {
+            ModelGraphicsView* existingView = context->graphicsView;
+            if (existingView != nullptr) {
+                const int tabIndex = _modelGraphicsTabs->indexOf(existingView);
+                if (tabIndex >= 0) {
+                    QSignalBlocker blocker(_modelGraphicsTabs);
+                    _changingModelTabProgrammatically = true;
+                    _modelGraphicsTabs->setCurrentIndex(tabIndex);
+                    _changingModelTabProgrammatically = false;
+                }
+                _activateModelGraphicsView(existingView);
+                return existingView;
+            }
+        }
+    }
+
+    ModelGraphicsView* graphicsView = _createModelGraphicsView(_modelGraphicsTabs);
+    auto context = std::make_unique<GraphicalModelViewContext>();
+    context->kind = GraphicalModelViewContextKind::Submodel;
+    context->rootModel = rootModel;
+    context->modelLevel = static_cast<unsigned int>(owner->getId());
+    context->ownerDataDefinition = owner;
+    context->ownerComponent = dynamic_cast<ModelComponent*>(owner);
+    context->graphicsView = graphicsView;
+    if (graphicsView->getScene() != nullptr) {
+        graphicsView->getScene()->setModelLevelFilter(context->modelLevel);
+    }
+    GraphicalModelViewContext* rawContext = context.get();
+    _viewContextsByGraphicsView.emplace(graphicsView, std::move(context));
+    _modelsByGraphicsView[graphicsView] = rootModel;
+
+    const int tabIndex = _modelGraphicsTabs->addTab(graphicsView, _viewContextTitle(*rawContext));
+    if (tabIndex >= 0) {
+        QSignalBlocker blocker(_modelGraphicsTabs);
+        _changingModelTabProgrammatically = true;
+        _modelGraphicsTabs->setCurrentIndex(tabIndex);
+        _changingModelTabProgrammatically = false;
+    }
+
+    _activateModelGraphicsView(graphicsView);
+    _generateGraphicalModelFromModel();
+    _updateModelTabs();
+    _actualizeActions();
+    _actualizeTabPanes();
+    return graphicsView;
+}
+
+void MainWindow::_closeSubmodelViewContext(ModelGraphicsView* graphicsView) {
+    if (graphicsView == nullptr || _modelGraphicsTabs == nullptr) {
+        return;
+    }
+
+    GraphicalModelViewContext* context = _contextForView(graphicsView);
+    if (context == nullptr || context->kind != GraphicalModelViewContextKind::Submodel) {
+        return;
+    }
+
+    const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
+    if (tabIndex >= 0) {
+        _modelGraphicsTabs->removeTab(tabIndex);
+    }
+    _modelsByGraphicsView.erase(graphicsView);
+    _removeViewContext(graphicsView);
+    graphicsView->deleteLater();
+    _updateModelTabs();
+}
+
+void MainWindow::_removeSubmodelViewContextsForModel(Model* model) {
+    if (model == nullptr) {
+        return;
+    }
+
+    QList<ModelGraphicsView*> submodelViews;
+    for (const auto& contextEntry : _viewContextsByGraphicsView) {
+        GraphicalModelViewContext* context = contextEntry.second.get();
+        if (context != nullptr
+            && context->kind == GraphicalModelViewContextKind::Submodel
+            && context->rootModel == model
+            && context->graphicsView != nullptr) {
+            submodelViews.append(context->graphicsView);
+        }
+    }
+    for (ModelGraphicsView* graphicsView : submodelViews) {
+        _closeSubmodelViewContext(graphicsView);
+    }
+}
+
+void MainWindow::_removeViewContext(ModelGraphicsView* graphicsView) {
+    auto it = _viewContextsByGraphicsView.find(graphicsView);
+    if (it == _viewContextsByGraphicsView.end()) {
+        return;
+    }
+    GraphicalModelViewContext* context = it->second.get();
+    if (context != nullptr && context->kind == GraphicalModelViewContextKind::RootModel && context->rootModel != nullptr) {
+        _rootViewContextsByModel.erase(context->rootModel);
+    }
+    _viewContextsByGraphicsView.erase(it);
+}
+
+QString MainWindow::_viewContextTitle(const GraphicalModelViewContext& context) const {
+    switch (context.kind) {
+    case GraphicalModelViewContextKind::RootModel:
+        return _modelDisplayName(context.rootModel);
+    case GraphicalModelViewContextKind::Submodel:
+        if (!context.explicitTitle.isEmpty()) {
+            return context.explicitTitle;
+        }
+        if (context.ownerComponent != nullptr) {
+            return tr("%1 > %2").arg(_modelDisplayName(context.rootModel),
+                                     QString::fromStdString(context.ownerComponent->getName()));
+        }
+        if (context.ownerDataDefinition != nullptr) {
+            return tr("%1 > %2").arg(_modelDisplayName(context.rootModel),
+                                     QString::fromStdString(context.ownerDataDefinition->getName()));
+        }
+        return tr("%1 > Level %2").arg(_modelDisplayName(context.rootModel)).arg(context.modelLevel);
+    }
+    return _modelDisplayName(context.rootModel);
+}
+
+bool MainWindow::_viewContextBelongsToOpenModel(const GraphicalModelViewContext& context) const {
+    return simulator != nullptr
+           && simulator->getModelManager() != nullptr
+           && simulator->getModelManager()->hasModel(context.rootModel);
+}
+
+ModelDataDefinition* MainWindow::_selectedSubmodelOwner() const {
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr) {
+        return nullptr;
+    }
+
+    const QList<QGraphicsItem*> selectedItems = ui->graphicsView->getScene()->selectedItems();
+    if (selectedItems.size() != 1) {
+        return nullptr;
+    }
+
+    QGraphicsItem* item = selectedItems.first();
+    if (auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(item)) {
+        return graphicalComponent->getComponent();
+    }
+    if (auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
+        return graphicalDataDefinition->getDataDefinition();
+    }
+    return nullptr;
+}
+
+bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
+    if (owner == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return false;
+    }
+
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr) {
+        return false;
+    }
+
+    const unsigned int submodelLevel = static_cast<unsigned int>(owner->getId());
+    if (model->getComponentManager() != nullptr) {
+        for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
+            if (component != nullptr && component->getLevel() == submodelLevel) {
+                return true;
+            }
+        }
+    }
+
+    if (model->getDataManager() != nullptr) {
+        for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+            List<ModelDataDefinition*>* definitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+            if (definitions == nullptr) {
+                continue;
+            }
+            for (ModelDataDefinition* dataDefinition : *definitions->list()) {
+                if (dataDefinition != nullptr && dataDefinition->getLevel() == submodelLevel) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+void MainWindow::_openSelectedSubmodel() {
+    _ensureSubmodelViewContext(_selectedSubmodelOwner());
+}
+
 void MainWindow::_syncCurrentModelDocumentState() {
     if (simulator == nullptr || simulator->getModelManager() == nullptr) {
         return;
@@ -840,9 +1090,11 @@ void MainWindow::_initializeModelTabs() {
             return;
         }
         if (ModelGraphicsView* graphicsView = dynamic_cast<ModelGraphicsView*>(_modelGraphicsTabs->widget(index))) {
-            auto modelIt = _modelsByGraphicsView.find(graphicsView);
-            if (modelIt != _modelsByGraphicsView.end()) {
-                _closeModel(modelIt->second);
+            GraphicalModelViewContext* context = _contextForView(graphicsView);
+            if (context != nullptr && context->kind == GraphicalModelViewContextKind::RootModel) {
+                _closeModel(context->rootModel);
+            } else {
+                _closeSubmodelViewContext(graphicsView);
             }
         }
     });
@@ -902,6 +1154,7 @@ ModelGraphicsView* MainWindow::_ensureModelTab(Model* model) {
     auto existing = _modelGraphicsViews.find(model);
     if (existing != _modelGraphicsViews.end()) {
         ModelGraphicsView* existingView = existing->second;
+        _ensureRootModelViewContext(model, existingView);
         if (_modelGraphicsTabs != nullptr) {
             const int tabIndex = _modelGraphicsTabs->indexOf(existingView);
             if (tabIndex >= 0) {
@@ -928,6 +1181,7 @@ ModelGraphicsView* MainWindow::_ensureModelTab(Model* model) {
 
     _modelGraphicsViews[model] = graphicsView;
     _modelsByGraphicsView[graphicsView] = model;
+    _ensureRootModelViewContext(model, graphicsView);
     if (_modelFilenames.find(model) == _modelFilenames.end()) {
         _modelFilenames[model] = QString();
     }
@@ -957,6 +1211,8 @@ ModelGraphicsView* MainWindow::_ensureModelTab(Model* model) {
 }
 
 void MainWindow::_removeModelTab(Model* model) {
+    _removeSubmodelViewContextsForModel(model);
+
     auto it = _modelGraphicsViews.find(model);
     if (it == _modelGraphicsViews.end()) {
         _modelFilenames.erase(model);
@@ -966,6 +1222,7 @@ void MainWindow::_removeModelTab(Model* model) {
     ModelGraphicsView* graphicsView = it->second;
     _modelGraphicsViews.erase(it);
     _modelsByGraphicsView.erase(graphicsView);
+    _removeViewContext(graphicsView);
     _modelFilenames.erase(model);
     _modelTextContents.erase(model);
     _modelTextHasChanged.erase(model);
@@ -1007,10 +1264,10 @@ void MainWindow::_updateModelTabs() {
         if (tabIndex < 0) {
             continue;
         }
-        QString title = tr("Model %1").arg(simulator->getModelManager()->indexOf(model) + 1);
-        if (model->getInfos() != nullptr && !model->getInfos()->getName().empty()) {
-            title = QString::fromStdString(model->getInfos()->getName());
-        }
+        GraphicalModelViewContext* context = _rootContextForModel(model);
+        QString title = context != nullptr
+                            ? _viewContextTitle(*context)
+                            : _modelDisplayName(model);
         const bool dirty = _modelHasPendingChanges(model);
         if (dirty) {
             title += "*";
@@ -1019,9 +1276,33 @@ void MainWindow::_updateModelTabs() {
         _modelGraphicsTabs->setTabToolTip(tabIndex, _modelFilenames[model]);
     }
 
+    for (const auto& contextEntry : _viewContextsByGraphicsView) {
+        GraphicalModelViewContext* context = contextEntry.second.get();
+        if (context == nullptr
+            || context->kind != GraphicalModelViewContextKind::Submodel
+            || context->graphicsView == nullptr) {
+            continue;
+        }
+        const int tabIndex = _modelGraphicsTabs->indexOf(context->graphicsView);
+        if (tabIndex < 0) {
+            continue;
+        }
+        QString title = _viewContextTitle(*context);
+        if (_modelHasPendingChanges(context->rootModel)) {
+            title += "*";
+        }
+        _modelGraphicsTabs->setTabText(tabIndex, title);
+        _modelGraphicsTabs->setTabToolTip(tabIndex, tr("Submodel level %1").arg(context->modelLevel));
+    }
+
     Model* current = simulator->getModelManager()->current();
     if (current != nullptr) {
-        _ensureModelTab(current);
+        // Updating tab labels must not force the root model tab back to the foreground.
+        // Submodel tabs share the same current kernel model and must remain active while
+        // their view-specific controllers are scoped to the selected model level.
+        if (_modelGraphicsViews.find(current) == _modelGraphicsViews.end()) {
+            _ensureModelTab(current);
+        }
     } else if (_modelGraphicsTabs->count() == 0) {
         ModelGraphicsView* graphicsView = _createModelGraphicsView(_modelGraphicsTabs);
         _modelGraphicsTabs->addTab(graphicsView, tr("No model"));
@@ -1053,11 +1334,10 @@ void MainWindow::_activateModelTab(int index) {
 
     _syncCurrentModelDocumentState();
 
-    auto modelIt = _modelsByGraphicsView.find(graphicsView);
-    if (modelIt != _modelsByGraphicsView.end()) {
-        Model* model = modelIt->second;
-        if (simulator->getModelManager()->setCurrent(model)) {
-            _restoreModelDocumentState(model);
+    GraphicalModelViewContext* context = _contextForView(graphicsView);
+    if (context != nullptr && context->rootModel != nullptr) {
+        if (simulator->getModelManager()->setCurrent(context->rootModel)) {
+            _restoreModelDocumentState(context->rootModel);
         }
     }
 
@@ -1126,6 +1406,12 @@ void MainWindow::_rebuildViewDependentControllers() {
                                                                       ui->graphicsView->getScene(),
                                                                       _pluginCategoryColor,
                                                                       ui->textEdit_Console);
+    if (GraphicalModelViewContext* context = _activeViewContext()) {
+        // Keep rebuild services scoped to the same root/submodel level represented by the tab.
+        _graphicalModelBuilder->setModelLevelFilter(context->modelLevel);
+    } else {
+        _graphicalModelBuilder->clearModelLevelFilter();
+    }
     _graphicalModelSerializer = std::make_unique<GraphicalModelSerializer>(simulator,
                                                                             this,
                                                                             ui->TextCodeEditor,
@@ -1184,6 +1470,7 @@ void MainWindow::_rebuildViewDependentControllers() {
     _graphicalContextMenuController = std::make_unique<GraphicalContextMenuController>(
         ui->graphicsView,
         ui,
+        _actionOpenSelectedSubmodel,
         [this]() { return ui->graphicsView->getScene(); },
         [this]() { _actualizeActions(); });
     ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
@@ -1337,6 +1624,11 @@ void MainWindow::_actualizeActions() {
     }
     if (_actionModelNext != nullptr) {
         _actionModelNext->setEnabled(opened && simulator->getModelManager()->canGoNext() && !simulationInteractionLocked);
+    }
+    if (_actionOpenSelectedSubmodel != nullptr) {
+        _actionOpenSelectedSubmodel->setEnabled(opened
+                                                && !simulationInteractionLocked
+                                                && _canOpenSubmodelFor(_selectedSubmodelOwner()));
     }
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.

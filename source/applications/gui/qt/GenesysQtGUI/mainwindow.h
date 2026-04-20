@@ -45,6 +45,8 @@ class DialogUtilityController;
 class QAction;
 class QTabWidget;
 class ModelGraphicsView;
+class ModelComponent;
+class ModelDataDefinition;
 
 // Document MainWindow as composition root and incremental compatibility façade.
 /**
@@ -412,6 +414,56 @@ private: // view
     void saveItemForCopy(QList<GraphicalModelComponent*> * gmcList, QList<GraphicalConnection*> * connList);
 	//bool _checkStartSimulation();
 private: // opened-model document state
+    /** @brief Type of graphical context represented by one model graphics tab. */
+    enum class GraphicalModelViewContextKind {
+        RootModel,
+        Submodel
+    };
+
+    /**
+     * @brief Describes what a graphics tab is visualizing.
+     *
+     * A tab is no longer treated as "just a ModelGraphicsView".  RootModel contexts keep the
+     * behavior implemented for multiple opened models.  Submodel contexts are intentionally
+     * represented now, before they are rendered, so future work can open level/owner-specific
+     * scenes without confusing them with independent ModelManager documents.
+     */
+    struct GraphicalModelViewContext {
+        GraphicalModelViewContextKind kind = GraphicalModelViewContextKind::RootModel;
+        Model* rootModel = nullptr;
+        unsigned int modelLevel = 0;
+        ModelComponent* ownerComponent = nullptr;
+        ModelDataDefinition* ownerDataDefinition = nullptr;
+        ModelGraphicsView* graphicsView = nullptr;
+        QString explicitTitle;
+    };
+
+    /** @brief Returns the currently selected graphical context, or nullptr when no model tab is active. */
+    GraphicalModelViewContext* _activeViewContext() const;
+    /** @brief Returns the context associated with a graphics view. */
+    GraphicalModelViewContext* _contextForView(ModelGraphicsView* graphicsView) const;
+    /** @brief Returns the root-model context for a kernel model. */
+    GraphicalModelViewContext* _rootContextForModel(Model* model) const;
+    /** @brief Creates or updates the root context backing a model tab. */
+    GraphicalModelViewContext* _ensureRootModelViewContext(Model* model, ModelGraphicsView* graphicsView);
+    /** @brief Opens or activates a submodel tab for the selected owner data definition/component. */
+    ModelGraphicsView* _ensureSubmodelViewContext(ModelDataDefinition* owner);
+    /** @brief Removes one submodel tab without closing its root kernel model. */
+    void _closeSubmodelViewContext(ModelGraphicsView* graphicsView);
+    /** @brief Removes every submodel tab associated with a root model being closed. */
+    void _removeSubmodelViewContextsForModel(Model* model);
+    /** @brief Removes all graphical context bookkeeping associated with one graphics view. */
+    void _removeViewContext(ModelGraphicsView* graphicsView);
+    /** @brief Formats a tab title for either root or future submodel contexts. */
+    QString _viewContextTitle(const GraphicalModelViewContext& context) const;
+    /** @brief Checks if a graphical context still belongs to an open kernel model. */
+    bool _viewContextBelongsToOpenModel(const GraphicalModelViewContext& context) const;
+    /** @brief Returns the selected graphical component/data definition that can own a submodel. */
+    ModelDataDefinition* _selectedSubmodelOwner() const;
+    /** @brief Returns whether a data definition owns renderable items in a lower model level. */
+    bool _canOpenSubmodelFor(ModelDataDefinition* owner) const;
+    /** @brief Slot target for the context-menu/model-menu submodel-opening command. */
+    void _openSelectedSubmodel();
     /** @brief Stores the active editor/dirty state before switching away from the current model. */
     void _syncCurrentModelDocumentState();
     /** @brief Restores filename, editor text and dirty flags for the given model after activation. */
@@ -451,6 +503,10 @@ private: // interface and model main elements to join
     std::map<Model*, ModelGraphicsView*> _modelGraphicsViews;
     // Reverse lookup used by tab activation without relying on QVariant pointer casts.
     std::map<ModelGraphicsView*, Model*> _modelsByGraphicsView;
+    // Owns graphical contexts by view; currently every context is root-model, future ones may be submodels.
+    std::map<ModelGraphicsView*, std::unique_ptr<GraphicalModelViewContext>> _viewContextsByGraphicsView;
+    // Fast lookup for the root graphical context of each opened kernel model.
+    std::map<Model*, GraphicalModelViewContext*> _rootViewContextsByModel;
     // Keeps each opened model's last graphical/text filename independent while switching tabs.
     std::map<Model*, QString> _modelFilenames;
     // Caches the editable Simulang text per opened model so tab switches do not discard unsaved text.
@@ -464,6 +520,8 @@ private: // interface and model main elements to join
     // Runtime menu actions for navigating the opened-model list.
     QAction* _actionModelPrevious = nullptr;
     QAction* _actionModelNext = nullptr;
+    // Runtime action that opens a level-scoped graphical tab from the selected owner item.
+    QAction* _actionOpenSelectedSubmodel = nullptr;
     // Keep core simulation command gateway owned by MainWindow composition root.
     std::unique_ptr<class SimulationController> _simulationController;
     // Keep phase-ordered services to make composition dependencies explicit in Phase 12.

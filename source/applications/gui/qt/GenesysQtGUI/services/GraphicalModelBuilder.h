@@ -44,6 +44,16 @@ public:
                           QTextEdit* console);
 
     /**
+     * @brief Restricts this builder and the target scene to one ModelDataDefinition level.
+     *
+     * Root model tabs use level 0 today. Submodel tabs will use the owner component/data
+     * definition level, so rebuilds can be reused without mixing visual scopes.
+     */
+    void setModelLevelFilter(unsigned int modelLevel);
+    /** @brief Clears the level restriction and restores full-model rebuild semantics. */
+    void clearModelLevelFilter();
+
+    /**
      * @brief Recursively rebuilds graphical items and links from one model-component branch.
      */
     void recursivalyGenerateGraphicalModelFromModel(ModelComponent* component,
@@ -61,6 +71,7 @@ public:
 
 private:
     void rebuildGraphicalDataDefinitionsLayer(std::map<ModelComponent*, GraphicalModelComponent*>* componentMap);
+    bool componentBelongsToActiveModelLevel(ModelComponent* component) const;
 
     Simulator* _simulator;
     ModelGraphicsView* _graphicsView;

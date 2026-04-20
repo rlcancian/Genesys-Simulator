@@ -155,6 +155,7 @@ void MainWindow::sceneSelectionChanged() {
         qInfo() << "[MainWindow] sceneSelectionChanged observed active post-commit pipeline; selection sync will be deferred";
     }
     _propertyEditorController->sceneSelectionChanged();
+    _actualizeActions();
     qInfo() << "[MainWindow] sceneSelectionChanged exit";
 }
 
