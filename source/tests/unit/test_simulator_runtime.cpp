@@ -704,6 +704,10 @@ public:
         return _loadInstance(fields);
     }
 
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
     }
@@ -4953,6 +4957,82 @@ TEST(SimulatorRuntimeTest, AssignmentPropertiesContainerLifecycleWithModelConstr
     SUCCEED();
 }
 
+TEST(SimulatorRuntimeTest, AssignListEditorCreationExposesAssignmentChildProperties) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignListEditorCreation");
+
+    SimulationControl* assignmentsControl = nullptr;
+    for (SimulationControl* control : *assign.getSimulationControls()->list()) {
+        if (control->getName() == "Assignments") {
+            assignmentsControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(assignmentsControl, nullptr);
+    ASSERT_TRUE(assignmentsControl->supportsNewListElementCreation());
+    ASSERT_TRUE(assignmentsControl->createNewListElement());
+    ASSERT_EQ(assign.getAssignments()->size(), 1u);
+
+    List<SimulationControl*>* childControls = assignmentsControl->getEditableChildSimulationControls(0);
+    ASSERT_NE(childControls, nullptr);
+    EXPECT_EQ(childControls->size(), 3u);
+
+    std::vector<std::string> childNames;
+    for (SimulationControl* child : *childControls->list()) {
+        childNames.push_back(child->getName());
+    }
+
+    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "Destination"), childNames.end());
+    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "Expression"), childNames.end());
+    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "AttributeNotVariable"), childNames.end());
+}
+
+TEST(SimulatorRuntimeTest, AssignAddAssignmentMaterializesChildPropertiesForSimpleAssignment) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignMaterializesSimpleAssignment");
+    assign.addAssignment(new Assignment("Entity.attrFromCode", "42", true));
+
+    ASSERT_EQ(assign.getAssignments()->size(), 1u);
+    Assignment* assignment = assign.getAssignments()->front();
+    ASSERT_NE(assignment, nullptr);
+    ASSERT_NE(assignment->getSimulationControls(), nullptr);
+    EXPECT_EQ(assignment->getSimulationControls()->size(), 3u);
+}
+
+TEST(SimulatorRuntimeTest, AssignDirectListInsertMaterializesChildPropertiesOnDemand) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignDirectInsertMaterializes");
+    assign.getAssignments()->insert(new Assignment("Entity.attrDirectInsert", "99", true));
+
+    SimulationControl* assignmentsControl = nullptr;
+    for (SimulationControl* control : *assign.getSimulationControls()->list()) {
+        if (control->getName() == "Assignments") {
+            assignmentsControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(assignmentsControl, nullptr);
+
+    List<SimulationControl*>* childControls = assignmentsControl->getEditableChildSimulationControls(0);
+    ASSERT_NE(childControls, nullptr);
+    EXPECT_EQ(childControls->size(), 3u);
+
+    List<SimulationControl*>* childControlsSecondLookup = assignmentsControl->getEditableChildSimulationControls(0);
+    ASSERT_NE(childControlsSecondLookup, nullptr);
+    EXPECT_EQ(childControlsSecondLookup->size(), 3u);
+}
+
 TEST(SimulatorRuntimeTest, AssignmentSimpleConstructorWithoutModelKeepsCoherentState) {
     Assignment assignment("varSimpleCtor", "9", false);
     EXPECT_EQ(assignment.getDestination(), "varSimpleCtor");
@@ -5017,6 +5097,90 @@ TEST(SimulatorRuntimeTest, AssignCheckAcceptsIndexedAttributeDestinationWhenBase
 
     std::string errorMessage;
     EXPECT_TRUE(assign.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, AssignCreateInternalAndAttachedDataCreatesMissingDestinationData) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignCreatesMissingDestinations");
+    assign.addAssignment(new Assignment("Entity.attrCreatedFromAssign[4,6]", "5", true));
+    assign.addAssignment(new Assignment("varCreatedFromAssign[2]", "7", false));
+
+    ASSERT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), "Entity.attrCreatedFromAssign"), nullptr);
+    ASSERT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "varCreatedFromAssign"), nullptr);
+
+    auto* attached = assign.getAttachedData();
+    EXPECT_NE(attached->find("Attribute_Entity.attrCreatedFromAssign"), attached->end());
+    EXPECT_NE(attached->find("Variable_varCreatedFromAssign"), attached->end());
+}
+
+TEST(SimulatorRuntimeTest, AssignGuiDestinationEditCreatesAndAttachesDestinationData) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignGuiEditCreatesDestination");
+
+    SimulationControl* assignmentsControl = nullptr;
+    for (SimulationControl* control : *assign.getSimulationControls()->list()) {
+        if (control->getName() == "Assignments") {
+            assignmentsControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(assignmentsControl, nullptr);
+    ASSERT_TRUE(assignmentsControl->createNewListElement());
+
+    List<SimulationControl*>* childControls = assignmentsControl->getEditableChildSimulationControls(0);
+    ASSERT_NE(childControls, nullptr);
+
+    SimulationControl* destinationControl = nullptr;
+    SimulationControl* attributeNotVariableControl = nullptr;
+    for (SimulationControl* child : *childControls->list()) {
+        if (child->getName() == "Destination") {
+            destinationControl = child;
+        } else if (child->getName() == "AttributeNotVariable") {
+            attributeNotVariableControl = child;
+        }
+    }
+
+    ASSERT_NE(destinationControl, nullptr);
+    ASSERT_NE(attributeNotVariableControl, nullptr);
+
+    attributeNotVariableControl->setValue("0");
+    destinationControl->setValue("varGuiCreated[3,4]");
+
+    ASSERT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "varGuiCreated"), nullptr);
+    auto* attached = assign.getAttachedData();
+    EXPECT_NE(attached->find("Variable_varGuiCreated"), attached->end());
+}
+
+TEST(SimulatorRuntimeTest, AssignDispatchWritesIndexedAttributeAndVariableValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrIndexedDispatch");
+    auto* variable = new Variable(model, "varIndexedDispatch");
+    AssignProbe assign(model, "AssignIndexedDispatch");
+    auto* sink = new Dispose(model, "AssignIndexedDispatchSink");
+    assign.connectTo(sink);
+
+    assign.addAssignment(new Assignment("Entity.attrIndexedDispatch[4,6]", "11", true));
+    assign.addAssignment(new Assignment("varIndexedDispatch[2,3]", "22", false));
+
+    Entity* entity = model->createEntity("AssignIndexedDispatchEntity", true);
+    ASSERT_NE(entity, nullptr);
+
+    assign.DispatchEventProbe(entity);
+
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.attrIndexedDispatch", "4,6"), 11.0);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.attrIndexedDispatch", ""), 0.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("2,3"), 22.0);
+    EXPECT_DOUBLE_EQ(variable->getValue(""), 0.0);
 }
 
 TEST(SimulatorRuntimeTest, CreateCheckFailsForAmbiguousTimeBetweenConfiguration) {

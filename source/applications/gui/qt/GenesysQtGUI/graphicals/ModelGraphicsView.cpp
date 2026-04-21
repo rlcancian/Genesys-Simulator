@@ -319,9 +319,9 @@ void ModelGraphicsView::drawForeground(QPainter *painter, const QRectF &rect) {
         const QFont originalFont = painter->font();
         QFont rulerTextFont = originalFont;
         if (rulerTextFont.pointSizeF() > 0.0) {
-            rulerTextFont.setPointSizeF(std::max<qreal>(1.0, rulerTextFont.pointSizeF() - 1.0));
+            rulerTextFont.setPointSizeF(std::max<qreal>(1.0, rulerTextFont.pointSizeF() - 3.0));
         } else if (rulerTextFont.pixelSize() > 0) {
-            rulerTextFont.setPixelSize(std::max(1, rulerTextFont.pixelSize() - 1));
+            rulerTextFont.setPixelSize(std::max(1, rulerTextFont.pixelSize() - 3));
         }
         painter->setFont(rulerTextFont);
 

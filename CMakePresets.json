@@ -75,7 +75,7 @@
       "inherits": "terminal-app",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
-        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_AssignWriteSeizes.cpp"
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_Record.cpp"
       }
     },
     {

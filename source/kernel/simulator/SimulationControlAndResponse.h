@@ -1061,6 +1061,9 @@ public:
         }
 
         if (selectedElement) {
+            if constexpr (requires(T element, M model) { element->ensureSimulationControls(model); }) {
+                selectedElement->ensureSimulationControls(_model);
+            }
             return selectedElement->getSimulationControls();
         } else {
             return nullptr;

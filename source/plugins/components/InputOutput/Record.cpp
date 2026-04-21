@@ -102,7 +102,7 @@ Record::Record(Model* model, std::string name) : ModelComponent(model, Util::Typ
 
 	_parentModel->getControls()->insert(propTime);
 	_parentModel->getControls()->insert(propExpression);
-	_parentModel->getControls()->insert(propExpressionName);
+	_parentModel->getControls()->insert(propExpressionName); // LEGACY
 	_parentModel->getControls()->insert(propDatasetName);
 	_parentModel->getControls()->insert(propRandomVariableName);
 	_parentModel->getControls()->insert(propVariableType);
@@ -200,11 +200,13 @@ std::string Record::getExpression() const {
 
 void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	double value = _parentModel->parseExpression(_expression);
+	std::string fileinfos = "";
 	if (_cstatExpression != nullptr) {
 		_cstatExpression->getStatistics()->getCollector()->addValue(value);
 	}
 	if (_filename != "") {
 		// @TODO: open and close for every data is not a good idea. Should open when replication starts and close when it finishes.
+		fileinfos = " into \""+_filename+"\"";
 		std::ofstream file;
 		file.open(_filename, std::ofstream::out | std::ofstream::app);
 		if (file.is_open()) {
@@ -216,7 +218,7 @@ void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		}
 		file.close();
 	}
-	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Recording value " + std::to_string(value));
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Recording value " + fileinfos);
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 
 }

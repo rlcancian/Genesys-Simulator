@@ -86,6 +86,8 @@ protected: // could be overriden by derived classes
 	//virtual void _addSimulationControl(SimulationControl* property);
 private:
 	static std::string _destinationBaseName(const std::string& destination);
+	std::string _destinationIndex(const std::string& destination);
+	void _prepareAssignment(Assignment* assignment);
 private:
 
 	const struct DEFAULT_VALUES {
