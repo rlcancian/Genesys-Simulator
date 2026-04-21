@@ -56,28 +56,43 @@
     },
     {
       "name": "terminal-app",
-      "displayName": "Application - Terminal (GenesysShell)",
+      "displayName": "Application - Terminal Shell (GenesysShell)",
+      "description": "Builds the terminal application explicitly as GenesysShell. Use this preset when you want the interactive shell behavior.",
       "inherits": "debug-base",
       "binaryDir": "${sourceDir}/build/terminal-app",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "ON",
-        "GENESYS_TERMINAL_APP": "GenesysShell"
+        "GENESYS_TERMINAL_APP": "GenesysShell",
+        "GENESYS_TERMINAL_EXAMPLE": "",
+        "GENESYS_TERMINAL_EXAMPLE_CLASS": ""
       }
     },
     {
-      "name": "terminal-example",
-      "displayName": "Application - Terminal Example",
+      "name": "terminal-smart",
+      "displayName": "Application - Terminal Smart",
+      "description": "Builds the terminal application from a smart source under source/applications/terminal/examples/smarts. Change GENESYS_TERMINAL_EXAMPLE to select a different smart.",
       "inherits": "terminal-app",
-      "binaryDir": "${sourceDir}/build/terminal-example",
+      "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
         "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_AssignWriteSeizes.cpp"
       }
     },
     {
-      "name": "terminal-smart-hold-search-remove",
-      "displayName": "Application - Terminal Example (Smart_HoldSearchRemove)",
+      "name": "terminal-example",
+      "displayName": "Application - Terminal Example",
+      "description": "Builds the terminal application from a non-shell example under source/applications/terminal/examples. Change GENESYS_TERMINAL_EXAMPLE to select a different example.",
       "inherits": "terminal-app",
+      "binaryDir": "${sourceDir}/build/terminal-example",
+      "cacheVariables": {
+        "GENESYS_TERMINAL_EXAMPLE": "teaching/AnElectronicAssemblyAndTestSystem.cpp"
+      }
+    },
+    {
+      "name": "terminal-smart-hold-search-remove",
+      "displayName": "Application - Terminal Smart (Smart_HoldSearchRemove)",
+      "description": "Builds the terminal application directly as the Smart_HoldSearchRemove smart example.",
+      "inherits": "terminal-smart",
       "binaryDir": "${sourceDir}/build/terminal-smart-hold-search-remove",
       "cacheVariables": {
         "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_HoldSearchRemove.cpp"
@@ -135,6 +150,13 @@
     {
       "name": "terminal-app",
       "configurePreset": "terminal-app",
+      "targets": [
+        "genesys_terminal_application"
+      ]
+    },
+    {
+      "name": "terminal-smart",
+      "configurePreset": "terminal-smart",
       "targets": [
         "genesys_terminal_application"
       ]
