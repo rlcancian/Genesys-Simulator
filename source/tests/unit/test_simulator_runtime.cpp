@@ -6039,6 +6039,196 @@ TEST(SimulatorRuntimeTest, BioNetworkSimulatesFirstOrderMassActionReaction) {
     EXPECT_NE(network.getLastResponsePayload().find("\"B\""), std::string::npos);
 }
 
+TEST(SimulatorRuntimeTest, BioNetworkRecordsSpeciesTimeCourseDataset) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "RecordedNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.25, errorMessage)) << errorMessage;
+
+    const BioSimulationResult& result = network.getLastSimulationResult();
+    ASSERT_EQ(result.sampleCount(), 5u);
+    ASSERT_EQ(result.getSpeciesNames().size(), 2u);
+    EXPECT_TRUE(result.hasSpecies("A"));
+    EXPECT_TRUE(result.hasSpecies("B"));
+    EXPECT_DOUBLE_EQ(result.getSamples().front().time, 0.0);
+    EXPECT_DOUBLE_EQ(result.getSamples().back().time, 1.0);
+
+    SimulationResultsDataset dataset;
+    ASSERT_TRUE(network.getSpeciesTimeCourseDataset("A", &dataset, &errorMessage)) << errorMessage;
+    ASSERT_TRUE(dataset.timeDependent);
+    ASSERT_EQ(dataset.observations.size(), 5u);
+    EXPECT_EQ(dataset.sourceDescription, "RecordedNetwork");
+    EXPECT_EQ(dataset.expressionName, "A");
+    EXPECT_DOUBLE_EQ(dataset.observations.front().time, 0.0);
+    EXPECT_DOUBLE_EQ(dataset.observations.front().value, 10.0);
+    EXPECT_DOUBLE_EQ(dataset.observations.back().time, 1.0);
+    EXPECT_NEAR(dataset.observations.back().value, 10.0 * std::exp(-0.1), 1e-4);
+
+    EXPECT_FALSE(network.getSpeciesTimeCourseDataset("MissingSpecies", &dataset, &errorMessage));
+    EXPECT_NE(errorMessage.find("MissingSpecies"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkBuildsStoichiometryMatrixForAnalysis) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 2.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "AnalysisNetwork");
+    BioStoichiometryMatrix matrix;
+    std::string errorMessage;
+    ASSERT_TRUE(network.getStoichiometryMatrix(&matrix, &errorMessage)) << errorMessage;
+
+    ASSERT_EQ(matrix.speciesNames.size(), 2u);
+    ASSERT_EQ(matrix.reactionNames.size(), 1u);
+    EXPECT_EQ(matrix.speciesNames[0], "A");
+    EXPECT_EQ(matrix.speciesNames[1], "B");
+    EXPECT_EQ(matrix.reactionNames[0], "A_to_B");
+    EXPECT_DOUBLE_EQ(matrix.coefficient(0, 0), -2.0);
+    EXPECT_DOUBLE_EQ(matrix.coefficient(1, 0), 1.0);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkReportsReactionRateTimeCourseForAnalysis) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "ReactionRateNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.25, errorMessage)) << errorMessage;
+
+    BioReactionRateTimeCourse timeCourse;
+    ASSERT_TRUE(network.getReactionRateTimeCourse(&timeCourse, &errorMessage)) << errorMessage;
+    ASSERT_EQ(timeCourse.reactionNames.size(), 1u);
+    ASSERT_EQ(timeCourse.samples.size(), 5u);
+    EXPECT_EQ(timeCourse.reactionNames[0], "A_to_B");
+    EXPECT_DOUBLE_EQ(timeCourse.samples.front().time, 0.0);
+    EXPECT_DOUBLE_EQ(timeCourse.samples.front().forwardRates[0], 1.0);
+    EXPECT_DOUBLE_EQ(timeCourse.samples.front().reverseRates[0], 0.0);
+    EXPECT_DOUBLE_EQ(timeCourse.samples.front().netRates[0], 1.0);
+    EXPECT_LT(timeCourse.samples.back().netRates[0], timeCourse.samples.front().netRates[0]);
+
+    SimulationResultsDataset dataset;
+    ASSERT_TRUE(timeCourse.toDataset("A_to_B", BioReactionRateKind::Net, &dataset, &errorMessage)) << errorMessage;
+    ASSERT_TRUE(dataset.timeDependent);
+    ASSERT_EQ(dataset.observations.size(), 5u);
+    EXPECT_EQ(dataset.expressionName, "A_to_B.netRate");
+    EXPECT_DOUBLE_EQ(dataset.observations.front().value, 1.0);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkChecksSteadyStateForAnalysis) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(5.0);
+    a.setAmount(5.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(10.0);
+    b.setAmount(10.0);
+
+    BioReactionProbe reaction(model, "A_reversible_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.2);
+    reaction.setReverseRateConstant(0.1);
+    reaction.setReversible(true);
+
+    BioNetworkProbe network(model, "SteadyNetwork");
+    MassActionOdeSystem system;
+    std::string errorMessage;
+    ASSERT_TRUE(network.buildOdeSystemForAnalysis(&system, errorMessage)) << errorMessage;
+
+    BioSimulationSample sample;
+    sample.time = 0.0;
+    sample.species.push_back({"A", 5.0});
+    sample.species.push_back({"B", 10.0});
+
+    BioSteadyStateCheck check;
+    ASSERT_TRUE(BioSimulationAnalysis::checkSteadyState(system, sample, 1e-12, &check, &errorMessage)) << errorMessage;
+    EXPECT_TRUE(check.steady);
+    EXPECT_DOUBLE_EQ(check.maxAbsoluteDerivative, 0.0);
+    ASSERT_EQ(check.derivatives.size(), 2u);
+    EXPECT_EQ(check.derivatives[0].speciesName, "A");
+    EXPECT_DOUBLE_EQ(check.derivatives[0].derivative, 0.0);
+    EXPECT_EQ(check.derivatives[1].speciesName, "B");
+    EXPECT_DOUBLE_EQ(check.derivatives[1].derivative, 0.0);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkScansLocalParameterSensitivityForAnalysis) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "SensitivityNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 0.25, 0.25, errorMessage)) << errorMessage;
+
+    BioSensitivityScan scan;
+    ASSERT_TRUE(network.scanLocalParameterSensitivity(1e-4, 1e-6, &scan, &errorMessage)) << errorMessage;
+    ASSERT_EQ(scan.speciesNames.size(), 2u);
+    ASSERT_EQ(scan.entries.size(), 1u);
+    EXPECT_EQ(scan.entries[0].parameterName, "A_to_B.rateConstant");
+    EXPECT_DOUBLE_EQ(scan.entries[0].baseValue, 0.1);
+    ASSERT_EQ(scan.entries[0].derivativeSensitivities.size(), 2u);
+    EXPECT_EQ(scan.entries[0].derivativeSensitivities[0].speciesName, "A");
+    EXPECT_EQ(scan.entries[0].derivativeSensitivities[1].speciesName, "B");
+    EXPECT_NEAR(scan.entries[0].derivativeSensitivities[0].derivative, -a.getAmount(), 1e-9);
+    EXPECT_NEAR(scan.entries[0].derivativeSensitivities[1].derivative, a.getAmount(), 1e-9);
+    EXPECT_NEAR(scan.entries[0].maxAbsoluteSensitivity, a.getAmount(), 1e-9);
+}
+
 TEST(SimulatorRuntimeTest, BioNetworkSimulatesZeroOrderSynthesisReaction) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -6506,7 +6696,7 @@ TEST(SimulatorRuntimeTest, RSimulatorRunnerPluginInformationDeclaresRDependency)
 
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<RSimulatorRunner>());
-    EXPECT_EQ(info->getCategory(), "External statistical integration");
+    EXPECT_EQ(info->getCategory(), "ExternalIntegration");
     EXPECT_NE(info->getDescriptionHelp().find("Rscript --vanilla"), std::string::npos);
     ASSERT_TRUE(info->hasSystemDependencies());
     ASSERT_NE(info->getSystemDependencies(), nullptr);
@@ -6770,7 +6960,7 @@ TEST(SimulatorRuntimeTest, RSimulatorPluginInformationDeclaresRunnerDependency) 
 
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<RSimulator>());
-    EXPECT_EQ(info->getCategory(), "External statistical integration");
+    EXPECT_EQ(info->getCategory(), "ExternalIntegration");
     EXPECT_NE(info->getDescriptionHelp().find("RSimulatorRunner"), std::string::npos);
     ASSERT_NE(info->getDynamicLibFilenameDependencies(), nullptr);
     EXPECT_NE(std::find(info->getDynamicLibFilenameDependencies()->begin(),

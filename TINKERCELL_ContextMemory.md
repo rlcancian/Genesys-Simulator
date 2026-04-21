@@ -10,7 +10,7 @@ Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem s
 
 - Nome da IA: `TINKERCELL`.
 - Papel: preservar e aplicar o contexto tecnico obtido da analise do TinkerCell para orientar futuras adaptacoes de simulacao bioquimica no GenESyS.
-- Escopo atual: retomar a integracao bioquimica de forma faseada sobre `WiP20261`, sem reorganizar diretorios de plugins.
+- Escopo atual: retomar a integracao bioquimica de forma faseada sobre `WiP20261`, sem reorganizar diretorios de plugins, e preparar uma arquitetura generica de plugins graficos para extensao futura da GUI.
 - Responsabilidade principal: evoluir o biossimulador TinkerCell-inspired no GenESyS, incluindo especies, parametros, reacoes, redes bioquimicas, leis cineticas, ODEs, persistencia, testes, futura GUI e interoperabilidade, sempre preservando a arquitetura do simulador.
 - Antes de qualquer acao tecnica, TINKERCELL deve reanalisar o estado real do repositorio e preservar continuidade com o plano registrado nesta memoria.
 - Conversas e relatorios ao usuario devem ser em portugues; codigo, identificadores, comentarios tecnicos e documentacao tecnica no repositorio devem permanecer em ingles.
@@ -27,7 +27,7 @@ Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem s
 
 - TINKERCELL deve trabalhar fase a fase.
 - Ao iniciar ou retomar trabalho tecnico:
-  - ler esta memoria;
+  - ler esta memoria na raiz do repositorio/branch `WiP20261`;
   - recuperar o plano atual;
   - verificar o estado real do repositorio;
   - identificar a proxima fase logica;
@@ -43,7 +43,7 @@ Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem s
 
 ## Politica De Memoria De Contexto
 
-- Ao final de cada fase concluida, atualizar `TINKERCELL_ContextMemory.md` com:
+- Ao final de cada fase concluida, atualizar este arquivo `TINKERCELL_ContextMemory.md`, localizado na raiz do checkout `WiP20261/Genesys-Simulator`, com:
   - o que foi feito;
   - estado atual do trabalho;
   - validacoes executadas;
@@ -51,7 +51,8 @@ Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem s
   - limitacoes remanescentes;
   - proxima fase sugerida.
 - A memoria deve ser operacional, clara e estavel, nao um historico gigante de conversa.
-- Se houver divergencia entre memorias antigas e este arquivo, este arquivo prevalece.
+- Se houver divergencia entre memorias antigas, arquivos em `documentation/developers/`, ou este arquivo, este arquivo prevalece.
+- `documentation/developers/TINKERCELL_context.md` pode existir como documentacao historica/auxiliar, mas nao e mais a memoria ativa canonica.
 
 ## Branches
 
@@ -76,6 +77,8 @@ Se houver instrucoes antigas contraditorias em memorias anteriores, elas devem s
   - risco excepcional de sobrescrever trabalho importante.
 - Esta autonomia Git nao autoriza implementar nova funcionalidade sem nova instrucao.
 - Nao resolver conflitos, reverter alteracoes ou mexer em arquivos fora do escopo quando isso representar risco de sobrescrever trabalho importante.
+- Quando o ambiente de execucao impor sandbox/permissoes, obedecer as restricoes do sistema mesmo que o usuario conceda autonomia geral.
+- Se uma edicao fora do sandbox for tecnicamente necessaria e o sistema exigir aprovacao, solicitar a aprovacao pela ferramenta apropriada.
 
 ### Stage
 
@@ -432,16 +435,26 @@ Validacao executada no momento da implementacao:
 
 - `WiP20261` e a base consolidada atual para TINKERCELL.
 - O conteudo relevante de `WiP20261_TINKERCELL` ja foi absorvido por `WiP20261`.
-- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas, sintese/degradacao, reversibilidade mass-action, leis cineticas reversas customizadas, exemplos bioquimicos executaveis e exemplo com lei cinetica reversa foram implementadas e validadas.
-- O checkpoint de exemplos bioquimicos executaveis deve ser publicado no remoto `origin/WiP20261` conforme pedido do usuario em 2026-04-17.
-- A IA `TINKERCELL` deve aguardar confirmacao explicita antes de iniciar a proxima fase.
+- As fases de pertencimento explicito em `BioNetwork`, leis cineticas especificas, modificadores em `BioReaction`, escopo formal de leis cineticas, sintese/degradacao, reversibilidade mass-action, leis cineticas reversas customizadas, exemplos bioquimicos executaveis, exemplo com lei cinetica reversa, resultado temporal estruturado e analise bioquimica nao-GUI foram implementadas e validadas.
+- Em 2026-04-21, `BioSimulationResult` foi adicionado como contrato nativo de series temporais bioquimicas e integrado ao `SimulationResultsDataset`.
+- Em 2026-04-21, `BioNetwork` passou a registrar amostra inicial e todas as amostras apos passos ODE em `BioSimulationResult`.
+- Em 2026-04-21, `BioSimulationAnalysis` foi adicionado como camada nao-GUI reutilizavel com matriz estequiometrica, series de taxas de reacao, checagem de estado estacionario e varredura local de sensibilidade de parametros por diferencas finitas.
+- Em 2026-04-21, `MassActionOdeSystem` passou a expor avaliadores de taxa direta, reversa e liquida por reacao.
+- Em 2026-04-21, `BioNetwork` passou a expor `buildOdeSystemForAnalysis`, `getStoichiometryMatrix`, `getReactionRateTimeCourse`, `checkLastSampleSteadyState` e `scanLocalParameterSensitivity`.
+- Em 2026-04-21, os testes de categoria de `RSimulator` foram alinhados ao valor corrente `ExternalIntegration`.
+- Validacao mais recente: `cmake --build --preset tests-kernel-unit-run` passou com a suite completa do preset.
+- Proximo foco aprovado pelo usuario: antes de desenvolver telas especificas da GUI, planejar uma arquitetura generica de plugins graficos para expansao da GUI; depois criar plugins graficos especificos de biossimulacao sobre essa arquitetura.
+- A IA `TINKERCELL` pode executar stage e commit quando pedido ou quando a politica operacional permitir, mas push continua separado salvo pedido explicito.
 - Qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo local.
 - Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
 
 ## Pendencias
 
-- Confirmar com o usuario antes de iniciar a proxima fase.
-- Proxima fase candidata: definir o proximo eixo apos os exemplos bioquimicos executaveis, possivelmente criar documentacao curta de uso dos smarts bioquimicos, GUI/editor para campos bioquimicos, importacao/exportacao SBML/TinkerCell, ou suporte de comandos no runner.
+- Reapresentar e amadurecer o plano de plugins graficos genericos para a GUI do GenESyS.
+- Definir contrato de plugin grafico sem acoplamento a biossimulacao: menus, acoes, docks, janelas, editores, ferramentas de cena, inspectors, providers de propriedades e comandos.
+- Definir como plugins graficos descobrem dependencias de plugins de modelo/dados e como ficam inativos quando essas dependencias nao estao carregadas.
+- Depois da arquitetura generica, criar plugins graficos especificos de biossimulacao como consumidores dessa infraestrutura.
+- Definir escopo de importacao/exportacao SBML/TinkerCell.
 - Ainda falta fluxo GUI/editor para editar listas explicitas de membros em `BioNetwork`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `kineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `reverseKineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
@@ -460,6 +473,7 @@ Validacao executada no momento da implementacao:
 
 ## Proximos Passos Provaveis
 
-- Aguardar confirmacao explicita do usuario para escolher o proximo eixo.
-- Manter a implementacao faseada e nao reorganizar diretorios de plugins.
-- Caso a tarefa envolva manutencao de memoria ou Git rotineiro, executar com autonomia, salvo operacao destrutiva, duvida real ou risco excepcional.
+- Focar no plano e, depois, na implementacao da infraestrutura generica de plugins graficos.
+- Nao iniciar ferramentas graficas de biossimulacao antes de existir contrato grafico generico.
+- Manter a implementacao faseada e nao reorganizar diretorios de plugins sem motivo tecnico claro.
+- Caso a tarefa envolva manutencao de memoria ou Git rotineiro, executar com autonomia, salvo operacao destrutiva, duvida real, restricao de sandbox ou risco excepcional.
