@@ -196,6 +196,16 @@
         </layout>
        </item>
        <item>
+        <widget class="QCheckBox" name="checkBoxSimulationAnimationsEnabled">
+         <property name="text">
+          <string>Enable graphical animations during simulation</string>
+         </property>
+         <property name="checked">
+          <bool>true</bool>
+         </property>
+        </widget>
+       </item>
+       <item>
         <spacer name="verticalSpacerModelSimulation">
          <property name="orientation">
           <enum>Qt::Vertical</enum>
@@ -480,6 +490,7 @@
   <tabstop>checkBoxStepByStep</tabstop>
   <tabstop>checkBoxPauseOnEvent</tabstop>
   <tabstop>checkBoxPauseOnReplication</tabstop>
+  <tabstop>checkBoxSimulationAnimationsEnabled</tabstop>
   <tabstop>checkBoxParallelizationEnabled</tabstop>
   <tabstop>spinBoxParallelizationThreads</tabstop>
   <tabstop>spinBoxParallelizationBatchSize</tabstop>
