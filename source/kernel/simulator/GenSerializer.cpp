@@ -130,6 +130,8 @@ bool GenSerializer::load(std::istream& input) {
         regex = std::regex(R"([=]+)");
 
 
+		// token-position index is per line (id, typename, name), independent from quoted-string placeholders.
+		i = 0;
 		for (auto it = lstfields.begin(); it != lstfields.end(); it++, i++) {
 			std::string key, val;
 			// 

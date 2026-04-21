@@ -17,6 +17,7 @@
 
 
 #include "simulator/ModelPersistenceDefaultImpl2.h"
+#include "simulator/ModelPersistencePartialLoadImpl1.h"
 #include "simulator/SimulationReporterDefaultImpl1.h"
 #include "simulator/Counter.h"
 #include "simulator/ModelCheckerDefaultImpl1.h"
@@ -99,7 +100,7 @@ struct TraitsKernel<ModelChecker_if> {
 
 template <>
 struct TraitsKernel<ModelPersistence_if> {
-	typedef ModelPersistenceDefaultImpl2 Implementation;
+	typedef ModelPersistencePartialLoadImpl1 Implementation;
 	static const TraceManager::Level traceLevel = TraceManager::Level::L2_results;
 };
 
