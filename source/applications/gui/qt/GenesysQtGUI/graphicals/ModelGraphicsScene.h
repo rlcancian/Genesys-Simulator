@@ -385,10 +385,10 @@ private:
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
     bool _connectionGeometryUpdatesBlocked = false;
-    bool _showStatisticsDataDefinitions = false;
-    bool _showEditableDataDefinitions = false;
-    bool _showSharedDataDefinitions = false;
-    bool _showRecursiveDataDefinitions = false;
+    bool _showStatisticsDataDefinitions = true;
+    bool _showEditableDataDefinitions = true;
+    bool _showSharedDataDefinitions = true;
+    bool _showRecursiveDataDefinitions = true;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

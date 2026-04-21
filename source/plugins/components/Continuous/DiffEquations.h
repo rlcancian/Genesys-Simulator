@@ -14,7 +14,7 @@
 #pragma once
 
 #include "kernel/simulator/ModelComponent.h"
-#include "plugins/data/DiscreteProcessing/CppCompiler.h"
+#include "../../data/ExternalIntegration/CppCompiler.h"
 
 //extern "C" typedef void (*initBetweenReplications_t)(Model* model);
 extern "C" typedef void (*onDispatchEvent_t)(Simulator* simulator, Model* model, Entity* entity);

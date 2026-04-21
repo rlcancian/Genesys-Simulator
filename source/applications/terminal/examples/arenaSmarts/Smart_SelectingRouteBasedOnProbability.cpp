@@ -28,8 +28,8 @@
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
 
-#include "plugins/components/DiscreteProcessing/QueueableItem.h"
-#include "plugins/components/DiscreteProcessing/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"

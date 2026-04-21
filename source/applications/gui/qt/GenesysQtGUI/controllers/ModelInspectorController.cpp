@@ -8,6 +8,7 @@
 #include "kernel/simulator/ModelDataManager.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 #include "kernel/simulator/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/util/Util.h"
@@ -173,4 +174,75 @@ void ModelInspectorController::syncSelectedComponentTreeItemToScene() const {
     gmc->setSelected(true);
     _graphicsView->ensureVisible(gmc);
     _graphicsView->centerOn(gmc);
+}
+
+ModelInspectorController::DataDefinitionSelection
+ModelInspectorController::syncSelectedDataDefinitionTreeItemToScene() const {
+    DataDefinitionSelection selection;
+    if (_dataDefinitionsTree == nullptr || _graphicsView == nullptr) {
+        return selection;
+    }
+    if (!_dataDefinitionsTree->hasFocus() && !_dataDefinitionsTree->viewport()->hasFocus()) {
+        return selection;
+    }
+
+    selection.handled = true;
+    QList<QTreeWidgetItem*> selectedItems = _dataDefinitionsTree->selectedItems();
+    if (selectedItems.isEmpty()) {
+        return selection;
+    }
+
+    bool ok = false;
+    const Util::identification dataDefinitionId = selectedItems.first()->text(0).toULongLong(&ok);
+    if (!ok) {
+        return selection;
+    }
+
+    Model* model = _simulator->getModelManager()->current();
+    if (model == nullptr || model->getDataManager() == nullptr) {
+        return selection;
+    }
+
+    for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+        List<ModelDataDefinition*>* dataDefinitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+        if (dataDefinitions == nullptr) {
+            continue;
+        }
+        for (ModelDataDefinition* candidate : *dataDefinitions->list()) {
+            if (candidate != nullptr && candidate->getId() == dataDefinitionId) {
+                selection.dataDefinition = candidate;
+                break;
+            }
+        }
+        if (selection.dataDefinition != nullptr) {
+            break;
+        }
+    }
+
+    ModelGraphicsScene* scene = _graphicsView->getScene();
+    if (scene == nullptr || selection.dataDefinition == nullptr) {
+        return selection;
+    }
+
+    GraphicalModelDataDefinition* gmdd =
+        scene->findGraphicalModelDataDefinition(selection.dataDefinition);
+    const bool gmddIsVisible =
+        gmdd != nullptr
+        && gmdd->scene() == scene
+        && scene->getGraphicalModelDataDefinitions() != nullptr
+        && scene->getGraphicalModelDataDefinitions()->contains(gmdd);
+
+    // Selecting a DataDefinition in the inspector should leave the scene focused on the
+    // corresponding GMDD when it is visible. If the GMDD is hidden by View/Show filters,
+    // clearing the scene selection avoids keeping a stale unrelated object selected.
+    scene->clearSelection();
+    if (!gmddIsVisible) {
+        return selection;
+    }
+
+    gmdd->setSelected(true);
+    _graphicsView->ensureVisible(gmdd);
+    _graphicsView->centerOn(gmdd);
+    selection.graphicalDataDefinition = gmdd;
+    return selection;
 }

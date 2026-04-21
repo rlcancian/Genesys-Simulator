@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>848</width>
+    <width>1032</width>
     <height>777</height>
    </rect>
   </property>
@@ -69,7 +69,7 @@
         <enum>QTabWidget::Triangular</enum>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <property name="tabBarAutoHide">
         <bool>true</bool>
@@ -153,8 +153,8 @@
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>98</width>
-                     <height>36</height>
+                     <width>688</width>
+                     <height>138</height>
                     </rect>
                    </property>
                    <property name="autoFillBackground">
@@ -226,40 +226,40 @@
                 </item>
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout">
-	                  <item>
-	                   <widget class="QCheckBox" name="checkBox_ShowElements">
-	                    <property name="text">
-	                     <string>Shared elements</string>
-	                    </property>
-	                    <property name="checked">
-	                     <bool>true</bool>
-	                    </property>
-	                   </widget>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_ShowElements">
+                    <property name="text">
+                     <string>Shared elements</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
                   </item>
-	                  <item>
-	                   <widget class="QCheckBox" name="checkBox_ShowInternals">
-	                    <property name="text">
-	                     <string>Statistics elements</string>
-	                    </property>
-	                    <property name="checked">
-	                     <bool>true</bool>
-	                    </property>
-	                   </widget>
-	                  </item>
-	                  <item>
-	                   <widget class="QCheckBox" name="checkBox_ShowEditableElements">
-	                    <property name="text">
-	                     <string>Editable elements</string>
-	                    </property>
-	                    <property name="checked">
-	                     <bool>true</bool>
-	                    </property>
-	                   </widget>
-	                  </item>
-	                  <item>
-	                   <widget class="QCheckBox" name="checkBox_ShowLevels">
-	                    <property name="text">
-	                     <string>Show Levels</string>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_ShowInternals">
+                    <property name="text">
+                     <string>Statistics elements</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_ShowEditableElements">
+                    <property name="text">
+                     <string>Editable elements</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_ShowLevels">
+                    <property name="text">
+                     <string>Show Levels</string>
                     </property>
                     <property name="checked">
                      <bool>true</bool>
@@ -645,6 +645,9 @@
                  </rect>
                 </property>
                 <layout class="QVBoxLayout" name="verticalLayout_ReportsPlotsContent">
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
                  <property name="leftMargin">
                   <number>8</number>
                  </property>
@@ -656,9 +659,6 @@
                  </property>
                  <property name="bottomMargin">
                   <number>8</number>
-                 </property>
-                 <property name="spacing">
-                  <number>12</number>
                  </property>
                 </layout>
                </widget>
@@ -845,7 +845,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>848</width>
+     <width>1032</width>
      <height>22</height>
     </rect>
    </property>
@@ -2309,7 +2309,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons1/resources/icons/pack1/ico/200.ico</normaloff>:/icons1/resources/icons/pack1/ico/200.ico</iconset>
    </property>
    <property name="text">
-    <string>Parallelization</string>
+    <string>Shared Elements</string>
    </property>
   </action>
   <action name="actionShowRecursiveElements">
@@ -2320,10 +2320,11 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="x-office-address-book"/>
+    <iconset theme="x-office-address-book">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
-    <string>Recursive Expansion</string>
+    <string>Recursive Elements</string>
    </property>
   </action>
  </widget>

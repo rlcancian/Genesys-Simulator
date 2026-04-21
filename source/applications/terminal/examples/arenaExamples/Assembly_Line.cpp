@@ -26,7 +26,7 @@
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/MaterialHandling/Enter.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
-#include "plugins/data/DiscreteProcessing/Station.h"
+#include "plugins/data/MaterialHandling/Station.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/InputOutput/Record.h"

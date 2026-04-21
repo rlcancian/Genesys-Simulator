@@ -16,8 +16,8 @@
 
 #include "kernel/simulator/ModelComponent.h"
 #include "kernel/simulator/Counter.h"
-#include "plugins/data/DiscreteProcessing/Station.h"
-#include "plugins/data/DiscreteProcessing/Sequence.h"
+#include "../../data/MaterialHandling/Station.h"
+#include "../../data/MaterialHandling/Sequence.h"
 #include "plugins/data/DiscreteProcessing/Label.h"
 
 /*!

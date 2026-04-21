@@ -21,7 +21,7 @@
 
 // Model Components
 #include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/Network/ModalModelDefault.h"
+#include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "../../../TraitsApp.h"
 

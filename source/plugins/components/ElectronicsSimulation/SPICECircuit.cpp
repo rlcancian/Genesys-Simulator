@@ -163,13 +163,13 @@ std::string SPICECircuit::show() {
 
 PluginInformation* SPICECircuit::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<SPICECircuit>(), &SPICECircuit::LoadInstance, &SPICECircuit::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
 PluginInformation* Resistor::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Resistor>(), &Resistor::LoadInstance, &Resistor::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -214,7 +214,7 @@ void Resistor::Build() {
 
 PluginInformation* Vsource::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Vsource>(), &Vsource::LoadInstance, &Vsource::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -259,7 +259,7 @@ void Vsource::Build() {
 
 PluginInformation* Vpulse::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Vpulse>(), &Vpulse::LoadInstance, &Vpulse::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -315,7 +315,7 @@ void Vpulse::Build() {
 
 PluginInformation* Vsine::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Vsine>(), &Vsine::LoadInstance, &Vsine::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -365,7 +365,7 @@ void Vsine::Build() {
 
 PluginInformation* Capacitor::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Capacitor>(), &Capacitor::LoadInstance, &Capacitor::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -409,7 +409,7 @@ void Capacitor::Build() {
 
 PluginInformation* Diode::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Diode>(), &Diode::LoadInstance, &Diode::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -453,7 +453,7 @@ void Diode::Build() {
 
 PluginInformation* PMOS::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<PMOS>(), &PMOS::LoadInstance, &PMOS::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -509,7 +509,7 @@ void PMOS::Build() {
 
 PluginInformation* NMOS::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<NMOS>(), &NMOS::LoadInstance, &NMOS::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -565,7 +565,7 @@ void NMOS::Build() {
 
 PluginInformation* NOT::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<NOT>(), &NOT::LoadInstance, &NOT::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -637,7 +637,7 @@ void NOT::Build() {
 
 PluginInformation* NAND::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<NAND>(), &NAND::LoadInstance, &NAND::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -712,7 +712,7 @@ void NAND::Build() {
 
 PluginInformation* AND::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<AND>(), &AND::LoadInstance, &AND::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -789,7 +789,7 @@ void AND::Build() {
 
 PluginInformation* NOR::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<NOR>(), &NOR::LoadInstance, &NOR::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -864,7 +864,7 @@ void NOR::Build() {
 
 PluginInformation* OR::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<OR>(), &OR::LoadInstance, &OR::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -941,7 +941,7 @@ void OR::Build() {
 
 PluginInformation* XOR::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<XOR>(), &XOR::LoadInstance, &XOR::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 
@@ -1026,7 +1026,7 @@ void XOR::Build() {
 
 PluginInformation* XNOR::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<XNOR>(), &XNOR::LoadInstance, &XNOR::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	return info;
 }
 

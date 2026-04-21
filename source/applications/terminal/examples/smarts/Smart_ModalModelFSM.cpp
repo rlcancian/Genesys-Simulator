@@ -3,9 +3,9 @@
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/DiscreteProcessing/Create.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
-#include "plugins/components/Network/ModalModelFSM.h"
-#include "plugins/components/Network/FSMState.h"
-#include "plugins/components/Network/DefaultTransitionExtensions.h"
+#include "plugins/components/ModalModel/ModalModelFSM.h"
+#include "plugins/components/ModalModel/FSMState.h"
+#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "../../../TraitsApp.h"
 #include "plugins/data/DiscreteProcessing/Variable.h"
 

@@ -20,7 +20,7 @@
 
 // Model Components
 #include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/Logic/CellularAutomataComp.h"
+#include "plugins/components/ModalModel/CellularAutomataComp.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "../../../TraitsApp.h"
 

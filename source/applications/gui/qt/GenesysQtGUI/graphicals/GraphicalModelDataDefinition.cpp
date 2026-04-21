@@ -11,11 +11,6 @@
 
 #include <QRgba64>
 
-namespace {
-    constexpr int nonEditableFillAlpha = 58;
-    constexpr int selectedNonEditableFillAlpha = 72;
-}
-
 GraphicalModelDataDefinition::GraphicalModelDataDefinition(Plugin* plugin, ModelDataDefinition* element, QPointF position, QColor color, QGraphicsItem *parent)
 	:  QGraphicsObject(parent) {
 	_element = element;
@@ -101,7 +96,9 @@ GraphicalModelItemRenderContext GraphicalModelDataDefinition::renderContext() co
 	context.bounds = boundingRect();
 	context.fillColor = _color;
 	if (!_editableInPropertyEditor) {
-		context.fillColor.setAlpha(isSelected() ? selectedNonEditableFillAlpha : nonEditableFillAlpha);
+		context.fillColor.setAlpha(isSelected()
+		                               ? TraitsGUI<GModelDataDefinition>::selectedNonEditableOpacity
+		                               : TraitsGUI<GModelDataDefinition>::nonEditableOpacity);
 	}
 	context.primaryText = QString::fromStdString(_element->getClassname());
 	context.secondaryText = QString::fromStdString(_element->getName());

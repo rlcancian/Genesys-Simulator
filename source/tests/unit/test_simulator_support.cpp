@@ -551,7 +551,7 @@ TEST(SimulatorSupportTest, SystemDependencyResolverInstallDiagnosticIncludesComm
 TEST(SimulatorSupportTest, PluginInformationDefaultsAndContainerReplacementWork) {
     PluginInformation info("Delay", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
 
-    EXPECT_EQ(info.getCategory(), "Discrete Processing");
+    EXPECT_EQ(info.getCategory(), "DiscreteProcessing");
     EXPECT_FALSE(info.isGenerateReport());
     EXPECT_FALSE(info.isSource());
     EXPECT_FALSE(info.isSink());
@@ -658,6 +658,44 @@ TEST(SimulatorSupportTest, SimulationControlStringReadOnlyRejectsWrites) {
     EXPECT_TRUE(control.isReadOnly());
     EXPECT_THROW(control.setValue("beta"), std::logic_error);
     EXPECT_EQ(control.getValue(), "alpha");
+}
+
+TEST(SimulatorSupportTest, SimulationControlGenericStringPreservesWhitespace) {
+    std::string value = "initial";
+    SimulationControlGeneric<std::string> control(
+        [&]() { return value; },
+        [&](std::string newValue) { value = newValue; },
+        "C",
+        "E",
+        "Expression"
+    );
+
+    control.setValue("1 + 34");
+
+    EXPECT_EQ(value, "1 + 34");
+    EXPECT_EQ(control.getValue(), "1 + 34");
+}
+
+TEST(SimulatorSupportTest, SimulationControlGenericStringListPreservesWhitespace) {
+    List<std::string> values;
+    SimulationControlGenericList<std::string, void*, std::string> control(
+        nullptr,
+        [&]() { return &values; },
+        [&](std::string value) { values.insert(value); },
+        [&](std::string value) { values.remove(value); },
+        "C",
+        "E",
+        "Expressions"
+    );
+
+    control.setValue("Entity.Attribute + 34");
+
+    ASSERT_EQ(values.size(), 1u);
+    EXPECT_EQ(values.front(), "Entity.Attribute + 34");
+
+    control.setValue("Entity.Attribute + 34", true);
+
+    EXPECT_TRUE(values.empty());
 }
 
 TEST(SimulatorSupportTest, SimulationControlBoolParsesTextAndNumericValues) {

@@ -16,7 +16,7 @@
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Attribute.h"
 #include "kernel/simulator/Simulator.h"
-#include "plugins/data/DiscreteProcessing/Sequence.h"
+#include "../../data/MaterialHandling/Sequence.h"
 #include "plugins/data/DiscreteProcessing/Label.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -257,7 +257,7 @@ void Route::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 PluginInformation* Route::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Route>(), &Route::LoadInstance, &Route::NewInstance);
 	info->setSendTransfer(true);
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	info->insertDynamicLibFileDependence("station.so");
 	info->insertDynamicLibFileDependence("sequence.so");
 	info->insertDynamicLibFileDependence("label.so");

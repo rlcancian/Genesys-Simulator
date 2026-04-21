@@ -20,8 +20,8 @@
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "kernel/simulator/Plugin.h"
-#include "plugins/components/DiscreteProcessing/SeizableItem.h"
-#include "plugins/components/DiscreteProcessing/QueueableItem.h"
+#include "auxiliar/SeizableItem.h"
+#include "auxiliar/QueueableItem.h"
 
 class WaitingResource : public Waiting {
 public:

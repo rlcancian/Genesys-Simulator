@@ -15,7 +15,7 @@
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
-#include "plugins/data/DiscreteProcessing/EntityGroup.h"
+#include "../../data/Grouping/EntityGroup.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include <algorithm>
 #include <cstdlib>

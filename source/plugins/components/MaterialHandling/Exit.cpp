@@ -70,7 +70,7 @@ bool Exit::_check(std::string& errorMessage) {
 
 PluginInformation* Exit::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Exit>(), &Exit::LoadInstance, &Exit::NewInstance);
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	return info;
 }
 

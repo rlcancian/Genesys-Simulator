@@ -16,6 +16,7 @@
 
 #include <functional>
 #include <string>
+#include <vector>
 
 #include "Model.h"
 #include "../util/List.h"
@@ -147,6 +148,12 @@ public:
 	bool remove(Plugin* plugin);
 	/*! \brief Finds a connected plugin by plugin type name. */
 	Plugin* find(std::string pluginTypeName);
+	/*! \brief Returns connected plugin type names that can create ModelDataDefinition instances.
+	 *
+	 * Polymorphic data structures such as Set use this snapshot to expose concrete,
+	 * creatable element types to editors without hard-coding plugin names in the GUI.
+	 */
+	std::vector<std::string> getDataDefinitionPluginTypenames() const;
 	/*! \brief Returns the source include path for a connected plugin type. */
 	std::string sourceIncludePathFor(std::string pluginTypeName);
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */

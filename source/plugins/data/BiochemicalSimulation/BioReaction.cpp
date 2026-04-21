@@ -90,7 +90,7 @@ BioReaction::BioReaction(Model* model, std::string name) : ModelDataDefinition(m
 
 PluginInformation* BioReaction::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioReaction>(), &BioReaction::LoadInstance, &BioReaction::NewInstance);
-	info->setCategory("Biochemical simulation");
+	info->setCategory("BiochemicalSimulation");
 	info->setDescriptionHelp("Biochemical reaction with reactants, products, modifiers, stoichiometry, forward/reverse mass-action rate constants, and optional kinetic-law expressions.");
 	return info;
 }

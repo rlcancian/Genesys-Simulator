@@ -19,7 +19,7 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/DummyComponent.h"
+#include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/DiscreteProcessing/Create.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"

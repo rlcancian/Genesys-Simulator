@@ -106,7 +106,7 @@ void Enter::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 PluginInformation* Enter::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Enter>(), &Enter::LoadInstance, &Enter::NewInstance);
 	info->setReceiveTransfer(true);
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	info->insertDynamicLibFileDependence("station.so");
 	info->setDescriptionHelp("//@TODO");
 	return info;

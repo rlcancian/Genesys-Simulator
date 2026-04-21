@@ -25,8 +25,8 @@
 #include "plugins/components/Decisions/Decide.h"
 // Model data definitions
 #include "kernel/simulator/Attribute.h"
-#include "plugins/components/DiscreteProcessing/SeizableItem.h"
-#include "plugins/components/DiscreteProcessing/QueueableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 
 AnElectronicAssemblyAndTestSystem::AnElectronicAssemblyAndTestSystem() {
 }

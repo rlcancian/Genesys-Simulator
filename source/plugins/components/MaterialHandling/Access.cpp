@@ -72,7 +72,7 @@ bool Access::_check(std::string& errorMessage) {
 
 PluginInformation* Access::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Access>(), &Access::LoadInstance, &Access::NewInstance);
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	info->setDescriptionHelp("//@TODO");
 	// ...
 	return info;
