@@ -11,6 +11,8 @@
 #include <QSignalBlocker>
 #include <QDebug>
 #include <Qt>
+#include <algorithm>
+#include <cmath>
 
 // Store only narrow collaborators needed for Phase 10 scene-tool orchestration.
 SceneToolController::SceneToolController(ModelGraphicsView* graphicsView,
@@ -119,9 +121,40 @@ void SceneToolController::onActionZoomAllTriggered() {
 
 // Preserve graphical slider zoom delta behavior and gentle zoom scaling.
 void SceneToolController::onHorizontalSliderZoomGraphicalValueChanged(int value) {
-    const double factor = (value - _zoomValue) * 0.002;
+    if (_graphicsView == nullptr || _graphicsView->scene() == nullptr) {
+        return;
+    }
+
+    const QRectF sceneRect = _graphicsView->scene()->sceneRect();
+    if (!sceneRect.isValid() || sceneRect.isEmpty()) {
+        return;
+    }
+
+    const QRect viewportRect = _graphicsView->viewport()->rect();
+    if (viewportRect.width() <= 0 || viewportRect.height() <= 0) {
+        return;
+    }
+
+    const int sliderMin = _ui->horizontalSlider_ZoomGraphical->minimum();
+    const int sliderMax = _ui->horizontalSlider_ZoomGraphical->maximum();
+    const double t = (sliderMax <= sliderMin)
+                         ? 0.0
+                         : static_cast<double>(value - sliderMin) / static_cast<double>(sliderMax - sliderMin);
+
+    // Slider minimum shows the entire scene (0..50000 by current scene rect),
+    // and maximum focuses to roughly a 400x400 area (smaller viewport dimension ~= 400 scene units).
+    const double minScale = std::min(static_cast<double>(viewportRect.width()) / sceneRect.width(),
+                                     static_cast<double>(viewportRect.height()) / sceneRect.height());
+    const double maxScale = std::min(static_cast<double>(viewportRect.width()),
+                                     static_cast<double>(viewportRect.height())) / 400.0;
+    const double safeMinScale = std::max(1.0e-6, minScale);
+    const double safeMaxScale = std::max(safeMinScale, maxScale);
+    const double desiredScale = safeMinScale * std::pow(safeMaxScale / safeMinScale, std::clamp(t, 0.0, 1.0));
+
+    _graphicsView->resetTransform();
+    _graphicsView->scale(desiredScale, desiredScale);
+    _graphicsView->centerOn(sceneRect.center());
     _zoomValue = value;
-    _gentleZoom(1.0 + factor);
 }
 
 // Preserve line-drawing tool activation and cursor semantics.

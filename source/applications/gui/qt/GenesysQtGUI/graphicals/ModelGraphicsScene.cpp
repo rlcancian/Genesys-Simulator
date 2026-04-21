@@ -1311,6 +1311,12 @@ void ModelGraphicsScene::saveDataDefinitions() {
 }
 
 void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
+    // Loaded models already bring their DataDefinitions from persistence.
+    // Reinserting here can corrupt DataManager state (notably EntityType) and break model check.
+    if (loaded) {
+        return;
+    }
+
     // Get model components by value to avoid temporary heap ownership.
     QList<GraphicalModelComponent*> components = this->graphicalModelComponentItems();
     QList<GraphicalModelComponent*>* allComponentes = this->getAllComponents();
@@ -1352,12 +1358,6 @@ void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
         }
     }
 
-    if (loaded) {
-        std::list<ModelDataDefinition*>* entityTypes = _simulator->getModelManager()->current()->getDataManager()->
-                                                                   getDataDefinitionList(Util::TypeOf<EntityType>())->
-                                                                   list();
-        entityTypes->clear();
-    }
 }
 
 void ModelGraphicsScene::addDrawing(QGraphicsItem* item, bool notify) {
