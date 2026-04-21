@@ -283,6 +283,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionOpenSelectedSubmodel);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
+
+    // The View/Show menu relies on the native checkmark indicator; menu icons made the checked
+    // state hard to distinguish, so keep those actions text/checkmark-only and define explicit
+    // defaults for the data-definition visibility categories.
+    ui->actionShowInternalElements->setIconVisibleInMenu(false);
+    ui->actionShowEditableElements->setIconVisibleInMenu(false);
+    ui->actionShowAttachedElements->setIconVisibleInMenu(false);
+    ui->actionShowRecursiveElements->setIconVisibleInMenu(false);
+    ui->actionShowInternalElements->setChecked(false);
+    ui->actionShowEditableElements->setChecked(true);
+    ui->actionShowAttachedElements->setChecked(false);
+    ui->actionShowRecursiveElements->setChecked(true);
+    ui->checkBox_ShowInternals->setChecked(false);
+    ui->checkBox_ShowEditableElements->setChecked(true);
+    ui->checkBox_ShowElements->setChecked(false);
+    ui->checkBox_ShowRecursive->setChecked(true);
+
     // Keep plugins tree as drag source only (never a drop target).
     ui->treeWidget_Plugins->setDragDropMode(QAbstractItemView::DragOnly);
     ui->treeWidget_Plugins->setAcceptDrops(false);
