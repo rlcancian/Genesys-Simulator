@@ -18,6 +18,7 @@
 #include "kernel/simulator/Counter.h"
 #include "kernel/simulator/StatisticsCollector.h"
 #include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/ModelComponent.h"
 #include "kernel/simulator/ComponentManager.h"
 #include "kernel/simulator/ModelDataManager.h"
@@ -47,6 +48,9 @@
 #include "controllers/GraphicalContextMenuController.h"
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
+#include "extensions/GuiExtensionContracts.h"
+#include "extensions/GuiExtensionManager.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
@@ -265,6 +269,27 @@ static bool fillPlotItem(ModelDataDefinition* data, QString* category, ReportPlo
             ? QString::fromStdString(data->getName())
             : parentName + "." + QString::fromStdString(data->getName());
     return true;
+}
+
+std::vector<std::string> collectLoadedModelPluginIds(const Simulator* simulator) {
+	std::vector<std::string> ids;
+	if (simulator == nullptr || simulator->getPluginManager() == nullptr) {
+		return ids;
+	}
+
+	PluginManager* pluginManager = simulator->getPluginManager();
+	ids.reserve(pluginManager->size());
+	for (unsigned int index = 0; index < pluginManager->size(); ++index) {
+		Plugin* plugin = pluginManager->getAtRank(index);
+		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+			continue;
+		}
+		const std::string pluginTypename = plugin->getPluginInfo()->getPluginTypename();
+		if (!pluginTypename.empty()) {
+			ids.push_back(pluginTypename);
+		}
+	}
+	return ids;
 }
 } // namespace
 
@@ -1506,6 +1531,7 @@ void MainWindow::_rebuildViewDependentControllers() {
             if (_pluginCatalogController != nullptr) {
                 _pluginCatalogController->reloadFromPluginManager();
             }
+            _refreshGuiExtensions();
         },
         [this]() { return myScene(); },
         _optimizerPrecision,
@@ -1514,6 +1540,27 @@ void MainWindow::_rebuildViewDependentControllers() {
         _parallelizationThreads,
         _parallelizationBatchSize,
         _lastDataAnalyzerPath);
+
+    _refreshGuiExtensions();
+}
+
+void MainWindow::_refreshGuiExtensions() {
+    if (_guiExtensionManager == nullptr) {
+        _guiExtensionManager = std::make_unique<GuiExtensionManager>(this);
+    }
+    if (ui == nullptr || ui->graphicsView == nullptr) {
+        return;
+    }
+
+    GuiExtensionRuntimeContext extensionContext;
+    extensionContext.simulator = simulator;
+    extensionContext.mainWindow = this;
+    extensionContext.ui = ui;
+    extensionContext.graphicsView = ui->graphicsView;
+    extensionContext.graphicsScene = ui->graphicsView->getScene();
+    _guiExtensionManager->setLoadedModelPluginIds(collectLoadedModelPluginIds(simulator));
+    _guiExtensionManager->setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
+    _guiExtensionManager->rebuild(extensionContext);
 }
 
 void MainWindow::_disconnectSceneSignals(const char* context) {
@@ -1549,6 +1596,16 @@ void MainWindow::_connectSceneSignals() {
 
 ModelGraphicsScene* MainWindow::myScene() const {
     return ui->graphicsView->getScene();
+}
+
+void MainWindow::refreshGuiExtensions() {
+	_refreshGuiExtensions();
+}
+
+void MainWindow::refreshPluginCatalog() {
+	if (_pluginCatalogController != nullptr) {
+		_pluginCatalogController->reloadFromPluginManager();
+	}
 }
 
 void MainWindow::_onPropertyEditorModelChanged() {

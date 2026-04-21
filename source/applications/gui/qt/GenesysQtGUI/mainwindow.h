@@ -42,6 +42,7 @@ class EditCommandController;
 class SceneToolController;
 class GraphicalContextMenuController;
 class DialogUtilityController;
+class GuiExtensionManager;
 class QAction;
 class QTabWidget;
 class ModelGraphicsView;
@@ -91,6 +92,10 @@ public: // to notify changes
     void unselectDrawIcons();
     /** @brief Compatibility wrapper that reports whether any draw tool action is selected. */
     bool checkSelectedDrawIcons();
+    /** @brief Public refresh hook for graphical extension contributions. */
+    void refreshGuiExtensions();
+    /** @brief Public refresh hook for plugin catalog tree. */
+    void refreshPluginCatalog();
 
 private slots:
     // actions
@@ -356,6 +361,8 @@ private: // view
     void _activateNextModel();
     /** @brief Rebuilds controllers/services that keep direct pointers to the active graphics view. */
     void _rebuildViewDependentControllers();
+    /** @brief Rebuilds graphical extension contributions from currently loaded model plugins. */
+    void _refreshGuiExtensions();
     /** @brief Reinitializes UI state after new/load model lifecycle operations. */
 	void _initUiForNewModel(Model* m);
     /** @brief Recomputes action enabled/checked states from delegated controller/service state. */
@@ -558,6 +565,8 @@ private: // interface and model main elements to join
     std::unique_ptr<GraphicalContextMenuController> _graphicalContextMenuController;
     // Add the Phase 11 dialog-utility controller owned by MainWindow.
     std::unique_ptr<DialogUtilityController> _dialogUtilityController;
+    // Keeps runtime GUI extension contributions isolated from core static menus/toolbars.
+    std::unique_ptr<GuiExtensionManager> _guiExtensionManager;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;

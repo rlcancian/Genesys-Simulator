@@ -444,6 +444,70 @@ Validacao executada no momento da implementacao:
 - Em 2026-04-21, os testes de categoria de `RSimulator` foram alinhados ao valor corrente `ExternalIntegration`.
 - Validacao mais recente: `cmake --build --preset tests-kernel-unit-run` passou com a suite completa do preset.
 - Proximo foco aprovado pelo usuario: antes de desenvolver telas especificas da GUI, planejar uma arquitetura generica de plugins graficos para expansao da GUI; depois criar plugins graficos especificos de biossimulacao sobre essa arquitetura.
+- Em 2026-04-21, as etapas 1 e 2 do plano de plugins graficos foram iniciadas:
+  - etapa 1: auditoria tecnica da GUI atual registrada em `documentation/developers/GUI_GRAPHICAL_PLUGIN_AUDIT.md`;
+  - etapa 2: contrato generico de extensao grafica criado em `source/applications/gui/qt/GenesysQtGUI/extensions/GuiExtensionContracts.h`.
+- O contrato introduz `GuiExtensionRuntimeContext`, contribuicoes de `action/dock/window`, `GuiExtensionRegistry` e interface `GuiExtensionPlugin`.
+- Em 2026-04-21, a etapa 3 foi implementada de forma incremental e sem mudar o comportamento funcional atual da GUI:
+  - adicionado `GuiExtensionManager` em `source/applications/gui/qt/GenesysQtGUI/extensions/GuiExtensionManager.{h,cpp}`;
+  - `MainWindow` passou a criar e acionar o manager dentro de `_rebuildViewDependentControllers`, com `GuiExtensionRuntimeContext`;
+  - nesta iteracao, `setPlugins({})` mantem carga vazia por design, preparando o ciclo de vida sem ativar contribuicoes reais.
+  - o manager agora recebe snapshot real dos plugins de modelo carregados via `PluginManager` e aplica filtro por `requiredModelPlugins` antes de registrar contribuicoes graficas.
+- Validacao da etapa 3:
+  - `cmake --build --preset gui-app`: passou, incluindo compilacao e link de `genesys_qt_gui_application`.
+- Em 2026-04-21, o carregamento de plugins graficos foi conectado a um catalogo/fabrica real:
+  - adicionados `GuiExtensionPluginCatalog.{h,cpp}` com auto-registro estatico de `GuiExtensionPlugin`;
+  - adicionado plugin base `CoreGuiExtensionPlugin` (sem contribuicoes visuais) para validar pipeline de descoberta;
+  - `MainWindow` passou a carregar plugins do catalogo em `_rebuildViewDependentControllers`, substituindo `setPlugins({})`.
+- Validacao do catalogo/fabrica:
+  - `cmake --build --preset gui-app`: passou apos inclusao de novos arquivos e link final da GUI.
+- Em 2026-04-21, foram implementadas as duas etapas seguintes do plano:
+  - plugin grafico funcional generico `ModelPluginInspectorGuiExtensionPlugin` com item de menu `Tools/Extensions/Loaded Model Plugins` que lista plugins de modelo carregados;
+  - plugin grafico condicional `BioNetworkAwareGuiExtensionPlugin` com dependencia declarada `requiredModelPlugins={"bionetwork"}`, contribuindo item `Tools/Extensions/BioNetwork Extension Status` apenas quando a dependencia estiver carregada.
+- Validacao das duas etapas:
+  - `cmake --build --preset gui-app`: passou apos compilacao dos plugins graficos novos e link da GUI.
+- Em 2026-04-21, para facilitar testes do usuario no terminal:
+  - adicionado `Smart_BioNetworkAnalysis` em `source/applications/terminal/examples/smarts/Smart_BioNetworkAnalysis.{h,cpp}`;
+  - o smart novo exercita simulacao + analise: `BioSimulationResult`, dataset temporal por especie, matriz estequiometrica, serie temporal de taxas, check de estado estacionario e varredura de sensibilidade local.
+  - `Smart_BioReversibleMassAction`, `Smart_BioKineticLawRegulation` e `Smart_BioReversibleKineticLaw` foram atualizados para usar `plugins->autoInsertPlugins()` (sem dependencia de `autoloadplugins.txt` local no diretorio de build).
+- Em 2026-04-21, a infraestrutura de plugins graficos foi ajustada para ciclo de vida dinamico sem acoplamento de dominio:
+  - `MainWindow` ganhou `_refreshGuiExtensions()` para centralizar rebuild das contribuicoes graficas;
+  - o callback de refresh apos `DialogPluginManager` agora recarrega catalogo de plugins de modelo e tambem reaplica contribuicoes de GUI;
+  - `GuiExtensionManager` passou a rastrear e remover menus criados dinamicamente (`_createdMenuActions`) durante `clear()`, evitando sobras visuais quando dependencias deixam de estar carregadas.
+- Validacao da iteracao dinamica:
+  - `cmake --build --preset gui-app`: passou, com link final de `genesys_qt_gui_application`.
+- Em 2026-04-21, foi adicionada resolucao declarativa de plugins graficos no catalogo:
+  - `GuiExtensionPluginCatalog::resolvedPlugins()` agora resolve lista final com base em JSON opcional (`enabled`, `disabled`, `order`);
+  - caminho padrao do JSON: arquivo `gui_extensions.json` no mesmo diretorio de `preferences.json` (`SystemPreferences::configFilePath()`);
+  - override por ambiente: `GENESYS_GUI_EXTENSIONS_CONFIG`;
+  - fallback seguro: se o arquivo nao existir ou estiver invalido, usa ordem de registro estatico.
+- Em 2026-04-21, a camada declarativa foi estendida com metadados de apresentacao:
+  - novo bloco opcional `presentation` no JSON de extensoes (`category`, `group`, `priority` por `extensionId`);
+  - ordenacao aplicada a plugins nao fixados em `order`: `priority` decrescente, depois `category`, `group` e `displayName`;
+  - `order` continua com precedencia e mantem itens explicitamente fixados sem reordenacao por metadados.
+- Em 2026-04-21, foi implementada uma GUI de gerenciamento declarativo das extensoes graficas:
+  - menu: `Tools/Extensions/Manage Graphical Extensions...`;
+  - dialogo novo `GuiExtensionConfigurationDialog` com tabela editavel de `enabled`, `order`, `category`, `group`, `priority`;
+  - persistencia em `gui_extensions.json` (mesmo caminho base do `preferences.json`, com override por `GENESYS_GUI_EXTENSIONS_CONFIG`);
+  - o manager permite `Reload` e `Save` e gera `enabled/disabled/order/presentation`;
+  - apos `Save`, a GUI agora aplica refresh imediato das contribuicoes graficas via callback para `MainWindow::refreshGuiExtensions()`.
+- Em 2026-04-21, o callback de `Save` do manager passou a atualizar tambem o catalogo visual de plugins (`MainWindow::refreshPluginCatalog()`), mantendo sincronia imediata entre arvore de catalogo e contribuicoes dinamicas.
+- Em 2026-04-21, foram adicionados os primeiros plugins graficos de biossimulacao sobre a infraestrutura generica:
+  - `BioNetworkEditorGuiExtensionPlugin`: `Tools/Extensions/Biochemical/Edit BioNetwork Membership...` para editar membros de especies/reacoes e controles de tempo (`start/stop/step`) de um `BioNetwork`;
+  - `BioReactionKineticsGuiExtensionPlugin`: `Tools/Extensions/Biochemical/Edit BioReaction Kinetics...` para editar `reversible`, constantes direta/reversa, parametros direta/reversa, leis cineticas direta/reversa e lista de modificadores de um `BioReaction`.
+- Gating de dependencias aplicado:
+  - editor de `BioNetwork` exige plugin de modelo `bionetwork`;
+  - editor de `BioReaction` exige plugin de modelo `bioreaction`.
+- A `MainWindow` passou a usar `GuiExtensionPluginCatalog::resolvedPlugins()` ao reconstruir contribuicoes graficas.
+- Documentacao tecnica da configuracao declarativa:
+  - `documentation/developers/GUI_GRAPHICAL_PLUGIN_CONFIGURATION.md`.
+- Validacao da etapa declarativa:
+  - `cmake --build --preset gui-app`: passou (rebuild + link de `genesys_qt_gui_application`).
+- Validacao terminal mais recente:
+  - `Smart_BioNetworkAnalysis`: `status=Completed`, `samples=302`, matriz estequiometrica 3x1, `steady=false` para `tolerance=0.05`, sensitividade com 2 entradas (`kForward`, `kReverse`);
+  - `Smart_BioReversibleMassAction`: `status=Completed`, payload final `A=4.82086773432292`, `B=5.17913226567708`;
+  - `Smart_BioKineticLawRegulation`: `status=Completed`, payload final `Protein=3.24249268786054`, `Activator=3`;
+  - `Smart_BioReversibleKineticLaw`: `status=Completed`, payload final `Substrate=3.61517214395755`, `Product=6.38482785604245`, `Enzyme=2`.
 - A IA `TINKERCELL` pode executar stage e commit quando pedido ou quando a politica operacional permitir, mas push continua separado salvo pedido explicito.
 - Qualquer trabalho futuro deve partir da base atualizada `WiP20261`, e nao de estado antigo local.
 - Em 2026-04-17, um clone local de `WiP20261` apresentava conflito preexistente em `source/plugins/components/Enter.cpp`; esse conflito nao pertence ao contexto TINKERCELL e so deve ser tratado pela IA se for necessario e seguro dentro da nova tarefa.
@@ -454,6 +518,7 @@ Validacao executada no momento da implementacao:
 - Definir contrato de plugin grafico sem acoplamento a biossimulacao: menus, acoes, docks, janelas, editores, ferramentas de cena, inspectors, providers de propriedades e comandos.
 - Definir como plugins graficos descobrem dependencias de plugins de modelo/dados e como ficam inativos quando essas dependencias nao estao carregadas.
 - Depois da arquitetura generica, criar plugins graficos especificos de biossimulacao como consumidores dessa infraestrutura.
+- Validar fluxo funcional GUI ponta a ponta com execucao manual: carregar/descarregar plugins bio e confirmar aparecimento/ocultacao dos menus `Tools/Extensions/Biochemical`.
 - Definir escopo de importacao/exportacao SBML/TinkerCell.
 - Ainda falta fluxo GUI/editor para editar listas explicitas de membros em `BioNetwork`; a fase atual cobriu API, persistencia, validacao e runtime.
 - Ainda falta fluxo GUI/editor para editar `kineticLawExpression`; a fase atual cobriu API, persistencia, validacao e runtime.
