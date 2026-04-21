@@ -377,6 +377,10 @@ void SceneToolController::onActionActivateGraphicalSimulationTriggered() {
 
 // Preserve animation speed slider conversion to execution time value.
 void SceneToolController::onHorizontalSliderAnimationSpeedValueChanged(int value) {
+    ModelGraphicsScene* scene = _currentScene();
+    if (scene != nullptr && !scene->simulationAnimationsEnabled()) {
+        return;
+    }
     const double newValue = static_cast<double>(value) / 75.0; // 100/50 = max 2 seconds per animation
     AnimationTransition::setTimeExecution(newValue);
 }
