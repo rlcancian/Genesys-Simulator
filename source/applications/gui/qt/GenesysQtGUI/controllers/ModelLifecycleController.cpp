@@ -69,9 +69,19 @@ void ModelLifecycleController::onActionModelOpenTriggered() const {
     if (fileName == "") {
         return;
     }
-    _callbacks.insertCommandInConsole("load " + fileName.toStdString());
+    openModelFileInternal(fileName, true);
+}
 
-    // Preserve open-model success/failure behavior and state updates.
+bool ModelLifecycleController::openModelFile(const QString& fileName) const {
+    return openModelFileInternal(fileName, false);
+}
+
+bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bool showDialogs) const {
+    if (fileName.trimmed().isEmpty()) {
+        return false;
+    }
+
+    _callbacks.insertCommandInConsole("load " + fileName.toStdString());
     Model* model = _callbacks.loadGraphicalModel(fileName.toStdString());
     if (model != nullptr) {
         *_loaded = true;
@@ -81,15 +91,20 @@ void ModelLifecycleController::onActionModelOpenTriggered() const {
             *_graphicalModelHasChanged = false;
         }
         model->setHasChanged(false);
-        SystemPreferences::setLastModelFilename(fileName.toStdString());
+        SystemPreferences::pushRecentModelFile(fileName.toStdString());
         SystemPreferences::save();
-        QMessageBox::information(_ownerWidget, "Open Model", "Model successfully oppened");
+        if (showDialogs) {
+            QMessageBox::information(_ownerWidget, "Open Model", "Model successfully oppened");
+        }
     } else {
-        QMessageBox::warning(_ownerWidget, "Open Model", "Error while opening model");
+        if (showDialogs) {
+            QMessageBox::warning(_ownerWidget, "Open Model", "Error while opening model");
+        }
         _callbacks.actualizeActions();
         _callbacks.actualizeTabPanes();
     }
     _ui->graphicsView->getScene()->getUndoStack()->clear();
+    return model != nullptr;
 }
 
 // Move model save orchestration out of MainWindow while preserving .gen/.gui persistence and checks.
@@ -134,6 +149,7 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
             currentModel->setHasChanged(false);
         }
         SystemPreferences::setLastModelFilename((fileName + ".gui").toStdString());
+        SystemPreferences::pushRecentModelFile((fileName + ".gui").toStdString());
         SystemPreferences::save();
         QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
     }

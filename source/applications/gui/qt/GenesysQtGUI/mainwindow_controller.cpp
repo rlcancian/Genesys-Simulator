@@ -362,6 +362,7 @@ void MainWindow::on_actionSimulatorPreferences_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
     if (_dialogUtilityController != nullptr) {
         _dialogUtilityController->onActionSimulatorPreferencesTriggered();
+        _refreshRecentModelsMenu();
     }
 }
 
@@ -538,6 +539,7 @@ void MainWindow::on_actionModelOpen_triggered()
 {
     // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
     _modelLifecycleController->onActionModelOpenTriggered();
+    _refreshRecentModelsMenu();
 }
 
 
@@ -545,6 +547,7 @@ void MainWindow::on_actionModelSave_triggered()
 {
     // Save is now anchored to the currently selected model tab.
     if (_saveCurrentModel(true)) {
+        _refreshRecentModelsMenu();
         QMessageBox::information(this, "Save Model", "Model successfully saved");
     }
 }

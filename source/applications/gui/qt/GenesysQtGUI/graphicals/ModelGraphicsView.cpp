@@ -51,6 +51,7 @@ ModelGraphicsView::ModelGraphicsView(QWidget *parent) : QGraphicsView(parent) {
 	int tam = 2*TraitsGUI<GView>::sceneDistanceCenter;
 	ModelGraphicsScene* scene = new ModelGraphicsScene(iniPos, iniPos, tam, tam, this);
 	setScene(scene);
+    centerOn(TraitsGUI<GView>::sceneCenter, TraitsGUI<GView>::sceneCenter);
 }
 
 ModelGraphicsView::ModelGraphicsView(const ModelGraphicsView& orig) {

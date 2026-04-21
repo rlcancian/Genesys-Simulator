@@ -1,6 +1,7 @@
 #include "GraphicalModelBuilder.h"
 
 #include "GraphicalDataDefinitionLayout.h"
+#include "GraphicalAutomaticPositioningStrategy.h"
 #include "../TraitsGUI.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
@@ -536,12 +537,13 @@ namespace {
         }
 
         const QRectF childBounds = child->boundingRect();
-        return GraphicalDataDefinitionLayout::arcPosition(anchorBounds,
-                                                          childBounds.size(),
-                                                          index,
-                                                          count,
-                                                          upperArc,
-                                                          radialLayer);
+        const auto positioningStrategy = GraphicalAutomaticPositioningStrategyFactory::createFromPreferences();
+        return positioningStrategy->dataDefinitionPosition(anchorBounds,
+                                                           childBounds.size(),
+                                                           index,
+                                                           count,
+                                                           upperArc,
+                                                           radialLayer);
     }
 
     void positionNewDataDefinitionsInArc(const QRectF& anchorBounds,
@@ -729,8 +731,10 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
     Model* m = _simulator->getModelManager()->current();
     if (m != nullptr) {
         _graphicsView->setCanNotifyGraphicalModelEventHandlers(false);
-        int x = TraitsGUI<GView>::sceneCenter - TraitsGUI<GView>::sceneDistanceCenter * 0.8;
-        int y = TraitsGUI<GView>::sceneCenter - TraitsGUI<GView>::sceneDistanceCenter * 0.8;
+        const auto positioningStrategy = GraphicalAutomaticPositioningStrategyFactory::createFromPreferences();
+        const QPointF initialPosition = positioningStrategy->initialComponentLayoutOrigin();
+        int x = static_cast<int>(initialPosition.x());
+        int y = static_cast<int>(initialPosition.y());
         int ymax = y;
 
         ComponentManager* cm = m->getComponentManager();

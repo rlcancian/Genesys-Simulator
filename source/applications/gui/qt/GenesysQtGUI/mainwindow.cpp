@@ -98,6 +98,7 @@
 #include <QFrame>
 #include <QLabel>
 #include <QMap>
+#include <QMenu>
 #include <QPainter>
 #include <QScrollArea>
 #include <QSignalBlocker>
@@ -304,10 +305,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _actionOpenSelectedSubmodel = new QAction(tr("Open Submodel"), this);
     _actionOpenSelectedSubmodel->setToolTip(tr("Open a graphical tab scoped to the selected item's internal model level."));
     connect(_actionOpenSelectedSubmodel, &QAction::triggered, this, [this]() { _openSelectedSubmodel(); });
+    _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
     ui->menuModel->insertAction(ui->actionModelOpen, _actionOpenSelectedSubmodel);
     ui->menuModel->insertSeparator(ui->actionModelOpen);
+    ui->menuModel->insertMenu(ui->actionModelOpen, _menuOpenRecent);
 
     // The View/Show menu relies on the native checkmark indicator; menu icons made the checked
     // state hard to distinguish, so keep those actions text/checkmark-only and define explicit
@@ -522,6 +525,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // system preferences
     SystemPreferences::load();
+    _refreshRecentModelsMenu();
     GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
     if (SystemPreferences::autoLoadPlugins()) {
         PluginInsertionOptions options;
@@ -555,8 +559,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                 _actualizeModelTextHasChanged(false);
                 _graphicalModelHasChanged = false;
                 model->setHasChanged(false);
-                SystemPreferences::setLastModelFilename(fileName);
+                SystemPreferences::pushRecentModelFile(fileName);
                 SystemPreferences::save();
+                _refreshRecentModelsMenu();
             } else {
                 qWarning() << "Could not open startup model from preferences:" << QString::fromStdString(fileName);
             }
@@ -982,7 +987,7 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
         return false;
     }
 
-    SystemPreferences::setLastModelFilename(graphicalFilename.toStdString());
+    SystemPreferences::pushRecentModelFile(graphicalFilename.toStdString());
     SystemPreferences::save();
     if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
         ui->graphicsView->getScene()->getUndoStack() != nullptr) {
@@ -1411,6 +1416,48 @@ void MainWindow::_activateNextModel() {
         _actualizeActions();
         _actualizeTabPanes();
     }
+}
+
+void MainWindow::_refreshRecentModelsMenu() {
+    if (_menuOpenRecent == nullptr) {
+        return;
+    }
+
+    _menuOpenRecent->clear();
+    _recentModelActions.clear();
+
+    const std::vector<std::string> recentModels = SystemPreferences::recentModelFiles();
+    if (recentModels.empty()) {
+        QAction* emptyAction = _menuOpenRecent->addAction(tr("(No recent files)"));
+        emptyAction->setEnabled(false);
+        _recentModelActions.append(emptyAction);
+        return;
+    }
+
+    for (const std::string& fileName : recentModels) {
+        const QString qFileName = QString::fromStdString(fileName);
+        const QString displayText = QFileInfo(qFileName).fileName().isEmpty()
+                                        ? qFileName
+                                        : QFileInfo(qFileName).fileName();
+        QAction* action = _menuOpenRecent->addAction(displayText);
+        action->setToolTip(qFileName);
+        connect(action, &QAction::triggered, this, [this, qFileName]() {
+            _openRecentModelFile(qFileName);
+        });
+        _recentModelActions.append(action);
+    }
+}
+
+bool MainWindow::_openRecentModelFile(const QString& fileName) {
+    if (_modelLifecycleController == nullptr) {
+        return false;
+    }
+    const bool opened = _modelLifecycleController->openModelFile(fileName);
+    if (!opened) {
+        QMessageBox::warning(this, "Open Recent", tr("Error while opening model:\n%1").arg(fileName));
+    }
+    _refreshRecentModelsMenu();
+    return opened;
 }
 
 void MainWindow::_rebuildViewDependentControllers() {
@@ -2301,6 +2348,7 @@ void MainWindow::_initUiForNewModel(Model* m) {
     }
     _actualizeUndo();
     ui->graphicsView->getScene()->showGrid(); //@TODO: Bad place to be
+    ui->graphicsView->centerOn(TraitsGUI<GView>::sceneCenter, TraitsGUI<GView>::sceneCenter);
     ui->textEdit_Simulation->clear();
     ui->textEdit_Reports->clear();
     ui->textEdit_Console->moveCursor(QTextCursor::End);

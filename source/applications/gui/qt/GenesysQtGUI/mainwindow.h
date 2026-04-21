@@ -44,6 +44,7 @@ class GraphicalContextMenuController;
 class DialogUtilityController;
 class GuiExtensionManager;
 class QAction;
+class QMenu;
 class QTabWidget;
 class ModelGraphicsView;
 class ModelComponent;
@@ -471,6 +472,8 @@ private: // opened-model document state
     bool _canOpenSubmodelFor(ModelDataDefinition* owner) const;
     /** @brief Slot target for the context-menu/model-menu submodel-opening command. */
     void _openSelectedSubmodel();
+    void _refreshRecentModelsMenu();
+    bool _openRecentModelFile(const QString& fileName);
     /** @brief Stores the active editor/dirty state before switching away from the current model. */
     void _syncCurrentModelDocumentState();
     /** @brief Restores filename, editor text and dirty flags for the given model after activation. */
@@ -529,6 +532,8 @@ private: // interface and model main elements to join
     QAction* _actionModelNext = nullptr;
     // Runtime action that opens a level-scoped graphical tab from the selected owner item.
     QAction* _actionOpenSelectedSubmodel = nullptr;
+    QMenu* _menuOpenRecent = nullptr;
+    QList<QAction*> _recentModelActions;
     // Keep core simulation command gateway owned by MainWindow composition root.
     std::unique_ptr<class SimulationController> _simulationController;
     // Keep phase-ordered services to make composition dependencies explicit in Phase 12.
