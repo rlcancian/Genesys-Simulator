@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>555</width>
-    <height>465</height>
+    <width>680</width>
+    <height>520</height>
    </rect>
   </property>
   <property name="minimumSize">
    <size>
-    <width>0</width>
-    <height>270</height>
+    <width>560</width>
+    <height>420</height>
    </size>
   </property>
   <property name="windowTitle">
@@ -25,54 +25,192 @@
      <property name="currentIndex">
       <number>0</number>
      </property>
-     <widget class="QWidget" name="tab1">
+     <widget class="QWidget" name="tabGeneral">
       <attribute name="title">
        <string>General</string>
       </attribute>
-      <layout class="QVBoxLayout" name="verticalLayout_2">
+      <layout class="QVBoxLayout" name="verticalLayoutGeneral">
        <item>
-        <widget class="QCheckBox" name="checkBox_2">
-         <property name="text">
-          <string>Start windows maximixed</string>
+        <widget class="QGroupBox" name="groupBoxStartup">
+         <property name="title">
+          <string>Startup</string>
          </property>
+         <layout class="QVBoxLayout" name="verticalLayoutStartup">
+          <item>
+           <widget class="QCheckBox" name="checkBoxStartMaximized">
+            <property name="text">
+             <string>Start main window maximized</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QGroupBox" name="groupBoxStartupModel">
+            <property name="title">
+             <string>Model at startup</string>
+            </property>
+            <layout class="QGridLayout" name="gridLayoutStartupModel">
+             <item row="0" column="0" colspan="3">
+              <widget class="QRadioButton" name="radioButtonStartNoModel">
+               <property name="text">
+                <string>Open without a model</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="0" colspan="3">
+              <widget class="QRadioButton" name="radioButtonStartNewModel">
+               <property name="text">
+                <string>Create a new model automatically</string>
+               </property>
+              </widget>
+             </item>
+             <item row="2" column="0" colspan="3">
+              <widget class="QRadioButton" name="radioButtonStartLastModel">
+               <property name="text">
+                <string>Open last successfully used model</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="0">
+              <widget class="QRadioButton" name="radioButtonStartSpecificModel">
+               <property name="text">
+                <string>Open this model file</string>
+               </property>
+              </widget>
+             </item>
+             <item row="3" column="1">
+              <widget class="QLineEdit" name="lineEditStartupModelFile"/>
+             </item>
+             <item row="3" column="2">
+              <widget class="QPushButton" name="pushButtonBrowseStartupModel">
+               <property name="text">
+                <string>Browse...</string>
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="groupBox">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
+        <widget class="QGroupBox" name="groupBoxRuntime">
+         <property name="title">
+          <string>Runtime and diagnostics</string>
          </property>
-         <property name="minimumSize">
+         <layout class="QFormLayout" name="formLayoutRuntime">
+          <item row="0" column="0" colspan="2">
+           <widget class="QCheckBox" name="checkBoxAutoLoadPlugins">
+            <property name="text">
+             <string>Automatically load configured plugins at startup</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0" colspan="2">
+           <widget class="QCheckBox" name="checkBoxCheckSystemPackagesAtStart">
+            <property name="text">
+             <string>Check required system packages at startup</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelTraceLevel">
+            <property name="text">
+             <string>Trace level</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="comboBoxTraceLevel"/>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacerGeneral">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
           <size>
-           <width>0</width>
-           <height>70</height>
+           <width>20</width>
+           <height>40</height>
           </size>
          </property>
+        </spacer>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="tabView">
+      <attribute name="title">
+       <string>View</string>
+      </attribute>
+      <layout class="QVBoxLayout" name="verticalLayoutView">
+       <item>
+        <widget class="QGroupBox" name="groupBoxTheme">
          <property name="title">
-          <string>Model file at startup:</string>
+          <string>Application appearance</string>
          </property>
-         <layout class="QHBoxLayout" name="horizontalLayout_2">
-          <item>
-           <widget class="QRadioButton" name="radioButton_3">
+         <layout class="QFormLayout" name="formLayoutTheme">
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelTheme">
             <property name="text">
-             <string>None (closed)</string>
+             <string>Theme</string>
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QRadioButton" name="radioButton_2">
+          <item row="0" column="1">
+           <widget class="QComboBox" name="comboBoxTheme">
+            <item>
+             <property name="text">
+              <string>Light</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Dark</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelInterfaceStyle">
             <property name="text">
-             <string>New model</string>
+             <string>Interface style</string>
             </property>
            </widget>
           </item>
-          <item>
-           <widget class="QRadioButton" name="radioButton">
+          <item row="1" column="1">
+           <widget class="QComboBox" name="comboBoxInterfaceStyle">
+            <item>
+             <property name="text">
+              <string>Classic Desktop</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Modern Fusion</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelFontPointSize">
             <property name="text">
-             <string>Open last used</string>
+             <string>Font point size</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QSpinBox" name="spinBoxFontPointSize">
+            <property name="specialValueText">
+             <string>System default</string>
+            </property>
+            <property name="minimum">
+             <number>0</number>
+            </property>
+            <property name="maximum">
+             <number>24</number>
             </property>
            </widget>
           </item>
@@ -80,32 +218,102 @@
         </widget>
        </item>
        <item>
-        <widget class="QCheckBox" name="checkBox">
-         <property name="text">
-          <string>Automatically install plugins</string>
+       <widget class="QGroupBox" name="groupBoxDiagramTheme">
+         <property name="title">
+          <string>Model diagram</string>
          </property>
+         <layout class="QFormLayout" name="formLayoutDiagramTheme">
+          <item row="0" column="0" colspan="2">
+           <widget class="QCheckBox" name="checkBoxDiagramUsesThemeColors">
+            <property name="text">
+             <string>Apply theme colors to canvas background and grid</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelRecentModelsLimit">
+            <property name="text">
+             <string>Recent files in menu</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinBoxRecentModelsLimit">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>50</number>
+            </property>
+            <property name="value">
+             <number>10</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelAutomaticPositioningStrategy">
+            <property name="text">
+             <string>Automatic positioning strategy</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="comboBoxAutomaticPositioningStrategy">
+            <item>
+             <property name="text">
+              <string>Centered (recommended)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Legacy (top-left)</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
         </widget>
        </item>
        <item>
-        <layout class="QHBoxLayout" name="horizontalLayout">
-         <item>
-          <widget class="QLabel" name="label">
-           <property name="text">
-            <string>Trace Level:</string>
-           </property>
-          </widget>
-         </item>
-         <item>
-          <widget class="QComboBox" name="comboBox"/>
-         </item>
-        </layout>
+        <widget class="QGroupBox" name="groupBoxConfigFile">
+         <property name="title">
+          <string>Runtime configuration</string>
+         </property>
+         <layout class="QFormLayout" name="formLayoutConfig">
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelConfigPath">
+            <property name="text">
+             <string>JSON file</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="labelConfigPathValue">
+            <property name="text">
+             <string/>
+            </property>
+            <property name="textInteractionFlags">
+             <set>Qt::TextSelectableByMouse</set>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <spacer name="verticalSpacerView">
+         <property name="orientation">
+          <enum>Qt::Vertical</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>20</width>
+           <height>40</height>
+          </size>
+         </property>
+        </spacer>
        </item>
       </layout>
-     </widget>
-     <widget class="QWidget" name="tab2">
-      <attribute name="title">
-       <string>View</string>
-      </attribute>
      </widget>
     </widget>
    </item>
@@ -125,29 +333,13 @@
  <connections>
   <connection>
    <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>DialogSystemPreferences</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
-  <connection>
-   <sender>buttonBox</sender>
    <signal>rejected()</signal>
    <receiver>DialogSystemPreferences</receiver>
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
      <x>316</x>
-     <y>260</y>
+     <y>492</y>
     </hint>
     <hint type="destinationlabel">
      <x>286</x>

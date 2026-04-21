@@ -3,6 +3,7 @@ set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     ParserManager.cpp
     ParserChangesInformation.cpp
     PluginInformation.cpp
+    SystemDependencyResolver.cpp
     Plugin.cpp
     TraceManager.cpp
     OnEventManager.cpp

@@ -1,7 +1,7 @@
 #ifndef TRACECONSOLECONTROLLER_H
 #define TRACECONSOLECONTROLLER_H
 
-#include "../../../../../kernel/simulator/TraceManager.h"
+#include "kernel/simulator/TraceManager.h"
 
 class QTextEdit;
 

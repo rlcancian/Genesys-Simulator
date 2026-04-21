@@ -26,9 +26,10 @@ Plugin::Plugin(StaticGetPluginInformation getInformation) {
 		PluginInformation* infos = _StatMethodGetInformation();
 		this->_pluginInfo = infos;
 		this->_isValidPlugin = true;
-	// TODO(genesys|plugin|diagnostics): Review whether this broad catch should preserve
-	// diagnostic information. The current implementation only marks the plugin as invalid.
-	} catch (...) {
+		// @ToDo: (importante): Review whether this broad catch should preserve
+		// diagnostic information. The current implementation only marks the plugin as invalid.
+	}
+	catch (...) {
 		this->_isValidPlugin = false;
 	}
 }
@@ -39,7 +40,6 @@ Plugin::~Plugin() {
 }
 
 std::string Plugin::show() {
-
 	std::string message = "<" + _pluginInfo->getCategory() + "> ";
 	if (_pluginInfo->isSource()) {
 		message += "Source ";
@@ -58,7 +58,8 @@ std::string Plugin::show() {
 	}
 	if (_pluginInfo->isComponent()) {
 		message += "Component ";
-	} else {
+	}
+	else {
 		message += "Element ";
 	}
 	message += "\"" + _pluginInfo->getPluginTypename() + "\" ";
@@ -67,7 +68,7 @@ std::string Plugin::show() {
 		for (std::string depends : *_pluginInfo->getDynamicLibFilenameDependencies()) {
 			message += depends + ",";
 		}
-		/// @todo Keep Plugin focused on plugin metadata/wrapper duties. Connector-specific
+		// @ToDo: (pequena alteração): Keep Plugin focused on plugin metadata/wrapper duties. Connector-specific
 		/// responsibilities should remain in PluginConnector/PluginManager layers.
 		message = message.substr(0, message.length() - 1);
 		message += "] ";
@@ -107,22 +108,24 @@ bool Plugin::isIsValidPlugin() const {
 //    _drain = drain;
 //}
 
-ModelDataDefinition* Plugin::loadNew(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* Plugin::loadNew(Model* model, PersistenceRecord* fields) {
 	if (this->_pluginInfo->isComponent()) {
 		return _loadNewComponent(model, fields);
-	} else {
+	}
+	else {
 		return _loadNewElement(model, fields);
 	}
 }
 
-bool Plugin::loadAndInsertNew(Model* model, PersistenceRecord *fields) {
+bool Plugin::loadAndInsertNew(Model* model, PersistenceRecord* fields) {
 	if (this->_pluginInfo->isComponent()) {
 		ModelComponent* newComp = _loadNewComponent(model, fields);
 		if (newComp != nullptr) {
 			//model->getTraceManager()->trace(newComp->show());
 			return true; //model->components()->insert(newComp);
 		}
-	} else {
+	}
+	else {
 		ModelDataDefinition* newElem = _loadNewElement(model, fields);
 		if (newElem != nullptr) {
 			//model->getTraceManager()->trace(newElem->show());
@@ -135,6 +138,9 @@ bool Plugin::loadAndInsertNew(Model* model, PersistenceRecord *fields) {
 ModelDataDefinition* Plugin::newInstance(Model* model, std::string name) {
 	StaticConstructorDataDefinitionInstance constructor = this->getPluginInfo()->getDataDefinitionConstructor();
 	ModelDataDefinition* instance = (constructor(model, name));
+	if (model != nullptr && instance != nullptr) {
+		ModelDataDefinition::CreateInternalData(instance);
+	}
 	return instance;
 }
 
@@ -142,13 +148,13 @@ ModelDataDefinition* Plugin::newInstance(Model* model, std::string name) {
 // Private
 //--------------------------
 
-ModelComponent* Plugin::_loadNewComponent(Model* model, PersistenceRecord *fields) {
+ModelComponent* Plugin::_loadNewComponent(Model* model, PersistenceRecord* fields) {
 	StaticLoaderComponentInstance loader = this->_pluginInfo->GetComponentLoader();
 	ModelComponent* newElementOrComponent = loader(model, fields);
 	return newElementOrComponent;
 }
 
-ModelDataDefinition* Plugin::_loadNewElement(Model* model, PersistenceRecord *fields) {
+ModelDataDefinition* Plugin::_loadNewElement(Model* model, PersistenceRecord* fields) {
 	StaticLoaderDataDefinitionInstance loader = this->_pluginInfo->getDataDefinitionLoader();
 	ModelDataDefinition* newElementOrComponent = loader(model, fields);
 	return newElementOrComponent;

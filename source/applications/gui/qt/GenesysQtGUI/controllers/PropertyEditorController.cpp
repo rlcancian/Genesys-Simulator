@@ -3,13 +3,160 @@
 
 #include "graphicals/ModelGraphicsView.h"
 #include "graphicals/ModelGraphicsScene.h"
+#include "graphicals/GraphicalComponentPort.h"
+#include "graphicals/GraphicalConnection.h"
+#include "graphicals/GraphicalDiagramConnection.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 
+#include "kernel/simulator/ComponentManager.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
+
 #include <QGraphicsItem>
 #include <QDebug>
+#include <QSet>
 #include <QTimer>
+
+#include <set>
+
+namespace {
+bool isSceneInfrastructureItem(QGraphicsItem* item) {
+    return dynamic_cast<GraphicalComponentPort*>(item) != nullptr
+        || dynamic_cast<GraphicalDiagramConnection*>(item) != nullptr
+        || dynamic_cast<GraphicalConnection*>(item) != nullptr;
+}
+
+QSet<QString> graphicallyRepresentedDataDefinitionNames(ModelGraphicsScene* scene) {
+    QSet<QString> names;
+    if (scene == nullptr || scene->getAllDataDefinitions() == nullptr) {
+        return names;
+    }
+
+    for (GraphicalModelDataDefinition* graphicalDataDefinition : *scene->getAllDataDefinitions()) {
+        if (graphicalDataDefinition == nullptr || graphicalDataDefinition->getDataDefinition() == nullptr) {
+            continue;
+        }
+        names.insert(QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName()));
+    }
+    return names;
+}
+
+void collectEditableReferencedDataDefinitions(
+    List<SimulationControl*>* controls,
+    QSet<QString>& names,
+    std::set<const SimulationControl*>& recursionPath,
+    int depth = 0
+    ) {
+    if (controls == nullptr || depth > 10) {
+        return;
+    }
+
+    for (SimulationControl* control : *controls->list()) {
+        if (control == nullptr || recursionPath.find(control) != recursionPath.end()) {
+            continue;
+        }
+
+        const GenesysPropertyDescriptor desc = GenesysPropertyIntrospection::describe(control);
+        if (desc.isModelDataDefinitionReference && !desc.readOnly) {
+            ModelDataDefinition* referenced = control->getReferencedModelDataDefinition();
+            if (referenced != nullptr) {
+                names.insert(QString::fromStdString(referenced->getName()));
+            }
+        }
+
+        recursionPath.insert(control);
+        if (desc.supportsListEditor && desc.isClass) {
+            const int itemCount = static_cast<int>(desc.choices.size());
+            for (int index = 0; index < itemCount; ++index) {
+                collectEditableReferencedDataDefinitions(
+                    control->getChildSimulationControls(index),
+                    names,
+                    recursionPath,
+                    depth + 1
+                    );
+            }
+        } else if (desc.supportsInlineExpansion && control->hasObjectInstance()) {
+            collectEditableReferencedDataDefinitions(
+                control->getChildSimulationControls(),
+                names,
+                recursionPath,
+                depth + 1
+                );
+        }
+        recursionPath.erase(control);
+    }
+}
+
+QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
+    QSet<QString> names;
+    if (scene == nullptr || scene->getSimulator() == nullptr ||
+        scene->getSimulator()->getModelManager() == nullptr) {
+        return names;
+    }
+
+    Model* model = scene->getSimulator()->getModelManager()->current();
+    if (model == nullptr) {
+        return names;
+    }
+
+    std::set<const SimulationControl*> recursionPath;
+    if (model->getComponentManager() != nullptr) {
+        for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
+            if (component != nullptr) {
+                collectEditableReferencedDataDefinitions(
+                    component->getSimulationControls(),
+                    names,
+                    recursionPath
+                    );
+            }
+        }
+    }
+
+    if (model->getDataManager() != nullptr) {
+        for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+            List<ModelDataDefinition*>* dataDefinitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+            if (dataDefinitions == nullptr) {
+                continue;
+            }
+            for (ModelDataDefinition* dataDefinition : *dataDefinitions->list()) {
+                if (dataDefinition != nullptr) {
+                    collectEditableReferencedDataDefinitions(
+                        dataDefinition->getSimulationControls(),
+                        names,
+                        recursionPath
+                        );
+                }
+            }
+        }
+    }
+
+    return names;
+}
+
+void refreshGraphicalDataDefinitionEditability(
+    ModelGraphicsScene* scene,
+    const QSet<QString>& editableDataDefinitions
+    ) {
+    if (scene == nullptr || scene->getAllDataDefinitions() == nullptr) {
+        return;
+    }
+
+    for (GraphicalModelDataDefinition* graphicalDataDefinition : *scene->getAllDataDefinitions()) {
+        if (graphicalDataDefinition == nullptr || graphicalDataDefinition->getDataDefinition() == nullptr) {
+            continue;
+        }
+        const QString name = QString::fromStdString(graphicalDataDefinition->getDataDefinition()->getName());
+        graphicalDataDefinition->setEditableInPropertyEditor(editableDataDefinitions.contains(name));
+    }
+}
+} // namespace
 
 // Build the Phase 6 controller with narrow dependencies for property-editor orchestration.
 PropertyEditorController::PropertyEditorController(
@@ -56,6 +203,36 @@ bool PropertyEditorController::isPostCommitPipelineActive() const {
     return propertyEditorBusy || _isGlobalRefreshQueued || _isGlobalRefreshRunning || _pendingGlobalRefresh;
 }
 
+void PropertyEditorController::bindDataDefinitionFromInspector(
+    ModelDataDefinition* dataDefinition,
+    QObject* graphicalObject
+    ) const {
+    if (_propertyBrowser == nullptr) {
+        return;
+    }
+
+    if (dataDefinition == nullptr) {
+        clearPropertyEditorSelection();
+        return;
+    }
+
+    ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;
+    QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
+    QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
+
+    refreshGraphicalDataDefinitionEditability(scene, editableDataDefinitions);
+
+    _propertyBrowser->setActiveObject(
+        graphicalObject,
+        dataDefinition,
+        graphicalDataDefinitions,
+        editableDataDefinitions,
+        _propertyGenesys,
+        _propertyList,
+        _propertyEditorUI,
+        _propertyBox);
+}
+
 // Preserve legacy single-selection behavior while moving orchestration out of MainWindow.
 void PropertyEditorController::sceneSelectionChanged() const {
     // Adds scoped tracing for property-controller selection synchronization diagnostics.
@@ -80,12 +257,19 @@ void PropertyEditorController::sceneSelectionChanged() const {
     qInfo() << "[PropertyEditorController] sceneSelectionChanged selectedItems=" << selectedItems.size();
     if (selectedItems.size() == 1) {
         QGraphicsItem* item = selectedItems.at(0);
+        ModelGraphicsScene* scene = _graphicsView->getScene();
+        const QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
+        const QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
+        refreshGraphicalDataDefinitionEditability(scene, editableDataDefinitions);
+
         GraphicalModelComponent* gmc = dynamic_cast<GraphicalModelComponent*>(item);
         if (gmc != nullptr) {
             qInfo() << "[PropertyEditorController] sceneSelectionChanged binding single GraphicalModelComponent";
             _propertyBrowser->setActiveObject(
                 gmc,
                 gmc->getComponent(),
+                graphicalDataDefinitions,
+                editableDataDefinitions,
                 _propertyGenesys,
                 _propertyList,
                 _propertyEditorUI,
@@ -100,10 +284,20 @@ void PropertyEditorController::sceneSelectionChanged() const {
             _propertyBrowser->setActiveObject(
                 gmdd,
                 gmdd->getDataDefinition(),
+                graphicalDataDefinitions,
+                editableDataDefinitions,
                 _propertyGenesys,
                 _propertyList,
                 _propertyEditorUI,
                 _propertyBox);
+            return;
+        }
+
+        if (item != nullptr
+            && item->flags().testFlag(QGraphicsItem::ItemIsSelectable)
+            && !isSceneInfrastructureItem(item)) {
+            qInfo() << "[PropertyEditorController] sceneSelectionChanged binding single pure graphics item";
+            _propertyBrowser->setActiveGraphicsItem(item);
             return;
         }
     }
@@ -156,14 +350,17 @@ void PropertyEditorController::_runGlobalRefresh() const {
         _pendingGlobalRefresh = false;
         qInfo() << "[PropertyEditorController] _runGlobalRefresh enter";
 
-        if (_actualizeModelSimLanguage) {
-            _actualizeModelSimLanguage();
-        }
         if (_actualizeModelComponents) {
             _actualizeModelComponents(true);
         }
         if (_actualizeModelDataDefinitions) {
             _actualizeModelDataDefinitions(true);
+        }
+        // Refresh the serialized model text only after component and data-definition panes have
+        // consumed the committed kernel state. This keeps Siman aligned with the same model
+        // snapshot already visible in the inspector widgets.
+        if (_actualizeModelSimLanguage) {
+            _actualizeModelSimLanguage();
         }
         if (_actualizeModelCppCode) {
             _actualizeModelCppCode();

@@ -5,8 +5,9 @@
 #include "../dialogs/Dialogmodelinformation.h"
 #include "../dialogs/dialogsimulationconfigure.h"
 #include "../graphicals/ModelGraphicsScene.h"
-#include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/simulator/Model.h"
+#include "../systempreferences.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -21,57 +22,36 @@ ModelLifecycleController::ModelLifecycleController(QWidget* ownerWidget,
                                                    Ui::MainWindow* ui,
                                                    QString* modelFilename,
                                                    bool* textModelHasChanged,
+                                                   bool* graphicalModelHasChanged,
                                                    bool* closingApproved,
                                                    bool* loaded,
+                                                   bool& parallelizationEnabled,
+                                                   int& parallelizationThreads,
+                                                   int& parallelizationBatchSize,
                                                    Callbacks callbacks)
     : _ownerWidget(ownerWidget),
       _simulator(simulator),
       _ui(ui),
       _modelFilename(modelFilename),
       _textModelHasChanged(textModelHasChanged),
+      _graphicalModelHasChanged(graphicalModelHasChanged),
       _closingApproved(closingApproved),
       _loaded(loaded),
+      _parallelizationEnabled(parallelizationEnabled),
+      _parallelizationThreads(parallelizationThreads),
+      _parallelizationBatchSize(parallelizationBatchSize),
       _callbacks(std::move(callbacks)) {
 }
 
 // Move model creation orchestration out of MainWindow while preserving prompts and console flow.
 void ModelLifecycleController::onActionModelNewTriggered() const {
-    Model* m;
-    if ((m = _simulator->getModelManager()->current()) != nullptr) {
-        QMessageBox::StandardButton reply = QMessageBox::question(_ownerWidget, "New Model", "There is a model already oppened. Do you want to close it and to create new model?", QMessageBox::Yes | QMessageBox::No);
-        if (reply == QMessageBox::No) {
-            return;
-        } else {
-            onActionModelCloseTriggered();
-        }
-    }
     _callbacks.insertCommandInConsole("new");
-    if (m != nullptr) {
-        _simulator->getModelManager()->remove(m);
-    }
-    m = _simulator->getModelManager()->newModel();
+    Model* m = _simulator->getModelManager()->newModel();
     _callbacks.initUiForNewModel(m);
 }
 
 // Move model open orchestration out of MainWindow while preserving file-dialog defaults and messages.
 void ModelLifecycleController::onActionModelOpenTriggered() const {
-    Model* m;
-    if ((m = _simulator->getModelManager()->current()) != nullptr) {
-        QMessageBox msgBox;
-        msgBox.setIcon(QMessageBox::Question);
-        msgBox.setWindowTitle("New Model");
-        msgBox.setText("There is a model already opened. Do you want to close it and create a new model?");
-        msgBox.setStandardButtons(QMessageBox::Yes | QMessageBox::No);
-        msgBox.setDefaultButton(QMessageBox::No);
-        int reply = msgBox.exec();
-
-        if (reply == QMessageBox::No) {
-            return;
-        } else {
-            onActionModelCloseTriggered();
-        }
-    }
-
     // Preserve the existing default directory behavior that points to the models folder.
     QString currentDirectory = QDir::currentPath();
     QDir parentDir(currentDirectory);
@@ -89,20 +69,42 @@ void ModelLifecycleController::onActionModelOpenTriggered() const {
     if (fileName == "") {
         return;
     }
-    _callbacks.insertCommandInConsole("load " + fileName.toStdString());
+    openModelFileInternal(fileName, true);
+}
 
-    // Preserve open-model success/failure behavior and state updates.
+bool ModelLifecycleController::openModelFile(const QString& fileName) const {
+    return openModelFileInternal(fileName, false);
+}
+
+bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bool showDialogs) const {
+    if (fileName.trimmed().isEmpty()) {
+        return false;
+    }
+
+    _callbacks.insertCommandInConsole("load " + fileName.toStdString());
     Model* model = _callbacks.loadGraphicalModel(fileName.toStdString());
     if (model != nullptr) {
         *_loaded = true;
         _callbacks.initUiForNewModel(model);
-        QMessageBox::information(_ownerWidget, "Open Model", "Model successfully oppened");
+        _callbacks.actualizeModelTextHasChanged(false);
+        if (_graphicalModelHasChanged != nullptr) {
+            *_graphicalModelHasChanged = false;
+        }
+        model->setHasChanged(false);
+        SystemPreferences::pushRecentModelFile(fileName.toStdString());
+        SystemPreferences::save();
+        if (showDialogs) {
+            QMessageBox::information(_ownerWidget, "Open Model", "Model successfully oppened");
+        }
     } else {
-        QMessageBox::warning(_ownerWidget, "Open Model", "Error while opening model");
+        if (showDialogs) {
+            QMessageBox::warning(_ownerWidget, "Open Model", "Error while opening model");
+        }
         _callbacks.actualizeActions();
         _callbacks.actualizeTabPanes();
     }
     _ui->graphicsView->getScene()->getUndoStack()->clear();
+    return model != nullptr;
 }
 
 // Move model save orchestration out of MainWindow while preserving .gen/.gui persistence and checks.
@@ -122,14 +124,34 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
                                      saveFile.errorString());
             return;
         } else {
-            _callbacks.saveTextModel(&saveFile, _ui->TextCodeEditor->toPlainText());
+            if (!_callbacks.saveTextModel(&saveFile, _ui->TextCodeEditor->toPlainText())) {
+                saveFile.close();
+                QMessageBox::warning(_ownerWidget, "Save Model", "Error while saving model text.");
+                return;
+            }
             saveFile.close();
         }
-        _callbacks.saveGraphicalModel(fileName + ".gui");
+        if (!_callbacks.saveGraphicalModel(fileName + ".gui")) {
+            QMessageBox::warning(_ownerWidget, "Save Model", "Error while saving graphical model.");
+            return;
+        }
         *_modelFilename = fileName;
-        QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
-        _callbacks.setSimulationModelBasedOnText();
+        if (!_callbacks.setSimulationModelBasedOnText()) {
+            QMessageBox::warning(_ownerWidget, "Save Model", "Model was saved, but the simulation model could not be synchronized.");
+            return;
+        }
         _callbacks.actualizeModelTextHasChanged(false);
+        if (_graphicalModelHasChanged != nullptr) {
+            *_graphicalModelHasChanged = false;
+        }
+        if (Model* currentModel = _simulator->getModelManager()->current()) {
+            // A successful save makes the current in-memory model state the new clean baseline.
+            currentModel->setHasChanged(false);
+        }
+        SystemPreferences::setLastModelFilename((fileName + ".gui").toStdString());
+        SystemPreferences::pushRecentModelFile((fileName + ".gui").toStdString());
+        SystemPreferences::save();
+        QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
     }
     _callbacks.actualizeActions();
     _ui->graphicsView->getScene()->getUndoStack()->clear();
@@ -138,7 +160,7 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
 // Move model close orchestration out of MainWindow while preserving signal wiring and cleanup sequence.
 void ModelLifecycleController::onActionModelCloseTriggered() const {
     _callbacks.disconnectSceneSignals("on_actionModelClose_triggered(begin)");
-    if (*_textModelHasChanged || _simulator->getModelManager()->current()->hasChanged()) {
+    if (hasPendingModelChanges()) {
         QMessageBox msgBox;
         msgBox.setIcon(QMessageBox::Question);
         msgBox.setWindowTitle("Close ModelSyS");
@@ -190,6 +212,8 @@ void ModelLifecycleController::onActionModelCloseTriggered() const {
 // Move model-information dialog trigger out of MainWindow while keeping dialog behavior unchanged.
 void ModelLifecycleController::onActionModelInformationTriggered() const {
     DialogModelInformation* diag = new DialogModelInformation(_ownerWidget);
+    // Edit the information object owned by the currently open model.
+    diag->setModelInfo(_simulator->getModelManager()->current()->getInfos());
     diag->show();
 }
 
@@ -201,8 +225,10 @@ void ModelLifecycleController::onActionModelCheckTriggered() const {
 // Move simulation-configure dialog trigger out of MainWindow while preserving simulator wiring.
 void ModelLifecycleController::onActionSimulationConfigureTriggered() const {
     DialogSimulationConfigure* dialog = new DialogSimulationConfigure(_ownerWidget);
-    dialog->setSimulator(_simulator);
-    dialog->previousConfiguration();
+    // Edit the simulation object owned by the currently open model.
+    dialog->setModelSimulation(_simulator->getModelManager()->current()->getSimulation());
+    dialog->setExperimentManager(_simulator->getExperimentManager());
+    dialog->setParallelizationSettings(&_parallelizationEnabled, &_parallelizationThreads, &_parallelizationBatchSize);
     dialog->show();
 }
 
@@ -223,7 +249,9 @@ bool ModelLifecycleController::hasPendingModelChanges() const {
         return false;
     }
 
-    return *_textModelHasChanged || currentModel->hasChanged();
+    return *_textModelHasChanged
+        || (_graphicalModelHasChanged != nullptr && *_graphicalModelHasChanged)
+        || currentModel->hasChanged();
 }
 
 // Move application-exit confirmation out of MainWindow while preserving save/confirm ordering.

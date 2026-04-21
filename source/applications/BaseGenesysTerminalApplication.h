@@ -15,10 +15,10 @@
 #define BaseGenesysTerminalApplication_H
 
 #include "GenesysApplication_if.h"
-#include "../kernel/simulator/TraceManager.h"
-#include "../kernel/simulator/OnEventManager.h"
-#include "../kernel/simulator/PluginManager.h"
-#include "../kernel/simulator/Model.h"
+#include "kernel/simulator/TraceManager.h"
+#include "kernel/simulator/OnEventManager.h"
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Model.h"
 
 #include <thread>
 

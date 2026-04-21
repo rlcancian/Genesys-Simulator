@@ -49,6 +49,10 @@ TEST(SupportModelManagerClassTest, NewModelSetsCurrentModel) {
 
     ASSERT_NE(created, nullptr);
     EXPECT_EQ(manager.current(), created);
+    EXPECT_EQ(manager.size(), 1u);
+    EXPECT_TRUE(manager.hasModel(created));
+    EXPECT_EQ(manager.currentIndex(), 0);
+    EXPECT_EQ(manager.modelAt(0), created);
     EXPECT_EQ(g_model_constructions, 1);
 }
 
@@ -71,32 +75,116 @@ TEST(SupportModelManagerClassTest, SaveModelWithoutCurrentModelReturnsFalse) {
     EXPECT_FALSE(manager.saveModel("dummy.gen"));
 }
 
-TEST(SupportModelManagerClassTest, NewModelReleasesPreviousDetachedCurrentModel) {
-    // Resets counters and verifies replacing a detached current model releases the previous allocation.
+TEST(SupportModelManagerClassTest, NewModelKeepsPreviousModelOpen) {
+    // A new model is now an opened model, not a detached replacement of the previous current model.
     g_model_constructions = 0;
+    g_model_destructions = 0;
+    {
+        ModelManager manager(nullptr);
+
+        Model* first = manager.newModel();
+        Model* second = manager.newModel();
+
+        ASSERT_NE(first, nullptr);
+        ASSERT_NE(second, nullptr);
+        EXPECT_EQ(manager.current(), second);
+        EXPECT_EQ(manager.size(), 2u);
+        EXPECT_EQ(manager.modelAt(0), first);
+        EXPECT_EQ(manager.modelAt(1), second);
+        ASSERT_EQ(manager.models().size(), 2u);
+        EXPECT_EQ(manager.models().at(0), first);
+        EXPECT_EQ(manager.models().at(1), second);
+        EXPECT_EQ(g_model_constructions, 2);
+        EXPECT_EQ(g_model_destructions, 0);
+    }
+
+    EXPECT_EQ(g_model_destructions, 2);
+}
+
+TEST(SupportModelManagerClassTest, DestructorReleasesOpenModels) {
+    // Ensures manager teardown releases every model owned by the open-model list.
+    g_model_constructions = 0;
+    g_model_destructions = 0;
+    {
+        ModelManager manager(nullptr);
+        ASSERT_NE(manager.newModel(), nullptr);
+        ASSERT_NE(manager.newModel(), nullptr);
+        EXPECT_EQ(manager.size(), 2u);
+    }
+
+    EXPECT_EQ(g_model_constructions, 2);
+    EXPECT_EQ(g_model_destructions, 2);
+}
+
+TEST(SupportModelManagerClassTest, NavigationUpdatesCurrentModel) {
+    ModelManager manager(nullptr);
+
+    Model* first = manager.newModel();
+    Model* second = manager.newModel();
+    Model* third = manager.newModel();
+
+    EXPECT_EQ(manager.current(), third);
+    EXPECT_EQ(manager.currentIndex(), 2);
+    EXPECT_FALSE(manager.canGoNext());
+    EXPECT_TRUE(manager.canGoPrevious());
+
+    EXPECT_EQ(manager.previous(), second);
+    EXPECT_EQ(manager.current(), second);
+    EXPECT_TRUE(manager.canGoNext());
+    EXPECT_TRUE(manager.canGoPrevious());
+
+    EXPECT_EQ(manager.previous(), first);
+    EXPECT_EQ(manager.currentIndex(), 0);
+    EXPECT_FALSE(manager.canGoPrevious());
+
+    EXPECT_EQ(manager.next(), second);
+    EXPECT_EQ(manager.next(), third);
+    EXPECT_EQ(manager.next(), nullptr);
+    EXPECT_EQ(manager.current(), third);
+}
+
+TEST(SupportModelManagerClassTest, SetCurrentAcceptsOnlyOpenModels) {
+    ModelManager manager(nullptr);
+
+    Model* opened = manager.newModel();
+    Model* unmanaged = new Model(nullptr);
+
+    EXPECT_FALSE(manager.setCurrent(unmanaged));
+    EXPECT_EQ(manager.current(), opened);
+
+    EXPECT_TRUE(manager.setCurrent(nullptr));
+    EXPECT_EQ(manager.current(), nullptr);
+
+    EXPECT_TRUE(manager.setCurrent(opened));
+    EXPECT_EQ(manager.current(), opened);
+
+    delete unmanaged;
+}
+
+TEST(SupportModelManagerClassTest, RemoveCurrentSelectsNearestRemainingModel) {
     g_model_destructions = 0;
     ModelManager manager(nullptr);
 
     Model* first = manager.newModel();
     Model* second = manager.newModel();
+    Model* third = manager.newModel();
 
-    ASSERT_NE(first, nullptr);
-    ASSERT_NE(second, nullptr);
-    EXPECT_EQ(manager.current(), second);
-    EXPECT_EQ(g_model_constructions, 2);
-    EXPECT_EQ(g_model_destructions, 1);
-}
+    ASSERT_TRUE(manager.setCurrent(second));
+    manager.remove(second);
 
-TEST(SupportModelManagerClassTest, DestructorReleasesDetachedCurrentModel) {
-    // Ensures manager teardown releases a detached current model even when it was never inserted into _models.
-    g_model_constructions = 0;
-    g_model_destructions = 0;
-    {
-        ModelManager manager(nullptr);
-        Model* created = manager.newModel();
-        ASSERT_NE(created, nullptr);
-    }
+    EXPECT_EQ(manager.size(), 2u);
+    EXPECT_EQ(manager.current(), third);
+    EXPECT_EQ(manager.currentIndex(), 1);
 
-    EXPECT_EQ(g_model_constructions, 1);
-    EXPECT_EQ(g_model_destructions, 1);
+    manager.remove(third);
+
+    EXPECT_EQ(manager.size(), 1u);
+    EXPECT_EQ(manager.current(), first);
+    EXPECT_EQ(manager.currentIndex(), 0);
+
+    manager.remove(first);
+
+    EXPECT_EQ(manager.size(), 0u);
+    EXPECT_EQ(manager.current(), nullptr);
+    EXPECT_EQ(g_model_destructions, 3);
 }

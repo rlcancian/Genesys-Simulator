@@ -22,6 +22,14 @@
 
 //using namespace GenesysKernel;
 
+namespace {
+void traceModelManager(Simulator* simulator, const std::string& message) {
+	if (simulator != nullptr && simulator->getTraceManager() != nullptr) {
+		simulator->getTraceManager()->trace(TraceManager::Level::L2_results, message);
+	}
+}
+}
+
 ModelManager::ModelManager(Simulator* simulator) {
 	_simulator = simulator;
 }
@@ -31,10 +39,6 @@ ModelManager::~ModelManager() {
 		for (Model* model : *_models->list()) {
 			delete model;
 		}
-		// Releases a detached current model that is not tracked by the manager list.
-		if (_currentModel != nullptr && _models->find(_currentModel) == _models->list()->end()) {
-			delete _currentModel;
-		}
 		delete _models;
 		_models = nullptr;
 	}
@@ -42,28 +46,42 @@ ModelManager::~ModelManager() {
 }
 
 Model* ModelManager::newModel() {
-	// Prevents leaking a previously created current model that was never inserted into _models.
-	if (_currentModel != nullptr && _models->find(_currentModel) == _models->list()->end()) {
-		delete _currentModel;
-	}
-	_currentModel = new Model(_simulator);
-	return _currentModel;
+	Model* model = new Model(_simulator);
+	insert(model);
+	return model;
 }
 
 void ModelManager::insert(Model* model) {
+	if (model == nullptr) {
+		return;
+	}
+	if (hasModel(model)) {
+		_currentModel = model;
+		return;
+	}
 	_models->insert(model);
 	this->_currentModel = model;
-	_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Model successfully inserted");
+	traceModelManager(_simulator, "Model successfully inserted");
 }
 
 void ModelManager::remove(Model* model) {
+	if (model == nullptr || !hasModel(model)) {
+		return;
+	}
+	const int removedIndex = indexOf(model);
 	_models->remove(model);
 	if (_currentModel == model) {
-		//Util::ResetAllIds(); // @TODO!!!! Util::ResetAllIds() should be MODEL BASED!!!
-		_currentModel = this->front();
+		//Util::ResetAllIds(); // @ToDo: (importante): Util::ResetAllIds() should be MODEL BASED!!!
+		if (_models->empty()) {
+			_currentModel = nullptr;
+		} else if (removedIndex >= 0 && static_cast<unsigned int>(removedIndex) < _models->size()) {
+			_currentModel = modelAt(static_cast<unsigned int>(removedIndex));
+		} else {
+			_currentModel = modelAt(_models->size() - 1);
+		}
 	}
 	delete model; //->~Model();
-	_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Model successfully removed");
+	traceModelManager(_simulator, "Model successfully removed");
 }
 
 unsigned int ModelManager::size() {
@@ -81,11 +99,11 @@ Model* ModelManager::loadModel(std::string filename) {
 	bool res = model->load(filename);
 	if (res) {
 		this->insert(model);
-		_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Model successfully loaded");
+		traceModelManager(_simulator, "Model successfully loaded");
 		return model;
 	} else {
 		delete model; //->~Model();
-		_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Model coud not be loaded");
+		traceModelManager(_simulator, "Model coud not be loaded");
 		return nullptr;
 	}
 }
@@ -100,7 +118,7 @@ Model* ModelManager::createFromLanguage(std::string modelSpecification) {
 	for (unsigned short i = 0; i < 16; i++) {
 		randomTempFilename += alphanum[rand() % stringLength];
 	}
-	randomTempFilename = "__TEMPFILEMODELO.GEN"; //@TODO: Remove this line
+	randomTempFilename = "__TEMPFILEMODELO.GEN"; // @ToDo: (pequena alteração): Remove this line
 	std::ofstream savefile;
 	savefile.open(randomTempFilename, std::ofstream::out);
 	savefile << modelSpecification;
@@ -111,18 +129,93 @@ Model* ModelManager::createFromLanguage(std::string modelSpecification) {
 	return model;
 }
 
-void ModelManager::setCurrent(Model* model) {
-	this->_currentModel = model;
+bool ModelManager::setCurrent(Model* model) {
+	if (model == nullptr) {
+		_currentModel = nullptr;
+		return true;
+	}
+	if (!hasModel(model)) {
+		return false;
+	}
+	_currentModel = model;
+	return true;
 }
 
 Model* ModelManager::current() {
 	return _currentModel;
 }
 
+std::vector<Model*> ModelManager::models() const {
+	std::vector<Model*> result;
+	if (_models == nullptr) {
+		return result;
+	}
+	for (Model* model : *_models->list()) {
+		result.push_back(model);
+	}
+	return result;
+}
+
+bool ModelManager::hasModel(Model* model) const {
+	return model != nullptr && _models != nullptr && _models->find(model) != _models->list()->end();
+}
+
+int ModelManager::indexOf(Model* model) const {
+	if (model == nullptr || _models == nullptr) {
+		return -1;
+	}
+	int index = 0;
+	for (Model* candidate : *_models->list()) {
+		if (candidate == model) {
+			return index;
+		}
+		++index;
+	}
+	return -1;
+}
+
+Model* ModelManager::modelAt(unsigned int index) const {
+	if (_models == nullptr || index >= _models->size()) {
+		return nullptr;
+	}
+	return _models->getAtRank(index);
+}
+
+int ModelManager::currentIndex() const {
+	return indexOf(_currentModel);
+}
+
 Model* ModelManager::front() {
-	return _models->front();
+	_currentModel = _models->front();
+	return _currentModel;
+}
+
+Model* ModelManager::last() {
+	_currentModel = _models->last();
+	return _currentModel;
 }
 
 Model* ModelManager::next() {
-	return _models->next();
+	if (!canGoNext()) {
+		return nullptr;
+	}
+	_currentModel = modelAt(static_cast<unsigned int>(currentIndex() + 1));
+	return _currentModel;
+}
+
+Model* ModelManager::previous() {
+	if (!canGoPrevious()) {
+		return nullptr;
+	}
+	_currentModel = modelAt(static_cast<unsigned int>(currentIndex() - 1));
+	return _currentModel;
+}
+
+bool ModelManager::canGoNext() const {
+	const int index = currentIndex();
+	return index >= 0 && static_cast<unsigned int>(index + 1) < _models->size();
+}
+
+bool ModelManager::canGoPrevious() const {
+	return currentIndex() > 0;
 }

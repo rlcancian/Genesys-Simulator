@@ -1,51 +1,602 @@
 #include "GraphicalModelBuilder.h"
 
+#include "GraphicalDataDefinitionLayout.h"
+#include "GraphicalAutomaticPositioningStrategy.h"
 #include "../TraitsGUI.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
-#include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
-#include "../../../../../kernel/simulator/Model.h"
-#include "../../../../../kernel/simulator/ComponentManager.h"
-#include "../../../../../kernel/simulator/ConnectionManager.h"
-#include "../../../../../kernel/simulator/PluginManager.h"
-#include "../../../../../kernel/simulator/Plugin.h"
-#include "../../../../../kernel/simulator/SourceModelComponent.h"
-#include "../../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../../kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ComponentManager.h"
+#include "kernel/simulator/ConnectionManager.h"
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/SourceModelComponent.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelDataDefinition.h"
 
 #include <QTextEdit>
 #include <QSet>
 #include <QDebug>
+#include <functional>
+#include <cctype>
+#include <set>
 
 namespace {
-QPointF stableComponentPosition(GraphicalModelComponent* component) {
-    if (component == nullptr) {
-        return QPointF();
-    }
-    const QPointF oldPosition = component->getOldPosition();
-    if (!qFuzzyIsNull(oldPosition.x()) || !qFuzzyIsNull(oldPosition.y())) {
-        return oldPosition;
-    }
-    if (component->scene() != nullptr) {
-        return component->scenePos();
-    }
-    return component->pos();
-}
+    constexpr qreal minimumAutomaticLayoutCoordinate = 20.0;
+    constexpr qreal automaticLayoutCollisionPadding = 12.0;
+    constexpr int maximumAutomaticLayoutCollisionSteps = 10;
 
-QPointF stableDataDefinitionPosition(GraphicalModelDataDefinition* dataDefinition) {
-    if (dataDefinition == nullptr) {
-        return QPointF();
+    enum class DataDefinitionDisplayCategory {
+        Statistics,
+        Editable,
+        Shared
+    };
+
+    struct DataDefinitionLayoutLink {
+        ModelDataDefinition* dataDefinition = nullptr;
+        GraphicalModelDataDefinition* graphicalDefinition = nullptr;
+        GraphicalDiagramConnection::ConnectionType connectionType = GraphicalDiagramConnection::ConnectionType::ATTACHED;
+    };
+
+    QPointF visibleAutomaticPosition(GraphicalModelDataDefinition* dataDefinition, const QPointF& requestedPosition) {
+        QPointF position = requestedPosition;
+        QRectF bounds;
+        if (dataDefinition != nullptr) {
+            bounds = dataDefinition->boundingRect();
+        }
+
+        const qreal itemLeft = position.x() + bounds.left();
+        if (itemLeft < minimumAutomaticLayoutCoordinate) {
+            position.setX(position.x() + minimumAutomaticLayoutCoordinate - itemLeft);
+        }
+
+        const qreal itemTop = position.y() + bounds.top();
+        if (itemTop < minimumAutomaticLayoutCoordinate) {
+            position.setY(position.y() + minimumAutomaticLayoutCoordinate - itemTop);
+        }
+
+        return position;
     }
-    const QPointF oldPosition = dataDefinition->getOldPosition();
-    if (!qFuzzyIsNull(oldPosition.x()) || !qFuzzyIsNull(oldPosition.y())) {
-        return oldPosition;
+
+    QRectF paddedLayoutRect(const QRectF& rect) {
+        return rect.adjusted(-automaticLayoutCollisionPadding,
+                             -automaticLayoutCollisionPadding,
+                             automaticLayoutCollisionPadding,
+                             automaticLayoutCollisionPadding);
     }
-    if (dataDefinition->scene() != nullptr) {
-        return dataDefinition->scenePos();
+
+    QRectF dataDefinitionLayoutRect(GraphicalModelDataDefinition* dataDefinition, const QPointF& position) {
+        if (dataDefinition == nullptr) {
+            return QRectF();
+        }
+        return dataDefinition->boundingRect().translated(position);
     }
-    return dataDefinition->pos();
-}
+
+    bool intersectsOccupiedLayout(const QRectF& candidate, const QList<QRectF>& occupiedRects) {
+        if (!candidate.isValid()) {
+            return false;
+        }
+        for (const QRectF& occupied : occupiedRects) {
+            if (occupied.isValid() && candidate.intersects(occupied)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    void setAutomaticPosition(GraphicalModelDataDefinition* dataDefinition, const QPointF& position) {
+        if (dataDefinition == nullptr) {
+            return;
+        }
+        dataDefinition->setPos(position);
+        dataDefinition->setOldPosition(position.x(), position.y());
+    }
+
+    bool isStatisticsDataDefinition(ModelDataDefinition* dataDefinition) {
+        if (dataDefinition == nullptr) {
+            return false;
+        }
+        const std::string classname = dataDefinition->getClassname();
+        return classname == "Counter"
+               || classname == "StatisticsCollector";
+    }
+
+    bool belongsToModelLevel(ModelDataDefinition* dataDefinition,
+                             bool hasModelLevelFilter,
+                             unsigned int modelLevelFilter) {
+        return dataDefinition != nullptr
+               && (!hasModelLevelFilter || dataDefinition->getLevel() == modelLevelFilter);
+    }
+
+    DataDefinitionDisplayCategory internalDataDefinitionCategory(ModelDataDefinition* dataDefinition) {
+        return isStatisticsDataDefinition(dataDefinition)
+                   ? DataDefinitionDisplayCategory::Statistics
+                   : DataDefinitionDisplayCategory::Editable;
+    }
+
+    bool categoryIsVisible(ModelGraphicsScene* scene, DataDefinitionDisplayCategory category) {
+        if (scene == nullptr) {
+            return false;
+        }
+        switch (category) {
+        case DataDefinitionDisplayCategory::Statistics:
+            return scene->showStatisticsDataDefinitions();
+        case DataDefinitionDisplayCategory::Editable:
+            return scene->showEditableDataDefinitions();
+        case DataDefinitionDisplayCategory::Shared:
+            return scene->showSharedDataDefinitions();
+        }
+        return false;
+    }
+
+    QColor categoryColor(DataDefinitionDisplayCategory category) {
+        switch (category) {
+        case DataDefinitionDisplayCategory::Statistics:
+            return QColor(80, 145, 205);
+        case DataDefinitionDisplayCategory::Editable:
+            return QColor(105, 105, 105);
+        case DataDefinitionDisplayCategory::Shared:
+            return QColor(128, 0, 128);
+        }
+        return QColor(220, 220, 220);
+    }
+
+    int categoryPriority(DataDefinitionDisplayCategory category) {
+        switch (category) {
+        case DataDefinitionDisplayCategory::Statistics:
+            return 3;
+        case DataDefinitionDisplayCategory::Editable:
+            return 2;
+        case DataDefinitionDisplayCategory::Shared:
+            return 1;
+        }
+        return 0;
+    }
+
+    void registerVisibleDataDefinition(
+        ModelDataDefinition* dataDefinition,
+        DataDefinitionDisplayCategory category,
+        QSet<ModelDataDefinition*>* visibleDataDefinitions,
+        std::map<ModelDataDefinition*, DataDefinitionDisplayCategory>* visibleCategories
+        ) {
+        if (dataDefinition == nullptr || visibleDataDefinitions == nullptr || visibleCategories == nullptr) {
+            return;
+        }
+        visibleDataDefinitions->insert(dataDefinition);
+        auto existing = visibleCategories->find(dataDefinition);
+        if (existing == visibleCategories->end() || categoryPriority(category) > categoryPriority(existing->second)) {
+            (*visibleCategories)[dataDefinition] = category;
+        }
+    }
+
+    void appendUniqueLayoutLink(
+        const DataDefinitionLayoutLink& link,
+        QList<DataDefinitionLayoutLink>* links
+        ) {
+        if (links == nullptr || link.dataDefinition == nullptr || link.graphicalDefinition == nullptr) {
+            return;
+        }
+        for (const DataDefinitionLayoutLink& existing : *links) {
+            if (existing.dataDefinition == link.dataDefinition) {
+                return;
+            }
+        }
+        links->append(link);
+    }
+
+    void collectEditableReferencedDataDefinitions(List<SimulationControl*>* controls,
+                                                  QSet<ModelDataDefinition*>* editableDefinitions,
+                                                  std::set<const SimulationControl*>* recursionPath,
+                                                  bool hasModelLevelFilter,
+                                                  unsigned int modelLevelFilter,
+                                                  int depth = 0) {
+        if (controls == nullptr || editableDefinitions == nullptr || recursionPath == nullptr || depth > 10) {
+            return;
+        }
+
+        for (SimulationControl* control : *controls->list()) {
+            if (control == nullptr || recursionPath->find(control) != recursionPath->end()) {
+                continue;
+            }
+
+            const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
+            if (descriptor.isModelDataDefinitionReference && !descriptor.readOnly) {
+                ModelDataDefinition* referenced = control->getReferencedModelDataDefinition();
+                if (belongsToModelLevel(referenced, hasModelLevelFilter, modelLevelFilter)
+                    && !isStatisticsDataDefinition(referenced)) {
+                    editableDefinitions->insert(referenced);
+                }
+            }
+
+            recursionPath->insert(control);
+            if (descriptor.supportsListEditor && descriptor.isClass) {
+                const int itemCount = static_cast<int>(descriptor.choices.size());
+                for (int index = 0; index < itemCount; ++index) {
+                    ModelDataDefinition* listElement = control->getListElementModelDataDefinition(index);
+                    if (belongsToModelLevel(listElement, hasModelLevelFilter, modelLevelFilter)
+                        && !isStatisticsDataDefinition(listElement)) {
+                        // The list member itself is an editable model object. This matters for
+                        // nested data-definition owners such as Set::ElementSet, where Resource
+                        // members should remain controlled by the Editable Elements visibility
+                        // category even though they are attached to another GMDD instead of a GMC.
+                        editableDefinitions->insert(listElement);
+                    }
+                    collectEditableReferencedDataDefinitions(control->getChildSimulationControls(index),
+                                                             editableDefinitions,
+                                                             recursionPath,
+                                                             hasModelLevelFilter,
+                                                             modelLevelFilter,
+                                                             depth + 1);
+                }
+            } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
+                collectEditableReferencedDataDefinitions(control->getChildSimulationControls(),
+                                                         editableDefinitions,
+                                                         recursionPath,
+                                                         hasModelLevelFilter,
+                                                         modelLevelFilter,
+                                                         depth + 1);
+            }
+            recursionPath->erase(control);
+        }
+    }
+
+    bool isPositiveIndexSuffix(const std::string& suffix) {
+        if (suffix.empty()) {
+            return false;
+        }
+
+        std::string indexText = suffix;
+        if (indexText.size() > 2 && indexText.front() == '[' && indexText.back() == ']') {
+            indexText = indexText.substr(1, indexText.size() - 2);
+        }
+
+        if (indexText.empty()) {
+            return false;
+        }
+
+        for (const char character : indexText) {
+            if (!std::isdigit(static_cast<unsigned char>(character))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    bool attachmentNameMatchesEditableControl(const std::string& attachmentName,
+                                              const GenesysPropertyDescriptor& descriptor) {
+        if (attachmentName.empty() || descriptor.readOnly || !descriptor.isClass) {
+            return false;
+        }
+
+        if (attachmentName == descriptor.displayName || attachmentName == descriptor.technicalTypeName) {
+            return true;
+        }
+
+        if (descriptor.isList
+            && !descriptor.technicalTypeName.empty()
+            && attachmentName.rfind(descriptor.technicalTypeName, 0) == 0) {
+            return isPositiveIndexSuffix(attachmentName.substr(descriptor.technicalTypeName.size()));
+        }
+
+        return false;
+    }
+
+    void collectEditableAttachedDataDefinitionsFromComponent(ModelComponent* component,
+                                                             QSet<ModelDataDefinition*>* editableDefinitions,
+                                                             bool hasModelLevelFilter,
+                                                             unsigned int modelLevelFilter) {
+        if (component == nullptr || editableDefinitions == nullptr
+            || component->getSimulationControls() == nullptr || component->getAttachedData() == nullptr) {
+            return;
+        }
+
+        for (SimulationControl* control : *component->getSimulationControls()->list()) {
+            const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
+            for (const auto& attachedData : *component->getAttachedData()) {
+                ModelDataDefinition* dataDefinition = attachedData.second;
+                if (!belongsToModelLevel(dataDefinition, hasModelLevelFilter, modelLevelFilter)
+                    || isStatisticsDataDefinition(dataDefinition)) {
+                    continue;
+                }
+                if (attachmentNameMatchesEditableControl(attachedData.first, descriptor)) {
+                    editableDefinitions->insert(dataDefinition);
+                }
+            }
+        }
+    }
+
+    QSet<ModelDataDefinition*> editableDataDefinitionsForModel(Model* model,
+                                                               bool hasModelLevelFilter,
+                                                               unsigned int modelLevelFilter) {
+        QSet<ModelDataDefinition*> editableDefinitions;
+        if (model == nullptr) {
+            return editableDefinitions;
+        }
+
+        std::set<const SimulationControl*> recursionPath;
+        if (model->getComponentManager() != nullptr) {
+            for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
+                if (belongsToModelLevel(component, hasModelLevelFilter, modelLevelFilter)) {
+                    collectEditableReferencedDataDefinitions(component->getSimulationControls(),
+                                                             &editableDefinitions,
+                                                             &recursionPath,
+                                                             hasModelLevelFilter,
+                                                             modelLevelFilter);
+                    collectEditableAttachedDataDefinitionsFromComponent(component,
+                                                                        &editableDefinitions,
+                                                                        hasModelLevelFilter,
+                                                                        modelLevelFilter);
+                }
+            }
+        }
+
+        if (model->getDataManager() != nullptr) {
+            for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+                List<ModelDataDefinition*>* definitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+                if (definitions == nullptr) {
+                    continue;
+                }
+                for (ModelDataDefinition* dataDefinition : *definitions->list()) {
+                    if (belongsToModelLevel(dataDefinition, hasModelLevelFilter, modelLevelFilter)) {
+                        collectEditableReferencedDataDefinitions(dataDefinition->getSimulationControls(),
+                                                                 &editableDefinitions,
+                                                                 &recursionPath,
+                                                                 hasModelLevelFilter,
+                                                                 modelLevelFilter);
+                    }
+                }
+            }
+        }
+
+        return editableDefinitions;
+    }
+
+    bool dataDefinitionIsEditableInPropertyEditor(
+        ModelDataDefinition* dataDefinition,
+        const QSet<ModelDataDefinition*>& editableDefinitions) {
+        return dataDefinition != nullptr
+               && !isStatisticsDataDefinition(dataDefinition)
+               && editableDefinitions.contains(dataDefinition);
+    }
+
+    DataDefinitionDisplayCategory attachedDataDefinitionCategory(
+        ModelDataDefinition* dataDefinition,
+        const QSet<ModelDataDefinition*>& editableDefinitions) {
+        if (isStatisticsDataDefinition(dataDefinition)) {
+            return DataDefinitionDisplayCategory::Statistics;
+        }
+        return dataDefinitionIsEditableInPropertyEditor(dataDefinition, editableDefinitions)
+                   ? DataDefinitionDisplayCategory::Editable
+                   : DataDefinitionDisplayCategory::Shared;
+    }
+
+    void collectVisibleReferencedDataDefinitions(
+        List<SimulationControl*>* controls,
+        ModelGraphicsScene* scene,
+        const QSet<ModelDataDefinition*>& editableDefinitions,
+        QSet<ModelDataDefinition*>* visibleDataDefinitions,
+        std::map<ModelDataDefinition*, DataDefinitionDisplayCategory>* visibleCategories,
+        std::set<const SimulationControl*>* recursionPath,
+        bool hasModelLevelFilter,
+        unsigned int modelLevelFilter,
+        int depth = 0
+        ) {
+        if (controls == nullptr || scene == nullptr || visibleDataDefinitions == nullptr
+            || visibleCategories == nullptr || recursionPath == nullptr || depth > 10) {
+            return;
+        }
+
+        const auto handleReferencedDataDefinition = [&](ModelDataDefinition* child) {
+            if (!belongsToModelLevel(child, hasModelLevelFilter, modelLevelFilter)) {
+                return;
+            }
+            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(child, editableDefinitions);
+            if (!categoryIsVisible(scene, category)) {
+                return;
+            }
+            registerVisibleDataDefinition(child, category, visibleDataDefinitions, visibleCategories);
+        };
+
+        for (SimulationControl* control : *controls->list()) {
+            if (control == nullptr || recursionPath->find(control) != recursionPath->end()) {
+                continue;
+            }
+
+            const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
+            if (descriptor.isModelDataDefinitionReference) {
+                handleReferencedDataDefinition(control->getReferencedModelDataDefinition());
+            }
+
+            recursionPath->insert(control);
+            if (descriptor.supportsListEditor && descriptor.isClass) {
+                const int itemCount = static_cast<int>(descriptor.choices.size());
+                for (int index = 0; index < itemCount; ++index) {
+                    handleReferencedDataDefinition(control->getListElementModelDataDefinition(index));
+                    collectVisibleReferencedDataDefinitions(
+                        control->getChildSimulationControls(index),
+                        scene,
+                        editableDefinitions,
+                        visibleDataDefinitions,
+                        visibleCategories,
+                        recursionPath,
+                        hasModelLevelFilter,
+                        modelLevelFilter,
+                        depth + 1
+                        );
+                }
+            } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
+                collectVisibleReferencedDataDefinitions(
+                    control->getChildSimulationControls(),
+                    scene,
+                    editableDefinitions,
+                    visibleDataDefinitions,
+                    visibleCategories,
+                    recursionPath,
+                    hasModelLevelFilter,
+                    modelLevelFilter,
+                    depth + 1
+                    );
+            }
+            recursionPath->erase(control);
+        }
+    }
+
+    void collectPropertyReferencedLayoutLinks(
+        List<SimulationControl*>* controls,
+        const std::map<ModelDataDefinition*, GraphicalModelDataDefinition*>& dataDefinitionMap,
+        const std::map<ModelDataDefinition*, DataDefinitionDisplayCategory>& visibleCategories,
+        QList<DataDefinitionLayoutLink>* upperLinks,
+        QList<DataDefinitionLayoutLink>* lowerStatisticsLinks,
+        QList<DataDefinitionLayoutLink>* lowerSharedLinks,
+        std::set<const SimulationControl*>* recursionPath,
+        int depth = 0
+        ) {
+        if (controls == nullptr || upperLinks == nullptr || lowerStatisticsLinks == nullptr
+            || lowerSharedLinks == nullptr || recursionPath == nullptr || depth > 10) {
+            return;
+        }
+
+        const auto appendReferencedDataDefinition = [&](ModelDataDefinition* child) {
+            auto mapIt = dataDefinitionMap.find(child);
+            auto categoryIt = visibleCategories.find(child);
+            if (mapIt == dataDefinitionMap.end() || mapIt->second == nullptr || categoryIt == visibleCategories.end()) {
+                return;
+            }
+
+            const DataDefinitionLayoutLink link{
+                child,
+                mapIt->second,
+                GraphicalDiagramConnection::ConnectionType::ATTACHED};
+
+            switch (categoryIt->second) {
+            case DataDefinitionDisplayCategory::Editable:
+                appendUniqueLayoutLink(link, upperLinks);
+                break;
+            case DataDefinitionDisplayCategory::Statistics:
+                appendUniqueLayoutLink(link, lowerStatisticsLinks);
+                break;
+            case DataDefinitionDisplayCategory::Shared:
+                appendUniqueLayoutLink(link, lowerSharedLinks);
+                break;
+            }
+        };
+
+        for (SimulationControl* control : *controls->list()) {
+            if (control == nullptr || recursionPath->find(control) != recursionPath->end()) {
+                continue;
+            }
+
+            const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
+            if (descriptor.isModelDataDefinitionReference) {
+                appendReferencedDataDefinition(control->getReferencedModelDataDefinition());
+            }
+
+            recursionPath->insert(control);
+            if (descriptor.supportsListEditor && descriptor.isClass) {
+                const int itemCount = static_cast<int>(descriptor.choices.size());
+                for (int index = 0; index < itemCount; ++index) {
+                    appendReferencedDataDefinition(control->getListElementModelDataDefinition(index));
+                    collectPropertyReferencedLayoutLinks(
+                        control->getChildSimulationControls(index),
+                        dataDefinitionMap,
+                        visibleCategories,
+                        upperLinks,
+                        lowerStatisticsLinks,
+                        lowerSharedLinks,
+                        recursionPath,
+                        depth + 1
+                        );
+                }
+            } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
+                collectPropertyReferencedLayoutLinks(
+                    control->getChildSimulationControls(),
+                    dataDefinitionMap,
+                    visibleCategories,
+                    upperLinks,
+                    lowerStatisticsLinks,
+                    lowerSharedLinks,
+                    recursionPath,
+                    depth + 1
+                    );
+            }
+            recursionPath->erase(control);
+        }
+    }
+
+    QPointF dataDefinitionArcPosition(const QRectF& anchorBounds,
+                                      GraphicalModelDataDefinition* child,
+                                      int index,
+                                      int count,
+                                      bool upperArc,
+                                      int radialLayer = 0) {
+        if (child == nullptr) {
+            return QPointF();
+        }
+
+        const QRectF childBounds = child->boundingRect();
+        const auto positioningStrategy = GraphicalAutomaticPositioningStrategyFactory::createFromPreferences();
+        return positioningStrategy->dataDefinitionPosition(anchorBounds,
+                                                           childBounds.size(),
+                                                           index,
+                                                           count,
+                                                           upperArc,
+                                                           radialLayer);
+    }
+
+    void positionNewDataDefinitionsInArc(const QRectF& anchorBounds,
+                                         const QList<DataDefinitionLayoutLink>& links,
+                                         bool upperArc,
+                                         const QSet<ModelDataDefinition*>& newDataDefinitions,
+                                         QSet<ModelDataDefinition*>* positionedDataDefinitions,
+                                         QList<QRectF>* occupiedLayoutRects,
+                                         int baseRadialLayer = 0) {
+        if (positionedDataDefinitions == nullptr) {
+            return;
+        }
+
+        QList<DataDefinitionLayoutLink> newLinks;
+        for (const DataDefinitionLayoutLink& link : links) {
+            if (link.dataDefinition == nullptr || link.graphicalDefinition == nullptr) {
+                continue;
+            }
+            if (!newDataDefinitions.contains(link.dataDefinition)
+                || positionedDataDefinitions->contains(link.dataDefinition)) {
+                continue;
+            }
+            newLinks.append(link);
+        }
+
+        const int count = newLinks.size();
+        for (int index = 0; index < count; ++index) {
+            GraphicalModelDataDefinition* child = newLinks.at(index).graphicalDefinition;
+            child->setParentItem(nullptr);
+            QPointF selectedPosition = visibleAutomaticPosition(
+                child,
+                dataDefinitionArcPosition(anchorBounds, child, index, count, upperArc, baseRadialLayer));
+            QRectF selectedRect = paddedLayoutRect(dataDefinitionLayoutRect(child, selectedPosition));
+
+            if (occupiedLayoutRects != nullptr) {
+                for (int radialLayer = baseRadialLayer + 1;
+                     radialLayer <= baseRadialLayer + maximumAutomaticLayoutCollisionSteps
+                     && intersectsOccupiedLayout(selectedRect, *occupiedLayoutRects);
+                     ++radialLayer) {
+                    selectedPosition = visibleAutomaticPosition(
+                        child,
+                        dataDefinitionArcPosition(anchorBounds, child, index, count, upperArc, radialLayer));
+                    selectedRect = paddedLayoutRect(dataDefinitionLayoutRect(child, selectedPosition));
+                }
+            }
+
+            setAutomaticPosition(child, selectedPosition);
+            positionedDataDefinitions->insert(newLinks.at(index).dataDefinition);
+            if (occupiedLayoutRects != nullptr) {
+                occupiedLayoutRects->append(selectedRect);
+            }
+        }
+    }
 }
 
 // Build the graphical reconstruction service with explicit dependencies.
@@ -58,16 +609,41 @@ GraphicalModelBuilder::GraphicalModelBuilder(Simulator* simulator,
       _graphicsView(graphicsView),
       _scene(scene),
       _pluginCategoryColor(pluginCategoryColor),
-      _console(console) {}
+      _console(console) {
+}
+
+void GraphicalModelBuilder::setModelLevelFilter(unsigned int modelLevel) {
+    if (_scene != nullptr) {
+        _scene->setModelLevelFilter(modelLevel);
+    }
+}
+
+void GraphicalModelBuilder::clearModelLevelFilter() {
+    if (_scene != nullptr) {
+        _scene->clearModelLevelFilter();
+    }
+}
+
+bool GraphicalModelBuilder::componentBelongsToActiveModelLevel(ModelComponent* component) const {
+    return component != nullptr
+           && (_scene == nullptr
+               || !_scene->hasModelLevelFilter()
+               || belongsToModelLevel(component, true, _scene->modelLevelFilter()));
+}
 
 // Preserve recursive layout traversal and connection restoration behavior.
 void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComponent* component,
-                                                                        List<ModelComponent*>* visited,
-                                                                        std::map<ModelComponent*, GraphicalModelComponent*>* map,
-                                                                        int* x,
-                                                                        int* y,
-                                                                        int* ymax,
-                                                                        int sequenceInLine) {
+                                                                       List<ModelComponent*>* visited,
+                                                                       std::map<ModelComponent*, GraphicalModelComponent
+                                                                           *>* map,
+                                                                       int* x,
+                                                                       int* y,
+                                                                       int* ymax,
+                                                                       int sequenceInLine) {
+    if (!componentBelongsToActiveModelLevel(component)) {
+        return;
+    }
+
     PluginManager* pm = _simulator->getPluginManager();
     Plugin* plugin = pm->find(component->getClassname());
     if (plugin == nullptr) {
@@ -104,12 +680,16 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
         }
 
         ModelComponent* nextComp = connectionMap.second->component;
+        if (!componentBelongsToActiveModelLevel(nextComp)) {
+            continue;
+        }
         if (visited->find(nextComp) == visited->list()->end()) {
             if (++sequenceInLine == 6) {
                 *x -= 5 * TraitsGUI<GModelComponent>::width * 1.5;
                 *y += deltaY;
                 sequenceInLine = 0;
-            } else {
+            }
+            else {
                 *x += TraitsGUI<GModelComponent>::width * 1.5;
             }
             if (*y > *ymax) {
@@ -121,9 +701,10 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
             if (destinyIt != map->end()) {
                 GraphicalModelComponent* destinyGmc = destinyIt->second;
                 if (connectionMap.first < gmc->getGraphicalOutputPorts().size()
-                        && connectionMap.second->channel.portNumber < destinyGmc->getGraphicalInputPorts().size()) {
+                    && connectionMap.second->channel.portNumber < destinyGmc->getGraphicalInputPorts().size()) {
                     _scene->addGraphicalConnection(gmc->getGraphicalOutputPorts().at(connectionMap.first),
-                                                   destinyGmc->getGraphicalInputPorts().at(connectionMap.second->channel.portNumber),
+                                                   destinyGmc->getGraphicalInputPorts().at(
+                                                       connectionMap.second->channel.portNumber),
                                                    connectionMap.first,
                                                    connectionMap.second->channel.portNumber);
                 }
@@ -139,7 +720,8 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
 }
 
 // Rebuild graphical data definitions and diagram links as part of the main model regeneration flow.
-void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(std::map<ModelComponent*, GraphicalModelComponent*>* componentMap) {
+void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(
+    std::map<ModelComponent*, GraphicalModelComponent*>* componentMap) {
     Q_UNUSED(componentMap);
     synchronizeGraphicalDataDefinitionsLayer(_simulator, _scene);
 }
@@ -149,8 +731,10 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
     Model* m = _simulator->getModelManager()->current();
     if (m != nullptr) {
         _graphicsView->setCanNotifyGraphicalModelEventHandlers(false);
-        int x = TraitsGUI<GView>::sceneCenter - TraitsGUI<GView>::sceneDistanceCenter * 0.8;
-        int y = TraitsGUI<GView>::sceneCenter - TraitsGUI<GView>::sceneDistanceCenter * 0.8;
+        const auto positioningStrategy = GraphicalAutomaticPositioningStrategyFactory::createFromPreferences();
+        const QPointF initialPosition = positioningStrategy->initialComponentLayoutOrigin();
+        int x = static_cast<int>(initialPosition.x());
+        int y = static_cast<int>(initialPosition.y());
         int ymax = y;
 
         ComponentManager* cm = m->getComponentManager();
@@ -160,9 +744,13 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
         }
 
         List<ModelComponent*>* visited = new List<ModelComponent*>();
-        std::map<ModelComponent*, GraphicalModelComponent*>* map = new std::map<ModelComponent*, GraphicalModelComponent*>();
+        std::map<ModelComponent*, GraphicalModelComponent*>* map = new std::map<
+            ModelComponent*, GraphicalModelComponent*>();
 
         for (SourceModelComponent* source : *cm->getSourceComponents()) {
+            if (!componentBelongsToActiveModelLevel(source)) {
+                continue;
+            }
             recursivalyGenerateGraphicalModelFromModel(source, visited, map, &x, &y, &ymax, 0);
             y = ymax + TraitsGUI<GModelComponent>::width * TraitsGUI<GModelComponent>::heightProportion * 3;
         }
@@ -171,12 +759,15 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
         do {
             foundNotVisited = false;
             for (ModelComponent* comp : *cm->getAllComponents()) {
-                if (visited->find(comp) == visited->list()->end()) {
+                if (componentBelongsToActiveModelLevel(comp)
+                    && visited->find(comp) == visited->list()->end()) {
                     foundNotVisited = true;
-                    visited->insert(comp);
+                    recursivalyGenerateGraphicalModelFromModel(comp, visited, map, &x, &y, &ymax, 0);
+                    y = ymax + TraitsGUI<GModelComponent>::width * TraitsGUI<GModelComponent>::heightProportion * 3;
                 }
             }
-        } while (foundNotVisited);
+        }
+        while (foundNotVisited);
 
         rebuildGraphicalDataDefinitionsLayer(map);
 
@@ -198,11 +789,13 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
                 _guardedScene->setConnectionGeometryUpdatesBlocked(true);
             }
         }
+
         ~ScopedConnectionGeometryBlocker() {
             if (_guardedScene != nullptr) {
                 _guardedScene->setConnectionGeometryUpdatesBlocked(false);
             }
         }
+
     private:
         ModelGraphicsScene* _guardedScene = nullptr;
     };
@@ -220,29 +813,140 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         return;
     }
     ModelDataManager* dataManager = model->getDataManager();
+    const bool hasModelLevelFilter = scene->hasModelLevelFilter();
+    const unsigned int modelLevelFilter = scene->modelLevelFilter();
+    const QSet<ModelDataDefinition*> editablePropertyDataDefinitions = editableDataDefinitionsForModel(
+        model,
+        hasModelLevelFilter,
+        modelLevelFilter);
 
-    // Exit early when no model data definitions exist, avoiding unnecessary scene scans and geometry reads.
-    bool hasAnyModelDataDefinition = false;
-    for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
-        List<ModelDataDefinition*>* modelDataDefinitionList = dataManager->getDataDefinitionList(dataTypename);
-        if (modelDataDefinitionList != nullptr && !modelDataDefinitionList->list()->empty()) {
-            hasAnyModelDataDefinition = true;
-            break;
+    std::map<ModelComponent*, GraphicalModelComponent*> componentMap;
+    const QList<GraphicalModelComponent*> liveGraphicalComponents = scene->graphicalModelComponentItems();
+    for (GraphicalModelComponent* gmc : liveGraphicalComponents) {
+        if (gmc == nullptr || gmc->getComponent() == nullptr) {
+            continue;
+        }
+        if (!belongsToModelLevel(gmc->getComponent(), hasModelLevelFilter, modelLevelFilter)) {
+            continue;
+        }
+        componentMap[gmc->getComponent()] = gmc;
+    }
+
+    QSet<ModelDataDefinition*> visibleDataDefinitions;
+    QSet<ModelDataDefinition*> expandedDataDefinitions;
+    std::map<ModelDataDefinition*, DataDefinitionDisplayCategory> visibleCategories;
+    std::set<const SimulationControl*> recursivePropertyRecursionPath;
+
+    std::function<void(ModelDataDefinition*)> expandVisibleDataDefinition =
+        [&](ModelDataDefinition* owner) {
+        if (owner == nullptr || !scene->showRecursiveDataDefinitions() || expandedDataDefinitions.contains(owner)) {
+            return;
+        }
+        expandedDataDefinitions.insert(owner);
+
+        for (const auto& attachedData : *owner->getAttachedData()) {
+            ModelDataDefinition* child = attachedData.second;
+            if (!belongsToModelLevel(child, hasModelLevelFilter, modelLevelFilter)) {
+                continue;
+            }
+            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(
+                child,
+                editablePropertyDataDefinitions);
+            if (!categoryIsVisible(scene, category)) {
+                continue;
+            }
+            registerVisibleDataDefinition(child, category, &visibleDataDefinitions, &visibleCategories);
+            expandVisibleDataDefinition(child);
+        }
+
+        for (const auto& internalData : *owner->getInternalData()) {
+            ModelDataDefinition* child = internalData.second;
+            if (!belongsToModelLevel(child, hasModelLevelFilter, modelLevelFilter)) {
+                continue;
+            }
+            const DataDefinitionDisplayCategory category = internalDataDefinitionCategory(child);
+            if (!categoryIsVisible(scene, category)) {
+                continue;
+            }
+            registerVisibleDataDefinition(child, category, &visibleDataDefinitions, &visibleCategories);
+            expandVisibleDataDefinition(child);
+        }
+
+        collectVisibleReferencedDataDefinitions(
+            owner->getSimulationControls(),
+            scene,
+            editablePropertyDataDefinitions,
+            &visibleDataDefinitions,
+            &visibleCategories,
+            &recursivePropertyRecursionPath,
+            hasModelLevelFilter,
+            modelLevelFilter);
+
+        QList<ModelDataDefinition*> recursiveChildren = visibleDataDefinitions.values();
+        for (ModelDataDefinition* child : recursiveChildren) {
+            if (child != nullptr && child != owner) {
+                expandVisibleDataDefinition(child);
+            }
+        }
+    };
+
+    for (const auto& componentEntry : componentMap) {
+        ModelComponent* component = componentEntry.first;
+        if (component == nullptr) {
+            continue;
+        }
+
+        for (const auto& attachedData : *component->getAttachedData()) {
+            ModelDataDefinition* dataDefinition = attachedData.second;
+            if (!belongsToModelLevel(dataDefinition, hasModelLevelFilter, modelLevelFilter)) {
+                continue;
+            }
+            const DataDefinitionDisplayCategory category = attachedDataDefinitionCategory(
+                dataDefinition,
+                editablePropertyDataDefinitions);
+            if (!categoryIsVisible(scene, category)) {
+                continue;
+            }
+            registerVisibleDataDefinition(dataDefinition, category, &visibleDataDefinitions, &visibleCategories);
+            expandVisibleDataDefinition(dataDefinition);
+        }
+
+        for (const auto& internalData : *component->getInternalData()) {
+            ModelDataDefinition* dataDefinition = internalData.second;
+            if (!belongsToModelLevel(dataDefinition, hasModelLevelFilter, modelLevelFilter)) {
+                continue;
+            }
+            const DataDefinitionDisplayCategory category = internalDataDefinitionCategory(dataDefinition);
+            if (!categoryIsVisible(scene, category)) {
+                continue;
+            }
+            registerVisibleDataDefinition(dataDefinition, category, &visibleDataDefinitions, &visibleCategories);
+            expandVisibleDataDefinition(dataDefinition);
+        }
+
+        std::set<const SimulationControl*> componentPropertyRecursionPath;
+        collectVisibleReferencedDataDefinitions(component->getSimulationControls(),
+                                               scene,
+                                               editablePropertyDataDefinitions,
+                                               &visibleDataDefinitions,
+                                               &visibleCategories,
+                                               &componentPropertyRecursionPath,
+                                               hasModelLevelFilter,
+                                               modelLevelFilter);
+
+        QList<ModelDataDefinition*> componentReferencedDefinitions = visibleDataDefinitions.values();
+        for (ModelDataDefinition* dataDefinition : componentReferencedDefinitions) {
+            if (dataDefinition != nullptr) {
+                expandVisibleDataDefinition(dataDefinition);
+            }
         }
     }
-    if (!hasAnyModelDataDefinition) {
+
+    if (visibleDataDefinitions.isEmpty()) {
         scene->clearGraphicalDiagramConnections();
         scene->clearGraphicalModelDataDefinitions();
         scene->setDiagramLayerState(false, false);
         return;
-    }
-
-    std::map<ModelComponent*, GraphicalModelComponent*> componentMap;
-    for (GraphicalModelComponent* gmc : *scene->getAllComponents()) {
-        if (gmc == nullptr || gmc->getComponent() == nullptr) {
-            continue;
-        }
-        componentMap[gmc->getComponent()] = gmc;
     }
 
     // Build the live graphical data-definition snapshot strictly from scene-owned items.
@@ -250,8 +954,11 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     const QList<QGraphicsItem*> liveItems = scene->items();
     for (QGraphicsItem* item : liveItems) {
         if (auto* gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
-            qInfo() << "synchronizeGraphicalDataDefinitionsLayer: ignoring GraphicalModelComponent in data-definition snapshot"
-                    << (gmc->getComponent() != nullptr ? QString::fromStdString(gmc->getComponent()->getName()) : QString("<null>"));
+            qInfo() <<
+                "synchronizeGraphicalDataDefinitionsLayer: ignoring GraphicalModelComponent in data-definition snapshot"
+                << (gmc->getComponent() != nullptr
+                        ? QString::fromStdString(gmc->getComponent()->getName())
+                        : QString("<null>"));
             continue;
         }
         GraphicalModelDataDefinition* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item);
@@ -262,55 +969,96 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     }
 
     PluginManager* pluginManager = simulator->getPluginManager();
-    QColor purple(128, 0, 128);
     QColor grey(220, 220, 220);
 
     std::map<ModelDataDefinition*, GraphicalModelDataDefinition*> dataDefinitionMap;
-    QSet<ModelDataDefinition*> seenInModel;
     QSet<ModelDataDefinition*> newDataDefinitions;
+
+    const auto ensureVisibleGraphicalDataDefinition = [&](ModelDataDefinition* dataDefinition) {
+        if (dataDefinition == nullptr || !visibleDataDefinitions.contains(dataDefinition)) {
+            return;
+        }
+        if (dataDefinitionMap.find(dataDefinition) != dataDefinitionMap.end()) {
+            return;
+        }
+
+        auto existingIt = existingDataDefinitions.find(dataDefinition);
+        if (existingIt != existingDataDefinitions.end()) {
+            dataDefinitionMap[dataDefinition] = existingIt->second;
+            const auto categoryIt = visibleCategories.find(dataDefinition);
+            if (categoryIt != visibleCategories.end() && existingIt->second != nullptr) {
+                existingIt->second->setColor(categoryColor(categoryIt->second));
+                existingIt->second->setEditableInPropertyEditor(
+                    dataDefinitionIsEditableInPropertyEditor(dataDefinition, editablePropertyDataDefinitions));
+            }
+            return;
+        }
+
+        Plugin* plugin = pluginManager->find(dataDefinition->getClassname());
+        if (plugin == nullptr) {
+            return;
+        }
+        const auto categoryIt = visibleCategories.find(dataDefinition);
+        const QColor color = categoryIt != visibleCategories.end()
+                                 ? categoryColor(categoryIt->second)
+                                 : grey;
+        GraphicalModelDataDefinition* graphicalDataDefinition = scene->addGraphicalModelDataDefinition(
+            plugin, dataDefinition, QPointF(0, 0), color);
+        if (graphicalDataDefinition != nullptr) {
+            dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
+            graphicalDataDefinition->setEditableInPropertyEditor(
+                dataDefinitionIsEditableInPropertyEditor(dataDefinition, editablePropertyDataDefinitions));
+            newDataDefinitions.insert(dataDefinition);
+        }
+    };
 
     for (const std::string& dataTypename : dataManager->getDataDefinitionClassnames()) {
         std::list<ModelDataDefinition*>* listDataDefinitions = dataManager->getDataDefinitionList(dataTypename)->list();
         for (ModelDataDefinition* dataDefinition : *listDataDefinitions) {
-            if (dataDefinition == nullptr) {
+            if (!belongsToModelLevel(dataDefinition, hasModelLevelFilter, modelLevelFilter)) {
                 continue;
             }
-            seenInModel.insert(dataDefinition);
-
-            auto existingIt = existingDataDefinitions.find(dataDefinition);
-            if (existingIt != existingDataDefinitions.end()) {
-                dataDefinitionMap[dataDefinition] = existingIt->second;
-                continue;
-            }
-
-            Plugin* plugin = pluginManager->find(dataDefinition->getClassname());
-            if (plugin == nullptr) {
-                continue;
-            }
-            GraphicalModelDataDefinition* graphicalDataDefinition = scene->addGraphicalModelDataDefinition(plugin, dataDefinition, QPointF(0, 0), grey);
-            if (graphicalDataDefinition != nullptr) {
-                dataDefinitionMap[dataDefinition] = graphicalDataDefinition;
-                newDataDefinitions.insert(dataDefinition);
-            }
+            ensureVisibleGraphicalDataDefinition(dataDefinition);
         }
+    }
+    for (ModelDataDefinition* dataDefinition : visibleDataDefinitions) {
+        ensureVisibleGraphicalDataDefinition(dataDefinition);
     }
 
     QList<GraphicalModelDataDefinition*> staleGraphicalDataDefinitions;
     for (auto it = existingDataDefinitions.begin(); it != existingDataDefinitions.end(); ++it) {
-        if (!seenInModel.contains(it->first) && it->second != nullptr) {
+        if (!visibleDataDefinitions.contains(it->first) && it->second != nullptr) {
             staleGraphicalDataDefinitions.append(it->second);
         }
     }
     for (GraphicalModelDataDefinition* stale : staleGraphicalDataDefinitions) {
         const QString staleName = (stale->getDataDefinition() != nullptr)
-                ? QString::fromStdString(stale->getDataDefinition()->getName())
-                : QString("<null>");
+                                      ? QString::fromStdString(stale->getDataDefinition()->getName())
+                                      : QString("<null>");
         qInfo() << "synchronizeGraphicalDataDefinitionsLayer: stale data definition removal"
-                << staleName;
+            << staleName;
         scene->removeGraphicalModelDataDefinition(stale);
     }
 
     scene->clearGraphicalDiagramConnections();
+
+    QSet<ModelDataDefinition*> positionedDataDefinitions;
+    QList<QRectF> occupiedLayoutRects;
+    for (const auto& componentEntry : componentMap) {
+        GraphicalModelComponent* graphicalComponent = componentEntry.second;
+        if (graphicalComponent != nullptr) {
+            occupiedLayoutRects.append(paddedLayoutRect(graphicalComponent->sceneBoundingRect()));
+        }
+    }
+    for (const auto& dataDefinitionEntry : dataDefinitionMap) {
+        ModelDataDefinition* dataDefinition = dataDefinitionEntry.first;
+        GraphicalModelDataDefinition* graphicalDefinition = dataDefinitionEntry.second;
+        if (dataDefinition == nullptr || graphicalDefinition == nullptr
+            || newDataDefinitions.contains(dataDefinition)) {
+            continue;
+        }
+        occupiedLayoutRects.append(paddedLayoutRect(graphicalDefinition->sceneBoundingRect()));
+    }
 
     for (const auto& componentEntry : componentMap) {
         ModelComponent* component = componentEntry.first;
@@ -318,10 +1066,10 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         if (component == nullptr || graphicalComponent == nullptr) {
             continue;
         }
-        qreal yInternal = 0.0;
-        qreal yAttached = 0.0;
-        QPointF componentPosition;
-        bool hasComponentPosition = false;
+
+        QList<DataDefinitionLayoutLink> upperLinks;
+        QList<DataDefinitionLayoutLink> lowerStatisticsLinks;
+        QList<DataDefinitionLayoutLink> lowerSharedLinks;
 
         for (const auto& attachedData : *component->getAttachedData()) {
             auto attachedIt = dataDefinitionMap.find(attachedData.second);
@@ -332,21 +1080,22 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (gdd == nullptr) {
                 continue;
             }
-            if (newDataDefinitions.contains(attachedData.second)) {
-                // Read component geometry only when a newly created attached data definition needs placement.
-                if (!hasComponentPosition) {
-                    componentPosition = stableComponentPosition(graphicalComponent);
-                    yInternal = componentPosition.y();
-                    yAttached = componentPosition.y();
-                    hasComponentPosition = true;
-                }
-                yAttached -= 150;
-                gdd->setParentItem(nullptr);
-                gdd->setPos(componentPosition.x(), yAttached);
-                gdd->setOldPosition(componentPosition.x(), yAttached);
-                gdd->setColor(purple);
+            const DataDefinitionDisplayCategory category = visibleCategories[attachedData.second];
+            const bool editable = dataDefinitionIsEditableInPropertyEditor(attachedData.second,
+                                                                           editablePropertyDataDefinitions);
+            gdd->setEditableInPropertyEditor(editable);
+            gdd->setColor(categoryColor(category));
+            const DataDefinitionLayoutLink link{
+                attachedData.second,
+                gdd,
+                GraphicalDiagramConnection::ConnectionType::ATTACHED};
+            if (editable) {
+                upperLinks.append(link);
+            } else if (category == DataDefinitionDisplayCategory::Statistics) {
+                lowerStatisticsLinks.append(link);
+            } else {
+                lowerSharedLinks.append(link);
             }
-            scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::ATTACHED);
         }
 
         for (const auto& internalData : *component->getInternalData()) {
@@ -358,21 +1107,64 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
             if (gdd == nullptr) {
                 continue;
             }
-            if (newDataDefinitions.contains(internalData.second)) {
-                // Read component geometry only when a newly created internal data definition needs placement.
-                if (!hasComponentPosition) {
-                    componentPosition = stableComponentPosition(graphicalComponent);
-                    yInternal = componentPosition.y();
-                    yAttached = componentPosition.y();
-                    hasComponentPosition = true;
-                }
-                yInternal += 150;
-                gdd->setPos(componentPosition.x(), yInternal);
-                gdd->setOldPosition(componentPosition.x(), yInternal);
-                scene->ensureInitialInternalDataDefinitionGrouping(gdd, graphicalComponent);
+            const DataDefinitionDisplayCategory category = visibleCategories[internalData.second];
+            const bool editable = dataDefinitionIsEditableInPropertyEditor(internalData.second,
+                                                                           editablePropertyDataDefinitions);
+            gdd->setEditableInPropertyEditor(editable);
+            gdd->setColor(categoryColor(category));
+            const DataDefinitionLayoutLink link{
+                internalData.second,
+                gdd,
+                GraphicalDiagramConnection::ConnectionType::INTERNAL};
+            if (editable) {
+                upperLinks.append(link);
+            } else if (category == DataDefinitionDisplayCategory::Statistics) {
+                lowerStatisticsLinks.append(link);
+            } else {
+                lowerSharedLinks.append(link);
             }
-            scene->addGraphicalDiagramConnection(gdd, graphicalComponent, GraphicalDiagramConnection::ConnectionType::INTERNAL);
         }
+
+        std::set<const SimulationControl*> propertyRecursionPath;
+        collectPropertyReferencedLayoutLinks(component->getSimulationControls(),
+                                            dataDefinitionMap,
+                                            visibleCategories,
+                                            &upperLinks,
+                                            &lowerStatisticsLinks,
+                                            &lowerSharedLinks,
+                                            &propertyRecursionPath);
+
+        const QRectF componentBounds = graphicalComponent->sceneBoundingRect();
+        positionNewDataDefinitionsInArc(componentBounds,
+                                        upperLinks,
+                                        true,
+                                        newDataDefinitions,
+                                        &positionedDataDefinitions,
+                                        &occupiedLayoutRects);
+        positionNewDataDefinitionsInArc(componentBounds,
+                                        lowerStatisticsLinks,
+                                        false,
+                                        newDataDefinitions,
+                                        &positionedDataDefinitions,
+                                        &occupiedLayoutRects);
+        positionNewDataDefinitionsInArc(componentBounds,
+                                        lowerSharedLinks,
+                                        false,
+                                        newDataDefinitions,
+                                        &positionedDataDefinitions,
+                                        &occupiedLayoutRects,
+                                        1);
+
+        const auto addComponentConnections = [&](const QList<DataDefinitionLayoutLink>& links) {
+            for (const DataDefinitionLayoutLink& link : links) {
+                scene->addGraphicalDiagramConnection(link.graphicalDefinition,
+                                                     graphicalComponent,
+                                                     link.connectionType);
+            }
+        };
+        addComponentConnections(upperLinks);
+        addComponentConnections(lowerStatisticsLinks);
+        addComponentConnections(lowerSharedLinks);
     }
 
     for (const auto& dataDefinitionEntry : dataDefinitionMap) {
@@ -381,28 +1173,90 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         if (parentDefinition == nullptr || parentGraphicalDefinition == nullptr) {
             continue;
         }
-        QPointF parentPosition;
-        qreal x = 0.0;
-        bool hasParentPosition = false;
+        QList<DataDefinitionLayoutLink> childLinks;
+        QList<DataDefinitionLayoutLink> lowerStatisticsChildLinks;
+        QList<DataDefinitionLayoutLink> lowerSharedChildLinks;
+
+        for (const auto& attachedData : *parentDefinition->getAttachedData()) {
+            auto childIt = dataDefinitionMap.find(attachedData.second);
+            if (childIt == dataDefinitionMap.end() || childIt->second == nullptr) {
+                continue;
+            }
+            GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
+            const DataDefinitionDisplayCategory category = visibleCategories[attachedData.second];
+            childGraphicalDefinition->setEditableInPropertyEditor(
+                dataDefinitionIsEditableInPropertyEditor(attachedData.second, editablePropertyDataDefinitions));
+            childGraphicalDefinition->setColor(categoryColor(category));
+            const DataDefinitionLayoutLink link{attachedData.second,
+                                                childGraphicalDefinition,
+                                                GraphicalDiagramConnection::ConnectionType::ATTACHED};
+            childLinks.append(link);
+            if (category == DataDefinitionDisplayCategory::Statistics) {
+                lowerStatisticsChildLinks.append(link);
+            } else {
+                lowerSharedChildLinks.append(link);
+            }
+        }
+
         for (const auto& internalData : *parentDefinition->getInternalData()) {
             auto childIt = dataDefinitionMap.find(internalData.second);
             if (childIt == dataDefinitionMap.end() || childIt->second == nullptr) {
                 continue;
             }
             GraphicalModelDataDefinition* childGraphicalDefinition = childIt->second;
-            if (newDataDefinitions.contains(internalData.second)) {
-                // Read parent geometry only when placing newly created child data definitions.
-                if (!hasParentPosition) {
-                    parentPosition = stableDataDefinitionPosition(parentGraphicalDefinition);
-                    x = parentPosition.x();
-                    hasParentPosition = true;
-                }
-                x -= 200;
-                childGraphicalDefinition->setParentItem(nullptr);
-                childGraphicalDefinition->setPos(x, parentPosition.y());
-                childGraphicalDefinition->setOldPosition(x, parentPosition.y());
+            const DataDefinitionDisplayCategory category = visibleCategories[internalData.second];
+            childGraphicalDefinition->setEditableInPropertyEditor(
+                dataDefinitionIsEditableInPropertyEditor(internalData.second, editablePropertyDataDefinitions));
+            childGraphicalDefinition->setColor(categoryColor(category));
+            const DataDefinitionLayoutLink link{internalData.second,
+                                                childGraphicalDefinition,
+                                                GraphicalDiagramConnection::ConnectionType::INTERNAL};
+            childLinks.append(link);
+            if (category == DataDefinitionDisplayCategory::Statistics) {
+                lowerStatisticsChildLinks.append(link);
+            } else {
+                lowerSharedChildLinks.append(link);
             }
-            scene->addGraphicalDiagramConnection(childGraphicalDefinition, parentGraphicalDefinition, GraphicalDiagramConnection::ConnectionType::INTERNAL);
+        }
+
+        std::set<const SimulationControl*> propertyRecursionPath;
+        collectPropertyReferencedLayoutLinks(parentDefinition->getSimulationControls(),
+                                            dataDefinitionMap,
+                                            visibleCategories,
+                                            &childLinks,
+                                            &lowerStatisticsChildLinks,
+                                            &lowerSharedChildLinks,
+                                            &propertyRecursionPath);
+
+        const bool parentUsesUpperArc = parentGraphicalDefinition->isEditableInPropertyEditor();
+        const QRectF parentBounds = parentGraphicalDefinition->sceneBoundingRect();
+        if (parentUsesUpperArc) {
+            positionNewDataDefinitionsInArc(parentBounds,
+                                            childLinks,
+                                            true,
+                                            newDataDefinitions,
+                                            &positionedDataDefinitions,
+                                            &occupiedLayoutRects);
+        } else {
+            positionNewDataDefinitionsInArc(parentBounds,
+                                            lowerStatisticsChildLinks,
+                                            false,
+                                            newDataDefinitions,
+                                            &positionedDataDefinitions,
+                                            &occupiedLayoutRects);
+            positionNewDataDefinitionsInArc(parentBounds,
+                                            lowerSharedChildLinks,
+                                            false,
+                                            newDataDefinitions,
+                                            &positionedDataDefinitions,
+                                            &occupiedLayoutRects,
+                                            1);
+        }
+
+        for (const DataDefinitionLayoutLink& link : childLinks) {
+            scene->addGraphicalDiagramConnection(link.graphicalDefinition,
+                                                 parentGraphicalDefinition,
+                                                 link.connectionType);
         }
     }
 

@@ -18,8 +18,9 @@
 #include "../../../GenesysApplication_if.h"
 #include "../../../TraitsApp.h"
 #include "../../../terminal/TraitsTerminalApp.h"
-#include "TraitsGUI.h"
 #include "GuiCrashDiagnostics.h"
+#include "guithememanager.h"
+#include "systempreferences.h"
 
 namespace {
 QMutex _logMutex;
@@ -84,8 +85,12 @@ void _installCrashAndLogHandlers() {
 int mainGraphicQtApp(int argc, char *argv[]) {
     _installCrashAndLogHandlers();
 	QApplication a(argc, argv);
+    QCoreApplication::setOrganizationName(QStringLiteral("GenESyS"));
+    QCoreApplication::setApplicationName(QStringLiteral("Genesys-Simulator"));
+    SystemPreferences::load();
+    GuiThemeManager::applyApplicationTheme(&a);
 	MainWindow w;
-    if constexpr (TraitsGUI<GMainWindow>::startMaximized) {
+    if (SystemPreferences::startMaximized()) {
         w.setWindowState(Qt::WindowMaximized);
         QRect screenGeometry = QApplication::primaryScreen()->availableGeometry(); //QApplication::desktop()->availableGeometry();
         w.resize(screenGeometry.width(), screenGeometry.height());

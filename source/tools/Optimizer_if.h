@@ -10,7 +10,7 @@
 
 #include <cstddef>
 #include <string>
-#include "../kernel/util/List.h"
+#include "kernel/util/List.h"
 
 class Model;
 class SimulationControl;

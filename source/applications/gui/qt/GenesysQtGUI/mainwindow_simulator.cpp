@@ -67,6 +67,14 @@ void MainWindow::_onReplicationStartHandler(SimulationEvent * re) {
     }
 }
 
+void MainWindow::_onReplicationEndHandler(SimulationEvent * re) {
+    // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
+    if (_simulationEventController != nullptr) {
+        _simulationEventController->onReplicationEndHandler(re);
+    }
+    _showReplicationReportIfSuppressed();
+}
+
 void MainWindow::_onSimulationStartHandler(SimulationEvent * re) {
     // Keep this compatibility wrapper in the final façade and guard shutdown-time calls.
     if (_simulationEventController != nullptr) {
@@ -94,6 +102,8 @@ void MainWindow::_onSimulationEndHandler(SimulationEvent * re) {
         _simulationEventController->onSimulationEndHandler(re);
     }
     _actualizeReportsResultsTable();
+    _actualizeReportsPlots();
+    _showSimulationReportIfSuppressed();
 }
 
 void MainWindow::_onProcessEventHandler(SimulationEvent * re) {
@@ -137,6 +147,32 @@ void MainWindow::_setOnEventHandlers() {
     if (_simulationEventController != nullptr) {
         _simulationEventController->setOnEventHandlers(this);
     }
+}
+
+void MainWindow::_showReplicationReportIfSuppressed() {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+        return;
+    }
+
+    ModelSimulation* simulation = simulator->getModelManager()->current()->getSimulation();
+    if (simulation == nullptr || simulation->isShowReportsAfterReplication() || simulation->getReporter() == nullptr) {
+        return;
+    }
+
+    simulation->getReporter()->showReplicationStatistics();
+}
+
+void MainWindow::_showSimulationReportIfSuppressed() {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+        return;
+    }
+
+    ModelSimulation* simulation = simulator->getModelManager()->current()->getSimulation();
+    if (simulation == nullptr || simulation->isShowReportsAfterSimulation() || simulation->getReporter() == nullptr) {
+        return;
+    }
+
+    simulation->getReporter()->showSimulationStatistics();
 }
 
 

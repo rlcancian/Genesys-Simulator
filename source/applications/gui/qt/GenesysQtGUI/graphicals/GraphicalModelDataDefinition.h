@@ -10,9 +10,11 @@
 
 #include <QGraphicsItem>
 #include <QGraphicsObject>
+#include <QPainterPath>
 #include <QPen>
 #include <QBrush>
-#include "../../../../kernel/simulator/Plugin.h"
+#include "kernel/simulator/Plugin.h"
+#include "graphicals/GraphicalModelItemRenderStrategy.h"
 #include "TraitsGUI.h"
 
 class GraphicalModelDataDefinition : public QGraphicsObject {
@@ -22,8 +24,11 @@ public:
 	virtual ~GraphicalModelDataDefinition();
 public:
 	QRectF boundingRect() const override;
+	QPainterPath shape() const override;
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     ModelDataDefinition* getDataDefinition() const;
+    bool isEditableInPropertyEditor() const;
+    void setEditableInPropertyEditor(bool editable);
     QPointF getOldPosition() const;
     void setOldPosition(qreal x, qreal y);
     QColor getColor() const;
@@ -32,6 +37,7 @@ public:
 
 protected:
 	QColor myrgba(uint64_t color); // TODO: Should NOT be here, but in UtilGUI.h, but then it generates multiple definitions error
+	virtual GraphicalModelItemRenderContext renderContext() const;
 protected: // virtual
 	virtual bool sceneEvent(QEvent *event) override;
 	//virtual void	hoverEnterEvent(QGraphicsSceneHoverEvent * event)
@@ -52,6 +58,7 @@ protected:
 	unsigned int _margin = TraitsGUI<GModelDataDefinition>::margin;//8;
 	unsigned int _selWidth = TraitsGUI<GModelDataDefinition>::selectionWidth;//8;
 	ModelDataDefinition* _element;
+    bool _editableInPropertyEditor = false;
 	QColor _color;
     QPointF _oldPosition;
 	qreal _stretchPosTop = TraitsGUI<GModelDataDefinition>::stretchPos;//0.5;
@@ -70,4 +77,3 @@ private:
 };
 
 #endif /* GRAPHICALMODELDATADEFINITION_H */
-

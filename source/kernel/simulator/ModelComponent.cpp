@@ -39,7 +39,7 @@ ModelComponent::~ModelComponent() {
 //
 
 ConnectionManager* ModelComponent::getConnectionManager() const {
-	return _connections; // @TODO How to know if it changes?
+	return _connections; // @ToDo: (importante): How to know if it changes?
 }
 
 void ModelComponent::connectTo(ModelComponent* component, unsigned int inputPortNumber) {
@@ -120,7 +120,7 @@ void ModelComponent::DispatchEvent(Event* event) {
 	Entity* entity = event->getEntity();
 	ModelComponent* component = event->getComponent();
 	unsigned int inputPortNumber = event->getComponentinputPortNumber();
-    /* @TODO: Show entity based on a configuration
+    /* @ToDo: (pequena alteração): Show entity based on a configuration
 	//"Entity " +std::to_string(entity->entityNumber())
 	std::string msg =  entity->getName() + " has arrived at component \"" + component->getName() + "\"";
 	if (component->getDescription() != "")
@@ -189,7 +189,7 @@ bool ModelComponent::_check(std::string& errorMessage) {
 /*
 ParserChangesInformation* ModelComponent::_getParserChangesInformation() {
 	ParserChangesInformation* changes = new ParserChangesInformation();
-	//@TODO not implemented yet
+	// @ToDo: (importante): not implemented yet
 	changes->getassignments().append("");
 	changes->getexpressionProductions().append("");
 	changes->getexpressions().append("");
@@ -225,6 +225,6 @@ void ModelComponent::_createInternalAndAttachedData() {
 */
 
 /*
-void ModelComponent::_addProperty(PropertyBase* property) {
+void ModelComponent::_addSimulationControl(SimulationControl* property) {
 }
 */

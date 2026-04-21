@@ -12,6 +12,7 @@ public: // ModelPersistence_if interface
 	bool save(std::string filename) override;
 	bool load(std::string filename) override;
 	bool hasChanged() override;
+	void setHasChanged(bool hasChanged) override;
 	bool getOption(ModelPersistence_if::Options option) override;
 	void setOption(ModelPersistence_if::Options option, bool value) override;
 	std::string getFormatedField(PersistenceRecord *fields) override;

@@ -101,7 +101,7 @@ StatisticsCollector* EntityType::addGetStatisticsCollector(std::string name) {
 	}
 	// not found. Create it, insert it into the list of cstats, into the model modeldatum manager, and then return it
 	StatisticsCollector* cstat = new StatisticsCollector(_parentModel, name, this);
-	_statisticsCollectors->insert(cstat); // @TODO _statisticsCollectors list is probabily redundant to _internelElements and unnecessary
+	_statisticsCollectors->insert(cstat); // @ToDo: (importante): _statisticsCollectors list is probabily redundant to _internelElements and unnecessary
 	_internalDataInsert(name, cstat);
 	//_parentModel->insert(cstat); // unnecessary
 	return cstat;
@@ -109,7 +109,8 @@ StatisticsCollector* EntityType::addGetStatisticsCollector(std::string name) {
 
 PluginInformation* EntityType::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<EntityType>(), &EntityType::LoadInstance, &EntityType::NewInstance);
-	info->setDescriptionHelp("//@TODO");
+	// @ToDo: (pequena alteração): Add EntityType description help
+	info->setDescriptionHelp("");
 	return info;
 }
 
@@ -151,7 +152,7 @@ bool EntityType::_check(std::string& errorMessage) {
 }
 
 void EntityType::_createInternalAndAttachedData() {
-	if (_reportStatistics) { //@TODO: Fix inserting to _internalElements
+	if (_reportStatistics) { // @ToDo: (importante): Fix inserting to _internalElements
 	} else {
 		while (_statisticsCollectors->size() > 0) {
 			_parentModel->getDataManager()->remove(_statisticsCollectors->front());
@@ -160,4 +161,3 @@ void EntityType::_createInternalAndAttachedData() {
 		}
 	}
 }
-

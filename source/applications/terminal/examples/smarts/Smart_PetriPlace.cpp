@@ -1,11 +1,11 @@
 #include "Smart_PetriPlace.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/ModalModelPetriNet.h"
-#include "../../../../plugins/components/network/PetriPlace.h"
-#include "../../../../plugins/components/network/DefaultTransitionExtensions.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/ModalModel/ModalModelPetriNet.h"
+#include "plugins/components/ModalModel/PetriPlace.h"
+#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "../../../TraitsApp.h"
 
 Smart_PetriPlace::Smart_PetriPlace() {

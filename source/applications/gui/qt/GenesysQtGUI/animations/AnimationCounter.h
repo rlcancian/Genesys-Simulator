@@ -5,7 +5,7 @@
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
 
-#include "../../../../../kernel/simulator/Counter.h"
+#include "kernel/simulator/Counter.h"
 
 class AnimationCounter : public QGraphicsRectItem {
 public:

@@ -14,6 +14,7 @@ target_include_directories(genesys_plugins_components
 target_link_libraries(genesys_plugins_components
     PUBLIC
         genesys_kernel_util
+        genesys_plugins_data
 )
 
 target_compile_features(genesys_plugins_components PUBLIC cxx_std_23)

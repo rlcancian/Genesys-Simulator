@@ -16,6 +16,9 @@ void MoveUndoCommand::undo() {
 
         if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *> (_myGraphicalItem[i])) {
             component->setOldPosition(oldPos);
+        } else if (GraphicalModelDataDefinition *dataDefinition =
+                       dynamic_cast<GraphicalModelDataDefinition *> (_myGraphicalItem[i])) {
+            dataDefinition->setOldPosition(oldPos.x(), oldPos.y());
         } else {
             _myGraphicsScene->insertOldPositionItem(_myGraphicalItem[i], oldPos);
         }
@@ -29,6 +32,15 @@ void MoveUndoCommand::redo() {
     for (int i = 0; i < _myGraphicalItem.size(); i++) {
         QPointF newPos = _myNewPos[i];
         _myGraphicalItem[i]->setPos(newPos);
+
+        if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *> (_myGraphicalItem[i])) {
+            component->setOldPosition(newPos);
+        } else if (GraphicalModelDataDefinition *dataDefinition =
+                       dynamic_cast<GraphicalModelDataDefinition *> (_myGraphicalItem[i])) {
+            dataDefinition->setOldPosition(newPos.x(), newPos.y());
+        } else {
+            _myGraphicsScene->insertOldPositionItem(_myGraphicalItem[i], newPos);
+        }
     }
 
     // atualiza a cena

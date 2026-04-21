@@ -6,12 +6,12 @@
 #include "animations/AnimationTimer.h"
 #include "animations/AnimationTransition.h"
 
-#include "../../../../../kernel/simulator/Model.h"
-#include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
-#include "../../../../../kernel/util/Util.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/util/Util.h"
 
 #include <QAction>
 #include <QCoreApplication>
@@ -22,10 +22,68 @@
 #include <QTextEdit>
 #include <QDebug>
 
+#include <cmath>
 #include <string>
 #include <utility>
 
 namespace {
+constexpr int kSimulationProgressScale = 1000000;
+
+static double clampProgressTime(double value, double replicationLength) {
+    if (!std::isfinite(value) || value < 0.0) {
+        return 0.0;
+    }
+    if (replicationLength > 0.0 && value > replicationLength) {
+        return replicationLength;
+    }
+    return value;
+}
+
+static QString formatProgressTime(double value) {
+    QString text = QString::number(value, 'f', 6);
+    const int decimalPoint = text.indexOf('.');
+    if (decimalPoint < 0) {
+        return text + ".0";
+    }
+    while (text.size() > decimalPoint + 2 && text.endsWith('0')) {
+        text.chop(1);
+    }
+    return text;
+}
+
+static double replicationLengthInBaseTimeUnit(ModelSimulation* simulation) {
+    if (simulation == nullptr) {
+        return 0.0;
+    }
+    return simulation->getReplicationLength()
+           * Util::TimeUnitConvert(simulation->getReplicationLengthTimeUnit(),
+                                   simulation->getReplicationBaseTimeUnit());
+}
+
+static void updateSimulationProgressBar(QProgressBar* progressBar,
+                                        ModelSimulation* simulation,
+                                        double currentTime,
+                                        bool forceComplete) {
+    if (progressBar == nullptr || simulation == nullptr) {
+        return;
+    }
+
+    const double replicationLength = replicationLengthInBaseTimeUnit(simulation);
+    const double displayTime = forceComplete
+            ? replicationLength
+            : clampProgressTime(currentTime, replicationLength);
+    const double ratio = replicationLength > 0.0
+            ? displayTime / replicationLength
+            : (forceComplete ? 1.0 : 0.0);
+    const int progressValue = static_cast<int>(std::round(ratio * kSimulationProgressScale));
+
+    progressBar->setRange(0, kSimulationProgressScale);
+    progressBar->setValue(progressValue);
+    progressBar->setFormat(QString("(%1/%2) %p%")
+                                   .arg(formatProgressTime(displayTime),
+                                        formatProgressTime(replicationLength)));
+}
+
 // Select and detach the paused-animation list together with its effective resume key.
 static std::pair<Event*, QList<AnimationTransition*>*> takePausedAnimationListForResume(
     QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap,
@@ -121,14 +179,19 @@ void SimulationEventController::onModelCheckSuccessHandler(ModelEvent* re) const
     Model* model = _simulator->getModelManager()->current();
     if (_simulator->getModelManager()->current() == re->getModel()) {
         ModelDataManager* dm = model->getDataManager();
-        ModelGraphicsView* modelGraphView = _graphicsView;
-        Q_UNUSED(modelGraphView)
         // Iterate over a value snapshot of data-definition class names while touching checked model data.
         for (auto elemclassname : dm->getDataDefinitionClassnames()) {
             for (ModelDataDefinition* elem : *dm->getDataDefinitionList(elemclassname)->list()) {
                 Util::identification id = elem->getId();
                 Q_UNUSED(id)
             }
+        }
+        if (_graphicsView != nullptr && _graphicsView->getScene() != nullptr) {
+            // Model check can materialize internal/attached data after a deferred kernel validation.
+            // Refresh the GMDD layer so newly created recursive/statistics data becomes visible
+            // without requiring another manual GUI action.
+            _graphicsView->getScene()->requestGraphicalDataDefinitionsSync();
+            _graphicsView->getScene()->update();
         }
     }
 }
@@ -139,6 +202,7 @@ void SimulationEventController::onReplicationStartHandler(SimulationEvent* re) c
     QString text = QString::fromStdString(std::to_string(sim->getCurrentReplicationNumber())) + "/" +
                    QString::fromStdString(std::to_string(sim->getNumberOfReplications()));
     _replicationLabel->setText(text);
+    updateSimulationProgressBar(_simulationProgressBar, sim, 0.0, false);
     int row = _simulationEventsTable->rowCount();
     _simulationEventsTable->setRowCount(row + 1);
     QTableWidgetItem* newItem = new QTableWidgetItem(QString::fromStdString(
@@ -156,13 +220,14 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     // Reset global animation pause state to a known baseline on simulation start.
     AnimationTransition::setPause(false);
     _callbacks.actualizeActions();
-    _simulationProgressBar->setMaximum(
-        _simulator->getModelManager()->current()->getSimulation()->getReplicationLength());
+    updateSimulationProgressBar(_simulationProgressBar,
+                                _simulator->getModelManager()->current()->getSimulation(),
+                                0.0,
+                                false);
     _simulationEventsTable->setRowCount(0);
     _entitiesTable->setRowCount(0);
     _variablesTable->setRowCount(0);
     _simulationText->clear();
-    _reportsText->clear();
 
     Util::TimeUnit replicationBaseTimeUnit =
         _simulator->getModelManager()->current()->getSimulation()->getReplicationBaseTimeUnit();
@@ -244,9 +309,23 @@ void SimulationEventController::onSimulationEndHandler(SimulationEvent* re) cons
     qInfo() << "GUI SimulationEvent onSimulationEndHandler end";
 }
 
+// Force progress completion when a replication ends at the replication horizon.
+void SimulationEventController::onReplicationEndHandler(SimulationEvent* re) const {
+    Q_UNUSED(re)
+    updateSimulationProgressBar(_simulationProgressBar,
+                                _simulator->getModelManager()->current()->getSimulation(),
+                                0.0,
+                                true);
+    QCoreApplication::processEvents();
+}
+
 // Preserve process-event UI updates and delegated debug/graphical refresh behavior.
 void SimulationEventController::onProcessEventHandler(SimulationEvent* re) const {
-    _simulationProgressBar->setValue(_simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
+    ModelSimulation* simulation = _simulator->getModelManager()->current()->getSimulation();
+    updateSimulationProgressBar(_simulationProgressBar,
+                                simulation,
+                                simulation->getSimulatedTime(),
+                                false);
     _callbacks.actualizeSimulationEvents(re);
     _callbacks.actualizeDebugEntities(false);
     _callbacks.actualizeDebugVariables(false);
@@ -323,6 +402,7 @@ void SimulationEventController::setOnEventHandlers(MainWindow* owner) const {
     eventManager->addOnEntityRemoveHandler(owner, &MainWindow::_onEntityRemoveHandler);
     eventManager->addOnEntityMoveHandler(owner, &MainWindow::_onMoveEntityEvent);
     eventManager->addOnProcessEventHandler(owner, &MainWindow::_onProcessEventHandler);
+    eventManager->addOnReplicationEndHandler(owner, &MainWindow::_onReplicationEndHandler);
     eventManager->addOnReplicationStartHandler(owner, &MainWindow::_onReplicationStartHandler);
     eventManager->addOnSimulationStartHandler(owner, &MainWindow::_onSimulationStartHandler);
     eventManager->addOnSimulationPausedHandler(owner, &MainWindow::_onSimulationPausedHandler);

@@ -13,15 +13,20 @@
 
 // Dialogs
 // Kernel
-#include "../../../../kernel/simulator/SinkModelComponent.h"
-#include "../../../../kernel/simulator/Attribute.h"
-#include "../../../../kernel/simulator/Counter.h"
-#include "../../../../kernel/simulator/StatisticsCollector.h"
-#include "../../../TraitsApp.h"
+#include "kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/Counter.h"
+#include "kernel/simulator/StatisticsCollector.h"
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ComponentManager.h"
+#include "kernel/simulator/ModelDataManager.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
 #include "graphicals/GraphicalConnection.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
 #include "controllers/SimulationController.h"
 // Keep explicit controller includes to make MainWindow composition-root wiring clear.
 #include "controllers/ModelInspectorController.h"
@@ -39,14 +44,20 @@
 #include "controllers/EditCommandController.h"
 // Add Phase 10 controller include for scene/view/drawing command orchestration.
 #include "controllers/SceneToolController.h"
+// Add graphical context-menu controller include for canvas popup orchestration.
+#include "controllers/GraphicalContextMenuController.h"
 // Add Phase 11 controller include for dialog/utility orchestration.
 #include "controllers/DialogUtilityController.h"
+#include "extensions/GuiExtensionContracts.h"
+#include "extensions/GuiExtensionManager.h"
+#include "extensions/GuiExtensionPluginCatalog.h"
 #include "services/ModelLanguageSynchronizer.h"
 #include "services/GraphvizModelExporter.h"
 #include "services/CppModelExporter.h"
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
 #include "UtilGUI.h"
+#include "guithememanager.h"
 // PropEditor
 #include "propertyeditor/qtpropertybrowser/qttreepropertybrowser.h"
 #include "animations/AnimationVariable.h"
@@ -54,22 +65,27 @@
 //#include "actions/PasteUndoCommand.h"
 //#include "actions/DeleteUndoCommand.h"
 // @TODO: Should NOT be hardcoded!!! (Used to visualize variables)
-#include "../../../../plugins/data/Variable.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 // std
 #include <string>
 #include <fstream>
 #include <sstream>
 #include <cstdlib>
+#include <algorithm>
+#include <cmath>
+#include <limits>
 //#include <streambuf>
 // QT
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFileDialog>
+#include <QFileInfo>
 #include <QDateTime>
 #include <QEventLoop>
 #include <QTemporaryFile>
 #include <Qt>
 #include <QGraphicsPixmapItem>
+#include <QKeySequence>
 #include <QPropertyAnimation>
 // #include <qt5/QtWidgets/qgraphicsitem.h>
 #include <QtWidgets/qgraphicsitem.h>
@@ -79,9 +95,239 @@
 #include <QRegularExpression>
 #include <QRandomGenerator>
 #include <QAction>
+#include <QFrame>
+#include <QLabel>
+#include <QMap>
+#include <QMenu>
+#include <QPainter>
+#include <QScrollArea>
+#include <QSignalBlocker>
+#include <QSizePolicy>
+#include <QSplitter>
+#include <QTabBar>
+#include <QTabWidget>
+#include <QTimer>
+#include <QVBoxLayout>
+
+namespace {
+struct ReportPlotItem {
+    QString label;
+    double minimum = 0.0;
+    double average = 0.0;
+    double maximum = 0.0;
+};
+
+class ResultsBoxPlotWidget : public QFrame {
+public:
+    explicit ResultsBoxPlotWidget(const QVector<ReportPlotItem>& items, QWidget* parent = nullptr)
+        : QFrame(parent), _items(items) {
+        setMinimumHeight(260);
+        setMinimumWidth(std::max(480, 90 * static_cast<int>(_items.size()) + 120));
+        setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+
+protected:
+    void paintEvent(QPaintEvent*) override {
+        QPainter painter(this);
+        painter.setRenderHint(QPainter::Antialiasing, true);
+        painter.fillRect(rect(), palette().base());
+
+        if (_items.isEmpty()) {
+            painter.drawText(rect(), Qt::AlignCenter, QObject::tr("No plottable results."));
+            return;
+        }
+
+        const int left = 76;
+        const int right = 24;
+        const int top = 18;
+        const int bottom = 82;
+        const QRect plotRect(left, top, width() - left - right, height() - top - bottom);
+        if (plotRect.width() <= 0 || plotRect.height() <= 0) {
+            return;
+        }
+
+        double minValue = std::numeric_limits<double>::infinity();
+        double maxValue = -std::numeric_limits<double>::infinity();
+        for (const ReportPlotItem& item : _items) {
+            minValue = std::min(minValue, item.minimum);
+            maxValue = std::max(maxValue, item.maximum);
+        }
+        if (!std::isfinite(minValue) || !std::isfinite(maxValue)) {
+            return;
+        }
+        if (minValue == maxValue) {
+            const double pad = std::max(1.0, std::abs(minValue) * 0.1);
+            minValue -= pad;
+            maxValue += pad;
+        } else {
+            const double pad = (maxValue - minValue) * 0.08;
+            minValue -= pad;
+            maxValue += pad;
+        }
+
+        auto toY = [plotRect, minValue, maxValue](double value) {
+            const double ratio = (value - minValue) / (maxValue - minValue);
+            return plotRect.bottom() - ratio * plotRect.height();
+        };
+
+        painter.setPen(QPen(QColor(210, 210, 210), 1));
+        const int tickCount = 5;
+        for (int tick = 0; tick <= tickCount; ++tick) {
+            const double ratio = static_cast<double>(tick) / tickCount;
+            const double value = minValue + ratio * (maxValue - minValue);
+            const int y = static_cast<int>(toY(value));
+            painter.drawLine(plotRect.left(), y, plotRect.right(), y);
+            painter.setPen(QPen(QColor(80, 80, 80), 1));
+            painter.drawText(4, y - 9, left - 10, 18, Qt::AlignRight | Qt::AlignVCenter,
+                             QString::number(value, 'g', 5));
+            painter.setPen(QPen(QColor(210, 210, 210), 1));
+        }
+
+        painter.setPen(QPen(QColor(70, 70, 70), 1));
+        painter.drawLine(plotRect.bottomLeft(), plotRect.bottomRight());
+        painter.drawLine(plotRect.bottomLeft(), plotRect.topLeft());
+
+        const double slotWidth = static_cast<double>(plotRect.width()) / _items.size();
+        const int boxWidth = std::max(12, std::min(42, static_cast<int>(slotWidth * 0.45)));
+        const QColor boxColor(100, 149, 237, 95);
+        const QPen boxPen(QColor(49, 92, 156), 1.4);
+        const QPen meanPen(QColor(190, 70, 55), 2.0);
+
+        for (int index = 0; index < _items.size(); ++index) {
+            const ReportPlotItem& item = _items.at(index);
+            const double average = std::max(item.minimum, std::min(item.average, item.maximum));
+            const double q1 = item.minimum + (average - item.minimum) * 0.5;
+            const double q3 = average + (item.maximum - average) * 0.5;
+            const int x = plotRect.left() + static_cast<int>((index + 0.5) * slotWidth);
+            const int yMin = static_cast<int>(toY(item.minimum));
+            const int yMax = static_cast<int>(toY(item.maximum));
+            const int yQ1 = static_cast<int>(toY(q1));
+            const int yQ3 = static_cast<int>(toY(q3));
+            const int yAvg = static_cast<int>(toY(average));
+
+            painter.setPen(boxPen);
+            painter.drawLine(x, yMax, x, yMin);
+            painter.drawLine(x - boxWidth / 3, yMax, x + boxWidth / 3, yMax);
+            painter.drawLine(x - boxWidth / 3, yMin, x + boxWidth / 3, yMin);
+            painter.setBrush(boxColor);
+            painter.drawRect(QRect(QPoint(x - boxWidth / 2, yQ3),
+                                   QPoint(x + boxWidth / 2, yQ1)).normalized());
+            painter.setPen(meanPen);
+            painter.drawLine(x - boxWidth / 2, yAvg, x + boxWidth / 2, yAvg);
+
+            painter.save();
+            painter.translate(x - 6, plotRect.bottom() + 12);
+            painter.rotate(-35);
+            painter.setPen(QPen(QColor(65, 65, 65), 1));
+            painter.drawText(QRect(0, 0, 130, 34), Qt::AlignLeft | Qt::AlignVCenter, item.label);
+            painter.restore();
+        }
+    }
+
+private:
+    QVector<ReportPlotItem> _items;
+};
+
+static bool fillPlotItem(ModelDataDefinition* data, QString* category, ReportPlotItem* item) {
+    if (data == nullptr || category == nullptr || item == nullptr) {
+        return false;
+    }
+
+    ModelDataDefinition* parent = nullptr;
+    if (StatisticsCollector* collector = dynamic_cast<StatisticsCollector*>(data)) {
+        parent = collector->getParent();
+        Statistics_if* stats = collector->getStatistics();
+        if (stats == nullptr || stats->numElements() == 0) {
+            return false;
+        }
+        item->minimum = stats->min();
+        item->average = stats->average();
+        item->maximum = stats->max();
+    } else if (Counter* counter = dynamic_cast<Counter*>(data)) {
+        parent = counter->getParent();
+        item->minimum = counter->getCountValue();
+        item->average = counter->getCountValue();
+        item->maximum = counter->getCountValue();
+    } else {
+        return false;
+    }
+
+    if (!std::isfinite(item->minimum) || !std::isfinite(item->average) || !std::isfinite(item->maximum)) {
+        return false;
+    }
+    if (item->minimum > item->maximum) {
+        std::swap(item->minimum, item->maximum);
+    }
+
+    const QString parentType = parent != nullptr
+            ? QString::fromStdString(parent->getClassname())
+            : QObject::tr("Global");
+    const QString parentName = parent != nullptr
+            ? QString::fromStdString(parent->getName())
+            : QString();
+    *category = parentType;
+    item->label = parentName.isEmpty()
+            ? QString::fromStdString(data->getName())
+            : parentName + "." + QString::fromStdString(data->getName());
+    return true;
+}
+
+std::vector<std::string> collectLoadedModelPluginIds(const Simulator* simulator) {
+	std::vector<std::string> ids;
+	if (simulator == nullptr || simulator->getPluginManager() == nullptr) {
+		return ids;
+	}
+
+	PluginManager* pluginManager = simulator->getPluginManager();
+	ids.reserve(pluginManager->size());
+	for (unsigned int index = 0; index < pluginManager->size(); ++index) {
+		Plugin* plugin = pluginManager->getAtRank(index);
+		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+			continue;
+		}
+		const std::string pluginTypename = plugin->getPluginInfo()->getPluginTypename();
+		if (!pluginTypename.empty()) {
+			ids.push_back(pluginTypename);
+		}
+	}
+	return ids;
+}
+} // namespace
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
     ui->setupUi(this);
+    _actionModelPrevious = new QAction(tr("Previous Model"), this);
+    _actionModelPrevious->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageUp));
+    connect(_actionModelPrevious, &QAction::triggered, this, [this]() { _activatePreviousModel(); });
+    _actionModelNext = new QAction(tr("Next Model"), this);
+    _actionModelNext->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
+    connect(_actionModelNext, &QAction::triggered, this, [this]() { _activateNextModel(); });
+    _actionOpenSelectedSubmodel = new QAction(tr("Open Submodel"), this);
+    _actionOpenSelectedSubmodel->setToolTip(tr("Open a graphical tab scoped to the selected item's internal model level."));
+    connect(_actionOpenSelectedSubmodel, &QAction::triggered, this, [this]() { _openSelectedSubmodel(); });
+    _menuOpenRecent = new QMenu(tr("Open Recent..."), this);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionModelPrevious);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionModelNext);
+    ui->menuModel->insertAction(ui->actionModelOpen, _actionOpenSelectedSubmodel);
+    ui->menuModel->insertSeparator(ui->actionModelOpen);
+    ui->menuModel->insertMenu(ui->actionModelOpen, _menuOpenRecent);
+
+    // The View/Show menu relies on the native checkmark indicator; menu icons made the checked
+    // state hard to distinguish, so keep those actions text/checkmark-only and define explicit
+    // defaults for the data-definition visibility categories.
+    ui->actionShowInternalElements->setIconVisibleInMenu(false);
+    ui->actionShowEditableElements->setIconVisibleInMenu(false);
+    ui->actionShowAttachedElements->setIconVisibleInMenu(false);
+    ui->actionShowRecursiveElements->setIconVisibleInMenu(false);
+    ui->actionShowInternalElements->setChecked(false);
+    ui->actionShowEditableElements->setChecked(true);
+    ui->actionShowAttachedElements->setChecked(false);
+    ui->actionShowRecursiveElements->setChecked(true);
+    ui->checkBox_ShowInternals->setChecked(false);
+    ui->checkBox_ShowEditableElements->setChecked(true);
+    ui->checkBox_ShowElements->setChecked(false);
+    ui->checkBox_ShowRecursive->setChecked(true);
+
     // Keep plugins tree as drag source only (never a drop target).
     ui->treeWidget_Plugins->setDragDropMode(QAbstractItemView::DragOnly);
     ui->treeWidget_Plugins->setAcceptDrops(false);
@@ -100,13 +346,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     _graphvizModelExporter = std::make_unique<GraphvizModelExporter>(simulator,
                                                                      ui->label_ModelGraphic,
                                                                      ui->checkBox_ShowInternals,
+                                                                     ui->checkBox_ShowEditableElements,
                                                                      ui->checkBox_ShowElements,
                                                                      ui->checkBox_ShowRecursive,
                                                                      ui->checkBox_ShowLevels,
                                                                      // Keep synchronization behavior unchanged via a narrow callback dependency.
                                                                      [this]() { return this->_setSimulationModelBasedOnText(); });
     _cppModelExporter = std::make_unique<CppModelExporter>(simulator, ui->plainTextEditCppCode);
-    simulator->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
+    simulator->getTraceManager()->setTraceLevel(SystemPreferences::traceLevel());
     simulator->getTraceManager()->addTraceHandler<MainWindow>(this, &MainWindow::_simulatorTraceHandler);
     simulator->getTraceManager()->addTraceErrorHandler<MainWindow>(this, &MainWindow::_simulatorTraceErrorHandler);
     simulator->getTraceManager()->addTraceReportHandler<MainWindow>(this, &MainWindow::_simulatorTraceReportsHandler);
@@ -131,6 +378,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     QSizePolicy policy = ui->dockWidgetConsole->sizePolicy();
     policy.setVerticalPolicy(QSizePolicy::Minimum);
     ui->dockWidgetConsole->setSizePolicy(policy);
+    splitDockWidget(ui->dockWidgetPropertyEditor, ui->dockWidgetConsole, Qt::Vertical);
     //...
     // plugins
     ui->treeWidget_Plugins->sortByColumn(0, Qt::AscendingOrder);
@@ -158,6 +406,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->tableWidget_Entities->setHorizontalHeaderLabels(headers);
     ui->tableWidget_Entities->horizontalHeader()->setSectionResizeMode(QHeaderView::ResizeToContents);
     _prepareReportsResultsTable();
+    _prepareReportsPlots();
     ui->tableWidget_Simulation_Event->setContentsMargins(1, 0, 1, 0);
     //
     // Trees
@@ -175,12 +424,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     treeHeader->setExpanded(true);
     //
     // ModelGraphic
-    ui->graphicsView->setParentWidget(ui->centralwidget);
-    ui->graphicsView->setSimulator(simulator);
-	ui->graphicsView->setPropertyEditor(propertyGenesys);
-    ui->graphicsView->setPropertyList(propertyList);
-    ui->graphicsView->setPropertyEditorUI(propertyEditorUI);
-    ui->graphicsView->setComboBox(propertyBox);
+    _configureModelGraphicsView(ui->graphicsView);
+    _initializeModelTabs();
     _zoomValue = ui->horizontalSlider_ZoomGraphical->maximum() / 2;
     //
     // set current tabs
@@ -188,6 +433,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->tabWidgetModel->setCurrentIndex(CONST.TabModelSimLangIndex);
     ui->tabWidgetSimulation->setCurrentIndex(CONST.TabSimulationBreakpointsIndex);
     ui->tabWidgetReports->setCurrentIndex(CONST.TabReportReportIndex);
+    {
+        const QSignalBlocker tabWidgetModelBlocker(ui->tabWidgetModel);
+        const QSignalBlocker tabBarBlocker(ui->tabWidgetModel->tabBar());
+        const int modelDiagramTabIndex = ui->tabWidgetModel->indexOf(ui->tabModelDiagram);
+        if (modelDiagramTabIndex >= 0) {
+            ui->tabWidgetModel->setTabVisible(modelDiagramTabIndex, false);
+        }
+    }
     //
     // adjust toolbars position and ranking
     //
@@ -213,86 +466,19 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     //
     // graphicsView
     _initModelGraphicsView();
-    // Initialize the Phase 3 model-inspector controller after view and simulator dependencies are ready.
-    _modelInspectorController = std::make_unique<ModelInspectorController>(simulator,
-                                                                           ui->treeWidgetComponents,
-                                                                           ui->treeWidgetDataDefnitions,
-                                                                           ui->graphicsView);
     // Initialize the Phase 4 trace controller after trace output widgets are available.
     _traceConsoleController = std::make_unique<TraceConsoleController>(ui->textEdit_Console,
                                                                         ui->textEdit_Simulation,
                                                                         ui->textEdit_Reports);
-    // Initialize the Phase 4 simulation-event controller after simulator and scene dependencies are available.
-    _simulationEventController = std::make_unique<SimulationEventController>(
-        simulator,
-        ui->graphicsView->getScene(),
-        ui->graphicsView,
-        ui->label_ReplicationNum,
-        ui->progressBarSimulation,
-        ui->tableWidget_Simulation_Event,
-        ui->tableWidget_Entities,
-        ui->tableWidget_Variables,
-        ui->textEdit_Simulation,
-        ui->textEdit_Reports,
-        ui->tabWidgetCentral,
-        ui->actionActivateGraphicalSimulation,
-        &_modelCheked,
-        CONST.TabCentralReportsIndex,
-        SimulationEventController::Callbacks{
-            [this]() { _actualizeActions(); },
-            [this](SimulationEvent* re) { _actualizeSimulationEvents(re); },
-            [this](bool force) { _actualizeDebugEntities(force); },
-            [this](bool force) { _actualizeDebugVariables(force); },
-            [this](SimulationEvent* re) { _actualizeGraphicalModel(re); }});
     // Initialize the Phase 5 plugin-catalog controller after simulator and plugin-tree dependencies are ready.
     _pluginCatalogController = std::make_unique<PluginCatalogController>(simulator,
                                                                          ui->treeWidget_Plugins,
                                                                          ui->TextCodeEditor,
                                                                          _pluginCategoryColor);
-    // Initialize Phase 2 services using narrow dependencies and compatibility callbacks.
-    _graphicalModelBuilder = std::make_unique<GraphicalModelBuilder>(simulator,
-                                                                      ui->graphicsView,
-                                                                      ui->graphicsView->getScene(),
-                                                                      _pluginCategoryColor,
-                                                                      ui->textEdit_Console);
-    // Keep MainWindow wrappers while delegating persistence and loading logic to Phase 2 service.
-    _graphicalModelSerializer = std::make_unique<GraphicalModelSerializer>(simulator,
-                                                                            this,
-                                                                            ui->TextCodeEditor,
-                                                                            ui->graphicsView,
-                                                                            ui->horizontalSlider_ZoomGraphical,
-                                                                            ui->actionShowGrid,
-                                                                            ui->actionShowRule,
-                                                                            ui->actionShowSnap,
-                                                                            ui->actionShowGuides,
-                                                                            ui->actionShowInternalElements,
-                                                                            ui->actionShowAttachedElements,
-                                                                            ui->actionDiagrams,
-                                                                            ui->textEdit_Console,
-                                                                            &_modelfilename,
-                                                                            [this]() { _clearModelEditors(); },
-                                                                            [this]() { _generateGraphicalModelFromModel(); },
-                                                                            [this]() { on_actionShowInternalElements_triggered(); },
-                                                                            [this]() { on_actionShowAttachedElements_triggered(); },
-                                                                            [this]() { on_actionDiagrams_triggered(); });
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);
-    // Initialize the Phase 6 property-editor controller after view/editor dependencies are available.
-    _propertyEditorController = std::make_unique<PropertyEditorController>(
-        ui->treeViewPropertyEditor,
-        ui->graphicsView,
-        propertyGenesys,
-        propertyList,
-        propertyEditorUI,
-        propertyBox,
-        [this]() { _actualizeModelSimLanguage(); },
-        [this](bool force) { _actualizeModelComponents(force); },
-        [this](bool force) { _actualizeModelDataDefinitions(force); },
-        [this]() { _actualizeModelCppCode(); },
-        [this]() { return _createModelImage(); },
-        [this]() { _actualizeTabPanes(); },
-        [this]() { _actualizeActions(); });
+    _rebuildViewDependentControllers();
     // Keep callback wiring in MainWindow while delegating behavior to the Phase 6 controller.
     ui->treeViewPropertyEditor->setModelChangedCallback([this]() {
         this->_onPropertyEditorModelChanged();
@@ -303,51 +489,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         [this](const std::string& command) { _insertCommandInConsole(command); },
         [this]() { _actualizeActions(); },
         [this]() { return _check(false); },
-        [this]() { return _setSimulationModelBasedOnText(); });
-    // Initialize the Phase 9 edit-command controller after scene and copy-buffer dependencies are available.
-    _editCommandController = std::make_unique<EditCommandController>(
-        simulator,
-        ui->graphicsView,
-        [this]() { _actualizeActions(); },
-        &_cut,
-        &_gmc_copies,
-        &_ports_copies,
-        &_draw_copy,
-        &_group_copy);
-
-    // Initialize the Phase 10 scene-tool controller after scene/view widgets and callbacks are ready.
-    _sceneToolController = std::make_unique<SceneToolController>(
-        ui->graphicsView,
-        ui,
-        [this]() { return ui->graphicsView->getScene(); },
-        [this]() { return _createModelImage(); },
-        [this]() { unselectDrawIcons(); },
-        [this]() { return checkSelectedDrawIcons(); },
-        [this](double factor) { _gentle_zoom(factor); },
-        [this]() { _actualizeActions(); },
-        [this]() { _actualizeTabPanes(); },
-        _zoomValue,
-        _firstClickShowConnection);
-
-    // Initialize the Phase 11 dialog-utility controller after UI/simulator dependencies and callbacks are ready.
-    _dialogUtilityController = std::make_unique<DialogUtilityController>(
-        this,
-        simulator,
-        ui,
-        ui->graphicsView,
-        [this]() { _showMessageNotImplemented(); },
-        [this](bool force) { _actualizeDebugBreakpoints(force); },
-        [this]() { return _createModelImage(); },
-        [this]() { _actualizeActions(); },
-        [this]() { _actualizeTabPanes(); },
-        [this]() { return myScene(); },
-        _optimizerPrecision,
-        _optimizerMaxSteps,
-        _parallelizationEnabled,
-        _parallelizationThreads,
-        _parallelizationBatchSize,
-        _lastDataAnalyzerPath);
-
+        [this]() { return _setSimulationModelBasedOnText(); },
+        [this]() {
+            ui->textEdit_Reports->clear();
+            _clearReportsResultsTable();
+            _clearReportsPlots();
+        });
     // Initialize the Phase 7 model-lifecycle controller after simulator/UI/callback dependencies are ready.
     _modelLifecycleController = std::make_unique<ModelLifecycleController>(
         this,
@@ -355,8 +502,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         ui,
         &_modelfilename,
         &_textModelHasChanged,
+        &_graphicalModelHasChanged,
         &_closingApproved,
         &_loaded,
+        _parallelizationEnabled,
+        _parallelizationThreads,
+        _parallelizationBatchSize,
         ModelLifecycleController::Callbacks{
             [this](const std::string& command) { _insertCommandInConsole(command); },
             [this](Model* model) { _initUiForNewModel(model); },
@@ -374,23 +525,47 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // system preferences
     SystemPreferences::load();
+    _refreshRecentModelsMenu();
+    GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
     if (SystemPreferences::autoLoadPlugins()) {
-        simulator->getPluginManager()->autoInsertPlugins(_autoLoadPluginsFilename.toStdString());
+        PluginInsertionOptions options;
+        // The main window is still being built here, so autoload must not open install dialogs.
+        // Missing dependency diagnostics are recorded and handled later by DialogPluginManager.
+        simulator->getPluginManager()->autoInsertPlugins(_autoLoadPluginsFilename.toStdString(), true, options);
         // now complete the information
         for (unsigned int i = 0; i < simulator->getPluginManager()->size(); i++) {
             //@TODO: now it's the opportunity to adjust template
             _insertPluginUI(simulator->getPluginManager()->getAtRank(i));
         }
+        _pluginCatalogController->applyCategoryExpansionPolicy();
     }
     if (SystemPreferences::startMaximized()) {
         // another try to start maximized (it should not be that hard)
         QRect screenGeometry = QApplication::primaryScreen()->availableGeometry();
         this->resize(screenGeometry.width(), screenGeometry.height());
     }
-    if (SystemPreferences::modelAtStart() == 1) { // NEW MODEL (should be enum
+    if (SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::NewModel) {
         this->on_actionModelNew_triggered();
-    } else  if (SystemPreferences::modelAtStart() == 2) { // LOAD MODEL (should be enum
-        this->_loadGraphicalModel(SystemPreferences::modelfilename());
+    } else if (SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenSpecificModel ||
+               SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenLastModel) {
+        const std::string fileName = SystemPreferences::startupModelMode() == SystemPreferences::StartupModelMode::OpenLastModel
+                                         ? SystemPreferences::lastModelFilename()
+                                         : SystemPreferences::modelfilename();
+        if (!fileName.empty()) {
+            Model* model = this->_loadGraphicalModel(fileName);
+            if (model != nullptr) {
+                _loaded = true;
+                _initUiForNewModel(model);
+                _actualizeModelTextHasChanged(false);
+                _graphicalModelHasChanged = false;
+                model->setHasChanged(false);
+                SystemPreferences::pushRecentModelFile(fileName);
+                SystemPreferences::save();
+                _refreshRecentModelsMenu();
+            } else {
+                qWarning() << "Could not open startup model from preferences:" << QString::fromStdString(fileName);
+            }
+        }
     }
 
     for (QAction* action : this->findChildren<QAction*>()) {
@@ -406,6 +581,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // finally
     _actualizeActions();
+    QTimer::singleShot(0, this, [this]() {
+        if (_dialogUtilityController == nullptr || simulator == nullptr || simulator->getPluginManager() == nullptr) {
+            return;
+        }
+        List<PluginLoadIssue>* issues = simulator->getPluginManager()->getPluginLoadIssues();
+        if (issues != nullptr && !issues->empty()) {
+            _dialogUtilityController->onActionSimulatorsPluginManagerTriggered(true);
+        }
+    });
     //_actualizeTabPanes();
 }
 
@@ -432,6 +616,998 @@ MainWindow::~MainWindow() {
     delete _draw_copy;
     delete _group_copy;
     delete undoView;
+}
+
+MainWindow::GraphicalModelViewContext* MainWindow::_activeViewContext() const {
+    return (ui != nullptr) ? _contextForView(ui->graphicsView) : nullptr;
+}
+
+MainWindow::GraphicalModelViewContext* MainWindow::_contextForView(ModelGraphicsView* graphicsView) const {
+    auto it = _viewContextsByGraphicsView.find(graphicsView);
+    return it != _viewContextsByGraphicsView.end() ? it->second.get() : nullptr;
+}
+
+MainWindow::GraphicalModelViewContext* MainWindow::_rootContextForModel(Model* model) const {
+    auto it = _rootViewContextsByModel.find(model);
+    return it != _rootViewContextsByModel.end() ? it->second : nullptr;
+}
+
+MainWindow::GraphicalModelViewContext* MainWindow::_ensureRootModelViewContext(Model* model,
+                                                                                ModelGraphicsView* graphicsView) {
+    if (model == nullptr || graphicsView == nullptr) {
+        return nullptr;
+    }
+
+    auto existing = _viewContextsByGraphicsView.find(graphicsView);
+    if (existing == _viewContextsByGraphicsView.end()) {
+        auto context = std::make_unique<GraphicalModelViewContext>();
+        context->graphicsView = graphicsView;
+        context->kind = GraphicalModelViewContextKind::RootModel;
+        existing = _viewContextsByGraphicsView.emplace(graphicsView, std::move(context)).first;
+    }
+
+    GraphicalModelViewContext* context = existing->second.get();
+    context->kind = GraphicalModelViewContextKind::RootModel;
+    context->rootModel = model;
+    context->modelLevel = model->getLevel();
+    context->ownerComponent = nullptr;
+    context->ownerDataDefinition = nullptr;
+    context->graphicsView = graphicsView;
+    if (graphicsView->getScene() != nullptr) {
+        graphicsView->getScene()->setModelLevelFilter(context->modelLevel);
+    }
+    _rootViewContextsByModel[model] = context;
+    return context;
+}
+
+ModelGraphicsView* MainWindow::_ensureSubmodelViewContext(ModelDataDefinition* owner) {
+    if (owner == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr || _modelGraphicsTabs == nullptr) {
+        return nullptr;
+    }
+
+    Model* rootModel = simulator->getModelManager()->current();
+    if (rootModel == nullptr || !_canOpenSubmodelFor(owner)) {
+        return nullptr;
+    }
+
+    for (const auto& contextEntry : _viewContextsByGraphicsView) {
+        GraphicalModelViewContext* context = contextEntry.second.get();
+        if (context != nullptr
+            && context->kind == GraphicalModelViewContextKind::Submodel
+            && context->rootModel == rootModel
+            && context->ownerDataDefinition == owner) {
+            ModelGraphicsView* existingView = context->graphicsView;
+            if (existingView != nullptr) {
+                const int tabIndex = _modelGraphicsTabs->indexOf(existingView);
+                if (tabIndex >= 0) {
+                    QSignalBlocker blocker(_modelGraphicsTabs);
+                    _changingModelTabProgrammatically = true;
+                    _modelGraphicsTabs->setCurrentIndex(tabIndex);
+                    _changingModelTabProgrammatically = false;
+                }
+                _activateModelGraphicsView(existingView);
+                return existingView;
+            }
+        }
+    }
+
+    ModelGraphicsView* graphicsView = _createModelGraphicsView(_modelGraphicsTabs);
+    auto context = std::make_unique<GraphicalModelViewContext>();
+    context->kind = GraphicalModelViewContextKind::Submodel;
+    context->rootModel = rootModel;
+    context->modelLevel = static_cast<unsigned int>(owner->getId());
+    context->ownerDataDefinition = owner;
+    context->ownerComponent = dynamic_cast<ModelComponent*>(owner);
+    context->graphicsView = graphicsView;
+    if (graphicsView->getScene() != nullptr) {
+        graphicsView->getScene()->setModelLevelFilter(context->modelLevel);
+    }
+    GraphicalModelViewContext* rawContext = context.get();
+    _viewContextsByGraphicsView.emplace(graphicsView, std::move(context));
+    _modelsByGraphicsView[graphicsView] = rootModel;
+
+    const int tabIndex = _modelGraphicsTabs->addTab(graphicsView, _viewContextTitle(*rawContext));
+    if (tabIndex >= 0) {
+        QSignalBlocker blocker(_modelGraphicsTabs);
+        _changingModelTabProgrammatically = true;
+        _modelGraphicsTabs->setCurrentIndex(tabIndex);
+        _changingModelTabProgrammatically = false;
+    }
+
+    _activateModelGraphicsView(graphicsView);
+    _generateGraphicalModelFromModel();
+    _updateModelTabs();
+    _actualizeActions();
+    _actualizeTabPanes();
+    return graphicsView;
+}
+
+void MainWindow::_closeSubmodelViewContext(ModelGraphicsView* graphicsView) {
+    if (graphicsView == nullptr || _modelGraphicsTabs == nullptr) {
+        return;
+    }
+
+    GraphicalModelViewContext* context = _contextForView(graphicsView);
+    if (context == nullptr || context->kind != GraphicalModelViewContextKind::Submodel) {
+        return;
+    }
+
+    const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
+    if (tabIndex >= 0) {
+        _modelGraphicsTabs->removeTab(tabIndex);
+    }
+    _modelsByGraphicsView.erase(graphicsView);
+    _removeViewContext(graphicsView);
+    graphicsView->deleteLater();
+    _updateModelTabs();
+}
+
+void MainWindow::_removeSubmodelViewContextsForModel(Model* model) {
+    if (model == nullptr) {
+        return;
+    }
+
+    QList<ModelGraphicsView*> submodelViews;
+    for (const auto& contextEntry : _viewContextsByGraphicsView) {
+        GraphicalModelViewContext* context = contextEntry.second.get();
+        if (context != nullptr
+            && context->kind == GraphicalModelViewContextKind::Submodel
+            && context->rootModel == model
+            && context->graphicsView != nullptr) {
+            submodelViews.append(context->graphicsView);
+        }
+    }
+    for (ModelGraphicsView* graphicsView : submodelViews) {
+        _closeSubmodelViewContext(graphicsView);
+    }
+}
+
+void MainWindow::_removeViewContext(ModelGraphicsView* graphicsView) {
+    auto it = _viewContextsByGraphicsView.find(graphicsView);
+    if (it == _viewContextsByGraphicsView.end()) {
+        return;
+    }
+    GraphicalModelViewContext* context = it->second.get();
+    if (context != nullptr && context->kind == GraphicalModelViewContextKind::RootModel && context->rootModel != nullptr) {
+        _rootViewContextsByModel.erase(context->rootModel);
+    }
+    _viewContextsByGraphicsView.erase(it);
+}
+
+QString MainWindow::_viewContextTitle(const GraphicalModelViewContext& context) const {
+    switch (context.kind) {
+    case GraphicalModelViewContextKind::RootModel:
+        return _modelDisplayName(context.rootModel);
+    case GraphicalModelViewContextKind::Submodel:
+        if (!context.explicitTitle.isEmpty()) {
+            return context.explicitTitle;
+        }
+        if (context.ownerComponent != nullptr) {
+            return tr("%1 > %2").arg(_modelDisplayName(context.rootModel),
+                                     QString::fromStdString(context.ownerComponent->getName()));
+        }
+        if (context.ownerDataDefinition != nullptr) {
+            return tr("%1 > %2").arg(_modelDisplayName(context.rootModel),
+                                     QString::fromStdString(context.ownerDataDefinition->getName()));
+        }
+        return tr("%1 > Level %2").arg(_modelDisplayName(context.rootModel)).arg(context.modelLevel);
+    }
+    return _modelDisplayName(context.rootModel);
+}
+
+bool MainWindow::_viewContextBelongsToOpenModel(const GraphicalModelViewContext& context) const {
+    return simulator != nullptr
+           && simulator->getModelManager() != nullptr
+           && simulator->getModelManager()->hasModel(context.rootModel);
+}
+
+ModelDataDefinition* MainWindow::_selectedSubmodelOwner() const {
+    if (ui == nullptr || ui->graphicsView == nullptr || ui->graphicsView->getScene() == nullptr) {
+        return nullptr;
+    }
+
+    const QList<QGraphicsItem*> selectedItems = ui->graphicsView->getScene()->selectedItems();
+    if (selectedItems.size() != 1) {
+        return nullptr;
+    }
+
+    QGraphicsItem* item = selectedItems.first();
+    if (auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(item)) {
+        return graphicalComponent->getComponent();
+    }
+    if (auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
+        return graphicalDataDefinition->getDataDefinition();
+    }
+    return nullptr;
+}
+
+bool MainWindow::_canOpenSubmodelFor(ModelDataDefinition* owner) const {
+    if (owner == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return false;
+    }
+
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr) {
+        return false;
+    }
+
+    const unsigned int submodelLevel = static_cast<unsigned int>(owner->getId());
+    if (model->getComponentManager() != nullptr) {
+        for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
+            if (component != nullptr && component->getLevel() == submodelLevel) {
+                return true;
+            }
+        }
+    }
+
+    if (model->getDataManager() != nullptr) {
+        for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+            List<ModelDataDefinition*>* definitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+            if (definitions == nullptr) {
+                continue;
+            }
+            for (ModelDataDefinition* dataDefinition : *definitions->list()) {
+                if (dataDefinition != nullptr && dataDefinition->getLevel() == submodelLevel) {
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+void MainWindow::_openSelectedSubmodel() {
+    _ensureSubmodelViewContext(_selectedSubmodelOwner());
+}
+
+void MainWindow::_syncCurrentModelDocumentState() {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->current();
+    if (model == nullptr) {
+        return;
+    }
+
+    // Multi-model editing keeps a lightweight document state beside each kernel model.
+    // The legacy booleans still exist because several extracted controllers receive pointers
+    // to them, but they now mirror only the currently selected model.
+    _modelFilenames[model] = _modelfilename;
+    if (ui != nullptr && ui->TextCodeEditor != nullptr) {
+        _modelTextContents[model] = ui->TextCodeEditor->toPlainText();
+    }
+    _modelTextHasChanged[model] = _textModelHasChanged;
+    _modelGraphicalHasChanged[model] = _graphicalModelHasChanged;
+}
+
+void MainWindow::_restoreModelDocumentState(Model* model) {
+    if (model == nullptr) {
+        _modelfilename.clear();
+        _textModelHasChanged = false;
+        _graphicalModelHasChanged = false;
+        return;
+    }
+
+    _modelfilename = _modelFilenames[model];
+    _textModelHasChanged = _modelTextHasChanged[model];
+    _graphicalModelHasChanged = _modelGraphicalHasChanged[model];
+
+    if (ui != nullptr && ui->TextCodeEditor != nullptr && _modelTextContents.find(model) != _modelTextContents.end()) {
+        const QSignalBlocker blocker(ui->TextCodeEditor);
+        ui->TextCodeEditor->setPlainText(_modelTextContents[model]);
+    }
+}
+
+QString MainWindow::_modelDisplayName(Model* model) const {
+    if (model == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return tr("Model");
+    }
+    if (model->getInfos() != nullptr && !model->getInfos()->getName().empty()) {
+        return QString::fromStdString(model->getInfos()->getName());
+    }
+    const int index = simulator->getModelManager()->indexOf(model);
+    return index >= 0 ? tr("Model %1").arg(index + 1) : tr("Model");
+}
+
+QString MainWindow::_modelSaveBaseFilename(QString filename) const {
+    filename = filename.trimmed();
+    if (filename.endsWith(".gen", Qt::CaseInsensitive) || filename.endsWith(".gui", Qt::CaseInsensitive)) {
+        filename.chop(4);
+    }
+    return filename;
+}
+
+bool MainWindow::_modelHasPendingChanges(Model* model) const {
+    if (model == nullptr) {
+        return false;
+    }
+    const auto textIt = _modelTextHasChanged.find(model);
+    const auto graphIt = _modelGraphicalHasChanged.find(model);
+    return (textIt != _modelTextHasChanged.end() && textIt->second)
+           || (graphIt != _modelGraphicalHasChanged.end() && graphIt->second)
+           || model->hasChanged();
+}
+
+bool MainWindow::_saveCurrentModel(bool promptForFilename) {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+        return false;
+    }
+
+    _syncCurrentModelDocumentState();
+    Model* model = simulator->getModelManager()->current();
+    QString baseFileName = _modelSaveBaseFilename(_modelFilenames[model]);
+
+    if (promptForFilename || baseFileName.isEmpty()) {
+        QString selectedFileName = QFileDialog::getSaveFileName(this,
+                                                                QObject::tr("Save Model"),
+                                                                baseFileName,
+                                                                QObject::tr("Genesys Model (*.gen)"),
+                                                                nullptr,
+                                                                QFileDialog::DontUseNativeDialog);
+        if (selectedFileName.isEmpty()) {
+            return false;
+        }
+        baseFileName = _modelSaveBaseFilename(selectedFileName);
+    }
+
+    _insertCommandInConsole("save " + baseFileName.toStdString());
+
+    const QString textFilename = baseFileName + ".gen";
+    QFile saveFile(textFilename);
+    if (!saveFile.open(QIODevice::WriteOnly)) {
+        QMessageBox::information(this, QObject::tr("Unable to access file to save"), saveFile.errorString());
+        return false;
+    }
+
+    const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
+    if (!_saveTextModel(&saveFile, textToSave)) {
+        saveFile.close();
+        QMessageBox::warning(this, "Save Model", "Error while saving model text.");
+        return false;
+    }
+    saveFile.close();
+
+    const QString graphicalFilename = baseFileName + ".gui";
+    if (!_saveGraphicalModel(graphicalFilename)) {
+        QMessageBox::warning(this, "Save Model", "Error while saving graphical model.");
+        return false;
+    }
+
+    _modelFilenames[model] = baseFileName;
+    _modelfilename = baseFileName;
+    _modelTextContents[model] = textToSave;
+    _modelTextHasChanged[model] = false;
+    _modelGraphicalHasChanged[model] = false;
+    _textModelHasChanged = false;
+    _graphicalModelHasChanged = false;
+    model->setHasChanged(false);
+
+    if (!_setSimulationModelBasedOnText()) {
+        QMessageBox::warning(this, "Save Model", "Model was saved, but the simulation model could not be synchronized.");
+        return false;
+    }
+
+    SystemPreferences::pushRecentModelFile(graphicalFilename.toStdString());
+    SystemPreferences::save();
+    if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
+        ui->graphicsView->getScene()->getUndoStack() != nullptr) {
+        ui->graphicsView->getScene()->getUndoStack()->clear();
+    }
+    _updateModelTabs();
+    _actualizeActions();
+    return true;
+}
+
+bool MainWindow::_saveModelWithActivation(Model* model) {
+    if (model == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return false;
+    }
+    _syncCurrentModelDocumentState();
+    if (!simulator->getModelManager()->setCurrent(model)) {
+        return false;
+    }
+    _ensureModelTab(model);
+    _restoreModelDocumentState(model);
+    _actualizeTabPanes();
+    return _saveCurrentModel(false);
+}
+
+bool MainWindow::_confirmCloseModel(Model* model) {
+    if (model == nullptr) {
+        return true;
+    }
+    _syncCurrentModelDocumentState();
+    if (!_modelHasPendingChanges(model)) {
+        return true;
+    }
+
+    const QMessageBox::StandardButton reply = QMessageBox::question(
+        this,
+        "Close Model",
+        tr("%1 has changed. Do you want to save it?").arg(_modelDisplayName(model)),
+        QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+        QMessageBox::Yes);
+    if (reply == QMessageBox::Cancel) {
+        return false;
+    }
+    if (reply == QMessageBox::Yes) {
+        return _saveModelWithActivation(model) && !_modelHasPendingChanges(model);
+    }
+    return true;
+}
+
+void MainWindow::_clearModelGraphicsViewForClose(ModelGraphicsView* graphicsView) {
+    if (graphicsView == nullptr || graphicsView->getScene() == nullptr) {
+        return;
+    }
+    ModelGraphicsScene* scene = graphicsView->getScene();
+    scene->grid()->clear();
+    if (scene->getUndoStack() != nullptr) {
+        scene->getUndoStack()->clear();
+    }
+    scene->clearAnimationsQueue();
+    scene->getGraphicalModelComponents()->clear();
+    scene->getGraphicalConnections()->clear();
+    scene->getGraphicalModelDataDefinitions()->clear();
+    scene->getGraphicalDiagramsConnections()->clear();
+    scene->getAllComponents()->clear();
+    scene->getAllConnections()->clear();
+    scene->getAllDataDefinitions()->clear();
+    scene->getAllGraphicalDiagramsConnections()->clear();
+    scene->clearAnimations();
+    scene->clear();
+    graphicsView->clear();
+}
+
+bool MainWindow::_closeModel(Model* model) {
+    if (model == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr ||
+        !simulator->getModelManager()->hasModel(model)) {
+        return false;
+    }
+
+    if (!simulator->getModelManager()->setCurrent(model)) {
+        return false;
+    }
+    _ensureModelTab(model);
+    _restoreModelDocumentState(model);
+    if (!_confirmCloseModel(model)) {
+        _actualizeActions();
+        _updateModelTabs();
+        return false;
+    }
+
+    _disconnectSceneSignals("_closeModel(begin)");
+    _insertCommandInConsole("close");
+    ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
+
+    ModelGraphicsView* closingView = nullptr;
+    auto viewIt = _modelGraphicsViews.find(model);
+    if (viewIt != _modelGraphicsViews.end()) {
+        closingView = viewIt->second;
+    }
+    _clearModelGraphicsViewForClose(closingView);
+    _removeModelTab(model);
+    simulator->getModelManager()->remove(model);
+    ui->progressBarSimulation->setValue(0);
+    ui->actionActivateGraphicalSimulation->setChecked(false);
+
+    if (Model* current = simulator->getModelManager()->current()) {
+        _ensureModelTab(current);
+        _restoreModelDocumentState(current);
+    } else {
+        _clearModelEditors();
+        _restoreModelDocumentState(nullptr);
+    }
+
+    _updateModelTabs();
+    _connectSceneSignals();
+    _actualizeActions();
+    _actualizeTabPanes();
+    return true;
+}
+
+void MainWindow::_initializeModelTabs() {
+    if (_modelGraphicsTabs != nullptr || ui == nullptr || ui->graphicsView == nullptr) {
+        return;
+    }
+
+    QSplitter* splitter = qobject_cast<QSplitter*>(ui->graphicsView->parentWidget());
+    if (splitter == nullptr) {
+        qWarning() << "Could not create model graphics tabs because graphicsView parent is not a QSplitter";
+        return;
+    }
+
+    const int graphicsIndex = splitter->indexOf(ui->graphicsView);
+    _modelGraphicsTabs = new QTabWidget(splitter);
+    _modelGraphicsTabs->setObjectName("tabWidgetModelGraphics");
+    _modelGraphicsTabs->setTabsClosable(true);
+    _modelGraphicsTabs->setMovable(false);
+    _modelGraphicsTabs->setDocumentMode(true);
+    _modelGraphicsTabs->setMinimumSize(ui->graphicsView->minimumSize());
+    _modelGraphicsTabs->setSizePolicy(ui->graphicsView->sizePolicy());
+
+    splitter->insertWidget(graphicsIndex, _modelGraphicsTabs);
+    _modelGraphicsTabs->addTab(ui->graphicsView, tr("No model"));
+
+    connect(_modelGraphicsTabs, &QTabWidget::currentChanged, this, [this](int index) {
+        _activateModelTab(index);
+    });
+    connect(_modelGraphicsTabs, &QTabWidget::tabCloseRequested, this, [this](int index) {
+        if (_modelGraphicsTabs == nullptr || index < 0) {
+            return;
+        }
+        if (ModelGraphicsView* graphicsView = dynamic_cast<ModelGraphicsView*>(_modelGraphicsTabs->widget(index))) {
+            GraphicalModelViewContext* context = _contextForView(graphicsView);
+            if (context != nullptr && context->kind == GraphicalModelViewContextKind::RootModel) {
+                _closeModel(context->rootModel);
+            } else {
+                _closeSubmodelViewContext(graphicsView);
+            }
+        }
+    });
+}
+
+void MainWindow::_configureModelGraphicsView(ModelGraphicsView* graphicsView) {
+    if (graphicsView == nullptr) {
+        return;
+    }
+    graphicsView->setParentWidget(ui->centralwidget);
+    graphicsView->setSimulator(simulator);
+    graphicsView->setPropertyEditor(propertyGenesys);
+    graphicsView->setPropertyList(propertyList);
+    graphicsView->setPropertyEditorUI(propertyEditorUI);
+    graphicsView->setComboBox(propertyBox);
+    graphicsView->setFrameShape(QFrame::Box);
+    graphicsView->setFrameShadow(QFrame::Sunken);
+    graphicsView->setLineWidth(3);
+    graphicsView->setVerticalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+    graphicsView->setHorizontalScrollBarPolicy(Qt::ScrollBarAlwaysOn);
+}
+
+ModelGraphicsView* MainWindow::_createModelGraphicsView(QWidget* parent) {
+    ModelGraphicsView* graphicsView = new ModelGraphicsView(parent);
+    graphicsView->setObjectName(QString("graphicsView_model_%1").arg(_modelGraphicsViews.size() + 1));
+    graphicsView->setMinimumSize(0, 250);
+    graphicsView->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Expanding);
+    _configureModelGraphicsView(graphicsView);
+    return graphicsView;
+}
+
+void MainWindow::_activateModelGraphicsView(ModelGraphicsView* graphicsView, bool rebuildControllers) {
+    if (graphicsView == nullptr || ui == nullptr) {
+        return;
+    }
+
+    if (ui->graphicsView != nullptr && ui->graphicsView != graphicsView) {
+        _disconnectSceneSignals("_activateModelGraphicsView");
+        ui->graphicsView->clearEventHandlers();
+    }
+
+    ui->graphicsView = graphicsView;
+    _configureModelGraphicsView(ui->graphicsView);
+    _initModelGraphicsView();
+    GuiThemeManager::applyModelGraphicsTheme(ui->graphicsView);
+
+    if (rebuildControllers) {
+        _rebuildViewDependentControllers();
+    }
+}
+
+ModelGraphicsView* MainWindow::_ensureModelTab(Model* model) {
+    if (model == nullptr) {
+        return ui != nullptr ? ui->graphicsView : nullptr;
+    }
+
+    auto existing = _modelGraphicsViews.find(model);
+    if (existing != _modelGraphicsViews.end()) {
+        ModelGraphicsView* existingView = existing->second;
+        _ensureRootModelViewContext(model, existingView);
+        if (_modelGraphicsTabs != nullptr) {
+            const int tabIndex = _modelGraphicsTabs->indexOf(existingView);
+            if (tabIndex >= 0) {
+                QSignalBlocker blocker(_modelGraphicsTabs);
+                _changingModelTabProgrammatically = true;
+                _modelGraphicsTabs->setCurrentIndex(tabIndex);
+                _changingModelTabProgrammatically = false;
+            }
+        }
+        _activateModelGraphicsView(existingView);
+        return existingView;
+    }
+
+    ModelGraphicsView* graphicsView = nullptr;
+    if (_modelGraphicsTabs != nullptr && ui->graphicsView != nullptr &&
+        _modelsByGraphicsView.find(ui->graphicsView) == _modelsByGraphicsView.end()) {
+        graphicsView = ui->graphicsView;
+    } else {
+        graphicsView = _createModelGraphicsView(_modelGraphicsTabs);
+        if (_modelGraphicsTabs != nullptr) {
+            _modelGraphicsTabs->addTab(graphicsView, tr("Model"));
+        }
+    }
+
+    _modelGraphicsViews[model] = graphicsView;
+    _modelsByGraphicsView[graphicsView] = model;
+    _ensureRootModelViewContext(model, graphicsView);
+    if (_modelFilenames.find(model) == _modelFilenames.end()) {
+        _modelFilenames[model] = QString();
+    }
+    if (_modelTextHasChanged.find(model) == _modelTextHasChanged.end()) {
+        _modelTextHasChanged[model] = false;
+    }
+    if (_modelGraphicalHasChanged.find(model) == _modelGraphicalHasChanged.end()) {
+        _modelGraphicalHasChanged[model] = false;
+    }
+    if (_modelTextContents.find(model) == _modelTextContents.end()) {
+        _modelTextContents[model] = QString();
+    }
+
+    if (_modelGraphicsTabs != nullptr) {
+        const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
+        if (tabIndex >= 0) {
+            QSignalBlocker blocker(_modelGraphicsTabs);
+            _changingModelTabProgrammatically = true;
+            _modelGraphicsTabs->setCurrentIndex(tabIndex);
+            _changingModelTabProgrammatically = false;
+        }
+    }
+
+    _activateModelGraphicsView(graphicsView);
+    _updateModelTabs();
+    return graphicsView;
+}
+
+void MainWindow::_removeModelTab(Model* model) {
+    _removeSubmodelViewContextsForModel(model);
+
+    auto it = _modelGraphicsViews.find(model);
+    if (it == _modelGraphicsViews.end()) {
+        _modelFilenames.erase(model);
+        return;
+    }
+
+    ModelGraphicsView* graphicsView = it->second;
+    _modelGraphicsViews.erase(it);
+    _modelsByGraphicsView.erase(graphicsView);
+    _removeViewContext(graphicsView);
+    _modelFilenames.erase(model);
+    _modelTextContents.erase(model);
+    _modelTextHasChanged.erase(model);
+    _modelGraphicalHasChanged.erase(model);
+
+    if (_modelGraphicsTabs != nullptr) {
+        const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
+        if (tabIndex >= 0) {
+            _modelGraphicsTabs->removeTab(tabIndex);
+        }
+    }
+
+    if (ui->graphicsView == graphicsView) {
+        ui->graphicsView = nullptr;
+    }
+    graphicsView->deleteLater();
+}
+
+void MainWindow::_updateModelTabs() {
+    if (_modelGraphicsTabs == nullptr || simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+
+    for (auto it = _modelGraphicsViews.begin(); it != _modelGraphicsViews.end();) {
+        Model* model = it->first;
+        if (!simulator->getModelManager()->hasModel(model)) {
+            Model* staleModel = model;
+            ++it;
+            _removeModelTab(staleModel);
+        } else {
+            ++it;
+        }
+    }
+
+    for (auto& pair : _modelGraphicsViews) {
+        Model* model = pair.first;
+        ModelGraphicsView* graphicsView = pair.second;
+        const int tabIndex = _modelGraphicsTabs->indexOf(graphicsView);
+        if (tabIndex < 0) {
+            continue;
+        }
+        GraphicalModelViewContext* context = _rootContextForModel(model);
+        QString title = context != nullptr
+                            ? _viewContextTitle(*context)
+                            : _modelDisplayName(model);
+        const bool dirty = _modelHasPendingChanges(model);
+        if (dirty) {
+            title += "*";
+        }
+        _modelGraphicsTabs->setTabText(tabIndex, title);
+        _modelGraphicsTabs->setTabToolTip(tabIndex, _modelFilenames[model]);
+    }
+
+    for (const auto& contextEntry : _viewContextsByGraphicsView) {
+        GraphicalModelViewContext* context = contextEntry.second.get();
+        if (context == nullptr
+            || context->kind != GraphicalModelViewContextKind::Submodel
+            || context->graphicsView == nullptr) {
+            continue;
+        }
+        const int tabIndex = _modelGraphicsTabs->indexOf(context->graphicsView);
+        if (tabIndex < 0) {
+            continue;
+        }
+        QString title = _viewContextTitle(*context);
+        if (_modelHasPendingChanges(context->rootModel)) {
+            title += "*";
+        }
+        _modelGraphicsTabs->setTabText(tabIndex, title);
+        _modelGraphicsTabs->setTabToolTip(tabIndex, tr("Submodel level %1").arg(context->modelLevel));
+    }
+
+    Model* current = simulator->getModelManager()->current();
+    if (current != nullptr) {
+        // Updating tab labels must not force the root model tab back to the foreground.
+        // Submodel tabs share the same current kernel model and must remain active while
+        // their view-specific controllers are scoped to the selected model level.
+        if (_modelGraphicsViews.find(current) == _modelGraphicsViews.end()) {
+            _ensureModelTab(current);
+        }
+    } else if (_modelGraphicsTabs->count() == 0) {
+        ModelGraphicsView* graphicsView = _createModelGraphicsView(_modelGraphicsTabs);
+        _modelGraphicsTabs->addTab(graphicsView, tr("No model"));
+        _activateModelGraphicsView(graphicsView);
+    } else if (ui->graphicsView == nullptr) {
+        if (ModelGraphicsView* graphicsView = dynamic_cast<ModelGraphicsView*>(_modelGraphicsTabs->widget(0))) {
+            _activateModelGraphicsView(graphicsView);
+        }
+    }
+
+    if (_actionModelPrevious != nullptr) {
+        _actionModelPrevious->setEnabled(simulator->getModelManager()->canGoPrevious());
+    }
+    if (_actionModelNext != nullptr) {
+        _actionModelNext->setEnabled(simulator->getModelManager()->canGoNext());
+    }
+}
+
+void MainWindow::_activateModelTab(int index) {
+    if (_changingModelTabProgrammatically || _modelGraphicsTabs == nullptr || index < 0 ||
+        simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+
+    ModelGraphicsView* graphicsView = dynamic_cast<ModelGraphicsView*>(_modelGraphicsTabs->widget(index));
+    if (graphicsView == nullptr) {
+        return;
+    }
+
+    _syncCurrentModelDocumentState();
+
+    GraphicalModelViewContext* context = _contextForView(graphicsView);
+    if (context != nullptr && context->rootModel != nullptr) {
+        if (simulator->getModelManager()->setCurrent(context->rootModel)) {
+            _restoreModelDocumentState(context->rootModel);
+        }
+    }
+
+    _activateModelGraphicsView(graphicsView);
+    ui->treeViewPropertyEditor->clearCurrentlyConnectedObject();
+    _actualizeActions();
+    _actualizeTabPanes();
+}
+
+void MainWindow::_activatePreviousModel() {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->previous();
+    if (model != nullptr) {
+        _ensureModelTab(model);
+        _actualizeActions();
+        _actualizeTabPanes();
+    }
+}
+
+void MainWindow::_activateNextModel() {
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return;
+    }
+    Model* model = simulator->getModelManager()->next();
+    if (model != nullptr) {
+        _ensureModelTab(model);
+        _actualizeActions();
+        _actualizeTabPanes();
+    }
+}
+
+void MainWindow::_refreshRecentModelsMenu() {
+    if (_menuOpenRecent == nullptr) {
+        return;
+    }
+
+    _menuOpenRecent->clear();
+    _recentModelActions.clear();
+
+    const std::vector<std::string> recentModels = SystemPreferences::recentModelFiles();
+    if (recentModels.empty()) {
+        QAction* emptyAction = _menuOpenRecent->addAction(tr("(No recent files)"));
+        emptyAction->setEnabled(false);
+        _recentModelActions.append(emptyAction);
+        return;
+    }
+
+    for (const std::string& fileName : recentModels) {
+        const QString qFileName = QString::fromStdString(fileName);
+        const QString displayText = QFileInfo(qFileName).fileName().isEmpty()
+                                        ? qFileName
+                                        : QFileInfo(qFileName).fileName();
+        QAction* action = _menuOpenRecent->addAction(displayText);
+        action->setToolTip(qFileName);
+        connect(action, &QAction::triggered, this, [this, qFileName]() {
+            _openRecentModelFile(qFileName);
+        });
+        _recentModelActions.append(action);
+    }
+}
+
+bool MainWindow::_openRecentModelFile(const QString& fileName) {
+    if (_modelLifecycleController == nullptr) {
+        return false;
+    }
+    const bool opened = _modelLifecycleController->openModelFile(fileName);
+    if (!opened) {
+        QMessageBox::warning(this, "Open Recent", tr("Error while opening model:\n%1").arg(fileName));
+    }
+    _refreshRecentModelsMenu();
+    return opened;
+}
+
+void MainWindow::_rebuildViewDependentControllers() {
+    if (ui == nullptr || ui->graphicsView == nullptr || simulator == nullptr) {
+        return;
+    }
+
+    _modelInspectorController = std::make_unique<ModelInspectorController>(simulator,
+                                                                           ui->treeWidgetComponents,
+                                                                           ui->treeWidgetDataDefnitions,
+                                                                           ui->graphicsView);
+    _simulationEventController = std::make_unique<SimulationEventController>(
+        simulator,
+        ui->graphicsView->getScene(),
+        ui->graphicsView,
+        ui->label_ReplicationNum,
+        ui->progressBarSimulation,
+        ui->tableWidget_Simulation_Event,
+        ui->tableWidget_Entities,
+        ui->tableWidget_Variables,
+        ui->textEdit_Simulation,
+        ui->textEdit_Reports,
+        ui->tabWidgetCentral,
+        ui->actionActivateGraphicalSimulation,
+        &_modelCheked,
+        CONST.TabCentralReportsIndex,
+        SimulationEventController::Callbacks{
+            [this]() { _actualizeActions(); },
+            [this](SimulationEvent* re) { _actualizeSimulationEvents(re); },
+            [this](bool force) { _actualizeDebugEntities(force); },
+            [this](bool force) { _actualizeDebugVariables(force); },
+            [this](SimulationEvent* re) { _actualizeGraphicalModel(re); }});
+    _graphicalModelBuilder = std::make_unique<GraphicalModelBuilder>(simulator,
+                                                                      ui->graphicsView,
+                                                                      ui->graphicsView->getScene(),
+                                                                      _pluginCategoryColor,
+                                                                      ui->textEdit_Console);
+    if (GraphicalModelViewContext* context = _activeViewContext()) {
+        // Keep rebuild services scoped to the same root/submodel level represented by the tab.
+        _graphicalModelBuilder->setModelLevelFilter(context->modelLevel);
+    } else {
+        _graphicalModelBuilder->clearModelLevelFilter();
+    }
+    _graphicalModelSerializer = std::make_unique<GraphicalModelSerializer>(simulator,
+                                                                            this,
+                                                                            ui->TextCodeEditor,
+                                                                            ui->graphicsView,
+                                                                            ui->horizontalSlider_ZoomGraphical,
+                                                                            ui->actionShowGrid,
+                                                                            ui->actionShowRule,
+                                                                            ui->actionShowSnap,
+                                                                            ui->actionShowGuides,
+                                                                            ui->actionShowInternalElements,
+                                                                            ui->actionShowEditableElements,
+                                                                            ui->actionShowAttachedElements,
+                                                                            ui->actionShowRecursiveElements,
+                                                                            ui->textEdit_Console,
+                                                                            &_modelfilename,
+                                                                            [this]() { _clearModelEditors(); },
+                                                                            [this]() { _generateGraphicalModelFromModel(); },
+                                                                            [this]() { on_actionShowInternalElements_triggered(); },
+                                                                            [this]() { on_actionShowEditableElements_triggered(); },
+                                                                            [this]() { on_actionShowAttachedElements_triggered(); });
+    _propertyEditorController = std::make_unique<PropertyEditorController>(
+        ui->treeViewPropertyEditor,
+        ui->graphicsView,
+        propertyGenesys,
+        propertyList,
+        propertyEditorUI,
+        propertyBox,
+        [this]() { _actualizeModelSimLanguage(); },
+        [this](bool force) { _actualizeModelComponents(force); },
+        [this](bool force) { _actualizeModelDataDefinitions(force); },
+        [this]() { _actualizeModelCppCode(); },
+        [this]() { return _createModelImage(); },
+        [this]() { _actualizeTabPanes(); },
+        [this]() { _actualizeActions(); });
+    _editCommandController = std::make_unique<EditCommandController>(
+        simulator,
+        ui->graphicsView,
+        [this]() { _actualizeActions(); },
+        &_cut,
+        &_gmc_copies,
+        &_ports_copies,
+        &_draw_copy,
+        &_group_copy);
+    _sceneToolController = std::make_unique<SceneToolController>(
+        ui->graphicsView,
+        ui,
+        [this]() { return ui->graphicsView->getScene(); },
+        [this]() { return _createModelImage(); },
+        [this]() { unselectDrawIcons(); },
+        [this]() { return checkSelectedDrawIcons(); },
+        [this](double factor) { _gentle_zoom(factor); },
+        [this]() { _actualizeActions(); },
+        [this]() { _actualizeTabPanes(); },
+        _zoomValue,
+        _firstClickShowConnection);
+    _graphicalContextMenuController = std::make_unique<GraphicalContextMenuController>(
+        ui->graphicsView,
+        ui,
+        _actionOpenSelectedSubmodel,
+        [this]() { return ui->graphicsView->getScene(); },
+        [this]() { _actualizeActions(); });
+    ui->graphicsView->setContextMenuEventHandler(_graphicalContextMenuController.get(),
+                                                 &GraphicalContextMenuController::handleGraphicsViewContextMenu);
+    _dialogUtilityController = std::make_unique<DialogUtilityController>(
+        this,
+        simulator,
+        ui,
+        ui->graphicsView,
+        [this]() { _showMessageNotImplemented(); },
+        [this](bool force) { _actualizeDebugBreakpoints(force); },
+        [this]() { return _createModelImage(); },
+        [this]() { _actualizeActions(); },
+        [this]() { _actualizeTabPanes(); },
+        [this]() {
+            if (_pluginCatalogController != nullptr) {
+                _pluginCatalogController->reloadFromPluginManager();
+            }
+            _refreshGuiExtensions();
+        },
+        [this]() { return myScene(); },
+        _optimizerPrecision,
+        _optimizerMaxSteps,
+        _parallelizationEnabled,
+        _parallelizationThreads,
+        _parallelizationBatchSize,
+        _lastDataAnalyzerPath);
+
+    _refreshGuiExtensions();
+}
+
+void MainWindow::_refreshGuiExtensions() {
+    if (_guiExtensionManager == nullptr) {
+        _guiExtensionManager = std::make_unique<GuiExtensionManager>(this);
+    }
+    if (ui == nullptr || ui->graphicsView == nullptr) {
+        return;
+    }
+
+    GuiExtensionRuntimeContext extensionContext;
+    extensionContext.simulator = simulator;
+    extensionContext.mainWindow = this;
+    extensionContext.ui = ui;
+    extensionContext.graphicsView = ui->graphicsView;
+    extensionContext.graphicsScene = ui->graphicsView->getScene();
+    _guiExtensionManager->setLoadedModelPluginIds(collectLoadedModelPluginIds(simulator));
+    _guiExtensionManager->setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
+    _guiExtensionManager->rebuild(extensionContext);
 }
 
 void MainWindow::_disconnectSceneSignals(const char* context) {
@@ -467,6 +1643,16 @@ void MainWindow::_connectSceneSignals() {
 
 ModelGraphicsScene* MainWindow::myScene() const {
     return ui->graphicsView->getScene();
+}
+
+void MainWindow::refreshGuiExtensions() {
+	_refreshGuiExtensions();
+}
+
+void MainWindow::refreshPluginCatalog() {
+	if (_pluginCatalogController != nullptr) {
+		_pluginCatalogController->reloadFromPluginManager();
+	}
 }
 
 void MainWindow::_onPropertyEditorModelChanged() {
@@ -554,6 +1740,17 @@ void MainWindow::_actualizeActions() {
     ui->actionModelClose->setEnabled(opened && !simulationInteractionLocked);
     ui->actionModelInformation->setEnabled(opened);
     ui->actionModelCheck->setEnabled(opened && !simulationInteractionLocked);
+    if (_actionModelPrevious != nullptr) {
+        _actionModelPrevious->setEnabled(opened && simulator->getModelManager()->canGoPrevious() && !simulationInteractionLocked);
+    }
+    if (_actionModelNext != nullptr) {
+        _actionModelNext->setEnabled(opened && simulator->getModelManager()->canGoNext() && !simulationInteractionLocked);
+    }
+    if (_actionOpenSelectedSubmodel != nullptr) {
+        _actionOpenSelectedSubmodel->setEnabled(opened
+                                                && !simulationInteractionLocked
+                                                && _canOpenSubmodelFor(_selectedSubmodelOwner()));
+    }
     //edit
     // Keep structural editing tool surfaces locked while simulation remains active.
     ui->toolBarEdit->setEnabled(opened && !simulationInteractionLocked);
@@ -649,12 +1846,23 @@ void MainWindow::_actualizeTabPanes() {
             index = ui->tabWidgetReports->currentIndex();
             if (index == CONST.TabReportResultIndex) {
                 _actualizeReportsResultsTable();
+            } else if (index == CONST.TabReportPlotIndex) {
+                _actualizeReportsPlots();
             }
         }
     } else {
         ui->actionAnimateCounter->setChecked(false);
         ui->actionAnimateVariable->setChecked(false);
         ui->actionAnimateSimulatedTime->setChecked(false);
+        ui->actionAnimateExpression->setChecked(false);
+        ui->actionAnimateResource->setChecked(false);
+        ui->actionAnimateQueue->setChecked(false);
+        ui->actionAnimateStation->setChecked(false);
+        ui->actionAnimateEntity->setChecked(false);
+        ui->actionAnimateEvent->setChecked(false);
+        ui->actionAnimateAttribute->setChecked(false);
+        ui->actionAnimateStatistics->setChecked(false);
+        ui->actionAnimatePlot->setChecked(false);
     }
 }
 
@@ -682,6 +1890,108 @@ void MainWindow::_prepareReportsResultsTable() {
 
 void MainWindow::_clearReportsResultsTable() {
     ui->tableWidget_ReportsResults->setRowCount(0);
+}
+
+void MainWindow::_prepareReportsPlots() {
+    if (ui->tabReportsPlots->layout() == nullptr) {
+        QVBoxLayout* outerLayout = new QVBoxLayout(ui->tabReportsPlots);
+        outerLayout->setContentsMargins(2, 2, 2, 2);
+
+        QScrollArea* scrollArea = new QScrollArea(ui->tabReportsPlots);
+        scrollArea->setObjectName("scrollArea_ReportsPlots");
+        scrollArea->setWidgetResizable(true);
+
+        QWidget* content = new QWidget(scrollArea);
+        content->setObjectName("widget_ReportsPlotsContent");
+        QVBoxLayout* contentLayout = new QVBoxLayout(content);
+        contentLayout->setContentsMargins(8, 8, 8, 8);
+        contentLayout->setSpacing(12);
+
+        scrollArea->setWidget(content);
+        outerLayout->addWidget(scrollArea);
+    }
+
+    _clearReportsPlots();
+}
+
+void MainWindow::_clearReportsPlots() {
+    QWidget* content = ui->tabReportsPlots->findChild<QWidget*>("widget_ReportsPlotsContent");
+    if (content == nullptr || content->layout() == nullptr) {
+        return;
+    }
+
+    QLayout* layout = content->layout();
+    while (QLayoutItem* child = layout->takeAt(0)) {
+        if (QWidget* widget = child->widget()) {
+            delete widget;
+        }
+        delete child;
+    }
+}
+
+void MainWindow::_actualizeReportsPlots() {
+    _clearReportsPlots();
+
+    QWidget* content = ui->tabReportsPlots->findChild<QWidget*>("widget_ReportsPlotsContent");
+    if (content == nullptr || content->layout() == nullptr) {
+        return;
+    }
+
+    QVBoxLayout* layout = qobject_cast<QVBoxLayout*>(content->layout());
+    if (layout == nullptr) {
+        return;
+    }
+
+    if (simulator == nullptr || simulator->getModelManager() == nullptr || simulator->getModelManager()->current() == nullptr) {
+        QLabel* emptyLabel = new QLabel(tr("No simulation results are available."), content);
+        layout->addWidget(emptyLabel);
+        layout->addStretch();
+        return;
+    }
+
+    ModelSimulation* simulation = simulator->getModelManager()->current()->getSimulation();
+    const List<ModelDataDefinition*>* aggregates = simulation != nullptr
+            ? simulation->getSimulationStatisticsAggregates()
+            : nullptr;
+    if (aggregates == nullptr) {
+        QLabel* emptyLabel = new QLabel(tr("No simulation results are available."), content);
+        layout->addWidget(emptyLabel);
+        layout->addStretch();
+        return;
+    }
+
+    QMap<QString, QVector<ReportPlotItem>> groupedItems;
+    for (ModelDataDefinition* data : *aggregates->list()) {
+        QString category;
+        ReportPlotItem item;
+        if (fillPlotItem(data, &category, &item)) {
+            groupedItems[category].append(item);
+        }
+    }
+
+    if (groupedItems.isEmpty()) {
+        QLabel* emptyLabel = new QLabel(tr("No plottable simulation results are available."), content);
+        layout->addWidget(emptyLabel);
+        layout->addStretch();
+        return;
+    }
+
+    QLabel* note = new QLabel(tr("Each chart groups one result category. Whiskers show min/max; the red center line shows the average."), content);
+    note->setWordWrap(true);
+    layout->addWidget(note);
+
+    for (auto it = groupedItems.cbegin(); it != groupedItems.cend(); ++it) {
+        QLabel* title = new QLabel(it.key(), content);
+        QFont titleFont = title->font();
+        titleFont.setBold(true);
+        title->setFont(titleFont);
+        layout->addWidget(title);
+
+        ResultsBoxPlotWidget* plot = new ResultsBoxPlotWidget(it.value(), content);
+        plot->setFrameStyle(QFrame::StyledPanel | QFrame::Plain);
+        layout->addWidget(plot);
+    }
+    layout->addStretch();
 }
 
 void MainWindow::_actualizeReportsResultsTable() {
@@ -985,6 +2295,15 @@ bool MainWindow::checkSelectedDrawIcons() {
     if(ui->actionAnimateCounter->isChecked()) alreadyChecked++;
     if(ui->actionAnimateVariable->isChecked()) alreadyChecked++;
     if(ui->actionAnimateSimulatedTime->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateExpression->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateResource->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateQueue->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateStation->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateEntity->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateEvent->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateAttribute->isChecked()) alreadyChecked++;
+    if(ui->actionAnimateStatistics->isChecked()) alreadyChecked++;
+    if(ui->actionAnimatePlot->isChecked()) alreadyChecked++;
     if (alreadyChecked > 1) return true;
     else return false;
 }
@@ -999,6 +2318,15 @@ void MainWindow::unselectDrawIcons() {
     ui->actionAnimateCounter->setChecked(false);
     ui->actionAnimateVariable->setChecked(false);
     ui->actionAnimateSimulatedTime->setChecked(false);
+    ui->actionAnimateExpression->setChecked(false);
+    ui->actionAnimateResource->setChecked(false);
+    ui->actionAnimateQueue->setChecked(false);
+    ui->actionAnimateStation->setChecked(false);
+    ui->actionAnimateEntity->setChecked(false);
+    ui->actionAnimateEvent->setChecked(false);
+    ui->actionAnimateAttribute->setChecked(false);
+    ui->actionAnimateStatistics->setChecked(false);
+    ui->actionAnimatePlot->setChecked(false);
     scene->clearDrawingMode();
 }
 
@@ -1014,8 +2342,13 @@ void MainWindow::closeEvent(QCloseEvent *event) {
 }
 
 void MainWindow::_initUiForNewModel(Model* m) {
+    if (m != nullptr) {
+        _ensureModelTab(m);
+        _modelfilename = _modelFilenames[m];
+    }
     _actualizeUndo();
     ui->graphicsView->getScene()->showGrid(); //@TODO: Bad place to be
+    ui->graphicsView->centerOn(TraitsGUI<GView>::sceneCenter, TraitsGUI<GView>::sceneCenter);
     ui->textEdit_Simulation->clear();
     ui->textEdit_Reports->clear();
     ui->textEdit_Console->moveCursor(QTextCursor::End);
@@ -1049,8 +2382,10 @@ void MainWindow::_initUiForNewModel(Model* m) {
     } else {	// beind loaded
         _setOnEventHandlers();
     }
+    _updateModelTabs();
     _actualizeActions();
     _actualizeTabPanes();
+    _syncCurrentModelDocumentState();
 }
 
 void MainWindow::_actualizeUndo() {

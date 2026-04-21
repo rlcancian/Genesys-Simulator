@@ -15,7 +15,7 @@
 #define Smart_DEFININGCONTROLLOGIC_H
 
 #include "../../../BaseGenesysTerminalApplication.h"
-#include "../../../../plugins/components/Delay.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
 
 
 class Smart_DefiningControlLogic : public BaseGenesysTerminalApplication {

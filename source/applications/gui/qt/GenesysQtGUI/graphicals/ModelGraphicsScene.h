@@ -45,16 +45,17 @@
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/Plugin.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Plugin.h"
 #include "animations/AnimationTransition.h"
 #include "animations/AnimationVariable.h"
 #include "animations/AnimationCounter.h"
 #include "animations/AnimationTimer.h"
-#include "../../../../kernel/simulator/Counter.h"
-#include "../../../../kernel/simulator/PropertyGenesys.h"
-#include "../../../../plugins/data/Variable.h"
+#include "animations/AnimationPlaceholder.h"
+#include "kernel/simulator/Counter.h"
+#include "kernel/simulator/PropertyGenesys.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 
 class GraphicalModelEvent {
 public:
@@ -99,7 +100,9 @@ public:
     virtual ~ModelGraphicsScene();
 public: // editing graphic model
     enum DrawingMode{
-        NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED, COUNTER, VARIABLE, TIMER
+        NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED,
+        COUNTER, VARIABLE, TIMER,
+        ATTRIBUTE, ENTITY, EVENT, EXPRESSION, PLOT, QUEUE_PLACEHOLDER, RESOURCE, STATION, STATISTICS
     };
     GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false, GraphicalModelComponent* autoConnectSource = nullptr);
     GraphicalConnection* addGraphicalConnection(GraphicalComponentPort* sourcePort, GraphicalComponentPort* destinationPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, bool notify = false);
@@ -127,6 +130,8 @@ public: // editing graphic model
     bool addDrawingGeometry(QGraphicsItem * item);
     bool addDrawingAnimation(QGraphicsItem * item);
     void removeGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd);
+    void detachGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd);
+    void restoreGraphicalModelDataDefinition(GraphicalModelDataDefinition* gmdd);
     void removeGraphicalDiagramConnection(GraphicalDiagramConnection* connection);
     void clearGraphicalModelDataDefinitions();
     void clearGraphicalDiagramConnections();
@@ -155,6 +160,7 @@ public: // editing graphic model
     // Return model component items by value to avoid heap ownership transfer.
     QList<GraphicalModelComponent*> graphicalModelComponentItems();
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
+    GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
 public:
     struct GRID {
         unsigned int interval;
@@ -212,6 +218,7 @@ public:
     QList<AnimationCounter *> *getAnimationsCounter();
     QList<AnimationVariable *> *getAnimationsVariable();
     QList<AnimationTimer *> *getAnimationsTimer();
+    QList<AnimationPlaceholder *> *getAnimationsPlaceholder();
     QMap<Event *, QList<AnimationTransition *> *> *getAnimationPaused();
     bool checkIgnoreEvent();
     void clearAnimations();
@@ -219,11 +226,21 @@ public:
     void clearAnimationsCounter();
     void clearAnimationsVariable();
     void clearAnimationsTimer();
+    void clearAnimationsPlaceholder();
     void clearAnimationsQueue();
     QList<QString> *getImagesAnimation();
     void drawingCounter();
     void drawingVariable();
     void drawingTimer();
+    void drawingAttribute();
+    void drawingEntity();
+    void drawingEvent();
+    void drawingExpression();
+    void drawingPlot();
+    void drawingQueue();
+    void drawingResource();
+    void drawingStation();
+    void drawingStatistics();
     void clearAnimationsValues();
     void setCounters();
     void setVariables();
@@ -235,6 +252,32 @@ public:
     void requestGraphicalDataDefinitionsSync();
     void scheduleGraphicalDataDefinitionsSync();
     bool isGraphicalDataDefinitionsSyncInProgress() const;
+    void setShowStatisticsDataDefinitions(bool show);
+    bool showStatisticsDataDefinitions() const;
+    void setShowEditableDataDefinitions(bool show);
+    bool showEditableDataDefinitions() const;
+    void setShowSharedDataDefinitions(bool show);
+    bool showSharedDataDefinitions() const;
+    void setShowRecursiveDataDefinitions(bool show);
+    bool showRecursiveDataDefinitions() const;
+    /**
+     * @brief Restricts graphical rebuild/synchronization services to one kernel model level.
+     *
+     * ModelGraphicsScene keeps this rendering context because some synchronization entry points
+     * are static services called from the property editor. Storing the active level in the scene
+     * lets those calls preserve the same root/submodel scope as the visible tab.
+     */
+    void setModelLevelFilter(unsigned int modelLevel);
+    /** @brief Clears any level restriction and lets rebuild services render all model levels. */
+    void clearModelLevelFilter();
+    /** @brief Returns true when this scene is scoped to a specific ModelDataDefinition level. */
+    bool hasModelLevelFilter() const;
+    /** @brief Returns the active level used by rebuild services when the filter is enabled. */
+    unsigned int modelLevelFilter() const;
+    void setShowInternalDataDefinitions(bool show);
+    bool showInternalDataDefinitions() const;
+    void setShowAttachedDataDefinitions(bool show);
+    bool showAttachedDataDefinitions() const;
     void setConnectionGeometryUpdatesBlocked(bool blocked);
     bool areConnectionGeometryUpdatesBlocked() const;
 
@@ -317,6 +360,9 @@ private:
     bool _persistedGuiRestoreInProgress = false;
     unsigned short _connectingStep = 0; //0:nothing, 1:waiting click on source or destination, 2: click on source, 3: click on destination
     bool _controlIsPressed = false;
+    bool _shiftSelectionInProgress = false;
+    QGraphicsItem* _shiftClickedSelectableItem = nullptr;
+    QList<QGraphicsItem*> _shiftSelectionBeforeClick;
     bool _snapToGrid = false;
     // Initialize the source port pointer before connection drawing starts.
     GraphicalComponentPort* _sourceGraphicalComponentPort = nullptr;
@@ -328,6 +374,7 @@ private:
     AnimationVariable *_currentVariable = nullptr;
     // Initialize the current timer drawing pointer to avoid indeterminate access.
     AnimationTimer *_currentTimer = nullptr;
+    AnimationPlaceholder *_currentPlaceholderAnimation = nullptr;
     QMap<Event *, QList<AnimationTransition *> *> *_animationPaused = new QMap<Event *, QList<AnimationTransition *> *>();
 
 private:
@@ -336,6 +383,7 @@ private:
     QList<AnimationCounter *> *_animationsCounter = new QList<AnimationCounter*>();
     QList<AnimationVariable *> *_animationsVariable = new QList<AnimationVariable*>();
     QList<AnimationTimer *> *_animationsTimer = new QList<AnimationTimer*>();
+    QList<AnimationPlaceholder *> *_animationsPlaceholder = new QList<AnimationPlaceholder*>();
 private:
     // IMPORTANT. MUST BE CONSISTENT WITH SIMULATOR->MODEL
     QList<QGraphicsItem*>* _graphicalModelComponents = new QList<QGraphicsItem*>();
@@ -351,6 +399,14 @@ private:
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
     bool _connectionGeometryUpdatesBlocked = false;
+    bool _showStatisticsDataDefinitions = true;
+    bool _showEditableDataDefinitions = true;
+    bool _showSharedDataDefinitions = true;
+    bool _showRecursiveDataDefinitions = true;
+    // Rendering scope used by root/submodel tabs. The filter is intentionally scene-local so
+    // static graphical synchronization calls can keep the same scope as the active view.
+    bool _hasModelLevelFilter = false;
+    unsigned int _modelLevelFilter = 0;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

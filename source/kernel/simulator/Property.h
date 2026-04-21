@@ -11,10 +11,11 @@ class QueueableItem;
 
 //---------------------------------------------------------------------------
 
-// TODO(genesys|property-system|architecture): Review the overlap between LegacyPropertyBase/PropertyT and
+// @ToDo: (importante): Review the overlap between LegacyPropertyBase/PropertyT and
 // SimulationControl/SimulationResponse. This header defines a legacy application-side
-// property abstraction and must not collide with the kernel-side PropertyBase alias
-// exposed by SimulationControlAndResponse.h.
+// property abstraction and must not collide with the kernel-side
+// SimulationControl/SimulationResponse abstractions exposed by
+// SimulationControlAndResponse.h.
 /**
  * @brief LegacyPropertyBase/PropertyT currently represent a competing property abstraction.
  *

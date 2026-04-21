@@ -5,6 +5,7 @@
 
 class ModelGraphicsView;
 class ModelGraphicsScene;
+class QAction;
 
 namespace Ui {
 class MainWindow;
@@ -76,6 +77,24 @@ public:
     void onActionAnimateVariableTriggered();
     /** @brief Toggles counter animation overlays in the current scene. */
     void onActionAnimateCounterTriggered();
+    /** @brief Activates attribute animation placeholder drawing. */
+    void onActionAnimateAttributeTriggered();
+    /** @brief Activates entity animation placeholder drawing. */
+    void onActionAnimateEntityTriggered();
+    /** @brief Activates event animation placeholder drawing. */
+    void onActionAnimateEventTriggered();
+    /** @brief Activates expression animation placeholder drawing. */
+    void onActionAnimateExpressionTriggered();
+    /** @brief Activates plot animation placeholder drawing. */
+    void onActionAnimatePlotTriggered();
+    /** @brief Activates queue animation placeholder drawing. */
+    void onActionAnimateQueueTriggered();
+    /** @brief Activates resource animation placeholder drawing. */
+    void onActionAnimateResourceTriggered();
+    /** @brief Activates station animation placeholder drawing. */
+    void onActionAnimateStationTriggered();
+    /** @brief Activates statistics animation placeholder drawing. */
+    void onActionAnimateStatisticsTriggered();
     /** @brief Activates connection-creation mode and resets first-click compatibility state. */
     void onActionConnectTriggered();
     /** @brief Aligns selected graphical items to the left boundary. */
@@ -94,18 +113,22 @@ public:
     void onActionActivateGraphicalSimulationTriggered();
     /** @brief Applies animation-speed slider values to scene animation pacing. */
     void onHorizontalSliderAnimationSpeedValueChanged(int value);
-    /** @brief Toggles diagram overlays and refreshes model-image representation. */
-    void onActionDiagramsTriggered();
     /** @brief Selects all graphical items in the active scene context. */
     void onActionSelectAllTriggered();
-    /** @brief Toggles rendering of internal elements and triggers representation refresh. */
+    /** @brief Toggles rendering of statistics data definitions and triggers representation refresh. */
     void onActionShowInternalElementsTriggered();
-    /** @brief Toggles rendering of attached elements and triggers representation refresh. */
+    /** @brief Toggles rendering of editable data definitions and triggers representation refresh. */
+    void onActionShowEditableElementsTriggered();
+    /** @brief Toggles rendering of shared data definitions and triggers representation refresh. */
     void onActionShowAttachedElementsTriggered();
     /** @brief Bridges checkbox state changes to the show-elements action wrapper. */
     void onCheckBoxShowElementsStateChanged(int arg1);
     /** @brief Bridges checkbox state changes to the show-internals action wrapper. */
     void onCheckBoxShowInternalsStateChanged(int arg1);
+    /** @brief Bridges checkbox state changes to the show-editable-elements action wrapper. */
+    void onCheckBoxShowEditableElementsStateChanged(int arg1);
+    /** @brief Toggles recursive data-definition expansion and triggers representation refresh. */
+    void onActionShowRecursiveElementsTriggered();
     /** @brief Bridges recursive-render checkbox changes to model-image refresh workflow. */
     void onCheckBoxShowRecursiveStateChanged(int arg1);
     /** @brief Bridges level-annotation checkbox changes to model-image refresh workflow. */
@@ -114,6 +137,8 @@ public:
     void onActionGModelShowConnectTriggered();
 
 private:
+    void activateAnimationDrawingTool(QAction* action, void (ModelGraphicsScene::*drawingFunction)());
+
     ModelGraphicsView* _graphicsView;
     Ui::MainWindow* _ui;
     std::function<ModelGraphicsScene*()> _currentScene;

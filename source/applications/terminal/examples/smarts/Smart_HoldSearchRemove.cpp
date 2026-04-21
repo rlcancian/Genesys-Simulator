@@ -16,15 +16,15 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Wait.h"
-#include "../../../../plugins/components/Search.h"
-#include "../../../../plugins/components/Remove.h"
-#include "../../../../plugins/components/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Synchronization/Wait.h"
+#include "plugins/components/Decisions/Search.h"
+#include "plugins/components/Decisions/Remove.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 
 Smart_HoldSearchRemove::Smart_HoldSearchRemove() {
 }
@@ -59,6 +59,7 @@ int Smart_HoldSearchRemove::main(int argc, char** argv) {
 	Remove* remove1 = plugins->newInstance<Remove>(model);
 	remove1->setRemoveFrom(queue1);
 	remove1->setRemoveStartRank("rankFound");
+	remove1->setRemoveEndRank("rankFound");
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	Dispose* dispose2 = plugins->newInstance<Dispose>(model);
 	Dispose* dispose3 = plugins->newInstance<Dispose>(model, "No entity will ever arrive here");
@@ -81,4 +82,3 @@ int Smart_HoldSearchRemove::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

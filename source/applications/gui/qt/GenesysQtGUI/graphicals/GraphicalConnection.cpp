@@ -2,6 +2,7 @@
 #include "GraphicalModelComponent.h"
 #include "ModelGraphicsScene.h"
 #include <QPainter>
+#include <QPainterPathStroker>
 
 GraphicalConnection::GraphicalConnection(GraphicalComponentPort* sourceGraphicalPort, GraphicalComponentPort* destinationGraphicalPort, unsigned int portSourceConnection, unsigned int portDestinationConnection, QColor color, QGraphicsItem *parent) : QGraphicsObject(parent) {
 	/**
@@ -177,6 +178,40 @@ QRectF GraphicalConnection::boundingRect() const {
 	return QRectF(0 - portWidth, 0 - portHeight, _width + portWidth, _height + portHeight);
 }
 
+QPainterPath GraphicalConnection::connectionPath() const {
+	if (!canRefreshGeometry()) {
+		return QPainterPath();
+	}
+
+	return GraphicalConnectionStyle::modelConnectionPath(_sourcePointLocal,
+	                                                     _destinationPointLocal,
+	                                                     routeTypeForStyle(),
+	                                                     usesCurvedStyle());
+}
+
+GraphicalConnectionStyle::RouteType GraphicalConnection::routeTypeForStyle() const {
+	switch (_connectionType) {
+	case ConnectionType::HORIZONTAL:
+		return GraphicalConnectionStyle::RouteType::Horizontal;
+	case ConnectionType::VERTICAL:
+		return GraphicalConnectionStyle::RouteType::Vertical;
+	case ConnectionType::DIRECT:
+		return GraphicalConnectionStyle::RouteType::Direct;
+	case ConnectionType::USERDEFINED:
+	default:
+		return GraphicalConnectionStyle::RouteType::UserDefined;
+	}
+}
+
+QPainterPath GraphicalConnection::shape() const {
+	// Keep hit testing close to the visible line instead of using the large bounding rectangle.
+	QPainterPathStroker stroker;
+	stroker.setWidth(qMax<qreal>(8.0, static_cast<qreal>(_selWidth)));
+	stroker.setCapStyle(Qt::RoundCap);
+	stroker.setJoinStyle(Qt::RoundJoin);
+	return stroker.createStroke(connectionPath());
+}
+
 void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
 	Q_UNUSED(option);
 	Q_UNUSED(widget);
@@ -184,11 +219,17 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 		return;
 	}
 	QPen pen = QPen(_color);
-	pen.setWidth(2);
+	const bool curvedStyle = usesCurvedStyle();
+	if (curvedStyle) {
+		painter->setRenderHint(QPainter::Antialiasing, true);
+		pen.setColor(QColor(47, 128, 237, 220));
+		pen.setWidth(isSelected() ? 4 : 3);
+		pen.setCapStyle(Qt::RoundCap);
+		pen.setJoinStyle(Qt::RoundJoin);
+	} else {
+		pen.setWidth(2);
+	}
 	painter->setPen(pen);
-	QPainterPath path;
-	QPointF inipos;
-	QPointF endpos;
 
 	/**
 	 * Bloco 2: normaliza coordenadas locais considerando orientação relativa.
@@ -197,48 +238,42 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 	const qreal y1 = _sourcePointLocal.y();
 	const qreal x2 = _destinationPointLocal.x();
 	const qreal y2 = _destinationPointLocal.y();
-	inipos = _sourcePointLocal;
-	endpos = _destinationPointLocal;
 	/**
 	 * Bloco 3: gera path de desenho com base no tipo de roteamento.
 	 */
-	path.moveTo(inipos);
-	switch (_connectionType) {
-		case ConnectionType::HORIZONTAL:
-            path.lineTo((x1 + x2) / 2, y1);
-            path.lineTo((x1 + x2) / 2, y2);
-			break;
-		case ConnectionType::VERTICAL:
-            path.lineTo(x1, (y1 + y2) / 2);
-            path.lineTo(x2, (y1 + y2) / 2);
-			break;
-		case ConnectionType::DIRECT:
-			break;
-		case ConnectionType::USERDEFINED:
-			//@TODO: draw intermediate points
-			break;
-	}
+	const QPainterPath path = connectionPath();
 	/**
 	 * Bloco 4: renderiza o path final da conexão.
 	 */
-	path.lineTo(endpos);
 	painter->drawPath(path);
 	//
 	/**
 	 * Bloco 5: desenha “handles” quando selecionado.
 	 */
 	if (isSelected()) {
-		pen = QPen(Qt::black);
+		pen = QPen(curvedStyle ? QColor(47, 128, 237) : Qt::black);
 		pen.setWidth(1);
 		painter->setPen(pen);
 		QBrush brush = QBrush(Qt::SolidPattern);
-		brush.setColor(Qt::black);
+		brush.setColor(curvedStyle ? QColor(47, 128, 237) : Qt::black);
 		painter->setBrush(brush);
-		//@TODO Check this out to see if it solves the move redraw issue
-		painter->drawRect(QRectF(x1 < x2 ? x1 : x1 - _selWidth, y1 - _selWidth / 2, _selWidth, _selWidth));
-		painter->drawRect(QRectF(x2 < x1 ? x2 : x2 - _selWidth, y2 - _selWidth / 2, _selWidth, _selWidth));
-		painter->drawRect(QRectF((x1 + x2) / 2 - _selWidth / 2, y1 - _selWidth / 2, _selWidth, _selWidth));
-		painter->drawRect(QRectF((x1 + x2) / 2 - _selWidth / 2, y2 - _selWidth / 2, _selWidth, _selWidth));
+		if (curvedStyle) {
+			const QRectF startHandle(x1 - _selWidth / 2.0, y1 - _selWidth / 2.0, _selWidth, _selWidth);
+			const QRectF midHandle(path.pointAtPercent(0.5).x() - _selWidth / 2.0,
+			                       path.pointAtPercent(0.5).y() - _selWidth / 2.0,
+			                       _selWidth,
+			                       _selWidth);
+			const QRectF endHandle(x2 - _selWidth / 2.0, y2 - _selWidth / 2.0, _selWidth, _selWidth);
+			painter->drawEllipse(startHandle);
+			painter->drawEllipse(midHandle);
+			painter->drawEllipse(endHandle);
+		} else {
+			//@TODO Check this out to see if it solves the move redraw issue
+			painter->drawRect(QRectF(x1 < x2 ? x1 : x1 - _selWidth, y1 - _selWidth / 2, _selWidth, _selWidth));
+			painter->drawRect(QRectF(x2 < x1 ? x2 : x2 - _selWidth, y2 - _selWidth / 2, _selWidth, _selWidth));
+			painter->drawRect(QRectF((x1 + x2) / 2 - _selWidth / 2, y1 - _selWidth / 2, _selWidth, _selWidth));
+			painter->drawRect(QRectF((x1 + x2) / 2 - _selWidth / 2, y2 - _selWidth / 2, _selWidth, _selWidth));
+		}
 	}
 	//
 	//pen = QPen(Qt::yellow);
@@ -249,6 +284,17 @@ void GraphicalConnection::paint(QPainter *painter, const QStyleOptionGraphicsIte
 
 QList<QPointF> GraphicalConnection::getPoints() const {
     return _points;
+}
+
+bool GraphicalConnection::usesCurvedStyle() const {
+	return GraphicalConnectionStyle::usesModernCurves();
+}
+
+QPainterPath GraphicalConnection::animationPathForImage(qreal imageWidth, qreal imageHeight) const {
+	if (!canRefreshGeometry()) {
+		return QPainterPath();
+	}
+	return mapToScene(connectionPath()).translated(-imageWidth / 2.0, -imageHeight / 2.0);
 }
 
 Connection* GraphicalConnection::getSource() const {

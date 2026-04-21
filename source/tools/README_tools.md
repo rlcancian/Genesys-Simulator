@@ -7,6 +7,7 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 ## 2. Current major abstractions
 
 - `DataAnalyser_if`: high-level façade to orchestrate dataset-oriented analysis services.
+- `SimulationResultsDatasetParser`: loader for numeric result files, including Genesys `Record` outputs split by replication and optional time/value columns.
 - `Fitter_if`: fitting contract for distribution parameter inference from sample data.
 - `HypothesisTester_if`: parametric inference API (confidence intervals and tests).
 - `ProbabilityDistributionBase` / `ProbabilityDistribution`: static math façade for PDF/PMF and inverse/quantile routines.
@@ -38,5 +39,6 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 - **Hypothesis testing**: functional baseline exists in `HypothesisTesterDefaultImpl1`, with known partial areas.
   - HYPTEST-1 alignment update: proportion-difference CI now follows the classical two-proportion formula, and one-population average/variance tests now compute p-values with Student-t/chi-square-coherent CDF paths.
   - HYPTEST-2 final alignment update: one-population proportion confidence intervals (with and without finite-population correction) now use the large-sample normal quantile formulation.
+- **Simulation result datasets**: `SimulationResultsDatasetParser` reads text datasets and Genesys `Record` files, preserving replication ids and optional time columns so GUI analysis can expose pooled and per-replication scopes.
 - **Probability distributions**: mathematical static base and inverse façade available, with internal numeric dependencies.
 - **Numerical solvers**: legacy `Solver_if` + `SolverDefaultImpl1` remain the compatible baseline.

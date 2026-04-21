@@ -122,7 +122,7 @@ public:
 
 	//private:
 public:
-	// @TODO: Should be removed and replaced by GetElement(elementType, rank)
+	// @ToDo: (importante): Should be removed and replaced by GetElement(elementType, rank)
 	List<ModelDataDefinition*>* getDataDefinitionList(std::string datadefinitionTypename) const;
 public:
 	/*! \brief Prints a textual summary of registered model data definitions. */

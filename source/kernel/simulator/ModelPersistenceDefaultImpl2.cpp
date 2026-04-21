@@ -232,6 +232,10 @@ bool ModelPersistenceDefaultImpl2::hasChanged() {
 	return _dirty;
 }
 
+void ModelPersistenceDefaultImpl2::setHasChanged(bool hasChanged) {
+	_dirty = hasChanged;
+}
+
 bool ModelPersistenceDefaultImpl2::getOption(ModelPersistence_if::Options option) {
 	return (_options & static_cast<unsigned> (option)) != 0u;
 }

@@ -4,12 +4,15 @@
 #include <sstream>
 #include <functional>
 #include <list>
+#include <vector>
 #include <stdexcept>
 #include <type_traits>
 #include "../util/Util.h"
 #include "../util/List.h"
 
 //namespace GenesysKernel {
+
+class ModelDataDefinition;
 
 
 /**
@@ -76,7 +79,7 @@ public:
 	bool isModified() const { return _isModified; }
 	bool isSubProperty()const { return _isSubProperty; }
 	bool hasValue() const { return _hasValue; }
-	std::string valueText() const { return "?"; } // TODO
+	std::string valueText() const { return "?"; } // @ToDo: (importante): implement value text
 	void setToolTip(const std::string text);
 	void setStatusTip(const std::string text);
 	void setWhatsThis(const std::string text);
@@ -85,7 +88,7 @@ public:
 	void setEnabled(bool enable);
 	void setModified(bool modified);
 public:
-	virtual bool compare(PropertyGenesys* otherProperty)const { return true; } // TODO
+	virtual bool compare(PropertyGenesys* otherProperty)const { return true; } // @ToDo: (importante): implement comparison
 public:
 	void addSubProperty(PropertyGenesys *property) {}
 	void insertSubProperty(PropertyGenesys *property, PropertyGenesys *afterProperty) {}
@@ -152,10 +155,25 @@ public:
 	bool isReadOnly() const { return _readonly; }
 public:
     virtual void setValue(std::string value, bool remove=false) = 0;
-    virtual List<SimulationControl*>* getProperties(int index=0) { return nullptr; };
+    /**
+     * @brief Returns nested SimulationControls exposed by this control.
+     *
+     * This is the kernel-facing API for traversing child controls belonging to
+     * inline objects, references, or list elements represented by a control.
+     */
+    virtual List<SimulationControl*>* getChildSimulationControls(int index=0) { return nullptr; };
     virtual bool hasObjectInstance() const { return true; }
     virtual bool ensureObjectInstance() { return hasObjectInstance(); }
     virtual bool isModelDataDefinitionReference() const { return false; }
+    virtual ModelDataDefinition* getReferencedModelDataDefinition() const { return nullptr; }
+    // This method exposes the ModelDataDefinition represented by a class-list row, when any.
+    //
+    // It lets generic tooling classify list members themselves as editable references without
+    // knowing the concrete owner class. Non ModelDataDefinition lists keep the default nullptr.
+    virtual ModelDataDefinition* getListElementModelDataDefinition(int index) const {
+        (void)index;
+        return nullptr;
+    }
     // This method exposes whether the property should be rendered as an inline expandable object tree.
     virtual bool supportsInlineExpansion() const { return getIsClass() && !getIsList(); }
     // This method exposes whether the property should be edited by the dedicated list editor.
@@ -166,6 +184,24 @@ public:
     virtual bool supportsObjectCreation() const { return false; }
     // This method exposes whether the property supports typed creation of a new list element.
     virtual bool supportsNewListElementCreation() const { return false; }
+    // This method exposes which concrete element types can be created for a polymorphic list.
+    //
+    // A nullptr return means the list has no typed-creation contract and should use the legacy
+    // single "create new element" action. Callers own the returned List when it is not nullptr.
+    virtual List<std::string>* getCreatableListElementTypes() { return nullptr; }
+    // This method exposes the concrete type currently accepted by a polymorphic list.
+    //
+    // Empty string means no concrete type has been selected yet. Implementations may lock the
+    // current type once the list has members, while still allowing it to be configured while empty.
+    virtual std::string getCurrentListElementType() const { return ""; }
+    // This method configures the concrete type currently accepted by a polymorphic list.
+    //
+    // The default implementation rejects the operation. Implementations that support it should
+    // validate the requested type against getCreatableListElementTypes() and their own invariants.
+    virtual bool setCurrentListElementType(const std::string& typeName) {
+        (void)typeName;
+        return false;
+    }
     // This method exposes whether the property is an inline object (and not a ModelDataDefinition reference).
     virtual bool isInlineObjectProperty() const {
         return supportsInlineExpansion() && !isModelDataDefinitionReference();
@@ -180,7 +216,18 @@ public:
         (void)value;
         return false;
     }
-    virtual List<SimulationControl*>* getEditableProperties(int index=0) {
+    // This method creates a list element of a requested concrete type.
+    //
+    // The default keeps old controls working: when no concrete type is provided, it delegates to
+    // createNewListElement(); otherwise the operation is unsupported.
+    virtual bool createNewListElementOfType(const std::string& typeName, const std::string& value = "") {
+        if (typeName.empty()) {
+            return createNewListElement(value);
+        }
+        (void)value;
+        return false;
+    }
+    virtual List<SimulationControl*>* getEditableChildSimulationControls(int index=0) {
         if (supportsInlineExpansion() && !hasObjectInstance()) {
             if (!supportsObjectCreation()) {
                 return nullptr;
@@ -189,7 +236,7 @@ public:
                 return nullptr;
             }
         }
-        return getProperties(index);
+        return getChildSimulationControls(index);
     }
 protected:
 	void _ensureWritable(const char* operation) const {
@@ -446,13 +493,6 @@ private:
 };
 
 
-// TODO(genesys|kernel-controls|migration): This compatibility alias keeps the current
-// kernel API working while the codebase migrates from the legacy PropertyBase
-// naming toward explicit SimulationResponse/SimulationControl types.
-typedef SimulationControl PropertyBase;
-
-// -----------------------------------------------------------
-
 template <typename T>
 using GetterGeneric = std::function<T()>;
 template <typename T>
@@ -488,11 +528,14 @@ public:
 		if (!_setter) {
 			throw std::logic_error("SimulationControlGeneric setter is not defined");
 		}
-		std::istringstream auxStr(value);
-		T tVal;
-		auxStr >> tVal;
-
-		_setter(static_cast<T>(tVal));
+		if constexpr (std::is_same_v<T, std::string>) {
+			_setter(value);
+		} else {
+			std::istringstream auxStr(value);
+			T tVal{};
+			auxStr >> tVal;
+			_setter(static_cast<T>(tVal));
+		}
     };
 
 private:
@@ -500,7 +543,7 @@ private:
 	SetterGeneric<T> _setter;
 };
 
-// TODO: remove typename E
+// @ToDo: (pequena alteração): remove typename E
 template <typename T, typename E>
 class SimulationControlGenericEnum: public SimulationControl {
 public:
@@ -546,7 +589,7 @@ private:
 	SetterGeneric<T> _setter;
 };
 
-// TODO: remove typename C
+// @ToDo: (pequena alteração): remove typename C
 template <typename T, typename M, typename C>
 class SimulationControlGenericClass: public SimulationControl {
 public:
@@ -579,6 +622,10 @@ public:
 		if (!_setter) {
 			throw std::logic_error("SimulationControlGenericClass setter is not defined");
 		}
+        if (remove) {
+            _setter(nullptr);
+            return;
+        }
 		bool exists = false;
         // value.pop_back();
 		T newVal;
@@ -607,6 +654,9 @@ public:
 	};
 
     virtual bool isModelDataDefinitionReference() const override { return true; }
+    virtual ModelDataDefinition* getReferencedModelDataDefinition() const override {
+        return static_cast<T>(_getter());
+    }
     // This method marks class references as inline-expandable in the universal contract.
     virtual bool supportsInlineExpansion() const override { return true; }
     // This method marks class references as selectable from existing ModelDataDefinition instances.
@@ -615,6 +665,22 @@ public:
     virtual bool supportsObjectCreation() const override { return !_readonly; }
     // This method marks class references as non-inline object payloads.
     virtual bool isInlineObjectProperty() const override { return false; }
+    // Property Editor advanced editing experiment, step 1:
+    // ModelDataDefinition references must report whether the referenced object
+    // actually exists. Previously the base implementation always returned true,
+    // so the GUI could not distinguish "empty reference" from "loaded object".
+    // Revert this override to restore the old always-available reference behavior.
+    virtual bool hasObjectInstance() const override {
+        return static_cast<T>(_getter()) != nullptr;
+    }
+    // Property Editor advanced editing experiment, step 1:
+    // Do not auto-create ModelDataDefinition references while expanding the tree.
+    // Unlike inline helper objects, Queue/Resource/Set references need an explicit
+    // name or an existing target chosen by the user before creation is safe.
+    // Revert this override if implicit expansion should create references again.
+    virtual bool ensureObjectInstance() override {
+        return hasObjectInstance();
+    }
     // This method performs explicit object creation for class references.
     virtual bool createObjectInstance(const std::string& value = "") override {
         _ensureWritable("create instance for");
@@ -639,11 +705,11 @@ public:
         return strOptions;
     }
 
-    virtual List<SimulationControl*>* getProperties(int index=0) override {
+    virtual List<SimulationControl*>* getChildSimulationControls(int index=0) override {
         T tVal = static_cast<T>(_getter());
 
         if (tVal) {
-            return tVal->getProperties();
+            return tVal->getSimulationControls();
         } else {
             return nullptr;
         }
@@ -656,7 +722,7 @@ private:
     Creator _creator;
 };
 
-// TODO: remove typename C
+// @ToDo: (pequena alteração): remove typename C
 template <typename T, typename M, typename C>
 class SimulationControlGenericClassNotDC: public SimulationControl {
 public:
@@ -731,11 +797,11 @@ public:
         return hasObjectInstance();
     }
 
-    virtual List<SimulationControl*>* getProperties(int index=0) override {
+    virtual List<SimulationControl*>* getChildSimulationControls(int index=0) override {
         T tVal = static_cast<T>(_getter());
 
         if (tVal) {
-            return tVal->getProperties();
+            return tVal->getSimulationControls();
         } else {
             return nullptr;
         }
@@ -781,11 +847,14 @@ public:
 
     virtual void setValue(std::string value, bool remove=false) override {
 		_ensureWritable(remove ? "remove value from" : "add value to");
-        T newVal;
-
-        std::istringstream auxStr(value);
-        auxStr >> newVal;
-        newVal = static_cast<T>(newVal);
+        T newVal{};
+		if constexpr (std::is_same_v<T, std::string>) {
+			newVal = value;
+		} else {
+			std::istringstream auxStr(value);
+			auxStr >> newVal;
+			newVal = static_cast<T>(newVal);
+		}
 
 	        if (remove) {
 				if (!_remover) {
@@ -842,7 +911,12 @@ class SimulationControlGenericListPointer: public SimulationControl {
 public:
     using Creator = std::function<T(M, const std::string&)>;
     using TypedCreator = std::function<T(M)>;
-    SimulationControlGenericListPointer(M model, GetterGeneric<List<T>*> getter, AdderGeneric<T> adder, RemoverGeneric<T> remover, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=true, bool isClass=true, bool isEnum=false, Creator creator=nullptr, TypedCreator typedCreator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
+    using ElementTypeNamesGetter = std::function<std::vector<std::string>()>;
+    using CurrentElementTypeGetter = std::function<std::string()>;
+    using CurrentElementTypeSetter = std::function<bool(const std::string&)>;
+    using TypedNamedCreator = std::function<T(M, const std::string&, const std::string&)>;
+    using ListElementDataDefinitionGetter = std::function<ModelDataDefinition*(int)>;
+    SimulationControlGenericListPointer(M model, GetterGeneric<List<T>*> getter, AdderGeneric<T> adder, RemoverGeneric<T> remover, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=true, bool isClass=true, bool isEnum=false, Creator creator=nullptr, TypedCreator typedCreator=nullptr, ElementTypeNamesGetter elementTypeNamesGetter=nullptr, CurrentElementTypeGetter currentElementTypeGetter=nullptr, CurrentElementTypeSetter currentElementTypeSetter=nullptr, TypedNamedCreator typedNamedCreator=nullptr, ListElementDataDefinitionGetter listElementDataDefinitionGetter=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum){
 		static_assert(std::is_pointer<T>::value, "SimulationControlGenericListPointer requires pointer type T");
         _model = model;
         _getter= getter;
@@ -850,6 +924,11 @@ public:
         _remover = remover;
         _creator = creator;
         _typedCreator = typedCreator;
+        _elementTypeNamesGetter = elementTypeNamesGetter;
+        _currentElementTypeGetter = currentElementTypeGetter;
+        _currentElementTypeSetter = currentElementTypeSetter;
+        _typedNamedCreator = typedNamedCreator;
+        _listElementDataDefinitionGetter = listElementDataDefinitionGetter;
         _readonly = adder == nullptr;
         _propertyType = Util::TypeOf<C>();
     }
@@ -894,8 +973,40 @@ public:
     virtual bool supportsListEditor() const override { return true; }
     // This method marks pointer lists as supporting explicit typed element creation when writable.
     virtual bool supportsNewListElementCreation() const override { return !_readonly; }
+    // This method exposes concrete types for polymorphic pointer lists such as Set members.
+    //
+    // When no provider is configured, the list keeps the legacy single-type creation behavior.
+    virtual List<std::string>* getCreatableListElementTypes() override {
+        if (_elementTypeNamesGetter == nullptr) {
+            return nullptr;
+        }
+        List<std::string>* types = new List<std::string>();
+        for (const std::string& typeName : _elementTypeNamesGetter()) {
+            if (!typeName.empty()) {
+                types->insert(typeName);
+            }
+        }
+        return types;
+    }
+    // This method reports the selected concrete type for typed polymorphic lists.
+    virtual std::string getCurrentListElementType() const override {
+        if (_currentElementTypeGetter != nullptr) {
+            return _currentElementTypeGetter();
+        }
+        return "";
+    }
+    // This method lets the GUI configure the selected concrete type before creating members.
+    virtual bool setCurrentListElementType(const std::string& typeName) override {
+        if (_currentElementTypeSetter == nullptr) {
+            return false;
+        }
+        return _currentElementTypeSetter(typeName);
+    }
     // This method creates and inserts a typed list element using the configured creator or the default constructor path.
     virtual bool createNewListElement(const std::string& value = "") override {
+        if (_typedNamedCreator != nullptr) {
+            return createNewListElementOfType(getCurrentListElementType(), value);
+        }
         _ensureWritable("create list element for");
         if (!_adder) {
             throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
@@ -907,8 +1018,37 @@ public:
         _adder(newVal);
         return true;
     }
+    // This method creates and inserts a member of a caller-selected concrete type.
+    //
+    // It is intentionally part of the control contract instead of GUI code so each kernel owner can
+    // validate type compatibility, naming and model-registration rules in one place.
+    virtual bool createNewListElementOfType(const std::string& typeName, const std::string& value = "") override {
+        _ensureWritable("create typed list element for");
+        if (!_adder) {
+            throw std::logic_error("SimulationControlGenericListPointer adder is not defined");
+        }
+        if (_typedNamedCreator == nullptr) {
+            return SimulationControl::createNewListElementOfType(typeName, value);
+        }
+        std::string effectiveTypeName = typeName;
+        if (effectiveTypeName.empty()) {
+            effectiveTypeName = getCurrentListElementType();
+        }
+        if (effectiveTypeName.empty()) {
+            return false;
+        }
+        if (_currentElementTypeSetter != nullptr && !_currentElementTypeSetter(effectiveTypeName)) {
+            return false;
+        }
+        T newVal = _typedNamedCreator(_model, effectiveTypeName, value);
+        if (newVal == nullptr) {
+            return false;
+        }
+        _adder(newVal);
+        return true;
+    }
 
-	    virtual List<SimulationControl*>* getProperties(int index=0) override {
+    virtual List<SimulationControl*>* getChildSimulationControls(int index=0) override {
 	        List<T>* tVal = static_cast<List<T>*>(_getter());
 	        T selectedElement = nullptr;
 
@@ -921,10 +1061,17 @@ public:
         }
 
         if (selectedElement) {
-            return selectedElement->getProperties();
+            return selectedElement->getSimulationControls();
         } else {
             return nullptr;
         }
+    }
+
+    virtual ModelDataDefinition* getListElementModelDataDefinition(int index) const override {
+        if (_listElementDataDefinitionGetter == nullptr) {
+            return nullptr;
+        }
+        return _listElementDataDefinitionGetter(index);
     }
 
     virtual List<std::string>* getStrValues() override {
@@ -957,11 +1104,16 @@ private:
 
 private:
     M _model;
-    GetterGeneric<List<T>*> _getter;
-    AdderGeneric<T> _adder;
+	GetterGeneric<List<T>*> _getter;
+	AdderGeneric<T> _adder;
     RemoverGeneric<T> _remover;
     Creator _creator;
     TypedCreator _typedCreator;
+    ElementTypeNamesGetter _elementTypeNamesGetter;
+    CurrentElementTypeGetter _currentElementTypeGetter;
+    CurrentElementTypeSetter _currentElementTypeSetter;
+    TypedNamedCreator _typedNamedCreator;
+    ListElementDataDefinitionGetter _listElementDataDefinitionGetter;
 };
 
 //namespace\\}

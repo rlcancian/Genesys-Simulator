@@ -178,3 +178,37 @@ TEST(ListTest, CopyAssignmentCreatesIndependentContainerState) {
     EXPECT_EQ(original.size(), 1u);
     EXPECT_EQ(assigned.size(), 2u);
 }
+
+TEST(ListTest, EmptyNavigationReturnsDefaultValue) {
+    List<int*> pointers;
+    EXPECT_EQ(pointers.front(), nullptr);
+    EXPECT_EQ(pointers.last(), nullptr);
+    EXPECT_EQ(pointers.next(), nullptr);
+    EXPECT_EQ(pointers.previous(), nullptr);
+    EXPECT_EQ(pointers.current(), nullptr);
+
+    List<double> numbers;
+    EXPECT_DOUBLE_EQ(numbers.getAtRank(0), 0.0);
+    EXPECT_DOUBLE_EQ(numbers.front(), 0.0);
+    EXPECT_DOUBLE_EQ(numbers.last(), 0.0);
+    EXPECT_DOUBLE_EQ(numbers.next(), 0.0);
+    EXPECT_DOUBLE_EQ(numbers.previous(), 0.0);
+    EXPECT_DOUBLE_EQ(numbers.current(), 0.0);
+}
+
+TEST(ListTest, NavigationHandlesListBoundaries) {
+    int first = 1;
+    int second = 2;
+
+    List<int*> values;
+    values.insert(&first);
+    values.insert(&second);
+
+    EXPECT_EQ(values.current(), &first);
+    EXPECT_EQ(values.previous(), nullptr);
+    EXPECT_EQ(values.next(), &second);
+    EXPECT_EQ(values.next(), nullptr);
+    EXPECT_EQ(values.current(), nullptr);
+    EXPECT_EQ(values.last(), &second);
+    EXPECT_EQ(values.previous(), &first);
+}

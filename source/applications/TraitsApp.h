@@ -15,7 +15,8 @@
 #define TRAITSAPP_H
 
 #include "GenesysApplication_if.h"
-#include "../kernel/simulator/TraceManager.h"
+#include "kernel/simulator/TraceManager.h"
+
 template <typename T>
 struct TraitsApp {
 };
@@ -23,11 +24,11 @@ struct TraitsApp {
 /*!
  *  Configure the Genesys Application
  */
-template <> struct TraitsApp<GenesysApplication_if> {
+template <>
+struct TraitsApp<GenesysApplication_if> {
 	static const TraceManager::Level traceLevel = TraceManager::Level::L9_mostDetailed;
-	static const bool runTests = false; //!< If false, Genesys will run a GUI app or a Terminal app, dependending on "runGraphicalUserInterface". If true, run google tests.
-    static const bool runGraphicalUserInterface = true; //!< If false, a terminal application will be compiled and executed (See TraitsTerminalApp.h). If true, a GUI for a general simulator will be executed.
+	static const bool runGraphicalUserInterface = true;
+	//!< If false, a terminal application will be compiled and executed (See TraitsTerminalApp.h). If true, a GUI for a general simulator will be executed.
 };
 
 #endif /* TRAITSAPP_H */
-

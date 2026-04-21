@@ -1,8 +1,9 @@
 #include "PluginCatalogController.h"
 
-#include "../../../../../kernel/simulator/Plugin.h"
-#include "../../../../../kernel/simulator/PluginInformation.h"
-#include "../../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/PluginInformation.h"
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Simulator.h"
 
 #include <QBrush>
 #include <QFont>
@@ -70,6 +71,7 @@ void PluginCatalogController::insertPluginUI(Plugin* plugin) const {
         delete treeItemChild;
         return;
     }
+    treeItemChild->setData(0, Qt::UserRole, treeRootItem->background(0).color());
 
     // Keep legacy icon color selection based on root category color.
     if (plugin->getPluginInfo()->isComponent()
@@ -95,6 +97,33 @@ void PluginCatalogController::insertPluginUI(Plugin* plugin) const {
     treeItemChild->setToolTip(0, QString::fromStdString(plugtextAdds));
     treeItemChild->setStatusTip(0, QString::fromStdString(plugin->getPluginInfo()->getLanguageTemplate()));
     treeRootItem->addChild(treeItemChild);
+    treeRootItem->setExpanded(shouldExpandCategoryRoot(treeRootItem->text(0)));
+}
+
+void PluginCatalogController::reloadFromPluginManager() const {
+    if (_pluginsTree == nullptr || _simulator == nullptr || _simulator->getPluginManager() == nullptr) {
+        return;
+    }
+
+    // Rebuild the palette from kernel plugin state after plugin-manager mutations.
+    _pluginsTree->clear();
+    for (unsigned int i = 0; i < _simulator->getPluginManager()->size(); i++) {
+        insertPluginUI(_simulator->getPluginManager()->getAtRank(i));
+    }
+    _pluginsTree->sortByColumn(0, Qt::AscendingOrder);
+    applyCategoryExpansionPolicy();
+}
+
+void PluginCatalogController::applyCategoryExpansionPolicy() const {
+    if (_pluginsTree == nullptr) {
+        return;
+    }
+    for (int i = 0; i < _pluginsTree->topLevelItemCount(); ++i) {
+        QTreeWidgetItem* root = _pluginsTree->topLevelItem(i);
+        if (root != nullptr) {
+            root->setExpanded(shouldExpandCategoryRoot(root->text(0)));
+        }
+    }
 }
 
 // Keep fake-plugin entry point available even when no fake plugins are inserted.
@@ -110,10 +139,10 @@ void PluginCatalogController::handlePluginItemDoubleClicked(QTreeWidgetItem* ite
     if (_modelTextEditor != nullptr && _modelTextEditor->isEnabled()) {
         return;
     }
-    for (int i = 0; i < _pluginsTree->topLevelItemCount(); i++) {
-        _pluginsTree->topLevelItem(i)->setExpanded(false);
+    if (item->parent() != nullptr) {
+        _pluginsTree->expandItem(item);
     }
-    _pluginsTree->expandItem(item);
+    applyCategoryExpansionPolicy();
 }
 
 // Keep single-click handler as a no-op to preserve current behavior.
@@ -139,7 +168,7 @@ QTreeWidgetItem* PluginCatalogController::ensureCategoryRoot(const QString& cate
     QBrush bbackground(Qt::black);
     if (category == "Data Definition") {
         bbackground.setColor(Qt::darkRed);
-    } else if (category == "Discrete Processing") {
+    } else if (category == "DiscreteProcessing") {
         bbackground.setColor(Qt::darkGreen);
     } else if (category == "Decisions") {
         bbackground.setColor(Qt::darkYellow);
@@ -152,11 +181,17 @@ QTreeWidgetItem* PluginCatalogController::ensureCategoryRoot(const QString& cate
     }
     treeRootItem->setBackground(0, bbackground);
     treeRootItem->setFont(0, QFont("Nimbus Sans", 12, QFont::Bold));
-    treeRootItem->setExpanded(false);
+    treeRootItem->setExpanded(shouldExpandCategoryRoot(category));
 
     // Preserve category-color map updates for graphical-model integration.
-    if (_pluginCategoryColor != nullptr && pluginCategoryName == category.toStdString()) {
-        _pluginCategoryColor->insert({pluginCategoryName, bbackground.color()});
+    if (_pluginCategoryColor != nullptr) {
+        const QColor categoryColor = bbackground.color();
+        _pluginCategoryColor->insert({category.toStdString(), categoryColor});
+        _pluginCategoryColor->insert({pluginCategoryName, categoryColor});
     }
     return treeRootItem;
+}
+
+bool PluginCatalogController::shouldExpandCategoryRoot(const QString& category) {
+    return category != QStringLiteral("Data Definition");
 }

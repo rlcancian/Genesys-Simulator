@@ -21,7 +21,7 @@
 ComponentManager::ComponentManager(Model* model) {
 	_parentModel = model;
 	_components = new List<ModelComponent*>();
-	_components->setSortFunc([](const ModelComponent* a, const ModelComponent * b) {
+	_components->setSortFunc([](const ModelComponent* a, const ModelComponent* b) {
 		return a->getId() < b->getId(); // Components are sorted by ID
 	});
 }
@@ -35,14 +35,13 @@ ComponentManager::~ComponentManager() {
 bool ComponentManager::insert(ModelComponent* comp) {
 	if (_components->find(comp) == _components->list()->end()) {
 		_components->insert(comp);
-		_parentModel->getTracer()->trace("Component \"" + comp->getName() + "\" successfully inserted", TraceManager::Level::L2_results);
-        if (_parentModel->isAutomaticallyCreatesModelDataDefinitions()) {
-            ModelComponent::CreateInternalData(comp);
-        }
-        _hasChanged = true;
+		_parentModel->getTracer()->trace("Component \"" + comp->getName() + "\" successfully inserted",
+		                                 TraceManager::Level::L2_results);
+		_hasChanged = true;
 		return true;
 	}
-	_parentModel->getTracer()->trace("Component \"" + comp->getName() + "\" could not be inserted", TraceManager::Level::L2_results);
+	_parentModel->getTracer()->trace("Component \"" + comp->getName() + "\" could not be inserted",
+	                                 TraceManager::Level::L2_results);
 	return false;
 }
 
@@ -67,7 +66,8 @@ ModelComponent* ComponentManager::find(Util::identification id) {
 void ComponentManager::remove(ModelComponent* comp) {
 	std::string name = comp->getName();
 	_components->remove(comp);
-	_parentModel->getTracer()->trace("Component \"" + name + "\" successfully removed", TraceManager::Level::L2_results);
+	_parentModel->getTracer()->trace("Component \"" + name + "\" successfully removed",
+	                                 TraceManager::Level::L2_results);
 	_hasChanged = true;
 }
 
@@ -94,11 +94,11 @@ std::list<ModelComponent*>::iterator ComponentManager::end() {
 	return _components->list()->end();
 }
 
-ModelComponent * ComponentManager::front() {
+ModelComponent* ComponentManager::front() {
 	return _components->front();
 }
 
-ModelComponent * ComponentManager::next() {
+ModelComponent* ComponentManager::next() {
 	return _components->next();
 }
 
@@ -122,7 +122,7 @@ std::list<SourceModelComponent*>* ComponentManager::getSourceComponents() {
 	std::list<SourceModelComponent*>* sourcelist = new std::list<SourceModelComponent*>();
 	SourceModelComponent* source;
 	for (ModelComponent* component : *_components->list()) {
-		source = dynamic_cast<SourceModelComponent*> (component);
+		source = dynamic_cast<SourceModelComponent*>(component);
 		if (source != nullptr) {
 			sourcelist->insert(sourcelist->end(), source);
 		}

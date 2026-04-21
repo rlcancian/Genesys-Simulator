@@ -50,7 +50,8 @@ void MainWindow::_onSceneWheelOutEvent() {
  * @param event Graphical change event (currently unused by this compatibility wrapper).
  */
 void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*/) {
-    _actualizeTabPanes();
+    // Any structural graphical event changes the persisted .gui representation.
+    setGraphicalModelHasChanged(true);
 }
 
 //-----------------------------------------
@@ -72,7 +73,7 @@ void MainWindow::sceneChanged(const QList<QRectF> &region) {
     ui->actionEditUndo->setEnabled(canUndo);
     ui->actionEditRedo->setEnabled(canRedo);
 
-    _textModelHasChanged = canUndo;
+    _actualizeModelTextHasChanged(canUndo);
 
     ui->graphicsView->scene()->update();
 
@@ -99,8 +100,9 @@ bool MainWindow::_checkItemsScene() {
     QList<AnimationCounter *> *counters = myScene()->getAnimationsCounter();
     QList<AnimationVariable *> *variables = myScene()->getAnimationsVariable();
     QList<AnimationTimer *> *timers = myScene()->getAnimationsTimer();
+    QList<AnimationPlaceholder *> *placeholders = myScene()->getAnimationsPlaceholder();
 
-    if (!components->empty() || !geometries->empty() || !counters->empty() || !variables->empty() || !timers->empty()) {
+    if (!components->empty() || !geometries->empty() || !counters->empty() || !variables->empty() || !timers->empty() || !placeholders->empty()) {
         res = true;
     }
 
@@ -153,6 +155,7 @@ void MainWindow::sceneSelectionChanged() {
         qInfo() << "[MainWindow] sceneSelectionChanged observed active post-commit pipeline; selection sync will be deferred";
     }
     _propertyEditorController->sceneSelectionChanged();
+    _actualizeActions();
     qInfo() << "[MainWindow] sceneSelectionChanged exit";
 }
 

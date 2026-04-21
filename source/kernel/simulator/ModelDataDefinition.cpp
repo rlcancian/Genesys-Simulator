@@ -21,15 +21,18 @@
 
 //using namespace GenesysKernel;
 
-ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename, std::string name, bool insertIntoModel) {
+ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename, std::string name,
+                                         bool insertIntoModel) {
 	_id = Util::GenerateNewId(); //GenerateNewIdOfType(thistypename);
 	_typename = thistypename;
 	_parentModel = model;
-	_reportStatistics = TraitsKernel<ModelDataDefinition>::reportStatistics; // @TODO: shoould be a parameter before insertIntoModel
+	_reportStatistics = TraitsKernel<ModelDataDefinition>::reportStatistics;
+	// @ToDo: (importante): shoould be a parameter before insertIntoModel
 	name = Util::StrReplace(name, " ", "_");
 	if (name == "")
 		_name = thistypename + "_" + std::to_string(Util::GenerateNewIdOfType(thistypename));
-	else if (name.substr(name.length() - 1, 1) == "%")  // The "%" as suffix (last char means it will be replaced by a new ID
+	else if (name.substr(name.length() - 1, 1) == "%")
+		// The "%" as suffix (last char means it will be replaced by a new ID
 		_name = name.substr(0, name.length() - 1) + std::to_string(Util::GenerateNewIdOfType(thistypename));
 	else
 		_name = name;
@@ -39,13 +42,13 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 	}
 	// make "name" a property of a component
 	SimulationControlGeneric<std::string>* propName = new SimulationControlGeneric<std::string>(
-			std::bind(&ModelDataDefinition::getName, this),
-			std::bind(&ModelDataDefinition::setName, this, std::placeholders::_1),
-			Util::TypeOf<ModelDataDefinition>(), getName(), "Name", "");
+		std::bind(&ModelDataDefinition::getName, this),
+		std::bind(&ModelDataDefinition::setName, this, std::placeholders::_1),
+		Util::TypeOf<ModelDataDefinition>(), getName(), "Name", "");
 	SimulationControlGeneric<bool>* propReportStatistics = new SimulationControlGeneric<bool>(
-			std::bind(&ModelDataDefinition::isReportStatistics, this),
-			std::bind(&ModelDataDefinition::setReportStatistics, this, std::placeholders::_1),
-			Util::TypeOf<ModelDataDefinition>(), getName(), "Report Statistics", "");
+		std::bind(&ModelDataDefinition::isReportStatistics, this),
+		std::bind(&ModelDataDefinition::setReportStatistics, this, std::placeholders::_1),
+		Util::TypeOf<ModelDataDefinition>(), getName(), "Report Statistics", "");
 
 	_parentModel->getControls()->insert(propName);
 
@@ -56,6 +59,10 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 
 bool ModelDataDefinition::hasChanged() const {
 	return _hasChanged;
+}
+
+void ModelDataDefinition::setHasChanged(bool hasChanged) {
+	_hasChanged = hasChanged;
 }
 
 unsigned int ModelDataDefinition::getLevel() const {
@@ -105,7 +112,8 @@ ModelDataDefinition::~ModelDataDefinition() {
 }
 
 void ModelDataDefinition::_internalDataClear() {
-	for (std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->begin(); it != _internalData->end(); it++) {
+	for (std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->begin(); it != _internalData->end();
+	     it++) {
 		this->_parentModel->getDataManager()->remove((*it).second);
 		delete ((*it).second); //->~ModelDataDefinition();
 	}
@@ -116,19 +124,21 @@ void ModelDataDefinition::_internalDataInsert(std::string key, ModelDataDefiniti
 	if (data == nullptr)
 		return;
 	std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->find(key);
-	if (data == nullptr) {
-		if (it != _internalData->end()) {
-			_internalData->erase(it);
-		}
-	} else {
-		if (it == _internalData->end()) {
-			_internalData->insert({key, data});
-		} else {
-			if ((*it).second != data) {
-				_internalData->erase(it);
-				_internalData->insert({key, data});
-			}
-		}
+	if (it == _internalData->end()) {
+		_internalData->insert({key, data});
+	} else if ((*it).second != data) {
+		this->_parentModel->getDataManager()->remove((*it).second);
+		delete ((*it).second);
+		_internalData->erase(it);
+		_internalData->insert({key, data});
+	}
+
+	// Internal data definitions are owned children of this object and must also exist in the
+	// model-wide registry immediately, otherwise GUI features that list or synchronize all data
+	// definitions observe an incomplete model until a later full model check rebuilds the state.
+	ModelDataManager* dataManager = this->_parentModel->getDataManager();
+	if (dataManager->getDataDefinition(data->getClassname(), data->getId()) == nullptr) {
+		dataManager->insert(data);
 	}
 }
 
@@ -166,10 +176,12 @@ void ModelDataDefinition::_attachedDataInsert(std::string key, ModelDataDefiniti
 		if (it != _attachedData->end()) {
 			_attachedData->erase(it);
 		}
-	} else {
+	}
+	else {
 		if (it == _attachedData->end()) {
 			_attachedData->insert({key, data});
-		} else {
+		}
+		else {
 			if ((*it).second != data) {
 				_attachedData->erase(it);
 				_attachedData->insert({key, data});
@@ -185,7 +197,8 @@ void ModelDataDefinition::_attachedDataRemove(std::string key) {
 		if ((*it).first == key) {
 			_attachedData->erase(it);
 			it = _attachedData->begin();
-		} else {
+		}
+		else {
 			it++;
 		}
 	}
@@ -195,19 +208,22 @@ void ModelDataDefinition::_attachedDataClear() {
 	_attachedData->clear();
 }
 
-void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(std::string expression) {//(std::map<std::string, std::list<std::string>*>* referencedDataDefinitions) {
-	std::map<std::string, std::list<std::string>*> referencedDataDefinitions;// = nullptr; // = new std::map<std::string, std::list<std::string>*>();
+void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(std::string expression) {
+	//(std::map<std::string, std::list<std::string>*>* referencedDataDefinitions) {
+	std::map<std::string, std::list<std::string>*> referencedDataDefinitions;
+	// = nullptr; // = new std::map<std::string, std::list<std::string>*>();
 	_parentModel->checkReferencesToDataDefinitions(expression, &referencedDataDefinitions);
-	if (referencedDataDefinitions.size()>0) {
+	if (referencedDataDefinitions.size() > 0) {
 		Util::IncIndent();
-				ModelDataDefinition* referedElem;
+		ModelDataDefinition* referedElem;
 		ModelDataManager* elemMan = _parentModel->getDataManager();
-		for (auto pair: referencedDataDefinitions) {
-			for (std::string referedName: *pair.second) {
+		for (auto pair : referencedDataDefinitions) {
+			for (std::string referedName : *pair.second) {
 				referedElem = elemMan->getDataDefinition(pair.first, referedName);
 				assert(referedElem != nullptr);
-				_attachedDataInsert("Refered_"+pair.first, referedElem);
-				trace(this->getName()+" has an expression that refers to "+pair.first+ " "+referedName+", and therefore was attached.");
+				_attachedDataInsert("Refered_" + pair.first, referedElem);
+				trace(this->getName() + " has an expression that refers to " + pair.first + " " + referedName +
+					", and therefore was attached.");
 			}
 		}
 		Util::DecIndent();
@@ -224,22 +240,24 @@ bool ModelDataDefinition::_getSaveDefaultsOption() {
 	return _parentModel->getPersistence()->getOption(ModelPersistence_if::Options::SAVEDEFAULTS);
 }
 
-bool ModelDataDefinition::_loadInstance(PersistenceRecord *fields) {
+bool ModelDataDefinition::_loadInstance(PersistenceRecord* fields) {
 	int id = fields->loadField("id", -1);
 	if (id > 0) this->_id = id;
-	else        return false;
+	else return false;
 
 	setName(fields->loadField("name", ""));
-	this->_reportStatistics = fields->loadField("reportStatistics", TraitsKernel<ModelDataDefinition>::reportStatistics);
+	this->_reportStatistics = fields->
+		loadField("reportStatistics", TraitsKernel<ModelDataDefinition>::reportStatistics);
 
 	return true;
 }
 
-void ModelDataDefinition::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+void ModelDataDefinition::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
 	fields->saveField("typename", _typename);
 	fields->saveField("id", _id);
 	fields->saveField("name", _name);
-	fields->saveField("reportStatistics", _reportStatistics, TraitsKernel<ModelDataDefinition>::reportStatistics, saveDefaultValues);
+	fields->saveField("reportStatistics", _reportStatistics, TraitsKernel<ModelDataDefinition>::reportStatistics,
+	                  saveDefaultValues);
 }
 
 bool ModelDataDefinition::_check(std::string& errorMessage) {
@@ -261,19 +279,21 @@ std::string ModelDataDefinition::show() {
 	std::string internal = "";
 	if (_internalData->size() > 0) {
 		internal = ", internal=[";
-		for (std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->begin(); it != _internalData->end(); it++) {
+		for (std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->begin(); it != _internalData->
+		     end(); it++) {
 			internal += (*it).second->getName() + ",";
 		}
 		internal = internal.substr(0, internal.length() - 1) + "]";
 	}
-	return _name + internal;//"id=" + std::to_string(_id) + ",name=\"" + _name + "\"" + internal;
+	return _name + internal; //"id=" + std::to_string(_id) + ",name=\"" + _name + "\"" + internal;
 }
 
 ModelDataDefinition* ModelDataDefinition::getInternalData(std::string name) const {
 	std::map<std::string, ModelDataDefinition*>::iterator pairIt = _internalData->find(name);
 	if (pairIt == _internalData->end()) {
 		return nullptr;
-	} else {
+	}
+	else {
 		return (*pairIt).second;
 	}
 }
@@ -308,7 +328,8 @@ void ModelDataDefinition::setName(std::string name) {
 		for (std::pair<std::string, ModelDataDefinition*> child : *_internalData) {
 			stuffName = child.second->getName();
 			pos = stuffName.find(getName(), 0);
-			if (pos < stuffName.length()) {// != std::string::npos) {
+			if (pos < stuffName.length()) {
+				// != std::string::npos) {
 				stuffName = stuffName.replace(pos, pos + getName().length(), name);
 				child.second->setName(stuffName);
 			}
@@ -317,7 +338,8 @@ void ModelDataDefinition::setName(std::string name) {
 		for (SimulationControl* control : *_parentModel->getControls()->list()) {
 			stuffName = control->getName();
 			pos = stuffName.find(getName(), 0);
-			if (pos < stuffName.length()) { // != std::string::npos) {
+			if (pos < stuffName.length()) {
+				// != std::string::npos) {
 				stuffName = stuffName.replace(pos, pos + getName().length(), name);
 				control->setName(stuffName);
 			}
@@ -326,7 +348,8 @@ void ModelDataDefinition::setName(std::string name) {
 		for (SimulationResponse* response : *_parentModel->getResponses()->list()) {
 			stuffName = response->getName();
 			pos = stuffName.find(getName(), 0);
-			if (pos < stuffName.length()) {// != std::string::npos) {
+			if (pos < stuffName.length()) {
+				// != std::string::npos) {
 				stuffName = stuffName.replace(pos, pos + getName().length(), name);
 				response->setName(stuffName);
 			}
@@ -345,15 +368,17 @@ std::string ModelDataDefinition::getClassname() const {
 }
 
 void ModelDataDefinition::InitBetweenReplications(ModelDataDefinition* modeldatum) {
-	modeldatum->trace("Initing " + modeldatum->getClassname() + " \"" + modeldatum->getName() + "\"", TraceManager::Level::L9_mostDetailed); //std::to_string(component->_id));
+	modeldatum->trace("Initing " + modeldatum->getClassname() + " \"" + modeldatum->getName() + "\"",
+	                  TraceManager::Level::L9_mostDetailed); //std::to_string(component->_id));
 	try {
 		modeldatum->_initBetweenReplications();
-	} catch (const std::exception& e) {
+	}
+	catch (const std::exception& e) {
 		modeldatum->traceError("Error initing modeldatum " + modeldatum->show(), e);
 	};
 }
 
-ModelDataDefinition* ModelDataDefinition::LoadInstance(Model* model, PersistenceRecord *fields, bool insertIntoModel) {
+ModelDataDefinition* ModelDataDefinition::LoadInstance(Model* model, PersistenceRecord* fields, bool insertIntoModel) {
 	std::string name = "";
 	if (insertIntoModel) {
 		// extracts the name from the fields even before "_laodInstance" and even before construct a new ModelDataDefinition in such way when constructing the ModelDataDefinition, it's done with the correct name and that correct name is show in trace
@@ -362,8 +387,8 @@ ModelDataDefinition* ModelDataDefinition::LoadInstance(Model* model, Persistence
 	ModelDataDefinition* newElement = new ModelDataDefinition(model, "ModelDataDefinition", name, insertIntoModel);
 	try {
 		newElement->_loadInstance(fields);
-	} catch (const std::exception& e) {
-
+	}
+	catch (const std::exception& e) {
 	}
 	return newElement;
 }
@@ -374,10 +399,11 @@ ModelDataDefinition* ModelDataDefinition::NewInstance(Model* model, std::string 
 	return nullptr;
 }
 
-void ModelDataDefinition::SaveInstance(PersistenceRecord *fields, ModelDataDefinition* modeldatum) {
+void ModelDataDefinition::SaveInstance(PersistenceRecord* fields, ModelDataDefinition* modeldatum) {
 	try {
 		modeldatum->_saveInstance(fields, modeldatum->_getSaveDefaultsOption());
-	} catch (const std::exception& e) {
+	}
+	catch (const std::exception& e) {
 		//modeldatum->_model->getTrace()->traceError(e, "Error saving anElement " + modeldatum->show());
 	}
 }
@@ -392,7 +418,8 @@ bool ModelDataDefinition::Check(ModelDataDefinition* modeldatum, std::string& er
 			if (!res) {
 				//                modeldatum->_model->getTraceManager()->traceError(TraceManager::Level::errors, "Error: Checking has failed with message '" + *errorMessage + "'");
 			}
-		} catch (const std::exception& e) {
+		}
+		catch (const std::exception& e) {
 			//            modeldatum->_model->getTraceManager()->traceError(e, "Error verifying modeldatum " + modeldatum->show());
 		}
 	}
@@ -405,52 +432,45 @@ void ModelDataDefinition::CreateInternalData(ModelDataDefinition* modeldatum) {
 		Util::IncIndent();
 		modeldatum->_createInternalAndAttachedData();
 		Util::DecIndent();
-	} catch (const std::exception& e) {
+	}
+	catch (const std::exception& e) {
 		//modeldatum->...->_model->getTraceManager()->traceError(e, "Error creating elements of modeldatum " + modeldatum->show());
 	};
 }
 
 void ModelDataDefinition::_createInternalAndAttachedData() {
-
 }
 
 void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
 	_simulationControls->insert(control);
 }
 
-void ModelDataDefinition::_addProperty(SimulationControl* property) {
-	// Legacy compatibility wrapper.
-	_addSimulationControl(property);
-}
-
 /*
 void ModelDataDefinition::_addSimulationResponse(SimulationControl* response) {
-	_simulationResponses->insert(response); //@TODO: Check if exists before insert?
+	_simulationResponses->insert(response); // @ToDo: (importante): Check if exists before insert?
 }
 */
-
-List<SimulationControl*> *ModelDataDefinition::getProperties() const {
-	// Legacy compatibility wrapper.
-	return getSimulationControls();
-}
 
 List<SimulationControl*>* ModelDataDefinition::getSimulationControls() const {
 	return _simulationControls;
 }
 
-TraceManager::Level ModelDataDefinition::getTraceLevelSpecific() const{
-    return _traceLevelSpecific;
+TraceManager::Level ModelDataDefinition::getTraceLevelSpecific() const {
+	return _traceLevelSpecific;
 }
-void ModelDataDefinition::defineTraceLevelSpecific(TraceManager::Level traceLevelSpecific, bool traceLevelSpecificEnabled){
-    _traceLevelSpecific = traceLevelSpecific;
-    _traceLevelSpecificEnabled = traceLevelSpecificEnabled;
+
+void ModelDataDefinition::defineTraceLevelSpecific(TraceManager::Level traceLevelSpecific,
+                                                   bool traceLevelSpecificEnabled) {
+	_traceLevelSpecific = traceLevelSpecific;
+	_traceLevelSpecificEnabled = traceLevelSpecificEnabled;
 }
 
 bool ModelDataDefinition::isTraceLevelSpecificEnabled() const {
-    return _traceLevelSpecificEnabled;
+	return _traceLevelSpecificEnabled;
 }
+
 void ModelDataDefinition::setTraceLevelSpecificEnabled(bool traceLevelSpecificEnabled) {
-    _traceLevelSpecificEnabled =traceLevelSpecificEnabled;
+	_traceLevelSpecificEnabled = traceLevelSpecificEnabled;
 }
 
 
@@ -469,42 +489,43 @@ bool ModelDataDefinition::isReportStatistics() const {
 // NOT just an easy access to trace manager, but a wrapper to check if specificTraceLevel applies
 
 bool ModelDataDefinition::_checkSpecificTraceLevel(TraceManager::Level level) {
-    if (_traceLevelSpecificEnabled && level > _traceLevelSpecific) {
-        return false;
-    }
-    return true;
+	if (_traceLevelSpecificEnabled && level > _traceLevelSpecific) {
+		return false;
+	}
+	return true;
 }
 
-void ModelDataDefinition::trace(std::string text, TraceManager::Level level){
-    if (_checkSpecificTraceLevel(level))
-        _parentModel->getTracer()->traceReport(text, level);
+void ModelDataDefinition::trace(std::string text, TraceManager::Level level) {
+	if (_checkSpecificTraceLevel(level))
+		_parentModel->getTracer()->traceReport(text, level);
 }
 
-void ModelDataDefinition::traceError(std::string text, TraceManager::Level level){
-    if (_checkSpecificTraceLevel(level))
-        _parentModel->getTracer()->traceError(text, level);
+void ModelDataDefinition::traceError(std::string text, TraceManager::Level level) {
+	if (_checkSpecificTraceLevel(level))
+		_parentModel->getTracer()->traceError(text, level);
 }
 
 void ModelDataDefinition::traceError(std::string text, std::exception e) {
-    _parentModel->getTracer()->traceError(text, e);
+	_parentModel->getTracer()->traceError(text, e);
 }
 
-void ModelDataDefinition::traceReport(std::string text, TraceManager::Level level){
-    if (_checkSpecificTraceLevel(level))
-        _parentModel->getTracer()->traceReport(text, level);
+void ModelDataDefinition::traceReport(std::string text, TraceManager::Level level) {
+	if (_checkSpecificTraceLevel(level))
+		_parentModel->getTracer()->traceReport(text, level);
 }
 
-void ModelDataDefinition::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level) {
-    if (_checkSpecificTraceLevel(level))
-        _parentModel->getTracer()->traceSimulation(thisobject, time, entity, component, text, level, true);
+void ModelDataDefinition::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component,
+                                          std::string text, TraceManager::Level level) {
+	if (_checkSpecificTraceLevel(level))
+		_parentModel->getTracer()->traceSimulation(thisobject, time, entity, component, text, level, true);
 }
 
-void ModelDataDefinition::traceSimulation(void* thisobject, std::string text, TraceManager::Level level){
-    if (_checkSpecificTraceLevel(level))
-        _parentModel->getTracer()->traceSimulation(thisobject, text, level, true);
+void ModelDataDefinition::traceSimulation(void* thisobject, std::string text, TraceManager::Level level) {
+	if (_checkSpecificTraceLevel(level))
+		_parentModel->getTracer()->traceSimulation(thisobject, text, level, true);
 }
 
 void ModelDataDefinition::traceSimulation(void* thisobject, TraceManager::Level level, std::string text) {
-    if (_checkSpecificTraceLevel(level))
-        _parentModel->getTracer()->traceSimulation(thisobject, text, level, true);
+	if (_checkSpecificTraceLevel(level))
+		_parentModel->getTracer()->traceSimulation(thisobject, text, level, true);
 }

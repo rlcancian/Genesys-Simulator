@@ -3,6 +3,7 @@
 #include "../actions/DeleteUndoCommand.h"
 #include "../actions/PasteUndoCommand.h"
 #include "../animations/AnimationCounter.h"
+#include "../animations/AnimationPlaceholder.h"
 #include "../animations/AnimationVariable.h"
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"
@@ -10,9 +11,9 @@
 #include "../graphicals/GraphicalModelComponent.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/ModelGraphicsView.h"
-#include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/Plugin.h"
-#include "../../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/Plugin.h"
+#include "kernel/simulator/Simulator.h"
 
 #include <QGraphicsEllipseItem>
 #include <QGraphicsItemGroup>
@@ -415,6 +416,15 @@ void EditCommandController::helpCopy() const {
             copiedItem->setPos(animationVariable->pos());
             copiedItem->setVariable(animationVariable->getVariable());
             copiedItem->setValue(animationVariable->getValue());
+            drawingAux->append(copiedItem);
+            continue;
+        }
+
+        if (AnimationPlaceholder* animationPlaceholder = dynamic_cast<AnimationPlaceholder*>(draw)) {
+            AnimationPlaceholder* copiedItem = new AnimationPlaceholder(animationPlaceholder->getAnimationType());
+            copiedItem->setRect(0, 0, animationPlaceholder->boundingRect().width(), animationPlaceholder->boundingRect().height());
+            copiedItem->setPos(animationPlaceholder->pos());
+            copiedItem->setTargetName(animationPlaceholder->getTargetName());
             drawingAux->append(copiedItem);
             continue;
         }

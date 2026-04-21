@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>729</width>
+    <width>1032</width>
     <height>777</height>
    </rect>
   </property>
@@ -69,7 +69,7 @@
         <enum>QTabWidget::Triangular</enum>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <property name="tabBarAutoHide">
         <bool>true</bool>
@@ -121,6 +121,9 @@
             </layout>
            </widget>
            <widget class="QWidget" name="tabModelDiagram">
+            <property name="enabled">
+             <bool>true</bool>
+            </property>
             <attribute name="title">
              <string>Diagram</string>
             </attribute>
@@ -150,8 +153,8 @@
                     <rect>
                      <x>0</x>
                      <y>0</y>
-                     <width>46</width>
-                     <height>36</height>
+                     <width>688</width>
+                     <height>138</height>
                     </rect>
                    </property>
                    <property name="autoFillBackground">
@@ -226,7 +229,7 @@
                   <item>
                    <widget class="QCheckBox" name="checkBox_ShowElements">
                     <property name="text">
-                     <string>Show elements</string>
+                     <string>Shared elements</string>
                     </property>
                     <property name="checked">
                      <bool>true</bool>
@@ -236,7 +239,17 @@
                   <item>
                    <widget class="QCheckBox" name="checkBox_ShowInternals">
                     <property name="text">
-                     <string>Show internals</string>
+                     <string>Statistics elements</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_ShowEditableElements">
+                    <property name="text">
+                     <string>Editable elements</string>
                     </property>
                     <property name="checked">
                      <bool>true</bool>
@@ -583,6 +596,19 @@
                <property name="columnCount">
                 <number>13</number>
                </property>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
+               <column/>
               </widget>
              </item>
             </layout>
@@ -591,6 +617,54 @@
             <attribute name="title">
              <string>Plots</string>
             </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_ReportsPlots">
+             <property name="leftMargin">
+              <number>2</number>
+             </property>
+             <property name="topMargin">
+              <number>2</number>
+             </property>
+             <property name="rightMargin">
+              <number>2</number>
+             </property>
+             <property name="bottomMargin">
+              <number>2</number>
+             </property>
+             <item>
+              <widget class="QScrollArea" name="scrollArea_ReportsPlots">
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="widget_ReportsPlotsContent">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>98</width>
+                  <height>28</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_ReportsPlotsContent">
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>8</number>
+                 </property>
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </widget>
          </item>
@@ -645,7 +719,7 @@
       <item>
        <widget class="QSlider" name="horizontalSlider_ZoomGraphical">
         <property name="minimum">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="maximum">
          <number>1000</number>
@@ -701,6 +775,12 @@
       </item>
       <item>
        <widget class="QProgressBar" name="progressBarSimulation">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>2</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="font">
          <font>
           <pointsize>9</pointsize>
@@ -724,26 +804,32 @@
       <item>
        <widget class="QLabel" name="labelAnimationSpeed">
         <property name="text">
-         <string>Animation speed</string>
+         <string>Animation delay:</string>
         </property>
        </widget>
       </item>
       <item>
        <widget class="QSlider" name="horizontalSliderAnimationSpeed">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>2</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="minimum">
          <number>1</number>
         </property>
         <property name="maximum">
-         <number>10</number>
+         <number>100</number>
         </property>
         <property name="pageStep">
          <number>1</number>
         </property>
         <property name="value">
-         <number>5</number>
+         <number>40</number>
         </property>
         <property name="sliderPosition">
-         <number>5</number>
+         <number>40</number>
         </property>
         <property name="orientation">
          <enum>Qt::Horizontal</enum>
@@ -759,7 +845,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>729</width>
+     <width>1032</width>
      <height>22</height>
     </rect>
    </property>
@@ -859,10 +945,11 @@
      <addaction name="actionShowRule"/>
      <addaction name="actionShowSnap"/>
      <addaction name="actionShowGuides"/>
-     <addaction name="actionDiagrams"/>
      <addaction name="separator"/>
      <addaction name="actionShowInternalElements"/>
+     <addaction name="actionShowEditableElements"/>
      <addaction name="actionShowAttachedElements"/>
+     <addaction name="actionShowRecursiveElements"/>
     </widget>
     <addaction name="menuViewShow"/>
     <addaction name="menuZoom"/>
@@ -899,27 +986,26 @@
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
-     <string>Tools</string>
+     <string>Results</string>
     </property>
     <addaction name="actionToolsDataAnalyzer"/>
     <addaction name="actionToolsOptimizator"/>
-    <addaction name="actionToolsParserGrammarChecker"/>
-    <addaction name="actionParallelization"/>
    </widget>
    <widget class="QMenu" name="menuSimulator">
     <property name="title">
      <string>Simulator</string>
     </property>
     <addaction name="actionSimulatorsPluginManager"/>
+    <addaction name="actionToolsParserGrammarChecker"/>
     <addaction name="separator"/>
     <addaction name="actionSimulatorPreferences"/>
     <addaction name="separator"/>
     <addaction name="actionSimulatorExit"/>
    </widget>
    <addaction name="menuSimulator"/>
-   <addaction name="menuModel"/>
    <addaction name="menuEdit"/>
    <addaction name="menuView"/>
+   <addaction name="menuModel"/>
    <addaction name="menuSimulation"/>
    <addaction name="menuTools"/>
    <addaction name="menuAbout"/>
@@ -955,7 +1041,7 @@
    <property name="minimumSize">
     <size>
      <width>118</width>
-     <height>141</height>
+     <height>100</height>
     </size>
    </property>
    <property name="windowIcon">
@@ -972,14 +1058,14 @@
     <string>Console</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>8</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContentsConsole">
     <layout class="QVBoxLayout" name="verticalLayout">
      <item>
       <widget class="QTextEdit" name="textEdit_Console">
        <property name="sizePolicy">
-        <sizepolicy hsizetype="Preferred" vsizetype="Minimum">
+        <sizepolicy hsizetype="Preferred" vsizetype="Ignored">
          <horstretch>0</horstretch>
          <verstretch>0</verstretch>
         </sizepolicy>
@@ -987,7 +1073,7 @@
        <property name="minimumSize">
         <size>
          <width>100</width>
-         <height>100</height>
+         <height>0</height>
         </size>
        </property>
        <property name="font">
@@ -1104,7 +1190,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Property Editor</string>
    </property>
    <attribute name="dockWidgetArea">
-    <number>1</number>
+    <number>2</number>
    </attribute>
    <widget class="QWidget" name="dockWidgetContents">
     <layout class="QHBoxLayout" name="horizontalLayout_4">
@@ -1500,6 +1586,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="enabled">
     <bool>true</bool>
    </property>
@@ -1513,6 +1602,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </action>
   <action name="actionShowSnap">
    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
     <bool>true</bool>
    </property>
    <property name="icon">
@@ -1630,6 +1722,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
   </action>
   <action name="actionShowRule">
    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
     <bool>true</bool>
    </property>
    <property name="icon">
@@ -1753,6 +1848,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateExpression">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/resources/ToolBar/_animvalor.bmp</normaloff>:/resources/ToolBar/_animvalor.bmp</iconset>
@@ -1762,6 +1860,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateResource">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/question.ico</normaloff>:/icons3/resources/icons/pack3/ico/question.ico</iconset>
@@ -1771,6 +1872,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateQueue">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/resources/ToolBar/_animfila.bmp</normaloff>:/resources/ToolBar/_animfila.bmp</iconset>
@@ -1780,6 +1884,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateStation">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/question.ico</normaloff>:/icons3/resources/icons/pack3/ico/question.ico</iconset>
@@ -1897,16 +2004,37 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <property name="checkable">
     <bool>true</bool>
    </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
    </property>
    <property name="text">
-    <string>Internal Elements</string>
+    <string>Statistics Elements</string>
+   </property>
+  </action>
+  <action name="actionShowEditableElements">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
+   </property>
+   <property name="text">
+    <string>Editable Elements</string>
    </property>
   </action>
   <action name="actionShowAttachedElements">
    <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
     <bool>true</bool>
    </property>
    <property name="icon">
@@ -1914,7 +2042,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/yellow pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/yellow pin.ico</iconset>
    </property>
    <property name="text">
-    <string>Attached Elements</string>
+    <string>Shared Elements</string>
    </property>
   </action>
   <action name="actionSimulationConfigure">
@@ -1975,6 +2103,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateEntity">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/person.ico</normaloff>:/icons3/resources/icons/pack3/ico/person.ico</iconset>
@@ -1987,6 +2118,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateEvent">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/calendar.ico</normaloff>:/icons3/resources/icons/pack3/ico/calendar.ico</iconset>
@@ -1999,6 +2133,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateAttribute">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/sum.ico</normaloff>:/icons3/resources/icons/pack3/ico/sum.ico</iconset>
@@ -2011,6 +2148,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimateStatistics">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/pie chart.ico</normaloff>:/icons3/resources/icons/pack3/ico/pie chart.ico</iconset>
@@ -2070,7 +2210,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/lightning.ico</normaloff>:/icons3/resources/icons/pack3/ico/lightning.ico</iconset>
    </property>
    <property name="text">
-    <string>Optimizator</string>
+    <string>Optimization</string>
    </property>
   </action>
   <action name="actionToolsParserGrammarChecker">
@@ -2079,7 +2219,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/percent.ico</normaloff>:/icons3/resources/icons/pack3/ico/percent.ico</iconset>
    </property>
    <property name="text">
-    <string>Parser Grammar</string>
+    <string>Parser Manager</string>
    </property>
   </action>
   <action name="actionViewGroup">
@@ -2119,24 +2259,15 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
   </action>
   <action name="actionAnimatePlot">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/3d bar chart.ico</normaloff>:/icons3/resources/icons/pack3/ico/3d bar chart.ico</iconset>
    </property>
    <property name="text">
     <string>Plot</string>
-   </property>
-  </action>
-  <action name="actionDiagrams">
-   <property name="checkable">
-    <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset theme="window-new">
-     <normaloff>.</normaloff>.</iconset>
-   </property>
-   <property name="text">
-    <string>Diagrams</string>
    </property>
   </action>
   <action name="actionActivateGraphicalSimulation">
@@ -2178,7 +2309,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons1/resources/icons/pack1/ico/200.ico</normaloff>:/icons1/resources/icons/pack1/ico/200.ico</iconset>
    </property>
    <property name="text">
-    <string>Parallelization</string>
+    <string>Shared Elements</string>
+   </property>
+  </action>
+  <action name="actionShowRecursiveElements">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset theme="x-office-address-book">
+     <normaloff>.</normaloff>.</iconset>
+   </property>
+   <property name="text">
+    <string>Recursive Elements</string>
    </property>
   </action>
  </widget>

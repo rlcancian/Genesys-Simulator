@@ -346,7 +346,7 @@ std::string Util::RunningPath() {
 #ifdef __linux__
     ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
 #elif _WIN32
-    // TODO: Get runningPath For windows
+    // @ToDo: (pequena alteração): Get runningPath For windows
     ssize_t count = readlink("/proc/self/exe", result, PATH_MAX);
 #endif
 	std::string fullfilename = std::string(result, (count > 0) ? count : 0);

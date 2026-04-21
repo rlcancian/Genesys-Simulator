@@ -1,20 +1,21 @@
 #include "AnimationTimer.h"
 #include "../graphicals/ModelGraphicsScene.h"
 
+#include <cmath>
+
 double AnimationTimer::_conversionFactorToSeconds = 1.0;
 
-AnimationTimer::AnimationTimer(ModelGraphicsScene* myScene) : _myScene(myScene), _isDrawingInicialized(true){
+AnimationTimer::AnimationTimer(ModelGraphicsScene* myScene) : _myScene(myScene), _isDrawingInicialized(true) {
     setFlags(QGraphicsItem::ItemIsMovable | QGraphicsItem::ItemIsSelectable | QGraphicsItem::ItemIsFocusable);
     setAcceptHoverEvents(true);
     setAcceptTouchEvents(true);
     setActive(true);
     setSelected(false);
-
-    if (_timeFormat == Util::TimeFormat(12))
-        _hours = 12;
+    //if (_timeFormat == Util::TimeFormat(12))
+    //    _hours = 12; // commented. I want time starts in zero 00:00:00
 }
 
-void AnimationTimer::paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) {
+void AnimationTimer::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
     Q_UNUSED(option);
     Q_UNUSED(widget);
 
@@ -22,12 +23,21 @@ void AnimationTimer::paint(QPainter *painter, const QStyleOptionGraphicsItem *op
     painter->setBrush(Qt::blue);
     painter->drawRect(boundingRect());
 
-    QString timeText = QString("%1:%2:%3").arg(_hours, 2, 10, QLatin1Char('0')).arg(_minutes, 2, 10, QLatin1Char('0')).arg(_seconds, 2, 10, QLatin1Char('0'));
-
+    QString timeText;
+    if (_showMicrosseconds) {
+        timeText = QString("%1:%2:%3.%4").arg(_hours, 2, 10, QLatin1Char('0')).arg(_minutes, 2, 10, QLatin1Char('0')).
+                                          arg(_seconds, 2, 10, QLatin1Char('0')).arg(
+                                              _microsseconds, 6, 10, QLatin1Char('0'));
+    }
+    else {
+        timeText = QString("%1:%2:%3").arg(_hours, 2, 10, QLatin1Char('0')).arg(_minutes, 2, 10, QLatin1Char('0')).
+                                       arg(_seconds, 2, 10, QLatin1Char('0'));
+    }
     QFont font = painter->font();
 
     // Ajusta o tamanho da fonte com base nas dimensões do retângulo
-    int fontSize = qMin(boundingRect().width() / 5, boundingRect().height() / 2); // Ajuste os valores conforme necessário
+    int fontSize = qMin(boundingRect().width() / 5, boundingRect().height() / 2);
+    // Ajuste os valores conforme necessário
     font.setPixelSize(fontSize);
 
     painter->setFont(font);
@@ -126,13 +136,13 @@ void AnimationTimer::setTimeFormat(Util::TimeFormat timeFormat) {
     _timeFormat = timeFormat;
 }
 
-void AnimationTimer::startDrawing(QGraphicsSceneMouseEvent *event) {
+void AnimationTimer::startDrawing(QGraphicsSceneMouseEvent* event) {
     _isResizing = true;
     _startPoint = event->scenePos();
     setPos(_startPoint);
 }
 
-void AnimationTimer::continueDrawing(QGraphicsSceneMouseEvent *event) {
+void AnimationTimer::continueDrawing(QGraphicsSceneMouseEvent* event) {
     if (_isResizing) {
         // Obtém a posição atual do mouse
         QPointF newPos = event->scenePos();
@@ -151,7 +161,7 @@ void AnimationTimer::continueDrawing(QGraphicsSceneMouseEvent *event) {
     }
 }
 
-void AnimationTimer::stopDrawing(QGraphicsSceneMouseEvent *event) {
+void AnimationTimer::stopDrawing(QGraphicsSceneMouseEvent* event) {
     // Cria um novo retângulo com as dimensões e posições corretas
     adjustSizeAndPosition(event);
 
@@ -162,7 +172,7 @@ void AnimationTimer::stopDrawing(QGraphicsSceneMouseEvent *event) {
     _isDrawingFinalized = true;
 }
 
-void AnimationTimer::adjustSizeAndPosition(QGraphicsSceneMouseEvent *event) {
+void AnimationTimer::adjustSizeAndPosition(QGraphicsSceneMouseEvent* event) {
     qreal minimunX = 0.0;
     qreal minimunY = 0.0;
 
@@ -207,47 +217,37 @@ void AnimationTimer::adjustSizeAndPosition(QGraphicsSceneMouseEvent *event) {
 }
 
 void AnimationTimer::convertSeconds() {
-    int remainingSeconds = 0;
     unsigned int timeFormatValue = static_cast<unsigned int>(_timeFormat);
+    const long long initialSeconds =
+            static_cast<long long>(_initialHours) * 3600
+            + static_cast<long long>(_initialMinutes) * 60
+            + static_cast<long long>(_initialSeconds);
+    const long long totalMicroseconds =
+            std::llround(_time * 1000000.0) + initialSeconds * 1000000LL;
+    const long long totalSeconds = totalMicroseconds / 1000000LL;
 
-    // Calculate horas
-    _hours = static_cast<int>(_time / 3600);
-
-    // Calcula os segundos restantes após as horas
-    remainingSeconds = static_cast<int>(_time) % 3600;
-
-    // Calcula os minutos
+    _microsseconds = static_cast<unsigned int>(totalMicroseconds % 1000000LL);
+    _hours = static_cast<unsigned int>(totalSeconds / 3600);
+    const unsigned int remainingSeconds = static_cast<unsigned int>(totalSeconds % 3600);
     _minutes = remainingSeconds / 60;
-
-    // Calcula os segundos finais
     _seconds = remainingSeconds % 60;
-
-    // Somar aos valores iniciais
-    _hours += _initialHours;
-    _minutes += _initialMinutes;
-    _seconds += _initialSeconds;
-
-    // Ajusta caso necessário
-    _minutes += _seconds / 60;
-    _seconds %= 60;
-
-    _hours += _minutes / 60;
-    _minutes %= 60;
 
     // Arruma de acordo com o formato de horas
     if (timeFormatValue == 24) {
         _hours %= timeFormatValue;
-    } else {
-        if (_hours == 0 || _hours == 24) {
-            _hours = 12;
-        } else if (_hours >= 1 && _hours <= 12) {
+    }
+    else {
+        //if (_hours == 0 || _hours == 24) {
+        //    _hours = 12;
+        //} else
+        if (_hours >= 1 && _hours <= 12) {
             // Horas entre 1 e 12 permanecem as mesmas
             _hours += 0;
-        } else if (_hours >= 13 && _hours <= 23) {
+        }
+        else if (_hours >= 13 && _hours <= 23) {
             _hours = _hours - 12;
         }
     }
-
 }
 
 bool AnimationTimer::isDrawingInicialized() {

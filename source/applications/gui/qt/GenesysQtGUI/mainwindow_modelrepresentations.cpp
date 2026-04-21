@@ -19,7 +19,7 @@
 #include "services/GraphicalModelBuilder.h"
 
 // Kernel
-#include "../../../../kernel/simulator/SinkModelComponent.h"
+#include "kernel/simulator/SinkModelComponent.h"
 
 #include <string>
 #include <fstream>
@@ -46,19 +46,36 @@
 #include <QRegularExpression>
 #include <QRandomGenerator>
 #include <QScrollBar>
+#include <QSignalBlocker>
 #include <QTimer>
 #include <QUrl>
 
 void MainWindow::_actualizeModelSimLanguage() {
     // Keep this wrapper as part of the final compatibility façade for model-language synchronization.
+    Model* model = simulator != nullptr && simulator->getModelManager() != nullptr
+                       ? simulator->getModelManager()->current()
+                       : nullptr;
+    if (model != nullptr && _modelTextHasChanged[model] && _modelTextContents.find(model) != _modelTextContents.end()) {
+        const QSignalBlocker blocker(ui->TextCodeEditor);
+        ui->TextCodeEditor->setPlainText(_modelTextContents[model]);
+        _textModelHasChanged = true;
+        return;
+    }
+
     _modelLanguageSynchronizer->actualizeModelSimLanguage();
+    if (model != nullptr) {
+        _modelTextContents[model] = ui->TextCodeEditor->toPlainText();
+        _modelTextHasChanged[model] = _textModelHasChanged;
+    }
 }
 
 void MainWindow::_clearModelEditors() {
     ui->TextCodeEditor->clear();
     ui->textEdit_Simulation->clear();
     ui->textEdit_Reports->clear();
-    ui->graphicsView->clear();
+    if (ui->graphicsView != nullptr) {
+        ui->graphicsView->clear();
+    }
     ui->plainTextEditCppCode->clear();
     ui->treeWidgetComponents->clear();
     ui->treeWidgetDataDefnitions->clear();
@@ -100,12 +117,19 @@ bool MainWindow::graphicalModelHasChanged() const {
 
 void MainWindow::setGraphicalModelHasChanged(bool graphicalModelHasChanged) {
     _graphicalModelHasChanged = graphicalModelHasChanged;
+    if (simulator != nullptr && simulator->getModelManager() != nullptr) {
+        if (Model* model = simulator->getModelManager()->current()) {
+            _modelGraphicalHasChanged[model] = graphicalModelHasChanged;
+        }
+    }
     _actualizeTabPanes();
 }
 
 bool MainWindow::_createModelImage() {
     // Keep this wrapper as part of the final compatibility façade for model image creation.
-    return _graphvizModelExporter->createModelImage();
+    // The Graphviz diagram tab is no longer visible, so this rendered PNG does not need to be regenerated.
+    // return _graphvizModelExporter->createModelImage();
+    return false;
 }
 
 //-----------------------------------------------------------------
@@ -119,12 +143,53 @@ bool MainWindow::_saveTextModel(QFile *saveFile, QString data)
 bool MainWindow::_saveGraphicalModel(QString filename)
 {
     // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
-    return _graphicalModelSerializer->saveGraphicalModel(filename);
+    const bool saved = _graphicalModelSerializer->saveGraphicalModel(filename);
+    if (saved && simulator != nullptr && simulator->getModelManager() != nullptr) {
+        if (Model* model = simulator->getModelManager()->current()) {
+            _modelFilenames[model] = _modelSaveBaseFilename(filename);
+            _updateModelTabs();
+        }
+    }
+    return saved;
 }
 
 Model *MainWindow::_loadGraphicalModel(std::string filename) {
     // Keep this wrapper as part of the final compatibility façade from Phase 2 refactor.
-    return _graphicalModelSerializer->loadGraphicalModel(filename);
+    ModelGraphicsView* previousView = ui->graphicsView;
+    ModelGraphicsView* loadView = nullptr;
+    bool createdLoadTab = false;
+
+    if (_modelGraphicsTabs != nullptr && ui->graphicsView != nullptr &&
+        _modelsByGraphicsView.find(ui->graphicsView) != _modelsByGraphicsView.end()) {
+        loadView = _createModelGraphicsView(_modelGraphicsTabs);
+        _modelGraphicsTabs->addTab(loadView, tr("Loading..."));
+        _modelGraphicsTabs->setCurrentWidget(loadView);
+        _activateModelGraphicsView(loadView);
+        createdLoadTab = true;
+    }
+
+    Model* model = _graphicalModelSerializer->loadGraphicalModel(filename);
+    if (model != nullptr) {
+        _modelGraphicsViews[model] = ui->graphicsView;
+        _modelsByGraphicsView[ui->graphicsView] = model;
+        _ensureRootModelViewContext(model, ui->graphicsView);
+        _modelFilenames[model] = _modelSaveBaseFilename(QString::fromStdString(filename));
+        _updateModelTabs();
+        return model;
+    }
+
+    if (createdLoadTab && loadView != nullptr) {
+        const int tabIndex = _modelGraphicsTabs->indexOf(loadView);
+        if (tabIndex >= 0) {
+            _modelGraphicsTabs->removeTab(tabIndex);
+        }
+        loadView->deleteLater();
+        if (previousView != nullptr) {
+            _modelGraphicsTabs->setCurrentWidget(previousView);
+            _activateModelGraphicsView(previousView);
+        }
+    }
+    return nullptr;
 }
 
 
@@ -142,6 +207,14 @@ void MainWindow::_actualizeModelTextHasChanged(bool hasChanged) {
     if (_textModelHasChanged != hasChanged) {
     }
     _textModelHasChanged = hasChanged;
+    if (simulator != nullptr && simulator->getModelManager() != nullptr) {
+        if (Model* model = simulator->getModelManager()->current()) {
+            _modelTextHasChanged[model] = hasChanged;
+            if (ui != nullptr && ui->TextCodeEditor != nullptr) {
+                _modelTextContents[model] = ui->TextCodeEditor->toPlainText();
+            }
+        }
+    }
 }
 
 void MainWindow::_actualizeModelDataDefinitions(bool force) {
@@ -173,9 +246,17 @@ void MainWindow::_initModelGraphicsView() {
     _connectSceneSignals();
 
     // Applies persisted overlay states to the graphics view when initializing a scene.
+    ui->graphicsView->getScene()->setGridVisible(ui->actionShowGrid->isChecked());
     ui->graphicsView->setRuleVisible(ui->actionShowRule->isChecked());
+    ui->graphicsView->getScene()->setSnapToGrid(ui->actionShowSnap->isChecked());
     ui->graphicsView->setGuidesVisible(ui->actionShowGuides->isChecked());
+    ui->graphicsView->getScene()->setShowStatisticsDataDefinitions(ui->actionShowInternalElements->isChecked());
+    ui->graphicsView->getScene()->setShowEditableDataDefinitions(ui->actionShowEditableElements->isChecked());
+    ui->graphicsView->getScene()->setShowSharedDataDefinitions(ui->actionShowAttachedElements->isChecked());
+    ui->graphicsView->getScene()->setShowRecursiveDataDefinitions(ui->actionShowRecursiveElements->isChecked());
 
-    // Cria uma stack undo/redo
-    ui->graphicsView->getScene()->setUndoStack(new QUndoStack(this));
+    // Each opened model tab owns its own scene and undo stack; keep it stable when tabs change.
+    if (ui->graphicsView->getScene()->getUndoStack() == nullptr) {
+        ui->graphicsView->getScene()->setUndoStack(new QUndoStack(ui->graphicsView->getScene()));
+    }
 }

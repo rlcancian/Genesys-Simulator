@@ -2,6 +2,7 @@
 #define ANIMATIONTRANSITION_H
 
 #include <QList>
+#include <QPainterPath>
 #include <QPointF>
 #include <QTimer>
 #include <QVariantAnimation>
@@ -72,6 +73,7 @@ private:
     static bool _pause;
     static bool _running;
     QList<QPointF> _pointsForAnimation;
+    QPainterPath _pathForAnimation;
     GraphicalImageAnimation* _imageAnimation;
     unsigned int _portNumber;
     qreal _currentProgress;
@@ -80,6 +82,7 @@ private:
     bool _isStopping;
     // Track whether finished callback was already handled.
     bool _isFinishedHandled;
+    bool _usesPathAnimation;
 };
 
 #endif // ANIMATIONTRANSITION_H

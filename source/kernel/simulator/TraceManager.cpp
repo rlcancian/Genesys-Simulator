@@ -104,7 +104,6 @@ void TraceManager::trace(std::string text, TraceManager::Level level) {
 		text = Util::Indent() + text;
 		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
 		TraceEvent e = TraceEvent(text, level);
-		/*  @TODO:--: somewhere in future it should be interesting to use "auto" and c++17 at least */
 		for (auto handler : *this->_traceHandlers->list()) {
 			handler(e);
 		}
@@ -146,7 +145,6 @@ void TraceManager::traceError(std::string text, std::exception e) {
 	text = Util::Indent() + text;
 	_errorMessages->insert(text);
 	TraceErrorEvent exceptEvent = TraceErrorEvent(text, e);
-	/*  @TODO:--: somewhere in future it should be interesting to use "auto" and c++17 at least */
 	for (auto handler : *this->_traceErrorHandlers->list()) {
 		handler(exceptEvent);
 	}
@@ -168,7 +166,6 @@ void TraceManager::traceSimulation(void* thisobject, std::string text, TraceMana
 		text = Util::Indent() + text;
 		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
 		TraceSimulationEvent e = TraceSimulationEvent(level, 0.0, nullptr, nullptr, text);
-		/*  @TODO:--: somewhere in future it should be interesting to use "auto" and c++17 at least */
 		for (auto handler : *this->_traceSimulationHandlers->list()) {
 			handler(e);
 		}

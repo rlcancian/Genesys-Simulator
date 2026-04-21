@@ -83,7 +83,7 @@ public:
 	std::string getPluginTypename() const;
 	// sets
 	void insertDynamicLibFileDependence(std::string filename);
-	// TODO(genesys|plugin-information|ownership): Clarify ownership for the incoming list pointer.
+	// @ToDo: (importante): Clarify ownership for the incoming list pointer.
 	// This setter currently replaces the internal raw pointer without documenting transfer semantics.
 	void setDynamicLibFilenameDependencies(std::list<std::string>* dynamicLibFilenameDependencies);
 	std::list<std::string>* getDynamicLibFilenameDependencies() const;
@@ -109,7 +109,7 @@ public:
 	unsigned short getMinimumInputs() const;
 	void setDescriptionHelp(std::string _descriptionHelp);
 	std::string getDescriptionHelp() const;
-	// TODO(genesys|plugin-information|ownership): Clarify ownership for the incoming fields map.
+	// @ToDo: (importante): Clarify ownership for the incoming fields map.
 	// This setter currently replaces the internal raw pointer without documenting lifetime expectations.
 	void setFields(std::map<std::string, std::string>* _fiewlds);
 	std::map<std::string, std::string>* getFields() const;
@@ -117,12 +117,13 @@ public:
 	std::string getLanguageTemplate() const;
 	void setCategory(std::string _category);
 	std::string getCategory() const;
+	static std::string categoryFolderName(const std::string& category);
 public:
 private:
 	std::string _author = "prof. Dr. Ing. Rafael Luiz Cancian";
 	std::string _date = "01/08/2018";
 	std::string _version = "0.9.1";
-	std::string _category = "Discrete Processing";
+	std::string _category = "DiscreteProcessing";
 	std::string _observation = "First implementation not fully completed nor tested. Use with caution.";
 	std::string _descriptionHelp = "";
 	std::string _languageTemplate = "";

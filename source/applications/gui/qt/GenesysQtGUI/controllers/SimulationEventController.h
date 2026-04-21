@@ -3,9 +3,9 @@
 
 #include <functional>
 
-#include "../../../../../kernel/simulator/ModelSimulation.h"
-#include "../../../../../kernel/simulator/OnEventManager.h"
-#include "../../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/OnEventManager.h"
+#include "kernel/simulator/Simulator.h"
 
 class MainWindow;
 class ModelGraphicsScene;
@@ -77,6 +77,8 @@ public:
     void onSimulationResumeHandler(SimulationEvent* re) const;
     /** @brief Handles simulation end event and performs delegated cleanup/refresh. */
     void onSimulationEndHandler(SimulationEvent* re) const;
+    /** @brief Handles replication end event and forces progress display completion. */
+    void onReplicationEndHandler(SimulationEvent* re) const;
     /** @brief Handles process-event updates for progress tables and scene refresh hooks. */
     void onProcessEventHandler(SimulationEvent* re) const;
     /** @brief Handles entity-create events for compatibility callback wiring. */

@@ -13,6 +13,7 @@
  */
 
 #include <cassert>
+#include <cstdarg>
 #include <cmath>
 #include <complex>
 #include <random>
@@ -160,8 +161,37 @@ double SamplerDefaultImpl1::sampleTriangular(double min, double mode, double max
 }
 
 double SamplerDefaultImpl1::sampleDiscrete(double prob, double value, ...) {
-	// @TODO: to implement
-	return 0.0;
+	if (prob <= 0.0) {
+		return value;
+	}
+	if (prob > 1.0) {
+		throw std::invalid_argument("disc requires cumulative probabilities in [0,1]");
+	}
+
+	const double x = random();
+	if (x <= prob || prob >= 1.0) {
+		return value;
+	}
+
+	double previousProb = prob;
+	double selectedValue = value;
+	va_list args;
+	va_start(args, value);
+	do {
+		prob = va_arg(args, double);
+		selectedValue = va_arg(args, double);
+		if (prob < previousProb || prob > 1.0) {
+			va_end(args);
+			throw std::invalid_argument("disc requires nondecreasing cumulative probabilities ending at 1");
+		}
+		if (x <= prob) {
+			va_end(args);
+			return selectedValue;
+		}
+		previousProb = prob;
+	} while (prob < 1.0);
+	va_end(args);
+	return selectedValue;
 }
 
 double SamplerDefaultImpl1::sampleDiscrete(double *prob, double *value, int size) {

@@ -4,6 +4,7 @@
 /cmake-build-*/
 build/
 /documentation/AI
+build-gui/
 
 # CMake
 CMakeCache.txt

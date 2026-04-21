@@ -2,8 +2,8 @@
 #define PROPERTYMANAGER_H
 
 // PropertyManager is currently a placeholder only.
-// Do not include Property.h here, or this header may collide with the
-// transitional PropertyBase alias used by the kernel-side control API.
+// Do not include Property.h here. This placeholder lives in the kernel tree,
+// but the kernel-side editable contract is SimulationControl/SimulationResponse.
 
 /**
  * @brief PropertyManager is currently a placeholder for future application-side property coordination.
