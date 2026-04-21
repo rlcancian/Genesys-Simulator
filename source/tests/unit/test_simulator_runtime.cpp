@@ -227,7 +227,7 @@ public:
     }
 
     void AttachOwnedProperty(SimulationControl* property) {
-        _addProperty(property);
+        _addSimulationControl(property);
     }
 
     void AttachData(const std::string& key, ModelDataDefinition* data) {
@@ -2751,7 +2751,7 @@ TEST(SimulatorRuntimeTest, SetSimulationControlExposesTypedListContract) {
     set.setAllowedElementTypes({Util::TypeOf<Resource>(), Util::TypeOf<Queue>()});
 
     SimulationControl* elementSetControl = nullptr;
-    for (SimulationControl* control : *set.getProperties()->list()) {
+    for (SimulationControl* control : *set.getSimulationControls()->list()) {
         if (control != nullptr && control->getName() == "ElementSet") {
             elementSetControl = control;
             break;
@@ -4845,7 +4845,7 @@ TEST(SimulatorRuntimeTest, AssignmentPropertiesContainerLifecycleWithModelConstr
     ASSERT_NE(model, nullptr);
 
     auto* assignment = new Assignment(model, "Entity.attrProps", "1", true);
-    auto* properties = assignment->getProperties();
+    auto* properties = assignment->getSimulationControls();
     ASSERT_NE(properties, nullptr);
     EXPECT_EQ(properties->size(), 3u);
 

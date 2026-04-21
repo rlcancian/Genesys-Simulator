@@ -21,22 +21,22 @@ List<SimulationScenario*>* ExperimentManagerDefaultImpl1::getScenarios() const {
 	return nullptr;
 }
 
-//List<PropertyBase*>* ExperimentManagerDefaultImpl1::getControls() const {
+//List<SimulationControl*>* ExperimentManagerDefaultImpl1::getControls() const {
 //	return _controls;
 //}
 
-//List<PropertyBase*>* ExperimentManagerDefaultImpl1::getResponses() const {
+//List<SimulationResponse*>* ExperimentManagerDefaultImpl1::getResponses() const {
 // @ToDo: (importante): implement
 //	return nullptr;
 //}
 
-//List<PropertyBase*>* ExperimentManagerDefaultImpl1::extractControlsFromModel(std::string modelFilename) const {
+//List<SimulationControl*>* ExperimentManagerDefaultImpl1::extractControlsFromModel(std::string modelFilename) const {
 // @ToDo: (importante): implement
 //	modelFilename = ""; //just to use it
 //	return nullptr;
 //}
 
-//List<PropertyBase*>* ExperimentManagerDefaultImpl1::extractResponsesFromModel(std::string modelFilename) const {
+//List<SimulationResponse*>* ExperimentManagerDefaultImpl1::extractResponsesFromModel(std::string modelFilename) const {
 // @ToDo: (importante): implement
 //	modelFilename = ""; // juts to use it
 //	return nullptr;

@@ -768,7 +768,7 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
         QtProperty* elementGroup = _groupManager->addProperty(groupName);
         property->addSubProperty(elementGroup);
 
-        List<SimulationControl*>* elementProperties = control->getEditableProperties(index);
+        List<SimulationControl*>* elementProperties = control->getEditableChildSimulationControls(index);
         if (elementProperties == nullptr) {
             QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
             emptyNode->setEnabled(false);
@@ -1328,7 +1328,7 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
         group->addSubProperty(refProperty);
     }
 
-    List<SimulationControl*>* childrenList = control->getEditableProperties();
+    List<SimulationControl*>* childrenList = control->getEditableChildSimulationControls();
     if (childrenList == nullptr) {
         QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
         emptyNode->setEnabled(false);
@@ -1359,7 +1359,7 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
     }
 
     const std::vector<GenesysPropertyDescriptor> properties =
-        GenesysPropertyIntrospection::describe(mdd->getProperties());
+        GenesysPropertyIntrospection::describe(mdd->getSimulationControls());
 
     std::map<std::string, QtProperty*> groups;
 

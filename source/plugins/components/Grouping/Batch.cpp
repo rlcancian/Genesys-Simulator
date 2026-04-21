@@ -90,12 +90,12 @@ Batch::Batch(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_parentModel->getControls()->insert(propSize);
 
 	// setting properties
-	_addProperty(propBatchType);
-    _addProperty(propRule);
-    _addProperty(propGroupedAttribs);
-	_addProperty(propGroupedEntity);
-	_addProperty(propAttributeName);
-	_addProperty(propSize);
+	_addSimulationControl(propBatchType);
+    _addSimulationControl(propRule);
+    _addSimulationControl(propGroupedAttribs);
+	_addSimulationControl(propGroupedEntity);
+	_addSimulationControl(propAttributeName);
+	_addSimulationControl(propSize);
 }
 
 std::string Batch::show() {

@@ -445,21 +445,11 @@ void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
 	_simulationControls->insert(control);
 }
 
-void ModelDataDefinition::_addProperty(SimulationControl* property) {
-	// Legacy compatibility wrapper.
-	_addSimulationControl(property);
-}
-
 /*
 void ModelDataDefinition::_addSimulationResponse(SimulationControl* response) {
 	_simulationResponses->insert(response); // @ToDo: (importante): Check if exists before insert?
 }
 */
-
-List<SimulationControl*>* ModelDataDefinition::getProperties() const {
-	// Legacy compatibility wrapper.
-	return getSimulationControls();
-}
 
 List<SimulationControl*>* ModelDataDefinition::getSimulationControls() const {
 	return _simulationControls;

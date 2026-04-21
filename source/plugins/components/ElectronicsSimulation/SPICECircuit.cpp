@@ -69,7 +69,7 @@ SPICECircuit::SPICECircuit(Model* model, std::string name)
 		Util::TypeOf<SPICECircuit>(), getName(), "Runner", "");
 
 	_parentModel->getControls()->insert(propRunner);
-	_addProperty(propRunner);
+	_addSimulationControl(propRunner);
 }
 
 

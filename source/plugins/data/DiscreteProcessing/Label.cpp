@@ -25,7 +25,7 @@ ModelDataDefinition* Label::NewInstance(Model* model, std::string name) {
 }
 
 Label::Label(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<Label>(), name) {
-//	_addProperty(new PropertyT<std::string>(Util::TypeOf<Label>(), "Label",
+//	_addSimulationControl(new PropertyT<std::string>(Util::TypeOf<Label>(), "Label",
 //			DefineGetter<Label,std::string>(this, &Label::getLabel),
 //			DefineSetter<Label,std::string>(this, &Label::setLabel)));
 
@@ -36,7 +36,7 @@ Label::Label(Model* model, std::string name) : ModelDataDefinition(model, Util::
 	_parentModel->getControls()->insert(propLabel);
 
 	// setting properties
-	_addProperty(propLabel);													
+	_addSimulationControl(propLabel);													
 }
 
 // static

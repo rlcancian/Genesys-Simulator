@@ -48,7 +48,7 @@ void collectEditableReferencedDataDefinitionIds(
             const int itemCount = static_cast<int>(descriptor.choices.size());
             for (int index = 0; index < itemCount; ++index) {
                 collectEditableReferencedDataDefinitionIds(
-                    control->getProperties(index),
+                    control->getChildSimulationControls(index),
                     ids,
                     recursionPath,
                     depth + 1
@@ -56,7 +56,7 @@ void collectEditableReferencedDataDefinitionIds(
             }
         } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
             collectEditableReferencedDataDefinitionIds(
-                control->getProperties(),
+                control->getChildSimulationControls(),
                 ids,
                 recursionPath,
                 depth + 1
@@ -76,7 +76,7 @@ QSet<Util::identification> editableDataDefinitionIds(Model* model) {
     if (model->getComponentManager() != nullptr) {
         for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
             if (component != nullptr) {
-                collectEditableReferencedDataDefinitionIds(component->getProperties(), ids, recursionPath);
+                collectEditableReferencedDataDefinitionIds(component->getSimulationControls(), ids, recursionPath);
             }
         }
     }
@@ -89,7 +89,7 @@ QSet<Util::identification> editableDataDefinitionIds(Model* model) {
             }
             for (ModelDataDefinition* definition : *definitions->list()) {
                 if (definition != nullptr) {
-                    collectEditableReferencedDataDefinitionIds(definition->getProperties(), ids, recursionPath);
+                    collectEditableReferencedDataDefinitionIds(definition->getSimulationControls(), ids, recursionPath);
                 }
             }
         }

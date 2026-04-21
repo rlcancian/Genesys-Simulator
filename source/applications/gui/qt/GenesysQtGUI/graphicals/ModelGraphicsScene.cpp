@@ -359,7 +359,7 @@ GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* 
                                                                         QPointF position, QColor color, bool notify,
                                                                         GraphicalModelComponent* autoConnectSource) {
     _propertyEditor->addElement(component);
-    for (auto prop : *component->getProperties()->list()) {
+    for (auto prop : *component->getSimulationControls()->list()) {
         if (prop->getIsList()) {
             (*(_propertyList))[prop] = new DataComponentProperty(_propertyEditor, prop, false);
         }

@@ -75,9 +75,7 @@ public:
 	unsigned int getLastPreferedOrder() const;
 	//void setComponentManager(ComponentManager* _componentManager);
 	List<SimulationControl*>* getSimulationControls() const;
-	List<SimulationControl*>* getProperties() const;
 	void _addSimulationControl(SimulationControl* control);
-	void _addProperty(SimulationControl* property);
 
 	std::string getTypeDC() { return _typeDC; };
 

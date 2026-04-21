@@ -49,7 +49,7 @@ Assign::Assign(Model* model, std::string name) : ModelComponent(model, Util::Typ
 
 	_parentModel->getControls()->insert(propAssignments);
 
-	_addProperty(propAssignments);
+	_addSimulationControl(propAssignments);
 }
 
 std::string Assign::show() {

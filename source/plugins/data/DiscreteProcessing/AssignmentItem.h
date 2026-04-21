@@ -52,8 +52,8 @@ public:
 	// TODO: don't have name
 	std::string getName() const;
 
-	List<SimulationControl*>* getProperties() const;
-    void _addProperty(SimulationControl* property);
+	List<SimulationControl*>* getSimulationControls() const;
+    void _addSimulationControl(SimulationControl* control);
 
 	std::string getTypeDC() {return _typeDC;};
 public:
@@ -66,7 +66,7 @@ private:
 	bool _isAttributeNotVariable = true;
 	std::string _typeDC;
 
-	List<SimulationControl*>* _properties = new List<SimulationControl*>();
+	List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
 };
 
 

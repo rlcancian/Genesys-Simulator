@@ -84,11 +84,11 @@ SPICERunner::SPICERunner(Model* model, std::string name) : ModelDataDefinition(m
     _parentModel->getControls()->insert(propWorkingOutputFilename);
     _parentModel->getControls()->insert(propWorkingDirectory);
 
-    _addProperty(propRunnerCommand);
-    _addProperty(propModelsPath);
-    _addProperty(propWorkingInputFilename);
-    _addProperty(propWorkingOutputFilename);
-    _addProperty(propWorkingDirectory);
+    _addSimulationControl(propRunnerCommand);
+    _addSimulationControl(propModelsPath);
+    _addSimulationControl(propWorkingInputFilename);
+    _addSimulationControl(propWorkingOutputFilename);
+    _addSimulationControl(propWorkingDirectory);
 }
 
 SPICERunner::~SPICERunner() {

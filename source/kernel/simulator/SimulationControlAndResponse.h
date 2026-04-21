@@ -155,7 +155,13 @@ public:
 	bool isReadOnly() const { return _readonly; }
 public:
     virtual void setValue(std::string value, bool remove=false) = 0;
-    virtual List<SimulationControl*>* getProperties(int index=0) { return nullptr; };
+    /**
+     * @brief Returns nested SimulationControls exposed by this control.
+     *
+     * This is the kernel-facing API for traversing child controls belonging to
+     * inline objects, references, or list elements represented by a control.
+     */
+    virtual List<SimulationControl*>* getChildSimulationControls(int index=0) { return nullptr; };
     virtual bool hasObjectInstance() const { return true; }
     virtual bool ensureObjectInstance() { return hasObjectInstance(); }
     virtual bool isModelDataDefinitionReference() const { return false; }
@@ -221,7 +227,7 @@ public:
         (void)value;
         return false;
     }
-    virtual List<SimulationControl*>* getEditableProperties(int index=0) {
+    virtual List<SimulationControl*>* getEditableChildSimulationControls(int index=0) {
         if (supportsInlineExpansion() && !hasObjectInstance()) {
             if (!supportsObjectCreation()) {
                 return nullptr;
@@ -230,7 +236,7 @@ public:
                 return nullptr;
             }
         }
-        return getProperties(index);
+        return getChildSimulationControls(index);
     }
 protected:
 	void _ensureWritable(const char* operation) const {
@@ -487,13 +493,6 @@ private:
 };
 
 
-// @ToDo: (importante): This compatibility alias keeps the current
-// kernel API working while the codebase migrates from the legacy PropertyBase
-// naming toward explicit SimulationResponse/SimulationControl types.
-typedef SimulationControl PropertyBase;
-
-// -----------------------------------------------------------
-
 template <typename T>
 using GetterGeneric = std::function<T()>;
 template <typename T>
@@ -706,11 +705,11 @@ public:
         return strOptions;
     }
 
-    virtual List<SimulationControl*>* getProperties(int index=0) override {
+    virtual List<SimulationControl*>* getChildSimulationControls(int index=0) override {
         T tVal = static_cast<T>(_getter());
 
         if (tVal) {
-            return tVal->getProperties();
+            return tVal->getSimulationControls();
         } else {
             return nullptr;
         }
@@ -798,11 +797,11 @@ public:
         return hasObjectInstance();
     }
 
-    virtual List<SimulationControl*>* getProperties(int index=0) override {
+    virtual List<SimulationControl*>* getChildSimulationControls(int index=0) override {
         T tVal = static_cast<T>(_getter());
 
         if (tVal) {
-            return tVal->getProperties();
+            return tVal->getSimulationControls();
         } else {
             return nullptr;
         }
@@ -1049,7 +1048,7 @@ public:
         return true;
     }
 
-    virtual List<SimulationControl*>* getProperties(int index=0) override {
+    virtual List<SimulationControl*>* getChildSimulationControls(int index=0) override {
 	        List<T>* tVal = static_cast<List<T>*>(_getter());
 	        T selectedElement = nullptr;
 
@@ -1062,7 +1061,7 @@ public:
         }
 
         if (selectedElement) {
-            return selectedElement->getProperties();
+            return selectedElement->getSimulationControls();
         } else {
             return nullptr;
         }

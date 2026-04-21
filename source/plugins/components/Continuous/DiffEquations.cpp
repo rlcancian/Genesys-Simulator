@@ -292,6 +292,6 @@ void DiffEquations::_createInternalAndAttachedData() {
 
 
 /*
-void DiffEquations::_addProperty(SimulationControl* property) {
+void DiffEquations::_addSimulationControl(SimulationControl* property) {
 }
 */

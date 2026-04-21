@@ -126,22 +126,12 @@ std::string QueueableItem::show() {
 	return "queueType=" + std::to_string(static_cast<int> (_queueableType)) + ",queue=\"" + (_queueOrSet != nullptr ? _queueOrSet->getName() : "") + "\",index=\"" + _index + "\"";
 }
 
-void QueueableItem::_addSimulationControl(PropertyBase* control) {
+void QueueableItem::_addSimulationControl(SimulationControl* control) {
 	_simulationControls->insert(control);
 }
 
-void QueueableItem::_addProperty(PropertyBase* property) {
-	// Legacy compatibility wrapper.
-	_addSimulationControl(property);
-}
-
-List<PropertyBase*>* QueueableItem::getSimulationControls() const {
+List<SimulationControl*>* QueueableItem::getSimulationControls() const {
 	return _simulationControls;
-}
-
-List<PropertyBase*>* QueueableItem::getProperties() const {
-	// Legacy compatibility wrapper.
-	return getSimulationControls();
 }
 
 void QueueableItem::setIndex(std::string index) {

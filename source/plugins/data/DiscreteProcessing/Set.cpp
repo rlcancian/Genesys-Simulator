@@ -77,8 +77,8 @@ Set::Set(Model* model, std::string name, std::vector<std::string> allowedElement
     _parentModel->getControls()->insert(propElementSet);
 
     // setting property
-    //_addProperty(propSetOfType);
-    _addProperty(propElementSet);
+    //_addSimulationControl(propSetOfType);
+    _addSimulationControl(propElementSet);
 }
 
 Set::~Set() {

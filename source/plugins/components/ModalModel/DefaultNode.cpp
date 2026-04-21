@@ -297,6 +297,6 @@ void DefaultNode::_createInternalAndAttachedData() {
 */
 
 /*
-void DefaultNode::_addProperty(SimulationControl* property) {
+void DefaultNode::_addSimulationControl(SimulationControl* property) {
 }
 */

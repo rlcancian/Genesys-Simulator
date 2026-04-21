@@ -38,7 +38,7 @@ Station::Station(Model* model, std::string name) : ModelDataDefinition(model, Ut
     // _parentModel->getControls()->insert(propEnterIntoStation);
 
 	// setting properties
-    // _addProperty(propEnterIntoStation);
+    // _addSimulationControl(propEnterIntoStation);
 }
 
 Station::~Station() {

@@ -79,13 +79,13 @@ BioReaction::BioReaction(Model* model, std::string name) : ModelDataDefinition(m
 	_parentModel->getControls()->insert(propReverseKineticLawExpression);
 	_parentModel->getControls()->insert(propReversible);
 
-	_addProperty(propRateConstant);
-	_addProperty(propRateConstantParameterName);
-	_addProperty(propReverseRateConstant);
-	_addProperty(propReverseRateConstantParameterName);
-	_addProperty(propKineticLawExpression);
-	_addProperty(propReverseKineticLawExpression);
-	_addProperty(propReversible);
+	_addSimulationControl(propRateConstant);
+	_addSimulationControl(propRateConstantParameterName);
+	_addSimulationControl(propReverseRateConstant);
+	_addSimulationControl(propReverseRateConstantParameterName);
+	_addSimulationControl(propKineticLawExpression);
+	_addSimulationControl(propReverseKineticLawExpression);
+	_addSimulationControl(propReversible);
 }
 
 PluginInformation* BioReaction::GetPluginInformation() {

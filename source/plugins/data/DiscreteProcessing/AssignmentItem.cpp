@@ -66,9 +66,9 @@ Assignment::Assignment(Model* model, std::string destination, std::string expres
 	model->getControls()->insert(propAttributeNotVariable);
 
 	// setting properties
-    _addProperty(propDestination);
-    _addProperty(propExpression);
-	_addProperty(propAttributeNotVariable);
+    _addSimulationControl(propDestination);
+    _addSimulationControl(propExpression);
+	_addSimulationControl(propAttributeNotVariable);
 }
 
 Assignment::Assignment(std::string destination, std::string expression, bool isAttributeNotVariable) {
@@ -81,7 +81,7 @@ Assignment::Assignment(std::string destination, std::string expression, bool isA
 };
 
 Assignment::~Assignment() {
-	delete _properties;
+    delete _simulationControls;
 }
 
 void Assignment::setDestination(std::string _destination) {
@@ -113,12 +113,12 @@ bool Assignment::isAttributeNotVariable() const {
 	return _isAttributeNotVariable;
 }
 
-void Assignment::_addProperty(SimulationControl* property) {
-    _properties->insert(property);
+void Assignment::_addSimulationControl(SimulationControl* control) {
+    _simulationControls->insert(control);
 }
 
-List<SimulationControl*>* Assignment::getProperties() const {
-    return _properties;
+List<SimulationControl*>* Assignment::getSimulationControls() const {
+    return _simulationControls;
 }
 
 bool Assignment::loadInstance(PersistenceRecord *fields, unsigned int parentIndex) {

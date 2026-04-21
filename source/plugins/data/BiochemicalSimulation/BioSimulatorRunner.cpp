@@ -226,20 +226,20 @@ BioSimulatorRunner::BioSimulatorRunner(Model* model, std::string name) : ModelDa
 	_parentModel->getControls()->insert(propTimeoutSeconds);
 	_parentModel->getControls()->insert(propAutoValidateModel);
 
-	_addProperty(propBackend);
-	_addProperty(propModelSourceType);
-	_addProperty(propModelSource);
-	_addProperty(propCommand);
-	_addProperty(propLastStatus);
-	_addProperty(propLastErrorMessage);
-	_addProperty(propLastResponsePayload);
-	_addProperty(propLastResponseFilename);
-	_addProperty(propWorkingDirectory);
-	_addProperty(propWorkingInputFilename);
-	_addProperty(propWorkingOutputFilename);
-	_addProperty(propEndpointOrLibrary);
-	_addProperty(propTimeoutSeconds);
-	_addProperty(propAutoValidateModel);
+	_addSimulationControl(propBackend);
+	_addSimulationControl(propModelSourceType);
+	_addSimulationControl(propModelSource);
+	_addSimulationControl(propCommand);
+	_addSimulationControl(propLastStatus);
+	_addSimulationControl(propLastErrorMessage);
+	_addSimulationControl(propLastResponsePayload);
+	_addSimulationControl(propLastResponseFilename);
+	_addSimulationControl(propWorkingDirectory);
+	_addSimulationControl(propWorkingInputFilename);
+	_addSimulationControl(propWorkingOutputFilename);
+	_addSimulationControl(propEndpointOrLibrary);
+	_addSimulationControl(propTimeoutSeconds);
+	_addSimulationControl(propAutoValidateModel);
 }
 
 PluginInformation* BioSimulatorRunner::GetPluginInformation() {

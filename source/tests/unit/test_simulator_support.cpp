@@ -731,7 +731,7 @@ TEST(SimulatorSupportTest, DefineSimulationGetterAndSetterBindKernelMethods) {
 }
 
 TEST(SimulatorSupportTest, ModelDataDefinitionGetPropertiesNowReturnsSimulationControlList) {
-    using ReturnType = decltype(std::declval<const ModelDataDefinition*>()->getProperties());
+    using ReturnType = decltype(std::declval<const ModelDataDefinition*>()->getSimulationControls());
     constexpr bool is_expected = std::is_same_v<ReturnType, List<SimulationControl*>*>;
     EXPECT_TRUE(is_expected);
 }

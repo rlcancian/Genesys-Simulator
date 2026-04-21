@@ -44,9 +44,9 @@ OLD_ODEelement::OLD_ODEelement(Model* model, std::string name) : ModelDataDefini
     // _parentModel->getControls()->insert(propODEfunctions);
 
 	// setting properties
-	_addProperty(propStepH);
-	_addProperty(propEndTime);
-    // _addProperty(propODEfunctions);
+	_addSimulationControl(propStepH);
+	_addSimulationControl(propEndTime);
+    // _addSimulationControl(propODEfunctions);
 }
 
 std::string OLD_ODEelement::show() {

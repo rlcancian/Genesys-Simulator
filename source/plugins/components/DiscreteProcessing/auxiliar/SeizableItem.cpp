@@ -239,18 +239,8 @@ void SeizableItem::_addSimulationControl(SimulationControl* control) {
     _simulationControls->insert(control);
 }
 
-void SeizableItem::_addProperty(SimulationControl* property) {
-    // Legacy compatibility wrapper.
-    _addSimulationControl(property);
-}
-
 List<SimulationControl*>* SeizableItem::getSimulationControls() const {
     return _simulationControls;
-}
-
-List<SimulationControl*>* SeizableItem::getProperties() const {
-    // Legacy compatibility wrapper.
-    return getSimulationControls();
 }
 
 void SeizableItem::setIndex(std::string index) {

@@ -105,7 +105,7 @@ void CppModelExporter::actualizeModelCppCode() const {
                 if (name.find(".") == std::string::npos) {
                     text += addCppCodeLine(ddClassname + "* " + name + " = plugins->newInstance<" + ddClassname + ">(model, \"" + name + "\");", tabs);
                 }
-                for (auto prop : *modeldata->getProperties()->list()) {
+                for (auto prop : *modeldata->getSimulationControls()->list()) {
                     text += addCppCodeLine("SimulationControl* property = propertyEditor->findProperty(" + std::to_string(modeldata->getId()) + ", " + prop->getName() + ");", tabs);
                     text += addCppCodeLine("propertyEditor->changeProperty(property, " + prop->getValue() + ", false);", tabs);
                 }

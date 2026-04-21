@@ -76,7 +76,7 @@ void collectEditableReferencedDataDefinitions(
             const int itemCount = static_cast<int>(desc.choices.size());
             for (int index = 0; index < itemCount; ++index) {
                 collectEditableReferencedDataDefinitions(
-                    control->getProperties(index),
+                    control->getChildSimulationControls(index),
                     names,
                     recursionPath,
                     depth + 1
@@ -84,7 +84,7 @@ void collectEditableReferencedDataDefinitions(
             }
         } else if (desc.supportsInlineExpansion && control->hasObjectInstance()) {
             collectEditableReferencedDataDefinitions(
-                control->getProperties(),
+                control->getChildSimulationControls(),
                 names,
                 recursionPath,
                 depth + 1
@@ -111,7 +111,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
         for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
             if (component != nullptr) {
                 collectEditableReferencedDataDefinitions(
-                    component->getProperties(),
+                    component->getSimulationControls(),
                     names,
                     recursionPath
                     );
@@ -128,7 +128,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
             for (ModelDataDefinition* dataDefinition : *dataDefinitions->list()) {
                 if (dataDefinition != nullptr) {
                     collectEditableReferencedDataDefinitions(
-                        dataDefinition->getProperties(),
+                        dataDefinition->getSimulationControls(),
                         names,
                         recursionPath
                         );

@@ -223,7 +223,7 @@ namespace {
                         // category even though they are attached to another GMDD instead of a GMC.
                         editableDefinitions->insert(listElement);
                     }
-                    collectEditableReferencedDataDefinitions(control->getProperties(index),
+                    collectEditableReferencedDataDefinitions(control->getChildSimulationControls(index),
                                                              editableDefinitions,
                                                              recursionPath,
                                                              hasModelLevelFilter,
@@ -231,7 +231,7 @@ namespace {
                                                              depth + 1);
                 }
             } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
-                collectEditableReferencedDataDefinitions(control->getProperties(),
+                collectEditableReferencedDataDefinitions(control->getChildSimulationControls(),
                                                          editableDefinitions,
                                                          recursionPath,
                                                          hasModelLevelFilter,
@@ -288,11 +288,11 @@ namespace {
                                                              bool hasModelLevelFilter,
                                                              unsigned int modelLevelFilter) {
         if (component == nullptr || editableDefinitions == nullptr
-            || component->getProperties() == nullptr || component->getAttachedData() == nullptr) {
+            || component->getSimulationControls() == nullptr || component->getAttachedData() == nullptr) {
             return;
         }
 
-        for (SimulationControl* control : *component->getProperties()->list()) {
+        for (SimulationControl* control : *component->getSimulationControls()->list()) {
             const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
             for (const auto& attachedData : *component->getAttachedData()) {
                 ModelDataDefinition* dataDefinition = attachedData.second;
@@ -319,7 +319,7 @@ namespace {
         if (model->getComponentManager() != nullptr) {
             for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
                 if (belongsToModelLevel(component, hasModelLevelFilter, modelLevelFilter)) {
-                    collectEditableReferencedDataDefinitions(component->getProperties(),
+                    collectEditableReferencedDataDefinitions(component->getSimulationControls(),
                                                              &editableDefinitions,
                                                              &recursionPath,
                                                              hasModelLevelFilter,
@@ -340,7 +340,7 @@ namespace {
                 }
                 for (ModelDataDefinition* dataDefinition : *definitions->list()) {
                     if (belongsToModelLevel(dataDefinition, hasModelLevelFilter, modelLevelFilter)) {
-                        collectEditableReferencedDataDefinitions(dataDefinition->getProperties(),
+                        collectEditableReferencedDataDefinitions(dataDefinition->getSimulationControls(),
                                                                  &editableDefinitions,
                                                                  &recursionPath,
                                                                  hasModelLevelFilter,
@@ -415,7 +415,7 @@ namespace {
                 for (int index = 0; index < itemCount; ++index) {
                     handleReferencedDataDefinition(control->getListElementModelDataDefinition(index));
                     collectVisibleReferencedDataDefinitions(
-                        control->getProperties(index),
+                        control->getChildSimulationControls(index),
                         scene,
                         editableDefinitions,
                         visibleDataDefinitions,
@@ -428,7 +428,7 @@ namespace {
                 }
             } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
                 collectVisibleReferencedDataDefinitions(
-                    control->getProperties(),
+                    control->getChildSimulationControls(),
                     scene,
                     editableDefinitions,
                     visibleDataDefinitions,
@@ -499,7 +499,7 @@ namespace {
                 for (int index = 0; index < itemCount; ++index) {
                     appendReferencedDataDefinition(control->getListElementModelDataDefinition(index));
                     collectPropertyReferencedLayoutLinks(
-                        control->getProperties(index),
+                        control->getChildSimulationControls(index),
                         dataDefinitionMap,
                         visibleCategories,
                         upperLinks,
@@ -511,7 +511,7 @@ namespace {
                 }
             } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
                 collectPropertyReferencedLayoutLinks(
-                    control->getProperties(),
+                    control->getChildSimulationControls(),
                     dataDefinitionMap,
                     visibleCategories,
                     upperLinks,
@@ -869,7 +869,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
 
         collectVisibleReferencedDataDefinitions(
-            owner->getProperties(),
+            owner->getSimulationControls(),
             scene,
             editablePropertyDataDefinitions,
             &visibleDataDefinitions,
@@ -921,7 +921,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
 
         std::set<const SimulationControl*> componentPropertyRecursionPath;
-        collectVisibleReferencedDataDefinitions(component->getProperties(),
+        collectVisibleReferencedDataDefinitions(component->getSimulationControls(),
                                                scene,
                                                editablePropertyDataDefinitions,
                                                &visibleDataDefinitions,
@@ -1122,7 +1122,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
 
         std::set<const SimulationControl*> propertyRecursionPath;
-        collectPropertyReferencedLayoutLinks(component->getProperties(),
+        collectPropertyReferencedLayoutLinks(component->getSimulationControls(),
                                             dataDefinitionMap,
                                             visibleCategories,
                                             &upperLinks,
@@ -1216,7 +1216,7 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
         }
 
         std::set<const SimulationControl*> propertyRecursionPath;
-        collectPropertyReferencedLayoutLinks(parentDefinition->getProperties(),
+        collectPropertyReferencedLayoutLinks(parentDefinition->getSimulationControls(),
                                             dataDefinitionMap,
                                             visibleCategories,
                                             &childLinks,

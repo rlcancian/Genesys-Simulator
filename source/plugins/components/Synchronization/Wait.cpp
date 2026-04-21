@@ -61,10 +61,10 @@ Wait::Wait(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<
 	_parentModel->getControls()->insert(propExpression);
 
 	// setting properties
-	_addProperty(propQueue);
-    _addProperty(propWaitType);
-	_addProperty(propCondition);
-	_addProperty(propExpression);
+	_addSimulationControl(propQueue);
+    _addSimulationControl(propWaitType);
+	_addSimulationControl(propCondition);
+	_addSimulationControl(propExpression);
 }
 
 // public

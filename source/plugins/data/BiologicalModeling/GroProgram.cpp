@@ -27,7 +27,7 @@ GroProgram::GroProgram(Model* model, std::string name) : ModelDataDefinition(mod
 			Util::TypeOf<GroProgram>(), getName(), "SourceCode",
 			"Gro source code associated with this reusable program");
 	_parentModel->getControls()->insert(propSourceCode);
-	_addProperty(propSourceCode);
+	_addSimulationControl(propSourceCode);
 }
 
 std::string GroProgram::show() {

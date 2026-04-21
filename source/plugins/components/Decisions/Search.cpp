@@ -146,13 +146,13 @@ Search::Search(Model* model, std::string name) : ModelComponent(model, Util::Typ
     _parentModel->getControls()->insert(propSearchInType);
 
 	// setting properties
-	_addProperty(propStart);
-	_addProperty(propEnd);
-	_addProperty(propCondition);
-	_addProperty(propSaveAttribute);
-	_addProperty(propSearchInName);
-	_addProperty(propSearchIn);
-    _addProperty(propSearchInType);
+	_addSimulationControl(propStart);
+	_addSimulationControl(propEnd);
+	_addSimulationControl(propCondition);
+	_addSimulationControl(propSaveAttribute);
+	_addSimulationControl(propSearchInName);
+	_addSimulationControl(propSearchIn);
+    _addSimulationControl(propSearchInType);
 }
 
 std::string Search::show() {

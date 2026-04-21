@@ -80,14 +80,14 @@ Failure::Failure(Model* model, std::string name) : ModelDataDefinition(model, Ut
 	_parentModel->getControls()->insert(propFalingResources);
 
 	// setting properties
-	_addProperty(propFailureType);
-	_addProperty(propCountExpression);
-	_addProperty(propDownUnitTime);
-	_addProperty(propDownTimeExpression);
-	_addProperty(propUpUnitTime);
-	_addProperty(propUpTimeExpression);
-	_addProperty(propFailureRule);
-	_addProperty(propFalingResources);
+	_addSimulationControl(propFailureType);
+	_addSimulationControl(propCountExpression);
+	_addSimulationControl(propDownUnitTime);
+	_addSimulationControl(propDownTimeExpression);
+	_addSimulationControl(propUpUnitTime);
+	_addSimulationControl(propUpTimeExpression);
+	_addSimulationControl(propFailureRule);
+	_addSimulationControl(propFalingResources);
 }
 
 Failure::~Failure() {

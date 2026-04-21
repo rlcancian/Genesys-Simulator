@@ -164,5 +164,5 @@ std::vector<SimulationControl*> GenesysPropertyIntrospection::children(
     if (control == nullptr) {
         return {};
     }
-    return _copyControlList(control->getProperties(index));
+    return _copyControlList(control->getChildSimulationControls(index));
 }

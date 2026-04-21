@@ -190,14 +190,14 @@ BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(mod
 	_parentModel->getControls()->insert(propLastErrorMessage);
 	_parentModel->getControls()->insert(propLastResponsePayload);
 
-	_addProperty(propStartTime);
-	_addProperty(propStopTime);
-	_addProperty(propStepSize);
-	_addProperty(propCurrentTime);
-	_addProperty(propAutoSchedule);
-	_addProperty(propLastStatus);
-	_addProperty(propLastErrorMessage);
-	_addProperty(propLastResponsePayload);
+	_addSimulationControl(propStartTime);
+	_addSimulationControl(propStopTime);
+	_addSimulationControl(propStepSize);
+	_addSimulationControl(propCurrentTime);
+	_addSimulationControl(propAutoSchedule);
+	_addSimulationControl(propLastStatus);
+	_addSimulationControl(propLastErrorMessage);
+	_addSimulationControl(propLastResponsePayload);
 }
 
 PluginInformation* BioNetwork::GetPluginInformation() {

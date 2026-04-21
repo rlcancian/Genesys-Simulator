@@ -189,7 +189,7 @@ bool CppSerializer::dump(std::ostream& output) {
     output << indent(2) << "control->setValue(value);\n";
     output << indent(2) << "return;\n";
     output << indent(1) << "}\n";
-    output << indent(1) << "throw std::runtime_error(\"Property not found: \" + propertyName);\n";
+    output << indent(1) << "throw std::runtime_error(\"SimulationControl not found: \" + propertyName);\n";
     output << indent(0) << "}\n";
     output << indent(0) << "\n";
 

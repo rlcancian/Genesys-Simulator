@@ -97,10 +97,10 @@ Remove::Remove(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_parentModel->getControls()->insert(propRemoveStart);
 	_parentModel->getControls()->insert(propRemoveEnd);
 
-	_addProperty(propRemoveFrom);
-    _addProperty(propRemoveType);
-	_addProperty(propRemoveStart);
-	_addProperty(propRemoveEnd);
+	_addSimulationControl(propRemoveFrom);
+    _addSimulationControl(propRemoveType);
+	_addSimulationControl(propRemoveStart);
+	_addSimulationControl(propRemoveEnd);
 }
 
 std::string Remove::show() {

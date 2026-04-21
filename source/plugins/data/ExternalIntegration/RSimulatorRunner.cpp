@@ -164,17 +164,17 @@ RSimulatorRunner::RSimulatorRunner(Model* model, std::string name)
 	_parentModel->getControls()->insert(propLastScriptFilename);
 	_parentModel->getControls()->insert(propLastResponseFilename);
 
-	_addProperty(propRExecutable);
-	_addProperty(propWorkingDirectory);
-	_addProperty(propPreludeScript);
-	_addProperty(propCommand);
-	_addProperty(propLastStatus);
-	_addProperty(propLastExitCode);
-	_addProperty(propLastStdout);
-	_addProperty(propLastStderr);
-	_addProperty(propLastResponsePayload);
-	_addProperty(propLastScriptFilename);
-	_addProperty(propLastResponseFilename);
+	_addSimulationControl(propRExecutable);
+	_addSimulationControl(propWorkingDirectory);
+	_addSimulationControl(propPreludeScript);
+	_addSimulationControl(propCommand);
+	_addSimulationControl(propLastStatus);
+	_addSimulationControl(propLastExitCode);
+	_addSimulationControl(propLastStdout);
+	_addSimulationControl(propLastStderr);
+	_addSimulationControl(propLastResponsePayload);
+	_addSimulationControl(propLastScriptFilename);
+	_addSimulationControl(propLastResponseFilename);
 }
 
 PluginInformation* RSimulatorRunner::GetPluginInformation() {

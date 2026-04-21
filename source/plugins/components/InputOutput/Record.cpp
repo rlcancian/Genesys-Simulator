@@ -49,10 +49,10 @@ Record::Record(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_parentModel->getControls()->insert(propFilename);
 
 	// setting properties
-	_addProperty(propTime);
-	_addProperty(propExpression);
-	_addProperty(propExpressionName);
-	_addProperty(propFilename);
+	_addSimulationControl(propTime);
+	_addSimulationControl(propExpression);
+	_addSimulationControl(propExpressionName);
+	_addSimulationControl(propFilename);
 }
 
 Record::~Record() {
