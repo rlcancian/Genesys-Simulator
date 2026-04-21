@@ -280,6 +280,19 @@ public:
     bool showAttachedDataDefinitions() const;
     void setConnectionGeometryUpdatesBlocked(bool blocked);
     bool areConnectionGeometryUpdatesBlocked() const;
+    /**
+     * @brief Enables or disables all runtime simulation animations for this scene.
+     *
+     * When disabled, transition, queue, counter, variable, timer, plot and other runtime
+     * animation work is skipped entirely so the simulation does not spend time animating.
+     */
+    void setSimulationAnimationsEnabled(bool enabled);
+    /** @brief Returns whether runtime simulation animations are enabled for this scene. */
+    bool simulationAnimationsEnabled() const;
+    /** @brief Sets the default runtime animation state applied to newly created scenes. */
+    static void setDefaultSimulationAnimationsEnabled(bool enabled);
+    /** @brief Returns the GUI-session default runtime animation state for new scenes. */
+    static bool defaultSimulationAnimationsEnabled();
 
 public:
     QList<QGraphicsItem*>*getGraphicalModelDataDefinitions() const;
@@ -403,6 +416,8 @@ private:
     bool _showEditableDataDefinitions = true;
     bool _showSharedDataDefinitions = true;
     bool _showRecursiveDataDefinitions = true;
+    bool _simulationAnimationsEnabled = true;
+    static bool _defaultSimulationAnimationsEnabled;
     // Rendering scope used by root/submodel tabs. The filter is intentionally scene-local so
     // static graphical synchronization calls can keep the same scope as the active view.
     bool _hasModelLevelFilter = false;
