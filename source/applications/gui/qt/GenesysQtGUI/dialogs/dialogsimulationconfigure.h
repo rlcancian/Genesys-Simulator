@@ -24,6 +24,13 @@ public:
 	void setModelSimulation(ModelSimulation* modelSimulation);
 	void setExperimentManager(ExperimentManager* experimentManager);
 	void setParallelizationSettings(bool* enabled, int* localThreads, int* batchSize);
+	/**
+	 * @brief Binds the GUI-session flag that globally enables or disables simulation animations.
+	 *
+	 * This setting is intentionally kept in the GUI layer because it controls whether graphical
+	 * animation work should be executed at runtime, without changing kernel simulation semantics.
+	 */
+	void setSimulationAnimationsEnabled(bool* enabled);
 
 public slots:
 	void accept() override;
@@ -49,6 +56,7 @@ private:
 		bool distributedParallelizationEnabled = false;
 		std::string distributedCoordinatorUrl;
 		std::string distributedToken;
+		bool simulationAnimationsEnabled = true;
 	};
 
 	void _populateTimeUnitComboBoxes();
@@ -56,6 +64,8 @@ private:
 	void _loadSimulationReporter();
 	void _loadExperimentManager();
 	void _loadParallelizationSettings();
+	/** @brief Loads the current GUI-session animation toggle into the dialog widgets. */
+	void _loadSimulationAnimationSettings();
 	SimulationConfiguration _configurationFromUi() const;
 	bool _hasPendingChanges() const;
 	Util::TimeUnit _timeUnitFromComboBox(const QComboBox* comboBox) const;
@@ -69,6 +79,7 @@ private:
 	bool* _parallelizationEnabled = nullptr;
 	int* _parallelizationThreads = nullptr;
 	int* _parallelizationBatchSize = nullptr;
+	bool* _simulationAnimationsEnabled = nullptr;
 	SimulationConfiguration _originalConfiguration;
 };
 
