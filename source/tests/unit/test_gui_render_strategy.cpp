@@ -207,6 +207,30 @@ TEST(GuiDataDefinitionLayout, LowerArcPlacesNonEditableChildrenBelowAnchorWithou
     EXPECT_GT(right.x() - left.x(), gmddSize.width());
 }
 
+TEST(GuiDataDefinitionLayout, RadialLayerKeepsUpperChildrenOnSameArcSide) {
+    const QRectF parentBounds(300.0, 260.0, 180.0, 63.0);
+    const QSizeF gmddSize(180.0, 63.0);
+
+    const QPointF firstLayer = GraphicalDataDefinitionLayout::arcPosition(parentBounds, gmddSize, 1, 3, true);
+    const QPointF secondLayer = GraphicalDataDefinitionLayout::arcPosition(parentBounds, gmddSize, 1, 3, true, 1);
+
+    EXPECT_NEAR(firstLayer.x(), secondLayer.x(), 0.001);
+    EXPECT_LT(secondLayer.y(), firstLayer.y());
+    EXPECT_LT(secondLayer.y() + gmddSize.height(), parentBounds.top());
+}
+
+TEST(GuiDataDefinitionLayout, RadialLayerKeepsLowerChildrenOnSameArcSide) {
+    const QRectF parentBounds(300.0, 260.0, 180.0, 63.0);
+    const QSizeF gmddSize(180.0, 63.0);
+
+    const QPointF firstLayer = GraphicalDataDefinitionLayout::arcPosition(parentBounds, gmddSize, 1, 3, false);
+    const QPointF secondLayer = GraphicalDataDefinitionLayout::arcPosition(parentBounds, gmddSize, 1, 3, false, 1);
+
+    EXPECT_NEAR(firstLayer.x(), secondLayer.x(), 0.001);
+    EXPECT_GT(secondLayer.y(), firstLayer.y());
+    EXPECT_GT(secondLayer.y(), parentBounds.bottom());
+}
+
 int main(int argc, char** argv) {
     qputenv("QT_QPA_PLATFORM", QByteArray("offscreen"));
     QApplication app(argc, argv);

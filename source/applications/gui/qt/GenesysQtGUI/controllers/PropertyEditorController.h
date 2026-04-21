@@ -11,6 +11,8 @@ class SimulationControl;
 class DataComponentProperty;
 class DataComponentEditor;
 class ComboBoxEnum;
+class ModelDataDefinition;
+class QObject;
 
 // Document the property-editor controller and post-commit synchronization pipeline.
 /**
@@ -53,6 +55,8 @@ public:
     void onPropertyEditorModelChanged() const;
     /** @brief Clears property editor selection/bindings during lifecycle resets. */
     void clearPropertyEditorSelection() const;
+    /** @brief Binds a DataDefinition selected from the inspector tree to the property editor. */
+    void bindDataDefinitionFromInspector(ModelDataDefinition* dataDefinition, QObject* graphicalObject = nullptr) const;
     /** @brief Reports whether the deferred global refresh pipeline is active. */
     bool isPostCommitPipelineActive() const;
 

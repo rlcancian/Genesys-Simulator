@@ -21,7 +21,7 @@
 // Model Components
 #include "plugins/components/DiscreteProcessing/Create.h"
 #include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "plugins/components/Decisions/Signal.h"
+#include "plugins/components/Synchronization/Signal.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "../../../TraitsApp.h"
 

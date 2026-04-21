@@ -304,13 +304,14 @@ bool PluginManager::_insert(Plugin * plugin, const PluginInsertionOptions& optio
 		return false;
 	}
 	PluginInformation *plugInfo = plugin->getPluginInfo();
-	if (plugin->isIsValidPlugin() && plugInfo != nullptr) {
+    std::string pluginname = plugin->getPluginInfo()->getPluginTypename();
+    if (plugin->isIsValidPlugin() && plugInfo != nullptr) {
 		std::string msg = "Inserting ";
 		if (plugInfo->isComponent())
 			msg += "component";
 		else
 			msg += "modeldatum";
-		msg += " plugin \"" + plugin->getPluginInfo()->getPluginTypename() + "\"";
+		msg += " plugin \"" + pluginname + "\"";
 		_simulator->getTraceManager()->trace(msg);
 		if (this->find(plugInfo->getPluginTypename()) != nullptr) { // plugin alread exists
 			Util::IncIndent();
@@ -357,12 +358,12 @@ bool PluginManager::_insert(Plugin * plugin, const PluginInsertionOptions& optio
 		_plugins->insert(plugin);
 		_removeLoadIssue(dynamicLibraryFilename, plugInfo->getPluginTypename());
 		Util::IncIndent();
-		this->_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin successfully inserted");
+		this->_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin \""+pluginname+"\" successfully inserted");
 		Util::DecIndent();
 		return true;
 	} else {
 		Util::IncIndent();
-		this->_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin could not be inserted");
+		this->_simulator->getTraceManager()->trace(TraceManager::Level::L2_results, "Plugin \""+pluginname+"\" could not be inserted");
 		_recordLoadIssue(PluginLoadIssue(
 			dynamicLibraryFilename,
 			"",
@@ -538,6 +539,20 @@ Plugin * PluginManager::find(std::string pluginTypeName) {
 		}
 	}
 	return nullptr;
+}
+
+std::vector<std::string> PluginManager::getDataDefinitionPluginTypenames() const {
+	std::vector<std::string> typeNames;
+	for (Plugin* plugin : *this->_plugins->list()) {
+		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+			continue;
+		}
+		PluginInformation* info = plugin->getPluginInfo();
+		if (!info->isComponent() && info->getDataDefinitionConstructor() != nullptr) {
+			typeNames.push_back(info->getPluginTypename());
+		}
+	}
+	return typeNames;
 }
 
 std::string PluginManager::sourceIncludePathFor(std::string pluginTypeName) {

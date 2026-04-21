@@ -102,6 +102,8 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.currentValue = control->getValue();
 
     desc.choices = _copyStringList(control->getStrValues());
+    desc.currentListElementType = control->getCurrentListElementType();
+    desc.creatableListElementTypes = _copyStringList(control->getCreatableListElementTypes());
 
     if (desc.kind == GenesysPropertyKind::TimeUnit && desc.choices.empty()) {
         for (int i = 0; i < static_cast<int>(Util::TimeUnit::num_elements); ++i) {

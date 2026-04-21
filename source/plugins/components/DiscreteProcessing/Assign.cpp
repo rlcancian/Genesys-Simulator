@@ -77,7 +77,7 @@ PluginInformation* Assign::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Assign>(), &Assign::LoadInstance, &Assign::NewInstance);
 	//info->insertDynamicLibFileDependence("attribute.so");
 	info->insertDynamicLibFileDependence("variable.so");
-	info->setCategory("Discrete Processing");
+	info->setCategory("DiscreteProcessing");
 	std::string text = "";
 	text += "This module is used for assigning new values to variables, entity attributes, entity types, entity pictures, or other system variables.";
 	text += " Multiple assignments can be made with a single Assign module.";

@@ -25,7 +25,7 @@
 
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/DiscreteProcessing/Station.h"
+#include "plugins/data/MaterialHandling/Station.h"
 #include "plugins/data/DiscreteProcessing/Variable.h"
 
 

@@ -100,7 +100,7 @@ void Leave::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 PluginInformation* Leave::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Leave>(), &Leave::LoadInstance, &Leave::NewInstance);
 	info->insertDynamicLibFileDependence("station.so");
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	return info;
 }
 

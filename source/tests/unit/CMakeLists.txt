@@ -110,11 +110,11 @@ genesys_add_unit_test(genesys_test_statistics
     genesys_kernel_util
 )
 
-find_package(Qt6 QUIET COMPONENTS Core Gui Widgets)
+find_package(Qt6 QUIET COMPONENTS Core Gui Widgets PrintSupport)
 if(Qt6_FOUND)
     set(GENESYS_QT_TEST_PACKAGE Qt6)
 else()
-    find_package(Qt5 QUIET COMPONENTS Core Gui Widgets)
+    find_package(Qt5 QUIET COMPONENTS Core Gui Widgets PrintSupport)
     if(Qt5_FOUND)
         set(GENESYS_QT_TEST_PACKAGE Qt5)
     endif()
@@ -149,6 +149,67 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     )
 
     set_property(TARGET genesys_test_gui_render_strategy PROPERTY FOLDER tests/unit)
+
+    file(GLOB_RECURSE GENESYS_QT_GUI_TEST_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/*.cpp"
+    )
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/build/")
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/main\\.cpp$")
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/qcustomplot\\.cpp$")
+
+    if(NOT TARGET genesys_tools)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-gui-tests)
+    endif()
+
+    add_executable(genesys_test_gui_gmdd_layout
+        test_gui_gmdd_layout.cpp
+        ${GENESYS_QT_GUI_TEST_SOURCES}
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/GenesysQtGUI_resources.qrc
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
+        ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
+    )
+
+    target_include_directories(genesys_test_gui_gmdd_layout
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/source
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/codeeditor
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser
+    )
+
+    target_link_libraries(genesys_test_gui_gmdd_layout
+        PRIVATE
+            GTest::gtest
+            ${GENESYS_QT_TEST_PACKAGE}::Core
+            ${GENESYS_QT_TEST_PACKAGE}::Gui
+            ${GENESYS_QT_TEST_PACKAGE}::Widgets
+            "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+            genesys_tools
+    )
+
+    if(TARGET ${GENESYS_QT_TEST_PACKAGE}::PrintSupport)
+        target_link_libraries(genesys_test_gui_gmdd_layout
+            PRIVATE
+                ${GENESYS_QT_TEST_PACKAGE}::PrintSupport
+        )
+    endif()
+
+    target_compile_features(genesys_test_gui_gmdd_layout PRIVATE cxx_std_23)
+    set_target_properties(genesys_test_gui_gmdd_layout
+        PROPERTIES
+            AUTOMOC ON
+            AUTOUIC ON
+            AUTORCC ON
+            AUTOUIC_SEARCH_PATHS "${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI;${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/dialogs"
+            FOLDER tests/unit
+    )
+
+    gtest_discover_tests(genesys_test_gui_gmdd_layout
+        PROPERTIES
+            LABELS "unit;gui"
+    )
 else()
     message(STATUS "Qt was not found; skipping GUI render strategy unit test.")
 endif()
@@ -211,6 +272,10 @@ endif()
 
 if(TARGET genesys_test_gui_render_strategy)
     add_dependencies(genesys_kernel_unit_tests genesys_test_gui_render_strategy)
+endif()
+
+if(TARGET genesys_test_gui_gmdd_layout)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_gui_gmdd_layout)
 endif()
 
 set(GENESYS_KERNEL_SIMULATOR_HEADERS_DIR "${CMAKE_SOURCE_DIR}/source/kernel/simulator")

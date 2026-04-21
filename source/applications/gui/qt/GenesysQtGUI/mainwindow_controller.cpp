@@ -11,6 +11,8 @@
 #include "ui_mainwindow.h"
 // Include the Phase 3 controller interface required by compatibility wrappers.
 #include "controllers/ModelInspectorController.h"
+// Include the Phase 6 controller interface required by inspector-to-property-editor wrappers.
+#include "controllers/PropertyEditorController.h"
 // Include the Phase 5 controller interface required by plugin-tree wrappers.
 #include "controllers/PluginCatalogController.h"
 // Include the Phase 7 controller interface required by lifecycle compatibility wrappers.
@@ -919,6 +921,23 @@ void MainWindow::on_actionShowRecursiveElements_triggered() {
 void MainWindow::on_treeWidgetComponents_itemSelectionChanged() {
     // Keep this wrapper as part of the final compatibility façade from Phase 3 refactor.
     _modelInspectorController->syncSelectedComponentTreeItemToScene();
+}
+
+void MainWindow::on_treeWidgetDataDefnitions_itemSelectionChanged() {
+    // Keep inspector-driven DataDefinition editing available even when View/Show hides its GMDD.
+    if (_modelInspectorController == nullptr || _propertyEditorController == nullptr) {
+        return;
+    }
+
+    const ModelInspectorController::DataDefinitionSelection selection =
+        _modelInspectorController->syncSelectedDataDefinitionTreeItemToScene();
+    if (!selection.handled) {
+        return;
+    }
+
+    _propertyEditorController->bindDataDefinitionFromInspector(
+        selection.dataDefinition,
+        selection.graphicalDataDefinition);
 }
 
 void MainWindow::on_treeWidget_Plugins_itemClicked(QTreeWidgetItem *item, int column) {

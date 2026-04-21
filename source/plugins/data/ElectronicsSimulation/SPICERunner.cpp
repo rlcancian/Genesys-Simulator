@@ -280,7 +280,7 @@ std::string SPICERunner::show() {
 
 PluginInformation* SPICERunner::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<SPICERunner>(), &SPICERunner::LoadInstance, &SPICERunner::NewInstance);
-	info->setCategory("Electronics simulation");
+	info->setCategory("ElectronicsSimulation");
 	info->setDescriptionHelp("Executes SPICE circuit simulations through ngspice. The runner generates an input circuit file, runs ngspice in batch mode and parses the output file for measured values.");
 	info->insertSystemDependency(SystemDependency(
 			SystemDependency::OS::Linux,

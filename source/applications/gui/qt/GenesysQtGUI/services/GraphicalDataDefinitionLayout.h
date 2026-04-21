@@ -11,7 +11,8 @@ public:
                                const QSizeF& childSize,
                                int index,
                                int count,
-                               bool upperArc);
+                               bool upperArc,
+                               int radialLayer = 0);
 
 private:
     GraphicalDataDefinitionLayout() = default;

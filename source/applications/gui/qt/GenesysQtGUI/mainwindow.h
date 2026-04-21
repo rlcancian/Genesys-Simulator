@@ -195,6 +195,7 @@ private slots:
 
 	void on_treeWidget_Plugins_itemDoubleClicked(QTreeWidgetItem *item, int column);
 	void on_treeWidgetComponents_itemSelectionChanged();
+    void on_treeWidgetDataDefnitions_itemSelectionChanged();
 	void on_treeWidget_Plugins_itemClicked(QTreeWidgetItem *item, int column);
 
 	void on_horizontalSlider_Zoom_valueChanged(int value);

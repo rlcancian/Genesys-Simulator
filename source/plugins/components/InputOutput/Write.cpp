@@ -205,7 +205,7 @@ bool Write::_check(std::string& errorMessage) {
 
 PluginInformation* Write::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Write>(), &Write::LoadInstance, &Write::NewInstance);
-	info->setCategory("Input Output");
+	info->setCategory("InputOutput");
 	// ...
 	return info;
 }

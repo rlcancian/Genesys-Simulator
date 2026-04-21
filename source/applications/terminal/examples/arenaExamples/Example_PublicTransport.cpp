@@ -19,19 +19,19 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/DummyComponent.h"
+#include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/DiscreteProcessing/Create.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/DiscreteProcessing/Assign.h"
-#include "plugins/components/Decisions/Wait.h"
+#include "plugins/components/Synchronization/Wait.h"
 #include "plugins/components/MaterialHandling/Route.h"
 #include "plugins/components/MaterialHandling/Enter.h"
 #include "plugins/components/Decisions/PickUp.h"
 #include "plugins/components/Decisions/DropOff.h"
 #include "plugins/components/Decisions/Search.h"
-#include "plugins/data/DiscreteProcessing/EntityGroup.h"
-#include "plugins/data/DiscreteProcessing/Station.h"
+#include "plugins/data/Grouping/EntityGroup.h"
+#include "plugins/data/MaterialHandling/Station.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Variable.h"
 

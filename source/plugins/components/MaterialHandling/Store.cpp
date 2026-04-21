@@ -85,7 +85,7 @@ bool Store::_check(std::string& errorMessage) {
 
 PluginInformation* Store::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Store>(), &Store::LoadInstance, &Store::NewInstance);
-	info->setCategory("Material Handling");
+	info->setCategory("MaterialHandling");
 	info->setDescriptionHelp("The Store component is a placeholder for storage-oriented flows. In the current implementation it forwards the entity to the next connected component.");
 	// ...
 	return info;

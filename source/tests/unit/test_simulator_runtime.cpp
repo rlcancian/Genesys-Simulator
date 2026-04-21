@@ -26,41 +26,41 @@
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/DiscreteProcessing/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
-#include "plugins/data/DiscreteProcessing/Sequence.h"
-#include "plugins/data/DiscreteProcessing/SignalData.h"
-#include "plugins/data/DiscreteProcessing/Station.h"
+#include "plugins/data/MaterialHandling/Sequence.h"
+#include "../../plugins/data/Synchronization/SignalData.h"
+#include "../../plugins/data/MaterialHandling/Station.h"
 #include "plugins/data/DiscreteProcessing/Set.h"
 #include "plugins/data/DiscreteProcessing/Label.h"
-#include "plugins/data/DiscreteProcessing/Storage.h"
-#include "plugins/data/DiscreteProcessing/File.h"
-#include "plugins/data/DiscreteProcessing/CppCompiler.h"
+#include "../../plugins/data/MaterialHandling/Storage.h"
+#include "../../plugins/data/InputOutput/File.h"
+#include "../../plugins/data/ExternalIntegration/CppCompiler.h"
 #include "plugins/data/ElectronicsSimulation/SPICERunner.h"
 #include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
-#include "plugins/data/ExternalStatisticalIntegration/RSimulatorRunner.h"
+#include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "plugins/data/DiscreteProcessing/AssignmentItem.h"
-#include "plugins/data/DataDefinition/DummyElement.h"
+#include "plugins/data/Template/DummyElement.h"
 #include "kernel/util/Util.h"
 #include "tools/MassActionOdeSystem.h"
 #include "tools/RungeKutta4OdeSolver.h"
 #define private public
 #define protected public
-#include "plugins/data/DiscreteProcessing/EntityGroup.h"
+#include "../../plugins/data/Grouping/EntityGroup.h"
 #undef protected
 #undef private
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
 #include "plugins/components/Grouping/Batch.h"
 #include "plugins/components/Grouping/Separate.h"
-#include "plugins/components/Decision/Match.h"
+#include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/DiscreteProcessing/Assign.h"
 #include "plugins/components/InputOutput/Write.h"
-#include "plugins/components/ExternalStatisticalIntegration/RSimulator.h"
+#include "plugins/components/ExternalIntegration/RSimulator.h"
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
@@ -79,8 +79,8 @@
 #undef private
 #define private public
 #define protected public
-#include "plugins/components/Decisions/Wait.h"
-#include "plugins/components/Decisions/Signal.h"
+#include "../../plugins/components/Synchronization/Wait.h"
+#include "../../plugins/components/Synchronization/Signal.h"
 #undef protected
 #undef private
 
@@ -2699,7 +2699,7 @@ TEST(SimulatorRuntimeTest, SetLoadInstanceReplacesStateWithoutResidualMembers) {
     EXPECT_EQ(set.getElementSet()->front(), &memberC);
 }
 
-TEST(SimulatorRuntimeTest, SetCheckFailsForMixedMemberTypes) {
+TEST(SimulatorRuntimeTest, SetRejectsMixedMemberTypesOnInsert) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
@@ -2711,10 +2711,94 @@ TEST(SimulatorRuntimeTest, SetCheckFailsForMixedMemberTypes) {
     set.addElementSet(&queue);
 
     std::string errorMessage;
-    EXPECT_FALSE(set.CheckProbe(errorMessage));
-    EXPECT_NE(errorMessage.find("member["), std::string::npos);
-    EXPECT_NE(errorMessage.find("SetMixedQueue"), std::string::npos);
-    EXPECT_NE(errorMessage.find("Queue"), std::string::npos);
+    EXPECT_TRUE(set.CheckProbe(errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+    ASSERT_EQ(set.getElementSet()->size(), 1u);
+    EXPECT_EQ(set.getElementSet()->front(), &resource);
+    EXPECT_EQ(set.getSetOfType(), Util::TypeOf<Resource>());
+}
+
+TEST(SimulatorRuntimeTest, SetAllowedElementTypesDriveCurrentType) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SetProbe set(model, "SetTyped");
+    set.setAllowedElementTypes({Util::TypeOf<Resource>(), Util::TypeOf<Queue>()});
+
+    EXPECT_TRUE(set.canChangeSetOfType());
+    EXPECT_TRUE(set.setSetOfType(Util::TypeOf<Queue>()));
+    EXPECT_EQ(set.getSetOfType(), Util::TypeOf<Queue>());
+
+    Resource resource(model, "SetTypedResource");
+    Queue queue(model, "SetTypedQueue");
+    set.addElementSet(&resource);
+    EXPECT_EQ(set.getElementSet()->size(), 0u);
+
+    set.addElementSet(&queue);
+    ASSERT_EQ(set.getElementSet()->size(), 1u);
+    EXPECT_EQ(set.getElementSet()->front(), &queue);
+    EXPECT_FALSE(set.canChangeSetOfType());
+    EXPECT_FALSE(set.setSetOfType(Util::TypeOf<Resource>()));
+}
+
+TEST(SimulatorRuntimeTest, SetSimulationControlExposesTypedListContract) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SetProbe set(model, "SetControlTyped");
+    set.setAllowedElementTypes({Util::TypeOf<Resource>(), Util::TypeOf<Queue>()});
+
+    SimulationControl* elementSetControl = nullptr;
+    for (SimulationControl* control : *set.getProperties()->list()) {
+        if (control != nullptr && control->getName() == "ElementSet") {
+            elementSetControl = control;
+            break;
+        }
+    }
+    ASSERT_NE(elementSetControl, nullptr);
+
+    List<std::string>* creatableTypes = elementSetControl->getCreatableListElementTypes();
+    ASSERT_NE(creatableTypes, nullptr);
+    EXPECT_EQ(creatableTypes->size(), 2u);
+    EXPECT_TRUE(creatableTypes->find(Util::TypeOf<Resource>()) != creatableTypes->list()->end());
+    EXPECT_TRUE(creatableTypes->find(Util::TypeOf<Queue>()) != creatableTypes->list()->end());
+    delete creatableTypes;
+
+    EXPECT_TRUE(elementSetControl->getCurrentListElementType().empty());
+    EXPECT_TRUE(elementSetControl->setCurrentListElementType(Util::TypeOf<Resource>()));
+    EXPECT_EQ(elementSetControl->getCurrentListElementType(), Util::TypeOf<Resource>());
+}
+
+TEST(SimulatorRuntimeTest, SeizableItemConfiguresReferencedSetForResources) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SetProbe set(model, "SeizableResourceSet");
+    SeizableItem item(&set);
+
+    EXPECT_EQ(item.getSet(), &set);
+    EXPECT_EQ(set.getSetOfType(), Util::TypeOf<Resource>());
+    const std::vector<std::string> allowedTypes = set.getAllowedElementTypes();
+    EXPECT_EQ(allowedTypes.size(), 1u);
+    EXPECT_EQ(allowedTypes.front(), Util::TypeOf<Resource>());
+}
+
+TEST(SimulatorRuntimeTest, QueueableItemConfiguresReferencedSetForQueues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    SetProbe set(model, "QueueableQueueSet");
+    QueueableItem item(&set, QueueableItem::QueueableType::SET);
+
+    EXPECT_EQ(item.getSet(), &set);
+    EXPECT_EQ(set.getSetOfType(), Util::TypeOf<Queue>());
+    const std::vector<std::string> allowedTypes = set.getAllowedElementTypes();
+    EXPECT_EQ(allowedTypes.size(), 1u);
+    EXPECT_EQ(allowedTypes.front(), Util::TypeOf<Queue>());
 }
 
 TEST(SimulatorRuntimeTest, SetCheckPassesForHomogeneousMembersAndPreservesOrder) {
