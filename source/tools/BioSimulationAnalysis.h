@@ -63,9 +63,15 @@ struct BioReactionRateTimeCourse {
 		const std::string suffix = rateKindName(kind);
 
 		SimulationResultsDataset converted;
+		converted.datasetName = reactionName + "." + suffix;
+		converted.randomVariableName = reactionName + "." + suffix;
+		converted.description = "Bio simulation reaction-rate time-course dataset.";
+		converted.variableType = "Continuous numeric";
+		converted.source = "BioReactionRateTimeCourse";
 		converted.sourceDescription = "BioReactionRateTimeCourse";
 		converted.expression = reactionName + "." + suffix;
 		converted.expressionName = reactionName + "." + suffix;
+		converted.formatKind = SimulationResultsDatasetFormat::GuiTabular;
 		converted.recordFile = false;
 		converted.timeDependent = true;
 		for (unsigned int i = 0; i < samples.size(); ++i) {

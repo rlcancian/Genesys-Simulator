@@ -46,6 +46,7 @@
 #include "kernel/util/Util.h"
 #include "tools/MassActionOdeSystem.h"
 #include "tools/RungeKutta4OdeSolver.h"
+#include "tools/SimulationResultsDataset.h"
 #define private public
 #define protected public
 #include "../../plugins/data/Grouping/EntityGroup.h"
@@ -59,6 +60,7 @@
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #define private public
@@ -182,6 +184,17 @@ public:
 
     void Detach(std::string key) {
         _attachedDataRemove(key);
+    }
+};
+
+// Exposes Record::_check so the test can assert that validation does not destroy output datasets.
+class RecordCheckProbe : public Record {
+public:
+    RecordCheckProbe(Model* model, const std::string& name)
+        : Record(model, name) {}
+
+    bool Check(std::string& errorMessage) {
+        return _check(errorMessage);
     }
 };
 
@@ -1132,6 +1145,93 @@ TEST(SimulatorRuntimeTest, SimulationStartHandlerReceivesInitializedStateSnapsho
     EXPECT_TRUE(observer.running);
     EXPECT_FALSE(observer.paused);
     EXPECT_EQ(observer.replication, 1u);
+}
+
+TEST(SimulatorRuntimeTest, RecordWritesEnrichedDatasetReadableByParser) {
+    const std::string filename = "/tmp/genesys_record_dataset_runtime_test_" + std::to_string(::getpid()) + ".txt";
+    ::unlink(filename.c_str());
+
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "RecordEntity");
+    auto* create = new Create(model, "RecordDatasetCreate");
+    auto* record = new Record(model, "RecordDatasetWriter");
+    auto* dispose = new Dispose(model, "RecordDatasetDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(record, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(3);
+    create->connectTo(record);
+
+    record->setFilename(filename);
+    record->setExpression("TNOW");
+    record->setExpressionName("SimulationTimeLegacy");
+    record->setDatasetName("Simulation Time Dataset");
+    record->setRandomVariableName("SimulationTime");
+    record->setVariableType("Continuous numeric");
+    record->setDatasetDescription("Simulation time values written by Record.");
+    record->setTimeDependent(true);
+    record->connectTo(dispose);
+
+    model->getSimulation()->setReplicationLength(3.0);
+    model->getSimulation()->setNumberOfReplications(2);
+    model->getSimulation()->start();
+
+    SimulationResultsDataset dataset;
+    std::string errorMessage;
+    ASSERT_TRUE(SimulationResultsDatasetParser::loadFromTextFile(filename, &dataset, &errorMessage)) << errorMessage;
+    ::unlink(filename.c_str());
+
+    EXPECT_EQ(dataset.formatKind, SimulationResultsDatasetFormat::RecordEnriched);
+    EXPECT_TRUE(dataset.recordFile);
+    EXPECT_EQ(dataset.formatVersion, "1");
+    EXPECT_EQ(dataset.datasetName, "Simulation Time Dataset");
+    EXPECT_EQ(dataset.randomVariableName, "SimulationTime");
+    EXPECT_EQ(dataset.variableType, "Continuous numeric");
+    EXPECT_EQ(dataset.description, "Simulation time values written by Record.");
+    EXPECT_EQ(dataset.source, "Genesys Record");
+    EXPECT_EQ(dataset.expression, "TNOW");
+    EXPECT_EQ(dataset.expressionName, "SimulationTimeLegacy");
+    EXPECT_TRUE(dataset.timeDependent);
+    EXPECT_EQ(dataset.replications().size(), 2u);
+    ASSERT_FALSE(dataset.observations.empty());
+    EXPECT_TRUE(dataset.observations.front().hasTime);
+    EXPECT_DOUBLE_EQ(dataset.observations.front().time, dataset.observations.front().value);
+}
+
+TEST(SimulatorRuntimeTest, RecordCheckDoesNotDeleteExistingOutputFile) {
+    const std::string filename = "/tmp/genesys_record_check_preserve_test_" + std::to_string(::getpid()) + ".txt";
+    {
+        std::ofstream file(filename);
+        file << "preserve-this-content\n";
+    }
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* record = new RecordCheckProbe(model, "RecordCheckPreservesFile");
+    ASSERT_NE(record, nullptr);
+    record->setFilename(filename);
+    record->setExpression("1");
+
+    std::string errorMessage;
+    EXPECT_TRUE(record->Check(errorMessage)) << errorMessage;
+
+    std::ifstream file(filename);
+    ASSERT_TRUE(file.is_open());
+    std::stringstream contents;
+    contents << file.rdbuf();
+    EXPECT_EQ(contents.str(), "preserve-this-content\n");
+    ::unlink(filename.c_str());
 }
 
 // Ensures creating a new current model repeatedly keeps runtime usable and updates current() consistently.

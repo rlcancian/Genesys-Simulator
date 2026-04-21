@@ -49,6 +49,13 @@ int Smart_MaxArrivalsField::main(int argc, char** argv) {
         // record How Many
         Record* howMany = plugins->newInstance<Record>(model);
         howMany->setName("HowMany");
+        howMany->setExpressionName("Arrivals observed");
+        howMany->setDatasetName("Arrivals Observed Dataset");
+        howMany->setRandomVariableName("Arrivals observed");
+        howMany->setDatasetDescription("Number of entities observed by the Record component.");
+        howMany->setExpression("COUNT(HowMany.CountNumberIn)");
+        howMany->setTimeDependent(true);
+        howMany->setFilename("./temp/Smart_MaxArrivalsField_Record.txt");
         
         // dispose
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);

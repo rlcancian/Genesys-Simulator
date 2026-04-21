@@ -64,8 +64,11 @@ int Smart_Record_Arena::main(int argc, char** argv) {
 
     Record* record = plugins->newInstance<Record>(model);
     record->setDescription("Time in Store");
-    record->setExpression("timeIn");
+    record->setExpression("TNOW - timeIn");
     record->setExpressionName("Time in Store");
+    record->setDatasetName("Time in Store Dataset");
+    record->setRandomVariableName("Time in Store");
+    record->setDatasetDescription("Customer time in store measured from entry to departure.");
     delay->connectTo(record);
 
     Dispose* dispose = plugins->newInstance<Dispose>(model);

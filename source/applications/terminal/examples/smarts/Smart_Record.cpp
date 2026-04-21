@@ -49,16 +49,25 @@ int Smart_Record::main(int argc, char** argv) {
 	process->setDelayExpression("unif(2, 6)");
 	Record *record1 = plugins->newInstance<Record>(model);
 	record1->setExpressionName("Number in queue");
+	record1->setDatasetName("Queue Length Time Series");
+	record1->setRandomVariableName("Number in queue");
+	record1->setDatasetDescription("Time-dependent queue length observations recorded from Queue_1.");
 	record1->setExpression("nq(Queue_1)");
 	record1->setTimeDependent(true);
 	record1->setFilename("recordNumberInQueue.txt");
 	Record *record2 = plugins->newInstance<Record>(model);
 	record2->setExpressionName("resource_1 number busy");
+	record2->setDatasetName("Resource Busy Time Series");
+	record2->setRandomVariableName("Resource_1 number busy");
+	record2->setDatasetDescription("Time-dependent number-busy observations recorded from Resource_1.");
 	record2->setExpression("NR(Resource_1)");
 	record2->setTimeDependent(true);
 	record2->setFilename("recordNumberBusy.txt");
 	Record *record3 = plugins->newInstance<Record>(model);
 	record3->setExpressionName("Just a Beta distribution");
+	record3->setDatasetName("Beta Distribution Samples");
+	record3->setRandomVariableName("Beta sample");
+	record3->setDatasetDescription("Independent samples from beta(2,8,0,100).");
 	record3->setExpression("beta(2,8,0,100)");
 	record3->setFilename("recordBeta.txt");
 	Dispose* dispose = plugins->newInstance<Dispose>(model);
@@ -82,4 +91,3 @@ int Smart_Record::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

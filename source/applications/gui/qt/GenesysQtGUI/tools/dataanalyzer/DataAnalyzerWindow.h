@@ -60,6 +60,10 @@ private:
         QList<DatasetObservation> observations;
         bool recordFile = false;
         bool timeDependent = false;
+        QString formatKind;
+        QString expression;
+        QString expressionName;
+        QString formatVersion;
     };
 
     class HistogramPreview;

@@ -97,9 +97,15 @@ public:
 		}
 
 		SimulationResultsDataset converted;
+		converted.datasetName = _networkName + "." + speciesName;
+		converted.randomVariableName = speciesName;
+		converted.description = "Bio simulation species time-course dataset.";
+		converted.variableType = "Continuous numeric";
+		converted.source = _networkName;
 		converted.sourceDescription = _networkName;
 		converted.expression = speciesName;
 		converted.expressionName = speciesName;
+		converted.formatKind = SimulationResultsDatasetFormat::GuiTabular;
 		converted.recordFile = false;
 		converted.timeDependent = true;
 		for (unsigned int i = 0; i < _samples.size(); ++i) {
