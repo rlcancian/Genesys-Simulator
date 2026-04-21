@@ -267,7 +267,7 @@ void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) c
             << (pausedAnimationsMap == nullptr || pausedAnimationsMap->empty())
             << "pausedListSize=" << (pausedAnimations ? pausedAnimations->size() : 0)
             << "resumeEventKeyPresent=" << (resumeEventKey != nullptr);
-    if (pausedAnimations) {
+    if (pausedAnimations && _scene->simulationAnimationsEnabled()) {
         for (AnimationTransition* animation : *pausedAnimations) {
             if (animation) {
                 _scene->runAnimateTransition(animation, resumeEventKey, true);
@@ -355,8 +355,12 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
             << "sourceName=" << (sourceComponent ? QString::fromStdString(sourceComponent->getName()) : QStringLiteral("<null>"))
             << "destinationId=" << (destinationComponent ? destinationComponent->getId() : 0)
             << "destinationName=" << (destinationComponent ? QString::fromStdString(destinationComponent->getName()) : QStringLiteral("<null>"));
-    _scene->animateCounter();
-    _scene->animateVariable();
+
+    const bool animationsEnabled = _scene->simulationAnimationsEnabled();
+    if (animationsEnabled) {
+        _scene->animateCounter();
+        _scene->animateVariable();
+    }
 
     if (re) {
         if (re->getCurrentEvent()) {
@@ -372,13 +376,15 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
                         << "destinationName=" << (destination ? QString::fromStdString(destination->getName()) : QStringLiteral("<null>"))
                         << "eventPtr=" << re->getCurrentEvent();
 
-                _scene->animateQueueRemove(source);
+                if (animationsEnabled) {
+                    _scene->animateQueueRemove(source);
 
-                _scene->animateTransition(
-                    source,
-                    destination,
-                    _activateGraphicalSimulation->isChecked(),
-                    re->getCurrentEvent());
+                    _scene->animateTransition(
+                        source,
+                        destination,
+                        _activateGraphicalSimulation->isChecked(),
+                        re->getCurrentEvent());
+                }
             }
         }
     }
@@ -389,6 +395,9 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
 // Preserve after-process animation update behavior.
 void SimulationEventController::onAfterProcessEvent(SimulationEvent* re) const {
     Q_UNUSED(re)
+    if (!_scene->simulationAnimationsEnabled()) {
+        return;
+    }
     _scene->animateCounter();
     _scene->animateVariable();
     _scene->animateTimer(_simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
