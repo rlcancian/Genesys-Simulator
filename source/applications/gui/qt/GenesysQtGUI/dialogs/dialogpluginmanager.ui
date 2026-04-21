@@ -9,8 +9,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>400</width>
-    <height>300</height>
+    <width>920</width>
+    <height>620</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -18,61 +18,173 @@
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
-    <layout class="QVBoxLayout" name="verticalLayout_2">
-     <item>
-      <layout class="QHBoxLayout" name="horizontalLayout">
+    <widget class="QGroupBox" name="groupBoxAutoload">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Preferred" vsizetype="Maximum">
+       <horstretch>0</horstretch>
+       <verstretch>0</verstretch>
+      </sizepolicy>
+     </property>
+     <property name="title">
+      <string>Auto Load</string>
+     </property>
+     <layout class="QGridLayout" name="gridLayoutAutoload">
+      <item row="0" column="0">
+       <widget class="QLabel" name="labelAutoloadFilename">
+        <property name="text">
+         <string>Plugin list file:</string>
+        </property>
+        <property name="buddy">
+         <cstring>lineEditAutoloadFilename</cstring>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="1">
+       <widget class="QLineEdit" name="lineEditAutoloadFilename">
+        <property name="text">
+         <string>autoloadplugins.txt</string>
+        </property>
+       </widget>
+      </item>
+      <item row="0" column="2">
+       <widget class="QPushButton" name="pushButtonBrowseAutoload">
+        <property name="text">
+         <string>Browse...</string>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QCheckBox" name="checkBoxFallbackDiscovery">
+        <property name="text">
+         <string>Search for plugins if file is missing</string>
+        </property>
+        <property name="checked">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="2">
+       <widget class="QPushButton" name="pushButtonAutoLoadNow">
+        <property name="text">
+         <string>Auto Load Now</string>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QWidget" name="layoutWidgetPlugins">
+     <property name="sizePolicy">
+      <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+       <horstretch>0</horstretch>
+       <verstretch>1</verstretch>
+      </sizepolicy>
+     </property>
+      <layout class="QVBoxLayout" name="verticalLayoutPlugins">
        <item>
-        <widget class="QLabel" name="label">
+        <widget class="QTabWidget" name="tabWidgetPluginTables">
          <property name="sizePolicy">
-          <sizepolicy hsizetype="Preferred" vsizetype="Preferred">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
            <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
+           <verstretch>1</verstretch>
           </sizepolicy>
          </property>
-         <property name="text">
-          <string>File containing list of plugins to auto load:</string>
+         <property name="currentIndex">
+          <number>0</number>
          </property>
+         <widget class="QWidget" name="tabLoadedPlugins">
+          <attribute name="title">
+           <string>Loaded plugins</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayoutLoadedPlugins">
+           <item>
+            <widget class="QTableWidget" name="tableWidgetPlugins">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+             <property name="sortingEnabled">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+         <widget class="QWidget" name="tabPluginIssues">
+          <attribute name="title">
+           <string>Plugins with problems</string>
+          </attribute>
+          <layout class="QVBoxLayout" name="verticalLayoutPluginIssues">
+           <item>
+            <widget class="QTableWidget" name="tableWidgetPluginIssues">
+             <property name="editTriggers">
+              <set>QAbstractItemView::NoEditTriggers</set>
+             </property>
+             <property name="alternatingRowColors">
+              <bool>true</bool>
+             </property>
+             <property name="selectionMode">
+              <enum>QAbstractItemView::SingleSelection</enum>
+             </property>
+             <property name="selectionBehavior">
+              <enum>QAbstractItemView::SelectRows</enum>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
         </widget>
        </item>
        <item>
-        <widget class="QPlainTextEdit" name="plainTextEdit">
-         <property name="sizePolicy">
-          <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-           <horstretch>0</horstretch>
-           <verstretch>0</verstretch>
-          </sizepolicy>
-         </property>
-         <property name="maximumSize">
-          <size>
-           <width>16777215</width>
-           <height>30</height>
-          </size>
-         </property>
-        </widget>
-       </item>
-       <item>
-        <widget class="QPushButton" name="pushButton">
-         <property name="maximumSize">
-          <size>
-           <width>30</width>
-           <height>16777215</height>
-          </size>
-         </property>
-         <property name="text">
-          <string>...</string>
-         </property>
-        </widget>
+        <layout class="QHBoxLayout" name="horizontalLayoutActions">
+         <item>
+          <widget class="QPushButton" name="pushButtonCheck">
+           <property name="text">
+            <string>Check...</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButtonInsert">
+           <property name="text">
+            <string>Insert...</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButtonResolveSelected">
+           <property name="text">
+            <string>Resolve / Load Selected</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButtonRemove">
+           <property name="text">
+            <string>Remove Selected</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="pushButtonRefresh">
+           <property name="text">
+            <string>Refresh</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
-     </item>
-     <item>
-      <widget class="QCheckBox" name="checkBox">
-       <property name="text">
-        <string>Auto load plugins at startup</string>
-       </property>
-      </widget>
-     </item>
-    </layout>
+     </widget>
    </item>
    <item>
     <widget class="QDialogButtonBox" name="buttonBox">
@@ -80,30 +192,28 @@
       <enum>Qt::Horizontal</enum>
      </property>
      <property name="standardButtons">
-      <set>QDialogButtonBox::Cancel|QDialogButtonBox::Ok</set>
+      <set>QDialogButtonBox::Close</set>
      </property>
     </widget>
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>lineEditAutoloadFilename</tabstop>
+  <tabstop>pushButtonBrowseAutoload</tabstop>
+  <tabstop>checkBoxFallbackDiscovery</tabstop>
+  <tabstop>pushButtonAutoLoadNow</tabstop>
+  <tabstop>tabWidgetPluginTables</tabstop>
+  <tabstop>tableWidgetPlugins</tabstop>
+  <tabstop>tableWidgetPluginIssues</tabstop>
+  <tabstop>pushButtonCheck</tabstop>
+  <tabstop>pushButtonInsert</tabstop>
+  <tabstop>pushButtonResolveSelected</tabstop>
+  <tabstop>pushButtonRemove</tabstop>
+  <tabstop>pushButtonRefresh</tabstop>
+ </tabstops>
  <resources/>
  <connections>
-  <connection>
-   <sender>buttonBox</sender>
-   <signal>accepted()</signal>
-   <receiver>DialogPluginManager</receiver>
-   <slot>accept()</slot>
-   <hints>
-    <hint type="sourcelabel">
-     <x>248</x>
-     <y>254</y>
-    </hint>
-    <hint type="destinationlabel">
-     <x>157</x>
-     <y>274</y>
-    </hint>
-   </hints>
-  </connection>
   <connection>
    <sender>buttonBox</sender>
    <signal>rejected()</signal>
@@ -111,12 +221,12 @@
    <slot>reject()</slot>
    <hints>
     <hint type="sourcelabel">
-     <x>316</x>
-     <y>260</y>
+     <x>848</x>
+     <y>592</y>
     </hint>
     <hint type="destinationlabel">
-     <x>286</x>
-     <y>274</y>
+     <x>460</x>
+     <y>310</y>
     </hint>
    </hints>
   </connection>
