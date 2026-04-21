@@ -1,6 +1,8 @@
 #include "dialogsimulationconfigure.h"
 #include "ui_dialogsimulationconfigure.h"
 
+#include "../graphicals/ModelGraphicsScene.h"
+#include "../graphicals/ModelGraphicsView.h"
 #include "kernel/simulator/ExperimentManager.h"
 #include "kernel/simulator/SimulationReporter_if.h"
 
@@ -51,9 +53,15 @@ void DialogSimulationConfigure::setParallelizationSettings(bool* enabled, int* l
 	_loadParallelizationSettings();
 }
 
+void DialogSimulationConfigure::setSimulationAnimationsEnabled(bool* enabled)
+{
+	_simulationAnimationsEnabled = enabled;
+	_loadSimulationAnimationSettings();
+}
+
 void DialogSimulationConfigure::accept()
 {
-	if (_modelSimulation != nullptr || _parallelizationEnabled != nullptr || _parallelizationThreads != nullptr || _parallelizationBatchSize != nullptr) {
+	if (_modelSimulation != nullptr || _parallelizationEnabled != nullptr || _parallelizationThreads != nullptr || _parallelizationBatchSize != nullptr || _simulationAnimationsEnabled != nullptr) {
 		_applyIfChanged(_configurationFromUi());
 	}
 
@@ -175,6 +183,15 @@ void DialogSimulationConfigure::_loadParallelizationSettings()
 	ui->lineEditDistributedToken->setText(QString::fromStdString(_originalConfiguration.distributedToken));
 }
 
+void DialogSimulationConfigure::_loadSimulationAnimationSettings()
+{
+	const bool enabled = _simulationAnimationsEnabled != nullptr
+		? *_simulationAnimationsEnabled
+		: ModelGraphicsScene::defaultSimulationAnimationsEnabled();
+	_originalConfiguration.simulationAnimationsEnabled = enabled;
+	ui->checkBoxSimulationAnimationsEnabled->setChecked(enabled);
+}
+
 DialogSimulationConfigure::SimulationConfiguration DialogSimulationConfigure::_configurationFromUi() const
 {
 	SimulationConfiguration configuration;
@@ -196,12 +213,13 @@ DialogSimulationConfigure::SimulationConfiguration DialogSimulationConfigure::_c
 	configuration.distributedParallelizationEnabled = ui->checkBoxDistributedParallelizationEnabled->isChecked();
 	configuration.distributedCoordinatorUrl = ui->lineEditDistributedCoordinatorUrl->text().toStdString();
 	configuration.distributedToken = ui->lineEditDistributedToken->text().toStdString();
+	configuration.simulationAnimationsEnabled = ui->checkBoxSimulationAnimationsEnabled->isChecked();
 	return configuration;
 }
 
 bool DialogSimulationConfigure::_hasPendingChanges() const
 {
-	if (_modelSimulation == nullptr && _parallelizationEnabled == nullptr && _parallelizationThreads == nullptr && _parallelizationBatchSize == nullptr) {
+	if (_modelSimulation == nullptr && _parallelizationEnabled == nullptr && _parallelizationThreads == nullptr && _parallelizationBatchSize == nullptr && _simulationAnimationsEnabled == nullptr) {
 		return false;
 	}
 
@@ -223,7 +241,8 @@ bool DialogSimulationConfigure::_hasPendingChanges() const
 		|| edited.parallelizationBatchSize != _originalConfiguration.parallelizationBatchSize
 		|| edited.distributedParallelizationEnabled != _originalConfiguration.distributedParallelizationEnabled
 		|| edited.distributedCoordinatorUrl != _originalConfiguration.distributedCoordinatorUrl
-		|| edited.distributedToken != _originalConfiguration.distributedToken;
+		|| edited.distributedToken != _originalConfiguration.distributedToken
+		|| edited.simulationAnimationsEnabled != _originalConfiguration.simulationAnimationsEnabled;
 }
 
 Util::TimeUnit DialogSimulationConfigure::_timeUnitFromComboBox(const QComboBox* comboBox) const
@@ -284,6 +303,22 @@ void DialogSimulationConfigure::_applyIfChanged(const SimulationConfiguration& e
 	}
 	if (_parallelizationBatchSize != nullptr) {
 		*_parallelizationBatchSize = edited.parallelizationBatchSize;
+	}
+	if (edited.simulationAnimationsEnabled != _originalConfiguration.simulationAnimationsEnabled) {
+		if (_simulationAnimationsEnabled != nullptr) {
+			*_simulationAnimationsEnabled = edited.simulationAnimationsEnabled;
+		}
+		// Keep newly created scenes consistent with the current GUI-session animation policy.
+		ModelGraphicsScene::setDefaultSimulationAnimationsEnabled(edited.simulationAnimationsEnabled);
+		QWidget* ownerWidget = parentWidget();
+		if (ownerWidget != nullptr) {
+			const QList<ModelGraphicsView*> graphicsViews = ownerWidget->findChildren<ModelGraphicsView*>();
+			for (ModelGraphicsView* graphicsView : graphicsViews) {
+				if (graphicsView != nullptr && graphicsView->getScene() != nullptr) {
+					graphicsView->getScene()->setSimulationAnimationsEnabled(edited.simulationAnimationsEnabled);
+				}
+			}
+		}
 	}
 	_originalConfiguration = edited;
 }
