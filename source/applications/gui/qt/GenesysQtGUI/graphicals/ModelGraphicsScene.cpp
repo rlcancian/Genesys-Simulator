@@ -3355,6 +3355,11 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
 }
 
 void ModelGraphicsScene::requestGraphicalDataDefinitionsSync() {
+    if (_restoringPersistedGuiLayout) {
+        _graphicalDataDefinitionsSyncDeferredDuringRestore = true;
+        return;
+    }
+
     // Coalesce chained requests to avoid running redundant synchronizations in the same event-loop turn.
     if (_graphicalDataDefinitionsSyncPending || _graphicalDataDefinitionsSyncInProgress) {
         return;
@@ -3510,7 +3515,12 @@ void ModelGraphicsScene::setObjectBeingDragged(QTreeWidgetItem* objectBeingDragg
 
 // Toggle whether diagram items are currently being reconstructed from persisted .gui state.
 void ModelGraphicsScene::setRestoringPersistedGuiLayout(bool restoring) {
+    const bool wasRestoring = _restoringPersistedGuiLayout;
     _restoringPersistedGuiLayout = restoring;
+    if (wasRestoring && !restoring && _graphicalDataDefinitionsSyncDeferredDuringRestore) {
+        _graphicalDataDefinitionsSyncDeferredDuringRestore = false;
+        requestGraphicalDataDefinitionsSync();
+    }
 }
 
 // Expose persisted-layout restoration state to avoid applying default-only grouping fallbacks.

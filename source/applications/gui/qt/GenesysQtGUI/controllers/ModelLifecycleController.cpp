@@ -12,9 +12,35 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <utility>
+
+namespace {
+QString findCompanionGuiFile(const QFileInfo& selectedInfo) {
+    if (!selectedInfo.exists()) {
+        return {};
+    }
+
+    QDir directory(selectedInfo.path());
+    const QString canonicalCompanionPath = directory.filePath(selectedInfo.completeBaseName() + ".gui");
+    if (QFileInfo::exists(canonicalCompanionPath)) {
+        return canonicalCompanionPath;
+    }
+
+    const QString wildcard = selectedInfo.completeBaseName() + ".*";
+    const QStringList candidates = directory.entryList({wildcard}, QDir::Files | QDir::NoSymLinks);
+    for (const QString& candidateName : candidates) {
+        QFileInfo candidateInfo(directory.filePath(candidateName));
+        if (candidateInfo.completeBaseName() == selectedInfo.completeBaseName()
+            && candidateInfo.suffix().compare("gui", Qt::CaseInsensitive) == 0) {
+            return candidateInfo.absoluteFilePath();
+        }
+    }
+    return {};
+}
+}
 
 // Store the lifecycle dependencies for Phase 7 delegation from MainWindow.
 ModelLifecycleController::ModelLifecycleController(QWidget* ownerWidget,
@@ -81,8 +107,30 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
         return false;
     }
 
-    _callbacks.insertCommandInConsole("load " + fileName.toStdString());
-    Model* model = _callbacks.loadGraphicalModel(fileName.toStdString());
+    QString resolvedFileName = fileName;
+    QFileInfo selectedInfo(fileName);
+    if (selectedInfo.suffix().compare("gen", Qt::CaseInsensitive) == 0) {
+        const QString pairedGuiPath = findCompanionGuiFile(selectedInfo);
+        if (!pairedGuiPath.isEmpty()) {
+            bool preferGui = true;
+            if (showDialogs) {
+                QMessageBox::StandardButton reply = QMessageBox::question(
+                    _ownerWidget,
+                    "Open Model",
+                    QObject::tr("A companion .gui file was found for this .gen model.\n"
+                                "Do you want to open the .gui file to preserve the graphical layout?"),
+                    QMessageBox::Yes | QMessageBox::No,
+                    QMessageBox::Yes);
+                preferGui = (reply == QMessageBox::Yes);
+            }
+            if (preferGui) {
+                resolvedFileName = pairedGuiPath;
+            }
+        }
+    }
+
+    _callbacks.insertCommandInConsole("load " + resolvedFileName.toStdString());
+    Model* model = _callbacks.loadGraphicalModel(resolvedFileName.toStdString());
     if (model != nullptr) {
         *_loaded = true;
         _callbacks.initUiForNewModel(model);
@@ -91,7 +139,7 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
             *_graphicalModelHasChanged = false;
         }
         model->setHasChanged(false);
-        SystemPreferences::pushRecentModelFile(fileName.toStdString());
+        SystemPreferences::pushRecentModelFile(resolvedFileName.toStdString());
         SystemPreferences::save();
         if (showDialogs) {
             QMessageBox::information(_ownerWidget, "Open Model", "Model successfully oppened");
@@ -115,8 +163,13 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
     if (fileName.isEmpty()) {
         return;
     } else {
-        _callbacks.insertCommandInConsole("save " + fileName.toStdString());
-        QString finalFileName = fileName + ".gen";
+        QString baseFileName = fileName.trimmed();
+        if (baseFileName.endsWith(".gen", Qt::CaseInsensitive) || baseFileName.endsWith(".gui", Qt::CaseInsensitive)) {
+            baseFileName.chop(4);
+        }
+
+        _callbacks.insertCommandInConsole("save " + baseFileName.toStdString());
+        QString finalFileName = baseFileName + ".gen";
         QFile saveFile(finalFileName);
 
         if (!saveFile.open(QIODevice::WriteOnly)) {
@@ -131,11 +184,11 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
             }
             saveFile.close();
         }
-        if (!_callbacks.saveGraphicalModel(fileName + ".gui")) {
+        if (!_callbacks.saveGraphicalModel(baseFileName + ".gui")) {
             QMessageBox::warning(_ownerWidget, "Save Model", "Error while saving graphical model.");
             return;
         }
-        *_modelFilename = fileName;
+        *_modelFilename = baseFileName;
         if (!_callbacks.setSimulationModelBasedOnText()) {
             QMessageBox::warning(_ownerWidget, "Save Model", "Model was saved, but the simulation model could not be synchronized.");
             return;
@@ -148,8 +201,8 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
             // A successful save makes the current in-memory model state the new clean baseline.
             currentModel->setHasChanged(false);
         }
-        SystemPreferences::setLastModelFilename((fileName + ".gui").toStdString());
-        SystemPreferences::pushRecentModelFile((fileName + ".gui").toStdString());
+        SystemPreferences::setLastModelFilename((baseFileName + ".gui").toStdString());
+        SystemPreferences::pushRecentModelFile((baseFileName + ".gui").toStdString());
         SystemPreferences::save();
         QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
     }
