@@ -77,6 +77,10 @@ void ModelGraphicsView::showGrid() {
 }
 
 void ModelGraphicsView::clear() {
+	ModelGraphicsScene* modelScene = getScene();
+	if (modelScene != nullptr && modelScene->grid() != nullptr) {
+		modelScene->grid()->clear();
+	}
 	scene()->clear();
 }
 

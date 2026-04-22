@@ -28,6 +28,7 @@
 #include <QFont>
 #include <QMessageBox>
 #include <QPlainTextEdit>
+#include <QPointer>
 #include <QRegularExpression>
 #include <QScrollBar>
 #include <QSlider>
@@ -1307,9 +1308,16 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         scene->setRestoringPersistedGuiLayout(false);
         scene->requestGraphicalDataDefinitionsSync();
         if (hasPersistedViewState) {
-            QTimer::singleShot(0, _ownerWidget, [this, restoredViewpointX, restoredViewpointY]() {
-                QScrollBar* hBar = _graphicsView->horizontalScrollBar();
-                QScrollBar* vBar = _graphicsView->verticalScrollBar();
+            QPointer<ModelGraphicsView> targetView(_graphicsView);
+            QTimer::singleShot(0, _ownerWidget, [targetView, restoredViewpointX, restoredViewpointY]() {
+                if (targetView.isNull()) {
+                    return;
+                }
+                QScrollBar* hBar = targetView->horizontalScrollBar();
+                QScrollBar* vBar = targetView->verticalScrollBar();
+                if (hBar == nullptr || vBar == nullptr) {
+                    return;
+                }
                 hBar->setValue(qBound(hBar->minimum(), restoredViewpointX, hBar->maximum()));
                 vBar->setValue(qBound(vBar->minimum(), restoredViewpointY, vBar->maximum()));
             });
