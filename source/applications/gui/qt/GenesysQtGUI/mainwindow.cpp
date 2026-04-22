@@ -935,7 +935,7 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
         QString selectedFileName = QFileDialog::getSaveFileName(this,
                                                                 QObject::tr("Save Model"),
                                                                 baseFileName,
-                                                                QObject::tr("Genesys Model (*.gen)"),
+                                                                QObject::tr("Graphical Genesys Model (*.gui);;Genesys Model (*.gen)"),
                                                                 nullptr,
                                                                 QFileDialog::DontUseNativeDialog);
         if (selectedFileName.isEmpty()) {
@@ -945,6 +945,11 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
     }
 
     _insertCommandInConsole("save " + baseFileName.toStdString());
+
+    if (!_setSimulationModelBasedOnText()) {
+        QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
+        return false;
+    }
 
     const QString textFilename = baseFileName + ".gen";
     QFile saveFile(textFilename);
@@ -975,11 +980,6 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
     _textModelHasChanged = false;
     _graphicalModelHasChanged = false;
     model->setHasChanged(false);
-
-    if (!_setSimulationModelBasedOnText()) {
-        QMessageBox::warning(this, "Save Model", "Model was saved, but the simulation model could not be synchronized.");
-        return false;
-    }
 
     SystemPreferences::pushRecentModelFile(graphicalFilename.toStdString());
     SystemPreferences::save();
@@ -1035,11 +1035,18 @@ void MainWindow::_clearModelGraphicsViewForClose(ModelGraphicsView* graphicsView
         return;
     }
     ModelGraphicsScene* scene = graphicsView->getScene();
+    scene->setConnectionGeometryUpdatesBlocked(true);
     scene->grid()->clear();
     if (scene->getUndoStack() != nullptr) {
         scene->getUndoStack()->clear();
     }
     scene->clearAnimationsQueue();
+    // Always delete connections while ports/components are still alive.
+    scene->clearGraphicalDiagramConnections();
+    scene->clearGraphicalModelConnections();
+    scene->clearAnimations();
+    scene->clear();
+    // Reset auxiliary containers after scene teardown to avoid stale pointers.
     scene->getGraphicalModelComponents()->clear();
     scene->getGraphicalConnections()->clear();
     scene->getGraphicalModelDataDefinitions()->clear();
@@ -1048,9 +1055,11 @@ void MainWindow::_clearModelGraphicsViewForClose(ModelGraphicsView* graphicsView
     scene->getAllConnections()->clear();
     scene->getAllDataDefinitions()->clear();
     scene->getAllGraphicalDiagramsConnections()->clear();
-    scene->clearAnimations();
-    scene->clear();
-    graphicsView->clear();
+    scene->getGraphicalGeometries()->clear();
+    scene->getGraphicalAnimations()->clear();
+    scene->getGraphicalEntities()->clear();
+    scene->getGraphicalGroups()->clear();
+    scene->setConnectionGeometryUpdatesBlocked(false);
 }
 
 bool MainWindow::_closeModel(Model* model) {
@@ -2341,8 +2350,12 @@ void MainWindow::_initUiForNewModel(Model* m) {
         _modelfilename = _modelFilenames[m];
     }
     _actualizeUndo();
-    ui->graphicsView->getScene()->showGrid(); //@TODO: Bad place to be
-    ui->graphicsView->centerOn(TraitsGUI<GView>::sceneCenter, TraitsGUI<GView>::sceneCenter);
+    const bool loadingPersistedModel = (m != nullptr && _loaded);
+    if (!loadingPersistedModel) {
+        // For new/empty models keep default view bootstrap behavior.
+        ui->graphicsView->getScene()->setGridVisible(ui->actionShowGrid->isChecked());
+        ui->graphicsView->centerOn(TraitsGUI<GView>::sceneCenter, TraitsGUI<GView>::sceneCenter);
+    }
     ui->textEdit_Simulation->clear();
     ui->textEdit_Reports->clear();
     ui->textEdit_Console->moveCursor(QTextCursor::End);

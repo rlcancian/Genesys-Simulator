@@ -5,6 +5,7 @@
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/GraphicalModelComponent.h"
+#include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../animations/AnimationTransition.h"
 
 #include <QGraphicsItem>
@@ -104,7 +105,24 @@ void SceneToolController::onActionZoomAllTriggered() {
         return;
     }
 
-    const QRectF bounds = scene->itemsBoundingRect();
+    QList<QGraphicsItem*> userItems = scene->userOperableItems(scene->items());
+    if (scene->getAllDataDefinitions() != nullptr) {
+        for (GraphicalModelDataDefinition* dataDefinition : *scene->getAllDataDefinitions()) {
+            if (dataDefinition != nullptr && !userItems.contains(dataDefinition)) {
+                userItems.append(dataDefinition);
+            }
+        }
+    }
+    QRectF bounds;
+    for (QGraphicsItem* item : userItems) {
+        if (item == nullptr || !item->isVisible() || item->scene() != scene) {
+            continue;
+        }
+        bounds = bounds.united(item->sceneBoundingRect());
+    }
+    if (!bounds.isValid() || bounds.isEmpty()) {
+        bounds = scene->itemsBoundingRect();
+    }
     if (!bounds.isValid() || bounds.isEmpty()) {
         return;
     }
@@ -150,10 +168,12 @@ void SceneToolController::onHorizontalSliderZoomGraphicalValueChanged(int value)
     const double safeMinScale = std::max(1.0e-6, minScale);
     const double safeMaxScale = std::max(safeMinScale, maxScale);
     const double desiredScale = safeMinScale * std::pow(safeMaxScale / safeMinScale, std::clamp(t, 0.0, 1.0));
+    const QPoint viewportCenter = _graphicsView->viewport()->rect().center();
+    const QPointF targetSceneCenter = _graphicsView->mapToScene(viewportCenter);
 
     _graphicsView->resetTransform();
     _graphicsView->scale(desiredScale, desiredScale);
-    _graphicsView->centerOn(sceneRect.center());
+    _graphicsView->centerOn(targetSceneCenter);
     _zoomValue = value;
 }
 

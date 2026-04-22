@@ -161,6 +161,8 @@ public: // editing graphic model
     QList<GraphicalModelComponent*> graphicalModelComponentItems();
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
     GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
+    GraphicalModelComponent* resolveSourceComponent(GraphicalConnection* connection) const;
+    GraphicalModelComponent* resolveDestinationComponent(GraphicalConnection* connection) const;
 public:
     struct GRID {
         unsigned int interval;
