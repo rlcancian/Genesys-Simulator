@@ -831,8 +831,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     _graphicsView->getScene()->setShowRecursiveDataDefinitions(showRecursive);
                     _graphicsView->getScene()->requestGraphicalDataDefinitionsSync();
 
-                    if (zoom > 0) {
-                        _zoomSlider->setValue(zoom + TraitsGUI<GMainWindow>::zoomButtonChange);
+                    if (zoom >= _zoomSlider->minimum() && zoom <= _zoomSlider->maximum()) {
+                        _zoomSlider->setValue(zoom);
                     }
 
                     hasPersistedViewState = true;

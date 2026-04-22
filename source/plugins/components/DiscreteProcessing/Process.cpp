@@ -70,13 +70,13 @@ Process::Process(Model* model, std::string name) : ModelComponent(model, Util::T
 	_parentModel->getControls()->insert(propSeizeRequests);
 	
 	// setting properties
-	_addProperty(propPriority);
-	_addProperty(propPriorityExpression);
-    _addProperty(propAlloc);
-	_addProperty(propQueueableItem);
-	// _addProperty(propdelayExpression);
-	_addProperty(propdelayTimeUnit);
-	_addProperty(propSeizeRequests);
+	_addSimulationControl(propPriority);
+	_addSimulationControl(propPriorityExpression);
+    _addSimulationControl(propAlloc);
+	_addSimulationControl(propQueueableItem);
+	// _addSimulationControl(propdelayExpression);
+	_addSimulationControl(propdelayTimeUnit);
+	_addSimulationControl(propSeizeRequests);
 }
 
 std::string Process::show() {

@@ -40,8 +40,8 @@ Variable::Variable(Model* model, std::string name) : ModelDataDefinition(model, 
 					Util::TypeOf<Variable>(), getName(), "Scope", "");
 	_parentModel->getControls()->insert(propInitialValue);
 	_parentModel->getControls()->insert(propScope);
-	_addProperty(propInitialValue);
-	_addProperty(propScope);
+	_addSimulationControl(propInitialValue);
+	_addSimulationControl(propScope);
 }
 
 Variable::~Variable() {

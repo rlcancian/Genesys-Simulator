@@ -36,7 +36,7 @@ Enter::Enter(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_parentModel->getControls()->insert(propStation);
 
 	// setting properties
-	_addProperty(propStation);
+	_addSimulationControl(propStation);
 }
 
 std::string Enter::show() {

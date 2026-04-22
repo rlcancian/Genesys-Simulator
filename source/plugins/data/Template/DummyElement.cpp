@@ -37,8 +37,8 @@ DummyElement::DummyElement(Model* model, std::string name) : ModelDataDefinition
 					 Util::TypeOf<DummyElement>(), getName(), "SomeUint");
 	_parentModel->getControls()->insert(propSomeString);
 	_parentModel->getControls()->insert(propSomeUint);
-	_addProperty(propSomeString);
-	_addProperty(propSomeUint);
+	_addSimulationControl(propSomeString);
+	_addSimulationControl(propSomeUint);
 }
 
 
@@ -195,6 +195,6 @@ void DummyElementt::_createInternalAndAttachedData() {
 */
 
 /*
-void DummyElementt::_addProperty(SimulationControl* property) {
+void DummyElementt::_addSimulationControl(SimulationControl* property) {
 }
 */

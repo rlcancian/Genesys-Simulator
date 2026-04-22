@@ -58,8 +58,8 @@ Create::Create(Model* model, std::string name) : SourceModelComponent(model, Uti
 	_parentModel->getControls()->insert(propTimeBetweenCreationsSchedule);
 
 	// setting properties
-	_addProperty(propTimeBetweenCreationsFormula);
-	_addProperty(propTimeBetweenCreationsSchedule);
+	_addSimulationControl(propTimeBetweenCreationsFormula);
+	_addSimulationControl(propTimeBetweenCreationsSchedule);
 }
 
 std::string Create::show() {

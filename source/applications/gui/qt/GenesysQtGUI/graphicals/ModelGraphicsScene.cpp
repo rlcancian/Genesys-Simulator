@@ -359,7 +359,7 @@ GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* 
                                                                         QPointF position, QColor color, bool notify,
                                                                         GraphicalModelComponent* autoConnectSource) {
     _propertyEditor->addElement(component);
-    for (auto prop : *component->getProperties()->list()) {
+    for (auto prop : *component->getSimulationControls()->list()) {
         if (prop->getIsList()) {
             (*(_propertyList))[prop] = new DataComponentProperty(_propertyEditor, prop, false);
         }
@@ -1311,6 +1311,12 @@ void ModelGraphicsScene::saveDataDefinitions() {
 }
 
 void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
+    // Loaded models already bring their DataDefinitions from persistence.
+    // Reinserting here can corrupt DataManager state (notably EntityType) and break model check.
+    if (loaded) {
+        return;
+    }
+
     // Get model components by value to avoid temporary heap ownership.
     QList<GraphicalModelComponent*> components = this->graphicalModelComponentItems();
     QList<GraphicalModelComponent*>* allComponentes = this->getAllComponents();
@@ -1352,12 +1358,6 @@ void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
         }
     }
 
-    if (loaded) {
-        std::list<ModelDataDefinition*>* entityTypes = _simulator->getModelManager()->current()->getDataManager()->
-                                                                   getDataDefinitionList(Util::TypeOf<EntityType>())->
-                                                                   list();
-        entityTypes->clear();
-    }
 }
 
 void ModelGraphicsScene::addDrawing(QGraphicsItem* item, bool notify) {
@@ -3030,6 +3030,24 @@ void ModelGraphicsScene::setShowRecursiveDataDefinitions(bool show) {
 
 bool ModelGraphicsScene::showRecursiveDataDefinitions() const {
     return _showRecursiveDataDefinitions;
+}
+
+void ModelGraphicsScene::setModelLevelFilter(unsigned int modelLevel) {
+    _hasModelLevelFilter = true;
+    _modelLevelFilter = modelLevel;
+}
+
+void ModelGraphicsScene::clearModelLevelFilter() {
+    _hasModelLevelFilter = false;
+    _modelLevelFilter = 0;
+}
+
+bool ModelGraphicsScene::hasModelLevelFilter() const {
+    return _hasModelLevelFilter;
+}
+
+unsigned int ModelGraphicsScene::modelLevelFilter() const {
+    return _modelLevelFilter;
 }
 
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {

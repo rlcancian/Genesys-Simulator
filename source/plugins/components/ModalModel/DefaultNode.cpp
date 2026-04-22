@@ -181,7 +181,7 @@ std::string DefaultNode::show() {
 
 PluginInformation* DefaultNode::GetPluginInformation() {
     PluginInformation* info = new PluginInformation(Util::TypeOf<DefaultNode>(), &DefaultNode::LoadInstance, &DefaultNode::NewInstance);
-	//info->setCategory("DiscreteProcessing");
+	info->setCategory("ModalModel");
 	//info->setMinimumInputs(1);
 	//info->setMinimumOutputs(1);
 	//info->setMaximumInputs(1);
@@ -297,6 +297,6 @@ void DefaultNode::_createInternalAndAttachedData() {
 */
 
 /*
-void DefaultNode::_addProperty(SimulationControl* property) {
+void DefaultNode::_addSimulationControl(SimulationControl* property) {
 }
 */

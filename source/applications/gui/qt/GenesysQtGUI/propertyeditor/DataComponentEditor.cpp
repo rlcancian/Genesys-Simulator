@@ -110,7 +110,7 @@ void DataComponentEditor::configure_properties(SimulationControl* property) {
         return;
     }
 
-    List<SimulationControl*>* nestedProperties = property->getEditableProperties();
+    List<SimulationControl*>* nestedProperties = property->getEditableChildSimulationControls();
     if (nestedProperties == nullptr) {
         return;
     }
@@ -142,7 +142,7 @@ void DataComponentEditor::editProperty(SimulationControl* property) {
         return;
     }
 
-    List<SimulationControl*>* nestedProperties = property->getEditableProperties();
+    List<SimulationControl*>* nestedProperties = property->getEditableChildSimulationControls();
     if (nestedProperties == nullptr) {
         return;
     }

@@ -97,6 +97,9 @@ int FullSimulationOfComplexModel::main(int argc, char** argv) {
 
 	Record* record1 = plugins->newInstance<Record>(model);
 	record1->setExpressionName("Tempo total no sistema");
+	record1->setDatasetName("Tempo total no sistema");
+	record1->setRandomVariableName("Tempo total no sistema");
+	record1->setDatasetDescription("Tempo total de cada entidade no sistema.");
 	record1->setExpression("TNOW - Entity.ArrivalTime");
 	record1->setFilename("./temp/TotalTimeInSystem.gen");
 

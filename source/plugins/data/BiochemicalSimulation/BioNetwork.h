@@ -6,6 +6,8 @@
 
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
+#include "tools/BioSimulationAnalysis.h"
+#include "tools/BioSimulationResult.h"
 
 class BioReaction;
 class BioSpecies;
@@ -53,6 +55,15 @@ public:
 	void clearReactions();
 	const std::vector<std::string>& getSpeciesNames() const;
 	const std::vector<std::string>& getReactionNames() const;
+	const BioSimulationResult& getLastSimulationResult() const;
+	bool getSpeciesTimeCourseDataset(const std::string& speciesName, SimulationResultsDataset* dataset,
+	                                 std::string* errorMessage = nullptr) const;
+	bool buildOdeSystemForAnalysis(MassActionOdeSystem* system, std::string& errorMessage) const;
+	bool getStoichiometryMatrix(BioStoichiometryMatrix* matrix, std::string* errorMessage = nullptr) const;
+	bool getReactionRateTimeCourse(BioReactionRateTimeCourse* timeCourse, std::string* errorMessage = nullptr) const;
+	bool checkLastSampleSteadyState(double tolerance, BioSteadyStateCheck* check, std::string* errorMessage = nullptr) const;
+	bool scanLocalParameterSensitivity(double relativeStep, double absoluteStep, BioSensitivityScan* scan,
+	                                   std::string* errorMessage = nullptr) const;
 
 	bool simulate(std::string& errorMessage);
 	bool simulate(double startTime, double stopTime, double stepSize, std::string& errorMessage);
@@ -73,6 +84,8 @@ private:
 	bool collectReactions(std::vector<BioReaction*>& reactions, std::string& errorMessage) const;
 	bool buildSystem(const std::vector<BioSpecies*>& species, const std::vector<BioReaction*>& reactions, MassActionOdeSystem* system, std::string& errorMessage) const;
 	void updatePayload(const std::vector<BioSpecies*>& species);
+	void configureSimulationResult(const std::vector<BioSpecies*>& species);
+	void appendSimulationResultSample(const std::vector<BioSpecies*>& species);
 
 private:
 	const struct DEFAULT_VALUES {
@@ -96,6 +109,7 @@ private:
 	std::string _lastResponsePayload = DEFAULT.lastResponsePayload;
 	std::vector<std::string> _speciesNames;
 	std::vector<std::string> _reactionNames;
+	BioSimulationResult _lastSimulationResult;
 };
 
 #endif /* BIONETWORK_H */

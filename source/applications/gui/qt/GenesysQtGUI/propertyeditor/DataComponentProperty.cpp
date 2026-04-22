@@ -186,7 +186,7 @@ void DataComponentProperty::editProperty() {
         return;
     }
 
-    List<SimulationControl*>* propertiesElement = _property->getProperties(index);
+    List<SimulationControl*>* propertiesElement = _property->getChildSimulationControls(index);
     if (propertiesElement == nullptr) {
         return;
     }

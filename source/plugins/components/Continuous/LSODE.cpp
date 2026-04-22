@@ -53,11 +53,11 @@ LSODE::LSODE(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_parentModel->getControls()->insert(propDiffEquations);
 
 	// setting properties
-	_addProperty(propTimeVariable);
-	_addProperty(propStep);
-	_addProperty(propVariable);
-	_addProperty(propFileName);
-	_addProperty(propDiffEquations);
+	_addSimulationControl(propTimeVariable);
+	_addSimulationControl(propStep);
+	_addSimulationControl(propVariable);
+	_addSimulationControl(propFileName);
+	_addSimulationControl(propDiffEquations);
 }
 
 std::string LSODE::show() {

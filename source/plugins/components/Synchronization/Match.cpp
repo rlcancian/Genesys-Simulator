@@ -58,10 +58,10 @@ Match::Match(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_parentModel->getControls()->insert(propAttributeName);
 
 	// setting properties
-    _addProperty(propRule);
-	_addProperty(propNumberQueues);
-	_addProperty(propMatchSize);
-	_addProperty(propAttributeName);
+    _addSimulationControl(propRule);
+	_addSimulationControl(propNumberQueues);
+	_addSimulationControl(propMatchSize);
+	_addSimulationControl(propAttributeName);
 }
 
 std::string Match::show() {

@@ -75,6 +75,9 @@ void DialogSystemPreferences::loadPreferencesIntoUi() {
     ui->comboBoxInterfaceStyle->setCurrentIndex(SystemPreferences::interfaceStyle() == SystemPreferences::InterfaceStyle::Modern ? 1 : 0);
     ui->spinBoxFontPointSize->setValue(SystemPreferences::applicationFontPointSize());
     ui->checkBoxDiagramUsesThemeColors->setChecked(SystemPreferences::diagramUsesThemeColors());
+    ui->spinBoxRecentModelsLimit->setValue(static_cast<int>(SystemPreferences::recentModelFilesLimit()));
+    ui->comboBoxAutomaticPositioningStrategy->setCurrentIndex(
+        SystemPreferences::automaticPositioningStrategy() == SystemPreferences::AutomaticPositioningStrategy::Legacy ? 1 : 0);
 }
 
 void DialogSystemPreferences::savePreferencesFromUi() {
@@ -106,6 +109,11 @@ void DialogSystemPreferences::savePreferencesFromUi() {
                                              : SystemPreferences::InterfaceStyle::Classic);
     SystemPreferences::setApplicationFontPointSize(ui->spinBoxFontPointSize->value());
     SystemPreferences::setDiagramUsesThemeColors(ui->checkBoxDiagramUsesThemeColors->isChecked());
+    SystemPreferences::setRecentModelFilesLimit(static_cast<unsigned int>(ui->spinBoxRecentModelsLimit->value()));
+    SystemPreferences::setAutomaticPositioningStrategy(
+        ui->comboBoxAutomaticPositioningStrategy->currentIndex() == 1
+            ? SystemPreferences::AutomaticPositioningStrategy::Legacy
+            : SystemPreferences::AutomaticPositioningStrategy::Centered);
     SystemPreferences::save();
     GuiThemeManager::applyApplicationTheme(qobject_cast<QApplication*>(QApplication::instance()));
 }

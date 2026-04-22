@@ -47,9 +47,9 @@ Write::Write(Model* model, std::string name) : ModelComponent(model, Util::TypeO
     _parentModel->getControls()->insert(propWriteToType);
 
 	// setting properties
-	// _addProperty();
-	_addProperty(propFilename);
-    _addProperty(propWriteToType);
+	// _addSimulationControl();
+	_addSimulationControl(propFilename);
+    _addSimulationControl(propWriteToType);
 }
 
 std::string Write::show() {

@@ -50,10 +50,8 @@ public:
 	ModelDataDefinition* getQueueable() const;
 	void setElementManager(ModelDataManager* _modeldataManager);
 	//void setComponentManager(ComponentManager* _componentManager);
-	List<PropertyBase*>* getSimulationControls() const;
-    List<PropertyBase*>* getProperties() const;
-	void _addSimulationControl(PropertyBase* control);
-    void _addProperty(PropertyBase* property);
+	List<SimulationControl*>* getSimulationControls() const;
+	void _addSimulationControl(SimulationControl* control);
 
 	std::string getTypeDC() {return _typeDC;};
 private:
@@ -73,7 +71,7 @@ private:
 private:
 	//ComponentManager* _componentManager;
 	ModelDataManager* _modeldataManager = nullptr;
-	List<PropertyBase*>* _simulationControls = new List<PropertyBase*>();
+	List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
 };
 
 

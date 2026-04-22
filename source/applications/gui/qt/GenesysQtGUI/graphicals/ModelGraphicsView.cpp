@@ -51,6 +51,7 @@ ModelGraphicsView::ModelGraphicsView(QWidget *parent) : QGraphicsView(parent) {
 	int tam = 2*TraitsGUI<GView>::sceneDistanceCenter;
 	ModelGraphicsScene* scene = new ModelGraphicsScene(iniPos, iniPos, tam, tam, this);
 	setScene(scene);
+    centerOn(TraitsGUI<GView>::sceneCenter, TraitsGUI<GView>::sceneCenter);
 }
 
 ModelGraphicsView::ModelGraphicsView(const ModelGraphicsView& orig) {
@@ -295,21 +296,95 @@ void ModelGraphicsView::drawForeground(QPainter *painter, const QRectF &rect) {
 
     if (_ruleVisible) {
         painter->save();
+        painter->resetTransform();
+
         QPen rulerPen(QColor(90, 90, 90, 180));
         painter->setPen(rulerPen);
+        painter->setRenderHint(QPainter::TextAntialiasing, true);
+
+        // Passo base da régua em coordenadas de cena.
+        // Ele continua sendo 100, mas os passos efetivos horizontal e vertical
+        // podem ser aumentados dinamicamente para evitar sobreposição de textos.
         const qreal tickStep = 100.0;
         const qreal majorTick = 12.0;
         const qreal minorTick = 6.0;
-        painter->drawLine(QPointF(visibleRect.left(), visibleRect.top()), QPointF(visibleRect.right(), visibleRect.top()));
-        painter->drawLine(QPointF(visibleRect.left(), visibleRect.top()), QPointF(visibleRect.left(), visibleRect.bottom()));
-        for (qreal x = std::floor(visibleRect.left() / tickStep) * tickStep; x <= visibleRect.right(); x += tickStep) {
-            painter->drawLine(QPointF(x, visibleRect.top()), QPointF(x, visibleRect.top() + majorTick));
-            painter->drawText(QPointF(x + 2.0, visibleRect.top() + 24.0), QString::number(static_cast<int>(x)));
+
+        const QRect viewportRect = viewport()->rect();
+        const QPointF topLeftScene = mapToScene(viewportRect.topLeft());
+        const QPointF topRightScene = mapToScene(viewportRect.topRight());
+        const QPointF bottomLeftScene = mapToScene(viewportRect.bottomLeft());
+
+        // Usa a mesma fonte ligeiramente reduzida nas duas réguas.
+        // A redução é local a este trecho e a fonte original é restaurada ao final.
+        const QFont originalFont = painter->font();
+        QFont rulerTextFont = originalFont;
+        if (rulerTextFont.pointSizeF() > 0.0) {
+            rulerTextFont.setPointSizeF(std::max<qreal>(1.0, rulerTextFont.pointSizeF() - 3.0));
+        } else if (rulerTextFont.pixelSize() > 0) {
+            rulerTextFont.setPixelSize(std::max(1, rulerTextFont.pixelSize() - 3));
         }
-        for (qreal y = std::floor(visibleRect.top() / tickStep) * tickStep; y <= visibleRect.bottom(); y += tickStep) {
-            painter->drawLine(QPointF(visibleRect.left(), y), QPointF(visibleRect.left() + minorTick, y));
-            painter->drawText(QPointF(visibleRect.left() + 8.0, y - 2.0), QString::number(static_cast<int>(y)));
+        painter->setFont(rulerTextFont);
+
+        const QFontMetricsF rulerTextMetrics(rulerTextFont);
+
+        // --- Ajuste dinâmico da régua horizontal ---
+        // Aqui o problema principal é a largura do texto, então o passo horizontal
+        // é aumentado para um múltiplo de 100 suficiente para evitar sobreposição.
+        const QString leftXText = QString::number(static_cast<int>(visibleRect.left()));
+        const QString rightXText = QString::number(static_cast<int>(visibleRect.right()));
+        const QString zeroXText = QStringLiteral("0");
+        const qreal horizontalTextWidth = std::max({
+            rulerTextMetrics.horizontalAdvance(leftXText),
+            rulerTextMetrics.horizontalAdvance(rightXText),
+            rulerTextMetrics.horizontalAdvance(zeroXText)
+        });
+        const qreal minimumHorizontalLabelSpacingPx = horizontalTextWidth + 12.0;
+
+        const qreal visibleSceneWidth = std::abs(topRightScene.x() - topLeftScene.x());
+        const qreal baseTickPixelsX = (visibleSceneWidth > 0.0)
+                ? (tickStep * static_cast<qreal>(viewportRect.width()) / visibleSceneWidth)
+                : 0.0;
+
+        const qreal tickStepX = (baseTickPixelsX > 0.0)
+                ? (tickStep * std::max<qreal>(1.0, std::ceil(minimumHorizontalLabelSpacingPx / baseTickPixelsX)))
+                : tickStep;
+
+        // --- Ajuste dinâmico da régua vertical ---
+        // Na vertical, o que importa é principalmente a altura do texto, não a largura.
+        // Isso evita aumentar demais o espaçamento entre rótulos do eixo Y.
+        const qreal verticalTextHeight = rulerTextMetrics.height();
+        const qreal minimumVerticalLabelSpacingPx = verticalTextHeight + 4.0;
+
+        const qreal visibleSceneHeight = std::abs(bottomLeftScene.y() - topLeftScene.y());
+        const qreal baseTickPixelsY = (visibleSceneHeight > 0.0)
+                ? (tickStep * static_cast<qreal>(viewportRect.height()) / visibleSceneHeight)
+                : 0.0;
+
+        const qreal tickStepY = (baseTickPixelsY > 0.0)
+                ? (tickStep * std::max<qreal>(1.0, std::ceil(minimumVerticalLabelSpacingPx / baseTickPixelsY)))
+                : tickStep;
+
+        painter->drawLine(QPointF(viewportRect.left(), viewportRect.top()),
+                          QPointF(viewportRect.right(), viewportRect.top()));
+        painter->drawLine(QPointF(viewportRect.left(), viewportRect.top()),
+                          QPointF(viewportRect.left(), viewportRect.bottom()));
+
+        for (qreal x = std::floor(visibleRect.left() / tickStepX) * tickStepX; x <= visibleRect.right(); x += tickStepX) {
+            const double t = (topRightScene.x() == topLeftScene.x()) ? 0.0 : (x - topLeftScene.x()) / (topRightScene.x() - topLeftScene.x());
+            const qreal px = viewportRect.left() + t * viewportRect.width();
+            painter->drawLine(QPointF(px, viewportRect.top()), QPointF(px, viewportRect.top() + majorTick));
+            painter->drawText(QPointF(px + 2.0, viewportRect.top() + 24.0), QString::number(static_cast<int>(x)));
         }
+
+        for (qreal y = std::floor(visibleRect.top() / tickStepY) * tickStepY; y <= visibleRect.bottom(); y += tickStepY) {
+            const double t = (bottomLeftScene.y() == topLeftScene.y()) ? 0.0 : (y - topLeftScene.y()) / (bottomLeftScene.y() - topLeftScene.y());
+            const qreal py = viewportRect.top() + t * viewportRect.height();
+            painter->drawLine(QPointF(viewportRect.left(), py), QPointF(viewportRect.left() + minorTick, py));
+            painter->drawText(QPointF(viewportRect.left() + 8.0, py - 2.0), QString::number(static_cast<int>(y)));
+        }
+
+        // Restaura a fonte original para não afetar outros desenhos.
+        painter->setFont(originalFont);
         painter->restore();
     }
 

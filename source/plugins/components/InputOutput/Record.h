@@ -69,8 +69,31 @@ public:
 	std::string getFileName() const;
 	void setExpression(const std::string expression);
 	std::string getExpression() const;
+	/*!
+	 Sets the legacy expression-name metadata kept for old Record datasets.
+	 */
 	void setExpressionName(std::string expressionName);
 	std::string getExpressionName() const;
+	/*!
+	 Sets the analytical dataset name emitted in enriched Record file headers.
+	 */
+	void setDatasetName(std::string datasetName);
+	std::string getDatasetName() const;
+	/*!
+	 Sets the random variable name emitted in enriched Record file headers.
+	 */
+	void setRandomVariableName(std::string randomVariableName);
+	std::string getRandomVariableName() const;
+	/*!
+	 Sets the canonical random variable type for enriched Record file headers.
+	 */
+	void setVariableType(std::string variableType);
+	std::string getVariableType() const;
+	/*!
+	 Sets the free-text dataset description emitted in enriched Record file headers.
+	 */
+	void setDatasetDescription(std::string description);
+	std::string getDatasetDescription() const;
 	StatisticsCollector* getCstatExpression() const;	
 	bool getTimeDependent() const;
 	void setTimeDependent(bool timeDependent);
@@ -98,11 +121,19 @@ private:
 		const bool timeDependent = false;
 		const std::string expression = "";
 		const std::string expressionName = "";
+		const std::string datasetName = "";
+		const std::string randomVariableName = "";
+		const std::string variableType = "Continuous numeric";
+		const std::string description = "";
 		const std::string filename = "";
 	} DEFAULT;
 	bool _timeDependent = DEFAULT.timeDependent;
 	std::string _expression = DEFAULT.expression;
 	std::string _expressionName = DEFAULT.expressionName;
+	std::string _datasetName = DEFAULT.datasetName;
+	std::string _randomVariableName = DEFAULT.randomVariableName;
+	std::string _variableType = DEFAULT.variableType;
+	std::string _description = DEFAULT.description;
 	std::string _filename = DEFAULT.filename;
 private:
 	const std::string _separator = " ";
@@ -111,4 +142,3 @@ private:
 };
 
 #endif /* RECORD_H */
-

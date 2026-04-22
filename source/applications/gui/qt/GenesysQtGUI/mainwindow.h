@@ -8,6 +8,7 @@
 #include <QUndoView>
 #include <QMetaObject>
 #include <memory>
+#include <map>
 
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
@@ -41,6 +42,13 @@ class EditCommandController;
 class SceneToolController;
 class GraphicalContextMenuController;
 class DialogUtilityController;
+class GuiExtensionManager;
+class QAction;
+class QMenu;
+class QTabWidget;
+class ModelGraphicsView;
+class ModelComponent;
+class ModelDataDefinition;
 
 // Document MainWindow as composition root and incremental compatibility façade.
 /**
@@ -85,6 +93,10 @@ public: // to notify changes
     void unselectDrawIcons();
     /** @brief Compatibility wrapper that reports whether any draw tool action is selected. */
     bool checkSelectedDrawIcons();
+    /** @brief Public refresh hook for graphical extension contributions. */
+    void refreshGuiExtensions();
+    /** @brief Public refresh hook for plugin catalog tree. */
+    void refreshPluginCatalog();
 
 private slots:
     // actions
@@ -328,6 +340,30 @@ private: // view
     void _connectSceneSignals();
     /** @brief Disconnects scene signals during lifecycle transitions and shutdown. */
     void _disconnectSceneSignals(const char* context);
+    /** @brief Creates the graphical-model tab host and moves the initial view into the first page. */
+    void _initializeModelTabs();
+    /** @brief Applies simulator/property-editor dependencies to a graphics view and its scene. */
+    void _configureModelGraphicsView(ModelGraphicsView* graphicsView);
+    /** @brief Creates a configured graphics view for one opened kernel model tab. */
+    ModelGraphicsView* _createModelGraphicsView(QWidget* parent);
+    /** @brief Makes a graphics view the active compatibility target used by legacy wrappers. */
+    void _activateModelGraphicsView(ModelGraphicsView* graphicsView, bool rebuildControllers = true);
+    /** @brief Ensures that an opened kernel model has a corresponding graphical tab. */
+    ModelGraphicsView* _ensureModelTab(Model* model);
+    /** @brief Removes the tab and graphical view associated with a model no longer opened. */
+    void _removeModelTab(Model* model);
+    /** @brief Updates graphical model tab labels and navigation actions from ModelManager state. */
+    void _updateModelTabs();
+    /** @brief Changes the current model when the user selects a graphical model tab. */
+    void _activateModelTab(int index);
+    /** @brief Moves to the previous opened model and selects its tab. */
+    void _activatePreviousModel();
+    /** @brief Moves to the next opened model and selects its tab. */
+    void _activateNextModel();
+    /** @brief Rebuilds controllers/services that keep direct pointers to the active graphics view. */
+    void _rebuildViewDependentControllers();
+    /** @brief Rebuilds graphical extension contributions from currently loaded model plugins. */
+    void _refreshGuiExtensions();
     /** @brief Reinitializes UI state after new/load model lifecycle operations. */
 	void _initUiForNewModel(Model* m);
     /** @brief Recomputes action enabled/checked states from delegated controller/service state. */
@@ -385,6 +421,79 @@ private: // view
     /** @brief Compatibility wrapper delegating clipboard selection filtering to controller. */
     void saveItemForCopy(QList<GraphicalModelComponent*> * gmcList, QList<GraphicalConnection*> * connList);
 	//bool _checkStartSimulation();
+private: // opened-model document state
+    /** @brief Type of graphical context represented by one model graphics tab. */
+    enum class GraphicalModelViewContextKind {
+        RootModel,
+        Submodel
+    };
+
+    /**
+     * @brief Describes what a graphics tab is visualizing.
+     *
+     * A tab is no longer treated as "just a ModelGraphicsView".  RootModel contexts keep the
+     * behavior implemented for multiple opened models.  Submodel contexts are intentionally
+     * represented now, before they are rendered, so future work can open level/owner-specific
+     * scenes without confusing them with independent ModelManager documents.
+     */
+    struct GraphicalModelViewContext {
+        GraphicalModelViewContextKind kind = GraphicalModelViewContextKind::RootModel;
+        Model* rootModel = nullptr;
+        unsigned int modelLevel = 0;
+        ModelComponent* ownerComponent = nullptr;
+        ModelDataDefinition* ownerDataDefinition = nullptr;
+        ModelGraphicsView* graphicsView = nullptr;
+        QString explicitTitle;
+    };
+
+    /** @brief Returns the currently selected graphical context, or nullptr when no model tab is active. */
+    GraphicalModelViewContext* _activeViewContext() const;
+    /** @brief Returns the context associated with a graphics view. */
+    GraphicalModelViewContext* _contextForView(ModelGraphicsView* graphicsView) const;
+    /** @brief Returns the root-model context for a kernel model. */
+    GraphicalModelViewContext* _rootContextForModel(Model* model) const;
+    /** @brief Creates or updates the root context backing a model tab. */
+    GraphicalModelViewContext* _ensureRootModelViewContext(Model* model, ModelGraphicsView* graphicsView);
+    /** @brief Opens or activates a submodel tab for the selected owner data definition/component. */
+    ModelGraphicsView* _ensureSubmodelViewContext(ModelDataDefinition* owner);
+    /** @brief Removes one submodel tab without closing its root kernel model. */
+    void _closeSubmodelViewContext(ModelGraphicsView* graphicsView);
+    /** @brief Removes every submodel tab associated with a root model being closed. */
+    void _removeSubmodelViewContextsForModel(Model* model);
+    /** @brief Removes all graphical context bookkeeping associated with one graphics view. */
+    void _removeViewContext(ModelGraphicsView* graphicsView);
+    /** @brief Formats a tab title for either root or future submodel contexts. */
+    QString _viewContextTitle(const GraphicalModelViewContext& context) const;
+    /** @brief Checks if a graphical context still belongs to an open kernel model. */
+    bool _viewContextBelongsToOpenModel(const GraphicalModelViewContext& context) const;
+    /** @brief Returns the selected graphical component/data definition that can own a submodel. */
+    ModelDataDefinition* _selectedSubmodelOwner() const;
+    /** @brief Returns whether a data definition owns renderable items in a lower model level. */
+    bool _canOpenSubmodelFor(ModelDataDefinition* owner) const;
+    /** @brief Slot target for the context-menu/model-menu submodel-opening command. */
+    void _openSelectedSubmodel();
+    void _refreshRecentModelsMenu();
+    bool _openRecentModelFile(const QString& fileName);
+    /** @brief Stores the active editor/dirty state before switching away from the current model. */
+    void _syncCurrentModelDocumentState();
+    /** @brief Restores filename, editor text and dirty flags for the given model after activation. */
+    void _restoreModelDocumentState(Model* model);
+    /** @brief Returns a user-facing name for prompts and tab titles without changing model state. */
+    QString _modelDisplayName(Model* model) const;
+    /** @brief Normalizes .gen/.gui filenames to the shared save basename used by both serializers. */
+    QString _modelSaveBaseFilename(QString filename) const;
+    /** @brief Returns whether a specific opened model has pending text, graphical or kernel changes. */
+    bool _modelHasPendingChanges(Model* model) const;
+    /** @brief Saves the current model text and graphical representation using a per-model filename. */
+    bool _saveCurrentModel(bool promptForFilename = true);
+    /** @brief Saves a model after activating its tab, used by close/exit workflows. */
+    bool _saveModelWithActivation(Model* model);
+    /** @brief Confirms and optionally saves one model before closing/removing it. */
+    bool _confirmCloseModel(Model* model);
+    /** @brief Closes one opened model tab and removes its kernel model when confirmed. */
+    bool _closeModel(Model* model);
+    /** @brief Clears graphical scene state for a view that is about to be closed. */
+    void _clearModelGraphicsViewForClose(ModelGraphicsView* graphicsView);
 private: // graphical model persistence
     /** @brief Compatibility wrapper delegating graphical model persistence to service. */
     bool _saveGraphicalModel(QString filename);
@@ -398,6 +507,33 @@ private: //???
 private: // interface and model main elements to join
 	Ui::MainWindow *ui;
 	Simulator* simulator;
+    // Hosts one graphical scene/view per opened kernel model.
+    QTabWidget* _modelGraphicsTabs = nullptr;
+    // Maps opened kernel models to their graphical view so tab switching preserves each scene.
+    std::map<Model*, ModelGraphicsView*> _modelGraphicsViews;
+    // Reverse lookup used by tab activation without relying on QVariant pointer casts.
+    std::map<ModelGraphicsView*, Model*> _modelsByGraphicsView;
+    // Owns graphical contexts by view; currently every context is root-model, future ones may be submodels.
+    std::map<ModelGraphicsView*, std::unique_ptr<GraphicalModelViewContext>> _viewContextsByGraphicsView;
+    // Fast lookup for the root graphical context of each opened kernel model.
+    std::map<Model*, GraphicalModelViewContext*> _rootViewContextsByModel;
+    // Keeps each opened model's last graphical/text filename independent while switching tabs.
+    std::map<Model*, QString> _modelFilenames;
+    // Caches the editable Simulang text per opened model so tab switches do not discard unsaved text.
+    std::map<Model*, QString> _modelTextContents;
+    // Tracks text-editor dirty state per opened model while legacy flags mirror only the active model.
+    std::map<Model*, bool> _modelTextHasChanged;
+    // Tracks graphical dirty state per opened model while legacy flags mirror only the active model.
+    std::map<Model*, bool> _modelGraphicalHasChanged;
+    // Tracks tabs being changed programmatically to avoid re-entrant model switching.
+    bool _changingModelTabProgrammatically = false;
+    // Runtime menu actions for navigating the opened-model list.
+    QAction* _actionModelPrevious = nullptr;
+    QAction* _actionModelNext = nullptr;
+    // Runtime action that opens a level-scoped graphical tab from the selected owner item.
+    QAction* _actionOpenSelectedSubmodel = nullptr;
+    QMenu* _menuOpenRecent = nullptr;
+    QList<QAction*> _recentModelActions;
     // Keep core simulation command gateway owned by MainWindow composition root.
     std::unique_ptr<class SimulationController> _simulationController;
     // Keep phase-ordered services to make composition dependencies explicit in Phase 12.
@@ -434,6 +570,8 @@ private: // interface and model main elements to join
     std::unique_ptr<GraphicalContextMenuController> _graphicalContextMenuController;
     // Add the Phase 11 dialog-utility controller owned by MainWindow.
     std::unique_ptr<DialogUtilityController> _dialogUtilityController;
+    // Keeps runtime GUI extension contributions isolated from core static menus/toolbars.
+    std::unique_ptr<GuiExtensionManager> _guiExtensionManager;
 	PropertyEditorGenesys* propertyGenesys;
     std::map<SimulationControl*, DataComponentProperty*>* propertyList;
     std::map<SimulationControl*, DataComponentEditor*>* propertyEditorUI;

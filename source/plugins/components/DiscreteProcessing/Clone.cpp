@@ -38,7 +38,7 @@ Clone::Clone(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_parentModel->getControls()->insert(propNumClone);
 
 	// setting properties
-	_addProperty(propNumClone);
+	_addSimulationControl(propNumClone);
 }
 
 std::string Clone::show() {

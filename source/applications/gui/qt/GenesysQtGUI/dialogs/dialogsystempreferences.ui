@@ -218,16 +218,57 @@
         </widget>
        </item>
        <item>
-        <widget class="QGroupBox" name="groupBoxDiagramTheme">
+       <widget class="QGroupBox" name="groupBoxDiagramTheme">
          <property name="title">
           <string>Model diagram</string>
          </property>
-         <layout class="QVBoxLayout" name="verticalLayoutDiagramTheme">
-          <item>
+         <layout class="QFormLayout" name="formLayoutDiagramTheme">
+          <item row="0" column="0" colspan="2">
            <widget class="QCheckBox" name="checkBoxDiagramUsesThemeColors">
             <property name="text">
              <string>Apply theme colors to canvas background and grid</string>
             </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelRecentModelsLimit">
+            <property name="text">
+             <string>Recent files in menu</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QSpinBox" name="spinBoxRecentModelsLimit">
+            <property name="minimum">
+             <number>1</number>
+            </property>
+            <property name="maximum">
+             <number>50</number>
+            </property>
+            <property name="value">
+             <number>10</number>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelAutomaticPositioningStrategy">
+            <property name="text">
+             <string>Automatic positioning strategy</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QComboBox" name="comboBoxAutomaticPositioningStrategy">
+            <item>
+             <property name="text">
+              <string>Centered (recommended)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Legacy (top-left)</string>
+             </property>
+            </item>
            </widget>
           </item>
          </layout>

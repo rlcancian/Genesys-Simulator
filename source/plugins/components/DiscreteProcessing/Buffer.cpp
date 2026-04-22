@@ -69,10 +69,10 @@ Buffer::Buffer(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_parentModel->getControls()->insert(propSignal);
 
 	// setting properties
-    _addProperty(propArrivalRule);
-    _addProperty(propAdvanceOn);
-	_addProperty(propCapacity);
-	_addProperty(propSignal);
+    _addSimulationControl(propArrivalRule);
+    _addSimulationControl(propAdvanceOn);
+	_addSimulationControl(propCapacity);
+	_addSimulationControl(propSignal);
 }
 
 std::string Buffer::show() {
@@ -262,7 +262,7 @@ void Buffer::_createInternalAndAttachedData() {
 	}
 }
 
-void Buffer::_addProperty(SimulationControl* property) {
+void Buffer::_addSimulationControl(SimulationControl* property) {
 }
 
 

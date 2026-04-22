@@ -54,7 +54,7 @@ Resource::Resource(Model* model, std::string name) : ModelDataDefinition(model, 
     //			DefineGetter<Resource, unsigned int>(this, &Resource::getCapacity),
     //			DefineSetter<Resource, unsigned int>(this, &Resource::setCapacity));
     //	_parentModel->getControls()->insert(prop1);
-    //	_addProperty(prop1);
+    //	_addSimulationControl(prop1);
 
     SimulationControlGenericEnum<Resource::ResourceState, Resource>* propResourceState = new
         SimulationControlGenericEnum<Resource::ResourceState, Resource>(
@@ -92,12 +92,12 @@ Resource::Resource(Model* model, std::string name) : ModelDataDefinition(model, 
     _parentModel->getControls()->insert(propCapacitySchedule);
 
     // setting property
-    _addProperty(propResourceState);
-    _addProperty(propCapacity);
-    _addProperty(propCostBusyTimeUnit);
-    _addProperty(propCostIdleTimeUnit);
-    _addProperty(propCostPerUse);
-    _addProperty(propCapacitySchedule);
+    _addSimulationControl(propResourceState);
+    _addSimulationControl(propCapacity);
+    _addSimulationControl(propCostBusyTimeUnit);
+    _addSimulationControl(propCostIdleTimeUnit);
+    _addSimulationControl(propCostPerUse);
+    _addSimulationControl(propCapacitySchedule);
 }
 
 Resource::~Resource() {

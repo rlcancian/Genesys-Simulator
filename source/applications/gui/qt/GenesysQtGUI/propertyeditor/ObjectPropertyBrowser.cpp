@@ -341,6 +341,11 @@ void ObjectPropertyBrowser::setActiveObject(
                 graphicalDataDefinition->setEditableInPropertyEditor(_editableModelObjects.contains(name));
             }
             _activeKernelObjectReadOnly = !graphicalDataDefinition->isEditableInPropertyEditor();
+        } else if (mdd != nullptr) {
+            // Inspector-driven editing may target a hidden GMDD, so read-only enforcement must
+            // also work when there is no graphical QObject backing the selected data definition.
+            const QString name = QString::fromStdString(mdd->getName());
+            _activeKernelObjectReadOnly = !_editableModelObjects.contains(name);
         }
     }
     _propertyEditor = peg;
@@ -474,7 +479,7 @@ bool ObjectPropertyBrowser::_hasValidActiveBindingContext(QtProperty* property) 
         return true;
     }
 
-    if (_activeMode != ActiveMode::KernelObject || _modelObject == nullptr || _graphicalObject.isNull()) {
+    if (_activeMode != ActiveMode::KernelObject || _modelObject == nullptr) {
         return false;
     }
 
@@ -763,7 +768,7 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
         QtProperty* elementGroup = _groupManager->addProperty(groupName);
         property->addSubProperty(elementGroup);
 
-        List<SimulationControl*>* elementProperties = control->getEditableProperties(index);
+        List<SimulationControl*>* elementProperties = control->getEditableChildSimulationControls(index);
         if (elementProperties == nullptr) {
             QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
             emptyNode->setEnabled(false);
@@ -1009,6 +1014,18 @@ bool ObjectPropertyBrowser::_isRegisteredModelDataDefinition(ModelDataDefinition
     }
     List<ModelDataDefinition*>* dataList = model->getDataManager()->getDataDefinitionList(dataDefinition->getClassname());
     return dataList != nullptr && dataList->find(dataDefinition) != dataList->list()->end();
+}
+
+void ObjectPropertyBrowser::_materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition) const {
+    // Property-editor mutations can affect both the edited owner and a referenced object created or
+    // rebound by the same commit. Materialize both sides before any GUI refresh so the persisted
+    // model, the data-definition tree, and the graphical layer observe the same kernel state.
+    if (referencedDataDefinition != nullptr) {
+        ModelDataDefinition::CreateInternalData(referencedDataDefinition);
+    }
+    if (_modelObject != nullptr && _modelObject != referencedDataDefinition) {
+        ModelDataDefinition::CreateInternalData(_modelObject);
+    }
 }
 
 void ObjectPropertyBrowser::_synchronizeGraphicalModelDataDefinitionsNow() const {
@@ -1311,7 +1328,7 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
         group->addSubProperty(refProperty);
     }
 
-    List<SimulationControl*>* childrenList = control->getEditableProperties();
+    List<SimulationControl*>* childrenList = control->getEditableChildSimulationControls();
     if (childrenList == nullptr) {
         QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
         emptyNode->setEnabled(false);
@@ -1342,7 +1359,7 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
     }
 
     const std::vector<GenesysPropertyDescriptor> properties =
-        GenesysPropertyIntrospection::describe(mdd->getProperties());
+        GenesysPropertyIntrospection::describe(mdd->getSimulationControls());
 
     std::map<std::string, QtProperty*> groups;
 
@@ -1806,10 +1823,9 @@ bool ObjectPropertyBrowser::_createNewListElementForProperty(QtProperty* propert
         return false;
     }
 
-    // List mutations can change the owner's attached/internal data graph. Rebuild it before the
-    // graphical layer asks which GMDDs should be visible; otherwise recursive GMDDs created inside
-    // another GMDD, such as Resource members created in Set::ElementSet, remain invisible.
-    ModelDataDefinition::CreateInternalData(_modelObject);
+    // List mutations can affect the owner's semantic graph. Rebuild it before the graphical layer
+    // asks which GMDDs should be visible.
+    _materializeAffectedModelDataDefinitions();
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -1898,8 +1914,7 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property) 
         model->getDataManager()->insert(referencedDataDefinition);
     }
 
-    // Let the owner re-establish the semantic internal/attached relationship using its own kernel policy.
-    ModelDataDefinition::CreateInternalData(_modelObject);
+    _materializeAffectedModelDataDefinitions(referencedDataDefinition);
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -1939,7 +1954,7 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
         return false;
     }
 
-    ModelDataDefinition::CreateInternalData(_modelObject);
+    _materializeAffectedModelDataDefinitions(_referencedModelDataDefinition(binding));
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -2022,7 +2037,7 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
         return false;
     }
 
-    ModelDataDefinition::CreateInternalData(_modelObject);
+    _materializeAffectedModelDataDefinitions();
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;

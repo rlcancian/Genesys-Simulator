@@ -56,9 +56,9 @@ Queue::Queue(Model* model, std::string name) : ModelDataDefinition(model, Util::
 	_parentModel->getControls()->insert(propOrderRuleInt);
 
 	// setting properties
-    _addProperty(propAttributeName);
-    _addProperty(propOrderRule);
-	_addProperty(propOrderRuleInt);
+    _addSimulationControl(propAttributeName);
+    _addSimulationControl(propOrderRule);
+	_addSimulationControl(propOrderRuleInt);
 
 	_configureListComparator();
 }

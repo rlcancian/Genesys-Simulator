@@ -66,12 +66,12 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 	_parentModel->getControls()->insert(propGridWidth);
 	_parentModel->getControls()->insert(propGridHeight);
 
-	_addProperty(propGroProgram);
-	_addProperty(propSimulationStep);
-	_addProperty(propInitialColonyTime);
-	_addProperty(propInitialPopulation);
-	_addProperty(propGridWidth);
-	_addProperty(propGridHeight);
+	_addSimulationControl(propGroProgram);
+	_addSimulationControl(propSimulationStep);
+	_addSimulationControl(propInitialColonyTime);
+	_addSimulationControl(propInitialPopulation);
+	_addSimulationControl(propGridWidth);
+	_addSimulationControl(propGridHeight);
 }
 
 std::string BacteriaColony::show() {

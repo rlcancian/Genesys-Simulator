@@ -179,14 +179,19 @@ void SimulationEventController::onModelCheckSuccessHandler(ModelEvent* re) const
     Model* model = _simulator->getModelManager()->current();
     if (_simulator->getModelManager()->current() == re->getModel()) {
         ModelDataManager* dm = model->getDataManager();
-        ModelGraphicsView* modelGraphView = _graphicsView;
-        Q_UNUSED(modelGraphView)
         // Iterate over a value snapshot of data-definition class names while touching checked model data.
         for (auto elemclassname : dm->getDataDefinitionClassnames()) {
             for (ModelDataDefinition* elem : *dm->getDataDefinitionList(elemclassname)->list()) {
                 Util::identification id = elem->getId();
                 Q_UNUSED(id)
             }
+        }
+        if (_graphicsView != nullptr && _graphicsView->getScene() != nullptr) {
+            // Model check can materialize internal/attached data after a deferred kernel validation.
+            // Refresh the GMDD layer so newly created recursive/statistics data becomes visible
+            // without requiring another manual GUI action.
+            _graphicsView->getScene()->requestGraphicalDataDefinitionsSync();
+            _graphicsView->getScene()->update();
         }
     }
 }

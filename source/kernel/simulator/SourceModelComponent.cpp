@@ -55,12 +55,12 @@ SourceModelComponent::SourceModelComponent(Model* model, std::string componentTy
 	_parentModel->getControls()->insert(propEntityType);
 
 	// setting properties
-	_addProperty(propFirstCreation);
-	_addProperty(propEntitiesPerCreation);
-	// _addProperty(propMaxCreation);
-	_addProperty(propTimeBetweenCreations);
-	_addProperty(propTimeUnit);
-	_addProperty(propEntityType);
+	_addSimulationControl(propFirstCreation);
+	_addSimulationControl(propEntitiesPerCreation);
+	// _addSimulationControl(propMaxCreation);
+	_addSimulationControl(propTimeBetweenCreations);
+	_addSimulationControl(propTimeUnit);
+	_addSimulationControl(propEntityType);
 }
 
 std::string SourceModelComponent::show() {

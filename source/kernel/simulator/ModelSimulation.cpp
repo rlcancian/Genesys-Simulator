@@ -319,7 +319,7 @@ void ModelSimulation::_showSimulationHeader() {
 	//tm->traceReport(TraceManager::Level::simulation, "");
 //    // model controls and responses
 //    std::string controls;
-//    for (/*PropertyBase**/SimulationControl* control : * _model->getControls()->list()) {
+//    for (SimulationControl* control : * _model->getControls()->list()) {
 //        // @ToDo: (importante): IMPORTANT CONTROLS AND RESPONSES MUST WORK NO MATTER THE PROPERTIES PProperties
 //        controls += control->getName()+"("+control->getClassname()+")="+control->getValue()+", ";
 //    }
