@@ -117,12 +117,13 @@ public:
 	std::string getLanguageTemplate() const;
 	void setCategory(std::string _category);
 	std::string getCategory() const;
+	static std::string categoryFolderName(const std::string& category);
 public:
 private:
 	std::string _author = "prof. Dr. Ing. Rafael Luiz Cancian";
 	std::string _date = "01/08/2018";
 	std::string _version = "0.9.1";
-	std::string _category = "Discrete Processing";
+	std::string _category = "DiscreteProcessing";
 	std::string _observation = "First implementation not fully completed nor tested. Use with caution.";
 	std::string _descriptionHelp = "";
 	std::string _languageTemplate = "";

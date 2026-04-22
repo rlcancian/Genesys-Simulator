@@ -12,9 +12,9 @@
 #include <QGraphicsObject>
 #include <QPen>
 #include <QBrush>
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/Plugin.h"
-#include "../../../../plugins/data/Queue.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/Plugin.h"
+#include "plugins/data/DiscreteProcessing/Queue.h"
 #include "graphicals/GraphicalImageAnimation.h"
 #include "GraphicalComponentPort.h"
 #include "GraphicalModelDataDefinition.h"
@@ -48,6 +48,7 @@ private:
 protected: // virtual
 	virtual bool sceneEvent(QEvent *event) override;
     QVariant itemChange(GraphicsItemChange change, const QVariant& value) override;
+    GraphicalModelItemRenderContext renderContext() const override;
 	//virtual void	hoverEnterEvent(QGraphicsSceneHoverEvent * event)
 	//virtual void	hoverLeaveEvent(QGraphicsSceneHoverEvent * event)
 	//virtual void	hoverMoveEvent(QGraphicsSceneHoverEvent * event)

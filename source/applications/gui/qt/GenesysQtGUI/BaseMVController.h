@@ -3,7 +3,7 @@
 #include <QMainWindow>
 #include <QObject>
 #include <QWidget>
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 #include "ui_mainwindow.h"
 
 

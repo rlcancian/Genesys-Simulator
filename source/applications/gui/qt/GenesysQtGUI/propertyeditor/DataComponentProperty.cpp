@@ -11,7 +11,7 @@
 #include <Qt>
 
 #include "DataComponentEditor.h"
-#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 
 DataComponentProperty::DataComponentProperty(
     PropertyEditorGenesys* editor,
@@ -186,7 +186,7 @@ void DataComponentProperty::editProperty() {
         return;
     }
 
-    List<SimulationControl*>* propertiesElement = _property->getProperties(index);
+    List<SimulationControl*>* propertiesElement = _property->getChildSimulationControls(index);
     if (propertiesElement == nullptr) {
         return;
     }

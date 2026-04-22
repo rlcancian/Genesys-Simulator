@@ -12,9 +12,11 @@
  */
 
 #include "GenesysShell.h"
-#include "../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/PluginManager.h"
+#include "kernel/simulator/Simulator.h"
 #include <regex>
 #include <assert.h>
+#include <algorithm>
 #include <string>
 #include <chrono>
 #include <thread>
@@ -26,9 +28,58 @@
 #include <ostream>
 #include <sstream>
 
+#ifdef _WIN32
+#include <io.h>
+#else
+#include <unistd.h>
+#endif
 
 using namespace std;
 //#include "ProbDistribDefaultImpl1.h"
+
+namespace {
+
+/*! \brief Returns true when stdin is attached to an interactive terminal. */
+bool IsInteractiveTerminalInput() {
+#ifdef _WIN32
+	return _isatty(_fileno(stdin)) != 0;
+#else
+	return isatty(STDIN_FILENO) != 0;
+#endif
+}
+
+/*! \brief Prints dependency diagnostics and asks whether install commands may run. */
+bool ConfirmSystemDependencyInstallationFromShell(const SystemDependencyCheckResult& result) {
+	cout << "Plugin system dependencies are not satisfied:" << endl;
+	cout << result.diagnosticText(false) << endl;
+
+	if (!result.canAttemptInstallForAllMissing()) {
+		cout << "At least one dependency cannot be installed automatically. "
+		        "Run the declared install command manually, when available, and try again." << endl;
+		return false;
+	}
+	if (!IsInteractiveTerminalInput()) {
+		cout << "Non-interactive input detected. Install commands will not be executed automatically." << endl;
+		return false;
+	}
+
+	cout << "Run the install command(s) now? [y/N] ";
+	string answer;
+	getline(cin, answer);
+	transform(answer.begin(), answer.end(), answer.begin(), ::tolower);
+	return answer == "y" || answer == "yes" || answer == "s" || answer == "sim";
+}
+
+/*! \brief Builds insertion options used by interactive shell plugin loading commands. */
+PluginInsertionOptions ShellPluginInsertionOptions() {
+	PluginInsertionOptions options;
+	options.confirmSystemDependencyInstallation = [](const SystemDependencyCheckResult& result) {
+		return ConfirmSystemDependencyInstallationFromShell(result);
+	};
+	return options;
+}
+
+}
 
 GenesysShell::GenesysShell() {
 	setDefaultTraceHandlers(simulator->getTraceManager());
@@ -62,7 +113,7 @@ void GenesysShell::run(List<string>* commandlineArgs) {
 	 */
 
 	simulator->getTraceManager()->setTraceLevel(TraceManager::Level::L1_errorFatal);
-	if (!simulator->getPluginManager()->autoInsertPlugins("autoloadplugins.txt"))
+	if (!simulator->getPluginManager()->autoInsertPlugins("autoloadplugins.txt", true, ShellPluginInsertionOptions()))
 		cout << "Error: Could not auto load plugins from file \"autoloadplugins.txt\"." << endl;
 	simulator->getTraceManager()->setTraceLevel(TraceManager::Level::L7_internal);
 	_history->resize(100);
@@ -359,7 +410,7 @@ void GenesysShell::cmdPlugin() {
 			}
 		} else if (key=="-a"||key=="--autoload") {
 			cout<<"Loading list of plugins from file "<<value<<endl;
-			simulator->getPluginManager()->autoInsertPlugins(value);
+			simulator->getPluginManager()->autoInsertPlugins(value, true, ShellPluginInsertionOptions());
 		} else if (key=="-i"||key=="--info") {
 			if (simulator->getPluginManager()->size()==0) {
 				cout<<"There is no installed plugins. Install some using the plugin --autoload=<filename>"<<endl;

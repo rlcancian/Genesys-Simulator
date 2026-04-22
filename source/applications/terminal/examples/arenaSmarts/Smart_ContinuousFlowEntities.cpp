@@ -16,20 +16,20 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/DummyComponent.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Seize.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Release.h"
-#include "../../../../plugins/components/Clone.h"
-#include "../../../../plugins/data/Resource.h"
-#include "../../../../plugins/data/Variable.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Template/DummyComponent.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/DiscreteProcessing/Clone.h"
+#include "plugins/data/DiscreteProcessing/Resource.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 #include "../../../TraitsApp.h"
 
 Smart_ContinuousFlowEntities::Smart_ContinuousFlowEntities() {

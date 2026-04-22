@@ -16,9 +16,13 @@
 
 #include <string>
 #include <list>
+#include <map>
+#include <utility>
+#include <vector>
 #include "ModelDataDefinition.h"
 #include "ModelDataManager.h"
 #include "PluginInformation.h"
+#include "SparseValueStore.h"
 
 //namespace GenesysKernel {
 
@@ -63,20 +67,36 @@ class Attribute : public ModelDataDefinition {
 public:
 	/*! \brief Creates an entity attribute definition in the model. */
 	Attribute(Model* model, std::string name = "");
-	virtual ~Attribute() = default;
+	/*! \brief Releases sparse initial values owned by this definition. */
+	virtual ~Attribute() override;
 public:
 	virtual std::string show() override;
 public: // public static methods
 	static PluginInformation* GetPluginInformation();
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
+public:
+	/*! \brief Reads the initial sparse value, returning 0.0 when the index is absent. */
+	double getInitialValue(std::string index = "");
+	/*! \brief Writes the initial sparse value at the scalar or indexed position. */
+	void setInitialValue(double value, std::string index = "");
+	/*! \brief Replaces/extends initial sparse values from textual index/value pairs. */
+	void setInitialValues(const std::vector<std::pair<std::string,double>> values);
+	/*! \brief Appends one dimension size to the attribute definition. */
+	void insertDimentionSize(unsigned int size);
+	/*! \brief Returns dimension sizes for compatibility with existing callers. */
+	std::list<unsigned int>* getDimensionSizes() const;
+	/*! \brief Returns mutable initial sparse values for compatibility with existing callers. */
+	std::map<std::string, double>* getInitialValues() const;
+	/*! \brief Returns the sparse initial value store used by this attribute. */
+	SparseValueStore* getInitialValueStore();
 protected: //! must be overriden by derived classes
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: //! could be overriden by derived classes
 	virtual bool _check(std::string& errorMessage) override;
 private:
-	//List<unsigned int>* _dimensionSizes = new List<unsigned int>();
+	SparseValueStore* _initialValues = new SparseValueStore();
 };
 //namespace\\}
 #endif /* ATTRIBUTE_H */

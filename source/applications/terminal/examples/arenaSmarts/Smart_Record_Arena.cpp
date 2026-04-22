@@ -15,15 +15,15 @@
 
 // you have to included need libs
 
-#include "../../../../kernel/simulator/EntityType.h"
-#include "../../../../kernel/simulator/ModelSimulation.h"
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/EntityType.h"
+#include "kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/Simulator.h"
 
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Record.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/InputOutput/Record.h"
 #include "../../../TraitsApp.h"
 
 Smart_Record_Arena::Smart_Record_Arena() {
@@ -64,8 +64,11 @@ int Smart_Record_Arena::main(int argc, char** argv) {
 
     Record* record = plugins->newInstance<Record>(model);
     record->setDescription("Time in Store");
-    record->setExpression("timeIn");
+    record->setExpression("TNOW - timeIn");
     record->setExpressionName("Time in Store");
+    record->setDatasetName("Time in Store Dataset");
+    record->setRandomVariableName("Time in Store");
+    record->setDatasetDescription("Customer time in store measured from entry to departure.");
     delay->connectTo(record);
 
     Dispose* dispose = plugins->newInstance<Dispose>(model);

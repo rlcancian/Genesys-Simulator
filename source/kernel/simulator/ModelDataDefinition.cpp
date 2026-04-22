@@ -124,21 +124,21 @@ void ModelDataDefinition::_internalDataInsert(std::string key, ModelDataDefiniti
 	if (data == nullptr)
 		return;
 	std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->find(key);
-	if (data == nullptr) {
-		if (it != _internalData->end()) {
-			_internalData->erase(it);
-		}
+	if (it == _internalData->end()) {
+		_internalData->insert({key, data});
+	} else if ((*it).second != data) {
+		this->_parentModel->getDataManager()->remove((*it).second);
+		delete ((*it).second);
+		_internalData->erase(it);
+		_internalData->insert({key, data});
 	}
-	else {
-		if (it == _internalData->end()) {
-			_internalData->insert({key, data});
-		}
-		else {
-			if ((*it).second != data) {
-				_internalData->erase(it);
-				_internalData->insert({key, data});
-			}
-		}
+
+	// Internal data definitions are owned children of this object and must also exist in the
+	// model-wide registry immediately, otherwise GUI features that list or synchronize all data
+	// definitions observe an incomplete model until a later full model check rebuilds the state.
+	ModelDataManager* dataManager = this->_parentModel->getDataManager();
+	if (dataManager->getDataDefinition(data->getClassname(), data->getId()) == nullptr) {
+		dataManager->insert(data);
 	}
 }
 
@@ -445,21 +445,11 @@ void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
 	_simulationControls->insert(control);
 }
 
-void ModelDataDefinition::_addProperty(SimulationControl* property) {
-	// Legacy compatibility wrapper.
-	_addSimulationControl(property);
-}
-
 /*
 void ModelDataDefinition::_addSimulationResponse(SimulationControl* response) {
 	_simulationResponses->insert(response); // @ToDo: (importante): Check if exists before insert?
 }
 */
-
-List<SimulationControl*>* ModelDataDefinition::getProperties() const {
-	// Legacy compatibility wrapper.
-	return getSimulationControls();
-}
 
 List<SimulationControl*>* ModelDataDefinition::getSimulationControls() const {
 	return _simulationControls;

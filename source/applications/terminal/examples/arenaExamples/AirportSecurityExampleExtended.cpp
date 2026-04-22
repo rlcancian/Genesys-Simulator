@@ -1,13 +1,13 @@
 #include "AirportSecurityExampleExtended.h"
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Decide.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Record.h"
-#include "../../../../plugins/data/Variable.h"
-#include "../../../../kernel/simulator/Attribute.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/InputOutput/Record.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "kernel/simulator/Attribute.h"
 
 AirportSecurityExampleExtended::AirportSecurityExampleExtended() {
 }
@@ -83,7 +83,10 @@ int AirportSecurityExampleExtended::main(int argc, char** argv) {
 
 	Record* cycleTimeRecord = plugins->newInstance<Record>(model);
 	cycleTimeRecord->setExpressionName("Cycle Time for Selected Passengers");
-	cycleTimeRecord->setExpression("a_Time_in");
+	cycleTimeRecord->setDatasetName("Selected Passenger Cycle Time Dataset");
+	cycleTimeRecord->setRandomVariableName("Selected passenger cycle time");
+	cycleTimeRecord->setDatasetDescription("Cycle time for passengers that receive the extra security check.");
+	cycleTimeRecord->setExpression("TNOW - a_Time_in");
 
 	Dispose* disposeClearedWithExtraCheck = plugins->newInstance<Dispose>(model);
 	disposeClearedWithExtraCheck->setDescription("Cleared with extra check");
@@ -112,4 +115,3 @@ int AirportSecurityExampleExtended::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 }
-

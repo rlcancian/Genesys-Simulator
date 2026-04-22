@@ -28,9 +28,9 @@
 #include "DataComponentEditor.h"
 #include "ComboBoxEnum.h"
 
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/simulator/PropertyGenesys.h"
-#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/PropertyGenesys.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 
 class ObjectPropertyBrowser : public QtTreePropertyBrowser {
     Q_OBJECT
@@ -89,6 +89,17 @@ private:
         ModelDataDefinition* dataDefinition = nullptr;
     };
 
+    struct ObjectListAction {
+        enum class Kind {
+            None,
+            CreateNew,
+            SetCurrentType
+        };
+
+        Kind kind = Kind::None;
+        std::string typeName;
+    };
+
 private:
     // Ensure the property browser infrastructure is created exactly once.
     void _ensureBrowserInfrastructure();
@@ -121,7 +132,9 @@ private:
     QString _modelObjectTypeName(const GenesysPropertyDescriptor& desc) const;
     QString _defaultModelObjectName(const GenesysPropertyDescriptor& desc) const;
     bool _isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const;
-    bool _createNewListElementForProperty(QtProperty* property);
+    void _materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition = nullptr) const;
+    bool _createNewListElementForProperty(QtProperty* property, const std::string& typeName = "");
+    bool _setCurrentListElementTypeForProperty(QtProperty* property, const std::string& typeName);
     bool _createModelObjectForProperty(QtProperty* property);
     bool _setModelObjectReferenceForProperty(QtProperty* property, const QString& objectName);
     bool _selectModelObjectForProperty(QtProperty* property);
@@ -211,6 +224,7 @@ private:
 
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
+    QMap<QtProperty*, std::vector<ObjectListAction>> _objectListActions;
     QSet<QtProperty*> _pendingCommittedProperties;
     QMap<QtProperty*, QVariant> _pendingCommittedValues;
     ModelChangedCallback _modelChangedCallback;

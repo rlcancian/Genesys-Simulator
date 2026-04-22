@@ -31,8 +31,13 @@ genesys_add_unit_test(genesys_test_simulator_support
     genesys_kernel_util
 )
 
+if(NOT TARGET genesys_tools)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-unit-tests)
+endif()
+
 genesys_add_unit_test(genesys_test_simulator_runtime
     test_simulator_runtime.cpp
+    genesys_tools
     genesys_kernel_simulator_runtime
     genesys_kernel_util
     genesys_plugins_components_minimal
@@ -110,6 +115,110 @@ genesys_add_unit_test(genesys_test_statistics
     genesys_kernel_util
 )
 
+find_package(Qt6 QUIET COMPONENTS Core Gui Widgets PrintSupport)
+if(Qt6_FOUND)
+    set(GENESYS_QT_TEST_PACKAGE Qt6)
+else()
+    find_package(Qt5 QUIET COMPONENTS Core Gui Widgets PrintSupport)
+    if(Qt5_FOUND)
+        set(GENESYS_QT_TEST_PACKAGE Qt5)
+    endif()
+endif()
+
+if(DEFINED GENESYS_QT_TEST_PACKAGE)
+    add_executable(genesys_test_gui_render_strategy
+        test_gui_render_strategy.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/graphicals/GraphicalConnectionStyle.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/graphicals/GraphicalModelItemRenderStrategy.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/services/GraphicalDataDefinitionLayout.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/systempreferences.cpp
+    )
+
+    target_include_directories(genesys_test_gui_render_strategy
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/source
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI
+    )
+
+    target_link_libraries(genesys_test_gui_render_strategy
+        PRIVATE
+            GTest::gtest
+            ${GENESYS_QT_TEST_PACKAGE}::Core
+            ${GENESYS_QT_TEST_PACKAGE}::Gui
+            ${GENESYS_QT_TEST_PACKAGE}::Widgets
+    )
+
+    gtest_discover_tests(genesys_test_gui_render_strategy
+        PROPERTIES
+            LABELS "unit;gui"
+    )
+
+    set_property(TARGET genesys_test_gui_render_strategy PROPERTY FOLDER tests/unit)
+
+    file(GLOB_RECURSE GENESYS_QT_GUI_TEST_SOURCES CONFIGURE_DEPENDS
+        "${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/*.cpp"
+    )
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/build/")
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/main\\.cpp$")
+    list(FILTER GENESYS_QT_GUI_TEST_SOURCES EXCLUDE REGEX "/qcustomplot\\.cpp$")
+
+    if(NOT TARGET genesys_tools)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-gui-tests)
+    endif()
+
+    add_executable(genesys_test_gui_gmdd_layout
+        test_gui_gmdd_layout.cpp
+        ${GENESYS_QT_GUI_TEST_SOURCES}
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/GenesysQtGUI_resources.qrc
+        ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
+        ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
+        ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
+    )
+
+    target_include_directories(genesys_test_gui_gmdd_layout
+        PRIVATE
+            ${CMAKE_SOURCE_DIR}/source
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/codeeditor
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor
+            ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor/qtpropertybrowser
+    )
+
+    target_link_libraries(genesys_test_gui_gmdd_layout
+        PRIVATE
+            GTest::gtest
+            ${GENESYS_QT_TEST_PACKAGE}::Core
+            ${GENESYS_QT_TEST_PACKAGE}::Gui
+            ${GENESYS_QT_TEST_PACKAGE}::Widgets
+            "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+            genesys_tools
+    )
+
+    if(TARGET ${GENESYS_QT_TEST_PACKAGE}::PrintSupport)
+        target_link_libraries(genesys_test_gui_gmdd_layout
+            PRIVATE
+                ${GENESYS_QT_TEST_PACKAGE}::PrintSupport
+        )
+    endif()
+
+    target_compile_features(genesys_test_gui_gmdd_layout PRIVATE cxx_std_23)
+    set_target_properties(genesys_test_gui_gmdd_layout
+        PROPERTIES
+            AUTOMOC ON
+            AUTOUIC ON
+            AUTORCC ON
+            AUTOUIC_SEARCH_PATHS "${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI;${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/dialogs"
+            FOLDER tests/unit
+    )
+
+    gtest_discover_tests(genesys_test_gui_gmdd_layout
+        PROPERTIES
+            LABELS "unit;gui"
+    )
+else()
+    message(STATUS "Qt was not found; skipping GUI render strategy unit test.")
+endif()
+
 add_executable(genesys_test_tools_hypothesistester
     test_tools_hypothesistester.cpp
     ${CMAKE_SOURCE_DIR}/source/tools/HypothesisTesterDefaultImpl1.cpp
@@ -138,6 +247,11 @@ gtest_discover_tests(genesys_test_tools_hypothesistester
 
 set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit)
 
+genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
+    test_tools_simulation_results_dataset.cpp
+    genesys_tools
+)
+
 add_custom_target(genesys_kernel_unit_tests
     DEPENDS
         genesys_test_util
@@ -155,6 +269,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_experimentmanager
         genesys_test_statistics
         genesys_test_tools_hypothesistester
+        genesys_test_tools_simulation_results_dataset
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -164,6 +279,14 @@ if(GENESYS_BUILD_WEB_APPLICATION)
     )
 
     add_dependencies(genesys_kernel_unit_tests genesys_test_web_api_router)
+endif()
+
+if(TARGET genesys_test_gui_render_strategy)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_gui_render_strategy)
+endif()
+
+if(TARGET genesys_test_gui_gmdd_layout)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_gui_gmdd_layout)
 endif()
 
 set(GENESYS_KERNEL_SIMULATOR_HEADERS_DIR "${CMAKE_SOURCE_DIR}/source/kernel/simulator")
@@ -224,6 +347,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_support_experimentmanager>
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
+    COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests
@@ -234,6 +358,13 @@ if(GENESYS_BUILD_WEB_APPLICATION)
     add_custom_command(TARGET genesys_kernel_unit_tests_run
         POST_BUILD
         COMMAND $<TARGET_FILE:genesys_test_web_api_router>
+    )
+endif()
+
+if(TARGET genesys_test_gui_render_strategy)
+    add_custom_command(TARGET genesys_kernel_unit_tests_run
+        POST_BUILD
+        COMMAND $<TARGET_FILE:genesys_test_gui_render_strategy>
     )
 endif()
 

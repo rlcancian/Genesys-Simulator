@@ -17,10 +17,12 @@
 
 GraphicalContextMenuController::GraphicalContextMenuController(ModelGraphicsView* graphicsView,
                                                                Ui::MainWindow* ui,
+                                                               QAction* openSubmodelAction,
                                                                std::function<ModelGraphicsScene*()> currentScene,
                                                                std::function<void()> actualizeActions)
     : _graphicsView(graphicsView),
       _ui(ui),
+      _openSubmodelAction(openSubmodelAction),
       _currentScene(std::move(currentScene)),
       _actualizeActions(std::move(actualizeActions)) {
 }
@@ -159,9 +161,19 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
             menu->addSeparator();
             menu->addAction(_ui->actionGModelShowConnect);
             menu->addAction(_ui->actionGModelComponentBreakpoint);
+            if (_openSubmodelAction != nullptr) {
+                menu->addAction(_openSubmodelAction);
+            }
             menu->addSeparator();
             addShowMenu(menu);
             addZoomMenu(menu);
+            break;
+
+        case ContextKind::SingleDataDefinition:
+            if (_openSubmodelAction != nullptr) {
+                menu->addSeparator();
+                menu->addAction(_openSubmodelAction);
+            }
             break;
 
         case ContextKind::MultiSelection:
@@ -177,7 +189,6 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
             addAlignMenu(menu);
             break;
 
-        case ContextKind::SingleDataDefinition:
         case ContextKind::SingleConnection:
         case ContextKind::SingleDiagramConnection:
         case ContextKind::GenericItem:
@@ -213,7 +224,9 @@ void GraphicalContextMenuController::addShowMenu(QMenu* menu) const {
     showMenu->addAction(_ui->actionShowGuides);
     showMenu->addSeparator();
     showMenu->addAction(_ui->actionShowInternalElements);
+    showMenu->addAction(_ui->actionShowEditableElements);
     showMenu->addAction(_ui->actionShowAttachedElements);
+    showMenu->addAction(_ui->actionShowRecursiveElements);
 }
 
 void GraphicalContextMenuController::addZoomMenu(QMenu* menu) const {

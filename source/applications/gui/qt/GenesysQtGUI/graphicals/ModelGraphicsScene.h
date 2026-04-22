@@ -45,17 +45,17 @@
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../kernel/simulator/Plugin.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/Plugin.h"
 #include "animations/AnimationTransition.h"
 #include "animations/AnimationVariable.h"
 #include "animations/AnimationCounter.h"
 #include "animations/AnimationTimer.h"
 #include "animations/AnimationPlaceholder.h"
-#include "../../../../kernel/simulator/Counter.h"
-#include "../../../../kernel/simulator/PropertyGenesys.h"
-#include "../../../../plugins/data/Variable.h"
+#include "kernel/simulator/Counter.h"
+#include "kernel/simulator/PropertyGenesys.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 
 class GraphicalModelEvent {
 public:
@@ -252,6 +252,28 @@ public:
     void requestGraphicalDataDefinitionsSync();
     void scheduleGraphicalDataDefinitionsSync();
     bool isGraphicalDataDefinitionsSyncInProgress() const;
+    void setShowStatisticsDataDefinitions(bool show);
+    bool showStatisticsDataDefinitions() const;
+    void setShowEditableDataDefinitions(bool show);
+    bool showEditableDataDefinitions() const;
+    void setShowSharedDataDefinitions(bool show);
+    bool showSharedDataDefinitions() const;
+    void setShowRecursiveDataDefinitions(bool show);
+    bool showRecursiveDataDefinitions() const;
+    /**
+     * @brief Restricts graphical rebuild/synchronization services to one kernel model level.
+     *
+     * ModelGraphicsScene keeps this rendering context because some synchronization entry points
+     * are static services called from the property editor. Storing the active level in the scene
+     * lets those calls preserve the same root/submodel scope as the visible tab.
+     */
+    void setModelLevelFilter(unsigned int modelLevel);
+    /** @brief Clears any level restriction and lets rebuild services render all model levels. */
+    void clearModelLevelFilter();
+    /** @brief Returns true when this scene is scoped to a specific ModelDataDefinition level. */
+    bool hasModelLevelFilter() const;
+    /** @brief Returns the active level used by rebuild services when the filter is enabled. */
+    unsigned int modelLevelFilter() const;
     void setShowInternalDataDefinitions(bool show);
     bool showInternalDataDefinitions() const;
     void setShowAttachedDataDefinitions(bool show);
@@ -377,8 +399,14 @@ private:
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
     bool _connectionGeometryUpdatesBlocked = false;
-    bool _showInternalDataDefinitions = false;
-    bool _showAttachedDataDefinitions = false;
+    bool _showStatisticsDataDefinitions = true;
+    bool _showEditableDataDefinitions = true;
+    bool _showSharedDataDefinitions = true;
+    bool _showRecursiveDataDefinitions = true;
+    // Rendering scope used by root/submodel tabs. The filter is intentionally scene-local so
+    // static graphical synchronization calls can keep the same scope as the active view.
+    bool _hasModelLevelFilter = false;
+    unsigned int _modelLevelFilter = 0;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

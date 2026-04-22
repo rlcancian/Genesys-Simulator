@@ -10,12 +10,12 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Record.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/InputOutput/Record.h"
 #include "../../../TraitsApp.h"
 
 Smart_MaxArrivalsField::Smart_MaxArrivalsField() {
@@ -49,6 +49,13 @@ int Smart_MaxArrivalsField::main(int argc, char** argv) {
         // record How Many
         Record* howMany = plugins->newInstance<Record>(model);
         howMany->setName("HowMany");
+        howMany->setExpressionName("Arrivals observed");
+        howMany->setDatasetName("Arrivals Observed Dataset");
+        howMany->setRandomVariableName("Arrivals observed");
+        howMany->setDatasetDescription("Number of entities observed by the Record component.");
+        howMany->setExpression("COUNT(HowMany.CountNumberIn)");
+        howMany->setTimeDependent(true);
+        howMany->setFilename("./temp/Smart_MaxArrivalsField_Record.txt");
         
         // dispose
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);

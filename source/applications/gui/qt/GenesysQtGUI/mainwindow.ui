@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>848</width>
+    <width>1032</width>
     <height>777</height>
    </rect>
   </property>
@@ -69,7 +69,7 @@
         <enum>QTabWidget::Triangular</enum>
        </property>
        <property name="currentIndex">
-        <number>2</number>
+        <number>0</number>
        </property>
        <property name="tabBarAutoHide">
         <bool>true</bool>
@@ -229,7 +229,7 @@
                   <item>
                    <widget class="QCheckBox" name="checkBox_ShowElements">
                     <property name="text">
-                     <string>Show elements</string>
+                     <string>Shared elements</string>
                     </property>
                     <property name="checked">
                      <bool>true</bool>
@@ -239,7 +239,17 @@
                   <item>
                    <widget class="QCheckBox" name="checkBox_ShowInternals">
                     <property name="text">
-                     <string>Show internals</string>
+                     <string>Statistics elements</string>
+                    </property>
+                    <property name="checked">
+                     <bool>true</bool>
+                    </property>
+                   </widget>
+                  </item>
+                  <item>
+                   <widget class="QCheckBox" name="checkBox_ShowEditableElements">
+                    <property name="text">
+                     <string>Editable elements</string>
                     </property>
                     <property name="checked">
                      <bool>true</bool>
@@ -607,6 +617,54 @@
             <attribute name="title">
              <string>Plots</string>
             </attribute>
+            <layout class="QVBoxLayout" name="verticalLayout_ReportsPlots">
+             <property name="leftMargin">
+              <number>2</number>
+             </property>
+             <property name="topMargin">
+              <number>2</number>
+             </property>
+             <property name="rightMargin">
+              <number>2</number>
+             </property>
+             <property name="bottomMargin">
+              <number>2</number>
+             </property>
+             <item>
+              <widget class="QScrollArea" name="scrollArea_ReportsPlots">
+               <property name="widgetResizable">
+                <bool>true</bool>
+               </property>
+               <widget class="QWidget" name="widget_ReportsPlotsContent">
+                <property name="geometry">
+                 <rect>
+                  <x>0</x>
+                  <y>0</y>
+                  <width>98</width>
+                  <height>28</height>
+                 </rect>
+                </property>
+                <layout class="QVBoxLayout" name="verticalLayout_ReportsPlotsContent">
+                 <property name="spacing">
+                  <number>12</number>
+                 </property>
+                 <property name="leftMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="topMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="rightMargin">
+                  <number>8</number>
+                 </property>
+                 <property name="bottomMargin">
+                  <number>8</number>
+                 </property>
+                </layout>
+               </widget>
+              </widget>
+             </item>
+            </layout>
            </widget>
           </widget>
          </item>
@@ -661,7 +719,7 @@
       <item>
        <widget class="QSlider" name="horizontalSlider_ZoomGraphical">
         <property name="minimum">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="maximum">
          <number>1000</number>
@@ -787,7 +845,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>848</width>
+     <width>1032</width>
      <height>22</height>
     </rect>
    </property>
@@ -812,7 +870,6 @@
      <string>Simulation</string>
     </property>
     <addaction name="actionSimulationConfigure"/>
-    <addaction name="actionParallelization"/>
     <addaction name="separator"/>
     <addaction name="actionSimulationStart"/>
     <addaction name="actionSimulationStep"/>
@@ -820,6 +877,8 @@
     <addaction name="separator"/>
     <addaction name="actionSimulationPause"/>
     <addaction name="actionSimulationResume"/>
+    <addaction name="separator"/>
+    <addaction name="actionAnimation"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -890,6 +949,7 @@
      <addaction name="actionShowGuides"/>
      <addaction name="separator"/>
      <addaction name="actionShowInternalElements"/>
+     <addaction name="actionShowEditableElements"/>
      <addaction name="actionShowAttachedElements"/>
      <addaction name="actionShowRecursiveElements"/>
     </widget>
@@ -1954,7 +2014,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
    </property>
    <property name="text">
-    <string>Internal Elements</string>
+    <string>Statistics Elements</string>
+   </property>
+  </action>
+  <action name="actionShowEditableElements">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
+   </property>
+   <property name="text">
+    <string>Editable Elements</string>
    </property>
   </action>
   <action name="actionShowAttachedElements">
@@ -1969,7 +2044,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/yellow pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/yellow pin.ico</iconset>
    </property>
    <property name="text">
-    <string>Attached Elements</string>
+    <string>Shared Elements</string>
    </property>
   </action>
   <action name="actionSimulationConfigure">
@@ -2236,7 +2311,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons1/resources/icons/pack1/ico/200.ico</normaloff>:/icons1/resources/icons/pack1/ico/200.ico</iconset>
    </property>
    <property name="text">
-    <string>Parallelization</string>
+    <string>Shared Elements</string>
    </property>
   </action>
   <action name="actionShowRecursiveElements">
@@ -2247,10 +2322,22 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset theme="x-office-address-book"/>
+    <iconset theme="x-office-address-book">
+     <normaloff>.</normaloff>.</iconset>
    </property>
    <property name="text">
     <string>Recursive Elements</string>
+   </property>
+  </action>
+  <action name="actionAnimation">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Animation</string>
    </property>
   </action>
  </widget>

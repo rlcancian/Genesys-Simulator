@@ -2,17 +2,101 @@
 
 #include "graphicals/ModelGraphicsView.h"
 
-#include "../../../../../kernel/simulator/Model.h"
-#include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../../kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/GraphicalModelComponent.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
-#include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/util/Util.h"
+#include "graphicals/GraphicalModelDataDefinition.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/util/Util.h"
 
 #include <Qt>
+#include <QFont>
+
+#include <set>
+
+namespace {
+void collectEditableReferencedDataDefinitionIds(
+    List<SimulationControl*>* controls,
+    QSet<Util::identification>& ids,
+    std::set<const SimulationControl*>& recursionPath,
+    int depth = 0
+    ) {
+    if (controls == nullptr || depth > 10) {
+        return;
+    }
+
+    for (SimulationControl* control : *controls->list()) {
+        if (control == nullptr || recursionPath.find(control) != recursionPath.end()) {
+            continue;
+        }
+
+        const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
+        if (descriptor.isModelDataDefinitionReference && !descriptor.readOnly) {
+            ModelDataDefinition* referenced = control->getReferencedModelDataDefinition();
+            if (referenced != nullptr) {
+                ids.insert(referenced->getId());
+            }
+        }
+
+        recursionPath.insert(control);
+        if (descriptor.supportsListEditor && descriptor.isClass) {
+            const int itemCount = static_cast<int>(descriptor.choices.size());
+            for (int index = 0; index < itemCount; ++index) {
+                collectEditableReferencedDataDefinitionIds(
+                    control->getChildSimulationControls(index),
+                    ids,
+                    recursionPath,
+                    depth + 1
+                    );
+            }
+        } else if (descriptor.supportsInlineExpansion && control->hasObjectInstance()) {
+            collectEditableReferencedDataDefinitionIds(
+                control->getChildSimulationControls(),
+                ids,
+                recursionPath,
+                depth + 1
+                );
+        }
+        recursionPath.erase(control);
+    }
+}
+
+QSet<Util::identification> editableDataDefinitionIds(Model* model) {
+    QSet<Util::identification> ids;
+    if (model == nullptr) {
+        return ids;
+    }
+
+    std::set<const SimulationControl*> recursionPath;
+    if (model->getComponentManager() != nullptr) {
+        for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
+            if (component != nullptr) {
+                collectEditableReferencedDataDefinitionIds(component->getSimulationControls(), ids, recursionPath);
+            }
+        }
+    }
+
+    if (model->getDataManager() != nullptr) {
+        for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+            List<ModelDataDefinition*>* definitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+            if (definitions == nullptr) {
+                continue;
+            }
+            for (ModelDataDefinition* definition : *definitions->list()) {
+                if (definition != nullptr) {
+                    collectEditableReferencedDataDefinitionIds(definition->getSimulationControls(), ids, recursionPath);
+                }
+            }
+        }
+    }
+    return ids;
+}
+} // namespace
 
 // Build the controller with narrow Qt/kernel dependencies for Phase 3.
 ModelInspectorController::ModelInspectorController(Simulator* simulator,
@@ -69,6 +153,8 @@ void ModelInspectorController::actualizeModelDataDefinitions(bool force) const {
         return;
     }
 
+    const QSet<Util::identification> editableIds = editableDataDefinitionIds(m);
+
     // Iterate over a value snapshot of class names to populate the tree without manual ownership handling.
     for (std::string dataTypename : m->getDataManager()->getDataDefinitionClassnames()) {
         for (ModelDataDefinition* comp : *m->getDataManager()->getDataDefinitionList(dataTypename)->list()) {
@@ -87,6 +173,14 @@ void ModelInspectorController::actualizeModelDataDefinitions(bool force) const {
                 }
                 properties = properties.substr(0, properties.length() - 2);
                 treeComp->setText(3, QString::fromStdString(properties));
+
+                if (editableIds.contains(comp->getId())) {
+                    // Bold names identify DataDefinitions that are editable through an owning model object.
+                    QFont nameFont = treeComp->font(2);
+                    nameFont.setBold(true);
+                    treeComp->setFont(2, nameFont);
+                    treeComp->setToolTip(2, QObject::tr("Editable DataDefinition referenced by a model property."));
+                }
             }
         }
     }
@@ -173,4 +267,72 @@ void ModelInspectorController::syncSelectedComponentTreeItemToScene() const {
     gmc->setSelected(true);
     _graphicsView->ensureVisible(gmc);
     _graphicsView->centerOn(gmc);
+}
+
+ModelInspectorController::DataDefinitionSelection
+ModelInspectorController::syncSelectedDataDefinitionTreeItemToScene() const {
+    DataDefinitionSelection selection;
+    if (_dataDefinitionsTree == nullptr || _graphicsView == nullptr) {
+        return selection;
+    }
+
+    selection.handled = true;
+    QList<QTreeWidgetItem*> selectedItems = _dataDefinitionsTree->selectedItems();
+    if (selectedItems.isEmpty()) {
+        return selection;
+    }
+
+    bool ok = false;
+    const Util::identification dataDefinitionId = selectedItems.first()->text(0).toULongLong(&ok);
+    if (!ok) {
+        return selection;
+    }
+
+    Model* model = _simulator->getModelManager()->current();
+    if (model == nullptr || model->getDataManager() == nullptr) {
+        return selection;
+    }
+
+    for (const std::string& dataTypename : model->getDataManager()->getDataDefinitionClassnames()) {
+        List<ModelDataDefinition*>* dataDefinitions = model->getDataManager()->getDataDefinitionList(dataTypename);
+        if (dataDefinitions == nullptr) {
+            continue;
+        }
+        for (ModelDataDefinition* candidate : *dataDefinitions->list()) {
+            if (candidate != nullptr && candidate->getId() == dataDefinitionId) {
+                selection.dataDefinition = candidate;
+                break;
+            }
+        }
+        if (selection.dataDefinition != nullptr) {
+            break;
+        }
+    }
+
+    ModelGraphicsScene* scene = _graphicsView->getScene();
+    if (scene == nullptr || selection.dataDefinition == nullptr) {
+        return selection;
+    }
+
+    GraphicalModelDataDefinition* gmdd =
+        scene->findGraphicalModelDataDefinition(selection.dataDefinition);
+    const bool gmddIsVisible =
+        gmdd != nullptr
+        && gmdd->scene() == scene
+        && scene->getGraphicalModelDataDefinitions() != nullptr
+        && scene->getGraphicalModelDataDefinitions()->contains(gmdd);
+
+    // Selecting a DataDefinition in the inspector should leave the scene focused on the
+    // corresponding GMDD when it is visible. If the GMDD is hidden by View/Show filters,
+    // clearing the scene selection avoids keeping a stale unrelated object selected.
+    scene->clearSelection();
+    if (!gmddIsVisible) {
+        return selection;
+    }
+
+    gmdd->setSelected(true);
+    _graphicsView->ensureVisible(gmdd);
+    _graphicsView->centerOn(gmdd);
+    selection.graphicalDataDefinition = gmdd;
+    return selection;
 }

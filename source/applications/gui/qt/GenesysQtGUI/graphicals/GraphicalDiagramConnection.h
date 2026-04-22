@@ -6,10 +6,12 @@
 #include <QPen>
 #include <QBrush>
 #include <QPainter>
+#include <QPainterPath>
 #include <cmath>
 #include <QGraphicsLineItem>
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
+#include "GraphicalConnectionStyle.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataDefinition.h"
 
 #include "GraphicalModelComponent.h"
 #include "GraphicalModelDataDefinition.h"
@@ -26,6 +28,8 @@ public:
     GraphicalDiagramConnection(QGraphicsItem* dataDefinition, QGraphicsItem* linkedTo, ConnectionType type);
     void refreshGeometry();
 
+    QRectF boundingRect() const override;
+    QPainterPath shape() const override;
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
 
     QGraphicsItem* getDataDefinition();
@@ -36,6 +40,7 @@ private:
     ConnectionType _type;
     QGraphicsItem* _item1;
     QGraphicsItem* _item2;
+    QPainterPath connectionPath() const;
 };
 
 

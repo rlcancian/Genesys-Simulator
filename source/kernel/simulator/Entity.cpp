@@ -23,17 +23,22 @@ Entity::Entity(Model* model, std::string name, bool insertIntoModel) : ModelData
 	_entityNumber = Util::GetLastIdOfType(Util::TypeOf<Entity>());
 	unsigned int numAttributes = _parentModel->getDataManager()->getNumberOfDataDefinitions(Util::TypeOf<Attribute>());
 	for (unsigned i = 0; i < numAttributes; i++) {
-		std::map<std::string, double>* map = new std::map<std::string, double>();
-		_attributeValues->insert(map);
+		SparseValueStore* store = new SparseValueStore();
+		Attribute* attribute = dynamic_cast<Attribute*>(_parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Attribute>())->getAtRank(i));
+		if (attribute != nullptr) {
+			// Each entity receives its own mutable copy of the attribute initial sparse values.
+			*store = *attribute->getInitialValueStore();
+		}
+		_attributeValues->insert(store);
 	}
 }
 
 Entity::~Entity() {
-	// Release each per-attribute value map owned by this entity instance.
-	for (std::map<std::string, double>* attributeMap : *_attributeValues->list()) {
-		delete attributeMap;
+	// Release each per-attribute sparse value store owned by this entity instance.
+	for (SparseValueStore* attributeStore : *_attributeValues->list()) {
+		delete attributeStore;
 	}
-	// Release the container that tracks all attribute maps created for this entity.
+	// Release the container that tracks all attribute stores created for this entity.
 	delete _attributeValues;
 	_attributeValues = nullptr;
 }
@@ -66,17 +71,18 @@ std::string Entity::show() {
 	message += ",attributes=[";
 	_attributeValues->front();
 	for (unsigned int i = 0; i < _attributeValues->size(); i++) {
-		std::map<std::string, double>* map = _attributeValues->current();
+		SparseValueStore* store = _attributeValues->current();
+		std::map<std::string, double>* values = store != nullptr ? store->values() : nullptr;
 		std::string attributeName = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Attribute>())->getAtRank(i)->getName();
 		message += attributeName + "=";
-		if (map->size() == 0) { // scalar
+		if (values == nullptr || values->size() == 0) { // scalar
 			message += "NaN;"; //std::to_string(map->begin()->second) + ";";
-		} else if (map->size() == 1) { // scalar
-			message += Util::StrTruncIfInt(std::to_string(map->begin()->second)) + ", ";
+		} else if (values->size() == 1 && values->begin()->first.empty()) { // scalar
+			message += Util::StrTruncIfInt(std::to_string(values->begin()->second)) + ", ";
 		} else {
 			// array or matrix
 			message += "[";
-			for (std::pair<std::string, double> valIt : *map) {
+			for (std::pair<std::string, double> valIt : *values) {
 				message += valIt.first + "=>" + Util::StrTruncIfInt(std::to_string(valIt.second)) + ", ";
 			}
 			message = message.substr(0, message.length() - 2);
@@ -84,7 +90,9 @@ std::string Entity::show() {
 		}
 		_attributeValues->next();
 	}
-	message = message.substr(0, message.length() - 1);
+	if (_attributeValues->size() > 0) {
+		message = message.substr(0, message.length() - 1);
+	}
 	message += "]";
 
 	return message;
@@ -93,17 +101,7 @@ std::string Entity::show() {
 double Entity::getAttributeValue(std::string attributeName, std::string index) {
 	int rank = _parentModel->getDataManager()->getRankOf(Util::TypeOf<Attribute>(), attributeName);
 	if (rank >= 0) {
-		std::map<std::string, double>* map = this->_attributeValues->getAtRank(rank);
-		if (map == nullptr) {
-			map = new std::map<std::string, double>();
-			_attributeValues->setAtRank(rank, map);
-		}
-		std::map<std::string, double>::iterator mapIt = map->find(index);
-		if (mapIt != map->end()) {//found
-			return (*mapIt).second;
-		} else { // not found
-			return 0.0;
-		}
+		return _ensureAttributeStore(rank)->value(index);
 	}
 	traceError("Attribute \"" + attributeName + "\" not found", TraceManager::Level::L3_errorRecover);
 	return 0.0;
@@ -124,30 +122,20 @@ void Entity::setAttributeValue(std::string attributeName, double value, std::str
 		if (createIfNotFound) {
 			new Attribute(_parentModel, attributeName);
 			rank = _parentModel->getDataManager()->getRankOf(Util::TypeOf<Attribute>(), attributeName);
-			std::map<std::string, double>* map = new std::map<std::string, double>();
-			_attributeValues->setAtRank(rank, map);
 		} else
 			traceError("Attribute \"" + attributeName + "\" not found", TraceManager::Level::L3_errorRecover);
 	}
 	if (rank >= 0) {
-		std::map<std::string, double>* map = _attributeValues->getAtRank(rank);
-		if (map == nullptr) {
-			map = new std::map<std::string, double>();
-			_attributeValues->setAtRank(rank, map);
-		}
-		std::map<std::string, double>::iterator mapIt = map->find(index);
-		if (mapIt != map->end()) {//found
-			(*mapIt).second = value;
-		} else { // not found
-			map->insert({index, value}); // (map->end(), std::pair<std::string, double>(index, value));
-		}
+		_ensureAttributeStore(rank)->setValue(value, index);
 		// @ToDo: (importante): Check if it is a special attribute, eg Entity.Type
 	}
 }
 
 void Entity::setAttributeValue(Util::identification attributeID, double value, std::string index) {
-	std::string attrname = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), attributeID)->getName();
-	setAttributeValue(attrname, value, index);
+	ModelDataDefinition* attribute = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), attributeID);
+	if (attribute != nullptr) {
+		setAttributeValue(attribute->getName(), value, index);
+	}
 }
 
 Util::identification Entity::entityNumber() const {
@@ -165,4 +153,16 @@ void Entity::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 bool Entity::_check(std::string& errorMessage) {
 	errorMessage += "";
 	return true;
+}
+
+SparseValueStore* Entity::_ensureAttributeStore(unsigned int rank) {
+	while (_attributeValues->size() <= rank) {
+		_attributeValues->insert(new SparseValueStore());
+	}
+	SparseValueStore* store = _attributeValues->getAtRank(rank);
+	if (store == nullptr) {
+		store = new SparseValueStore();
+		_attributeValues->setAtRank(rank, store);
+	}
+	return store;
 }

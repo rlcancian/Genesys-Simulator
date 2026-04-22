@@ -30,9 +30,9 @@
  */
 
 #include "dialogBreakpoint.h"
-#include "../../../../plugins/components/Access.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/util/List.h"
+#include "plugins/components/MaterialHandling/Access.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/util/List.h"
 
 dialogBreakpoint::dialogBreakpoint() {
 	widget.setupUi(this);

@@ -5,6 +5,8 @@
 
 class Simulator;
 class ModelGraphicsView;
+class ModelDataDefinition;
+class GraphicalModelDataDefinition;
 
 // Document the controller boundary for model-inspection and tree/scene synchronization.
 /**
@@ -27,6 +29,12 @@ class ModelGraphicsView;
  */
 class ModelInspectorController {
 public:
+    struct DataDefinitionSelection {
+        bool handled = false;
+        ModelDataDefinition* dataDefinition = nullptr;
+        GraphicalModelDataDefinition* graphicalDataDefinition = nullptr;
+    };
+
     /** @brief Creates the model-inspector delegated controller. */
     ModelInspectorController(Simulator* simulator,
                              QTreeWidget* componentsTree,
@@ -43,6 +51,8 @@ public:
     void applyDataDefinitionNameChange(QTreeWidgetItem* item, int column) const;
     /** @brief Synchronizes tree selection with scene selection and viewport focus. */
     void syncSelectedComponentTreeItemToScene() const;
+    /** @brief Synchronizes Data Definitions tree selection with visible GMDDs, when any. */
+    DataDefinitionSelection syncSelectedDataDefinitionTreeItemToScene() const;
 
 private:
     // Keep simulator access scoped to model-inspection responsibilities.

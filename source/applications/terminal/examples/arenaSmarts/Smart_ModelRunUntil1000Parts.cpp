@@ -14,17 +14,17 @@
 #include "./Smart_ModelRunUntil1000Parts.h"
 
 // Including the GEnSys Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 
 // Components for the model
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Record.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Assign.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/InputOutput/Record.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
 
-#include "../../../../plugins/data/Variable.h"
-#include "../../../../kernel/simulator/Attribute.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "kernel/simulator/Attribute.h"
 #include "../../../TraitsApp.h"
 
 
@@ -74,6 +74,11 @@ int Smart_ModelRunUntil1000Parts::main(int argc, char** argv) {
     record_1->getConnectionManager()->insert(dispose_1);
     record_1->setName("Record_1");
     record_1->setExpressionName("How_Many");
+    record_1->setDatasetName("Produced Parts Count Dataset");
+    record_1->setRandomVariableName("Produced parts count");
+    record_1->setDatasetDescription("Count of disposed parts observed when each entity reaches the Record component.");
+    record_1->setExpression("COUNT(Dispose_1.CountNumberIn)");
+    record_1->setFilename("./temp/Smart_ModelRunUntil1000Parts_Record.txt");
 
     // Set options, save and run simulation.
     model->getInfos()->setName("Model Run Until 1000 Parts Produced");

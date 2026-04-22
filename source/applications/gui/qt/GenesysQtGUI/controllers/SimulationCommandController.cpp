@@ -2,7 +2,7 @@
 
 #include "controllers/SimulationController.h"
 #include "animations/AnimationTransition.h"
-#include "../../../../../kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelSimulation.h"
 #include <QDebug>
 
 SimulationCommandController::SimulationCommandController(
@@ -10,12 +10,14 @@ SimulationCommandController::SimulationCommandController(
     const std::function<void(const std::string&)>& insertCommandInConsole,
     const std::function<void()>& actualizeActions,
     const std::function<bool()>& checkModel,
-    const std::function<bool()>& setSimulationModelBasedOnText)
+    const std::function<bool()>& setSimulationModelBasedOnText,
+    const std::function<void()>& prepareNewSimulationOutputs)
     : _simulationController(simulationController),
       _insertCommandInConsole(insertCommandInConsole),
       _actualizeActions(actualizeActions),
       _checkModel(checkModel),
-      _setSimulationModelBasedOnText(setSimulationModelBasedOnText) {
+      _setSimulationModelBasedOnText(setSimulationModelBasedOnText),
+      _prepareNewSimulationOutputs(prepareNewSimulationOutputs) {
 }
 
 // Move simulation start orchestration into the dedicated Phase 8 controller.
@@ -33,6 +35,9 @@ void SimulationCommandController::onActionSimulationStartTriggered(bool modelChe
     qInfo() << "GUI SimulationCommand start simulationNull=" << (simulation == nullptr);
     if (simulation == nullptr) {
         return;
+    }
+    if (!simulation->isRunning() && !simulation->isPaused() && _prepareNewSimulationOutputs) {
+        _prepareNewSimulationOutputs();
     }
 
     // Log static animation runtime flags applied by the start action.
@@ -58,6 +63,9 @@ void SimulationCommandController::onActionSimulationStepTriggered(bool modelChec
     qInfo() << "GUI SimulationCommand step simulationNull=" << (simulation == nullptr);
     if (simulation == nullptr) {
         return;
+    }
+    if (!simulation->isRunning() && !simulation->isPaused() && _prepareNewSimulationOutputs) {
+        _prepareNewSimulationOutputs();
     }
 
     // Log static animation runtime flags applied by the step action.

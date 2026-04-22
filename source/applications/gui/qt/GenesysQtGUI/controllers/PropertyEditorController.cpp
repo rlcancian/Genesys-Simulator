@@ -10,14 +10,14 @@
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "propertyeditor/ObjectPropertyBrowser.h"
 
-#include "../../../../kernel/simulator/ComponentManager.h"
-#include "../../../../kernel/simulator/GenesysPropertyIntrospection.h"
-#include "../../../../kernel/simulator/Model.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../kernel/simulator/ModelManager.h"
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/ComponentManager.h"
+#include "kernel/simulator/GenesysPropertyIntrospection.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
 
 #include <QGraphicsItem>
 #include <QDebug>
@@ -76,7 +76,7 @@ void collectEditableReferencedDataDefinitions(
             const int itemCount = static_cast<int>(desc.choices.size());
             for (int index = 0; index < itemCount; ++index) {
                 collectEditableReferencedDataDefinitions(
-                    control->getProperties(index),
+                    control->getChildSimulationControls(index),
                     names,
                     recursionPath,
                     depth + 1
@@ -84,7 +84,7 @@ void collectEditableReferencedDataDefinitions(
             }
         } else if (desc.supportsInlineExpansion && control->hasObjectInstance()) {
             collectEditableReferencedDataDefinitions(
-                control->getProperties(),
+                control->getChildSimulationControls(),
                 names,
                 recursionPath,
                 depth + 1
@@ -111,7 +111,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
         for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
             if (component != nullptr) {
                 collectEditableReferencedDataDefinitions(
-                    component->getProperties(),
+                    component->getSimulationControls(),
                     names,
                     recursionPath
                     );
@@ -128,7 +128,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
             for (ModelDataDefinition* dataDefinition : *dataDefinitions->list()) {
                 if (dataDefinition != nullptr) {
                     collectEditableReferencedDataDefinitions(
-                        dataDefinition->getProperties(),
+                        dataDefinition->getSimulationControls(),
                         names,
                         recursionPath
                         );
@@ -201,6 +201,36 @@ void PropertyEditorController::clearPropertyEditorSelection() const {
 bool PropertyEditorController::isPostCommitPipelineActive() const {
     const bool propertyEditorBusy = (_propertyBrowser != nullptr) && _propertyBrowser->isCommitPipelineBusy();
     return propertyEditorBusy || _isGlobalRefreshQueued || _isGlobalRefreshRunning || _pendingGlobalRefresh;
+}
+
+void PropertyEditorController::bindDataDefinitionFromInspector(
+    ModelDataDefinition* dataDefinition,
+    QObject* graphicalObject
+    ) const {
+    if (_propertyBrowser == nullptr) {
+        return;
+    }
+
+    if (dataDefinition == nullptr) {
+        clearPropertyEditorSelection();
+        return;
+    }
+
+    ModelGraphicsScene* scene = (_graphicsView != nullptr) ? _graphicsView->getScene() : nullptr;
+    QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
+    QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
+
+    refreshGraphicalDataDefinitionEditability(scene, editableDataDefinitions);
+
+    _propertyBrowser->setActiveObject(
+        graphicalObject,
+        dataDefinition,
+        graphicalDataDefinitions,
+        editableDataDefinitions,
+        _propertyGenesys,
+        _propertyList,
+        _propertyEditorUI,
+        _propertyBox);
 }
 
 // Preserve legacy single-selection behavior while moving orchestration out of MainWindow.
@@ -320,14 +350,17 @@ void PropertyEditorController::_runGlobalRefresh() const {
         _pendingGlobalRefresh = false;
         qInfo() << "[PropertyEditorController] _runGlobalRefresh enter";
 
-        if (_actualizeModelSimLanguage) {
-            _actualizeModelSimLanguage();
-        }
         if (_actualizeModelComponents) {
             _actualizeModelComponents(true);
         }
         if (_actualizeModelDataDefinitions) {
             _actualizeModelDataDefinitions(true);
+        }
+        // Refresh the serialized model text only after component and data-definition panes have
+        // consumed the committed kernel state. This keeps Siman aligned with the same model
+        // snapshot already visible in the inspector widgets.
+        if (_actualizeModelSimLanguage) {
+            _actualizeModelSimLanguage();
         }
         if (_actualizeModelCppCode) {
             _actualizeModelCppCode();

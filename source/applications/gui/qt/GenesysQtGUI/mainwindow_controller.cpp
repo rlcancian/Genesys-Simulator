@@ -11,6 +11,8 @@
 #include "ui_mainwindow.h"
 // Include the Phase 3 controller interface required by compatibility wrappers.
 #include "controllers/ModelInspectorController.h"
+// Include the Phase 6 controller interface required by inspector-to-property-editor wrappers.
+#include "controllers/PropertyEditorController.h"
 // Include the Phase 5 controller interface required by plugin-tree wrappers.
 #include "controllers/PluginCatalogController.h"
 // Include the Phase 7 controller interface required by lifecycle compatibility wrappers.
@@ -43,6 +45,7 @@
 //#include <streambuf>
 
 // QT
+#include <QCoreApplication>
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFileDialog>
@@ -79,7 +82,7 @@
 #include <QPainter>
 #include <QFileInfo>
 #include <QCoreApplication>
-#include "../../../../kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/ModelSimulation.h"
 #include "../../../../tools/SolverDefaultImpl1.h"
 
 
@@ -359,6 +362,7 @@ void MainWindow::on_actionSimulatorPreferences_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
     if (_dialogUtilityController != nullptr) {
         _dialogUtilityController->onActionSimulatorPreferencesTriggered();
+        _refreshRecentModelsMenu();
     }
 }
 
@@ -535,21 +539,27 @@ void MainWindow::on_actionModelOpen_triggered()
 {
     // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
     _modelLifecycleController->onActionModelOpenTriggered();
+    _refreshRecentModelsMenu();
 }
 
 
 void MainWindow::on_actionModelSave_triggered()
 {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    _modelLifecycleController->onActionModelSaveTriggered();
+    // Save is now anchored to the currently selected model tab.
+    if (_saveCurrentModel(true)) {
+        _refreshRecentModelsMenu();
+        QMessageBox::information(this, "Save Model", "Model successfully saved");
+    }
 }
 
 
 
 void MainWindow::on_actionModelClose_triggered()
 {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    _modelLifecycleController->onActionModelCloseTriggered();
+    // Close only the current model/tab; other open models remain loaded in ModelManager.
+    if (simulator != nullptr && simulator->getModelManager() != nullptr) {
+        _closeModel(simulator->getModelManager()->current());
+    }
 }
 
 
@@ -568,18 +578,65 @@ void MainWindow::on_actionModelCheck_triggered()
 
 void MainWindow::on_actionSimulatorExit_triggered()
 {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    _modelLifecycleController->onActionSimulatorExitTriggered();
+    if (!_confirmApplicationExit()) {
+        return;
+    }
+
+    _closingApproved = true;
+    QCoreApplication::quit();
 }
 
 bool MainWindow::_hasPendingModelChanges() const {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    return _modelLifecycleController->hasPendingModelChanges();
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return false;
+    }
+    for (Model* model : simulator->getModelManager()->models()) {
+        if (_modelHasPendingChanges(model)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool MainWindow::_confirmApplicationExit() {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    return _modelLifecycleController->confirmApplicationExit();
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return true;
+    }
+
+    _syncCurrentModelDocumentState();
+    const std::vector<Model*> openedModels = simulator->getModelManager()->models();
+    for (Model* model : openedModels) {
+        if (!_modelHasPendingChanges(model)) {
+            continue;
+        }
+
+        if (!simulator->getModelManager()->setCurrent(model)) {
+            return false;
+        }
+        _ensureModelTab(model);
+        _restoreModelDocumentState(model);
+        const QMessageBox::StandardButton saveReply = QMessageBox::question(
+            this,
+            "Exit GenESyS",
+            tr("%1 has changed. Do you want to save it?").arg(_modelDisplayName(model)),
+            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+            QMessageBox::Yes);
+
+        if (saveReply == QMessageBox::Cancel) {
+            return false;
+        }
+        if (saveReply == QMessageBox::Yes && (!_saveCurrentModel(false) || _modelHasPendingChanges(model))) {
+            return false;
+        }
+    }
+
+    const QMessageBox::StandardButton exitReply = QMessageBox::question(
+        this,
+        "Exit GenESyS",
+        "Do you want to exit GenESyS?",
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No);
+    return exitReply == QMessageBox::Yes;
 }
 
 
@@ -756,6 +813,13 @@ void MainWindow::on_checkBox_ShowInternals_stateChanged(int arg1) {
     }
 }
 
+void MainWindow::on_checkBox_ShowEditableElements_stateChanged(int arg1) {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onCheckBoxShowEditableElementsStateChanged(arg1);
+    }
+}
+
 void MainWindow::on_horizontalSlider_Zoom_valueChanged(int value) {
     double factor = ((double) value / 100.0)*(2 - 0.5) + 0.5;
     double scaleFactor = 1.0;
@@ -888,6 +952,13 @@ void MainWindow::on_actionShowInternalElements_triggered() {
     }
 }
 
+void MainWindow::on_actionShowEditableElements_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowEditableElementsTriggered();
+    }
+}
+
 void MainWindow::on_actionShowAttachedElements_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {
@@ -895,9 +966,33 @@ void MainWindow::on_actionShowAttachedElements_triggered() {
     }
 }
 
+void MainWindow::on_actionShowRecursiveElements_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionShowRecursiveElementsTriggered();
+    }
+}
+
 void MainWindow::on_treeWidgetComponents_itemSelectionChanged() {
     // Keep this wrapper as part of the final compatibility façade from Phase 3 refactor.
     _modelInspectorController->syncSelectedComponentTreeItemToScene();
+}
+
+void MainWindow::on_treeWidgetDataDefnitions_itemSelectionChanged() {
+    // Keep inspector-driven DataDefinition editing available even when View/Show hides its GMDD.
+    if (_modelInspectorController == nullptr || _propertyEditorController == nullptr) {
+        return;
+    }
+
+    const ModelInspectorController::DataDefinitionSelection selection =
+        _modelInspectorController->syncSelectedDataDefinitionTreeItemToScene();
+    if (!selection.handled) {
+        return;
+    }
+
+    _propertyEditorController->bindDataDefinitionFromInspector(
+        selection.dataDefinition,
+        selection.graphicalDataDefinition);
 }
 
 void MainWindow::on_treeWidget_Plugins_itemClicked(QTreeWidgetItem *item, int column) {

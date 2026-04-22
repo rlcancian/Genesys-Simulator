@@ -6,6 +6,7 @@
 class QContextMenuEvent;
 class QGraphicsItem;
 class QMenu;
+class QAction;
 class ModelGraphicsView;
 class ModelGraphicsScene;
 
@@ -26,6 +27,7 @@ public:
      */
     GraphicalContextMenuController(ModelGraphicsView* graphicsView,
                                    Ui::MainWindow* ui,
+                                   QAction* openSubmodelAction,
                                    std::function<ModelGraphicsScene*()> currentScene,
                                    std::function<void()> actualizeActions);
 
@@ -103,6 +105,7 @@ private:
 
     ModelGraphicsView* _graphicsView;
     Ui::MainWindow* _ui;
+    QAction* _openSubmodelAction;
     std::function<ModelGraphicsScene*()> _currentScene;
     std::function<void()> _actualizeActions;
 };

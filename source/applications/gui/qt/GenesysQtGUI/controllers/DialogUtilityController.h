@@ -66,14 +66,14 @@ public:
     void onActionToolsParserGrammarCheckerTriggered();
     /** @brief Opens optimization settings dialog and stores lightweight preferences. */
     void onActionToolsOptimizatorTriggered();
-    /** @brief Launches data analyzer workflow using persisted last-path compatibility state. */
+    /** @brief Launches the Data Analyzer workstation using persisted last-path compatibility state. */
     void onActionToolsDataAnalyzerTriggered();
     /** @brief Opens view configuration dialog and applies delegated scene/UI refreshes. */
     void onActionViewConfigureTriggered();
     /** @brief Opens simulator preferences utility dialog. */
     void onActionSimulatorPreferencesTriggered();
     /** @brief Opens plugin manager dialog from the compatibility action surface. */
-    void onActionSimulatorsPluginManagerTriggered();
+    void onActionSimulatorsPluginManagerTriggered(bool showProblemPlugins = false);
     /** @brief Inserts a breakpoint entry based on current scene selection. */
     void onPushButtonBreakpointInsertClicked();
     /** @brief Removes selected breakpoint entries and refreshes debug breakpoint pane. */

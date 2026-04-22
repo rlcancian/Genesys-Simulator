@@ -36,8 +36,9 @@ public:
      */
     GraphvizModelExporter(Simulator* simulator,
                           QLabel* modelGraphicLabel,
-                          QCheckBox* showInternals,
-                          QCheckBox* showElements,
+                          QCheckBox* showStatistics,
+                          QCheckBox* showEditable,
+                          QCheckBox* showShared,
                           QCheckBox* showRecursive,
                           QCheckBox* showLevels,
                           std::function<bool()> ensureModelSynchronized);
@@ -73,8 +74,9 @@ public:
 private:
     Simulator* _simulator;
     QLabel* _modelGraphicLabel;
-    QCheckBox* _showInternals;
-    QCheckBox* _showElements;
+    QCheckBox* _showStatistics;
+    QCheckBox* _showEditable;
+    QCheckBox* _showShared;
     QCheckBox* _showRecursive;
     QCheckBox* _showLevels;
     // Keep synchronization dependency narrow and explicit.

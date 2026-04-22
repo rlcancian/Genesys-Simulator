@@ -17,7 +17,10 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationScenario.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
+#include "kernel/simulator/SystemDependencyResolver.h"
+#include <map>
 #include <type_traits>
+#include <vector>
 
 
 // Test-only link shim:
@@ -36,6 +39,9 @@ Model::Model(Simulator* simulator, unsigned int level) {
 
 // Provides a trivial out-of-line destructor for the test double after Model gained an explicit virtual destructor.
 Model::~Model() = default;
+
+void ModelDataDefinition::CreateInternalData(ModelDataDefinition*) {
+}
 
 bool Model::save(std::string filename) {
     (void)filename;
@@ -134,10 +140,48 @@ public:
     bool save(std::string) override { return false; }
     bool load(std::string) override { return false; }
     bool hasChanged() override { return false; }
+    void setHasChanged(bool) override {}
     bool getOption(ModelPersistence_if::Options) override { return false; }
     void setOption(ModelPersistence_if::Options, bool) override {}
     std::string getFormatedField(PersistenceRecord*) override { return ""; }
 };
+
+class FakeSystemCommandExecutor : public SystemCommandExecutor_if {
+public:
+    std::map<std::string, SystemCommandResult> results;
+    std::vector<std::string> commands;
+
+    SystemCommandResult run(const std::string& command) override {
+        commands.push_back(command);
+        auto it = results.find(command);
+        if (it != results.end()) {
+            return it->second;
+        }
+        return {};
+    }
+};
+
+SystemCommandResult CommandResultWithExitCode(int exitCode) {
+    SystemCommandResult result;
+    result.started = true;
+    result.exitCode = exitCode;
+    return result;
+}
+
+SystemDependency::OS NonHostOS() {
+    switch (SystemDependencyResolver::currentOS()) {
+        case SystemDependency::OS::Linux:
+            return SystemDependency::OS::Windows;
+        case SystemDependency::OS::Windows:
+            return SystemDependency::OS::Linux;
+        case SystemDependency::OS::MacOS:
+            return SystemDependency::OS::Linux;
+        case SystemDependency::OS::Any:
+        case SystemDependency::OS::Unknown:
+            return SystemDependency::OS::Linux;
+    }
+    return SystemDependency::OS::Linux;
+}
 
 
 
@@ -396,10 +440,118 @@ TEST(SimulatorSupportTest, PluginInformationStoresSystemDependenciesInOrder) {
     EXPECT_EQ(it->getName(), "COPASI");
 }
 
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksSatisfiedDependency) {
+    FakeSystemCommandExecutor executor;
+    executor.results["pkg-config --exists libsbml"] = CommandResultWithExitCode(0);
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "libSBML",
+        "sudo apt install libsbml5-dev -y",
+        "pkg-config --exists libsbml");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_TRUE(result.canInsertPlugin());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::Satisfied);
+    ASSERT_EQ(executor.commands.size(), 1u);
+    EXPECT_EQ(executor.commands.front(), "pkg-config --exists libsbml");
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksMissingDependency) {
+    FakeSystemCommandExecutor executor;
+    SystemCommandResult failedCheck = CommandResultWithExitCode(1);
+    failedCheck.output = "missing-tool: command not found\n";
+    executor.results["missing-tool --version"] = failedCheck;
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "MissingTool",
+        "sudo apt install missing-tool -y",
+        "missing-tool --version");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_FALSE(result.canInsertPlugin());
+    EXPECT_TRUE(result.hasBlockingEntries());
+    EXPECT_TRUE(result.canAttemptInstallForAllMissing());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::Missing);
+    EXPECT_NE(result.diagnosticText(false).find("Check command: missing-tool --version"), std::string::npos);
+    EXPECT_NE(result.diagnosticText(false).find("Install command: sudo apt install missing-tool -y"), std::string::npos);
+    EXPECT_NE(result.diagnosticText(false).find("missing-tool: command not found"), std::string::npos);
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverIgnoresDifferentOperatingSystem) {
+    FakeSystemCommandExecutor executor;
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        NonHostOS(),
+        "OtherOSTool",
+        "install-other-os-tool",
+        "other-os-tool --version");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_TRUE(result.canInsertPlugin());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::IgnoredDifferentOS);
+    EXPECT_TRUE(executor.commands.empty());
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverMarksApplicableDependencyWithoutCheckCommandAsNotVerifiable) {
+    FakeSystemCommandExecutor executor;
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "ManualOnlyTool",
+        "sudo apt install manual-only-tool -y",
+        "");
+
+    const SystemDependencyCheckResult result = SystemDependencyResolver::evaluate(&dependencies, executor);
+
+    ASSERT_EQ(result.entries().size(), 1u);
+    EXPECT_FALSE(result.canInsertPlugin());
+    EXPECT_FALSE(result.canAttemptInstallForAllMissing());
+    EXPECT_EQ(result.entries().front().status(), SystemDependencyCheckEntry::Status::NotVerifiable);
+    EXPECT_TRUE(executor.commands.empty());
+}
+
+TEST(SimulatorSupportTest, SystemDependencyResolverInstallDiagnosticIncludesCommandAndOutput) {
+    FakeSystemCommandExecutor executor;
+    executor.results["missing-tool --version"] = CommandResultWithExitCode(1);
+    SystemCommandResult failedInstall = CommandResultWithExitCode(100);
+    failedInstall.output = "package not found\n";
+    failedInstall.errorMessage = "apt failed\n";
+    executor.results["sudo apt install missing-tool -y"] = failedInstall;
+
+    std::list<SystemDependency> dependencies;
+    dependencies.emplace_back(
+        SystemDependency::OS::Any,
+        "MissingTool",
+        "sudo apt install missing-tool -y",
+        "missing-tool --version");
+
+    const SystemDependencyCheckResult check = SystemDependencyResolver::evaluate(&dependencies, executor);
+    const SystemDependencyInstallResult result = SystemDependencyResolver::installMissingDependencies(check, executor);
+    const std::string diagnostic = result.diagnosticText();
+
+    EXPECT_FALSE(result.succeeded());
+    EXPECT_NE(diagnostic.find("Dependency: MissingTool"), std::string::npos);
+    EXPECT_NE(diagnostic.find("Install command: sudo apt install missing-tool -y"), std::string::npos);
+    EXPECT_NE(diagnostic.find("Install exit code: 100"), std::string::npos);
+    EXPECT_NE(diagnostic.find("package not found"), std::string::npos);
+    EXPECT_NE(diagnostic.find("apt failed"), std::string::npos);
+    ASSERT_EQ(executor.commands.size(), 2u);
+    EXPECT_EQ(executor.commands.at(0), "missing-tool --version");
+    EXPECT_EQ(executor.commands.at(1), "sudo apt install missing-tool -y");
+}
+
 TEST(SimulatorSupportTest, PluginInformationDefaultsAndContainerReplacementWork) {
     PluginInformation info("Delay", static_cast<StaticLoaderComponentInstance>(nullptr), static_cast<StaticConstructorDataDefinitionInstance>(nullptr));
 
-    EXPECT_EQ(info.getCategory(), "Discrete Processing");
+    EXPECT_EQ(info.getCategory(), "DiscreteProcessing");
     EXPECT_FALSE(info.isGenerateReport());
     EXPECT_FALSE(info.isSource());
     EXPECT_FALSE(info.isSink());
@@ -508,6 +660,44 @@ TEST(SimulatorSupportTest, SimulationControlStringReadOnlyRejectsWrites) {
     EXPECT_EQ(control.getValue(), "alpha");
 }
 
+TEST(SimulatorSupportTest, SimulationControlGenericStringPreservesWhitespace) {
+    std::string value = "initial";
+    SimulationControlGeneric<std::string> control(
+        [&]() { return value; },
+        [&](std::string newValue) { value = newValue; },
+        "C",
+        "E",
+        "Expression"
+    );
+
+    control.setValue("1 + 34");
+
+    EXPECT_EQ(value, "1 + 34");
+    EXPECT_EQ(control.getValue(), "1 + 34");
+}
+
+TEST(SimulatorSupportTest, SimulationControlGenericStringListPreservesWhitespace) {
+    List<std::string> values;
+    SimulationControlGenericList<std::string, void*, std::string> control(
+        nullptr,
+        [&]() { return &values; },
+        [&](std::string value) { values.insert(value); },
+        [&](std::string value) { values.remove(value); },
+        "C",
+        "E",
+        "Expressions"
+    );
+
+    control.setValue("Entity.Attribute + 34");
+
+    ASSERT_EQ(values.size(), 1u);
+    EXPECT_EQ(values.front(), "Entity.Attribute + 34");
+
+    control.setValue("Entity.Attribute + 34", true);
+
+    EXPECT_TRUE(values.empty());
+}
+
 TEST(SimulatorSupportTest, SimulationControlBoolParsesTextAndNumericValues) {
     bool value = false;
     SimulationControlBool control(
@@ -541,7 +731,7 @@ TEST(SimulatorSupportTest, DefineSimulationGetterAndSetterBindKernelMethods) {
 }
 
 TEST(SimulatorSupportTest, ModelDataDefinitionGetPropertiesNowReturnsSimulationControlList) {
-    using ReturnType = decltype(std::declval<const ModelDataDefinition*>()->getProperties());
+    using ReturnType = decltype(std::declval<const ModelDataDefinition*>()->getSimulationControls());
     constexpr bool is_expected = std::is_same_v<ReturnType, List<SimulationControl*>*>;
     EXPECT_TRUE(is_expected);
 }

@@ -13,20 +13,20 @@
 
 #include "AnElectronicAssemblyAndTestSystem.h"
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Assign.h"
-#include "../../../../plugins/components/Record.h"
-#include "../../../../plugins/components/Seize.h"
-#include "../../../../plugins/components/Release.h"
-#include "../../../../plugins/components/Decide.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/InputOutput/Record.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
+#include "plugins/components/Decisions/Decide.h"
 // Model data definitions
-#include "../../../../kernel/simulator/Attribute.h"
-#include "../../../../plugins/components/SeizableItem.h"
-#include "../../../../plugins/components/QueueableItem.h"
+#include "kernel/simulator/Attribute.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 
 AnElectronicAssemblyAndTestSystem::AnElectronicAssemblyAndTestSystem() {
 }
@@ -128,10 +128,19 @@ int AnElectronicAssemblyAndTestSystem::main(int argc, char** argv) {
 	decide2->getConditions()->insert("unif(0,1)<0.20");
 	record1->setExpression("tnow - Arrive_Time");
 	record1->setExpressionName("Scrapped Parts Total Time");
+	record1->setDatasetName("Scrapped Parts Total Time Dataset");
+	record1->setRandomVariableName("Scrapped parts total time");
+	record1->setDatasetDescription("Total time in system for scrapped parts.");
 	record2->setExpression("tnow - Arrive_Time");
 	record2->setExpressionName("Salvaged Parts Total Time");
+	record2->setDatasetName("Salvaged Parts Total Time Dataset");
+	record2->setRandomVariableName("Salvaged parts total time");
+	record2->setDatasetDescription("Total time in system for salvaged parts.");
 	record3->setExpression("tnow - Arrive_Time");
 	record3->setExpressionName("Shipped Parts Total Time");
+	record3->setDatasetName("Shipped Parts Total Time Dataset");
+	record3->setRandomVariableName("Shipped parts total time");
+	record3->setDatasetDescription("Total time in system for shipped parts.");
 	//setting model information
 	model->getInfos()->setName("An Electronic Assembly and Test System");
 	model->getInfos()->setDescription("B14 Chap 04 Modeling Basic Operations ans Inputs. Example section 4.1");

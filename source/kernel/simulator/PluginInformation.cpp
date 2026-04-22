@@ -13,6 +13,8 @@
 
 #include "PluginInformation.h"
 
+#include <cctype>
+
 //using namespace GenesysKernel;
 
 SystemDependency::SystemDependency(OS os, std::string name, std::string installCommand, std::string checkCommand) {
@@ -257,4 +259,18 @@ void PluginInformation::setCategory(std::string _category) {
 
 std::string PluginInformation::getCategory() const {
 	return _category;
+}
+
+std::string PluginInformation::categoryFolderName(const std::string& category) {
+	std::string folderName;
+	bool startWord = true;
+	for (unsigned char ch : category) {
+		if (std::isalnum(ch)) {
+			folderName += static_cast<char>(startWord ? std::toupper(ch) : ch);
+			startWord = false;
+		} else {
+			startWord = true;
+		}
+	}
+	return folderName.empty() ? "Uncategorized" : folderName;
 }

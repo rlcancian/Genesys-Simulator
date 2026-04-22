@@ -54,6 +54,8 @@
 #include "dialogs/DialogTimerConfigure.h"
 #include "animations/AnimationQueue.h"
 #include "services/GraphicalModelBuilder.h"
+#include "systempreferences.h"
+#include "UtilGUI.h"
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QThread>
@@ -177,7 +179,9 @@ ModelGraphicsScene::ModelGraphicsScene(qreal x, qreal y, qreal width, qreal heig
     x, y, width, height, parent) {
     // grid
     _grid.interval = TraitsGUI<GScene>::gridInterval; // 20;
-    _grid.pen = QPen(TraitsGUI<GScene>::gridColor);
+    _grid.pen = QPen(UtilGUI::rgbaFromPacked(SystemPreferences::diagramUsesThemeColors()
+                                                 ? SystemPreferences::gridColor()
+                                                 : TraitsGUI<GScene>::gridColor));
     // QPen(Qt::gray); //TODO: To use TraitsGUI<GScene>::gridColor must solve myrgba first
     _grid.lines = new std::list<QGraphicsLineItem*>();
     _grid.visible = false;
@@ -355,7 +359,7 @@ GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* 
                                                                         QPointF position, QColor color, bool notify,
                                                                         GraphicalModelComponent* autoConnectSource) {
     _propertyEditor->addElement(component);
-    for (auto prop : *component->getProperties()->list()) {
+    for (auto prop : *component->getSimulationControls()->list()) {
         if (prop->getIsList()) {
             (*(_propertyList))[prop] = new DataComponentProperty(_propertyEditor, prop, false);
         }
@@ -1307,6 +1311,12 @@ void ModelGraphicsScene::saveDataDefinitions() {
 }
 
 void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
+    // Loaded models already bring their DataDefinitions from persistence.
+    // Reinserting here can corrupt DataManager state (notably EntityType) and break model check.
+    if (loaded) {
+        return;
+    }
+
     // Get model components by value to avoid temporary heap ownership.
     QList<GraphicalModelComponent*> components = this->graphicalModelComponentItems();
     QList<GraphicalModelComponent*>* allComponentes = this->getAllComponents();
@@ -1348,12 +1358,6 @@ void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
         }
     }
 
-    if (loaded) {
-        std::list<ModelDataDefinition*>* entityTypes = _simulator->getModelManager()->current()->getDataManager()->
-                                                                   getDataDefinitionList(Util::TypeOf<EntityType>())->
-                                                                   list();
-        entityTypes->clear();
-    }
 }
 
 void ModelGraphicsScene::addDrawing(QGraphicsItem* item, bool notify) {
@@ -2980,19 +2984,70 @@ QList<QGraphicsItem*>* ModelGraphicsScene::getGraphicalDiagramsConnections() con
 }
 
 void ModelGraphicsScene::setShowInternalDataDefinitions(bool show) {
-    _showInternalDataDefinitions = show;
+    _showStatisticsDataDefinitions = show;
+    _showEditableDataDefinitions = show;
 }
 
 bool ModelGraphicsScene::showInternalDataDefinitions() const {
-    return _showInternalDataDefinitions;
+    return _showStatisticsDataDefinitions || _showEditableDataDefinitions;
 }
 
 void ModelGraphicsScene::setShowAttachedDataDefinitions(bool show) {
-    _showAttachedDataDefinitions = show;
+    _showSharedDataDefinitions = show;
 }
 
 bool ModelGraphicsScene::showAttachedDataDefinitions() const {
-    return _showAttachedDataDefinitions;
+    return _showSharedDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowStatisticsDataDefinitions(bool show) {
+    _showStatisticsDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showStatisticsDataDefinitions() const {
+    return _showStatisticsDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowEditableDataDefinitions(bool show) {
+    _showEditableDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showEditableDataDefinitions() const {
+    return _showEditableDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowSharedDataDefinitions(bool show) {
+    _showSharedDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showSharedDataDefinitions() const {
+    return _showSharedDataDefinitions;
+}
+
+void ModelGraphicsScene::setShowRecursiveDataDefinitions(bool show) {
+    _showRecursiveDataDefinitions = show;
+}
+
+bool ModelGraphicsScene::showRecursiveDataDefinitions() const {
+    return _showRecursiveDataDefinitions;
+}
+
+void ModelGraphicsScene::setModelLevelFilter(unsigned int modelLevel) {
+    _hasModelLevelFilter = true;
+    _modelLevelFilter = modelLevel;
+}
+
+void ModelGraphicsScene::clearModelLevelFilter() {
+    _hasModelLevelFilter = false;
+    _modelLevelFilter = 0;
+}
+
+bool ModelGraphicsScene::hasModelLevelFilter() const {
+    return _hasModelLevelFilter;
+}
+
+unsigned int ModelGraphicsScene::modelLevelFilter() const {
+    return _modelLevelFilter;
 }
 
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {

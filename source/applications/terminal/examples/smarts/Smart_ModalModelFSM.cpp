@@ -1,13 +1,13 @@
 #include "Smart_ModalModelFSM.h"
 
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/ModalModelFSM.h"
-#include "../../../../plugins/components/network/FSMState.h"
-#include "../../../../plugins/components/network/DefaultTransitionExtensions.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/ModalModel/ModalModelFSM.h"
+#include "plugins/components/ModalModel/FSMState.h"
+#include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "../../../TraitsApp.h"
-#include "plugins/data/Variable.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 
 Smart_ModalModelFSM::Smart_ModalModelFSM() {
 }

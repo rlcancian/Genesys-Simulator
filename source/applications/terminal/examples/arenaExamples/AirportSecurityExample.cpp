@@ -1,9 +1,9 @@
 #include "AirportSecurityExample.h"
-#include "../../../../kernel/simulator/Simulator.h"
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Process.h"
-#include "../../../../plugins/components/Decide.h"
-#include "../../../../plugins/components/Dispose.h"
+#include "kernel/simulator/Simulator.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Process.h"
+#include "plugins/components/Decisions/Decide.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
 
 AirportSecurityExample::AirportSecurityExample() {
 }

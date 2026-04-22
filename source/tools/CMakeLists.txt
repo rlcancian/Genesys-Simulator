@@ -4,6 +4,7 @@ add_library(genesys_tools STATIC
     OptimizerDefaultImpl1.cpp
     ProbabilityDistribution.cpp
     ProbabilityDistributionBase.cpp
+    SimulationResultsDataset.cpp
     SolverDefaultImpl1.cpp
     FactorialDesign/FactorialDesign.cpp
 )

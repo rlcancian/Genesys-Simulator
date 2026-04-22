@@ -46,12 +46,15 @@ public:
                              QAction* actionShowSnap,
                              QAction* actionShowGuides,
                              QAction* actionShowInternalElements,
+                             QAction* actionShowEditableElements,
                              QAction* actionShowAttachedElements,
+                             QAction* actionShowRecursiveElements,
                              QTextEdit* console,
                              QString* modelFilename,
                              std::function<void()> clearModelEditors,
                              std::function<void()> rebuildGraphicalModelFromModel,
                              std::function<void()> applyShowInternalElements,
+                             std::function<void()> applyShowEditableElements,
                              std::function<void()> applyShowAttachedElements);
 
     /**
@@ -87,12 +90,15 @@ private:
     QAction* _actionShowSnap;
     QAction* _actionShowGuides;
     QAction* _actionShowInternalElements;
+    QAction* _actionShowEditableElements;
     QAction* _actionShowAttachedElements;
+    QAction* _actionShowRecursiveElements;
     QTextEdit* _console;
     QString* _modelFilename;
     std::function<void()> _clearModelEditors;
     std::function<void()> _rebuildGraphicalModelFromModel;
     std::function<void()> _applyShowInternalElements;
+    std::function<void()> _applyShowEditableElements;
     std::function<void()> _applyShowAttachedElements;
 };
 

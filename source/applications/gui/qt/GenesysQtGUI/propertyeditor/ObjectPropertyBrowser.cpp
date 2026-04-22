@@ -36,11 +36,11 @@
 #include <QAbstractSpinBox>
 #include <QUndoStack>
 
-#include "../../../../kernel/simulator/Model.h"
-#include "../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../kernel/simulator/ModelManager.h"
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
 
 namespace {
 class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
@@ -259,6 +259,7 @@ void ObjectPropertyBrowser::_clearAll() {
     clear();
     _bindings.clear();
     _enumNames.clear();
+    _objectListActions.clear();
     _pendingCommittedProperties.clear();
     _pendingCommittedValues.clear();
 }
@@ -340,6 +341,11 @@ void ObjectPropertyBrowser::setActiveObject(
                 graphicalDataDefinition->setEditableInPropertyEditor(_editableModelObjects.contains(name));
             }
             _activeKernelObjectReadOnly = !graphicalDataDefinition->isEditableInPropertyEditor();
+        } else if (mdd != nullptr) {
+            // Inspector-driven editing may target a hidden GMDD, so read-only enforcement must
+            // also work when there is no graphical QObject backing the selected data definition.
+            const QString name = QString::fromStdString(mdd->getName());
+            _activeKernelObjectReadOnly = !_editableModelObjects.contains(name);
         }
     }
     _propertyEditor = peg;
@@ -473,7 +479,7 @@ bool ObjectPropertyBrowser::_hasValidActiveBindingContext(QtProperty* property) 
         return true;
     }
 
-    if (_activeMode != ActiveMode::KernelObject || _modelObject == nullptr || _graphicalObject.isNull()) {
+    if (_activeMode != ActiveMode::KernelObject || _modelObject == nullptr) {
         return false;
     }
 
@@ -678,19 +684,53 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
 
     QtProperty* property = _enumManager->addProperty(QString::fromStdString(desc.displayName));
     const int itemCount = static_cast<int>(desc.choices.size());
-    const QString countLabel = QString("%1 %2").arg(itemCount).arg(itemCount == 1 ? "item" : "itens");
+    QString countLabel = QString("%1 %2").arg(itemCount).arg(itemCount == 1 ? "item" : "itens");
+    if (!desc.currentListElementType.empty()) {
+        countLabel += QString(" (%1)").arg(QString::fromStdString(desc.currentListElementType));
+    } else if (!desc.creatableListElementTypes.empty()) {
+        countLabel += " (tipo indefinido)";
+    }
 
     QStringList choices;
+    std::vector<ObjectListAction> actions;
     choices << countLabel;
+    actions.push_back(ObjectListAction{ObjectListAction::Kind::None, ""});
     if (desc.supportsNewListElementCreation && _isKernelEditingEnabled(desc)) {
-        choices << QString("Criar novo %1").arg(_modelObjectTypeName(desc));
+        if (!desc.creatableListElementTypes.empty()) {
+            if (!desc.currentListElementType.empty()) {
+                choices << QString("Criar novo %1").arg(QString::fromStdString(desc.currentListElementType));
+                actions.push_back(ObjectListAction{ObjectListAction::Kind::CreateNew, desc.currentListElementType});
+                if (itemCount == 0) {
+                    for (const std::string& typeName : desc.creatableListElementTypes) {
+                        if (typeName == desc.currentListElementType) {
+                            continue;
+                        }
+                        choices << QString("Definir tipo como %1").arg(QString::fromStdString(typeName));
+                        actions.push_back(ObjectListAction{ObjectListAction::Kind::SetCurrentType, typeName});
+                    }
+                }
+            } else {
+                for (const std::string& typeName : desc.creatableListElementTypes) {
+                    choices << QString("Definir tipo como %1").arg(QString::fromStdString(typeName));
+                    actions.push_back(ObjectListAction{ObjectListAction::Kind::SetCurrentType, typeName});
+                }
+                for (const std::string& typeName : desc.creatableListElementTypes) {
+                    choices << QString("Criar novo %1").arg(QString::fromStdString(typeName));
+                    actions.push_back(ObjectListAction{ObjectListAction::Kind::CreateNew, typeName});
+                }
+            }
+        } else {
+            choices << QString("Criar novo %1").arg(_modelObjectTypeName(desc));
+            actions.push_back(ObjectListAction{ObjectListAction::Kind::CreateNew, ""});
+        }
     }
 
     _enumNames[property] = choices;
+    _objectListActions[property] = actions;
     _enumManager->setEnumNames(property, choices);
     _enumManager->setValue(property, 0);
     property->setEnabled(!_activeKernelObjectReadOnly);
-    property->setToolTip("Expanda para editar os elementos da lista ou selecione a ação para criar um novo elemento.");
+    property->setToolTip("Expanda para editar os elementos da lista ou selecione uma ação para definir o tipo ou criar um novo elemento.");
     property->setStatusTip("Lista de objetos");
 
     Binding binding;
@@ -728,7 +768,7 @@ QtProperty* ObjectPropertyBrowser::_createObjectListProperty(
         QtProperty* elementGroup = _groupManager->addProperty(groupName);
         property->addSubProperty(elementGroup);
 
-        List<SimulationControl*>* elementProperties = control->getEditableProperties(index);
+        List<SimulationControl*>* elementProperties = control->getEditableChildSimulationControls(index);
         if (elementProperties == nullptr) {
             QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
             emptyNode->setEnabled(false);
@@ -974,6 +1014,18 @@ bool ObjectPropertyBrowser::_isRegisteredModelDataDefinition(ModelDataDefinition
     }
     List<ModelDataDefinition*>* dataList = model->getDataManager()->getDataDefinitionList(dataDefinition->getClassname());
     return dataList != nullptr && dataList->find(dataDefinition) != dataList->list()->end();
+}
+
+void ObjectPropertyBrowser::_materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition) const {
+    // Property-editor mutations can affect both the edited owner and a referenced object created or
+    // rebound by the same commit. Materialize both sides before any GUI refresh so the persisted
+    // model, the data-definition tree, and the graphical layer observe the same kernel state.
+    if (referencedDataDefinition != nullptr) {
+        ModelDataDefinition::CreateInternalData(referencedDataDefinition);
+    }
+    if (_modelObject != nullptr && _modelObject != referencedDataDefinition) {
+        ModelDataDefinition::CreateInternalData(_modelObject);
+    }
 }
 
 void ObjectPropertyBrowser::_synchronizeGraphicalModelDataDefinitionsNow() const {
@@ -1276,7 +1328,7 @@ void ObjectPropertyBrowser::_appendDescriptorRecursively(
         group->addSubProperty(refProperty);
     }
 
-    List<SimulationControl*>* childrenList = control->getEditableProperties();
+    List<SimulationControl*>* childrenList = control->getEditableChildSimulationControls();
     if (childrenList == nullptr) {
         QtVariantProperty* emptyNode = _variantManager->addProperty(QVariant::String, "Info");
         emptyNode->setEnabled(false);
@@ -1307,7 +1359,7 @@ void ObjectPropertyBrowser::_populateKernelProperties(ModelDataDefinition* mdd) 
     }
 
     const std::vector<GenesysPropertyDescriptor> properties =
-        GenesysPropertyIntrospection::describe(mdd->getProperties());
+        GenesysPropertyIntrospection::describe(mdd->getSimulationControls());
 
     std::map<std::string, QtProperty*> groups;
 
@@ -1732,7 +1784,7 @@ bool ObjectPropertyBrowser::_createObjectForProperty(QtProperty* property) {
     return true;
 }
 
-bool ObjectPropertyBrowser::_createNewListElementForProperty(QtProperty* property) {
+bool ObjectPropertyBrowser::_createNewListElementForProperty(QtProperty* property, const std::string& typeName) {
     if (!_hasValidActiveBindingContext(property)) {
         qWarning() << "[PropertyEditor] createNewListElementForProperty aborted due to invalid binding context";
         return false;
@@ -1753,7 +1805,11 @@ bool ObjectPropertyBrowser::_createNewListElementForProperty(QtProperty* propert
 
     bool created = false;
     try {
-        created = binding.control->createNewListElement();
+        // Polymorphic lists, such as Set::ElementSet, keep type creation rules in the kernel.
+        // The editor only forwards the chosen type so the model can validate and instantiate it.
+        created = typeName.empty()
+                      ? binding.control->createNewListElement()
+                      : binding.control->createNewListElementOfType(typeName);
     } catch (const std::exception& e) {
         qWarning() << "[PropertyEditor] failed to create list element:" << e.what();
         created = false;
@@ -1767,7 +1823,46 @@ bool ObjectPropertyBrowser::_createNewListElementForProperty(QtProperty* propert
         return false;
     }
 
+    // List mutations can affect the owner's semantic graph. Rebuild it before the graphical layer
+    // asks which GMDDs should be visible.
+    _materializeAffectedModelDataDefinitions();
     _synchronizeGraphicalModelDataDefinitionsNow();
+    _notifyModelChangeApplied();
+    return true;
+}
+
+bool ObjectPropertyBrowser::_setCurrentListElementTypeForProperty(QtProperty* property, const std::string& typeName) {
+    if (!_hasValidActiveBindingContext(property)) {
+        qWarning() << "[PropertyEditor] setCurrentListElementTypeForProperty aborted due to invalid binding context";
+        return false;
+    }
+
+    auto it = _bindings.find(property);
+    if (it == _bindings.end()) {
+        return false;
+    }
+
+    const Binding binding = it.value();
+    if (!_isKernelEditingEnabled(binding.descriptor) || binding.control == nullptr || typeName.empty()) {
+        return false;
+    }
+
+    bool updated = false;
+    try {
+        updated = binding.control->setCurrentListElementType(typeName);
+    } catch (const std::exception& e) {
+        qWarning() << "[PropertyEditor] failed to set list element type:" << e.what();
+        updated = false;
+    } catch (...) {
+        qWarning() << "[PropertyEditor] failed to set list element type: unknown error";
+        updated = false;
+    }
+
+    if (!updated) {
+        _scheduleDeferredRebuild();
+        return false;
+    }
+
     _notifyModelChangeApplied();
     return true;
 }
@@ -1819,8 +1914,7 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property) 
         model->getDataManager()->insert(referencedDataDefinition);
     }
 
-    // Let the owner re-establish the semantic internal/attached relationship using its own kernel policy.
-    ModelDataDefinition::CreateInternalData(_modelObject);
+    _materializeAffectedModelDataDefinitions(referencedDataDefinition);
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -1860,7 +1954,7 @@ bool ObjectPropertyBrowser::_setModelObjectReferenceForProperty(QtProperty* prop
         return false;
     }
 
-    ModelDataDefinition::CreateInternalData(_modelObject);
+    _materializeAffectedModelDataDefinitions(_referencedModelDataDefinition(binding));
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -1943,7 +2037,7 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
         return false;
     }
 
-    ModelDataDefinition::CreateInternalData(_modelObject);
+    _materializeAffectedModelDataDefinitions();
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -2010,6 +2104,19 @@ bool ObjectPropertyBrowser::_applyObjectListSelection(QtProperty* property, int 
 
     if (value == 0) {
         return true;
+    }
+
+    const std::vector<ObjectListAction> actions = _objectListActions.value(property);
+    if (value < static_cast<int>(actions.size())) {
+        const ObjectListAction& action = actions[static_cast<std::size_t>(value)];
+        switch (action.kind) {
+            case ObjectListAction::Kind::CreateNew:
+                return _createNewListElementForProperty(property, action.typeName);
+            case ObjectListAction::Kind::SetCurrentType:
+                return _setCurrentListElementTypeForProperty(property, action.typeName);
+            case ObjectListAction::Kind::None:
+                return true;
+        }
     }
 
     if (value == 1) {

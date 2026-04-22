@@ -1,11 +1,13 @@
 #include "CppSerializer.h"
 
 #include <cassert>
+#include <cctype>
 #include <vector>
 #include <memory>
 #include <algorithm>
 #include <utility>
 #include <set>
+#include <unordered_map>
 
 #include "Simulator.h"
 
@@ -26,6 +28,91 @@ static std::string indent(int times = 1) {
         str += INDENT;
     }
     return str;
+}
+
+static std::string cppIdentifier(const std::string& text, const std::string& fallback) {
+    std::string result;
+    result.reserve(text.size());
+    for (const unsigned char ch : text) {
+        result += std::isalnum(ch) ? static_cast<char>(ch) : '_';
+    }
+    if (result.empty()) {
+        result = fallback;
+    }
+    if (!result.empty() && std::isdigit(static_cast<unsigned char>(result.front()))) {
+        result.insert(result.begin(), '_');
+    }
+    return result;
+}
+
+static std::string uniqueCppIdentifier(const std::string& text, const std::string& fallback,
+                                       std::set<std::string>* usedIdentifiers) {
+    std::string candidate = cppIdentifier(text, fallback);
+    std::string unique = candidate;
+    unsigned int suffix = 1;
+    while (usedIdentifiers->count(unique) != 0u) {
+        unique = candidate + "_" + std::to_string(suffix++);
+    }
+    usedIdentifiers->insert(unique);
+    return unique;
+}
+
+static std::string cppStringLiteral(const std::string& text) {
+    std::string escaped;
+    escaped.reserve(text.size() + 2);
+    for (const char ch : text) {
+        switch (ch) {
+        case '\\':
+            escaped += "\\\\";
+            break;
+        case '"':
+            escaped += "\\\"";
+            break;
+        case '\n':
+            escaped += "\\n";
+            break;
+        case '\r':
+            escaped += "\\r";
+            break;
+        case '\t':
+            escaped += "\\t";
+            break;
+        default:
+            escaped += ch;
+            break;
+        }
+    }
+    return "\"" + escaped + "\"";
+}
+
+static bool shouldEmitSimulationControl(SimulationControl* control) {
+    if (control == nullptr || control->isReadOnly()) {
+        return false;
+    }
+    // Object and list controls require model-specific creation/removal context; keep
+    // C++ export focused on scalar controls that can be restored safely by value.
+    return !control->getIsClass() && !control->getIsList();
+}
+
+static ModelDataDefinition* findSerializedElement(Model* model, const std::string& type,
+                                                  const Util::identification id,
+                                                  const std::string& name,
+                                                  const bool isComponent) {
+    if (model == nullptr) {
+        return nullptr;
+    }
+    if (isComponent) {
+        ModelComponent* component = model->getComponentManager()->find(id);
+        if (component == nullptr && !name.empty()) {
+            component = model->getComponentManager()->find(name);
+        }
+        return component;
+    }
+    ModelDataDefinition* data = model->getDataManager()->getDataDefinition(type, id);
+    if (data == nullptr && !name.empty()) {
+        data = model->getDataManager()->getDataDefinition(type, name);
+    }
+    return data;
 }
 
 bool CppSerializer::dump(std::ostream& output) {
@@ -60,27 +147,73 @@ bool CppSerializer::dump(std::ostream& output) {
     for (auto& klass : dataDefinitionClassnames) {
         if (!typenames.count(klass)) continue;
         datadefs.insert(klass);
-        includes.insert("plugins/data/" + klass + ".h");
+        includes.insert(_model->getParentSimulator()->getPluginManager()->sourceIncludePathFor(klass));
     }
     for (auto& comp : *_model->getComponentManager()->getAllComponents()) {
         if (!typenames.count(comp->getClassname())) continue;
         components.insert(comp->getClassname());
-        includes.insert("plugins/components/" + comp->getClassname() + ".h");
+        includes.insert(_model->getParentSimulator()->getPluginManager()->sourceIncludePathFor(comp->getClassname()));
     }
     output << indent(0) << "#include \"kernel/simulator/Simulator.h\"\n";
+    output << indent(0) << "#include <memory>\n";
+    output << indent(0) << "#include <stdexcept>\n";
+    output << indent(0) << "#include <string>\n";
     for (auto& path : includes) {
-        output << indent(0) << "#include \"" + path + "\"\n";
+        if (!path.empty()) {
+            output << indent(0) << "#include \"" + path + "\"\n";
+        }
     }
     output << indent(0) << "\n";
+
+    output << indent(0) << "static void setProperty(ModelDataDefinition* element, const std::string& propertyName, const std::string& value) {\n";
+    output << indent(1) << "if (element == nullptr) {\n";
+    output << indent(2) << "throw std::runtime_error(\"Cannot set property on null model element\");\n";
+    output << indent(1) << "}\n";
+    output << indent(1) << "for (SimulationControl* control : *element->getSimulationControls()->list()) {\n";
+    output << indent(2) << "if (control == nullptr || control->getName() != propertyName) {\n";
+    output << indent(3) << "continue;\n";
+    output << indent(2) << "}\n";
+    output << indent(2) << "if (control->getIsEnum()) {\n";
+    output << indent(3) << "std::unique_ptr<List<std::string>> options(control->getStrValues());\n";
+    output << indent(3) << "if (options != nullptr) {\n";
+    output << indent(4) << "unsigned int index = 0;\n";
+    output << indent(4) << "for (const std::string& option : *options->list()) {\n";
+    output << indent(5) << "if (option == value) {\n";
+    output << indent(6) << "control->setValue(std::to_string(index));\n";
+    output << indent(6) << "return;\n";
+    output << indent(5) << "}\n";
+    output << indent(5) << "++index;\n";
+    output << indent(4) << "}\n";
+    output << indent(3) << "}\n";
+    output << indent(2) << "}\n";
+    output << indent(2) << "control->setValue(value);\n";
+    output << indent(2) << "return;\n";
+    output << indent(1) << "}\n";
+    output << indent(1) << "throw std::runtime_error(\"SimulationControl not found: \" + propertyName);\n";
+    output << indent(0) << "}\n";
+    output << indent(0) << "\n";
+
+    std::unordered_map<Util::identification, std::string> identifiersById;
+    std::unordered_map<std::string, std::string> identifiersByName;
+    std::set<std::string> usedIdentifiers;
+    for (auto& var : parts) {
+        const std::string type = var->loadField("typename");
+        const Util::identification id = var->loadField("id", -1);
+        const std::string name = var->loadField("name", "_" + type + "_" + std::to_string(id));
+        const std::string identifier = uniqueCppIdentifier(name, "_" + type + "_" + std::to_string(id),
+                                                           &usedIdentifiers);
+        identifiersById[id] = identifier;
+        identifiersByName[name] = identifier;
+    }
 
     output << indent(0) << "int main(int argc, char** argv) {\n";
     output << indent(1) << "// instantiate simulator\n";
     output << indent(1) << "Simulator* genesys = new Simulator();\n";
-    output << indent(1) << "genesys->getTracer()->setTraceLevel(TraceManager::Level::L2_results);\n";
-    output << indent(1) << "PluginManager* plugins = genesys->getPlugins();\n";
+    output << indent(1) << "genesys->getTraceManager()->setTraceLevel(TraceManager::Level::L2_results);\n";
+    output << indent(1) << "PluginManager* plugins = genesys->getPluginManager();\n";
     output << indent(1) << "\n";
     output << indent(1) << "// create model\n";
-    output << indent(1) << "Model* model = genesys->getModels()->newModel();\n";
+    output << indent(1) << "Model* model = genesys->getModelManager()->newModel();\n";
     output << indent(1) << "// model->load(\"model.gen\")\n";
     output << indent(1) << "\n";
 
@@ -89,8 +222,30 @@ bool CppSerializer::dump(std::ostream& output) {
         std::string type = var->loadField("typename");
         Util::identification id = var->loadField("id", -1);
         std::string name = var->loadField("name", "_" + type + "_" + std::to_string(id));
+        const std::string identifier = identifiersById[id];
         output << indent(1) // << (name.find(".") != std::string::npos ? "// " : "")
-            << type + "* " + name + " = plugins->newInstance<" + type + ">(model, \"" + name + "\");\n";
+            << type + "* " + identifier + " = plugins->newInstance<" + type + ">(model, " +
+            cppStringLiteral(name) + ");\n";
+    }
+    output << indent(1) << "\n";
+
+    output << indent(1) << "// restore scalar properties\n";
+    for (auto& var : parts) {
+        const std::string type = var->loadField("typename");
+        const Util::identification id = var->loadField("id", -1);
+        const std::string name = var->loadField("name", "_" + type + "_" + std::to_string(id));
+        const std::string identifier = identifiersById[id];
+        ModelDataDefinition* element = findSerializedElement(_model, type, id, name, components.count(type) != 0u);
+        if (element == nullptr || element->getSimulationControls() == nullptr) {
+            continue;
+        }
+        for (SimulationControl* control : *element->getSimulationControls()->list()) {
+            if (!shouldEmitSimulationControl(control)) {
+                continue;
+            }
+            output << indent(1) << "setProperty(" + identifier + ", " + cppStringLiteral(control->getName()) +
+                ", " + cppStringLiteral(control->getValue()) + ");\n";
+        }
     }
     output << indent(1) << "\n";
 
@@ -102,7 +257,7 @@ bool CppSerializer::dump(std::ostream& output) {
         Util::identification id = var->loadField("id", -1);
         ModelComponent* component = cm->find(id);
         if (component == nullptr) continue;
-        std::string origin = component->getName();
+        std::string origin = identifiersById[id];
         //
         unsigned short nextSize = var->loadField("nexts", 1);
         for (unsigned short i = 0; i < nextSize; i++) {
@@ -118,13 +273,10 @@ bool CppSerializer::dump(std::ostream& output) {
             // target port
             unsigned short nextPort = var->loadField("nextinputPortNumber" + Util::StrIndex(i), 0);
             // connect
-            auto target = nextComponent->getName();
-            if (nextPort != 0) {
-                target = target.append(", " + std::to_string(nextPort));
-            }
+            auto target = identifiersById[nextComponent->getId()];
             output << indent(1)
                 // << (origin.find(".") != std::string::npos || target.find(".") != std::string::npos ? "// " : "")
-                << origin + "->connectTo(" + target + ");\n";
+                << origin + "->connectTo(" + target + ", " + std::to_string(nextPort) + ");\n";
         }
     }
     output << indent(1) << "\n";
@@ -134,9 +286,8 @@ bool CppSerializer::dump(std::ostream& output) {
     output << indent(1) << "ModelSimulation* sim = model->getSimulation();\n";
     output << indent(1) << "sim->setNumberOfReplications(" + std::to_string(sim->getNumberOfReplications()) +
         ");\n";
-    output << indent(1) << "sim->setReplicationLengthTimeUnit(Util::TimeUnit::" + Util::StrTimeUnitLong(
-        sim->getReplicationLengthTimeUnit()) + ");\n";
-    output << indent(1) << "sim->setReplicationLength(" + std::to_string(sim->getReplicationLength()) + ");\n";
+    output << indent(1) << "sim->setReplicationLength(" + std::to_string(sim->getReplicationLength()) +
+        ", Util::TimeUnit::" + Util::StrTimeUnitLong(sim->getReplicationLengthTimeUnit()) + ");\n";
     output << indent(1) << "sim->setReplicationReportBaseTimeUnit(Util::TimeUnit::" + Util::StrTimeUnitLong(
         sim->getReplicationBaseTimeUnit()) + ");\n";
     output << indent(1) << "\n";

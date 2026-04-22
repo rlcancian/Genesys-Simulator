@@ -102,6 +102,8 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.currentValue = control->getValue();
 
     desc.choices = _copyStringList(control->getStrValues());
+    desc.currentListElementType = control->getCurrentListElementType();
+    desc.creatableListElementTypes = _copyStringList(control->getCreatableListElementTypes());
 
     if (desc.kind == GenesysPropertyKind::TimeUnit && desc.choices.empty()) {
         for (int i = 0; i < static_cast<int>(Util::TimeUnit::num_elements); ++i) {
@@ -162,5 +164,5 @@ std::vector<SimulationControl*> GenesysPropertyIntrospection::children(
     if (control == nullptr) {
         return {};
     }
-    return _copyControlList(control->getProperties(index));
+    return _copyControlList(control->getChildSimulationControls(index));
 }

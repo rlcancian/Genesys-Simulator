@@ -7,6 +7,7 @@ The `tools` package provides domain-support services for statistical analysis an
 ## 2. Current package responsibilities
 
 - Dataset-oriented analysis orchestration (`DataAnalyser_if`).
+- Simulation result dataset loading, including Genesys `Record` text output with replication metadata.
 - Distribution fitting contracts (`Fitter_if`).
 - Parametric hypothesis testing (`HypothesisTester_if`, default impl 1).
 - Distribution mathematical utilities and quantile inversion.

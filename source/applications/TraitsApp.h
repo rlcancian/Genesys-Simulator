@@ -15,7 +15,7 @@
 #define TRAITSAPP_H
 
 #include "GenesysApplication_if.h"
-#include "../kernel/simulator/TraceManager.h"
+#include "kernel/simulator/TraceManager.h"
 
 template <typename T>
 struct TraitsApp {

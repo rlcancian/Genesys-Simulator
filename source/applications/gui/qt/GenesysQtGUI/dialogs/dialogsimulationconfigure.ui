@@ -246,13 +246,175 @@
            <height>40</height>
           </size>
          </property>
-        </spacer>
-       </item>
-      </layout>
-     </widget>
-     <widget class="QWidget" name="tabExperimentManager">
-      <attribute name="title">
-       <string>Experiment Manager</string>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="tabParallelization">
+     <attribute name="title">
+      <string>Parallelization</string>
+     </attribute>
+     <layout class="QVBoxLayout" name="verticalLayoutParallelization">
+      <item>
+       <widget class="QLabel" name="labelParallelizationIntro">
+        <property name="text">
+         <string>Configure how simulation replications and experiment batches should be prepared for local or distributed parallel execution.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBoxLocalParallelization">
+        <property name="title">
+         <string>Local parallelization</string>
+        </property>
+        <layout class="QFormLayout" name="formLayoutLocalParallelization">
+         <item row="0" column="0" colspan="2">
+          <widget class="QCheckBox" name="checkBoxParallelizationEnabled">
+           <property name="text">
+            <string>Enable local parallel execution preparation</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="labelParallelizationThreads">
+           <property name="text">
+            <string>Local Simulator instances / threads:</string>
+           </property>
+           <property name="buddy">
+            <cstring>spinBoxParallelizationThreads</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QSpinBox" name="spinBoxParallelizationThreads">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>1024</number>
+           </property>
+           <property name="value">
+            <number>1</number>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="labelParallelizationBatchSize">
+           <property name="text">
+            <string>Batch size per scheduling cycle:</string>
+           </property>
+           <property name="buddy">
+            <cstring>spinBoxParallelizationBatchSize</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QSpinBox" name="spinBoxParallelizationBatchSize">
+           <property name="minimum">
+            <number>1</number>
+           </property>
+           <property name="maximum">
+            <number>1000000</number>
+           </property>
+           <property name="value">
+            <number>100</number>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QGroupBox" name="groupBoxDistributedParallelization">
+        <property name="title">
+         <string>Distributed parallelization</string>
+        </property>
+        <layout class="QFormLayout" name="formLayoutDistributedParallelization">
+         <item row="0" column="0" colspan="2">
+          <widget class="QCheckBox" name="checkBoxDistributedParallelizationEnabled">
+           <property name="text">
+            <string>Enable distributed execution preparation</string>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="0">
+          <widget class="QLabel" name="labelDistributedCoordinatorUrl">
+           <property name="text">
+            <string>Coordinator URL:</string>
+           </property>
+           <property name="buddy">
+            <cstring>lineEditDistributedCoordinatorUrl</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="1" column="1">
+          <widget class="QLineEdit" name="lineEditDistributedCoordinatorUrl">
+           <property name="placeholderText">
+            <string>https://genesys.example.org/optimizer</string>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="0">
+          <widget class="QLabel" name="labelDistributedToken">
+           <property name="text">
+            <string>Access token:</string>
+           </property>
+           <property name="buddy">
+            <cstring>lineEditDistributedToken</cstring>
+           </property>
+          </widget>
+         </item>
+         <item row="2" column="1">
+          <widget class="QLineEdit" name="lineEditDistributedToken">
+           <property name="echoMode">
+            <enum>QLineEdit::Password</enum>
+           </property>
+           <property name="placeholderText">
+            <string>Optional token for a future Genesys web service</string>
+           </property>
+          </widget>
+         </item>
+         <item row="3" column="0" colspan="2">
+          <widget class="QPushButton" name="pushButtonConfigureDistributedParallelization">
+           <property name="text">
+            <string>Configure Distributed Service...</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="labelParallelizationStatus">
+        <property name="text">
+         <string>Local settings are stored in the GUI session. Distributed settings are a planned integration point for the Genesys web application.</string>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <spacer name="verticalSpacerParallelization">
+        <property name="orientation">
+         <enum>Qt::Vertical</enum>
+        </property>
+        <property name="sizeHint" stdset="0">
+         <size>
+          <width>20</width>
+          <height>40</height>
+         </size>
+        </property>
+       </spacer>
+      </item>
+     </layout>
+    </widget>
+    <widget class="QWidget" name="tabExperimentManager">
+     <attribute name="title">
+      <string>Experiment Manager</string>
       </attribute>
       <layout class="QVBoxLayout" name="verticalLayoutExperimentManager">
        <item>
@@ -318,6 +480,13 @@
   <tabstop>checkBoxStepByStep</tabstop>
   <tabstop>checkBoxPauseOnEvent</tabstop>
   <tabstop>checkBoxPauseOnReplication</tabstop>
+  <tabstop>checkBoxParallelizationEnabled</tabstop>
+  <tabstop>spinBoxParallelizationThreads</tabstop>
+  <tabstop>spinBoxParallelizationBatchSize</tabstop>
+  <tabstop>checkBoxDistributedParallelizationEnabled</tabstop>
+  <tabstop>lineEditDistributedCoordinatorUrl</tabstop>
+  <tabstop>lineEditDistributedToken</tabstop>
+  <tabstop>pushButtonConfigureDistributedParallelization</tabstop>
  </tabstops>
  <resources/>
  <connections>

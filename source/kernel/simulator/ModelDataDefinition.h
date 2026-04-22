@@ -104,19 +104,12 @@ public:
 	 */
 	void setModelLevel(unsigned int _modelLevel);
 	/*!
-	 * \brief getProperties
+	 * \brief getSimulationControls
 	 * \return
 	 *
 	 * Preferred API for writable controls owned by this model data definition.
 	 */
 	List<SimulationControl*>* getSimulationControls() const;
-	/*!
-	 * \brief getProperties
-	 * \return
-	 *
-	 * Legacy compatibility wrapper that delegates to getSimulationControls().
-	 */
-	List<SimulationControl*>* getProperties() const;
 	TraceManager::Level getTraceLevelSpecific() const;
 	void defineTraceLevelSpecific(TraceManager::Level traceLevelspecific, bool traceLevelSpecificEnabled = true);
 	bool isTraceLevelSpecificEnabled() const;
@@ -172,8 +165,6 @@ protected: //! could be overriden by derived classes
 	virtual void _createInternalAndAttachedData();
 	/*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
 	virtual void _addSimulationControl(SimulationControl* control);
-	// Legacy compatibility wrapper that delegates to _addSimulationControl().
-	virtual void _addProperty(SimulationControl* property);
 	//virtual void _addSimulationResponse(SimulationControl* response);
 
 private:

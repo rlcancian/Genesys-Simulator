@@ -2,17 +2,17 @@
 
 
 // GEnSyS Simulator
-#include "../../../../kernel/simulator/Simulator.h"
+#include "kernel/simulator/Simulator.h"
 // Model Components
-#include "../../../../plugins/components/Create.h"
-#include "../../../../plugins/components/Delay.h"
-#include "../../../../plugins/components/Dispose.h"
-#include "../../../../plugins/components/Seize.h"
-#include "../../../../plugins/components/Release.h"
+#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/DiscreteProcessing/Delay.h"
+#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/DiscreteProcessing/Seize.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
 // Model data definitions
-#include "../../../../kernel/simulator/Attribute.h"
-#include "../../../../plugins/components/SeizableItem.h"
-#include "../../../../plugins/components/QueueableItem.h"
+#include "kernel/simulator/Attribute.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 
 Loja01::Loja01() {
 }

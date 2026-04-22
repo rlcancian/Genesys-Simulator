@@ -13,8 +13,8 @@
 #include "HypothesisTesterDefaultImpl1.h"
 #include "ProbabilityDistribution.h"
 #include "SolverDefaultImpl1.h"
-#include "../kernel/statistics/StatisticsDataFile_if.h"
-#include "../kernel/TraitsKernel.h"
+#include "kernel/statistics/StatisticsDataFile_if.h"
+#include "kernel/TraitsKernel.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>

@@ -9,8 +9,8 @@
 #include "../animations/AnimationPlaceholder.h"
 #include "../animations/AnimationVariable.h"
 #include "../animations/AnimationTimer.h"
-#include "../../../../../kernel/simulator/Simulator.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
+#include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/ModelManager.h"
 
 #include <QAction>
 #include <QDateTime>
@@ -112,12 +112,15 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
                                                    QAction* actionShowSnap,
                                                    QAction* actionShowGuides,
                                                    QAction* actionShowInternalElements,
+                                                   QAction* actionShowEditableElements,
                                                    QAction* actionShowAttachedElements,
+                                                   QAction* actionShowRecursiveElements,
                                                    QTextEdit* console,
                                                    QString* modelFilename,
                                                    std::function<void()> clearModelEditors,
                                                    std::function<void()> rebuildGraphicalModelFromModel,
                                                    std::function<void()> applyShowInternalElements,
+                                                   std::function<void()> applyShowEditableElements,
                                                    std::function<void()> applyShowAttachedElements)
     : _simulator(simulator),
       _ownerWidget(ownerWidget),
@@ -129,12 +132,15 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
       _actionShowSnap(actionShowSnap),
       _actionShowGuides(actionShowGuides),
       _actionShowInternalElements(actionShowInternalElements),
+      _actionShowEditableElements(actionShowEditableElements),
       _actionShowAttachedElements(actionShowAttachedElements),
+      _actionShowRecursiveElements(actionShowRecursiveElements),
       _console(console),
       _modelFilename(modelFilename),
       _clearModelEditors(std::move(clearModelEditors)),
       _rebuildGraphicalModelFromModel(std::move(rebuildGraphicalModelFromModel)),
       _applyShowInternalElements(std::move(applyShowInternalElements)),
+      _applyShowEditableElements(std::move(applyShowEditableElements)),
       _applyShowAttachedElements(std::move(applyShowAttachedElements)) {}
 
 // Encode free-form GUI text safely for persistence records.
@@ -319,8 +325,13 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
         line += ", rule=" + QString::number(_actionShowRule->isChecked());
         line += ", snap=" + QString::number(_actionShowSnap->isChecked());
         line += ", guides=" + QString::number(_actionShowGuides->isChecked());
-        line += ", internals=" + QString::number(_actionShowInternalElements->isChecked());
+        line += ", internals=" + QString::number(_actionShowInternalElements->isChecked()
+                                                 || _actionShowEditableElements->isChecked());
         line += ", attached=" + QString::number(_actionShowAttachedElements->isChecked());
+        line += ", statistics=" + QString::number(_actionShowInternalElements->isChecked());
+        line += ", editable=" + QString::number(_actionShowEditableElements->isChecked());
+        line += ", shared=" + QString::number(_actionShowAttachedElements->isChecked());
+        line += ", recursive=" + QString::number(_actionShowRecursiveElements->isChecked());
         line += ", viewpoint=(" + QString::number(_graphicsView->horizontalScrollBar()->value()) + "," + QString::number(_graphicsView->verticalScrollBar()->value()) + ")";
         out << line << Qt::endl;
 
@@ -778,6 +789,22 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     const int guides = QRegularExpression("guides=(\\d+)").match(attributes).captured(1).toInt();
                     const int internals = QRegularExpression("internals=(\\d+)").match(attributes).captured(1).toInt();
                     const int attached = QRegularExpression("attached=(\\d+)").match(attributes).captured(1).toInt();
+                    QRegularExpressionMatch statisticsMatch = QRegularExpression("statistics=(\\d+)").match(attributes);
+                    QRegularExpressionMatch editableMatch = QRegularExpression("editable=(\\d+)").match(attributes);
+                    QRegularExpressionMatch sharedMatch = QRegularExpression("shared=(\\d+)").match(attributes);
+                    QRegularExpressionMatch recursiveMatch = QRegularExpression("recursive=(\\d+)").match(attributes);
+                    const bool showStatistics = statisticsMatch.hasMatch()
+                                                    ? statisticsMatch.captured(1).toInt() != 0
+                                                    : internals != 0;
+                    const bool showEditable = editableMatch.hasMatch()
+                                                  ? editableMatch.captured(1).toInt() != 0
+                                                  : internals != 0;
+                    const bool showShared = sharedMatch.hasMatch()
+                                                ? sharedMatch.captured(1).toInt() != 0
+                                                : attached != 0;
+                    const bool showRecursive = recursiveMatch.hasMatch()
+                                                   ? recursiveMatch.captured(1).toInt() != 0
+                                                   : true;
                     QRegularExpressionMatch viewpointMatch = QRegularExpression("viewpoint=\\(([-+]?\\d+\\.?\\d*),([-+]?\\d+\\.?\\d*)\\)").match(attributes);
                     int viewpointX = 0;
                     int viewpointY = 0;
@@ -794,13 +821,18 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     _actionShowGuides->setChecked(guides != 0);
                     _graphicsView->setRuleVisible(rule != 0);
                     _graphicsView->setGuidesVisible(guides != 0);
-                    _actionShowInternalElements->setChecked(internals != 0);
+                    _actionShowInternalElements->setChecked(showStatistics);
                     _applyShowInternalElements();
-                    _actionShowAttachedElements->setChecked(attached != 0);
+                    _actionShowEditableElements->setChecked(showEditable);
+                    _applyShowEditableElements();
+                    _actionShowAttachedElements->setChecked(showShared);
                     _applyShowAttachedElements();
+                    _actionShowRecursiveElements->setChecked(showRecursive);
+                    _graphicsView->getScene()->setShowRecursiveDataDefinitions(showRecursive);
+                    _graphicsView->getScene()->requestGraphicalDataDefinitionsSync();
 
-                    if (zoom > 0) {
-                        _zoomSlider->setValue(zoom + TraitsGUI<GMainWindow>::zoomButtonChange);
+                    if (zoom >= _zoomSlider->minimum() && zoom <= _zoomSlider->maximum()) {
+                        _zoomSlider->setValue(zoom);
                     }
 
                     hasPersistedViewState = true;

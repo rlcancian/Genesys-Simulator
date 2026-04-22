@@ -61,12 +61,17 @@ public:
                              bool* graphicalModelHasChanged,
                              bool* closingApproved,
                              bool* loaded,
+                             bool& parallelizationEnabled,
+                             int& parallelizationThreads,
+                             int& parallelizationBatchSize,
                              Callbacks callbacks);
 
     /** @brief Starts the new-model lifecycle flow and reinitializes GUI/model state. */
     void onActionModelNewTriggered() const;
     /** @brief Starts model-open flow with persistence loading and UI synchronization. */
     void onActionModelOpenTriggered() const;
+    /** @brief Opens a model from an explicit file path using the same lifecycle flow as the open action. */
+    bool openModelFile(const QString& fileName) const;
     /** @brief Starts model-save flow for graphical/text representations. */
     void onActionModelSaveTriggered() const;
     /** @brief Closes current model after pending-change checks and cleanup orchestration. */
@@ -85,6 +90,8 @@ public:
     bool confirmApplicationExit() const;
 
 private:
+    bool openModelFileInternal(const QString& fileName, bool showDialogs) const;
+
     // Keep QObject ownership separate while allowing dialog parenting.
     QWidget* _ownerWidget;
     Simulator* _simulator;
@@ -94,6 +101,9 @@ private:
     bool* _graphicalModelHasChanged;
     bool* _closingApproved;
     bool* _loaded;
+    bool& _parallelizationEnabled;
+    int& _parallelizationThreads;
+    int& _parallelizationBatchSize;
     Callbacks _callbacks;
 };
 

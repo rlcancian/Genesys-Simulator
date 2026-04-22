@@ -6,12 +6,12 @@
 #include "animations/AnimationTimer.h"
 #include "animations/AnimationTransition.h"
 
-#include "../../../../../kernel/simulator/Model.h"
-#include "../../../../../kernel/simulator/ModelComponent.h"
-#include "../../../../../kernel/simulator/ModelDataDefinition.h"
-#include "../../../../../kernel/simulator/ModelDataManager.h"
-#include "../../../../../kernel/simulator/ModelManager.h"
-#include "../../../../../kernel/util/Util.h"
+#include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelComponent.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/ModelManager.h"
+#include "kernel/util/Util.h"
 
 #include <QAction>
 #include <QCoreApplication>
@@ -179,14 +179,19 @@ void SimulationEventController::onModelCheckSuccessHandler(ModelEvent* re) const
     Model* model = _simulator->getModelManager()->current();
     if (_simulator->getModelManager()->current() == re->getModel()) {
         ModelDataManager* dm = model->getDataManager();
-        ModelGraphicsView* modelGraphView = _graphicsView;
-        Q_UNUSED(modelGraphView)
         // Iterate over a value snapshot of data-definition class names while touching checked model data.
         for (auto elemclassname : dm->getDataDefinitionClassnames()) {
             for (ModelDataDefinition* elem : *dm->getDataDefinitionList(elemclassname)->list()) {
                 Util::identification id = elem->getId();
                 Q_UNUSED(id)
             }
+        }
+        if (_graphicsView != nullptr && _graphicsView->getScene() != nullptr) {
+            // Model check can materialize internal/attached data after a deferred kernel validation.
+            // Refresh the GMDD layer so newly created recursive/statistics data becomes visible
+            // without requiring another manual GUI action.
+            _graphicsView->getScene()->requestGraphicalDataDefinitionsSync();
+            _graphicsView->getScene()->update();
         }
     }
 }
@@ -223,7 +228,6 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     _entitiesTable->setRowCount(0);
     _variablesTable->setRowCount(0);
     _simulationText->clear();
-    _reportsText->clear();
 
     Util::TimeUnit replicationBaseTimeUnit =
         _simulator->getModelManager()->current()->getSimulation()->getReplicationBaseTimeUnit();

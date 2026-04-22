@@ -43,6 +43,8 @@ public:
     void insertPluginUI(Plugin* plugin) const;
     /** @brief Rebuilds the categorized plugin tree from the current PluginManager state. */
     void reloadFromPluginManager() const;
+    /** @brief Applies the default expansion policy for plugin category roots. */
+    void applyCategoryExpansionPolicy() const;
     /** @brief Inserts compatibility fake plugins used by legacy GUI flows. */
     void insertFakePlugins() const;
     /** @brief Handles plugin double-click by delegating insertion/selection behavior. */
@@ -53,6 +55,8 @@ public:
 private:
     // Resolve or create the category root item with legacy styling and colors.
     QTreeWidgetItem* ensureCategoryRoot(const QString& category, const std::string& pluginCategoryName) const;
+    // Return whether a category root should be expanded by default.
+    static bool shouldExpandCategoryRoot(const QString& category);
 
 private:
     Simulator* _simulator;
