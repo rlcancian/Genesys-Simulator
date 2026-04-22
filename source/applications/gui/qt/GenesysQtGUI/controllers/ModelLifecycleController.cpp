@@ -40,6 +40,19 @@ QString findCompanionGuiFile(const QFileInfo& selectedInfo) {
     }
     return {};
 }
+
+void clearUndoStackIfAvailable(Ui::MainWindow* ui) {
+    if (ui == nullptr || ui->graphicsView == nullptr) {
+        return;
+    }
+    if (ui->graphicsView->getScene() == nullptr) {
+        return;
+    }
+    if (ui->graphicsView->getScene()->getUndoStack() == nullptr) {
+        return;
+    }
+    ui->graphicsView->getScene()->getUndoStack()->clear();
+}
 }
 
 // Store the lifecycle dependencies for Phase 7 delegation from MainWindow.
@@ -112,20 +125,8 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
     if (selectedInfo.suffix().compare("gen", Qt::CaseInsensitive) == 0) {
         const QString pairedGuiPath = findCompanionGuiFile(selectedInfo);
         if (!pairedGuiPath.isEmpty()) {
-            bool preferGui = true;
-            if (showDialogs) {
-                QMessageBox::StandardButton reply = QMessageBox::question(
-                    _ownerWidget,
-                    "Open Model",
-                    QObject::tr("A companion .gui file was found for this .gen model.\n"
-                                "Do you want to open the .gui file to preserve the graphical layout?"),
-                    QMessageBox::Yes | QMessageBox::No,
-                    QMessageBox::Yes);
-                preferGui = (reply == QMessageBox::Yes);
-            }
-            if (preferGui) {
-                resolvedFileName = pairedGuiPath;
-            }
+            // In GUI-open flow, always prefer the companion .gui to preserve the graphical layout.
+            resolvedFileName = pairedGuiPath;
         }
     }
 
@@ -151,7 +152,7 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
         _callbacks.actualizeActions();
         _callbacks.actualizeTabPanes();
     }
-    _ui->graphicsView->getScene()->getUndoStack()->clear();
+    clearUndoStackIfAvailable(_ui);
     return model != nullptr;
 }
 
@@ -207,7 +208,7 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
         QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
     }
     _callbacks.actualizeActions();
-    _ui->graphicsView->getScene()->getUndoStack()->clear();
+    clearUndoStackIfAvailable(_ui);
 }
 
 // Move model close orchestration out of MainWindow while preserving signal wiring and cleanup sequence.
@@ -229,9 +230,13 @@ void ModelLifecycleController::onActionModelCloseTriggered() const {
     _callbacks.insertCommandInConsole("close");
 
     // Preserve scene clearing order to avoid regressions in existing UI flows.
+    if (_ui->graphicsView == nullptr || _ui->graphicsView->getScene() == nullptr) {
+        return;
+    }
+
     _ui->graphicsView->getScene()->grid()->clear();
     _ui->actionShowGrid->setChecked(false);
-    _ui->graphicsView->getScene()->getUndoStack()->clear();
+    clearUndoStackIfAvailable(_ui);
     _ui->graphicsView->getScene()->clearAnimationsQueue();
     _ui->graphicsView->getScene()->getGraphicalModelComponents()->clear();
     _ui->graphicsView->getScene()->getGraphicalConnections()->clear();

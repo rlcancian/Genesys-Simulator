@@ -907,7 +907,6 @@ void ModelGraphicsScene::sanitizeGraphicalDataDefinitionsBookkeeping() {
 
     for (QGraphicsItem* item : liveItems) {
         if (dynamic_cast<GraphicalModelComponent*>(item) != nullptr) {
-            qInfo() << "sanitizeGraphicalDataDefinitionsBookkeeping: ignoring GraphicalModelComponent item";
             continue;
         }
         if (auto* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
@@ -1471,6 +1470,23 @@ void ModelGraphicsScene::GRID::clear() {
 }
 
 void ModelGraphicsScene::showGrid() {
+    if (_grid.lines == nullptr) {
+        _grid.visible = false;
+        return;
+    }
+
+    // Reconcile grid bookkeeping with live scene items before touching line pointers.
+    const QList<QGraphicsItem*> liveItems = items();
+    const QSet<QGraphicsItem*> liveItemSet(liveItems.begin(), liveItems.end());
+    for (auto it = _grid.lines->begin(); it != _grid.lines->end();) {
+        QGraphicsLineItem* line = *it;
+        if (line == nullptr || !liveItemSet.contains(line)) {
+            it = _grid.lines->erase(it);
+        } else {
+            ++it;
+        }
+    }
+
     // pego a informação se o grid está visível
     // obs.: o grid é criado uma única vez para a cena e habilitado como visível ou não. =
 
