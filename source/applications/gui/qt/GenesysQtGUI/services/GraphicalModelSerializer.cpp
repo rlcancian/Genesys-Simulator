@@ -78,6 +78,23 @@ QHash<QString, QPointF> decodePortPositions(const QString& token) {
     return positions;
 }
 
+bool decodeComponentColor(const QString& token, QColor* color) {
+    if (color == nullptr) {
+        return false;
+    }
+    QRegularExpression colorRegex("\\s*color=(#[0-9A-Fa-f]{6,8})");
+    QRegularExpressionMatch colorMatch = colorRegex.match(token);
+    if (!colorMatch.hasMatch()) {
+        return false;
+    }
+    QColor parsedColor(colorMatch.captured(1));
+    if (!parsedColor.isValid()) {
+        return false;
+    }
+    *color = parsedColor;
+    return true;
+}
+
 void restorePortPositions(GraphicalModelComponent* component, const QHash<QString, QPointF>& positions) {
     if (component == nullptr || positions.isEmpty()) {
         return;
@@ -202,6 +219,15 @@ QString brushState(const QBrush& brush) {
         .arg(static_cast<int>(brush.style()));
 }
 
+QString itemFlagsState(QGraphicsItem* item) {
+    if (item == nullptr) {
+        return {};
+    }
+    return QString("flags=(%1,%2)")
+        .arg(item->flags().testFlag(QGraphicsItem::ItemIsSelectable) ? 1 : 0)
+        .arg(item->flags().testFlag(QGraphicsItem::ItemIsMovable) ? 1 : 0);
+}
+
 void applyCommonGraphicsState(const QString& line, QGraphicsItem* item) {
     if (item == nullptr) {
         return;
@@ -233,6 +259,19 @@ void applyCommonGraphicsState(const QString& line, QGraphicsItem* item) {
     if (match.hasMatch()) {
         item->setOpacity(match.captured(1).trimmed().toDouble());
     }
+}
+
+void applyItemFlagsState(const QString& line, QGraphicsItem* item) {
+    if (item == nullptr) {
+        return;
+    }
+    QRegularExpression regexFlags("\\bflags=\\((\\d+),(\\d+)\\)");
+    QRegularExpressionMatch match = regexFlags.match(line);
+    if (!match.hasMatch()) {
+        return;
+    }
+    item->setFlag(QGraphicsItem::ItemIsSelectable, match.captured(1).toInt() != 0);
+    item->setFlag(QGraphicsItem::ItemIsMovable, match.captured(2).toInt() != 0);
 }
 
 bool decodePenState(const QString& line, QPen* pen) {
@@ -395,33 +434,36 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
 
                     if (QGraphicsLineItem* lineItem = dynamic_cast<QGraphicsLineItem*>(item)) {
                         const QLineF l = lineItem->line();
-                        line = QString("Geometry \t id=%1 \t type=line \t line=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9")
+                        line = QString("Geometry \t id=%1 \t type=line \t line=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9 \t %10")
                                    .arg(persistedId)
                                    .arg(l.x1(), 0, 'f', 4).arg(l.y1(), 0, 'f', 4)
                                    .arg(l.x2(), 0, 'f', 4).arg(l.y2(), 0, 'f', 4)
                                    .arg(lineItem->pos().x(), 0, 'f', 4).arg(lineItem->pos().y(), 0, 'f', 4)
                                    .arg(commonGraphicsState(lineItem))
+                                   .arg(itemFlagsState(lineItem))
                                    .arg(penState(lineItem->pen()));
                         out << line << Qt::endl;
                     } else if (QGraphicsRectItem* rectItem = dynamic_cast<QGraphicsRectItem*>(item)) {
                         QRectF r = rectItem->rect().normalized();
-                        line = QString("Geometry \t id=%1 \t type=rect \t rect=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9 \t %10")
+                        line = QString("Geometry \t id=%1 \t type=rect \t rect=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9 \t %10 \t %11")
                                    .arg(persistedId)
                                    .arg(r.x(), 0, 'f', 4).arg(r.y(), 0, 'f', 4)
                                    .arg(r.width(), 0, 'f', 4).arg(r.height(), 0, 'f', 4)
                                    .arg(rectItem->pos().x(), 0, 'f', 4).arg(rectItem->pos().y(), 0, 'f', 4)
                                    .arg(commonGraphicsState(rectItem))
+                                   .arg(itemFlagsState(rectItem))
                                    .arg(penState(rectItem->pen()))
                                    .arg(brushState(rectItem->brush()));
                         out << line << Qt::endl;
                     } else if (QGraphicsEllipseItem* ellipseItem = dynamic_cast<QGraphicsEllipseItem*>(item)) {
                         QRectF r = ellipseItem->rect().normalized();
-                        line = QString("Geometry \t id=%1 \t type=ellipse \t rect=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9 \t %10")
+                        line = QString("Geometry \t id=%1 \t type=ellipse \t rect=(%2,%3,%4,%5) \t pos=(%6,%7) \t %8 \t %9 \t %10 \t %11")
                                    .arg(persistedId)
                                    .arg(r.x(), 0, 'f', 4).arg(r.y(), 0, 'f', 4)
                                    .arg(r.width(), 0, 'f', 4).arg(r.height(), 0, 'f', 4)
                                    .arg(ellipseItem->pos().x(), 0, 'f', 4).arg(ellipseItem->pos().y(), 0, 'f', 4)
                                    .arg(commonGraphicsState(ellipseItem))
+                                   .arg(itemFlagsState(ellipseItem))
                                    .arg(penState(ellipseItem->pen()))
                                    .arg(brushState(ellipseItem->brush()));
                         out << line << Qt::endl;
@@ -431,20 +473,22 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                         for (const QPointF& p : polygon) {
                             points << QString("%1,%2").arg(p.x(), 0, 'f', 4).arg(p.y(), 0, 'f', 4);
                         }
-                        line = QString("Geometry \t id=%1 \t type=polygon \t points=%2 \t pos=(%3,%4) \t %5 \t %6 \t %7")
+                        line = QString("Geometry \t id=%1 \t type=polygon \t points=%2 \t pos=(%3,%4) \t %5 \t %6 \t %7 \t %8")
                                    .arg(persistedId)
                                    .arg(points.join(";"))
                                    .arg(polygonItem->pos().x(), 0, 'f', 4).arg(polygonItem->pos().y(), 0, 'f', 4)
                                    .arg(commonGraphicsState(polygonItem))
+                                   .arg(itemFlagsState(polygonItem))
                                    .arg(penState(polygonItem->pen()))
                                    .arg(brushState(polygonItem->brush()));
                         out << line << Qt::endl;
                     } else if (QGraphicsTextItem* textItem = dynamic_cast<QGraphicsTextItem*>(item)) {
-                        line = QString("Text \t id=%1 \t value=%2 \t pos=(%3,%4) \t %5 \t textcolor=%6 \t font=%7 \t textwidth=%8")
+                        line = QString("Text \t id=%1 \t value=%2 \t pos=(%3,%4) \t %5 \t %6 \t textcolor=%7 \t font=%8 \t textwidth=%9")
                                    .arg(persistedId)
                                    .arg(encodeGuiText(textItem->toPlainText()))
                                    .arg(textItem->pos().x(), 0, 'f', 4).arg(textItem->pos().y(), 0, 'f', 4)
                                    .arg(commonGraphicsState(textItem))
+                                   .arg(itemFlagsState(textItem))
                                    .arg(textItem->defaultTextColor().name(QColor::HexArgb))
                                    .arg(encodePersistedText(textItem->font().toString()))
                                    .arg(textItem->textWidth(), 0, 'f', 4);
@@ -586,7 +630,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
     QFileInfo fileInfo(file.fileName());
     QString extension = fileInfo.suffix();
 
-    if (extension != "gui") {
+    if (extension.compare("gui", Qt::CaseInsensitive) != 0) {
         model = _simulator->getModelManager()->loadModel(file.fileName().toStdString());
         if (model != nullptr) {
             _rebuildGraphicalModelFromModel();
@@ -747,11 +791,14 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         _clearModelEditors();
         // Mark persisted-layout restore so builder defaults do not override saved grouping/positions.
         scene->setRestoringPersistedGuiLayout(true);
+        scene->setPersistedGuiRestoreInProgress(true);
         _rebuildGraphicalModelFromModel();
 
         struct PersistedComponentState {
             Util::identification componentId = 0;
             QPointF position;
+            QColor color;
+            bool hasColor = false;
             int itemId = -1;
             QHash<QString, QPointF> portPositions;
         };
@@ -829,7 +876,6 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     _applyShowAttachedElements();
                     _actionShowRecursiveElements->setChecked(showRecursive);
                     _graphicsView->getScene()->setShowRecursiveDataDefinitions(showRecursive);
-                    _graphicsView->getScene()->requestGraphicalDataDefinitionsSync();
 
                     if (zoom >= _zoomSlider->minimum() && zoom <= _zoomSlider->maximum()) {
                         _zoomSlider->setValue(zoom);
@@ -850,6 +896,13 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
             PersistedComponentState state;
             state.componentId = split[0].toULongLong();
+            if (split.size() >= 4) {
+                QColor parsedColor;
+                if (decodeComponentColor(split[3], &parsedColor)) {
+                    state.color = parsedColor;
+                    state.hasColor = true;
+                }
+            }
             QString pos = split[4];
 
             QPointF position;
@@ -891,6 +944,9 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             QPointF componentPos(state.position.x(), state.position.y() - existingComponent->getHeight() / 2.0);
             existingComponent->setPos(componentPos);
             existingComponent->setOldPosition(componentPos);
+            if (state.hasColor) {
+                existingComponent->setColor(state.color);
+            }
             restorePortPositions(existingComponent, state.portPositions);
             if (state.itemId > 0) {
                 persistedItems.insert(state.itemId, existingComponent);
@@ -1165,7 +1221,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     }
                 }
 
-                if (persistedId > 0 && loadedItem != nullptr) {
+                if (loadedItem != nullptr) {
+                    applyItemFlagsState(rawLine, loadedItem);
                     applyCommonGraphicsState(rawLine, loadedItem);
                     if (QGraphicsLineItem* lineItem = dynamic_cast<QGraphicsLineItem*>(loadedItem)) {
                         QPen pen = lineItem->pen();
@@ -1177,7 +1234,9 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     } else if (QGraphicsTextItem* textItem = dynamic_cast<QGraphicsTextItem*>(loadedItem)) {
                         applyTextStyleState(rawLine, textItem);
                     }
-                    persistedItems.insert(persistedId, loadedItem);
+                    if (persistedId > 0) {
+                        persistedItems.insert(persistedId, loadedItem);
+                    }
                 }
             }
         }
@@ -1246,6 +1305,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
         }
 
         scene->setRestoringPersistedGuiLayout(false);
+        scene->requestGraphicalDataDefinitionsSync();
         if (hasPersistedViewState) {
             QTimer::singleShot(0, _ownerWidget, [this, restoredViewpointX, restoredViewpointY]() {
                 QScrollBar* hBar = _graphicsView->horizontalScrollBar();
@@ -1254,7 +1314,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 vBar->setValue(qBound(vBar->minimum(), restoredViewpointY, vBar->maximum()));
             });
         }
-        _graphicsView->getScene()->setPersistedGuiRestoreInProgress(false);
+        scene->setPersistedGuiRestoreInProgress(false);
 
         _console->append("\n");
         *_modelFilename = QString::fromStdString(filename);

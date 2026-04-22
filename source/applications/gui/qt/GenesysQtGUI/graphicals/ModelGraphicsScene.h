@@ -398,6 +398,7 @@ private:
     bool _restoringPersistedGuiLayout = false;
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
+    bool _graphicalDataDefinitionsSyncDeferredDuringRestore = false;
     bool _connectionGeometryUpdatesBlocked = false;
     bool _showStatisticsDataDefinitions = true;
     bool _showEditableDataDefinitions = true;

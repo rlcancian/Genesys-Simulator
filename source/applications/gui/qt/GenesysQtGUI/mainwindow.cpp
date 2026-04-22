@@ -552,15 +552,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                          ? SystemPreferences::lastModelFilename()
                                          : SystemPreferences::modelfilename();
         if (!fileName.empty()) {
-            Model* model = this->_loadGraphicalModel(fileName);
-            if (model != nullptr) {
-                _loaded = true;
-                _initUiForNewModel(model);
-                _actualizeModelTextHasChanged(false);
-                _graphicalModelHasChanged = false;
-                model->setHasChanged(false);
-                SystemPreferences::pushRecentModelFile(fileName);
-                SystemPreferences::save();
+            const bool opened = _modelLifecycleController != nullptr
+                                && _modelLifecycleController->openModelFile(QString::fromStdString(fileName));
+            if (opened) {
                 _refreshRecentModelsMenu();
             } else {
                 qWarning() << "Could not open startup model from preferences:" << QString::fromStdString(fileName);
