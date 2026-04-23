@@ -63,6 +63,7 @@ public: // get & set
 	 * \return
 	 */
 	std::string getClassname() const;
+	Model* getParentModel() const;
 	/*! Return true if this ModelDataDefinition generates statics for simulation reports*/
 	bool isReportStatistics() const;
 	/*! Defnes if this ModelDataDefinition generates statics for simulation reports*/

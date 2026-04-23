@@ -367,6 +367,10 @@ std::string ModelDataDefinition::getClassname() const {
 	return _typename;
 }
 
+Model* ModelDataDefinition::getParentModel() const {
+	return _parentModel;
+}
+
 void ModelDataDefinition::InitBetweenReplications(ModelDataDefinition* modeldatum) {
 	modeldatum->trace("Initing " + modeldatum->getClassname() + " \"" + modeldatum->getName() + "\"",
 	                  TraceManager::Level::L9_mostDetailed); //std::to_string(component->_id));
