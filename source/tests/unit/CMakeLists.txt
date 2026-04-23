@@ -31,8 +31,13 @@ genesys_add_unit_test(genesys_test_simulator_support
     genesys_kernel_util
 )
 
+if(NOT TARGET genesys_tools)
+    add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-unit-tests)
+endif()
+
 genesys_add_unit_test(genesys_test_simulator_runtime
     test_simulator_runtime.cpp
+    genesys_tools
     genesys_kernel_simulator_runtime
     genesys_kernel_util
     genesys_plugins_components_minimal
@@ -242,6 +247,11 @@ gtest_discover_tests(genesys_test_tools_hypothesistester
 
 set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit)
 
+genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
+    test_tools_simulation_results_dataset.cpp
+    genesys_tools
+)
+
 add_custom_target(genesys_kernel_unit_tests
     DEPENDS
         genesys_test_util
@@ -259,6 +269,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_experimentmanager
         genesys_test_statistics
         genesys_test_tools_hypothesistester
+        genesys_test_tools_simulation_results_dataset
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -336,6 +347,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_support_experimentmanager>
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
+    COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests

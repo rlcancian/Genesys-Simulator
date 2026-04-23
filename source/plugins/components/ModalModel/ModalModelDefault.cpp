@@ -480,6 +480,6 @@ void ModalModelDefault::_createInternalAndAttachedData() {
 */
 
 /*
-void ModalModelDefault::_addProperty(SimulationControl* property) {
+void ModalModelDefault::_addSimulationControl(SimulationControl* property) {
 }
 */

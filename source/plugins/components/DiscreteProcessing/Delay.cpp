@@ -55,10 +55,10 @@ Delay::Delay(Model* model, std::string name) : ModelComponent(model, Util::TypeO
     _parentModel->getControls()->insert(propAlloc);
 
 	// setting properties
-	_addProperty(propExpression);
-//	_addProperty(propDelay);
-	_addProperty(propUnitTime);
-    _addProperty(propAlloc);
+	_addSimulationControl(propExpression);
+//	_addSimulationControl(propDelay);
+	_addSimulationControl(propUnitTime);
+    _addSimulationControl(propAlloc);
 }
 
 void Delay::setDelay(double delay) {

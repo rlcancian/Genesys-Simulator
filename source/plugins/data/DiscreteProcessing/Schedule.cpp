@@ -221,11 +221,11 @@ ParserChangesInformation* Schedule::_getParserChangesInformation() {
 	return changes;
 }
 
-void Schedule::_addProperty(SimulationControl* property) {
+void Schedule::_addSimulationControl(SimulationControl* property) {
 	/*!
-	 * \brief Keep local property mirror aligned with controls registered in model.
+	 * \brief Keep local control registration aligned with the base model-data contract.
 	 */
-	_addSimulationControl(property);
+	ModelDataDefinition::_addSimulationControl(property);
 }
 
 //

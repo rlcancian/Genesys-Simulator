@@ -53,10 +53,10 @@ CppForG::CppForG(Model* model, std::string name) : ModelComponent(model, Util::T
 	_parentModel->getControls()->insert(propCppCompiler);
 
 	// setting properties
-	_addProperty(propDispatchEvent);
-	_addProperty(propBetweenRep);
-	_addProperty(propIncludes);
-	_addProperty(propCppCompiler);
+	_addSimulationControl(propDispatchEvent);
+	_addSimulationControl(propBetweenRep);
+	_addSimulationControl(propIncludes);
+	_addSimulationControl(propCppCompiler);
 }
 
 std::string CppForG::show() {

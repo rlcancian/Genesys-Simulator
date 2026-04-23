@@ -26,8 +26,8 @@ BioParameter::BioParameter(Model* model, std::string name) : ModelDataDefinition
 	_parentModel->getControls()->insert(propValue);
 	_parentModel->getControls()->insert(propUnit);
 
-	_addProperty(propValue);
-	_addProperty(propUnit);
+	_addSimulationControl(propValue);
+	_addSimulationControl(propUnit);
 }
 
 PluginInformation* BioParameter::GetPluginInformation() {

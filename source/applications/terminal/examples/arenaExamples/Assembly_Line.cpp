@@ -160,6 +160,10 @@ int Assembly_Line::main(int argc, char** argv) {
 
 	Record* record2 = plugins->newInstance<Record>(model, "Record_Cycle_Time1");
 	record2->setExpression("TNOW - a_time");
+	record2->setExpressionName("Cycle Time Path 1");
+	record2->setDatasetName("Cycle Time Path 1 Dataset");
+	record2->setRandomVariableName("Cycle time path 1");
+	record2->setDatasetDescription("Cycle time observations for products leaving through path 1.");
 
 	assign2->getConnectionManager()->insert(record2);
 
@@ -202,6 +206,10 @@ int Assembly_Line::main(int argc, char** argv) {
 
 	Record* record4 = plugins->newInstance<Record>(model, "Record_Cycle_Time2");
 	record4->setExpression("TNOW - a_time");
+	record4->setExpressionName("Cycle Time Path 2");
+	record4->setDatasetName("Cycle Time Path 2 Dataset");
+	record4->setRandomVariableName("Cycle time path 2");
+	record4->setDatasetDescription("Cycle time observations for products leaving through path 2.");
 
 	assign3->getConnectionManager()->insert(record4);
 
@@ -219,4 +227,3 @@ int Assembly_Line::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

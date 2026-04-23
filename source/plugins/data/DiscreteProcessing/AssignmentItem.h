@@ -32,6 +32,7 @@
 #ifndef ASSIGNMENTITEM_H
 #define ASSIGNMENTITEM_H
 
+#include <functional>
 #include "kernel/simulator/Model.h"
 
 /*!
@@ -48,12 +49,14 @@ public:
 	std::string getExpression() const;
 	void setAttributeNotVariable(bool isAttributeNotVariable);
 	bool isAttributeNotVariable() const;
+	void setChangeCallback(std::function<void(Assignment&)> callback);
 
 	// TODO: don't have name
 	std::string getName() const;
 
-	List<SimulationControl*>* getProperties() const;
-    void _addProperty(SimulationControl* property);
+	List<SimulationControl*>* getSimulationControls() const;
+	void ensureSimulationControls(Model* model);
+    void _addSimulationControl(SimulationControl* control);
 
 	std::string getTypeDC() {return _typeDC;};
 public:
@@ -65,8 +68,9 @@ private:
 	std::string _expression = "";
 	bool _isAttributeNotVariable = true;
 	std::string _typeDC;
+	std::function<void(Assignment&)> _changeCallback = nullptr;
 
-	List<SimulationControl*>* _properties = new List<SimulationControl*>();
+	List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
 };
 
 

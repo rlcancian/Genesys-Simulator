@@ -5,12 +5,15 @@
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/GraphicalModelComponent.h"
+#include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../animations/AnimationTransition.h"
 
 #include <QGraphicsItem>
 #include <QSignalBlocker>
 #include <QDebug>
 #include <Qt>
+#include <algorithm>
+#include <cmath>
 
 // Store only narrow collaborators needed for Phase 10 scene-tool orchestration.
 SceneToolController::SceneToolController(ModelGraphicsView* graphicsView,
@@ -102,7 +105,24 @@ void SceneToolController::onActionZoomAllTriggered() {
         return;
     }
 
-    const QRectF bounds = scene->itemsBoundingRect();
+    QList<QGraphicsItem*> userItems = scene->userOperableItems(scene->items());
+    if (scene->getAllDataDefinitions() != nullptr) {
+        for (GraphicalModelDataDefinition* dataDefinition : *scene->getAllDataDefinitions()) {
+            if (dataDefinition != nullptr && !userItems.contains(dataDefinition)) {
+                userItems.append(dataDefinition);
+            }
+        }
+    }
+    QRectF bounds;
+    for (QGraphicsItem* item : userItems) {
+        if (item == nullptr || !item->isVisible() || item->scene() != scene) {
+            continue;
+        }
+        bounds = bounds.united(item->sceneBoundingRect());
+    }
+    if (!bounds.isValid() || bounds.isEmpty()) {
+        bounds = scene->itemsBoundingRect();
+    }
     if (!bounds.isValid() || bounds.isEmpty()) {
         return;
     }
@@ -119,9 +139,42 @@ void SceneToolController::onActionZoomAllTriggered() {
 
 // Preserve graphical slider zoom delta behavior and gentle zoom scaling.
 void SceneToolController::onHorizontalSliderZoomGraphicalValueChanged(int value) {
-    const double factor = (value - _zoomValue) * 0.002;
+    if (_graphicsView == nullptr || _graphicsView->scene() == nullptr) {
+        return;
+    }
+
+    const QRectF sceneRect = _graphicsView->scene()->sceneRect();
+    if (!sceneRect.isValid() || sceneRect.isEmpty()) {
+        return;
+    }
+
+    const QRect viewportRect = _graphicsView->viewport()->rect();
+    if (viewportRect.width() <= 0 || viewportRect.height() <= 0) {
+        return;
+    }
+
+    const int sliderMin = _ui->horizontalSlider_ZoomGraphical->minimum();
+    const int sliderMax = _ui->horizontalSlider_ZoomGraphical->maximum();
+    const double t = (sliderMax <= sliderMin)
+                         ? 0.0
+                         : static_cast<double>(value - sliderMin) / static_cast<double>(sliderMax - sliderMin);
+
+    // Slider minimum shows the entire scene (0..50000 by current scene rect),
+    // and maximum focuses to roughly a 400x400 area (smaller viewport dimension ~= 400 scene units).
+    const double minScale = std::min(static_cast<double>(viewportRect.width()) / sceneRect.width(),
+                                     static_cast<double>(viewportRect.height()) / sceneRect.height());
+    const double maxScale = std::min(static_cast<double>(viewportRect.width()),
+                                     static_cast<double>(viewportRect.height())) / 400.0;
+    const double safeMinScale = std::max(1.0e-6, minScale);
+    const double safeMaxScale = std::max(safeMinScale, maxScale);
+    const double desiredScale = safeMinScale * std::pow(safeMaxScale / safeMinScale, std::clamp(t, 0.0, 1.0));
+    const QPoint viewportCenter = _graphicsView->viewport()->rect().center();
+    const QPointF targetSceneCenter = _graphicsView->mapToScene(viewportCenter);
+
+    _graphicsView->resetTransform();
+    _graphicsView->scale(desiredScale, desiredScale);
+    _graphicsView->centerOn(targetSceneCenter);
     _zoomValue = value;
-    _gentleZoom(1.0 + factor);
 }
 
 // Preserve line-drawing tool activation and cursor semantics.
@@ -344,7 +397,7 @@ void SceneToolController::onActionActivateGraphicalSimulationTriggered() {
 
 // Preserve animation speed slider conversion to execution time value.
 void SceneToolController::onHorizontalSliderAnimationSpeedValueChanged(int value) {
-    const double newValue = static_cast<double>(value) / 50.0; // 100/50 = max 2 seconds per animation
+    const double newValue = static_cast<double>(value) / 75.0; // 100/50 = max 2 seconds per animation
     AnimationTransition::setTimeExecution(newValue);
 }
 

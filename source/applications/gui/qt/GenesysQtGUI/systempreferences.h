@@ -5,6 +5,7 @@
 
 #include <QString>
 #include <string>
+#include <vector>
 
 class SystemPreferences {
 public:
@@ -23,6 +24,11 @@ public:
     enum class InterfaceStyle {
         Classic,
         Modern
+    };
+
+    enum class AutomaticPositioningStrategy {
+        Legacy = 0,
+        Centered = 1
     };
 
     static bool load();
@@ -45,6 +51,11 @@ public:
     static void setModelfilename(const std::string &newModelfilename);
     static std::string lastModelFilename();
     static void setLastModelFilename(const std::string& newLastModelFilename);
+    static std::vector<std::string> recentModelFiles();
+    static void setRecentModelFiles(const std::vector<std::string>& recentModelFiles);
+    static void pushRecentModelFile(const std::string& modelFilename);
+    static unsigned int recentModelFilesLimit();
+    static void setRecentModelFilesLimit(unsigned int recentModelFilesLimit);
 
     static bool checkSystemPackagesAtStart();
     static void setCheckSystemPackagesAtStart(bool newCheckSystemPackagesAtStart);
@@ -65,6 +76,8 @@ public:
 
     static bool diagramUsesThemeColors();
     static void setDiagramUsesThemeColors(bool newDiagramUsesThemeColors);
+    static AutomaticPositioningStrategy automaticPositioningStrategy();
+    static void setAutomaticPositioningStrategy(AutomaticPositioningStrategy strategy);
 
     static unsigned int canvasBackgroundColor();
     static unsigned int canvasDisabledBackgroundColor();
@@ -80,6 +93,8 @@ private:
     static QString visualThemeToString(VisualTheme value);
     static InterfaceStyle interfaceStyleFromString(const QString& value);
     static QString interfaceStyleToString(InterfaceStyle value);
+    static AutomaticPositioningStrategy automaticPositioningStrategyFromString(const QString& value);
+    static QString automaticPositioningStrategyToString(AutomaticPositioningStrategy value);
     static TraceManager::Level traceLevelFromInt(int value);
 
     static bool _startMaximized;
@@ -88,11 +103,14 @@ private:
     static StartupModelMode _startupModelMode;
     static std::string _modelfilenameToOpen;
     static std::string _lastModelFilename;
+    static std::vector<std::string> _recentModelFiles;
+    static unsigned int _recentModelFilesLimit;
     static TraceManager::Level _traceLevel;
     static VisualTheme _visualTheme;
     static InterfaceStyle _interfaceStyle;
     static int _applicationFontPointSize;
     static bool _diagramUsesThemeColors;
+    static AutomaticPositioningStrategy _automaticPositioningStrategy;
 };
 
 #endif // SYSTEMPREFERENCES_H

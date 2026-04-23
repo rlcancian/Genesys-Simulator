@@ -39,7 +39,7 @@ Signal::Signal(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_parentModel->getControls()->insert(propExpression);
 
 	// setting properties
-	_addProperty(propExpression);
+	_addSimulationControl(propExpression);
 }
 
 // public virtual

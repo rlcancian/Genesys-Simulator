@@ -46,6 +46,7 @@
 #include "kernel/util/Util.h"
 #include "tools/MassActionOdeSystem.h"
 #include "tools/RungeKutta4OdeSolver.h"
+#include "tools/SimulationResultsDataset.h"
 #define private public
 #define protected public
 #include "../../plugins/data/Grouping/EntityGroup.h"
@@ -59,6 +60,7 @@
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Decisions/Remove.h"
 #include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
 #define private public
@@ -185,6 +187,17 @@ public:
     }
 };
 
+// Exposes Record::_check so the test can assert that validation does not destroy output datasets.
+class RecordCheckProbe : public Record {
+public:
+    RecordCheckProbe(Model* model, const std::string& name)
+        : Record(model, name) {}
+
+    bool Check(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+};
+
 class SnapshotDataDefinitionProbe : public ModelDataDefinition {
 public:
     SnapshotDataDefinitionProbe(Model* model, const std::string& name)
@@ -227,7 +240,7 @@ public:
     }
 
     void AttachOwnedProperty(SimulationControl* property) {
-        _addProperty(property);
+        _addSimulationControl(property);
     }
 
     void AttachData(const std::string& key, ModelDataDefinition* data) {
@@ -691,6 +704,10 @@ public:
         return _loadInstance(fields);
     }
 
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
     }
@@ -1132,6 +1149,93 @@ TEST(SimulatorRuntimeTest, SimulationStartHandlerReceivesInitializedStateSnapsho
     EXPECT_TRUE(observer.running);
     EXPECT_FALSE(observer.paused);
     EXPECT_EQ(observer.replication, 1u);
+}
+
+TEST(SimulatorRuntimeTest, RecordWritesEnrichedDatasetReadableByParser) {
+    const std::string filename = "/tmp/genesys_record_dataset_runtime_test_" + std::to_string(::getpid()) + ".txt";
+    ::unlink(filename.c_str());
+
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "RecordEntity");
+    auto* create = new Create(model, "RecordDatasetCreate");
+    auto* record = new Record(model, "RecordDatasetWriter");
+    auto* dispose = new Dispose(model, "RecordDatasetDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(record, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(3);
+    create->connectTo(record);
+
+    record->setFilename(filename);
+    record->setExpression("TNOW");
+    record->setExpressionName("SimulationTimeLegacy");
+    record->setDatasetName("Simulation Time Dataset");
+    record->setRandomVariableName("SimulationTime");
+    record->setVariableType("Continuous numeric");
+    record->setDatasetDescription("Simulation time values written by Record.");
+    record->setTimeDependent(true);
+    record->connectTo(dispose);
+
+    model->getSimulation()->setReplicationLength(3.0);
+    model->getSimulation()->setNumberOfReplications(2);
+    model->getSimulation()->start();
+
+    SimulationResultsDataset dataset;
+    std::string errorMessage;
+    ASSERT_TRUE(SimulationResultsDatasetParser::loadFromTextFile(filename, &dataset, &errorMessage)) << errorMessage;
+    ::unlink(filename.c_str());
+
+    EXPECT_EQ(dataset.formatKind, SimulationResultsDatasetFormat::RecordEnriched);
+    EXPECT_TRUE(dataset.recordFile);
+    EXPECT_EQ(dataset.formatVersion, "1");
+    EXPECT_EQ(dataset.datasetName, "Simulation Time Dataset");
+    EXPECT_EQ(dataset.randomVariableName, "SimulationTime");
+    EXPECT_EQ(dataset.variableType, "Continuous numeric");
+    EXPECT_EQ(dataset.description, "Simulation time values written by Record.");
+    EXPECT_EQ(dataset.source, "Genesys Record");
+    EXPECT_EQ(dataset.expression, "TNOW");
+    EXPECT_EQ(dataset.expressionName, "SimulationTimeLegacy");
+    EXPECT_TRUE(dataset.timeDependent);
+    EXPECT_EQ(dataset.replications().size(), 2u);
+    ASSERT_FALSE(dataset.observations.empty());
+    EXPECT_TRUE(dataset.observations.front().hasTime);
+    EXPECT_DOUBLE_EQ(dataset.observations.front().time, dataset.observations.front().value);
+}
+
+TEST(SimulatorRuntimeTest, RecordCheckDoesNotDeleteExistingOutputFile) {
+    const std::string filename = "/tmp/genesys_record_check_preserve_test_" + std::to_string(::getpid()) + ".txt";
+    {
+        std::ofstream file(filename);
+        file << "preserve-this-content\n";
+    }
+
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* record = new RecordCheckProbe(model, "RecordCheckPreservesFile");
+    ASSERT_NE(record, nullptr);
+    record->setFilename(filename);
+    record->setExpression("1");
+
+    std::string errorMessage;
+    EXPECT_TRUE(record->Check(errorMessage)) << errorMessage;
+
+    std::ifstream file(filename);
+    ASSERT_TRUE(file.is_open());
+    std::stringstream contents;
+    contents << file.rdbuf();
+    EXPECT_EQ(contents.str(), "preserve-this-content\n");
+    ::unlink(filename.c_str());
 }
 
 // Ensures creating a new current model repeatedly keeps runtime usable and updates current() consistently.
@@ -2751,7 +2855,7 @@ TEST(SimulatorRuntimeTest, SetSimulationControlExposesTypedListContract) {
     set.setAllowedElementTypes({Util::TypeOf<Resource>(), Util::TypeOf<Queue>()});
 
     SimulationControl* elementSetControl = nullptr;
-    for (SimulationControl* control : *set.getProperties()->list()) {
+    for (SimulationControl* control : *set.getSimulationControls()->list()) {
         if (control != nullptr && control->getName() == "ElementSet") {
             elementSetControl = control;
             break;
@@ -4845,12 +4949,88 @@ TEST(SimulatorRuntimeTest, AssignmentPropertiesContainerLifecycleWithModelConstr
     ASSERT_NE(model, nullptr);
 
     auto* assignment = new Assignment(model, "Entity.attrProps", "1", true);
-    auto* properties = assignment->getProperties();
+    auto* properties = assignment->getSimulationControls();
     ASSERT_NE(properties, nullptr);
     EXPECT_EQ(properties->size(), 3u);
 
     delete assignment;
     SUCCEED();
+}
+
+TEST(SimulatorRuntimeTest, AssignListEditorCreationExposesAssignmentChildProperties) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignListEditorCreation");
+
+    SimulationControl* assignmentsControl = nullptr;
+    for (SimulationControl* control : *assign.getSimulationControls()->list()) {
+        if (control->getName() == "Assignments") {
+            assignmentsControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(assignmentsControl, nullptr);
+    ASSERT_TRUE(assignmentsControl->supportsNewListElementCreation());
+    ASSERT_TRUE(assignmentsControl->createNewListElement());
+    ASSERT_EQ(assign.getAssignments()->size(), 1u);
+
+    List<SimulationControl*>* childControls = assignmentsControl->getEditableChildSimulationControls(0);
+    ASSERT_NE(childControls, nullptr);
+    EXPECT_EQ(childControls->size(), 3u);
+
+    std::vector<std::string> childNames;
+    for (SimulationControl* child : *childControls->list()) {
+        childNames.push_back(child->getName());
+    }
+
+    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "Destination"), childNames.end());
+    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "Expression"), childNames.end());
+    EXPECT_NE(std::find(childNames.begin(), childNames.end(), "AttributeNotVariable"), childNames.end());
+}
+
+TEST(SimulatorRuntimeTest, AssignAddAssignmentMaterializesChildPropertiesForSimpleAssignment) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignMaterializesSimpleAssignment");
+    assign.addAssignment(new Assignment("Entity.attrFromCode", "42", true));
+
+    ASSERT_EQ(assign.getAssignments()->size(), 1u);
+    Assignment* assignment = assign.getAssignments()->front();
+    ASSERT_NE(assignment, nullptr);
+    ASSERT_NE(assignment->getSimulationControls(), nullptr);
+    EXPECT_EQ(assignment->getSimulationControls()->size(), 3u);
+}
+
+TEST(SimulatorRuntimeTest, AssignDirectListInsertMaterializesChildPropertiesOnDemand) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignDirectInsertMaterializes");
+    assign.getAssignments()->insert(new Assignment("Entity.attrDirectInsert", "99", true));
+
+    SimulationControl* assignmentsControl = nullptr;
+    for (SimulationControl* control : *assign.getSimulationControls()->list()) {
+        if (control->getName() == "Assignments") {
+            assignmentsControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(assignmentsControl, nullptr);
+
+    List<SimulationControl*>* childControls = assignmentsControl->getEditableChildSimulationControls(0);
+    ASSERT_NE(childControls, nullptr);
+    EXPECT_EQ(childControls->size(), 3u);
+
+    List<SimulationControl*>* childControlsSecondLookup = assignmentsControl->getEditableChildSimulationControls(0);
+    ASSERT_NE(childControlsSecondLookup, nullptr);
+    EXPECT_EQ(childControlsSecondLookup->size(), 3u);
 }
 
 TEST(SimulatorRuntimeTest, AssignmentSimpleConstructorWithoutModelKeepsCoherentState) {
@@ -4917,6 +5097,90 @@ TEST(SimulatorRuntimeTest, AssignCheckAcceptsIndexedAttributeDestinationWhenBase
 
     std::string errorMessage;
     EXPECT_TRUE(assign.CheckProbe(errorMessage)) << errorMessage;
+}
+
+TEST(SimulatorRuntimeTest, AssignCreateInternalAndAttachedDataCreatesMissingDestinationData) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignCreatesMissingDestinations");
+    assign.addAssignment(new Assignment("Entity.attrCreatedFromAssign[4,6]", "5", true));
+    assign.addAssignment(new Assignment("varCreatedFromAssign[2]", "7", false));
+
+    ASSERT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), "Entity.attrCreatedFromAssign"), nullptr);
+    ASSERT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "varCreatedFromAssign"), nullptr);
+
+    auto* attached = assign.getAttachedData();
+    EXPECT_NE(attached->find("Attribute_Entity.attrCreatedFromAssign"), attached->end());
+    EXPECT_NE(attached->find("Variable_varCreatedFromAssign"), attached->end());
+}
+
+TEST(SimulatorRuntimeTest, AssignGuiDestinationEditCreatesAndAttachesDestinationData) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AssignProbe assign(model, "AssignGuiEditCreatesDestination");
+
+    SimulationControl* assignmentsControl = nullptr;
+    for (SimulationControl* control : *assign.getSimulationControls()->list()) {
+        if (control->getName() == "Assignments") {
+            assignmentsControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(assignmentsControl, nullptr);
+    ASSERT_TRUE(assignmentsControl->createNewListElement());
+
+    List<SimulationControl*>* childControls = assignmentsControl->getEditableChildSimulationControls(0);
+    ASSERT_NE(childControls, nullptr);
+
+    SimulationControl* destinationControl = nullptr;
+    SimulationControl* attributeNotVariableControl = nullptr;
+    for (SimulationControl* child : *childControls->list()) {
+        if (child->getName() == "Destination") {
+            destinationControl = child;
+        } else if (child->getName() == "AttributeNotVariable") {
+            attributeNotVariableControl = child;
+        }
+    }
+
+    ASSERT_NE(destinationControl, nullptr);
+    ASSERT_NE(attributeNotVariableControl, nullptr);
+
+    attributeNotVariableControl->setValue("0");
+    destinationControl->setValue("varGuiCreated[3,4]");
+
+    ASSERT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "varGuiCreated"), nullptr);
+    auto* attached = assign.getAttachedData();
+    EXPECT_NE(attached->find("Variable_varGuiCreated"), attached->end());
+}
+
+TEST(SimulatorRuntimeTest, AssignDispatchWritesIndexedAttributeAndVariableValues) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    new Attribute(model, "Entity.attrIndexedDispatch");
+    auto* variable = new Variable(model, "varIndexedDispatch");
+    AssignProbe assign(model, "AssignIndexedDispatch");
+    auto* sink = new Dispose(model, "AssignIndexedDispatchSink");
+    assign.connectTo(sink);
+
+    assign.addAssignment(new Assignment("Entity.attrIndexedDispatch[4,6]", "11", true));
+    assign.addAssignment(new Assignment("varIndexedDispatch[2,3]", "22", false));
+
+    Entity* entity = model->createEntity("AssignIndexedDispatchEntity", true);
+    ASSERT_NE(entity, nullptr);
+
+    assign.DispatchEventProbe(entity);
+
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.attrIndexedDispatch", "4,6"), 11.0);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.attrIndexedDispatch", ""), 0.0);
+    EXPECT_DOUBLE_EQ(variable->getValue("2,3"), 22.0);
+    EXPECT_DOUBLE_EQ(variable->getValue(""), 0.0);
 }
 
 TEST(SimulatorRuntimeTest, CreateCheckFailsForAmbiguousTimeBetweenConfiguration) {
@@ -6039,6 +6303,196 @@ TEST(SimulatorRuntimeTest, BioNetworkSimulatesFirstOrderMassActionReaction) {
     EXPECT_NE(network.getLastResponsePayload().find("\"B\""), std::string::npos);
 }
 
+TEST(SimulatorRuntimeTest, BioNetworkRecordsSpeciesTimeCourseDataset) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "RecordedNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.25, errorMessage)) << errorMessage;
+
+    const BioSimulationResult& result = network.getLastSimulationResult();
+    ASSERT_EQ(result.sampleCount(), 5u);
+    ASSERT_EQ(result.getSpeciesNames().size(), 2u);
+    EXPECT_TRUE(result.hasSpecies("A"));
+    EXPECT_TRUE(result.hasSpecies("B"));
+    EXPECT_DOUBLE_EQ(result.getSamples().front().time, 0.0);
+    EXPECT_DOUBLE_EQ(result.getSamples().back().time, 1.0);
+
+    SimulationResultsDataset dataset;
+    ASSERT_TRUE(network.getSpeciesTimeCourseDataset("A", &dataset, &errorMessage)) << errorMessage;
+    ASSERT_TRUE(dataset.timeDependent);
+    ASSERT_EQ(dataset.observations.size(), 5u);
+    EXPECT_EQ(dataset.sourceDescription, "RecordedNetwork");
+    EXPECT_EQ(dataset.expressionName, "A");
+    EXPECT_DOUBLE_EQ(dataset.observations.front().time, 0.0);
+    EXPECT_DOUBLE_EQ(dataset.observations.front().value, 10.0);
+    EXPECT_DOUBLE_EQ(dataset.observations.back().time, 1.0);
+    EXPECT_NEAR(dataset.observations.back().value, 10.0 * std::exp(-0.1), 1e-4);
+
+    EXPECT_FALSE(network.getSpeciesTimeCourseDataset("MissingSpecies", &dataset, &errorMessage));
+    EXPECT_NE(errorMessage.find("MissingSpecies"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkBuildsStoichiometryMatrixForAnalysis) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 2.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "AnalysisNetwork");
+    BioStoichiometryMatrix matrix;
+    std::string errorMessage;
+    ASSERT_TRUE(network.getStoichiometryMatrix(&matrix, &errorMessage)) << errorMessage;
+
+    ASSERT_EQ(matrix.speciesNames.size(), 2u);
+    ASSERT_EQ(matrix.reactionNames.size(), 1u);
+    EXPECT_EQ(matrix.speciesNames[0], "A");
+    EXPECT_EQ(matrix.speciesNames[1], "B");
+    EXPECT_EQ(matrix.reactionNames[0], "A_to_B");
+    EXPECT_DOUBLE_EQ(matrix.coefficient(0, 0), -2.0);
+    EXPECT_DOUBLE_EQ(matrix.coefficient(1, 0), 1.0);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkReportsReactionRateTimeCourseForAnalysis) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "ReactionRateNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 1.0, 0.25, errorMessage)) << errorMessage;
+
+    BioReactionRateTimeCourse timeCourse;
+    ASSERT_TRUE(network.getReactionRateTimeCourse(&timeCourse, &errorMessage)) << errorMessage;
+    ASSERT_EQ(timeCourse.reactionNames.size(), 1u);
+    ASSERT_EQ(timeCourse.samples.size(), 5u);
+    EXPECT_EQ(timeCourse.reactionNames[0], "A_to_B");
+    EXPECT_DOUBLE_EQ(timeCourse.samples.front().time, 0.0);
+    EXPECT_DOUBLE_EQ(timeCourse.samples.front().forwardRates[0], 1.0);
+    EXPECT_DOUBLE_EQ(timeCourse.samples.front().reverseRates[0], 0.0);
+    EXPECT_DOUBLE_EQ(timeCourse.samples.front().netRates[0], 1.0);
+    EXPECT_LT(timeCourse.samples.back().netRates[0], timeCourse.samples.front().netRates[0]);
+
+    SimulationResultsDataset dataset;
+    ASSERT_TRUE(timeCourse.toDataset("A_to_B", BioReactionRateKind::Net, &dataset, &errorMessage)) << errorMessage;
+    ASSERT_TRUE(dataset.timeDependent);
+    ASSERT_EQ(dataset.observations.size(), 5u);
+    EXPECT_EQ(dataset.expressionName, "A_to_B.netRate");
+    EXPECT_DOUBLE_EQ(dataset.observations.front().value, 1.0);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkChecksSteadyStateForAnalysis) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(5.0);
+    a.setAmount(5.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(10.0);
+    b.setAmount(10.0);
+
+    BioReactionProbe reaction(model, "A_reversible_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.2);
+    reaction.setReverseRateConstant(0.1);
+    reaction.setReversible(true);
+
+    BioNetworkProbe network(model, "SteadyNetwork");
+    MassActionOdeSystem system;
+    std::string errorMessage;
+    ASSERT_TRUE(network.buildOdeSystemForAnalysis(&system, errorMessage)) << errorMessage;
+
+    BioSimulationSample sample;
+    sample.time = 0.0;
+    sample.species.push_back({"A", 5.0});
+    sample.species.push_back({"B", 10.0});
+
+    BioSteadyStateCheck check;
+    ASSERT_TRUE(BioSimulationAnalysis::checkSteadyState(system, sample, 1e-12, &check, &errorMessage)) << errorMessage;
+    EXPECT_TRUE(check.steady);
+    EXPECT_DOUBLE_EQ(check.maxAbsoluteDerivative, 0.0);
+    ASSERT_EQ(check.derivatives.size(), 2u);
+    EXPECT_EQ(check.derivatives[0].speciesName, "A");
+    EXPECT_DOUBLE_EQ(check.derivatives[0].derivative, 0.0);
+    EXPECT_EQ(check.derivatives[1].speciesName, "B");
+    EXPECT_DOUBLE_EQ(check.derivatives[1].derivative, 0.0);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkScansLocalParameterSensitivityForAnalysis) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpeciesProbe b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "SensitivityNetwork");
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 0.25, 0.25, errorMessage)) << errorMessage;
+
+    BioSensitivityScan scan;
+    ASSERT_TRUE(network.scanLocalParameterSensitivity(1e-4, 1e-6, &scan, &errorMessage)) << errorMessage;
+    ASSERT_EQ(scan.speciesNames.size(), 2u);
+    ASSERT_EQ(scan.entries.size(), 1u);
+    EXPECT_EQ(scan.entries[0].parameterName, "A_to_B.rateConstant");
+    EXPECT_DOUBLE_EQ(scan.entries[0].baseValue, 0.1);
+    ASSERT_EQ(scan.entries[0].derivativeSensitivities.size(), 2u);
+    EXPECT_EQ(scan.entries[0].derivativeSensitivities[0].speciesName, "A");
+    EXPECT_EQ(scan.entries[0].derivativeSensitivities[1].speciesName, "B");
+    EXPECT_NEAR(scan.entries[0].derivativeSensitivities[0].derivative, -a.getAmount(), 1e-9);
+    EXPECT_NEAR(scan.entries[0].derivativeSensitivities[1].derivative, a.getAmount(), 1e-9);
+    EXPECT_NEAR(scan.entries[0].maxAbsoluteSensitivity, a.getAmount(), 1e-9);
+}
+
 TEST(SimulatorRuntimeTest, BioNetworkSimulatesZeroOrderSynthesisReaction) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -6506,7 +6960,7 @@ TEST(SimulatorRuntimeTest, RSimulatorRunnerPluginInformationDeclaresRDependency)
 
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<RSimulatorRunner>());
-    EXPECT_EQ(info->getCategory(), "External statistical integration");
+    EXPECT_EQ(info->getCategory(), "ExternalIntegration");
     EXPECT_NE(info->getDescriptionHelp().find("Rscript --vanilla"), std::string::npos);
     ASSERT_TRUE(info->hasSystemDependencies());
     ASSERT_NE(info->getSystemDependencies(), nullptr);
@@ -6770,7 +7224,7 @@ TEST(SimulatorRuntimeTest, RSimulatorPluginInformationDeclaresRunnerDependency) 
 
     ASSERT_NE(info, nullptr);
     EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<RSimulator>());
-    EXPECT_EQ(info->getCategory(), "External statistical integration");
+    EXPECT_EQ(info->getCategory(), "ExternalIntegration");
     EXPECT_NE(info->getDescriptionHelp().find("RSimulatorRunner"), std::string::npos);
     ASSERT_NE(info->getDynamicLibFilenameDependencies(), nullptr);
     EXPECT_NE(std::find(info->getDynamicLibFilenameDependencies()->begin(),

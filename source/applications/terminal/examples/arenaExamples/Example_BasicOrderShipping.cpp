@@ -100,8 +100,19 @@ int Example_BasicOrderShipping::main(int argc, char** argv) {
 
 
 	Record* record1 = plugins->newInstance<Record>(model, "CycleTime"); //a_time_in with tally name Cycle_time
+	record1->setExpression("TNOW - a_time_in");
+	record1->setExpressionName("Cycle Time");
+	record1->setDatasetName("Order Cycle Time Dataset");
+	record1->setRandomVariableName("Order cycle time");
+	record1->setDatasetDescription("Cycle time for successfully shipped orders.");
 
 	Record* record2 = plugins->newInstance<Record>(model, "TotalFailed"); // count totalFailed
+	record2->setExpression("1");
+	record2->setExpressionName("Failed Order Count Increment");
+	record2->setDatasetName("Failed Order Count Increment Dataset");
+	record2->setRandomVariableName("Failed order count increment");
+	record2->setVariableType("Discrete numeric");
+	record2->setDatasetDescription("One discrete observation for each failed order path.");
 
 
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model, "Orders Shipping Success");
@@ -170,4 +181,3 @@ int Example_BasicOrderShipping::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

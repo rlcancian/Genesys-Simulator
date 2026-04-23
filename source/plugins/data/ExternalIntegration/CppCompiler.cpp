@@ -99,17 +99,17 @@ CppCompiler::CppCompiler(Model* model, std::string name) : ModelDataDefinition(m
 	_parentModel->getControls()->insert(propObjectFiles);
 
 	// setting properties
-	_addProperty(propSourceFilename);
-	_addProperty(propLibraryLoaded);
-	_addProperty(propFlagsExecutable);
-	_addProperty(propFlagsStaticLibrary);
-	_addProperty(propFlagsDynamicLibrary);
-	_addProperty(propFlagsGeneral);
-	_addProperty(propCompilerCommand);
-	_addProperty(propOutputDir);
-	_addProperty(propTempDir);
-	_addProperty(propOutputFilename);
-	_addProperty(propObjectFiles);
+	_addSimulationControl(propSourceFilename);
+	_addSimulationControl(propLibraryLoaded);
+	_addSimulationControl(propFlagsExecutable);
+	_addSimulationControl(propFlagsStaticLibrary);
+	_addSimulationControl(propFlagsDynamicLibrary);
+	_addSimulationControl(propFlagsGeneral);
+	_addSimulationControl(propCompilerCommand);
+	_addSimulationControl(propOutputDir);
+	_addSimulationControl(propTempDir);
+	_addSimulationControl(propOutputFilename);
+	_addSimulationControl(propObjectFiles);
 }
 
 // static

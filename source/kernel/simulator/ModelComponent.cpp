@@ -225,6 +225,6 @@ void ModelComponent::_createInternalAndAttachedData() {
 */
 
 /*
-void ModelComponent::_addProperty(PropertyBase* property) {
+void ModelComponent::_addSimulationControl(SimulationControl* property) {
 }
 */

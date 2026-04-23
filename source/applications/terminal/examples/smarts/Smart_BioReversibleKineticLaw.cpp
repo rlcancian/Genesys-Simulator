@@ -21,7 +21,7 @@ int Smart_BioReversibleKineticLaw::main(int argc, char** argv) {
 	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
 	setDefaultTraceHandlers(genesys->getTraceManager());
 	PluginManager* plugins = genesys->getPluginManager();
-	plugins->autoInsertPlugins("autoloadplugins.txt");
+	plugins->autoInsertPlugins();
 	Model* model = genesys->getModelManager()->newModel();
 
 	BioSpecies* substrate = plugins->newInstance<BioSpecies>(model, "Substrate");

@@ -83,7 +83,10 @@ int AirportSecurityExampleExtended::main(int argc, char** argv) {
 
 	Record* cycleTimeRecord = plugins->newInstance<Record>(model);
 	cycleTimeRecord->setExpressionName("Cycle Time for Selected Passengers");
-	cycleTimeRecord->setExpression("a_Time_in");
+	cycleTimeRecord->setDatasetName("Selected Passenger Cycle Time Dataset");
+	cycleTimeRecord->setRandomVariableName("Selected passenger cycle time");
+	cycleTimeRecord->setDatasetDescription("Cycle time for passengers that receive the extra security check.");
+	cycleTimeRecord->setExpression("TNOW - a_Time_in");
 
 	Dispose* disposeClearedWithExtraCheck = plugins->newInstance<Dispose>(model);
 	disposeClearedWithExtraCheck->setDescription("Cleared with extra check");
@@ -112,4 +115,3 @@ int AirportSecurityExampleExtended::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 }
-

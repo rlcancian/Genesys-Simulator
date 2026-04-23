@@ -4,6 +4,7 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QJsonArray>
 #include <QStandardPaths>
 
 #include <algorithm>
@@ -14,11 +15,14 @@ bool SystemPreferences::_checkSystemPackagesAtStart = true;
 SystemPreferences::StartupModelMode SystemPreferences::_startupModelMode = SystemPreferences::StartupModelMode::NewModel;
 std::string SystemPreferences::_modelfilenameToOpen = "";
 std::string SystemPreferences::_lastModelFilename = "";
+std::vector<std::string> SystemPreferences::_recentModelFiles = {};
+unsigned int SystemPreferences::_recentModelFilesLimit = 10;
 TraceManager::Level SystemPreferences::_traceLevel = TraceManager::Level::L9_mostDetailed;
 SystemPreferences::VisualTheme SystemPreferences::_visualTheme = SystemPreferences::VisualTheme::Light;
 SystemPreferences::InterfaceStyle SystemPreferences::_interfaceStyle = SystemPreferences::InterfaceStyle::Classic;
 int SystemPreferences::_applicationFontPointSize = 0;
 bool SystemPreferences::_diagramUsesThemeColors = true;
+SystemPreferences::AutomaticPositioningStrategy SystemPreferences::_automaticPositioningStrategy = SystemPreferences::AutomaticPositioningStrategy::Centered;
 
 namespace {
 const char* const kVersionKey = "version";
@@ -29,6 +33,55 @@ const char* const kViewKey = "view";
 const char* const kModelStartupModeKey = "modelAtStart";
 const char* const kSpecificModelKey = "specificModelFile";
 const char* const kLastModelKey = "lastModelFile";
+const char* const kRecentModelFilesKey = "recentModelFiles";
+const char* const kRecentModelFilesLimitKey = "recentModelFilesLimit";
+const char* const kAutomaticPositioningStrategyKey = "automaticPositioningStrategy";
+
+std::vector<std::string> sanitizeRecentModelFiles(const QJsonArray& array, unsigned int limit) {
+    std::vector<std::string> sanitized;
+    sanitized.reserve(std::min<unsigned int>(array.size(), limit));
+    for (const QJsonValue& value : array) {
+        if (!value.isString()) {
+            continue;
+        }
+        const std::string path = value.toString().trimmed().toStdString();
+        if (path.empty()) {
+            continue;
+        }
+        if (std::find(sanitized.begin(), sanitized.end(), path) != sanitized.end()) {
+            continue;
+        }
+        sanitized.push_back(path);
+        if (sanitized.size() >= limit) {
+            break;
+        }
+    }
+    return sanitized;
+}
+
+void clampRecentModelFiles(std::vector<std::string>* recentFiles, unsigned int limit) {
+    if (recentFiles == nullptr) {
+        return;
+    }
+    if (limit == 0) {
+        limit = 1;
+    }
+    std::vector<std::string> deduplicated;
+    deduplicated.reserve(recentFiles->size());
+    for (const std::string& path : *recentFiles) {
+        if (path.empty()) {
+            continue;
+        }
+        if (std::find(deduplicated.begin(), deduplicated.end(), path) != deduplicated.end()) {
+            continue;
+        }
+        deduplicated.push_back(path);
+        if (deduplicated.size() >= limit) {
+            break;
+        }
+    }
+    *recentFiles = std::move(deduplicated);
+}
 }
 
 QString SystemPreferences::defaultConfigDirectory() {
@@ -50,11 +103,14 @@ void SystemPreferences::resetToDefaults() {
     _startupModelMode = StartupModelMode::NewModel;
     _modelfilenameToOpen.clear();
     _lastModelFilename.clear();
+    _recentModelFiles.clear();
+    _recentModelFilesLimit = 10;
     _traceLevel = TraceManager::Level::L9_mostDetailed;
     _visualTheme = VisualTheme::Light;
     _interfaceStyle = InterfaceStyle::Classic;
     _applicationFontPointSize = 0;
     _diagramUsesThemeColors = true;
+    _automaticPositioningStrategy = AutomaticPositioningStrategy::Centered;
 }
 
 bool SystemPreferences::load() {
@@ -85,6 +141,12 @@ bool SystemPreferences::load() {
     _startupModelMode = startupModelModeFromString(startup.value(kModelStartupModeKey).toString(startupModelModeToString(_startupModelMode)));
     _modelfilenameToOpen = startup.value(kSpecificModelKey).toString(QString::fromStdString(_modelfilenameToOpen)).toStdString();
     _lastModelFilename = startup.value(kLastModelKey).toString(QString::fromStdString(_lastModelFilename)).toStdString();
+    _recentModelFilesLimit = static_cast<unsigned int>(std::clamp(startup.value(kRecentModelFilesLimitKey).toInt(static_cast<int>(_recentModelFilesLimit)), 1, 50));
+    _recentModelFiles = sanitizeRecentModelFiles(startup.value(kRecentModelFilesKey).toArray(), _recentModelFilesLimit);
+    if (!_lastModelFilename.empty() && std::find(_recentModelFiles.begin(), _recentModelFiles.end(), _lastModelFilename) == _recentModelFiles.end()) {
+        _recentModelFiles.insert(_recentModelFiles.begin(), _lastModelFilename);
+    }
+    clampRecentModelFiles(&_recentModelFiles, _recentModelFilesLimit);
 
     _autoLoadPlugins = plugins.value("autoLoad").toBool(_autoLoadPlugins);
     _checkSystemPackagesAtStart = plugins.value("checkSystemPackagesAtStart").toBool(_checkSystemPackagesAtStart);
@@ -98,6 +160,9 @@ bool SystemPreferences::load() {
         _applicationFontPointSize = 0;
     }
     _diagramUsesThemeColors = view.value("diagramUsesThemeColors").toBool(_diagramUsesThemeColors);
+    _automaticPositioningStrategy = automaticPositioningStrategyFromString(
+        view.value(kAutomaticPositioningStrategyKey).toString(
+            automaticPositioningStrategyToString(_automaticPositioningStrategy)));
 
     return true;
 }
@@ -113,6 +178,12 @@ bool SystemPreferences::save() {
     startup.insert(kModelStartupModeKey, startupModelModeToString(_startupModelMode));
     startup.insert(kSpecificModelKey, QString::fromStdString(_modelfilenameToOpen));
     startup.insert(kLastModelKey, QString::fromStdString(_lastModelFilename));
+    startup.insert(kRecentModelFilesLimitKey, static_cast<int>(_recentModelFilesLimit));
+    QJsonArray recentModelFiles;
+    for (const std::string& path : _recentModelFiles) {
+        recentModelFiles.append(QString::fromStdString(path));
+    }
+    startup.insert(kRecentModelFilesKey, recentModelFiles);
 
     QJsonObject plugins;
     plugins.insert("autoLoad", _autoLoadPlugins);
@@ -126,6 +197,7 @@ bool SystemPreferences::save() {
     view.insert("interfaceStyle", interfaceStyleToString(_interfaceStyle));
     view.insert("fontPointSize", _applicationFontPointSize);
     view.insert("diagramUsesThemeColors", _diagramUsesThemeColors);
+    view.insert(kAutomaticPositioningStrategyKey, automaticPositioningStrategyToString(_automaticPositioningStrategy));
 
     QJsonObject root;
     root.insert(kVersionKey, 1);
@@ -192,6 +264,34 @@ void SystemPreferences::setLastModelFilename(const std::string& newLastModelFile
     _lastModelFilename = newLastModelFilename;
 }
 
+std::vector<std::string> SystemPreferences::recentModelFiles() {
+    return _recentModelFiles;
+}
+
+void SystemPreferences::setRecentModelFiles(const std::vector<std::string>& recentModelFiles) {
+    _recentModelFiles = recentModelFiles;
+    clampRecentModelFiles(&_recentModelFiles, _recentModelFilesLimit);
+}
+
+void SystemPreferences::pushRecentModelFile(const std::string& modelFilename) {
+    if (modelFilename.empty()) {
+        return;
+    }
+    _recentModelFiles.erase(std::remove(_recentModelFiles.begin(), _recentModelFiles.end(), modelFilename), _recentModelFiles.end());
+    _recentModelFiles.insert(_recentModelFiles.begin(), modelFilename);
+    _lastModelFilename = modelFilename;
+    clampRecentModelFiles(&_recentModelFiles, _recentModelFilesLimit);
+}
+
+unsigned int SystemPreferences::recentModelFilesLimit() {
+    return _recentModelFilesLimit;
+}
+
+void SystemPreferences::setRecentModelFilesLimit(unsigned int recentModelFilesLimit) {
+    _recentModelFilesLimit = std::clamp(recentModelFilesLimit, 1u, 50u);
+    clampRecentModelFiles(&_recentModelFiles, _recentModelFilesLimit);
+}
+
 bool SystemPreferences::checkSystemPackagesAtStart() {
     return _checkSystemPackagesAtStart;
 }
@@ -248,6 +348,14 @@ void SystemPreferences::setDiagramUsesThemeColors(bool newDiagramUsesThemeColors
     _diagramUsesThemeColors = newDiagramUsesThemeColors;
 }
 
+SystemPreferences::AutomaticPositioningStrategy SystemPreferences::automaticPositioningStrategy() {
+    return _automaticPositioningStrategy;
+}
+
+void SystemPreferences::setAutomaticPositioningStrategy(AutomaticPositioningStrategy strategy) {
+    _automaticPositioningStrategy = strategy;
+}
+
 unsigned int SystemPreferences::canvasBackgroundColor() {
     return _visualTheme == VisualTheme::Dark ? 0x2A2A2AFF : 0xFFFF8040;
 }
@@ -302,6 +410,18 @@ SystemPreferences::InterfaceStyle SystemPreferences::interfaceStyleFromString(co
 
 QString SystemPreferences::interfaceStyleToString(InterfaceStyle value) {
     return value == InterfaceStyle::Modern ? QStringLiteral("modern") : QStringLiteral("classic");
+}
+
+SystemPreferences::AutomaticPositioningStrategy SystemPreferences::automaticPositioningStrategyFromString(const QString& value) {
+    const QString normalized = value.trimmed().toLower();
+    if (normalized == "legacy") {
+        return AutomaticPositioningStrategy::Legacy;
+    }
+    return AutomaticPositioningStrategy::Centered;
+}
+
+QString SystemPreferences::automaticPositioningStrategyToString(AutomaticPositioningStrategy value) {
+    return value == AutomaticPositioningStrategy::Legacy ? QStringLiteral("legacy") : QStringLiteral("centered");
 }
 
 TraceManager::Level SystemPreferences::traceLevelFromInt(int value) {

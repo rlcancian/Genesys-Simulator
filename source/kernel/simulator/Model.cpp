@@ -157,8 +157,8 @@ Model::Model(Simulator* simulator, unsigned int level) {
     //for NEW process analyser
 
     // insert NEW controls
-    //_responsesNew = new List<PropertyBase*>();
-    //_controlsNew = new List<PropertyBase*>();
+    //_responsesNew = new List<SimulationResponse*>();
+    //_controlsNew = new List<SimulationControl*>();
     /*
     _controls->insert(new PropertyT<unsigned int>("ModelSimulation", "NumberOfReplications",
             DefineGetter<ModelSimulation, unsigned int>(this->_simulation, &ModelSimulation::getNumberOfReplications),

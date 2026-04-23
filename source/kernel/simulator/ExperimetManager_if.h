@@ -30,10 +30,10 @@ public:
 	virtual ~ExperimentManager_if() = default;
 	/*! \brief Returns the list of scenarios that compose the experiment. */
 	virtual List<SimulationScenario*>* getScenarios() const = 0;
-	//virtual List<PropertyBase*>* getControls() const = 0;
-	//virtual List<PropertyBase*>* getResponses() const = 0;
-	//virtual List<PropertyBase*>* extractControlsFromModel(std::string modelFilename) const = 0;
-	//virtual List<PropertyBase*>* extractResponsesFromModel(std::string modelFilename) const = 0;
+	//virtual List<SimulationControl*>* getControls() const = 0;
+	//virtual List<SimulationResponse*>* getResponses() const = 0;
+	//virtual List<SimulationControl*>* extractControlsFromModel(std::string modelFilename) const = 0;
+	//virtual List<SimulationResponse*>* extractResponsesFromModel(std::string modelFilename) const = 0;
 	/*! \brief Starts simulation for a specific scenario. */
 	virtual void startSimulationOfScenario(SimulationScenario* scenario) = 0;
 	/*! \brief Starts full experiment execution (all enabled scenarios). */

@@ -999,30 +999,39 @@ void DataAnalyzerWindow::loadDatasetFromFile(const QString& fileName) {
     for (const std::string& line : parsedDataset.previewLines) {
         previewLines.append(QString::fromStdString(line));
     }
-    const QString detectedVariableName = !parsedDataset.expressionName.empty()
-                                             ? QString::fromStdString(parsedDataset.expressionName)
+    const QString detectedDatasetName = !parsedDataset.datasetName.empty()
+                                            ? QString::fromStdString(parsedDataset.datasetName)
+                                            : QFileInfo(fileName).fileName();
+    const QString detectedVariableName = !parsedDataset.randomVariableName.empty()
+                                             ? QString::fromStdString(parsedDataset.randomVariableName)
                                              : QFileInfo(fileName).completeBaseName();
-    const QString detectedDescription = parsedDataset.recordFile
-                                            ? tr("Genesys Record output loaded from %1; %2 replication(s) detected.")
-                                                      .arg(QFileInfo(fileName).fileName())
-                                                      .arg(static_cast<int>(parsedDataset.replications().size()))
-                                            : tr("Raw observations loaded from %1").arg(QFileInfo(fileName).fileName());
+    const QString detectedDescription = !parsedDataset.description.empty()
+                                            ? QString::fromStdString(parsedDataset.description)
+                                            : tr("Observations loaded from %1").arg(QFileInfo(fileName).fileName());
+    const QString detectedVariableType = !parsedDataset.variableType.empty()
+                                             ? QString::fromStdString(parsedDataset.variableType)
+                                             : tr("Continuous numeric");
+    const QString detectedSource = !parsedDataset.source.empty() ? QString::fromStdString(parsedDataset.source) : fileName;
+    const QString detectedFormatName = QString::fromStdString(parsedDataset.formatKindName());
 
     QDialog metadataDialog(this);
     metadataDialog.setWindowTitle(tr("Dataset metadata"));
     auto* form = new QFormLayout(&metadataDialog);
-    auto* datasetName = new QLineEdit(QFileInfo(fileName).fileName(), &metadataDialog);
+    auto* datasetName = new QLineEdit(detectedDatasetName, &metadataDialog);
     auto* variableName = new QLineEdit(detectedVariableName, &metadataDialog);
     auto* variableType = new QComboBox(&metadataDialog);
     variableType->addItems({tr("Continuous numeric"), tr("Discrete numeric")});
+    const int variableTypeIndex = variableType->findText(detectedVariableType, Qt::MatchFixedString);
+    if (variableTypeIndex >= 0) {
+        variableType->setCurrentIndex(variableTypeIndex);
+    }
     auto* description = new QLineEdit(detectedDescription, &metadataDialog);
     auto* detectedFormat = new QLabel(
-            parsedDataset.recordFile
-                    ? tr("Genesys Record file, %1 observation(s), %2 replication(s), %3 time column.")
-                              .arg(numericValues.size())
-                              .arg(static_cast<int>(parsedDataset.replications().size()))
-                              .arg(parsedDataset.timeDependent ? tr("with") : tr("without"))
-                    : tr("Numeric text file, %1 observation(s).").arg(numericValues.size()),
+            tr("%1, %2 observation(s), %3 replication(s), %4 time column.")
+                    .arg(detectedFormatName)
+                    .arg(numericValues.size())
+                    .arg(static_cast<int>(parsedDataset.replications().size()))
+                    .arg(parsedDataset.timeDependent ? tr("with") : tr("without")),
             &metadataDialog);
     detectedFormat->setWordWrap(true);
     form->addRow(tr("Dataset name:"), datasetName);
@@ -1046,13 +1055,17 @@ void DataAnalyzerWindow::loadDatasetFromFile(const QString& fileName) {
                 : variableName->text().trimmed(),
             description->text().trimmed(),
             variableType->currentText(),
-            fileName,
+            detectedSource,
             previewLines,
             numericValues,
             true,
             observations,
             parsedDataset.recordFile,
-            parsedDataset.timeDependent
+            parsedDataset.timeDependent,
+            detectedFormatName,
+            QString::fromStdString(parsedDataset.expression),
+            QString::fromStdString(parsedDataset.expressionName),
+            QString::fromStdString(parsedDataset.formatVersion)
     });
 }
 
@@ -1441,10 +1454,13 @@ QString DataAnalyzerWindow::scopedDatasetDescription() const {
         for (const DatasetObservation& observation : dataset.observations) {
             replications.insert(observation.replication);
         }
+        const QString formatKind = dataset.formatKind.isEmpty()
+                                       ? (dataset.recordFile ? tr("Genesys Record") : tr("numeric text"))
+                                       : dataset.formatKind;
         return tr("Dataset: %1\nRandom variable: %2\nType: %3\nSource: %4\nDescription: %5\nFormat: %6, %7 replication(s), %8 time column%9")
                 .arg(dataset.datasetName, dataset.randomVariableName, dataset.variableType, dataset.source,
                      dataset.description,
-                     dataset.recordFile ? tr("Genesys Record") : tr("numeric text"))
+                     formatKind)
                 .arg(replications.isEmpty() ? 1 : replications.size())
                 .arg(dataset.timeDependent ? tr("with") : tr("without"))
                 .arg(replication > 0 ? tr("\nCurrent subset: replication %1").arg(replication) : QString());

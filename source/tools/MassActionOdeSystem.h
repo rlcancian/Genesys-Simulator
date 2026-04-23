@@ -80,6 +80,29 @@ public:
 		return _reactions;
 	}
 
+	double evaluateForwardRate(unsigned int reactionIndex, const double* y) const {
+		if (reactionIndex >= _reactions.size() || y == nullptr) {
+			return 0.0;
+		}
+		const Reaction& reaction = _reactions[reactionIndex];
+		return evaluateRate(reaction, reaction.kineticLawExpression, reaction.rateConstant, reaction.reactants, y);
+	}
+
+	double evaluateReverseRate(unsigned int reactionIndex, const double* y) const {
+		if (reactionIndex >= _reactions.size() || y == nullptr) {
+			return 0.0;
+		}
+		const Reaction& reaction = _reactions[reactionIndex];
+		if (!reaction.reversible) {
+			return 0.0;
+		}
+		return evaluateRate(reaction, reaction.reverseKineticLawExpression, reaction.reverseRateConstant, reaction.products, y);
+	}
+
+	double evaluateNetRate(unsigned int reactionIndex, const double* y) const {
+		return evaluateForwardRate(reactionIndex, y) - evaluateReverseRate(reactionIndex, y);
+	}
+
 private:
 	double evaluateRate(const Reaction& reaction, const std::string& kineticLawExpression, double rateConstant, const std::vector<StoichiometricTerm>& massActionTerms, const double* y) const {
 		if (kineticLawExpression.empty()) {

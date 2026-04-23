@@ -55,10 +55,10 @@ MarkovChain::MarkovChain(Model* model, std::string name) : ModelComponent(model,
 	_parentModel->getControls()->insert(propInitilized);
 
 	// setting properties
-	_addProperty(propTransitionMatrix);
-	_addProperty(propCurrentState);
-	_addProperty(propInitialDistribution);
-	_addProperty(propInitilized);
+	_addSimulationControl(propTransitionMatrix);
+	_addSimulationControl(propCurrentState);
+	_addSimulationControl(propInitialDistribution);
+	_addSimulationControl(propInitilized);
 }
 
 std::string MarkovChain::show() {

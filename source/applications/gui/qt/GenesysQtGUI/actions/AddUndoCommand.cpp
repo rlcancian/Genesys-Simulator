@@ -8,25 +8,36 @@ AddUndoCommand::AddUndoCommand(QGraphicsItem *item, ModelGraphicsScene *scene, Q
     _myConnectionItem = nullptr;
     _myDrawingItem = nullptr;
 
+    const auto captureComponentConnections = [](GraphicalModelComponent* component, ComponentItem* componentItem) {
+        if (component == nullptr || componentItem == nullptr) {
+            return;
+        }
+
+        if (!component->getGraphicalInputPorts().empty()) {
+            GraphicalComponentPort* inputPort = component->getGraphicalInputPorts().at(0);
+            if (inputPort != nullptr && inputPort->getConnections() != nullptr) {
+                for (int j = 0; j < inputPort->getConnections()->size(); ++j) {
+                    componentItem->inputConnections.append(inputPort->getConnections()->at(j));
+                }
+            }
+        }
+
+        for (int j = 0; j < component->getGraphicalOutputPorts().size(); ++j) {
+            GraphicalComponentPort* port = component->getGraphicalOutputPorts().at(j);
+            if (port == nullptr || port->getConnections() == nullptr || port->getConnections()->empty()) {
+                continue;
+            }
+            componentItem->outputConnections.append(port->getConnections()->at(0));
+        }
+    };
+
     // filtra o tipo do item
     if (GraphicalModelComponent *component = dynamic_cast<GraphicalModelComponent *>(item)) {
         ComponentItem componentItem;
 
         componentItem.graphicalComponent = component;
         componentItem.initialPosition = component->pos();
-
-        if (!component->getGraphicalInputPorts().empty() && !component->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
-            for (int j = 0; j < component->getGraphicalInputPorts().at(0)->getConnections()->size(); ++j) {
-                componentItem.inputConnections.append(component->getGraphicalInputPorts().at(0)->getConnections()->at(j));
-            }
-        }
-        
-        for (int j = 0; j < component->getGraphicalOutputPorts().size(); ++j) {
-            GraphicalComponentPort *port = component->getGraphicalOutputPorts().at(j);
-
-            if (!port->getConnections()->empty())
-                componentItem.outputConnections.append(port->getConnections()->at(0));
-        }
+        captureComponentConnections(component, &componentItem);
 
         _myComponentItem = componentItem;
     } else if (GraphicalConnection *connection = dynamic_cast<GraphicalConnection *>(item)) {
@@ -74,13 +85,18 @@ void AddUndoCommand::undo() {
 
     // remove as conexões
     if (_myConnectionItem != nullptr) {
-        GraphicalModelComponent *source = _myGraphicsScene->findGraphicalModelComponent(_myConnectionItem->getSource()->component->getId());
-        GraphicalModelComponent *destination = _myGraphicsScene->findGraphicalModelComponent(_myConnectionItem->getDestination()->component->getId());
+        GraphicalModelComponent *source = _myGraphicsScene->resolveSourceComponent(_myConnectionItem);
+        GraphicalModelComponent *destination = _myGraphicsScene->resolveDestinationComponent(_myConnectionItem);
 
         // verifica se a conexão ainda existe, pois ela pode já ter sido removida caso fizesse parte de um componente que foi removido
         if (_myGraphicsScene->getGraphicalConnections()->contains(_myConnectionItem)) {
             // se ela existe, a remove
-            _myGraphicsScene->removeGraphicalConnection(_myConnectionItem, source, destination, true);
+            if (source != nullptr && destination != nullptr) {
+                _myGraphicsScene->removeGraphicalConnection(_myConnectionItem, source, destination, true);
+            } else {
+                _myGraphicsScene->removeItem(_myConnectionItem);
+                _myGraphicsScene->getGraphicalConnections()->removeOne(_myConnectionItem);
+            }
         } else {
             // se não existe, quer dizer que a conexão faz parte de um componente que foi removido, e portando ela já foi removida
             // entao limpa sua referência
@@ -144,12 +160,12 @@ void AddUndoCommand::redo() {
         // por exemplo, pode ter uma conexão selecionada que foi eliminada anteriormente pois ela fazia parte de um componente
         // então ao refazer as conexões do componente, ela já foi religada
         if (!_myGraphicsScene->getGraphicalConnections()->contains(_myConnectionItem)) {
-            GraphicalModelComponent* sourceComp = _myGraphicsScene->findGraphicalModelComponent(_myConnectionItem->getSource()->component->getId());
-            GraphicalModelComponent* destComp = _myGraphicsScene->findGraphicalModelComponent(_myConnectionItem->getDestination()->component->getId());
-
-            _myGraphicsScene->clearPorts(_myConnectionItem, sourceComp, destComp);
-
-            _myGraphicsScene->connectComponents(_myConnectionItem, sourceComp, destComp, true);
+            GraphicalModelComponent* sourceComp = _myGraphicsScene->resolveSourceComponent(_myConnectionItem);
+            GraphicalModelComponent* destComp = _myGraphicsScene->resolveDestinationComponent(_myConnectionItem);
+            if (sourceComp != nullptr && destComp != nullptr) {
+                _myGraphicsScene->clearPorts(_myConnectionItem, sourceComp, destComp);
+                _myGraphicsScene->connectComponents(_myConnectionItem, sourceComp, destComp, true);
+            }
         }
     }
 

@@ -37,16 +37,23 @@ Assignment::Assignment(Model* model, std::string destination, std::string expres
 	this->_destination = destination;
 	this->_expression = expression;
 	this->_isAttributeNotVariable = isAttributeNotVariable;
-	if (isAttributeNotVariable) {
+	if (!destination.empty() && isAttributeNotVariable) {
 		if (model->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), destination) == nullptr) {
 			model->getDataManager()->insert(Util::TypeOf<Attribute>(), new Attribute(model, destination));
 		}
-	} else {
+	} else if (!destination.empty()) {
 		if (model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), destination) == nullptr) {
 			model->getDataManager()->insert(Util::TypeOf<Variable>(), new Variable(model, destination));
 		}
 	}
 	_updateTypeDC();
+	ensureSimulationControls(model);
+}
+
+void Assignment::ensureSimulationControls(Model* model) {
+	if (model == nullptr || _simulationControls->size() > 0) {
+		return;
+	}
 
 	SimulationControlGeneric<std::string>* propDestination = new SimulationControlGeneric<std::string>(
 				std::bind(&Assignment::getDestination, this),
@@ -66,9 +73,9 @@ Assignment::Assignment(Model* model, std::string destination, std::string expres
 	model->getControls()->insert(propAttributeNotVariable);
 
 	// setting properties
-    _addProperty(propDestination);
-    _addProperty(propExpression);
-	_addProperty(propAttributeNotVariable);
+    _addSimulationControl(propDestination);
+    _addSimulationControl(propExpression);
+	_addSimulationControl(propAttributeNotVariable);
 }
 
 Assignment::Assignment(std::string destination, std::string expression, bool isAttributeNotVariable) {
@@ -81,11 +88,14 @@ Assignment::Assignment(std::string destination, std::string expression, bool isA
 };
 
 Assignment::~Assignment() {
-	delete _properties;
+    delete _simulationControls;
 }
 
 void Assignment::setDestination(std::string _destination) {
 	this->_destination = _destination;
+	if (_changeCallback) {
+		_changeCallback(*this);
+	}
 }
 
 std::string Assignment::getDestination() const {
@@ -98,6 +108,9 @@ std::string Assignment::getName() const {
 
 void Assignment::setExpression(std::string _expression) {
 	this->_expression = _expression;
+	if (_changeCallback) {
+		_changeCallback(*this);
+	}
 }
 
 std::string Assignment::getExpression() const {
@@ -107,18 +120,25 @@ std::string Assignment::getExpression() const {
 void Assignment::setAttributeNotVariable(bool isAttributeNotVariable) {
 	this->_isAttributeNotVariable = isAttributeNotVariable;
 	_updateTypeDC();
+	if (_changeCallback) {
+		_changeCallback(*this);
+	}
 }
 
 bool Assignment::isAttributeNotVariable() const {
 	return _isAttributeNotVariable;
 }
 
-void Assignment::_addProperty(SimulationControl* property) {
-    _properties->insert(property);
+void Assignment::setChangeCallback(std::function<void(Assignment&)> callback) {
+	_changeCallback = callback;
 }
 
-List<SimulationControl*>* Assignment::getProperties() const {
-    return _properties;
+void Assignment::_addSimulationControl(SimulationControl* control) {
+    _simulationControls->insert(control);
+}
+
+List<SimulationControl*>* Assignment::getSimulationControls() const {
+    return _simulationControls;
 }
 
 bool Assignment::loadInstance(PersistenceRecord *fields, unsigned int parentIndex) {

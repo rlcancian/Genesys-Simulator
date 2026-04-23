@@ -47,8 +47,8 @@ Release::Release(Model* model, std::string name) : ModelComponent(model, Util::T
 	_parentModel->getControls()->insert(propReleaseRequests);
 	
 	// setting properties
-	_addProperty(propPriority);
-	_addProperty(propReleaseRequests);
+	_addSimulationControl(propPriority);
+	_addSimulationControl(propReleaseRequests);
 }
 
 std::string Release::show() {

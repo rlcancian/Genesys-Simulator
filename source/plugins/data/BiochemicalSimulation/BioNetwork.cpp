@@ -190,14 +190,14 @@ BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(mod
 	_parentModel->getControls()->insert(propLastErrorMessage);
 	_parentModel->getControls()->insert(propLastResponsePayload);
 
-	_addProperty(propStartTime);
-	_addProperty(propStopTime);
-	_addProperty(propStepSize);
-	_addProperty(propCurrentTime);
-	_addProperty(propAutoSchedule);
-	_addProperty(propLastStatus);
-	_addProperty(propLastErrorMessage);
-	_addProperty(propLastResponsePayload);
+	_addSimulationControl(propStartTime);
+	_addSimulationControl(propStopTime);
+	_addSimulationControl(propStepSize);
+	_addSimulationControl(propCurrentTime);
+	_addSimulationControl(propAutoSchedule);
+	_addSimulationControl(propLastStatus);
+	_addSimulationControl(propLastErrorMessage);
+	_addSimulationControl(propLastResponsePayload);
 }
 
 PluginInformation* BioNetwork::GetPluginInformation() {
@@ -301,6 +301,7 @@ void BioNetwork::_initBetweenReplications() {
 	_lastStatus = "Idle";
 	_lastErrorMessage.clear();
 	_lastResponsePayload.clear();
+	_lastSimulationResult.clear();
 	if (_autoSchedule) {
 		scheduleNextInternalEvent();
 	}
@@ -318,6 +319,7 @@ bool BioNetwork::simulate(double startTime, double stopTime, double stepSize, st
 	_lastStatus = "Running";
 	_lastErrorMessage.clear();
 	_lastResponsePayload.clear();
+	_lastSimulationResult.clear();
 
 	if (!_check(errorMessage)) {
 		_lastStatus = "Failed";
@@ -354,6 +356,10 @@ bool BioNetwork::advanceOneStep(std::string& errorMessage) {
 		_lastErrorMessage = errorMessage;
 		return false;
 	}
+	if (_lastSimulationResult.empty()) {
+		configureSimulationResult(species);
+		appendSimulationResultSample(species);
+	}
 
 	MassActionOdeSystem system;
 	if (!buildSystem(species, reactions, &system, errorMessage)) {
@@ -384,6 +390,7 @@ bool BioNetwork::advanceOneStep(std::string& errorMessage) {
 	}
 	_currentTime += dt;
 	_lastStatus = _currentTime >= _stopTime ? "Completed" : "Running";
+	appendSimulationResultSample(species);
 	updatePayload(species);
 	return true;
 }
@@ -561,6 +568,24 @@ void BioNetwork::updatePayload(const std::vector<BioSpecies*>& species) {
 	_lastResponsePayload = payload;
 }
 
+void BioNetwork::configureSimulationResult(const std::vector<BioSpecies*>& species) {
+	std::vector<std::string> speciesNames;
+	speciesNames.reserve(species.size());
+	for (const BioSpecies* bioSpecies : species) {
+		speciesNames.push_back(bioSpecies->getName());
+	}
+	_lastSimulationResult.configure(getName(), _startTime, _stopTime, _stepSize, speciesNames);
+}
+
+void BioNetwork::appendSimulationResultSample(const std::vector<BioSpecies*>& species) {
+	std::vector<BioSimulationSpeciesAmount> amounts;
+	amounts.reserve(species.size());
+	for (const BioSpecies* bioSpecies : species) {
+		amounts.push_back({bioSpecies->getName(), bioSpecies->getAmount()});
+	}
+	_lastSimulationResult.appendSample(_currentTime, amounts);
+}
+
 void BioNetwork::handleInternalEvent(void*) {
 	std::string errorMessage;
 	if (advanceOneStep(errorMessage) && _autoSchedule && _currentTime < _stopTime) {
@@ -664,4 +689,101 @@ const std::vector<std::string>& BioNetwork::getSpeciesNames() const {
 
 const std::vector<std::string>& BioNetwork::getReactionNames() const {
 	return _reactionNames;
+}
+
+const BioSimulationResult& BioNetwork::getLastSimulationResult() const {
+	return _lastSimulationResult;
+}
+
+bool BioNetwork::getSpeciesTimeCourseDataset(const std::string& speciesName, SimulationResultsDataset* dataset,
+                                             std::string* errorMessage) const {
+	return _lastSimulationResult.toDataset(speciesName, dataset, errorMessage);
+}
+
+bool BioNetwork::buildOdeSystemForAnalysis(MassActionOdeSystem* system, std::string& errorMessage) const {
+	std::vector<BioSpecies*> species;
+	std::vector<BioReaction*> reactions;
+	if (!collectSpecies(species, errorMessage) || !collectReactions(reactions, errorMessage)) {
+		return false;
+	}
+	return buildSystem(species, reactions, system, errorMessage);
+}
+
+bool BioNetwork::getStoichiometryMatrix(BioStoichiometryMatrix* matrix, std::string* errorMessage) const {
+	if (matrix == nullptr) {
+		if (errorMessage != nullptr) {
+			*errorMessage = "Invalid stoichiometry matrix output parameter.";
+		}
+		return false;
+	}
+
+	std::string localError;
+	MassActionOdeSystem system;
+	if (!buildOdeSystemForAnalysis(&system, localError)) {
+		if (errorMessage != nullptr) {
+			*errorMessage = localError;
+		}
+		return false;
+	}
+	*matrix = BioSimulationAnalysis::buildStoichiometryMatrix(system);
+	return true;
+}
+
+bool BioNetwork::getReactionRateTimeCourse(BioReactionRateTimeCourse* timeCourse, std::string* errorMessage) const {
+	if (_lastSimulationResult.empty()) {
+		if (errorMessage != nullptr) {
+			*errorMessage = "BioNetwork \"" + getName() + "\" has no simulation result.";
+		}
+		return false;
+	}
+
+	std::string localError;
+	MassActionOdeSystem system;
+	if (!buildOdeSystemForAnalysis(&system, localError)) {
+		if (errorMessage != nullptr) {
+			*errorMessage = localError;
+		}
+		return false;
+	}
+	return BioSimulationAnalysis::buildReactionRateTimeCourse(system, _lastSimulationResult, timeCourse, errorMessage);
+}
+
+bool BioNetwork::checkLastSampleSteadyState(double tolerance, BioSteadyStateCheck* check, std::string* errorMessage) const {
+	if (_lastSimulationResult.empty()) {
+		if (errorMessage != nullptr) {
+			*errorMessage = "BioNetwork \"" + getName() + "\" has no simulation result.";
+		}
+		return false;
+	}
+
+	std::string localError;
+	MassActionOdeSystem system;
+	if (!buildOdeSystemForAnalysis(&system, localError)) {
+		if (errorMessage != nullptr) {
+			*errorMessage = localError;
+		}
+		return false;
+	}
+	return BioSimulationAnalysis::checkSteadyState(system, _lastSimulationResult.getSamples().back(), tolerance, check, errorMessage);
+}
+
+bool BioNetwork::scanLocalParameterSensitivity(double relativeStep, double absoluteStep, BioSensitivityScan* scan,
+                                               std::string* errorMessage) const {
+	if (_lastSimulationResult.empty()) {
+		if (errorMessage != nullptr) {
+			*errorMessage = "BioNetwork \"" + getName() + "\" has no simulation result.";
+		}
+		return false;
+	}
+
+	std::string localError;
+	MassActionOdeSystem system;
+	if (!buildOdeSystemForAnalysis(&system, localError)) {
+		if (errorMessage != nullptr) {
+			*errorMessage = localError;
+		}
+		return false;
+	}
+	return BioSimulationAnalysis::scanLocalParameterSensitivity(system, _lastSimulationResult.getSamples().back(),
+			relativeStep, absoluteStep, scan, errorMessage);
 }

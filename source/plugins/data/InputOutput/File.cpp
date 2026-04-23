@@ -34,8 +34,8 @@ File::File(Model* model, std::string name) : ModelDataDefinition(model, Util::Ty
 			Util::TypeOf<File>(), getName(), "AccessMode", "");
 	_parentModel->getControls()->insert(propSystemFilename);
 	_parentModel->getControls()->insert(propAccessMode);
-	_addProperty(propSystemFilename);
-	_addProperty(propAccessMode);
+	_addSimulationControl(propSystemFilename);
+	_addSimulationControl(propAccessMode);
 }
 
 std::string File::show() {

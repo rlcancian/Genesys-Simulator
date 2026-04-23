@@ -72,11 +72,11 @@ Seize::Seize(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_parentModel->getControls()->insert(propRequests);
 
 	// setting properties
-	_addProperty(propAlloc);
-	_addProperty(propPriority);
-	_addProperty(propExpression);
-	_addProperty(propQueueableItem);
-	_addProperty(propRequests);
+	_addSimulationControl(propAlloc);
+	_addSimulationControl(propPriority);
+	_addSimulationControl(propExpression);
+	_addSimulationControl(propQueueableItem);
+	_addSimulationControl(propRequests);
 }
 
 // public

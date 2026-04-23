@@ -23,17 +23,16 @@ public:
 	virtual ~ExperimentManagerDefaultImpl1() = default;
 public:
 	virtual List<SimulationScenario*>* getScenarios() const override;
-	//virtual List<PropertyBase*>* getControls() const;
-	//virtual List<PropertyBase*>* getResponses() const;
-	//virtual List<PropertyBase*>* extractControlsFromModel(std::string modelFilename) const;
-	//virtual List<PropertyBase*>* extractResponsesFromModel(std::string modelFilename) const;
+	//virtual List<SimulationControl*>* getControls() const;
+	//virtual List<SimulationResponse*>* getResponses() const;
+	//virtual List<SimulationControl*>* extractControlsFromModel(std::string modelFilename) const;
+	//virtual List<SimulationResponse*>* extractResponsesFromModel(std::string modelFilename) const;
 	virtual void startSimulationOfScenario(SimulationScenario* scenario) override;
 	virtual void startExperiment() override;
 	virtual void stopExperiment() override;
 	virtual void addTraceSimulationHandler(traceSimulationProcessListener traceSimulationProcessListener) override;
 private:
-	//List<PropertyBase*>* _controls = new List<PropertyBase*>();
+	//List<SimulationControl*>* _controls = new List<SimulationControl*>();
 };
 
 #endif /* PROCESSANALYSERDEFAULTIMPL1_H */
-

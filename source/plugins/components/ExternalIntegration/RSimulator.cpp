@@ -64,10 +64,10 @@ RSimulator::RSimulator(Model* model, std::string name)
 	_parentModel->getControls()->insert(propPreludeScript);
 	_parentModel->getControls()->insert(propCommandList);
 
-	_addProperty(propRExecutable);
-	_addProperty(propWorkingDirectory);
-	_addProperty(propPreludeScript);
-	_addProperty(propCommandList);
+	_addSimulationControl(propRExecutable);
+	_addSimulationControl(propWorkingDirectory);
+	_addSimulationControl(propPreludeScript);
+	_addSimulationControl(propCommandList);
 }
 
 std::string RSimulator::show() {

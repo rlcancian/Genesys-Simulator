@@ -161,6 +161,8 @@ public: // editing graphic model
     QList<GraphicalModelComponent*> graphicalModelComponentItems();
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
     GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
+    GraphicalModelComponent* resolveSourceComponent(GraphicalConnection* connection) const;
+    GraphicalModelComponent* resolveDestinationComponent(GraphicalConnection* connection) const;
 public:
     struct GRID {
         unsigned int interval;
@@ -260,6 +262,20 @@ public:
     bool showSharedDataDefinitions() const;
     void setShowRecursiveDataDefinitions(bool show);
     bool showRecursiveDataDefinitions() const;
+    /**
+     * @brief Restricts graphical rebuild/synchronization services to one kernel model level.
+     *
+     * ModelGraphicsScene keeps this rendering context because some synchronization entry points
+     * are static services called from the property editor. Storing the active level in the scene
+     * lets those calls preserve the same root/submodel scope as the visible tab.
+     */
+    void setModelLevelFilter(unsigned int modelLevel);
+    /** @brief Clears any level restriction and lets rebuild services render all model levels. */
+    void clearModelLevelFilter();
+    /** @brief Returns true when this scene is scoped to a specific ModelDataDefinition level. */
+    bool hasModelLevelFilter() const;
+    /** @brief Returns the active level used by rebuild services when the filter is enabled. */
+    unsigned int modelLevelFilter() const;
     void setShowInternalDataDefinitions(bool show);
     bool showInternalDataDefinitions() const;
     void setShowAttachedDataDefinitions(bool show);
@@ -384,11 +400,16 @@ private:
     bool _restoringPersistedGuiLayout = false;
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
+    bool _graphicalDataDefinitionsSyncDeferredDuringRestore = false;
     bool _connectionGeometryUpdatesBlocked = false;
     bool _showStatisticsDataDefinitions = true;
     bool _showEditableDataDefinitions = true;
     bool _showSharedDataDefinitions = true;
     bool _showRecursiveDataDefinitions = true;
+    // Rendering scope used by root/submodel tabs. The filter is intentionally scene-local so
+    // static graphical synchronization calls can keep the same scope as the active view.
+    bool _hasModelLevelFilter = false;
+    unsigned int _modelLevelFilter = 0;
 };
 
 #endif /* MODELGRAPHICSSCENE_H */

@@ -42,9 +42,9 @@ Storage::Storage(Model* model, std::string name) : ModelDataDefinition(model, Ut
 	_parentModel->getControls()->insert(propCapacity);
 	_parentModel->getControls()->insert(propTotalArea);
 	_parentModel->getControls()->insert(propUnitsPerArea);
-	_addProperty(propCapacity);
-	_addProperty(propTotalArea);
-	_addProperty(propUnitsPerArea);
+	_addSimulationControl(propCapacity);
+	_addSimulationControl(propTotalArea);
+	_addSimulationControl(propUnitsPerArea);
 }
 
 std::string Storage::show() {

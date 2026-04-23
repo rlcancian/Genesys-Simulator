@@ -128,12 +128,12 @@ PickStation::PickStation(Model* model, std::string name) : ModelComponent(model,
 	_parentModel->getControls()->insert(propPickableStationItens);
 
 	// setting properties
-    _addProperty(propTestCondition);
-	_addProperty(propSaveAttribute);
-	_addProperty(propPickConditionExpression);
-	_addProperty(propPickConditionNumberInQueue);
-	_addProperty(propPickConditionNumberBusyResource);
-	_addProperty(propPickableStationItens);
+    _addSimulationControl(propTestCondition);
+	_addSimulationControl(propSaveAttribute);
+	_addSimulationControl(propPickConditionExpression);
+	_addSimulationControl(propPickConditionNumberInQueue);
+	_addSimulationControl(propPickConditionNumberBusyResource);
+	_addSimulationControl(propPickableStationItens);
 }
 
 std::string PickStation::show() {
@@ -352,6 +352,6 @@ void PickStation::_createInternalAndAttachedData() {
 	//}
 }
 
-void PickStation::_addProperty(SimulationControl* property) {
-	_addSimulationControl(property);
+void PickStation::_addSimulationControl(SimulationControl* property) {
+	ModelDataDefinition::_addSimulationControl(property);
 }

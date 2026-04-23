@@ -162,6 +162,6 @@ void DummyComponent::_createInternalAndAttachedData() {
 */
 
 /*
-void DummyComponent::_addProperty(SimulationControl* property) {
+void DummyComponent::_addSimulationControl(SimulationControl* property) {
 }
 */

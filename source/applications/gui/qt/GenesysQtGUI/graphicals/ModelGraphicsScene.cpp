@@ -359,7 +359,7 @@ GraphicalModelComponent* ModelGraphicsScene::addGraphicalModelComponent(Plugin* 
                                                                         QPointF position, QColor color, bool notify,
                                                                         GraphicalModelComponent* autoConnectSource) {
     _propertyEditor->addElement(component);
-    for (auto prop : *component->getProperties()->list()) {
+    for (auto prop : *component->getSimulationControls()->list()) {
         if (prop->getIsList()) {
             (*(_propertyList))[prop] = new DataComponentProperty(_propertyEditor, prop, false);
         }
@@ -633,8 +633,6 @@ void ModelGraphicsScene::startTextEditing() {
 void ModelGraphicsScene::clearGraphicalModelComponents() {
     // Get model components by value to avoid temporary heap ownership.
     QList<GraphicalModelComponent*> componentsInModel = this->graphicalModelComponentItems();
-    GraphicalModelComponent* source;
-    GraphicalModelComponent* destination;
 
     for (unsigned int x = 0; x < (unsigned int)componentsInModel.size(); x++) {
         GraphicalModelComponent* gmc = componentsInModel.at(x);
@@ -652,7 +650,10 @@ void ModelGraphicsScene::clearGraphicalModelComponents() {
                 GraphicalComponentPort* port = gmc->getGraphicalInputPorts().at(i);
                 for (unsigned int j = 0; j < (unsigned int)port->getConnections()->size(); j++) {
                     GraphicalConnection* graphConn = port->getConnections()->at(j);
-                    source = findGraphicalModelComponent(graphConn->getSource()->component->getId());
+                    GraphicalModelComponent* source = resolveSourceComponent(graphConn);
+                    if (graphConn == nullptr || source == nullptr) {
+                        continue;
+                    }
                     removeGraphicalConnection(graphConn, source, gmc);
                 }
             }
@@ -661,7 +662,10 @@ void ModelGraphicsScene::clearGraphicalModelComponents() {
                 GraphicalComponentPort* port = gmc->getGraphicalOutputPorts().at(i);
                 for (unsigned int j = 0; j < (unsigned int)port->getConnections()->size(); j++) {
                     GraphicalConnection* graphConn = port->getConnections()->at(j);
-                    destination = findGraphicalModelComponent(graphConn->getDestination()->component->getId());
+                    GraphicalModelComponent* destination = resolveDestinationComponent(graphConn);
+                    if (graphConn == nullptr || destination == nullptr) {
+                        continue;
+                    }
                     removeGraphicalConnection(graphConn, gmc, destination);
                 }
             }
@@ -676,13 +680,22 @@ void ModelGraphicsScene::clearGraphicalModelComponents() {
 // limpa todas as referencias das conexoes no final
 void ModelGraphicsScene::clearGraphicalModelConnections() {
     while (!_allGraphicalConnections.isEmpty()) {
-        GraphicalConnection* gmc = _allGraphicalConnections.at(0);
-        if (gmc) {
-            // remove da lista de conexões graficas
-            _allGraphicalConnections.removeOne(gmc);
+        GraphicalConnection* connection = _allGraphicalConnections.at(0);
+        if (connection == nullptr) {
+            _allGraphicalConnections.removeFirst();
+            continue;
+        }
 
-            // libera o ponteiro alocado
-            delete gmc;
+        GraphicalModelComponent* source = resolveSourceComponent(connection);
+        GraphicalModelComponent* destination = resolveDestinationComponent(connection);
+        if (source != nullptr && destination != nullptr) {
+            removeGraphicalConnection(connection, source, destination);
+            delete connection;
+        } else {
+            _allGraphicalConnections.removeOne(connection);
+            _graphicalConnections->removeOne(connection);
+            removeItem(connection);
+            delete connection;
         }
     }
 }
@@ -907,7 +920,6 @@ void ModelGraphicsScene::sanitizeGraphicalDataDefinitionsBookkeeping() {
 
     for (QGraphicsItem* item : liveItems) {
         if (dynamic_cast<GraphicalModelComponent*>(item) != nullptr) {
-            qInfo() << "sanitizeGraphicalDataDefinitionsBookkeeping: ignoring GraphicalModelComponent item";
             continue;
         }
         if (auto* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
@@ -1044,8 +1056,6 @@ void ModelGraphicsScene::clearConnectionsComponent(GraphicalModelComponent* gmc)
 
 // trata da remocao das conexoes de entrada de um componente
 void ModelGraphicsScene::clearInputConnectionsComponent(GraphicalModelComponent* graphicalComponent) {
-    GraphicalModelComponent* source; // origiem da conexao
-
     // varre todas as portas de entrada do componente a ser removido
     for (GraphicalComponentPort* port : graphicalComponent->getGraphicalInputPorts()) {
         if (port->getConnections()->size() > 0) {
@@ -1054,8 +1064,7 @@ void ModelGraphicsScene::clearInputConnectionsComponent(GraphicalModelComponent*
                 // se ha conexao nessa porta
                 if (graphConn != nullptr) {
                     // pega a origem da conexao
-                    source = ModelGraphicsScene::findGraphicalModelComponent(
-                        graphConn->getSource()->component->getId());
+                    GraphicalModelComponent* source = resolveSourceComponent(graphConn);
 
                     // se o componente de origem esta no modelo
                     if (source != nullptr) {
@@ -1071,7 +1080,6 @@ void ModelGraphicsScene::clearInputConnectionsComponent(GraphicalModelComponent*
 // trata da remocao das conexoes de saida de um componente
 void ModelGraphicsScene::clearOutputConnectionsComponent(GraphicalModelComponent* graphicalComponent) {
     GraphicalConnection* graphConn; // conexao grafica
-    GraphicalModelComponent* destination; // destino da conexao
 
     // varre todas as portas de saida do componente a ser removido
     for (GraphicalComponentPort* port : graphicalComponent->getGraphicalOutputPorts()) {
@@ -1082,7 +1090,7 @@ void ModelGraphicsScene::clearOutputConnectionsComponent(GraphicalModelComponent
             // se ha conexao nessa porta
             if (graphConn != nullptr) {
                 // pega o destino da conexao
-                destination = this->findGraphicalModelComponent(graphConn->getDestination()->component->getId());
+                GraphicalModelComponent* destination = resolveDestinationComponent(graphConn);
 
                 // se o componente de destino esta no modelo
                 if (destination != nullptr) {
@@ -1098,6 +1106,13 @@ void ModelGraphicsScene::clearOutputConnectionsComponent(GraphicalModelComponent
 void ModelGraphicsScene::removeGraphicalConnection(GraphicalConnection* graphicalConnection,
                                                    GraphicalModelComponent* source,
                                                    GraphicalModelComponent* destination, bool notify) {
+    if (graphicalConnection == nullptr || source == nullptr || destination == nullptr) {
+        return;
+    }
+    if (graphicalConnection->getSource() == nullptr || graphicalConnection->getDestination() == nullptr) {
+        return;
+    }
+
     unsigned int sourcePortNumber = graphicalConnection->getSource()->channel.portNumber;
     unsigned int destinationPortNumber = graphicalConnection->getDestination()->channel.portNumber;
 
@@ -1105,18 +1120,23 @@ void ModelGraphicsScene::removeGraphicalConnection(GraphicalConnection* graphica
     removeConnectionInModel(graphicalConnection, source);
 
     // remove a conexao do componente origem (conexao grafica)
-    source->getGraphicalOutputPorts().at(sourcePortNumber)->removeGraphicalConnection(graphicalConnection);
-    // uma porta de saida a menos esta sendo ocupada no componente de origem da conexao
-    source->setOcupiedOutputPorts(source->getOcupiedOutputPorts() - 1);
+    if (sourcePortNumber < static_cast<unsigned int>(source->getGraphicalOutputPorts().size())) {
+        source->getGraphicalOutputPorts().at(sourcePortNumber)->removeGraphicalConnection(graphicalConnection);
+        // uma porta de saida a menos esta sendo ocupada no componente de origem da conexao
+        source->setOcupiedOutputPorts(source->getOcupiedOutputPorts() - 1);
+    }
 
     // remove a conexao do componente de destino (conexao grafica)
-    destination->getGraphicalInputPorts().at(destinationPortNumber)->removeGraphicalConnection(graphicalConnection);
-    // uma porta de entrada a menos esta sendo ocupada no componente de destino da conexao
-    destination->setOcupiedInputPorts(destination->getOcupiedInputPorts() - 1);
+    if (destinationPortNumber < static_cast<unsigned int>(destination->getGraphicalInputPorts().size())) {
+        destination->getGraphicalInputPorts().at(destinationPortNumber)->removeGraphicalConnection(graphicalConnection);
+        // uma porta de entrada a menos esta sendo ocupada no componente de destino da conexao
+        destination->setOcupiedInputPorts(destination->getOcupiedInputPorts() - 1);
+    }
 
     // remove graphically
     removeItem(graphicalConnection);
     _graphicalConnections->removeOne(graphicalConnection);
+    _allGraphicalConnections.removeOne(graphicalConnection);
 
     //notify graphical model change
     if (notify) {
@@ -1130,29 +1150,48 @@ void ModelGraphicsScene::removeGraphicalConnection(GraphicalConnection* graphica
 // remove uma conexao do modelo
 void ModelGraphicsScene::removeConnectionInModel(GraphicalConnection* graphicalConnection,
                                                  GraphicalModelComponent* source) {
+    if (graphicalConnection == nullptr || source == nullptr || source->getComponent() == nullptr) {
+        return;
+    }
+    if (graphicalConnection->getSource() == nullptr) {
+        return;
+    }
     unsigned int portNumber = graphicalConnection->getSource()->channel.portNumber;
-
-    source->getComponent()->getConnectionManager()->removeAtPort(portNumber);
+    ConnectionManager* manager = source->getComponent()->getConnectionManager();
+    if (manager != nullptr) {
+        manager->removeAtPort(portNumber);
+    }
 }
 
 void ModelGraphicsScene::clearPorts(GraphicalConnection* connection, GraphicalModelComponent* source,
                                     GraphicalModelComponent* destination) {
+    if (connection == nullptr || source == nullptr || destination == nullptr) {
+        return;
+    }
+    if (connection->getSource() == nullptr || connection->getDestination() == nullptr) {
+        return;
+    }
+
     if (!source->getGraphicalOutputPorts().empty()) {
-        GraphicalComponentPort* outputPort = source->getGraphicalOutputPorts().at(
-            connection->getSource()->channel.portNumber);
-        if (outputPort) {
-            if (!outputPort->getConnections()->empty()) {
-                outputPort->removeGraphicalConnection(connection);
+        unsigned int sourcePortNumber = connection->getSource()->channel.portNumber;
+        if (sourcePortNumber < static_cast<unsigned int>(source->getGraphicalOutputPorts().size())) {
+            GraphicalComponentPort* outputPort = source->getGraphicalOutputPorts().at(sourcePortNumber);
+            if (outputPort) {
+                if (!outputPort->getConnections()->empty()) {
+                    outputPort->removeGraphicalConnection(connection);
+                }
             }
         }
     }
 
     if (!destination->getGraphicalInputPorts().empty()) {
-        GraphicalComponentPort* inputPort = destination->getGraphicalInputPorts().at(
-            connection->getDestination()->channel.portNumber);
-        if (inputPort) {
-            if (!inputPort->getConnections()->empty()) {
-                inputPort->removeGraphicalConnection(connection);
+        unsigned int destinationPortNumber = connection->getDestination()->channel.portNumber;
+        if (destinationPortNumber < static_cast<unsigned int>(destination->getGraphicalInputPorts().size())) {
+            GraphicalComponentPort* inputPort = destination->getGraphicalInputPorts().at(destinationPortNumber);
+            if (inputPort) {
+                if (!inputPort->getConnections()->empty()) {
+                    inputPort->removeGraphicalConnection(connection);
+                }
             }
         }
     }
@@ -1180,6 +1219,9 @@ void ModelGraphicsScene::connectComponents(GraphicalConnection* connection, Grap
 
 // esta funcao trata da conexao com o componente de origem
 bool ModelGraphicsScene::connectSource(GraphicalConnection* connection, GraphicalModelComponent* source) {
+    if (connection == nullptr || connection->getSource() == nullptr || connection->getDestination() == nullptr) {
+        return false;
+    }
     GraphicalModelComponent* src;
 
     // necessario GraphicalModelComponent do componente, entao...
@@ -1188,7 +1230,7 @@ bool ModelGraphicsScene::connectSource(GraphicalConnection* connection, Graphica
         src = source;
         // se nao enviarem o GraphicalModelComponent de origem, busca pelo Id do componente
     else
-        src = findGraphicalModelComponent(connection->getSource()->component->getId());
+        src = resolveSourceComponent(connection);
 
     if (src != nullptr) {
         // varre todas as portas de saida do componente de origem, ate encontrar a porta correta
@@ -1215,6 +1257,9 @@ bool ModelGraphicsScene::connectSource(GraphicalConnection* connection, Graphica
 
 // esta funcao trata da conexao com o componente de destino
 bool ModelGraphicsScene::connectDestination(GraphicalConnection* connection, GraphicalModelComponent* destination) {
+    if (connection == nullptr || connection->getDestination() == nullptr) {
+        return false;
+    }
     GraphicalModelComponent* dst;
 
     // necessario GraphicalModelComponent do componente, entao...
@@ -1223,7 +1268,7 @@ bool ModelGraphicsScene::connectDestination(GraphicalConnection* connection, Gra
         dst = destination;
         // se nao enviarem o GraphicalModelComponent de destino, busca pelo Id do componente
     else
-        dst = this->findGraphicalModelComponent(connection->getDestination()->component->getId());
+        dst = resolveDestinationComponent(connection);
 
     if (dst != nullptr) {
         // varre todas as portas de entrada do componente de destino, ate encontrar a porta correta
@@ -1253,7 +1298,7 @@ void ModelGraphicsScene::redoConnections(GraphicalModelComponent* graphicalCompo
                                          QList<GraphicalConnection*>* outputConnections) {
     for (int j = 0; j < inputConnections->size(); ++j) {
         GraphicalConnection* connection = inputConnections->at(j);
-        GraphicalModelComponent* source = findGraphicalModelComponent(connection->getSource()->component->getId());
+        GraphicalModelComponent* source = resolveSourceComponent(connection);
 
         // so refaz a conexao se ambos estiverem no modelo, se nao, quando o outro for adicionado, ele faz a conexao
         if (source != nullptr)
@@ -1262,8 +1307,7 @@ void ModelGraphicsScene::redoConnections(GraphicalModelComponent* graphicalCompo
 
     for (int j = 0; j < outputConnections->size(); ++j) {
         GraphicalConnection* connection = outputConnections->at(j);
-        GraphicalModelComponent* destination = findGraphicalModelComponent(
-            connection->getDestination()->component->getId());
+        GraphicalModelComponent* destination = resolveDestinationComponent(connection);
 
         // so refaz a conexao se ambos estiverem no modelo, se nao, quando o outro for adicionado, ele faz a conexao
         if (destination != nullptr)
@@ -1311,6 +1355,12 @@ void ModelGraphicsScene::saveDataDefinitions() {
 }
 
 void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
+    // Loaded models already bring their DataDefinitions from persistence.
+    // Reinserting here can corrupt DataManager state (notably EntityType) and break model check.
+    if (loaded) {
+        return;
+    }
+
     // Get model components by value to avoid temporary heap ownership.
     QList<GraphicalModelComponent*> components = this->graphicalModelComponentItems();
     QList<GraphicalModelComponent*>* allComponentes = this->getAllComponents();
@@ -1352,12 +1402,6 @@ void ModelGraphicsScene::insertRestoredDataDefinitions(bool loaded) {
         }
     }
 
-    if (loaded) {
-        std::list<ModelDataDefinition*>* entityTypes = _simulator->getModelManager()->current()->getDataManager()->
-                                                                   getDataDefinitionList(Util::TypeOf<EntityType>())->
-                                                                   list();
-        entityTypes->clear();
-    }
 }
 
 void ModelGraphicsScene::addDrawing(QGraphicsItem* item, bool notify) {
@@ -1471,6 +1515,23 @@ void ModelGraphicsScene::GRID::clear() {
 }
 
 void ModelGraphicsScene::showGrid() {
+    if (_grid.lines == nullptr) {
+        _grid.visible = false;
+        return;
+    }
+
+    // Reconcile grid bookkeeping with live scene items before touching line pointers.
+    const QList<QGraphicsItem*> liveItems = items();
+    const QSet<QGraphicsItem*> liveItemSet(liveItems.begin(), liveItems.end());
+    for (auto it = _grid.lines->begin(); it != _grid.lines->end();) {
+        QGraphicsLineItem* line = *it;
+        if (line == nullptr || !liveItemSet.contains(line)) {
+            it = _grid.lines->erase(it);
+        } else {
+            ++it;
+        }
+    }
+
     // pego a informação se o grid está visível
     // obs.: o grid é criado uma única vez para a cena e habilitado como visível ou não. =
 
@@ -3032,6 +3093,24 @@ bool ModelGraphicsScene::showRecursiveDataDefinitions() const {
     return _showRecursiveDataDefinitions;
 }
 
+void ModelGraphicsScene::setModelLevelFilter(unsigned int modelLevel) {
+    _hasModelLevelFilter = true;
+    _modelLevelFilter = modelLevel;
+}
+
+void ModelGraphicsScene::clearModelLevelFilter() {
+    _hasModelLevelFilter = false;
+    _modelLevelFilter = 0;
+}
+
+bool ModelGraphicsScene::hasModelLevelFilter() const {
+    return _hasModelLevelFilter;
+}
+
+unsigned int ModelGraphicsScene::modelLevelFilter() const {
+    return _modelLevelFilter;
+}
+
 QList<QGraphicsItemGroup*>* ModelGraphicsScene::getGraphicalGroups() const {
     return _graphicalGroups;
 }
@@ -3337,6 +3416,11 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
 }
 
 void ModelGraphicsScene::requestGraphicalDataDefinitionsSync() {
+    if (_restoringPersistedGuiLayout) {
+        _graphicalDataDefinitionsSyncDeferredDuringRestore = true;
+        return;
+    }
+
     // Coalesce chained requests to avoid running redundant synchronizations in the same event-loop turn.
     if (_graphicalDataDefinitionsSyncPending || _graphicalDataDefinitionsSyncInProgress) {
         return;
@@ -3492,7 +3576,12 @@ void ModelGraphicsScene::setObjectBeingDragged(QTreeWidgetItem* objectBeingDragg
 
 // Toggle whether diagram items are currently being reconstructed from persisted .gui state.
 void ModelGraphicsScene::setRestoringPersistedGuiLayout(bool restoring) {
+    const bool wasRestoring = _restoringPersistedGuiLayout;
     _restoringPersistedGuiLayout = restoring;
+    if (wasRestoring && !restoring && _graphicalDataDefinitionsSyncDeferredDuringRestore) {
+        _graphicalDataDefinitionsSyncDeferredDuringRestore = false;
+        requestGraphicalDataDefinitionsSync();
+    }
 }
 
 // Expose persisted-layout restoration state to avoid applying default-only grouping fallbacks.
@@ -3624,6 +3713,34 @@ GraphicalModelComponent* ModelGraphicsScene::findGraphicalModelComponent(Util::i
         }
     }
     return nullptr;
+}
+
+GraphicalModelComponent* ModelGraphicsScene::resolveSourceComponent(GraphicalConnection* connection) const {
+    if (connection == nullptr) {
+        return nullptr;
+    }
+    if (GraphicalModelComponent* byPort = connection->getSourceGraphicalComponent()) {
+        return byPort;
+    }
+    Connection* sourceConnection = connection->getSource();
+    if (sourceConnection == nullptr || sourceConnection->component == nullptr) {
+        return nullptr;
+    }
+    return const_cast<ModelGraphicsScene*>(this)->findGraphicalModelComponent(sourceConnection->component->getId());
+}
+
+GraphicalModelComponent* ModelGraphicsScene::resolveDestinationComponent(GraphicalConnection* connection) const {
+    if (connection == nullptr) {
+        return nullptr;
+    }
+    if (GraphicalModelComponent* byPort = connection->getDestinationGraphicalComponent()) {
+        return byPort;
+    }
+    Connection* destinationConnection = connection->getDestination();
+    if (destinationConnection == nullptr || destinationConnection->component == nullptr) {
+        return nullptr;
+    }
+    return const_cast<ModelGraphicsScene*>(this)->findGraphicalModelComponent(destinationConnection->component->getId());
 }
 
 GraphicalModelDataDefinition* ModelGraphicsScene::findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition) {

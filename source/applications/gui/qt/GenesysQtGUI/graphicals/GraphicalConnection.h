@@ -5,6 +5,7 @@
 
 #include <QGraphicsItem>
 #include <QGraphicsObject>
+#include <QPointer>
 #include <QPainterPath>
 #include <QPen>
 #include <QBrush>
@@ -48,6 +49,10 @@ public:
     GraphicalComponentPort* getSourceGraphicalPort();
     /** @brief Returns destination graphical port. */
     GraphicalComponentPort* getDestinationGraphicalPort();
+    /** @brief Returns source graphical component resolved from source port when available. */
+    GraphicalModelComponent* getSourceGraphicalComponent() const;
+    /** @brief Returns destination graphical component resolved from destination port when available. */
+    GraphicalModelComponent* getDestinationGraphicalComponent() const;
     /** @brief Recomputes local geometry based on current port positions. */
 	void updateDimensionsAndPosition();
 	/** @brief Returns configured connection routing type. */
@@ -92,8 +97,8 @@ private:
 	ConnectionType _connectionType = ConnectionType::HORIZONTAL;
 	Connection* _sourceConnection;
 	Connection* _destinationConnection;
-	GraphicalComponentPort* _sourceGraphicalPort;
-	GraphicalComponentPort* _destinationGraphicalPort;
+	QPointer<GraphicalComponentPort> _sourceGraphicalPort;
+	QPointer<GraphicalComponentPort> _destinationGraphicalPort;
     unsigned int _portSourceConnection;
     unsigned int _portDestinationConnection;
 	QColor _color;

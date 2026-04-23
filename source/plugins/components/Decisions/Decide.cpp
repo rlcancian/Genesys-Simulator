@@ -34,7 +34,7 @@ Decide::Decide(Model* model, std::string name) : ModelComponent(model, Util::Typ
 
 	_parentModel->getControls()->insert(propConditions);
 
-	_addProperty(propConditions);
+	_addSimulationControl(propConditions);
 }
 
 List<std::string>* Decide::getConditions() const {

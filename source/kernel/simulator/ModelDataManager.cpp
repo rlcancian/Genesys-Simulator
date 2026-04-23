@@ -37,8 +37,12 @@ ModelDataManager::~ModelDataManager() {
 bool ModelDataManager::insert(ModelDataDefinition* anElement) {
 	std::string datadefinitionTypename = anElement->getClassname();
 	bool result = insert(datadefinitionTypename, anElement);
-	//	ModelDataDefinition::CreateInternalData(anElement);
-	//}
+	if (result) {
+		// Data definitions must materialize their internal/attached children as soon as they join
+		// the model, otherwise GUI flows that create objects interactively observe an incomplete
+		// kernel state until a later model check forces internal-data creation.
+		ModelDataDefinition::CreateInternalData(anElement);
+	}
 	return result;
 }
 

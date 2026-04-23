@@ -45,6 +45,7 @@
 //#include <streambuf>
 
 // QT
+#include <QCoreApplication>
 #include <QMessageBox>
 #include <QTextStream>
 #include <QFileDialog>
@@ -361,6 +362,7 @@ void MainWindow::on_actionSimulatorPreferences_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
     if (_dialogUtilityController != nullptr) {
         _dialogUtilityController->onActionSimulatorPreferencesTriggered();
+        _refreshRecentModelsMenu();
     }
 }
 
@@ -537,21 +539,45 @@ void MainWindow::on_actionModelOpen_triggered()
 {
     // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
     _modelLifecycleController->onActionModelOpenTriggered();
+    _refreshRecentModelsMenu();
 }
 
 
 void MainWindow::on_actionModelSave_triggered()
 {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    _modelLifecycleController->onActionModelSaveTriggered();
+    // Save is now anchored to the currently selected model tab.
+    if (_saveCurrentModel(true)) {
+        _refreshRecentModelsMenu();
+        QMessageBox::information(this, "Save Model", "Model successfully saved");
+    }
 }
 
 
 
 void MainWindow::on_actionModelClose_triggered()
 {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    _modelLifecycleController->onActionModelCloseTriggered();
+    // Close only the current model/tab; other open models remain loaded in ModelManager.
+    if (ui != nullptr && ui->actionModelClose != nullptr) {
+        ui->actionModelClose->setEnabled(false);
+    }
+    if (simulator == nullptr || simulator->getModelManager() == nullptr
+        || simulator->getModelManager()->current() == nullptr) {
+        _actualizeActions();
+        return;
+    }
+    _closeModel(simulator->getModelManager()->current());
+    _actualizeActions();
+}
+
+void MainWindow::on_actionAnimation_triggered()
+{
+    const bool enabled = ui->actionAnimation == nullptr || ui->actionAnimation->isChecked();
+    if (!enabled && ui->actionActivateGraphicalSimulation != nullptr
+        && ui->actionActivateGraphicalSimulation->isChecked()) {
+        ui->actionActivateGraphicalSimulation->setChecked(false);
+        on_actionActivateGraphicalSimulation_triggered();
+    }
+    _actualizeActions();
 }
 
 
@@ -570,18 +596,65 @@ void MainWindow::on_actionModelCheck_triggered()
 
 void MainWindow::on_actionSimulatorExit_triggered()
 {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    _modelLifecycleController->onActionSimulatorExitTriggered();
+    if (!_confirmApplicationExit()) {
+        return;
+    }
+
+    _closingApproved = true;
+    QCoreApplication::quit();
 }
 
 bool MainWindow::_hasPendingModelChanges() const {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    return _modelLifecycleController->hasPendingModelChanges();
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return false;
+    }
+    for (Model* model : simulator->getModelManager()->models()) {
+        if (_modelHasPendingChanges(model)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 bool MainWindow::_confirmApplicationExit() {
-    // Keep this wrapper as part of the final compatibility façade from Phase 7 refactor.
-    return _modelLifecycleController->confirmApplicationExit();
+    if (simulator == nullptr || simulator->getModelManager() == nullptr) {
+        return true;
+    }
+
+    _syncCurrentModelDocumentState();
+    const std::vector<Model*> openedModels = simulator->getModelManager()->models();
+    for (Model* model : openedModels) {
+        if (!_modelHasPendingChanges(model)) {
+            continue;
+        }
+
+        if (!simulator->getModelManager()->setCurrent(model)) {
+            return false;
+        }
+        _ensureModelTab(model);
+        _restoreModelDocumentState(model);
+        const QMessageBox::StandardButton saveReply = QMessageBox::question(
+            this,
+            "Exit GenESyS",
+            tr("%1 has changed. Do you want to save it?").arg(_modelDisplayName(model)),
+            QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
+            QMessageBox::Yes);
+
+        if (saveReply == QMessageBox::Cancel) {
+            return false;
+        }
+        if (saveReply == QMessageBox::Yes && (!_saveCurrentModel(false) || _modelHasPendingChanges(model))) {
+            return false;
+        }
+    }
+
+    const QMessageBox::StandardButton exitReply = QMessageBox::question(
+        this,
+        "Exit GenESyS",
+        "Do you want to exit GenESyS?",
+        QMessageBox::Yes | QMessageBox::No,
+        QMessageBox::No);
+    return exitReply == QMessageBox::Yes;
 }
 
 

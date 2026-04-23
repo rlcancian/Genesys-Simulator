@@ -69,12 +69,12 @@ Route::Route(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_parentModel->getControls()->insert(propLabel);
 
 	// setting properties
-	_addProperty(propStation);
-	_addProperty(propStationExpression);
-	// _addProperty(propTimeExpression);
-	_addProperty(propTimeTimeUnit);
-    _addProperty(propDestinationType);
-	_addProperty(propLabel);
+	_addSimulationControl(propStation);
+	_addSimulationControl(propStationExpression);
+	// _addSimulationControl(propTimeExpression);
+	_addSimulationControl(propTimeTimeUnit);
+    _addSimulationControl(propDestinationType);
+	_addSimulationControl(propLabel);
 }
 
 std::string Route::show() {

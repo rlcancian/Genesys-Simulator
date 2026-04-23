@@ -38,11 +38,11 @@ BioSpecies::BioSpecies(Model* model, std::string name) : ModelDataDefinition(mod
 	_parentModel->getControls()->insert(propBoundaryCondition);
 	_parentModel->getControls()->insert(propUnit);
 
-	_addProperty(propInitialAmount);
-	_addProperty(propAmount);
-	_addProperty(propConstant);
-	_addProperty(propBoundaryCondition);
-	_addProperty(propUnit);
+	_addSimulationControl(propInitialAmount);
+	_addSimulationControl(propAmount);
+	_addSimulationControl(propConstant);
+	_addSimulationControl(propBoundaryCondition);
+	_addSimulationControl(propUnit);
 }
 
 PluginInformation* BioSpecies::GetPluginInformation() {

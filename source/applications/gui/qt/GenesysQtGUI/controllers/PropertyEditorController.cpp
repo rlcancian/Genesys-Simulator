@@ -76,7 +76,7 @@ void collectEditableReferencedDataDefinitions(
             const int itemCount = static_cast<int>(desc.choices.size());
             for (int index = 0; index < itemCount; ++index) {
                 collectEditableReferencedDataDefinitions(
-                    control->getProperties(index),
+                    control->getChildSimulationControls(index),
                     names,
                     recursionPath,
                     depth + 1
@@ -84,7 +84,7 @@ void collectEditableReferencedDataDefinitions(
             }
         } else if (desc.supportsInlineExpansion && control->hasObjectInstance()) {
             collectEditableReferencedDataDefinitions(
-                control->getProperties(),
+                control->getChildSimulationControls(),
                 names,
                 recursionPath,
                 depth + 1
@@ -111,7 +111,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
         for (ModelComponent* component : *model->getComponentManager()->getAllComponents()) {
             if (component != nullptr) {
                 collectEditableReferencedDataDefinitions(
-                    component->getProperties(),
+                    component->getSimulationControls(),
                     names,
                     recursionPath
                     );
@@ -128,7 +128,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
             for (ModelDataDefinition* dataDefinition : *dataDefinitions->list()) {
                 if (dataDefinition != nullptr) {
                     collectEditableReferencedDataDefinitions(
-                        dataDefinition->getProperties(),
+                        dataDefinition->getSimulationControls(),
                         names,
                         recursionPath
                         );
@@ -220,10 +220,6 @@ void PropertyEditorController::bindDataDefinitionFromInspector(
     QSet<QString> graphicalDataDefinitions = graphicallyRepresentedDataDefinitionNames(scene);
     QSet<QString> editableDataDefinitions = editableDataDefinitionNames(scene);
 
-    // The DataDefinitions tree is the authoritative editor entry point for model data objects,
-    // including GMDDs hidden by View/Show filters. Keep the selected object editable from here
-    // even when its current graphical visibility category would otherwise make the GMDD read-only.
-    editableDataDefinitions.insert(QString::fromStdString(dataDefinition->getName()));
     refreshGraphicalDataDefinitionEditability(scene, editableDataDefinitions);
 
     _propertyBrowser->setActiveObject(
@@ -354,14 +350,17 @@ void PropertyEditorController::_runGlobalRefresh() const {
         _pendingGlobalRefresh = false;
         qInfo() << "[PropertyEditorController] _runGlobalRefresh enter";
 
-        if (_actualizeModelSimLanguage) {
-            _actualizeModelSimLanguage();
-        }
         if (_actualizeModelComponents) {
             _actualizeModelComponents(true);
         }
         if (_actualizeModelDataDefinitions) {
             _actualizeModelDataDefinitions(true);
+        }
+        // Refresh the serialized model text only after component and data-definition panes have
+        // consumed the committed kernel state. This keeps Siman aligned with the same model
+        // snapshot already visible in the inspector widgets.
+        if (_actualizeModelSimLanguage) {
+            _actualizeModelSimLanguage();
         }
         if (_actualizeModelCppCode) {
             _actualizeModelCppCode();

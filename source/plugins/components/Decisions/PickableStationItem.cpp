@@ -56,10 +56,10 @@ PickableStationItem::PickableStationItem(Model* model, std::string stationName, 
     model->getControls()->insert(propStation);
 
     // setting properties
-    _addProperty(propExpression);
-    _addProperty(propQueue);
-    _addProperty(propResource);
-    _addProperty(propStation);
+    _addSimulationControl(propExpression);
+    _addSimulationControl(propQueue);
+    _addSimulationControl(propResource);
+    _addSimulationControl(propStation);
 }
 
 PickableStationItem::PickableStationItem(Model* model, std::string stationName, std::string expression) {
@@ -121,11 +121,10 @@ void PickableStationItem::setStation(Station* _station) {
     this->_station = _station;
 }
 
-void PickableStationItem::_addProperty(SimulationControl* property) {
-    _properties->insert(property);
+void PickableStationItem::_addSimulationControl(SimulationControl* control) {
+    _simulationControls->insert(control);
 }
 
-List<SimulationControl*>* PickableStationItem::getProperties() const {
-    return _properties;
+List<SimulationControl*>* PickableStationItem::getSimulationControls() const {
+    return _simulationControls;
 }
-

@@ -38,8 +38,8 @@ public:
     void setStation(Station* _station);
 
     std::string getName();
-    void _addProperty(SimulationControl* property);
-    List<SimulationControl*>* getProperties() const;
+    void _addSimulationControl(SimulationControl* control);
+    List<SimulationControl*>* getSimulationControls() const;
 
     std::string getTypeDC() {return _typeDC;};
 private:
@@ -51,8 +51,7 @@ private:
     std::string _stationName = "";
 
     std::string _typeDC = Util::TypeOf<Station>();
-    List<SimulationControl*>* _properties = new List<SimulationControl*>();
+    List<SimulationControl*>* _simulationControls = new List<SimulationControl*>();
 };
 
 #endif /* PICKABLESTATIONITEM_H */
-

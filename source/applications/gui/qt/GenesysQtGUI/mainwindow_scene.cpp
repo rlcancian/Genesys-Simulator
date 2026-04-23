@@ -51,8 +51,7 @@ void MainWindow::_onSceneWheelOutEvent() {
  */
 void MainWindow::_onSceneGraphicalModelEvent(const GraphicalModelEvent& /*event*/) {
     // Any structural graphical event changes the persisted .gui representation.
-    _graphicalModelHasChanged = true;
-    _actualizeTabPanes();
+    setGraphicalModelHasChanged(true);
 }
 
 //-----------------------------------------
@@ -74,7 +73,7 @@ void MainWindow::sceneChanged(const QList<QRectF> &region) {
     ui->actionEditUndo->setEnabled(canUndo);
     ui->actionEditRedo->setEnabled(canRedo);
 
-    _textModelHasChanged = canUndo;
+    _actualizeModelTextHasChanged(canUndo);
 
     ui->graphicsView->scene()->update();
 
@@ -156,6 +155,7 @@ void MainWindow::sceneSelectionChanged() {
         qInfo() << "[MainWindow] sceneSelectionChanged observed active post-commit pipeline; selection sync will be deferred";
     }
     _propertyEditorController->sceneSelectionChanged();
+    _actualizeActions();
     qInfo() << "[MainWindow] sceneSelectionChanged exit";
 }
 

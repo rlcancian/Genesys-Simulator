@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1032</width>
-    <height>777</height>
+    <width>1124</width>
+    <height>695</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -719,7 +719,7 @@
       <item>
        <widget class="QSlider" name="horizontalSlider_ZoomGraphical">
         <property name="minimum">
-         <number>1</number>
+         <number>0</number>
         </property>
         <property name="maximum">
          <number>1000</number>
@@ -845,7 +845,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1032</width>
+     <width>1124</width>
      <height>22</height>
     </rect>
    </property>
@@ -877,6 +877,8 @@
     <addaction name="separator"/>
     <addaction name="actionSimulationPause"/>
     <addaction name="actionSimulationResume"/>
+    <addaction name="separator"/>
+    <addaction name="actionAnimation"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -2325,6 +2327,17 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="text">
     <string>Recursive Elements</string>
+   </property>
+  </action>
+  <action name="actionAnimation">
+   <property name="checkable">
+    <bool>true</bool>
+   </property>
+   <property name="checked">
+    <bool>true</bool>
+   </property>
+   <property name="text">
+    <string>Animation</string>
    </property>
   </action>
  </widget>

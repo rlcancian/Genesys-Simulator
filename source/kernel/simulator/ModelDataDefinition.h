@@ -104,19 +104,12 @@ public:
 	 */
 	void setModelLevel(unsigned int _modelLevel);
 	/*!
-	 * \brief getProperties
+	 * \brief getSimulationControls
 	 * \return
 	 *
 	 * Preferred API for writable controls owned by this model data definition.
 	 */
 	List<SimulationControl*>* getSimulationControls() const;
-	/*!
-	 * \brief getProperties
-	 * \return
-	 *
-	 * Legacy compatibility wrapper that delegates to getSimulationControls().
-	 */
-	List<SimulationControl*>* getProperties() const;
 	TraceManager::Level getTraceLevelSpecific() const;
 	void defineTraceLevelSpecific(TraceManager::Level traceLevelspecific, bool traceLevelSpecificEnabled = true);
 	bool isTraceLevelSpecificEnabled() const;
@@ -134,6 +127,8 @@ public: // public static methods
 	static bool Check(ModelDataDefinition* modeldatum, std::string& errorMessage);
 	/*! This class method is responsible for invoking the protected method _check() of the instance modeldatum, which creates any internal ModelDataDefinition (such as internelElements) or even other external needed ModelDatas, such as attributes or variables */
 	static void CreateInternalData(ModelDataDefinition* modeldatum);
+	/*! Materializes related data and runs local checks for this modeldatum in a single call. */
+	static bool CreateRelatedDataElements(ModelDataDefinition* modeldatum, std::string& errorMessage);
 	/* This class methood is responsible for invoking the protected method _initBetweenReplication(), which clears all statistics, attributes, counters and other stuff before starting a new repliction */
 	static void InitBetweenReplications(ModelDataDefinition* modeldatum);
 	//static PluginInformation* GetPluginInformation();
@@ -172,8 +167,6 @@ protected: //! could be overriden by derived classes
 	virtual void _createInternalAndAttachedData();
 	/*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
 	virtual void _addSimulationControl(SimulationControl* control);
-	// Legacy compatibility wrapper that delegates to _addSimulationControl().
-	virtual void _addProperty(SimulationControl* property);
 	//virtual void _addSimulationResponse(SimulationControl* response);
 
 private:

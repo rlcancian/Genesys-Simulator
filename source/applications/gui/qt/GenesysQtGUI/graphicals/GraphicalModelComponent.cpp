@@ -210,6 +210,12 @@ QColor GraphicalModelComponent::getColor() const {
 	return _color;
 }
 
+void GraphicalModelComponent::setColor(const QColor& color) {
+	_color = color;
+	_color.setAlpha(TraitsGUI<GModelComponent>::opacity);
+	update();
+}
+
 qreal GraphicalModelComponent::getHeight() const {
 	return _height;
 }

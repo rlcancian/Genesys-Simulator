@@ -34,7 +34,7 @@ Attribute::Attribute(Model* model, std::string name) : ModelDataDefinition(model
 				std::bind(&Attribute::setInitialValue, this, std::placeholders::_1, ""),
 				Util::TypeOf<Attribute>(), getName(), "InitialValue", "");
 		_parentModel->getControls()->insert(propInitialValue);
-		_addProperty(propInitialValue);
+		_addSimulationControl(propInitialValue);
 	}
 }
 
