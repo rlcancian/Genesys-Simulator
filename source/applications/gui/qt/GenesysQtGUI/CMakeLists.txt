@@ -1,8 +1,8 @@
-find_package(Qt6 QUIET COMPONENTS Core Gui Widgets PrintSupport)
+find_package(Qt6 QUIET COMPONENTS Core Gui Widgets PrintSupport Network)
 if(Qt6_FOUND)
     set(GENESYS_QT_PACKAGE Qt6)
 else()
-    find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport)
+    find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets PrintSupport Network)
     set(GENESYS_QT_PACKAGE Qt5)
 endif()
 
@@ -48,6 +48,7 @@ target_link_libraries(genesys_qt_gui_application
         ${GENESYS_QT_PACKAGE}::Gui
         ${GENESYS_QT_PACKAGE}::Widgets
         ${GENESYS_QT_PACKAGE}::PrintSupport
+        ${GENESYS_QT_PACKAGE}::Network
         "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_tools>"
 )
 
