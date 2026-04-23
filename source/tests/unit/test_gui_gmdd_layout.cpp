@@ -2,6 +2,8 @@
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
+#include "controllers/PropertyEditorController.h"
+#include "propertyeditor/ObjectPropertyBrowser.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
 
@@ -251,6 +253,72 @@ TEST(GuiGmddLayout, SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRow
         sharedQueueAGmdd,
         sharedQueueBGmdd
     }));
+}
+
+TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsEditable) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue* queue = new Queue(model, "Queue_PropertyEditor");
+    Seize* seize = new Seize(model, "Seize_PropertyEditor");
+    ASSERT_NE(queue, nullptr);
+    ASSERT_NE(seize, nullptr);
+    seize->setQueueableItem(new QueueableItem(queue));
+    ModelDataDefinition::CreateInternalData(seize);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setShowEditableDataDefinitions(true);
+    scene->setShowStatisticsDataDefinitions(true);
+    scene->setShowSharedDataDefinitions(true);
+    scene->setShowRecursiveDataDefinitions(false);
+
+    Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
+    ASSERT_NE(seizePlugin, nullptr);
+    auto* graphicalSeize = new GraphicalModelComponent(
+        seizePlugin,
+        seize,
+        QPointF(600.0, 600.0),
+        QColor(105, 105, 105));
+    scene->addItem(graphicalSeize);
+
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+
+    GraphicalModelDataDefinition* queueGmdd = findGraphicalDataDefinition(*scene, queue);
+    ASSERT_NE(queueGmdd, nullptr);
+    ASSERT_TRUE(queueGmdd->isEditableInPropertyEditor());
+
+    ObjectPropertyBrowser propertyBrowser;
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    PropertyEditorController controller(
+        &propertyBrowser,
+        &graphicsView,
+        &propertyEditor,
+        &propertyList,
+        &propertyEditorUi,
+        &propertyCombo,
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {});
+
+    queueGmdd->setSelected(true);
+    controller.sceneSelectionChanged();
+
+    EXPECT_TRUE(queueGmdd->isEditableInPropertyEditor());
 }
 
 TEST(GuiGmddLayout, RecursiveDataDefinitionExpansionShowsDataDefinitionsLinkedToDataDefinitions) {
