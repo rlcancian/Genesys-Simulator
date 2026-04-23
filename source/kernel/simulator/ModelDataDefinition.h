@@ -127,6 +127,8 @@ public: // public static methods
 	static bool Check(ModelDataDefinition* modeldatum, std::string& errorMessage);
 	/*! This class method is responsible for invoking the protected method _check() of the instance modeldatum, which creates any internal ModelDataDefinition (such as internelElements) or even other external needed ModelDatas, such as attributes or variables */
 	static void CreateInternalData(ModelDataDefinition* modeldatum);
+	/*! Materializes related data and runs local checks for this modeldatum in a single call. */
+	static bool CreateRelatedDataElements(ModelDataDefinition* modeldatum, std::string& errorMessage);
 	/* This class methood is responsible for invoking the protected method _initBetweenReplication(), which clears all statistics, attributes, counters and other stuff before starting a new repliction */
 	static void InitBetweenReplications(ModelDataDefinition* modeldatum);
 	//static PluginInformation* GetPluginInformation();

@@ -127,7 +127,7 @@ void DialogSystemPreferences::browseSpecificModelFile() {
         this,
         tr("Select startup model"),
         initialDirectory,
-        tr("Genesys Model (*.gen);;Genesys Graphical User Interface (*.gui);;XML Files (*.xml);;JSON Files (*.json);;C++ Files (*.cpp)"),
+        tr("Graphical Genesys Model (*.gui);;Genesys Model (*.gen);;XML Files (*.xml);;JSON Files (*.json);;C++ Files (*.cpp)"),
         nullptr,
         QFileDialog::DontUseNativeDialog);
     if (!fileName.isEmpty()) {

@@ -107,6 +107,7 @@
 #include <QTabBar>
 #include <QTabWidget>
 #include <QTimer>
+#include <QToolBar>
 #include <QVBoxLayout>
 
 namespace {
@@ -463,13 +464,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     addToolBar(Qt::TopToolBarArea, ui->toolBarGraphicalModel);
     //addToolBar(Qt::LeftToolBarArea, ui->toolBarAnimate);
     addToolBar(Qt::TopToolBarArea, ui->toolBarAbout);
+    for (QToolBar* toolbar : findChildren<QToolBar*>()) {
+        toolbar->setAllowedAreas(Qt::TopToolBarArea);
+        toolbar->setFloatable(false);
+    }
     //
     // graphicsView
     _initModelGraphicsView();
     // Initialize the Phase 4 trace controller after trace output widgets are available.
     _traceConsoleController = std::make_unique<TraceConsoleController>(ui->textEdit_Console,
                                                                         ui->textEdit_Simulation,
-                                                                        ui->textEdit_Reports);
+                                                                        ui->textEdit_Reports,
+                                                                        [this]() {
+                                                                            return ui == nullptr
+                                                                                   || ui->actionAnimation == nullptr
+                                                                                   || ui->actionAnimation->isChecked();
+                                                                        });
     // Initialize the Phase 5 plugin-catalog controller after simulator and plugin-tree dependencies are ready.
     _pluginCatalogController = std::make_unique<PluginCatalogController>(simulator,
                                                                          ui->treeWidget_Plugins,
@@ -935,7 +945,7 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
         QString selectedFileName = QFileDialog::getSaveFileName(this,
                                                                 QObject::tr("Save Model"),
                                                                 baseFileName,
-                                                                QObject::tr("Genesys Model (*.gen)"),
+                                                                QObject::tr("Graphical Genesys Model (*.gui);;Genesys Model (*.gen)"),
                                                                 nullptr,
                                                                 QFileDialog::DontUseNativeDialog);
         if (selectedFileName.isEmpty()) {
@@ -945,6 +955,11 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
     }
 
     _insertCommandInConsole("save " + baseFileName.toStdString());
+
+    if (!_setSimulationModelBasedOnText()) {
+        QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
+        return false;
+    }
 
     const QString textFilename = baseFileName + ".gen";
     QFile saveFile(textFilename);
@@ -975,11 +990,6 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
     _textModelHasChanged = false;
     _graphicalModelHasChanged = false;
     model->setHasChanged(false);
-
-    if (!_setSimulationModelBasedOnText()) {
-        QMessageBox::warning(this, "Save Model", "Model was saved, but the simulation model could not be synchronized.");
-        return false;
-    }
 
     SystemPreferences::pushRecentModelFile(graphicalFilename.toStdString());
     SystemPreferences::save();
@@ -1035,11 +1045,18 @@ void MainWindow::_clearModelGraphicsViewForClose(ModelGraphicsView* graphicsView
         return;
     }
     ModelGraphicsScene* scene = graphicsView->getScene();
+    scene->setConnectionGeometryUpdatesBlocked(true);
     scene->grid()->clear();
     if (scene->getUndoStack() != nullptr) {
         scene->getUndoStack()->clear();
     }
     scene->clearAnimationsQueue();
+    // Always delete connections while ports/components are still alive.
+    scene->clearGraphicalDiagramConnections();
+    scene->clearGraphicalModelConnections();
+    scene->clearAnimations();
+    scene->clear();
+    // Reset auxiliary containers after scene teardown to avoid stale pointers.
     scene->getGraphicalModelComponents()->clear();
     scene->getGraphicalConnections()->clear();
     scene->getGraphicalModelDataDefinitions()->clear();
@@ -1048,9 +1065,11 @@ void MainWindow::_clearModelGraphicsViewForClose(ModelGraphicsView* graphicsView
     scene->getAllConnections()->clear();
     scene->getAllDataDefinitions()->clear();
     scene->getAllGraphicalDiagramsConnections()->clear();
-    scene->clearAnimations();
-    scene->clear();
-    graphicsView->clear();
+    scene->getGraphicalGeometries()->clear();
+    scene->getGraphicalAnimations()->clear();
+    scene->getGraphicalEntities()->clear();
+    scene->getGraphicalGroups()->clear();
+    scene->setConnectionGeometryUpdatesBlocked(false);
 }
 
 bool MainWindow::_closeModel(Model* model) {
@@ -1476,6 +1495,7 @@ void MainWindow::_rebuildViewDependentControllers() {
         ui->textEdit_Reports,
         ui->tabWidgetCentral,
         ui->actionActivateGraphicalSimulation,
+        ui->actionAnimation,
         &_modelCheked,
         CONST.TabCentralReportsIndex,
         SimulationEventController::Callbacks{
@@ -1683,7 +1703,9 @@ void::MainWindow::saveItemForCopy(QList<GraphicalModelComponent*> * gmcList, QLi
 
 
 void MainWindow::_actualizeActions() {
-    bool opened = simulator->getModelManager()->current() != nullptr;
+    const bool opened = simulator != nullptr
+                        && simulator->getModelManager() != nullptr
+                        && simulator->getModelManager()->current() != nullptr;
     bool running = false;
     bool paused = false;
     bool canCutCopyDelete = false;
@@ -1761,11 +1783,16 @@ void MainWindow::_actualizeActions() {
     // Keep simulation structural controls locked while simulation remains active.
     ui->actionSimulationConfigure->setEnabled(opened && !simulationInteractionLocked);
     ui->actionSimulationStart->setEnabled(opened && !simulationInteractionLocked);
-    ui->actionSimulationStep->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionSimulationStep->setEnabled((opened && !simulationInteractionLocked) || (opened && paused));
     ui->actionSimulationStop->setEnabled(opened && (running || paused));
     ui->actionSimulationPause->setEnabled(opened && running);
     ui->actionSimulationResume->setEnabled(opened && paused);
-    ui->actionActivateGraphicalSimulation->setEnabled(opened);
+    const bool animationEnabled = ui->actionAnimation == nullptr || ui->actionAnimation->isChecked();
+    if (!animationEnabled && ui->actionActivateGraphicalSimulation->isChecked()) {
+        ui->actionActivateGraphicalSimulation->setChecked(false);
+    }
+    ui->actionAnimation->setEnabled(opened);
+    ui->actionActivateGraphicalSimulation->setEnabled(opened && animationEnabled);
     ui->actionSimulatorsPluginManager->setEnabled(!simulationInteractionLocked);
     ui->actionSimulatorPreferences->setEnabled(!simulationInteractionLocked);
     // Keep plugins tree disabled while simulation interaction is locked.
@@ -1803,7 +1830,7 @@ void MainWindow::_actualizeActions() {
     }
 
     //slider animation speed
-    ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused);
+    ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused && animationEnabled);
 
     ui->actionSelectAll->setEnabled(opened && !simulationInteractionLocked);
 
@@ -2048,6 +2075,9 @@ void MainWindow::_actualizeReportsResultsTable() {
 
 
 void MainWindow::_actualizeSimulationEvents(SimulationEvent * re) {
+    if (ui->tabWidgetCentral->currentIndex()!= CONST.TabCentralSimulationIndex || ui->tabWidgetSimulation->currentIndex() != CONST.TabSimulationEventsIndex) { // actualize only if visible
+        return;
+    }
     int row = ui->tableWidget_Simulation_Event->rowCount();
     ui->tableWidget_Simulation_Event->setRowCount(row + 1);
     QTableWidgetItem * newItem;
@@ -2061,7 +2091,9 @@ void MainWindow::_actualizeSimulationEvents(SimulationEvent * re) {
 }
 
 void MainWindow::_actualizeDebugVariables(bool force) {
-    QCoreApplication::processEvents();
+    if (ui->tabWidgetCentral->currentIndex()!= CONST.TabCentralSimulationIndex || ui->tabWidgetSimulation->currentIndex() != CONST.TabSimulationVariablesIndex) { // actualize only if visible
+        return;
+    }
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationVariablesIndex) {
         ui->tableWidget_Variables->setRowCount(0);
         List<ModelDataDefinition*>* variables = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Variable>());
@@ -2079,10 +2111,13 @@ void MainWindow::_actualizeDebugVariables(bool force) {
             ui->tableWidget_Variables->setItem(row, 2, newItem);
         }
     }
+    QCoreApplication::processEvents();
 }
 
 void MainWindow::_actualizeDebugEntities(bool force) {
-    QCoreApplication::processEvents();
+    if (ui->tabWidgetCentral->currentIndex()!= CONST.TabCentralSimulationIndex || ui->tabWidgetSimulation->currentIndex() != CONST.TabSimulationEntitiesIndex) { // actualize only if visible
+        return;
+    }
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationEntitiesIndex) {
         List<ModelDataDefinition*>* entities = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
         List<ModelDataDefinition*>* attributes = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Attribute>());
@@ -2121,6 +2156,9 @@ void MainWindow::_actualizeDebugEntities(bool force) {
 }
 
 void MainWindow::_actualizeDebugBreakpoints(bool force) {
+    if (ui->tabWidgetCentral->currentIndex()!= CONST.TabCentralSimulationIndex || ui->tabWidgetSimulation->currentIndex() != CONST.TabSimulationBreakpointsIndex) { // actualize only if visible
+        return;
+    }
     QCoreApplication::processEvents();
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationBreakpointsIndex) {
         ui->tableWidget_Breakpoints->setRowCount(0);
@@ -2341,8 +2379,12 @@ void MainWindow::_initUiForNewModel(Model* m) {
         _modelfilename = _modelFilenames[m];
     }
     _actualizeUndo();
-    ui->graphicsView->getScene()->showGrid(); //@TODO: Bad place to be
-    ui->graphicsView->centerOn(TraitsGUI<GView>::sceneCenter, TraitsGUI<GView>::sceneCenter);
+    const bool loadingPersistedModel = (m != nullptr && _loaded);
+    if (!loadingPersistedModel) {
+        // For new/empty models keep default view bootstrap behavior.
+        ui->graphicsView->getScene()->setGridVisible(ui->actionShowGrid->isChecked());
+        ui->graphicsView->centerOn(TraitsGUI<GView>::sceneCenter, TraitsGUI<GView>::sceneCenter);
+    }
     ui->textEdit_Simulation->clear();
     ui->textEdit_Reports->clear();
     ui->textEdit_Console->moveCursor(QTextCursor::End);

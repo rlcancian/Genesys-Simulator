@@ -5,6 +5,29 @@
 DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphicsScene *scene, QUndoCommand *parent)
     : QUndoCommand(parent), _myComponentItems(new QList<ComponentItem>()), _myConnectionItems(new QList<GraphicalConnection *>()), _myDrawingItems(new QList<DrawingItem>()), _myGroupItems(new QList<GroupItem>()), _myDataDefinitionItems(new QList<DataDefinitionItem>()), _myDataDefinitionRelationItems(new QList<DataDefinitionRelationItem>()), _myDataDefinitions(new QList<ModelDataDefinition *>()), _myGraphicsScene(scene) {
 
+    const auto captureComponentConnections = [](GraphicalModelComponent* component, ComponentItem* componentItem) {
+        if (component == nullptr || componentItem == nullptr) {
+            return;
+        }
+
+        if (!component->getGraphicalInputPorts().empty()) {
+            GraphicalComponentPort* inputPort = component->getGraphicalInputPorts().at(0);
+            if (inputPort != nullptr && inputPort->getConnections() != nullptr) {
+                for (int j = 0; j < inputPort->getConnections()->size(); ++j) {
+                    componentItem->inputConnections.append(inputPort->getConnections()->at(j));
+                }
+            }
+        }
+
+        for (int j = 0; j < component->getGraphicalOutputPorts().size(); ++j) {
+            GraphicalComponentPort* port = component->getGraphicalOutputPorts().at(j);
+            if (port == nullptr || port->getConnections() == nullptr || port->getConnections()->empty()) {
+                continue;
+            }
+            componentItem->outputConnections.append(port->getConnections()->at(0));
+        }
+    };
+
     // filtra cada tipo de item possível em sua respectiva lista
     for (QGraphicsItem *item : items) {
         const bool isDataDefinition = dynamic_cast<GraphicalModelDataDefinition *>(item) != nullptr;
@@ -28,20 +51,7 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
 
             componentItem.graphicalComponent = component;
             componentItem.initialPosition = component->pos();
-
-
-            if (!component->getGraphicalInputPorts().empty() && !component->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
-                for (int j = 0; j < component->getGraphicalInputPorts().at(0)->getConnections()->size(); ++j) {
-                    componentItem.inputConnections.append(component->getGraphicalInputPorts().at(0)->getConnections()->at(j));
-                }
-            }
-
-            for (int j = 0; j < component->getGraphicalOutputPorts().size(); ++j) {
-                GraphicalComponentPort *port = component->getGraphicalOutputPorts().at(j);
-
-                if (!port->getConnections()->empty())
-                    componentItem.outputConnections.append(port->getConnections()->at(0));
-            }
+            captureComponentConnections(component, &componentItem);
 
             _myComponentItems->append(componentItem);
         } else if (GraphicalConnection *connection = dynamic_cast<GraphicalConnection *>(item)) {
@@ -62,19 +72,7 @@ DeleteUndoCommand::DeleteUndoCommand(QList<QGraphicsItem *> items, ModelGraphics
 
                 componentItem.graphicalComponent = component;
                 componentItem.initialPosition = component->pos();
-
-                if (!component->getGraphicalInputPorts().empty() && !component->getGraphicalInputPorts().at(0)->getConnections()->empty()) {
-                    for (int j = 0; j < component->getGraphicalInputPorts().at(0)->getConnections()->size(); ++j) {
-                        componentItem.inputConnections.append(component->getGraphicalInputPorts().at(0)->getConnections()->at(j));
-                    }
-                }
-
-                for (int j = 0; j < component->getGraphicalOutputPorts().size(); ++j) {
-                    GraphicalComponentPort *port = component->getGraphicalOutputPorts().at(j);
-
-                    if (!port->getConnections()->empty())
-                        componentItem.outputConnections.append(port->getConnections()->at(0));
-                }
+                captureComponentConnections(component, &componentItem);
 
                 groupItem.myComponentItems.append(componentItem);
             }
@@ -290,8 +288,11 @@ void DeleteUndoCommand::redo() {
     // remove as conexões
     for (int i = 0; i < _myConnectionItems->size(); ++i) {
         GraphicalConnection *connection = _myConnectionItems->at(i);
-        GraphicalModelComponent *source = _myGraphicsScene->findGraphicalModelComponent(connection->getSource()->component->getId());
-        GraphicalModelComponent *destination = _myGraphicsScene->findGraphicalModelComponent(connection->getDestination()->component->getId());
+        GraphicalModelComponent *source = _myGraphicsScene->resolveSourceComponent(connection);
+        GraphicalModelComponent *destination = _myGraphicsScene->resolveDestinationComponent(connection);
+        if (source == nullptr || destination == nullptr) {
+            continue;
+        }
 
         // verifica se a conexão ainda existe, pois ela pode ja ter sido removida caso fizesse parte de um componente que foi removido
         if (_myGraphicsScene->getGraphicalConnections()->contains(connection)) {

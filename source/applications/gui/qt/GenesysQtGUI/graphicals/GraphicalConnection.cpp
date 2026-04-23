@@ -43,9 +43,8 @@ GraphicalConnection::GraphicalConnection(const GraphicalConnection& orig) {
 
 GraphicalConnection::~GraphicalConnection() {
 	Connection* sourceConnection = _sourceConnection;
-	Connection* destinationConnection = _destinationConnection;
-	GraphicalComponentPort* sourceGraphicalPort = _sourceGraphicalPort;
-	GraphicalComponentPort* destinationGraphicalPort = _destinationGraphicalPort;
+	GraphicalComponentPort* sourceGraphicalPort = _sourceGraphicalPort.data();
+	GraphicalComponentPort* destinationGraphicalPort = _destinationGraphicalPort.data();
 
 	_sourceConnection = nullptr;
 	_destinationConnection = nullptr;
@@ -59,28 +58,9 @@ GraphicalConnection::~GraphicalConnection() {
 		destinationGraphicalPort->removeGraphicalConnection(this);
 	}
 
-	// Destination connection may already be destroyed by ConnectionManager::remove;
-	// avoid double free during scene/model teardown.
-	if (destinationConnection != nullptr) {
-		ConnectionManager* manager = nullptr;
-		if (sourceConnection != nullptr && sourceConnection->component != nullptr) {
-			manager = sourceConnection->component->getConnectionManager();
-		}
-		bool isManagedConnection = false;
-		if (manager != nullptr && manager->connections() != nullptr) {
-			for (const std::pair<const unsigned int, Connection*>& connectionPair : *manager->connections()) {
-				if (connectionPair.second == destinationConnection) {
-					isManagedConnection = true;
-					break;
-				}
-			}
-		}
-		if (isManagedConnection) {
-			manager->remove(destinationConnection);
-		} else {
-			delete destinationConnection;
-		}
-	}
+	// Destination connection lifetime is coordinated by ConnectionManager/removeAtPort in
+	// most teardown paths. Deleting it here can double-free during close/reload sequences.
+	// Keep teardown crash-safe by not reclaiming it from this destructor.
 
 	delete sourceConnection;
 }
@@ -316,8 +296,16 @@ unsigned int GraphicalConnection::getPortDestinationConnection() const {
     return _portDestinationConnection;
 }
 GraphicalComponentPort* GraphicalConnection::getSourceGraphicalPort() {
-	return _sourceGraphicalPort;
+	return _sourceGraphicalPort.data();
 }
 GraphicalComponentPort* GraphicalConnection::getDestinationGraphicalPort(){
-    return _destinationGraphicalPort;
+    return _destinationGraphicalPort.data();
+}
+
+GraphicalModelComponent* GraphicalConnection::getSourceGraphicalComponent() const {
+	return _sourceGraphicalPort != nullptr ? _sourceGraphicalPort->graphicalComponent() : nullptr;
+}
+
+GraphicalModelComponent* GraphicalConnection::getDestinationGraphicalComponent() const {
+	return _destinationGraphicalPort != nullptr ? _destinationGraphicalPort->graphicalComponent() : nullptr;
 }

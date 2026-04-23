@@ -5,21 +5,29 @@
 #include <QTextCursor>
 #include <QTextEdit>
 
-#include <iostream>
 #include <string>
+#include <utility>
 
 // Build the trace controller with narrow widget dependencies.
 TraceConsoleController::TraceConsoleController(QTextEdit* console,
                                                QTextEdit* simulationText,
-                                               QTextEdit* reportsText)
+                                               QTextEdit* reportsText,
+                                               std::function<bool()> traceWidgetsEnabled)
     : _console(console),
       _simulationText(simulationText),
-      _reportsText(reportsText) {
+      _reportsText(reportsText),
+      _traceWidgetsEnabled(std::move(traceWidgetsEnabled)) {
+}
+
+bool TraceConsoleController::shouldRenderTraceWidgets() const {
+    return !_traceWidgetsEnabled || _traceWidgetsEnabled();
 }
 
 // Preserve legacy console trace routing, coloring and UI refresh behavior.
 void TraceConsoleController::simulatorTraceHandler(TraceEvent e) const {
-    std::cout << e.getText() << std::endl;
+    if (!shouldRenderTraceWidgets() || _console == nullptr) {
+        return;
+    }
     if (e.getTracelevel() == TraceManager::Level::L1_errorFatal) {
         _console->setTextColor(QColor::fromRgb(255, 0, 0));
     } else if (e.getTracelevel() == TraceManager::Level::L2_results) {
@@ -39,7 +47,9 @@ void TraceConsoleController::simulatorTraceHandler(TraceEvent e) const {
 
 // Preserve legacy error-trace rendering in the console output.
 void TraceConsoleController::simulatorTraceErrorHandler(TraceErrorEvent e) const {
-    std::cout << e.getText() << std::endl;
+    if (!shouldRenderTraceWidgets() || _console == nullptr) {
+        return;
+    }
     _console->setTextColor(QColor::fromRgb(255, 0, 0));
     _console->append(QString::fromStdString(e.getText()));
     QCoreApplication::processEvents();
@@ -47,7 +57,9 @@ void TraceConsoleController::simulatorTraceErrorHandler(TraceErrorEvent e) const
 
 // Preserve legacy simulation-trace rendering and coloring behavior.
 void TraceConsoleController::simulatorTraceSimulationHandler(TraceSimulationEvent e) const {
-    std::cout << e.getText() << std::endl;
+    if (!shouldRenderTraceWidgets() || _simulationText == nullptr) {
+        return;
+    }
     if (e.getText().find("Event {time=") != std::string::npos) {
         _simulationText->setTextColor(QColor::fromRgb(0, 0, 128));
     } else {
@@ -60,7 +72,9 @@ void TraceConsoleController::simulatorTraceSimulationHandler(TraceSimulationEven
 
 // Preserve legacy reports-trace routing and UI refresh behavior.
 void TraceConsoleController::simulatorTraceReportsHandler(TraceEvent e) const {
-    std::cout << e.getText() << std::endl;
+    if (!shouldRenderTraceWidgets() || _reportsText == nullptr) {
+        return;
+    }
     _reportsText->append(QString::fromStdString(e.getText()));
     QCoreApplication::processEvents();
 }
