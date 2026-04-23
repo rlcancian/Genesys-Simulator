@@ -427,3 +427,12 @@ void BioReaction::setReversible(bool reversible) {
 bool BioReaction::isReversible() const {
 	return _reversible;
 }
+
+void BioReaction::_createReportStatisticsDataDefinitions() {
+}
+
+void BioReaction::_createEditableDataDefinitions() {
+}
+
+void BioReaction::_createOthersDataDefinitions() {
+}

@@ -102,3 +102,12 @@ PluginInformation* Separate::GetPluginInformation() {
 	// ...
 	return info;
 }
+
+void Separate::_createReportStatisticsDataDefinitions() {
+}
+
+void Separate::_createEditableDataDefinitions() {
+}
+
+void Separate::_createOthersDataDefinitions() {
+}

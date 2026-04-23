@@ -16,6 +16,23 @@
 
 //using namespace GenesysKernel;
 
+std::string TraceManager::convertEnumToStr(TraceManager::Level level) {
+	switch (level) {
+		case TraceManager::Level::L0_noTraces: return "No Traces";
+		case TraceManager::Level::L1_errorFatal: return "Error Fatal";
+		case TraceManager::Level::L2_results: return "Results";
+		case TraceManager::Level::L3_errorRecover: return "Error Recover";
+		case TraceManager::Level::L4_warning: return "Warning";
+		case TraceManager::Level::L5_event: return "Event";
+		case TraceManager::Level::L6_arrival: return "Arrival";
+		case TraceManager::Level::L7_internal: return "Internal";
+		case TraceManager::Level::L8_detailed: return "Detailed";
+		case TraceManager::Level::L9_mostDetailed: return "Most Detailed";
+		case TraceManager::Level::num_elements: return "";
+	}
+	return "";
+}
+
 TraceManager::TraceManager(Simulator* simulator) {//(Model* model) {
 	_simulator = simulator;
     _traceLevel = TraitsKernel<Simulator>::traceLevel; // inherits the kernel trace leval

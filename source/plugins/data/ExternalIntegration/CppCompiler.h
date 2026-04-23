@@ -100,6 +100,17 @@ protected: // could be overriden
 protected:
 	CompilationResult _invokeCompiler(std::string command);  //system(command.c_str());
 	std::string _read(std::string filename);
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private:
 
 	const struct DEFAULT_VALUES {

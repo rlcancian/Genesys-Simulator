@@ -49,12 +49,19 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 		std::bind(&ModelDataDefinition::isReportStatistics, this),
 		std::bind(&ModelDataDefinition::setReportStatistics, this, std::placeholders::_1),
 		Util::TypeOf<ModelDataDefinition>(), getName(), "Report Statistics", "");
+	auto* propTraceLevel = new SimulationControlGenericEnum<TraceManager::Level, TraceManager>(
+		std::bind(&ModelDataDefinition::getTraceLevelSpecific, this),
+		std::bind(&ModelDataDefinition::setTraceLevelSpecific, this, std::placeholders::_1),
+		Util::TypeOf<ModelDataDefinition>(), getName(), "Trace Level", "",
+		false, false, true);
 
 	_parentModel->getControls()->insert(propName);
-
+	_parentModel->getControls()->insert(propReportStatistics);
+	_parentModel->getControls()->insert(propTraceLevel);
 	// setting properties
 	_addSimulationControl(propName);
 	_addSimulationControl(propReportStatistics);
+	_addSimulationControl(propTraceLevel);
 }
 
 bool ModelDataDefinition::hasChanged() const {
@@ -260,6 +267,55 @@ void ModelDataDefinition::_saveInstance(PersistenceRecord* fields, bool saveDefa
 	                  saveDefaultValues);
 }
 
+void ModelDataDefinition::_createReportStatisticsDataDefinitions() {
+}
+
+void ModelDataDefinition::_createEditableDataDefinitions() {
+}
+
+void ModelDataDefinition::_createOthersDataDefinitions() {
+}
+
+void ModelDataDefinition::_doCreateReportStatisticsDataDefinitions() {
+	if (!_reportStatistics) {
+		return;
+	}
+	try {
+		_createReportStatisticsDataDefinitions();
+	}
+	catch (const std::exception& e) {
+		traceError("Error creating report-statistics data definitions for " + getClassname() + " " + getName(), e);
+	}
+	catch (...) {
+		traceError("Unknown error creating report-statistics data definitions for " + getClassname() + " " +
+			getName());
+	}
+}
+
+void ModelDataDefinition::_doCreateEditableDataDefinitions() {
+	try {
+		_createEditableDataDefinitions();
+	}
+	catch (const std::exception& e) {
+		traceError("Error creating editable data definitions for " + getClassname() + " " + getName(), e);
+	}
+	catch (...) {
+		traceError("Unknown error creating editable data definitions for " + getClassname() + " " + getName());
+	}
+}
+
+void ModelDataDefinition::_doCreateOthersDataDefinitions() {
+	try {
+		_createOthersDataDefinitions();
+	}
+	catch (const std::exception& e) {
+		traceError("Error creating other data definitions for " + getClassname() + " " + getName(), e);
+	}
+	catch (...) {
+		traceError("Unknown error creating other data definitions for " + getClassname() + " " + getName());
+	}
+}
+
 bool ModelDataDefinition::_check(std::string& errorMessage) {
 	errorMessage += "";
 	return true; // if there is no ovveride, return true
@@ -453,6 +509,9 @@ bool ModelDataDefinition::CreateRelatedDataElements(ModelDataDefinition* modelda
 }
 
 void ModelDataDefinition::_createInternalAndAttachedData() {
+	_createReportStatisticsDataDefinitions();
+	_createOthersDataDefinitions();
+	_createEditableDataDefinitions();
 }
 
 void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
@@ -471,6 +530,10 @@ List<SimulationControl*>* ModelDataDefinition::getSimulationControls() const {
 
 TraceManager::Level ModelDataDefinition::getTraceLevelSpecific() const {
 	return _traceLevelSpecific;
+}
+
+void ModelDataDefinition::setTraceLevelSpecific(TraceManager::Level level) {
+	defineTraceLevelSpecific(level, true);
 }
 
 void ModelDataDefinition::defineTraceLevelSpecific(TraceManager::Level traceLevelSpecific,

@@ -77,6 +77,17 @@ protected:
 	/*! \brief Creates or updates the internal RSimulatorRunner. */
 	virtual void _createInternalAndAttachedData() override;
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private:
 	/*! \brief Creates the internal runner if it does not exist yet. */
 	void _ensureRunner();

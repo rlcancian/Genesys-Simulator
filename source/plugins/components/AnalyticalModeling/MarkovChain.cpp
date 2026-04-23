@@ -175,3 +175,12 @@ PluginInformation* MarkovChain::GetPluginInformation() {
 	return info;
 }
 
+
+void MarkovChain::_createReportStatisticsDataDefinitions() {
+}
+
+void MarkovChain::_createEditableDataDefinitions() {
+}
+
+void MarkovChain::_createOthersDataDefinitions() {
+}

@@ -300,3 +300,12 @@ void DefaultNode::_createInternalAndAttachedData() {
 void DefaultNode::_addSimulationControl(SimulationControl* property) {
 }
 */
+
+void DefaultNode::_createReportStatisticsDataDefinitions() {
+}
+
+void DefaultNode::_createEditableDataDefinitions() {
+}
+
+void DefaultNode::_createOthersDataDefinitions() {
+}

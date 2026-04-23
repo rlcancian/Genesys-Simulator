@@ -111,6 +111,17 @@ protected: //! virtual protected methods that could be overriden by derived clas
 	/*! This method is not used yet. It should be usefull for new UIs */
 	// virtual void _addSimulationControl(SimulationControl* property);
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private: //! new private user methods
 	// ...
 

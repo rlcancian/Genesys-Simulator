@@ -76,3 +76,12 @@ PluginInformation* DropOff::GetPluginInformation() {
 	return info;
 }
 
+
+void DropOff::_createReportStatisticsDataDefinitions() {
+}
+
+void DropOff::_createEditableDataDefinitions() {
+}
+
+void DropOff::_createOthersDataDefinitions() {
+}

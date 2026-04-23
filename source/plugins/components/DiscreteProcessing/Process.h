@@ -52,10 +52,19 @@ public:
 protected: // virtual
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 	// virtual void _initBetweenReplications();
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _createInternalAndAttachedData() override;
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
 private: // methods
 	void _adjustConnections();
 	void _ensureInternalComponents();

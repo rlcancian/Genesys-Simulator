@@ -93,6 +93,17 @@ protected: /// internal COMPONENTS (since it's a modal model / network) (Composi
 	//List<ModelDataDefinition*>* _expressionDataReferences = new List<ModelDataDefinition*>();
 
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private: /// internal DataElements (Composition)
 	// ...
 private: /// attached DataElements (Agrregation)

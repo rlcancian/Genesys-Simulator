@@ -307,3 +307,12 @@ void SequenceStep::setLabel(Label* _label) {
 Label* SequenceStep::getLabel() const {
 	return _label;
 }
+
+void Sequence::_createReportStatisticsDataDefinitions() {
+}
+
+void Sequence::_createEditableDataDefinitions() {
+}
+
+void Sequence::_createOthersDataDefinitions() {
+}

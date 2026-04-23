@@ -86,6 +86,17 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _createInternalAndAttachedData() override;
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private:
 	Resource* _getResourceFromSeizableItem(SeizableItem* seizable, Entity* entity);
 private:

@@ -158,3 +158,12 @@ bool Label::_check(std::string& errorMessage) {
 //void Label::_initBetweenReplications() {}
 
 //void Label::_createInternalAndAttachedData() {}
+
+void Label::_createReportStatisticsDataDefinitions() {
+}
+
+void Label::_createEditableDataDefinitions() {
+}
+
+void Label::_createOthersDataDefinitions() {
+}

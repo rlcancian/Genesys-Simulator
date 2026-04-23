@@ -139,3 +139,12 @@ void Clone::_createInternalAndAttachedData() {
 		}
 	}
 }
+
+void Clone::_createReportStatisticsDataDefinitions() {
+}
+
+void Clone::_createEditableDataDefinitions() {
+}
+
+void Clone::_createOthersDataDefinitions() {
+}

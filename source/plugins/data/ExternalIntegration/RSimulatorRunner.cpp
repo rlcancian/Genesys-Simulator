@@ -458,3 +458,12 @@ void RSimulatorRunner::setLastResponseFilename(std::string lastResponseFilename)
 std::string RSimulatorRunner::getLastResponseFilename() const {
 	return _lastResponseFilename;
 }
+
+void RSimulatorRunner::_createReportStatisticsDataDefinitions() {
+}
+
+void RSimulatorRunner::_createEditableDataDefinitions() {
+}
+
+void RSimulatorRunner::_createOthersDataDefinitions() {
+}

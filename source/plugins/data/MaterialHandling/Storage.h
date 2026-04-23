@@ -57,6 +57,17 @@ protected: // must be overriden
 protected: // could be overriden 
 	virtual bool _check(std::string& errorMessage) override;
 	virtual ParserChangesInformation* _getParserChangesInformation() override;
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private:
 
 	const struct DEFAULT_VALUES {

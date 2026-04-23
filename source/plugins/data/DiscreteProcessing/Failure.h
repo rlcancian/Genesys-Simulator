@@ -117,6 +117,17 @@ protected: // could be overriden .
 	//virtual void _createInternalAndAttachedData();
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private: // simulation internal event handlers
 	void _onFailureActiveEventHandler(void* resourcePtr);
 	void _onFailureFailEventHandler(void* resourcePtr);

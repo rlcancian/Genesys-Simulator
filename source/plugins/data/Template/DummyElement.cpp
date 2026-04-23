@@ -198,3 +198,12 @@ void DummyElementt::_createInternalAndAttachedData() {
 void DummyElementt::_addSimulationControl(SimulationControl* property) {
 }
 */
+
+void DummyElement::_createReportStatisticsDataDefinitions() {
+}
+
+void DummyElement::_createEditableDataDefinitions() {
+}
+
+void DummyElement::_createOthersDataDefinitions() {
+}

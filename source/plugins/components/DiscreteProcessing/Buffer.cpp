@@ -308,3 +308,12 @@ Entity* Buffer::_advance(Entity* enteringEntity) {
 	_buffer->push_back(enteringEntity);
 	return result;
 }
+
+void Buffer::_createReportStatisticsDataDefinitions() {
+}
+
+void Buffer::_createEditableDataDefinitions() {
+}
+
+void Buffer::_createOthersDataDefinitions() {
+}

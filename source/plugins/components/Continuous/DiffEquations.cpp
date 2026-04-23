@@ -295,3 +295,12 @@ void DiffEquations::_createInternalAndAttachedData() {
 void DiffEquations::_addSimulationControl(SimulationControl* property) {
 }
 */
+
+void DiffEquations::_createReportStatisticsDataDefinitions() {
+}
+
+void DiffEquations::_createEditableDataDefinitions() {
+}
+
+void DiffEquations::_createOthersDataDefinitions() {
+}

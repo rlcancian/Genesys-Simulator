@@ -260,3 +260,12 @@ PluginInformation* LSODE::GetPluginInformation() {
 	// ...
 	return info;
 }
+
+void LSODE::_createReportStatisticsDataDefinitions() {
+}
+
+void LSODE::_createEditableDataDefinitions() {
+}
+
+void LSODE::_createOthersDataDefinitions() {
+}

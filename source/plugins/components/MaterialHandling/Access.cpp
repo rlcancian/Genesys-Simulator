@@ -79,3 +79,12 @@ PluginInformation* Access::GetPluginInformation() {
 }
 
 
+
+void Access::_createReportStatisticsDataDefinitions() {
+}
+
+void Access::_createEditableDataDefinitions() {
+}
+
+void Access::_createOthersDataDefinitions() {
+}

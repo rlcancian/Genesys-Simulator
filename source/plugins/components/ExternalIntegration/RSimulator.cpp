@@ -288,3 +288,12 @@ void RSimulator::_syncRunnerConfiguration() {
 bool RSimulator::_isNonEmptyCommand(const std::string& command) const {
 	return !trimText(command).empty();
 }
+
+void RSimulator::_createReportStatisticsDataDefinitions() {
+}
+
+void RSimulator::_createEditableDataDefinitions() {
+}
+
+void RSimulator::_createOthersDataDefinitions() {
+}

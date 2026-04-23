@@ -9,11 +9,34 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/ModelGraphicsView.h"
 
+#include <QActionGroup>
 #include <QContextMenuEvent>
 #include <QGraphicsItemGroup>
 #include <QMenu>
 
 #include <utility>
+
+namespace {
+
+struct TraceLevelMenuEntry {
+    TraceManager::Level level;
+    const char* label;
+};
+
+constexpr TraceLevelMenuEntry kTraceLevelEntries[] = {
+    {TraceManager::Level::L0_noTraces, "L0_noTraces"},
+    {TraceManager::Level::L1_errorFatal, "L1_errorFatal"},
+    {TraceManager::Level::L2_results, "L2_results"},
+    {TraceManager::Level::L3_errorRecover, "L3_errorRecover"},
+    {TraceManager::Level::L4_warning, "L4_warning"},
+    {TraceManager::Level::L5_event, "L5_event"},
+    {TraceManager::Level::L6_arrival, "L6_arrival"},
+    {TraceManager::Level::L7_internal, "L7_internal"},
+    {TraceManager::Level::L8_detailed, "L8_detailed"},
+    {TraceManager::Level::L9_mostDetailed, "L9_mostDetailed"}
+};
+
+} // namespace
 
 GraphicalContextMenuController::GraphicalContextMenuController(ModelGraphicsView* graphicsView,
                                                                Ui::MainWindow* ui,
@@ -46,7 +69,7 @@ void GraphicalContextMenuController::handleGraphicsViewContextMenu(QContextMenuE
     if (contextKind == ContextKind::Background) {
         populateBackgroundMenu(&menu);
     } else {
-        populateItemMenu(&menu, contextKind);
+        populateItemMenu(&menu, contextKind, clickedItem);
     }
 
     if (!menu.actions().isEmpty()) {
@@ -129,6 +152,20 @@ GraphicalContextMenuController::ContextKind GraphicalContextMenuController::clas
     return ContextKind::GenericItem;
 }
 
+ModelDataDefinition* GraphicalContextMenuController::modelDataDefinitionFor(QGraphicsItem* item) const {
+    if (item == nullptr) {
+        return nullptr;
+    }
+
+    if (auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(item)) {
+        return graphicalComponent->getComponent();
+    }
+    if (auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
+        return graphicalDataDefinition->getDataDefinition();
+    }
+    return nullptr;
+}
+
 void GraphicalContextMenuController::populateBackgroundMenu(QMenu* menu) const {
     if (menu == nullptr) {
         return;
@@ -148,7 +185,7 @@ void GraphicalContextMenuController::populateBackgroundMenu(QMenu* menu) const {
     menu->addAction(_ui->actionViewConfigure);
 }
 
-void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind contextKind) const {
+void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind contextKind, QGraphicsItem* clickedItem) const {
     if (menu == nullptr) {
         return;
     }
@@ -159,6 +196,7 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
     switch (contextKind) {
         case ContextKind::SingleComponent:
             menu->addSeparator();
+            addTraceLevelMenu(menu, clickedItem);
             menu->addAction(_ui->actionGModelShowConnect);
             menu->addAction(_ui->actionGModelComponentBreakpoint);
             if (_openSubmodelAction != nullptr) {
@@ -170,8 +208,9 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
             break;
 
         case ContextKind::SingleDataDefinition:
+            menu->addSeparator();
+            addTraceLevelMenu(menu, clickedItem);
             if (_openSubmodelAction != nullptr) {
-                menu->addSeparator();
                 menu->addAction(_openSubmodelAction);
             }
             break;
@@ -238,6 +277,38 @@ void GraphicalContextMenuController::addZoomMenu(QMenu* menu) const {
     zoomMenu->addAction(_ui->actionZoom_In);
     zoomMenu->addAction(_ui->actionZoom_Out);
     zoomMenu->addAction(_ui->actionZoom_All);
+}
+
+void GraphicalContextMenuController::addTraceLevelMenu(QMenu* menu, QGraphicsItem* clickedItem) const {
+    if (menu == nullptr) {
+        return;
+    }
+
+    ModelDataDefinition* modelDataDefinition = modelDataDefinitionFor(clickedItem);
+    if (modelDataDefinition == nullptr) {
+        return;
+    }
+
+    // commented since Trace Level became a property (SistemControl) of every ModelDataDefinition
+    /*
+    QMenu* traceLevelMenu = menu->addMenu("Set Trace Level");
+    auto* actionGroup = new QActionGroup(traceLevelMenu);
+    actionGroup->setExclusive(true);
+
+    const bool specificEnabled = modelDataDefinition->isTraceLevelSpecificEnabled();
+    const TraceManager::Level activeLevel = modelDataDefinition->getTraceLevelSpecific();
+
+    for (const TraceLevelMenuEntry& entry : kTraceLevelEntries) {
+        QAction* action = traceLevelMenu->addAction(entry.label);
+        action->setCheckable(true);
+        action->setChecked(specificEnabled && activeLevel == entry.level);
+        actionGroup->addAction(action);
+
+        QObject::connect(action, &QAction::triggered, traceLevelMenu, [modelDataDefinition, level = entry.level]() {
+            modelDataDefinition->defineTraceLevelSpecific(level, true);
+        });
+    }
+    */
 }
 
 void GraphicalContextMenuController::addDrawMenu(QMenu* menu) const {

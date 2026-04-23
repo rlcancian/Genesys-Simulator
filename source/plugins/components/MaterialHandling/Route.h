@@ -90,8 +90,17 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected:
 	//virtual void _initBetweenReplications();
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _createInternalAndAttachedData() override;
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
 private:
 
 	const struct DEFAULT_VALUES {

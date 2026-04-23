@@ -323,3 +323,12 @@ ModelComponent* Release::LoadInstance(Model* model, PersistenceRecord *fields) {
 	return newComponent;
 
 }
+
+void Release::_createReportStatisticsDataDefinitions() {
+}
+
+void Release::_createEditableDataDefinitions() {
+}
+
+void Release::_createOthersDataDefinitions() {
+}

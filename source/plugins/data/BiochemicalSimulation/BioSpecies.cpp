@@ -151,3 +151,12 @@ void BioSpecies::setUnit(std::string unit) {
 std::string BioSpecies::getUnit() const {
 	return _unit;
 }
+
+void BioSpecies::_createReportStatisticsDataDefinitions() {
+}
+
+void BioSpecies::_createEditableDataDefinitions() {
+}
+
+void BioSpecies::_createOthersDataDefinitions() {
+}
