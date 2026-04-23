@@ -107,6 +107,7 @@
 #include <QTabBar>
 #include <QTabWidget>
 #include <QTimer>
+#include <QToolBar>
 #include <QVBoxLayout>
 
 namespace {
@@ -463,13 +464,22 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     addToolBar(Qt::TopToolBarArea, ui->toolBarGraphicalModel);
     //addToolBar(Qt::LeftToolBarArea, ui->toolBarAnimate);
     addToolBar(Qt::TopToolBarArea, ui->toolBarAbout);
+    for (QToolBar* toolbar : findChildren<QToolBar*>()) {
+        toolbar->setAllowedAreas(Qt::TopToolBarArea);
+        toolbar->setFloatable(false);
+    }
     //
     // graphicsView
     _initModelGraphicsView();
     // Initialize the Phase 4 trace controller after trace output widgets are available.
     _traceConsoleController = std::make_unique<TraceConsoleController>(ui->textEdit_Console,
                                                                         ui->textEdit_Simulation,
-                                                                        ui->textEdit_Reports);
+                                                                        ui->textEdit_Reports,
+                                                                        [this]() {
+                                                                            return ui == nullptr
+                                                                                   || ui->actionAnimation == nullptr
+                                                                                   || ui->actionAnimation->isChecked();
+                                                                        });
     // Initialize the Phase 5 plugin-catalog controller after simulator and plugin-tree dependencies are ready.
     _pluginCatalogController = std::make_unique<PluginCatalogController>(simulator,
                                                                          ui->treeWidget_Plugins,
@@ -1485,6 +1495,7 @@ void MainWindow::_rebuildViewDependentControllers() {
         ui->textEdit_Reports,
         ui->tabWidgetCentral,
         ui->actionActivateGraphicalSimulation,
+        ui->actionAnimation,
         &_modelCheked,
         CONST.TabCentralReportsIndex,
         SimulationEventController::Callbacks{
@@ -1692,7 +1703,9 @@ void::MainWindow::saveItemForCopy(QList<GraphicalModelComponent*> * gmcList, QLi
 
 
 void MainWindow::_actualizeActions() {
-    bool opened = simulator->getModelManager()->current() != nullptr;
+    const bool opened = simulator != nullptr
+                        && simulator->getModelManager() != nullptr
+                        && simulator->getModelManager()->current() != nullptr;
     bool running = false;
     bool paused = false;
     bool canCutCopyDelete = false;
@@ -1774,7 +1787,12 @@ void MainWindow::_actualizeActions() {
     ui->actionSimulationStop->setEnabled(opened && (running || paused));
     ui->actionSimulationPause->setEnabled(opened && running);
     ui->actionSimulationResume->setEnabled(opened && paused);
-    ui->actionActivateGraphicalSimulation->setEnabled(opened);
+    const bool animationEnabled = ui->actionAnimation == nullptr || ui->actionAnimation->isChecked();
+    if (!animationEnabled && ui->actionActivateGraphicalSimulation->isChecked()) {
+        ui->actionActivateGraphicalSimulation->setChecked(false);
+    }
+    ui->actionAnimation->setEnabled(opened);
+    ui->actionActivateGraphicalSimulation->setEnabled(opened && animationEnabled);
     ui->actionSimulatorsPluginManager->setEnabled(!simulationInteractionLocked);
     ui->actionSimulatorPreferences->setEnabled(!simulationInteractionLocked);
     // Keep plugins tree disabled while simulation interaction is locked.
@@ -1812,7 +1830,7 @@ void MainWindow::_actualizeActions() {
     }
 
     //slider animation speed
-    ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused);
+    ui->horizontalSliderAnimationSpeed->setEnabled(running && !paused && animationEnabled);
 
     ui->actionSelectAll->setEnabled(opened && !simulationInteractionLocked);
 

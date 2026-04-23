@@ -182,6 +182,8 @@ private slots:
 	void on_actionModelSave_triggered();
     /** @brief Delegates close-model lifecycle orchestration while preserving legacy Qt action slot. */
 	void on_actionModelClose_triggered();
+    /** @brief Applies the global runtime animation/update gate. */
+    void on_actionAnimation_triggered();
     /** @brief Delegates model-information dialog flow to lifecycle/dialog compatibility layer. */
 	void on_actionModelInformation_triggered();
     /** @brief Delegates model-check workflow used as precondition for simulation/export flows. */

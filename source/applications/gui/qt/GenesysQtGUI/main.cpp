@@ -5,13 +5,10 @@
 #include <QDateTime>
 #include <QDir>
 #include <QFile>
-#include <QFileInfo>
 #include <QMutex>
 #include <QMutexLocker>
-#include <QStandardPaths>
 #include <QTextStream>
 #include <exception>
-#include <iostream>
 #include <cstdlib>
 #include <execinfo.h>
 
@@ -27,20 +24,16 @@ QMutex _logMutex;
 QString _logPath;
 
 QString _defaultLogPath() {
-    QString basePath = QStandardPaths::writableLocation(QStandardPaths::AppDataLocation);
-    if (basePath.isEmpty()) {
-        basePath = QDir::homePath() + "/.genesys";
-    }
+    QString basePath = QDir::currentPath();
     QDir baseDir(basePath);
     baseDir.mkpath(".");
-    return baseDir.absoluteFilePath("GenesysQtGUI.log");
+    return baseDir.absoluteFilePath("crashesAndLogs.log");
 }
 
 void _appendLogLine(const QString& line) {
     QMutexLocker locker(&_logMutex);
     QFile file(_logPath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Append | QIODevice::Text)) {
-        std::cerr << line.toStdString() << std::endl;
         return;
     }
     QTextStream stream(&file);
@@ -50,7 +43,6 @@ void _appendLogLine(const QString& line) {
 void _qtMessageHandler(QtMsgType type, const QMessageLogContext& context, const QString& msg) {
     const QString line = qFormatLogMessage(type, context, msg);
     _appendLogLine(line);
-    std::cerr << line.toStdString() << std::endl;
     if (type == QtFatalMsg) {
         abort();
     }

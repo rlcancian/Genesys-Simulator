@@ -557,9 +557,27 @@ void MainWindow::on_actionModelSave_triggered()
 void MainWindow::on_actionModelClose_triggered()
 {
     // Close only the current model/tab; other open models remain loaded in ModelManager.
-    if (simulator != nullptr && simulator->getModelManager() != nullptr) {
-        _closeModel(simulator->getModelManager()->current());
+    if (ui != nullptr && ui->actionModelClose != nullptr) {
+        ui->actionModelClose->setEnabled(false);
     }
+    if (simulator == nullptr || simulator->getModelManager() == nullptr
+        || simulator->getModelManager()->current() == nullptr) {
+        _actualizeActions();
+        return;
+    }
+    _closeModel(simulator->getModelManager()->current());
+    _actualizeActions();
+}
+
+void MainWindow::on_actionAnimation_triggered()
+{
+    const bool enabled = ui->actionAnimation == nullptr || ui->actionAnimation->isChecked();
+    if (!enabled && ui->actionActivateGraphicalSimulation != nullptr
+        && ui->actionActivateGraphicalSimulation->isChecked()) {
+        ui->actionActivateGraphicalSimulation->setChecked(false);
+        on_actionActivateGraphicalSimulation_triggered();
+    }
+    _actualizeActions();
 }
 
 

@@ -3,6 +3,8 @@
 
 #include "kernel/simulator/TraceManager.h"
 
+#include <functional>
+
 class QTextEdit;
 
 // Document the trace rendering bridge used by MainWindow simulator callbacks.
@@ -28,7 +30,8 @@ public:
     /** @brief Creates the trace-output bridge used by MainWindow trace wrappers. */
     TraceConsoleController(QTextEdit* console,
                            QTextEdit* simulationText,
-                           QTextEdit* reportsText);
+                           QTextEdit* reportsText,
+                           std::function<bool()> traceWidgetsEnabled = {});
 
     /** @brief Renders generic traces to the main console pane. */
     void simulatorTraceHandler(TraceEvent e) const;
@@ -46,6 +49,10 @@ private:
     QTextEdit* _simulationText;
     // Keep the reports trace sink used by reports traces.
     QTextEdit* _reportsText;
+    // Runtime gate used to avoid expensive trace-widget churn during non-animated simulations.
+    std::function<bool()> _traceWidgetsEnabled;
+
+    bool shouldRenderTraceWidgets() const;
 };
 
 #endif // TRACECONSOLECONTROLLER_H
