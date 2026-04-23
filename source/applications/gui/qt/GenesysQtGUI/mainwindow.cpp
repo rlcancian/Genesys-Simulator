@@ -1783,7 +1783,7 @@ void MainWindow::_actualizeActions() {
     // Keep simulation structural controls locked while simulation remains active.
     ui->actionSimulationConfigure->setEnabled(opened && !simulationInteractionLocked);
     ui->actionSimulationStart->setEnabled(opened && !simulationInteractionLocked);
-    ui->actionSimulationStep->setEnabled(opened && !simulationInteractionLocked);
+    ui->actionSimulationStep->setEnabled((opened && !simulationInteractionLocked) || (opened && paused));
     ui->actionSimulationStop->setEnabled(opened && (running || paused));
     ui->actionSimulationPause->setEnabled(opened && running);
     ui->actionSimulationResume->setEnabled(opened && paused);
@@ -2075,6 +2075,9 @@ void MainWindow::_actualizeReportsResultsTable() {
 
 
 void MainWindow::_actualizeSimulationEvents(SimulationEvent * re) {
+    if (ui->tabWidgetCentral->currentIndex()!= CONST.TabCentralSimulationIndex || ui->tabWidgetSimulation->currentIndex() != CONST.TabSimulationEventsIndex) { // actualize only if visible
+        return;
+    }
     int row = ui->tableWidget_Simulation_Event->rowCount();
     ui->tableWidget_Simulation_Event->setRowCount(row + 1);
     QTableWidgetItem * newItem;
@@ -2088,7 +2091,9 @@ void MainWindow::_actualizeSimulationEvents(SimulationEvent * re) {
 }
 
 void MainWindow::_actualizeDebugVariables(bool force) {
-    QCoreApplication::processEvents();
+    if (ui->tabWidgetCentral->currentIndex()!= CONST.TabCentralSimulationIndex || ui->tabWidgetSimulation->currentIndex() != CONST.TabSimulationVariablesIndex) { // actualize only if visible
+        return;
+    }
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationVariablesIndex) {
         ui->tableWidget_Variables->setRowCount(0);
         List<ModelDataDefinition*>* variables = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Variable>());
@@ -2106,10 +2111,13 @@ void MainWindow::_actualizeDebugVariables(bool force) {
             ui->tableWidget_Variables->setItem(row, 2, newItem);
         }
     }
+    QCoreApplication::processEvents();
 }
 
 void MainWindow::_actualizeDebugEntities(bool force) {
-    QCoreApplication::processEvents();
+    if (ui->tabWidgetCentral->currentIndex()!= CONST.TabCentralSimulationIndex || ui->tabWidgetSimulation->currentIndex() != CONST.TabSimulationEntitiesIndex) { // actualize only if visible
+        return;
+    }
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationEntitiesIndex) {
         List<ModelDataDefinition*>* entities = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Entity>());
         List<ModelDataDefinition*>* attributes = simulator->getModelManager()->current()->getDataManager()->getDataDefinitionList(Util::TypeOf<Attribute>());
@@ -2148,6 +2156,9 @@ void MainWindow::_actualizeDebugEntities(bool force) {
 }
 
 void MainWindow::_actualizeDebugBreakpoints(bool force) {
+    if (ui->tabWidgetCentral->currentIndex()!= CONST.TabCentralSimulationIndex || ui->tabWidgetSimulation->currentIndex() != CONST.TabSimulationBreakpointsIndex) { // actualize only if visible
+        return;
+    }
     QCoreApplication::processEvents();
     if (force || ui->tabWidgetSimulation->currentIndex() == CONST.TabSimulationBreakpointsIndex) {
         ui->tableWidget_Breakpoints->setRowCount(0);
