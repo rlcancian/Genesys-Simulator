@@ -149,6 +149,13 @@ bool containsPersistenceMarkers(const QString& text) {
     return text.contains("# Genesys Simulation Model")
            || text.contains("# Genesys Graphic Model")
            || text.contains("# 0 Show")
+           || text.contains("# 0 GUI")
+           || text.contains("# Draws")
+           || text.contains("# Animations")
+           || text.contains("# Graphical Plugins")
+           || text.contains("# Graphical Model Data Definitions")
+           || text.contains("# Graphical Model Components")
+           || text.contains("# Groups")
            || text.contains("# Model Data Definitions")
            || text.contains("# Model Components");
 }

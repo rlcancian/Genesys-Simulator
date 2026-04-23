@@ -53,6 +53,20 @@ void clearUndoStackIfAvailable(Ui::MainWindow* ui) {
     }
     ui->graphicsView->getScene()->getUndoStack()->clear();
 }
+
+QString normalizedModelBasePath(const QString& selectedPath) {
+    QString baseFileName = selectedPath.trimmed();
+    const QString suffix = QFileInfo(baseFileName).suffix();
+    if (!suffix.isEmpty()) {
+        const QString loweredSuffix = suffix.toLower();
+        if (loweredSuffix == "gui" || loweredSuffix == "gen"
+            || loweredSuffix == "xml" || loweredSuffix == "json"
+            || loweredSuffix == "cpp") {
+            baseFileName.chop(suffix.size() + 1);
+        }
+    }
+    return baseFileName;
+}
 }
 
 // Store the lifecycle dependencies for Phase 7 delegation from MainWindow.
@@ -164,14 +178,12 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
     if (fileName.isEmpty()) {
         return;
     } else {
-        QString baseFileName = fileName.trimmed();
-        if (baseFileName.endsWith(".gen", Qt::CaseInsensitive) || baseFileName.endsWith(".gui", Qt::CaseInsensitive)) {
-            baseFileName.chop(4);
-        }
+        const QString baseFileName = normalizedModelBasePath(fileName);
+        const QString finalGuiFileName = baseFileName + ".gui";
+        const QString finalGenFileName = baseFileName + ".gen";
 
-        _callbacks.insertCommandInConsole("save " + baseFileName.toStdString());
-        QString finalFileName = baseFileName + ".gen";
-        QFile saveFile(finalFileName);
+        _callbacks.insertCommandInConsole("save " + finalGuiFileName.toStdString());
+        QFile saveFile(finalGenFileName);
 
         if (!saveFile.open(QIODevice::WriteOnly)) {
             QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
@@ -189,11 +201,11 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
             QMessageBox::warning(_ownerWidget, "Save Model", "Could not synchronize simulation model from text before saving graphical state.");
             return;
         }
-        if (!_callbacks.saveGraphicalModel(baseFileName + ".gui")) {
+        if (!_callbacks.saveGraphicalModel(finalGuiFileName)) {
             QMessageBox::warning(_ownerWidget, "Save Model", "Error while saving graphical model.");
             return;
         }
-        *_modelFilename = baseFileName;
+        *_modelFilename = finalGuiFileName;
         _callbacks.actualizeModelTextHasChanged(false);
         if (_graphicalModelHasChanged != nullptr) {
             *_graphicalModelHasChanged = false;
@@ -202,8 +214,8 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
             // A successful save makes the current in-memory model state the new clean baseline.
             currentModel->setHasChanged(false);
         }
-        SystemPreferences::setLastModelFilename((baseFileName + ".gui").toStdString());
-        SystemPreferences::pushRecentModelFile((baseFileName + ".gui").toStdString());
+        SystemPreferences::setLastModelFilename(finalGuiFileName.toStdString());
+        SystemPreferences::pushRecentModelFile(finalGuiFileName.toStdString());
         SystemPreferences::save();
         QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
     }
