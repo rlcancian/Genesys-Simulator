@@ -483,3 +483,12 @@ void ModalModelDefault::_createInternalAndAttachedData() {
 void ModalModelDefault::_addSimulationControl(SimulationControl* property) {
 }
 */
+
+void ModalModelDefault::_createReportStatisticsDataDefinitions() {
+}
+
+void ModalModelDefault::_createEditableDataDefinitions() {
+}
+
+void ModalModelDefault::_createOthersDataDefinitions() {
+}

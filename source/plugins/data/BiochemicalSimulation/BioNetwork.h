@@ -77,6 +77,17 @@ protected:
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _initBetweenReplications() override;
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private:
 	void handleInternalEvent(void* parameter);
 	void scheduleNextInternalEvent();

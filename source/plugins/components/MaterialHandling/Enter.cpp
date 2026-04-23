@@ -142,3 +142,12 @@ bool Enter::_check(std::string& errorMessage) {
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Station>(), _station, "Station", errorMessage);
 	return resultAll;
 }
+
+void Enter::_createReportStatisticsDataDefinitions() {
+}
+
+void Enter::_createEditableDataDefinitions() {
+}
+
+void Enter::_createOthersDataDefinitions() {
+}

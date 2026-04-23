@@ -77,8 +77,17 @@ public:
 	unsigned int getNumberOfQueues() const;
 protected: // virtual
 	//virtual void _initBetweenReplications();
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _createInternalAndAttachedData() override;
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
 private: // methods
 private: // attributes 1:1
 

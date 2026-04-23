@@ -351,3 +351,12 @@ bool Process::_check(std::string& errorMessage) {
 	resultAll &= ModelComponent::Check(_release);
 	return resultAll;
 }
+
+void Process::_createReportStatisticsDataDefinitions() {
+}
+
+void Process::_createEditableDataDefinitions() {
+}
+
+void Process::_createOthersDataDefinitions() {
+}

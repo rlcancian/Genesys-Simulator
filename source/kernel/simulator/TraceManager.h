@@ -56,9 +56,11 @@ public:
 		L6_arrival = 6,
 		L7_internal = 7,
 		L8_detailed = 8,
-		L9_mostDetailed = 9
+		L9_mostDetailed = 9,
+		num_elements = 10
 	};
 public:
+	static std::string convertEnumToStr(Level level);
 	TraceManager(Simulator* simulator); //(Model* model);
 	virtual ~TraceManager();
 public: // add trace handlers

@@ -91,3 +91,12 @@ PluginInformation* Store::GetPluginInformation() {
 	return info;
 }
 
+
+void Store::_createReportStatisticsDataDefinitions() {
+}
+
+void Store::_createEditableDataDefinitions() {
+}
+
+void Store::_createOthersDataDefinitions() {
+}

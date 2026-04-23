@@ -1161,3 +1161,12 @@ void SPICECircuit::_createInternalAndAttachedData() {
 		_attachedDataRemove("Runner");
 	}
 }
+
+void SPICECircuit::_createReportStatisticsDataDefinitions() {
+}
+
+void SPICECircuit::_createEditableDataDefinitions() {
+}
+
+void SPICECircuit::_createOthersDataDefinitions() {
+}

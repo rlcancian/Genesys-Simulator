@@ -457,3 +457,12 @@ CppCompiler::CompilationResult CppCompiler::_invokeCompiler(std::string command)
 
 	return result;
 }
+
+void CppCompiler::_createReportStatisticsDataDefinitions() {
+}
+
+void CppCompiler::_createEditableDataDefinitions() {
+}
+
+void CppCompiler::_createOthersDataDefinitions() {
+}

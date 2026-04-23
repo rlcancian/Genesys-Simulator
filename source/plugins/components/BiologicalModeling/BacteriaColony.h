@@ -99,6 +99,17 @@ protected:
 	virtual void _createInternalAndAttachedData() override;
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private:
 	const struct DEFAULT_VALUES {
 		const std::string groProgramName = "";

@@ -394,3 +394,12 @@ std::string SPICERunner::getWorkingDirectory() const {
 std::string SPICERunner::getLastRunCommand() const {
     return _lastRunCommand;
 }
+
+void SPICERunner::_createReportStatisticsDataDefinitions() {
+}
+
+void SPICERunner::_createEditableDataDefinitions() {
+}
+
+void SPICERunner::_createOthersDataDefinitions() {
+}

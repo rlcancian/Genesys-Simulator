@@ -287,3 +287,12 @@ void Wait::_handlerForAfterProcessEventEvent(SimulationEvent* event) {
 
 	}
 }
+
+void Wait::_createReportStatisticsDataDefinitions() {
+}
+
+void Wait::_createEditableDataDefinitions() {
+}
+
+void Wait::_createOthersDataDefinitions() {
+}

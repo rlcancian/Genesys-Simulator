@@ -181,3 +181,12 @@ void Station::_initBetweenReplications() {
 		_cstatTimeInStation->getStatistics()->getCollector()->clear();
 	}
 }
+
+void Station::_createReportStatisticsDataDefinitions() {
+}
+
+void Station::_createEditableDataDefinitions() {
+}
+
+void Station::_createOthersDataDefinitions() {
+}

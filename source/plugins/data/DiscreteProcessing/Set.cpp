@@ -313,3 +313,12 @@ void Set::_createInternalAndAttachedData() {
         _attachedDataInsert(getName()+"."+dd->getName(), dd);
     }
 }
+
+void Set::_createReportStatisticsDataDefinitions() {
+}
+
+void Set::_createEditableDataDefinitions() {
+}
+
+void Set::_createOthersDataDefinitions() {
+}

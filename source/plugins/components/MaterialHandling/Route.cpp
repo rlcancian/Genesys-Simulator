@@ -336,3 +336,12 @@ bool Route::_check(std::string& errorMessage) {
 	}
 	return resultAll;
 }
+
+void Route::_createReportStatisticsDataDefinitions() {
+}
+
+void Route::_createEditableDataDefinitions() {
+}
+
+void Route::_createOthersDataDefinitions() {
+}

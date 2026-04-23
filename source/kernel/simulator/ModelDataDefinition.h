@@ -63,6 +63,7 @@ public: // get & set
 	 * \return
 	 */
 	std::string getClassname() const;
+	Model* getParentModel() const;
 	/*! Return true if this ModelDataDefinition generates statics for simulation reports*/
 	bool isReportStatistics() const;
 	/*! Defnes if this ModelDataDefinition generates statics for simulation reports*/
@@ -111,6 +112,7 @@ public:
 	 */
 	List<SimulationControl*>* getSimulationControls() const;
 	TraceManager::Level getTraceLevelSpecific() const;
+	void setTraceLevelSpecific(TraceManager::Level level);
 	void defineTraceLevelSpecific(TraceManager::Level traceLevelspecific, bool traceLevelSpecificEnabled = true);
 	bool isTraceLevelSpecificEnabled() const;
 	void setTraceLevelSpecificEnabled(bool traceLevelSpecificEnabled);
@@ -163,11 +165,19 @@ protected: //! could be overriden by derived classes
 	/*! This method returns all changes in the parser that are needed by plugins of this ModelDatas. When connecting a new plugin, ParserChangesInformation are used to change parser source code, whch is after compiled and dinamically linked to to simulator kernel to reflect the changes */
 	virtual ParserChangesInformation* _getParserChangesInformation();
 	virtual void _initBetweenReplications();
+	virtual void _createReportStatisticsDataDefinitions(); // @ToDo will be abstract
+	virtual void _createEditableDataDefinitions(); // @ToDo will be abstract
+	virtual void _createOthersDataDefinitions(); // @ToDo will be abstract
 	/*! This method is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
 	virtual void _createInternalAndAttachedData();
 	/*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
 	virtual void _addSimulationControl(SimulationControl* control);
 	//virtual void _addSimulationResponse(SimulationControl* response);
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
 
 private:
 	// name is now private. So changes in name must be throught setName, wich gives oportunity to rename internelElements, SimulationControls and SimulationResponses

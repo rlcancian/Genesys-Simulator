@@ -75,3 +75,12 @@ PluginInformation* Exit::GetPluginInformation() {
 }
 
 
+
+void Exit::_createReportStatisticsDataDefinitions() {
+}
+
+void Exit::_createEditableDataDefinitions() {
+}
+
+void Exit::_createOthersDataDefinitions() {
+}

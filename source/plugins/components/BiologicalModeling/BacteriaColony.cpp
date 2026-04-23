@@ -429,3 +429,12 @@ void BacteriaColony::_assignBacteriumGridPosition(BacteriumState& bacterium, std
 	bacterium.gridX = static_cast<unsigned int>(index % _gridWidth);
 	bacterium.gridY = static_cast<unsigned int>((index / _gridWidth) % _gridHeight);
 }
+
+void BacteriaColony::_createReportStatisticsDataDefinitions() {
+}
+
+void BacteriaColony::_createEditableDataDefinitions() {
+}
+
+void BacteriaColony::_createOthersDataDefinitions() {
+}

@@ -573,3 +573,12 @@ void Seize::_initBetweenReplications() {
 		*(indexPtr) = index;
 		return resource;
 	}
+
+void Seize::_createReportStatisticsDataDefinitions() {
+}
+
+void Seize::_createEditableDataDefinitions() {
+}
+
+void Seize::_createOthersDataDefinitions() {
+}

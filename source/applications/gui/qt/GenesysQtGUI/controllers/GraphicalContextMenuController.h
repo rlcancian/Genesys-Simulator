@@ -9,6 +9,7 @@ class QMenu;
 class QAction;
 class ModelGraphicsView;
 class ModelGraphicsScene;
+class ModelDataDefinition;
 
 namespace Ui {
 class MainWindow;
@@ -64,6 +65,11 @@ private:
     ContextKind classifyContext(QGraphicsItem* item) const;
 
     /**
+     * @brief Resolves the domain object associated with a single graphical model item.
+     */
+    ModelDataDefinition* modelDataDefinitionFor(QGraphicsItem* item) const;
+
+    /**
      * @brief Adds actions for right-clicking the empty canvas area.
      */
     void populateBackgroundMenu(QMenu* menu) const;
@@ -71,7 +77,7 @@ private:
     /**
      * @brief Adds actions for right-clicking a graphical item or current selection.
      */
-    void populateItemMenu(QMenu* menu, ContextKind contextKind) const;
+    void populateItemMenu(QMenu* menu, ContextKind contextKind, QGraphicsItem* clickedItem) const;
 
     /**
      * @brief Adds edit commands shared by every item context.
@@ -87,6 +93,11 @@ private:
      * @brief Adds zoom commands that navigate the graphical scene.
      */
     void addZoomMenu(QMenu* menu) const;
+
+    /**
+     * @brief Adds a submenu that configures the trace level for one model item.
+     */
+    void addTraceLevelMenu(QMenu* menu, QGraphicsItem* clickedItem) const;
 
     /**
      * @brief Adds drawing tool actions used when the user starts from the canvas background.

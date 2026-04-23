@@ -85,3 +85,12 @@ void GroProgram::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues
 bool GroProgram::_check(std::string& errorMessage) {
 	return validateSyntax(errorMessage);
 }
+
+void GroProgram::_createReportStatisticsDataDefinitions() {
+}
+
+void GroProgram::_createEditableDataDefinitions() {
+}
+
+void GroProgram::_createOthersDataDefinitions() {
+}

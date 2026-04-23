@@ -533,6 +533,21 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
             [this]() { _connectSceneSignals(); },
             [this](const char* context) { _disconnectSceneSignals(context); }});
 
+    // Add a runtime About action instead of extending the generated .ui file.
+    QAction* actionAboutReportIssue = new QAction(tr("Report Issue"), this);
+    actionAboutReportIssue->setObjectName(QStringLiteral("actionAboutReportIssue"));
+    actionAboutReportIssue->setToolTip(tr("Report a bug, problem, or suggestion using the configured secure relay."));
+    actionAboutReportIssue->setIcon(QIcon(":/icons2/resources/icons/pack2/ico/90.ico"));
+    connect(actionAboutReportIssue, &QAction::triggered, this, [this]() {
+        if (_dialogUtilityController != nullptr) {
+            _dialogUtilityController->onActionAboutReportIssueTriggered();
+        }
+    });
+    if (ui->menuAbout != nullptr) {
+        ui->menuAbout->addSeparator();
+        ui->menuAbout->addAction(actionAboutReportIssue);
+    }
+
     // system preferences
     SystemPreferences::load();
     _refreshRecentModelsMenu();

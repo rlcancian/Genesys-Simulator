@@ -633,3 +633,12 @@ void BioSimulatorRunner::setAutoValidateModel(bool autoValidateModel) {
 bool BioSimulatorRunner::getAutoValidateModel() const {
 	return _autoValidateModel;
 }
+
+void BioSimulatorRunner::_createReportStatisticsDataDefinitions() {
+}
+
+void BioSimulatorRunner::_createEditableDataDefinitions() {
+}
+
+void BioSimulatorRunner::_createOthersDataDefinitions() {
+}
