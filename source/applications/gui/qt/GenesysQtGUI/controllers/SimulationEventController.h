@@ -61,6 +61,7 @@ public:
                               QTextEdit* reportsText,
                               QTabWidget* centralTabWidget,
                               QAction* activateGraphicalSimulation,
+                              QAction* animationEnabledAction,
                               bool* modelChecked,
                               int tabCentralReportsIndex,
                               Callbacks callbacks);
@@ -117,12 +118,19 @@ private:
     QTabWidget* _centralTabWidget;
     // Keep action dependency used by graphical simulation toggle.
     QAction* _activateGraphicalSimulation;
+    // Keep action dependency used by the global Simulation/Animation runtime gate.
+    QAction* _animationEnabledAction;
     // Keep mutable model-check flag dependency used at simulation end.
     bool* _modelChecked;
     // Keep tab index dependency used for report-tab activation.
     int _tabCentralReportsIndex;
     // Keep callback dependencies for delegated MainWindow operations.
     Callbacks _callbacks;
+    // Throttle GUI event processing when animation/output updates are suppressed.
+    mutable unsigned int _suppressedUiProgressEvents = 0;
+
+    bool animationsEnabled() const;
+    void processSuppressedUiProgressEvents() const;
 };
 
 #endif // SIMULATIONEVENTCONTROLLER_H

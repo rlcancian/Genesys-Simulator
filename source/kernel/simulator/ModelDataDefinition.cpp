@@ -438,6 +438,16 @@ void ModelDataDefinition::CreateInternalData(ModelDataDefinition* modeldatum) {
 	};
 }
 
+bool ModelDataDefinition::CreateRelatedDataElements(ModelDataDefinition* modeldatum, std::string& errorMessage) {
+	if (modeldatum == nullptr) {
+		errorMessage.append("ModelDataDefinition is null.");
+		return false;
+	}
+
+	CreateInternalData(modeldatum);
+	return Check(modeldatum, errorMessage);
+}
+
 void ModelDataDefinition::_createInternalAndAttachedData() {
 }
 

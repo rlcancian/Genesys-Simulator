@@ -161,6 +161,8 @@ public: // editing graphic model
     QList<GraphicalModelComponent*> graphicalModelComponentItems();
     GraphicalModelComponent* findGraphicalModelComponent(Util::identification id);
     GraphicalModelDataDefinition* findGraphicalModelDataDefinition(ModelDataDefinition* dataDefinition);
+    GraphicalModelComponent* resolveSourceComponent(GraphicalConnection* connection) const;
+    GraphicalModelComponent* resolveDestinationComponent(GraphicalConnection* connection) const;
 public:
     struct GRID {
         unsigned int interval;
@@ -398,6 +400,7 @@ private:
     bool _restoringPersistedGuiLayout = false;
     bool _graphicalDataDefinitionsSyncPending = false;
     bool _graphicalDataDefinitionsSyncInProgress = false;
+    bool _graphicalDataDefinitionsSyncDeferredDuringRestore = false;
     bool _connectionGeometryUpdatesBlocked = false;
     bool _showStatisticsDataDefinitions = true;
     bool _showEditableDataDefinitions = true;

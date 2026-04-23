@@ -32,9 +32,10 @@ public:
     qreal getHeight() const;
     QPointF getOldPosition() const;
     void setOldPosition(QPointF oldPosition);
-	QList<GraphicalComponentPort *> getGraphicalInputPorts() const;
+    QList<GraphicalComponentPort *> getGraphicalInputPorts() const;
 	QList<GraphicalComponentPort *> getGraphicalOutputPorts() const;
     QColor getColor() const;
+    void setColor(const QColor& color);
     QList<ModelDataDefinition *> *getInternalData() const;
     QList<ModelDataDefinition *> *getAttachedData() const;
     EntityType* getEntityType() const;

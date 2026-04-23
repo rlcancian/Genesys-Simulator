@@ -12,9 +12,62 @@
 #include <QCoreApplication>
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QFileDialog>
 #include <QMessageBox>
 #include <utility>
+
+namespace {
+QString findCompanionGuiFile(const QFileInfo& selectedInfo) {
+    if (!selectedInfo.exists()) {
+        return {};
+    }
+
+    QDir directory(selectedInfo.path());
+    const QString canonicalCompanionPath = directory.filePath(selectedInfo.completeBaseName() + ".gui");
+    if (QFileInfo::exists(canonicalCompanionPath)) {
+        return canonicalCompanionPath;
+    }
+
+    const QString wildcard = selectedInfo.completeBaseName() + ".*";
+    const QStringList candidates = directory.entryList({wildcard}, QDir::Files | QDir::NoSymLinks);
+    for (const QString& candidateName : candidates) {
+        QFileInfo candidateInfo(directory.filePath(candidateName));
+        if (candidateInfo.completeBaseName() == selectedInfo.completeBaseName()
+            && candidateInfo.suffix().compare("gui", Qt::CaseInsensitive) == 0) {
+            return candidateInfo.absoluteFilePath();
+        }
+    }
+    return {};
+}
+
+void clearUndoStackIfAvailable(Ui::MainWindow* ui) {
+    if (ui == nullptr || ui->graphicsView == nullptr) {
+        return;
+    }
+    if (ui->graphicsView->getScene() == nullptr) {
+        return;
+    }
+    if (ui->graphicsView->getScene()->getUndoStack() == nullptr) {
+        return;
+    }
+    ui->graphicsView->getScene()->getUndoStack()->clear();
+}
+
+QString normalizedModelBasePath(const QString& selectedPath) {
+    QString baseFileName = selectedPath.trimmed();
+    const QString suffix = QFileInfo(baseFileName).suffix();
+    if (!suffix.isEmpty()) {
+        const QString loweredSuffix = suffix.toLower();
+        if (loweredSuffix == "gui" || loweredSuffix == "gen"
+            || loweredSuffix == "xml" || loweredSuffix == "json"
+            || loweredSuffix == "cpp") {
+            baseFileName.chop(suffix.size() + 1);
+        }
+    }
+    return baseFileName;
+}
+}
 
 // Store the lifecycle dependencies for Phase 7 delegation from MainWindow.
 ModelLifecycleController::ModelLifecycleController(QWidget* ownerWidget,
@@ -65,7 +118,7 @@ void ModelLifecycleController::onActionModelOpenTriggered() const {
 
     QString fileName = QFileDialog::getOpenFileName(
         _ownerWidget, "Open Model", initialDirectory,
-        QObject::tr("Genesys Model (*.gen);;Genesys Graphical User Interface (*.gui);;XML Files (*.xml);;JSON Files (*.json);;C++ Files (*.cpp)"), nullptr, QFileDialog::DontUseNativeDialog);
+        QObject::tr("Graphical Genesys Model (*.gui);;Genesys Model (*.gen);;XML Files (*.xml);;JSON Files (*.json);;C++ Files (*.cpp)"), nullptr, QFileDialog::DontUseNativeDialog);
     if (fileName == "") {
         return;
     }
@@ -81,8 +134,18 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
         return false;
     }
 
-    _callbacks.insertCommandInConsole("load " + fileName.toStdString());
-    Model* model = _callbacks.loadGraphicalModel(fileName.toStdString());
+    QString resolvedFileName = fileName;
+    QFileInfo selectedInfo(fileName);
+    if (selectedInfo.suffix().compare("gen", Qt::CaseInsensitive) == 0) {
+        const QString pairedGuiPath = findCompanionGuiFile(selectedInfo);
+        if (!pairedGuiPath.isEmpty()) {
+            // In GUI-open flow, always prefer the companion .gui to preserve the graphical layout.
+            resolvedFileName = pairedGuiPath;
+        }
+    }
+
+    _callbacks.insertCommandInConsole("load " + resolvedFileName.toStdString());
+    Model* model = _callbacks.loadGraphicalModel(resolvedFileName.toStdString());
     if (model != nullptr) {
         *_loaded = true;
         _callbacks.initUiForNewModel(model);
@@ -91,7 +154,7 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
             *_graphicalModelHasChanged = false;
         }
         model->setHasChanged(false);
-        SystemPreferences::pushRecentModelFile(fileName.toStdString());
+        SystemPreferences::pushRecentModelFile(resolvedFileName.toStdString());
         SystemPreferences::save();
         if (showDialogs) {
             QMessageBox::information(_ownerWidget, "Open Model", "Model successfully oppened");
@@ -103,7 +166,7 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
         _callbacks.actualizeActions();
         _callbacks.actualizeTabPanes();
     }
-    _ui->graphicsView->getScene()->getUndoStack()->clear();
+    clearUndoStackIfAvailable(_ui);
     return model != nullptr;
 }
 
@@ -111,13 +174,16 @@ bool ModelLifecycleController::openModelFileInternal(const QString& fileName, bo
 void ModelLifecycleController::onActionModelSaveTriggered() const {
     QString fileName = QFileDialog::getSaveFileName(_ownerWidget,
                                                     QObject::tr("Save Model"), *_modelFilename,
-                                                    QObject::tr("Genesys Model (*.gen)"), nullptr, QFileDialog::DontUseNativeDialog);
+                                                    QObject::tr("Graphical Genesys Model (*.gui)"), nullptr, QFileDialog::DontUseNativeDialog);
     if (fileName.isEmpty()) {
         return;
     } else {
-        _callbacks.insertCommandInConsole("save " + fileName.toStdString());
-        QString finalFileName = fileName + ".gen";
-        QFile saveFile(finalFileName);
+        const QString baseFileName = normalizedModelBasePath(fileName);
+        const QString finalGuiFileName = baseFileName + ".gui";
+        const QString finalGenFileName = baseFileName + ".gen";
+
+        _callbacks.insertCommandInConsole("save " + finalGuiFileName.toStdString());
+        QFile saveFile(finalGenFileName);
 
         if (!saveFile.open(QIODevice::WriteOnly)) {
             QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
@@ -131,15 +197,15 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
             }
             saveFile.close();
         }
-        if (!_callbacks.saveGraphicalModel(fileName + ".gui")) {
+        if (!_callbacks.setSimulationModelBasedOnText()) {
+            QMessageBox::warning(_ownerWidget, "Save Model", "Could not synchronize simulation model from text before saving graphical state.");
+            return;
+        }
+        if (!_callbacks.saveGraphicalModel(finalGuiFileName)) {
             QMessageBox::warning(_ownerWidget, "Save Model", "Error while saving graphical model.");
             return;
         }
-        *_modelFilename = fileName;
-        if (!_callbacks.setSimulationModelBasedOnText()) {
-            QMessageBox::warning(_ownerWidget, "Save Model", "Model was saved, but the simulation model could not be synchronized.");
-            return;
-        }
+        *_modelFilename = finalGuiFileName;
         _callbacks.actualizeModelTextHasChanged(false);
         if (_graphicalModelHasChanged != nullptr) {
             *_graphicalModelHasChanged = false;
@@ -148,13 +214,13 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
             // A successful save makes the current in-memory model state the new clean baseline.
             currentModel->setHasChanged(false);
         }
-        SystemPreferences::setLastModelFilename((fileName + ".gui").toStdString());
-        SystemPreferences::pushRecentModelFile((fileName + ".gui").toStdString());
+        SystemPreferences::setLastModelFilename(finalGuiFileName.toStdString());
+        SystemPreferences::pushRecentModelFile(finalGuiFileName.toStdString());
         SystemPreferences::save();
         QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
     }
     _callbacks.actualizeActions();
-    _ui->graphicsView->getScene()->getUndoStack()->clear();
+    clearUndoStackIfAvailable(_ui);
 }
 
 // Move model close orchestration out of MainWindow while preserving signal wiring and cleanup sequence.
@@ -176,21 +242,32 @@ void ModelLifecycleController::onActionModelCloseTriggered() const {
     _callbacks.insertCommandInConsole("close");
 
     // Preserve scene clearing order to avoid regressions in existing UI flows.
+    if (_ui->graphicsView == nullptr || _ui->graphicsView->getScene() == nullptr) {
+        return;
+    }
+
     _ui->graphicsView->getScene()->grid()->clear();
     _ui->actionShowGrid->setChecked(false);
-    _ui->graphicsView->getScene()->getUndoStack()->clear();
+    clearUndoStackIfAvailable(_ui);
     _ui->graphicsView->getScene()->clearAnimationsQueue();
+    // Always delete connections while ports/components are still alive.
+    _ui->graphicsView->getScene()->clearGraphicalDiagramConnections();
+    _ui->graphicsView->getScene()->clearGraphicalModelConnections();
+    _ui->graphicsView->getScene()->clearAnimations();
+    _ui->graphicsView->getScene()->clear();
+    // Reset bookkeeping containers after scene teardown to avoid stale pointers.
     _ui->graphicsView->getScene()->getGraphicalModelComponents()->clear();
     _ui->graphicsView->getScene()->getGraphicalConnections()->clear();
-    // Reset data-definition diagram bookkeeping alongside component/connection cleanup.
     _ui->graphicsView->getScene()->getGraphicalModelDataDefinitions()->clear();
     _ui->graphicsView->getScene()->getGraphicalDiagramsConnections()->clear();
     _ui->graphicsView->getScene()->getAllComponents()->clear();
     _ui->graphicsView->getScene()->getAllConnections()->clear();
     _ui->graphicsView->getScene()->getAllDataDefinitions()->clear();
     _ui->graphicsView->getScene()->getAllGraphicalDiagramsConnections()->clear();
-    _ui->graphicsView->getScene()->clearAnimations();
-    _ui->graphicsView->getScene()->clear();
+    _ui->graphicsView->getScene()->getGraphicalGeometries()->clear();
+    _ui->graphicsView->getScene()->getGraphicalAnimations()->clear();
+    _ui->graphicsView->getScene()->getGraphicalEntities()->clear();
+    _ui->graphicsView->getScene()->getGraphicalGroups()->clear();
     _ui->graphicsView->clear();
 
     // Preserve property-editor selection reset without changing Phase 6 hardening behavior.

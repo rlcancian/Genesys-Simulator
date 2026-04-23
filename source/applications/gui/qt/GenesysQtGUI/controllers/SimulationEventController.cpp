@@ -154,6 +154,7 @@ SimulationEventController::SimulationEventController(Simulator* simulator,
                                                      QTextEdit* reportsText,
                                                      QTabWidget* centralTabWidget,
                                                      QAction* activateGraphicalSimulation,
+                                                     QAction* animationEnabledAction,
                                                      bool* modelChecked,
                                                      int tabCentralReportsIndex,
                                                      Callbacks callbacks)
@@ -169,9 +170,21 @@ SimulationEventController::SimulationEventController(Simulator* simulator,
       _reportsText(reportsText),
       _centralTabWidget(centralTabWidget),
       _activateGraphicalSimulation(activateGraphicalSimulation),
+      _animationEnabledAction(animationEnabledAction),
       _modelChecked(modelChecked),
       _tabCentralReportsIndex(tabCentralReportsIndex),
       _callbacks(std::move(callbacks)) {
+}
+
+bool SimulationEventController::animationsEnabled() const {
+    return _animationEnabledAction == nullptr || _animationEnabledAction->isChecked();
+}
+
+void SimulationEventController::processSuppressedUiProgressEvents() const {
+    ++_suppressedUiProgressEvents;
+    if ((_suppressedUiProgressEvents % 128u) == 0u) {
+        QCoreApplication::processEvents();
+    }
 }
 
 // Preserve legacy model-check success behavior without broad MainWindow coupling.
@@ -203,6 +216,10 @@ void SimulationEventController::onReplicationStartHandler(SimulationEvent* re) c
                    QString::fromStdString(std::to_string(sim->getNumberOfReplications()));
     _replicationLabel->setText(text);
     updateSimulationProgressBar(_simulationProgressBar, sim, 0.0, false);
+    if (!animationsEnabled()) {
+        QCoreApplication::processEvents();
+        return;
+    }
     int row = _simulationEventsTable->rowCount();
     _simulationEventsTable->setRowCount(row + 1);
     QTableWidgetItem* newItem = new QTableWidgetItem(QString::fromStdString(
@@ -219,11 +236,23 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     Q_UNUSED(re)
     // Reset global animation pause state to a known baseline on simulation start.
     AnimationTransition::setPause(false);
+    AnimationTransition::setRunning(animationsEnabled());
+    _suppressedUiProgressEvents = 0;
     _callbacks.actualizeActions();
     updateSimulationProgressBar(_simulationProgressBar,
                                 _simulator->getModelManager()->current()->getSimulation(),
                                 0.0,
                                 false);
+    if (!animationsEnabled()) {
+        if (_activateGraphicalSimulation != nullptr) {
+            _activateGraphicalSimulation->setChecked(false);
+        }
+        _scene->clearAnimationsTransition();
+        _scene->clearAnimationsQueue();
+        _scene->clearAnimationsValues();
+        QCoreApplication::processEvents();
+        return;
+    }
     _simulationEventsTable->setRowCount(0);
     _entitiesTable->setRowCount(0);
     _variablesTable->setRowCount(0);
@@ -256,6 +285,13 @@ void SimulationEventController::onSimulationResumeHandler(SimulationEvent* re) c
     // Log simulation-resume handler entry before paused-animation lookup.
     qInfo() << "GUI SimulationEvent onSimulationResumeHandler begin";
     _callbacks.actualizeActions();
+    if (!animationsEnabled()) {
+        cleanupPausedAnimationMap(_scene->getAnimationPaused(), true);
+        AnimationTransition::setRunning(false);
+        AnimationTransition::setPause(false);
+        QCoreApplication::processEvents();
+        return;
+    }
 
     // Resume detached paused animations using the same key selected from the paused map.
     QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap = _scene->getAnimationPaused();
@@ -299,6 +335,11 @@ void SimulationEventController::onSimulationEndHandler(SimulationEvent* re) cons
     _scene->clearAnimationsQueue();
     _scene->clearAnimationsValues();
     _callbacks.actualizeActions();
+    if (!animationsEnabled()) {
+        *_modelChecked = false;
+        QCoreApplication::processEvents();
+        return;
+    }
     _centralTabWidget->setCurrentIndex(_tabCentralReportsIndex);
     for (unsigned int i = 0; i < 50; i++) {
         QCoreApplication::processEvents();
@@ -326,6 +367,10 @@ void SimulationEventController::onProcessEventHandler(SimulationEvent* re) const
                                 simulation,
                                 simulation->getSimulatedTime(),
                                 false);
+    if (!animationsEnabled()) {
+        processSuppressedUiProgressEvents();
+        return;
+    }
     _callbacks.actualizeSimulationEvents(re);
     _callbacks.actualizeDebugEntities(false);
     _callbacks.actualizeDebugVariables(false);
@@ -345,6 +390,10 @@ void SimulationEventController::onEntityRemoveHandler(SimulationEvent* re) const
 
 // Preserve entity-move animation pipeline behavior.
 void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
+    if (!animationsEnabled() || _activateGraphicalSimulation == nullptr
+        || !_activateGraphicalSimulation->isChecked()) {
+        return;
+    }
     ModelComponent* sourceComponent = (re && re->getCurrentEvent()) ? re->getCurrentEvent()->getComponent() : nullptr;
     ModelComponent* destinationComponent = re ? re->getDestinationComponent() : nullptr;
     // Log move-event correlation context before dispatching transition animation.
@@ -377,7 +426,7 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
                 _scene->animateTransition(
                     source,
                     destination,
-                    _activateGraphicalSimulation->isChecked(),
+                    true,
                     re->getCurrentEvent());
             }
         }
@@ -389,6 +438,9 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
 // Preserve after-process animation update behavior.
 void SimulationEventController::onAfterProcessEvent(SimulationEvent* re) const {
     Q_UNUSED(re)
+    if (!animationsEnabled()) {
+        return;
+    }
     _scene->animateCounter();
     _scene->animateVariable();
     _scene->animateTimer(_simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());

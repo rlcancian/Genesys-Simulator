@@ -954,11 +954,6 @@ void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* 
     const QList<QGraphicsItem*> liveItems = scene->items();
     for (QGraphicsItem* item : liveItems) {
         if (auto* gmc = dynamic_cast<GraphicalModelComponent*>(item)) {
-            qInfo() <<
-                "synchronizeGraphicalDataDefinitionsLayer: ignoring GraphicalModelComponent in data-definition snapshot"
-                << (gmc->getComponent() != nullptr
-                        ? QString::fromStdString(gmc->getComponent()->getName())
-                        : QString("<null>"));
             continue;
         }
         GraphicalModelDataDefinition* gmdd = dynamic_cast<GraphicalModelDataDefinition*>(item);
