@@ -196,31 +196,6 @@ During non-GUI biochemical analysis implementation on 2026-04-21:
 - Added runtime tests for stoichiometry matrix construction, reaction-rate time-course output, steady-state checking, and local parameter-sensitivity scans.
 - Full `cmake --build --preset tests-kernel-unit-run` passed after this analysis work.
 
-During GUI biochemical extension implementation on 2026-04-25:
-
-- Added `BioReactionStoichiometryGuiExtensionPlugin` at `Tools/Extensions/Biochemical/Edit BioReaction Stoichiometry...`.
-- The new editor updates BioReaction reactants/products with optional per-term stoichiometry syntax (`Species` or `Species:2.5`).
-- Added `BioSpeciesManagerGuiExtensionPlugin` and `BioParameterManagerGuiExtensionPlugin` with create/edit/list workflows.
-- Added `BioSimulationResultsGuiExtensionPlugin` exposing species curves, reaction-rate tables, steady-state checks, sensitivity scans, and full analysis reports from `BioNetwork`.
-- Added SBML interoperability scope document `documentation/developersCommunication/SBML_INTEROPERABILITY_SCOPE.md`.
-- Existing GUI editors now cover:
-  - BioNetwork membership and time controls.
-  - BioReaction kinetics/reversibility/modifiers.
-  - BioReaction stoichiometry.
-  - BioSpecies and BioParameter management.
-  - BioSimulation result analysis views.
-
-During SBML interoperability implementation on 2026-04-25:
-
-- Added `source/plugins/data/BiochemicalSimulation/BioSBMLBridge.{h,cpp}` for scoped `SBML <-> Bio*` mapping.
-- `BioSimulatorRunner` now supports:
-  - `importSBML()`, `importSBML("NetworkName")`;
-  - `exportSBML()`, `exportSBML("NetworkName")`;
-  - both with `SBMLString` and `SBMLFile` model source modes.
-- Added `BioSBMLInteroperabilityGuiExtensionPlugin` at `Tools/Extensions/Biochemical/SBML Import/Export...`.
-- Added runtime tests covering SBML import, export, and export/import round-trip from `BioSimulatorRunner`.
-- `SimulatorRuntimeTest.Bio*` passed 48 focused tests after SBML integration.
-
 ## Decisions Taken
 
 - TINKERCELL is the agent name for this workstream.
@@ -247,8 +222,8 @@ During SBML interoperability implementation on 2026-04-25:
 - GUI and GROW may require metadata not present in the current kernel data classes.
 - External biochemical backend integration may introduce dependency, licensing, and platform issues.
 - Global `BioNetwork` discovery remains only as compatibility fallback; explicit membership is safer for multiple biochemical networks in one model.
-- GUI/editor controls for BioNetwork membership, BioReaction kinetics, BioReaction stoichiometry, BioSpecies, and BioParameter are implemented through graphical extension plugins.
-- BioSimulation analysis is exposed in GUI as report-based windows; chart-native plotting remains a future enhancement.
+- Explicit `BioNetwork` membership is now available at API/persistence/runtime level, but GUI/editor controls for editing those lists are not implemented yet.
+- Kinetic-law expressions are available at API/persistence/runtime level, but GUI/editor controls for editing them are not implemented yet.
 - Reversible, synthesis, and degradation reactions are executable and covered by tests.
 - Missing kinetic parameter references are explicitly covered by tests.
 - Boundary-condition and constant species preservation is now explicitly covered by tests.
@@ -256,9 +231,9 @@ During SBML interoperability implementation on 2026-04-25:
 
 ## Probable Next Steps
 
-1. Harden SBML diagnostics and expand compatibility for richer MathML and additional SBML constructs.
-2. Add curated SBML regression fixtures aligned with TinkerCell-inspired model patterns.
-3. Define the future GUI plugin/extension layer before adding broader domain-specific menus, windows, and graphical tools.
+1. Add SBML/TinkerCell interoperability decisions and implementation scope for import/export.
+2. Add GUI/editor workflows for BioNetwork membership, BioReaction stoichiometry, and kinetic-law expressions.
+3. Define the future GUI plugin/extension layer before adding domain-specific menus, windows, and graphical tools.
 4. Keep `TINKERCELL_context.md` updated as the single memory source.
 
 ## Interaction Log
