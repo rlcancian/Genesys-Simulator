@@ -49,6 +49,7 @@
 #include "plugins/components/BiochemicalSimulation/BioSteadyState.h"
 #include "plugins/components/BiochemicalSimulation/BioRunnerCommand.h"
 #include "plugins/components/BiochemicalSimulation/GeneticExpressionStep.h"
+#include "plugins/components/BiochemicalSimulation/GeneticCircuitSimulate.h"
 #include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "plugins/data/DiscreteProcessing/AssignmentItem.h"
@@ -1140,6 +1141,27 @@ public:
 class GeneticExpressionStepProbe : public GeneticExpressionStep {
 public:
     GeneticExpressionStepProbe(Model* model, const std::string& name = "") : GeneticExpressionStep(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class GeneticCircuitSimulateProbe : public GeneticCircuitSimulate {
+public:
+    GeneticCircuitSimulateProbe(Model* model, const std::string& name = "") : GeneticCircuitSimulate(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -6393,6 +6415,40 @@ TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentEvaluatesObjectiveReacti
     component.DispatchEventProbe(nullptr);
     EXPECT_TRUE(component.getLastSucceeded());
     EXPECT_DOUBLE_EQ(component.getLastObjectiveValue(), 42.0);
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitSimulateComponentRunsMultipleExpressionSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe product(model, "GFP");
+    product.setAmount(0.0);
+
+    GeneticCircuitPartProbe promoter(model, "pConst");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+    promoter.setCopyNumber(1.0);
+    promoter.setBasalExpressionRate(2.0);
+    promoter.setDegradationRate(0.0);
+
+    GeneticCircuitProbe circuit(model, "ConstitutiveReporter");
+    circuit.addPart("pConst");
+
+    GeneticCircuitSimulateProbe component(model, "CircuitSimulate");
+    component.setGeneticCircuit(&circuit);
+    component.setStartTime(0.0);
+    component.setStopTime(2.0);
+    component.setStepSize(1.0);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_EQ(component.getLastSampleCount(), 3u);
+    EXPECT_DOUBLE_EQ(component.getLastTotalExpression(), 6.0);
+    EXPECT_DOUBLE_EQ(product.getAmount(), 6.0);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerImportSBMLCreatesNativeBioDefinitions) {
