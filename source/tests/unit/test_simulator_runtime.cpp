@@ -6391,18 +6391,21 @@ TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentEvaluatesObjectiveReacti
     Model* model = simulator.getModelManager()->newModel();
     ASSERT_NE(model, nullptr);
 
-    BioSpeciesProbe substrate(model, "Glucose");
-    BioSpeciesProbe product(model, "Biomass");
+    BioSpeciesProbe intermediate(model, "B");
+
+    MetabolicReactionProbe source(model, "Source");
+    source.addProduct("B", 1.0);
+    source.setLowerBound(0.0);
+    source.setUpperBound(42.0);
 
     MetabolicReactionProbe growth(model, "Growth");
-    growth.addReactant("Glucose", 1.0);
-    growth.addProduct("Biomass", 1.0);
+    growth.addReactant("B", 1.0);
     growth.setLowerBound(0.0);
     growth.setUpperBound(42.0);
 
     MetabolicNetworkProbe network(model, "CellNetwork");
+    network.addReaction("Source");
     network.addReaction("Growth");
-    network.addExchangeSpecies("Glucose");
     network.setObjectiveReactionName("Growth");
     network.setObjectiveSense("Maximize");
 
@@ -6415,6 +6418,44 @@ TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentEvaluatesObjectiveReacti
     component.DispatchEventProbe(nullptr);
     EXPECT_TRUE(component.getLastSucceeded());
     EXPECT_DOUBLE_EQ(component.getLastObjectiveValue(), 42.0);
+    EXPECT_NE(component.getLastMessage().find("\"Source\":42"), std::string::npos);
+    EXPECT_NE(component.getLastMessage().find("\"Growth\":42"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentRespectsSteadyStateConstraints) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe intermediate(model, "B");
+
+    MetabolicReactionProbe uptake(model, "Uptake");
+    uptake.addProduct("B", 1.0);
+    uptake.setLowerBound(0.0);
+    uptake.setUpperBound(5.0);
+
+    MetabolicReactionProbe drain(model, "Drain");
+    drain.addReactant("B", 1.0);
+    drain.setLowerBound(0.0);
+    drain.setUpperBound(100.0);
+
+    MetabolicNetworkProbe network(model, "BalancedNetwork");
+    network.addReaction("Uptake");
+    network.addReaction("Drain");
+    network.setObjectiveReactionName("Drain");
+    network.setObjectiveSense("Maximize");
+
+    MetabolicFluxBalanceProbe component(model, "FluxBalanceConstrained");
+    component.setMetabolicNetwork(&network);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_DOUBLE_EQ(component.getLastObjectiveValue(), 5.0);
+    EXPECT_NE(component.getLastMessage().find("\"Uptake\":5"), std::string::npos);
+    EXPECT_NE(component.getLastMessage().find("\"Drain\":5"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, GeneticCircuitSimulateComponentRunsMultipleExpressionSteps) {
