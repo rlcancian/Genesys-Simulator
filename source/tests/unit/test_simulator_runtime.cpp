@@ -40,6 +40,9 @@
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
+#include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
+#include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
 #include "plugins/components/BiochemicalSimulation/BioSimulate.h"
 #include "plugins/components/BiochemicalSimulation/BioSteadyState.h"
 #include "plugins/components/BiochemicalSimulation/BioRunnerCommand.h"
@@ -979,6 +982,57 @@ public:
 
     void InitBetweenReplicationsProbe() {
         _initBetweenReplications();
+    }
+};
+
+class GeneticCircuitPartProbe : public GeneticCircuitPart {
+public:
+    GeneticCircuitPartProbe(Model* model, const std::string& name = "") : GeneticCircuitPart(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class GeneticRegulationProbe : public GeneticRegulation {
+public:
+    GeneticRegulationProbe(Model* model, const std::string& name = "") : GeneticRegulation(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class MetabolicReactionProbe : public MetabolicReaction {
+public:
+    MetabolicReactionProbe(Model* model, const std::string& name = "") : MetabolicReaction(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
     }
 };
 
@@ -7226,6 +7280,128 @@ TEST(SimulatorRuntimeTest, BioNetworkRejectsMissingSpeciesReferences) {
     EXPECT_FALSE(network.simulate(0.0, 1.0, 0.1, errorMessage));
     EXPECT_NE(errorMessage.find("MissingB"), std::string::npos);
     EXPECT_EQ(network.getLastStatus(), "Failed");
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitPartPersistenceAndValidation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe gfp(model, "GFP");
+
+    GeneticCircuitPartProbe source(model, "pLac");
+    source.setPartType("Promoter");
+    source.setSequence("TTTACACTTTATGCTTCCGGCTCGTATAATGTGTGGA");
+    source.setProductSpeciesName("GFP");
+    source.setCopyNumber(15.0);
+    source.setBasalExpressionRate(0.05);
+    source.setDegradationRate(0.01);
+
+    std::string errorMessage;
+    ASSERT_TRUE(source.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    GeneticCircuitPartProbe loaded(model, "loadedPart");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getName(), "pLac");
+    EXPECT_EQ(loaded.getPartType(), "Promoter");
+    EXPECT_EQ(loaded.getProductSpeciesName(), "GFP");
+    EXPECT_DOUBLE_EQ(loaded.getCopyNumber(), 15.0);
+    EXPECT_DOUBLE_EQ(loaded.getBasalExpressionRate(), 0.05);
+}
+
+TEST(SimulatorRuntimeTest, GeneticRegulationRejectsMissingReferencesAndPersists) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe lacI(model, "LacI");
+    GeneticCircuitPartProbe target(model, "pTet");
+    target.setPartType("Promoter");
+
+    GeneticRegulationProbe regulation(model, "LacI_represses_pTet");
+    regulation.setRegulatorSpeciesName("LacI");
+    regulation.setTargetPartName("pTet");
+    regulation.setRegulationType("Repression");
+    regulation.setHillCoefficient(2.0);
+    regulation.setDissociationConstant(12.5);
+    regulation.setMaxFoldChange(25.0);
+    regulation.setLeakiness(0.05);
+
+    std::string errorMessage;
+    ASSERT_TRUE(regulation.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    regulation.SaveInstanceProbe(&fields, true);
+
+    GeneticRegulationProbe loaded(model, "loadedRegulation");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getName(), "LacI_represses_pTet");
+    EXPECT_EQ(loaded.getRegulationType(), "Repression");
+    EXPECT_DOUBLE_EQ(loaded.getHillCoefficient(), 2.0);
+
+    GeneticRegulationProbe invalid(model, "InvalidRegulation");
+    invalid.setRegulatorSpeciesName("MissingTF");
+    invalid.setTargetPartName("MissingPart");
+    invalid.setRegulationType("Unsupported");
+    invalid.setHillCoefficient(0.0);
+    invalid.setDissociationConstant(0.0);
+    invalid.setLeakiness(2.0);
+
+    errorMessage.clear();
+    EXPECT_FALSE(invalid.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingTF"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingPart"), std::string::npos);
+    EXPECT_NE(errorMessage.find("regulationType"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicReactionValidatesBoundsAndPersistence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe glucose(model, "Glucose");
+    BioSpeciesProbe pyruvate(model, "Pyruvate");
+
+    MetabolicReactionProbe source(model, "GlycolysisStep");
+    source.addReactant("Glucose", 1.0);
+    source.addProduct("Pyruvate", 2.0);
+    source.setLowerBound(0.0);
+    source.setUpperBound(1000.0);
+    source.setObjectiveCoefficient(0.0);
+    source.setGeneRule("geneA and geneB");
+
+    std::string errorMessage;
+    ASSERT_TRUE(source.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    MetabolicReactionProbe loaded(model, "loadedMetabolicReaction");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getReactants().size(), 1u);
+    ASSERT_EQ(loaded.getProducts().size(), 1u);
+    EXPECT_EQ(loaded.getReactants()[0].speciesName, "Glucose");
+    EXPECT_EQ(loaded.getProducts()[0].speciesName, "Pyruvate");
+    EXPECT_DOUBLE_EQ(loaded.getProducts()[0].stoichiometry, 2.0);
+    EXPECT_DOUBLE_EQ(loaded.getUpperBound(), 1000.0);
+    EXPECT_EQ(loaded.getGeneRule(), "geneA and geneB");
+
+    MetabolicReactionProbe invalid(model, "InvalidMetabolicReaction");
+    invalid.addReactant("MissingMetabolite", 1.0);
+    invalid.setLowerBound(10.0);
+    invalid.setUpperBound(5.0);
+    invalid.setReversible(false);
+
+    errorMessage.clear();
+    EXPECT_FALSE(invalid.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingMetabolite"), std::string::npos);
+    EXPECT_NE(errorMessage.find("upperBound >= lowerBound"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioPluginsAreAvailableThroughDummyConnector) {
