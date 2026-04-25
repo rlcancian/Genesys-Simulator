@@ -41,8 +41,10 @@
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuit.h"
 #include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
 #include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
+#include "plugins/data/BiochemicalSimulation/MetabolicNetwork.h"
 #include "plugins/components/BiochemicalSimulation/BioSimulate.h"
 #include "plugins/components/BiochemicalSimulation/BioSteadyState.h"
 #include "plugins/components/BiochemicalSimulation/BioRunnerCommand.h"
@@ -1002,6 +1004,23 @@ public:
     }
 };
 
+class GeneticCircuitProbe : public GeneticCircuit {
+public:
+    GeneticCircuitProbe(Model* model, const std::string& name = "") : GeneticCircuit(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
 class GeneticRegulationProbe : public GeneticRegulation {
 public:
     GeneticRegulationProbe(Model* model, const std::string& name = "") : GeneticRegulation(model, name) {}
@@ -1022,6 +1041,23 @@ public:
 class MetabolicReactionProbe : public MetabolicReaction {
 public:
     MetabolicReactionProbe(Model* model, const std::string& name = "") : MetabolicReaction(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class MetabolicNetworkProbe : public MetabolicNetwork {
+public:
+    MetabolicNetworkProbe(Model* model, const std::string& name = "") : MetabolicNetwork(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -7402,6 +7438,114 @@ TEST(SimulatorRuntimeTest, MetabolicReactionValidatesBoundsAndPersistence) {
     EXPECT_FALSE(invalid.CheckProbe(errorMessage));
     EXPECT_NE(errorMessage.find("MissingMetabolite"), std::string::npos);
     EXPECT_NE(errorMessage.find("upperBound >= lowerBound"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitValidatesMembershipAndPersistence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe gfp(model, "GFP");
+    BioSpeciesProbe lacI(model, "LacI");
+
+    GeneticCircuitPartProbe promoter(model, "pLac");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+
+    GeneticCircuitPartProbe cds(model, "lacI_cds");
+    cds.setPartType("CDS");
+    cds.setProductSpeciesName("LacI");
+
+    GeneticRegulationProbe regulation(model, "LacI_represses_pLac");
+    regulation.setRegulatorSpeciesName("LacI");
+    regulation.setTargetPartName("pLac");
+    regulation.setRegulationType("Repression");
+
+    GeneticCircuitProbe source(model, "ToggleHalf");
+    source.addPart("pLac");
+    source.addPart("lacI_cds");
+    source.addRegulation("LacI_represses_pLac");
+    source.setHostOrganism("E.coli");
+    source.setCompartment("cytosol");
+
+    std::string errorMessage;
+    ASSERT_TRUE(source.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    GeneticCircuitProbe loaded(model, "LoadedCircuit");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getPartNames().size(), 2u);
+    ASSERT_EQ(loaded.getRegulationNames().size(), 1u);
+    EXPECT_EQ(loaded.getPartNames()[0], "pLac");
+    EXPECT_EQ(loaded.getRegulationNames()[0], "LacI_represses_pLac");
+    EXPECT_EQ(loaded.getHostOrganism(), "E.coli");
+    EXPECT_EQ(loaded.getCompartment(), "cytosol");
+
+    GeneticCircuitProbe invalid(model, "InvalidCircuit");
+    invalid.addPart("MissingPart");
+    invalid.addRegulation("MissingRegulation");
+    errorMessage.clear();
+    EXPECT_FALSE(invalid.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingPart"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingRegulation"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicNetworkValidatesMembershipAndPersistence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe glucose(model, "Glucose");
+    BioSpeciesProbe oxygen(model, "Oxygen");
+    BioSpeciesProbe biomass(model, "Biomass");
+
+    MetabolicReactionProbe glycolysis(model, "Glycolysis");
+    glycolysis.addReactant("Glucose", 1.0);
+    glycolysis.addProduct("Biomass", 1.0);
+
+    MetabolicReactionProbe respiration(model, "Respiration");
+    respiration.addReactant("Oxygen", 1.0);
+    respiration.addProduct("Biomass", 1.0);
+
+    MetabolicNetworkProbe source(model, "CoreMetabolism");
+    source.addReaction("Glycolysis");
+    source.addReaction("Respiration");
+    source.addExchangeSpecies("Glucose");
+    source.addExchangeSpecies("Oxygen");
+    source.setObjectiveReactionName("Glycolysis");
+    source.setObjectiveSense("Maximize");
+    source.setCompartment("cytosol");
+
+    std::string errorMessage;
+    ASSERT_TRUE(source.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    MetabolicNetworkProbe loaded(model, "LoadedMetabolicNetwork");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getReactionNames().size(), 2u);
+    ASSERT_EQ(loaded.getExchangeSpeciesNames().size(), 2u);
+    EXPECT_EQ(loaded.getReactionNames()[0], "Glycolysis");
+    EXPECT_EQ(loaded.getExchangeSpeciesNames()[1], "Oxygen");
+    EXPECT_EQ(loaded.getObjectiveReactionName(), "Glycolysis");
+    EXPECT_EQ(loaded.getObjectiveSense(), "Maximize");
+
+    MetabolicNetworkProbe invalid(model, "InvalidMetabolicNetwork");
+    invalid.addReaction("MissingReaction");
+    invalid.addExchangeSpecies("MissingSpecies");
+    invalid.setObjectiveReactionName("MissingObjective");
+    invalid.setObjectiveSense("Unsupported");
+    errorMessage.clear();
+    EXPECT_FALSE(invalid.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingReaction"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingSpecies"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingObjective"), std::string::npos);
+    EXPECT_NE(errorMessage.find("objectiveSense"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioPluginsAreAvailableThroughDummyConnector) {
