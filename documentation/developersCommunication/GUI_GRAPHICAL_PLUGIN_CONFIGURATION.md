@@ -34,11 +34,26 @@ The generic extension infrastructure now has first biosimulation consumers:
 - `Tools/Extensions/Biochemical/Edit BioReaction Kinetics...`
   - edits `BioReaction` reversible flag, direct/reverse constants, direct/reverse parameter names,
     direct/reverse kinetic-law expressions, and modifiers list.
+- `Tools/Extensions/Biochemical/Edit BioReaction Stoichiometry...`
+  - edits `BioReaction` reactants and products with optional stoichiometry per term (for example `A` or `A:2.5`).
+- `Tools/Extensions/Biochemical/Manage BioSpecies...`
+  - provides create/edit/list workflows for `BioSpecies` definitions (name, initial/current amount, constant, boundary condition, unit).
+- `Tools/Extensions/Biochemical/Manage BioParameters...`
+  - provides create/edit/list workflows for `BioParameter` definitions (name, value, unit).
+- `Tools/Extensions/Biochemical/View BioSimulation Results...`
+  - provides species curves, reaction-rate tables, steady-state checks, local sensitivity scans, and a full analysis report from `BioNetwork` results.
+- `Tools/Extensions/Biochemical/SBML Import/Export...`
+  - runs `BioSimulatorRunner` SBML endpoints (`importSBML(...)` and `exportSBML(...)`) for text/file workflows and diagnostics payload visualization.
 
 Both entries are dependency-gated by model plugins:
 
 - BioNetwork editor requires `bionetwork`;
 - BioReaction editor requires `bioreaction`.
+- BioReaction stoichiometry editor requires `bioreaction`.
+- BioSpecies manager requires `biospecies`.
+- BioParameter manager requires `bioparameter`.
+- BioSimulation results viewer requires `bionetwork`.
+- SBML interoperability window requires `biosimulatorrunner`.
 
 ## Configuration file
 
