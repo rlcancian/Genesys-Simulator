@@ -40,6 +40,9 @@
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/components/BiochemicalSimulation/BioSimulate.h"
+#include "plugins/components/BiochemicalSimulation/BioSteadyState.h"
+#include "plugins/components/BiochemicalSimulation/BioRunnerCommand.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "plugins/data/DiscreteProcessing/AssignmentItem.h"
 #include "plugins/data/Template/DummyElement.h"
@@ -976,6 +979,69 @@ public:
 
     void InitBetweenReplicationsProbe() {
         _initBetweenReplications();
+    }
+};
+
+class BioSimulateProbe : public BioSimulate {
+public:
+    BioSimulateProbe(Model* model, const std::string& name = "") : BioSimulate(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class BioSteadyStateProbe : public BioSteadyState {
+public:
+    BioSteadyStateProbe(Model* model, const std::string& name = "") : BioSteadyState(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class BioRunnerCommandProbe : public BioRunnerCommand {
+public:
+    BioRunnerCommandProbe(Model* model, const std::string& name = "") : BioRunnerCommand(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
     }
 };
 
@@ -6023,6 +6089,101 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
     EXPECT_EQ(runner.getLastResponsePayload(), "");
     EXPECT_EQ(runner.getLastResponseFilename(), "");
     EXPECT_EQ(errorMessage, "");
+}
+
+TEST(SimulatorRuntimeTest, BioSimulateComponentRunsAssignedBioNetwork) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpecies a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpecies b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReaction reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.2);
+
+    BioNetwork network(model, "Net");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("A_to_B");
+    network.setStartTime(0.0);
+    network.setStopTime(10.0);
+    network.setStepSize(0.1);
+
+    BioSimulateProbe component(model, "BioSimulateComp");
+    component.setBioNetwork(&network);
+    component.setUseNetworkTimeWindow(true);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_LT(a.getAmount(), 10.0);
+    EXPECT_GT(b.getAmount(), 0.0);
+}
+
+TEST(SimulatorRuntimeTest, BioSteadyStateComponentStoresLastCheckOutput) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpecies a(model, "A");
+    a.setInitialAmount(5.0);
+    a.setAmount(5.0);
+
+    BioReaction noop(model, "Noop");
+    noop.addReactant("A", 1.0);
+    noop.addProduct("A", 1.0);
+    noop.setRateConstant(0.0);
+
+    BioNetwork network(model, "SteadyNet");
+    network.addSpecies("A");
+    network.addReaction("Noop");
+    network.setStartTime(0.0);
+    network.setStopTime(1.0);
+    network.setStepSize(0.1);
+
+    BioSteadyStateProbe component(model, "BioSteadyComp");
+    component.setBioNetwork(&network);
+    component.setTolerance(1e-8);
+    component.setRunSimulationBeforeCheck(true);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSteady());
+    EXPECT_NEAR(component.getLastMaxAbsoluteDerivative(), 0.0, 1e-12);
+}
+
+TEST(SimulatorRuntimeTest, BioRunnerCommandComponentExecutesRunnerCommand) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "Runner");
+    runner.setModelSourceType("SBMLString");
+    runner.setModelSource("<sbml><model id=\"m\"/></sbml>");
+
+    BioRunnerCommandProbe component(model, "BioRunnerComp");
+    component.setRunner(&runner);
+    component.setCommand("validateModel()");
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_EQ(component.getLastStatus(), "Completed");
+    EXPECT_NE(component.getLastMessage().find("\"resultType\":\"stub_validation\""), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerImportSBMLCreatesNativeBioDefinitions) {
