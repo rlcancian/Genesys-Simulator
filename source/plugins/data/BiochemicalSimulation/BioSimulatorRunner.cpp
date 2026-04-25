@@ -9,6 +9,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <filesystem>
+#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <limits>
@@ -16,6 +18,7 @@
 #include <vector>
 
 #include "kernel/simulator/Model.h"
+#include "plugins/data/BiochemicalSimulation/BioSBMLBridge.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -159,6 +162,56 @@ std::string makePayloadPrefix(bool success, const std::string& status, const std
 			",\"backend\":\"" + jsonEscape(backend) + "\"" +
 			",\"command\":\"" + jsonEscape(command) + "\"" +
 			",\"resultType\":\"" + jsonEscape(resultType) + "\"";
+}
+
+std::string jsonArray(const std::vector<std::string>& values) {
+	std::string json = "[";
+	for (const std::string& value : values) {
+		json += "\"" + jsonEscape(value) + "\",";
+	}
+	if (!values.empty()) {
+		json.pop_back();
+	}
+	json += "]";
+	return json;
+}
+
+std::filesystem::path resolveSourcePath(const std::string& configuredPath, const std::string& workingDirectory) {
+	const std::filesystem::path sourcePath(configuredPath);
+	if (sourcePath.is_absolute() || trim(workingDirectory).empty()) {
+		return sourcePath;
+	}
+	return std::filesystem::path(workingDirectory) / sourcePath;
+}
+
+bool readTextFile(const std::filesystem::path& path, std::string* contents, std::string& errorMessage) {
+	if (contents == nullptr) {
+		errorMessage = "Internal error: invalid output buffer while reading SBML file.";
+		return false;
+	}
+	std::ifstream input(path);
+	if (!input.is_open()) {
+		errorMessage = "Could not open SBML input file \"" + path.string() + "\".";
+		return false;
+	}
+	std::ostringstream text;
+	text << input.rdbuf();
+	*contents = text.str();
+	return true;
+}
+
+bool writeTextFile(const std::filesystem::path& path, const std::string& contents, std::string& errorMessage) {
+	std::ofstream output(path, std::ios::trunc);
+	if (!output.is_open()) {
+		errorMessage = "Could not write SBML output file \"" + path.string() + "\".";
+		return false;
+	}
+	output << contents;
+	if (!output.good()) {
+		errorMessage = "Failed while writing SBML output file \"" + path.string() + "\".";
+		return false;
+	}
+	return true;
 }
 
 } // namespace
@@ -397,6 +450,103 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 		_lastStatus = "Completed";
 		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "stub_validation") +
 				",\"modelSourceType\":\"" + jsonEscape(_modelSourceType) + "\"}";
+		return true;
+	}
+	if (!errorMessage.empty()) {
+		_lastStatus = "Failed";
+		_lastErrorMessage = errorMessage;
+		return false;
+	}
+
+	if (parseCall(normalizedCommand, "importSBML", &args, errorMessage)) {
+		const std::string trimmedArgs = trim(args);
+		std::string requestedNetworkName;
+		if (!trimmedArgs.empty() && !parseQuotedSymbol(trimmedArgs, &requestedNetworkName)) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = "importSBML() accepts zero arguments or one quoted BioNetwork name.";
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		std::string sbmlDocument;
+		if (_modelSourceType == "SBMLFile") {
+			const std::filesystem::path sourcePath = resolveSourcePath(_modelSource, _workingDirectory);
+			if (!readTextFile(sourcePath, &sbmlDocument, errorMessage)) {
+				_lastStatus = "Failed";
+				_lastErrorMessage = errorMessage;
+				return false;
+			}
+			_lastResponseFilename = sourcePath.string();
+		} else {
+			sbmlDocument = _modelSource;
+		}
+		if (trim(sbmlDocument).empty()) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = "importSBML() requires a non-empty SBML source.";
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		BioSBMLImportResult importResult;
+		if (!BioSBMLBridge::importFromString(_parentModel, sbmlDocument, requestedNetworkName, &importResult, errorMessage)) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = errorMessage;
+			return false;
+		}
+		_lastStatus = "Completed";
+		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "sbml_import") +
+				",\"networkName\":\"" + jsonEscape(importResult.networkName) + "\"" +
+				",\"speciesImported\":" + std::to_string(importResult.speciesImported) +
+				",\"parametersImported\":" + std::to_string(importResult.parametersImported) +
+				",\"reactionsImported\":" + std::to_string(importResult.reactionsImported) +
+				",\"warnings\":" + jsonArray(importResult.warnings) + "}";
+		return true;
+	}
+	if (!errorMessage.empty()) {
+		_lastStatus = "Failed";
+		_lastErrorMessage = errorMessage;
+		return false;
+	}
+
+	if (parseCall(normalizedCommand, "exportSBML", &args, errorMessage)) {
+		const std::string trimmedArgs = trim(args);
+		std::string requestedNetworkName;
+		if (!trimmedArgs.empty() && !parseQuotedSymbol(trimmedArgs, &requestedNetworkName)) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = "exportSBML() accepts zero arguments or one quoted BioNetwork name.";
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		BioSBMLExportResult exportResult;
+		std::string sbmlDocument;
+		if (!BioSBMLBridge::exportToString(_parentModel, requestedNetworkName, &sbmlDocument, &exportResult, errorMessage)) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = errorMessage;
+			return false;
+		}
+
+		_lastStatus = "Completed";
+		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "sbml_export") +
+				",\"networkName\":\"" + jsonEscape(exportResult.networkName) + "\"" +
+				",\"speciesExported\":" + std::to_string(exportResult.speciesExported) +
+				",\"parametersExported\":" + std::to_string(exportResult.parametersExported) +
+				",\"reactionsExported\":" + std::to_string(exportResult.reactionsExported) +
+				",\"warnings\":" + jsonArray(exportResult.warnings);
+
+		if (_modelSourceType == "SBMLFile") {
+			const std::filesystem::path outputPath = resolveSourcePath(_modelSource, _workingDirectory);
+			if (!writeTextFile(outputPath, sbmlDocument, errorMessage)) {
+				_lastStatus = "Failed";
+				_lastErrorMessage = errorMessage;
+				return false;
+			}
+			_lastResponseFilename = outputPath.string();
+			_lastResponsePayload += ",\"outputFile\":\"" + jsonEscape(outputPath.string()) + "\"}";
+		} else {
+			_modelSource = sbmlDocument;
+			_lastResponsePayload += ",\"sbml\":\"" + jsonEscape(sbmlDocument) + "\"}";
+		}
 		return true;
 	}
 	if (!errorMessage.empty()) {

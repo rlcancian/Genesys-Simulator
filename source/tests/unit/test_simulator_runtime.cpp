@@ -6025,6 +6025,171 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
     EXPECT_EQ(errorMessage, "");
 }
 
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerImportSBMLCreatesNativeBioDefinitions) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const std::string sbml = R"(<?xml version="1.0" encoding="UTF-8"?>
+<sbml level="3" version="2">
+  <model id="M1" name="ImportedNetwork" genesysStartTime="0" genesysStopTime="12" genesysStepSize="0.5">
+    <listOfSpecies>
+      <species id="S1" initialAmount="10" />
+      <species id="S2" initialAmount="0" />
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter id="k1" value="0.2" />
+    </listOfParameters>
+    <listOfReactions>
+      <reaction id="R1" reversible="false" genesysRateConstantParameter="k1">
+        <listOfReactants>
+          <speciesReference species="S1" stoichiometry="1" />
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="S2" stoichiometry="1" />
+        </listOfProducts>
+        <kineticLaw formula="k1 * S1">
+          <math>k1 * S1</math>
+        </kineticLaw>
+      </reaction>
+    </listOfReactions>
+  </model>
+</sbml>)";
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorImportSBML");
+    runner.setModelSourceType("SBMLString");
+    runner.setModelSource(sbml);
+    runner.setCommand("importSBML(\"SBMLNet\")");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"sbml_import\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"networkName\":\"SBMLNet\""), std::string::npos);
+
+    auto* network = dynamic_cast<BioNetwork*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioNetwork>(), "SBMLNet"));
+    ASSERT_NE(network, nullptr);
+    EXPECT_DOUBLE_EQ(network->getStartTime(), 0.0);
+    EXPECT_DOUBLE_EQ(network->getStopTime(), 12.0);
+    EXPECT_DOUBLE_EQ(network->getStepSize(), 0.5);
+    EXPECT_EQ(network->getSpeciesNames().size(), 2u);
+    EXPECT_EQ(network->getReactionNames().size(), 1u);
+
+    auto* importedS1 = dynamic_cast<BioSpecies*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "S1"));
+    auto* importedK1 = dynamic_cast<BioParameter*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioParameter>(), "k1"));
+    auto* importedR1 = dynamic_cast<BioReaction*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioReaction>(), "R1"));
+    ASSERT_NE(importedS1, nullptr);
+    ASSERT_NE(importedK1, nullptr);
+    ASSERT_NE(importedR1, nullptr);
+    EXPECT_DOUBLE_EQ(importedS1->getInitialAmount(), 10.0);
+    EXPECT_DOUBLE_EQ(importedK1->getValue(), 0.2);
+    EXPECT_EQ(importedR1->getRateConstantParameterName(), "k1");
+    EXPECT_EQ(importedR1->getKineticLawExpression(), "k1 * S1");
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerExportSBMLReturnsSBMLStringPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* a = new BioSpecies(model, "A");
+    a->setInitialAmount(5.0);
+    a->setAmount(5.0);
+
+    auto* b = new BioSpecies(model, "B");
+    b->setInitialAmount(0.0);
+    b->setAmount(0.0);
+
+    auto* k1 = new BioParameter(model, "k1");
+    k1->setValue(0.15);
+
+    auto* reaction = new BioReaction(model, "A_to_B");
+    reaction->addReactant("A", 1.0);
+    reaction->addProduct("B", 1.0);
+    reaction->setRateConstantParameterName("k1");
+
+    auto* network = new BioNetwork(model, "RoundTripNet");
+    network->setStartTime(0.0);
+    network->setStopTime(8.0);
+    network->setStepSize(0.2);
+    network->addSpecies("A");
+    network->addSpecies("B");
+    network->addReaction("A_to_B");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorExportSBML");
+    runner.setModelSourceType("SBMLString");
+    runner.setModelSource("");
+    runner.setCommand("exportSBML(\"RoundTripNet\")");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"sbml_export\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"networkName\":\"RoundTripNet\""), std::string::npos);
+    EXPECT_NE(runner.getModelSource().find("<sbml"), std::string::npos);
+    EXPECT_NE(runner.getModelSource().find("genesysStepSize=\"0.2\""), std::string::npos);
+    EXPECT_NE(runner.getModelSource().find("<reaction id=\"A_to_B\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerExportThenImportSBMLRoundTripsCoreBioCounts) {
+    Simulator sourceSimulator;
+    Model* sourceModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(sourceModel, nullptr);
+
+    auto* s1 = new BioSpecies(sourceModel, "S1");
+    s1->setInitialAmount(7.0);
+    s1->setAmount(7.0);
+
+    auto* s2 = new BioSpecies(sourceModel, "S2");
+    s2->setInitialAmount(0.0);
+    s2->setAmount(0.0);
+
+    auto* kp = new BioParameter(sourceModel, "k_decay");
+    kp->setValue(0.07);
+
+    auto* decay = new BioReaction(sourceModel, "Decay");
+    decay->addReactant("S1", 1.0);
+    decay->addProduct("S2", 1.0);
+    decay->setRateConstantParameterName("k_decay");
+
+    auto* sourceNetwork = new BioNetwork(sourceModel, "ExportNet");
+    sourceNetwork->addSpecies("S1");
+    sourceNetwork->addSpecies("S2");
+    sourceNetwork->addReaction("Decay");
+
+    BioSimulatorRunnerProbe exporter(sourceModel, "BioSimulatorExporter");
+    exporter.setModelSourceType("SBMLString");
+    exporter.setModelSource("");
+    exporter.setCommand("exportSBML(\"ExportNet\")");
+
+    std::string exportError;
+    ASSERT_TRUE(exporter.executeCommand(exportError)) << exportError;
+    const std::string exportedSbml = exporter.getModelSource();
+    ASSERT_FALSE(exportedSbml.empty());
+
+    Simulator targetSimulator;
+    Model* targetModel = targetSimulator.getModelManager()->newModel();
+    ASSERT_NE(targetModel, nullptr);
+
+    BioSimulatorRunnerProbe importer(targetModel, "BioSimulatorImporter");
+    importer.setModelSourceType("SBMLString");
+    importer.setModelSource(exportedSbml);
+    importer.setCommand("importSBML(\"ImportedFromExport\")");
+
+    std::string importError;
+    EXPECT_TRUE(importer.executeCommand(importError)) << importError;
+    EXPECT_EQ(importer.getLastStatus(), "Completed");
+
+    auto* importedNetwork = dynamic_cast<BioNetwork*>(
+        targetModel->getDataManager()->getDataDefinition(Util::TypeOf<BioNetwork>(), "ImportedFromExport"));
+    ASSERT_NE(importedNetwork, nullptr);
+    EXPECT_EQ(importedNetwork->getSpeciesNames().size(), 2u);
+    EXPECT_EQ(importedNetwork->getReactionNames().size(), 1u);
+    EXPECT_NE(targetModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "S1"), nullptr);
+    EXPECT_NE(targetModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "S2"), nullptr);
+    EXPECT_NE(targetModel->getDataManager()->getDataDefinition(Util::TypeOf<BioReaction>(), "Decay"), nullptr);
+}
+
 TEST(SimulatorRuntimeTest, MassActionOdeSystemEvaluatesIrreversibleReaction) {
     MassActionOdeSystem system(
             {
