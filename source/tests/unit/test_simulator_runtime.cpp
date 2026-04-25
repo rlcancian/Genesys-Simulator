@@ -48,6 +48,8 @@
 #include "plugins/components/BiochemicalSimulation/BioSimulate.h"
 #include "plugins/components/BiochemicalSimulation/BioSteadyState.h"
 #include "plugins/components/BiochemicalSimulation/BioRunnerCommand.h"
+#include "plugins/components/BiochemicalSimulation/GeneticExpressionStep.h"
+#include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "plugins/data/DiscreteProcessing/AssignmentItem.h"
 #include "plugins/data/Template/DummyElement.h"
@@ -1117,6 +1119,48 @@ public:
 class BioRunnerCommandProbe : public BioRunnerCommand {
 public:
     BioRunnerCommandProbe(Model* model, const std::string& name = "") : BioRunnerCommand(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class GeneticExpressionStepProbe : public GeneticExpressionStep {
+public:
+    GeneticExpressionStepProbe(Model* model, const std::string& name = "") : GeneticExpressionStep(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class MetabolicFluxBalanceProbe : public MetabolicFluxBalance {
+public:
+    MetabolicFluxBalanceProbe(Model* model, const std::string& name = "") : MetabolicFluxBalance(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -6274,6 +6318,81 @@ TEST(SimulatorRuntimeTest, BioRunnerCommandComponentExecutesRunnerCommand) {
     EXPECT_TRUE(component.getLastSucceeded());
     EXPECT_EQ(component.getLastStatus(), "Completed");
     EXPECT_NE(component.getLastMessage().find("\"resultType\":\"stub_validation\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, GeneticExpressionStepComponentUpdatesProductSpecies) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe regulator(model, "LacI");
+    regulator.setAmount(0.0);
+    BioSpeciesProbe product(model, "GFP");
+    product.setAmount(0.0);
+
+    GeneticCircuitPartProbe promoter(model, "pLac");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+    promoter.setCopyNumber(2.0);
+    promoter.setBasalExpressionRate(0.5);
+    promoter.setDegradationRate(0.0);
+
+    GeneticRegulationProbe regulation(model, "LacI_represses_pLac");
+    regulation.setRegulatorSpeciesName("LacI");
+    regulation.setTargetPartName("pLac");
+    regulation.setRegulationType("Repression");
+    regulation.setHillCoefficient(2.0);
+    regulation.setDissociationConstant(1.0);
+    regulation.setMaxFoldChange(1.0);
+    regulation.setLeakiness(0.0);
+
+    GeneticCircuitProbe circuit(model, "Reporter");
+    circuit.addPart("pLac");
+    circuit.addRegulation("LacI_represses_pLac");
+
+    GeneticExpressionStepProbe component(model, "ExpressionStep");
+    component.setGeneticCircuit(&circuit);
+    component.setTimeStep(1.0);
+    component.setApplyRegulation(true);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_DOUBLE_EQ(component.getLastTotalExpression(), 1.0);
+    EXPECT_DOUBLE_EQ(product.getAmount(), 1.0);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentEvaluatesObjectiveReaction) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe substrate(model, "Glucose");
+    BioSpeciesProbe product(model, "Biomass");
+
+    MetabolicReactionProbe growth(model, "Growth");
+    growth.addReactant("Glucose", 1.0);
+    growth.addProduct("Biomass", 1.0);
+    growth.setLowerBound(0.0);
+    growth.setUpperBound(42.0);
+
+    MetabolicNetworkProbe network(model, "CellNetwork");
+    network.addReaction("Growth");
+    network.addExchangeSpecies("Glucose");
+    network.setObjectiveReactionName("Growth");
+    network.setObjectiveSense("Maximize");
+
+    MetabolicFluxBalanceProbe component(model, "FluxBalance");
+    component.setMetabolicNetwork(&network);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_DOUBLE_EQ(component.getLastObjectiveValue(), 42.0);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerImportSBMLCreatesNativeBioDefinitions) {
