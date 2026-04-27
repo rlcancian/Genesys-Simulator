@@ -34,10 +34,10 @@ typedef void (*traceErrorListener)(TraceErrorEvent);
 typedef void (*traceSimulationListener)(TraceSimulationEvent);
 typedef void (*traceSimulationProcessListener)(TraceSimulationProcess);
 // for handlers that are class members (methods)
-typedef std::function<void(TraceEvent) > traceListenerMethod;
-typedef std::function<void(TraceErrorEvent) > traceErrorListenerMethod;
-typedef std::function<void(TraceSimulationEvent) > traceSimulationListenerMethod;
-typedef std::function<void(TraceSimulationProcess) > traceSimulationProcessListenerMethod;
+typedef std::function<void(TraceEvent)> traceListenerMethod;
+typedef std::function<void(TraceErrorEvent)> traceErrorListenerMethod;
+typedef std::function<void(TraceSimulationEvent)> traceSimulationListenerMethod;
+typedef std::function<void(TraceSimulationProcess)> traceSimulationProcessListenerMethod;
 
 /*!
  * The TraceManager is used to trace back model simulation information and track/debug the simulation.
@@ -90,38 +90,38 @@ public: // add trace handlers
 	 * \brief addTraceHandler
 	 * \param object
 	 */
-	template<typename Class> void addTraceHandler(Class * object, void (Class::*function)(TraceEvent)); //!< Add a method to by notified/invoked then a trace is called
+	template<typename Class> void addTraceHandler(Class* object, void (Class::*function)(TraceEvent)); //!< Add a method to by notified/invoked then a trace is called
 	/*!
 	 * \brief addTraceErrorHandler
 	 * \param object
 	 */
-	template<typename Class> void addTraceErrorHandler(Class * object, void (Class::*function)(TraceErrorEvent));   //!< Add a method to by notified/invoked then a traceError is called
+	template<typename Class> void addTraceErrorHandler(Class* object, void (Class::*function)(TraceErrorEvent)); //!< Add a method to by notified/invoked then a traceError is called
 	/*!
 	 * \brief addTraceReportHandler
 	 * \param object
 	 */
-	template<typename Class> void addTraceReportHandler(Class * object, void (Class::*function)(TraceEvent));  //!< Add a method to by notified/invoked then a traceReport is called
+	template<typename Class> void addTraceReportHandler(Class* object, void (Class::*function)(TraceEvent)); //!< Add a method to by notified/invoked then a traceReport is called
 	/*!
 	 * \brief addTraceSimulationHandler
 	 * \param object
 	 */
-	template<typename Class> void addTraceSimulationHandler(Class * object, void (Class::*function)(TraceSimulationEvent));  //!< Add a method to by notified/invoked then a traceSimulation is called
+	template<typename Class> void addTraceSimulationHandler(Class* object, void (Class::*function)(TraceSimulationEvent)); //!< Add a method to by notified/invoked then a traceSimulation is called
 
 public: // add ModelDataDefinition (or subclasses) allowed (or restrcted) to traceSimulation
 	void addTraceSimulationExceptionRuleModelData(void* thisobject);
 public: // traces (invoke trace handlers)
-	void trace(TraceManager::Level level, const std::string& text); //<! Deprected
-	void traceSimulation(void* thisobject, TraceManager::Level level, double time, Entity* entity, ModelComponent* component, const std::string& text); //<! Deprected
-	void traceSimulation(void* thisobject, TraceManager::Level level, const std::string& text); //<! Deprected
+	void trace(TraceManager::Level level, const std::string& text); //!< Deprecated
+	void traceSimulation(void* thisobject, TraceManager::Level level, double time, Entity* entity, ModelComponent* component, const std::string& text); //!< Deprecated
+	void traceSimulation(void* thisobject, TraceManager::Level level, const std::string& text); //!< Deprecated
 public: // traces
 	// Disable callbacks and clear handler lists before simulator teardown destroys GUI objects.
 	void beginShutdown();
-	void trace(const std::string& text, TraceManager::Level level = TraceManager::Level::L8_detailed); //!< Trace to a general output, used when not simulating (eg: adding plugins, checking the model, etc
+	void trace(const std::string& text, TraceManager::Level level = TraceManager::Level::L8_detailed); //!< Trace to a general output, used when not simulating (eg: adding plugins, checking the model, etc)
 	void traceError(const std::string& text, const std::exception& e); //!< Trace to the error output, used in every situation an error happens (simulating, report, general)
 	void traceError(const std::string& text, TraceManager::Level level = TraceManager::Level::L1_errorFatal); //!< Trace to the error output, used in every situation an error happens (simulating, report, general)
 	void traceReport(const std::string& text, TraceManager::Level level = TraceManager::Level::L2_results); //!< Trace to the report output, used only when generating the simulation report
-    void traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, const std::string& text, TraceManager::Level level = TraceManager::Level::L8_detailed,bool showAnyway = false); //!< Trace to the simulation output, used only when simulation is running (eg: compponents or dataElements inform something)
-    void traceSimulation(void* thisobject, const std::string& text, TraceManager::Level level = TraceManager::Level::L8_detailed, bool showAnyway = false); //!< Trace to the simulation output, used only when simulation is running (eg: compponents or dataElements inform something)
+	void traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, const std::string& text, TraceManager::Level level = TraceManager::Level::L8_detailed, bool showAnyway = false); //!< Trace to the simulation output, used only when simulation is running (eg: components or dataElements inform something)
+	void traceSimulation(void* thisobject, const std::string& text, TraceManager::Level level = TraceManager::Level::L8_detailed, bool showAnyway = false); //!< Trace to the simulation output, used only when simulation is running (eg: components or dataElements inform something)
 
 public:
 	/*!
@@ -158,7 +158,7 @@ public:
 private:
 	//void _addHandler(List<traceListener>* list, )
 	bool _traceConditionPassed(TraceManager::Level level);
-    bool _traceSimulationConditionPassed(TraceManager::Level level, void* thisobject, bool showAnyway = false);
+	bool _traceSimulationConditionPassed(TraceManager::Level level, void* thisobject, bool showAnyway = false);
 private: // trace listener
 	// for handlers that are simple functions
 	List<traceListener>* _traceHandlers = new List<traceListener>();
@@ -177,29 +177,29 @@ private:
 private:
 	TraceManager::Level _traceLevel; // = TraceManager::Level::L9_mostDetailed;
 	bool _shuttingDown = false;
-    double _lastTimeTraceSimulation = -1.0; // an invalid time
+	double _lastTimeTraceSimulation = -1.0; // an invalid time
 	Util::identification _lastEntityTraceSimulation = 0;
 	Util::identification _lastModuleTraceSimulation = 0;
 	bool _traceSimulationRuleAllAllowed = true;
-    List<std::string>* _errorMessages = new List<std::string>(); /* @ToDo: (importante): 18/08/24 this is a new one. several methods should use it */
+	List<std::string>* _errorMessages = new List<std::string>(); /* @ToDo: (importante): 18/08/24 this is a new one. several methods should use it */
 
 };
 
 // implementation for template methods
 
-template<typename Class> void TraceManager::addTraceHandler(Class * object, void (Class::*function)(TraceEvent)) {
+template<typename Class> void TraceManager::addTraceHandler(Class* object, void (Class::*function)(TraceEvent)) {
 	this->_traceHandlersMethod->insert(std::bind(function, object, std::placeholders::_1));
 }
 
-template<typename Class> void TraceManager::addTraceErrorHandler(Class * object, void (Class::*function)(TraceErrorEvent)) {
+template<typename Class> void TraceManager::addTraceErrorHandler(Class* object, void (Class::*function)(TraceErrorEvent)) {
 	this->_traceErrorHandlersMethod->insert(std::bind(function, object, std::placeholders::_1));
 }
 
-template<typename Class> void TraceManager::addTraceReportHandler(Class * object, void (Class::*function)(TraceEvent)) {
+template<typename Class> void TraceManager::addTraceReportHandler(Class* object, void (Class::*function)(TraceEvent)) {
 	this->_traceReportHandlersMethod->insert(std::bind(function, object, std::placeholders::_1));
 }
 
-template<typename Class> void TraceManager::addTraceSimulationHandler(Class * object, void (Class::*function)(TraceSimulationEvent)) {
+template<typename Class> void TraceManager::addTraceSimulationHandler(Class* object, void (Class::*function)(TraceSimulationEvent)) {
 	this->_traceSimulationHandlersMethod->insert(std::bind(function, object, std::placeholders::_1));
 }
 
