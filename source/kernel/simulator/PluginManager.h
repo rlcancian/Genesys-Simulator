@@ -61,7 +61,7 @@ public:
 	};
 
 	/*! \brief Creates an empty diagnostic record. */
-	PluginLoadIssue() = default;
+	PluginLoadIssue();// fix //  = default;
 	/*! \brief Creates a diagnostic record for a failed plugin load attempt. */
 	PluginLoadIssue(std::string filename,
 	                std::string pluginTypename,
