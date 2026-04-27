@@ -232,17 +232,17 @@ class TraceErrorEvent : public TraceEvent {
 public:
 
 	TraceErrorEvent(const std::string& text, const std::exception& e) : TraceEvent(text, TraceManager::Level::L3_errorRecover) {
-		_e = e;
+		_exceptionMessage = e.what();
 	}
 
 	TraceErrorEvent(const std::string& text, TraceManager::Level level) : TraceEvent(text, level) {
 	}
 
-	const std::exception& getException() const {
-		return _e;
+	const std::string& getExceptionMessage() const {
+		return _exceptionMessage;
 	}
 private:
-	std::exception _e;
+	std::string _exceptionMessage;
 };
 
 class TraceSimulationEvent : public TraceEvent {

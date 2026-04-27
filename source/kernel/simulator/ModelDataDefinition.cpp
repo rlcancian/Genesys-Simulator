@@ -331,6 +331,10 @@ Util::identification ModelDataDefinition::getId() const {
 
 void ModelDataDefinition::setName(const std::string& name) {
 	std::string newName = Util::StrReplace(name, " ", "_");
+	// Validate that new name is not empty
+	if (newName.empty()) {
+		return;
+	}
 	// rename every "stuff" related to this modeldatum (controls, responses and internelElements)
 	if (newName != _name) {
 		std::string stuffName;

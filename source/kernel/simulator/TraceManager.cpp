@@ -41,6 +41,15 @@ TraceManager::TraceManager(Simulator* simulator) {//(Model* model) {
 TraceManager::~TraceManager() {
 	// Reuse shutdown path so callback vectors are neutralized before storage is released.
 	beginShutdown();
+	// Clear handler lists before deleting containers to ensure proper cleanup
+	_traceHandlers->clear();
+	_traceErrorHandlers->clear();
+	_traceReportHandlers->clear();
+	_traceSimulationHandlers->clear();
+	_traceHandlersMethod->clear();
+	_traceErrorHandlersMethod->clear();
+	_traceReportHandlersMethod->clear();
+	_traceSimulationHandlersMethod->clear();
 	delete _traceHandlers;
 	delete _traceErrorHandlers;
 	delete _traceReportHandlers;

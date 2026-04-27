@@ -425,14 +425,22 @@ void PluginManager::_recordLoadIssue(const PluginLoadIssue& issue) {
 }
 
 void PluginManager::_removeLoadIssue(const std::string& dynamicLibraryFilename, const std::string& pluginTypename) {
-	for (auto it = _pluginLoadIssues->list()->begin(); it != _pluginLoadIssues->list()->end();) {
-		const bool sameFilename = !dynamicLibraryFilename.empty() && it->getFilename() == dynamicLibraryFilename;
-		const bool sameTypename = !pluginTypename.empty() && it->getPluginTypename() == pluginTypename;
+	// Collect indices to remove to avoid iterator invalidation during erase
+	std::vector<size_t> indicesToRemove;
+	size_t index = 0;
+	for (const auto& issue : *_pluginLoadIssues->list()) {
+		const bool sameFilename = !dynamicLibraryFilename.empty() && issue.getFilename() == dynamicLibraryFilename;
+		const bool sameTypename = !pluginTypename.empty() && issue.getPluginTypename() == pluginTypename;
 		if (sameFilename || sameTypename) {
-			it = _pluginLoadIssues->list()->erase(it);
-		} else {
-			++it;
+			indicesToRemove.push_back(index);
 		}
+		++index;
+	}
+	// Remove in reverse order to maintain valid indices
+	for (auto it = indicesToRemove.rbegin(); it != indicesToRemove.rend(); ++it) {
+		auto listIt = _pluginLoadIssues->list()->begin();
+		std::advance(listIt, *it);
+		_pluginLoadIssues->list()->erase(listIt);
 	}
 }
 
