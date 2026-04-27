@@ -17,7 +17,12 @@ void PersistenceRecord::insert(PersistenceRecord::Entry entry) {
 
 void PersistenceRecord::insert(Iterator it, Iterator end) {
 	/// Insert the raw entry payload from the source iterator range.
-	for (; it != end; ++it) insert(it->second);
+	/// Skip entries that already exist to avoid overwriting without warning.
+	for (; it != end; ++it) {
+		if (_fields.find(it->first) == _fields.end()) {
+			insert(it->second);
+		}
+	}
 }
 
 void PersistenceRecord::erase(const std::string& key) {
