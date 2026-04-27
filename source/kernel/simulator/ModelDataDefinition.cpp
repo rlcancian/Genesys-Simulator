@@ -80,12 +80,6 @@ void ModelDataDefinition::setModelLevel(unsigned int _modelLevel) {
 	this->_modelLevel = _modelLevel;
 }
 
-//ModelDataDefinition::ModelDataDefinition(const ModelDataDefinition &orig) {
-//this->_parentModel = orig->_parentModel;
-//this->_name = "copy_of_" + orig->_name;
-//this->_typename = orig->_typename;
-//}
-
 ModelDataDefinition::~ModelDataDefinition() {
 	// Release all owned internal modeldata definitions registered by this model element.
 	_internalDataClear();
@@ -119,10 +113,9 @@ ModelDataDefinition::~ModelDataDefinition() {
 }
 
 void ModelDataDefinition::_internalDataClear() {
-	for (std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->begin(); it != _internalData->end();
-	     it++) {
-		this->_parentModel->getDataManager()->remove((*it).second);
-		delete ((*it).second); //->~ModelDataDefinition();
+	for (auto it = _internalData->begin(); it != _internalData->end(); ++it) {
+		this->_parentModel->getDataManager()->remove(it->second);
+		delete it->second;
 	}
 	_internalData->clear();
 }
@@ -187,16 +180,14 @@ void ModelDataDefinition::_attachedDataClear() {
 }
 
 void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(const std::string& expression) {
-	//(std::map<std::string, std::list<std::string>*>* referencedDataDefinitions) {
 	std::map<std::string, std::list<std::string>*> referencedDataDefinitions;
-	// = nullptr; // = new std::map<std::string, std::list<std::string>*>();
 	_parentModel->checkReferencesToDataDefinitions(expression, &referencedDataDefinitions);
 	if (referencedDataDefinitions.size() > 0) {
 		Util::IncIndent();
 		ModelDataDefinition* referedElem;
 		ModelDataManager* elemMan = _parentModel->getDataManager();
-		for (auto pair : referencedDataDefinitions) {
-			for (std::string referedName : *pair.second) {
+		for (const auto& pair : referencedDataDefinitions) {
+			for (const std::string& referedName : *pair.second) {
 				referedElem = elemMan->getDataDefinition(pair.first, referedName);
 				assert(referedElem != nullptr);
 				_attachedDataInsert("Refered_" + pair.first, referedElem);
@@ -297,7 +288,7 @@ ParserChangesInformation* ModelDataDefinition::_getParserChangesInformation() {
 }
 
 void ModelDataDefinition::_initBetweenReplications() {
-	for (std::pair<std::string, ModelDataDefinition*> pair : *_internalData) {
+	for (const auto& pair : *_internalData) {
 		pair.second->_initBetweenReplications();
 	}
 }
@@ -306,13 +297,12 @@ std::string ModelDataDefinition::show() {
 	std::string internal = "";
 	if (_internalData->size() > 0) {
 		internal = ", internal=[";
-		for (std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->begin(); it != _internalData->
-		     end(); it++) {
-			internal += (*it).second->getName() + ",";
+		for (auto it = _internalData->begin(); it != _internalData->end(); ++it) {
+			internal += it->second->getName() + ",";
 		}
 		internal = internal.substr(0, internal.length() - 1) + "]";
 	}
-	return _name + internal; //"id=" + std::to_string(_id) + ",name=\"" + _name + "\"" + internal;
+	return _name + internal;
 }
 
 ModelDataDefinition* ModelDataDefinition::getInternalData(const std::string& name) const {
@@ -327,15 +317,6 @@ std::map<std::string, ModelDataDefinition*>* ModelDataDefinition::getInternalDat
 std::map<std::string, ModelDataDefinition*>* ModelDataDefinition::getAttachedData() const {
 	return _attachedData;
 }
-
-//ModelDataDefinition* ModelDataDefinition::getInternalData(std::string key) const {
-//	std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->find(key);
-//	if (it != _internalData->end()) {
-//		return (*it).second;
-//	} else {
-//		return nullptr;
-//	}
-//}
 
 Util::identification ModelDataDefinition::getId() const {
 	return _id;
@@ -392,7 +373,7 @@ Model* ModelDataDefinition::getParentModel() const {
 
 void ModelDataDefinition::InitBetweenReplications(ModelDataDefinition* modeldatum) {
 	modeldatum->trace("Initing " + modeldatum->getClassname() + " \"" + modeldatum->getName() + "\"",
-	                  TraceManager::Level::L9_mostDetailed); //std::to_string(component->_id));
+	                  TraceManager::Level::L9_mostDetailed);
 	try {
 		modeldatum->_initBetweenReplications();
 	}
@@ -427,23 +408,17 @@ void ModelDataDefinition::SaveInstance(PersistenceRecord* fields, ModelDataDefin
 		modeldatum->_saveInstance(fields, modeldatum->_getSaveDefaultsOption());
 	}
 	catch (const std::exception& e) {
-		//modeldatum->_model->getTrace()->traceError(e, "Error saving anElement " + modeldatum->show());
 	}
 }
 
 bool ModelDataDefinition::Check(ModelDataDefinition* modeldatum, std::string& errorMessage) {
-	//    modeldatum->_model->getTraceManager()->trace(TraceManager::Level::L9_mostDetailed, "Checking " + modeldatum->_typename + ": " + modeldatum->_name); //std::to_string(modeldatum->_id));
 	bool res = false;
 	Util::IncIndent();
 	{
 		try {
 			res = modeldatum->_check(errorMessage);
-			if (!res) {
-				//                modeldatum->_model->getTraceManager()->traceError(TraceManager::Level::errors, "Error: Checking has failed with message '" + *errorMessage + "'");
-			}
 		}
 		catch (const std::exception& e) {
-			//            modeldatum->_model->getTraceManager()->traceError(e, "Error verifying modeldatum " + modeldatum->show());
 		}
 	}
 	Util::DecIndent();
@@ -457,7 +432,6 @@ void ModelDataDefinition::CreateInternalData(ModelDataDefinition* modeldatum) {
 		Util::DecIndent();
 	}
 	catch (const std::exception& e) {
-		//modeldatum->...->_model->getTraceManager()->traceError(e, "Error creating elements of modeldatum " + modeldatum->show());
 	};
 }
 
@@ -480,12 +454,6 @@ void ModelDataDefinition::_createInternalAndAttachedData() {
 void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {
 	_simulationControls->insert(control);
 }
-
-/*
-void ModelDataDefinition::_addSimulationResponse(SimulationControl* response) {
-	_simulationResponses->insert(response); // @ToDo: (importante): Check if exists before insert?
-}
-*/
 
 List<SimulationControl*>* ModelDataDefinition::getSimulationControls() const {
 	return _simulationControls;
@@ -513,7 +481,6 @@ void ModelDataDefinition::setTraceLevelSpecificEnabled(bool traceLevelSpecificEn
 	_traceLevelSpecificEnabled = traceLevelSpecificEnabled;
 }
 
-
 void ModelDataDefinition::setReportStatistics(bool reportStatistics) {
 	if (_reportStatistics != reportStatistics) {
 		this->_reportStatistics = reportStatistics;
@@ -524,7 +491,6 @@ void ModelDataDefinition::setReportStatistics(bool reportStatistics) {
 bool ModelDataDefinition::isReportStatistics() const {
 	return _reportStatistics;
 }
-
 
 // NOT just an easy access to trace manager, but a wrapper to check if specificTraceLevel applies
 
