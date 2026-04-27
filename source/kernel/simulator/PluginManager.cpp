@@ -30,7 +30,7 @@ PluginLoadIssue::PluginLoadIssue(std::string filename,
                                  std::string pluginTypename,
                                  Reason reason,
                                  std::string message,
-                                 SystemDependencyCheckResult systemDependencyResult)
+                                 SystemDependencyCheckResult systemDependencyResult) noexcept
 	: _filename(std::move(filename)),
 	  _pluginTypename(std::move(pluginTypename)),
 	  _reason(reason),
@@ -302,7 +302,10 @@ bool PluginManager::_insert(Plugin* plugin, const PluginInsertionOptions& option
 		return false;
 	}
 	PluginInformation* plugInfo = plugin->getPluginInfo();
-    const std::string& pluginname = plugin->getPluginInfo()->getPluginTypename();
+	if (plugInfo == nullptr) {
+		return false;
+	}
+    const std::string& pluginname = plugInfo->getPluginTypename();
     if (plugin->isIsValidPlugin() && plugInfo != nullptr) {
 		std::string msg = "Inserting ";
 		if (plugInfo->isComponent())
@@ -548,8 +551,11 @@ Plugin* PluginManager::find(const std::string& pluginTypeName) {
 
 std::vector<std::string> PluginManager::getDataDefinitionPluginTypenames() const {
 	std::vector<std::string> typeNames;
+	if (_plugins == nullptr || _plugins->list() == nullptr) {
+		return typeNames;
+	}
 	typeNames.reserve(_plugins->size()); // Reserve space to avoid reallocations
-	for (Plugin* const plugin : *this->_plugins->list()) {
+	for (Plugin* const plugin : *_plugins->list()) {
 		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
 			continue;
 		}
@@ -567,13 +573,13 @@ std::string PluginManager::sourceIncludePathFor(const std::string& pluginTypeNam
 		return "";
 	}
 
-	if (pluginTypeName == "Attribute" || pluginTypeName == "Counter" || pluginTypeName == "EntityType" ||
-	    pluginTypeName == "StatisticsCollector") {
+	static const std::vector<std::string> kernelPlugins = {"Attribute", "Counter", "EntityType", "StatisticsCollector"};
+	if (std::find(kernelPlugins.begin(), kernelPlugins.end(), pluginTypeName) != kernelPlugins.end()) {
 		return "kernel/simulator/" + pluginTypeName + ".h";
 	}
 
 	PluginInformation* info = plugin->getPluginInfo();
-	const std::string pluginRoot = info->isComponent() ? "plugins/components" : "plugins/data";
+	const std::string& pluginRoot = info->isComponent() ? "plugins/components" : "plugins/data";
 	return pluginRoot + "/" + PluginInformation::categoryFolderName(info->getCategory()) + "/" + pluginTypeName + ".h";
 }
 

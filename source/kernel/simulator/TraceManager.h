@@ -231,11 +231,10 @@ private:
 class TraceErrorEvent : public TraceEvent {
 public:
 
-	TraceErrorEvent(const std::string& text, const std::exception& e) : TraceEvent(text, TraceManager::Level::L3_errorRecover) {
-		_exceptionMessage = e.what();
+	TraceErrorEvent(const std::string& text, const std::exception& e) : TraceEvent(text, TraceManager::Level::L3_errorRecover), _exceptionMessage(e.what()) {
 	}
 
-	TraceErrorEvent(const std::string& text, TraceManager::Level level) : TraceEvent(text, level) {
+	TraceErrorEvent(const std::string& text, TraceManager::Level level) : TraceEvent(text, level), _exceptionMessage("") {
 	}
 
 	const std::string& getExceptionMessage() const {

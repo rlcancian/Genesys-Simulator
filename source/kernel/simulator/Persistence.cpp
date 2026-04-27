@@ -59,17 +59,38 @@ std::string PersistenceRecord::loadField(const std::string& key, const std::stri
 
 double PersistenceRecord::loadField(const std::string& key, double defaultValue) {
 	auto it = _fields.find(key);
-	return it != _fields.end() ? std::stod(it->second.second) : defaultValue;
+	if (it == _fields.end() || it->second.second.empty()) {
+		return defaultValue;
+	}
+	try {
+		return std::stod(it->second.second);
+	} catch (...) {
+		return defaultValue;
+	}
 }
 
 unsigned int PersistenceRecord::loadField(const std::string& key, unsigned int defaultValue) {
 	auto it = _fields.find(key);
-	return it != _fields.end() ? std::stoi(it->second.second) : defaultValue;
+	if (it == _fields.end() || it->second.second.empty()) {
+		return defaultValue;
+	}
+	try {
+		return std::stoi(it->second.second);
+	} catch (...) {
+		return defaultValue;
+	}
 }
 
 int PersistenceRecord::loadField(const std::string& key, int defaultValue) {
 	auto it = _fields.find(key);
-	return it != _fields.end() ? std::stoi(it->second.second) : defaultValue;
+	if (it == _fields.end() || it->second.second.empty()) {
+		return defaultValue;
+	}
+	try {
+		return std::stoi(it->second.second);
+	} catch (...) {
+		return defaultValue;
+	}
 }
 
 Util::TimeUnit PersistenceRecord::loadField(const std::string& key, Util::TimeUnit defaultValue) {

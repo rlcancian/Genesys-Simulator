@@ -96,18 +96,30 @@ bool TraceManager::isTraceSimulationRuleAllAllowed() const {
 }
 
 void TraceManager::addTraceHandler(traceListener traceListener) {
+	if (_shuttingDown) {
+		return;
+	}
 	this->_traceHandlers->insert(traceListener);
 }
 
 void TraceManager::addTraceSimulationHandler(traceSimulationListener traceSimulationListener) {
+	if (_shuttingDown) {
+		return;
+	}
 	this->_traceSimulationHandlers->insert(traceSimulationListener);
 }
 
 void TraceManager::addTraceErrorHandler(traceErrorListener traceErrorListener) {
+	if (_shuttingDown) {
+		return;
+	}
 	this->_traceErrorHandlers->insert(traceErrorListener);
 }
 
 void TraceManager::addTraceReportHandler(traceListener traceReportListener) {
+	if (_shuttingDown) {
+		return;
+	}
 	this->_traceReportHandlers->insert(traceReportListener);
 }
 

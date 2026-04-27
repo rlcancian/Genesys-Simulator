@@ -159,6 +159,9 @@ void ModelDataDefinition::_internalDataRemove(const std::string& key) {
 
 void ModelDataDefinition::_attachedAttributesInsert(const std::vector<std::string>& neededNames) {
 	/* include attributes needed */
+	if (_parentModel == nullptr) {
+		return;
+	}
 	ModelDataManager* elements = _parentModel->getDataManager();
 	for (const std::string& neededName : neededNames) {
 		ModelDataDefinition* attr1 = elements->getDataDefinition(Util::TypeOf<Attribute>(), neededName);
@@ -187,6 +190,9 @@ void ModelDataDefinition::_attachedDataClear() {
 }
 
 void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(const std::string& expression) {
+	if (_parentModel == nullptr || expression.empty()) {
+		return;
+	}
 	std::map<std::string, std::list<std::string>*> referencedDataDefinitions;
 	_parentModel->checkReferencesToDataDefinitions(expression, &referencedDataDefinitions);
 	if (referencedDataDefinitions.size() > 0) {
@@ -295,8 +301,13 @@ ParserChangesInformation* ModelDataDefinition::_getParserChangesInformation() {
 }
 
 void ModelDataDefinition::_initBetweenReplications() {
+	if (_internalData == nullptr) {
+		return;
+	}
 	for (const auto& pair : *_internalData) {
-		pair.second->_initBetweenReplications();
+		if (pair.second != nullptr) {
+			pair.second->_initBetweenReplications();
+		}
 	}
 }
 
@@ -304,8 +315,8 @@ std::string ModelDataDefinition::show() {
 	std::string internal = "";
 	if (_internalData->size() > 0) {
 		internal = ", internal=[";
-		for (auto it = _internalData->begin(); it != _internalData->end(); ++it) {
-			internal += it->second->getName() + ",";
+		for (const auto& pair : *_internalData) {
+			internal += pair.second->getName() + ",";
 		}
 		internal = internal.substr(0, internal.length() - 1) + "]";
 	}
@@ -330,6 +341,9 @@ Util::identification ModelDataDefinition::getId() const {
 }
 
 void ModelDataDefinition::setName(const std::string& name) {
+	if (_parentModel == nullptr) {
+		return;
+	}
 	std::string newName = Util::StrReplace(name, " ", "_");
 	// Validate that new name is not empty
 	if (newName.empty()) {
