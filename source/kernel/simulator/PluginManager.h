@@ -67,7 +67,7 @@ public:
 	                std::string pluginTypename,
 	                Reason reason,
 	                std::string message,
-	                SystemDependencyCheckResult systemDependencyResult = {});
+	                SystemDependencyCheckResult systemDependencyResult = {}) noexcept;
 
 	/*! \brief Returns the filename passed to the plugin connector. */
 	const std::string& getFilename() const;
