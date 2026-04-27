@@ -97,6 +97,8 @@ std::string PluginLoadIssue::diagnosticText() const {
 
 PluginManager::PluginManager(Simulator* simulator) {
 	_simulator = simulator;
+	_plugins = new List<Plugin*>();
+	_pluginLoadIssues = new List<PluginLoadIssue>();
 	_pluginConnector = new TraitsKernel<PluginConnector_if>::Implementation();
 	_systemCommandExecutor = new SystemShellCommandExecutor();
 	_insertDefaultKernelElements();
@@ -104,6 +106,8 @@ PluginManager::PluginManager(Simulator* simulator) {
 
 PluginManager::PluginManager(Simulator* simulator, PluginConnector_if* pluginConnector, SystemCommandExecutor_if* systemCommandExecutor) {
 	_simulator = simulator;
+	_plugins = new List<Plugin*>();
+	_pluginLoadIssues = new List<PluginLoadIssue>();
 	_pluginConnector = pluginConnector;
 	_systemCommandExecutor = systemCommandExecutor;
 	_insertDefaultKernelElements();
@@ -143,13 +147,13 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const PluginInsertionOptions& op
     return autoInsertPlugins("", true, options);
 }
 
-List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)
+List<Plugin*>* PluginManager::autoInsertPlugins(const std::string& pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)
 {
 	PluginInsertionOptions options;
 	return autoInsertPlugins(pluginsListFilename, lookForPluginsIfFilenameNotFound, options);
 }
 
-List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename,
+List<Plugin*>* PluginManager::autoInsertPlugins(const std::string& pluginsListFilename,
                                                 const bool lookForPluginsIfFilenameNotFound,
                                                 const PluginInsertionOptions& options)
 {
@@ -376,7 +380,7 @@ bool PluginManager::_insert(Plugin* plugin, const PluginInsertionOptions& option
 	}
 }
 
-bool PluginManager::check(const std::string dynamicLibraryFilename) {
+bool PluginManager::check(const std::string& dynamicLibraryFilename) {
 	Plugin* plugin;
 	try {
 		plugin = _pluginConnector->check(dynamicLibraryFilename);
@@ -388,7 +392,7 @@ bool PluginManager::check(const std::string dynamicLibraryFilename) {
 	return checked;
 }
 
-SystemDependencyCheckResult PluginManager::checkSystemDependencies(const std::string dynamicLibraryFilename) {
+SystemDependencyCheckResult PluginManager::checkSystemDependencies(const std::string& dynamicLibraryFilename) {
 	SystemDependencyCheckResult result;
 	Plugin* plugin = nullptr;
 	try {
@@ -447,12 +451,12 @@ void PluginManager::_removeLoadIssue(const std::string& dynamicLibraryFilename, 
 	}
 }
 
-Plugin* PluginManager::insert(const std::string dynamicLibraryFilename) {
+Plugin* PluginManager::insert(const std::string& dynamicLibraryFilename) {
 	PluginInsertionOptions options;
 	return insert(dynamicLibraryFilename, options);
 }
 
-Plugin* PluginManager::insert(const std::string dynamicLibraryFilename, const PluginInsertionOptions& options) {
+Plugin* PluginManager::insert(const std::string& dynamicLibraryFilename, const PluginInsertionOptions& options) {
 	Plugin* plugin = nullptr;
 	try {
 		std::unique_ptr<Plugin> checkedPlugin(_pluginConnector->check(dynamicLibraryFilename));
@@ -517,7 +521,7 @@ Plugin* PluginManager::insert(const std::string dynamicLibraryFilename, const Pl
 	return plugin;
 }
 
-bool PluginManager::remove(const std::string dynamicLibraryFilename) {
+bool PluginManager::remove(const std::string& dynamicLibraryFilename) {
 	Plugin* pi = this->find(dynamicLibraryFilename);
 	return remove(pi);
 }

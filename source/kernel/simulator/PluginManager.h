@@ -127,9 +127,9 @@ public:
 
 public:
 	/*! \brief Validates whether a dynamic library provides a compatible plugin. */
-	bool check(const std::string dynamicLibraryFilename);
+	bool check(const std::string& dynamicLibraryFilename);
 	/*! \brief Evaluates system dependencies declared by a dynamic-library plugin without inserting it. */
-	SystemDependencyCheckResult checkSystemDependencies(const std::string dynamicLibraryFilename);
+	SystemDependencyCheckResult checkSystemDependencies(const std::string& dynamicLibraryFilename);
 	/*! \brief Discovers plugin filenames through the configured connector without inserting them. */
 	List<std::string>* discoverPluginFilenames() const;
 	/*! \brief Returns plugin candidates that failed to load during check/connect/preflight. */
@@ -139,11 +139,11 @@ public:
 	/*! \brief Removes stored diagnostics for one plugin candidate filename. */
 	void clearPluginLoadIssue(const std::string& dynamicLibraryFilename);
 	/*! \brief Loads and inserts a plugin from a dynamic library file. */
-	Plugin* insert(const std::string dynamicLibraryFilename);
+	Plugin* insert(const std::string& dynamicLibraryFilename);
 	/*! \brief Loads and inserts a plugin, optionally asking the caller to authorize dependency installation. */
-	Plugin* insert(const std::string dynamicLibraryFilename, const PluginInsertionOptions& options);
+	Plugin* insert(const std::string& dynamicLibraryFilename, const PluginInsertionOptions& options);
 	/*! \brief Removes/disconnects a plugin by its dynamic library filename. */
-	bool remove(const std::string dynamicLibraryFilename);
+	bool remove(const std::string& dynamicLibraryFilename);
 	/*! \brief Removes/disconnects a plugin by pointer. */
 	bool remove(Plugin* plugin);
 	/*! \brief Finds a connected plugin by plugin type name. */
@@ -157,10 +157,10 @@ public:
 	/*! \brief Returns the source include path for a connected plugin type. */
 	std::string sourceIncludePathFor(const std::string& pluginTypeName);
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */
-	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename,
+	List<Plugin*>* autoInsertPlugins(const std::string& pluginsListFilename,
 	                                 const bool lookForPluginsIfFilenameNotFound = true);
 	/*! \brief Auto-loads plugins listed in file using insertion policy hooks. */
-	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename,
+	List<Plugin*>* autoInsertPlugins(const std::string& pluginsListFilename,
 	                                 const bool lookForPluginsIfFilenameNotFound,
 	                                 const PluginInsertionOptions& options);
 	/*! \brief Auto-loads plugins discovered automatically). */
@@ -225,8 +225,8 @@ private:
 	List<Plugin*>* _autoFindPlugins(const PluginInsertionOptions& options);
 
 private:
-	List<Plugin*>* _plugins = new List<Plugin*>();
-	List<PluginLoadIssue>* _pluginLoadIssues = new List<PluginLoadIssue>();
+	List<Plugin*>* _plugins;
+	List<PluginLoadIssue>* _pluginLoadIssues;
 	Simulator* _simulator;
 	PluginConnector_if* _pluginConnector;
 	SystemCommandExecutor_if* _systemCommandExecutor;
