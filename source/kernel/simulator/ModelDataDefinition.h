@@ -184,8 +184,8 @@ private:
 	std::string _name;
 
 private:
-	std::map<std::string, ModelDataDefinition*>* _internalData = new std::map<std::string, ModelDataDefinition*>();
-	std::map<std::string, ModelDataDefinition*>* _attachedData = new std::map<std::string, ModelDataDefinition*>();
+	std::map<std::string, ModelDataDefinition*>* _internalData;
+	std::map<std::string, ModelDataDefinition*>* _attachedData;
 
 protected:
 	Util::identification _id;

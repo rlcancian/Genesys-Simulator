@@ -161,27 +161,27 @@ private:
 	bool _traceSimulationConditionPassed(TraceManager::Level level, void* thisobject, bool showAnyway = false);
 private: // trace listener
 	// for handlers that are simple functions
-	List<traceListener>* _traceHandlers = new List<traceListener>();
-	List<traceErrorListener>* _traceErrorHandlers = new List<traceErrorListener>();
-	List<traceListener>* _traceReportHandlers = new List<traceListener>();
-	List<traceSimulationListener>* _traceSimulationHandlers = new List<traceSimulationListener>();
+	List<traceListener>* _traceHandlers;
+	List<traceErrorListener>* _traceErrorHandlers;
+	List<traceListener>* _traceReportHandlers;
+	List<traceSimulationListener>* _traceSimulationHandlers;
 	// for handlers that are class members (methods)
-	List<traceListenerMethod>* _traceHandlersMethod = new List<traceListenerMethod>();
-	List<traceErrorListenerMethod>* _traceErrorHandlersMethod = new List<traceErrorListenerMethod>();
-	List<traceListenerMethod>* _traceReportHandlersMethod = new List<traceListenerMethod>();
-	List<traceSimulationListenerMethod>* _traceSimulationHandlersMethod = new List<traceSimulationListenerMethod>();
+	List<traceListenerMethod>* _traceHandlersMethod;
+	List<traceErrorListenerMethod>* _traceErrorHandlersMethod;
+	List<traceListenerMethod>* _traceReportHandlersMethod;
+	List<traceSimulationListenerMethod>* _traceSimulationHandlersMethod;
 private:
-	List<void*>* _traceSimulationExceptionRule = new List<void*>();
+	List<void*>* _traceSimulationExceptionRule;
 private:
 	Simulator* _simulator;
 private:
 	TraceManager::Level _traceLevel; // = TraceManager::Level::L9_mostDetailed;
-	bool _shuttingDown = false;
-	double _lastTimeTraceSimulation = -1.0; // an invalid time
-	Util::identification _lastEntityTraceSimulation = 0;
-	Util::identification _lastModuleTraceSimulation = 0;
-	bool _traceSimulationRuleAllAllowed = true;
-	List<std::string>* _errorMessages = new List<std::string>(); /* @ToDo: (importante): 18/08/24 this is a new one. several methods should use it */
+	bool _shuttingDown;
+	double _lastTimeTraceSimulation;
+	Util::identification _lastEntityTraceSimulation;
+	Util::identification _lastModuleTraceSimulation;
+	bool _traceSimulationRuleAllAllowed;
+	List<std::string>* _errorMessages;
 
 };
 

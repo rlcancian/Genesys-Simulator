@@ -35,7 +35,22 @@ std::string TraceManager::convertEnumToStr(TraceManager::Level level) {
 
 TraceManager::TraceManager(Simulator* simulator) {//(Model* model) {
 	_simulator = simulator;
-    _traceLevel = TraitsKernel<Simulator>::traceLevel; // inherits the kernel trace leval
+	_traceHandlers = new List<traceListener>();
+	_traceErrorHandlers = new List<traceErrorListener>();
+	_traceReportHandlers = new List<traceListener>();
+	_traceSimulationHandlers = new List<traceSimulationListener>();
+	_traceHandlersMethod = new List<traceListenerMethod>();
+	_traceErrorHandlersMethod = new List<traceErrorListenerMethod>();
+	_traceReportHandlersMethod = new List<traceListenerMethod>();
+	_traceSimulationHandlersMethod = new List<traceSimulationListenerMethod>();
+	_traceSimulationExceptionRule = new List<void*>();
+	_errorMessages = new List<std::string>();
+	_traceLevel = TraitsKernel<Simulator>::traceLevel; // inherits the kernel trace level
+	_shuttingDown = false;
+	_lastTimeTraceSimulation = -1.0; // an invalid time
+	_lastEntityTraceSimulation = 0;
+	_lastModuleTraceSimulation = 0;
+	_traceSimulationRuleAllAllowed = true;
 }
 
 TraceManager::~TraceManager() {

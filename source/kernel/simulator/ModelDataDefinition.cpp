@@ -27,6 +27,8 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 	_typename = thistypename;
 	_parentModel = model;
 	_reportStatistics = TraitsKernel<ModelDataDefinition>::reportStatistics;
+	_internalData = new std::map<std::string, ModelDataDefinition*>();
+	_attachedData = new std::map<std::string, ModelDataDefinition*>();
 	// @ToDo: (importante): shoould be a parameter before insertIntoModel
 	name = Util::StrReplace(name, " ", "_");
 	if (name == "")
