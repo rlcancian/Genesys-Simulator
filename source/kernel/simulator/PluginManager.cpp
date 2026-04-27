@@ -38,6 +38,14 @@ PluginLoadIssue::PluginLoadIssue(std::string filename,
 	  _systemDependencyResult(std::move(systemDependencyResult)) {
 }
 
+PluginLoadIssue::PluginLoadIssue()
+	: _filename(""),
+	  _pluginTypename(""),
+	  _reason(Reason::Exception),
+	  _message(""),
+	  _systemDependencyResult() {
+}
+
 const std::string& PluginLoadIssue::getFilename() const {
 	return _filename;
 }

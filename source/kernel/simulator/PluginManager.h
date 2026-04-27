@@ -87,10 +87,10 @@ public:
 	std::string diagnosticText() const;
 
 private:
-	std::string _filename = "";
-	std::string _pluginTypename = "";
-	Reason _reason = Reason::Exception;
-	std::string _message = "";
+	std::string _filename;
+	std::string _pluginTypename;
+	Reason _reason;
+	std::string _message;
 	SystemDependencyCheckResult _systemDependencyResult;
 };
 
