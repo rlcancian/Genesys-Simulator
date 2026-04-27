@@ -108,11 +108,11 @@ void TraceManager::addTraceSimulationExceptionRuleModelData(void* thisobject) {
 	}
 }
 
-void TraceManager::trace(TraceManager::Level level, std::string text) {
+void TraceManager::trace(TraceManager::Level level, const std::string& text) {
 	trace(text, level);
 }
 
-void TraceManager::trace(std::string text, TraceManager::Level level) {
+void TraceManager::trace(const std::string& text, TraceManager::Level level) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
@@ -138,7 +138,7 @@ void TraceManager::trace(std::string text, TraceManager::Level level) {
 //	traceError(text, level);
 //}
 
-void TraceManager::traceError(std::string text, TraceManager::Level level) {
+void TraceManager::traceError(const std::string& text, TraceManager::Level level) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
@@ -154,7 +154,7 @@ void TraceManager::traceError(std::string text, TraceManager::Level level) {
 	}
 }
 
-void TraceManager::traceError(std::string text, std::exception e) {
+void TraceManager::traceError(const std::string& text, const std::exception& e) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
@@ -170,11 +170,11 @@ void TraceManager::traceError(std::string text, std::exception e) {
 	}
 }
 
-void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, std::string text) {
+void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, const std::string& text) {
 	traceSimulation(thisobject, text, level);
 }
 
-void TraceManager::traceSimulation(void* thisobject, std::string text, TraceManager::Level level, bool showAnyway) {
+void TraceManager::traceSimulation(void* thisobject, const std::string& text, TraceManager::Level level, bool showAnyway) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
@@ -192,11 +192,11 @@ void TraceManager::traceSimulation(void* thisobject, std::string text, TraceMana
 	}
 }
 
-void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, double time, Entity* entity, ModelComponent* component, std::string text) {
+void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, double time, Entity* entity, ModelComponent* component, const std::string& text) {
 	traceSimulation(thisobject, time, entity, component, text, level);
 }
 
-void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level, bool showAnyway) {
+void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, const std::string& text, TraceManager::Level level, bool showAnyway) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
@@ -217,7 +217,7 @@ void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity
 //	traceReport(text, level);
 //}
 
-void TraceManager::traceReport(std::string text, TraceManager::Level level) {
+void TraceManager::traceReport(const std::string& text, TraceManager::Level level) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;

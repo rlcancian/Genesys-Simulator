@@ -127,17 +127,16 @@ void ModelDataDefinition::_internalDataClear() {
 	_internalData->clear();
 }
 
-void ModelDataDefinition::_internalDataInsert(std::string key, ModelDataDefinition* data) {
+void ModelDataDefinition::_internalDataInsert(const std::string& key, ModelDataDefinition* data) {
 	if (data == nullptr)
 		return;
-	std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->find(key);
+	auto it = _internalData->find(key);
 	if (it == _internalData->end()) {
-		_internalData->insert({key, data});
-	} else if ((*it).second != data) {
-		this->_parentModel->getDataManager()->remove((*it).second);
-		delete ((*it).second);
-		_internalData->erase(it);
-		_internalData->insert({key, data});
+		(*_internalData)[key] = data;
+	} else if (it->second != data) {
+		this->_parentModel->getDataManager()->remove(it->second);
+		delete it->second;
+		it->second = data;
 	}
 
 	// Internal data definitions are owned children of this object and must also exist in the
@@ -149,24 +148,19 @@ void ModelDataDefinition::_internalDataInsert(std::string key, ModelDataDefiniti
 	}
 }
 
-void ModelDataDefinition::_internalDataRemove(std::string key) {
-	std::map<std::string, ModelDataDefinition*>::iterator it = _internalData->begin();
-	while (it != _internalData->end()) {
-		if ((*it).first == key) {
-			this->_parentModel->getDataManager()->remove((*it).second);
-			delete ((*it).second); //->~ModelDataDefinition();
-			_internalData->erase(it);
-			it = _internalData->begin();
-		}
+void ModelDataDefinition::_internalDataRemove(const std::string& key) {
+	auto it = _internalData->find(key);
+	if (it != _internalData->end()) {
+		this->_parentModel->getDataManager()->remove(it->second);
+		delete it->second;
+		_internalData->erase(it);
 	}
 }
 
-void ModelDataDefinition::_attachedAttributesInsert(std::vector<std::string> neededNames) {
+void ModelDataDefinition::_attachedAttributesInsert(const std::vector<std::string>& neededNames) {
 	/* include attributes needed */
 	ModelDataManager* elements = _parentModel->getDataManager();
-	std::string neededName;
-	for (unsigned int i = 0; i < neededNames.size(); i++) {
-		neededName = neededNames[i];
+	for (const std::string& neededName : neededNames) {
 		ModelDataDefinition* attr1 = elements->getDataDefinition(Util::TypeOf<Attribute>(), neededName);
 		if (attr1 == nullptr) {
 			attr1 = new Attribute(_parentModel, neededName);
@@ -175,47 +169,24 @@ void ModelDataDefinition::_attachedAttributesInsert(std::vector<std::string> nee
 	}
 }
 
-void ModelDataDefinition::_attachedDataInsert(std::string key, ModelDataDefinition* data) {
-	if (data == nullptr)
-		return;
-	std::map<std::string, ModelDataDefinition*>::iterator it = _attachedData->find(key);
+void ModelDataDefinition::_attachedDataInsert(const std::string& key, ModelDataDefinition* data) {
 	if (data == nullptr) {
-		if (it != _attachedData->end()) {
-			_attachedData->erase(it);
-		}
+		_attachedData->erase(key);
+		return;
 	}
-	else {
-		if (it == _attachedData->end()) {
-			_attachedData->insert({key, data});
-		}
-		else {
-			if ((*it).second != data) {
-				_attachedData->erase(it);
-				_attachedData->insert({key, data});
-			}
-		}
-	}
+	(*_attachedData)[key] = data;
 }
 
-void ModelDataDefinition::_attachedDataRemove(std::string key) {
+void ModelDataDefinition::_attachedDataRemove(const std::string& key) {
 	// Remove only the non-owning attachment registry entry and keep the referenced object lifetime untouched.
-	std::map<std::string, ModelDataDefinition*>::iterator it = _attachedData->begin();
-	while (it != _attachedData->end()) {
-		if ((*it).first == key) {
-			_attachedData->erase(it);
-			it = _attachedData->begin();
-		}
-		else {
-			it++;
-		}
-	}
+	_attachedData->erase(key);
 }
 
 void ModelDataDefinition::_attachedDataClear() {
 	_attachedData->clear();
 }
 
-void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(std::string expression) {
+void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(const std::string& expression) {
 	//(std::map<std::string, std::list<std::string>*>* referencedDataDefinitions) {
 	std::map<std::string, std::list<std::string>*> referencedDataDefinitions;
 	// = nullptr; // = new std::map<std::string, std::list<std::string>*>();
@@ -344,14 +315,9 @@ std::string ModelDataDefinition::show() {
 	return _name + internal; //"id=" + std::to_string(_id) + ",name=\"" + _name + "\"" + internal;
 }
 
-ModelDataDefinition* ModelDataDefinition::getInternalData(std::string name) const {
-	std::map<std::string, ModelDataDefinition*>::iterator pairIt = _internalData->find(name);
-	if (pairIt == _internalData->end()) {
-		return nullptr;
-	}
-	else {
-		return (*pairIt).second;
-	}
+ModelDataDefinition* ModelDataDefinition::getInternalData(const std::string& name) const {
+	auto it = _internalData->find(name);
+	return (it != _internalData->end()) ? it->second : nullptr;
 }
 
 std::map<std::string, ModelDataDefinition*>* ModelDataDefinition::getInternalData() const {
@@ -375,51 +341,48 @@ Util::identification ModelDataDefinition::getId() const {
 	return _id;
 }
 
-void ModelDataDefinition::setName(std::string name) {
-	name = Util::StrReplace(name, " ", "_");
+void ModelDataDefinition::setName(const std::string& name) {
+	std::string newName = Util::StrReplace(name, " ", "_");
 	// rename every "stuff" related to this modeldatum (controls, responses and internelElements)
-	if (name != _name) {
+	if (newName != _name) {
 		std::string stuffName;
-		unsigned int pos;
-		for (std::pair<std::string, ModelDataDefinition*> child : *_internalData) {
+		size_t pos;
+		for (const auto& child : *_internalData) {
 			stuffName = child.second->getName();
-			pos = stuffName.find(getName(), 0);
-			if (pos < stuffName.length()) {
-				// != std::string::npos) {
-				stuffName = stuffName.replace(pos, pos + getName().length(), name);
+			pos = stuffName.find(_name);
+			if (pos != std::string::npos) {
+				stuffName.replace(pos, _name.length(), newName);
 				child.second->setName(stuffName);
 			}
 		}
 
 		for (SimulationControl* control : *_parentModel->getControls()->list()) {
 			stuffName = control->getName();
-			pos = stuffName.find(getName(), 0);
-			if (pos < stuffName.length()) {
-				// != std::string::npos) {
-				stuffName = stuffName.replace(pos, pos + getName().length(), name);
+			pos = stuffName.find(_name);
+			if (pos != std::string::npos) {
+				stuffName.replace(pos, _name.length(), newName);
 				control->setName(stuffName);
 			}
 		}
 
 		for (SimulationResponse* response : *_parentModel->getResponses()->list()) {
 			stuffName = response->getName();
-			pos = stuffName.find(getName(), 0);
-			if (pos < stuffName.length()) {
-				// != std::string::npos) {
-				stuffName = stuffName.replace(pos, pos + getName().length(), name);
+			pos = stuffName.find(_name);
+			if (pos != std::string::npos) {
+				stuffName.replace(pos, _name.length(), newName);
 				response->setName(stuffName);
 			}
 		}
-		this->_name = name;
+		this->_name = newName;
 		_hasChanged = true;
 	}
 }
 
-std::string ModelDataDefinition::getName() const {
+const std::string& ModelDataDefinition::getName() const {
 	return _name;
 }
 
-std::string ModelDataDefinition::getClassname() const {
+const std::string& ModelDataDefinition::getClassname() const {
 	return _typename;
 }
 
@@ -572,37 +535,37 @@ bool ModelDataDefinition::_checkSpecificTraceLevel(TraceManager::Level level) {
 	return true;
 }
 
-void ModelDataDefinition::trace(std::string text, TraceManager::Level level) {
+void ModelDataDefinition::trace(const std::string& text, TraceManager::Level level) {
 	if (_checkSpecificTraceLevel(level))
 		_parentModel->getTracer()->traceReport(text, level);
 }
 
-void ModelDataDefinition::traceError(std::string text, TraceManager::Level level) {
+void ModelDataDefinition::traceError(const std::string& text, TraceManager::Level level) {
 	if (_checkSpecificTraceLevel(level))
 		_parentModel->getTracer()->traceError(text, level);
 }
 
-void ModelDataDefinition::traceError(std::string text, std::exception e) {
+void ModelDataDefinition::traceError(const std::string& text, const std::exception& e) {
 	_parentModel->getTracer()->traceError(text, e);
 }
 
-void ModelDataDefinition::traceReport(std::string text, TraceManager::Level level) {
+void ModelDataDefinition::traceReport(const std::string& text, TraceManager::Level level) {
 	if (_checkSpecificTraceLevel(level))
 		_parentModel->getTracer()->traceReport(text, level);
 }
 
 void ModelDataDefinition::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component,
-                                          std::string text, TraceManager::Level level) {
+                                          const std::string& text, TraceManager::Level level) {
 	if (_checkSpecificTraceLevel(level))
 		_parentModel->getTracer()->traceSimulation(thisobject, time, entity, component, text, level, true);
 }
 
-void ModelDataDefinition::traceSimulation(void* thisobject, std::string text, TraceManager::Level level) {
+void ModelDataDefinition::traceSimulation(void* thisobject, const std::string& text, TraceManager::Level level) {
 	if (_checkSpecificTraceLevel(level))
 		_parentModel->getTracer()->traceSimulation(thisobject, text, level, true);
 }
 
-void ModelDataDefinition::traceSimulation(void* thisobject, TraceManager::Level level, std::string text) {
+void ModelDataDefinition::traceSimulation(void* thisobject, TraceManager::Level level, const std::string& text) {
 	if (_checkSpecificTraceLevel(level))
 		_parentModel->getTracer()->traceSimulation(thisobject, text, level, true);
 }

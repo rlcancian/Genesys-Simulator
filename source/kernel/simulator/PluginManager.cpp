@@ -532,7 +532,7 @@ bool PluginManager::remove(Plugin * plugin) {
 	return false;
 }
 
-Plugin * PluginManager::find(std::string pluginTypeName) {
+Plugin * PluginManager::find(const std::string& pluginTypeName) {
 	for (Plugin* plugin : *this->_plugins->list()) {
 		if (plugin->getPluginInfo()->getPluginTypename() == pluginTypeName) {
 			return plugin;
@@ -555,7 +555,7 @@ std::vector<std::string> PluginManager::getDataDefinitionPluginTypenames() const
 	return typeNames;
 }
 
-std::string PluginManager::sourceIncludePathFor(std::string pluginTypeName) {
+std::string PluginManager::sourceIncludePathFor(const std::string& pluginTypeName) {
 	Plugin* plugin = find(pluginTypeName);
 	if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
 		return "";
@@ -591,7 +591,7 @@ Plugin * PluginManager::getAtRank(unsigned int rank) {
 	return _plugins->getAtRank(rank);
 }
 
-ModelDataDefinition* PluginManager::newInstance(std::string pluginTypename, Model* model, std::string name) {
+ModelDataDefinition* PluginManager::newInstance(const std::string& pluginTypename, Model* model, std::string name) {
 	Plugin* plugin = find(pluginTypename);
 	if (plugin != nullptr) {
 		return plugin->newInstance(model, name);

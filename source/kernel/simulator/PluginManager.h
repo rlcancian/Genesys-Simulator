@@ -147,7 +147,7 @@ public:
 	/*! \brief Removes/disconnects a plugin by pointer. */
 	bool remove(Plugin* plugin);
 	/*! \brief Finds a connected plugin by plugin type name. */
-	Plugin* find(std::string pluginTypeName);
+	Plugin* find(const std::string& pluginTypeName);
 	/*! \brief Returns connected plugin type names that can create ModelDataDefinition instances.
 	 *
 	 * Polymorphic data structures such as Set use this snapshot to expose concrete,
@@ -155,7 +155,7 @@ public:
 	 */
 	std::vector<std::string> getDataDefinitionPluginTypenames() const;
 	/*! \brief Returns the source include path for a connected plugin type. */
-	std::string sourceIncludePathFor(std::string pluginTypeName);
+	std::string sourceIncludePathFor(const std::string& pluginTypeName);
 	/*! \brief Auto-loads plugins listed in file (or discovered automatically as fallback). */
 	List<Plugin*>* autoInsertPlugins(const std::string pluginsListFilename,
 	                                 const bool lookForPluginsIfFilenameNotFound = true);
@@ -182,7 +182,7 @@ public:
 
 public:
 	/*! \brief Creates a new model data/component instance using a plugin typename. */
-	ModelDataDefinition* newInstance(std::string pluginTypename, Model* model, std::string name = "");
+	ModelDataDefinition* newInstance(const std::string& pluginTypename, Model* model, std::string name = "");
 
 	template <typename T>
 	T* newInstance(Model* model, std::string name = "") {
