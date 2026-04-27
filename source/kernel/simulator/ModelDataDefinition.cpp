@@ -113,9 +113,16 @@ ModelDataDefinition::~ModelDataDefinition() {
 }
 
 void ModelDataDefinition::_internalDataClear() {
-	for (auto it = _internalData->begin(); it != _internalData->end(); ++it) {
-		this->_parentModel->getDataManager()->remove(it->second);
-		delete it->second;
+	// Collect pointers first to avoid iterator invalidation during removal
+	std::vector<ModelDataDefinition*> toDelete;
+	toDelete.reserve(_internalData->size());
+	for (const auto& pair : *_internalData) {
+		toDelete.push_back(pair.second);
+	}
+	// Now safely remove and delete
+	for (ModelDataDefinition* data : toDelete) {
+		this->_parentModel->getDataManager()->remove(data);
+		delete data;
 	}
 	_internalData->clear();
 }
