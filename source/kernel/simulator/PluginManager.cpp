@@ -533,7 +533,7 @@ bool PluginManager::remove(Plugin * plugin) {
 }
 
 Plugin * PluginManager::find(const std::string& pluginTypeName) {
-	for (Plugin* plugin : *this->_plugins->list()) {
+	for (Plugin* const plugin : *this->_plugins->list()) {
 		if (plugin->getPluginInfo()->getPluginTypename() == pluginTypeName) {
 			return plugin;
 		}
@@ -543,7 +543,8 @@ Plugin * PluginManager::find(const std::string& pluginTypeName) {
 
 std::vector<std::string> PluginManager::getDataDefinitionPluginTypenames() const {
 	std::vector<std::string> typeNames;
-	for (Plugin* plugin : *this->_plugins->list()) {
+	typeNames.reserve(_plugins->size()); // Reserve space to avoid reallocations
+	for (Plugin* const plugin : *this->_plugins->list()) {
 		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
 			continue;
 		}

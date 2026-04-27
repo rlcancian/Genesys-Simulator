@@ -121,10 +121,10 @@ void TraceManager::trace(const std::string& text, TraceManager::Level level) {
 		text = Util::Indent() + text;
 		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
 		TraceEvent e = TraceEvent(text, level);
-		for (auto handler : *this->_traceHandlers->list()) {
+		for (const auto& handler : *this->_traceHandlers->list()) {
 			handler(e);
 		}
-		for (auto& handlerMethod : *this->_traceHandlersMethod->list()) {
+		for (const auto& handlerMethod : *this->_traceHandlersMethod->list()) {
 			handlerMethod(e);
 		}
 	}
@@ -146,10 +146,10 @@ void TraceManager::traceError(const std::string& text, TraceManager::Level level
 	text = Util::Indent() + text;
 	_errorMessages->insert(text);
 	TraceErrorEvent exceptEvent = TraceErrorEvent(text, level);
-	for (auto handler : *this->_traceErrorHandlers->list()) {
+	for (const auto& handler : *this->_traceErrorHandlers->list()) {
 		handler(exceptEvent);
 	}
-	for (auto& handlerMethod : *this->_traceErrorHandlersMethod->list()) {
+	for (const auto& handlerMethod : *this->_traceErrorHandlersMethod->list()) {
 		handlerMethod(exceptEvent);
 	}
 }
@@ -162,10 +162,10 @@ void TraceManager::traceError(const std::string& text, const std::exception& e) 
 	text = Util::Indent() + text;
 	_errorMessages->insert(text);
 	TraceErrorEvent exceptEvent = TraceErrorEvent(text, e);
-	for (auto handler : *this->_traceErrorHandlers->list()) {
+	for (const auto& handler : *this->_traceErrorHandlers->list()) {
 		handler(exceptEvent);
 	}
-	for (auto& handlerMethod : *this->_traceErrorHandlersMethod->list()) {
+	for (const auto& handlerMethod : *this->_traceErrorHandlersMethod->list()) {
 		handlerMethod(exceptEvent);
 	}
 }
@@ -183,10 +183,10 @@ void TraceManager::traceSimulation(void* thisobject, const std::string& text, Tr
 		text = Util::Indent() + text;
 		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
 		TraceSimulationEvent e = TraceSimulationEvent(level, 0.0, nullptr, nullptr, text);
-		for (auto handler : *this->_traceSimulationHandlers->list()) {
+		for (const auto& handler : *this->_traceSimulationHandlers->list()) {
 			handler(e);
 		}
-		for (auto& handlerMethod : *this->_traceSimulationHandlersMethod->list()) {
+		for (const auto& handlerMethod : *this->_traceSimulationHandlersMethod->list()) {
 			handlerMethod(e);
 		}
 	}
@@ -204,10 +204,10 @@ void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity
     if (_traceSimulationConditionPassed(level, thisobject, showAnyway)) {
 		text = Util::Indent() + text;
 		TraceSimulationEvent e = TraceSimulationEvent(level, time, entity, component, text);
-		for (auto handler : *this->_traceSimulationHandlers->list()) {
+		for (const auto& handler : *this->_traceSimulationHandlers->list()) {
 			handler(e);
 		}
-		for (auto& handlerMethod : *this->_traceSimulationHandlersMethod->list()) {
+		for (const auto& handlerMethod : *this->_traceSimulationHandlersMethod->list()) {
 			handlerMethod(e);
 		}
 	}
@@ -225,10 +225,10 @@ void TraceManager::traceReport(const std::string& text, TraceManager::Level leve
 	if (_traceConditionPassed(level)) {
 		text = Util::Indent() + text;
 		TraceEvent e = TraceEvent(text, level);
-		for (auto handler : *this->_traceReportHandlers->list()) {
+		for (const auto& handler : *this->_traceReportHandlers->list()) {
 			handler(e);
 		}
-		for (auto& handlerMethod : *this->_traceReportHandlersMethod->list()) {
+		for (const auto& handlerMethod : *this->_traceReportHandlersMethod->list()) {
 			handlerMethod(e);
 		}
 	}
