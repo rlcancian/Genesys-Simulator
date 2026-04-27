@@ -153,9 +153,10 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
                                                 const bool lookForPluginsIfFilenameNotFound,
                                                 const PluginInsertionOptions& options)
 {
-	List<Plugin*>* loadedPlugins = nullptr;
+	List<Plugin*>* loadedPlugins = new List<Plugin*>();
 	if (pluginsListFilename.empty()) {
 		if (lookForPluginsIfFilenameNotFound) {
+			delete loadedPlugins;
 			loadedPlugins = _autoFindPlugins(options);
 		}
 		return loadedPlugins;
@@ -168,7 +169,6 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 		fullFilename = Util::RunningPath()+Util::DirSeparator()+pluginsListFilename;
 	std::ifstream file(fullFilename, std::ifstream::in);
 	if (file.is_open()) {
-		loadedPlugins = new List<Plugin*>();
 		while (std::getline(file, line)) {
 			if (line.length()>=1) {
                 // @ToDo: (pequena alteração): 2500701 why [0-2] are special chars?
@@ -181,11 +181,13 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 			}
 		}
 		file.close();
+		delete loadedPlugins;
 		loadedPlugins = completePluginsFieldsAndTemplates();
 	} else
 	{
 		_simulator->getTraceManager()->traceError("Could not open file \""+pluginsListFilename+"\" (\""+fullFilename+"\")");
 		if (lookForPluginsIfFilenameNotFound) {
+			delete loadedPlugins;
 			loadedPlugins = _autoFindPlugins(options);
 		}
 	}
