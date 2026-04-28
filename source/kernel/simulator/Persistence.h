@@ -37,19 +37,19 @@ public:
 
 	virtual PersistenceRecord* newInstance();
 
-	virtual std::string loadField(std::string key, std::string defaultValue = "");
-	virtual double loadField(std::string key, double defaultValue);
-	virtual unsigned int loadField(std::string key, unsigned int defaultValue);
-	virtual int loadField(std::string key, int defaultValue);
-	virtual Util::TimeUnit loadField(std::string key, Util::TimeUnit defaultValue);
+	virtual std::string loadField(const std::string& key, const std::string& defaultValue = "");
+	virtual double loadField(const std::string& key, double defaultValue);
+	virtual unsigned int loadField(const std::string& key, unsigned int defaultValue);
+	virtual int loadField(const std::string& key, int defaultValue);
+	virtual Util::TimeUnit loadField(const std::string& key, Util::TimeUnit defaultValue);
 
-	virtual void saveField(std::string key, std::string value, const std::string defaultValue, const bool saveIfDefault = false);
-	virtual void saveField(std::string key, std::string value);
-	virtual void saveField(std::string key, double value, const double defaultValue, const bool saveIfDefault = false);
-	virtual void saveField(std::string key, unsigned int value, const unsigned int defaultValue, const bool saveIfDefault = false);
-	virtual void saveField(std::string key, unsigned int value);
-	virtual void saveField(std::string key, int value, const int defaultValue, const bool saveIfDefault = false);
-	virtual void saveField(std::string key, Util::TimeUnit value, const Util::TimeUnit defaultValue, const bool saveIfDefault = false);
+	virtual void saveField(const std::string& key, const std::string& value, const std::string& defaultValue, const bool saveIfDefault = false);
+	virtual void saveField(const std::string& key, const std::string& value);
+	virtual void saveField(const std::string& key, double value, const double defaultValue, const bool saveIfDefault = false);
+	virtual void saveField(const std::string& key, unsigned int value, const unsigned int defaultValue, const bool saveIfDefault = false);
+	virtual void saveField(const std::string& key, unsigned int value);
+	virtual void saveField(const std::string& key, int value, const int defaultValue, const bool saveIfDefault = false);
+	virtual void saveField(const std::string& key, Util::TimeUnit value, const Util::TimeUnit defaultValue, const bool saveIfDefault = false);
 
 	// these are only needed because existing code does not abstract away the STL container API
 	// still, subclasses implementing this interface may use them to insert post-processed entries
