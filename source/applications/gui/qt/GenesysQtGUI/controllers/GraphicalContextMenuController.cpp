@@ -1,5 +1,8 @@
 #include "GraphicalContextMenuController.h"
 
+#include "kernel/simulator/Model.h"
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "ui_mainwindow.h"
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"
@@ -35,6 +38,72 @@ constexpr TraceLevelMenuEntry kTraceLevelEntries[] = {
     {TraceManager::Level::L8_detailed, "L8_detailed"},
     {TraceManager::Level::L9_mostDetailed, "L9_mostDetailed"}
 };
+
+bool collectBioReactionSelection(ModelGraphicsScene* scene,
+                                 BioReaction*& reaction,
+                                 std::vector<BioSpecies*>& speciesDefinitions) {
+    reaction = nullptr;
+    speciesDefinitions.clear();
+    if (scene == nullptr) {
+        return false;
+    }
+
+    const QList<QGraphicsItem*> selectedItems = scene->selectedItems();
+    if (selectedItems.size() < 2) {
+        return false;
+    }
+
+    for (QGraphicsItem* item : selectedItems) {
+        auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        if (graphicalDefinition == nullptr) {
+            return false;
+        }
+
+        ModelDataDefinition* dataDefinition = graphicalDefinition->getDataDefinition();
+        if (auto* candidateReaction = dynamic_cast<BioReaction*>(dataDefinition)) {
+            if (reaction != nullptr) {
+                return false;
+            }
+            reaction = candidateReaction;
+            continue;
+        }
+
+        auto* species = dynamic_cast<BioSpecies*>(dataDefinition);
+        if (species == nullptr) {
+            return false;
+        }
+        speciesDefinitions.push_back(species);
+    }
+
+    return reaction != nullptr && !speciesDefinitions.empty();
+}
+
+bool reactionAlreadyContainsReactant(BioReaction* reaction, const std::string& speciesName) {
+    for (const auto& term : reaction->getReactants()) {
+        if (term.speciesName == speciesName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool reactionAlreadyContainsProduct(BioReaction* reaction, const std::string& speciesName) {
+    for (const auto& term : reaction->getProducts()) {
+        if (term.speciesName == speciesName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool reactionAlreadyContainsModifier(BioReaction* reaction, const std::string& speciesName) {
+    for (const std::string& modifierName : reaction->getModifiers()) {
+        if (modifierName == speciesName) {
+            return true;
+        }
+    }
+    return false;
+}
 
 } // namespace
 
@@ -210,6 +279,7 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
         case ContextKind::SingleDataDefinition:
             menu->addSeparator();
             addTraceLevelMenu(menu, clickedItem);
+            addBioReactionLinkMenu(menu);
             if (_openSubmodelAction != nullptr) {
                 menu->addAction(_openSubmodelAction);
             }
@@ -217,6 +287,7 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
 
         case ContextKind::MultiSelection:
             menu->addSeparator();
+            addBioReactionLinkMenu(menu);
             menu->addAction(_ui->actionEditGroup);
             menu->addAction(_ui->actionEditUngroup);
             addAlignMenu(menu);
@@ -309,6 +380,76 @@ void GraphicalContextMenuController::addTraceLevelMenu(QMenu* menu, QGraphicsIte
         });
     }
     */
+}
+
+void GraphicalContextMenuController::addBioReactionLinkMenu(QMenu* menu) const {
+    if (menu == nullptr || !_currentScene) {
+        return;
+    }
+
+    ModelGraphicsScene* scene = _currentScene();
+    BioReaction* reaction = nullptr;
+    std::vector<BioSpecies*> selectedSpecies;
+    if (!collectBioReactionSelection(scene, reaction, selectedSpecies)) {
+        return;
+    }
+
+    QMenu* relationMenu = menu->addMenu("Biochemical Relation");
+    QAction* addReactantsAction = relationMenu->addAction("Add Selected BioSpecies as Reactants");
+    QAction* addProductsAction = relationMenu->addAction("Add Selected BioSpecies as Products");
+    QAction* addModifiersAction = relationMenu->addAction("Add Selected BioSpecies as Modifiers");
+
+    // All three actions mutate the same BioReaction and rely on the generic scene sync to rebuild diagram links.
+    auto refreshAfterChange = [scene, reaction]() {
+        reaction->setHasChanged(true);
+        if (reaction->getParentModel() != nullptr) {
+            reaction->getParentModel()->setHasChanged(true);
+        }
+        scene->requestGraphicalDataDefinitionsSync();
+        scene->update();
+    };
+
+    QObject::connect(addReactantsAction, &QAction::triggered, relationMenu, [reaction, selectedSpecies, refreshAfterChange]() {
+        bool changed = false;
+        for (BioSpecies* species : selectedSpecies) {
+            if (species == nullptr || reactionAlreadyContainsReactant(reaction, species->getName())) {
+                continue;
+            }
+            reaction->addReactant(species->getName(), 1.0);
+            changed = true;
+        }
+        if (changed) {
+            refreshAfterChange();
+        }
+    });
+
+    QObject::connect(addProductsAction, &QAction::triggered, relationMenu, [reaction, selectedSpecies, refreshAfterChange]() {
+        bool changed = false;
+        for (BioSpecies* species : selectedSpecies) {
+            if (species == nullptr || reactionAlreadyContainsProduct(reaction, species->getName())) {
+                continue;
+            }
+            reaction->addProduct(species->getName(), 1.0);
+            changed = true;
+        }
+        if (changed) {
+            refreshAfterChange();
+        }
+    });
+
+    QObject::connect(addModifiersAction, &QAction::triggered, relationMenu, [reaction, selectedSpecies, refreshAfterChange]() {
+        bool changed = false;
+        for (BioSpecies* species : selectedSpecies) {
+            if (species == nullptr || reactionAlreadyContainsModifier(reaction, species->getName())) {
+                continue;
+            }
+            reaction->addModifier(species->getName());
+            changed = true;
+        }
+        if (changed) {
+            refreshAfterChange();
+        }
+    });
 }
 
 void GraphicalContextMenuController::addDrawMenu(QMenu* menu) const {
