@@ -8,9 +8,12 @@
 #include "plugins/components/BiologicalModeling/BacteriaColony.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataManager.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiologicalModeling/GroProgramCompiler.h"
 #include "plugins/data/BiologicalModeling/GroProgramParser.h"
 
+#include <algorithm>
+#include <cctype>
 #include <stdexcept>
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -19,6 +22,31 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 	return &BacteriaColony::GetPluginInformation;
 }
 #endif
+
+namespace {
+
+constexpr const char* kBioSpeciesAssignmentPrefix = "bio_species_";
+
+std::string toGroIdentifierSuffix(const std::string& text) {
+	std::string identifier;
+	identifier.reserve(text.size());
+	for (char ch : text) {
+		if (std::isalnum(static_cast<unsigned char>(ch)) != 0) {
+			identifier += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
+		} else {
+			identifier += '_';
+		}
+	}
+	if (identifier.empty()) {
+		return "unnamed";
+	}
+	if (std::isdigit(static_cast<unsigned char>(identifier.front())) != 0) {
+		identifier.insert(identifier.begin(), '_');
+	}
+	return identifier;
+}
+
+} // namespace
 
 ModelDataDefinition* BacteriaColony::NewInstance(Model* model, std::string name) {
 	return new BacteriaColony(model, name);
@@ -33,6 +61,20 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 					std::bind(&BacteriaColony::setGroProgram, this, std::placeholders::_1),
 					Util::TypeOf<BacteriaColony>(), getName(), "GroProgram",
 					"Reusable Gro source program interpreted by this colony");
+	SimulationControlGenericClass<BioNetwork*, Model*, BioNetwork>* propBioNetwork =
+			new SimulationControlGenericClass<BioNetwork*, Model*, BioNetwork>(
+					_parentModel,
+					std::bind(&BacteriaColony::getBioNetwork, this),
+					std::bind(&BacteriaColony::setBioNetwork, this, std::placeholders::_1),
+					Util::TypeOf<BacteriaColony>(), getName(), "BioNetwork",
+					"Optional BioNetwork reused as the colony biochemical state");
+	SimulationControlGenericClass<BacteriaSignalGrid*, Model*, BacteriaSignalGrid>* propSignalGrid =
+			new SimulationControlGenericClass<BacteriaSignalGrid*, Model*, BacteriaSignalGrid>(
+					_parentModel,
+					std::bind(&BacteriaColony::getSignalGrid, this),
+					std::bind(&BacteriaColony::setSignalGrid, this, std::placeholders::_1),
+					Util::TypeOf<BacteriaColony>(), getName(), "SignalGrid",
+					"Reusable discrete signal-grid definition copied into the colony runtime state");
 	SimulationControlDouble* propSimulationStep = new SimulationControlDouble(
 			std::bind(&BacteriaColony::getSimulationStep, this),
 			std::bind(&BacteriaColony::setSimulationStep, this, std::placeholders::_1),
@@ -43,6 +85,17 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 			std::bind(&BacteriaColony::setInitialColonyTime, this, std::placeholders::_1),
 			Util::TypeOf<BacteriaColony>(), getName(), "InitialColonyTime",
 			"Initial internal biological time for each replication");
+	SimulationControlDouble* propFinalColonyTime = new SimulationControlDouble(
+			std::bind(&BacteriaColony::getFinalColonyTime, this),
+			std::bind(&BacteriaColony::setFinalColonyTime, this, std::placeholders::_1),
+			Util::TypeOf<BacteriaColony>(), getName(), "FinalColonyTime",
+			"Final internal biological time reached before the current entity leaves the colony");
+	SimulationControlGenericEnum<Util::TimeUnit, Util>* propColonyTimeUnit =
+			new SimulationControlGenericEnum<Util::TimeUnit, Util>(
+					std::bind(&BacteriaColony::getColonyTimeUnit, this),
+					std::bind(&BacteriaColony::setColonyTimeUnit, this, std::placeholders::_1),
+					Util::TypeOf<BacteriaColony>(), getName(), "ColonyTimeUnit",
+					"Time unit used by InitialColonyTime, SimulationStep, and FinalColonyTime");
 	SimulationControlGeneric<unsigned int>* propInitialPopulation = new SimulationControlGeneric<unsigned int>(
 			std::bind(&BacteriaColony::getInitialPopulation, this),
 			std::bind(&BacteriaColony::setInitialPopulation, this, std::placeholders::_1),
@@ -60,15 +113,23 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 			"Discrete grid height reserved for colony spatial state");
 
 	_parentModel->getControls()->insert(propGroProgram);
+	_parentModel->getControls()->insert(propBioNetwork);
+	_parentModel->getControls()->insert(propSignalGrid);
 	_parentModel->getControls()->insert(propSimulationStep);
 	_parentModel->getControls()->insert(propInitialColonyTime);
+	_parentModel->getControls()->insert(propFinalColonyTime);
+	_parentModel->getControls()->insert(propColonyTimeUnit);
 	_parentModel->getControls()->insert(propInitialPopulation);
 	_parentModel->getControls()->insert(propGridWidth);
 	_parentModel->getControls()->insert(propGridHeight);
 
 	_addSimulationControl(propGroProgram);
+	_addSimulationControl(propBioNetwork);
+	_addSimulationControl(propSignalGrid);
 	_addSimulationControl(propSimulationStep);
 	_addSimulationControl(propInitialColonyTime);
+	_addSimulationControl(propFinalColonyTime);
+	_addSimulationControl(propColonyTimeUnit);
 	_addSimulationControl(propInitialPopulation);
 	_addSimulationControl(propGridWidth);
 	_addSimulationControl(propGridHeight);
@@ -77,8 +138,12 @@ BacteriaColony::BacteriaColony(Model* model, std::string name) :
 std::string BacteriaColony::show() {
 	return ModelComponent::show() +
 	       ",groProgram=\"" + (_groProgram != nullptr ? _groProgram->getName() : "") + "\"" +
+	       ",bioNetwork=\"" + (_bioNetwork != nullptr ? _bioNetwork->getName() : "") + "\"" +
+	       ",signalGrid=\"" + (_signalGrid != nullptr ? _signalGrid->getName() : "") + "\"" +
 	       ",simulationStep=" + Util::StrTruncIfInt(std::to_string(_simulationStep)) +
 	       ",initialColonyTime=" + Util::StrTruncIfInt(std::to_string(_initialColonyTime)) +
+	       ",finalColonyTime=" + Util::StrTruncIfInt(std::to_string(_finalColonyTime)) +
+	       ",colonyTimeUnit=" + Util::convertEnumToStr(_colonyTimeUnit) +
 	       ",colonyTime=" + Util::StrTruncIfInt(std::to_string(_colonyTime)) +
 	       ",initialPopulation=" + std::to_string(_initialPopulation) +
 	       ",populationSize=" + std::to_string(_populationSize) +
@@ -96,10 +161,12 @@ PluginInformation* BacteriaColony::GetPluginInformation() {
 	info->setMinimumOutputs(1);
 	info->setMaximumOutputs(1);
 	info->insertDynamicLibFileDependence("groprogram.so");
+	info->insertDynamicLibFileDependence("bionetwork.so");
+	info->insertDynamicLibFileDependence("bacteriasignalgrid.so");
 	info->setDescriptionHelp("Self-contained biological simulation component for Gro-inspired bacteria colonies. "
 	                         "When an entity arrives, the colony advances one configured Gro/runtime step and then "
 	                         "forwards the entity through its output connection. This first slice owns an internal "
-	                         "colony clock, population summary, and discrete grid configuration while leaving complete "
+	                         "colony clock, population summary, optional BioNetwork, discrete grid configuration, and optional signal field while leaving complete "
 	                         "Gro parsing and execution semantics to future plugin-side helpers.");
 	return info;
 }
@@ -137,6 +204,22 @@ double BacteriaColony::getInitialColonyTime() const {
 	return _initialColonyTime;
 }
 
+void BacteriaColony::setFinalColonyTime(double finalColonyTime) {
+	_finalColonyTime = finalColonyTime;
+}
+
+double BacteriaColony::getFinalColonyTime() const {
+	return _finalColonyTime;
+}
+
+void BacteriaColony::setColonyTimeUnit(Util::TimeUnit colonyTimeUnit) {
+	_colonyTimeUnit = colonyTimeUnit;
+}
+
+Util::TimeUnit BacteriaColony::getColonyTimeUnit() const {
+	return _colonyTimeUnit;
+}
+
 double BacteriaColony::getColonyTime() const {
 	return _colonyTime;
 }
@@ -151,6 +234,29 @@ unsigned int BacteriaColony::getInitialPopulation() const {
 
 unsigned int BacteriaColony::getPopulationSize() const {
 	return _populationSize;
+}
+
+void BacteriaColony::setBioNetwork(BioNetwork* bioNetwork) {
+	_bioNetwork = bioNetwork;
+}
+
+BioNetwork* BacteriaColony::getBioNetwork() const {
+	return _bioNetwork;
+}
+
+void BacteriaColony::setSignalGrid(BacteriaSignalGrid* signalGrid) {
+	_signalGrid = signalGrid;
+	if (_signalGrid != nullptr) {
+		// The signal grid owns the authoritative spatial dimensions for the colony
+		// environment, so attaching one synchronizes the component grid layout.
+		_gridWidth = _signalGrid->getWidth();
+		_gridHeight = _signalGrid->getHeight();
+		_rebuildBacteriaGridPositions();
+	}
+}
+
+BacteriaSignalGrid* BacteriaColony::getSignalGrid() const {
+	return _signalGrid;
 }
 
 std::size_t BacteriaColony::getInternalBacteriaCount() const {
@@ -170,6 +276,45 @@ double BacteriaColony::getBacteriumAge(std::size_t index) const {
 		return 0.0;
 	}
 	return _colonyTime - bacterium.birthTime;
+}
+
+double BacteriaColony::getBacteriumRuntimeVariableValue(std::size_t index, const std::string& variableName) const {
+	const BacteriumState& bacterium = getBacteriumState(index);
+	const auto found = bacterium.runtimeVariables.find(variableName);
+	if (found == bacterium.runtimeVariables.end()) {
+		throw std::out_of_range("BacteriaColony runtime variable \"" + variableName +
+		                        "\" is not available for bacterium index " + std::to_string(index));
+	}
+	return found->second;
+}
+
+bool BacteriaColony::hasBacteriumRuntimeVariable(std::size_t index, const std::string& variableName) const {
+	const BacteriumState& bacterium = getBacteriumState(index);
+	return bacterium.runtimeVariables.find(variableName) != bacterium.runtimeVariables.end();
+}
+
+double BacteriaColony::getRuntimeVariableValue(const std::string& variableName) const {
+	const auto found = _runtimeVariables.find(variableName);
+	if (found == _runtimeVariables.end()) {
+		throw std::out_of_range("BacteriaColony runtime variable \"" + variableName + "\" is not available");
+	}
+	return found->second;
+}
+
+bool BacteriaColony::hasRuntimeVariable(const std::string& variableName) const {
+	return _runtimeVariables.find(variableName) != _runtimeVariables.end();
+}
+
+double BacteriaColony::getSignalValueAt(unsigned int x, unsigned int y) const {
+	if (x >= _gridWidth || y >= _gridHeight) {
+		throw std::out_of_range("BacteriaColony signal coordinate is out of range");
+	}
+	return _signalValueAt(x, y);
+}
+
+double BacteriaColony::getBacteriumLocalSignal(std::size_t index) const {
+	const BacteriumState& bacterium = getBacteriumState(index);
+	return _signalValueAt(bacterium.gridX, bacterium.gridY);
 }
 
 void BacteriaColony::setGridWidth(unsigned int gridWidth) {
@@ -213,15 +358,48 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	}
 
 	GroProgramIr ir = GroProgramCompiler().compile(parseResult.ast);
+	if (ir.isProgramBlock() && ir.programName == "bacterium") {
+		_executeBacteriumScopedGroProgram(ir, result);
+		return result;
+	}
+
 	GroProgramRuntimeState runtimeState;
+	std::string bioContextErrorMessage;
 	runtimeState.colonyTime = _colonyTime;
 	runtimeState.simulationStep = _simulationStep;
 	runtimeState.populationSize = _populationSize;
+	runtimeState.variables = _runtimeVariables;
+	_appendBioNetworkContextVariables(runtimeState, bioContextErrorMessage);
+	if (!bioContextErrorMessage.empty()) {
+		result.succeeded = false;
+		result.errorMessage = bioContextErrorMessage;
+		return result;
+	}
 
 	result = GroProgramRuntime().execute(ir, runtimeState);
 	if (result.succeeded) {
+		if (!result.signalMutations.empty()) {
+			result.succeeded = false;
+			result.errorMessage = "BacteriaColony aggregate Gro programs cannot mutate local signals. "
+			                      "Use program bacterium() for signal-aware colony logic. ";
+			return result;
+		}
+		if (!_applyBioNetworkAssignments(result.assignedVariables, result.errorMessage)) {
+			result.succeeded = false;
+			return result;
+		}
+		_removeBioNetworkAssignmentVariables(runtimeState.variables);
+		const double bioNetworkStepSize = std::max(0.0, runtimeState.colonyTime - _colonyTime);
+		if (!_advanceBioNetworkStep(bioNetworkStepSize, result.errorMessage)) {
+			result.succeeded = false;
+			return result;
+		}
+		// The colony owns the persistent program state between executions, so the
+		// plugin runtime hands back the updated scalar-variable map after each run.
 		_colonyTime = runtimeState.colonyTime;
+		_runtimeVariables = runtimeState.variables;
 		_applyRuntimePopulationMutations(result.populationMutations, runtimeState.populationSize);
+		_applySignalFieldStep();
 	}
 	return result;
 }
@@ -235,13 +413,33 @@ bool BacteriaColony::_loadInstance(PersistenceRecord* fields) {
 			                                                                               groProgramName);
 			_groProgram = dynamic_cast<GroProgram*>(datum);
 		}
+		const std::string bioNetworkName = fields->loadField("bioNetwork", DEFAULT.bioNetworkName);
+		if (!bioNetworkName.empty()) {
+			ModelDataDefinition* datum = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioNetwork>(),
+			                                                                               bioNetworkName);
+			_bioNetwork = dynamic_cast<BioNetwork*>(datum);
+		}
+		const std::string signalGridName = fields->loadField("signalGrid", DEFAULT.signalGridName);
+		if (!signalGridName.empty()) {
+			ModelDataDefinition* datum = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BacteriaSignalGrid>(),
+			                                                                               signalGridName);
+			_signalGrid = dynamic_cast<BacteriaSignalGrid*>(datum);
+		}
 		_simulationStep = fields->loadField("simulationStep", DEFAULT.simulationStep);
 		_initialColonyTime = fields->loadField("initialColonyTime", DEFAULT.initialColonyTime);
+		_finalColonyTime = fields->loadField("finalColonyTime", DEFAULT.finalColonyTime);
+		_colonyTimeUnit = fields->loadField("colonyTimeUnit", DEFAULT.colonyTimeUnit);
 		_colonyTime = _initialColonyTime;
 		_initialPopulation = fields->loadField("initialPopulation", DEFAULT.initialPopulation);
 		_gridWidth = fields->loadField("gridWidth", DEFAULT.gridWidth);
 		_gridHeight = fields->loadField("gridHeight", DEFAULT.gridHeight);
+		if (_signalGrid != nullptr) {
+			_gridWidth = _signalGrid->getWidth();
+			_gridHeight = _signalGrid->getHeight();
+		}
 		_rebuildInternalBacteria(_initialPopulation);
+		std::string signalErrorMessage;
+		(void)_resetRuntimeSignalField(signalErrorMessage);
 	}
 	return res;
 }
@@ -249,9 +447,15 @@ bool BacteriaColony::_loadInstance(PersistenceRecord* fields) {
 void BacteriaColony::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("groProgram", _groProgram != nullptr ? _groProgram->getName() : DEFAULT.groProgramName,
-	                  DEFAULT.groProgramName, saveDefaultValues);
+		                  DEFAULT.groProgramName, saveDefaultValues);
+	fields->saveField("bioNetwork", _bioNetwork != nullptr ? _bioNetwork->getName() : DEFAULT.bioNetworkName,
+	                  DEFAULT.bioNetworkName, saveDefaultValues);
+	fields->saveField("signalGrid", _signalGrid != nullptr ? _signalGrid->getName() : DEFAULT.signalGridName,
+	                  DEFAULT.signalGridName, saveDefaultValues);
 	fields->saveField("simulationStep", _simulationStep, DEFAULT.simulationStep, saveDefaultValues);
 	fields->saveField("initialColonyTime", _initialColonyTime, DEFAULT.initialColonyTime, saveDefaultValues);
+	fields->saveField("finalColonyTime", _finalColonyTime, DEFAULT.finalColonyTime, saveDefaultValues);
+	fields->saveField("colonyTimeUnit", _colonyTimeUnit, DEFAULT.colonyTimeUnit, saveDefaultValues);
 	fields->saveField("initialPopulation", _initialPopulation, DEFAULT.initialPopulation, saveDefaultValues);
 	fields->saveField("gridWidth", _gridWidth, DEFAULT.gridWidth, saveDefaultValues);
 	fields->saveField("gridHeight", _gridHeight, DEFAULT.gridHeight, saveDefaultValues);
@@ -275,6 +479,18 @@ bool BacteriaColony::_check(std::string& errorMessage) {
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<GroProgram>(), _groProgram, "GroProgram",
 	                                                   errorMessage);
+	if (_bioNetwork != nullptr) {
+		resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BioNetwork>(), _bioNetwork, "BioNetwork",
+		                                                   errorMessage);
+	}
+	if (_signalGrid != nullptr) {
+		resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BacteriaSignalGrid>(), _signalGrid, "SignalGrid",
+		                                                   errorMessage);
+		if (_signalGrid->getWidth() != _gridWidth || _signalGrid->getHeight() != _gridHeight) {
+			errorMessage += "BacteriaColony grid dimensions must match the attached BacteriaSignalGrid dimensions. ";
+			resultAll = false;
+		}
+	}
 	if (_groProgram != nullptr) {
 		resultAll &= _groProgram->validateSyntax(errorMessage);
 	}
@@ -284,7 +500,15 @@ bool BacteriaColony::_check(std::string& errorMessage) {
 
 void BacteriaColony::_initBetweenReplications() {
 	_colonyTime = _initialColonyTime;
+	_runtimeVariables.clear();
+	if (_bioNetwork != nullptr) {
+		// The colony reuses the referenced biochemical state machine and resets it
+		// alongside the colony replication lifecycle.
+		ModelDataDefinition::InitBetweenReplications(_bioNetwork);
+	}
 	_rebuildInternalBacteria(_initialPopulation);
+	std::string signalErrorMessage;
+	(void)_resetRuntimeSignalField(signalErrorMessage);
 }
 
 void BacteriaColony::_createInternalAndAttachedData() {
@@ -292,6 +516,16 @@ void BacteriaColony::_createInternalAndAttachedData() {
 		_attachedDataInsert("GroProgram", _groProgram);
 	} else {
 		_attachedDataRemove("GroProgram");
+	}
+	if (_bioNetwork != nullptr) {
+		_attachedDataInsert("BioNetwork", _bioNetwork);
+	} else {
+		_attachedDataRemove("BioNetwork");
+	}
+	if (_signalGrid != nullptr) {
+		_attachedDataInsert("SignalGrid", _signalGrid);
+	} else {
+		_attachedDataRemove("SignalGrid");
 	}
 }
 
@@ -301,7 +535,7 @@ void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 		GroProgramRuntime::ExecutionResult result = executeGroProgram();
 		if (result.succeeded) {
 			traceSimulation(this, "Bacteria colony Gro program executed " + std::to_string(result.executedCommands) +
-			                      " command(s)");
+								  " command(s)");
 		} else {
 			traceSimulation(this, "Bacteria colony Gro program execution failed: " + result.errorMessage);
 		}
@@ -320,7 +554,296 @@ void BacteriaColony::_onDispatchEvent(Entity* entity, unsigned int inputPortNumb
 		return;
 	}
 
-	_parentModel->sendEntityToComponent(entity, frontConnection);
+	if (_colonyTime >= _finalColonyTime) {
+		_colonyTime = _initialColonyTime;
+		_parentModel->sendEntityToComponent(entity, frontConnection);
+	} else {
+		// The colony step is expressed in colony-local time units and must be
+		// converted to the model replication base unit before re-scheduling.
+		double timeScale = Util::TimeUnitConvert(_colonyTimeUnit, _parentModel->getSimulation()->getReplicationBaseTimeUnit());
+		double stepDelay = _simulationStep * timeScale;
+		_parentModel->sendEntityToComponent(entity, this, stepDelay);
+	}
+}
+
+bool BacteriaColony::_resetRuntimeSignalField(std::string& errorMessage) {
+	if (_signalGrid != nullptr) {
+		return _signalGrid->buildInitialField(_signalField, errorMessage);
+	}
+
+	_signalField.assign(static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight), 0.0);
+	return true;
+}
+
+bool BacteriaColony::_collectBioNetworkSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const {
+	species.clear();
+	errorMessage.clear();
+	if (_bioNetwork == nullptr) {
+		return true;
+	}
+
+	const std::vector<std::string>& speciesNames = _bioNetwork->getSpeciesNames();
+	if (speciesNames.empty()) {
+		List<ModelDataDefinition*>* list = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<BioSpecies>());
+		for (ModelDataDefinition* definition : *list->list()) {
+			auto* bioSpecies = dynamic_cast<BioSpecies*>(definition);
+			if (bioSpecies != nullptr) {
+				species.push_back(bioSpecies);
+			}
+		}
+	} else {
+		for (const std::string& speciesName : speciesNames) {
+			ModelDataDefinition* definition =
+					_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), speciesName);
+			auto* bioSpecies = dynamic_cast<BioSpecies*>(definition);
+			if (bioSpecies == nullptr) {
+				errorMessage += "BacteriaColony BioNetwork \"" + _bioNetwork->getName() +
+				                "\" references missing BioSpecies \"" + speciesName + "\". ";
+				continue;
+			}
+			species.push_back(bioSpecies);
+		}
+	}
+	return errorMessage.empty();
+}
+
+bool BacteriaColony::_collectBioNetworkSpeciesByIdentifier(std::map<std::string, BioSpecies*>& speciesByIdentifier,
+                                                           std::string& errorMessage) const {
+	speciesByIdentifier.clear();
+	errorMessage.clear();
+	if (_bioNetwork == nullptr) {
+		return true;
+	}
+
+	std::vector<BioSpecies*> species;
+	if (!_collectBioNetworkSpecies(species, errorMessage)) {
+		return false;
+	}
+
+	for (BioSpecies* bioSpecies : species) {
+		const std::string identifier = toGroIdentifierSuffix(bioSpecies->getName());
+		const auto found = speciesByIdentifier.find(identifier);
+		if (found != speciesByIdentifier.end() && found->second != bioSpecies) {
+			errorMessage += "BacteriaColony BioNetwork \"" + _bioNetwork->getName() +
+			                "\" exposes ambiguous GRO identifier \"bio_species_" + identifier + "\". ";
+			continue;
+		}
+		speciesByIdentifier[identifier] = bioSpecies;
+	}
+	return errorMessage.empty();
+}
+
+void BacteriaColony::_appendBioNetworkContextVariables(GroProgramRuntimeState& runtimeState,
+                                                       std::string& errorMessage) const {
+	errorMessage.clear();
+	if (_bioNetwork == nullptr) {
+		return;
+	}
+
+	std::vector<BioSpecies*> species;
+	if (!_collectBioNetworkSpecies(species, errorMessage)) {
+		return;
+	}
+
+	// The biochemical state is exposed as read-only GRO identifiers so colony
+	// logic can already react to concentrations without writing into BioNetwork.
+	runtimeState.contextVariables["bio_current_time"] = _bioNetwork->getCurrentTime();
+	runtimeState.contextVariables["bio_step_size"] = _bioNetwork->getStepSize();
+	runtimeState.contextVariables["bio_species_count"] = static_cast<double>(species.size());
+	for (BioSpecies* bioSpecies : species) {
+		runtimeState.contextVariables["bio_species_" + toGroIdentifierSuffix(bioSpecies->getName())] =
+				bioSpecies->getAmount();
+	}
+}
+
+bool BacteriaColony::_applyBioNetworkAssignments(const std::map<std::string, double>& assignedVariables,
+                                                 std::string& errorMessage) {
+	errorMessage.clear();
+	if (_bioNetwork == nullptr) {
+		return true;
+	}
+
+	std::map<std::string, BioSpecies*> speciesByIdentifier;
+	if (!_collectBioNetworkSpeciesByIdentifier(speciesByIdentifier, errorMessage)) {
+		return false;
+	}
+
+	for (const auto& entry : assignedVariables) {
+		if (entry.first.rfind(kBioSpeciesAssignmentPrefix, 0) != 0) {
+			continue;
+		}
+
+		const std::string identifier = entry.first.substr(std::char_traits<char>::length(kBioSpeciesAssignmentPrefix));
+		const auto found = speciesByIdentifier.find(identifier);
+		if (found == speciesByIdentifier.end()) {
+			errorMessage = "BacteriaColony BioNetwork assignment target \"" + entry.first +
+			              "\" does not match any referenced BioSpecies. ";
+			return false;
+		}
+
+		// GRO assignments use the same non-negative amount semantics already used
+		// by BioNetwork state updates, so negative writes are rejected early.
+		if (entry.second < 0.0) {
+			errorMessage = "BacteriaColony BioNetwork assignment target \"" + entry.first +
+			              "\" must receive a non-negative amount. ";
+			return false;
+		}
+		found->second->setAmount(entry.second);
+	}
+	return true;
+}
+
+void BacteriaColony::_removeBioNetworkAssignmentVariables(std::map<std::string, double>& variables) const {
+	for (auto it = variables.begin(); it != variables.end();) {
+		if (it->first.rfind(kBioSpeciesAssignmentPrefix, 0) == 0) {
+			it = variables.erase(it);
+			continue;
+		}
+		++it;
+	}
+}
+
+bool BacteriaColony::_advanceBioNetworkStep(double stepSize, std::string& errorMessage) {
+	errorMessage.clear();
+	if (_bioNetwork == nullptr || stepSize <= 0.0) {
+		return true;
+	}
+
+	// The first integration slice keeps the biochemical network on the same
+	// local step size used by the colony clock.
+	const double currentTime = _bioNetwork->getCurrentTime();
+	_bioNetwork->setStepSize(stepSize);
+	_bioNetwork->setStopTime(currentTime + stepSize);
+	return _bioNetwork->advanceOneStep(errorMessage);
+}
+
+std::size_t BacteriaColony::_signalIndex(unsigned int x, unsigned int y) const {
+	return static_cast<std::size_t>(y) * static_cast<std::size_t>(_gridWidth) + static_cast<std::size_t>(x);
+}
+
+double BacteriaColony::_signalValueAt(unsigned int x, unsigned int y) const {
+	if (_gridWidth == 0 || _gridHeight == 0 || x >= _gridWidth || y >= _gridHeight) {
+		return 0.0;
+	}
+	const std::size_t index = _signalIndex(x, y);
+	if (index >= _signalField.size()) {
+		return 0.0;
+	}
+	return _signalField[index];
+}
+
+void BacteriaColony::_setSignalValueAt(unsigned int x, unsigned int y, double value) {
+	if (x >= _gridWidth || y >= _gridHeight) {
+		return;
+	}
+	const std::size_t index = _signalIndex(x, y);
+	if (index >= _signalField.size()) {
+		return;
+	}
+	_signalField[index] = value;
+}
+
+void BacteriaColony::_addSignalAt(unsigned int x, unsigned int y, double value) {
+	if (x >= _gridWidth || y >= _gridHeight) {
+		return;
+	}
+	const std::size_t index = _signalIndex(x, y);
+	if (index >= _signalField.size()) {
+		return;
+	}
+	_signalField[index] += value;
+}
+
+double BacteriaColony::_computeNeighborSignalSum(unsigned int x, unsigned int y) const {
+	double sum = 0.0;
+	if (x > 0) {
+		sum += _signalValueAt(x - 1, y);
+	}
+	if (x + 1 < _gridWidth) {
+		sum += _signalValueAt(x + 1, y);
+	}
+	if (y > 0) {
+		sum += _signalValueAt(x, y - 1);
+	}
+	if (y + 1 < _gridHeight) {
+		sum += _signalValueAt(x, y + 1);
+	}
+	return sum;
+}
+
+unsigned int BacteriaColony::_computeLocalBacteriaCount(unsigned int x, unsigned int y) const {
+	unsigned int count = 0;
+	for (const BacteriumState& bacterium : _bacteria) {
+		if (bacterium.alive && bacterium.gridX == x && bacterium.gridY == y) {
+			++count;
+		}
+	}
+	return count;
+}
+
+void BacteriaColony::_applySignalFieldStep() {
+	if (_signalGrid == nullptr || _signalField.empty()) {
+		return;
+	}
+
+	const double diffusionRate = _signalGrid->getDiffusionRate();
+	const double decayFactor = 1.0 - _signalGrid->getDecayRate();
+	if (diffusionRate == 0.0 && decayFactor == 1.0) {
+		return;
+	}
+
+	std::vector<double> updatedField = _signalField;
+	for (unsigned int y = 0; y < _gridHeight; ++y) {
+		for (unsigned int x = 0; x < _gridWidth; ++x) {
+			const double currentValue = _signalValueAt(x, y);
+			double neighborSum = 0.0;
+			unsigned int neighborCount = 0;
+			if (x > 0) {
+				neighborSum += _signalValueAt(x - 1, y);
+				++neighborCount;
+			}
+			if (x + 1 < _gridWidth) {
+				neighborSum += _signalValueAt(x + 1, y);
+				++neighborCount;
+			}
+			if (y > 0) {
+				neighborSum += _signalValueAt(x, y - 1);
+				++neighborCount;
+			}
+			if (y + 1 < _gridHeight) {
+				neighborSum += _signalValueAt(x, y + 1);
+				++neighborCount;
+			}
+
+			// The field uses a simple von-Neumann relaxation so this first slice
+			// already exposes local diffusion/decay without a full PDE subsystem.
+			double relaxedValue = currentValue;
+			if (neighborCount > 0) {
+				const double neighborAverage = neighborSum / static_cast<double>(neighborCount);
+				relaxedValue += diffusionRate * (neighborAverage - currentValue);
+			}
+			updatedField[_signalIndex(x, y)] = std::max(0.0, relaxedValue * decayFactor);
+		}
+	}
+	_signalField = std::move(updatedField);
+}
+
+void BacteriaColony::_applyBacteriumSignalMutations(const BacteriumState& bacterium,
+                                                    const std::vector<GroProgramRuntime::SignalMutation>& mutations) {
+	for (const GroProgramRuntime::SignalMutation& mutation : mutations) {
+		if (mutation.type == GroProgramRuntime::SignalMutationType::Emit) {
+			_addSignalAt(bacterium.gridX, bacterium.gridY, mutation.value);
+			continue;
+		}
+		if (mutation.type == GroProgramRuntime::SignalMutationType::Consume) {
+			const double currentValue = _signalValueAt(bacterium.gridX, bacterium.gridY);
+			_setSignalValueAt(bacterium.gridX, bacterium.gridY, std::max(0.0, currentValue - mutation.value));
+			continue;
+		}
+		if (mutation.type == GroProgramRuntime::SignalMutationType::Set) {
+			_setSignalValueAt(bacterium.gridX, bacterium.gridY, mutation.value);
+		}
+	}
 }
 
 void BacteriaColony::_rebuildInternalBacteria(unsigned int populationSize) {
@@ -384,6 +907,205 @@ void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgr
 	_rebuildBacteriaGridPositions();
 }
 
+bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
+                                                       GroProgramRuntime::ExecutionResult& result) {
+	std::string unsupportedCommand;
+	if (_containsBacteriumScopedOnlyUnsupportedCommand(ir.commands, unsupportedCommand)) {
+		result.succeeded = false;
+		result.errorMessage =
+				"BacteriaColony bacterium-scoped programs do not support command \"" + unsupportedCommand +
+				"\". Use only assignments, conditions, grow, die, and unsupported raw statements in this mode. ";
+		return false;
+	}
+
+	// In bacterium scope one colony execution still represents a single biological
+	// step, so the colony clock advances once before the per-bacterium decisions.
+	advanceColonyTime();
+
+	std::vector<unsigned int> bacteriumIds;
+	bacteriumIds.reserve(_bacteria.size());
+	for (const BacteriumState& bacterium : _bacteria) {
+		if (bacterium.alive) {
+			bacteriumIds.push_back(bacterium.id);
+		}
+	}
+
+	GroProgramRuntime runtime;
+	for (unsigned int bacteriumId : bacteriumIds) {
+		const std::size_t bacteriumIndex = _findBacteriumIndexById(bacteriumId);
+		if (bacteriumIndex >= _bacteria.size()) {
+			continue;
+		}
+
+		BacteriumState& bacterium = _bacteria[bacteriumIndex];
+		GroProgramRuntimeState runtimeState = _createBacteriumRuntimeState(bacterium, bacteriumIndex);
+		std::string bioContextErrorMessage;
+		_appendBioNetworkContextVariables(runtimeState, bioContextErrorMessage);
+		if (!bioContextErrorMessage.empty()) {
+			result.succeeded = false;
+			result.errorMessage = bioContextErrorMessage;
+			return false;
+		}
+		GroProgramRuntime::ExecutionResult bacteriumResult = runtime.execute(ir, runtimeState);
+		if (!bacteriumResult.succeeded) {
+			result = bacteriumResult;
+			result.errorMessage = "BacteriaColony bacterium-scoped execution failed for bacterium id " +
+			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
+			return false;
+		}
+
+		if (!_applyBioNetworkAssignments(bacteriumResult.assignedVariables, result.errorMessage)) {
+			result.succeeded = false;
+			result.errorMessage = "BacteriaColony bacterium-scoped biochemical assignment failed for bacterium id " +
+			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
+			return false;
+		}
+		_removeBioNetworkAssignmentVariables(runtimeState.variables);
+		bacterium.runtimeVariables = runtimeState.variables;
+		result.executedCommands += bacteriumResult.executedCommands;
+
+		for (const auto& entry : bacteriumResult.assignedVariables) {
+			result.assignedVariables["bacterium[" + std::to_string(bacteriumId) + "]." + entry.first] = entry.second;
+		}
+		for (const std::string& command : bacteriumResult.unsupportedCommands) {
+			result.unsupportedCommands.push_back("bacterium[" + std::to_string(bacteriumId) + "]:" + command);
+		}
+		for (const std::string& statement : bacteriumResult.skippedRawStatements) {
+			result.skippedRawStatements.push_back("bacterium[" + std::to_string(bacteriumId) + "]:" + statement);
+		}
+		for (const auto& mutation : bacteriumResult.signalMutations) {
+			result.signalMutations.push_back(mutation);
+		}
+
+		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
+		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
+		                                         bacteriumResult.populationMutations, result);
+		if (!result.succeeded) {
+			return false;
+		}
+
+		_populationSize = static_cast<unsigned int>(_bacteria.size());
+		_rebuildBacteriaGridPositions();
+	}
+
+	_populationSize = static_cast<unsigned int>(_bacteria.size());
+	_refreshBacteriaUpdateTime();
+	if (!_advanceBioNetworkStep(_simulationStep, result.errorMessage)) {
+		result.succeeded = false;
+		return false;
+	}
+	_applySignalFieldStep();
+	_rebuildBacteriaGridPositions();
+	return true;
+}
+
+bool BacteriaColony::_containsBacteriumScopedOnlyUnsupportedCommand(const std::vector<GroProgramIr::Command>& commands,
+                                                                    std::string& unsupportedCommand) const {
+	for (const GroProgramIr::Command& command : commands) {
+		if (command.isIfStatement()) {
+			if (_containsBacteriumScopedOnlyUnsupportedCommand(command.thenCommands, unsupportedCommand)) {
+				return true;
+			}
+			if (_containsBacteriumScopedOnlyUnsupportedCommand(command.elseCommands, unsupportedCommand)) {
+				return true;
+			}
+			continue;
+		}
+
+		if (!command.isFunctionCall()) {
+			continue;
+		}
+
+		if (command.functionName == "tick" ||
+		    command.functionName == "divide" ||
+		    command.functionName == "set_population") {
+			unsupportedCommand = command.sourceText;
+			return true;
+		}
+	}
+	return false;
+}
+
+std::size_t BacteriaColony::_findBacteriumIndexById(unsigned int bacteriumId) const {
+	for (std::size_t index = 0; index < _bacteria.size(); ++index) {
+		if (_bacteria[index].id == bacteriumId) {
+			return index;
+		}
+	}
+	return _bacteria.size();
+}
+
+GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const BacteriumState& bacterium,
+                                                                    std::size_t bacteriumIndex) const {
+	GroProgramRuntimeState runtimeState;
+	runtimeState.colonyTime = _colonyTime;
+	runtimeState.simulationStep = _simulationStep;
+	runtimeState.populationSize = _populationSize;
+	runtimeState.contextVariables["bacterium_id"] = static_cast<double>(bacterium.id);
+	runtimeState.contextVariables["bacterium_parent_id"] = static_cast<double>(bacterium.parentId);
+	runtimeState.contextVariables["bacterium_generation"] = static_cast<double>(bacterium.generation);
+	runtimeState.contextVariables["bacterium_divisions"] = static_cast<double>(bacterium.divisionCount);
+	runtimeState.contextVariables["bacterium_birth_time"] = bacterium.birthTime;
+	runtimeState.contextVariables["bacterium_age"] = getBacteriumAge(bacteriumIndex);
+	runtimeState.contextVariables["bacterium_grid_x"] = static_cast<double>(bacterium.gridX);
+	runtimeState.contextVariables["bacterium_grid_y"] = static_cast<double>(bacterium.gridY);
+	runtimeState.contextVariables["bacterium_index"] = static_cast<double>(bacteriumIndex);
+	runtimeState.contextVariables["local_signal"] = _signalValueAt(bacterium.gridX, bacterium.gridY);
+	runtimeState.contextVariables["neighbor_signal_sum"] = _computeNeighborSignalSum(bacterium.gridX, bacterium.gridY);
+	runtimeState.contextVariables["local_bacteria_count"] = static_cast<double>(
+			_computeLocalBacteriaCount(bacterium.gridX, bacterium.gridY));
+	runtimeState.variables = bacterium.runtimeVariables;
+	return runtimeState;
+}
+
+void BacteriaColony::_applyBacteriumScopedPopulationMutations(
+		unsigned int bacteriumId,
+		unsigned int parentGeneration,
+		const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
+		GroProgramRuntime::ExecutionResult& result) {
+	for (const GroProgramRuntime::PopulationMutation& mutation : mutations) {
+		if (mutation.type == GroProgramRuntime::PopulationMutationType::Grow) {
+			const std::size_t parentIndex = _findBacteriumIndexById(bacteriumId);
+			if (parentIndex >= _bacteria.size()) {
+				result.succeeded = false;
+				result.errorMessage = "BacteriaColony could not find grow parent bacterium id " +
+				                      std::to_string(bacteriumId) + ". ";
+				return;
+			}
+
+			_bacteria[parentIndex].divisionCount += mutation.value;
+			_bacteria[parentIndex].lastDivisionTime = _colonyTime;
+			for (unsigned int i = 0; i < mutation.value; ++i) {
+				_appendBacterium(bacteriumId, parentGeneration + 1);
+			}
+			result.populationMutations.push_back(mutation);
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::PopulationMutationType::Die) {
+			if (mutation.value != 1) {
+				result.succeeded = false;
+				result.errorMessage =
+						"BacteriaColony bacterium-scoped die command must remove exactly one bacterium. ";
+				return;
+			}
+			if (!_removeBacteriumById(bacteriumId)) {
+				result.succeeded = false;
+				result.errorMessage = "BacteriaColony could not remove bacterium id " +
+				                      std::to_string(bacteriumId) + ". ";
+				return;
+			}
+			result.populationMutations.push_back(mutation);
+			continue;
+		}
+
+		result.succeeded = false;
+		result.errorMessage =
+				"BacteriaColony bacterium-scoped programs only support grow and die population mutations. ";
+		return;
+	}
+}
+
 void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int generation) {
 	BacteriumState bacterium;
 	bacterium.id = _nextBacteriumId++;
@@ -403,6 +1125,17 @@ void BacteriaColony::_removeBacteria(unsigned int amount) {
 		_bacteria.back().alive = false;
 		_bacteria.pop_back();
 	}
+}
+
+bool BacteriaColony::_removeBacteriumById(unsigned int bacteriumId) {
+	const std::size_t index = _findBacteriumIndexById(bacteriumId);
+	if (index >= _bacteria.size()) {
+		return false;
+	}
+
+	_bacteria[index].alive = false;
+	_bacteria.erase(_bacteria.begin() + static_cast<std::ptrdiff_t>(index));
+	return true;
 }
 
 void BacteriaColony::_refreshBacteriaUpdateTime() {
