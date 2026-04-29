@@ -100,6 +100,11 @@ private:
     void addTraceLevelMenu(QMenu* menu, QGraphicsItem* clickedItem) const;
 
     /**
+     * @brief Adds biochemical relation commands when the selection is one BioReaction plus BioSpecies.
+     */
+    void addBioReactionLinkMenu(QMenu* menu) const;
+
+    /**
      * @brief Adds drawing tool actions used when the user starts from the canvas background.
      */
     void addDrawMenu(QMenu* menu) const;

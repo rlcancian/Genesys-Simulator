@@ -2114,6 +2114,20 @@ void ModelGraphicsScene::animateTimer(double time) {
     }
 }
 
+void ModelGraphicsScene::animatePlot() {
+    Model* currentModel = _simulator != nullptr ? _simulator->getModelManager()->current() : nullptr;
+    if (currentModel == nullptr) {
+        return;
+    }
+
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
+        if (plot != nullptr) {
+            plot->appendSample(currentModel);
+        }
+    }
+}
+
 QList<QString>* ModelGraphicsScene::getImagesAnimation() {
     return _imagesAnimation;
 }
@@ -3409,6 +3423,25 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                     requestGraphicalDataDefinitionsSync();
                     return;
                 }
+
+                // Allow graphical authoring of data definitions by dropping them directly on the canvas.
+                ModelDataDefinition* dataDefinition = plugin->newInstance(_simulator->getModelManager()->current());
+                if (dataDefinition != nullptr) {
+                    event->setDropAction(Qt::IgnoreAction);
+                    event->accept();
+
+                    GraphicalModelDataDefinition* graphicalDataDefinition =
+                        addGraphicalModelDataDefinition(plugin, dataDefinition, event->scenePos(), color);
+                    if (graphicalDataDefinition != nullptr) {
+                        clearSelection();
+                        graphicalDataDefinition->setSelected(true);
+                        graphicalDataDefinition->setFocus();
+                    }
+
+                    // Reuse the canonical queued sync so editability and diagram links remain consistent.
+                    requestGraphicalDataDefinitionsSync();
+                    return;
+                }
             }
         }
     }
@@ -3767,6 +3800,13 @@ void ModelGraphicsScene::clearAnimationsValues() {
 
     for (AnimationTimer* timer : *_animationsTimer) {
         timer->setTime(0.0);
+    }
+
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
+        if (plot != nullptr) {
+            plot->clearValues();
+        }
     }
 }
 

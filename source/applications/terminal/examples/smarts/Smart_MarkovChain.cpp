@@ -22,6 +22,8 @@
 #include "plugins/components/DiscreteProcessing/Create.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "kernel/simulator/Attribute.h"
+#include "plugins/data/DiscreteProcessing/Variable.h"
 #include "../../../TraitsApp.h"
 
 Smart_MarkovChain::Smart_MarkovChain() {
@@ -41,15 +43,17 @@ int Smart_MarkovChain::main(int argc, char** argv) {
 	// create model
 	Create* create1 = plugins->newInstance<Create>(model);
 	Variable* probTransition = plugins->newInstance<Variable>(model);
+	probTransition->insertDimentionSize(4);
+	probTransition->insertDimentionSize(4);
 	probTransition->setInitialValues({	{"1,1",0.3}, {"1,2",0.6}, {"1,3",0.1},
 										{"2,1",0.1}, {"2,2",0.1}, {"2,2",0.8},
 										{"3,1",0.1}, {"3,2",0.1}, {"3,2",0.8},
 									 });
-	Variable* initialDistribution = plugins->newInstance<Variable>(model);
-	initialDistribution->setInitialValues({ {"1",0.33}, {"2", 0.33}, {"3", 0.33} });
+	Attribute* currentState = plugins->newInstance<Attribute>(model);
+	currentState->setName("Entity.CurrentMarkovState");
 	MarkovChain* markov1 = plugins->newInstance<MarkovChain>(model);
 	markov1->setTransitionProbabilityMatrix(probTransition);
-	markov1->setInitialDistribution(initialDistribution);
+	markov1->setCurrentState(currentState);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
 	create1->getConnectionManager()->insert(markov1);
@@ -61,4 +65,3 @@ int Smart_MarkovChain::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

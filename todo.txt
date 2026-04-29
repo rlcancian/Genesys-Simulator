@@ -1,0 +1,81 @@
+Este é um simulador de sistemas genérico e expansível baseado em plugins, com arquitetura modular que suporta diferentes tipos de simulação       
+(eletrônica, biológica, processamento discreto, autômatos celulares, etc.).                                                                       
+
+
+Principais Pontos que Precisam de Correção:                                                                                                       
+
+1. Gestão de Memória e Ownership                                                                                                                  
+
+ • Uso extensivo de ponteiros brutos (new/delete) sem smart pointers                                                                              
+ • Risco de memory leaks em vários construtores (ex: PluginManager, Simulator)                                                                    
+ • Falta de clareza sobre quem é responsável por liberar memória                                                                                  
+
+2. Tratamento de Erros Inconsistente                                                                                                              
+
+ • Métodos retornam nullptr sem lançar exceções (ex: PluginManager::newInstance)                                                                  
+ • Falta de validação de ponteiros antes do uso                                                                                                   
+ • Mistura de estratégias: exceções vs códigos de retorno                                                                                         
+
+3. Thread Safety                                                                                                                                  
+
+ • Nenhuma evidência de proteção contra concorrência                                                                                              
+ • TraceManager usa flag _shuttingDown sem sincronização aparente                                                                                 
+ • Acesso a containers compartilhados sem locks                                                                                                   
+
+4. Acoplamento Forte                                                                                                                              
+
+ • Muitas classes dependem diretamente de Model* e Simulator*                                                                                     
+ • Dificulta testes unitários e manutenção                                                                                                        
+ • Falta de interfaces/abstrações em pontos críticos                                                                                              
+
+5. Violação de Princípios SOLID                                                                                                                   
+
+ • Classes com múltiplas responsabilidades (ex: ModelDataDefinition)                                                                              
+ • Métodos show() misturados com lógica de negócio                                                                                                
+ • Dependências concretas ao invés de abstrações                                                                                                  
+
+6. API Inconsistente                                                                                                                              
+
+ • Convenções de nomenclatura mistas: getincludes() vs getFunctionProductions()                                                                   
+ • Alguns métodos usam const, outros não                                                                                                          
+ • Parâmetros bool sem nome claro (ex: saveIfDefault)                                                                                             
+
+7. Trace/Logging Problemático                                                                                                                     
+
+ • std::cout usado diretamente no construtor de Simulator                                                                                         
+ • Sistema de trace complexo com múltiplos níveis                                                                                                 
+ • Callbacks podem ser chamados em objetos destruídos (apesar da flag _shuttingDown)                                                              
+
+8. Persistência Frágil                                                                                                                            
+
+ • Conversões string/número sem tratamento de erros (std::stod, std::stoi)                                                                        
+ • Sistema de serialização manual propenso a erros                                                                                                
+ • Falta de versionamento de formato                                                                                                              
+
+9. Testes Insuficientes                                                                                                                           
+
+ • Apenas um arquivo de teste unitário visível (test_support_modelmanager.cpp)                                                                    
+ • Mock incompleto do TraceManager                                                                                                                
+ • Cobertura de testes aparentemente baixa                                                                                                        
+
+10. Documentação e Comentários                                                                                                                    
+
+ • Comentários @ToDo: (importante) indicam funcionalidades incompletas                                                                            
+ • Mistura de português e inglês                                                                                                                  
+ • Falta de documentação de arquitetura                                                                                                           
+
+11. Gerenciamento de Plugins                                                                                                                      
+
+ • Sistema complexo de carregamento dinâmico                                                                                                      
+ • Tratamento de falhas de plugin pode ser melhorado                                                                                              
+ • Dependências de sistema não verificadas adequadamente                                                                                          
+
+12. Performance                                                                                                                                   
+
+ • Uso de std::string por valor em muitos lugares                                                                                                 
+ • Buscas lineares em listas (std::find)                                                                                                          
+ • Falta de otimizações óbvias                                                                                                                    
+
+Prioridade de Correção: 1 > 2 > 3 > 7 > 8 > 4 > 5 > 6 > 9 > 10 > 11 > 12                                                                          
+
+

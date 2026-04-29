@@ -42,6 +42,7 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
+#include <cmath>
 #include <set>
 #include <vector>
 
@@ -143,6 +144,13 @@ QString sectionFooterLine() {
 
 QString commentedLine(const QString& payload) {
     return QString("# %1").arg(payload);
+}
+
+bool parsePersistedBool(const QString& text) {
+    const QString normalized = text.trimmed();
+    return normalized.compare("1") == 0
+           || normalized.compare("true", Qt::CaseInsensitive) == 0
+           || normalized.compare("yes", Qt::CaseInsensitive) == 0;
 }
 
 bool containsPersistenceMarkers(const QString& text) {
@@ -685,6 +693,32 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     line += encodeGuiText(placeholder->getAnimationType());
                     line += " \t target=";
                     line += encodeGuiText(placeholder->getTargetName());
+                    if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
+                        line += " \t title=";
+                        line += encodeGuiText(plot->getTitle());
+                        line += QString(" \t chart=%1 \t ytitle=").arg(
+                            plot->getPlotType() == AnimationPlot::PlotType::Bar ? "Bar" : "Line");
+                        line += encodeGuiText(plot->getYAxisTitle());
+                        line += " \t xtitle=";
+                        line += encodeGuiText(plot->getXAxisTitle());
+                        line += QString(" \t showgrid=%1 \t showticks=%2")
+                                    .arg(plot->getShowGridLines() ? 1 : 0)
+                                    .arg(plot->getShowTicks() ? 1 : 0);
+                        if (!std::isnan(plot->getXAxisMin())) {
+                            line += QString(" \t xmin=%1").arg(plot->getXAxisMin(), 0, 'g', 17);
+                        }
+                        if (!std::isnan(plot->getXAxisMax())) {
+                            line += QString(" \t xmax=%1").arg(plot->getXAxisMax(), 0, 'g', 17);
+                        }
+                        if (!std::isnan(plot->getYAxisMin())) {
+                            line += QString(" \t ymin=%1").arg(plot->getYAxisMin(), 0, 'g', 17);
+                        }
+                        if (!std::isnan(plot->getYAxisMax())) {
+                            line += QString(" \t ymax=%1").arg(plot->getYAxisMax(), 0, 'g', 17);
+                        }
+                        line += " \t datasets=";
+                        line += encodeGuiText(plot->getDatasetsText());
+                    }
                     line += QString(" \t position=(%1,%2) \t width=%3 \t height=%4")
                                 .arg(placeholder->scenePos().x(), 0, 'f', 2)
                                 .arg(placeholder->scenePos().y(), 0, 'f', 2)
@@ -1544,8 +1578,59 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                         continue;
                     }
 
-                    AnimationPlaceholder* placeholder = new AnimationPlaceholder(decodeGuiText(typeMatch.captured(1).trimmed()));
+                    const QString decodedType = decodeGuiText(typeMatch.captured(1).trimmed());
+                    AnimationPlaceholder* placeholder = decodedType.compare("Plot", Qt::CaseInsensitive) == 0
+                        ? static_cast<AnimationPlaceholder*>(new AnimationPlot())
+                        : new AnimationPlaceholder(decodedType);
                     placeholder->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()));
+                    if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
+                        QRegularExpressionMatch titleMatch = QRegularExpression("\\s*title=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch chartMatch = QRegularExpression("\\s*chart=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch yTitleMatch = QRegularExpression("\\s*ytitle=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch xTitleMatch = QRegularExpression("\\s*xtitle=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch showGridMatch = QRegularExpression("\\s*showgrid=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch showTicksMatch = QRegularExpression("\\s*showticks=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch xMinMatch = QRegularExpression("\\s*xmin=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch xMaxMatch = QRegularExpression("\\s*xmax=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch yMinMatch = QRegularExpression("\\s*ymin=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch yMaxMatch = QRegularExpression("\\s*ymax=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch datasetsMatch = QRegularExpression("\\s*datasets=([^\\t]*)").match(rawLine);
+                        if (titleMatch.hasMatch()) {
+                            plot->setTitle(decodeGuiText(titleMatch.captured(1).trimmed()));
+                        }
+                        if (chartMatch.hasMatch()) {
+                            plot->setPlotType(chartMatch.captured(1).trimmed().compare("Bar", Qt::CaseInsensitive) == 0
+                                                  ? AnimationPlot::PlotType::Bar
+                                                  : AnimationPlot::PlotType::Line);
+                        }
+                        if (yTitleMatch.hasMatch()) {
+                            plot->setYAxisTitle(decodeGuiText(yTitleMatch.captured(1).trimmed()));
+                        }
+                        if (xTitleMatch.hasMatch()) {
+                            plot->setXAxisTitle(decodeGuiText(xTitleMatch.captured(1).trimmed()));
+                        }
+                        if (showGridMatch.hasMatch()) {
+                            plot->setShowGridLines(parsePersistedBool(showGridMatch.captured(1)));
+                        }
+                        if (showTicksMatch.hasMatch()) {
+                            plot->setShowTicks(parsePersistedBool(showTicksMatch.captured(1)));
+                        }
+                        if (xMinMatch.hasMatch()) {
+                            plot->setXAxisMin(xMinMatch.captured(1).trimmed().toDouble());
+                        }
+                        if (xMaxMatch.hasMatch()) {
+                            plot->setXAxisMax(xMaxMatch.captured(1).trimmed().toDouble());
+                        }
+                        if (yMinMatch.hasMatch()) {
+                            plot->setYAxisMin(yMinMatch.captured(1).trimmed().toDouble());
+                        }
+                        if (yMaxMatch.hasMatch()) {
+                            plot->setYAxisMax(yMaxMatch.captured(1).trimmed().toDouble());
+                        }
+                        if (datasetsMatch.hasMatch()) {
+                            plot->setDatasetsText(decodeGuiText(datasetsMatch.captured(1).trimmed()));
+                        }
+                    }
                     placeholder->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
                     placeholder->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
                     _graphicsView->getScene()->getAnimationsPlaceholder()->append(placeholder);
@@ -1630,8 +1715,59 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 if (!match.hasMatch()) {
                     continue;
                 }
-                AnimationPlaceholder* placeholder = new AnimationPlaceholder(decodeGuiText(match.captured(2).trimmed()));
+                const QString decodedType = decodeGuiText(match.captured(2).trimmed());
+                AnimationPlaceholder* placeholder = decodedType.compare("Plot", Qt::CaseInsensitive) == 0
+                    ? static_cast<AnimationPlaceholder*>(new AnimationPlot())
+                    : new AnimationPlaceholder(decodedType);
                 placeholder->setTargetName(decodeGuiText(match.captured(3).trimmed()));
+                if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
+                    QRegularExpressionMatch titleMatch = QRegularExpression("\\s*title=([^\\t]*)").match(line);
+                    QRegularExpressionMatch chartMatch = QRegularExpression("\\s*chart=([^\\t]*)").match(line);
+                    QRegularExpressionMatch yTitleMatch = QRegularExpression("\\s*ytitle=([^\\t]*)").match(line);
+                    QRegularExpressionMatch xTitleMatch = QRegularExpression("\\s*xtitle=([^\\t]*)").match(line);
+                    QRegularExpressionMatch showGridMatch = QRegularExpression("\\s*showgrid=([^\\t]*)").match(line);
+                    QRegularExpressionMatch showTicksMatch = QRegularExpression("\\s*showticks=([^\\t]*)").match(line);
+                    QRegularExpressionMatch xMinMatch = QRegularExpression("\\s*xmin=([^\\t]*)").match(line);
+                    QRegularExpressionMatch xMaxMatch = QRegularExpression("\\s*xmax=([^\\t]*)").match(line);
+                    QRegularExpressionMatch yMinMatch = QRegularExpression("\\s*ymin=([^\\t]*)").match(line);
+                    QRegularExpressionMatch yMaxMatch = QRegularExpression("\\s*ymax=([^\\t]*)").match(line);
+                    QRegularExpressionMatch datasetsMatch = QRegularExpression("\\s*datasets=([^\\t]*)").match(line);
+                    if (titleMatch.hasMatch()) {
+                        plot->setTitle(decodeGuiText(titleMatch.captured(1).trimmed()));
+                    }
+                    if (chartMatch.hasMatch()) {
+                        plot->setPlotType(chartMatch.captured(1).trimmed().compare("Bar", Qt::CaseInsensitive) == 0
+                                              ? AnimationPlot::PlotType::Bar
+                                              : AnimationPlot::PlotType::Line);
+                    }
+                    if (yTitleMatch.hasMatch()) {
+                        plot->setYAxisTitle(decodeGuiText(yTitleMatch.captured(1).trimmed()));
+                    }
+                    if (xTitleMatch.hasMatch()) {
+                        plot->setXAxisTitle(decodeGuiText(xTitleMatch.captured(1).trimmed()));
+                    }
+                    if (showGridMatch.hasMatch()) {
+                        plot->setShowGridLines(parsePersistedBool(showGridMatch.captured(1)));
+                    }
+                    if (showTicksMatch.hasMatch()) {
+                        plot->setShowTicks(parsePersistedBool(showTicksMatch.captured(1)));
+                    }
+                    if (xMinMatch.hasMatch()) {
+                        plot->setXAxisMin(xMinMatch.captured(1).trimmed().toDouble());
+                    }
+                    if (xMaxMatch.hasMatch()) {
+                        plot->setXAxisMax(xMaxMatch.captured(1).trimmed().toDouble());
+                    }
+                    if (yMinMatch.hasMatch()) {
+                        plot->setYAxisMin(yMinMatch.captured(1).trimmed().toDouble());
+                    }
+                    if (yMaxMatch.hasMatch()) {
+                        plot->setYAxisMax(yMaxMatch.captured(1).trimmed().toDouble());
+                    }
+                    if (datasetsMatch.hasMatch()) {
+                        plot->setDatasetsText(decodeGuiText(datasetsMatch.captured(1).trimmed()));
+                    }
+                }
                 placeholder->setRect(QRectF(0, 0, match.captured(6).toDouble(), match.captured(7).toDouble()).normalized());
                 placeholder->setPos(QPointF(match.captured(4).toDouble(), match.captured(5).toDouble()));
                 _graphicsView->getScene()->getAnimationsPlaceholder()->append(placeholder);

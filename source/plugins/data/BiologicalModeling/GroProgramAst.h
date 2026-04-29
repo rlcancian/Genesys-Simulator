@@ -28,13 +28,24 @@ struct GroProgramAst {
 		std::string sourceText = "";
 	};
 
+	struct NamedProgram {
+		std::string name = "";
+		std::string bodySource = "";
+		std::vector<Statement> statements;
+	};
+
 	SourceForm sourceForm = SourceForm::RawStatements;
 	std::string programName = "";
 	std::string bodySource = "";
 	std::vector<Statement> statements;
+	std::vector<NamedProgram> namedPrograms;
 
 	bool isProgramBlock() const {
 		return sourceForm == SourceForm::ProgramBlock;
+	}
+
+	bool hasNamedPrograms() const {
+		return !namedPrograms.empty();
 	}
 };
 

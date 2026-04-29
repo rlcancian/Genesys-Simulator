@@ -10,25 +10,29 @@
 
 #include "plugins/data/BiologicalModeling/GroProgramIr.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
 /*!
- * \brief Minimal mutable state used by the first Gro runtime helper.
+ * \brief Mutable state used by the plugin-side Gro runtime helper.
  */
 struct GroProgramRuntimeState {
 	double colonyTime = 0.0;
 	double simulationStep = 1.0;
 	unsigned int populationSize = 1;
 	unsigned int tickCount = 0;
+	std::map<std::string, double> contextVariables;
+	std::map<std::string, double> variables;
 };
 
 /*!
- * \brief Executes the first supported Gro IR commands without simulator binding.
+ * \brief Executes the supported Gro IR commands without simulator binding.
  *
  * This helper is intentionally independent from BacteriaColony and the GenESyS
- * event scheduler. It lets later phases bind a colony to Gro commands after the
- * command semantics are tested in isolation.
+ * event scheduler. It now supports persistent scalar variables, arithmetic
+ * expressions, and basic `if/else` control flow while still keeping the runtime
+ * local to the biological plugins.
  */
 class GroProgramRuntime {
 public:
@@ -39,6 +43,12 @@ public:
 		SetPopulation
 	};
 
+	enum class SignalMutationType {
+		Emit,
+		Consume,
+		Set
+	};
+
 	struct PopulationMutation {
 		PopulationMutationType type = PopulationMutationType::Grow;
 		unsigned int value = 0;
@@ -46,11 +56,18 @@ public:
 		unsigned int resultingPopulationSize = 0;
 	};
 
+	struct SignalMutation {
+		SignalMutationType type = SignalMutationType::Emit;
+		double value = 0.0;
+	};
+
 	struct ExecutionResult {
 		bool succeeded = true;
 		std::string errorMessage = "";
 		unsigned int executedCommands = 0;
 		std::vector<PopulationMutation> populationMutations;
+		std::vector<SignalMutation> signalMutations;
+		std::map<std::string, double> assignedVariables;
 		std::vector<std::string> unsupportedCommands;
 		std::vector<std::string> skippedRawStatements;
 	};

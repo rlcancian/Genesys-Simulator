@@ -10,39 +10,60 @@
 
 #include "plugins/data/BiologicalModeling/GroProgramAst.h"
 
+#include <map>
 #include <string>
 #include <vector>
 
 /*!
  * \brief Initial semantic representation compiled from GroProgramAst.
  *
- * The IR is deliberately non-executable for this phase. It only classifies
- * top-level statements into generic function calls or raw statements so later
- * runtime work can bind selected calls to bacteria-colony behavior.
+ * The IR keeps the parsed program in a runtime-oriented shape. It can represent
+ * function calls, assignments, and basic conditional blocks without pushing any
+ * knowledge into the simulator kernel itself.
  */
 struct GroProgramIr {
 	struct Command {
 		enum class Kind {
 			RawStatement,
-			FunctionCall
+			FunctionCall,
+			Assignment,
+			IfStatement
 		};
 
 		Kind kind = Kind::RawStatement;
 		std::string sourceText = "";
 		std::string functionName = "";
 		std::vector<std::string> arguments;
+		std::string assignmentTarget = "";
+		std::string expressionText = "";
+		bool assignmentOnlyIfUnset = false;
+		std::vector<Command> thenCommands;
+		std::vector<Command> elseCommands;
 
 		bool isFunctionCall() const {
 			return kind == Kind::FunctionCall;
+		}
+
+		bool isAssignment() const {
+			return kind == Kind::Assignment;
+		}
+
+		bool isIfStatement() const {
+			return kind == Kind::IfStatement;
 		}
 	};
 
 	GroProgramAst::SourceForm sourceForm = GroProgramAst::SourceForm::RawStatements;
 	std::string programName = "";
 	std::vector<Command> commands;
+	std::map<std::string, std::vector<Command>> namedPrograms;
 
 	bool isProgramBlock() const {
 		return sourceForm == GroProgramAst::SourceForm::ProgramBlock;
+	}
+
+	bool hasNamedProgram(const std::string& name) const {
+		return namedPrograms.find(name) != namedPrograms.end();
 	}
 };
 

@@ -18,6 +18,10 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 
 namespace {
 
+constexpr const char* kReactantAttachmentPrefix = "ReactantSpecies";
+constexpr const char* kProductAttachmentPrefix = "ProductSpecies";
+constexpr const char* kModifierAttachmentPrefix = "ModifierSpecies";
+
 std::string termsToString(const std::vector<BioReaction::StoichiometricTerm>& terms) {
 	std::string text = "{";
 	for (const BioReaction::StoichiometricTerm& term : terms) {
@@ -145,6 +149,8 @@ bool BioReaction::_loadInstance(PersistenceRecord *fields) {
 		_kineticLawExpression = fields->loadField("kineticLawExpression", DEFAULT.kineticLawExpression);
 		_reverseKineticLawExpression = fields->loadField("reverseKineticLawExpression", DEFAULT.reverseKineticLawExpression);
 		_reversible = fields->loadField("reversible", DEFAULT.reversible ? 1u : 0u) != 0u;
+		// Keep participant attachments aligned with the persisted names so canvas links can be rebuilt later.
+		syncParticipantAttachedSpecies();
 	}
 	return res;
 }
@@ -176,6 +182,8 @@ void BioReaction::_saveInstance(PersistenceRecord *fields, bool saveDefaultValue
 
 bool BioReaction::_check(std::string& errorMessage) {
 	bool resultAll = true;
+	// Refresh non-owning species attachments before validation so GUI link rebuilds use current participants.
+	syncParticipantAttachedSpecies();
 	if (getName().empty()) {
 		errorMessage += "BioReaction must define a non-empty name. ";
 		resultAll = false;
@@ -214,6 +222,11 @@ bool BioReaction::_check(std::string& errorMessage) {
 		}
 	}
 	return resultAll;
+}
+
+void BioReaction::_createInternalAndAttachedData() {
+	// BioReaction does not own internal children yet, but it exposes participant links as attached species.
+	syncParticipantAttachedSpecies();
 }
 
 bool BioReaction::validateKineticLawExpression(std::string& errorMessage) const {
@@ -322,26 +335,32 @@ bool BioReaction::checkModifiers(std::string& errorMessage) const {
 
 void BioReaction::addReactant(std::string speciesName, double stoichiometry) {
 	_reactants.push_back({speciesName, stoichiometry});
+	syncParticipantAttachedSpecies();
 }
 
 void BioReaction::addProduct(std::string speciesName, double stoichiometry) {
 	_products.push_back({speciesName, stoichiometry});
+	syncParticipantAttachedSpecies();
 }
 
 void BioReaction::addModifier(std::string speciesName) {
 	_modifiers.push_back(speciesName);
+	syncParticipantAttachedSpecies();
 }
 
 void BioReaction::clearReactants() {
 	_reactants.clear();
+	syncParticipantAttachedSpecies();
 }
 
 void BioReaction::clearProducts() {
 	_products.clear();
+	syncParticipantAttachedSpecies();
 }
 
 void BioReaction::clearModifiers() {
 	_modifiers.clear();
+	syncParticipantAttachedSpecies();
 }
 
 const std::vector<BioReaction::StoichiometricTerm>& BioReaction::getReactants() const {
@@ -426,6 +445,46 @@ void BioReaction::setReversible(bool reversible) {
 
 bool BioReaction::isReversible() const {
 	return _reversible;
+}
+
+void BioReaction::syncParticipantAttachedSpecies() {
+	auto removeAttachedDataWithPrefix = [this](const std::string& prefix) {
+		std::vector<std::string> keysToRemove;
+		for (const auto& attachedEntry : *getAttachedData()) {
+			if (attachedEntry.first.rfind(prefix, 0) == 0) {
+				keysToRemove.push_back(attachedEntry.first);
+			}
+		}
+		for (const std::string& key : keysToRemove) {
+			_attachedDataRemove(key);
+		}
+	};
+
+	removeAttachedDataWithPrefix(kReactantAttachmentPrefix);
+	removeAttachedDataWithPrefix(kProductAttachmentPrefix);
+	removeAttachedDataWithPrefix(kModifierAttachmentPrefix);
+
+	if (_parentModel == nullptr || _parentModel->getDataManager() == nullptr) {
+		return;
+	}
+
+	auto attachSpeciesTerms = [this](const std::vector<StoichiometricTerm>& terms, const std::string& prefix) {
+		for (unsigned int i = 0; i < terms.size(); ++i) {
+			auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(
+				Util::TypeOf<BioSpecies>(), terms[i].speciesName));
+			// Only existing species become visual links; missing names remain validated by _check().
+			_attachedDataInsert(prefix + Util::StrIndex(i), species);
+		}
+	};
+
+	attachSpeciesTerms(_reactants, kReactantAttachmentPrefix);
+	attachSpeciesTerms(_products, kProductAttachmentPrefix);
+	for (unsigned int i = 0; i < _modifiers.size(); ++i) {
+		auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(
+			Util::TypeOf<BioSpecies>(), _modifiers[i]));
+		// Modifier links are attached the same way as stoichiometric participants so the generic builder can render them.
+		_attachedDataInsert(std::string(kModifierAttachmentPrefix) + Util::StrIndex(i), species);
+	}
 }
 
 void BioReaction::_createReportStatisticsDataDefinitions() {

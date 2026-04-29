@@ -209,11 +209,10 @@ During non-GUI biochemical analysis implementation on 2026-04-21:
 
 ## Open Pending Items
 
-- Define the expected GUI workflow for species, reactions, parameters, networks, and kinetic laws.
-- Decide how SBML/TinkerCell interoperability should be scoped relative to native GenESyS biochemical data definitions.
 - Define the future GUI plugin/extension architecture so domain-specific graphical tools are only available when their domain plugins are loaded.
 - Validate whether GROW is an external project, another branch, another AI workstream, or a future GenESyS module.
-- Add higher-level biochemical analysis tools over `BioSimulationResult` and `SimulationResultsDataset`.
+- Add chart-oriented visual rendering for biochemical analysis reports (currently text-oriented).
+- Expand SBML coverage for broader MathML and package interoperability while preserving deterministic native biochemical behavior.
 
 ## Risks and Attention Points
 

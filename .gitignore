@@ -43,3 +43,4 @@ temp*
 *.log
 
 .idea/
+.aider*

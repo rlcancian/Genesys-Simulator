@@ -20,8 +20,37 @@ std::size_t skipWhitespace(const std::string& sourceCode, std::size_t position) 
 	return position;
 }
 
+std::size_t skipWhitespaceAndComments(const std::string& sourceCode, std::size_t position) {
+	while (position < sourceCode.size()) {
+		if (std::isspace(static_cast<unsigned char>(sourceCode[position]))) {
+			++position;
+			continue;
+		}
+		if (position + 1 < sourceCode.size() && sourceCode[position] == '/' && sourceCode[position + 1] == '/') {
+			position += 2;
+			while (position < sourceCode.size() && sourceCode[position] != '\n') {
+				++position;
+			}
+			continue;
+		}
+		if (position + 1 < sourceCode.size() && sourceCode[position] == '/' && sourceCode[position + 1] == '*') {
+			position += 2;
+			while (position + 1 < sourceCode.size() &&
+			       !(sourceCode[position] == '*' && sourceCode[position + 1] == '/')) {
+				++position;
+			}
+			if (position + 1 < sourceCode.size()) {
+				position += 2;
+			}
+			continue;
+		}
+		break;
+	}
+	return position;
+}
+
 std::string trim(const std::string& sourceCode) {
-	const std::size_t first = skipWhitespace(sourceCode, 0);
+	const std::size_t first = skipWhitespaceAndComments(sourceCode, 0);
 	if (first == sourceCode.size()) {
 		return "";
 	}
@@ -31,6 +60,27 @@ std::string trim(const std::string& sourceCode) {
 		--last;
 	}
 	return sourceCode.substr(first, last - first + 1);
+}
+
+bool startsWithKeyword(const std::string& sourceCode, std::size_t position, const std::string& keyword) {
+	if (position + keyword.size() > sourceCode.size() ||
+	    sourceCode.compare(position, keyword.size(), keyword) != 0) {
+		return false;
+	}
+	if (position > 0) {
+		const unsigned char previous = static_cast<unsigned char>(sourceCode[position - 1]);
+		if (std::isalnum(previous) || sourceCode[position - 1] == '_') {
+			return false;
+		}
+	}
+	const std::size_t nextPosition = position + keyword.size();
+	if (nextPosition < sourceCode.size()) {
+		const unsigned char next = static_cast<unsigned char>(sourceCode[nextPosition]);
+		if (std::isalnum(next) || sourceCode[nextPosition] == '_') {
+			return false;
+		}
+	}
+	return true;
 }
 
 std::string readIdentifier(const std::string& sourceCode, std::size_t& position) {
@@ -234,55 +284,180 @@ std::vector<GroProgramAst::Statement> splitTopLevelStatements(const std::string&
 	return statements;
 }
 
+std::size_t consumeTopLevelStatement(const std::string& sourceCode, std::size_t position, std::string& statementText) {
+	std::vector<char> delimiterStack;
+	bool inString = false;
+	char stringDelimiter = '\0';
+	bool inLineComment = false;
+	bool inBlockComment = false;
+	const std::size_t start = position;
+
+	for (std::size_t i = position; i < sourceCode.size(); ++i) {
+		const char current = sourceCode[i];
+		const char next = i + 1 < sourceCode.size() ? sourceCode[i + 1] : '\0';
+
+		if (inLineComment) {
+			if (current == '\n') {
+				inLineComment = false;
+			}
+			continue;
+		}
+
+		if (inBlockComment) {
+			if (current == '*' && next == '/') {
+				inBlockComment = false;
+				++i;
+			}
+			continue;
+		}
+
+		if (inString) {
+			if (current == '\\') {
+				++i;
+				continue;
+			}
+			if (current == stringDelimiter) {
+				inString = false;
+				stringDelimiter = '\0';
+			}
+			continue;
+		}
+
+		if (current == '/' && next == '/') {
+			inLineComment = true;
+			++i;
+			continue;
+		}
+		if (current == '/' && next == '*') {
+			inBlockComment = true;
+			++i;
+			continue;
+		}
+		if (current == '"' || current == '\'') {
+			inString = true;
+			stringDelimiter = current;
+			continue;
+		}
+
+		if (current == '(' || current == '[' || current == '{') {
+			delimiterStack.push_back(current);
+			continue;
+		}
+		if (current == ')' || current == ']' || current == '}') {
+			if (!delimiterStack.empty()) {
+				delimiterStack.pop_back();
+			}
+			continue;
+		}
+
+		if (current == '\n' && delimiterStack.empty()) {
+			const std::string candidate = trim(sourceCode.substr(start, i - start));
+			if (startsWithKeyword(candidate, 0, "include")) {
+				statementText = candidate;
+				return i + 1;
+			}
+		}
+
+		if (current == ';' && delimiterStack.empty()) {
+			statementText = trim(sourceCode.substr(start, i - start));
+			return i + 1;
+		}
+	}
+
+	statementText = trim(sourceCode.substr(start));
+	return sourceCode.size();
+}
+
+bool tryParseNamedProgram(const std::string& sourceCode, std::size_t& position, GroProgramAst::NamedProgram& program) {
+	const std::size_t start = position;
+	if (!startsWithKeyword(sourceCode, position, "program")) {
+		return false;
+	}
+
+	position += std::char_traits<char>::length("program");
+	if (position >= sourceCode.size() || !std::isspace(static_cast<unsigned char>(sourceCode[position]))) {
+		position = start;
+		return false;
+	}
+
+	position = skipWhitespaceAndComments(sourceCode, position);
+	program.name = readIdentifier(sourceCode, position);
+	if (program.name.empty()) {
+		position = start;
+		return false;
+	}
+
+	position = skipWhitespaceAndComments(sourceCode, position);
+	if (position >= sourceCode.size() || sourceCode[position] != '(') {
+		position = start;
+		return false;
+	}
+
+	const std::size_t closingParenthesis = findMatchingDelimiter(sourceCode, position);
+	if (closingParenthesis == std::string::npos) {
+		position = start;
+		return false;
+	}
+
+	position = skipWhitespaceAndComments(sourceCode, closingParenthesis + 1);
+	if (position + 1 < sourceCode.size() && sourceCode[position] == ':' && sourceCode[position + 1] == '=') {
+		position = skipWhitespaceAndComments(sourceCode, position + 2);
+	}
+	if (position >= sourceCode.size() || sourceCode[position] != '{') {
+		position = start;
+		return false;
+	}
+
+	const std::size_t closingBrace = findMatchingDelimiter(sourceCode, position);
+	if (closingBrace == std::string::npos) {
+		position = start;
+		return false;
+	}
+
+	program.bodySource = trim(sourceCode.substr(position + 1, closingBrace - position - 1));
+	program.statements = splitTopLevelStatements(program.bodySource);
+	position = skipWhitespaceAndComments(sourceCode, closingBrace + 1);
+	if (position < sourceCode.size() && sourceCode[position] == ';') {
+		++position;
+	}
+	return true;
+}
+
 GroProgramAst buildAst(const std::string& sourceCode) {
 	GroProgramAst ast;
 	ast.bodySource = trim(sourceCode);
-	ast.statements = splitTopLevelStatements(ast.bodySource);
 
-	std::size_t position = skipWhitespace(sourceCode, 0);
-	const std::string programKeyword = "program";
-	if (sourceCode.compare(position, programKeyword.size(), programKeyword) != 0) {
-		return ast;
-	}
+	std::size_t position = 0;
+	while (true) {
+		position = skipWhitespaceAndComments(sourceCode, position);
+		if (position >= sourceCode.size()) {
+			break;
+		}
 
-	position += programKeyword.size();
-	if (position >= sourceCode.size() || !std::isspace(static_cast<unsigned char>(sourceCode[position]))) {
-		return ast;
-	}
+		GroProgramAst::NamedProgram namedProgram;
+		std::size_t nextPosition = position;
+		if (tryParseNamedProgram(sourceCode, nextPosition, namedProgram)) {
+			ast.namedPrograms.push_back(namedProgram);
+			position = nextPosition;
+			continue;
+		}
 
-	position = skipWhitespace(sourceCode, position);
-	const std::string programName = readIdentifier(sourceCode, position);
-	if (programName.empty()) {
-		return ast;
-	}
-
-	position = skipWhitespace(sourceCode, position);
-	if (position >= sourceCode.size() || sourceCode[position] != '(') {
-		return ast;
-	}
-	const std::size_t closingParenthesis = findMatchingDelimiter(sourceCode, position);
-	if (closingParenthesis == std::string::npos) {
-		return ast;
+		std::string statementText;
+		position = consumeTopLevelStatement(sourceCode, position, statementText);
+		if (!statementText.empty()) {
+			GroProgramAst::Statement statement;
+			statement.sourceText = statementText;
+			ast.statements.push_back(statement);
+		}
 	}
 
-	position = skipWhitespace(sourceCode, closingParenthesis + 1);
-	if (position >= sourceCode.size() || sourceCode[position] != '{') {
-		return ast;
+	if (ast.namedPrograms.size() == 1 && ast.statements.empty()) {
+		ast.sourceForm = GroProgramAst::SourceForm::ProgramBlock;
+		ast.programName = ast.namedPrograms.front().name;
+		ast.bodySource = ast.namedPrograms.front().bodySource;
+		ast.statements = ast.namedPrograms.front().statements;
+		ast.namedPrograms.clear();
 	}
-	const std::size_t closingBrace = findMatchingDelimiter(sourceCode, position);
-	if (closingBrace == std::string::npos) {
-		return ast;
-	}
-
-	const std::size_t trailing = skipWhitespace(sourceCode, closingBrace + 1);
-	if (trailing != sourceCode.size()) {
-		return ast;
-	}
-
-	ast.sourceForm = GroProgramAst::SourceForm::ProgramBlock;
-	ast.programName = programName;
-	ast.bodySource = trim(sourceCode.substr(position + 1, closingBrace - position - 1));
-	ast.statements = splitTopLevelStatements(ast.bodySource);
 	return ast;
 }
 
