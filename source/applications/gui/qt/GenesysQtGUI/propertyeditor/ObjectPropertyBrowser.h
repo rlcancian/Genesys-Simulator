@@ -256,7 +256,7 @@ private:
 private slots:
     void valueChanged(QtProperty *property, const QVariant &value);
     void enumValueChanged(QtProperty *property, int value);
-    void onVariantEditorCommitted(QtProperty* property);
+    void onVariantEditorCommitted(QtProperty* property, const QVariant& committedValue = QVariant());
 
 public slots:
     void objectUpdated();

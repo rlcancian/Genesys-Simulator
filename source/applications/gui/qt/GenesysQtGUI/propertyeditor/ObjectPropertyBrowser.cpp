@@ -53,7 +53,7 @@
 namespace {
 class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
-    using CommitCallback = std::function<void(QtProperty*)>;
+    using CommitCallback = std::function<void(QtProperty*, const QVariant&)>;
     using EditorCreationFilter = std::function<bool(QtProperty*)>;
 
     explicit CommitAwareVariantEditorFactory(QObject* parent = nullptr)
@@ -78,15 +78,15 @@ protected:
         }
 
         if (QLineEdit* lineEdit = editor->findChild<QLineEdit*>()) {
-            QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [callback = _commitCallback, property]() {
-                callback(property);
+            QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [callback = _commitCallback, property, lineEdit]() {
+                callback(property, QVariant(lineEdit->text()));
             });
             return editor;
         }
 
         if (QAbstractSpinBox* spinBox = editor->findChild<QAbstractSpinBox*>()) {
-            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [callback = _commitCallback, property]() {
-                callback(property);
+            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [callback = _commitCallback, property, spinBox]() {
+                callback(property, spinBox->property("value"));
             });
         }
 
@@ -245,8 +245,8 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
     if (_variantFactory == nullptr) {
         // Preserve commit-aware variant editor factory behavior with one-time creation.
         auto* commitFactory = new CommitAwareVariantEditorFactory(this);
-        commitFactory->setCommitCallback([this](QtProperty* property) {
-            onVariantEditorCommitted(property);
+        commitFactory->setCommitCallback([this](QtProperty* property, const QVariant& committedValue) {
+            onVariantEditorCommitted(property, committedValue);
         });
         commitFactory->setEditorCreationFilter([this](QtProperty* property) {
             const auto binding = _bindings.find(property);
@@ -2474,7 +2474,7 @@ bool ObjectPropertyBrowser::_applyGraphicsEnumChange(QtProperty* property, int v
     return true;
 }
 
-void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
+void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property, const QVariant& committedValue) {
     if (property == nullptr) {
         return;
     }
@@ -2494,7 +2494,7 @@ void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
         return;
     }
 
-    const QVariant pendingValue = _variantManager->value(property);
+    const QVariant pendingValue = committedValue.isValid() ? committedValue : _variantManager->value(property);
     _pendingCommittedProperties.insert(property);
     _pendingCommittedValues.insert(property, pendingValue);
     qInfo() << "[PropertyEditor] editor commit received for" << property->propertyName();

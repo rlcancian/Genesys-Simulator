@@ -8160,6 +8160,26 @@ TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatrices) {
     EXPECT_EQ(variable.getInitialValuesText(), "[[1,2,3],[4,5,6],[7,8,9]]");
 }
 
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatricesWithSpaces) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableWithSpaces");
+    variable.setInitialValuesText("[ [0.5 , 0.5] , [0.5 , 0.5] ]");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.5);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[0.5,0.5],[0.5,0.5]]");
+}
+
 TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
