@@ -41,6 +41,7 @@ struct GenesysPropertyDescriptor {
     bool supportsExistingObjectSelection = false;
     bool supportsObjectCreation = false;
     bool supportsNewListElementCreation = false;
+    SimulationControlEditorHint editorHint = SimulationControlEditorHint::Default;
 
     std::string currentValue;
     std::vector<std::string> choices;

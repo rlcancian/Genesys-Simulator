@@ -5,6 +5,7 @@
 #include "../animations/AnimationTimer.h"
 #include "../animations/AnimationVariable.h"
 #include "../actions/DeleteUndoCommand.h"
+#include "../codeeditor/CodeEditor.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../services/GraphicalModelBuilder.h"
@@ -18,7 +19,10 @@
 #include <QSignalBlocker>
 #include <QBrush>
 #include <QColor>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QFont>
+#include <QFontDatabase>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
@@ -33,8 +37,12 @@
 #include <QDebug>
 #include <QMetaObject>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QAbstractSpinBox>
+#include <QPlainTextEdit>
+#include <QPushButton>
 #include <QUndoStack>
+#include <QVBoxLayout>
 
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelComponent.h"
@@ -605,6 +613,24 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
     }
 }
 
+bool ObjectPropertyBrowser::_hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const {
+    return desc.supportsListEditor || desc.editorHint != SimulationControlEditorHint::Default;
+}
+
+QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropertyDescriptor& desc) const {
+    if (desc.supportsListEditor) {
+        return "Edit list...";
+    }
+
+    switch (desc.editorHint) {
+    case SimulationControlEditorHint::CodeEditor:
+        return "Edit source code...";
+    case SimulationControlEditorHint::Default:
+    default:
+        return QString();
+    }
+}
+
 QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDescriptor& desc) {
     const QString name = QString::fromStdString(desc.displayName);
 
@@ -651,16 +677,17 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
     // This block enables direct inline editing only for scalar-like properties handled by variant editors.
     const bool editableInline =
         _isKernelEditingEnabled(desc) &&
-        !desc.supportsListEditor &&
+        !_hasSpecializedEditor(desc) &&
         !desc.supportsInlineExpansion &&
         !(desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit);
 
     property->setEnabled(editableInline);
 
-    // This block configures the list-editor hint based on explicit contract metadata instead of heuristics.
-    if (desc.supportsListEditor) {
-        property->setToolTip("List property. Use double click, Enter or context menu to open list editor.");
-        property->setStatusTip("List editor");
+    // Keep specialized editors discoverable while preserving the generic property browser flow.
+    if (_hasSpecializedEditor(desc)) {
+        const QString actionText = _specializedEditorActionText(desc);
+        property->setToolTip(QString("Use double click, Enter or context menu to %1").arg(actionText.left(actionText.size() - 3).toLower()));
+        property->setStatusTip(actionText);
     }
 
     Binding binding;
@@ -1708,7 +1735,7 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     SimulationControl* control = binding.control;
-    if (control == nullptr || _propertyEditor == nullptr) {
+    if (control == nullptr) {
         return false;
     }
 
@@ -1718,6 +1745,9 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
 
     // This block opens the specialized list editor only when the explicit list-editor contract is enabled.
     if (binding.descriptor.supportsListEditor) {
+        if (_propertyEditor == nullptr) {
+            return false;
+        }
         if (_propertyList != nullptr) {
             auto found = _propertyList->find(control);
             if (found == _propertyList->end() || found->second == nullptr) {
@@ -1732,7 +1762,79 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         return true;
     }
 
+    if (binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
+        return _openTextDialogEditor(binding);
+    }
+
     return false;
+}
+
+bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding) {
+    if (binding.control == nullptr) {
+        return false;
+    }
+
+    QDialog dialog(this);
+    dialog.setModal(true);
+    dialog.setWindowTitle(QString("Edit %1").arg(QString::fromStdString(binding.descriptor.displayName)));
+    dialog.resize(900, 640);
+
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* editor = new CodeEditor(&dialog);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QPushButton* applyButton = buttons->addButton("Apply", QDialogButtonBox::ApplyRole);
+
+    // Use a fixed-pitch editor so long Gro source text remains readable and line-oriented.
+    editor->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+    editor->setTabStopDistance(editor->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 4);
+    editor->setPlainText(QString::fromStdString(binding.descriptor.currentValue));
+    layout->addWidget(editor);
+    layout->addWidget(buttons);
+
+    std::string appliedValue = binding.descriptor.currentValue;
+    auto applyChange = [this, &dialog, editor, control = binding.control, &appliedValue]() -> bool {
+        const std::string newValue = editor->toPlainText().toStdString();
+        if (newValue == appliedValue) {
+            return true;
+        }
+
+        std::string errorMessage;
+        // Run the control-side validator first so source editors can reject syntax errors before commit.
+        if (!control->validateProposedValue(newValue, errorMessage)) {
+            QMessageBox::warning(
+                &dialog,
+                "Invalid property value",
+                QString::fromStdString(errorMessage.empty() ? "The proposed value is invalid." : errorMessage)
+                );
+            return false;
+        }
+
+        if (!GenesysPropertyIntrospection::setValue(control, newValue, false, &errorMessage)) {
+            QMessageBox::warning(
+                &dialog,
+                "Unable to update property",
+                QString::fromStdString(errorMessage.empty() ? "Unknown property update error" : errorMessage)
+                );
+            return false;
+        }
+
+        appliedValue = newValue;
+        _notifyModelChangeApplied();
+        return true;
+    };
+
+    connect(applyButton, &QPushButton::clicked, &dialog, [applyChange]() {
+        applyChange();
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [&dialog, applyChange]() {
+        if (applyChange()) {
+            dialog.accept();
+        }
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    return dialog.exec() == QDialog::Accepted;
 }
 
 bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
@@ -2179,7 +2281,7 @@ bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) 
         return false;
     }
 
-    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor) {
+    if (binding.descriptor.supportsInlineExpansion || _hasSpecializedEditor(binding.descriptor)) {
         return false;
     }
 
@@ -2222,7 +2324,7 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         return false;
     }
 
-    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor
+    if (binding.descriptor.supportsInlineExpansion || _hasSpecializedEditor(binding.descriptor)
         || binding.descriptor.kind == GenesysPropertyKind::Enum
         || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
         return false;
@@ -2568,8 +2670,8 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     QMenu menu(this);
     QAction* editAction = nullptr;
     QAction* createAction = nullptr;
-    if (binding.descriptor.supportsListEditor) {
-        editAction = menu.addAction("Edit list...");
+    if (_hasSpecializedEditor(binding.descriptor)) {
+        editAction = menu.addAction(_specializedEditorActionText(binding.descriptor));
     }
     if (binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
         createAction = menu.addAction("Create object");

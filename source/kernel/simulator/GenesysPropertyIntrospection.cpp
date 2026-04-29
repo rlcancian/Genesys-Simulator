@@ -97,6 +97,7 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.supportsExistingObjectSelection = control->supportsExistingObjectSelection();
     desc.supportsObjectCreation = control->supportsObjectCreation();
     desc.supportsNewListElementCreation = control->supportsNewListElementCreation();
+    desc.editorHint = control->preferredEditorHint();
     desc.isInlineObject = control->isInlineObjectProperty();
     desc.isModelDataDefinitionReference = control->isModelDataDefinitionReference();
     desc.currentValue = control->getValue();

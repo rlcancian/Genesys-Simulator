@@ -18,6 +18,8 @@
 #include "plugins/data/BiologicalModeling/GroProgramRuntime.h"
 
 #include <algorithm>
+#include <cstdio>
+#include <fstream>
 #include <map>
 #include <memory>
 #include <vector>
@@ -275,6 +277,35 @@ TEST(RuntimePluginManagerClassTest, BacteriaSignalGridCanBeCreatedAndValidated) 
     EXPECT_DOUBLE_EQ(values[5], 1.0);
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramCanCreateDefaultStarterAndKeepEmptySourceValid) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_Default");
+    ASSERT_NE(program, nullptr);
+
+    std::string errorMessage;
+    EXPECT_TRUE(ModelDataDefinition::Check(program, errorMessage)) << errorMessage;
+
+    const std::string filename = "/tmp/genesys_default_gro_program_test.gro";
+    EXPECT_TRUE(program->createDefaultGroProgram(filename));
+    EXPECT_FALSE(program->getSourceCode().empty());
+    EXPECT_NE(program->getSourceCode().find("program colony()"), std::string::npos);
+    EXPECT_TRUE(program->validateSyntax(errorMessage)) << errorMessage;
+
+    std::ifstream createdFile(filename);
+    ASSERT_TRUE(createdFile.is_open());
+    const std::string fileContent((std::istreambuf_iterator<char>(createdFile)),
+                                  std::istreambuf_iterator<char>());
+    EXPECT_EQ(fileContent, program->getSourceCode());
+    std::remove(filename.c_str());
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndStepped) {
     Simulator simulator;
     PluginManager* manager = simulator.getPluginManager();
@@ -312,6 +343,55 @@ TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndSt
     std::string errorMessage;
     EXPECT_TRUE(ModelDataDefinition::Check(program, errorMessage)) << errorMessage;
     EXPECT_TRUE(ModelDataDefinition::Check(colony, errorMessage)) << errorMessage;
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyUsesAttachedBioNetworkTimeAndSignalGridDimensions) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioNetwork* network = manager->newInstance<BioNetwork>(model, "BioNetwork_ColonyAuthority");
+    ASSERT_NE(network, nullptr);
+    network->setStartTime(2.0);
+    network->setStopTime(5.0);
+    network->setStepSize(0.25);
+    network->setCurrentTime(2.0);
+
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_ColonyAuthority");
+    ASSERT_NE(signalGrid, nullptr);
+    signalGrid->setWidth(3);
+    signalGrid->setHeight(2);
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_Authority");
+    ASSERT_NE(colony, nullptr);
+    colony->setBioNetwork(network);
+    colony->setSignalGrid(signalGrid);
+
+    EXPECT_DOUBLE_EQ(colony->getInitialColonyTime(), 2.0);
+    EXPECT_DOUBLE_EQ(colony->getFinalColonyTime(), 5.0);
+    EXPECT_DOUBLE_EQ(colony->getSimulationStep(), 0.25);
+    EXPECT_EQ(colony->getGridWidth(), 3u);
+    EXPECT_EQ(colony->getGridHeight(), 2u);
+
+    colony->setSimulationStep(0.5);
+    colony->setInitialColonyTime(3.0);
+    colony->setFinalColonyTime(7.0);
+    colony->setGridWidth(4);
+    colony->setGridHeight(6);
+
+    EXPECT_DOUBLE_EQ(network->getStepSize(), 0.5);
+    EXPECT_DOUBLE_EQ(network->getStartTime(), 3.0);
+    EXPECT_DOUBLE_EQ(network->getCurrentTime(), 3.0);
+    EXPECT_DOUBLE_EQ(network->getStopTime(), 7.0);
+    EXPECT_EQ(signalGrid->getWidth(), 4u);
+    EXPECT_EQ(signalGrid->getHeight(), 6u);
+
+    EXPECT_DOUBLE_EQ(colony->advanceColonyTime(), 3.5);
+    EXPECT_DOUBLE_EQ(network->getCurrentTime(), 3.5);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) {

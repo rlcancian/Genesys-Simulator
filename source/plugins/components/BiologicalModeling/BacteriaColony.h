@@ -176,6 +176,13 @@ private:
 	std::vector<double> _signalField;
 
 private:
+	// These helpers keep BacteriaColony backward compatible when it is used
+	// standalone, while treating attached BioNetwork/SignalGrid objects as the
+	// authoritative source for temporal and spatial configuration.
+	bool _usesBioNetworkTime() const;
+	bool _usesSignalGridDimensions() const;
+	void _synchronizeTemporalStateFromBioNetwork();
+	void _synchronizeGridDimensionsFromSignalGrid();
 	bool _resetRuntimeSignalField(std::string& errorMessage);
 	bool _collectBioNetworkSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const;
 	bool _collectBioNetworkSpeciesByIdentifier(std::map<std::string, BioSpecies*>& speciesByIdentifier,
