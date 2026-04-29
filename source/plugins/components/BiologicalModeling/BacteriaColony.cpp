@@ -14,6 +14,8 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
+#include <regex>
 #include <stdexcept>
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -26,6 +28,11 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 namespace {
 
 constexpr const char* kBioSpeciesAssignmentPrefix = "bio_species_";
+
+struct GroSeedPlacement {
+	unsigned int gridX = 0;
+	unsigned int gridY = 0;
+};
 
 std::string toGroIdentifierSuffix(const std::string& text) {
 	std::string identifier;
@@ -44,6 +51,42 @@ std::string toGroIdentifierSuffix(const std::string& text) {
 		identifier.insert(identifier.begin(), '_');
 	}
 	return identifier;
+}
+
+bool parseGroConfiguredDt(const std::string& sourceCode, double& configuredDt) {
+	const std::regex dtPattern(R"(set\s*\(\s*["']dt["']\s*,\s*([-+]?[0-9]*\.?[0-9]+)\s*\))");
+	std::smatch match;
+	if (!std::regex_search(sourceCode, match, dtPattern) || match.size() < 2) {
+		return false;
+	}
+
+	try {
+		configuredDt = std::stod(match[1].str());
+		return std::isfinite(configuredDt) && configuredDt > 0.0;
+	} catch (const std::exception&) {
+		return false;
+	}
+}
+
+std::vector<GroSeedPlacement> parseGroSeedPlacements(const std::string& sourceCode) {
+	const std::regex ecoliPattern(
+			R"(ecoli\s*\(\s*\[\s*x\s*:?=\s*([-+]?[0-9]*\.?[0-9]+)\s*,\s*y\s*:?=\s*([-+]?[0-9]*\.?[0-9]+)\s*\]\s*,\s*program\s+[A-Za-z_][A-Za-z0-9_]*\s*\(\s*\)\s*\))");
+	std::vector<GroSeedPlacement> placements;
+	for (std::sregex_iterator it(sourceCode.begin(), sourceCode.end(), ecoliPattern), end; it != end; ++it) {
+		try {
+			const double xValue = std::stod((*it)[1].str());
+			const double yValue = std::stod((*it)[2].str());
+			if (!std::isfinite(xValue) || !std::isfinite(yValue)) {
+				continue;
+			}
+			GroSeedPlacement placement;
+			placement.gridX = static_cast<unsigned int>(std::max(0.0, std::round(xValue)));
+			placement.gridY = static_cast<unsigned int>(std::max(0.0, std::round(yValue)));
+			placements.push_back(placement);
+		} catch (const std::exception&) {
+		}
+	}
+	return placements;
 }
 
 } // namespace
@@ -182,6 +225,8 @@ ModelComponent* BacteriaColony::LoadInstance(Model* model, PersistenceRecord* fi
 
 void BacteriaColony::setGroProgram(GroProgram* groProgram) {
 	_groProgram = groProgram;
+	std::string runtimeConfigErrorMessage;
+	(void)_refreshRuntimeConfigurationFromGroProgram(runtimeConfigErrorMessage);
 }
 
 GroProgram* BacteriaColony::getGroProgram() const {
@@ -377,6 +422,13 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 		return result;
 	}
 
+	std::string runtimeConfigErrorMessage;
+	if (!_refreshRuntimeConfigurationFromGroProgram(runtimeConfigErrorMessage)) {
+		result.succeeded = false;
+		result.errorMessage = runtimeConfigErrorMessage;
+		return result;
+	}
+
 	GroProgramParser::Result parseResult = GroProgramParser().parse(_groProgram->getSourceCode());
 	if (!parseResult.accepted) {
 		result.succeeded = false;
@@ -397,6 +449,7 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	runtimeState.simulationStep = getSimulationStep();
 	runtimeState.populationSize = _populationSize;
 	runtimeState.variables = _runtimeVariables;
+	runtimeState.variables["dt"] = runtimeState.simulationStep;
 	_appendBioNetworkContextVariables(runtimeState, bioContextErrorMessage);
 	if (!bioContextErrorMessage.empty()) {
 		result.succeeded = false;
@@ -412,6 +465,14 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 			                      "Use program bacterium() for signal-aware colony logic. ";
 			return result;
 		}
+		if (runtimeState.simulationStep > 0.0 &&
+		    std::fabs(runtimeState.simulationStep - getSimulationStep()) > 1e-12) {
+			// The classic Gro source uses set("dt", ...) as the authoritative colony step.
+			setSimulationStep(runtimeState.simulationStep);
+		}
+		if (runtimeState.colonyTime <= previousColonyTime + 1e-12) {
+			runtimeState.colonyTime = std::min(previousColonyTime + getSimulationStep(), getFinalColonyTime());
+		}
 		if (!_applyBioNetworkAssignments(result.assignedVariables, result.errorMessage)) {
 			result.succeeded = false;
 			return result;
@@ -426,6 +487,7 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 		// plugin runtime hands back the updated scalar-variable map after each run.
 		_colonyTime = _usesBioNetworkTime() ? _bioNetwork->getCurrentTime() : runtimeState.colonyTime;
 		_runtimeVariables = runtimeState.variables;
+		_runtimeVariables["dt"] = getSimulationStep();
 		_applyRuntimePopulationMutations(result.populationMutations, runtimeState.populationSize);
 		_applySignalFieldStep();
 	}
@@ -463,7 +525,14 @@ bool BacteriaColony::_loadInstance(PersistenceRecord* fields) {
 		_gridHeight = fields->loadField("gridHeight", DEFAULT.gridHeight);
 		_synchronizeTemporalStateFromBioNetwork();
 		_synchronizeGridDimensionsFromSignalGrid();
-		_rebuildInternalBacteria(_initialPopulation);
+		std::string runtimeConfigErrorMessage;
+		(void)_refreshRuntimeConfigurationFromGroProgram(runtimeConfigErrorMessage);
+		if (_groSeedGridPositions.empty()) {
+			_rebuildInternalBacteria(_initialPopulation);
+		} else {
+			_rebuildInternalBacteriaFromGroSeeds();
+		}
+		_runtimeVariables["dt"] = getSimulationStep();
 		std::string signalErrorMessage;
 		(void)_resetRuntimeSignalField(signalErrorMessage);
 	}
@@ -535,7 +604,14 @@ void BacteriaColony::_initBetweenReplications() {
 	if (_usesBioNetworkTime()) {
 		_colonyTime = _bioNetwork->getCurrentTime();
 	}
-	_rebuildInternalBacteria(_initialPopulation);
+	std::string runtimeConfigErrorMessage;
+	(void)_refreshRuntimeConfigurationFromGroProgram(runtimeConfigErrorMessage);
+	if (_groSeedGridPositions.empty()) {
+		_rebuildInternalBacteria(_initialPopulation);
+	} else {
+		_rebuildInternalBacteriaFromGroSeeds();
+	}
+	_runtimeVariables["dt"] = getSimulationStep();
 	std::string signalErrorMessage;
 	(void)_resetRuntimeSignalField(signalErrorMessage);
 }
@@ -733,6 +809,57 @@ void BacteriaColony::_removeBioNetworkAssignmentVariables(std::map<std::string, 
 		}
 		++it;
 	}
+}
+
+bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& errorMessage) {
+	errorMessage.clear();
+	_groSeedGridPositions.clear();
+	if (_groProgram == nullptr) {
+		return true;
+	}
+
+	const std::string& sourceCode = _groProgram->getSourceCode();
+	double configuredDt = 0.0;
+	if (parseGroConfiguredDt(sourceCode, configuredDt)) {
+		setSimulationStep(configuredDt);
+	}
+
+	const std::vector<GroSeedPlacement> parsedPlacements = parseGroSeedPlacements(sourceCode);
+	if (parsedPlacements.empty()) {
+		return true;
+	}
+
+	unsigned int maxGridX = 0;
+	unsigned int maxGridY = 0;
+	for (const GroSeedPlacement& placement : parsedPlacements) {
+		_groSeedGridPositions.emplace_back(placement.gridX, placement.gridY);
+		maxGridX = std::max(maxGridX, placement.gridX);
+		maxGridY = std::max(maxGridY, placement.gridY);
+	}
+
+	if (!_usesSignalGridDimensions()) {
+		// Classic Gro seed placements define a discrete colony footprint even when no SignalGrid exists yet.
+		_gridWidth = std::max(_gridWidth, maxGridX + 1);
+		_gridHeight = std::max(_gridHeight, maxGridY + 1);
+		if (_signalField.size() != static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight)) {
+			_signalField.assign(static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight), 0.0);
+		}
+	}
+	return true;
+}
+
+void BacteriaColony::_rebuildInternalBacteriaFromGroSeeds() {
+	_bacteria.clear();
+	_nextBacteriumId = 1;
+	for (const auto& placement : _groSeedGridPositions) {
+		_appendBacterium();
+		BacteriumState& bacterium = _bacteria.back();
+		bacterium.gridX = placement.first;
+		bacterium.gridY = placement.second;
+		bacterium.hasExplicitGridPosition = true;
+	}
+	_populationSize = static_cast<unsigned int>(_bacteria.size());
+	_refreshBacteriaUpdateTime();
 }
 
 bool BacteriaColony::_advanceBioNetworkStep(double stepSize, std::string& errorMessage) {
@@ -995,6 +1122,10 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
 			return false;
 		}
+		if (runtimeState.simulationStep > 0.0 &&
+		    std::fabs(runtimeState.simulationStep - getSimulationStep()) > 1e-12) {
+			setSimulationStep(runtimeState.simulationStep);
+		}
 
 		if (!_applyBioNetworkAssignments(bacteriumResult.assignedVariables, result.errorMessage)) {
 			result.succeeded = false;
@@ -1097,6 +1228,7 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.contextVariables["local_bacteria_count"] = static_cast<double>(
 			_computeLocalBacteriaCount(bacterium.gridX, bacterium.gridY));
 	runtimeState.variables = bacterium.runtimeVariables;
+	runtimeState.variables["dt"] = runtimeState.simulationStep;
 	return runtimeState;
 }
 
@@ -1157,6 +1289,7 @@ void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int genera
 	bacterium.birthTime = getColonyTime();
 	bacterium.lastUpdateTime = getColonyTime();
 	bacterium.lastDivisionTime = 0.0;
+	bacterium.hasExplicitGridPosition = false;
 	bacterium.alive = true;
 	_assignBacteriumGridPosition(bacterium, _bacteria.size());
 	_bacteria.push_back(bacterium);
@@ -1195,6 +1328,9 @@ void BacteriaColony::_rebuildBacteriaGridPositions() {
 }
 
 void BacteriaColony::_assignBacteriumGridPosition(BacteriumState& bacterium, std::size_t index) const {
+	if (bacterium.hasExplicitGridPosition) {
+		return;
+	}
 	if (getGridWidth() == 0 || getGridHeight() == 0) {
 		bacterium.gridX = 0;
 		bacterium.gridY = 0;

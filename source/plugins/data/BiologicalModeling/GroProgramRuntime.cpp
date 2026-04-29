@@ -23,6 +23,9 @@ double resolveIdentifierValue(const std::string& identifier, const GroProgramRun
 	if (identifier == "simulation_step" || identifier == "simulationStep") {
 		return state.simulationStep;
 	}
+	if (identifier == "dt") {
+		return state.simulationStep;
+	}
 	if (identifier == "tick_count" || identifier == "tickCount") {
 		return static_cast<double>(state.tickCount);
 	}
@@ -374,6 +377,18 @@ bool evaluateNonNegativeExpression(const std::string& expressionText, const GroP
 	return true;
 }
 
+bool parseStringLiteral(const std::string& text, std::string& value) {
+	if (text.size() < 2) {
+		return false;
+	}
+	const char delimiter = text.front();
+	if ((delimiter != '"' && delimiter != '\'') || text.back() != delimiter) {
+		return false;
+	}
+	value = text.substr(1, text.size() - 2);
+	return true;
+}
+
 bool parseOptionalPositiveAmount(const GroProgramIr::Command& command, const GroProgramRuntimeState& state,
 	                             unsigned int& amount, std::string& errorMessage) {
 	amount = 1;
@@ -463,6 +478,37 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			}
 			state.colonyTime += state.simulationStep;
 			++state.tickCount;
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "set") {
+			std::string settingName;
+			double settingValue = 0.0;
+			if (command.arguments.size() != 2 ||
+			    !parseStringLiteral(command.arguments[0], settingName) ||
+			    !evaluateExpression(command.arguments[1], state, settingValue, result.errorMessage) ||
+			    !std::isfinite(settingValue)) {
+				result.succeeded = false;
+				result.errorMessage =
+						"GroProgramRuntime set command expects one quoted setting name and one numeric expression. ";
+				return false;
+			}
+
+			if (settingName == "dt") {
+				if (settingValue <= 0.0) {
+					result.succeeded = false;
+					result.errorMessage = "GroProgramRuntime dt setting must be greater than zero. ";
+					return false;
+				}
+				state.simulationStep = settingValue;
+				state.variables["dt"] = settingValue;
+				result.assignedVariables["dt"] = settingValue;
+			} else {
+				// Preserve generic Gro set("name", value) state as a scalar variable when no dedicated binding exists yet.
+				state.variables[settingName] = settingValue;
+				result.assignedVariables[settingName] = settingValue;
+			}
 			++result.executedCommands;
 			continue;
 		}

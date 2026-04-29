@@ -54,6 +54,7 @@ namespace {
 class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
     using CommitCallback = std::function<void(QtProperty*)>;
+    using EditorCreationFilter = std::function<bool(QtProperty*)>;
 
     explicit CommitAwareVariantEditorFactory(QObject* parent = nullptr)
         : QtVariantEditorFactory(parent) {}
@@ -62,8 +63,15 @@ public:
         _commitCallback = std::move(callback);
     }
 
+    void setEditorCreationFilter(EditorCreationFilter filter) {
+        _editorCreationFilter = std::move(filter);
+    }
+
 protected:
     QWidget* createEditor(QtVariantPropertyManager* manager, QtProperty* property, QWidget* parent) override {
+        if (_editorCreationFilter != nullptr && !_editorCreationFilter(property)) {
+            return nullptr;
+        }
         QWidget* editor = QtVariantEditorFactory::createEditor(manager, property, parent);
         if (editor == nullptr || _commitCallback == nullptr) {
             return editor;
@@ -87,6 +95,7 @@ protected:
 
 private:
     CommitCallback _commitCallback;
+    EditorCreationFilter _editorCreationFilter;
 };
 
 QString graphicsItemTypeName(QGraphicsItem* item) {
@@ -238,6 +247,10 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
         auto* commitFactory = new CommitAwareVariantEditorFactory(this);
         commitFactory->setCommitCallback([this](QtProperty* property) {
             onVariantEditorCommitted(property);
+        });
+        commitFactory->setEditorCreationFilter([this](QtProperty* property) {
+            const auto binding = _bindings.find(property);
+            return binding == _bindings.end() || !_hasSpecializedEditor(binding.value().descriptor);
         });
         _variantFactory = commitFactory;
     }
@@ -674,14 +687,8 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
     QtVariantProperty* property = _variantManager->addProperty(variantType, name);
     property->setValue(_toVariant(desc));
 
-    // This block enables direct inline editing only for scalar-like properties handled by variant editors.
-    const bool editableInline =
-        _isKernelEditingEnabled(desc) &&
-        !_hasSpecializedEditor(desc) &&
-        !desc.supportsInlineExpansion &&
-        !(desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit);
-
-    property->setEnabled(editableInline);
+    // Specialized editors stay enabled for selection and shortcuts, but their inline widget is suppressed by the factory.
+    property->setEnabled(_isKernelEditingEnabled(desc));
 
     // Keep specialized editors discoverable while preserving the generic property browser flow.
     if (_hasSpecializedEditor(desc)) {

@@ -41,6 +41,7 @@ public:
 		double lastDivisionTime = 0.0;
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
+		bool hasExplicitGridPosition = false;
 		bool alive = true;
 		std::map<std::string, double> runtimeVariables;
 	};
@@ -174,6 +175,7 @@ private:
 	std::vector<BacteriumState> _bacteria;
 	std::map<std::string, double> _runtimeVariables;
 	std::vector<double> _signalField;
+	std::vector<std::pair<unsigned int, unsigned int>> _groSeedGridPositions;
 
 private:
 	// These helpers keep BacteriaColony backward compatible when it is used
@@ -190,6 +192,8 @@ private:
 	void _appendBioNetworkContextVariables(GroProgramRuntimeState& runtimeState, std::string& errorMessage) const;
 	bool _applyBioNetworkAssignments(const std::map<std::string, double>& assignedVariables, std::string& errorMessage);
 	void _removeBioNetworkAssignmentVariables(std::map<std::string, double>& variables) const;
+	bool _refreshRuntimeConfigurationFromGroProgram(std::string& errorMessage);
+	void _rebuildInternalBacteriaFromGroSeeds();
 	bool _advanceBioNetworkStep(double stepSize, std::string& errorMessage);
 	std::size_t _signalIndex(unsigned int x, unsigned int y) const;
 	double _signalValueAt(unsigned int x, unsigned int y) const;
