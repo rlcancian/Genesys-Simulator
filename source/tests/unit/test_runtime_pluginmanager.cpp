@@ -259,6 +259,9 @@ TEST(RuntimePluginManagerClassTest, BacteriaSignalGridCanBeCreatedAndValidated) 
 
     BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_1");
     ASSERT_NE(signalGrid, nullptr);
+    EXPECT_EQ(signalGrid->getWidth(), 12u);
+    EXPECT_EQ(signalGrid->getHeight(), 12u);
+    EXPECT_GT(signalGrid->getDiffusionRate(), 0.0);
     signalGrid->setWidth(3);
     signalGrid->setHeight(2);
     signalGrid->setInitialSignal(0.5);
@@ -295,7 +298,8 @@ TEST(RuntimePluginManagerClassTest, GroProgramCanCreateDefaultStarterAndKeepEmpt
     const std::string filename = "/tmp/genesys_default_gro_program_test.gro";
     EXPECT_TRUE(program->createDefaultGroProgram(filename));
     EXPECT_FALSE(program->getSourceCode().empty());
-    EXPECT_NE(program->getSourceCode().find("program colony()"), std::string::npos);
+    EXPECT_NE(program->getSourceCode().find("program leader()"), std::string::npos);
+    EXPECT_NE(program->getSourceCode().find("program follower()"), std::string::npos);
     EXPECT_TRUE(program->validateSyntax(errorMessage)) << errorMessage;
 
     std::ifstream createdFile(filename);
@@ -304,6 +308,45 @@ TEST(RuntimePluginManagerClassTest, GroProgramCanCreateDefaultStarterAndKeepEmpt
                                   std::istreambuf_iterator<char>());
     EXPECT_EQ(fileContent, program->getSourceCode());
     std::remove(filename.c_str());
+}
+
+TEST(RuntimePluginManagerClassTest, DefaultGroProgramProducesVisibleColonyDynamics) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_DefaultDynamics");
+    ASSERT_NE(program, nullptr);
+
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_DefaultDynamics");
+    ASSERT_NE(signalGrid, nullptr);
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_DefaultDynamics");
+    ASSERT_NE(colony, nullptr);
+    colony->setSignalGrid(signalGrid);
+    colony->setGroProgram(program);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    EXPECT_EQ(colony->getBacteriumState(0).programName, "leader");
+    EXPECT_EQ(colony->getBacteriumState(1).programName, "follower");
+    EXPECT_EQ(colony->getGridWidth(), 12u);
+    EXPECT_EQ(colony->getGridHeight(), 12u);
+
+    for (unsigned int step = 0; step < 14; ++step) {
+        GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+        ASSERT_TRUE(result.succeeded) << result.errorMessage;
+    }
+
+    EXPECT_GT(colony->getPopulationSize(), 2u);
+    EXPECT_GT(colony->getInternalBacteriaCount(), 2u);
+    EXPECT_GT(colony->getSignalValueAt(0, 0), 0.0);
+    EXPECT_GT(colony->getSignalValueAt(1, 0), 0.0);
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndStepped) {
@@ -323,8 +366,7 @@ TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndSt
     ASSERT_NE(colony, nullptr);
     colony->setGroProgram(program);
     colony->setSimulationStep(0.25);
-    colony->setInitialColonyTime(2.0);
-    colony->setFinalColonyTime(3.0);
+    colony->setNumSteps(4);
     colony->setColonyTimeUnit(Util::TimeUnit::second);
     colony->setInitialPopulation(8);
     colony->setGridWidth(4);
@@ -332,20 +374,19 @@ TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndSt
 
     ModelDataDefinition::InitBetweenReplications(colony);
 
-    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 2.0);
-    EXPECT_DOUBLE_EQ(colony->getFinalColonyTime(), 3.0);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
+    EXPECT_EQ(colony->getNumSteps(), 4u);
     EXPECT_EQ(colony->getColonyTimeUnit(), Util::TimeUnit::second);
     EXPECT_EQ(colony->getPopulationSize(), 8u);
     EXPECT_EQ(colony->getInternalBacteriaCount(), 8u);
-    EXPECT_DOUBLE_EQ(colony->advanceColonyTime(), 2.25);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 2.25);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 0.0);
 
     std::string errorMessage;
     EXPECT_TRUE(ModelDataDefinition::Check(program, errorMessage)) << errorMessage;
     EXPECT_TRUE(ModelDataDefinition::Check(colony, errorMessage)) << errorMessage;
 }
 
-TEST(RuntimePluginManagerClassTest, BacteriaColonyUsesAttachedBioNetworkTimeAndSignalGridDimensions) {
+TEST(RuntimePluginManagerClassTest, BacteriaColonyKeepsBioNetworkTimeIndependentAndUsesSignalGridDimensions) {
     Simulator simulator;
     PluginManager* manager = simulator.getPluginManager();
     ASSERT_NE(manager, nullptr);
@@ -371,27 +412,21 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyUsesAttachedBioNetworkTimeAndS
     colony->setBioNetwork(network);
     colony->setSignalGrid(signalGrid);
 
-    EXPECT_DOUBLE_EQ(colony->getInitialColonyTime(), 2.0);
-    EXPECT_DOUBLE_EQ(colony->getFinalColonyTime(), 5.0);
-    EXPECT_DOUBLE_EQ(colony->getSimulationStep(), 0.25);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
+    EXPECT_DOUBLE_EQ(colony->getSimulationStep(), 0.01);
     EXPECT_EQ(colony->getGridWidth(), 3u);
     EXPECT_EQ(colony->getGridHeight(), 2u);
 
     colony->setSimulationStep(0.5);
-    colony->setInitialColonyTime(3.0);
-    colony->setFinalColonyTime(7.0);
     colony->setGridWidth(4);
     colony->setGridHeight(6);
 
-    EXPECT_DOUBLE_EQ(network->getStepSize(), 0.5);
-    EXPECT_DOUBLE_EQ(network->getStartTime(), 3.0);
-    EXPECT_DOUBLE_EQ(network->getCurrentTime(), 3.0);
-    EXPECT_DOUBLE_EQ(network->getStopTime(), 7.0);
+    EXPECT_DOUBLE_EQ(network->getStepSize(), 0.25);
+    EXPECT_DOUBLE_EQ(network->getStartTime(), 2.0);
+    EXPECT_DOUBLE_EQ(network->getCurrentTime(), 2.0);
+    EXPECT_DOUBLE_EQ(network->getStopTime(), 5.0);
     EXPECT_EQ(signalGrid->getWidth(), 4u);
     EXPECT_EQ(signalGrid->getHeight(), 6u);
-
-    EXPECT_DOUBLE_EQ(colony->advanceColonyTime(), 3.5);
-    EXPECT_DOUBLE_EQ(network->getCurrentTime(), 3.5);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) {
@@ -411,7 +446,6 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     ASSERT_NE(colony, nullptr);
     colony->setGroProgram(program);
     colony->setSimulationStep(0.5);
-    colony->setInitialColonyTime(1.0);
     colony->setInitialPopulation(3);
     colony->setGridWidth(2);
     colony->setGridHeight(2);
@@ -422,8 +456,8 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     EXPECT_EQ(colony->getBacteriumState(0).parentId, 0u);
     EXPECT_EQ(colony->getBacteriumState(0).generation, 0u);
     EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 0u);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).birthTime, 1.0);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).birthTime, 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastDivisionTime, 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumAge(0), 0.0);
     EXPECT_EQ(colony->getBacteriumState(0).gridX, 0u);
@@ -437,7 +471,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
 
     EXPECT_TRUE(result.succeeded) << result.errorMessage;
     EXPECT_EQ(result.executedCommands, 4u);
-    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 1.5);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
     EXPECT_EQ(colony->getPopulationSize(), 9u);
     ASSERT_EQ(result.populationMutations.size(), 3u);
     EXPECT_EQ(result.populationMutations[0].type, GroProgramRuntime::PopulationMutationType::Grow);
@@ -457,22 +491,22 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesConfiguredGroProgram) 
     EXPECT_EQ(colony->getBacteriumState(0).parentId, 0u);
     EXPECT_EQ(colony->getBacteriumState(0).generation, 0u);
     EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 1u);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).birthTime, 1.0);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 1.5);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastDivisionTime, 1.5);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumAge(0), 0.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).birthTime, 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastUpdateTime, 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastDivisionTime, 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumAge(0), 0.0);
     EXPECT_EQ(colony->getBacteriumState(3).id, 4u);
     EXPECT_EQ(colony->getBacteriumState(3).parentId, 0u);
     EXPECT_EQ(colony->getBacteriumState(3).generation, 0u);
     EXPECT_EQ(colony->getBacteriumState(3).divisionCount, 1u);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).birthTime, 1.5);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).lastUpdateTime, 1.5);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).lastDivisionTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).birthTime, 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).lastUpdateTime, 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(3).lastDivisionTime, 0.0);
     EXPECT_EQ(colony->getBacteriumState(8).id, 9u);
     EXPECT_EQ(colony->getBacteriumState(8).parentId, 4u);
     EXPECT_EQ(colony->getBacteriumState(8).generation, 1u);
     EXPECT_EQ(colony->getBacteriumState(8).divisionCount, 0u);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(8).birthTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(8).birthTime, 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumState(8).lastDivisionTime, 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumAge(8), 0.0);
     EXPECT_EQ(colony->getBacteriumState(8).gridX, 0u);
@@ -504,8 +538,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyForwardsEntityAfterRuntimeStep
     ASSERT_NE(colony, nullptr);
     colony->setGroProgram(program);
     colony->setSimulationStep(0.25);
-    colony->setInitialColonyTime(2.0);
-    colony->setFinalColonyTime(2.5);
+    colony->setNumSteps(1);
     colony->setColonyTimeUnit(Util::TimeUnit::second);
     colony->setInitialPopulation(4);
 
@@ -520,8 +553,8 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyForwardsEntityAfterRuntimeStep
 
     Counter* disposed = dynamic_cast<Counter*>(dispose->getInternalData("CountNumberIn"));
     ASSERT_NE(disposed, nullptr);
-    // The entity should remain inside the colony until the internal colony
-    // clock reaches the configured final time and is then forwarded once.
+    // NumSteps=1 means the entity executes one delayed colony step and is then
+    // forwarded on the following self-dispatch at the same model time.
     EXPECT_DOUBLE_EQ(disposed->getCountValue(), 1.0);
 }
 
@@ -542,7 +575,6 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesDieCommandToInternalSta
     ASSERT_NE(colony, nullptr);
     colony->setGroProgram(program);
     colony->setSimulationStep(0.5);
-    colony->setInitialColonyTime(1.0);
     colony->setInitialPopulation(5);
 
     ModelDataDefinition::InitBetweenReplications(colony);
@@ -561,7 +593,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesDieCommandToInternalSta
     EXPECT_EQ(colony->getBacteriumState(0).id, 1u);
     EXPECT_EQ(colony->getBacteriumState(1).id, 2u);
     EXPECT_EQ(colony->getBacteriumState(2).id, 3u);
-    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 1.5);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramParserKeepsLexicalValidationBoundary) {
@@ -900,7 +932,6 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesRuntimeVariablesAcros
     ASSERT_NE(colony, nullptr);
     colony->setGroProgram(program);
     colony->setSimulationStep(0.5);
-    colony->setInitialColonyTime(1.0);
     colony->setInitialPopulation(2);
 
     ModelDataDefinition::InitBetweenReplications(colony);
@@ -941,7 +972,6 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesBacteriumScopedProgram
     ASSERT_NE(colony, nullptr);
     colony->setGroProgram(program);
     colony->setSimulationStep(0.5);
-    colony->setInitialColonyTime(1.0);
     colony->setInitialPopulation(2);
     colony->setGridWidth(3);
     colony->setGridHeight(3);
@@ -951,34 +981,66 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesBacteriumScopedProgram
     GroProgramRuntime::ExecutionResult firstResult = colony->executeGroProgram();
     EXPECT_TRUE(firstResult.succeeded) << firstResult.errorMessage;
     EXPECT_EQ(firstResult.executedCommands, 10u);
-    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 1.5);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
     EXPECT_EQ(colony->getPopulationSize(), 2u);
     ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
     EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "age_steps"));
     EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "seen_age"));
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "age_steps"), 1.0);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "seen_age"), 0.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "seen_age"), 0.0);
     EXPECT_EQ(colony->getBacteriumState(0).id, 1u);
     EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 1u);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastDivisionTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(0).lastDivisionTime, 0.0);
     EXPECT_EQ(colony->getBacteriumState(1).parentId, 1u);
     EXPECT_EQ(colony->getBacteriumState(1).generation, 1u);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumState(1).birthTime, 1.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumState(1).birthTime, 0.0);
 
     GroProgramRuntime::ExecutionResult secondResult = colony->executeGroProgram();
     EXPECT_TRUE(secondResult.succeeded) << secondResult.errorMessage;
     EXPECT_EQ(secondResult.executedCommands, 8u);
-    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 2.0);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
     EXPECT_EQ(colony->getPopulationSize(), 2u);
     ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "age_steps"), 2.0);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "seen_age"), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "seen_age"), 0.0);
     EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(1, "age_steps"));
     EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(1, "seen_age"));
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "age_steps"), 1.0);
-    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "seen_age"), 0.5);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "seen_age"), 0.0);
     EXPECT_EQ(colony->getBacteriumState(1).parentId, 1u);
     EXPECT_EQ(colony->getBacteriumState(1).generation, 1u);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonySupportsBacteriumScopedDivide) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_PerBacteriumDivide");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode("program bacterium() { if (bacterium_id == 1) { divide(); } }");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_PerBacteriumDivide");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setInitialPopulation(2);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_EQ(colony->getPopulationSize(), 3u);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 3u);
+    EXPECT_EQ(colony->getBacteriumState(0).id, 1u);
+    EXPECT_EQ(colony->getBacteriumState(0).divisionCount, 1u);
+    EXPECT_EQ(colony->getBacteriumState(2).parentId, 1u);
+    EXPECT_EQ(colony->getBacteriumState(2).generation, 1u);
+    ASSERT_EQ(result.populationMutations.size(), 1u);
+    EXPECT_EQ(result.populationMutations[0].type, GroProgramRuntime::PopulationMutationType::Divide);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSignalAwareBacteriumProgram) {
@@ -1010,7 +1072,6 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSignalAwareBacteriumPr
     colony->setSignalGrid(signalGrid);
     colony->setGroProgram(program);
     colony->setSimulationStep(0.5);
-    colony->setInitialColonyTime(1.0);
     colony->setInitialPopulation(1);
 
     ModelDataDefinition::InitBetweenReplications(colony);
@@ -1063,8 +1124,6 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSeededNamedGroPrograms
     BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_LeaderFollower");
     ASSERT_NE(colony, nullptr);
     colony->setGroProgram(program);
-    colony->setInitialColonyTime(0.0);
-    colony->setFinalColonyTime(10.0);
 
     ModelDataDefinition::InitBetweenReplications(colony);
 
@@ -1075,7 +1134,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSeededNamedGroPrograms
 
     GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
     EXPECT_TRUE(result.succeeded) << result.errorMessage;
-    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.25);
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
     EXPECT_DOUBLE_EQ(colony->getSimulationStep(), 0.25);
     EXPECT_EQ(colony->getPopulationSize(), 2u);
     EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 5.0);
@@ -1085,6 +1144,40 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSeededNamedGroPrograms
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.t"), 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.mode"), 1.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.t"), 0.25);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesGroSeedsBeforeFirstGuiDrivenStep) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_GuiDrivenSeeds");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "set(\"dt\", 0.1); "
+        "program leader() := { p := [ t := 0 ]; true : { p.t := p.t + dt } }; "
+        "program follower() := { p := [ mode := 0 ]; true : { p.mode := 1 } }; "
+        "ecoli([x:=0, y:=0], program leader()); "
+        "ecoli([x:=0, y:=10], program follower());");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_GuiDrivenSeeds");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    EXPECT_EQ(colony->getBacteriumState(0).programName, "leader");
+    EXPECT_EQ(colony->getBacteriumState(1).programName, "follower");
+    EXPECT_EQ(colony->getBacteriumState(1).gridY, 10u);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.t"), 0.1);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.mode"), 1.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalContext) {
@@ -1125,7 +1218,6 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalC
         "program colony() { "
         "seen_substrate = bio_species_substrate; "
         "seen_product = bio_species_product; "
-        "seen_bio_time = bio_current_time; "
         "tick(); "
         "}");
 
@@ -1134,7 +1226,6 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalC
     colony->setGroProgram(program);
     colony->setBioNetwork(bioNetwork);
     colony->setSimulationStep(0.5);
-    colony->setInitialColonyTime(0.0);
     colony->setInitialPopulation(1);
 
     ModelDataDefinition::InitBetweenReplications(substrate);
@@ -1146,10 +1237,9 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalC
     EXPECT_TRUE(firstResult.succeeded) << firstResult.errorMessage;
     EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("seen_substrate"), 10.0);
     EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("seen_product"), 0.0);
-    EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("seen_bio_time"), 0.0);
-    EXPECT_DOUBLE_EQ(bioNetwork->getCurrentTime(), 0.5);
-    EXPECT_LT(substrate->getAmount(), 10.0);
-    EXPECT_GT(product->getAmount(), 0.0);
+    EXPECT_DOUBLE_EQ(bioNetwork->getCurrentTime(), 0.0);
+    EXPECT_DOUBLE_EQ(substrate->getAmount(), 10.0);
+    EXPECT_DOUBLE_EQ(product->getAmount(), 0.0);
 
     const double substrateAfterFirstStep = substrate->getAmount();
     const double productAfterFirstStep = product->getAmount();
@@ -1158,10 +1248,9 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalC
     EXPECT_TRUE(secondResult.succeeded) << secondResult.errorMessage;
     EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("seen_substrate"), substrateAfterFirstStep);
     EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("seen_product"), productAfterFirstStep);
-    EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("seen_bio_time"), 0.5);
-    EXPECT_DOUBLE_EQ(bioNetwork->getCurrentTime(), 1.0);
-    EXPECT_LT(substrate->getAmount(), substrateAfterFirstStep);
-    EXPECT_GT(product->getAmount(), productAfterFirstStep);
+    EXPECT_DOUBLE_EQ(bioNetwork->getCurrentTime(), 0.0);
+    EXPECT_DOUBLE_EQ(substrate->getAmount(), substrateAfterFirstStep);
+    EXPECT_DOUBLE_EQ(product->getAmount(), productAfterFirstStep);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyAssignmentsCanWriteBioNetworkSpecies) {
@@ -1215,7 +1304,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyAssignmentsCanWriteBioNetworkS
     EXPECT_TRUE(result.succeeded) << result.errorMessage;
     EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("before_value"), 8.0);
     EXPECT_DOUBLE_EQ(substrate->getAmount(), 5.0);
-    EXPECT_DOUBLE_EQ(bioNetwork->getCurrentTime(), 0.5);
+    EXPECT_DOUBLE_EQ(bioNetwork->getCurrentTime(), 0.0);
     EXPECT_FALSE(colony->hasRuntimeVariable("bio_species_substrate"));
 }
 
@@ -1271,7 +1360,7 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyBacteriumScopedProgramsCanSequ
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "seen_shared"), 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "seen_shared"), 1.0);
     EXPECT_DOUBLE_EQ(shared->getAmount(), 2.0);
-    EXPECT_DOUBLE_EQ(bioNetwork->getCurrentTime(), 0.5);
+    EXPECT_DOUBLE_EQ(bioNetwork->getCurrentTime(), 0.0);
     EXPECT_FALSE(colony->hasBacteriumRuntimeVariable(0, "bio_species_sharedsignal"));
     EXPECT_FALSE(colony->hasBacteriumRuntimeVariable(1, "bio_species_sharedsignal"));
 }

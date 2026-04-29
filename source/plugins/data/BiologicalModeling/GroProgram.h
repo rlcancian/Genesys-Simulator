@@ -66,26 +66,25 @@ private:
 	const struct DEFAULT_VALUES {
 		const std::string sourceCode = R"(
 include gro
-set ( "dt", 0.075 );
+set ( "dt", 0.1 );
 ahl := signal ( 1, 1 );
+
 program leader() := {
-  p := [ t := 2.4 ];
-  set ( "ecoli_growth_rate", 0.00 );
-  true : { p.t := p.t + dt }
-  p.t > 10 : {
-    emit_signal ( ahl, 100 ),
-    p.t := 0
-  }
+  p := [ t := 0, division_t := 0 ];
+  true : { p.t := p.t + dt, p.division_t := p.division_t + dt }
+  p.t > 0.2 : { emit_signal ( ahl, 40 ), p.t := 0 }
+  p.division_t > 0.9 : { divide(), p.division_t := 0 }
 };
+
 program follower() := {
-  p := [ mode := 0, t := 0 ];
+  p := [ mode := 0, t := 0, growth_t := 0 ];
+  true : { p.growth_t := p.growth_t + dt }
   p.mode = 0 & get_signal ( ahl ) > 0.01 : {
-    emit_signal ( ahl, 100 ),
     p.mode := 1,
     p.t := 0
   }
   p.mode = 1 : { p.t := p.t + dt }
-  p.mode = 1 & p.t > 9 : { p.mode := 0 }
+  p.growth_t > 1.2 : { grow(), p.growth_t := 0 }
 };
 
 ecoli ( [ x:= 0, y:= 0 ], program leader() );
