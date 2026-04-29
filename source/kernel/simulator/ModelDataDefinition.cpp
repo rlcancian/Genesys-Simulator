@@ -362,6 +362,9 @@ void ModelDataDefinition::setName(const std::string& name) {
 	}
 	// rename every "stuff" related to this modeldatum (controls, responses and internelElements)
 	if (newName != _name) {
+		if (_label == _name) { // label was equal to the current name, therefore, changes it to the new name (spaces allowed)
+			_label = name;
+		}
 		std::string stuffName;
 		size_t pos;
 		for (const auto& child : *_internalData) {

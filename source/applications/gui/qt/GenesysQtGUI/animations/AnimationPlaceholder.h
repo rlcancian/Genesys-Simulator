@@ -6,6 +6,7 @@
 #include <QPainter>
 #include <QVector>
 #include <QString>
+#include <limits>
 
 class Model;
 
@@ -66,6 +67,7 @@ public:
         QString label;
         QString expression;
         QColor color = QColor(31, 119, 180);
+        qreal lineWidth = 2.0;
         QVector<double> values;
     };
 
@@ -75,10 +77,24 @@ public:
     void setTitle(const QString& title);
     QString getYAxisTitle() const;
     void setYAxisTitle(const QString& title);
+    QString getXAxisTitle() const;
+    void setXAxisTitle(const QString& title);
     PlotType getPlotType() const;
     void setPlotType(PlotType type);
     QString getDatasetsText() const;
     void setDatasetsText(const QString& datasetsText);
+    bool getShowGridLines() const;
+    void setShowGridLines(bool show);
+    bool getShowTicks() const;
+    void setShowTicks(bool show);
+    double getXAxisMin() const;
+    void setXAxisMin(double value);
+    double getXAxisMax() const;
+    void setXAxisMax(double value);
+    double getYAxisMin() const;
+    void setYAxisMin(double value);
+    double getYAxisMax() const;
+    void setYAxisMax(double value);
     void clearValues();
     void appendSample(Model* model);
 
@@ -89,8 +105,15 @@ private:
     static QString datasetsTextFromSeries(const QVector<DataSeries>& series);
 
     QString _title = "Plot";
+    QString _xAxisTitle = "Time";
     QString _yAxisTitle = "Value";
     PlotType _plotType = PlotType::Line;
+    bool _showGridLines = true;
+    bool _showTicks = true;
+    double _xAxisMin = std::numeric_limits<double>::quiet_NaN();
+    double _xAxisMax = std::numeric_limits<double>::quiet_NaN();
+    double _yAxisMin = std::numeric_limits<double>::quiet_NaN();
+    double _yAxisMax = std::numeric_limits<double>::quiet_NaN();
     QVector<DataSeries> _series;
 };
 

@@ -35,12 +35,15 @@
 #include <QVariant>
 #include <QMenu>
 #include <QDebug>
+#include <QEvent>
 #include <QMetaObject>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QAbstractSpinBox>
+#include <QKeyEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QHash>
 #include <QUndoStack>
 #include <QVBoxLayout>
 
@@ -55,6 +58,14 @@ class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
     using CommitCallback = std::function<void(QtProperty*, const QVariant&)>;
     using EditorCreationFilter = std::function<bool(QtProperty*)>;
+
+    struct EditorState {
+        QtVariantPropertyManager* manager = nullptr;
+        QtProperty* property = nullptr;
+        QWidget* editor = nullptr;
+        QVariant originalValue;
+        bool suppressCommit = false;
+    };
 
     explicit CommitAwareVariantEditorFactory(QObject* parent = nullptr)
         : QtVariantEditorFactory(parent) {}
@@ -78,14 +89,26 @@ protected:
         }
 
         if (QLineEdit* lineEdit = editor->findChild<QLineEdit*>()) {
-            QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [callback = _commitCallback, property, lineEdit]() {
+            _registerEditor(lineEdit, manager, property, editor);
+            QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [this, callback = _commitCallback, property, lineEdit]() {
+                const auto stateIt = _editorStates.find(lineEdit);
+                if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
+                    stateIt.value().suppressCommit = false;
+                    return;
+                }
                 callback(property, QVariant(lineEdit->text()));
             });
             return editor;
         }
 
         if (QAbstractSpinBox* spinBox = editor->findChild<QAbstractSpinBox*>()) {
-            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [callback = _commitCallback, property, spinBox]() {
+            _registerEditor(spinBox, manager, property, editor);
+            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [this, callback = _commitCallback, property, spinBox]() {
+                const auto stateIt = _editorStates.find(spinBox);
+                if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
+                    stateIt.value().suppressCommit = false;
+                    return;
+                }
                 callback(property, spinBox->property("value"));
             });
         }
@@ -93,9 +116,68 @@ protected:
         return editor;
     }
 
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        auto stateIt = _editorStates.find(watched);
+        if (stateIt == _editorStates.end()) {
+            return QtVariantEditorFactory::eventFilter(watched, event);
+        }
+
+        if (event->type() == QEvent::KeyPress) {
+            auto* keyEvent = static_cast<QKeyEvent*>(event);
+            if (keyEvent->key() == Qt::Key_Escape) {
+                stateIt.value().suppressCommit = true;
+                _restoreEditorValue(watched, stateIt.value());
+                if (stateIt.value().editor != nullptr) {
+                    stateIt.value().editor->clearFocus();
+                    if (QWidget* parentWidget = stateIt.value().editor->parentWidget()) {
+                        parentWidget->setFocus();
+                    }
+                }
+                return true;
+            }
+        }
+
+        return QtVariantEditorFactory::eventFilter(watched, event);
+    }
+
 private:
+    void _registerEditor(QWidget* watched, QtVariantPropertyManager* manager, QtProperty* property, QWidget* editor) {
+        if (watched == nullptr) {
+            return;
+        }
+
+        _editorStates.insert(watched, EditorState{manager, property, editor, manager != nullptr && property != nullptr ? manager->value(property) : QVariant(), false});
+        watched->installEventFilter(this);
+        QObject::connect(watched, &QObject::destroyed, this, [this, watched]() {
+            _editorStates.remove(watched);
+        });
+    }
+
+    void _restoreEditorValue(QObject* watched, const EditorState& state) {
+        if (watched == nullptr || state.manager == nullptr || state.property == nullptr) {
+            return;
+        }
+
+        const QVariant restoredValue = state.originalValue.isValid() ? state.originalValue : state.manager->value(state.property);
+        if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(watched)) {
+            QSignalBlocker managerBlocker(state.manager);
+            QSignalBlocker blocker(lineEdit);
+            state.manager->setValue(state.property, restoredValue);
+            lineEdit->setText(restoredValue.toString());
+            return;
+        }
+
+        if (QAbstractSpinBox* spinBox = qobject_cast<QAbstractSpinBox*>(watched)) {
+            QSignalBlocker managerBlocker(state.manager);
+            QSignalBlocker blocker(spinBox);
+            state.manager->setValue(state.property, restoredValue);
+            spinBox->setProperty("value", restoredValue);
+        }
+    }
+
     CommitCallback _commitCallback;
     EditorCreationFilter _editorCreationFilter;
+    QHash<QObject*, EditorState> _editorStates;
 };
 
 QString graphicsItemTypeName(QGraphicsItem* item) {
@@ -1634,6 +1716,76 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                 plot->getYAxisTitle(),
                 [plot, this](const QVariant& value) {
                     plot->setYAxisTitle(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "X axis title",
+                QVariant::String,
+                plot->getXAxisTitle(),
+                [plot, this](const QVariant& value) {
+                    plot->setXAxisTitle(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Show grid lines",
+                QVariant::Bool,
+                plot->getShowGridLines(),
+                [plot, this](const QVariant& value) {
+                    plot->setShowGridLines(value.toBool());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Show ticks",
+                QVariant::Bool,
+                plot->getShowTicks(),
+                [plot, this](const QVariant& value) {
+                    plot->setShowTicks(value.toBool());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "X axis min",
+                QVariant::Double,
+                plot->getXAxisMin(),
+                [plot, this](const QVariant& value) {
+                    plot->setXAxisMin(value.toDouble());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "X axis max",
+                QVariant::Double,
+                plot->getXAxisMax(),
+                [plot, this](const QVariant& value) {
+                    plot->setXAxisMax(value.toDouble());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Y axis min",
+                QVariant::Double,
+                plot->getYAxisMin(),
+                [plot, this](const QVariant& value) {
+                    plot->setYAxisMin(value.toDouble());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Y axis max",
+                QVariant::Double,
+                plot->getYAxisMax(),
+                [plot, this](const QVariant& value) {
+                    plot->setYAxisMax(value.toDouble());
                     _notifyGraphicsChangeApplied(plot);
                 },
                 true

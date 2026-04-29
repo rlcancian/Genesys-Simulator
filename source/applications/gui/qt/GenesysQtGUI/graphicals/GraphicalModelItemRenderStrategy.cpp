@@ -9,6 +9,7 @@
 #include <QRadialGradient>
 #include <QRegularExpression>
 #include <QStringList>
+#include <QVector>
 
 namespace {
 
@@ -86,49 +87,59 @@ QStringList wrapTextToWidth(const QString& text, const QFontMetrics& fm, qreal m
         return lines;
     }
 
-    const QStringList words = trimmed.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-    QString currentLine;
-    auto flushCurrentLine = [&]() {
-        if (!currentLine.isEmpty()) {
-            lines << currentLine;
-            currentLine.clear();
-        }
-    };
-
-    for (const QString& word : words) {
-        if (word.isEmpty()) {
+    const QStringList paragraphs = text.split('\n', Qt::KeepEmptyParts);
+    for (const QString& paragraphText : paragraphs) {
+        const QString paragraph = paragraphText.trimmed();
+        if (paragraph.isEmpty()) {
+            // Preserve explicit blank lines so primary and secondary text stay vertically separated.
+            lines << QString();
             continue;
         }
 
-        const QString candidate = currentLine.isEmpty() ? word : currentLine + " " + word;
-        if (fm.horizontalAdvance(candidate) <= maxWidth) {
-            currentLine = candidate;
-            continue;
+        const QStringList words = paragraph.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+        QString currentLine;
+        auto flushCurrentLine = [&]() {
+            if (!currentLine.isEmpty()) {
+                lines << currentLine;
+                currentLine.clear();
+            }
+        };
+
+        for (const QString& word : words) {
+            if (word.isEmpty()) {
+                continue;
+            }
+
+            const QString candidate = currentLine.isEmpty() ? word : currentLine + " " + word;
+            if (fm.horizontalAdvance(candidate) <= maxWidth) {
+                currentLine = candidate;
+                continue;
+            }
+
+            flushCurrentLine();
+
+            if (fm.horizontalAdvance(word) <= maxWidth) {
+                currentLine = word;
+                continue;
+            }
+
+            QString chunk;
+            for (const QChar ch : word) {
+                const QString chunkCandidate = chunk + ch;
+                if (!chunk.isEmpty() && fm.horizontalAdvance(chunkCandidate) > maxWidth) {
+                    lines << chunk;
+                    chunk = ch;
+                } else {
+                    chunk = chunkCandidate;
+                }
+            }
+            if (!chunk.isEmpty()) {
+                currentLine = chunk;
+            }
         }
 
         flushCurrentLine();
-
-        if (fm.horizontalAdvance(word) <= maxWidth) {
-            currentLine = word;
-            continue;
-        }
-
-        QString chunk;
-        for (const QChar ch : word) {
-            const QString chunkCandidate = chunk + ch;
-            if (!chunk.isEmpty() && fm.horizontalAdvance(chunkCandidate) > maxWidth) {
-                lines << chunk;
-                chunk = ch;
-            } else {
-                chunk = chunkCandidate;
-            }
-        }
-        if (!chunk.isEmpty()) {
-            currentLine = chunk;
-        }
     }
-
-    flushCurrentLine();
     return lines;
 }
 
@@ -142,14 +153,14 @@ void drawWrappedText(QPainter* painter,
     const QColor textColor = colorFromRgba(context.textColor);
     const QColor shadowColor = colorFromRgba(context.textShadowColor);
     const QFontMetrics fm = painter->fontMetrics();
-    const qreal maxWidth = qMax<qreal>(1.0, contentRect.width());
+    const qreal maxWidth = qMax<qreal>(1.0, contentRect.width()); // contentRect.width()*0.9
     QStringList lines = wrapTextToWidth(text, fm, maxWidth);
     if (lines.isEmpty()) {
         return;
     }
 
     const int lineHeight = fm.height();
-    const int lineSpacing = 2;
+    const int lineSpacing = 2; // 2
     const int totalHeight = lines.size() * lineHeight + qMax(0, lines.size() - 1) * lineSpacing;
     const qreal top = alignTop
                           ? contentRect.top()
@@ -184,21 +195,122 @@ void drawItemText(QPainter* painter,
                   const GraphicalModelItemRenderContext& context,
                   const QRectF& contentRect,
                   bool shadowFirstForSingleLine) {
-    if (context.secondaryText.isEmpty()) {
-        drawWrappedText(painter, context, contentRect, context.primaryText, false, false, shadowFirstForSingleLine);
+    const QString primaryText = context.primaryText.trimmed();
+    const QString secondaryText = context.secondaryText.trimmed();
+    const QString tertiaryText = context.tertiaryText.trimmed();
+    if (primaryText.isEmpty() && secondaryText.isEmpty() && tertiaryText.isEmpty()) {
         return;
     }
 
-    const QFontMetrics fm = painter->fontMetrics();
-    const int lineHeight = fm.height();
-    const int lineSpacing = 3;
-    const int totalHeight = lineHeight * 2 + lineSpacing;
-    const qreal blockTop = contentRect.top() + (contentRect.height() - totalHeight) / 2.0;
-    const QRectF line1Rect(contentRect.left(), blockTop, contentRect.width(), lineHeight);
-    const QRectF line2Rect(contentRect.left(), blockTop + lineHeight + lineSpacing, contentRect.width(), lineHeight);
+    const QColor textColor = colorFromRgba(context.textColor);
+    const QColor shadowColor = colorFromRgba(context.textShadowColor);
+    const qreal maxWidth = qMax<qreal>(1.0, contentRect.width());
+    const qreal left = contentRect.left();
 
-    drawWrappedText(painter, context, line1Rect, context.primaryText, false, false, true);
-    drawWrappedText(painter, context, line2Rect, context.secondaryText, false, false, true);
+    QFont baseFont = painter->font();
+    QFont primaryFont = baseFont;
+    primaryFont.setBold(true);
+    QFont secondaryFont = baseFont;
+    if (secondaryFont.pointSizeF() > 0.0) {
+        secondaryFont.setPointSizeF(qMax<qreal>(1.0, secondaryFont.pointSizeF() - 1.0));
+    } else if (secondaryFont.pixelSize() > 0) {
+        secondaryFont.setPixelSize(qMax(1, secondaryFont.pixelSize() - 1));
+    }
+
+    QFontMetrics primaryFm(primaryFont);
+    QFontMetrics secondaryFm(secondaryFont);
+    const QStringList secondaryLines = secondaryText.isEmpty() ? QStringList() : wrapTextToWidth(secondaryText, secondaryFm, maxWidth);
+    const QStringList tertiaryLines = tertiaryText.isEmpty() ? QStringList() : wrapTextToWidth(tertiaryText, secondaryFm, maxWidth);
+    const int secondaryLineSpacing = secondaryLines.size() >= 4 ? 0 : 1;
+
+    struct TextBlock {
+        QStringList lines;
+        QFont font;
+        Qt::Alignment alignment;
+        int lineSpacing = 0;
+        int penWidth = 1;
+    };
+
+    const QVector<TextBlock> blocks = {
+        {QStringList{primaryText}, primaryFont, Qt::AlignHCenter, 0, 2},
+        {secondaryLines, secondaryFont, Qt::AlignLeft, secondaryLineSpacing, 1},
+        {tertiaryLines, secondaryFont, Qt::AlignRight, 1, 1}
+    };
+
+    struct MeasuredBlock {
+        QStringList lines;
+        QFont font;
+        Qt::Alignment alignment;
+        int lineSpacing = 0;
+        int penWidth = 1;
+        int height = 0;
+        bool isEmpty() const {
+            return lines.isEmpty() || (lines.size() == 1 && lines.first().trimmed().isEmpty());
+        }
+    };
+
+    QVector<MeasuredBlock> measuredBlocks;
+    measuredBlocks.reserve(blocks.size());
+    int totalHeight = 0;
+    const int blockSpacing = 1;
+    for (const TextBlock& block : blocks) {
+        MeasuredBlock measured;
+        measured.lines = block.lines;
+        measured.font = block.font;
+        measured.alignment = block.alignment;
+        measured.lineSpacing = block.lineSpacing;
+        measured.penWidth = block.penWidth;
+        if (!measured.isEmpty()) {
+            const QFontMetrics fm(measured.font);
+            measured.height = measured.lines.size() * fm.height()
+                              + qMax(0, measured.lines.size() - 1) * measured.lineSpacing;
+            totalHeight += measured.height;
+            measuredBlocks.append(measured);
+        }
+    }
+
+    if (measuredBlocks.isEmpty()) {
+        return;
+    }
+
+    totalHeight += qMax(0, measuredBlocks.size() - 1) * blockSpacing;
+    const qreal top = contentRect.top() + (contentRect.height() - totalHeight) / 2.0;
+
+    qreal y = top;
+    for (int blockIndex = 0; blockIndex < measuredBlocks.size(); ++blockIndex) {
+        const MeasuredBlock& block = measuredBlocks.at(blockIndex);
+        const QFontMetrics fm(block.font);
+        const int lineHeight = fm.height();
+        painter->setFont(block.font);
+
+        QPen pen(textColor);
+        pen.setWidth(block.penWidth);
+        pen.setCosmetic(true);
+
+        qreal lineY = y;
+        for (const QString& line : block.lines) {
+            const QRectF lineRect(left, lineY, contentRect.width(), lineHeight);
+            if (line.trimmed().isEmpty()) {
+                lineY += lineHeight + block.lineSpacing;
+                continue;
+            }
+
+            if (shadowFirstForSingleLine) {
+                painter->setPen(QPen(shadowColor, block.penWidth));
+                painter->drawText(lineRect.translated(0, 2), block.alignment | Qt::AlignVCenter | Qt::TextSingleLine, line);
+                painter->setPen(pen);
+                painter->drawText(lineRect, block.alignment | Qt::AlignVCenter | Qt::TextSingleLine, line);
+            } else {
+                painter->setPen(pen);
+                painter->drawText(lineRect, block.alignment | Qt::AlignVCenter | Qt::TextSingleLine, line);
+                painter->setPen(QPen(shadowColor, block.penWidth));
+                painter->drawText(lineRect.adjusted(0, 2, 2, 0), block.alignment | Qt::AlignVCenter | Qt::TextSingleLine, line);
+            }
+            lineY += lineHeight + block.lineSpacing;
+        }
+
+        y += block.height + blockSpacing;
+    }
 }
 
 class ClassicGraphicalModelItemRenderStrategy final : public GraphicalModelItemRenderStrategy {

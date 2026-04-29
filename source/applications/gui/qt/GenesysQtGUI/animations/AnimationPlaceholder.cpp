@@ -125,7 +125,7 @@ AnimationExpression::AnimationExpression() : AnimationPlaceholder("Expression") 
 }
 
 AnimationPlot::AnimationPlot() : AnimationPlaceholder("Plot") {
-    setDatasetsText("Series 1|TNOW|#1f77b4");
+    setDatasetsText("Series 1|TNOW|#1f77b4|2");
 }
 
 QString AnimationPlot::getTitle() const {
@@ -146,12 +146,75 @@ void AnimationPlot::setYAxisTitle(const QString& title) {
     update();
 }
 
+QString AnimationPlot::getXAxisTitle() const {
+    return _xAxisTitle;
+}
+
+void AnimationPlot::setXAxisTitle(const QString& title) {
+    _xAxisTitle = title;
+    update();
+}
+
 AnimationPlot::PlotType AnimationPlot::getPlotType() const {
     return _plotType;
 }
 
 void AnimationPlot::setPlotType(PlotType type) {
     _plotType = type;
+    update();
+}
+
+bool AnimationPlot::getShowGridLines() const {
+    return _showGridLines;
+}
+
+void AnimationPlot::setShowGridLines(bool show) {
+    _showGridLines = show;
+    update();
+}
+
+bool AnimationPlot::getShowTicks() const {
+    return _showTicks;
+}
+
+void AnimationPlot::setShowTicks(bool show) {
+    _showTicks = show;
+    update();
+}
+
+double AnimationPlot::getXAxisMin() const {
+    return _xAxisMin;
+}
+
+void AnimationPlot::setXAxisMin(double value) {
+    _xAxisMin = value;
+    update();
+}
+
+double AnimationPlot::getXAxisMax() const {
+    return _xAxisMax;
+}
+
+void AnimationPlot::setXAxisMax(double value) {
+    _xAxisMax = value;
+    update();
+}
+
+double AnimationPlot::getYAxisMin() const {
+    return _yAxisMin;
+}
+
+void AnimationPlot::setYAxisMin(double value) {
+    _yAxisMin = value;
+    update();
+}
+
+double AnimationPlot::getYAxisMax() const {
+    return _yAxisMax;
+}
+
+void AnimationPlot::setYAxisMax(double value) {
+    _yAxisMax = value;
     update();
 }
 
@@ -213,46 +276,78 @@ void AnimationPlot::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt
     painter->drawText(bounds.adjusted(4.0, 2.0, -4.0, -2.0), Qt::AlignTop | Qt::AlignHCenter, _title);
 
     painter->setFont(QFont());
-    painter->setPen(QPen(QColor(150, 150, 150), 1.0));
+    const QPen axisPen(QColor(90, 90, 90), 1.0);
+    painter->setPen(axisPen);
     painter->drawLine(plotArea.bottomLeft(), plotArea.topLeft());
     painter->drawLine(plotArea.bottomLeft(), plotArea.bottomRight());
 
-    double minValue = 0.0;
-    double maxValue = 1.0;
     int sampleCount = 0;
     bool hasValue = false;
+    double autoMinValue = 0.0;
+    double autoMaxValue = 1.0;
     for (const DataSeries& series : _series) {
         sampleCount = std::max(sampleCount, static_cast<int>(series.values.size()));
         for (double value : series.values) {
-            minValue = hasValue ? std::min(minValue, value) : value;
-            maxValue = hasValue ? std::max(maxValue, value) : value;
+            autoMinValue = hasValue ? std::min(autoMinValue, value) : value;
+            autoMaxValue = hasValue ? std::max(autoMaxValue, value) : value;
             hasValue = true;
         }
     }
+
+    const bool hasExplicitXAxisMin = !std::isnan(_xAxisMin);
+    const bool hasExplicitXAxisMax = !std::isnan(_xAxisMax);
+    const bool hasExplicitYAxisMin = !std::isnan(_yAxisMin);
+    const bool hasExplicitYAxisMax = !std::isnan(_yAxisMax);
+    const double xMin = hasExplicitXAxisMin ? _xAxisMin : 0.0;
+    const double xMax = hasExplicitXAxisMax ? _xAxisMax : static_cast<double>(std::max(1, sampleCount - 1));
+    double minValue = hasExplicitYAxisMin ? _yAxisMin : (hasValue ? autoMinValue : 0.0);
+    double maxValue = hasExplicitYAxisMax ? _yAxisMax : (hasValue ? autoMaxValue : 1.0);
+    double xStart = xMin;
+    double xEnd = xMax;
 
     if (!hasValue) {
         painter->setPen(QColor(90, 90, 90));
         painter->drawText(plotArea, Qt::AlignCenter, "No samples");
     } else {
+        if (qFuzzyCompare(xStart, xEnd)) {
+            xStart -= 1.0;
+            xEnd += 1.0;
+        }
         if (qFuzzyCompare(minValue, maxValue)) {
             minValue -= 1.0;
             maxValue += 1.0;
         }
-        if (minValue > 0.0) {
+        if (!hasExplicitYAxisMin && minValue > 0.0) {
             minValue = 0.0;
         }
 
-        const double span = maxValue - minValue;
+        const double ySpan = std::max(1e-9, maxValue - minValue);
+        const double xSpan = std::max(1e-9, xEnd - xStart);
         const auto pointFor = [&](int sampleIndex, double value) {
-            const double xRatio = sampleCount > 1 ? static_cast<double>(sampleIndex) / static_cast<double>(sampleCount - 1) : 0.0;
-            const double yRatio = (value - minValue) / span;
+            const double xValue = static_cast<double>(sampleIndex);
+            const double xRatio = (xValue - xStart) / xSpan;
+            const double yRatio = (value - minValue) / ySpan;
             return QPointF(plotArea.left() + xRatio * plotArea.width(), plotArea.bottom() - yRatio * plotArea.height());
         };
 
+        if (_showGridLines) {
+            painter->setPen(QPen(QColor(220, 220, 220), 1.0, Qt::DashLine));
+            const int ticks = 5;
+            for (int i = 1; i < ticks; ++i) {
+                const qreal y = plotArea.bottom() - (plotArea.height() * i / ticks);
+                painter->drawLine(QPointF(plotArea.left(), y), QPointF(plotArea.right(), y));
+            }
+            for (int i = 1; i < ticks; ++i) {
+                const qreal x = plotArea.left() + (plotArea.width() * i / ticks);
+                painter->drawLine(QPointF(x, plotArea.top()), QPointF(x, plotArea.bottom()));
+            }
+        }
+
         for (int seriesIndex = 0; seriesIndex < _series.size(); ++seriesIndex) {
             const DataSeries& series = _series.at(seriesIndex);
-            painter->setPen(QPen(series.color, 2.0));
+            QPen seriesPen(series.color, std::max<qreal>(1.0, series.lineWidth));
             painter->setBrush(QBrush(series.color));
+            painter->setPen(seriesPen);
             if (_plotType == PlotType::Line) {
                 QPainterPath path;
                 for (int i = 0; i < series.values.size(); ++i) {
@@ -275,6 +370,36 @@ void AnimationPlot::paint(QPainter* painter, const QStyleOptionGraphicsItem* opt
             }
         }
     }
+
+    if (_showTicks) {
+        painter->setPen(axisPen);
+        const QFontMetrics fm(painter->font());
+        const int ticks = 5;
+        for (int i = 0; i <= ticks; ++i) {
+            const qreal y = plotArea.bottom() - (plotArea.height() * i / ticks);
+            painter->drawLine(QPointF(plotArea.left() - 4.0, y), QPointF(plotArea.left(), y));
+            const double value = minValue + ((maxValue - minValue) * i / ticks);
+            painter->drawText(QRectF(0, y - fm.height() / 2.0, plotArea.left() - 6.0, fm.height()),
+                              Qt::AlignRight | Qt::AlignVCenter,
+                              QString::number(value, 'g', 4));
+        }
+        for (int i = 0; i <= ticks; ++i) {
+            const qreal x = plotArea.left() + (plotArea.width() * i / ticks);
+            painter->drawLine(QPointF(x, plotArea.bottom()), QPointF(x, plotArea.bottom() + 4.0));
+            const double value = xStart + ((xEnd - xStart) * i / ticks);
+            painter->drawText(QRectF(x - 20.0, plotArea.bottom() + 4.0, 40.0, fm.height()),
+                              Qt::AlignHCenter | Qt::AlignTop,
+                              QString::number(value, 'g', 4));
+        }
+    }
+
+    painter->setPen(Qt::black);
+    painter->drawText(QRectF(plotArea.left(), bounds.bottom() - 24.0, plotArea.width(), 16.0), Qt::AlignHCenter, _xAxisTitle);
+    painter->save();
+    painter->translate(12.0, plotArea.center().y() + 30.0);
+    painter->rotate(-90.0);
+    painter->drawText(QRectF(-plotArea.height() / 2.0, -8.0, plotArea.height(), 16.0), Qt::AlignHCenter, _yAxisTitle);
+    painter->restore();
 
     int legendX = static_cast<int>(plotArea.left());
     const int legendY = static_cast<int>(bounds.bottom() - 20.0);
@@ -311,6 +436,13 @@ QVector<AnimationPlot::DataSeries> AnimationPlot::parseDatasetsText(const QStrin
                 series.color = color;
             }
         }
+        if (fields.size() >= 4) {
+            bool ok = false;
+            const double width = fields.at(3).trimmed().toDouble(&ok);
+            if (ok && width > 0.0) {
+                series.lineWidth = width;
+            }
+        }
         if (!series.label.isEmpty() && !series.expression.isEmpty()) {
             result.append(series);
         }
@@ -321,7 +453,7 @@ QVector<AnimationPlot::DataSeries> AnimationPlot::parseDatasetsText(const QStrin
 QString AnimationPlot::datasetsTextFromSeries(const QVector<DataSeries>& seriesList) {
     QStringList lines;
     for (const DataSeries& series : seriesList) {
-        lines << QString("%1|%2|%3").arg(series.label, series.expression, series.color.name());
+        lines << QString("%1|%2|%3|%4").arg(series.label, series.expression, series.color.name()).arg(series.lineWidth, 0, 'f', 2);
     }
     return lines.join("\n");
 }

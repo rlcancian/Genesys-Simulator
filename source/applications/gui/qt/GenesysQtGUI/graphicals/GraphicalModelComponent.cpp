@@ -161,8 +161,9 @@ GraphicalModelItemRenderContext GraphicalModelComponent::renderContext() const {
 	context.kind = GraphicalModelItemRenderContext::ItemKind::Component;
 	context.bounds = boundingRect();
 	context.fillColor = _color;
-	context.primaryText = QString::fromStdString(_component->getLabel());
-	context.secondaryText = QString();
+	context.primaryText = QString::fromStdString(_component->getName());
+	context.secondaryText = QString::fromStdString(_component->getLabel());
+	context.tertiaryText = QString(); //QString::fromStdString(_component->getClassname());
 	context.selected = isSelected();
 	context.breakpoint = _component != nullptr && _component->hasBreakpointAt();
 	context.width = _width;

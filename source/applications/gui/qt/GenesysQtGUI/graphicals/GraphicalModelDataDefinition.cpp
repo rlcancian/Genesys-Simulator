@@ -100,8 +100,9 @@ GraphicalModelItemRenderContext GraphicalModelDataDefinition::renderContext() co
 		                               ? TraitsGUI<GModelDataDefinition>::selectedNonEditableOpacity
 		                               : TraitsGUI<GModelDataDefinition>::nonEditableOpacity);
 	}
-	context.primaryText = QString::fromStdString(_element->getLabel());
-	context.secondaryText = QString();
+	context.primaryText = QString::fromStdString(_element->getClassname()); //QString::fromStdString(_element->getLabel());
+	context.secondaryText = QString::fromStdString(_element->getName());
+	context.tertiaryText = QString(); //QString::fromStdString();
 	context.selected = isSelected();
 	context.breakpoint = false;
 	context.width = _width;
