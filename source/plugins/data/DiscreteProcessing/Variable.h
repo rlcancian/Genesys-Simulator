@@ -103,6 +103,10 @@ public:
 	double getValue(std::string index="");
 	/*! \brief Writes the current sparse value at the scalar or indexed position. */
 	void setValue(double value, std::string index="");
+	/*! \brief Returns the initial values serialized in bracket notation. */
+	std::string getInitialValuesText() const;
+	/*! \brief Parses bracket notation and replaces the initial value store. */
+	void setInitialValuesText(std::string valuesText);
 	/*! \brief Reads the initial sparse value, returning 0.0 when the index is absent. */
 	double getInitialValue(std::string index = "");
 	/*! \brief Writes the initial sparse value at the scalar or indexed position. */

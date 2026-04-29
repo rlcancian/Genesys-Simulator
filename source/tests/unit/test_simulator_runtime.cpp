@@ -74,6 +74,7 @@
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
+#include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
@@ -540,6 +541,19 @@ public:
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
     }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class MarkovChainProbe : public MarkovChain {
+public:
+    MarkovChainProbe(Model* model, const std::string& name = "") : MarkovChain(model, name) {}
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
@@ -8093,6 +8107,77 @@ TEST(SimulatorRuntimeTest, RSimulatorPluginInformationDeclaresRunnerDependency) 
                         info->getDynamicLibFilenameDependencies()->end(),
                         "rsimulatorrunner.so"),
               info->getDynamicLibFilenameDependencies()->end());
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainStoresRealizedStateInEntityAttribute) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrix");
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->setValue(0.0, "0,0");
+    transitionMatrix->setValue(1.0, "0,1");
+    transitionMatrix->setValue(1.0, "1,0");
+    transitionMatrix->setValue(0.0, "1,1");
+    auto* currentState = new Attribute(model, "Entity.CurrentMarkovState");
+
+    MarkovChainProbe chain(model, "MarkovProbe");
+    CollectorSinkComponentProbe sink(model, "AfterMarkov");
+    chain.connectTo(&sink);
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setCurrentState(currentState);
+    chain.CreateInternalAndAttachedDataProbe();
+
+    Entity* entity = model->createEntity("EntityOne", true);
+    ASSERT_NE(entity, nullptr);
+    entity->setAttributeValue("Entity.CurrentMarkovState", 0.0, "", true);
+
+    chain.DispatchEventProbe(entity);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.CurrentMarkovState"), 1.0);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 0u);
+    ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatrices) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariable");
+    variable.setInitialValuesText("[[1,2,3],[4,5,6],[7,8,9]]");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 3u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 3u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 1.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,2"), 6.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("2,1"), 8.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("2,2"), 9.0);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[1,2,3],[4,5,6],[7,8,9]]");
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatricesWithSpaces) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableWithSpaces");
+    variable.setInitialValuesText("[ [0.5 , 0.5] , [0.5 , 0.5] ]");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.5);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[0.5,0.5],[0.5,0.5]]");
 }
 
 TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {

@@ -66,11 +66,11 @@ protected:
 
 private:
 	const struct DEFAULT_VALUES {
-		const unsigned int width = 1;
-		const unsigned int height = 1;
+		const unsigned int width = 12;
+		const unsigned int height = 12;
 		const double initialSignal = 0.0;
-		const double diffusionRate = 0.0;
-		const double decayRate = 0.0;
+		const double diffusionRate = 0.25;
+		const double decayRate = 0.01;
 		const std::string initialValues = "";
 	} DEFAULT;
 

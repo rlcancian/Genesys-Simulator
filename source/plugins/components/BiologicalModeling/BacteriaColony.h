@@ -24,10 +24,10 @@
 /*!
  * \brief First GenESyS component for Gro-inspired bacteria colony simulation.
  *
- * BacteriaColony owns an internal biological simulation clock and a population
- * state that is independent from ModelSimulation global event time in this
- * first slice. The component references a reusable GroProgram and executes the
- * first supported runtime commands through plugin-side parser/runtime helpers.
+ * BacteriaColony owns bacteria and signal-field runtime state while using the
+ * enclosing ModelSimulation time as the single colony clock. The component
+ * references a reusable GroProgram and executes the first supported runtime
+ * commands through plugin-side parser/runtime helpers.
  */
 class BacteriaColony : public ModelComponent {
 public:
@@ -68,19 +68,15 @@ public:
 	void setSimulationStep(double simulationStep);
 	/*! \brief Returns the internal colony time increment. */
 	double getSimulationStep() const;
-	/*! \brief Sets the initial internal colony time for each replication. */
-	void setInitialColonyTime(double initialColonyTime);
-	/*! \brief Returns the initial internal colony time. */
-	double getInitialColonyTime() const;
-	/*! \brief Sets the final internal colony time reached before forwarding the entity. */
-	void setFinalColonyTime(double finalColonyTime);
-	/*! \brief Returns the final internal colony time reached before forwarding the entity. */
-	double getFinalColonyTime() const;
+	/*! \brief Sets the number of colony steps processed before forwarding one entity. */
+	void setNumSteps(unsigned int numSteps);
+	/*! \brief Returns the number of colony steps processed before forwarding one entity. */
+	unsigned int getNumSteps() const;
 	/*! \brief Sets the time unit used by the colony time-related attributes. */
 	void setColonyTimeUnit(Util::TimeUnit colonyTimeUnit);
 	/*! \brief Returns the time unit used by the colony time-related attributes. */
 	Util::TimeUnit getColonyTimeUnit() const;
-	/*! \brief Returns the current internal colony time. */
+	/*! \brief Returns the current colony time from the enclosing ModelSimulation. */
 	double getColonyTime() const;
 	/*! \brief Sets the initial bacteria population summary for each replication. */
 	void setInitialPopulation(unsigned int initialPopulation);
@@ -122,8 +118,6 @@ public:
 	void setGridHeight(unsigned int gridHeight);
 	/*! \brief Returns the discrete spatial grid height. */
 	unsigned int getGridHeight() const;
-	/*! \brief Advances the internal colony clock by one configured simulation step. */
-	double advanceColonyTime();
 	/*! \brief Executes the configured Gro program once against the current colony state. */
 	GroProgramRuntime::ExecutionResult executeGroProgram();
 
@@ -152,8 +146,7 @@ private:
 		const std::string bioNetworkName = "";
 		const std::string signalGridName = "";
 		const double simulationStep = 0.01;
-		const double initialColonyTime = 0.0;
-		const double finalColonyTime = 1.0;
+		const unsigned int numSteps = 100;
 		const Util::TimeUnit colonyTimeUnit = Util::TimeUnit::second;
 		const unsigned int initialPopulation = 1;
 		const unsigned int gridWidth = 1;
@@ -164,10 +157,9 @@ private:
 	BioNetwork* _bioNetwork = nullptr;
 	BacteriaSignalGrid* _signalGrid = nullptr;
 	double _simulationStep = DEFAULT.simulationStep;
-	double _initialColonyTime = DEFAULT.initialColonyTime;
-	double _finalColonyTime = DEFAULT.finalColonyTime;
+	unsigned int _currentStep = 0;
+	unsigned int _numSteps = DEFAULT.numSteps;
 	Util::TimeUnit _colonyTimeUnit = DEFAULT.colonyTimeUnit;
-	double _colonyTime = DEFAULT.initialColonyTime;
 	unsigned int _initialPopulation = DEFAULT.initialPopulation;
 	unsigned int _populationSize = DEFAULT.initialPopulation;
 	unsigned int _gridWidth = DEFAULT.gridWidth;
@@ -182,14 +174,13 @@ private:
 		std::string programName = "";
 	};
 	std::vector<GroSeedDefinition> _groSeedDefinitions;
+	std::string _groSeedSignature = "";
+	bool _groSeedsApplied = false;
 
 private:
-	// These helpers keep BacteriaColony backward compatible when it is used
-	// standalone, while treating attached BioNetwork/SignalGrid objects as the
-	// authoritative source for temporal and spatial configuration.
-	bool _usesBioNetworkTime() const;
+	// SignalGrid remains the authoritative source for spatial configuration
+	// when attached; colony timing is always read from ModelSimulation.
 	bool _usesSignalGridDimensions() const;
-	void _synchronizeTemporalStateFromBioNetwork();
 	void _synchronizeGridDimensionsFromSignalGrid();
 	bool _resetRuntimeSignalField(std::string& errorMessage);
 	bool _collectBioNetworkSpecies(std::vector<BioSpecies*>& species, std::string& errorMessage) const;
@@ -199,8 +190,8 @@ private:
 	bool _applyBioNetworkAssignments(const std::map<std::string, double>& assignedVariables, std::string& errorMessage);
 	void _removeBioNetworkAssignmentVariables(std::map<std::string, double>& variables) const;
 	bool _refreshRuntimeConfigurationFromGroProgram(std::string& errorMessage);
+	void _ensureGroSeededBacteriaInitialized();
 	void _rebuildInternalBacteriaFromGroSeeds();
-	bool _advanceBioNetworkStep(double stepSize, std::string& errorMessage);
 	std::size_t _signalIndex(unsigned int x, unsigned int y) const;
 	double _signalValueAt(unsigned int x, unsigned int y) const;
 	void _setSignalValueAt(unsigned int x, unsigned int y, double value);

@@ -4,12 +4,15 @@
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
+#include "graphicals/GraphicalModelComponent.h"
+#include "graphicals/ModelGraphicsScene.h"
 #include "plugins/components/BiologicalModeling/BacteriaColony.h"
 #include "plugins/data/BiologicalModeling/BacteriaSignalGrid.h"
 
 #include <QComboBox>
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QGraphicsItem>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QMainWindow>
@@ -19,6 +22,7 @@
 #include <QPainter>
 #include <QPen>
 #include <QPushButton>
+#include <QStringList>
 #include <QSpinBox>
 #include <QTimer>
 #include <QVBoxLayout>
@@ -43,6 +47,8 @@ struct BacteriumVisualState {
 	unsigned int gridX = 0;
 	unsigned int gridY = 0;
 	double age = 0.0;
+	QString programName;
+	QString runtimeVariablesSummary;
 };
 
 struct ColonyVisualSnapshot {
@@ -74,6 +80,22 @@ struct RenderedBacteriumMarker {
 	QPointF center;
 	double radius = 0.0;
 };
+
+BacteriaColony* selectedBacteriaColonyFromCanvas(const GuiExtensionRuntimeContext& context) {
+	if (context.graphicsScene == nullptr) {
+		return nullptr;
+	}
+	const QList<QGraphicsItem*> selectedItems = context.graphicsScene->selectedItems();
+	if (selectedItems.size() != 1) {
+		return nullptr;
+	}
+
+	auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(selectedItems.front());
+	if (graphicalComponent == nullptr) {
+		return nullptr;
+	}
+	return dynamic_cast<BacteriaColony*>(graphicalComponent->getComponent());
+}
 
 QColor signalColorForValue(double value, double minValue, double maxValue) {
 	if (!std::isfinite(value)) {
@@ -338,7 +360,8 @@ private:
 
 class BacteriaColonyViewerDialog final : public QDialog {
 public:
-	BacteriaColonyViewerDialog(QWidget* parent, Simulator* simulator) : QDialog(parent), _simulator(simulator) {
+	BacteriaColonyViewerDialog(QWidget* parent, Simulator* simulator, QString initialColonyName = "")
+		: QDialog(parent), _simulator(simulator), _initialColonyName(std::move(initialColonyName)) {
 		setAttribute(Qt::WA_DeleteOnClose);
 		setWindowTitle(tr("Bacteria Colony Viewer"));
 		resize(920, 680);
@@ -352,6 +375,8 @@ public:
 		_colonySelector->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
 
 		auto* refreshButton = new QPushButton(tr("Refresh now"), this);
+		auto* stepButton = new QPushButton(tr("Step colony"), this);
+		_runToggleButton = new QPushButton(tr("Start run"), this);
 		_liveToggleButton = new QPushButton(tr("Pause live"), this);
 		auto* refreshIntervalLabel = new QLabel(tr("Refresh (ms):"), this);
 		_refreshIntervalSpin = new QSpinBox(this);
@@ -362,6 +387,8 @@ public:
 		selectorLayout->addWidget(_colonySelector, 1);
 		selectorLayout->addWidget(refreshIntervalLabel);
 		selectorLayout->addWidget(_refreshIntervalSpin);
+		selectorLayout->addWidget(stepButton);
+		selectorLayout->addWidget(_runToggleButton);
 		selectorLayout->addWidget(_liveToggleButton);
 		selectorLayout->addWidget(refreshButton);
 		rootLayout->addLayout(selectorLayout);
@@ -377,6 +404,10 @@ public:
 		_selectionLabel = new QLabel(this);
 		_selectionLabel->setWordWrap(true);
 		rootLayout->addWidget(_selectionLabel);
+
+		_executionLabel = new QLabel(this);
+		_executionLabel->setWordWrap(true);
+		rootLayout->addWidget(_executionLabel);
 
 		_canvas = new BacteriaColonyCanvas(this);
 		_canvas->setSelectionChangedCallback([this](std::optional<unsigned int> selectedBacteriumId) {
@@ -394,12 +425,23 @@ public:
 			_refreshColonyList();
 			_refreshSnapshot();
 		});
+		connect(stepButton, &QPushButton::clicked, this, [this]() {
+			_executeSelectedColonyStep();
+			_refreshColonyList();
+			_refreshSnapshot();
+		});
+		connect(_runToggleButton, &QPushButton::clicked, this, [this]() {
+			_setRunEnabled(!_runEnabled);
+		});
 		connect(_liveToggleButton, &QPushButton::clicked, this, [this]() {
 			_setLiveUpdatesEnabled(!_liveUpdatesEnabled);
 		});
 		connect(_refreshIntervalSpin, qOverload<int>(&QSpinBox::valueChanged), this, [this](int value) {
 			if (_refreshTimer != nullptr) {
 				_refreshTimer->setInterval(value);
+			}
+			if (_runTimer != nullptr) {
+				_runTimer->setInterval(value);
 			}
 		});
 		connect(_colonySelector, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int currentIndex) {
@@ -417,11 +459,36 @@ public:
 		});
 		_setLiveUpdatesEnabled(true);
 
+		_runTimer = new QTimer(this);
+		_runTimer->setInterval(_refreshIntervalSpin->value());
+		// Manual viewer execution mutates colony state for inspection, but it
+		// does not advance ModelSimulation time; event-calendar dispatch does.
+		connect(_runTimer, &QTimer::timeout, this, [this]() {
+			_executeSelectedColonyStep();
+			_refreshColonyList();
+			_refreshSnapshot();
+		});
+		_setRunEnabled(false);
+
 		_refreshColonyList();
 		_refreshSnapshot();
 	}
 
 private:
+	void _setRunEnabled(bool enabled) {
+		_runEnabled = enabled;
+		if (_runTimer != nullptr) {
+			if (_runEnabled) {
+				_runTimer->start();
+			} else {
+				_runTimer->stop();
+			}
+		}
+		if (_runToggleButton != nullptr) {
+			_runToggleButton->setText(_runEnabled ? tr("Stop run") : tr("Start run"));
+		}
+	}
+
 	void _setLiveUpdatesEnabled(bool enabled) {
 		_liveUpdatesEnabled = enabled;
 		if (_refreshTimer != nullptr) {
@@ -434,6 +501,29 @@ private:
 		if (_liveToggleButton != nullptr) {
 			_liveToggleButton->setText(_liveUpdatesEnabled ? tr("Pause live") : tr("Resume live"));
 		}
+	}
+
+	void _executeSelectedColonyStep() {
+		BacteriaColony* colony = _selectedColony();
+		if (colony == nullptr) {
+			_lastExecutionMessage = tr("Execution: no selected BacteriaColony.");
+			_setRunEnabled(false);
+			return;
+		}
+
+		GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+		if (!result.succeeded) {
+			_lastExecutionMessage = tr("Execution failed: %1")
+				.arg(QString::fromStdString(result.errorMessage));
+			_setRunEnabled(false);
+			return;
+		}
+
+		_lastExecutionMessage =
+			tr("Execution: manual step, model time unchanged; %1 command(s), %2 signal mutation(s), %3 population mutation(s)")
+				.arg(result.executedCommands)
+				.arg(static_cast<qulonglong>(result.signalMutations.size()))
+				.arg(static_cast<qulonglong>(result.populationMutations.size()));
 	}
 
 	Model* _currentModel() const {
@@ -465,7 +555,11 @@ private:
 	}
 
 	void _refreshColonyList() {
-		const QString previouslySelected = _colonySelector->currentData().toString();
+		QString previouslySelected = _colonySelector->currentData().toString();
+		if (! _initialColonyName.isEmpty()) {
+			previouslySelected = _initialColonyName;
+			_initialColonyName.clear();
+		}
 		const std::vector<BacteriaColony*> colonies = _collectColonies();
 		_colonySelector->blockSignals(true);
 		_colonySelector->clear();
@@ -506,6 +600,7 @@ private:
 			                         : tr("Current model has no BacteriaColony component.");
 			_summaryLabel->setText(snapshot.statusMessage);
 			_detailsLabel->clear();
+			_executionLabel->setText(_lastExecutionMessage);
 			_lastSnapshot = snapshot;
 			_selectedBacteriumId.reset();
 			_selectionLabel->setText(tr("Selection: none"));
@@ -555,6 +650,22 @@ private:
 			visual.gridX = bacterium.gridX;
 			visual.gridY = bacterium.gridY;
 			visual.age = colony->getBacteriumAge(index);
+			visual.programName = bacterium.programName.empty()
+			                     ? tr("(none)")
+			                     : QString::fromStdString(bacterium.programName);
+			QStringList variableParts;
+			for (const auto& variable : bacterium.runtimeVariables) {
+				variableParts << QString("%1=%2")
+					.arg(QString::fromStdString(variable.first))
+					.arg(QString::number(variable.second, 'g', 5));
+				if (variableParts.size() >= 6) {
+					break;
+				}
+			}
+			if (static_cast<int>(bacterium.runtimeVariables.size()) > variableParts.size()) {
+				variableParts << tr("...");
+			}
+			visual.runtimeVariablesSummary = variableParts.isEmpty() ? tr("(none)") : variableParts.join(tr(", "));
 			snapshot.bacteria.push_back(visual);
 			const auto key = std::make_pair(visual.gridX, visual.gridY);
 			snapshot.maxBacteriaPerCell = std::max(snapshot.maxBacteriaPerCell, ++bacteriaPerCell[key]);
@@ -576,12 +687,14 @@ private:
 			.arg(snapshot.bioNetworkName)
 			.arg(snapshot.signalGridName));
 		_detailsLabel->setText(
-			tr("Signal range: [%1, %2] | Peak occupancy per cell: %3 | Trail depth: %4 refreshes | Live=%5")
+			tr("Signal range: [%1, %2] | Peak occupancy per cell: %3 | Trail depth: %4 refreshes | Live=%5 | Manual run=%6")
 				.arg(QString::number(snapshot.minSignal, 'g', 4))
 				.arg(QString::number(snapshot.maxSignal, 'g', 4))
 				.arg(snapshot.maxBacteriaPerCell)
 				.arg(kTrailHistoryLimit)
-				.arg(_liveUpdatesEnabled ? tr("on") : tr("paused")));
+				.arg(_liveUpdatesEnabled ? tr("on") : tr("paused"))
+				.arg(_runEnabled ? tr("on") : tr("off")));
+		_executionLabel->setText(_lastExecutionMessage);
 		_lastSnapshot = snapshot;
 		_refreshSelectionSummary(_lastSnapshot);
 		_canvas->setSelectedBacteriumId(_selectedBacteriumId);
@@ -613,13 +726,15 @@ private:
 			trailDepth = trailIt->second.size();
 		}
 		_selectionLabel->setText(
-			tr("Selection: bacterium #%1 | gen=%2 | cell=(%3,%4) | age=%5 | trail samples=%6")
+			tr("Selection: bacterium #%1 | program=%2 | gen=%3 | cell=(%4,%5) | age=%6 | trail samples=%7 | vars: %8")
 				.arg(selectedBacterium->id)
+				.arg(selectedBacterium->programName)
 				.arg(selectedBacterium->generation)
 				.arg(selectedBacterium->gridX)
 				.arg(selectedBacterium->gridY)
 				.arg(QString::number(selectedBacterium->age, 'g', 5))
-				.arg(static_cast<qulonglong>(trailDepth)));
+				.arg(static_cast<qulonglong>(trailDepth))
+				.arg(selectedBacterium->runtimeVariablesSummary));
 	}
 
 	void _updateTrails(const ColonyVisualSnapshot& snapshot) {
@@ -665,17 +780,23 @@ private:
 private:
 	Simulator* _simulator = nullptr;
 	QComboBox* _colonySelector = nullptr;
+	QPushButton* _runToggleButton = nullptr;
 	QPushButton* _liveToggleButton = nullptr;
 	QSpinBox* _refreshIntervalSpin = nullptr;
 	QLabel* _summaryLabel = nullptr;
 	QLabel* _detailsLabel = nullptr;
 	QLabel* _selectionLabel = nullptr;
+	QLabel* _executionLabel = nullptr;
 	BacteriaColonyCanvas* _canvas = nullptr;
 	QTimer* _refreshTimer = nullptr;
+	QTimer* _runTimer = nullptr;
+	bool _runEnabled = false;
 	bool _liveUpdatesEnabled = true;
+	QString _lastExecutionMessage = tr("Execution: idle");
 	std::optional<unsigned int> _selectedBacteriumId;
 	ColonyVisualSnapshot _lastSnapshot;
 	QString _lastColonyName;
+	QString _initialColonyName;
 	double _lastColonyTime = 0.0;
 	unsigned int _lastGridWidth = 0;
 	unsigned int _lastGridHeight = 0;
@@ -707,6 +828,33 @@ public:
 		if (registry == nullptr) {
 			return;
 		}
+
+		GuiActionContribution selectedViewerAction;
+		selectedViewerAction.id = "actionGuiExtensionsBacteriaColonyViewerSelected";
+		selectedViewerAction.menuPath = "Tools/Extensions/Biological";
+		selectedViewerAction.text = "Visualize Selected Bacteria Colony...";
+		selectedViewerAction.statusTip = "Open the bacteria colony viewer focused on the selected canvas component";
+		selectedViewerAction.isVisible = [](const GuiExtensionRuntimeContext& context) {
+			return context.mainWindow != nullptr && context.simulator != nullptr;
+		};
+		selectedViewerAction.isEnabled = [](const GuiExtensionRuntimeContext& context) {
+			return selectedBacteriaColonyFromCanvas(context) != nullptr;
+		};
+		selectedViewerAction.trigger = [](const GuiExtensionRuntimeContext& context) {
+			BacteriaColony* selectedColony = selectedBacteriaColonyFromCanvas(context);
+			if (context.mainWindow == nullptr || context.simulator == nullptr || selectedColony == nullptr) {
+				return;
+			}
+
+			auto* dialog = new BacteriaColonyViewerDialog(
+				static_cast<QWidget*>(context.mainWindow),
+				context.simulator,
+				QString::fromStdString(selectedColony->getName()));
+			dialog->show();
+			dialog->raise();
+			dialog->activateWindow();
+		};
+		registry->addAction(std::move(selectedViewerAction));
 
 		GuiWindowContribution viewerWindow;
 		viewerWindow.id = "actionGuiExtensionsBacteriaColonyViewer";
