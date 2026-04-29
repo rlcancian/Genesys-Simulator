@@ -7,6 +7,7 @@
 
 #include "plugins/data/BiologicalModeling/GroProgramRuntime.h"
 
+#include <cctype>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
@@ -71,7 +72,7 @@ private:
 		}
 		while (true) {
 			skipWhitespace();
-			if (!match("||")) {
+			if (!match("||") && !match("|")) {
 				break;
 			}
 			double right = 0.0;
@@ -89,7 +90,7 @@ private:
 		}
 		while (true) {
 			skipWhitespace();
-			if (!match("&&")) {
+			if (!match("&&") && !match("&")) {
 				break;
 			}
 			double right = 0.0;
@@ -121,6 +122,14 @@ private:
 					return false;
 				}
 				value = value != right ? 1.0 : 0.0;
+				continue;
+			}
+			if (match("=")) {
+				double right = 0.0;
+				if (!parseComparison(right, errorMessage)) {
+					return false;
+				}
+				value = value == right ? 1.0 : 0.0;
 				continue;
 			}
 			break;
@@ -282,6 +291,24 @@ private:
 
 		const std::string identifier = parseIdentifier();
 		if (!identifier.empty()) {
+			if (identifier == "true") {
+				value = 1.0;
+				return true;
+			}
+			if (identifier == "false") {
+				value = 0.0;
+				return true;
+			}
+
+			const std::size_t functionScan = _position;
+			skipWhitespace();
+			if (_position < _expressionText.size() && _expressionText[_position] == '(') {
+				if (!parseFunctionCall(identifier, value, errorMessage)) {
+					return false;
+				}
+				return true;
+			}
+			_position = functionScan;
 			value = resolveIdentifierValue(identifier, _state);
 			return true;
 		}
@@ -305,12 +332,74 @@ private:
 		++_position;
 		while (_position < _expressionText.size()) {
 			const unsigned char current = static_cast<unsigned char>(_expressionText[_position]);
-			if (!std::isalnum(current) && _expressionText[_position] != '_') {
-				break;
+			if (std::isalnum(current) || _expressionText[_position] == '_') {
+				++_position;
+				continue;
 			}
-			++_position;
+			if (_expressionText[_position] == '.') {
+				const std::size_t dotPosition = _position++;
+				if (_position >= _expressionText.size()) {
+					_position = dotPosition;
+					break;
+				}
+				const unsigned char next = static_cast<unsigned char>(_expressionText[_position]);
+				if (!std::isalpha(next) && _expressionText[_position] != '_') {
+					_position = dotPosition;
+					break;
+				}
+				continue;
+			}
+			break;
 		}
 		return _expressionText.substr(start, _position - start);
+	}
+
+	bool parseFunctionCall(const std::string& functionName, double& value, std::string& errorMessage) {
+		if (!match("(")) {
+			errorMessage = "GroProgramRuntime expression function call is missing an opening parenthesis. ";
+			return false;
+		}
+
+		std::vector<double> arguments;
+		skipWhitespace();
+		if (!match(")")) {
+			while (true) {
+				double argumentValue = 0.0;
+				if (!parseLogicalOr(argumentValue, errorMessage)) {
+					return false;
+				}
+				arguments.push_back(argumentValue);
+				skipWhitespace();
+				if (match(")")) {
+					break;
+				}
+				if (!match(",")) {
+					errorMessage = "GroProgramRuntime expression function call expects ',' or ')'. ";
+					return false;
+				}
+			}
+		}
+
+		if (functionName == "get_signal") {
+			if (arguments.size() > 1) {
+				errorMessage = "GroProgramRuntime get_signal expression accepts zero or one argument in the current subset. ";
+				return false;
+			}
+			value = resolveIdentifierValue("local_signal", _state);
+			return true;
+		}
+
+		if (functionName == "signal") {
+			if (arguments.empty()) {
+				errorMessage = "GroProgramRuntime signal expression expects at least one numeric argument. ";
+				return false;
+			}
+			value = arguments.front();
+			return true;
+		}
+
+		errorMessage = "GroProgramRuntime expression does not support function \"" + functionName + "\". ";
+		return false;
 	}
 
 	bool match(const std::string& token) {
@@ -436,6 +525,10 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 	                 GroProgramRuntime::ExecutionResult& result) {
 	for (const GroProgramIr::Command& command : commands) {
 		if (command.isAssignment()) {
+			if (command.assignmentOnlyIfUnset &&
+			    state.variables.find(command.assignmentTarget) != state.variables.end()) {
+				continue;
+			}
 			double assignedValue = 0.0;
 			if (!evaluateExpression(command.expressionText, state, assignedValue, result.errorMessage)) {
 				result.succeeded = false;
@@ -595,11 +688,11 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			    command.functionName == "consume_signal" ||
 			    command.functionName == "set_signal") {
 				double signalValue = 0.0;
-				if (command.arguments.size() != 1 ||
-				    !evaluateNonNegativeExpression(command.arguments.front(), state, signalValue, result.errorMessage)) {
+				if ((command.arguments.size() != 1 && command.arguments.size() != 2) ||
+				    !evaluateNonNegativeExpression(command.arguments.back(), state, signalValue, result.errorMessage)) {
 					result.succeeded = false;
 					result.errorMessage = "GroProgramRuntime " + command.functionName +
-					                      " command expects one non-negative scalar expression argument. ";
+					                      " command expects one value argument or one signal handle plus one value argument. ";
 					return false;
 				}
 

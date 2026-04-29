@@ -35,6 +35,7 @@ public:
 		unsigned int id = 0;
 		unsigned int parentId = 0;
 		unsigned int generation = 0;
+		std::string programName = "";
 		unsigned int divisionCount = 0;
 		double birthTime = 0.0;
 		double lastUpdateTime = 0.0;
@@ -175,7 +176,12 @@ private:
 	std::vector<BacteriumState> _bacteria;
 	std::map<std::string, double> _runtimeVariables;
 	std::vector<double> _signalField;
-	std::vector<std::pair<unsigned int, unsigned int>> _groSeedGridPositions;
+	struct GroSeedDefinition {
+		unsigned int gridX = 0;
+		unsigned int gridY = 0;
+		std::string programName = "";
+	};
+	std::vector<GroSeedDefinition> _groSeedDefinitions;
 
 private:
 	// These helpers keep BacteriaColony backward compatible when it is used
@@ -208,6 +214,7 @@ private:
 	void _resizeInternalBacteria(unsigned int populationSize);
 	void _applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
 	                                      unsigned int finalPopulationSize);
+	bool _executeSeededNamedGroPrograms(const GroProgramIr& ir, GroProgramRuntime::ExecutionResult& result);
 	bool _executeBacteriumScopedGroProgram(const GroProgramIr& ir, GroProgramRuntime::ExecutionResult& result);
 	bool _containsBacteriumScopedOnlyUnsupportedCommand(const std::vector<GroProgramIr::Command>& commands,
 	                                                    std::string& unsupportedCommand) const;
@@ -218,7 +225,8 @@ private:
 	                                              unsigned int parentGeneration,
 	                                              const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
 	                                              GroProgramRuntime::ExecutionResult& result);
-	void _appendBacterium(unsigned int parentId = 0, unsigned int generation = 0);
+	void _appendBacterium(unsigned int parentId = 0, unsigned int generation = 0,
+	                     const std::string& programName = "");
 	void _removeBacteria(unsigned int amount);
 	bool _removeBacteriumById(unsigned int bacteriumId);
 	void _refreshBacteriaUpdateTime();

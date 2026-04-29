@@ -36,6 +36,7 @@ struct GroProgramIr {
 		std::vector<std::string> arguments;
 		std::string assignmentTarget = "";
 		std::string expressionText = "";
+		bool assignmentOnlyIfUnset = false;
 		std::vector<Command> thenCommands;
 		std::vector<Command> elseCommands;
 
@@ -55,9 +56,14 @@ struct GroProgramIr {
 	GroProgramAst::SourceForm sourceForm = GroProgramAst::SourceForm::RawStatements;
 	std::string programName = "";
 	std::vector<Command> commands;
+	std::map<std::string, std::vector<Command>> namedPrograms;
 
 	bool isProgramBlock() const {
 		return sourceForm == GroProgramAst::SourceForm::ProgramBlock;
+	}
+
+	bool hasNamedProgram(const std::string& name) const {
+		return namedPrograms.find(name) != namedPrograms.end();
 	}
 };
 

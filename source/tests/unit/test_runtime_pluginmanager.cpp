@@ -652,6 +652,61 @@ TEST(RuntimePluginManagerClassTest, GroProgramCompilerBuildsAssignmentsAndCondit
     EXPECT_EQ(ir.commands[1].elseCommands[0].functionName, "die");
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramParserAndCompilerCaptureNamedProgramsAndGroRules) {
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse(
+        "include gro; "
+        "ahl := signal(1, 1); "
+        "program leader() := { "
+        "  p := [ t := 2.4 ]; "
+        "  true : { p.t := p.t + dt } "
+        "}; "
+        "program follower() := { "
+        "  p := [ mode := 0, t := 0 ]; "
+        "  p.mode = 0 & get_signal(ahl) > 0.01 : { p.mode := 1, p.t := 0 } "
+        "}; "
+        "ecoli([x:=0, y:=0], program leader());");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+    EXPECT_TRUE(parsed.ast.hasNamedPrograms());
+    ASSERT_EQ(parsed.ast.namedPrograms.size(), 2u);
+    EXPECT_EQ(parsed.ast.namedPrograms[0].name, "leader");
+    EXPECT_EQ(parsed.ast.namedPrograms[1].name, "follower");
+
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+
+    EXPECT_TRUE(ir.hasNamedProgram("leader"));
+    EXPECT_TRUE(ir.hasNamedProgram("follower"));
+    ASSERT_FALSE(ir.commands.empty());
+    bool foundSignalAssignment = false;
+    for (const GroProgramIr::Command& command : ir.commands) {
+        if (command.isAssignment() && command.assignmentTarget == "ahl") {
+            foundSignalAssignment = true;
+            EXPECT_EQ(command.expressionText, "signal(1, 1)");
+        }
+    }
+    EXPECT_TRUE(foundSignalAssignment);
+
+    const std::vector<GroProgramIr::Command>& leaderCommands = ir.namedPrograms.at("leader");
+    ASSERT_EQ(leaderCommands.size(), 2u);
+    EXPECT_TRUE(leaderCommands[0].isAssignment());
+    EXPECT_EQ(leaderCommands[0].assignmentTarget, "p.t");
+    EXPECT_TRUE(leaderCommands[0].assignmentOnlyIfUnset);
+    EXPECT_TRUE(leaderCommands[1].isIfStatement());
+    EXPECT_EQ(leaderCommands[1].expressionText, "true");
+
+    const std::vector<GroProgramIr::Command>& followerCommands = ir.namedPrograms.at("follower");
+    ASSERT_EQ(followerCommands.size(), 3u);
+    EXPECT_TRUE(followerCommands[0].isAssignment());
+    EXPECT_EQ(followerCommands[0].assignmentTarget, "p.mode");
+    EXPECT_TRUE(followerCommands[0].assignmentOnlyIfUnset);
+    EXPECT_TRUE(followerCommands[1].isAssignment());
+    EXPECT_EQ(followerCommands[1].assignmentTarget, "p.t");
+    EXPECT_TRUE(followerCommands[1].assignmentOnlyIfUnset);
+    EXPECT_TRUE(followerCommands[2].isIfStatement());
+    EXPECT_EQ(followerCommands[2].expressionText, "p.mode = 0 & get_signal(ahl) > 0.01");
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand) {
 	GroProgramParser parser;
 	GroProgramParser::Result parsed = parser.parse(
@@ -789,6 +844,42 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesAssignmentsAndCondi
 	EXPECT_EQ(secondResult.populationMutations[0].value, 1u);
 	EXPECT_DOUBLE_EQ(secondResult.assignedVariables.at("acc"), 2.0);
 	EXPECT_DOUBLE_EQ(state.variables.at("acc"), 2.0);
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeSupportsGroRuleSyntaxAndPersistentRecordFields) {
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse(
+        "program bacterium() { "
+        "  p := [ mode := 0, t := 0 ]; "
+        "  p.mode = 0 & get_signal(ahl) > 0.01 : { emit_signal(ahl, 2), p.mode := 1, p.t := 0 } "
+        "  p.mode = 1 : { p.t := p.t + dt } "
+        "}");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+
+    GroProgramRuntimeState state;
+    state.simulationStep = 0.5;
+    state.variables["ahl"] = 1.0;
+    state.contextVariables["local_signal"] = 1.0;
+
+    GroProgramRuntime runtime;
+    GroProgramRuntime::ExecutionResult firstResult = runtime.execute(ir, state);
+
+    EXPECT_TRUE(firstResult.succeeded) << firstResult.errorMessage;
+    ASSERT_EQ(firstResult.signalMutations.size(), 1u);
+    EXPECT_DOUBLE_EQ(firstResult.signalMutations[0].value, 2.0);
+    EXPECT_DOUBLE_EQ(state.variables.at("p.mode"), 1.0);
+    EXPECT_DOUBLE_EQ(state.variables.at("p.t"), 0.5);
+
+    state.contextVariables["local_signal"] = 0.0;
+    GroProgramRuntime::ExecutionResult secondResult = runtime.execute(ir, state);
+
+    EXPECT_TRUE(secondResult.succeeded) << secondResult.errorMessage;
+    EXPECT_TRUE(secondResult.signalMutations.empty());
+    EXPECT_DOUBLE_EQ(state.variables.at("p.mode"), 1.0);
+    EXPECT_DOUBLE_EQ(state.variables.at("p.t"), 1.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesRuntimeVariablesAcrossExecutions) {
@@ -939,6 +1030,61 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSignalAwareBacteriumPr
     EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 3.5);
     EXPECT_DOUBLE_EQ(colony->getSignalValueAt(1, 0), 2.0);
     EXPECT_DOUBLE_EQ(colony->getSignalValueAt(2, 0), 0.5);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesSeededNamedGroPrograms) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_LeaderFollower");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "include gro; "
+        "set(\"dt\", 0.25); "
+        "ahl := signal(1, 1); "
+        "program leader() := { "
+        "  p := [ t := 0.3 ]; "
+        "  true : { p.t := p.t + dt } "
+        "  p.t > 0.4 : { emit_signal(ahl, 5), p.t := 0 } "
+        "}; "
+        "program follower() := { "
+        "  p := [ mode := 0, t := 0 ]; "
+        "  p.mode = 0 & get_signal(ahl) > 0.01 : { p.mode := 1, p.t := 0 } "
+        "  p.mode = 1 : { p.t := p.t + dt } "
+        "}; "
+        "ecoli([x:=0, y:=0], program leader()); "
+        "ecoli([x:=0, y:=0], program follower());");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_LeaderFollower");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+    colony->setInitialColonyTime(0.0);
+    colony->setFinalColonyTime(10.0);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    EXPECT_EQ(colony->getBacteriumState(0).programName, "leader");
+    EXPECT_EQ(colony->getBacteriumState(1).programName, "follower");
+    EXPECT_DOUBLE_EQ(colony->getSimulationStep(), 0.25);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.25);
+    EXPECT_DOUBLE_EQ(colony->getSimulationStep(), 0.25);
+    EXPECT_EQ(colony->getPopulationSize(), 2u);
+    EXPECT_DOUBLE_EQ(colony->getSignalValueAt(0, 0), 5.0);
+    EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "p.t"));
+    EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(1, "p.mode"));
+    EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(1, "p.t"));
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.t"), 0.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.mode"), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.t"), 0.25);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalContext) {
