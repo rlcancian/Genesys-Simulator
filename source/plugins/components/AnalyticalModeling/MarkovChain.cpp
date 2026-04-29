@@ -36,12 +36,23 @@ std::string formatDefinitionReference(const ModelDataDefinition* definition) {
 	if (definition == nullptr) {
 		return "";
 	}
+	return definition->getName();
+}
+
+std::string formatDefinitionPersistenceReference(const ModelDataDefinition* definition) {
+	if (definition == nullptr) {
+		return "";
+	}
 	return definition->getClassname() + ":" + definition->getName();
 }
 
 std::pair<std::string, std::string> parseDefinitionReference(const std::string& value) {
 	const std::size_t separator = value.find(':');
 	if (separator == std::string::npos) {
+		const std::size_t suffixOpen = value.rfind(" (");
+		if (suffixOpen != std::string::npos && !value.empty() && value.back() == ')') {
+			return {value.substr(suffixOpen + 2, value.size() - suffixOpen - 3), value.substr(0, suffixOpen)};
+		}
 		return {"", value};
 	}
 	return {value.substr(0, separator), value.substr(separator + 1)};
@@ -108,7 +119,7 @@ public:
 	}
 	bool supportsInlineExpansion() const override { return true; }
 	bool supportsExistingObjectSelection() const override { return true; }
-	bool supportsObjectCreation() const override { return false; }
+	bool supportsObjectCreation() const override { return true; }
 	bool isInlineObjectProperty() const override { return false; }
 	bool hasObjectInstance() const override { return getReferencedModelDataDefinition() != nullptr; }
 	bool ensureObjectInstance() override { return hasObjectInstance(); }
@@ -121,11 +132,50 @@ public:
 			}
 			for (ModelDataDefinition* definition : *definitions->list()) {
 				if (definition != nullptr) {
-					options->insert(formatDefinitionReference(definition));
+					options->insert(definition->getName() + " (" + definition->getClassname() + ")");
 				}
 			}
 		}
 		return options;
+	}
+	List<std::string>* getCreatableReferenceTypes() override {
+		List<std::string>* types = new List<std::string>();
+		types->insert(Util::TypeOf<Attribute>());
+		types->insert(Util::TypeOf<Variable>());
+		return types;
+	}
+	std::string getCurrentReferenceType() const override {
+		ModelDataDefinition* definition = getReferencedModelDataDefinition();
+		return definition != nullptr ? definition->getClassname() : "";
+	}
+	bool createObjectInstance(const std::string& value = "") override {
+		const std::string defaultType = getCurrentReferenceType().empty() ? Util::TypeOf<Attribute>() : getCurrentReferenceType();
+		return createObjectInstanceOfType(defaultType, value);
+	}
+	bool createObjectInstanceOfType(const std::string& typeName, const std::string& value = "") override {
+		_ensureWritable("create instance for");
+		if (_setter == nullptr || _model == nullptr) {
+			return false;
+		}
+		const std::string concreteType = typeName.empty() ? Util::TypeOf<Attribute>() : typeName;
+		if (concreteType != Util::TypeOf<Attribute>() && concreteType != Util::TypeOf<Variable>()) {
+			return false;
+		}
+		std::string name = value;
+		if (name.empty()) {
+			name = getValue();
+		}
+		if (name.empty()) {
+			return false;
+		}
+		ModelDataDefinition* definition = _model->getDataManager()->getDataDefinition(concreteType, name);
+		if (definition == nullptr) {
+			definition = concreteType == Util::TypeOf<Attribute>()
+			                 ? static_cast<ModelDataDefinition*>(new Attribute(_model, name))
+			                 : static_cast<ModelDataDefinition*>(new Variable(_model, name));
+		}
+		_setter(definition);
+		return hasObjectInstance();
 	}
 	List<SimulationControl*>* getChildSimulationControls(int index = 0) override {
 		(void)index;
@@ -268,9 +318,9 @@ void MarkovChain::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber)
 	const unsigned int nextState = _drawNextState(entity, currentState);
 	_writeStateValue(entity, nextState);
 
-	traceSimulation(this,
+		traceSimulation(this,
 	                "MarkovChain sampled entity " + entity->getName() + " transition " + std::to_string(currentState) + " -> " +
-	                    std::to_string(nextState) + " using " + formatDefinitionReference(_currentState),
+	                    std::to_string(nextState) + " using " + formatDefinitionPersistenceReference(_currentState),
 	                TraceManager::Level::L7_internal);
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
@@ -291,11 +341,11 @@ bool MarkovChain::_loadInstance(PersistenceRecord *fields) {
 void MarkovChain::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	if (_transitionProbMatrix != nullptr) {
-		fields->saveField("transitionMatrixRef", formatDefinitionReference(_transitionProbMatrix), "", saveDefaultValues);
+		fields->saveField("transitionMatrixRef", formatDefinitionPersistenceReference(_transitionProbMatrix), "", saveDefaultValues);
 		fields->saveField("transitionMatrix", _transitionProbMatrix->getName(), "", saveDefaultValues);
 	}
 	if (_currentState != nullptr) {
-		fields->saveField("currentStateRef", formatDefinitionReference(_currentState), "", saveDefaultValues);
+		fields->saveField("currentStateRef", formatDefinitionPersistenceReference(_currentState), "", saveDefaultValues);
 		fields->saveField("currentState", _currentState->getName(), "", saveDefaultValues);
 	}
 }
@@ -395,7 +445,7 @@ double MarkovChain::_readStateValue(Entity* entity) const {
 	const_cast<MarkovChain*>(this)->traceSimulation(
 			const_cast<MarkovChain*>(this),
 			"MarkovChain read current state " + std::to_string(value) + " from " +
-			    formatDefinitionReference(_currentState),
+			    formatDefinitionPersistenceReference(_currentState),
 			TraceManager::Level::L8_detailed);
 	return value;
 }
@@ -404,7 +454,7 @@ void MarkovChain::_writeStateValue(Entity* entity, double value) {
 	writeDefinitionValue(_currentState, entity, value);
 	traceSimulation(this,
 	                "MarkovChain wrote current state " + std::to_string(value) + " to " +
-	                    formatDefinitionReference(_currentState),
+	                    formatDefinitionPersistenceReference(_currentState),
 	                TraceManager::Level::L8_detailed);
 }
 

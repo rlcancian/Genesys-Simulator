@@ -281,6 +281,7 @@ void ObjectPropertyBrowser::_clearAll() {
     _bindings.clear();
     _enumNames.clear();
     _objectListActions.clear();
+    _modelObjectActions.clear();
     _pendingCommittedProperties.clear();
     _pendingCommittedValues.clear();
 }
@@ -831,34 +832,50 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
     ModelDataDefinition* referencedDataDefinition = desc.control != nullptr
                                                         ? desc.control->getReferencedModelDataDefinition()
                                                         : nullptr;
-    const bool objectExists = referencedDataDefinition != nullptr
-                              && _isRegisteredModelDataDefinition(referencedDataDefinition);
+    const bool objectExists = referencedDataDefinition != nullptr;
+    const QString referencedType = objectExists
+                                       ? QString::fromStdString(referencedDataDefinition->getClassname())
+                                       : _modelObjectTypeName(desc);
 
     QStringList choices;
-    int currentIndex = -1;
+    std::vector<ModelObjectAction> actions;
     if (objectExists) {
         const QString objectName = QString::fromStdString(referencedDataDefinition->getName());
         choices << objectName;
-        choices << QString("Selecionar %1 e editá-lo").arg(objectName);
-        choices << QString("Remover referência a %1").arg(objectName);
-        currentIndex = 0;
+        choices << QString("Selecionar %1 e Editar").arg(referencedType);
+        choices << QString("Remover %1").arg(referencedType);
+        actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
+        actions.push_back(ModelObjectAction{ModelObjectAction::Kind::SelectAndEdit, "", ""});
+        actions.push_back(ModelObjectAction{ModelObjectAction::Kind::RemoveReference, "", ""});
     } else {
-        QSet<QString> seenNames;
-        for (const std::string& choice : desc.choices) {
-            const QString objectName = QString::fromStdString(choice);
-            if (objectName.isEmpty() || seenNames.contains(objectName)) {
+        choices << "";
+        actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
+        QSet<QString> seenLabels;
+        for (const std::string& choiceValue : desc.choices) {
+            const QString choiceLabel = QString::fromStdString(choiceValue);
+            if (choiceLabel.isEmpty() || seenLabels.contains(choiceLabel)) {
                 continue;
             }
-            seenNames.insert(objectName);
-            choices << objectName;
+            seenLabels.insert(choiceLabel);
+            choices << choiceLabel;
+            actions.push_back(ModelObjectAction{ModelObjectAction::Kind::SetReference, choiceValue, ""});
         }
-        choices << QString("Criar %1").arg(_modelObjectTypeName(desc));
+        if (!desc.creatableReferenceTypes.empty()) {
+            for (const std::string& typeName : desc.creatableReferenceTypes) {
+                choices << QString("Criar novo %1").arg(QString::fromStdString(typeName));
+                actions.push_back(ModelObjectAction{ModelObjectAction::Kind::CreateNew, "", typeName});
+            }
+        } else if (desc.supportsObjectCreation && _isKernelEditingEnabled(desc)) {
+            choices << QString("Criar novo %1").arg(_modelObjectTypeName(desc));
+            actions.push_back(ModelObjectAction{ModelObjectAction::Kind::CreateNew, "", ""});
+        }
     }
 
     _enumNames[property] = choices;
+    _modelObjectActions[property] = actions;
     _enumManager->setEnumNames(property, choices);
-    _enumManager->setValue(property, currentIndex);
-    property->setEnabled(!_activeKernelObjectReadOnly);
+    _enumManager->setValue(property, 0);
+    property->setEnabled(_isKernelEditingEnabled(desc));
     property->setToolTip("Selecione uma opção para vincular, criar, selecionar ou remover a referência do objeto.");
     property->setStatusTip("Referência para objeto gráfico do modelo");
 
@@ -915,17 +932,8 @@ bool ObjectPropertyBrowser::_isModelObjectActionProperty(
     const GenesysPropertyDescriptor& desc,
     SimulationControl* control
     ) const {
-    if (!desc.isModelDataDefinitionReference || control == nullptr || _modelObject == nullptr) {
-        return false;
-    }
-
-    ModelDataDefinition* referencedDataDefinition = control->getReferencedModelDataDefinition();
-    if (_relationForDataDefinition(referencedDataDefinition).exists) {
-        return true;
-    }
-
-    // Empty model-object references are action rows so users can create the missing child from the parent.
-    return desc.supportsObjectCreation && !control->hasObjectInstance();
+    (void)control;
+    return desc.isModelDataDefinitionReference && _modelObject != nullptr;
 }
 
 ObjectPropertyBrowser::ModelObjectRelation ObjectPropertyBrowser::_relationForDataDefinition(
@@ -2022,7 +2030,7 @@ bool ObjectPropertyBrowser::_setCurrentListElementTypeForProperty(QtProperty* pr
     return true;
 }
 
-bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property) {
+bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, const std::string& typeName) {
     if (!_hasValidActiveBindingContext(property)) {
         qWarning() << "[PropertyEditor] createModelObjectForProperty aborted due to invalid binding context";
         return false;
@@ -2054,7 +2062,10 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property) 
     bool created = referencedDataDefinition != nullptr;
     if (referencedDataDefinition == nullptr) {
         try {
-            created = binding.control->createObjectInstance(_defaultModelObjectName(binding.descriptor).toStdString());
+            const std::string defaultName = _defaultModelObjectName(binding.descriptor).toStdString();
+            created = typeName.empty()
+                          ? binding.control->createObjectInstance(defaultName)
+                          : binding.control->createObjectInstanceOfType(typeName, defaultName);
         } catch (...) {
             created = false;
         }
@@ -2143,13 +2154,19 @@ bool ObjectPropertyBrowser::_selectModelObjectForProperty(QtProperty* property) 
 
     GraphicalModelDataDefinition* graphicalDataDefinition =
         scene->findGraphicalModelDataDefinition(referencedDataDefinition);
-    if (graphicalDataDefinition == nullptr) {
-        return false;
+    if (graphicalDataDefinition != nullptr) {
+        scene->clearSelection();
+        graphicalDataDefinition->setSelected(true);
+        graphicalDataDefinition->setFocus();
     }
-
-    scene->clearSelection();
-    graphicalDataDefinition->setSelected(true);
-    graphicalDataDefinition->setFocus();
+    setActiveObject(nullptr,
+                    referencedDataDefinition,
+                    _graphicallyRepresentedModelObjects,
+                    _editableModelObjects,
+                    _propertyEditor,
+                    _propertyList,
+                    _propertyEditorUI,
+                    _propertyBox);
     return true;
 }
 
@@ -2176,6 +2193,7 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
     if (referencedDataDefinition == nullptr) {
         return false;
     }
+    Model* model = _modelObject != nullptr ? _modelObject->getParentModel() : nullptr;
 
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
@@ -2193,6 +2211,9 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
     }
 
     _materializeAffectedModelDataDefinitions();
+    if (model != nullptr) {
+        model->check();
+    }
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -2295,34 +2316,25 @@ bool ObjectPropertyBrowser::_applyModelObjectReferenceSelection(QtProperty* prop
         return false;
     }
 
-    const QStringList choices = _enumNames.value(property);
-    if (value < 0 || value >= choices.size()) {
+    const std::vector<ModelObjectAction> actions = _modelObjectActions.value(property);
+    if (value < 0 || value >= static_cast<int>(actions.size())) {
         return false;
     }
 
-    const Binding binding = it.value();
-    ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
-    const bool objectExists = referencedDataDefinition != nullptr
-                              && _isRegisteredModelDataDefinition(referencedDataDefinition);
-
-    if (objectExists) {
-        if (value == 0) {
+    const ModelObjectAction& action = actions[static_cast<std::size_t>(value)];
+    switch (action.kind) {
+        case ModelObjectAction::Kind::None:
             return true;
-        }
-        if (value == 1) {
+        case ModelObjectAction::Kind::SetReference:
+            return _setModelObjectReferenceForProperty(property, QString::fromStdString(action.objectValue));
+        case ModelObjectAction::Kind::CreateNew:
+            return _createModelObjectForProperty(property, action.typeName);
+        case ModelObjectAction::Kind::SelectAndEdit:
             return _selectModelObjectForProperty(property);
-        }
-        if (value == 2) {
+        case ModelObjectAction::Kind::RemoveReference:
             return _removeModelObjectReferenceForProperty(property);
-        }
-        return false;
     }
-
-    if (value == choices.size() - 1) {
-        return _createModelObjectForProperty(property);
-    }
-
-    return _setModelObjectReferenceForProperty(property, choices.at(value));
+    return false;
 }
 
 

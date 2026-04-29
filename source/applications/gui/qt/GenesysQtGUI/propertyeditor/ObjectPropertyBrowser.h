@@ -100,6 +100,20 @@ private:
         std::string typeName;
     };
 
+    struct ModelObjectAction {
+        enum class Kind {
+            None,
+            SetReference,
+            CreateNew,
+            SelectAndEdit,
+            RemoveReference
+        };
+
+        Kind kind = Kind::None;
+        std::string objectValue;
+        std::string typeName;
+    };
+
 private:
     // Ensure the property browser infrastructure is created exactly once.
     void _ensureBrowserInfrastructure();
@@ -135,7 +149,7 @@ private:
     void _materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition = nullptr) const;
     bool _createNewListElementForProperty(QtProperty* property, const std::string& typeName = "");
     bool _setCurrentListElementTypeForProperty(QtProperty* property, const std::string& typeName);
-    bool _createModelObjectForProperty(QtProperty* property);
+    bool _createModelObjectForProperty(QtProperty* property, const std::string& typeName = "");
     bool _setModelObjectReferenceForProperty(QtProperty* property, const QString& objectName);
     bool _selectModelObjectForProperty(QtProperty* property);
     bool _removeModelObjectReferenceForProperty(QtProperty* property);
@@ -228,6 +242,7 @@ private:
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
     QMap<QtProperty*, std::vector<ObjectListAction>> _objectListActions;
+    QMap<QtProperty*, std::vector<ModelObjectAction>> _modelObjectActions;
     QSet<QtProperty*> _pendingCommittedProperties;
     QMap<QtProperty*, QVariant> _pendingCommittedValues;
     ModelChangedCallback _modelChangedCallback;

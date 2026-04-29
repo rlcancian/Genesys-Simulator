@@ -225,6 +225,19 @@ public:
         (void)value;
         return false;
     }
+    virtual List<std::string>* getCreatableReferenceTypes() { return nullptr; }
+    virtual std::string getCurrentReferenceType() const { return ""; }
+    virtual bool setCurrentReferenceType(const std::string& typeName) {
+        (void)typeName;
+        return false;
+    }
+    virtual bool createObjectInstanceOfType(const std::string& typeName, const std::string& value = "") {
+        if (typeName.empty()) {
+            return createObjectInstance(value);
+        }
+        (void)value;
+        return false;
+    }
     // This method provides an explicit typed list-element creation operation for list-like properties.
     virtual bool createNewListElement(const std::string& value = "") {
         (void)value;
