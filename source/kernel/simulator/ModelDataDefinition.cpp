@@ -38,6 +38,7 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 		_name = name.substr(0, name.length() - 1) + std::to_string(Util::GenerateNewIdOfType(thistypename));
 	else
 		_name = name;
+	_label = "";
 	_hasChanged = false;
 	if (insertIntoModel) {
 		model->insert(this);
@@ -47,6 +48,10 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 		std::bind(&ModelDataDefinition::getName, this),
 		std::bind(&ModelDataDefinition::setName, this, std::placeholders::_1),
 		Util::TypeOf<ModelDataDefinition>(), getName(), "Name", "");
+	SimulationControlGeneric<std::string>* propLabel = new SimulationControlGeneric<std::string>(
+		std::bind(&ModelDataDefinition::getLabel, this),
+		std::bind(&ModelDataDefinition::setLabel, this, std::placeholders::_1),
+		Util::TypeOf<ModelDataDefinition>(), getName(), "Label", "");
 	SimulationControlGeneric<bool>* propReportStatistics = new SimulationControlGeneric<bool>(
 		std::bind(&ModelDataDefinition::isReportStatistics, this),
 		std::bind(&ModelDataDefinition::setReportStatistics, this, std::placeholders::_1),
@@ -58,10 +63,12 @@ ModelDataDefinition::ModelDataDefinition(Model* model, std::string thistypename,
 		false, false, true);
 
 	_parentModel->getControls()->insert(propName);
+	_parentModel->getControls()->insert(propLabel);
 	_parentModel->getControls()->insert(propReportStatistics);
 	_parentModel->getControls()->insert(propTraceLevel);
 	// setting properties
 	_addSimulationControl(propName);
+	_addSimulationControl(propLabel);
 	_addSimulationControl(propReportStatistics);
 	_addSimulationControl(propTraceLevel);
 }
@@ -230,6 +237,7 @@ bool ModelDataDefinition::_loadInstance(PersistenceRecord* fields) {
 	else return false;
 
 	setName(fields->loadField("name", ""));
+	_label = fields->loadField("label", "");
 	this->_reportStatistics = fields->
 		loadField("reportStatistics", TraitsKernel<ModelDataDefinition>::reportStatistics);
 
@@ -240,6 +248,7 @@ void ModelDataDefinition::_saveInstance(PersistenceRecord* fields, bool saveDefa
 	fields->saveField("typename", _typename);
 	fields->saveField("id", _id);
 	fields->saveField("name", _name);
+	fields->saveField("label", _label, "", saveDefaultValues);
 	fields->saveField("reportStatistics", _reportStatistics, TraitsKernel<ModelDataDefinition>::reportStatistics,
 	                  saveDefaultValues);
 }
@@ -388,6 +397,14 @@ void ModelDataDefinition::setName(const std::string& name) {
 
 const std::string& ModelDataDefinition::getName() const {
 	return _name;
+}
+
+void ModelDataDefinition::setLabel(const std::string& label) {
+	_label = label;
+}
+
+const std::string& ModelDataDefinition::getLabel() const {
+	return _label;
 }
 
 const std::string& ModelDataDefinition::getClassname() const {

@@ -52,7 +52,7 @@ GraphicalModelDataDefinition::GraphicalModelDataDefinition(Plugin* plugin, Model
 	setAcceptTouchEvents(true);
 	setActive(true);
 	setSelected(false);
-	setToolTip(QString::fromStdString(element->getName()));
+	setToolTip(QString::fromStdString(element->getLabel().empty() ? element->getName() : element->getLabel()));
 	// create associstions
 	//@TODO
 }
@@ -100,8 +100,8 @@ GraphicalModelItemRenderContext GraphicalModelDataDefinition::renderContext() co
 		                               ? TraitsGUI<GModelDataDefinition>::selectedNonEditableOpacity
 		                               : TraitsGUI<GModelDataDefinition>::nonEditableOpacity);
 	}
-	context.primaryText = QString::fromStdString(_element->getClassname());
-	context.secondaryText = QString::fromStdString(_element->getName());
+	context.primaryText = QString::fromStdString(_element->getLabel());
+	context.secondaryText = QString();
 	context.selected = isSelected();
 	context.breakpoint = false;
 	context.width = _width;

@@ -59,6 +59,16 @@ public: // get & set
 	 */
 	const std::string& getName() const;
 	/*!
+	 * \brief setLabel
+	 * \param label
+	 */
+	void setLabel(const std::string& label);
+	/*!
+	 * \brief getLabel
+	 * \return
+	 */
+	const std::string& getLabel() const;
+	/*!
 	 * \brief getClassname
 	 * \return
 	 */
@@ -182,6 +192,7 @@ protected:
 private:
 	// name is now private. So changes in name must be throught setName, wich gives oportunity to rename internelElements, SimulationControls and SimulationResponses
 	std::string _name;
+	std::string _label;
 
 private:
 	std::map<std::string, ModelDataDefinition*>* _internalData;

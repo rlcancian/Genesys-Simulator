@@ -97,7 +97,7 @@ GraphicalModelComponent::GraphicalModelComponent(Plugin* plugin, ModelComponent*
 	setAcceptTouchEvents(true);
 	setActive(true);
 	setSelected(false);
-	setToolTip(QString::fromStdString(component->show()));
+	setToolTip(QString::fromStdString(component->getLabel().empty() ? component->getName() : component->getLabel()));
 	// create input output ports
 	GraphicalComponentPort* port;
 	qreal px, py = 0;
@@ -161,7 +161,8 @@ GraphicalModelItemRenderContext GraphicalModelComponent::renderContext() const {
 	context.kind = GraphicalModelItemRenderContext::ItemKind::Component;
 	context.bounds = boundingRect();
 	context.fillColor = _color;
-	context.primaryText = QString::fromStdString(_component->getName());
+	context.primaryText = QString::fromStdString(_component->getLabel());
+	context.secondaryText = QString();
 	context.selected = isSelected();
 	context.breakpoint = _component != nullptr && _component->hasBreakpointAt();
 	context.width = _width;

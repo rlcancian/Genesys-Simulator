@@ -7,6 +7,8 @@
 #include <QPainter>
 #include <QPen>
 #include <QRadialGradient>
+#include <QRegularExpression>
+#include <QStringList>
 
 namespace {
 
@@ -77,16 +79,113 @@ void drawCenteredTextLine(QPainter* painter,
     painter->drawText(rect.adjusted(0, 2, 2, 0), Qt::AlignCenter, text);
 }
 
+QStringList wrapTextToWidth(const QString& text, const QFontMetrics& fm, qreal maxWidth) {
+    QStringList lines;
+    const QString trimmed = text.trimmed();
+    if (trimmed.isEmpty()) {
+        return lines;
+    }
+
+    const QStringList words = trimmed.split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
+    QString currentLine;
+    auto flushCurrentLine = [&]() {
+        if (!currentLine.isEmpty()) {
+            lines << currentLine;
+            currentLine.clear();
+        }
+    };
+
+    for (const QString& word : words) {
+        if (word.isEmpty()) {
+            continue;
+        }
+
+        const QString candidate = currentLine.isEmpty() ? word : currentLine + " " + word;
+        if (fm.horizontalAdvance(candidate) <= maxWidth) {
+            currentLine = candidate;
+            continue;
+        }
+
+        flushCurrentLine();
+
+        if (fm.horizontalAdvance(word) <= maxWidth) {
+            currentLine = word;
+            continue;
+        }
+
+        QString chunk;
+        for (const QChar ch : word) {
+            const QString chunkCandidate = chunk + ch;
+            if (!chunk.isEmpty() && fm.horizontalAdvance(chunkCandidate) > maxWidth) {
+                lines << chunk;
+                chunk = ch;
+            } else {
+                chunk = chunkCandidate;
+            }
+        }
+        if (!chunk.isEmpty()) {
+            currentLine = chunk;
+        }
+    }
+
+    flushCurrentLine();
+    return lines;
+}
+
+void drawWrappedText(QPainter* painter,
+                     const GraphicalModelItemRenderContext& context,
+                     const QRectF& contentRect,
+                     const QString& text,
+                     bool alignLeft,
+                     bool alignTop,
+                     bool shadowFirst) {
+    const QColor textColor = colorFromRgba(context.textColor);
+    const QColor shadowColor = colorFromRgba(context.textShadowColor);
+    const QFontMetrics fm = painter->fontMetrics();
+    const qreal maxWidth = qMax<qreal>(1.0, contentRect.width());
+    QStringList lines = wrapTextToWidth(text, fm, maxWidth);
+    if (lines.isEmpty()) {
+        return;
+    }
+
+    const int lineHeight = fm.height();
+    const int lineSpacing = 2;
+    const int totalHeight = lines.size() * lineHeight + qMax(0, lines.size() - 1) * lineSpacing;
+    const qreal top = alignTop
+                          ? contentRect.top()
+                          : contentRect.top() + (contentRect.height() - totalHeight) / 2.0;
+    const qreal left = alignLeft ? contentRect.left() : contentRect.left();
+
+    QPen pen(textColor);
+    pen.setWidth(2);
+    pen.setCosmetic(true);
+    painter->setPen(pen);
+    painter->setBrush(Qt::NoBrush);
+
+    qreal y = top;
+    for (const QString& line : lines) {
+        QRectF lineRect(left, y, contentRect.width(), lineHeight);
+        if (shadowFirst) {
+            painter->setPen(QPen(shadowColor, 2));
+            painter->drawText(lineRect.translated(0, 2), alignLeft ? Qt::AlignLeft : Qt::AlignHCenter, line);
+            painter->setPen(pen);
+            painter->drawText(lineRect, alignLeft ? Qt::AlignLeft : Qt::AlignHCenter, line);
+        } else {
+            painter->drawText(lineRect, alignLeft ? Qt::AlignLeft : Qt::AlignHCenter, line);
+            painter->setPen(QPen(shadowColor, 2));
+            painter->drawText(lineRect.adjusted(0, 2, 2, 0), alignLeft ? Qt::AlignLeft : Qt::AlignHCenter, line);
+            painter->setPen(pen);
+        }
+        y += lineHeight + lineSpacing;
+    }
+}
+
 void drawItemText(QPainter* painter,
                   const GraphicalModelItemRenderContext& context,
                   const QRectF& contentRect,
                   bool shadowFirstForSingleLine) {
-    painter->setBrush(Qt::NoBrush);
-    const QColor textColor = colorFromRgba(context.textColor);
-    const QColor shadowColor = colorFromRgba(context.textShadowColor);
-
     if (context.secondaryText.isEmpty()) {
-        drawCenteredTextLine(painter, contentRect, context.primaryText, textColor, shadowColor, shadowFirstForSingleLine);
+        drawWrappedText(painter, context, contentRect, context.primaryText, false, false, shadowFirstForSingleLine);
         return;
     }
 
@@ -98,8 +197,8 @@ void drawItemText(QPainter* painter,
     const QRectF line1Rect(contentRect.left(), blockTop, contentRect.width(), lineHeight);
     const QRectF line2Rect(contentRect.left(), blockTop + lineHeight + lineSpacing, contentRect.width(), lineHeight);
 
-    drawCenteredTextLine(painter, line1Rect, context.primaryText, textColor, shadowColor, true);
-    drawCenteredTextLine(painter, line2Rect, context.secondaryText, textColor, shadowColor, true);
+    drawWrappedText(painter, context, line1Rect, context.primaryText, false, false, true);
+    drawWrappedText(painter, context, line2Rect, context.secondaryText, false, false, true);
 }
 
 class ClassicGraphicalModelItemRenderStrategy final : public GraphicalModelItemRenderStrategy {
