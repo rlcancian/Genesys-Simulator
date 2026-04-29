@@ -372,6 +372,9 @@ void SimulationEventController::onProcessEventHandler(SimulationEvent* re) const
         return;
     }
     _callbacks.actualizeSimulationEvents(re);
+    if (_scene != nullptr) {
+        _scene->animatePlot();
+    }
     _callbacks.actualizeDebugEntities(false);
     _callbacks.actualizeDebugVariables(false);
     _callbacks.actualizeGraphicalModel(re);

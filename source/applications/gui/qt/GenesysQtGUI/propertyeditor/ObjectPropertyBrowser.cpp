@@ -1579,6 +1579,52 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                 },
                 true
                 ));
+        } else if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(rectItem)) {
+            QtProperty* animationGroup = _groupManager->addProperty("Animation plot");
+            addProperty(animationGroup);
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Title",
+                QVariant::String,
+                plot->getTitle(),
+                [plot, this](const QVariant& value) {
+                    plot->setTitle(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Datasets",
+                QVariant::String,
+                plot->getDatasetsText(),
+                [plot, this](const QVariant& value) {
+                    plot->setDatasetsText(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Chart type",
+                QVariant::String,
+                plot->getPlotType() == AnimationPlot::PlotType::Bar ? "Bar" : "Line",
+                [plot, this](const QVariant& value) {
+                    const QString text = value.toString().trimmed();
+                    plot->setPlotType(text.compare("Bar", Qt::CaseInsensitive) == 0
+                                          ? AnimationPlot::PlotType::Bar
+                                          : AnimationPlot::PlotType::Line);
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Y axis title",
+                QVariant::String,
+                plot->getYAxisTitle(),
+                [plot, this](const QVariant& value) {
+                    plot->setYAxisTitle(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
         } else if (AnimationPlaceholder* placeholder = dynamic_cast<AnimationPlaceholder*>(rectItem)) {
             QtProperty* animationGroup = _groupManager->addProperty("Animation " + placeholder->getAnimationType().toLower());
             addProperty(animationGroup);

@@ -230,6 +230,7 @@ public:
     void clearAnimationsTimer();
     void clearAnimationsPlaceholder();
     void clearAnimationsQueue();
+    void animatePlot();
     QList<QString> *getImagesAnimation();
     void drawingCounter();
     void drawingVariable();

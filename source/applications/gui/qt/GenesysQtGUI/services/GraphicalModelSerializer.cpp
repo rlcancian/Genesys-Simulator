@@ -685,6 +685,15 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     line += encodeGuiText(placeholder->getAnimationType());
                     line += " \t target=";
                     line += encodeGuiText(placeholder->getTargetName());
+                    if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
+                        line += " \t title=";
+                        line += encodeGuiText(plot->getTitle());
+                        line += QString(" \t chart=%1 \t ytitle=").arg(
+                            plot->getPlotType() == AnimationPlot::PlotType::Bar ? "Bar" : "Line");
+                        line += encodeGuiText(plot->getYAxisTitle());
+                        line += " \t datasets=";
+                        line += encodeGuiText(plot->getDatasetsText());
+                    }
                     line += QString(" \t position=(%1,%2) \t width=%3 \t height=%4")
                                 .arg(placeholder->scenePos().x(), 0, 'f', 2)
                                 .arg(placeholder->scenePos().y(), 0, 'f', 2)
@@ -1544,8 +1553,31 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                         continue;
                     }
 
-                    AnimationPlaceholder* placeholder = new AnimationPlaceholder(decodeGuiText(typeMatch.captured(1).trimmed()));
+                    const QString decodedType = decodeGuiText(typeMatch.captured(1).trimmed());
+                    AnimationPlaceholder* placeholder = decodedType.compare("Plot", Qt::CaseInsensitive) == 0
+                        ? static_cast<AnimationPlaceholder*>(new AnimationPlot())
+                        : new AnimationPlaceholder(decodedType);
                     placeholder->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()));
+                    if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
+                        QRegularExpressionMatch titleMatch = QRegularExpression("\\s*title=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch chartMatch = QRegularExpression("\\s*chart=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch yTitleMatch = QRegularExpression("\\s*ytitle=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch datasetsMatch = QRegularExpression("\\s*datasets=([^\\t]*)").match(rawLine);
+                        if (titleMatch.hasMatch()) {
+                            plot->setTitle(decodeGuiText(titleMatch.captured(1).trimmed()));
+                        }
+                        if (chartMatch.hasMatch()) {
+                            plot->setPlotType(chartMatch.captured(1).trimmed().compare("Bar", Qt::CaseInsensitive) == 0
+                                                  ? AnimationPlot::PlotType::Bar
+                                                  : AnimationPlot::PlotType::Line);
+                        }
+                        if (yTitleMatch.hasMatch()) {
+                            plot->setYAxisTitle(decodeGuiText(yTitleMatch.captured(1).trimmed()));
+                        }
+                        if (datasetsMatch.hasMatch()) {
+                            plot->setDatasetsText(decodeGuiText(datasetsMatch.captured(1).trimmed()));
+                        }
+                    }
                     placeholder->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
                     placeholder->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
                     _graphicsView->getScene()->getAnimationsPlaceholder()->append(placeholder);
@@ -1630,7 +1662,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 if (!match.hasMatch()) {
                     continue;
                 }
-                AnimationPlaceholder* placeholder = new AnimationPlaceholder(decodeGuiText(match.captured(2).trimmed()));
+                const QString decodedType = decodeGuiText(match.captured(2).trimmed());
+                AnimationPlaceholder* placeholder = decodedType.compare("Plot", Qt::CaseInsensitive) == 0
+                    ? static_cast<AnimationPlaceholder*>(new AnimationPlot())
+                    : new AnimationPlaceholder(decodedType);
                 placeholder->setTargetName(decodeGuiText(match.captured(3).trimmed()));
                 placeholder->setRect(QRectF(0, 0, match.captured(6).toDouble(), match.captured(7).toDouble()).normalized());
                 placeholder->setPos(QPointF(match.captured(4).toDouble(), match.captured(5).toDouble()));
