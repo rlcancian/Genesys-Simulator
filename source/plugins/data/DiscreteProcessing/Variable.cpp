@@ -271,7 +271,6 @@ Variable::Variable(Model* model, std::string name) : ModelDataDefinition(model, 
 				SparseValueStore scratch;
 				return parseInitialValuesText(value, &scratch, &errorMessage);
 			});
-	propInitialValue->setPreferredEditorHint(SimulationControlEditorHint::CodeEditor);
 	// this Control was infered from getters and setters
 	SimulationControlGenericClass<ModelDataDefinition*, Model*, ModelDataDefinition>* propScope =
 			new SimulationControlGenericClass<ModelDataDefinition*, Model*, ModelDataDefinition>(

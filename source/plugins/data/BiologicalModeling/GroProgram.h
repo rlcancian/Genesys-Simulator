@@ -36,8 +36,12 @@ public: // static plugin interface
 public:
 	/*! \brief Replaces the stored Gro source text. */
 	void setSourceCode(std::string sourceCode);
+	/*! \brief Replaces the stored Gro source text through the property-editor wrapper type. */
+	void setSourceCodeProperty(SourceCodeString sourceCode);
 	/*! \brief Returns the stored Gro source text. */
 	std::string getSourceCode() const;
+	/*! \brief Returns the stored Gro source text wrapped for the property editor. */
+	SourceCodeString getSourceCodeProperty() const;
 	/*! \brief Creates a small starter Gro program and optionally writes it to a file. */
 	bool createDefaultGroProgram(const std::string& filename = "");
 	/*! \brief Performs a permissive lexical sanity check for the stored source. */

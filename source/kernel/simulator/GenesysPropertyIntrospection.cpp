@@ -68,7 +68,7 @@ GenesysPropertyKind GenesysPropertyIntrospection::deduceKind(const SimulationCon
     if (typeName == Util::TypeOf<double>()) {
         return GenesysPropertyKind::Double;
     }
-    if (typeName == Util::TypeOf<std::string>()) {
+    if (typeName == Util::TypeOf<std::string>() || typeName == Util::TypeOf<SourceCodeString>()) {
         return GenesysPropertyKind::String;
     }
 

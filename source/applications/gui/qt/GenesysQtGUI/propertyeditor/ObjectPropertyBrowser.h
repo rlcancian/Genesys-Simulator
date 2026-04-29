@@ -144,7 +144,7 @@ private:
     ModelObjectRelation _relationForDataDefinition(ModelDataDefinition* dataDefinition) const;
     ModelDataDefinition* _referencedModelDataDefinition(const Binding& binding) const;
     QString _modelObjectTypeName(const GenesysPropertyDescriptor& desc) const;
-    QString _defaultModelObjectName(const GenesysPropertyDescriptor& desc) const;
+    QString _defaultModelObjectName(const GenesysPropertyDescriptor& desc, const std::string& concreteTypeName = "") const;
     bool _isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const;
     void _materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition = nullptr) const;
     bool _createNewListElementForProperty(QtProperty* property, const std::string& typeName = "");

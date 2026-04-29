@@ -628,12 +628,18 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
 }
 
 bool ObjectPropertyBrowser::_hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const {
-    return desc.supportsListEditor || desc.editorHint != SimulationControlEditorHint::Default;
+    return desc.supportsListEditor
+        || desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || desc.editorHint != SimulationControlEditorHint::Default;
 }
 
 QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropertyDescriptor& desc) const {
     if (desc.supportsListEditor) {
         return "Edit list...";
+    }
+
+    if (desc.technicalTypeName == Util::TypeOf<SourceCodeString>()) {
+        return "Edit source code...";
     }
 
     switch (desc.editorHint) {
@@ -1012,32 +1018,31 @@ QString ObjectPropertyBrowser::_modelObjectTypeName(const GenesysPropertyDescrip
     return QString::fromStdString(desc.displayName);
 }
 
-QString ObjectPropertyBrowser::_defaultModelObjectName(const GenesysPropertyDescriptor& desc) const {
-    const QString objectType = _modelObjectTypeName(desc);
+QString ObjectPropertyBrowser::_defaultModelObjectName(const GenesysPropertyDescriptor& desc, const std::string& concreteTypeName) const {
     const QString ownerName = _modelObject != nullptr
                                   ? QString::fromStdString(_modelObject->getName())
                                   : QStringLiteral("Object");
-    const QString baseName = QString("%1.%2").arg(ownerName, objectType);
+    const QString propertyName = QString::fromStdString(desc.displayName);
+    const QString baseName = QString("%1.%2").arg(ownerName, propertyName);
 
     ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
     Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
                     scene->getSimulator()->getModelManager() != nullptr)
                        ? scene->getSimulator()->getModelManager()->current()
                        : nullptr;
-    if (model == nullptr || model->getDataManager() == nullptr || desc.technicalTypeName.empty()) {
-        return baseName;
+    const std::string typeName = !concreteTypeName.empty()
+                                     ? concreteTypeName
+                                     : (!desc.currentReferenceType.empty() ? desc.currentReferenceType : desc.technicalTypeName);
+    if (model == nullptr || model->getDataManager() == nullptr || typeName.empty()) {
+        return QString("%1_1").arg(baseName);
     }
 
-    std::string candidate = baseName.toStdString();
-    if (model->getDataManager()->getDataDefinition(desc.technicalTypeName, candidate) == nullptr) {
-        return QString::fromStdString(candidate);
-    }
-
-    unsigned int suffix = 2;
+    unsigned int suffix = 1;
+    std::string candidate;
     do {
-        candidate = QString("%1 %2").arg(baseName).arg(suffix).toStdString();
+        candidate = QString("%1_%2").arg(baseName).arg(suffix).toStdString();
         suffix++;
-    } while (model->getDataManager()->getDataDefinition(desc.technicalTypeName, candidate) != nullptr);
+    } while (model->getDataManager()->getDataDefinition(typeName, candidate) != nullptr);
 
     return QString::fromStdString(candidate);
 }
@@ -1823,7 +1828,8 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         return true;
     }
 
-    if (binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
+    if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
         return _openTextDialogEditor(binding);
     }
 
@@ -2062,7 +2068,7 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, 
     bool created = referencedDataDefinition != nullptr;
     if (referencedDataDefinition == nullptr) {
         try {
-            const std::string defaultName = _defaultModelObjectName(binding.descriptor).toStdString();
+            const std::string defaultName = _defaultModelObjectName(binding.descriptor, typeName).toStdString();
             created = typeName.empty()
                           ? binding.control->createObjectInstance(defaultName)
                           : binding.control->createObjectInstanceOfType(typeName, defaultName);
