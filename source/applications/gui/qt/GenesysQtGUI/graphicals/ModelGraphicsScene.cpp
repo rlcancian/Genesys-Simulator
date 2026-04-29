@@ -3409,6 +3409,25 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                     requestGraphicalDataDefinitionsSync();
                     return;
                 }
+
+                // Allow graphical authoring of data definitions by dropping them directly on the canvas.
+                ModelDataDefinition* dataDefinition = plugin->newInstance(_simulator->getModelManager()->current());
+                if (dataDefinition != nullptr) {
+                    event->setDropAction(Qt::IgnoreAction);
+                    event->accept();
+
+                    GraphicalModelDataDefinition* graphicalDataDefinition =
+                        addGraphicalModelDataDefinition(plugin, dataDefinition, event->scenePos(), color);
+                    if (graphicalDataDefinition != nullptr) {
+                        clearSelection();
+                        graphicalDataDefinition->setSelected(true);
+                        graphicalDataDefinition->setFocus();
+                    }
+
+                    // Reuse the canonical queued sync so editability and diagram links remain consistent.
+                    requestGraphicalDataDefinitionsSync();
+                    return;
+                }
             }
         }
     }

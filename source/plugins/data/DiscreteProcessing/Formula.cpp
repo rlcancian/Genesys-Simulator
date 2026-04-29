@@ -141,3 +141,12 @@ bool Formula::_check(std::string& errorMessage) {
 void Formula::_createInternalAndAttachedData() {
 	this->_attachedDataInsert("Itself", this); // @TODO: Self reference to avoid it to be excluded during orphan checking, since no comonent knows its expression may have a formula
 }
+
+void Formula::_createReportStatisticsDataDefinitions() {
+}
+
+void Formula::_createEditableDataDefinitions() {
+}
+
+void Formula::_createOthersDataDefinitions() {
+}

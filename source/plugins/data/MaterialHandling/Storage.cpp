@@ -135,3 +135,12 @@ ParserChangesInformation* Storage::_getParserChangesInformation() {
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
 }
+
+void Storage::_createReportStatisticsDataDefinitions() {
+}
+
+void Storage::_createEditableDataDefinitions() {
+}
+
+void Storage::_createOthersDataDefinitions() {
+}

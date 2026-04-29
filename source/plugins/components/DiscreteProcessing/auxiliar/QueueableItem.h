@@ -55,6 +55,9 @@ public:
 
 	std::string getTypeDC() {return _typeDC;};
 private:
+	void _ensureSimulationControls(Model* model);
+
+private:
 
 	const struct DEFAULT_VALUES {
 		const std::string quantityExpression = "1";

@@ -154,3 +154,12 @@ void Signal::setLimitExpression(const std::string&newLimitExpression)
 void Signal::_initBetweenReplications() {
 
 }
+
+void Signal::_createReportStatisticsDataDefinitions() {
+}
+
+void Signal::_createEditableDataDefinitions() {
+}
+
+void Signal::_createOthersDataDefinitions() {
+}

@@ -127,3 +127,12 @@ bool Leave::_check(std::string& errorMessage) {
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Station>(), _station, "Station", errorMessage);
 	return resultAll;
 }
+
+void Leave::_createReportStatisticsDataDefinitions() {
+}
+
+void Leave::_createEditableDataDefinitions() {
+}
+
+void Leave::_createOthersDataDefinitions() {
+}

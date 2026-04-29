@@ -209,3 +209,12 @@ PluginInformation* Write::GetPluginInformation() {
 	// ...
 	return info;
 }
+
+void Write::_createReportStatisticsDataDefinitions() {
+}
+
+void Write::_createEditableDataDefinitions() {
+}
+
+void Write::_createOthersDataDefinitions() {
+}

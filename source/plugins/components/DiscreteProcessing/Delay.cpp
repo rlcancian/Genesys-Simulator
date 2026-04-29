@@ -223,3 +223,12 @@ PluginInformation* Delay::GetPluginInformation() {
 	info->setDescriptionHelp(text);
 	return info;
 }
+
+void Delay::_createReportStatisticsDataDefinitions() {
+}
+
+void Delay::_createEditableDataDefinitions() {
+}
+
+void Delay::_createOthersDataDefinitions() {
+}

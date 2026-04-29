@@ -355,3 +355,12 @@ void PickStation::_createInternalAndAttachedData() {
 void PickStation::_addSimulationControl(SimulationControl* property) {
 	ModelDataDefinition::_addSimulationControl(property);
 }
+
+void PickStation::_createReportStatisticsDataDefinitions() {
+}
+
+void PickStation::_createEditableDataDefinitions() {
+}
+
+void PickStation::_createOthersDataDefinitions() {
+}

@@ -75,3 +75,12 @@ PluginInformation* Unstore::GetPluginInformation() {
 }
 
 
+
+void Unstore::_createReportStatisticsDataDefinitions() {
+}
+
+void Unstore::_createEditableDataDefinitions() {
+}
+
+void Unstore::_createOthersDataDefinitions() {
+}

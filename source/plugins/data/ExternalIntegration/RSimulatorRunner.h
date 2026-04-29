@@ -97,6 +97,17 @@ protected:
 	/*! \brief Creates internal/attached data definitions; currently no-op. */
 	virtual void _createInternalAndAttachedData() override;
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private:
 	const struct DEFAULT_VALUES {
 		std::string rExecutable = "Rscript";

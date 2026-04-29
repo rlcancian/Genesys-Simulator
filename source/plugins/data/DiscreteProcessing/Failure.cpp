@@ -351,3 +351,12 @@ void Failure::_onFailureFailEventHandler(void* resourcePtr){
 	// schedule next resource activation
 	_scheduleActivation(resource);
 }
+
+void Failure::_createReportStatisticsDataDefinitions() {
+}
+
+void Failure::_createEditableDataDefinitions() {
+}
+
+void Failure::_createOthersDataDefinitions() {
+}

@@ -24,6 +24,7 @@
 #include <QSet>
 #include <QTimer>
 
+#include <cctype>
 #include <set>
 
 namespace {
@@ -94,6 +95,59 @@ void collectEditableReferencedDataDefinitions(
     }
 }
 
+bool isPositiveIndexSuffix(const std::string& suffix) {
+    if (suffix.empty()) {
+        return false;
+    }
+
+    for (const char character : suffix) {
+        if (!std::isdigit(static_cast<unsigned char>(character))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+bool attachmentNameMatchesEditableControl(const std::string& attachmentName,
+                                          const GenesysPropertyDescriptor& descriptor) {
+    if (attachmentName.empty() || descriptor.readOnly || !descriptor.isClass) {
+        return false;
+    }
+
+    if (attachmentName == descriptor.displayName || attachmentName == descriptor.technicalTypeName) {
+        return true;
+    }
+
+    if (descriptor.isList
+        && !descriptor.technicalTypeName.empty()
+        && attachmentName.rfind(descriptor.technicalTypeName, 0) == 0) {
+        return isPositiveIndexSuffix(attachmentName.substr(descriptor.technicalTypeName.size()));
+    }
+
+    return false;
+}
+
+void collectEditableAttachedDataDefinitionNames(ModelComponent* component, QSet<QString>& names) {
+    if (component == nullptr
+        || component->getSimulationControls() == nullptr
+        || component->getAttachedData() == nullptr) {
+        return;
+    }
+
+    for (SimulationControl* control : *component->getSimulationControls()->list()) {
+        const GenesysPropertyDescriptor descriptor = GenesysPropertyIntrospection::describe(control);
+        for (const auto& attachedData : *component->getAttachedData()) {
+            ModelDataDefinition* dataDefinition = attachedData.second;
+            if (dataDefinition == nullptr) {
+                continue;
+            }
+            if (attachmentNameMatchesEditableControl(attachedData.first, descriptor)) {
+                names.insert(QString::fromStdString(dataDefinition->getName()));
+            }
+        }
+    }
+}
+
 QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
     QSet<QString> names;
     if (scene == nullptr || scene->getSimulator() == nullptr ||
@@ -115,6 +169,7 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
                     names,
                     recursionPath
                     );
+                collectEditableAttachedDataDefinitionNames(component, names);
             }
         }
     }

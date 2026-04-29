@@ -353,3 +353,12 @@ PluginInformation* Search::GetPluginInformation() {
 	// ...  @TODO
 	return info;
 }
+
+void Search::_createReportStatisticsDataDefinitions() {
+}
+
+void Search::_createEditableDataDefinitions() {
+}
+
+void Search::_createOthersDataDefinitions() {
+}

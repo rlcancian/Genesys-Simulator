@@ -262,3 +262,12 @@ PluginInformation* CppForG::GetPluginInformation() {
 	info->setDescriptionHelp("//@TODO");
 	return info;
 }
+
+void CppForG::_createReportStatisticsDataDefinitions() {
+}
+
+void CppForG::_createEditableDataDefinitions() {
+}
+
+void CppForG::_createOthersDataDefinitions() {
+}

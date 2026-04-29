@@ -166,9 +166,12 @@ private:
     std::string _fromVariant(const GenesysPropertyDescriptor& desc, const QVariant& value) const;
     int _enumIndexFor(const GenesysPropertyDescriptor& desc) const;
     QStringList _toQStringList(const std::vector<std::string>& values) const;
+    bool _hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const;
+    QString _specializedEditorActionText(const GenesysPropertyDescriptor& desc) const;
 
     bool _openSpecializedEditorForCurrentItem();
     bool _openSpecializedEditor(QtProperty* property);
+    bool _openTextDialogEditor(const Binding& binding);
     bool _createObjectForProperty(QtProperty* property);
 
 protected:

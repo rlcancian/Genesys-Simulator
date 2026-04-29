@@ -1,5 +1,8 @@
 #include "GraphicalContextMenuController.h"
 
+#include "kernel/simulator/Model.h"
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "ui_mainwindow.h"
 #include "../graphicals/GraphicalComponentPort.h"
 #include "../graphicals/GraphicalConnection.h"
@@ -9,11 +12,100 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../graphicals/ModelGraphicsView.h"
 
+#include <QActionGroup>
 #include <QContextMenuEvent>
 #include <QGraphicsItemGroup>
 #include <QMenu>
 
 #include <utility>
+
+namespace {
+
+struct TraceLevelMenuEntry {
+    TraceManager::Level level;
+    const char* label;
+};
+
+constexpr TraceLevelMenuEntry kTraceLevelEntries[] = {
+    {TraceManager::Level::L0_noTraces, "L0_noTraces"},
+    {TraceManager::Level::L1_errorFatal, "L1_errorFatal"},
+    {TraceManager::Level::L2_results, "L2_results"},
+    {TraceManager::Level::L3_errorRecover, "L3_errorRecover"},
+    {TraceManager::Level::L4_warning, "L4_warning"},
+    {TraceManager::Level::L5_event, "L5_event"},
+    {TraceManager::Level::L6_arrival, "L6_arrival"},
+    {TraceManager::Level::L7_internal, "L7_internal"},
+    {TraceManager::Level::L8_detailed, "L8_detailed"},
+    {TraceManager::Level::L9_mostDetailed, "L9_mostDetailed"}
+};
+
+bool collectBioReactionSelection(ModelGraphicsScene* scene,
+                                 BioReaction*& reaction,
+                                 std::vector<BioSpecies*>& speciesDefinitions) {
+    reaction = nullptr;
+    speciesDefinitions.clear();
+    if (scene == nullptr) {
+        return false;
+    }
+
+    const QList<QGraphicsItem*> selectedItems = scene->selectedItems();
+    if (selectedItems.size() < 2) {
+        return false;
+    }
+
+    for (QGraphicsItem* item : selectedItems) {
+        auto* graphicalDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item);
+        if (graphicalDefinition == nullptr) {
+            return false;
+        }
+
+        ModelDataDefinition* dataDefinition = graphicalDefinition->getDataDefinition();
+        if (auto* candidateReaction = dynamic_cast<BioReaction*>(dataDefinition)) {
+            if (reaction != nullptr) {
+                return false;
+            }
+            reaction = candidateReaction;
+            continue;
+        }
+
+        auto* species = dynamic_cast<BioSpecies*>(dataDefinition);
+        if (species == nullptr) {
+            return false;
+        }
+        speciesDefinitions.push_back(species);
+    }
+
+    return reaction != nullptr && !speciesDefinitions.empty();
+}
+
+bool reactionAlreadyContainsReactant(BioReaction* reaction, const std::string& speciesName) {
+    for (const auto& term : reaction->getReactants()) {
+        if (term.speciesName == speciesName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool reactionAlreadyContainsProduct(BioReaction* reaction, const std::string& speciesName) {
+    for (const auto& term : reaction->getProducts()) {
+        if (term.speciesName == speciesName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool reactionAlreadyContainsModifier(BioReaction* reaction, const std::string& speciesName) {
+    for (const std::string& modifierName : reaction->getModifiers()) {
+        if (modifierName == speciesName) {
+            return true;
+        }
+    }
+    return false;
+}
+
+} // namespace
 
 GraphicalContextMenuController::GraphicalContextMenuController(ModelGraphicsView* graphicsView,
                                                                Ui::MainWindow* ui,
@@ -46,7 +138,7 @@ void GraphicalContextMenuController::handleGraphicsViewContextMenu(QContextMenuE
     if (contextKind == ContextKind::Background) {
         populateBackgroundMenu(&menu);
     } else {
-        populateItemMenu(&menu, contextKind);
+        populateItemMenu(&menu, contextKind, clickedItem);
     }
 
     if (!menu.actions().isEmpty()) {
@@ -129,6 +221,20 @@ GraphicalContextMenuController::ContextKind GraphicalContextMenuController::clas
     return ContextKind::GenericItem;
 }
 
+ModelDataDefinition* GraphicalContextMenuController::modelDataDefinitionFor(QGraphicsItem* item) const {
+    if (item == nullptr) {
+        return nullptr;
+    }
+
+    if (auto* graphicalComponent = dynamic_cast<GraphicalModelComponent*>(item)) {
+        return graphicalComponent->getComponent();
+    }
+    if (auto* graphicalDataDefinition = dynamic_cast<GraphicalModelDataDefinition*>(item)) {
+        return graphicalDataDefinition->getDataDefinition();
+    }
+    return nullptr;
+}
+
 void GraphicalContextMenuController::populateBackgroundMenu(QMenu* menu) const {
     if (menu == nullptr) {
         return;
@@ -148,7 +254,7 @@ void GraphicalContextMenuController::populateBackgroundMenu(QMenu* menu) const {
     menu->addAction(_ui->actionViewConfigure);
 }
 
-void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind contextKind) const {
+void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind contextKind, QGraphicsItem* clickedItem) const {
     if (menu == nullptr) {
         return;
     }
@@ -159,6 +265,7 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
     switch (contextKind) {
         case ContextKind::SingleComponent:
             menu->addSeparator();
+            addTraceLevelMenu(menu, clickedItem);
             menu->addAction(_ui->actionGModelShowConnect);
             menu->addAction(_ui->actionGModelComponentBreakpoint);
             if (_openSubmodelAction != nullptr) {
@@ -170,14 +277,17 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
             break;
 
         case ContextKind::SingleDataDefinition:
+            menu->addSeparator();
+            addTraceLevelMenu(menu, clickedItem);
+            addBioReactionLinkMenu(menu);
             if (_openSubmodelAction != nullptr) {
-                menu->addSeparator();
                 menu->addAction(_openSubmodelAction);
             }
             break;
 
         case ContextKind::MultiSelection:
             menu->addSeparator();
+            addBioReactionLinkMenu(menu);
             menu->addAction(_ui->actionEditGroup);
             menu->addAction(_ui->actionEditUngroup);
             addAlignMenu(menu);
@@ -238,6 +348,108 @@ void GraphicalContextMenuController::addZoomMenu(QMenu* menu) const {
     zoomMenu->addAction(_ui->actionZoom_In);
     zoomMenu->addAction(_ui->actionZoom_Out);
     zoomMenu->addAction(_ui->actionZoom_All);
+}
+
+void GraphicalContextMenuController::addTraceLevelMenu(QMenu* menu, QGraphicsItem* clickedItem) const {
+    if (menu == nullptr) {
+        return;
+    }
+
+    ModelDataDefinition* modelDataDefinition = modelDataDefinitionFor(clickedItem);
+    if (modelDataDefinition == nullptr) {
+        return;
+    }
+
+    // commented since Trace Level became a property (SistemControl) of every ModelDataDefinition
+    /*
+    QMenu* traceLevelMenu = menu->addMenu("Set Trace Level");
+    auto* actionGroup = new QActionGroup(traceLevelMenu);
+    actionGroup->setExclusive(true);
+
+    const bool specificEnabled = modelDataDefinition->isTraceLevelSpecificEnabled();
+    const TraceManager::Level activeLevel = modelDataDefinition->getTraceLevelSpecific();
+
+    for (const TraceLevelMenuEntry& entry : kTraceLevelEntries) {
+        QAction* action = traceLevelMenu->addAction(entry.label);
+        action->setCheckable(true);
+        action->setChecked(specificEnabled && activeLevel == entry.level);
+        actionGroup->addAction(action);
+
+        QObject::connect(action, &QAction::triggered, traceLevelMenu, [modelDataDefinition, level = entry.level]() {
+            modelDataDefinition->defineTraceLevelSpecific(level, true);
+        });
+    }
+    */
+}
+
+void GraphicalContextMenuController::addBioReactionLinkMenu(QMenu* menu) const {
+    if (menu == nullptr || !_currentScene) {
+        return;
+    }
+
+    ModelGraphicsScene* scene = _currentScene();
+    BioReaction* reaction = nullptr;
+    std::vector<BioSpecies*> selectedSpecies;
+    if (!collectBioReactionSelection(scene, reaction, selectedSpecies)) {
+        return;
+    }
+
+    QMenu* relationMenu = menu->addMenu("Biochemical Relation");
+    QAction* addReactantsAction = relationMenu->addAction("Add Selected BioSpecies as Reactants");
+    QAction* addProductsAction = relationMenu->addAction("Add Selected BioSpecies as Products");
+    QAction* addModifiersAction = relationMenu->addAction("Add Selected BioSpecies as Modifiers");
+
+    // All three actions mutate the same BioReaction and rely on the generic scene sync to rebuild diagram links.
+    auto refreshAfterChange = [scene, reaction]() {
+        reaction->setHasChanged(true);
+        if (reaction->getParentModel() != nullptr) {
+            reaction->getParentModel()->setHasChanged(true);
+        }
+        scene->requestGraphicalDataDefinitionsSync();
+        scene->update();
+    };
+
+    QObject::connect(addReactantsAction, &QAction::triggered, relationMenu, [reaction, selectedSpecies, refreshAfterChange]() {
+        bool changed = false;
+        for (BioSpecies* species : selectedSpecies) {
+            if (species == nullptr || reactionAlreadyContainsReactant(reaction, species->getName())) {
+                continue;
+            }
+            reaction->addReactant(species->getName(), 1.0);
+            changed = true;
+        }
+        if (changed) {
+            refreshAfterChange();
+        }
+    });
+
+    QObject::connect(addProductsAction, &QAction::triggered, relationMenu, [reaction, selectedSpecies, refreshAfterChange]() {
+        bool changed = false;
+        for (BioSpecies* species : selectedSpecies) {
+            if (species == nullptr || reactionAlreadyContainsProduct(reaction, species->getName())) {
+                continue;
+            }
+            reaction->addProduct(species->getName(), 1.0);
+            changed = true;
+        }
+        if (changed) {
+            refreshAfterChange();
+        }
+    });
+
+    QObject::connect(addModifiersAction, &QAction::triggered, relationMenu, [reaction, selectedSpecies, refreshAfterChange]() {
+        bool changed = false;
+        for (BioSpecies* species : selectedSpecies) {
+            if (species == nullptr || reactionAlreadyContainsModifier(reaction, species->getName())) {
+                continue;
+            }
+            reaction->addModifier(species->getName());
+            changed = true;
+        }
+        if (changed) {
+            refreshAfterChange();
+        }
+    });
 }
 
 void GraphicalContextMenuController::addDrawMenu(QMenu* menu) const {

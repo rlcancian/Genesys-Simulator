@@ -231,3 +231,12 @@ void Schedule::_addSimulationControl(SimulationControl* property) {
 //
 // private
 //
+
+void Schedule::_createReportStatisticsDataDefinitions() {
+}
+
+void Schedule::_createEditableDataDefinitions() {
+}
+
+void Schedule::_createOthersDataDefinitions() {
+}

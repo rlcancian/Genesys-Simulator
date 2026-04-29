@@ -76,3 +76,12 @@ PluginInformation* Submodel::GetPluginInformation() {
 }
 
 
+
+void Submodel::_createReportStatisticsDataDefinitions() {
+}
+
+void Submodel::_createEditableDataDefinitions() {
+}
+
+void Submodel::_createOthersDataDefinitions() {
+}

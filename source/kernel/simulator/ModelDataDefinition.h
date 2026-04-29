@@ -52,17 +52,18 @@ public: // get & set
 	 * \brief setName
 	 * \param name
 	 */
-	void setName(std::string name);
+	void setName(const std::string& name);
 	/*!
 	 * \brief getName
 	 * \return
 	 */
-	std::string getName() const;
+	const std::string& getName() const;
 	/*!
 	 * \brief getClassname
 	 * \return
 	 */
-	std::string getClassname() const;
+	const std::string& getClassname() const;
+	Model* getParentModel() const;
 	/*! Return true if this ModelDataDefinition generates statics for simulation reports*/
 	bool isReportStatistics() const;
 	/*! Defnes if this ModelDataDefinition generates statics for simulation reports*/
@@ -74,7 +75,7 @@ public:
 	 * \param name
 	 * \return
 	 */
-	ModelDataDefinition* getInternalData(std::string name) const;
+	ModelDataDefinition* getInternalData(const std::string& name) const;
 	/*!
 	 * \brief getInternalData
 	 * \return
@@ -111,6 +112,7 @@ public:
 	 */
 	List<SimulationControl*>* getSimulationControls() const;
 	TraceManager::Level getTraceLevelSpecific() const;
+	void setTraceLevelSpecific(TraceManager::Level level);
 	void defineTraceLevelSpecific(TraceManager::Level traceLevelspecific, bool traceLevelSpecificEnabled = true);
 	bool isTraceLevelSpecificEnabled() const;
 	void setTraceLevelSpecificEnabled(bool traceLevelSpecificEnabled);
@@ -139,16 +141,16 @@ public: // public virtual methods
 
 protected: //! methods to be called inside the _createInternalAndAttachedData() method
 	void _internalDataClear();
-	void _internalDataInsert(std::string key, ModelDataDefinition* child);
-	void _internalDataRemove(std::string key);
-	void _attachedDataInsert(std::string key, ModelDataDefinition* data);
-	void _attachedDataRemove(std::string key);
+	void _internalDataInsert(const std::string& key, ModelDataDefinition* child);
+	void _internalDataRemove(const std::string& key);
+	void _attachedDataInsert(const std::string& key, ModelDataDefinition* data);
+	void _attachedDataRemove(const std::string& key);
 	void _attachedDataClear();
-	void _attachedAttributesInsert(std::vector<std::string> neededNames);
+	void _attachedAttributesInsert(const std::vector<std::string>& neededNames);
 
 protected:
 	//! method to be called to insert attached dataelements that are referenced by string expressions (detected by the parser), to avoid orphaned data definitions
-	void _checkCreateAttachedReferencedDataDefinition(std::string expression);
+	void _checkCreateAttachedReferencedDataDefinition(const std::string& expression);
 	//(std::map<std::string, std::list<std::string>*>* referencedDataDefinitions);
 
 protected:
@@ -163,19 +165,27 @@ protected: //! could be overriden by derived classes
 	/*! This method returns all changes in the parser that are needed by plugins of this ModelDatas. When connecting a new plugin, ParserChangesInformation are used to change parser source code, whch is after compiled and dinamically linked to to simulator kernel to reflect the changes */
 	virtual ParserChangesInformation* _getParserChangesInformation();
 	virtual void _initBetweenReplications();
+	virtual void _createReportStatisticsDataDefinitions(); // @ToDo will be abstract
+	virtual void _createEditableDataDefinitions(); // @ToDo will be abstract
+	virtual void _createOthersDataDefinitions(); // @ToDo will be abstract
 	/*! This method is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
 	virtual void _createInternalAndAttachedData();
 	/*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
 	virtual void _addSimulationControl(SimulationControl* control);
 	//virtual void _addSimulationResponse(SimulationControl* response);
 
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
 private:
 	// name is now private. So changes in name must be throught setName, wich gives oportunity to rename internelElements, SimulationControls and SimulationResponses
 	std::string _name;
 
 private:
-	std::map<std::string, ModelDataDefinition*>* _internalData = new std::map<std::string, ModelDataDefinition*>();
-	std::map<std::string, ModelDataDefinition*>* _attachedData = new std::map<std::string, ModelDataDefinition*>();
+	std::map<std::string, ModelDataDefinition*>* _internalData;
+	std::map<std::string, ModelDataDefinition*>* _attachedData;
 
 protected:
 	Util::identification _id;
@@ -189,16 +199,16 @@ private:
 	bool _checkSpecificTraceLevel(TraceManager::Level level);
 
 protected: //! not just an easy access to trace manager, but wrappers to check if specific trace level applies
-	void trace(std::string text, TraceManager::Level level = TraceManager::Level::L8_detailed);
-	void traceError(std::string text, std::exception e);
-	void traceError(std::string text, TraceManager::Level level = TraceManager::Level::L1_errorFatal);
-	void traceReport(std::string text, TraceManager::Level level = TraceManager::Level::L2_results);
-	void traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text,
+	void trace(const std::string& text, TraceManager::Level level = TraceManager::Level::L8_detailed);
+	void traceError(const std::string& text, const std::exception& e);
+	void traceError(const std::string& text, TraceManager::Level level = TraceManager::Level::L1_errorFatal);
+	void traceReport(const std::string& text, TraceManager::Level level = TraceManager::Level::L2_results);
+	void traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, const std::string& text,
 	                     TraceManager::Level level = TraceManager::Level::L8_detailed);
 	//!< Trace to the simulation output, used only when simulation is running (eg: compponents or dataElements inform something)
-	void traceSimulation(void* thisobject, std::string text,
+	void traceSimulation(void* thisobject, const std::string& text,
 	                     TraceManager::Level level = TraceManager::Level::L8_detailed);
-	void traceSimulation(void* thisobject, TraceManager::Level level, std::string text);
+	void traceSimulation(void* thisobject, TraceManager::Level level, const std::string& text);
 
 protected:
 	//List<SimulationControl*>* _simulationResponses = new List<SimulationControl*>();

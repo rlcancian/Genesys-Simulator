@@ -2,17 +2,22 @@
 #include "graphicals/GraphicalModelDataDefinition.h"
 #include "graphicals/ModelGraphicsScene.h"
 #include "graphicals/ModelGraphicsView.h"
+#include "controllers/PropertyEditorController.h"
+#include "propertyeditor/ObjectPropertyBrowser.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
 
 #include "kernel/simulator/Counter.h"
+#include "kernel/simulator/GenSerializer.h"
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
+#include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/StatisticsCollector.h"
 #include "../../plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 #include "../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
+#include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
@@ -111,6 +116,19 @@ GraphicalModelComponent* findGraphicalComponentByName(ModelGraphicsScene& scene,
             && component->getComponent() != nullptr
             && component->getComponent()->getName() == name) {
             return component;
+        }
+    }
+    return nullptr;
+}
+
+SimulationControl* findSimulationControlByName(List<SimulationControl*>* controls, const std::string& name) {
+    if (controls == nullptr) {
+        return nullptr;
+    }
+
+    for (SimulationControl* control : *controls->list()) {
+        if (control != nullptr && control->getName() == name) {
+            return control;
         }
     }
     return nullptr;
@@ -251,6 +269,206 @@ TEST(GuiGmddLayout, SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRow
         sharedQueueAGmdd,
         sharedQueueBGmdd
     }));
+}
+
+TEST(GuiGmddLayout, PropertyEditorSelectionKeepsAttachedEditableDataDefinitionsEditable) {
+    Simulator simulator;
+    PluginManager* pluginManager = simulator.getPluginManager();
+    ASSERT_NE(pluginManager, nullptr);
+    pluginManager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Queue* queue = new Queue(model, "Queue_PropertyEditor");
+    Seize* seize = new Seize(model, "Seize_PropertyEditor");
+    ASSERT_NE(queue, nullptr);
+    ASSERT_NE(seize, nullptr);
+    seize->setQueueableItem(new QueueableItem(queue));
+    ModelDataDefinition::CreateInternalData(seize);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&simulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setShowEditableDataDefinitions(true);
+    scene->setShowStatisticsDataDefinitions(true);
+    scene->setShowSharedDataDefinitions(true);
+    scene->setShowRecursiveDataDefinitions(false);
+
+    Plugin* seizePlugin = pluginManager->find(Util::TypeOf<Seize>());
+    ASSERT_NE(seizePlugin, nullptr);
+    auto* graphicalSeize = new GraphicalModelComponent(
+        seizePlugin,
+        seize,
+        QPointF(600.0, 600.0),
+        QColor(105, 105, 105));
+    scene->addItem(graphicalSeize);
+
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
+
+    GraphicalModelDataDefinition* queueGmdd = findGraphicalDataDefinition(*scene, queue);
+    ASSERT_NE(queueGmdd, nullptr);
+    ASSERT_TRUE(queueGmdd->isEditableInPropertyEditor());
+
+    ObjectPropertyBrowser propertyBrowser;
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    PropertyEditorController controller(
+        &propertyBrowser,
+        &graphicsView,
+        &propertyEditor,
+        &propertyList,
+        &propertyEditorUi,
+        &propertyCombo,
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {});
+
+    queueGmdd->setSelected(true);
+    controller.sceneSelectionChanged();
+
+    EXPECT_TRUE(queueGmdd->isEditableInPropertyEditor());
+}
+
+TEST(GuiGmddLayout, ComponentLoadRestoresEditableAuxiliaryItemControlsAndResourceEditability) {
+    Simulator savingSimulator;
+    PluginManager* savingPluginManager = savingSimulator.getPluginManager();
+    ASSERT_NE(savingPluginManager, nullptr);
+    savingPluginManager->autoInsertPlugins();
+
+    Model* savingModel = savingSimulator.getModelManager()->newModel();
+    ASSERT_NE(savingModel, nullptr);
+
+    Queue* savingQueue = new Queue(savingModel, "Loaded.Queue");
+    Resource* savingResource = new Resource(savingModel, "Loaded.Resource");
+    Seize* savingSeize = new Seize(savingModel, "Loaded.Seize");
+    Release* savingRelease = new Release(savingModel, "Loaded.Release");
+    ASSERT_NE(savingQueue, nullptr);
+    ASSERT_NE(savingResource, nullptr);
+    ASSERT_NE(savingSeize, nullptr);
+    ASSERT_NE(savingRelease, nullptr);
+    savingSeize->setQueueableItem(new QueueableItem(savingQueue));
+    savingSeize->addRequest(new SeizableItem(savingResource));
+    savingRelease->addReleaseRequests(new SeizableItem(savingResource));
+    ModelDataDefinition::CreateInternalData(savingSeize);
+    ModelDataDefinition::CreateInternalData(savingRelease);
+
+    GenSerializer savingSerializer(savingModel);
+    auto seizeFields = std::unique_ptr<PersistenceRecord>(savingSerializer.newPersistenceRecord());
+    auto releaseFields = std::unique_ptr<PersistenceRecord>(savingSerializer.newPersistenceRecord());
+    ModelComponent::SaveInstance(seizeFields.get(), savingSeize);
+    ModelComponent::SaveInstance(releaseFields.get(), savingRelease);
+
+    Simulator loadingSimulator;
+    PluginManager* loadingPluginManager = loadingSimulator.getPluginManager();
+    ASSERT_NE(loadingPluginManager, nullptr);
+    loadingPluginManager->autoInsertPlugins();
+
+    Model* loadingModel = loadingSimulator.getModelManager()->newModel();
+    ASSERT_NE(loadingModel, nullptr);
+    auto* loadingQueue = new Queue(loadingModel, "Loaded.Queue");
+    auto* loadingResource = new Resource(loadingModel, "Loaded.Resource");
+    ASSERT_NE(loadingQueue, nullptr);
+    ASSERT_NE(loadingResource, nullptr);
+
+    auto* loadedSeize = dynamic_cast<Seize*>(Seize::LoadInstance(loadingModel, seizeFields.get()));
+    auto* loadedRelease = dynamic_cast<Release*>(Release::LoadInstance(loadingModel, releaseFields.get()));
+    ASSERT_NE(loadedSeize, nullptr);
+    ASSERT_NE(loadedRelease, nullptr);
+    ModelDataDefinition::CreateInternalData(loadedSeize);
+    ModelDataDefinition::CreateInternalData(loadedRelease);
+
+    ASSERT_NE(loadedSeize->getQueueableItem(), nullptr);
+    ASSERT_EQ(loadedSeize->getSeizeRequests()->size(), 1u);
+    ASSERT_EQ(loadedRelease->getReleaseRequests()->size(), 1u);
+
+    EXPECT_GT(loadedSeize->getQueueableItem()->getSimulationControls()->size(), 0u);
+    EXPECT_GT(loadedSeize->getSeizeRequests()->list()->front()->getSimulationControls()->size(), 0u);
+    EXPECT_GT(loadedRelease->getReleaseRequests()->list()->front()->getSimulationControls()->size(), 0u);
+
+    SimulationControl* queueableControl = findSimulationControlByName(loadedSeize->getSimulationControls(), "QueueableItem");
+    SimulationControl* requestsControl = findSimulationControlByName(loadedSeize->getSimulationControls(), "Requests");
+    SimulationControl* releaseRequestsControl = findSimulationControlByName(loadedRelease->getSimulationControls(), "ReleaseRequests");
+    ASSERT_NE(queueableControl, nullptr);
+    ASSERT_NE(requestsControl, nullptr);
+    ASSERT_NE(releaseRequestsControl, nullptr);
+    ASSERT_NE(queueableControl->getEditableChildSimulationControls(), nullptr);
+    ASSERT_NE(requestsControl->getEditableChildSimulationControls(0), nullptr);
+    ASSERT_NE(releaseRequestsControl->getEditableChildSimulationControls(0), nullptr);
+    EXPECT_GT(queueableControl->getEditableChildSimulationControls()->size(), 0u);
+    EXPECT_GT(requestsControl->getEditableChildSimulationControls(0)->size(), 0u);
+    EXPECT_GT(releaseRequestsControl->getEditableChildSimulationControls(0)->size(), 0u);
+
+    ModelGraphicsView graphicsView;
+    graphicsView.setSimulator(&loadingSimulator);
+    ModelGraphicsScene* scene = graphicsView.getScene();
+    ASSERT_NE(scene, nullptr);
+    scene->setShowEditableDataDefinitions(true);
+    scene->setShowStatisticsDataDefinitions(true);
+    scene->setShowSharedDataDefinitions(true);
+    scene->setShowRecursiveDataDefinitions(false);
+
+    PropertyEditorGenesys propertyEditor;
+    std::map<SimulationControl*, DataComponentProperty*> propertyList;
+    std::map<SimulationControl*, DataComponentEditor*> propertyEditorUi;
+    std::map<SimulationControl*, ComboBoxEnum*> propertyCombo;
+    scene->setPropertyEditor(&propertyEditor);
+    scene->setPropertyList(&propertyList);
+    scene->setPropertyEditorUI(&propertyEditorUi);
+    scene->setComboBox(&propertyCombo);
+
+    Plugin* seizePlugin = loadingPluginManager->find(Util::TypeOf<Seize>());
+    Plugin* releasePlugin = loadingPluginManager->find(Util::TypeOf<Release>());
+    ASSERT_NE(seizePlugin, nullptr);
+    ASSERT_NE(releasePlugin, nullptr);
+    auto* graphicalSeize = new GraphicalModelComponent(
+        seizePlugin,
+        loadedSeize,
+        QPointF(610.0, 640.0),
+        QColor("#336699"));
+    auto* graphicalRelease = new GraphicalModelComponent(
+        releasePlugin,
+        loadedRelease,
+        QPointF(860.0, 640.0),
+        QColor("#884422"));
+    scene->addItem(graphicalSeize);
+    scene->getGraphicalModelComponents()->append(graphicalSeize);
+    scene->getAllComponents()->append(graphicalSeize);
+    scene->addItem(graphicalRelease);
+    scene->getGraphicalModelComponents()->append(graphicalRelease);
+    scene->getAllComponents()->append(graphicalRelease);
+
+    GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&loadingSimulator, scene);
+    GraphicalModelDataDefinition* loadedResourceGmdd = findGraphicalDataDefinition(*scene, loadingResource);
+    ASSERT_NE(loadedResourceGmdd, nullptr);
+    EXPECT_TRUE(loadedResourceGmdd->isEditableInPropertyEditor());
+
+    ObjectPropertyBrowser propertyBrowser;
+    PropertyEditorController controller(
+        &propertyBrowser,
+        &graphicsView,
+        &propertyEditor,
+        &propertyList,
+        &propertyEditorUi,
+        &propertyCombo,
+        {},
+        {},
+        {},
+        {},
+        {},
+        {},
+        {});
+    scene->clearSelection();
+    loadedResourceGmdd->setSelected(true);
+    controller.sceneSelectionChanged();
+    EXPECT_TRUE(loadedResourceGmdd->isEditableInPropertyEditor());
 }
 
 TEST(GuiGmddLayout, RecursiveDataDefinitionExpansionShowsDataDefinitionsLinkedToDataDefinitions) {

@@ -332,3 +332,12 @@ ModelComponent* Record::LoadInstance(Model* model, PersistenceRecord *fields) {
 	return newComponent;
 
 }
+
+void Record::_createReportStatisticsDataDefinitions() {
+}
+
+void Record::_createEditableDataDefinitions() {
+}
+
+void Record::_createOthersDataDefinitions() {
+}

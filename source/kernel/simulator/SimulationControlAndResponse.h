@@ -132,6 +132,11 @@ public:
 	virtual List<std::string>* getStrValues() { return nullptr; };
 };
 
+enum class SimulationControlEditorHint {
+    Default,
+    CodeEditor
+};
+
 /**
  * @brief Read/write kernel-side simulation control abstraction.
  *
@@ -166,6 +171,15 @@ public:
     virtual bool ensureObjectInstance() { return hasObjectInstance(); }
     virtual bool isModelDataDefinitionReference() const { return false; }
     virtual ModelDataDefinition* getReferencedModelDataDefinition() const { return nullptr; }
+    // This method validates a proposed string value before GUI editors commit it.
+    virtual bool validateProposedValue(const std::string& value, std::string& errorMessage) const {
+        (void)value;
+        errorMessage.clear();
+        return true;
+    }
+    // This method exposes the preferred editor affordance for GUI-side property editing.
+    virtual SimulationControlEditorHint preferredEditorHint() const { return _preferredEditorHint; }
+    void setPreferredEditorHint(SimulationControlEditorHint hint) { _preferredEditorHint = hint; }
     // This method exposes the ModelDataDefinition represented by a class-list row, when any.
     //
     // It lets generic tooling classify list members themselves as editable references without
@@ -245,6 +259,7 @@ protected:
 		}
 	}
 	bool _readonly = false;
+    SimulationControlEditorHint _preferredEditorHint = SimulationControlEditorHint::Default;
 };
 
 // -----------------------------------------------------------
@@ -266,19 +281,28 @@ std::function<void(T)> DefineSimulationSetter(Class* object, void (Class::*funct
 
 typedef std::function<std::string()> GetterString;
 typedef std::function<void(std::string)> SetterString;
+typedef std::function<bool(const std::string&, std::string&)> ValidatorString;
 class SimulationControlString: public SimulationControl {
 public:
 //	SimulationControlString(GetterString getter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="") : SimulationControl(className, elementName, propertyName, whatsThis) {
 //		SimulationControlString(getter, nullptr, className, propertyName, whatsThis);
 //	}
-    SimulationControlString(GetterString getter, SetterString setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum) {
+    SimulationControlString(GetterString getter, SetterString setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false, ValidatorString validator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum) {
 		_getter= getter;
 		_setter = setter;
+        _validator = validator;
 		_readonly = setter == nullptr;
 		_propertyType = Util::TypeOf<std::string>();
 	}
 public:
 	virtual std::string getValue() const override { return _getter(); }
+    virtual bool validateProposedValue(const std::string& value, std::string& errorMessage) const override {
+        if (!_validator) {
+            errorMessage.clear();
+            return true;
+        }
+        return _validator(value, errorMessage);
+    }
     virtual void setValue(std::string value, bool remove=false) override {
 		_ensureWritable("set value of");
 		if (!_setter) {
@@ -289,6 +313,7 @@ public:
 private:
 	GetterString _getter;
 	SetterString _setter;
+    ValidatorString _validator;
 };
 
 

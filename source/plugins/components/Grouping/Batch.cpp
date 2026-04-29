@@ -419,3 +419,12 @@ PluginInformation * Batch::GetPluginInformation() {
 	info->setDescriptionHelp(help);
 	return info;
 }
+
+void Batch::_createReportStatisticsDataDefinitions() {
+}
+
+void Batch::_createEditableDataDefinitions() {
+}
+
+void Batch::_createOthersDataDefinitions() {
+}

@@ -30,12 +30,20 @@ PluginLoadIssue::PluginLoadIssue(std::string filename,
                                  std::string pluginTypename,
                                  Reason reason,
                                  std::string message,
-                                 SystemDependencyCheckResult systemDependencyResult)
+                                 SystemDependencyCheckResult systemDependencyResult) noexcept
 	: _filename(std::move(filename)),
 	  _pluginTypename(std::move(pluginTypename)),
 	  _reason(reason),
 	  _message(std::move(message)),
 	  _systemDependencyResult(std::move(systemDependencyResult)) {
+}
+
+PluginLoadIssue::PluginLoadIssue()
+	: _filename(""),
+	  _pluginTypename(""),
+	  _reason(Reason::Exception),
+	  _message(""),
+	  _systemDependencyResult() {
 }
 
 const std::string& PluginLoadIssue::getFilename() const {
@@ -97,6 +105,8 @@ std::string PluginLoadIssue::diagnosticText() const {
 
 PluginManager::PluginManager(Simulator* simulator) {
 	_simulator = simulator;
+	_plugins = new List<Plugin*>();
+	_pluginLoadIssues = new List<PluginLoadIssue>();
 	_pluginConnector = new TraitsKernel<PluginConnector_if>::Implementation();
 	_systemCommandExecutor = new SystemShellCommandExecutor();
 	_insertDefaultKernelElements();
@@ -104,6 +114,8 @@ PluginManager::PluginManager(Simulator* simulator) {
 
 PluginManager::PluginManager(Simulator* simulator, PluginConnector_if* pluginConnector, SystemCommandExecutor_if* systemCommandExecutor) {
 	_simulator = simulator;
+	_plugins = new List<Plugin*>();
+	_pluginLoadIssues = new List<PluginLoadIssue>();
 	_pluginConnector = pluginConnector;
 	_systemCommandExecutor = systemCommandExecutor;
 	_insertDefaultKernelElements();
@@ -111,7 +123,7 @@ PluginManager::PluginManager(Simulator* simulator, PluginConnector_if* pluginCon
 
 // Release connector and plugin wrappers owned by the manager during simulator teardown.
 PluginManager::~PluginManager() {
-	for (Plugin* plugin : *_plugins->list()) {
+	for (Plugin* const plugin : *_plugins->list()) {
 		delete plugin;
 	}
 	delete _plugins;
@@ -128,10 +140,10 @@ List<Plugin*>* PluginManager::_autoFindPlugins(const PluginInsertionOptions& opt
 	if (filenames == nullptr) {
 		return completePluginsFieldsAndTemplates();
 	}
-	for (std::string filename: *filenames->list()) {
+	for (const std::string& filename : *filenames->list()) {
 		insert(filename, options);
 	}
-	return  completePluginsFieldsAndTemplates();
+	return completePluginsFieldsAndTemplates();
 }
 
 List<Plugin*>* PluginManager::autoInsertPlugins() {
@@ -143,19 +155,20 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const PluginInsertionOptions& op
     return autoInsertPlugins("", true, options);
 }
 
-List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)
+List<Plugin*>* PluginManager::autoInsertPlugins(const std::string& pluginsListFilename, const bool lookForPluginsIfFilenameNotFound)
 {
 	PluginInsertionOptions options;
 	return autoInsertPlugins(pluginsListFilename, lookForPluginsIfFilenameNotFound, options);
 }
 
-List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFilename,
+List<Plugin*>* PluginManager::autoInsertPlugins(const std::string& pluginsListFilename,
                                                 const bool lookForPluginsIfFilenameNotFound,
                                                 const PluginInsertionOptions& options)
 {
-	List<Plugin*>* loadedPlugins = nullptr;
+	List<Plugin*>* loadedPlugins = new List<Plugin*>();
 	if (pluginsListFilename.empty()) {
 		if (lookForPluginsIfFilenameNotFound) {
+			delete loadedPlugins;
 			loadedPlugins = _autoFindPlugins(options);
 		}
 		return loadedPlugins;
@@ -168,7 +181,6 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 		fullFilename = Util::RunningPath()+Util::DirSeparator()+pluginsListFilename;
 	std::ifstream file(fullFilename, std::ifstream::in);
 	if (file.is_open()) {
-		loadedPlugins = new List<Plugin*>();
 		while (std::getline(file, line)) {
 			if (line.length()>=1) {
                 // @ToDo: (pequena alteração): 2500701 why [0-2] are special chars?
@@ -181,11 +193,13 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 			}
 		}
 		file.close();
+		delete loadedPlugins;
 		loadedPlugins = completePluginsFieldsAndTemplates();
 	} else
 	{
 		_simulator->getTraceManager()->traceError("Could not open file \""+pluginsListFilename+"\" (\""+fullFilename+"\")");
 		if (lookForPluginsIfFilenameNotFound) {
+			delete loadedPlugins;
 			loadedPlugins = _autoFindPlugins(options);
 		}
 	}
@@ -194,7 +208,7 @@ List<Plugin*>* PluginManager::autoInsertPlugins(const std::string pluginsListFil
 
 std::string PluginManager::show() {
 	std::string message = "Plugins=[";
-	for (Plugin* plugin : *_plugins->list()) {
+	for (Plugin* const plugin : *_plugins->list()) {
 		message += +"{" + plugin->show() + "}, ";
 	}
 	message = message.substr(0, message.length() - 2);
@@ -212,10 +226,6 @@ void PluginManager::_insertDefaultKernelElements() {
 List<Plugin*>* PluginManager::completePluginsFieldsAndTemplates() {
 	return _simulator->_completePluginsFieldsAndTemplate();
 }
-
-//bool PluginManager::check(Plugin* plugin){
-//    return true;
-//}
 
 bool PluginManager::_preflightAndMaybeInstallSystemDependencies(PluginInformation* plugInfo,
                                                                 const PluginInsertionOptions& options,
@@ -299,12 +309,15 @@ bool PluginManager::_preflightAndMaybeInstallSystemDependencies(PluginInformatio
 	return true;
 }
 
-bool PluginManager::_insert(Plugin * plugin, const PluginInsertionOptions& options, const std::string& dynamicLibraryFilename) {
+bool PluginManager::_insert(Plugin* plugin, const PluginInsertionOptions& options, const std::string& dynamicLibraryFilename) {
 	if (plugin == nullptr) {
 		return false;
 	}
-	PluginInformation *plugInfo = plugin->getPluginInfo();
-    std::string pluginname = plugin->getPluginInfo()->getPluginTypename();
+	PluginInformation* plugInfo = plugin->getPluginInfo();
+	if (plugInfo == nullptr) {
+		return false;
+	}
+    const std::string& pluginname = plugInfo->getPluginTypename();
     if (plugin->isIsValidPlugin() && plugInfo != nullptr) {
 		std::string msg = "Inserting ";
 		if (plugInfo->isComponent())
@@ -327,7 +340,7 @@ bool PluginManager::_insert(Plugin * plugin, const PluginInsertionOptions& optio
 				_simulator->getTraceManager()->trace("Inserting dependencies...");
 				Util::IncIndent();
 				{
-					for (std::string str : *plugInfo->getDynamicLibFilenameDependencies()) {
+					for (const std::string& str : *plugInfo->getDynamicLibFilenameDependencies()) {
 						allDependenciesInserted &= (this->insert(str, options) != nullptr);
 					}
 				}
@@ -375,7 +388,7 @@ bool PluginManager::_insert(Plugin * plugin, const PluginInsertionOptions& optio
 	}
 }
 
-bool PluginManager::check(std::string dynamicLibraryFilename) {
+bool PluginManager::check(const std::string& dynamicLibraryFilename) {
 	Plugin* plugin;
 	try {
 		plugin = _pluginConnector->check(dynamicLibraryFilename);
@@ -387,7 +400,7 @@ bool PluginManager::check(std::string dynamicLibraryFilename) {
 	return checked;
 }
 
-SystemDependencyCheckResult PluginManager::checkSystemDependencies(std::string dynamicLibraryFilename) {
+SystemDependencyCheckResult PluginManager::checkSystemDependencies(const std::string& dynamicLibraryFilename) {
 	SystemDependencyCheckResult result;
 	Plugin* plugin = nullptr;
 	try {
@@ -427,23 +440,31 @@ void PluginManager::_recordLoadIssue(const PluginLoadIssue& issue) {
 }
 
 void PluginManager::_removeLoadIssue(const std::string& dynamicLibraryFilename, const std::string& pluginTypename) {
-	for (auto it = _pluginLoadIssues->list()->begin(); it != _pluginLoadIssues->list()->end();) {
-		const bool sameFilename = !dynamicLibraryFilename.empty() && it->getFilename() == dynamicLibraryFilename;
-		const bool sameTypename = !pluginTypename.empty() && it->getPluginTypename() == pluginTypename;
+	// Collect indices to remove to avoid iterator invalidation during erase
+	std::vector<size_t> indicesToRemove;
+	size_t index = 0;
+	for (const auto& issue : *_pluginLoadIssues->list()) {
+		const bool sameFilename = !dynamicLibraryFilename.empty() && issue.getFilename() == dynamicLibraryFilename;
+		const bool sameTypename = !pluginTypename.empty() && issue.getPluginTypename() == pluginTypename;
 		if (sameFilename || sameTypename) {
-			it = _pluginLoadIssues->list()->erase(it);
-		} else {
-			++it;
+			indicesToRemove.push_back(index);
 		}
+		++index;
+	}
+	// Remove in reverse order to maintain valid indices
+	for (auto it = indicesToRemove.rbegin(); it != indicesToRemove.rend(); ++it) {
+		auto listIt = _pluginLoadIssues->list()->begin();
+		std::advance(listIt, *it);
+		_pluginLoadIssues->list()->erase(listIt);
 	}
 }
 
-Plugin * PluginManager::insert(std::string dynamicLibraryFilename) {
+Plugin* PluginManager::insert(const std::string& dynamicLibraryFilename) {
 	PluginInsertionOptions options;
 	return insert(dynamicLibraryFilename, options);
 }
 
-Plugin * PluginManager::insert(std::string dynamicLibraryFilename, const PluginInsertionOptions& options) {
+Plugin* PluginManager::insert(const std::string& dynamicLibraryFilename, const PluginInsertionOptions& options) {
 	Plugin* plugin = nullptr;
 	try {
 		std::unique_ptr<Plugin> checkedPlugin(_pluginConnector->check(dynamicLibraryFilename));
@@ -508,13 +529,12 @@ Plugin * PluginManager::insert(std::string dynamicLibraryFilename, const PluginI
 	return plugin;
 }
 
-bool PluginManager::remove(std::string dynamicLibraryFilename) {
-
+bool PluginManager::remove(const std::string& dynamicLibraryFilename) {
 	Plugin* pi = this->find(dynamicLibraryFilename);
 	return remove(pi);
 }
 
-bool PluginManager::remove(Plugin * plugin) {
+bool PluginManager::remove(Plugin* plugin) {
 	if (plugin != nullptr) {
 		try {
 			if (!_pluginConnector->disconnect(plugin)) {
@@ -532,8 +552,8 @@ bool PluginManager::remove(Plugin * plugin) {
 	return false;
 }
 
-Plugin * PluginManager::find(std::string pluginTypeName) {
-	for (Plugin* plugin : *this->_plugins->list()) {
+Plugin* PluginManager::find(const std::string& pluginTypeName) {
+	for (Plugin* const plugin : *this->_plugins->list()) {
 		if (plugin->getPluginInfo()->getPluginTypename() == pluginTypeName) {
 			return plugin;
 		}
@@ -543,7 +563,11 @@ Plugin * PluginManager::find(std::string pluginTypeName) {
 
 std::vector<std::string> PluginManager::getDataDefinitionPluginTypenames() const {
 	std::vector<std::string> typeNames;
-	for (Plugin* plugin : *this->_plugins->list()) {
+	if (_plugins == nullptr || _plugins->list() == nullptr) {
+		return typeNames;
+	}
+	typeNames.reserve(_plugins->size()); // Reserve space to avoid reallocations
+	for (Plugin* const plugin : *_plugins->list()) {
 		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
 			continue;
 		}
@@ -555,31 +579,31 @@ std::vector<std::string> PluginManager::getDataDefinitionPluginTypenames() const
 	return typeNames;
 }
 
-std::string PluginManager::sourceIncludePathFor(std::string pluginTypeName) {
+std::string PluginManager::sourceIncludePathFor(const std::string& pluginTypeName) {
 	Plugin* plugin = find(pluginTypeName);
 	if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
 		return "";
 	}
 
-	if (pluginTypeName == "Attribute" || pluginTypeName == "Counter" || pluginTypeName == "EntityType" ||
-	    pluginTypeName == "StatisticsCollector") {
+	static const std::vector<std::string> kernelPlugins = {"Attribute", "Counter", "EntityType", "StatisticsCollector"};
+	if (std::find(kernelPlugins.begin(), kernelPlugins.end(), pluginTypeName) != kernelPlugins.end()) {
 		return "kernel/simulator/" + pluginTypeName + ".h";
 	}
 
 	PluginInformation* info = plugin->getPluginInfo();
-	const std::string pluginRoot = info->isComponent() ? "plugins/components" : "plugins/data";
+	const std::string& pluginRoot = info->isComponent() ? "plugins/components" : "plugins/data";
 	return pluginRoot + "/" + PluginInformation::categoryFolderName(info->getCategory()) + "/" + pluginTypeName + ".h";
 }
 
-Plugin * PluginManager::front() {
+Plugin* PluginManager::front() {
 	return this->_plugins->front();
 }
 
-Plugin * PluginManager::next() {
+Plugin* PluginManager::next() {
 	return _plugins->next();
 }
 
-Plugin * PluginManager::last() {
+Plugin* PluginManager::last() {
 	return this->_plugins->last();
 }
 
@@ -587,11 +611,11 @@ unsigned int PluginManager::size() {
 	return _plugins->size();
 }
 
-Plugin * PluginManager::getAtRank(unsigned int rank) {
+Plugin* PluginManager::getAtRank(unsigned int rank) {
 	return _plugins->getAtRank(rank);
 }
 
-ModelDataDefinition* PluginManager::newInstance(std::string pluginTypename, Model* model, std::string name) {
+ModelDataDefinition* PluginManager::newInstance(const std::string& pluginTypename, Model* model, std::string name) {
 	Plugin* plugin = find(pluginTypename);
 	if (plugin != nullptr) {
 		return plugin->newInstance(model, name);

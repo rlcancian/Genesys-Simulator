@@ -164,3 +164,12 @@ ModelComponent* Decide::LoadInstance(Model* model, PersistenceRecord *fields) {
 	}
 	return newComponent;
 }
+
+void Decide::_createReportStatisticsDataDefinitions() {
+}
+
+void Decide::_createEditableDataDefinitions() {
+}
+
+void Decide::_createOthersDataDefinitions() {
+}

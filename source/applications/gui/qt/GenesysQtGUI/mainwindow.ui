@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1124</width>
-    <height>695</height>
+    <width>1032</width>
+    <height>625</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -154,7 +154,7 @@
                      <x>0</x>
                      <y>0</y>
                      <width>688</width>
-                     <height>138</height>
+                     <height>70</height>
                     </rect>
                    </property>
                    <property name="autoFillBackground">
@@ -718,6 +718,12 @@
       </item>
       <item>
        <widget class="QSlider" name="horizontalSlider_ZoomGraphical">
+        <property name="sizePolicy">
+         <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+          <horstretch>2</horstretch>
+          <verstretch>0</verstretch>
+         </sizepolicy>
+        </property>
         <property name="minimum">
          <number>0</number>
         </property>
@@ -777,7 +783,7 @@
        <widget class="QProgressBar" name="progressBarSimulation">
         <property name="sizePolicy">
          <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
-          <horstretch>2</horstretch>
+          <horstretch>1</horstretch>
           <verstretch>0</verstretch>
          </sizepolicy>
         </property>
@@ -845,7 +851,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1124</width>
+     <width>1032</width>
      <height>22</height>
     </rect>
    </property>
@@ -874,11 +880,12 @@
     <addaction name="actionSimulationStart"/>
     <addaction name="actionSimulationStep"/>
     <addaction name="actionSimulationStop"/>
-    <addaction name="separator"/>
     <addaction name="actionSimulationPause"/>
     <addaction name="actionSimulationResume"/>
     <addaction name="separator"/>
     <addaction name="actionAnimation"/>
+    <addaction name="separator"/>
+    <addaction name="actionReports"/>
    </widget>
    <widget class="QMenu" name="menuAbout">
     <property name="title">
@@ -988,10 +995,11 @@
    </widget>
    <widget class="QMenu" name="menuTools">
     <property name="title">
-     <string>Results</string>
+     <string>Tools</string>
     </property>
     <addaction name="actionToolsDataAnalyzer"/>
     <addaction name="actionToolsOptimizator"/>
+    <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuSimulator">
     <property name="title">
@@ -1610,8 +1618,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/icons3/resources/icons/pack3/ico/question.ico</normaloff>:/icons3/resources/icons/pack3/ico/question.ico</iconset>
+    <iconset>
+     <normalon>:/icons3/resources/icons/pack3/ico/anchor.ico</normalon>
+    </iconset>
    </property>
    <property name="text">
     <string>Snap</string>
@@ -1743,8 +1752,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <bool>true</bool>
    </property>
    <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/icons3/resources/icons/pack3/ico/question.ico</normaloff>:/icons3/resources/icons/pack3/ico/question.ico</iconset>
+    <iconset>
+     <normalon>:/resources/ToolBar/_grade.bmp</normalon>
+    </iconset>
    </property>
    <property name="text">
     <string>Guides</string>
@@ -1942,7 +1952,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <action name="actionEditDelete">
    <property name="icon">
     <iconset theme="edit-delete">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff>../../../../../../../../../../../../.designer/backup</normaloff>../../../../../../../../../../../../.designer/backup</iconset>
    </property>
    <property name="text">
     <string>Delete</string>
@@ -2009,10 +2019,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <property name="checked">
     <bool>true</bool>
    </property>
-   <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
-   </property>
    <property name="text">
     <string>Statistics Elements</string>
    </property>
@@ -2024,10 +2030,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <property name="checked">
     <bool>true</bool>
    </property>
-   <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/red pin.ico</iconset>
-   </property>
    <property name="text">
     <string>Editable Elements</string>
    </property>
@@ -2038,10 +2040,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="checked">
     <bool>true</bool>
-   </property>
-   <property name="icon">
-    <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/icons3/resources/icons/pack3/ico/yellow pin.ico</normaloff>:/icons3/resources/icons/pack3/ico/yellow pin.ico</iconset>
    </property>
    <property name="text">
     <string>Shared Elements</string>
@@ -2188,7 +2186,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <action name="actionModelInformation">
    <property name="icon">
     <iconset theme="user-available">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff>../../../../../../../../../../../../.designer/backup</normaloff>../../../../../../../../../../../../.designer/backup</iconset>
    </property>
    <property name="text">
     <string>Information</string>
@@ -2323,7 +2321,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="icon">
     <iconset theme="x-office-address-book">
-     <normaloff>.</normaloff>.</iconset>
+     <normaloff>../../../../../../../../../../../../.designer/backup</normaloff>../../../../../../../../../../../../.designer/backup</iconset>
    </property>
    <property name="text">
     <string>Recursive Elements</string>
@@ -2338,6 +2336,36 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="text">
     <string>Animation</string>
+   </property>
+  </action>
+  <action name="actionAboutReportIssue">
+   <property name="icon">
+    <iconset>
+     <normalon>:/icons2/resources/icons/pack2/ico/90.ico</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Report Issue</string>
+   </property>
+  </action>
+  <action name="actionReports">
+   <property name="icon">
+    <iconset>
+     <normalon>:/icons3/resources/icons/pack3/ico/report.ico</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Reports</string>
+   </property>
+  </action>
+  <action name="actionExtensions">
+   <property name="icon">
+    <iconset>
+     <normalon>:/icons3/resources/icons/pack3/ico/componentyellow.ico</normalon>
+    </iconset>
+   </property>
+   <property name="text">
+    <string>Extensions</string>
    </property>
   </action>
  </widget>

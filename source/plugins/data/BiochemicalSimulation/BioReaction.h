@@ -69,6 +69,18 @@ protected:
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
+	virtual void _createInternalAndAttachedData() override;
+
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
 
 private:
 	bool checkTerms(const std::vector<StoichiometricTerm>& terms, const std::string& side, std::string& errorMessage) const;
@@ -77,6 +89,7 @@ private:
 	bool validateKineticLawExpression(const std::string& expression, const std::string& label, std::string& errorMessage) const;
 	bool hasParticipantSpecies(const std::string& speciesName) const;
 	bool resolveKineticLawSymbol(const std::string& symbolName, double& value) const;
+	void syncParticipantAttachedSpecies();
 
 private:
 	const struct DEFAULT_VALUES {

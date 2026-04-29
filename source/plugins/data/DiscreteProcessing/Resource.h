@@ -144,6 +144,17 @@ protected: // protected could override
 	virtual void _createInternalAndAttachedData() override;
 	virtual void _initBetweenReplications() override;
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private: //methods
 	void _notifyReleaseEventHandlers(); //!< Notify observer classes that some of the resource capacity has been released. It is useful for allocation components (such as Seize) to know when an entity waiting into a queue can try to seize the resource again
 	void _onReplicationEnd(SimulationEvent* se); //!< Nofified whe replication ended to update cstats based on final replication length

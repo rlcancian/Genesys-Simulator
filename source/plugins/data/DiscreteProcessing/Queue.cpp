@@ -269,3 +269,12 @@ void Queue::_configureListComparator() {
 		}
 	});
 }
+
+void Queue::_createReportStatisticsDataDefinitions() {
+}
+
+void Queue::_createEditableDataDefinitions() {
+}
+
+void Queue::_createOthersDataDefinitions() {
+}

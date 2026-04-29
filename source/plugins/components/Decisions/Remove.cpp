@@ -262,3 +262,12 @@ PluginInformation* Remove::GetPluginInformation() {
 	// ...
 	return info;
 }
+
+void Remove::_createReportStatisticsDataDefinitions() {
+}
+
+void Remove::_createEditableDataDefinitions() {
+}
+
+void Remove::_createOthersDataDefinitions() {
+}

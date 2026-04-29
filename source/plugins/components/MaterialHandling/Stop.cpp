@@ -76,3 +76,12 @@ PluginInformation* Stop::GetPluginInformation() {
 }
 
 
+
+void Stop::_createReportStatisticsDataDefinitions() {
+}
+
+void Stop::_createEditableDataDefinitions() {
+}
+
+void Stop::_createOthersDataDefinitions() {
+}

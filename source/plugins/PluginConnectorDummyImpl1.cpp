@@ -81,6 +81,7 @@
 #include "plugins/data/InputOutput/File.h"
 #include "plugins/data/DiscreteProcessing/Formula.h"
 #include "plugins/data/BiologicalModeling/GroProgram.h"
+#include "plugins/data/BiologicalModeling/BacteriaSignalGrid.h"
 #include "plugins/data/DiscreteProcessing/Label.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 #include "plugins/data/MaterialHandling/Sequence.h"
@@ -131,6 +132,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("failure.so");
     filenames->insert("formula.so");
     filenames->insert("groprogram.so");
+    filenames->insert("bacteriasignalgrid.so");
     filenames->insert("label.so");
     filenames->insert("queue.so");
     filenames->insert("resource.so");
@@ -252,6 +254,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Formula::GetPluginInformation;
     else if (fn == "groprogram.so")
         GetInfo = &GroProgram::GetPluginInformation;
+    else if (fn == "bacteriasignalgrid.so")
+        GetInfo = &BacteriaSignalGrid::GetPluginInformation;
     else if (fn == "label.so")
         GetInfo = &Label::GetPluginInformation;
     else if (fn == "queue.so")

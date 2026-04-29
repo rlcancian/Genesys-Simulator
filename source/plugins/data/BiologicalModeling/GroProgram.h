@@ -10,6 +10,7 @@
 
 #include "kernel/simulator/ModelDataDefinition.h"
 #include "kernel/simulator/Plugin.h"
+#include <string>
 
 /*!
  * \brief Reusable Gro source program attached to a GenESyS model.
@@ -37,6 +38,8 @@ public:
 	void setSourceCode(std::string sourceCode);
 	/*! \brief Returns the stored Gro source text. */
 	std::string getSourceCode() const;
+	/*! \brief Creates a small starter Gro program and optionally writes it to a file. */
+	bool createDefaultGroProgram(const std::string& filename = "");
 	/*! \brief Performs a permissive lexical sanity check for the stored source. */
 	bool validateSyntax(std::string& errorMessage) const;
 
@@ -45,9 +48,50 @@ protected:
 	virtual void _saveInstance(PersistenceRecord* fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
 
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
+private:
+	bool _validateSourceCodeSyntax(const std::string& sourceCode, std::string& errorMessage) const;
+
 private:
 	const struct DEFAULT_VALUES {
-		const std::string sourceCode = "";
+		const std::string sourceCode = R"(
+include gro
+set ( "dt", 0.075 );
+ahl := signal ( 1, 1 );
+program leader() := {
+  p := [ t := 2.4 ];
+  set ( "ecoli_growth_rate", 0.00 );
+  true : { p.t := p.t + dt }
+  p.t > 10 : {
+    emit_signal ( ahl, 100 ),
+    p.t := 0
+  }
+};
+program follower() := {
+  p := [ mode := 0, t := 0 ];
+  p.mode = 0 & get_signal ( ahl ) > 0.01 : {
+    emit_signal ( ahl, 100 ),
+    p.mode := 1,
+    p.t := 0
+  }
+  p.mode = 1 : { p.t := p.t + dt }
+  p.mode = 1 & p.t > 9 : { p.mode := 0 }
+};
+
+ecoli ( [ x:= 0, y:= 0 ], program leader() );
+ecoli ( [ x:= 0, y:= 10 ], program follower() );
+)";
+
 	} DEFAULT;
 
 	std::string _sourceCode = DEFAULT.sourceCode;

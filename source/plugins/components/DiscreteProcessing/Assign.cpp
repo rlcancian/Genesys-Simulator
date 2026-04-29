@@ -272,3 +272,12 @@ void Assign::_prepareAssignment(Assignment* assignment) {
 		this->_createInternalAndAttachedData();
 	});
 }
+
+void Assign::_createReportStatisticsDataDefinitions() {
+}
+
+void Assign::_createEditableDataDefinitions() {
+}
+
+void Assign::_createOthersDataDefinitions() {
+}

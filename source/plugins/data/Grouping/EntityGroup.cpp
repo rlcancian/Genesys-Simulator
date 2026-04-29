@@ -149,3 +149,12 @@ bool EntityGroup::_check(std::string& errorMessage) {
 	errorMessage += "";
 	return true;
 }
+
+void EntityGroup::_createReportStatisticsDataDefinitions() {
+}
+
+void EntityGroup::_createEditableDataDefinitions() {
+}
+
+void EntityGroup::_createOthersDataDefinitions() {
+}

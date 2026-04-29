@@ -112,6 +112,17 @@ protected: // could be overriden .
 	virtual void _initBetweenReplications() override;
 	virtual void _createInternalAndAttachedData() override;
 	//virtual ParserChangesInformation* _getParserChangesInformation();
+
+protected:
+	void _doCreateReportStatisticsDataDefinitions();
+	void _doCreateEditableDataDefinitions();
+	void _doCreateOthersDataDefinitions();
+
+
+	void _createReportStatisticsDataDefinitions() override;
+	void _createEditableDataDefinitions() override;
+	void _createOthersDataDefinitions() override;
+
 private: // methods
 	unsigned int _handlerForSignalDataEvent(SignalData* signalData);
 	void _handlerForAfterProcessEventEvent(SimulationEvent* event);

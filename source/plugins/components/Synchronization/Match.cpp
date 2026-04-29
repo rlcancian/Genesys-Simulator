@@ -278,3 +278,12 @@ PluginInformation * Match::GetPluginInformation() {
 	// ...
 	return info;
 }
+
+void Match::_createReportStatisticsDataDefinitions() {
+}
+
+void Match::_createEditableDataDefinitions() {
+}
+
+void Match::_createOthersDataDefinitions() {
+}
