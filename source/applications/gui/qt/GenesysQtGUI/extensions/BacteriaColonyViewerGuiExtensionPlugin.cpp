@@ -25,6 +25,7 @@
 #include <QPushButton>
 #include <QStringList>
 #include <QSpinBox>
+#include <QWheelEvent>
 #include <QTimer>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -128,10 +129,14 @@ QColor signalColorForValue(double value, double minValue, double maxValue) {
 
 QColor bacteriumColorForState(const BacteriumVisualState& bacterium) {
 	const double intensity = std::clamp(0.02 * bacterium.volume + 0.015 * bacterium.size, 0.0, 1.0);
-	const int red = std::clamp(static_cast<int>(70.0 + bacterium.rfp * 0.44 + bacterium.yfp * 0.28 + bacterium.generation * 8.0 + intensity * 28.0), 0, 255);
-	const int green = std::clamp(static_cast<int>(82.0 + bacterium.gfp * 0.36 + bacterium.yfp * 0.34 + bacterium.cfp * 0.20 + intensity * 18.0), 0, 255);
-	const int blue = std::clamp(static_cast<int>(78.0 + bacterium.cfp * 0.44 + bacterium.yfp * 0.20 + bacterium.gfp * 0.12 + intensity * 26.0), 0, 255);
-	return QColor(red, green, blue);
+	const double fluorescenceBoost = std::clamp((bacterium.gfp + bacterium.rfp + bacterium.yfp + bacterium.cfp) / 180.0, 0.0, 1.0);
+	const int red = std::clamp(static_cast<int>(58.0 + bacterium.rfp * 0.55 + bacterium.yfp * 0.42 + bacterium.generation * 9.0 + intensity * 24.0), 0, 255);
+	const int green = std::clamp(static_cast<int>(60.0 + bacterium.gfp * 0.48 + bacterium.yfp * 0.40 + bacterium.cfp * 0.26 + intensity * 20.0), 0, 255);
+	const int blue = std::clamp(static_cast<int>(62.0 + bacterium.cfp * 0.58 + bacterium.yfp * 0.22 + bacterium.gfp * 0.18 + intensity * 20.0), 0, 255);
+	const int alphaBoost = static_cast<int>(fluorescenceBoost * 22.0);
+	return QColor(std::clamp(red + alphaBoost / 3, 0, 255),
+	              std::clamp(green + alphaBoost / 3, 0, 255),
+	              std::clamp(blue + alphaBoost / 3, 0, 255));
 }
 
 class BacteriaColonyCanvas final : public QWidget {
@@ -149,6 +154,11 @@ public:
 
 	void setSelectionChangedCallback(SelectionChangedCallback callback) {
 		_selectionChangedCallback = std::move(callback);
+	}
+
+	void setZoomPercent(int zoomPercent) {
+		_zoomPercent = std::clamp(zoomPercent, 25, 400);
+		update();
 	}
 
 	void setSnapshot(ColonyVisualSnapshot snapshot,
@@ -194,6 +204,9 @@ protected:
 			const double verticalInset = (gridFrame.height() - adjustedHeight) * 0.5;
 			gridFrame.adjust(0.0, verticalInset, 0.0, -verticalInset);
 		}
+		const double zoomScale = std::clamp(static_cast<double>(_zoomPercent) / 100.0, 0.25, 4.0);
+		gridFrame.setSize(gridFrame.size() * zoomScale);
+		gridFrame.moveCenter(drawingRect.center());
 		const double cellWidth = gridFrame.width() / static_cast<double>(gridWidth);
 		const double cellHeight = gridFrame.height() / static_cast<double>(gridHeight);
 		const auto cellRectFor = [&gridFrame, cellWidth, cellHeight](unsigned int x, unsigned int y) {
@@ -342,6 +355,7 @@ protected:
 			const QPointF center = positionToPoint(bacterium->positionX, bacterium->positionY);
 			const QColor fillColor = bacteriumColorForState(*bacterium);
 			const bool selected = _selectedBacteriumId.has_value() && _selectedBacteriumId.value() == bacterium->id;
+			const double fluorescenceBoost = std::clamp((bacterium->gfp + bacterium->rfp + bacterium->yfp + bacterium->cfp) / 160.0, 0.0, 1.0);
 
 			painter.save();
 			painter.translate(center);
@@ -353,6 +367,12 @@ protected:
 			painter.setPen(Qt::NoPen);
 			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 68));
 			painter.drawPath(shadowPath);
+			QPainterPath glowPath;
+			glowPath.addRoundedRect(QRectF(-majorAxis * 0.68, -minorAxis * 0.72, majorAxis * 1.36, minorAxis * 1.44),
+			                        minorAxis * 0.70,
+			                        minorAxis * 0.70);
+			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), static_cast<int>(36 + fluorescenceBoost * 72.0)));
+			painter.drawPath(glowPath);
 			QPainterPath bodyPath;
 			bodyPath.addRoundedRect(QRectF(-majorAxis * 0.52, -minorAxis * 0.5, majorAxis * 1.04, minorAxis),
 			                        minorAxis * 0.56,
@@ -410,6 +430,22 @@ protected:
 		}
 		update();
 		QWidget::mousePressEvent(event);
+	}
+
+	void wheelEvent(QWheelEvent* event) override {
+		if (event == nullptr) {
+			QWidget::wheelEvent(event);
+			return;
+		}
+
+		const QPoint angleDelta = event->angleDelta();
+		if (angleDelta.y() == 0) {
+			QWidget::wheelEvent(event);
+			return;
+		}
+
+		setZoomPercent(_zoomPercent + (angleDelta.y() > 0 ? 10 : -10));
+		event->accept();
 	}
 
 private:
@@ -506,6 +542,7 @@ private:
 	std::vector<RenderedBacteriumMarker> _renderedMarkers;
 	std::optional<unsigned int> _selectedBacteriumId;
 	SelectionChangedCallback _selectionChangedCallback;
+	int _zoomPercent = 100;
 };
 
 class BacteriaColonyViewerDialog final : public QDialog {
@@ -533,10 +570,17 @@ public:
 		_refreshIntervalSpin->setRange(50, 5000);
 		_refreshIntervalSpin->setSingleStep(50);
 		_refreshIntervalSpin->setValue(150);
+		auto* zoomLabel = new QLabel(tr("Zoom %:"), this);
+		_zoomSpin = new QSpinBox(this);
+		_zoomSpin->setRange(25, 400);
+		_zoomSpin->setSingleStep(10);
+		_zoomSpin->setValue(100);
 		selectorLayout->addWidget(selectorLabel);
 		selectorLayout->addWidget(_colonySelector, 1);
 		selectorLayout->addWidget(refreshIntervalLabel);
 		selectorLayout->addWidget(_refreshIntervalSpin);
+		selectorLayout->addWidget(zoomLabel);
+		selectorLayout->addWidget(_zoomSpin);
 		selectorLayout->addWidget(stepButton);
 		selectorLayout->addWidget(_runToggleButton);
 		selectorLayout->addWidget(_liveToggleButton);
@@ -564,6 +608,7 @@ public:
 			_selectedBacteriumId = selectedBacteriumId;
 			_refreshSelectionSummary(_lastSnapshot);
 		});
+		_canvas->setZoomPercent(_zoomSpin->value());
 		rootLayout->addWidget(_canvas, 1);
 
 		auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, this);
@@ -592,6 +637,11 @@ public:
 			}
 			if (_runTimer != nullptr) {
 				_runTimer->setInterval(value);
+			}
+		});
+		connect(_zoomSpin, qOverload<int>(&QSpinBox::valueChanged), this, [this](int value) {
+			if (_canvas != nullptr) {
+				_canvas->setZoomPercent(value);
 			}
 		});
 		connect(_colonySelector, qOverload<int>(&QComboBox::currentIndexChanged), this, [this](int currentIndex) {
@@ -951,6 +1001,7 @@ private:
 	QPushButton* _runToggleButton = nullptr;
 	QPushButton* _liveToggleButton = nullptr;
 	QSpinBox* _refreshIntervalSpin = nullptr;
+	QSpinBox* _zoomSpin = nullptr;
 	QLabel* _summaryLabel = nullptr;
 	QLabel* _detailsLabel = nullptr;
 	QLabel* _selectionLabel = nullptr;

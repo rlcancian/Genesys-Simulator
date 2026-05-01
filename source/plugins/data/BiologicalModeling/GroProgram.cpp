@@ -24,6 +24,7 @@ std::string buildVisibleColonyStarterGroProgram() {
 	return R"(include gro;
 set ( "dt", 0.18 );
 set ( "population_max", 256 );
+set ( "ecoli_growth_rate", 0.12 );
 
 wave := signal ( 0.85, 0.035 );
 REST := 0;

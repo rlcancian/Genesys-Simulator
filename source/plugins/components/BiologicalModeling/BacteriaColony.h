@@ -249,6 +249,7 @@ private:
 	void _removeBacteria(unsigned int amount);
 	bool _removeBacteriumById(unsigned int bacteriumId);
 	void _refreshBacteriaUpdateTime();
+	void _applyBacteriumGrowth(BacteriumState& bacterium) const;
 	void _rebuildBacteriaGridPositions();
 	void _assignBacteriumGridPosition(BacteriumState& bacterium, std::size_t index) const;
 	void _initializeBacteriumPhenotype(BacteriumState& bacterium, std::size_t index) const;

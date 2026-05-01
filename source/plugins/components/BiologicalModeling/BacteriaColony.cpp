@@ -1209,6 +1209,40 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 	}
 
 	GroProgramRuntime runtime;
+	auto applyColonyMutations = [this](const std::vector<GroProgramRuntime::ColonyMutation>& mutations,
+	                                   std::string& errorMessage) -> bool {
+		for (const GroProgramRuntime::ColonyMutation& mutation : mutations) {
+			if (mutation.type == GroProgramRuntime::ColonyMutation::Type::Reset) {
+				_bacteria.clear();
+				_nextBacteriumId = 1;
+				_populationSize = 0;
+				_colonyTickCount = 0;
+				_groSeedsApplied = true;
+				std::string signalErrorMessage;
+				(void)_resetRuntimeSignalField(signalErrorMessage);
+				continue;
+			}
+			if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SpawnSeed) {
+				const std::string mutationSource =
+						"ecoli(" + trim(mutation.arguments[0]) + ", " + trim(mutation.arguments[1]) + ")";
+				const std::vector<GroSeedPlacement> placements = parseGroSeedPlacements(mutationSource);
+				if (placements.size() != 1) {
+					errorMessage = "BacteriaColony could not interpret a seeded program from runtime ecoli(). ";
+					return false;
+				}
+				const GroSeedPlacement& placement = placements.front();
+				GroSeedDefinition seedDefinition;
+				seedDefinition.gridX = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionX)));
+				seedDefinition.gridY = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionY)));
+				seedDefinition.programName = placement.programName;
+				seedDefinition.programArguments = placement.programArguments;
+				_appendBacterium(seedDefinition);
+				continue;
+			}
+		}
+		_populationSize = static_cast<unsigned int>(_bacteria.size());
+		return true;
+	};
 	if (!ir.commands.empty()) {
 		GroProgramIr preludeIr;
 		preludeIr.commands = ir.commands;
@@ -1242,6 +1276,10 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			setSimulationStep(preludeState.simulationStep);
 		}
 		if (!_applyBioNetworkAssignments(preludeResult.assignedVariables, result.errorMessage)) {
+			result.succeeded = false;
+			return false;
+		}
+		if (!applyColonyMutations(preludeResult.colonyMutations, result.errorMessage)) {
 			result.succeeded = false;
 			return false;
 		}
@@ -1298,10 +1336,15 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			result.succeeded = false;
 			return false;
 		}
+		if (!applyColonyMutations(mainResult.colonyMutations, result.errorMessage)) {
+			result.succeeded = false;
+			return false;
+		}
 		_removeBioNetworkAssignmentVariables(mainState.variables);
 		_runtimeVariables = mainState.variables;
 		_runtimeVariables["dt"] = getSimulationStep();
 		_colonyTickCount = mainState.tickCount;
+		mainState.populationSize = _populationSize;
 		_applyRuntimePopulationMutations(mainResult.populationMutations, mainState.populationSize);
 		result.executedCommands += mainResult.executedCommands;
 		result.assignedVariables.insert(mainResult.assignedVariables.begin(), mainResult.assignedVariables.end());
@@ -1360,6 +1403,12 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
 			return false;
 		}
+		if (!bacteriumResult.colonyMutations.empty()) {
+			result.succeeded = false;
+			result.errorMessage =
+			        "BacteriaColony bacterium-scoped programs cannot mutate colony structure with reset or ecoli. ";
+			return false;
+		}
 		if (runtimeState.simulationStep > 0.0 &&
 		    std::fabs(runtimeState.simulationStep - getSimulationStep()) > 1e-12) {
 			setSimulationStep(runtimeState.simulationStep);
@@ -1376,6 +1425,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		bacterium.runtimeVariables = runtimeState.variables;
 		bacterium.tickCount = runtimeState.tickCount;
 		_syncBacteriumSpatialState(bacterium, runtimeState);
+		_applyBacteriumGrowth(bacterium);
 		bacterium.justDivided = false;
 		bacterium.daughter = false;
 		result.executedCommands += bacteriumResult.executedCommands;
@@ -1479,6 +1529,7 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 		bacterium.runtimeVariables = runtimeState.variables;
 		bacterium.tickCount = runtimeState.tickCount;
 		_syncBacteriumSpatialState(bacterium, runtimeState);
+		_applyBacteriumGrowth(bacterium);
 		bacterium.justDivided = false;
 		bacterium.daughter = false;
 		result.executedCommands += bacteriumResult.executedCommands;
@@ -1535,6 +1586,8 @@ bool BacteriaColony::_containsBacteriumScopedOnlyUnsupportedCommand(const std::v
 		}
 
 		if (command.functionName == "tick" ||
+		    command.functionName == "reset" ||
+		    command.functionName == "ecoli" ||
 		    command.functionName == "set_population") {
 			unsupportedCommand = command.sourceText;
 			return true;
@@ -1805,6 +1858,33 @@ void BacteriaColony::_refreshBacteriaUpdateTime() {
 			bacterium.lastUpdateTime = getColonyTime();
 		}
 	}
+}
+
+void BacteriaColony::_applyBacteriumGrowth(BacteriumState& bacterium) const {
+	if (!bacterium.alive) {
+		return;
+	}
+
+	// Keep the visible phenotype moving even when a GRO program leaves growth
+	// implicit, which is the common case in the bundled demos.
+	double growthRate = 0.045;
+	const auto growthRateIt = bacterium.runtimeVariables.find("ecoli_growth_rate");
+	if (growthRateIt != bacterium.runtimeVariables.end()) {
+		growthRate = std::max(0.0, growthRateIt->second);
+	}
+	growthRate += 0.004 * static_cast<double>(bacterium.generation);
+	const double localSignal = _signalValueAt(bacterium.gridX, bacterium.gridY);
+	growthRate += std::clamp(localSignal * 0.0025, 0.0, 0.08);
+
+	const double stepScale = std::max(0.25, getSimulationStep() * 5.0);
+	const double deltaVolume = std::clamp(growthRate * stepScale, 0.01, 0.35);
+	bacterium.volume = std::max(0.1, bacterium.volume + deltaVolume);
+	bacterium.size = std::max(0.65, std::sqrt(std::max(0.1, bacterium.volume)));
+	bacterium.speed = std::max(0.03, bacterium.speed + 0.015 * deltaVolume);
+
+	bacterium.runtimeVariables["ecoli_growth_rate"] = growthRate;
+	bacterium.runtimeVariables["volume"] = bacterium.volume;
+	bacterium.runtimeVariables["size"] = bacterium.size;
 }
 
 void BacteriaColony::_rebuildBacteriaGridPositions() {

@@ -61,12 +61,24 @@ public:
 		double value = 0.0;
 	};
 
+	struct ColonyMutation {
+		enum class Type {
+			Reset,
+			SpawnSeed
+		};
+
+		Type type = Type::Reset;
+		std::vector<std::string> arguments;
+	};
+
 	struct ExecutionResult {
 		bool succeeded = true;
 		std::string errorMessage = "";
 		unsigned int executedCommands = 0;
 		std::vector<PopulationMutation> populationMutations;
 		std::vector<SignalMutation> signalMutations;
+		std::vector<ColonyMutation> colonyMutations;
+		std::vector<std::string> messages;
 		std::map<std::string, double> assignedVariables;
 		std::vector<std::string> unsupportedCommands;
 		std::vector<std::string> skippedRawStatements;

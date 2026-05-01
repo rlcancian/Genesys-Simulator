@@ -657,6 +657,58 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			continue;
 		}
 
+		if (command.functionName == "message") {
+			// GRO uses message() as a side-channel for observability, so we keep it
+			// as a no-op command that records the call without disturbing the state.
+			std::string renderedMessage = "message(";
+			for (std::size_t index = 0; index < command.arguments.size(); ++index) {
+				if (index > 0) {
+					renderedMessage += ", ";
+				}
+				renderedMessage += command.arguments[index];
+			}
+			renderedMessage += ")";
+			result.messages.push_back(renderedMessage);
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "reset") {
+			if (!command.arguments.empty()) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime reset command does not accept arguments. ";
+				return false;
+			}
+			state.variables.clear();
+			state.variables["dt"] = state.simulationStep;
+			state.populationSize = 0;
+			state.tickCount = 0;
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::Reset;
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "ecoli") {
+			if (command.arguments.size() != 2) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime ecoli command expects a seed record and a program declaration. ";
+				return false;
+			}
+			if (!addPopulation(state.populationSize, 1, state.populationSize)) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime ecoli command would overflow population size. ";
+				return false;
+			}
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::SpawnSeed;
+			mutation.arguments = command.arguments;
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
 		if (command.functionName == "grow") {
 			unsigned int amount = 1;
 			if (!parseOptionalPositiveAmount(command, state, amount, result.errorMessage)) {

@@ -356,6 +356,7 @@ TEST(RuntimePluginManagerClassTest, DefaultGroProgramProducesVisibleColonyDynami
     EXPECT_NE(colony->getBacteriumPositionX(0), 16.0);
     EXPECT_NE(colony->getBacteriumPositionY(0), 16.0);
     EXPECT_GT(colony->getBacteriumSize(0), 0.0);
+    EXPECT_GT(colony->getBacteriumVolume(0), 1.0);
     EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "gfp"), 0.0);
 }
 
@@ -1346,6 +1347,145 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesMainProgramBeforeSeede
     EXPECT_TRUE(second.succeeded) << second.errorMessage;
     EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("warmup"), 2.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.seen_warmup"), 2.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyMainCanResetAndRespawnSeeds) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_ResetAndRespawn");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "program main() := { reset(); ecoli([x:=2, y:=3], program leader()); }; "
+        "program leader() := { p := [ seen := 0 ]; true : { p.seen := p.seen + 1 } }; "
+        "ecoli([x:=0, y:=0], program leader());");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_ResetAndRespawn");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_EQ(colony->getInternalBacteriaCount(), 1u);
+    EXPECT_EQ(colony->getPopulationSize(), 1u);
+    EXPECT_EQ(colony->getBacteriumState(0).gridX, 2u);
+    EXPECT_EQ(colony->getBacteriumState(0).gridY, 3u);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.seen"), 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesVisibleGrowthToBacteria) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_VisibleGrowth");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "set(\"ecoli_growth_rate\", 0.6); "
+        "program grower() := { skip(); }; "
+        "ecoli([x:=1, y:=1], program grower());");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_VisibleGrowth");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_GT(colony->getBacteriumVolume(0), 1.0);
+    EXPECT_GT(colony->getBacteriumSize(0), 1.0);
+    EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "volume"), 1.0);
+    EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "size"), 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyProducesVisibleMotionSignalsAndFluorescence) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_MotionSignalFluorescence");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "set(\"dt\", 0.18); "
+        "set(\"ecoli_growth_rate\", 0.12); "
+        "wave := signal(0.85, 0.035); "
+        "program leader() := { "
+        "  p.phase := 0; p.timer := 0; "
+        "  true : { "
+        "    p.timer := p.timer + dt, "
+        "    volume := volume + 0.05, "
+        "    size := volume, "
+        "    speed := 0.22, "
+        "    gfp := 30 + 18 * volume, "
+        "    direction := direction + 0.08, "
+        "    emit_signal(wave, 8), "
+        "    rfp := 6 + 8 * get_signal(wave) "
+        "  } "
+        "}; "
+        "program follower() := { "
+        "  p.t := 0; sense := get_signal(wave); "
+        "  true : { "
+        "    p.t := p.t + dt, "
+        "    volume := volume + 0.035 + 0.02 * sense, "
+        "    size := volume, "
+        "    speed := 0.08 + 0.12 * sense, "
+        "    yfp := 12 + 24 * sense, "
+        "    cfp := 8 + 14 * p.t "
+        "  } "
+        "  sense > 0.08 : { direction := direction + 0.22, emit_signal(wave, 6) } "
+        "  sense > 0.20 : { rfp := 24 + 40 * sense } "
+        "}; "
+        "ecoli([x:=10, y:=10], program leader()); "
+        "ecoli([x:=12, y:=12], program follower());");
+
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_MotionSignalFluorescence");
+    ASSERT_NE(signalGrid, nullptr);
+    signalGrid->setWidth(16);
+    signalGrid->setHeight(16);
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_MotionSignalFluorescence");
+    ASSERT_NE(colony, nullptr);
+    colony->setSignalGrid(signalGrid);
+    colony->setGroProgram(program);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+    const double initialX = colony->getBacteriumPositionX(0);
+    const double initialY = colony->getBacteriumPositionY(0);
+
+    for (unsigned int step = 0; step < 8; ++step) {
+        GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+        ASSERT_TRUE(result.succeeded) << result.errorMessage;
+    }
+
+    double maxSignal = 0.0;
+    for (unsigned int y = 0; y < colony->getGridHeight(); ++y) {
+        for (unsigned int x = 0; x < colony->getGridWidth(); ++x) {
+            maxSignal = std::max(maxSignal, colony->getSignalValueAt(x, y));
+        }
+    }
+
+    EXPECT_NE(colony->getBacteriumPositionX(0), initialX);
+    EXPECT_NE(colony->getBacteriumPositionY(0), initialY);
+    EXPECT_GT(colony->getBacteriumVolume(0), 1.0);
+    EXPECT_GT(colony->getBacteriumSize(0), 1.0);
+    EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "gfp"), 0.0);
+    EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "rfp"), 0.0);
+    EXPECT_GT(colony->getBacteriumRuntimeVariableValue(1, "yfp"), 0.0);
+    EXPECT_GT(colony->getBacteriumRuntimeVariableValue(1, "cfp"), 0.0);
+    EXPECT_GT(maxSignal, 0.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalContext) {
