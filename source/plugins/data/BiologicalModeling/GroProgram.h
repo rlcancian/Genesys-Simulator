@@ -66,29 +66,40 @@ private:
 	const struct DEFAULT_VALUES {
 		const std::string sourceCode = R"(
 include gro
-set ( "dt", 0.1 );
-ahl := signal ( 1, 1 );
-
-program leader() := {
-  p := [ t := 0, division_t := 0 ];
-  true : { p.t := p.t + dt, p.division_t := p.division_t + dt }
-  p.t > 0.2 : { emit_signal ( ahl, 40 ), p.t := 0 }
-  p.division_t > 0.9 : { divide(), p.division_t := 0 }
-};
-
-program follower() := {
-  p := [ mode := 0, t := 0, growth_t := 0 ];
-  true : { p.growth_t := p.growth_t + dt }
-  p.mode = 0 & get_signal ( ahl ) > 0.01 : {
-    p.mode := 1,
+set ("dt",0.1);
+s := signal (1,1.05);
+k0 := 2.5;  // base rate of oscillation
+kb := 5;    // cell-cell feedback strength
+tr := 10;   // refractory period length
+se := 650;  // signal emit magnitude
+GO := 0;
+WAIT := 1;
+program oscillator(g0) := {
+  gfp := 0.5*volume*g0;
+  p := [mode := GO, t := 0, x := g0];
+  true : {gfp := 0.5*volume*(g0 + p.x/150)}
+  // advance the oscillation phase
+  p.mode = GO & rate (k0) : {p.x := p.x + 0.01*(150-p.x)}
+  p.mode = GO & rate(kb*get_signal(s)) : {p.x := p.x + 0.01*(150-p.x)}
+  // phase reset
+  p.x > 100 : {
+    p.x := 0,
+    p.mode := WAIT,
+    emit_signal(s, se)
+  }
+  // refractory period timer
+  p.mode = WAIT : {p.t := p.t+dt}
+  p.mode = WAIT & p.t > tr : {
+    p.mode := GO,
     p.t := 0
   }
-  p.mode = 1 : { p.t := p.t + dt }
-  p.growth_t > 1.2 : { grow(), p.growth_t := 0 }
 };
-
-ecoli ( [ x:= 0, y:= 0 ], program leader() );
-ecoli ( [ x:= 0, y:= 10 ], program follower() );
+ecoli ( [x:=0, y:=0], program oscillator(1));
+program main() := {
+  //n := 0;
+  //true : {snapshot("movie/oscillator/" <> tostring(n) <> ".tif"), n:=n+1}
+  skip();
+};
 )";
 
 	} DEFAULT;

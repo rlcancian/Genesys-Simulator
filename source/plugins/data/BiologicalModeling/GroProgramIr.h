@@ -53,10 +53,15 @@ struct GroProgramIr {
 		}
 	};
 
+	struct NamedProgramDefinition {
+		std::vector<std::string> parameters;
+		std::vector<Command> commands;
+	};
+
 	GroProgramAst::SourceForm sourceForm = GroProgramAst::SourceForm::RawStatements;
 	std::string programName = "";
 	std::vector<Command> commands;
-	std::map<std::string, std::vector<Command>> namedPrograms;
+	std::map<std::string, NamedProgramDefinition> namedPrograms;
 
 	bool isProgramBlock() const {
 		return sourceForm == GroProgramAst::SourceForm::ProgramBlock;

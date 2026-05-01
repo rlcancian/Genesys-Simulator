@@ -298,8 +298,8 @@ TEST(RuntimePluginManagerClassTest, GroProgramCanCreateDefaultStarterAndKeepEmpt
     const std::string filename = "/tmp/genesys_default_gro_program_test.gro";
     EXPECT_TRUE(program->createDefaultGroProgram(filename));
     EXPECT_FALSE(program->getSourceCode().empty());
-    EXPECT_NE(program->getSourceCode().find("program leader()"), std::string::npos);
-    EXPECT_NE(program->getSourceCode().find("program follower()"), std::string::npos);
+    EXPECT_NE(program->getSourceCode().find("program oscillator(g0)"), std::string::npos);
+    EXPECT_NE(program->getSourceCode().find("program main()"), std::string::npos);
     EXPECT_TRUE(program->validateSyntax(errorMessage)) << errorMessage;
 
     std::ifstream createdFile(filename);
@@ -332,21 +332,23 @@ TEST(RuntimePluginManagerClassTest, DefaultGroProgramProducesVisibleColonyDynami
 
     ModelDataDefinition::InitBetweenReplications(colony);
 
-    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
-    EXPECT_EQ(colony->getBacteriumState(0).programName, "leader");
-    EXPECT_EQ(colony->getBacteriumState(1).programName, "follower");
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 1u);
+    EXPECT_EQ(colony->getBacteriumState(0).programName, "oscillator");
     EXPECT_EQ(colony->getGridWidth(), 12u);
     EXPECT_EQ(colony->getGridHeight(), 12u);
 
-    for (unsigned int step = 0; step < 14; ++step) {
+    for (unsigned int step = 0; step < 120; ++step) {
         GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
         ASSERT_TRUE(result.succeeded) << result.errorMessage;
     }
 
-    EXPECT_GT(colony->getPopulationSize(), 2u);
-    EXPECT_GT(colony->getInternalBacteriaCount(), 2u);
+    EXPECT_EQ(colony->getPopulationSize(), 1u);
+    EXPECT_EQ(colony->getInternalBacteriaCount(), 1u);
     EXPECT_GT(colony->getSignalValueAt(0, 0), 0.0);
-    EXPECT_GT(colony->getSignalValueAt(1, 0), 0.0);
+    EXPECT_NE(colony->getBacteriumPositionX(0), 0.5);
+    EXPECT_NE(colony->getBacteriumPositionY(0), 0.5);
+    EXPECT_GT(colony->getBacteriumSize(0), 0.0);
+    EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "gfp"), 0.0);
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndStepped) {
@@ -702,7 +704,9 @@ TEST(RuntimePluginManagerClassTest, GroProgramParserAndCompilerCaptureNamedProgr
     EXPECT_TRUE(parsed.ast.hasNamedPrograms());
     ASSERT_EQ(parsed.ast.namedPrograms.size(), 2u);
     EXPECT_EQ(parsed.ast.namedPrograms[0].name, "leader");
+    EXPECT_TRUE(parsed.ast.namedPrograms[0].parameters.empty());
     EXPECT_EQ(parsed.ast.namedPrograms[1].name, "follower");
+    EXPECT_TRUE(parsed.ast.namedPrograms[1].parameters.empty());
 
     GroProgramCompiler compiler;
     GroProgramIr ir = compiler.compile(parsed.ast);
@@ -719,7 +723,8 @@ TEST(RuntimePluginManagerClassTest, GroProgramParserAndCompilerCaptureNamedProgr
     }
     EXPECT_TRUE(foundSignalAssignment);
 
-    const std::vector<GroProgramIr::Command>& leaderCommands = ir.namedPrograms.at("leader");
+    const GroProgramIr::NamedProgramDefinition& leaderDefinition = ir.namedPrograms.at("leader");
+    const std::vector<GroProgramIr::Command>& leaderCommands = leaderDefinition.commands;
     ASSERT_EQ(leaderCommands.size(), 2u);
     EXPECT_TRUE(leaderCommands[0].isAssignment());
     EXPECT_EQ(leaderCommands[0].assignmentTarget, "p.t");
@@ -727,7 +732,8 @@ TEST(RuntimePluginManagerClassTest, GroProgramParserAndCompilerCaptureNamedProgr
     EXPECT_TRUE(leaderCommands[1].isIfStatement());
     EXPECT_EQ(leaderCommands[1].expressionText, "true");
 
-    const std::vector<GroProgramIr::Command>& followerCommands = ir.namedPrograms.at("follower");
+    const GroProgramIr::NamedProgramDefinition& followerDefinition = ir.namedPrograms.at("follower");
+    const std::vector<GroProgramIr::Command>& followerCommands = followerDefinition.commands;
     ASSERT_EQ(followerCommands.size(), 3u);
     EXPECT_TRUE(followerCommands[0].isAssignment());
     EXPECT_EQ(followerCommands[0].assignmentTarget, "p.mode");
@@ -912,6 +918,47 @@ TEST(RuntimePluginManagerClassTest, GroProgramRuntimeSupportsGroRuleSyntaxAndPer
     EXPECT_TRUE(secondResult.signalMutations.empty());
     EXPECT_DOUBLE_EQ(state.variables.at("p.mode"), 1.0);
     EXPECT_DOUBLE_EQ(state.variables.at("p.t"), 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, GroProgramRuntimeSupportsProgramParametersRateSkipAndFluorescenceVariables) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_FluorescentDefault");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "include gro; "
+        "set(\"dt\", 0.1); "
+        "program oscillator(g0) := { "
+        "  p := [ mode := 0, t := 0, x := g0 ]; "
+        "  true : { skip() } "
+        "  p.mode = 0 & rate(1) : { gfp := 0.5 * volume * g0, p.mode := 1, p.t := 0 } "
+        "}; "
+        "ecoli([x:=0, y:=0], program oscillator(3));");
+
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_FluorescentDefault");
+    ASSERT_NE(signalGrid, nullptr);
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_FluorescentDefault");
+    ASSERT_NE(colony, nullptr);
+    colony->setSignalGrid(signalGrid);
+    colony->setGroProgram(program);
+
+    ModelDataDefinition::InitBetweenReplications(colony);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 1u);
+    EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "g0"));
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "g0"), 3.0);
+
+    GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
+    EXPECT_TRUE(result.succeeded) << result.errorMessage;
+    EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "gfp"), 0.0);
+    EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "p.mode"));
+    EXPECT_TRUE(colony->hasBacteriumRuntimeVariable(0, "p.t"));
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyPreservesRuntimeVariablesAcrossExecutions) {

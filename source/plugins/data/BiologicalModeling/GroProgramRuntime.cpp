@@ -398,6 +398,15 @@ private:
 			return true;
 		}
 
+		if (functionName == "rate") {
+			if (arguments.size() != 1) {
+				errorMessage = "GroProgramRuntime rate expression expects exactly one numeric argument. ";
+				return false;
+			}
+			value = std::max(0.0, arguments.front());
+			return true;
+		}
+
 		errorMessage = "GroProgramRuntime expression does not support function \"" + functionName + "\". ";
 		return false;
 	}
@@ -601,6 +610,16 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 				// Preserve generic Gro set("name", value) state as a scalar variable when no dedicated binding exists yet.
 				state.variables[settingName] = settingValue;
 				result.assignedVariables[settingName] = settingValue;
+			}
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "skip") {
+			if (!command.arguments.empty()) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime skip command does not accept arguments. ";
+				return false;
 			}
 			++result.executedCommands;
 			continue;

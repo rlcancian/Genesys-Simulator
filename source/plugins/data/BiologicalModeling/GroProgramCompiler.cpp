@@ -687,7 +687,10 @@ GroProgramIr GroProgramCompiler::compile(const GroProgramAst& ast) const {
 		ir.commands.insert(ir.commands.end(), statementCommands.begin(), statementCommands.end());
 	}
 	for (const GroProgramAst::NamedProgram& namedProgram : ast.namedPrograms) {
-		ir.namedPrograms[namedProgram.name] = compileStatements(namedProgram.bodySource);
+		GroProgramIr::NamedProgramDefinition definition;
+		definition.parameters = namedProgram.parameters;
+		definition.commands = compileStatements(namedProgram.bodySource);
+		ir.namedPrograms[namedProgram.name] = std::move(definition);
 	}
 	return ir;
 }

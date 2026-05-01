@@ -18,36 +18,6 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
-namespace {
-
-std::string buildDefaultGroProgramSource(const std::string& filename) {
-	const std::string label = filename.empty() ? "inline Gro program" : filename;
-	return "// Default starter created for " + label + "\n"
-	       "include gro\n"
-	       "set ( \"dt\", 0.1 );\n"
-	       "ahl := signal ( 1, 1 );\n"
-	       "\n"
-	       "program leader() := {\n"
-	       "  p := [ t := 0, division_t := 0 ];\n"
-	       "  true : { p.t := p.t + dt, p.division_t := p.division_t + dt }\n"
-	       "  p.t > 0.2 : { emit_signal ( ahl, 40 ), p.t := 0 }\n"
-	       "  p.division_t > 0.9 : { divide(), p.division_t := 0 }\n"
-	       "};\n"
-	       "\n"
-	       "program follower() := {\n"
-	       "  p := [ mode := 0, t := 0, growth_t := 0 ];\n"
-	       "  true : { p.growth_t := p.growth_t + dt }\n"
-	       "  p.mode = 0 & get_signal ( ahl ) > 0.01 : { p.mode := 1, p.t := 0 }\n"
-	       "  p.mode = 1 : { p.t := p.t + dt }\n"
-	       "  p.growth_t > 1.2 : { grow(), p.growth_t := 0 }\n"
-	       "};\n"
-	       "\n"
-	       "ecoli ( [ x:= 0, y:= 0 ], program leader() );\n"
-	       "ecoli ( [ x:= 0, y:= 10 ], program follower() );\n";
-}
-
-} // namespace
-
 ModelDataDefinition* GroProgram::NewInstance(Model* model, std::string name) {
 	return new GroProgram(model, name);
 }
@@ -102,7 +72,7 @@ std::string GroProgram::getSourceCode() const {
 bool GroProgram::createDefaultGroProgram(const std::string& filename) {
 	// Keep the model-side source synchronized with the generated starter even
 	// when the caller does not request an external file yet.
-	_sourceCode = buildDefaultGroProgramSource(filename);
+	_sourceCode = DEFAULT.sourceCode;
 
 	if (filename.empty()) {
 		return true;

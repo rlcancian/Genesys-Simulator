@@ -30,12 +30,14 @@ struct GroProgramAst {
 
 	struct NamedProgram {
 		std::string name = "";
+		std::vector<std::string> parameters;
 		std::string bodySource = "";
 		std::vector<Statement> statements;
 	};
 
 	SourceForm sourceForm = SourceForm::RawStatements;
 	std::string programName = "";
+	std::vector<std::string> programParameters;
 	std::string bodySource = "";
 	std::vector<Statement> statements;
 	std::vector<NamedProgram> namedPrograms;

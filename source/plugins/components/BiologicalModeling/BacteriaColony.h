@@ -36,10 +36,19 @@ public:
 		unsigned int parentId = 0;
 		unsigned int generation = 0;
 		std::string programName = "";
+		std::vector<double> programArguments;
 		unsigned int divisionCount = 0;
 		double birthTime = 0.0;
 		double lastUpdateTime = 0.0;
 		double lastDivisionTime = 0.0;
+		double positionX = 0.0;
+		double positionY = 0.0;
+		double directionRadians = 0.0;
+		double volume = 1.0;
+		double size = 1.0;
+		double gfp = 0.0;
+		double rfp = 0.0;
+		double speed = 0.1;
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
 		bool hasExplicitGridPosition = false;
@@ -98,6 +107,20 @@ public:
 	const BacteriumState& getBacteriumState(std::size_t index) const;
 	/*! \brief Returns the age of one internal bacterium at the current colony time. */
 	double getBacteriumAge(std::size_t index) const;
+	/*! \brief Returns the continuous X coordinate used by the viewer. */
+	double getBacteriumPositionX(std::size_t index) const;
+	/*! \brief Returns the continuous Y coordinate used by the viewer. */
+	double getBacteriumPositionY(std::size_t index) const;
+	/*! \brief Returns the bacterium direction in radians. */
+	double getBacteriumDirectionRadians(std::size_t index) const;
+	/*! \brief Returns the current bacterium volume. */
+	double getBacteriumVolume(std::size_t index) const;
+	/*! \brief Returns the current bacterium size used for rendering. */
+	double getBacteriumSize(std::size_t index) const;
+	/*! \brief Returns the current GFP amount used for rendering. */
+	double getBacteriumGfp(std::size_t index) const;
+	/*! \brief Returns the current RFP amount used for rendering. */
+	double getBacteriumRfp(std::size_t index) const;
 	/*! \brief Returns the last stored value for one bacterium-scoped runtime variable. */
 	double getBacteriumRuntimeVariableValue(std::size_t index, const std::string& variableName) const;
 	/*! \brief Tells whether one bacterium currently stores one runtime scalar variable. */
@@ -172,6 +195,7 @@ private:
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
 		std::string programName = "";
+		std::vector<double> programArguments;
 	};
 	std::vector<GroSeedDefinition> _groSeedDefinitions;
 	std::string _groSeedSignature = "";
@@ -218,11 +242,21 @@ private:
 	                                              GroProgramRuntime::ExecutionResult& result);
 	void _appendBacterium(unsigned int parentId = 0, unsigned int generation = 0,
 	                     const std::string& programName = "");
+	void _appendBacterium(const GroSeedDefinition& seedDefinition);
 	void _removeBacteria(unsigned int amount);
 	bool _removeBacteriumById(unsigned int bacteriumId);
 	void _refreshBacteriaUpdateTime();
 	void _rebuildBacteriaGridPositions();
 	void _assignBacteriumGridPosition(BacteriumState& bacterium, std::size_t index) const;
+	void _initializeBacteriumPhenotype(BacteriumState& bacterium, std::size_t index) const;
+	void _syncBacteriumSpatialState(BacteriumState& bacterium, const GroProgramRuntimeState& runtimeState) const;
+	void _updateBacteriumSpatialMotion(BacteriumState& bacterium) const;
+	void _setBacteriumPosition(BacteriumState& bacterium, double x, double y) const;
+	double _clampPositionX(double value) const;
+	double _clampPositionY(double value) const;
+	void _bindProgramArguments(GroProgramRuntimeState& runtimeState,
+	                           const std::vector<std::string>& parameterNames,
+	                           const std::vector<double>& arguments) const;
 };
 
 #endif /* BACTERIACOLONY_H */

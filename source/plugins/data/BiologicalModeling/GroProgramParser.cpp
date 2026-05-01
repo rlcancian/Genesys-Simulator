@@ -7,6 +7,7 @@
 
 #include "plugins/data/BiologicalModeling/GroProgramParser.h"
 
+#include <algorithm>
 #include <cctype>
 #include <string>
 #include <vector>
@@ -102,6 +103,48 @@ std::string readIdentifier(const std::string& sourceCode, std::size_t& position)
 		++position;
 	}
 	return sourceCode.substr(start, position - start);
+}
+
+std::vector<std::string> parseParameterList(const std::string& text) {
+	std::vector<std::string> parameters;
+	std::string current;
+	std::size_t position = 0;
+	while (position < text.size()) {
+		const char currentChar = text[position];
+		if (currentChar == ',' ) {
+			const std::string parameter = trim(current);
+			if (!parameter.empty()) {
+				parameters.push_back(parameter);
+			}
+			current.clear();
+			++position;
+			continue;
+		}
+		current.push_back(currentChar);
+		++position;
+	}
+	const std::string trailing = trim(current);
+	if (!trailing.empty()) {
+		parameters.push_back(trailing);
+	}
+
+	for (std::string& parameter : parameters) {
+		if (parameter.find_first_of("()[]{}") != std::string::npos) {
+			parameter.clear();
+			continue;
+		}
+		std::size_t identifierPosition = 0;
+		const std::string identifier = readIdentifier(parameter, identifierPosition);
+		if (identifier.empty() || identifierPosition != parameter.size()) {
+			parameter.clear();
+			continue;
+		}
+		parameter = identifier;
+	}
+	parameters.erase(std::remove_if(parameters.begin(), parameters.end(), [](const std::string& value) {
+		return value.empty();
+	}), parameters.end());
+	return parameters;
 }
 
 std::size_t findMatchingDelimiter(const std::string& sourceCode, std::size_t openingIndex) {
@@ -398,6 +441,7 @@ bool tryParseNamedProgram(const std::string& sourceCode, std::size_t& position, 
 		position = start;
 		return false;
 	}
+	program.parameters = parseParameterList(trim(sourceCode.substr(position + 1, closingParenthesis - position - 1)));
 
 	position = skipWhitespaceAndComments(sourceCode, closingParenthesis + 1);
 	if (position + 1 < sourceCode.size() && sourceCode[position] == ':' && sourceCode[position + 1] == '=') {
@@ -454,6 +498,7 @@ GroProgramAst buildAst(const std::string& sourceCode) {
 	if (ast.namedPrograms.size() == 1 && ast.statements.empty()) {
 		ast.sourceForm = GroProgramAst::SourceForm::ProgramBlock;
 		ast.programName = ast.namedPrograms.front().name;
+		ast.programParameters = ast.namedPrograms.front().parameters;
 		ast.bodySource = ast.namedPrograms.front().bodySource;
 		ast.statements = ast.namedPrograms.front().statements;
 		ast.namedPrograms.clear();
