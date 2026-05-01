@@ -46,27 +46,28 @@ int Smart_BacteriaColony_GRO::main(int argc, char** argv) {
 	GroProgram* program = plugins->newInstance<GroProgram>(model, "GroProgram_BacteriaColony_GRO");
 	// The program stays compact on purpose: motion, growth, signal release and GFP
 	// are all visible in the GUI with a short replication.
-	program->setSourceCode(R"(
+program->setSourceCode(R"(
 include gro
-set ( "dt", 0.1 );
-set ( "ecoli_growth_rate", 0.18 );
+
+program main() := {
+  if ( seeded == 0 ) {
+    reset(),
+    set ( "dt", 0.1 ),
+    set ( "ecoli_growth_rate", 0.18 ),
+    seeded := 1,
+    ecoli ( [ x := 2, y := 2 ], program colony() ),
+    ecoli ( [ x := 5, y := 2 ], program colony() ),
+    ecoli ( [ x := 2, y := 5 ], program colony() ),
+    ecoli ( [ x := 5, y := 5 ], program colony() )
+  }
+};
 
 program colony() := {
-  tick();
   speed := 0.12 + 0.05 * local_signal + 0.01 * bacterium_generation;
   direction := direction + 0.26 + 0.03 * bacterium_generation;
   gfp := 18 + 28 * local_signal + 2 * volume;
   emit_signal ( 0.55 + 0.15 * local_signal );
-  if ( rate ( 1.5 ) ) {
-    grow();
-  }
-};
-
-ecoli ( [ x := 2, y := 2 ], program colony() );
-ecoli ( [ x := 5, y := 2 ], program colony() );
-ecoli ( [ x := 2, y := 5 ], program colony() );
-ecoli ( [ x := 5, y := 5 ], program colony() );
-
+}
 )");
 
 	BacteriaSignalGrid* signalGrid = plugins->newInstance<BacteriaSignalGrid>(model, "SignalGrid_BacteriaColony_GRO");
