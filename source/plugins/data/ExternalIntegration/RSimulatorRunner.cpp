@@ -459,11 +459,8 @@ std::string RSimulatorRunner::getLastResponseFilename() const {
 	return _lastResponseFilename;
 }
 
-void RSimulatorRunner::_createInternalStatisticReporters() {
-}
+// void RSimulatorRunner::_createInternalStatisticReporters() { }
 
-void RSimulatorRunner::_createEditableDataDefinitions() {
-}
+// void RSimulatorRunner::_createEditableDataDefinitions() { }
 
-void RSimulatorRunner::_createAttachedAttributes() {
-}
+// void RSimulatorRunner::_createAttachedAttributes() { }

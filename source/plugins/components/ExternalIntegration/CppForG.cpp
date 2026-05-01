@@ -242,7 +242,19 @@ void CppForG::_initBetweenReplications() {
 	}
 }
 
-void CppForG::_createAttachedAttributes() {
+//void CppForG::_createAttachedAttributes() {}
+
+PluginInformation* CppForG::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<CppForG>(), &CppForG::LoadInstance, &CppForG::NewInstance);
+	info->setCategory("ExternalIntegration");
+	info->insertDynamicLibFileDependence("cppcompiler.so");
+	info->setDescriptionHelp("//@TODO");
+	return info;
+}
+
+// void CppForG::_createInternalStatisticReporters() { }
+
+void CppForG::_createEditableDataDefinitions() {
 	if (_cppCompiler == nullptr) {
 		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
 		_cppCompiler->setSourceFilename(getName() + ".cpp");
@@ -253,19 +265,5 @@ void CppForG::_createAttachedAttributes() {
 	} else {
 		_internalDataRemove("CppCompiler");
 	}
-}
 
-PluginInformation* CppForG::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<CppForG>(), &CppForG::LoadInstance, &CppForG::NewInstance);
-	info->setCategory("ExternalIntegration");
-	info->insertDynamicLibFileDependence("cppcompiler.so");
-	info->setDescriptionHelp("//@TODO");
-	return info;
 }
-
-void CppForG::_createInternalStatisticReporters() {
-}
-
-void CppForG::_createEditableDataDefinitions() {
-}
-

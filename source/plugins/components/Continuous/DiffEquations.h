@@ -61,9 +61,10 @@ protected: //! virtual protected methods that could be overriden by derived clas
 	/*! This method is not used yet. It should be usefull for new UIs */
 	// virtual void _addSimulationControl(SimulationControl* property);
 protected:
-	virtual void _createInternalStatisticReporters() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
 	virtual void _createEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+	// virtual void _createAttachedAttributes() override;
 
 protected:
 

@@ -326,15 +326,13 @@ void PickStation::_initBetweenReplications() {
 	//_someUint = 1;
 }
 
-void PickStation::_createAttachedAttributes() {
-}
+// void PickStation::_createAttachedAttributes() { }
 
 void PickStation::_addSimulationControl(SimulationControl* property) {
 	ModelDataDefinition::_addSimulationControl(property);
 }
 
-void PickStation::_createInternalStatisticReporters() {
-}
+// void PickStation::_createInternalStatisticReporters() { }
 
 void PickStation::_createEditableDataDefinitions() {
 	unsigned int i = 0;

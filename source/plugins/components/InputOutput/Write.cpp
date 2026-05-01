@@ -210,11 +210,8 @@ PluginInformation* Write::GetPluginInformation() {
 	return info;
 }
 
-void Write::_createInternalStatisticReporters() {
-}
+// void Write::_createInternalStatisticReporters() { }
 
-void Write::_createEditableDataDefinitions() {
-}
+// void Write::_createEditableDataDefinitions() { }
 
-void Write::_createAttachedAttributes() {
-}
+// void Write::_createAttachedAttributes() { }

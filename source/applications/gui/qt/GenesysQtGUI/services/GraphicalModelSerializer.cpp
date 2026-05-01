@@ -491,7 +491,7 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
             return false;
         }
 
-        // Persist the canonical kernel state in GEN format first, using the .gui filename.
+        // Persist the canonical kernel state directly into the .gui file before appending GUI overlays.
         if (!_simulator->getModelManager()->saveModel(filename.toStdString())) {
             QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"), QObject::tr("Could not save kernel model to file."));
             return false;
@@ -1288,9 +1288,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             QPointF componentPos(state.position.x(), state.position.y() - existingComponent->getHeight() / 2.0);
             existingComponent->setPos(componentPos);
             existingComponent->setOldPosition(componentPos);
-            if (state.hasColor) {
-                existingComponent->setColor(state.color);
-            }
+            // Keep the builder-assigned plugin-category palette on reload; persisted colors are
+            // still parsed for backward compatibility but no longer override the category color.
             restorePortPositions(existingComponent, state.portPositions);
             persistedItems.insert(static_cast<int>(state.componentId), existingComponent);
             if (state.itemId != 0) {

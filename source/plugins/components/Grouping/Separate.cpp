@@ -103,11 +103,8 @@ PluginInformation* Separate::GetPluginInformation() {
 	return info;
 }
 
-void Separate::_createInternalStatisticReporters() {
-}
+// void Separate::_createInternalStatisticReporters() { }
 
-void Separate::_createEditableDataDefinitions() {
-}
+// void Separate::_createEditableDataDefinitions() { }
 
-void Separate::_createAttachedAttributes() {
-}
+// void Separate::_createAttachedAttributes() { }

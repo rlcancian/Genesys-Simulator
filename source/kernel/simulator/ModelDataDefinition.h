@@ -137,13 +137,15 @@ public: // public static methods
 	static void SaveInstance(PersistenceRecord* fields, ModelDataDefinition* modeldatum);
 	/*! This class method takes an instance of a ModelDataDefinition and invokes the private method_check() method of that instance, which checks itself */
 	static bool Check(ModelDataDefinition* modeldatum, std::string& errorMessage);
+	static void InitBetweenReplications(ModelDataDefinition* modeldatum);
+	//static PluginInformation* GetPluginInformation();
+
+public:
 	/*! This class method is responsible for invoking the protected method _check() of the instance modeldatum, which creates any internal ModelDataDefinition (such as internelElements) or even other external needed ModelDatas, such as attributes or variables */
 	static void CreateInternalData(ModelDataDefinition* modeldatum);
 	/*! Materializes related data and runs local checks for this modeldatum in a single call. */
 	static bool CreateRelatedDataElements(ModelDataDefinition* modeldatum, std::string& errorMessage);
 	/* This class methood is responsible for invoking the protected method _initBetweenReplication(), which clears all statistics, attributes, counters and other stuff before starting a new repliction */
-	static void InitBetweenReplications(ModelDataDefinition* modeldatum);
-	//static PluginInformation* GetPluginInformation();
 
 public: // public virtual methods
 	virtual std::string show();
@@ -183,6 +185,7 @@ protected:
 	void _templateCreateNonEditableDataDefinitions();
 	void _templateCreateEditableDataDefinitions();
 protected: //! methods to be called inside the _createInternalAndAttachedData() method
+	void _internaStatisticReportersClear();
 	void _internalDataClear();
 	void _internalDataInsert(const std::string& key, ModelDataDefinition* child);
 	void _internalDataRemove(const std::string& key);

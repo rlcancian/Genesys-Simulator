@@ -276,8 +276,7 @@ void Seize::_initBetweenReplications() {
 }
 
 
-void Seize::_createAttachedAttributes() {
-}
+// void Seize::_createAttachedAttributes() { }
 
 bool Seize::_check(std::string& errorMessage) {
 	bool resultAll = true;
@@ -509,8 +508,7 @@ Resource* Seize::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* en
 	return resource;
 }
 
-void Seize::_createInternalStatisticReporters() {
-}
+// void Seize::_createInternalStatisticReporters() { }
 
 void Seize::_createEditableDataDefinitions() {
 	//_attachedAttributesInsert({"Entity.Allocation"});

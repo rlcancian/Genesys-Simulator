@@ -52,11 +52,10 @@ protected: // could be overriden .
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 
 protected:
-
-
-	virtual void _createInternalStatisticReporters() override;
-	virtual void _createEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 
 private: // methods
 	unsigned int  _notifySignalDataEventHandlers(); //!< Notify observer classes that some of the resource capacity has been released. It is useful for allocation components (such as Seize) to know when an entity waiting into a queue can try to seize the resource again

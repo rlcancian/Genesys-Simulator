@@ -5,7 +5,7 @@
 #include <QPainter>
 #include <QGraphicsSceneMouseEvent>
 
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "../../../../../plugins/data/Logic/Variable.h"
 
 class AnimationVariable : public QGraphicsRectItem {
 public:

@@ -120,7 +120,7 @@ protected:
 	virtual void _initBetweenReplications() override;
     virtual bool _check(std::string& errorMessage) override;
 protected:
-	virtual void _createInternalStatisticReporters();
+	//virtual void _createInternalStatisticReporters();
 	virtual void _createEditableDataDefinitions();
 	virtual void _createAttachedAttributes();
 protected: // get & set

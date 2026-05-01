@@ -232,12 +232,8 @@ void Schedule::_addSimulationControl(SimulationControl* property) {
 // private
 //
 
-void Schedule::_createInternalStatisticReporters() {
-}
+// void Schedule::_createInternalStatisticReporters() { }
 
-void Schedule::_createEditableDataDefinitions() {
-}
+// void Schedule::_createEditableDataDefinitions() { }
 
-void Schedule::_createAttachedAttributes() {
-	// Schedule currently has no internal or attached data to instantiate.
-}
+//void Schedule::_createAttachedAttributes() {}

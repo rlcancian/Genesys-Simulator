@@ -112,27 +112,7 @@ PluginInformation* Enter::GetPluginInformation() {
 	return info;
 }
 
-void Enter::_createAttachedAttributes() {
-	if (_reportStatistics) {
-		if (_numberIn == nullptr) {
-			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
-		}
-		if (_numberIn != nullptr) {
-			_internalDataInsert("CountNumberIn", _numberIn);
-		}
-	} else
-		if (_numberIn != nullptr) {
-			_internalDataClear();
-		}
-	if (_station == nullptr) {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
-	}
-	if (_station != nullptr) {
-		_attachedDataInsert("Station", _station);
-	} else {
-		_attachedDataRemove("Station");
-	}
-}
+//void Enter::_createAttachedAttributes() {}
 
 bool Enter::_check(std::string& errorMessage) {
 	bool resultAll = true;
@@ -144,8 +124,27 @@ bool Enter::_check(std::string& errorMessage) {
 }
 
 void Enter::_createInternalStatisticReporters() {
+	if (_reportStatistics) {
+		if (_numberIn == nullptr) {
+			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+		}
+		if (_numberIn != nullptr) {
+			_internalDataInsert("CountNumberIn", _numberIn);
+		}
+	} else {
+			_internalDataClear();
+		_numberIn = nullptr;
+	}
 }
 
 void Enter::_createEditableDataDefinitions() {
-}
+	if (_station == nullptr) {
+		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
+	}
+	if (_station != nullptr) {
+		_attachedDataInsert("Station", _station);
+	} else {
+		_attachedDataRemove("Station");
+	}
 
+}

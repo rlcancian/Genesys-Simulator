@@ -21,20 +21,20 @@
 #include "kernel/simulator/Plugin.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "../../plugins/data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
-#include "plugins/data/DiscreteProcessing/Formula.h"
+#include "plugins/data/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 #include "plugins/data/MaterialHandling/Sequence.h"
 #include "../../plugins/data/Synchronization/SignalData.h"
 #include "../../plugins/data/MaterialHandling/Station.h"
-#include "plugins/data/DiscreteProcessing/Set.h"
-#include "plugins/data/DiscreteProcessing/Label.h"
+#include "../../plugins/data/Logic/Set.h"
+#include "plugins/data/Logic/Label.h"
 #include "../../plugins/data/MaterialHandling/Storage.h"
 #include "../../plugins/data/InputOutput/File.h"
 #include "../../plugins/data/ExternalIntegration/CppCompiler.h"
-#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
+#include "../../plugins/data/ExternalIntegration/SPICERunner.h"
 #include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
@@ -52,7 +52,7 @@
 #include "plugins/components/BiochemicalSimulation/GeneticCircuitSimulate.h"
 #include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
-#include "plugins/data/DiscreteProcessing/AssignmentItem.h"
+#include "../../plugins/data/Logic/AssignmentItem.h"
 #include "plugins/data/Template/DummyElement.h"
 #include "kernel/util/Util.h"
 #include "tools/MassActionOdeSystem.h"
@@ -64,13 +64,13 @@
 #undef protected
 #undef private
 #include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "../../plugins/components/Logic/Dispose.h"
 #include "plugins/components/Grouping/Batch.h"
 #include "plugins/components/Grouping/Separate.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Decisions/Remove.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "../../plugins/components/Logic/Assign.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
@@ -83,7 +83,7 @@
 #undef private
 #define private public
 #define protected public
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #undef protected
 #undef private
 #define private public

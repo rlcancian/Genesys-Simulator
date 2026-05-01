@@ -65,7 +65,7 @@
 //#include "actions/PasteUndoCommand.h"
 //#include "actions/DeleteUndoCommand.h"
 // @TODO: Should NOT be hardcoded!!! (Used to visualize variables)
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "../../../../plugins/data/Logic/Variable.h"
 // std
 #include <string>
 #include <fstream>
@@ -116,6 +116,11 @@ struct ReportPlotItem {
     double minimum = 0.0;
     double average = 0.0;
     double maximum = 0.0;
+};
+
+enum class SaveModelFormat {
+    GraphicalGui,
+    KernelGen
 };
 
 class ResultsBoxPlotWidget : public QFrame {
@@ -292,6 +297,11 @@ std::vector<std::string> collectLoadedModelPluginIds(const Simulator* simulator)
 		}
 	}
 	return ids;
+}
+
+SaveModelFormat requestedSaveModelFormat(const QString& selectedPath) {
+    const QString suffix = QFileInfo(selectedPath).suffix().toLower();
+    return suffix == "gen" ? SaveModelFormat::KernelGen : SaveModelFormat::GraphicalGui;
 }
 } // namespace
 
@@ -967,6 +977,49 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
             return false;
         }
         baseFileName = _modelSaveBaseFilename(selectedFileName);
+        const SaveModelFormat selectedFormat = requestedSaveModelFormat(selectedFileName);
+        if (selectedFormat == SaveModelFormat::KernelGen) {
+            _insertCommandInConsole("save " + selectedFileName.toStdString());
+
+            if (!_setSimulationModelBasedOnText()) {
+                QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
+                return false;
+            }
+
+            const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
+            const QString textFilename = baseFileName + ".gen";
+            QFile saveFile(textFilename);
+            if (!saveFile.open(QIODevice::WriteOnly)) {
+                QMessageBox::information(this, QObject::tr("Unable to access file to save"), saveFile.errorString());
+                return false;
+            }
+
+            if (!_saveTextModel(&saveFile, textToSave)) {
+                saveFile.close();
+                QMessageBox::warning(this, "Save Model", "Error while saving model text.");
+                return false;
+            }
+            saveFile.close();
+
+            _modelFilenames[model] = baseFileName;
+            _modelfilename = baseFileName;
+            _modelTextContents[model] = textToSave;
+            _modelTextHasChanged[model] = false;
+            _modelGraphicalHasChanged[model] = false;
+            _textModelHasChanged = false;
+            _graphicalModelHasChanged = false;
+            model->setHasChanged(false);
+
+            SystemPreferences::pushRecentModelFile(textFilename.toStdString());
+            SystemPreferences::save();
+            if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
+                ui->graphicsView->getScene()->getUndoStack() != nullptr) {
+                ui->graphicsView->getScene()->getUndoStack()->clear();
+            }
+            _updateModelTabs();
+            _actualizeActions();
+            return true;
+        }
     }
 
     _insertCommandInConsole("save " + baseFileName.toStdString());
@@ -976,20 +1029,7 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
         return false;
     }
 
-    const QString textFilename = baseFileName + ".gen";
-    QFile saveFile(textFilename);
-    if (!saveFile.open(QIODevice::WriteOnly)) {
-        QMessageBox::information(this, QObject::tr("Unable to access file to save"), saveFile.errorString());
-        return false;
-    }
-
     const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
-    if (!_saveTextModel(&saveFile, textToSave)) {
-        saveFile.close();
-        QMessageBox::warning(this, "Save Model", "Error while saving model text.");
-        return false;
-    }
-    saveFile.close();
 
     const QString graphicalFilename = baseFileName + ".gui";
     if (!_saveGraphicalModel(graphicalFilename)) {

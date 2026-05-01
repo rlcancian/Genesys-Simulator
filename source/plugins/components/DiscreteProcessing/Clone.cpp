@@ -124,8 +124,7 @@ bool Clone::_check(std::string& errorMessage) {
 void Clone::_initBetweenReplications() {
 }
 
-void Clone::_createAttachedAttributes() {
-}
+// void Clone::_createAttachedAttributes() { }
 
 void Clone::_createInternalStatisticReporters() {
 	if (_reportStatistics) {
@@ -142,5 +141,4 @@ void Clone::_createInternalStatisticReporters() {
 	}
 }
 
-void Clone::_createEditableDataDefinitions() {
-}
+// void Clone::_createEditableDataDefinitions() { }

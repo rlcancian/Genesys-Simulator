@@ -219,12 +219,11 @@ void Delay::_createInternalStatisticReporters() {
 			//		enttype->addGetStatisticsCollector(enttype->getName() + ".DelayTime");
 			//}
 		}
-	} else if (_cstatWaitTime != nullptr) {
+	} else {
 		_internalDataClear();
 		_cstatWaitTime = nullptr;
 		// @TODO remove StatisticsCollector needed in EntityType
 	}
 }
 
-void Delay::_createEditableDataDefinitions() {
-}
+// void Delay::_createEditableDataDefinitions() { }

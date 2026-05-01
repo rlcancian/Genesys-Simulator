@@ -153,13 +153,7 @@ bool BioSimulate::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioSimulate::_createAttachedAttributes() {
-	if (_bioNetwork != nullptr) {
-		_attachedDataInsert("BioNetwork", _bioNetwork);
-	} else {
-		_attachedDataRemove("BioNetwork");
-	}
-}
+//void BioSimulate::_createAttachedAttributes() {}
 
 void BioSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
@@ -264,9 +258,12 @@ std::string BioSimulate::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioSimulate::_createInternalStatisticReporters() {
-}
+// void BioSimulate::_createInternalStatisticReporters() { }
 
 void BioSimulate::_createEditableDataDefinitions() {
+	if (_bioNetwork != nullptr) {
+		_attachedDataInsert("BioNetwork", _bioNetwork);
+	} else {
+		_attachedDataRemove("BioNetwork");
+	}
 }
-

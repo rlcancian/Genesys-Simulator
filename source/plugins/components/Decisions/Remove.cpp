@@ -232,9 +232,7 @@ bool Remove::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Remove::_createAttachedAttributes() {
-
-}
+// void Remove::_createAttachedAttributes() { }
 
 PluginInformation* Remove::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Remove>(), &Remove::LoadInstance, &Remove::NewInstance);
@@ -247,8 +245,7 @@ PluginInformation* Remove::GetPluginInformation() {
 	return info;
 }
 
-void Remove::_createInternalStatisticReporters() {
-}
+// void Remove::_createInternalStatisticReporters() { }
 
 void Remove::_createEditableDataDefinitions() {
 	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();

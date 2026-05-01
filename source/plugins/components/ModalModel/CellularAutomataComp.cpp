@@ -217,11 +217,8 @@ PluginInformation* CellularAutomataComp::GetPluginInformation() {
 	return info;
 }
 
-void CellularAutomataComp::_createInternalStatisticReporters() {
-}
+// void CellularAutomataComp::_createInternalStatisticReporters() { }
 
-void CellularAutomataComp::_createEditableDataDefinitions() {
-}
+// void CellularAutomataComp::_createEditableDataDefinitions() { }
 
-void CellularAutomataComp::_createAttachedAttributes() {
-}
+// void CellularAutomataComp::_createAttachedAttributes() { }

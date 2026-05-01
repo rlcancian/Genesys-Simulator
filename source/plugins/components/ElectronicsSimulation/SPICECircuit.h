@@ -14,7 +14,7 @@
 #pragma once
 
 #include "kernel/simulator/ModelComponent.h"
-#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
+#include "../../data/ExternalIntegration/SPICERunner.h"
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
 
 /*!
@@ -56,10 +56,10 @@ protected: /// virtual protected methods that could be overriden by derived clas
 	// virtual ParserChangesInformation* _getParserChangesInformation();
 	/*! This method is called by ModelSimulation when initianting the replication. The model should set all value for a new replication (Ex: setting back to 0 any internal counter, clearing lists, etc. */
 	// virtual void _initBetweenReplications();
-	virtual void _createInternalStatisticReporters() override;
-	virtual void _createEditableDataDefinitions() override;
-	void _createNonEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createEditableDataDefinitions() override;
+	virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 	/*! This method is not used yet. It should be usefull for new UIs */
 	// virtual void _addSimulationControl(SimulationControl* property);
 protected:

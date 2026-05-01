@@ -420,9 +420,6 @@ PluginInformation * Batch::GetPluginInformation() {
 	return info;
 }
 
-void Batch::_createInternalStatisticReporters() {
-}
+// void Batch::_createInternalStatisticReporters() { }
 
-void Batch::_createEditableDataDefinitions() {
-}
-
+// void Batch::_createEditableDataDefinitions() { }

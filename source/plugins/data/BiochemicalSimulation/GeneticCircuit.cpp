@@ -212,11 +212,8 @@ bool GeneticCircuit::isEnabled() const {
 	return _enabled;
 }
 
-void GeneticCircuit::_createInternalStatisticReporters() {
-}
+// void GeneticCircuit::_createInternalStatisticReporters() { }
 
-void GeneticCircuit::_createEditableDataDefinitions() {
-}
+// void GeneticCircuit::_createEditableDataDefinitions() { }
 
-void GeneticCircuit::_createAttachedAttributes() {
-}
+// void GeneticCircuit::_createAttachedAttributes() { }

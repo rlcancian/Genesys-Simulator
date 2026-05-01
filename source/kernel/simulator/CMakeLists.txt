@@ -16,6 +16,8 @@ set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     ModelInfo.cpp
     Persistence.cpp
     ModelManager.cpp
+        ModelInfraAssotiation.cpp
+        ModelInfraAssotiation.h
 )
 
 add_library(genesys_kernel_simulator_support STATIC
@@ -49,6 +51,8 @@ list(APPEND GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES
 
 add_library(genesys_kernel_simulator_runtime STATIC
     ${GENESYS_KERNEL_SIMULATOR_RUNTIME_SOURCES}
+        ModelInfraAssotiation.cpp
+        ModelInfraAssotiation.h
 )
 
 target_include_directories(genesys_kernel_simulator_runtime

@@ -111,9 +111,11 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected:
 	//virtual void _initBetweenReplications();
-	virtual void _createInternalStatisticReporters() override;
-	virtual void _createEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+protected:
+	 virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	 virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 	virtual bool _check(std::string& errorMessage) override;
 	// virtual void _createInternalAndAttachedData() override;
 

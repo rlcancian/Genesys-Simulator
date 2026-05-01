@@ -163,13 +163,7 @@ bool GeneticCircuitSimulate::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void GeneticCircuitSimulate::_createAttachedAttributes() {
-	if (_geneticCircuit != nullptr) {
-		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
-	} else {
-		_attachedDataRemove("GeneticCircuit");
-	}
-}
+//void GeneticCircuitSimulate::_createAttachedAttributes() {}
 
 double GeneticCircuitSimulate::_computeRegulationMultiplier(const GeneticCircuitPart* part) const {
 	if (!_applyRegulation || _geneticCircuit == nullptr || part == nullptr) {
@@ -338,9 +332,12 @@ std::string GeneticCircuitSimulate::getLastMessage() const {
 	return _lastMessage;
 }
 
-void GeneticCircuitSimulate::_createInternalStatisticReporters() {
-}
+// void GeneticCircuitSimulate::_createInternalStatisticReporters() { }
 
 void GeneticCircuitSimulate::_createEditableDataDefinitions() {
+	if (_geneticCircuit != nullptr) {
+		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
+	} else {
+		_attachedDataRemove("GeneticCircuit");
+	}
 }
-

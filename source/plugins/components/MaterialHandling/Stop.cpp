@@ -77,11 +77,8 @@ PluginInformation* Stop::GetPluginInformation() {
 
 
 
-void Stop::_createInternalStatisticReporters() {
-}
+// void Stop::_createInternalStatisticReporters() { }
 
-void Stop::_createEditableDataDefinitions() {
-}
+// void Stop::_createEditableDataDefinitions() { }
 
-void Stop::_createAttachedAttributes() {
-}
+// void Stop::_createAttachedAttributes() { }

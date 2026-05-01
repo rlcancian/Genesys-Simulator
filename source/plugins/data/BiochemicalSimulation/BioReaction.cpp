@@ -487,11 +487,9 @@ void BioReaction::syncParticipantAttachedSpecies() {
 	}
 }
 
-void BioReaction::_createInternalStatisticReporters() {
-}
+// void BioReaction::_createInternalStatisticReporters() { }
 
-void BioReaction::_createEditableDataDefinitions() {
-}
+// void BioReaction::_createEditableDataDefinitions() { }
 
 void BioReaction::_createAttachedAttributes() {
 	// BioReaction does not own internal children yet, but it exposes participant links as attached species.

@@ -18,7 +18,7 @@
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "../../data/Logic/Variable.h"
 
 #include <algorithm>
 #include <stdexcept>
@@ -377,11 +377,10 @@ PluginInformation* MarkovChain::GetPluginInformation() {
 	return info;
 }
 
-void MarkovChain::_createInternalStatisticReporters() {
-}
+// void MarkovChain::_createInternalStatisticReporters() { }
 
 void MarkovChain::_createEditableDataDefinitions() {
-	_attachedDataClear();
+	// _attachedDataClear(); //@TODO Check commented
 	if (_transitionProbMatrix != nullptr) {
 		_attachedDataInsert(_transitionProbMatrix->getName(), _transitionProbMatrix);
 	}
@@ -390,9 +389,7 @@ void MarkovChain::_createEditableDataDefinitions() {
 	}
 }
 
-void MarkovChain::_createAttachedAttributes() {
-
-}
+// void MarkovChain::_createAttachedAttributes() { }
 
 unsigned int MarkovChain::_drawNextState(Entity* entity, unsigned int currentState) {
 	const unsigned int size = _stateCount();

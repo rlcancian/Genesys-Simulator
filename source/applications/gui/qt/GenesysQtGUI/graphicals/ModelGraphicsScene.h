@@ -55,7 +55,7 @@
 #include "animations/AnimationPlaceholder.h"
 #include "kernel/simulator/Counter.h"
 #include "kernel/simulator/PropertyGenesys.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "../../../../../plugins/data/Logic/Variable.h"
 
 class GraphicalModelEvent {
 public:

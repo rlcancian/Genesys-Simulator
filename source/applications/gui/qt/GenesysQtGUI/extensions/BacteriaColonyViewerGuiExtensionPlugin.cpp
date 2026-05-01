@@ -6,8 +6,8 @@
 #include "kernel/simulator/Simulator.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/ModelGraphicsScene.h"
-#include "plugins/components/BiologicalModeling/BacteriaColony.h"
-#include "plugins/data/BiologicalModeling/BacteriaSignalGrid.h"
+#include "../../../../../plugins/components/BiochemicalSimulation/BacteriaColony.h"
+#include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
 
 #include <QComboBox>
 #include <QDialog>

@@ -251,9 +251,6 @@ std::string BioSteadyState::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioSteadyState::_createInternalStatisticReporters() {
-}
+// void BioSteadyState::_createInternalStatisticReporters() { }
 
-void BioSteadyState::_createEditableDataDefinitions() {
-}
-
+// void BioSteadyState::_createEditableDataDefinitions() { }

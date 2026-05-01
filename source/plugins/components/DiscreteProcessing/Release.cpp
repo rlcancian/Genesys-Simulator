@@ -258,8 +258,7 @@ void Release::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	}
 }
 
-void Release::_createAttachedAttributes() {
-}
+// void Release::_createAttachedAttributes() { }
 
 bool Release::_check(std::string& errorMessage) {
 	bool resultAll = true;
@@ -303,8 +302,7 @@ ModelComponent* Release::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 }
 
-void Release::_createInternalStatisticReporters() {
-}
+// void Release::_createInternalStatisticReporters() { }
 
 void Release::_createEditableDataDefinitions() {
 	int i = 0;

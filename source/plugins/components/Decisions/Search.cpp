@@ -319,8 +319,7 @@ bool Search::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Search::_createAttachedAttributes() {
-}
+// void Search::_createAttachedAttributes() { }
 
 PluginInformation* Search::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Search>(), &Search::LoadInstance, &Search::NewInstance);
@@ -334,8 +333,7 @@ PluginInformation* Search::GetPluginInformation() {
 	return info;
 }
 
-void Search::_createInternalStatisticReporters() {
-}
+// void Search::_createInternalStatisticReporters() { }
 
 void Search::_createEditableDataDefinitions() {
 	if (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), _saveFounRankAttribute) == nullptr) {

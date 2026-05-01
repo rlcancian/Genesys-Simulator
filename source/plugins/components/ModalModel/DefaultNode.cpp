@@ -301,11 +301,8 @@ void DefaultNode::_addSimulationControl(SimulationControl* property) {
 }
 */
 
-void DefaultNode::_createInternalStatisticReporters() {
-}
+// void DefaultNode::_createInternalStatisticReporters() { }
 
-void DefaultNode::_createEditableDataDefinitions() {
-}
+// void DefaultNode::_createEditableDataDefinitions() { }
 
-void DefaultNode::_createAttachedAttributes() {
-}
+// void DefaultNode::_createAttachedAttributes() { }

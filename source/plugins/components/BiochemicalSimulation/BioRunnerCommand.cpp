@@ -128,13 +128,7 @@ bool BioRunnerCommand::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioRunnerCommand::_createAttachedAttributes() {
-	if (_runner != nullptr) {
-		_attachedDataInsert("BioSimulatorRunner", _runner);
-	} else {
-		_attachedDataRemove("BioSimulatorRunner");
-	}
-}
+// void BioRunnerCommand::_createAttachedAttributes() {}
 
 void BioRunnerCommand::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
@@ -217,9 +211,12 @@ std::string BioRunnerCommand::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioRunnerCommand::_createInternalStatisticReporters() {
-}
+// void BioRunnerCommand::_createInternalStatisticReporters() { }
 
 void BioRunnerCommand::_createEditableDataDefinitions() {
+	if (_runner != nullptr) {
+		_attachedDataInsert("BioSimulatorRunner", _runner);
+	} else {
+		_attachedDataRemove("BioSimulatorRunner");
+	}
 }
-

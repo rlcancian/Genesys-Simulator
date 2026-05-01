@@ -144,13 +144,7 @@ bool MetabolicFluxBalance::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void MetabolicFluxBalance::_createAttachedAttributes() {
-	if (_metabolicNetwork != nullptr) {
-		_attachedDataInsert("MetabolicNetwork", _metabolicNetwork);
-	} else {
-		_attachedDataRemove("MetabolicNetwork");
-	}
-}
+//void MetabolicFluxBalance::_createAttachedAttributes() {}
 
 void MetabolicFluxBalance::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
@@ -329,9 +323,12 @@ std::string MetabolicFluxBalance::getLastMessage() const {
 	return _lastMessage;
 }
 
-void MetabolicFluxBalance::_createInternalStatisticReporters() {
-}
+// void MetabolicFluxBalance::_createInternalStatisticReporters() { }
 
 void MetabolicFluxBalance::_createEditableDataDefinitions() {
+	if (_metabolicNetwork != nullptr) {
+		_attachedDataInsert("MetabolicNetwork", _metabolicNetwork);
+	} else {
+		_attachedDataRemove("MetabolicNetwork");
+	}
 }
-

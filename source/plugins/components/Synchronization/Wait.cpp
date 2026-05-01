@@ -249,12 +249,9 @@ void Wait::_handlerForAfterProcessEventEvent(SimulationEvent* event) {
 	}
 }
 
-void Wait::_createAttachedAttributes() {
+// void Wait::_createAttachedAttributes() { }
 
-}
-
-void Wait::_createInternalStatisticReporters() {
-}
+// void Wait::_createInternalStatisticReporters() { }
 
 void Wait::_createEditableDataDefinitions() {
 	SignalData* previouslyAttachedSignalData = nullptr;

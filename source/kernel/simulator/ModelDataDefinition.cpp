@@ -121,6 +121,10 @@ ModelDataDefinition::~ModelDataDefinition() {
 	}
 }
 
+void ModelDataDefinition::_internaStatisticReportersClear() {
+	ModelDataDefinition::_internalDataClear();
+}
+
 void ModelDataDefinition::_internalDataClear() {
 	// Collect pointers first to avoid iterator invalidation during removal
 	std::vector<ModelDataDefinition*> toDelete;
@@ -253,17 +257,13 @@ void ModelDataDefinition::_saveInstance(PersistenceRecord* fields, bool saveDefa
 	                  saveDefaultValues);
 }
 
-void ModelDataDefinition::_createInternalStatisticReporters() {
-}
+void ModelDataDefinition::_createInternalStatisticReporters() { }
 
-void ModelDataDefinition::_createEditableDataDefinitions() {
-}
+void ModelDataDefinition::_createEditableDataDefinitions() { }
 
-void ModelDataDefinition::_createNonEditableDataDefinitions() {
-}
+void ModelDataDefinition::_createNonEditableDataDefinitions() { }
 
-void ModelDataDefinition::_createAttachedAttributes() {
-}
+void ModelDataDefinition::_createAttachedAttributes() { }
 
 void ModelDataDefinition::_templateCreateInternalStatisticReporters() {
 	try {

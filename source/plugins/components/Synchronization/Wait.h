@@ -114,11 +114,10 @@ protected: // could be overriden .
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 
 protected:
-
-
-	virtual void _createInternalStatisticReporters() override;	void _createNonEditableDataDefinitions() override;
+	//virtual void _createInternalStatisticReporters() override;
+	virtual void _createNonEditableDataDefinitions() override;
 	virtual void _createEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+	//virtual void _createAttachedAttributes() override;
 
 private: // methods
 	unsigned int _handlerForSignalDataEvent(SignalData* signalData);

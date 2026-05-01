@@ -1,0 +1,16 @@
+//
+// Created by rafaelcancian on 01/05/2026.
+//
+
+#ifndef GENESYSSIMULATOR_MODELINFRAASSOTIATION_H
+#define GENESYSSIMULATOR_MODELINFRAASSOTIATION_H
+
+
+
+class ModelInfraAssotiation {
+
+};
+
+
+
+#endif //GENESYSSIMULATOR_MODELINFRAASSOTIATION_H

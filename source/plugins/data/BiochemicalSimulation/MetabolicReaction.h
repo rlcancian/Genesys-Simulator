@@ -52,10 +52,10 @@ protected:
 	virtual bool _check(std::string& errorMessage) override;
 
 protected:
-
-	virtual void _createInternalStatisticReporters() override;
-	virtual void _createEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 
 private:
 	bool _checkTerms(const std::vector<StoichiometricTerm>& terms, const std::string& side, std::string& errorMessage) const;

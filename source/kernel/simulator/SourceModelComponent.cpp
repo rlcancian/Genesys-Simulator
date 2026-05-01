@@ -123,8 +123,7 @@ bool SourceModelComponent::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void SourceModelComponent::_createInternalStatisticReporters() {
-}
+// void SourceModelComponent::_createInternalStatisticReporters() { }
 
 void SourceModelComponent::_createEditableDataDefinitions() {
 	if (this->_entityType == nullptr) {

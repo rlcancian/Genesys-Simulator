@@ -261,11 +261,8 @@ PluginInformation* LSODE::GetPluginInformation() {
 	return info;
 }
 
-void LSODE::_createInternalStatisticReporters() {
-}
+// void LSODE::_createInternalStatisticReporters() { }
 
-void LSODE::_createEditableDataDefinitions() {
-}
+// void LSODE::_createEditableDataDefinitions() { }
 
-void LSODE::_createAttachedAttributes() {
-}
+// void LSODE::_createAttachedAttributes() { }

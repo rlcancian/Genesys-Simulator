@@ -115,8 +115,7 @@ bool Decide::_check(std::string& errorMessage) {
 	return allResult;
 }
 
-void Decide::_createAttachedAttributes() {
-}
+// void Decide::_createAttachedAttributes() { }
 
 PluginInformation* Decide::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Decide>(), &Decide::LoadInstance, &Decide::NewInstance);
@@ -147,9 +146,6 @@ void Decide::_createInternalStatisticReporters() {
 		if (_numberOuts == nullptr) {
 			_numberOuts = new List<Counter*>();
 		}
-		if (_numberOuts == nullptr) {
-			return;
-		}
 		for (unsigned int i = _numberOuts->size(); i<this->_connections->size(); i++) {
 			Counter* counter = new Counter(_parentModel, getName() + "." + "CountNumberOut" + Util::StrIndex(i), this);
 			_numberOuts->insert(counter);
@@ -161,11 +157,10 @@ void Decide::_createInternalStatisticReporters() {
 				_internalDataInsert("CountNumberOut" + Util::StrIndex(i), counter);
 			}
 		}
-	} else if (!_reportStatistics && _numberOuts != nullptr) {
-		this->_internalDataClear();
+	} else  {
+		this->_internaStatisticReportersClear();
 		_numberOuts = nullptr;
 	}
 }
 
-void Decide::_createEditableDataDefinitions() {
-}
+// void Decide::_createEditableDataDefinitions() { }

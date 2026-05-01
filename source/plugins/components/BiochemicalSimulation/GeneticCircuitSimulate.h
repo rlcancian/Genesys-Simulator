@@ -52,10 +52,10 @@ protected:
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 
 protected:
-
-	virtual void _createInternalStatisticReporters() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
 	virtual void _createEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+	// virtual void _createAttachedAttributes() override;
 
 private:
 	double _computeRegulationMultiplier(const GeneticCircuitPart* part) const;

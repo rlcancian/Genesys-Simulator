@@ -211,8 +211,7 @@ void Station::_createInternalStatisticReporters() {
 	}
 }
 
-void Station::_createEditableDataDefinitions() {
-}
+// void Station::_createEditableDataDefinitions() { }
 
 void Station::_createAttachedAttributes() {
 	const std::string baseArrivalAttributeName = "Entity.ArrivalAt";

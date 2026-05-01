@@ -232,11 +232,9 @@ void Queue::_createInternalStatisticReporters() {
 	}
 }
 
-void Queue::_createEditableDataDefinitions() {
-}
+// void Queue::_createEditableDataDefinitions() { }
 
-void Queue::_createAttachedAttributes() {
-}
+// void Queue::_createAttachedAttributes() { }
 
 ParserChangesInformation * Queue::_getParserChangesInformation() {
 	ParserChangesInformation* changes = new ParserChangesInformation();

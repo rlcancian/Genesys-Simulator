@@ -308,11 +308,9 @@ Label* SequenceStep::getLabel() const {
 	return _label;
 }
 
-void Sequence::_createInternalStatisticReporters() {
-}
+// void Sequence::_createInternalStatisticReporters() { }
 
-void Sequence::_createEditableDataDefinitions() {
-}
+// void Sequence::_createEditableDataDefinitions() { }
 
 void Sequence::_createAttachedAttributes() {
 	_attachedAttributesInsert({"Entity.Sequence", "Entity.SequenceStep"});

@@ -227,9 +227,7 @@ unsigned int Buffer::_handlerForSignalDataEvent(SignalData* signalData) {
 }
 
 
-void Buffer::_createAttachedAttributes() {
-
-}
+// void Buffer::_createAttachedAttributes() { }
 
 void Buffer::_addSimulationControl(SimulationControl* property) {
 }
@@ -278,8 +276,7 @@ Entity* Buffer::_advance(Entity* enteringEntity) {
 	return result;
 }
 
-void Buffer::_createInternalStatisticReporters() {
-}
+// void Buffer::_createInternalStatisticReporters() { }
 
 void Buffer::_createEditableDataDefinitions() {
 	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();

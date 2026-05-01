@@ -549,11 +549,9 @@ ModelDataDefinition* Resource::LoadInstance(Model* model, PersistenceRecord* fie
     return newElement;
 }
 
-void Resource::_createInternalStatisticReporters() {
-}
+// void Resource::_createInternalStatisticReporters() { }
 
-void Resource::_createEditableDataDefinitions() {
-}
+// void Resource::_createEditableDataDefinitions() { }
 
 void Resource::_createAttachedAttributes() {
     if (_reportStatistics && _cstatTimeSeized == nullptr) {

@@ -102,9 +102,10 @@ protected:
 	std::string _read(std::string filename);
 
 protected:
-	virtual void _createInternalStatisticReporters() override;
-	virtual void _createEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 
 private:
 

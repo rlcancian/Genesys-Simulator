@@ -315,13 +315,7 @@ PluginInformation* Process::GetPluginInformation() {
 	return info;
 }
 
-void Process::_createAttachedAttributes() {
-	_ensureInternalComponents();
-	_adjustConnections();
-	if (!_flagConstructing) {
-		_reconcileInternalComponents();
-	}
-}
+//void Process::_createAttachedAttributes() {}
 
 bool Process::_check(std::string& errorMessage) {
 	_ensureInternalComponents();
@@ -352,9 +346,12 @@ bool Process::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Process::_createInternalStatisticReporters() {
-}
+// void Process::_createInternalStatisticReporters() { }
 
 void Process::_createEditableDataDefinitions() {
+	_ensureInternalComponents();
+	_adjustConnections();
+	if (!_flagConstructing) {
+		_reconcileInternalComponents();
+	}
 }
-

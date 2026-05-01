@@ -247,7 +247,20 @@ bool Match::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Match::_createAttachedAttributes() {
+//void Match::_createAttachedAttributes() {}
+
+PluginInformation * Match::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<Match>(), &Match::LoadInstance, &Match::NewInstance);
+	info->setCategory("Synchronization");
+	info->setMaximumInputs(99);
+	//info->getDynamicLibFilenameDependencies()->insert("queue.so");
+	// ...
+	return info;
+}
+
+// void Match::_createInternalStatisticReporters() { }
+
+void Match::_createEditableDataDefinitions() {
 	while (_queues->size() > _numberOfQueues) {
 		Queue* obsoleteQueue = _queues->last();
 		_internalDataRemove(obsoleteQueue->getName());
@@ -268,20 +281,5 @@ void Match::_createAttachedAttributes() {
 			_internalDataInsert(queue->getName(), queue);
 		}
 	}
-}
 
-PluginInformation * Match::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Match>(), &Match::LoadInstance, &Match::NewInstance);
-	info->setCategory("Synchronization");
-	info->setMaximumInputs(99);
-	//info->getDynamicLibFilenameDependencies()->insert("queue.so");
-	// ...
-	return info;
 }
-
-void Match::_createInternalStatisticReporters() {
-}
-
-void Match::_createEditableDataDefinitions() {
-}
-

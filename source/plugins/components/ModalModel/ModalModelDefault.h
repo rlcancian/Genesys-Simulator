@@ -92,14 +92,11 @@ protected: /// internal COMPONENTS (since it's a modal model / network) (Composi
 	List<DefaultNodeTransition*>* _transitions = new List<DefaultNodeTransition*>();
 	//List<ModelDataDefinition*>* _expressionDataReferences = new List<ModelDataDefinition*>();
 
-
-
 protected:
-
-
-	virtual void _createInternalStatisticReporters() override;
-	virtual void _createEditableDataDefinitions() override;
-	virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	 virtual void _createAttachedAttributes() override;
 
 private: /// internal DataElements (Composition)
 	// ...

@@ -166,11 +166,8 @@ void DummyComponent::_addSimulationControl(SimulationControl* property) {
 }
 */
 
-void DummyComponent::_createInternalStatisticReporters() {
-}
+// void DummyComponent::_createInternalStatisticReporters() { }
 
-void DummyComponent::_createEditableDataDefinitions() {
-}
+// void DummyComponent::_createEditableDataDefinitions() { }
 
-void DummyComponent::_createAttachedAttributes() {
-}
+// void DummyComponent::_createAttachedAttributes() { }

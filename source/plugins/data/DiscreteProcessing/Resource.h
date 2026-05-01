@@ -146,8 +146,9 @@ protected: // protected could override
 
 
 protected:
-	virtual void _createInternalStatisticReporters() override;
-	virtual void _createEditableDataDefinitions() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
 	virtual void _createAttachedAttributes() override;
 
 private: //methods

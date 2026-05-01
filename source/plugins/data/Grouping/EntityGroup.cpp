@@ -166,8 +166,7 @@ void EntityGroup::_createInternalStatisticReporters() {
 	}
 }
 
-void EntityGroup::_createEditableDataDefinitions() {
-}
+// void EntityGroup::_createEditableDataDefinitions() { }
 
 void EntityGroup::_createAttachedAttributes() {
 	this->_attachedAttributesInsert({"Entity.Group"});

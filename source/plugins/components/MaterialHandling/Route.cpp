@@ -17,7 +17,7 @@
 #include "kernel/simulator/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/MaterialHandling/Sequence.h"
-#include "plugins/data/DiscreteProcessing/Label.h"
+#include "../../data/Logic/Label.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -273,34 +273,7 @@ PluginInformation* Route::GetPluginInformation() {
 }
 
 void Route::_createAttachedAttributes() {
-	if (_reportStatistics) {
-		if (_numberIn == nullptr) {
-			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
-		}
-		if (_numberIn != nullptr) {
-			_internalDataInsert("CountNumberIn", _numberIn);
-		}
-	} else
-		if (_numberIn != nullptr) {
-			_internalDataClear();
-		}
 	_attachedAttributesInsert({"Entity.TotalTransferTime", "Entity.Station", "Entity.Sequence", "Entity.SequenceStep"});
-	if (_station == nullptr && this->_routeDestinationType == Route::DestinationType::Station && this->_stationExpression == "") {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
-	}
-	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label) {
-		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Label>(_parentModel);
-	}
-	if (_station != nullptr) {
-		_attachedDataInsert("Station", _station);
-	} else {
-		_attachedDataRemove("Station");
-	}
-	if (_label != nullptr) {
-		_attachedDataInsert("Label", _label);
-	} else {
-		_attachedDataRemove("Label");
-	}
 }
 
 bool Route::_check(std::string& errorMessage) {
@@ -338,8 +311,35 @@ bool Route::_check(std::string& errorMessage) {
 }
 
 void Route::_createInternalStatisticReporters() {
+	if (_reportStatistics) {
+		if (_numberIn == nullptr) {
+			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+		}
+		if (_numberIn != nullptr) {
+			_internalDataInsert("CountNumberIn", _numberIn);
+		}
+	} else {
+		_internalDataClear();
+		_numberIn = nullptr;
+	}
 }
 
 void Route::_createEditableDataDefinitions() {
-}
+	if (_station == nullptr && this->_routeDestinationType == Route::DestinationType::Station && this->_stationExpression == "") {
+		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
+	}
+	if (_label == nullptr && this->_routeDestinationType == Route::DestinationType::Label) {
+		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Label>(_parentModel);
+	}
+	if (_station != nullptr) {
+		_attachedDataInsert("Station", _station);
+	} else {
+		_attachedDataRemove("Station");
+	}
+	if (_label != nullptr) {
+		_attachedDataInsert("Label", _label);
+	} else {
+		_attachedDataRemove("Label");
+	}
 
+}

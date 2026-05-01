@@ -241,11 +241,8 @@ std::string MetabolicReaction::getGeneRule() const {
 	return _geneRule;
 }
 
-void MetabolicReaction::_createInternalStatisticReporters() {
-}
+// void MetabolicReaction::_createInternalStatisticReporters() { }
 
-void MetabolicReaction::_createEditableDataDefinitions() {
-}
+// void MetabolicReaction::_createEditableDataDefinitions() { }
 
-void MetabolicReaction::_createAttachedAttributes() {
-}
+// void MetabolicReaction::_createAttachedAttributes() { }

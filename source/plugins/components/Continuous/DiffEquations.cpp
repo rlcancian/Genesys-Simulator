@@ -277,7 +277,17 @@ void DiffEquations::_initBetweenReplications() {
 */
 
 
-void DiffEquations::_createAttachedAttributes() {
+//void DiffEquations::_createAttachedAttributes() {}
+
+
+/*
+void DiffEquations::_addSimulationControl(SimulationControl* property) {
+}
+*/
+
+// void DiffEquations::_createInternalStatisticReporters() { }
+
+void DiffEquations::_createEditableDataDefinitions() {
 	if (_cppCompiler == nullptr) {
 		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
 		_cppCompiler->setSourceFilename(getName() + ".cpp");
@@ -289,16 +299,3 @@ void DiffEquations::_createAttachedAttributes() {
 		_internalDataRemove("CppCompiler");
 	}
 }
-
-
-/*
-void DiffEquations::_addSimulationControl(SimulationControl* property) {
-}
-*/
-
-void DiffEquations::_createInternalStatisticReporters() {
-}
-
-void DiffEquations::_createEditableDataDefinitions() {
-}
-

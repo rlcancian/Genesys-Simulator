@@ -133,13 +133,7 @@ bool GeneticExpressionStep::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void GeneticExpressionStep::_createAttachedAttributes() {
-	if (_geneticCircuit != nullptr) {
-		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
-	} else {
-		_attachedDataRemove("GeneticCircuit");
-	}
-}
+//void GeneticExpressionStep::_createAttachedAttributes() {}
 
 double GeneticExpressionStep::_computeRegulationMultiplier(const GeneticCircuitPart* part) const {
 	if (!_applyRegulation || _geneticCircuit == nullptr || part == nullptr) {
@@ -274,9 +268,13 @@ std::string GeneticExpressionStep::getLastMessage() const {
 	return _lastMessage;
 }
 
-void GeneticExpressionStep::_createInternalStatisticReporters() {
-}
+// void GeneticExpressionStep::_createInternalStatisticReporters() { }
 
 void GeneticExpressionStep::_createEditableDataDefinitions() {
-}
+	if (_geneticCircuit != nullptr) {
+		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
+	} else {
+		_attachedDataRemove("GeneticCircuit");
+	}
 
+}
