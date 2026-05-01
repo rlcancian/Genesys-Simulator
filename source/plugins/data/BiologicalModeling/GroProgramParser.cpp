@@ -447,24 +447,27 @@ bool tryParseNamedProgram(const std::string& sourceCode, std::size_t& position, 
 	if (position + 1 < sourceCode.size() && sourceCode[position] == ':' && sourceCode[position + 1] == '=') {
 		position = skipWhitespaceAndComments(sourceCode, position + 2);
 	}
-	if (position >= sourceCode.size() || sourceCode[position] != '{') {
-		position = start;
-		return false;
+	if (position < sourceCode.size() && sourceCode[position] == '{') {
+		const std::size_t closingBrace = findMatchingDelimiter(sourceCode, position);
+		if (closingBrace == std::string::npos) {
+			position = start;
+			return false;
+		}
+
+		program.bodySource = trim(sourceCode.substr(position + 1, closingBrace - position - 1));
+		program.statements = splitTopLevelStatements(program.bodySource);
+		position = skipWhitespaceAndComments(sourceCode, closingBrace + 1);
+		if (position < sourceCode.size() && sourceCode[position] == ';') {
+			++position;
+		}
+		return true;
 	}
 
-	const std::size_t closingBrace = findMatchingDelimiter(sourceCode, position);
-	if (closingBrace == std::string::npos) {
-		position = start;
-		return false;
-	}
-
-	program.bodySource = trim(sourceCode.substr(position + 1, closingBrace - position - 1));
+	std::string statementText;
+	position = consumeTopLevelStatement(sourceCode, position, statementText);
+	program.bodySource = statementText;
 	program.statements = splitTopLevelStatements(program.bodySource);
-	position = skipWhitespaceAndComments(sourceCode, closingBrace + 1);
-	if (position < sourceCode.size() && sourceCode[position] == ';') {
-		++position;
-	}
-	return true;
+	return !program.bodySource.empty();
 }
 
 GroProgramAst buildAst(const std::string& sourceCode) {

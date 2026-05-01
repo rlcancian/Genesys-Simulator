@@ -8,6 +8,8 @@
 #include "plugins/data/BiologicalModeling/GroProgramCompiler.h"
 
 #include <cctype>
+#include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -405,6 +407,153 @@ std::size_t consumeSimpleStatement(const std::string& text, std::size_t position
 	return text.size();
 }
 
+std::vector<std::string> splitTopLevelByPlus(const std::string& text) {
+	std::vector<std::string> parts;
+	std::vector<char> delimiterStack;
+	bool inString = false;
+	char stringDelimiter = '\0';
+	std::size_t partStart = 0;
+
+	for (std::size_t i = 0; i < text.size(); ++i) {
+		const char current = text[i];
+
+		if (inString) {
+			if (current == '\\') {
+				++i;
+				continue;
+			}
+			if (current == stringDelimiter) {
+				inString = false;
+				stringDelimiter = '\0';
+			}
+			continue;
+		}
+
+		if (current == '"' || current == '\'') {
+			inString = true;
+			stringDelimiter = current;
+			continue;
+		}
+
+		if (current == '(' || current == '[' || current == '{') {
+			delimiterStack.push_back(current);
+			continue;
+		}
+		if (current == ')' || current == ']' || current == '}') {
+			if (!delimiterStack.empty()) {
+				delimiterStack.pop_back();
+			}
+			continue;
+		}
+
+		if (current == '+' && delimiterStack.empty()) {
+			parts.push_back(trim(text.substr(partStart, i - partStart)));
+			partStart = i + 1;
+		}
+	}
+
+	const std::string trailingPart = trim(text.substr(partStart));
+	if (!trailingPart.empty()) {
+		parts.push_back(trailingPart);
+	}
+	return parts;
+}
+
+std::string stripSharingClause(const std::string& text) {
+	std::vector<char> delimiterStack;
+	bool inString = false;
+	char stringDelimiter = '\0';
+
+	for (std::size_t i = 0; i < text.size(); ++i) {
+		const char current = text[i];
+
+		if (inString) {
+			if (current == '\\') {
+				++i;
+				continue;
+			}
+			if (current == stringDelimiter) {
+				inString = false;
+				stringDelimiter = '\0';
+			}
+			continue;
+		}
+
+		if (current == '"' || current == '\'') {
+			inString = true;
+			stringDelimiter = current;
+			continue;
+		}
+
+		if (current == '(' || current == '[' || current == '{') {
+			delimiterStack.push_back(current);
+			continue;
+		}
+		if (current == ')' || current == ']' || current == '}') {
+			if (!delimiterStack.empty()) {
+				delimiterStack.pop_back();
+			}
+			continue;
+		}
+
+		if (delimiterStack.empty() && startsWithKeyword(text, i, "sharing")) {
+			return trim(text.substr(0, i));
+		}
+	}
+
+	return trim(text);
+}
+
+struct ProgramInvocation {
+	std::string name;
+	std::vector<std::string> arguments;
+};
+
+bool tryParseProgramInvocation(const std::string& text, ProgramInvocation& invocation) {
+	const std::string invocationText = stripSharingClause(text);
+	std::size_t position = skipWhitespaceAndComments(invocationText, 0);
+	invocation.name = readIdentifier(invocationText, position);
+	if (invocation.name.empty()) {
+		return false;
+	}
+
+	position = skipWhitespaceAndComments(invocationText, position);
+	if (position >= invocationText.size() || invocationText[position] != '(') {
+		return false;
+	}
+
+	const std::size_t closingParenthesis = findMatchingDelimiter(invocationText, position);
+	if (closingParenthesis == std::string::npos) {
+		return false;
+	}
+
+	position = skipWhitespaceAndComments(invocationText, closingParenthesis + 1);
+	if (position != invocationText.size()) {
+		return false;
+	}
+
+	const std::size_t openingParenthesis = invocationText.find('(');
+	invocation.arguments = splitTopLevelArguments(invocationText.substr(openingParenthesis + 1,
+	                                                                   closingParenthesis - openingParenthesis - 1));
+	return true;
+}
+
+bool tryParseProgramComposition(const std::string& text, std::vector<ProgramInvocation>& invocations) {
+	const std::vector<std::string> parts = splitTopLevelByPlus(text);
+	if (parts.size() < 2) {
+		return false;
+	}
+
+	for (const std::string& part : parts) {
+		ProgramInvocation invocation;
+		if (!tryParseProgramInvocation(part, invocation)) {
+			return false;
+		}
+		invocations.push_back(invocation);
+	}
+	return !invocations.empty();
+}
+
 std::vector<GroProgramIr::Command> compileSimpleStatement(const std::string& statementText) {
 	std::vector<GroProgramIr::Command> commands;
 	GroProgramIr::Command command;
@@ -486,6 +635,11 @@ std::vector<GroProgramIr::Command> compileSimpleStatement(const std::string& sta
 }
 
 std::vector<GroProgramIr::Command> compileStatements(const std::string& text);
+
+std::vector<GroProgramIr::Command> compileNamedProgramBody(
+        const std::string& bodySource,
+        const std::map<std::string, const GroProgramAst::NamedProgram*>& namedPrograms,
+        std::set<std::string>& expansionStack);
 
 bool tryCompileIfStatement(const std::string& text, std::size_t& position, GroProgramIr::Command& command) {
 	const std::size_t start = position;
@@ -671,6 +825,86 @@ std::vector<GroProgramIr::Command> compileStatements(const std::string& text) {
 	return commands;
 }
 
+std::vector<GroProgramIr::Command> buildArgumentAssignmentCommands(const std::vector<std::string>& parameterNames,
+                                                                  const std::vector<std::string>& argumentExpressions) {
+	std::vector<GroProgramIr::Command> commands;
+
+	const std::size_t boundArgumentCount = std::min(parameterNames.size(), argumentExpressions.size());
+	for (std::size_t index = 0; index < boundArgumentCount; ++index) {
+		GroProgramIr::Command assignment;
+		assignment.kind = GroProgramIr::Command::Kind::Assignment;
+		assignment.assignmentTarget = parameterNames[index];
+		assignment.expressionText = argumentExpressions[index];
+		assignment.sourceText = parameterNames[index] + " := " + argumentExpressions[index];
+		commands.push_back(assignment);
+	}
+
+	if (parameterNames.empty() && argumentExpressions.size() == 1) {
+		GroProgramIr::Command assignment;
+		assignment.kind = GroProgramIr::Command::Kind::Assignment;
+		assignment.assignmentTarget = "g0";
+		assignment.expressionText = argumentExpressions.front();
+		assignment.sourceText = "g0 := " + argumentExpressions.front();
+		commands.push_back(assignment);
+	}
+
+	for (std::size_t index = boundArgumentCount; index < argumentExpressions.size(); ++index) {
+		GroProgramIr::Command assignment;
+		assignment.kind = GroProgramIr::Command::Kind::Assignment;
+		assignment.assignmentTarget = "program_argument_" + std::to_string(index);
+		assignment.expressionText = argumentExpressions[index];
+		assignment.sourceText = assignment.assignmentTarget + " := " + argumentExpressions[index];
+		commands.push_back(assignment);
+	}
+
+	return commands;
+}
+
+std::vector<GroProgramIr::Command> compileNamedProgramBody(
+        const std::string& bodySource,
+        const std::map<std::string, const GroProgramAst::NamedProgram*>& namedPrograms,
+        std::set<std::string>& expansionStack) {
+	std::vector<ProgramInvocation> invocations;
+	if (!tryParseProgramComposition(bodySource, invocations)) {
+		return compileStatements(bodySource);
+	}
+
+	std::vector<GroProgramIr::Command> commands;
+	for (const ProgramInvocation& invocation : invocations) {
+		const auto nestedProgram = namedPrograms.find(invocation.name);
+		if (nestedProgram == namedPrograms.end()) {
+			std::string invocationSource = invocation.name + "(";
+			for (std::size_t index = 0; index < invocation.arguments.size(); ++index) {
+				if (index > 0) {
+					invocationSource += ", ";
+				}
+				invocationSource += invocation.arguments[index];
+			}
+			invocationSource += ")";
+			const std::vector<GroProgramIr::Command> fallbackCommands = compileStatements(invocationSource);
+			commands.insert(commands.end(), fallbackCommands.begin(), fallbackCommands.end());
+			continue;
+		}
+
+		commands.reserve(commands.size() + invocation.arguments.size() + nestedProgram->second->statements.size());
+		const std::vector<GroProgramIr::Command> assignmentCommands =
+		        buildArgumentAssignmentCommands(nestedProgram->second->parameters, invocation.arguments);
+		commands.insert(commands.end(), assignmentCommands.begin(), assignmentCommands.end());
+
+		if (expansionStack.find(invocation.name) != expansionStack.end()) {
+			continue;
+		}
+
+		expansionStack.insert(invocation.name);
+		const std::vector<GroProgramIr::Command> nestedCommands =
+		        compileNamedProgramBody(nestedProgram->second->bodySource, namedPrograms, expansionStack);
+		expansionStack.erase(invocation.name);
+		commands.insert(commands.end(), nestedCommands.begin(), nestedCommands.end());
+	}
+
+	return commands;
+}
+
 } // namespace
 
 GroProgramIr GroProgramCompiler::compile(const GroProgramAst& ast) const {
@@ -686,10 +920,17 @@ GroProgramIr GroProgramCompiler::compile(const GroProgramAst& ast) const {
 		const std::vector<GroProgramIr::Command> statementCommands = compileStatements(statement.sourceText);
 		ir.commands.insert(ir.commands.end(), statementCommands.begin(), statementCommands.end());
 	}
+	std::map<std::string, const GroProgramAst::NamedProgram*> namedProgramMap;
+	for (const GroProgramAst::NamedProgram& namedProgram : ast.namedPrograms) {
+		namedProgramMap[namedProgram.name] = &namedProgram;
+	}
+
 	for (const GroProgramAst::NamedProgram& namedProgram : ast.namedPrograms) {
 		GroProgramIr::NamedProgramDefinition definition;
 		definition.parameters = namedProgram.parameters;
-		definition.commands = compileStatements(namedProgram.bodySource);
+		definition.sourceText = namedProgram.bodySource;
+		std::set<std::string> expansionStack{namedProgram.name};
+		definition.commands = compileNamedProgramBody(namedProgram.bodySource, namedProgramMap, expansionStack);
 		ir.namedPrograms[namedProgram.name] = std::move(definition);
 	}
 	return ir;

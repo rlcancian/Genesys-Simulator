@@ -55,6 +55,7 @@ struct GroProgramIr {
 
 	struct NamedProgramDefinition {
 		std::vector<std::string> parameters;
+		std::string sourceText = "";
 		std::vector<Command> commands;
 	};
 

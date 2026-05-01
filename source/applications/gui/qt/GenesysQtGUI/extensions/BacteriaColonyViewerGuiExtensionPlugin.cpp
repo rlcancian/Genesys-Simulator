@@ -111,14 +111,18 @@ QColor signalColorForValue(double value, double minValue, double maxValue) {
 	if (!std::isfinite(value)) {
 		return QColor(96, 96, 96);
 	}
-	if (maxValue - minValue < 1e-12) {
-		return value > 0.0 ? QColor(64, 191, 214, 160) : QColor(246, 248, 250);
+	if (value <= 0.01) {
+		return QColor(0, 0, 0, 0);
 	}
-	const double normalized = std::clamp((value - minValue) / (maxValue - minValue), 0.0, 1.0);
-	const int red = static_cast<int>(28.0 + normalized * 210.0);
-	const int green = static_cast<int>(66.0 + normalized * 92.0);
-	const int blue = static_cast<int>(112.0 + (1.0 - normalized) * 108.0);
-	const int alpha = static_cast<int>(24.0 + normalized * 210.0);
+	if (maxValue - minValue < 1e-12) {
+		return value > 0.0 ? QColor(64, 191, 214, 176) : QColor(0, 0, 0, 0);
+	}
+	const double floorValue = std::max(0.01, maxValue * 0.015);
+	const double normalized = std::clamp((value - floorValue) / std::max(1e-12, maxValue - floorValue), 0.0, 1.0);
+	const int red = static_cast<int>(30.0 + normalized * 208.0);
+	const int green = static_cast<int>(72.0 + normalized * 88.0);
+	const int blue = static_cast<int>(126.0 + (1.0 - normalized) * 96.0);
+	const int alpha = static_cast<int>(42.0 + normalized * 198.0);
 	return QColor(red, green, blue, alpha);
 }
 
@@ -176,9 +180,20 @@ protected:
 		const unsigned int gridWidth = std::max(1u, _snapshot.gridWidth);
 		const unsigned int gridHeight = std::max(1u, _snapshot.gridHeight);
 		const QRectF drawingRect = rect().adjusted(24, 24, -140, -24);
-		const double axisLabelSpaceX = 26.0;
-		const double axisLabelSpaceY = 20.0;
-		const QRectF gridFrame = drawingRect.adjusted(axisLabelSpaceX, axisLabelSpaceY, -8.0, -8.0);
+		const double axisLabelSpaceX = gridWidth <= 18 ? 26.0 : 10.0;
+		const double axisLabelSpaceY = gridHeight <= 18 ? 20.0 : 10.0;
+		QRectF gridFrame = drawingRect.adjusted(axisLabelSpaceX, axisLabelSpaceY, -8.0, -8.0);
+		const double targetAspect = static_cast<double>(gridWidth) / static_cast<double>(gridHeight);
+		const double currentAspect = gridFrame.width() / std::max(1.0, gridFrame.height());
+		if (currentAspect > targetAspect) {
+			const double adjustedWidth = gridFrame.height() * targetAspect;
+			const double horizontalInset = (gridFrame.width() - adjustedWidth) * 0.5;
+			gridFrame.adjust(horizontalInset, 0.0, -horizontalInset, 0.0);
+		} else {
+			const double adjustedHeight = gridFrame.width() / std::max(1e-12, targetAspect);
+			const double verticalInset = (gridFrame.height() - adjustedHeight) * 0.5;
+			gridFrame.adjust(0.0, verticalInset, 0.0, -verticalInset);
+		}
 		const double cellWidth = gridFrame.width() / static_cast<double>(gridWidth);
 		const double cellHeight = gridFrame.height() / static_cast<double>(gridHeight);
 		const auto cellRectFor = [&gridFrame, cellWidth, cellHeight](unsigned int x, unsigned int y) {
@@ -189,7 +204,7 @@ protected:
 		};
 
 		painter.setPen(Qt::NoPen);
-		painter.setBrush(QColor(239, 244, 247));
+		painter.setBrush(QColor(250, 251, 252));
 		painter.drawRoundedRect(gridFrame.adjusted(-3.0, -3.0, 3.0, 3.0), 8.0, 8.0);
 
 		for (unsigned int y = 0; y < gridHeight; ++y) {
@@ -204,31 +219,34 @@ protected:
 			}
 		}
 
-		QPen majorGridPen(QColor(15, 23, 42, 44));
+		QPen majorGridPen(QColor(15, 23, 42, 34));
 		majorGridPen.setCosmetic(true);
-		majorGridPen.setWidthF(0.95);
+		majorGridPen.setWidthF(0.8);
 		QPen borderPen(QColor(15, 23, 42, 72));
 		borderPen.setCosmetic(true);
 		borderPen.setWidthF(1.15);
 
+		const bool drawInnerGrid = gridWidth <= 20 && gridHeight <= 20;
 		const unsigned int xLabelStep = std::max(1u, gridWidth / 4u);
 		const unsigned int yLabelStep = std::max(1u, gridHeight / 4u);
 		painter.setBrush(Qt::NoBrush);
-		for (unsigned int x = 0; x <= gridWidth; ++x) {
-			if (x != 0 && x != gridWidth && (xLabelStep == 0 || x % xLabelStep != 0)) {
-				continue;
+		if (drawInnerGrid) {
+			for (unsigned int x = 0; x <= gridWidth; ++x) {
+				if (x != 0 && x != gridWidth && (xLabelStep == 0 || x % xLabelStep != 0)) {
+					continue;
+				}
+				painter.setPen(majorGridPen);
+				const double px = gridFrame.left() + static_cast<double>(x) * cellWidth;
+				painter.drawLine(QLineF(px, gridFrame.top(), px, gridFrame.bottom()));
 			}
-			painter.setPen(majorGridPen);
-			const double px = gridFrame.left() + static_cast<double>(x) * cellWidth;
-			painter.drawLine(QLineF(px, gridFrame.top(), px, gridFrame.bottom()));
-		}
-		for (unsigned int y = 0; y <= gridHeight; ++y) {
-			if (y != 0 && y != gridHeight && (yLabelStep == 0 || y % yLabelStep != 0)) {
-				continue;
+			for (unsigned int y = 0; y <= gridHeight; ++y) {
+				if (y != 0 && y != gridHeight && (yLabelStep == 0 || y % yLabelStep != 0)) {
+					continue;
+				}
+				painter.setPen(majorGridPen);
+				const double py = gridFrame.top() + static_cast<double>(y) * cellHeight;
+				painter.drawLine(QLineF(gridFrame.left(), py, gridFrame.right(), py));
 			}
-			painter.setPen(majorGridPen);
-			const double py = gridFrame.top() + static_cast<double>(y) * cellHeight;
-			painter.drawLine(QLineF(gridFrame.left(), py, gridFrame.right(), py));
 		}
 		painter.setPen(borderPen);
 		painter.drawRect(gridFrame);
@@ -250,25 +268,27 @@ protected:
 		axisFont.setPointSizeF(std::max(8.0, axisFont.pointSizeF() > 0.0 ? axisFont.pointSizeF() - 1.0 : 8.0));
 		painter.setFont(axisFont);
 		painter.setPen(QColor(71, 85, 105));
-		for (unsigned int x = 0; x < gridWidth; ++x) {
-			if (x % xLabelStep != 0 && x + 1 != gridWidth) {
-				continue;
+		if (gridWidth <= 18 && gridHeight <= 18) {
+			for (unsigned int x = 0; x < gridWidth; ++x) {
+				if (x % xLabelStep != 0 && x + 1 != gridWidth) {
+					continue;
+				}
+				const QRectF labelRect(gridFrame.left() + static_cast<double>(x) * cellWidth,
+				                       drawingRect.top(),
+				                       cellWidth,
+				                       axisLabelSpaceY);
+				painter.drawText(labelRect, Qt::AlignHCenter | Qt::AlignVCenter, QString::number(x));
 			}
-			const QRectF labelRect(gridFrame.left() + static_cast<double>(x) * cellWidth,
-			                       drawingRect.top(),
-			                       cellWidth,
-			                       axisLabelSpaceY);
-			painter.drawText(labelRect, Qt::AlignHCenter | Qt::AlignVCenter, QString::number(x));
-		}
-		for (unsigned int y = 0; y < gridHeight; ++y) {
-			if (y % yLabelStep != 0 && y + 1 != gridHeight) {
-				continue;
+			for (unsigned int y = 0; y < gridHeight; ++y) {
+				if (y % yLabelStep != 0 && y + 1 != gridHeight) {
+					continue;
+				}
+				const QRectF labelRect(drawingRect.left(),
+				                       gridFrame.top() + static_cast<double>(y) * cellHeight,
+				                       axisLabelSpaceX - 4.0,
+				                       cellHeight);
+				painter.drawText(labelRect, Qt::AlignRight | Qt::AlignVCenter, QString::number(y));
 			}
-			const QRectF labelRect(drawingRect.left(),
-			                       gridFrame.top() + static_cast<double>(y) * cellHeight,
-			                       axisLabelSpaceX - 4.0,
-			                       cellHeight);
-			painter.drawText(labelRect, Qt::AlignRight | Qt::AlignVCenter, QString::number(y));
 		}
 
 		const auto positionToPoint = [&gridFrame, cellWidth, cellHeight](double x, double y) {
@@ -317,8 +337,8 @@ protected:
 				continue;
 			}
 			const double bodyScale = std::max(0.85, std::sqrt(std::max(0.1, bacterium->size)));
-			const double majorAxis = std::clamp(cellWidth * (0.56 + bodyScale * 0.22), 9.0, cellWidth * 1.8);
-			const double minorAxis = std::clamp(majorAxis * 0.42, 4.5, majorAxis * 0.72);
+			const double majorAxis = std::clamp(cellWidth * (0.64 + bodyScale * 0.26), 10.0, cellWidth * 2.2);
+			const double minorAxis = std::clamp(majorAxis * 0.34, 4.2, majorAxis * 0.60);
 			const QPointF center = positionToPoint(bacterium->positionX, bacterium->positionY);
 			const QColor fillColor = bacteriumColorForState(*bacterium);
 			const bool selected = _selectedBacteriumId.has_value() && _selectedBacteriumId.value() == bacterium->id;
@@ -327,24 +347,27 @@ protected:
 			painter.translate(center);
 			painter.rotate(bacterium->directionRadians * 180.0 / kPi);
 			QPainterPath shadowPath;
-			shadowPath.addRoundedRect(QRectF(-majorAxis * 0.54, -minorAxis * 0.62, majorAxis * 1.08, minorAxis * 1.24),
-			                          minorAxis * 0.55,
-			                          minorAxis * 0.55);
+			shadowPath.addRoundedRect(QRectF(-majorAxis * 0.56, -minorAxis * 0.66, majorAxis * 1.12, minorAxis * 1.32),
+			                          minorAxis * 0.62,
+			                          minorAxis * 0.62);
 			painter.setPen(Qt::NoPen);
 			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 68));
 			painter.drawPath(shadowPath);
 			QPainterPath bodyPath;
-			bodyPath.addRoundedRect(QRectF(-majorAxis * 0.5, -minorAxis * 0.5, majorAxis, minorAxis),
-			                        minorAxis * 0.48,
-			                        minorAxis * 0.48);
+			bodyPath.addRoundedRect(QRectF(-majorAxis * 0.52, -minorAxis * 0.5, majorAxis * 1.04, minorAxis),
+			                        minorAxis * 0.56,
+			                        minorAxis * 0.56);
 			painter.setPen(QPen(selected ? QColor(245, 158, 11) : QColor(248, 250, 252), selected ? 2.4 : 1.0));
 			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 232));
 			painter.drawPath(bodyPath);
-			painter.setBrush(QColor(255, 255, 255, std::clamp(static_cast<int>(60 + bacterium->gfp * 26.0), 60, 180)));
+			painter.setBrush(QColor(255, 255, 255, std::clamp(static_cast<int>(70 + bacterium->gfp * 28.0), 70, 190)));
 			painter.setPen(Qt::NoPen);
-			painter.drawEllipse(QPointF(-majorAxis * 0.18, -minorAxis * 0.10), majorAxis * 0.14, minorAxis * 0.14);
-			painter.setPen(QPen(QColor(17, 24, 39, selected ? 220 : 180), selected ? 2.0 : 1.4));
-			painter.drawLine(QPointF(0.0, 0.0), QPointF(majorAxis * 0.42, 0.0));
+			painter.drawEllipse(QPointF(-majorAxis * 0.18, -minorAxis * 0.10), majorAxis * 0.12, minorAxis * 0.12);
+			painter.setPen(QPen(QColor(17, 24, 39, selected ? 220 : 180), selected ? 2.0 : 1.35));
+			painter.drawLine(QPointF(-majorAxis * 0.18, 0.0), QPointF(majorAxis * 0.44, 0.0));
+			painter.setBrush(QColor(255, 255, 255, 150));
+			painter.setPen(Qt::NoPen);
+			painter.drawEllipse(QPointF(majorAxis * 0.28, 0.0), majorAxis * 0.07, majorAxis * 0.07);
 			painter.restore();
 
 			if (selected) {

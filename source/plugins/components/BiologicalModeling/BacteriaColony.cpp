@@ -1196,6 +1196,9 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
                                                     GroProgramRuntime::ExecutionResult& result) {
 	std::string unsupportedCommand;
 	for (const auto& programEntry : ir.namedPrograms) {
+		if (programEntry.first == "main") {
+			continue;
+		}
 		if (_containsBacteriumScopedOnlyUnsupportedCommand(programEntry.second.commands, unsupportedCommand)) {
 			result.succeeded = false;
 			result.errorMessage =
@@ -1253,6 +1256,61 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		result.skippedRawStatements.insert(result.skippedRawStatements.end(),
 		                                   preludeResult.skippedRawStatements.begin(),
 		                                   preludeResult.skippedRawStatements.end());
+	}
+
+	const auto mainEntry = ir.namedPrograms.find("main");
+	if (mainEntry != ir.namedPrograms.end()) {
+		GroProgramIr mainIr;
+		mainIr.sourceForm = GroProgramAst::SourceForm::ProgramBlock;
+		mainIr.programName = "main";
+		mainIr.commands = mainEntry->second.commands;
+
+		GroProgramRuntimeState mainState;
+		mainState.colonyTime = getColonyTime();
+		mainState.simulationStep = getSimulationStep();
+		mainState.populationSize = _populationSize;
+		mainState.tickCount = _colonyTickCount;
+		mainState.variables = _runtimeVariables;
+		mainState.variables["dt"] = mainState.simulationStep;
+		_appendBioNetworkContextVariables(mainState, result.errorMessage);
+		if (!result.errorMessage.empty()) {
+			result.succeeded = false;
+			return false;
+		}
+
+		GroProgramRuntime::ExecutionResult mainResult = runtime.execute(mainIr, mainState);
+		if (!mainResult.succeeded) {
+			result = mainResult;
+			result.errorMessage = "BacteriaColony main program failed: " + result.errorMessage;
+			return false;
+		}
+		if (!mainResult.signalMutations.empty()) {
+			result.succeeded = false;
+			result.errorMessage =
+			        "BacteriaColony main program cannot emit or absorb local signals without bacterium context. ";
+			return false;
+		}
+		if (mainState.simulationStep > 0.0 &&
+		    std::fabs(mainState.simulationStep - getSimulationStep()) > 1e-12) {
+			setSimulationStep(mainState.simulationStep);
+		}
+		if (!_applyBioNetworkAssignments(mainResult.assignedVariables, result.errorMessage)) {
+			result.succeeded = false;
+			return false;
+		}
+		_removeBioNetworkAssignmentVariables(mainState.variables);
+		_runtimeVariables = mainState.variables;
+		_runtimeVariables["dt"] = getSimulationStep();
+		_colonyTickCount = mainState.tickCount;
+		_applyRuntimePopulationMutations(mainResult.populationMutations, mainState.populationSize);
+		result.executedCommands += mainResult.executedCommands;
+		result.assignedVariables.insert(mainResult.assignedVariables.begin(), mainResult.assignedVariables.end());
+		result.unsupportedCommands.insert(result.unsupportedCommands.end(),
+		                                  mainResult.unsupportedCommands.begin(),
+		                                  mainResult.unsupportedCommands.end());
+		result.skippedRawStatements.insert(result.skippedRawStatements.end(),
+		                                   mainResult.skippedRawStatements.begin(),
+		                                   mainResult.skippedRawStatements.end());
 	}
 
 	_refreshBacteriaUpdateTime();
@@ -1529,10 +1587,13 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.contextVariables["local_bacteria_count"] = static_cast<double>(
 			_computeLocalBacteriaCount(bacterium.gridX, bacterium.gridY));
 	// Colony-level scalar declarations such as signal handles are visible to each
-	// bacterium, but per-bacterium state still overrides the shared defaults.
+	// bacterium. Shared globals from `main()` stay authoritative across ticks, so
+	// persisted bacterium-local variables only overlay names that are not global.
 	runtimeState.variables = _runtimeVariables;
 	for (const auto& entry : bacterium.runtimeVariables) {
-		runtimeState.variables[entry.first] = entry.second;
+		if (_runtimeVariables.find(entry.first) == _runtimeVariables.end()) {
+			runtimeState.variables[entry.first] = entry.second;
+		}
 	}
 	runtimeState.variables["x"] = bacterium.positionX;
 	runtimeState.variables["y"] = bacterium.positionY;

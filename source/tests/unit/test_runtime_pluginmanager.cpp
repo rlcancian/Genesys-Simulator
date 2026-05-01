@@ -802,6 +802,37 @@ TEST(RuntimePluginManagerClassTest, GroProgramParserAndCompilerCaptureNamedProgr
     EXPECT_EQ(followerCommands[2].expressionText, "p.mode = 0 & get_signal(ahl) > 0.01");
 }
 
+TEST(RuntimePluginManagerClassTest, GroProgramCompilerExpandsComposedNamedProgramsWithoutBraces) {
+    GroProgramParser parser;
+    GroProgramParser::Result parsed = parser.parse(
+        "program helper(delta) := grow(delta); "
+        "program reporter() := observe(); "
+        "program all() := helper(2) + helper(3) sharing local_counter + reporter() sharing local_counter;");
+    ASSERT_TRUE(parsed.accepted) << parsed.errorMessage;
+    ASSERT_EQ(parsed.ast.namedPrograms.size(), 3u);
+    EXPECT_EQ(parsed.ast.namedPrograms[2].name, "all");
+    EXPECT_EQ(parsed.ast.namedPrograms[2].bodySource,
+              "helper(2) + helper(3) sharing local_counter + reporter() sharing local_counter");
+
+    GroProgramCompiler compiler;
+    GroProgramIr ir = compiler.compile(parsed.ast);
+    ASSERT_TRUE(ir.hasNamedProgram("all"));
+
+    const GroProgramIr::NamedProgramDefinition& allDefinition = ir.namedPrograms.at("all");
+    ASSERT_EQ(allDefinition.commands.size(), 5u);
+    EXPECT_TRUE(allDefinition.commands[0].isAssignment());
+    EXPECT_EQ(allDefinition.commands[0].assignmentTarget, "delta");
+    EXPECT_EQ(allDefinition.commands[0].expressionText, "2");
+    EXPECT_TRUE(allDefinition.commands[1].isFunctionCall());
+    EXPECT_EQ(allDefinition.commands[1].functionName, "grow");
+    EXPECT_TRUE(allDefinition.commands[2].isAssignment());
+    EXPECT_EQ(allDefinition.commands[2].expressionText, "3");
+    EXPECT_TRUE(allDefinition.commands[3].isFunctionCall());
+    EXPECT_EQ(allDefinition.commands[3].functionName, "grow");
+    EXPECT_TRUE(allDefinition.commands[4].isFunctionCall());
+    EXPECT_EQ(allDefinition.commands[4].functionName, "observe");
+}
+
 TEST(RuntimePluginManagerClassTest, GroProgramRuntimeExecutesInitialTickCommand) {
 	GroProgramParser parser;
 	GroProgramParser::Result parsed = parser.parse(
@@ -1282,6 +1313,39 @@ TEST(RuntimePluginManagerClassTest, BacteriaColonyAppliesGroSeedsBeforeFirstGuiD
     EXPECT_DOUBLE_EQ(colony->getColonyTime(), 0.0);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.t"), 0.1);
     EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(1, "p.mode"), 1.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriaColonyExecutesMainProgramBeforeSeededBacteriaPrograms) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_GlobalMain");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "set(\"dt\", 0.2); "
+        "program main() := { warmup := warmup + 1; tick(); }; "
+        "program leader() := { p := [ seen_warmup := 0 ]; true : { p.seen_warmup := warmup } }; "
+        "ecoli([x:=0, y:=0], program leader());");
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_GlobalMain");
+    ASSERT_NE(colony, nullptr);
+    colony->setGroProgram(program);
+
+    GroProgramRuntime::ExecutionResult first = colony->executeGroProgram();
+    EXPECT_TRUE(first.succeeded) << first.errorMessage;
+    EXPECT_TRUE(colony->hasRuntimeVariable("warmup"));
+    EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("warmup"), 1.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.seen_warmup"), 1.0);
+
+    GroProgramRuntime::ExecutionResult second = colony->executeGroProgram();
+    EXPECT_TRUE(second.succeeded) << second.errorMessage;
+    EXPECT_DOUBLE_EQ(colony->getRuntimeVariableValue("warmup"), 2.0);
+    EXPECT_DOUBLE_EQ(colony->getBacteriumRuntimeVariableValue(0, "p.seen_warmup"), 2.0);
 }
 
 TEST(RuntimePluginManagerClassTest, BacteriaColonyReusesBioNetworkAsBiochemicalContext) {
