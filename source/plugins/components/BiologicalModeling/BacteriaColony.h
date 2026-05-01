@@ -51,9 +51,12 @@ public:
 		double yfp = 0.0;
 		double cfp = 0.0;
 		double speed = 0.1;
+		unsigned int tickCount = 0;
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;
 		bool hasExplicitGridPosition = false;
+		bool justDivided = false;
+		bool daughter = false;
 		bool alive = true;
 		std::map<std::string, double> runtimeVariables;
 	};
@@ -187,6 +190,7 @@ private:
 	unsigned int _gridWidth = DEFAULT.gridWidth;
 	unsigned int _gridHeight = DEFAULT.gridHeight;
 	unsigned int _nextBacteriumId = 1;
+	unsigned int _colonyTickCount = 0;
 	std::vector<BacteriumState> _bacteria;
 	std::map<std::string, double> _runtimeVariables;
 	std::vector<double> _signalField;

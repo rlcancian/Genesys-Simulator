@@ -7,12 +7,40 @@
 
 #include "plugins/data/BiologicalModeling/GroProgramRuntime.h"
 
+#include <algorithm>
 #include <cctype>
+#include <cstdint>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
 
 namespace {
+
+std::uint64_t mixHash(std::uint64_t seed, std::uint64_t value) {
+	seed ^= value + 0x9e3779b97f4a7c15ULL + (seed << 6U) + (seed >> 2U);
+	return seed;
+}
+
+double deterministicUnitInterval(const GroProgramRuntimeState& state, std::uint64_t sampleIndex) {
+	std::uint64_t seed = 0xcbf29ce484222325ULL;
+	seed = mixHash(seed, static_cast<std::uint64_t>(state.tickCount));
+	seed = mixHash(seed, static_cast<std::uint64_t>(std::llround(state.colonyTime * 1000.0)));
+	seed = mixHash(seed, static_cast<std::uint64_t>(std::llround(state.simulationStep * 1000000.0)));
+	seed = mixHash(seed, sampleIndex);
+
+	const auto bacteriumId = state.contextVariables.find("bacterium_id");
+	if (bacteriumId != state.contextVariables.end()) {
+		seed = mixHash(seed, static_cast<std::uint64_t>(std::llround(bacteriumId->second)));
+	}
+
+	seed ^= seed >> 30U;
+	seed *= 0xbf58476d1ce4e5b9ULL;
+	seed ^= seed >> 27U;
+	seed *= 0x94d049bb133111ebULL;
+	seed ^= seed >> 31U;
+	return static_cast<double>(seed & 0x1fffffffffffffULL) /
+	       static_cast<double>(0x1fffffffffffffULL);
+}
 
 double resolveIdentifierValue(const std::string& identifier, const GroProgramRuntimeState& state) {
 	if (identifier == "population") {
@@ -403,7 +431,10 @@ private:
 				errorMessage = "GroProgramRuntime rate expression expects exactly one numeric argument. ";
 				return false;
 			}
-			value = std::max(0.0, arguments.front());
+			const double rate = std::max(0.0, arguments.front());
+			const double probability = 1.0 - std::exp(-rate * std::max(0.0, _state.simulationStep));
+			const double sample = deterministicUnitInterval(_state, ++_stochasticSampleIndex);
+			value = sample < std::clamp(probability, 0.0, 1.0) ? 1.0 : 0.0;
 			return true;
 		}
 
@@ -431,6 +462,7 @@ private:
 	const std::string& _expressionText;
 	const GroProgramRuntimeState& _state;
 	std::size_t _position = 0;
+	std::uint64_t _stochasticSampleIndex = 0;
 };
 
 bool evaluateExpression(const std::string& expressionText, const GroProgramRuntimeState& state,
@@ -705,6 +737,7 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 
 			if (command.functionName == "emit_signal" ||
 			    command.functionName == "consume_signal" ||
+			    command.functionName == "absorb_signal" ||
 			    command.functionName == "set_signal") {
 				double signalValue = 0.0;
 				if ((command.arguments.size() != 1 && command.arguments.size() != 2) ||
@@ -717,7 +750,7 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 
 				GroProgramRuntime::SignalMutation mutation;
 				mutation.type = command.functionName == "emit_signal" ? GroProgramRuntime::SignalMutationType::Emit :
-				                command.functionName == "consume_signal" ? GroProgramRuntime::SignalMutationType::Consume :
+				                (command.functionName == "consume_signal" || command.functionName == "absorb_signal") ? GroProgramRuntime::SignalMutationType::Consume :
 				                                                          GroProgramRuntime::SignalMutationType::Set;
 				mutation.value = signalValue;
 				result.signalMutations.push_back(mutation);

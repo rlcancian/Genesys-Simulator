@@ -66,6 +66,174 @@ private:
 	private:
 	const struct DEFAULT_VALUES {
 		const std::string sourceCode = R"(
+include gro
+set ( "dt", 0.1 );
+set ( "population_max", 2000 );
+program p() := {
+  skip();
+};
+program q() := {
+  set ( "ecoli_growth_rate", 0.1 );
+  set ( "ecoli_division_size_mean", 2.0 );
+  set ( "ecoli_division_size_variance", 0.2 );
+};
+program r() := {
+  selected : { message ( 1, tostring ( volume ) ) }
+};
+program s() := {
+  set ( "ecoli_division_size_mean", 1000 ); // essentially turns off gro's division machinery
+  rate(1) & volume > 3.14 : {
+    divide()
+  }
+};
+ecoli ( [ x := 0, y := 0 ], program q() ); // Try p(), q(), r() or s() here. They are all a bit different.
+
+//----------------
+set ( "dt", 0.1 );
+set ( "ecoli_growth_rate", 0.1 );
+
+s0 := signal ( 1, 0.2 ); // create two new signals
+s1 := signal ( 1, 0.2 );
+
+// These functions provide various growth rates in different states. a and b
+// are the intensities of signaling molecules.
+fun on a b .  0.1;
+fun off a b . 0.0;
+fun and a b . if a > 0.1 & b > 0.1 then 0.1 else 0.0 end;
+
+//
+// The state program. Parameters are
+//
+//   this: the state index
+//   m_next, d_next: states to go to after division if mother or daughter cell
+//   t_next: state to go to after timer is up
+//   tf: timer length (use -1 for infinity)
+//   gr: growth rate function
+//   sigs: rates to emit signals
+//
+program state ( this, m_next, d_next, t_next, tf, gr, sigs ) := {
+
+  needs q, t;
+  active := false;
+  needs event;
+
+  true : { active := ( q = this ); }
+
+  !event & active & just_divided & !daughter & q != m_next : { q := m_next, t := 0, event := true }
+  !event & active & just_divided & daughter  & q != d_next:  { q := d_next, t := 0, event := true }
+  !event & active & tf > 0 & t > tf & q != t_next :          { q := t_next, t := 0, event := true }
+
+  active : {
+    set ( "ecoli_growth_rate", gr ( get_signal ( 0 ) ) ( get_signal ( 1 ) ) ),
+    emit_signal ( 0, sigs[0] ),
+    emit_signal ( 1, sigs[1] )
+  }
+
+};
+
+//
+// State machine program: coordinates states.
+//
+program sm() := {
+
+  q := 0;
+  t := 0;
+  event := false;
+
+  true : { t := t + dt, event := false }
+
+};
+
+//
+// The morphogenesis state machine example.
+//
+program p() := sm() + state ( 0, 1, 2, 0, -1, on, { 0, 0 } )  sharing q, t, event
+                    + state ( 1, 1, 3, 5, 60, on, { 50, 0 } ) sharing q, t, event
+                    + state ( 2, 2, 3, 6, 60, on, { 0, 50 } ) sharing q, t, event
+                    + state ( 3, 3, 3, 3, -1, and, { 0, 0 } ) sharing q, t, event
+                    + state ( 5, 5, 5, 7, 40, on, { 0, 0 } )  sharing q, t, event
+                    + state ( 6, 6, 6, 8, 40, on, { 0, 0 } )  sharing q, t, event
+                    + state ( 7, 7, 7, 7,  0, off, { 0, 0 } ) sharing q, t, event
+                    + state ( 8, 8, 8, 8,  0, off, { 0, 0 } ) sharing q, t, event;
+
+// A helper function.
+fun test x y . if x = y then 1 else 0 end;
+
+//
+// Makes cells in different states report different colors.
+//
+program report() := {
+
+  gfp := 0; rfp := 0; yfp := 0; cfp := 0;
+  needs q;
+
+  true : {
+    rfp := 100 * test ( q ) 3;
+    yfp := 100 * ( test ( q ) 1 + test ( q ) 2 ),
+    cfp := 100 * ( test ( q ) 5 + test ( q ) 7 );
+    gfp := 100 * ( test ( q ) 6 + test ( q ) 8 );
+  }
+
+  selected : { message ( 2, tostring ( { id, q } ) ) }
+
+};
+
+//
+// Hides the state variable in all() -- see below -- so that it is not cut in half when the
+// cell divides.
+//
+program hide() := {
+
+  needs gfp;
+  needs rfp;
+  needs yfp;
+  needs cfp;
+
+  skip();
+
+};
+
+//
+// All the programs stuck together
+//
+program all() := p() + report() sharing q, gfp, rfp, yfp, cfp + hide() sharing gfp, rfp, yfp, cfp;
+
+//
+// The main program makes the simulation loop
+//
+program main() := {
+
+  t := 1;
+
+  true : { t := t + dt }
+
+  t > 120 : {
+    reset(),
+    ecoli ( [], program all() ),
+    t := 0
+  }
+
+};
+
+// associate the program with a cell
+ecoli ( [], program all() );
+
+
+
+)";
+
+	} DEFAULT;
+
+	std::string _sourceCode = DEFAULT.sourceCode;
+};
+
+#endif /* GROPROGRAM_H */
+
+
+/*
+
+
+
 //
 // gro is protected by the UW OPEN SOURCE LICENSE, which is summarized here.
 // Please see the file LICENSE.txt for the complete license.
@@ -213,15 +381,7 @@ program main() := {
 
 // associate the program with a cell
 ecoli ( [], program all() );
-)";
-
-	} DEFAULT;
-
-	std::string _sourceCode = DEFAULT.sourceCode;
-};
-
-#endif /* GROPROGRAM_H */
-
+*/
 
 /*
 include gro

@@ -32,8 +32,8 @@ namespace {
 constexpr const char* kBioSpeciesAssignmentPrefix = "bio_species_";
 
 struct GroSeedPlacement {
-	unsigned int gridX = 0;
-	unsigned int gridY = 0;
+	double positionX = 0.0;
+	double positionY = 0.0;
 	std::string programName = "";
 	std::vector<double> programArguments;
 };
@@ -160,20 +160,31 @@ std::vector<double> parseGroProgramArguments(const std::string& argumentsText) {
 
 std::vector<GroSeedPlacement> parseGroSeedPlacements(const std::string& sourceCode) {
 	const std::regex ecoliPattern(
-			R"(ecoli\s*\(\s*\[\s*x\s*:?=\s*([-+]?[0-9]*\.?[0-9]+)\s*,\s*y\s*:?=\s*([-+]?[0-9]*\.?[0-9]+)\s*\]\s*,\s*program\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*\))");
+			R"(ecoli\s*\(\s*\[([^\]]*)\]\s*,\s*program\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*\))");
+	const std::regex xPattern(R"(\bx\s*:?=\s*([-+]?[0-9]*\.?[0-9]+))");
+	const std::regex yPattern(R"(\by\s*:?=\s*([-+]?[0-9]*\.?[0-9]+))");
 	std::vector<GroSeedPlacement> placements;
 	for (std::sregex_iterator it(sourceCode.begin(), sourceCode.end(), ecoliPattern), end; it != end; ++it) {
 		try {
-			const double xValue = std::stod((*it)[1].str());
-			const double yValue = std::stod((*it)[2].str());
+			double xValue = 0.0;
+			double yValue = 0.0;
+			const std::string seedRecord = (*it)[1].str();
+			std::smatch xMatch;
+			if (std::regex_search(seedRecord, xMatch, xPattern) && xMatch.size() >= 2) {
+				xValue = std::stod(xMatch[1].str());
+			}
+			std::smatch yMatch;
+			if (std::regex_search(seedRecord, yMatch, yPattern) && yMatch.size() >= 2) {
+				yValue = std::stod(yMatch[1].str());
+			}
 			if (!std::isfinite(xValue) || !std::isfinite(yValue)) {
 				continue;
 			}
 			GroSeedPlacement placement;
-			placement.gridX = static_cast<unsigned int>(std::max(0.0, std::round(xValue)));
-			placement.gridY = static_cast<unsigned int>(std::max(0.0, std::round(yValue)));
-			placement.programName = (*it)[3].str();
-			placement.programArguments = parseGroProgramArguments((*it)[4].str());
+			placement.positionX = xValue;
+			placement.positionY = yValue;
+			placement.programName = (*it)[2].str();
+			placement.programArguments = parseGroProgramArguments((*it)[3].str());
 			placements.push_back(placement);
 		} catch (const std::exception&) {
 		}
@@ -537,6 +548,7 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 	runtimeState.colonyTime = getColonyTime();
 	runtimeState.simulationStep = getSimulationStep();
 	runtimeState.populationSize = _populationSize;
+	runtimeState.tickCount = _colonyTickCount;
 	runtimeState.variables = _runtimeVariables;
 	runtimeState.variables["dt"] = runtimeState.simulationStep;
 	_appendBioNetworkContextVariables(runtimeState, bioContextErrorMessage);
@@ -568,6 +580,7 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 		// plugin runtime hands back the updated scalar-variable map after each run.
 		_runtimeVariables = runtimeState.variables;
 		_runtimeVariables["dt"] = getSimulationStep();
+		_colonyTickCount = runtimeState.tickCount;
 		_applyRuntimePopulationMutations(result.populationMutations, runtimeState.populationSize);
 		_applySignalFieldStep();
 		_refreshBacteriaUpdateTime();
@@ -674,6 +687,7 @@ void BacteriaColony::_initBetweenReplications() {
 	_runtimeVariables.clear();
 	_groSeedsApplied = false;
 	_currentStep = 0;
+	_colonyTickCount = 0;
 	std::string runtimeConfigErrorMessage;
 	(void)_refreshRuntimeConfigurationFromGroProgram(runtimeConfigErrorMessage);
 	if (_groSeedDefinitions.empty()) {
@@ -906,11 +920,30 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 
 	unsigned int maxGridX = 0;
 	unsigned int maxGridY = 0;
+	double minPositionX = 0.0;
+	double minPositionY = 0.0;
+	double maxPositionX = 0.0;
+	double maxPositionY = 0.0;
+	bool hasAnySeedPosition = false;
+	for (const GroSeedPlacement& placement : parsedPlacements) {
+		if (!hasAnySeedPosition) {
+			minPositionX = maxPositionX = placement.positionX;
+			minPositionY = maxPositionY = placement.positionY;
+			hasAnySeedPosition = true;
+		} else {
+			minPositionX = std::min(minPositionX, placement.positionX);
+			minPositionY = std::min(minPositionY, placement.positionY);
+			maxPositionX = std::max(maxPositionX, placement.positionX);
+			maxPositionY = std::max(maxPositionY, placement.positionY);
+		}
+	}
+	const double shiftX = minPositionX < 0.0 ? -minPositionX : 0.0;
+	const double shiftY = minPositionY < 0.0 ? -minPositionY : 0.0;
 	std::ostringstream seedSignature;
 	for (const GroSeedPlacement& placement : parsedPlacements) {
 		GroSeedDefinition definition;
-		definition.gridX = placement.gridX;
-		definition.gridY = placement.gridY;
+		definition.gridX = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionX + shiftX)));
+		definition.gridY = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionY + shiftY)));
 		definition.programName = placement.programName;
 		definition.programArguments = placement.programArguments;
 		newSeedDefinitions.push_back(definition);
@@ -922,8 +955,8 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 			seedSignature << definition.programArguments[index];
 		}
 		seedSignature << ");";
-		maxGridX = std::max(maxGridX, placement.gridX);
-		maxGridY = std::max(maxGridY, placement.gridY);
+		maxGridX = std::max(maxGridX, definition.gridX);
+		maxGridY = std::max(maxGridY, definition.gridY);
 	}
 	const std::string newSeedSignature = seedSignature.str();
 	if (newSeedSignature != _groSeedSignature) {
@@ -934,8 +967,12 @@ bool BacteriaColony::_refreshRuntimeConfigurationFromGroProgram(std::string& err
 
 	if (!_usesSignalGridDimensions()) {
 		// Classic Gro seed placements define a discrete colony footprint even when no SignalGrid exists yet.
-		_gridWidth = std::max(_gridWidth, maxGridX + 1);
-		_gridHeight = std::max(_gridHeight, maxGridY + 1);
+		const unsigned int requiredWidth = static_cast<unsigned int>(
+				std::max(1.0, std::round(maxPositionX + shiftX + 1.0)));
+		const unsigned int requiredHeight = static_cast<unsigned int>(
+				std::max(1.0, std::round(maxPositionY + shiftY + 1.0)));
+		_gridWidth = std::max(std::max(_gridWidth, maxGridX + 1), requiredWidth);
+		_gridHeight = std::max(std::max(_gridHeight, maxGridY + 1), requiredHeight);
 		if (_signalField.size() != static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight)) {
 			_signalField.assign(static_cast<std::size_t>(_gridWidth) * static_cast<std::size_t>(_gridHeight), 0.0);
 		}
@@ -1279,7 +1316,10 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		}
 		_removeBioNetworkAssignmentVariables(runtimeState.variables);
 		bacterium.runtimeVariables = runtimeState.variables;
+		bacterium.tickCount = runtimeState.tickCount;
 		_syncBacteriumSpatialState(bacterium, runtimeState);
+		bacterium.justDivided = false;
+		bacterium.daughter = false;
 		result.executedCommands += bacteriumResult.executedCommands;
 
 		for (const auto& entry : bacteriumResult.assignedVariables) {
@@ -1379,7 +1419,10 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 		}
 		_removeBioNetworkAssignmentVariables(runtimeState.variables);
 		bacterium.runtimeVariables = runtimeState.variables;
+		bacterium.tickCount = runtimeState.tickCount;
 		_syncBacteriumSpatialState(bacterium, runtimeState);
+		bacterium.justDivided = false;
+		bacterium.daughter = false;
 		result.executedCommands += bacteriumResult.executedCommands;
 
 		for (const auto& entry : bacteriumResult.assignedVariables) {
@@ -1457,6 +1500,7 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.colonyTime = getColonyTime();
 	runtimeState.simulationStep = getSimulationStep();
 	runtimeState.populationSize = _populationSize;
+	runtimeState.tickCount = bacterium.tickCount;
 	runtimeState.contextVariables["bacterium_id"] = static_cast<double>(bacterium.id);
 	runtimeState.contextVariables["bacterium_parent_id"] = static_cast<double>(bacterium.parentId);
 	runtimeState.contextVariables["bacterium_generation"] = static_cast<double>(bacterium.generation);
@@ -1476,6 +1520,10 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.contextVariables["bacterium_cfp"] = bacterium.cfp;
 	runtimeState.contextVariables["bacterium_speed"] = bacterium.speed;
 	runtimeState.contextVariables["bacterium_index"] = static_cast<double>(bacteriumIndex);
+	runtimeState.contextVariables["selected"] = 0.0;
+	runtimeState.contextVariables["id"] = static_cast<double>(bacterium.id);
+	runtimeState.contextVariables["just_divided"] = bacterium.justDivided ? 1.0 : 0.0;
+	runtimeState.contextVariables["daughter"] = bacterium.daughter ? 1.0 : 0.0;
 	runtimeState.contextVariables["local_signal"] = _signalValueAt(bacterium.gridX, bacterium.gridY);
 	runtimeState.contextVariables["neighbor_signal_sum"] = _computeNeighborSignalSum(bacterium.gridX, bacterium.gridY);
 	runtimeState.contextVariables["local_bacteria_count"] = static_cast<double>(
@@ -1489,6 +1537,7 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.variables["x"] = bacterium.positionX;
 	runtimeState.variables["y"] = bacterium.positionY;
 	runtimeState.variables["direction"] = bacterium.directionRadians;
+	runtimeState.variables["theta"] = bacterium.directionRadians;
 	runtimeState.variables["volume"] = bacterium.volume;
 	runtimeState.variables["size"] = bacterium.size;
 	runtimeState.variables["gfp"] = bacterium.gfp;
@@ -1496,6 +1545,10 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.variables["yfp"] = bacterium.yfp;
 	runtimeState.variables["cfp"] = bacterium.cfp;
 	runtimeState.variables["speed"] = bacterium.speed;
+	runtimeState.variables["id"] = static_cast<double>(bacterium.id);
+	runtimeState.variables["selected"] = 0.0;
+	runtimeState.variables["just_divided"] = bacterium.justDivided ? 1.0 : 0.0;
+	runtimeState.variables["daughter"] = bacterium.daughter ? 1.0 : 0.0;
 	runtimeState.variables["dt"] = runtimeState.simulationStep;
 	return runtimeState;
 }
@@ -1536,7 +1589,12 @@ void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 				child.yfp = parent.yfp;
 				child.cfp = parent.cfp;
 				child.speed = parent.speed;
+				child.tickCount = 0;
+				child.justDivided = true;
+				child.daughter = true;
 			}
+			_bacteria[parentIndex].justDivided = true;
+			_bacteria[parentIndex].daughter = false;
 			result.populationMutations.push_back(mutation);
 			continue;
 		}
@@ -1570,8 +1628,13 @@ void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 			child.yfp = parent.yfp * 0.85;
 			child.cfp = parent.cfp * 0.85;
 			child.speed = parent.speed;
+			child.tickCount = 0;
+			child.justDivided = true;
+			child.daughter = true;
 			_bacteria[parentIndex].volume = std::max(0.65, parent.volume * 0.5);
 			_bacteria[parentIndex].size = std::max(0.55, std::sqrt(std::max(0.1, _bacteria[parentIndex].volume)));
+			_bacteria[parentIndex].justDivided = true;
+			_bacteria[parentIndex].daughter = false;
 			result.populationMutations.push_back(mutation);
 			continue;
 		}
@@ -1618,7 +1681,10 @@ void BacteriaColony::_appendBacterium(unsigned int parentId, unsigned int genera
 	bacterium.gfp = 0.0;
 	bacterium.rfp = 0.0;
 	bacterium.speed = 0.15;
+	bacterium.tickCount = 0;
 	bacterium.hasExplicitGridPosition = false;
+	bacterium.justDivided = false;
+	bacterium.daughter = false;
 	bacterium.alive = true;
 	_assignBacteriumGridPosition(bacterium, _bacteria.size());
 	_initializeBacteriumPhenotype(bacterium, _bacteria.size());
@@ -1764,6 +1830,11 @@ void BacteriaColony::_syncBacteriumSpatialState(BacteriumState& bacterium, const
 	const auto direction = runtimeState.variables.find("direction");
 	if (direction != runtimeState.variables.end()) {
 		bacterium.directionRadians = direction->second;
+	} else {
+		const auto theta = runtimeState.variables.find("theta");
+		if (theta != runtimeState.variables.end()) {
+			bacterium.directionRadians = theta->second;
+		}
 	}
 	const auto volume = runtimeState.variables.find("volume");
 	if (volume != runtimeState.variables.end()) {
@@ -1885,4 +1956,3 @@ void BacteriaColony::_createInternalStatisticReporters() {
 
 void BacteriaColony::_createEditableDataDefinitions() {
 }
-

@@ -259,8 +259,8 @@ TEST(RuntimePluginManagerClassTest, BacteriaSignalGridCanBeCreatedAndValidated) 
 
     BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_1");
     ASSERT_NE(signalGrid, nullptr);
-    EXPECT_EQ(signalGrid->getWidth(), 12u);
-    EXPECT_EQ(signalGrid->getHeight(), 12u);
+    EXPECT_EQ(signalGrid->getWidth(), 32u);
+    EXPECT_EQ(signalGrid->getHeight(), 32u);
     EXPECT_GT(signalGrid->getDiffusionRate(), 0.0);
     signalGrid->setWidth(3);
     signalGrid->setHeight(2);
@@ -298,8 +298,10 @@ TEST(RuntimePluginManagerClassTest, GroProgramCanCreateDefaultStarterAndKeepEmpt
     const std::string filename = "/tmp/genesys_default_gro_program_test.gro";
     EXPECT_TRUE(program->createDefaultGroProgram(filename));
     EXPECT_FALSE(program->getSourceCode().empty());
-    EXPECT_NE(program->getSourceCode().find("program oscillator(g0)"), std::string::npos);
+    EXPECT_NE(program->getSourceCode().find("program leader()"), std::string::npos);
+    EXPECT_NE(program->getSourceCode().find("program follower()"), std::string::npos);
     EXPECT_NE(program->getSourceCode().find("program main()"), std::string::npos);
+    EXPECT_NE(program->getSourceCode().find("emit_signal ( wave, 22 )"), std::string::npos);
     EXPECT_TRUE(program->validateSyntax(errorMessage)) << errorMessage;
 
     std::ifstream createdFile(filename);
@@ -332,23 +334,78 @@ TEST(RuntimePluginManagerClassTest, DefaultGroProgramProducesVisibleColonyDynami
 
     ModelDataDefinition::InitBetweenReplications(colony);
 
-    ASSERT_EQ(colony->getInternalBacteriaCount(), 1u);
-    EXPECT_EQ(colony->getBacteriumState(0).programName, "oscillator");
-    EXPECT_EQ(colony->getGridWidth(), 12u);
-    EXPECT_EQ(colony->getGridHeight(), 12u);
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 5u);
+    EXPECT_EQ(colony->getBacteriumState(0).programName, "leader");
+    EXPECT_EQ(colony->getGridWidth(), 32u);
+    EXPECT_EQ(colony->getGridHeight(), 32u);
 
-    for (unsigned int step = 0; step < 120; ++step) {
+    for (unsigned int step = 0; step < 40; ++step) {
         GroProgramRuntime::ExecutionResult result = colony->executeGroProgram();
         ASSERT_TRUE(result.succeeded) << result.errorMessage;
     }
 
-    EXPECT_EQ(colony->getPopulationSize(), 1u);
-    EXPECT_EQ(colony->getInternalBacteriaCount(), 1u);
-    EXPECT_GT(colony->getSignalValueAt(0, 0), 0.0);
-    EXPECT_NE(colony->getBacteriumPositionX(0), 0.5);
-    EXPECT_NE(colony->getBacteriumPositionY(0), 0.5);
+    EXPECT_GT(colony->getPopulationSize(), 5u);
+    EXPECT_EQ(colony->getPopulationSize(), colony->getInternalBacteriaCount());
+    double maxSignal = 0.0;
+    for (unsigned int y = 0; y < colony->getGridHeight(); ++y) {
+        for (unsigned int x = 0; x < colony->getGridWidth(); ++x) {
+            maxSignal = std::max(maxSignal, colony->getSignalValueAt(x, y));
+        }
+    }
+    EXPECT_GT(maxSignal, 0.0);
+    EXPECT_NE(colony->getBacteriumPositionX(0), 16.0);
+    EXPECT_NE(colony->getBacteriumPositionY(0), 16.0);
     EXPECT_GT(colony->getBacteriumSize(0), 0.0);
     EXPECT_GT(colony->getBacteriumRuntimeVariableValue(0, "gfp"), 0.0);
+}
+
+TEST(RuntimePluginManagerClassTest, BacteriumScopedGroPreservesDivisionFlagsAndAbsorbSignalAlias) {
+    Simulator simulator;
+    PluginManager* manager = simulator.getPluginManager();
+    ASSERT_NE(manager, nullptr);
+    manager->autoInsertPlugins();
+
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram* program = manager->newInstance<GroProgram>(model, "GroProgram_DivisionFlags");
+    ASSERT_NE(program, nullptr);
+    program->setSourceCode(
+        "wave := signal(1, 0.05); "
+        "program bacterium() := { "
+        "  just_divided & daughter : { gfp := 40 } "
+        "  !just_divided : { emit_signal(wave, 5), divide() } "
+        "  just_divided : { absorb_signal(wave, 1) } "
+        "}; "
+        "ecoli([x:=1, y:=1], program bacterium());");
+
+    BacteriaSignalGrid* signalGrid = manager->newInstance<BacteriaSignalGrid>(model, "SignalGrid_DivisionFlags");
+    ASSERT_NE(signalGrid, nullptr);
+    signalGrid->setWidth(8);
+    signalGrid->setHeight(8);
+
+    BacteriaColony* colony = manager->newInstance<BacteriaColony>(model, "BacteriaColony_DivisionFlags");
+    ASSERT_NE(colony, nullptr);
+    colony->setSignalGrid(signalGrid);
+    colony->setGroProgram(program);
+    ModelDataDefinition::InitBetweenReplications(colony);
+
+    GroProgramRuntime::ExecutionResult first = colony->executeGroProgram();
+    ASSERT_TRUE(first.succeeded) << first.errorMessage;
+    ASSERT_EQ(colony->getInternalBacteriaCount(), 2u);
+
+    GroProgramRuntime::ExecutionResult second = colony->executeGroProgram();
+    ASSERT_TRUE(second.succeeded) << second.errorMessage;
+
+    bool foundDaughterMarker = false;
+    for (std::size_t index = 0; index < colony->getInternalBacteriaCount(); ++index) {
+        if (colony->getBacteriumGfp(index) > 0.0) {
+            foundDaughterMarker = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(foundDaughterMarker);
+    EXPECT_GE(colony->getSignalValueAt(1, 1), 0.0);
 }
 
 TEST(RuntimePluginManagerClassTest, GroProgramAndBacteriaColonyCanBeCreatedAndStepped) {

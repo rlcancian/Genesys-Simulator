@@ -20,6 +20,7 @@
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
+#include <QPainterPath>
 #include <QPen>
 #include <QPushButton>
 #include <QStringList>
@@ -111,13 +112,14 @@ QColor signalColorForValue(double value, double minValue, double maxValue) {
 		return QColor(96, 96, 96);
 	}
 	if (maxValue - minValue < 1e-12) {
-		return QColor(231, 244, 236);
+		return value > 0.0 ? QColor(64, 191, 214, 160) : QColor(246, 248, 250);
 	}
 	const double normalized = std::clamp((value - minValue) / (maxValue - minValue), 0.0, 1.0);
-	const int red = static_cast<int>(28.0 + normalized * 201.0);
-	const int green = static_cast<int>(94.0 + (1.0 - normalized) * 150.0);
-	const int blue = static_cast<int>(123.0 + (1.0 - normalized) * 90.0);
-	return QColor(red, green, blue);
+	const int red = static_cast<int>(28.0 + normalized * 210.0);
+	const int green = static_cast<int>(66.0 + normalized * 92.0);
+	const int blue = static_cast<int>(112.0 + (1.0 - normalized) * 108.0);
+	const int alpha = static_cast<int>(24.0 + normalized * 210.0);
+	return QColor(red, green, blue, alpha);
 }
 
 QColor bacteriumColorForState(const BacteriumVisualState& bacterium) {
@@ -159,7 +161,7 @@ protected:
 		_renderedMarkers.clear();
 		QPainter painter(this);
 		painter.setRenderHint(QPainter::Antialiasing, true);
-		painter.fillRect(rect(), QColor(250, 252, 249));
+		painter.fillRect(rect(), QColor(246, 248, 250));
 
 		if (!_snapshot.valid) {
 			painter.setPen(QColor(70, 70, 70));
@@ -187,7 +189,7 @@ protected:
 		};
 
 		painter.setPen(Qt::NoPen);
-		painter.setBrush(QColor(243, 246, 248));
+		painter.setBrush(QColor(239, 244, 247));
 		painter.drawRoundedRect(gridFrame.adjusted(-3.0, -3.0, 3.0, 3.0), 8.0, 8.0);
 
 		for (unsigned int y = 0; y < gridHeight; ++y) {
@@ -195,16 +197,16 @@ protected:
 				const QRectF cellRect = cellRectFor(x, y);
 				const std::size_t index = static_cast<std::size_t>(y) * static_cast<std::size_t>(gridWidth) + x;
 				const double value = index < _snapshot.signalValues.size() ? _snapshot.signalValues[index] : 0.0;
-				painter.fillRect(cellRect, signalColorForValue(value, _snapshot.minSignal, _snapshot.maxSignal));
+				const QColor signalColor = signalColorForValue(value, _snapshot.minSignal, _snapshot.maxSignal);
+				if (signalColor.alpha() > 0) {
+					painter.fillRect(cellRect, signalColor);
+				}
 			}
 		}
 
-		QPen minorGridPen(QColor(15, 23, 42, 26));
-		minorGridPen.setCosmetic(true);
-		minorGridPen.setWidthF(0.75);
-		QPen majorGridPen(QColor(15, 23, 42, 52));
+		QPen majorGridPen(QColor(15, 23, 42, 44));
 		majorGridPen.setCosmetic(true);
-		majorGridPen.setWidthF(1.05);
+		majorGridPen.setWidthF(0.95);
 		QPen borderPen(QColor(15, 23, 42, 72));
 		borderPen.setCosmetic(true);
 		borderPen.setWidthF(1.15);
@@ -213,17 +215,36 @@ protected:
 		const unsigned int yLabelStep = std::max(1u, gridHeight / 4u);
 		painter.setBrush(Qt::NoBrush);
 		for (unsigned int x = 0; x <= gridWidth; ++x) {
-			painter.setPen((x == 0 || x == gridWidth || (xLabelStep > 0 && x % xLabelStep == 0)) ? majorGridPen : minorGridPen);
+			if (x != 0 && x != gridWidth && (xLabelStep == 0 || x % xLabelStep != 0)) {
+				continue;
+			}
+			painter.setPen(majorGridPen);
 			const double px = gridFrame.left() + static_cast<double>(x) * cellWidth;
 			painter.drawLine(QLineF(px, gridFrame.top(), px, gridFrame.bottom()));
 		}
 		for (unsigned int y = 0; y <= gridHeight; ++y) {
-			painter.setPen((y == 0 || y == gridHeight || (yLabelStep > 0 && y % yLabelStep == 0)) ? majorGridPen : minorGridPen);
+			if (y != 0 && y != gridHeight && (yLabelStep == 0 || y % yLabelStep != 0)) {
+				continue;
+			}
+			painter.setPen(majorGridPen);
 			const double py = gridFrame.top() + static_cast<double>(y) * cellHeight;
 			painter.drawLine(QLineF(gridFrame.left(), py, gridFrame.right(), py));
 		}
 		painter.setPen(borderPen);
 		painter.drawRect(gridFrame);
+
+		// Match the original GRO viewer more closely by emphasizing the signal
+		// area bounds instead of dense per-cell grid lines.
+		const double armLength = std::min(18.0, std::min(cellWidth, cellHeight) * 1.6);
+		const auto drawCornerCross = [&painter, armLength](const QPointF& corner, double horizontalDir, double verticalDir) {
+			painter.drawLine(corner, QPointF(corner.x() + horizontalDir * armLength, corner.y()));
+			painter.drawLine(corner, QPointF(corner.x(), corner.y() + verticalDir * armLength));
+		};
+		painter.setPen(QPen(QColor(15, 23, 42, 120), 1.2));
+		drawCornerCross(gridFrame.topLeft(), 1.0, 1.0);
+		drawCornerCross(gridFrame.topRight(), -1.0, 1.0);
+		drawCornerCross(gridFrame.bottomLeft(), 1.0, -1.0);
+		drawCornerCross(gridFrame.bottomRight(), -1.0, -1.0);
 
 		QFont axisFont = painter.font();
 		axisFont.setPointSizeF(std::max(8.0, axisFont.pointSizeF() > 0.0 ? axisFont.pointSizeF() - 1.0 : 8.0));
@@ -296,8 +317,8 @@ protected:
 				continue;
 			}
 			const double bodyScale = std::max(0.85, std::sqrt(std::max(0.1, bacterium->size)));
-			const double majorAxis = std::clamp(cellWidth * (0.68 + bodyScale * 0.28), 8.0, cellWidth * 1.6);
-			const double minorAxis = std::clamp(majorAxis * 0.58, 4.0, majorAxis);
+			const double majorAxis = std::clamp(cellWidth * (0.56 + bodyScale * 0.22), 9.0, cellWidth * 1.8);
+			const double minorAxis = std::clamp(majorAxis * 0.42, 4.5, majorAxis * 0.72);
 			const QPointF center = positionToPoint(bacterium->positionX, bacterium->positionY);
 			const QColor fillColor = bacteriumColorForState(*bacterium);
 			const bool selected = _selectedBacteriumId.has_value() && _selectedBacteriumId.value() == bacterium->id;
@@ -305,17 +326,25 @@ protected:
 			painter.save();
 			painter.translate(center);
 			painter.rotate(bacterium->directionRadians * 180.0 / kPi);
+			QPainterPath shadowPath;
+			shadowPath.addRoundedRect(QRectF(-majorAxis * 0.54, -minorAxis * 0.62, majorAxis * 1.08, minorAxis * 1.24),
+			                          minorAxis * 0.55,
+			                          minorAxis * 0.55);
 			painter.setPen(Qt::NoPen);
-			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 70));
-			painter.drawEllipse(QPointF(0.0, 0.0), majorAxis * 0.72, minorAxis * 0.72);
+			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 68));
+			painter.drawPath(shadowPath);
+			QPainterPath bodyPath;
+			bodyPath.addRoundedRect(QRectF(-majorAxis * 0.5, -minorAxis * 0.5, majorAxis, minorAxis),
+			                        minorAxis * 0.48,
+			                        minorAxis * 0.48);
 			painter.setPen(QPen(selected ? QColor(245, 158, 11) : QColor(248, 250, 252), selected ? 2.4 : 1.0));
-			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 228));
-			painter.drawEllipse(QPointF(0.0, 0.0), majorAxis * 0.5, minorAxis * 0.5);
+			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 232));
+			painter.drawPath(bodyPath);
 			painter.setBrush(QColor(255, 255, 255, std::clamp(static_cast<int>(60 + bacterium->gfp * 26.0), 60, 180)));
 			painter.setPen(Qt::NoPen);
-			painter.drawEllipse(QPointF(-majorAxis * 0.12, -minorAxis * 0.08), majorAxis * 0.16, minorAxis * 0.16);
+			painter.drawEllipse(QPointF(-majorAxis * 0.18, -minorAxis * 0.10), majorAxis * 0.14, minorAxis * 0.14);
 			painter.setPen(QPen(QColor(17, 24, 39, selected ? 220 : 180), selected ? 2.0 : 1.4));
-			painter.drawLine(QPointF(0.0, 0.0), QPointF(majorAxis * 0.34, 0.0));
+			painter.drawLine(QPointF(0.0, 0.0), QPointF(majorAxis * 0.42, 0.0));
 			painter.restore();
 
 			if (selected) {

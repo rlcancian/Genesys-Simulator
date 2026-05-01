@@ -18,6 +18,92 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
+namespace {
+
+std::string buildVisibleColonyStarterGroProgram() {
+	return R"(include gro;
+set ( "dt", 0.18 );
+set ( "population_max", 256 );
+
+wave := signal ( 0.85, 0.035 );
+REST := 0;
+PULSE := 1;
+
+program leader() := {
+  p.phase := REST;
+  p.timer := 0;
+
+  true : {
+    p.timer := p.timer + dt,
+    volume := volume + 0.05,
+    size := volume,
+    speed := 0.22,
+    gfp := 30 + 18 * volume,
+    direction := direction + 0.08,
+    emit_signal ( wave, 8 ),
+    rfp := 6 + 8 * get_signal ( wave )
+  }
+
+  p.phase = REST & p.timer > 4 : {
+    p.phase := PULSE,
+    p.timer := 0
+  }
+
+  p.phase = PULSE : { emit_signal ( wave, 22 ) }
+
+  p.phase = PULSE & p.timer > 1.2 : {
+    p.phase := REST,
+    p.timer := 0
+  }
+
+  volume > 2.2 : {
+    divide(),
+    volume := 1.1
+  }
+};
+
+program follower() := {
+  p.t := 0;
+  sense := get_signal ( wave );
+
+  true : {
+    p.t := p.t + dt,
+    volume := volume + 0.035 + 0.02 * sense,
+    size := volume,
+    speed := 0.08 + 0.12 * sense,
+    yfp := 12 + 24 * sense,
+    cfp := 8 + 14 * p.t
+  }
+
+  sense > 0.08 : {
+    direction := direction + 0.22,
+    emit_signal ( wave, 6 )
+  }
+
+  sense > 0.20 : {
+    rfp := 24 + 40 * sense
+  }
+
+  volume > 2.05 : {
+    divide(),
+    volume := 1.0
+  }
+};
+
+ecoli ( [ x := 16, y := 16 ], program leader() );
+ecoli ( [ x := 13, y := 15 ], program follower() );
+ecoli ( [ x := 19, y := 17 ], program follower() );
+ecoli ( [ x := 15, y := 20 ], program follower() );
+ecoli ( [ x := 18, y := 13 ], program follower() );
+
+program main() := {
+  skip();
+};
+)";
+}
+
+} // namespace
+
 ModelDataDefinition* GroProgram::NewInstance(Model* model, std::string name) {
 	return new GroProgram(model, name);
 }
@@ -34,6 +120,9 @@ GroProgram::GroProgram(Model* model, std::string name) : ModelDataDefinition(mod
 			std::bind(&GroProgram::_validateSourceCodeSyntax, this, std::placeholders::_1, std::placeholders::_2));
 	_parentModel->getControls()->insert(propSourceCode);
 	_addSimulationControl(propSourceCode);
+	// Keep new GroProgram instances immediately usable in the GUI with a
+	// starter that visibly emits signals, moves, and divides.
+	_sourceCode = buildVisibleColonyStarterGroProgram();
 }
 
 std::string GroProgram::show() {
@@ -45,8 +134,8 @@ PluginInformation* GroProgram::GetPluginInformation() {
 	                                                &GroProgram::NewInstance);
 	info->setCategory("BiologicalModeling");
 	info->setDescriptionHelp("Stores reusable Gro source code for biological simulation components. "
-	                         "The default starter is now based on the morphogenesis example so GUI work can "
-	                         "display growth, division, signals, and fluorescence with a richer colony layout.");
+	                         "The default starter now seeds a small signaling colony so GUI work can "
+	                         "show motion, division, diffusion, and fluorescence without extra setup.");
 	return info;
 }
 
@@ -76,9 +165,9 @@ SourceCodeString GroProgram::getSourceCodeProperty() const {
 }
 
 bool GroProgram::createDefaultGroProgram(const std::string& filename) {
-	// Keep the model-side source synchronized with the generated morphogenesis
-	// starter even when the caller does not request an external file yet.
-	_sourceCode = DEFAULT.sourceCode;
+	// Keep the model-side source synchronized with the visible colony starter
+	// even when the caller does not request an external file yet.
+	_sourceCode = buildVisibleColonyStarterGroProgram();
 
 	if (filename.empty()) {
 		return true;
