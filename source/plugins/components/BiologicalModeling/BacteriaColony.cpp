@@ -1472,6 +1472,8 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.contextVariables["bacterium_size"] = bacterium.size;
 	runtimeState.contextVariables["bacterium_gfp"] = bacterium.gfp;
 	runtimeState.contextVariables["bacterium_rfp"] = bacterium.rfp;
+	runtimeState.contextVariables["bacterium_yfp"] = bacterium.yfp;
+	runtimeState.contextVariables["bacterium_cfp"] = bacterium.cfp;
 	runtimeState.contextVariables["bacterium_speed"] = bacterium.speed;
 	runtimeState.contextVariables["bacterium_index"] = static_cast<double>(bacteriumIndex);
 	runtimeState.contextVariables["local_signal"] = _signalValueAt(bacterium.gridX, bacterium.gridY);
@@ -1491,6 +1493,8 @@ GroProgramRuntimeState BacteriaColony::_createBacteriumRuntimeState(const Bacter
 	runtimeState.variables["size"] = bacterium.size;
 	runtimeState.variables["gfp"] = bacterium.gfp;
 	runtimeState.variables["rfp"] = bacterium.rfp;
+	runtimeState.variables["yfp"] = bacterium.yfp;
+	runtimeState.variables["cfp"] = bacterium.cfp;
 	runtimeState.variables["speed"] = bacterium.speed;
 	runtimeState.variables["dt"] = runtimeState.simulationStep;
 	return runtimeState;
@@ -1529,6 +1533,8 @@ void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 				child.size = std::max(0.65, std::sqrt(std::max(0.1, child.volume)));
 				child.gfp = parent.gfp;
 				child.rfp = parent.rfp;
+				child.yfp = parent.yfp;
+				child.cfp = parent.cfp;
 				child.speed = parent.speed;
 			}
 			result.populationMutations.push_back(mutation);
@@ -1561,6 +1567,8 @@ void BacteriaColony::_applyBacteriumScopedPopulationMutations(
 			child.size = std::max(0.55, std::sqrt(std::max(0.1, child.volume)));
 			child.gfp = parent.gfp * 0.85;
 			child.rfp = parent.rfp * 0.85;
+			child.yfp = parent.yfp * 0.85;
+			child.cfp = parent.cfp * 0.85;
 			child.speed = parent.speed;
 			_bacteria[parentIndex].volume = std::max(0.65, parent.volume * 0.5);
 			_bacteria[parentIndex].size = std::max(0.55, std::sqrt(std::max(0.1, _bacteria[parentIndex].volume)));
@@ -1715,6 +1723,8 @@ void BacteriaColony::_initializeBacteriumPhenotype(BacteriumState& bacterium, st
 	bacterium.size = std::max(0.75, std::sqrt(std::max(0.1, bacterium.volume)));
 	bacterium.gfp = std::max(0.0, bacterium.gfp);
 	bacterium.rfp = std::max(0.0, bacterium.rfp);
+	bacterium.yfp = std::max(0.0, bacterium.yfp);
+	bacterium.cfp = std::max(0.0, bacterium.cfp);
 	bacterium.speed = std::max(0.05, bacterium.speed + 0.01 * generationFactor);
 	if (!bacterium.hasExplicitGridPosition) {
 		const double baseDirection = 0.85 * static_cast<double>(index + 1) + 0.41 * generationFactor + 0.19 * static_cast<double>(bacterium.id);
@@ -1770,6 +1780,14 @@ void BacteriaColony::_syncBacteriumSpatialState(BacteriumState& bacterium, const
 	const auto rfp = runtimeState.variables.find("rfp");
 	if (rfp != runtimeState.variables.end()) {
 		bacterium.rfp = std::max(0.0, rfp->second);
+	}
+	const auto yfp = runtimeState.variables.find("yfp");
+	if (yfp != runtimeState.variables.end()) {
+		bacterium.yfp = std::max(0.0, yfp->second);
+	}
+	const auto cfp = runtimeState.variables.find("cfp");
+	if (cfp != runtimeState.variables.end()) {
+		bacterium.cfp = std::max(0.0, cfp->second);
 	}
 	const auto speed = runtimeState.variables.find("speed");
 	if (speed != runtimeState.variables.end()) {

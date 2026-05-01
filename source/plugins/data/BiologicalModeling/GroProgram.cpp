@@ -45,8 +45,8 @@ PluginInformation* GroProgram::GetPluginInformation() {
 	                                                &GroProgram::NewInstance);
 	info->setCategory("BiologicalModeling");
 	info->setDescriptionHelp("Stores reusable Gro source code for biological simulation components. "
-	                         "The initial implementation stores source text and performs permissive lexical checks; "
-	                         "complete Gro parsing and semantics are plugin-side future work.");
+	                         "The default starter is now based on the morphogenesis example so GUI work can "
+	                         "display growth, division, signals, and fluorescence with a richer colony layout.");
 	return info;
 }
 
@@ -76,8 +76,8 @@ SourceCodeString GroProgram::getSourceCodeProperty() const {
 }
 
 bool GroProgram::createDefaultGroProgram(const std::string& filename) {
-	// Keep the model-side source synchronized with the generated starter even
-	// when the caller does not request an external file yet.
+	// Keep the model-side source synchronized with the generated morphogenesis
+	// starter even when the caller does not request an external file yet.
 	_sourceCode = DEFAULT.sourceCode;
 
 	if (filename.empty()) {

@@ -48,6 +48,8 @@ public:
 		double size = 1.0;
 		double gfp = 0.0;
 		double rfp = 0.0;
+		double yfp = 0.0;
+		double cfp = 0.0;
 		double speed = 0.1;
 		unsigned int gridX = 0;
 		unsigned int gridY = 0;

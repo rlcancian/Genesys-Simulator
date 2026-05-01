@@ -53,6 +53,8 @@ struct BacteriumVisualState {
 	double size = 1.0;
 	double gfp = 0.0;
 	double rfp = 0.0;
+	double yfp = 0.0;
+	double cfp = 0.0;
 	double age = 0.0;
 	QString programName;
 	QString runtimeVariablesSummary;
@@ -119,10 +121,10 @@ QColor signalColorForValue(double value, double minValue, double maxValue) {
 }
 
 QColor bacteriumColorForState(const BacteriumVisualState& bacterium) {
-	const double fluorescenceMix = std::clamp((bacterium.gfp - bacterium.rfp) * 0.35, -1.0, 1.0);
-	const int red = std::clamp(static_cast<int>(78.0 + bacterium.rfp * 18.0 + bacterium.generation * 10.0 + std::max(0.0, -fluorescenceMix) * 60.0), 0, 255);
-	const int green = std::clamp(static_cast<int>(110.0 + bacterium.gfp * 28.0 + std::max(0.0, fluorescenceMix) * 80.0), 0, 255);
-	const int blue = std::clamp(static_cast<int>(86.0 + (1.0 / std::max(1.0, bacterium.volume)) * 50.0), 0, 255);
+	const double intensity = std::clamp(0.02 * bacterium.volume + 0.015 * bacterium.size, 0.0, 1.0);
+	const int red = std::clamp(static_cast<int>(70.0 + bacterium.rfp * 0.44 + bacterium.yfp * 0.28 + bacterium.generation * 8.0 + intensity * 28.0), 0, 255);
+	const int green = std::clamp(static_cast<int>(82.0 + bacterium.gfp * 0.36 + bacterium.yfp * 0.34 + bacterium.cfp * 0.20 + intensity * 18.0), 0, 255);
+	const int blue = std::clamp(static_cast<int>(78.0 + bacterium.cfp * 0.44 + bacterium.yfp * 0.20 + bacterium.gfp * 0.12 + intensity * 26.0), 0, 255);
 	return QColor(red, green, blue);
 }
 
@@ -172,21 +174,21 @@ protected:
 		const unsigned int gridWidth = std::max(1u, _snapshot.gridWidth);
 		const unsigned int gridHeight = std::max(1u, _snapshot.gridHeight);
 		const QRectF drawingRect = rect().adjusted(24, 24, -140, -24);
-		const double cellWidth = drawingRect.width() / static_cast<double>(gridWidth);
-		const double cellHeight = drawingRect.height() / static_cast<double>(gridHeight);
-		const auto cellRectFor = [&drawingRect, cellWidth, cellHeight](unsigned int x, unsigned int y) {
-			return QRectF(drawingRect.left() + static_cast<double>(x) * cellWidth,
-			              drawingRect.top() + static_cast<double>(y) * cellHeight,
+		const double axisLabelSpaceX = 26.0;
+		const double axisLabelSpaceY = 20.0;
+		const QRectF gridFrame = drawingRect.adjusted(axisLabelSpaceX, axisLabelSpaceY, -8.0, -8.0);
+		const double cellWidth = gridFrame.width() / static_cast<double>(gridWidth);
+		const double cellHeight = gridFrame.height() / static_cast<double>(gridHeight);
+		const auto cellRectFor = [&gridFrame, cellWidth, cellHeight](unsigned int x, unsigned int y) {
+			return QRectF(gridFrame.left() + static_cast<double>(x) * cellWidth,
+			              gridFrame.top() + static_cast<double>(y) * cellHeight,
 			              cellWidth,
 			              cellHeight);
 		};
-		const auto cellCenterFor = [&cellRectFor](unsigned int x, unsigned int y) {
-			return cellRectFor(x, y).center();
-		};
 
-		QPen gridPen(QColor(113, 125, 126));
-		gridPen.setWidthF(0.8);
-		painter.setPen(gridPen);
+		painter.setPen(Qt::NoPen);
+		painter.setBrush(QColor(243, 246, 248));
+		painter.drawRoundedRect(gridFrame.adjusted(-3.0, -3.0, 3.0, 3.0), 8.0, 8.0);
 
 		for (unsigned int y = 0; y < gridHeight; ++y) {
 			for (unsigned int x = 0; x < gridWidth; ++x) {
@@ -194,21 +196,63 @@ protected:
 				const std::size_t index = static_cast<std::size_t>(y) * static_cast<std::size_t>(gridWidth) + x;
 				const double value = index < _snapshot.signalValues.size() ? _snapshot.signalValues[index] : 0.0;
 				painter.fillRect(cellRect, signalColorForValue(value, _snapshot.minSignal, _snapshot.maxSignal));
-				painter.drawRect(cellRect);
-
-				if (gridWidth * gridHeight <= 144) {
-					painter.setPen(QColor(31, 41, 55));
-					painter.drawText(cellRect.adjusted(4, 4, -4, -4),
-					                 Qt::AlignTop | Qt::AlignLeft,
-					                 QString::number(value, 'g', 3));
-					painter.setPen(gridPen);
-				}
 			}
 		}
 
-		const auto positionToPoint = [&drawingRect, cellWidth, cellHeight](double x, double y) {
-			const double px = drawingRect.left() + (x + 0.5) * cellWidth;
-			const double py = drawingRect.top() + (y + 0.5) * cellHeight;
+		QPen minorGridPen(QColor(15, 23, 42, 26));
+		minorGridPen.setCosmetic(true);
+		minorGridPen.setWidthF(0.75);
+		QPen majorGridPen(QColor(15, 23, 42, 52));
+		majorGridPen.setCosmetic(true);
+		majorGridPen.setWidthF(1.05);
+		QPen borderPen(QColor(15, 23, 42, 72));
+		borderPen.setCosmetic(true);
+		borderPen.setWidthF(1.15);
+
+		const unsigned int xLabelStep = std::max(1u, gridWidth / 4u);
+		const unsigned int yLabelStep = std::max(1u, gridHeight / 4u);
+		painter.setBrush(Qt::NoBrush);
+		for (unsigned int x = 0; x <= gridWidth; ++x) {
+			painter.setPen((x == 0 || x == gridWidth || (xLabelStep > 0 && x % xLabelStep == 0)) ? majorGridPen : minorGridPen);
+			const double px = gridFrame.left() + static_cast<double>(x) * cellWidth;
+			painter.drawLine(QLineF(px, gridFrame.top(), px, gridFrame.bottom()));
+		}
+		for (unsigned int y = 0; y <= gridHeight; ++y) {
+			painter.setPen((y == 0 || y == gridHeight || (yLabelStep > 0 && y % yLabelStep == 0)) ? majorGridPen : minorGridPen);
+			const double py = gridFrame.top() + static_cast<double>(y) * cellHeight;
+			painter.drawLine(QLineF(gridFrame.left(), py, gridFrame.right(), py));
+		}
+		painter.setPen(borderPen);
+		painter.drawRect(gridFrame);
+
+		QFont axisFont = painter.font();
+		axisFont.setPointSizeF(std::max(8.0, axisFont.pointSizeF() > 0.0 ? axisFont.pointSizeF() - 1.0 : 8.0));
+		painter.setFont(axisFont);
+		painter.setPen(QColor(71, 85, 105));
+		for (unsigned int x = 0; x < gridWidth; ++x) {
+			if (x % xLabelStep != 0 && x + 1 != gridWidth) {
+				continue;
+			}
+			const QRectF labelRect(gridFrame.left() + static_cast<double>(x) * cellWidth,
+			                       drawingRect.top(),
+			                       cellWidth,
+			                       axisLabelSpaceY);
+			painter.drawText(labelRect, Qt::AlignHCenter | Qt::AlignVCenter, QString::number(x));
+		}
+		for (unsigned int y = 0; y < gridHeight; ++y) {
+			if (y % yLabelStep != 0 && y + 1 != gridHeight) {
+				continue;
+			}
+			const QRectF labelRect(drawingRect.left(),
+			                       gridFrame.top() + static_cast<double>(y) * cellHeight,
+			                       axisLabelSpaceX - 4.0,
+			                       cellHeight);
+			painter.drawText(labelRect, Qt::AlignRight | Qt::AlignVCenter, QString::number(y));
+		}
+
+		const auto positionToPoint = [&gridFrame, cellWidth, cellHeight](double x, double y) {
+			const double px = gridFrame.left() + (x + 0.5) * cellWidth;
+			const double py = gridFrame.top() + (y + 0.5) * cellHeight;
 			return QPointF(px, py);
 		};
 		constexpr double kPi = 3.14159265358979323846;
@@ -261,6 +305,9 @@ protected:
 			painter.save();
 			painter.translate(center);
 			painter.rotate(bacterium->directionRadians * 180.0 / kPi);
+			painter.setPen(Qt::NoPen);
+			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 70));
+			painter.drawEllipse(QPointF(0.0, 0.0), majorAxis * 0.72, minorAxis * 0.72);
 			painter.setPen(QPen(selected ? QColor(245, 158, 11) : QColor(248, 250, 252), selected ? 2.4 : 1.0));
 			painter.setBrush(QColor(fillColor.red(), fillColor.green(), fillColor.blue(), 228));
 			painter.drawEllipse(QPointF(0.0, 0.0), majorAxis * 0.5, minorAxis * 0.5);
@@ -358,7 +405,7 @@ private:
 		painter->setPen(QColor(30, 41, 59));
 		painter->drawText(QRectF(legendRect.left() + 32.0, gradientRect.bottom() + 38.0, legendRect.width() - 40.0, 18.0),
 		                 Qt::AlignLeft | Qt::AlignVCenter,
-		                 tr("body scale"));
+		                 tr("body / growth"));
 
 		painter->setPen(QPen(QColor(255, 255, 255), 1.0));
 		painter->setBrush(QColor(33, 150, 243));
@@ -366,7 +413,7 @@ private:
 		painter->setPen(QColor(30, 41, 59));
 		painter->drawText(QRectF(legendRect.left() + 32.0, gradientRect.bottom() + 62.0, legendRect.width() - 40.0, 18.0),
 		                 Qt::AlignLeft | Qt::AlignVCenter,
-		                 tr("fluorescence"));
+		                 tr("GFP"));
 
 		painter->setPen(QPen(QColor(15, 23, 42, 170), 1.6));
 		painter->drawLine(QPointF(legendRect.left() + 12.0, gradientRect.bottom() + 94.0),
@@ -374,7 +421,31 @@ private:
 		painter->setPen(QColor(30, 41, 59));
 		painter->drawText(QRectF(legendRect.left() + 32.0, gradientRect.bottom() + 84.0, legendRect.width() - 40.0, 18.0),
 		                 Qt::AlignLeft | Qt::AlignVCenter,
-		                 tr("direction/trail"));
+		                 tr("direction"));
+
+		painter->setPen(QPen(QColor(255, 255, 255), 1.0));
+		painter->setBrush(QColor(232, 126, 4));
+		painter->drawEllipse(QPointF(legendRect.left() + 20.0, gradientRect.bottom() + 118.0), 8.0, 5.0);
+		painter->setPen(QColor(30, 41, 59));
+		painter->drawText(QRectF(legendRect.left() + 32.0, gradientRect.bottom() + 108.0, legendRect.width() - 40.0, 18.0),
+		                 Qt::AlignLeft | Qt::AlignVCenter,
+		                 tr("RFP"));
+
+		painter->setPen(QPen(QColor(255, 255, 255), 1.0));
+		painter->setBrush(QColor(224, 183, 0));
+		painter->drawEllipse(QPointF(legendRect.left() + 20.0, gradientRect.bottom() + 142.0), 8.0, 5.0);
+		painter->setPen(QColor(30, 41, 59));
+		painter->drawText(QRectF(legendRect.left() + 32.0, gradientRect.bottom() + 132.0, legendRect.width() - 40.0, 18.0),
+		                 Qt::AlignLeft | Qt::AlignVCenter,
+		                 tr("YFP"));
+
+		painter->setPen(QPen(QColor(255, 255, 255), 1.0));
+		painter->setBrush(QColor(29, 185, 201));
+		painter->drawEllipse(QPointF(legendRect.left() + 20.0, gradientRect.bottom() + 166.0), 8.0, 5.0);
+		painter->setPen(QColor(30, 41, 59));
+		painter->drawText(QRectF(legendRect.left() + 32.0, gradientRect.bottom() + 156.0, legendRect.width() - 40.0, 18.0),
+		                 Qt::AlignLeft | Qt::AlignVCenter,
+		                 tr("CFP"));
 	}
 
 private:
@@ -683,6 +754,8 @@ private:
 			visual.size = bacterium.size;
 			visual.gfp = bacterium.gfp;
 			visual.rfp = bacterium.rfp;
+			visual.yfp = bacterium.yfp;
+			visual.cfp = bacterium.cfp;
 			visual.age = colony->getBacteriumAge(index);
 			visual.programName = bacterium.programName.empty()
 			                     ? tr("(none)")
@@ -760,7 +833,7 @@ private:
 			trailDepth = trailIt->second.size();
 		}
 		_selectionLabel->setText(
-			tr("Selection: bacterium #%1 | program=%2 | gen=%3 | cell=(%4,%5) | pos=(%6,%7) | age=%8 | size=%9 | volume=%10 | dir=%11 | gfp=%12 | rfp=%13 | trail samples=%14 | vars: %15")
+			tr("Selection: bacterium #%1 | program=%2 | gen=%3 | cell=(%4,%5) | pos=(%6,%7) | age=%8 | size=%9 | volume=%10 | dir=%11 | gfp=%12 | rfp=%13 | yfp=%14 | cfp=%15 | trail samples=%16 | vars: %17")
 				.arg(selectedBacterium->id)
 				.arg(selectedBacterium->programName)
 				.arg(selectedBacterium->generation)
@@ -774,6 +847,8 @@ private:
 				.arg(QString::number(selectedBacterium->directionRadians, 'g', 5))
 				.arg(QString::number(selectedBacterium->gfp, 'g', 5))
 				.arg(QString::number(selectedBacterium->rfp, 'g', 5))
+				.arg(QString::number(selectedBacterium->yfp, 'g', 5))
+				.arg(QString::number(selectedBacterium->cfp, 'g', 5))
 				.arg(static_cast<qulonglong>(trailDepth))
 				.arg(selectedBacterium->runtimeVariablesSummary));
 	}
