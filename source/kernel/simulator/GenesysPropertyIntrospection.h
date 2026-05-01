@@ -45,6 +45,8 @@ struct GenesysPropertyDescriptor {
 
     std::string currentValue;
     std::vector<std::string> choices;
+    std::string currentReferenceType;
+    std::vector<std::string> creatableReferenceTypes;
     // For polymorphic list controls, this is the currently selected concrete element type.
     //
     // Example: a Set physically stores ModelDataDefinition* but may currently be a Set of Resource.

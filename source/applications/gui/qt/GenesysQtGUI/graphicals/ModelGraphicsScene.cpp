@@ -2114,6 +2114,20 @@ void ModelGraphicsScene::animateTimer(double time) {
     }
 }
 
+void ModelGraphicsScene::animatePlot() {
+    Model* currentModel = _simulator != nullptr ? _simulator->getModelManager()->current() : nullptr;
+    if (currentModel == nullptr) {
+        return;
+    }
+
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
+        if (plot != nullptr) {
+            plot->appendSample(currentModel);
+        }
+    }
+}
+
 QList<QString>* ModelGraphicsScene::getImagesAnimation() {
     return _imagesAnimation;
 }
@@ -3786,6 +3800,13 @@ void ModelGraphicsScene::clearAnimationsValues() {
 
     for (AnimationTimer* timer : *_animationsTimer) {
         timer->setTime(0.0);
+    }
+
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
+        if (plot != nullptr) {
+            plot->clearValues();
+        }
     }
 }
 

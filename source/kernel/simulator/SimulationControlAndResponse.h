@@ -14,6 +14,24 @@
 
 class ModelDataDefinition;
 
+class SourceCodeString {
+public:
+    SourceCodeString() = default;
+    SourceCodeString(const std::string& value) : _value(value) {}
+    SourceCodeString(std::string&& value) : _value(std::move(value)) {}
+
+    const std::string& str() const { return _value; }
+    operator std::string() const { return _value; }
+
+private:
+    std::string _value;
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SourceCodeString& value) {
+    os << value.str();
+    return os;
+}
+
 
 /**
  * @brief Base metadata for kernel-side control/response abstractions.
@@ -225,6 +243,19 @@ public:
         (void)value;
         return false;
     }
+    virtual List<std::string>* getCreatableReferenceTypes() { return nullptr; }
+    virtual std::string getCurrentReferenceType() const { return ""; }
+    virtual bool setCurrentReferenceType(const std::string& typeName) {
+        (void)typeName;
+        return false;
+    }
+    virtual bool createObjectInstanceOfType(const std::string& typeName, const std::string& value = "") {
+        if (typeName.empty()) {
+            return createObjectInstance(value);
+        }
+        (void)value;
+        return false;
+    }
     // This method provides an explicit typed list-element creation operation for list-like properties.
     virtual bool createNewListElement(const std::string& value = "") {
         (void)value;
@@ -313,6 +344,40 @@ public:
 private:
 	GetterString _getter;
 	SetterString _setter;
+    ValidatorString _validator;
+};
+
+typedef std::function<SourceCodeString()> GetterSourceCodeString;
+typedef std::function<void(SourceCodeString)> SetterSourceCodeString;
+class SimulationControlSourceCodeString: public SimulationControl {
+public:
+    SimulationControlSourceCodeString(GetterSourceCodeString getter, SetterSourceCodeString setter, std::string className, std::string elementName, std::string propertyName, std::string whatsThis="", bool isList=false, bool isClass=false, bool isEnum=false, ValidatorString validator=nullptr) : SimulationControl(className, elementName, propertyName, whatsThis, isList, isClass, isEnum) {
+        _getter = getter;
+        _setter = setter;
+        _validator = validator;
+        _readonly = setter == nullptr;
+        _propertyType = Util::TypeOf<SourceCodeString>();
+    }
+public:
+    virtual std::string getValue() const override { return _getter().str(); }
+    virtual bool validateProposedValue(const std::string& value, std::string& errorMessage) const override {
+        if (!_validator) {
+            errorMessage.clear();
+            return true;
+        }
+        return _validator(value, errorMessage);
+    }
+    virtual void setValue(std::string value, bool remove=false) override {
+        (void)remove;
+        _ensureWritable("set value of");
+        if (!_setter) {
+            throw std::logic_error("SimulationControlSourceCodeString setter is not defined");
+        }
+        _setter(SourceCodeString(std::move(value)));
+    };
+private:
+    GetterSourceCodeString _getter;
+    SetterSourceCodeString _setter;
     ValidatorString _validator;
 };
 

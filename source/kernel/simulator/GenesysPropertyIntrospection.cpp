@@ -68,7 +68,7 @@ GenesysPropertyKind GenesysPropertyIntrospection::deduceKind(const SimulationCon
     if (typeName == Util::TypeOf<double>()) {
         return GenesysPropertyKind::Double;
     }
-    if (typeName == Util::TypeOf<std::string>()) {
+    if (typeName == Util::TypeOf<std::string>() || typeName == Util::TypeOf<SourceCodeString>()) {
         return GenesysPropertyKind::String;
     }
 
@@ -103,6 +103,8 @@ GenesysPropertyDescriptor GenesysPropertyIntrospection::describe(SimulationContr
     desc.currentValue = control->getValue();
 
     desc.choices = _copyStringList(control->getStrValues());
+    desc.currentReferenceType = control->getCurrentReferenceType();
+    desc.creatableReferenceTypes = _copyStringList(control->getCreatableReferenceTypes());
     desc.currentListElementType = control->getCurrentListElementType();
     desc.creatableListElementTypes = _copyStringList(control->getCreatableListElementTypes());
 

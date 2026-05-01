@@ -23,17 +23,15 @@ ModelDataDefinition* GroProgram::NewInstance(Model* model, std::string name) {
 }
 
 GroProgram::GroProgram(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<GroProgram>(), name) {
-	SimulationControlString* propSourceCode = new SimulationControlString(
-			std::bind(&GroProgram::getSourceCode, this),
-			std::bind(&GroProgram::setSourceCode, this, std::placeholders::_1),
+	SimulationControlSourceCodeString* propSourceCode = new SimulationControlSourceCodeString(
+			std::bind(&GroProgram::getSourceCodeProperty, this),
+			std::bind(&GroProgram::setSourceCodeProperty, this, std::placeholders::_1),
 			Util::TypeOf<GroProgram>(), getName(), "SourceCode",
 			"Gro source code associated with this reusable program",
 			false,
 			false,
 			false,
 			std::bind(&GroProgram::_validateSourceCodeSyntax, this, std::placeholders::_1, std::placeholders::_2));
-	// Large GRO source text is edited in a dedicated code dialog instead of a single-line string editor.
-	propSourceCode->setPreferredEditorHint(SimulationControlEditorHint::CodeEditor);
 	_parentModel->getControls()->insert(propSourceCode);
 	_addSimulationControl(propSourceCode);
 }
@@ -65,8 +63,16 @@ void GroProgram::setSourceCode(std::string sourceCode) {
 	_sourceCode = sourceCode;
 }
 
+void GroProgram::setSourceCodeProperty(SourceCodeString sourceCode) {
+	_sourceCode = sourceCode.str();
+}
+
 std::string GroProgram::getSourceCode() const {
 	return _sourceCode;
+}
+
+SourceCodeString GroProgram::getSourceCodeProperty() const {
+	return SourceCodeString(_sourceCode);
 }
 
 bool GroProgram::createDefaultGroProgram(const std::string& filename) {
