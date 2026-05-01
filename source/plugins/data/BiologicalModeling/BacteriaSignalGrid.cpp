@@ -258,11 +258,11 @@ bool BacteriaSignalGrid::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BacteriaSignalGrid::_createReportStatisticsDataDefinitions() {
+void BacteriaSignalGrid::_createInternalStatisticReporters() {
 }
 
 void BacteriaSignalGrid::_createEditableDataDefinitions() {
 }
 
-void BacteriaSignalGrid::_createOthersDataDefinitions() {
+void BacteriaSignalGrid::_createAttachedAttributes() {
 }

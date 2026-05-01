@@ -105,17 +105,10 @@ protected: // must be overriden
 protected: // could be overriden 
 	virtual bool _check(std::string& errorMessage) override;
 	virtual ParserChangesInformation* _getParserChangesInformation() override;
-    virtual void _createInternalAndAttachedData() override;
-
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
-
-
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private:
 	//ElementManager* _elems;

@@ -75,18 +75,15 @@ protected:
 	/*! \brief Validates the executable, working directory and command list. */
 	virtual bool _check(std::string& errorMessage) override;
 	/*! \brief Creates or updates the internal RSimulatorRunner. */
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createInternalAndAttachedData() override;
 
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
 
 
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private:
 	/*! \brief Creates the internal runner if it does not exist yet. */

@@ -144,7 +144,7 @@ bool MetabolicFluxBalance::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void MetabolicFluxBalance::_createInternalAndAttachedData() {
+void MetabolicFluxBalance::_createAttachedAttributes() {
 	if (_metabolicNetwork != nullptr) {
 		_attachedDataInsert("MetabolicNetwork", _metabolicNetwork);
 	} else {
@@ -329,11 +329,9 @@ std::string MetabolicFluxBalance::getLastMessage() const {
 	return _lastMessage;
 }
 
-void MetabolicFluxBalance::_createReportStatisticsDataDefinitions() {
+void MetabolicFluxBalance::_createInternalStatisticReporters() {
 }
 
 void MetabolicFluxBalance::_createEditableDataDefinitions() {
 }
 
-void MetabolicFluxBalance::_createOthersDataDefinitions() {
-}

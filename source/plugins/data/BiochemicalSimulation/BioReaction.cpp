@@ -224,10 +224,10 @@ bool BioReaction::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioReaction::_createInternalAndAttachedData() {
-	// BioReaction does not own internal children yet, but it exposes participant links as attached species.
-	syncParticipantAttachedSpecies();
-}
+// void BioReaction::_createInternalAndAttachedData() {
+// 	// BioReaction does not own internal children yet, but it exposes participant links as attached species.
+// 	syncParticipantAttachedSpecies();
+// }
 
 bool BioReaction::validateKineticLawExpression(std::string& errorMessage) const {
 	return validateKineticLawExpression(_kineticLawExpression, "kineticLawExpression", errorMessage);
@@ -487,11 +487,13 @@ void BioReaction::syncParticipantAttachedSpecies() {
 	}
 }
 
-void BioReaction::_createReportStatisticsDataDefinitions() {
+void BioReaction::_createInternalStatisticReporters() {
 }
 
 void BioReaction::_createEditableDataDefinitions() {
 }
 
-void BioReaction::_createOthersDataDefinitions() {
+void BioReaction::_createAttachedAttributes() {
+	// BioReaction does not own internal children yet, but it exposes participant links as attached species.
+	syncParticipantAttachedSpecies();
 }

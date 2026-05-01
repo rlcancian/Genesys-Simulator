@@ -209,37 +209,7 @@ bool Assign::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Assign::_createInternalAndAttachedData() {
-	_attachedDataClear();
-	ModelDataManager* elems = _parentModel->getDataManager();
-	for (Assignment* ass : *_assignments->list()) {
-		_prepareAssignment(ass);
-		ModelDataDefinition* elem = nullptr;
-		std::string name;
-		const std::string baseDestination = _destinationBaseName(ass->getDestination());
-		if (baseDestination.empty()) {
-			continue;
-		}
-		if (ass->isAttributeNotVariable()) {
-			name = Util::TypeOf<Attribute>();
-			elem = elems->getDataDefinition(Util::TypeOf<Attribute>(), baseDestination);
-			if (elem == nullptr) {
-				elem = new Attribute(_parentModel, baseDestination);
-				elems->insert(Util::TypeOf<Attribute>(), elem);
-			}
-		} else {
-			name = Util::TypeOf<Variable>();
-			elem = elems->getDataDefinition(Util::TypeOf<Variable>(), baseDestination);
-			if (elem == nullptr) {
-				elem = new Variable(_parentModel, baseDestination);
-				elems->insert(Util::TypeOf<Variable>(), elem);
-			}
-		}
-		//assert elem != nullptr
-		if (elem != nullptr) {
-			this->_attachedDataInsert(name + "_" + baseDestination, elem);
-		}
-	}
+void Assign::_createAttachedAttributes() {
 }
 
 std::string Assign::_destinationBaseName(const std::string& destination) {
@@ -273,11 +243,38 @@ void Assign::_prepareAssignment(Assignment* assignment) {
 	});
 }
 
-void Assign::_createReportStatisticsDataDefinitions() {
+void Assign::_createInternalStatisticReporters() {
 }
 
 void Assign::_createEditableDataDefinitions() {
-}
-
-void Assign::_createOthersDataDefinitions() {
+	_attachedDataClear();
+	ModelDataManager* elems = _parentModel->getDataManager();
+	for (Assignment* ass : *_assignments->list()) {
+		_prepareAssignment(ass);
+		ModelDataDefinition* elem = nullptr;
+		std::string name;
+		const std::string baseDestination = _destinationBaseName(ass->getDestination());
+		if (baseDestination.empty()) {
+			continue;
+		}
+		if (ass->isAttributeNotVariable()) {
+			name = Util::TypeOf<Attribute>();
+			elem = elems->getDataDefinition(Util::TypeOf<Attribute>(), baseDestination);
+			if (elem == nullptr) {
+				elem = new Attribute(_parentModel, baseDestination);
+				elems->insert(Util::TypeOf<Attribute>(), elem);
+			}
+		} else {
+			name = Util::TypeOf<Variable>();
+			elem = elems->getDataDefinition(Util::TypeOf<Variable>(), baseDestination);
+			if (elem == nullptr) {
+				elem = new Variable(_parentModel, baseDestination);
+				elems->insert(Util::TypeOf<Variable>(), elem);
+			}
+		}
+		//assert elem != nullptr
+		if (elem != nullptr) {
+			this->_attachedDataInsert(name + "_" + baseDestination, elem);
+		}
+	}
 }

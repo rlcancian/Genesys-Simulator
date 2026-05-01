@@ -247,7 +247,7 @@ bool Match::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Match::_createInternalAndAttachedData() {
+void Match::_createAttachedAttributes() {
 	while (_queues->size() > _numberOfQueues) {
 		Queue* obsoleteQueue = _queues->last();
 		_internalDataRemove(obsoleteQueue->getName());
@@ -279,11 +279,9 @@ PluginInformation * Match::GetPluginInformation() {
 	return info;
 }
 
-void Match::_createReportStatisticsDataDefinitions() {
+void Match::_createInternalStatisticReporters() {
 }
 
 void Match::_createEditableDataDefinitions() {
 }
 
-void Match::_createOthersDataDefinitions() {
-}

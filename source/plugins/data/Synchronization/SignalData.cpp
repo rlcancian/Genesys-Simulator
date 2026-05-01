@@ -167,11 +167,11 @@ void SignalData::decreaseRemainLimit() {
 	_remainsToLimit--;
 }
 
-void SignalData::_createReportStatisticsDataDefinitions() {
+void SignalData::_createInternalStatisticReporters() {
 }
 
 void SignalData::_createEditableDataDefinitions() {
 }
 
-void SignalData::_createOthersDataDefinitions() {
+void SignalData::_createAttachedAttributes() {
 }

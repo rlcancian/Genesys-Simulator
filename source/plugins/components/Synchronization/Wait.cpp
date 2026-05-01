@@ -204,45 +204,6 @@ bool Wait::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Wait::_createInternalAndAttachedData() {
-	SignalData* previouslyAttachedSignalData = nullptr;
-	std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
-	std::map<std::string, ModelDataDefinition*>::iterator attachedSignalDataIt = attachedData->find("SignalData");
-	if (attachedSignalDataIt != attachedData->end()) {
-		previouslyAttachedSignalData = dynamic_cast<SignalData*>(attachedSignalDataIt->second);
-	}
-
-	// internal
-	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-	if (_queue == nullptr) {
-		_queue = pm->newInstance<Queue>(_parentModel, getName() + ".Queue");
-	}
-	if (_queue != nullptr) {
-		_internalDataInsert("Queue", _queue);
-	} else {
-		_internalDataRemove("Queue");
-	}
-	//attached
-	if (previouslyAttachedSignalData != nullptr && (_waitType != Wait::WaitType::WaitForSignal || previouslyAttachedSignalData != _signalData)) {
-		previouslyAttachedSignalData->removeSignalDataEventHandler(this);
-	}
-
-	if (_waitType == Wait::WaitType::WaitForSignal) {
-		if (_signalData == nullptr) {
-			_signalData = pm->newInstance<SignalData>(_parentModel);
-		}
-		if (_signalData == nullptr) {
-			_attachedDataRemove("SignalData");
-			return;
-		}
-		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Wait>(&Wait::_handlerForSignalDataEvent, this);
-		_signalData->addSignalDataEventHandler(handler, this);
-		_attachedDataInsert("SignalData", _signalData);
-	} else {
-		_attachedDataRemove("SignalData");
-	}
-}
-
 void Wait::_initBetweenReplications() {
 
 }
@@ -288,11 +249,52 @@ void Wait::_handlerForAfterProcessEventEvent(SimulationEvent* event) {
 	}
 }
 
-void Wait::_createReportStatisticsDataDefinitions() {
+void Wait::_createAttachedAttributes() {
+
+}
+
+void Wait::_createInternalStatisticReporters() {
 }
 
 void Wait::_createEditableDataDefinitions() {
+	SignalData* previouslyAttachedSignalData = nullptr;
+	std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
+	std::map<std::string, ModelDataDefinition*>::iterator attachedSignalDataIt = attachedData->find("SignalData");
+	if (attachedSignalDataIt != attachedData->end()) {
+		previouslyAttachedSignalData = dynamic_cast<SignalData*>(attachedSignalDataIt->second);
+	}
+
+	//attached
+	if (previouslyAttachedSignalData != nullptr && (_waitType != Wait::WaitType::WaitForSignal || previouslyAttachedSignalData != _signalData)) {
+		previouslyAttachedSignalData->removeSignalDataEventHandler(this);
+	}
+
+	if (_waitType == Wait::WaitType::WaitForSignal) {
+		if (_signalData == nullptr) {
+			PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
+			_signalData = pm->newInstance<SignalData>(_parentModel);
+		}
+		if (_signalData == nullptr) {
+			_attachedDataRemove("SignalData");
+			return;
+		}
+		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Wait>(&Wait::_handlerForSignalDataEvent, this);
+		_signalData->addSignalDataEventHandler(handler, this);
+		_attachedDataInsert("SignalData", _signalData);
+	} else {
+		_attachedDataRemove("SignalData");
+	}
 }
 
-void Wait::_createOthersDataDefinitions() {
+void Wait::_createNonEditableDataDefinitions() {
+	// internal
+	if (_queue == nullptr) {
+		PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
+		_queue = pm->newInstance<Queue>(_parentModel, getName() + ".Queue");
+	}
+	if (_queue != nullptr) {
+		_internalDataInsert("Queue", _queue);
+	} else {
+		_internalDataRemove("Queue");
+	}
 }

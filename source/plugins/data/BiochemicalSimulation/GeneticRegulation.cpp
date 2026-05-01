@@ -232,11 +232,11 @@ bool GeneticRegulation::isEnabled() const {
 	return _enabled;
 }
 
-void GeneticRegulation::_createReportStatisticsDataDefinitions() {
+void GeneticRegulation::_createInternalStatisticReporters() {
 }
 
 void GeneticRegulation::_createEditableDataDefinitions() {
 }
 
-void GeneticRegulation::_createOthersDataDefinitions() {
+void GeneticRegulation::_createAttachedAttributes() {
 }

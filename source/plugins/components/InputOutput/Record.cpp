@@ -295,7 +295,7 @@ bool Record::_check(std::string& errorMessage) {
 	return _parentModel->checkExpression(_expression, "expression", errorMessage);
 }
 
-void Record::_createInternalAndAttachedData() {
+void Record::_createAttachedAttributes() {
 	if (_reportStatistics && _cstatExpression == nullptr) {
 		_cstatExpression = new StatisticsCollector(_parentModel, getName() + "." + _expressionName, this);
 		//_parentModel->getDataDefinition()->insert(_cstatExpression);
@@ -333,11 +333,9 @@ ModelComponent* Record::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 }
 
-void Record::_createReportStatisticsDataDefinitions() {
+void Record::_createInternalStatisticReporters() {
 }
 
 void Record::_createEditableDataDefinitions() {
 }
 
-void Record::_createOthersDataDefinitions() {
-}

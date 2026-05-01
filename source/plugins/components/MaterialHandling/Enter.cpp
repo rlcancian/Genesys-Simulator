@@ -112,7 +112,7 @@ PluginInformation* Enter::GetPluginInformation() {
 	return info;
 }
 
-void Enter::_createInternalAndAttachedData() {
+void Enter::_createAttachedAttributes() {
 	if (_reportStatistics) {
 		if (_numberIn == nullptr) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
@@ -143,11 +143,9 @@ bool Enter::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Enter::_createReportStatisticsDataDefinitions() {
+void Enter::_createInternalStatisticReporters() {
 }
 
 void Enter::_createEditableDataDefinitions() {
 }
 
-void Enter::_createOthersDataDefinitions() {
-}

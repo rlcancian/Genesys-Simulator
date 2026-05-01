@@ -133,7 +133,7 @@ bool GeneticExpressionStep::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void GeneticExpressionStep::_createInternalAndAttachedData() {
+void GeneticExpressionStep::_createAttachedAttributes() {
 	if (_geneticCircuit != nullptr) {
 		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
 	} else {
@@ -274,11 +274,9 @@ std::string GeneticExpressionStep::getLastMessage() const {
 	return _lastMessage;
 }
 
-void GeneticExpressionStep::_createReportStatisticsDataDefinitions() {
+void GeneticExpressionStep::_createInternalStatisticReporters() {
 }
 
 void GeneticExpressionStep::_createEditableDataDefinitions() {
 }
 
-void GeneticExpressionStep::_createOthersDataDefinitions() {
-}

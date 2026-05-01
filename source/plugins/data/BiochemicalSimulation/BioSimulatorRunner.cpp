@@ -408,8 +408,8 @@ bool BioSimulatorRunner::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioSimulatorRunner::_createInternalAndAttachedData() {
-}
+// void BioSimulatorRunner::_createAttachedAttributes() {
+// }
 
 bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 	errorMessage.clear();
@@ -784,11 +784,12 @@ bool BioSimulatorRunner::getAutoValidateModel() const {
 	return _autoValidateModel;
 }
 
-void BioSimulatorRunner::_createReportStatisticsDataDefinitions() {
+void BioSimulatorRunner::_createInternalStatisticReporters() {
 }
 
 void BioSimulatorRunner::_createEditableDataDefinitions() {
 }
 
-void BioSimulatorRunner::_createOthersDataDefinitions() {
+void BioSimulatorRunner::_createAttachedAttributes() {
+
 }

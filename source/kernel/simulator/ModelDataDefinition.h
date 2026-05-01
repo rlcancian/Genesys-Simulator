@@ -149,20 +149,6 @@ public: // public virtual methods
 	virtual std::string show();
 	/*! Returns a list of keys (names) of internal ModelDatas, cuch as Counters, StatisticsCollectors and others. ChildrenElements are ModelDatas used by this ModelDataDefinition thar are needed before model checking */
 
-protected: //! methods to be called inside the _createInternalAndAttachedData() method
-	void _internalDataClear();
-	void _internalDataInsert(const std::string& key, ModelDataDefinition* child);
-	void _internalDataRemove(const std::string& key);
-	void _attachedDataInsert(const std::string& key, ModelDataDefinition* data);
-	void _attachedDataRemove(const std::string& key);
-	void _attachedDataClear();
-	void _attachedAttributesInsert(const std::vector<std::string>& neededNames);
-
-protected:
-	//! method to be called to insert attached dataelements that are referenced by string expressions (detected by the parser), to avoid orphaned data definitions
-	void _checkCreateAttachedReferencedDataDefinition(const std::string& expression);
-	//(std::map<std::string, std::list<std::string>*>* referencedDataDefinitions);
-
 protected:
 	bool _getSaveDefaultsOption();
 
@@ -175,19 +161,40 @@ protected: //! could be overriden by derived classes
 	/*! This method returns all changes in the parser that are needed by plugins of this ModelDatas. When connecting a new plugin, ParserChangesInformation are used to change parser source code, whch is after compiled and dinamically linked to to simulator kernel to reflect the changes */
 	virtual ParserChangesInformation* _getParserChangesInformation();
 	virtual void _initBetweenReplications();
-	virtual void _createReportStatisticsDataDefinitions(); // @ToDo will be abstract
-	virtual void _createEditableDataDefinitions(); // @ToDo will be abstract
-	virtual void _createOthersDataDefinitions(); // @ToDo will be abstract
-	/*! This method is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
-	virtual void _createInternalAndAttachedData();
 	/*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
 	virtual void _addSimulationControl(SimulationControl* control);
 	//virtual void _addSimulationResponse(SimulationControl* response);
 
+/*@Todo: Fix this mess about diffent kind of internal and attached data related to report statistics,
+ * mandatory and optional editable internal or attached dataelements that are properties,
+ * and, I don´t know, maybe other kind of internal and attached nedded stuff?
+ */
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
+	/*! This method is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
+	virtual void _createInternalAndAttachedData(); // final; //@Todo: will be final
+protected:
+	virtual void _createInternalStatisticReporters();
+	virtual void _createAttachedAttributes();
+	virtual void _createNonEditableDataDefinitions();
+	virtual void _createEditableDataDefinitions();
+protected:
+	void _templateCreateInternalStatisticReporters();
+	void _templateCreateAttachedAttributes();
+	void _templateCreateNonEditableDataDefinitions();
+	void _templateCreateEditableDataDefinitions();
+protected: //! methods to be called inside the _createInternalAndAttachedData() method
+	void _internalDataClear();
+	void _internalDataInsert(const std::string& key, ModelDataDefinition* child);
+	void _internalDataRemove(const std::string& key);
+	void _attachedDataClear();
+	void _attachedDataInsert(const std::string& key, ModelDataDefinition* data);
+	void _attachedDataRemove(const std::string& key);
+	void _attachedAttributesInsert(const std::vector<std::string>& neededNames);
+protected:
+	//! method to be called to insert attached dataelements that are referenced by string expressions (detected by the parser), to avoid orphaned data definitions
+	void _checkCreateAttachedReferencedDataDefinition(const std::string& expression);
+	//(std::map<std::string, std::list<std::string>*>* referencedDataDefinitions);
+
 
 private:
 	// name is now private. So changes in name must be throught setName, wich gives oportunity to rename internelElements, SimulationControls and SimulationResponses

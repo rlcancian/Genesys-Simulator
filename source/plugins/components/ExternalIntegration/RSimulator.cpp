@@ -262,7 +262,7 @@ bool RSimulator::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void RSimulator::_createInternalAndAttachedData() {
+void RSimulator::_createAttachedAttributes() {
 	_ensureRunner();
 	_syncRunnerConfiguration();
 	if (_runner != nullptr) {
@@ -289,11 +289,9 @@ bool RSimulator::_isNonEmptyCommand(const std::string& command) const {
 	return !trimText(command).empty();
 }
 
-void RSimulator::_createReportStatisticsDataDefinitions() {
+void RSimulator::_createInternalStatisticReporters() {
 }
 
 void RSimulator::_createEditableDataDefinitions() {
 }
 
-void RSimulator::_createOthersDataDefinitions() {
-}

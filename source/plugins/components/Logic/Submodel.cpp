@@ -77,11 +77,11 @@ PluginInformation* Submodel::GetPluginInformation() {
 
 
 
-void Submodel::_createReportStatisticsDataDefinitions() {
+void Submodel::_createInternalStatisticReporters() {
 }
 
 void Submodel::_createEditableDataDefinitions() {
 }
 
-void Submodel::_createOthersDataDefinitions() {
+void Submodel::_createAttachedAttributes() {
 }

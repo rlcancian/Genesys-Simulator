@@ -227,39 +227,8 @@ unsigned int Buffer::_handlerForSignalDataEvent(SignalData* signalData) {
 }
 
 
-void Buffer::_createInternalAndAttachedData() {
-	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-	//attached
-	if (_advanceOn == AdvanceOn::Signal) {
-		if (_signalWithRegisteredHandler != nullptr && _signalWithRegisteredHandler != _attachedSignal) {
-			_signalWithRegisteredHandler->removeSignalDataEventHandler(this);
-			_signalWithRegisteredHandler = nullptr;
-		}
-		if (_attachedSignal  == nullptr) {
-			_attachedSignal = pm->newInstance<SignalData>(_parentModel, getName() + "." + "SignalData");
-			if (_attachedSignal == nullptr) {
-				traceError("Buffer \"" + getName() + "\" failed to create SignalData while configured with AdvanceOn=Signal");
-				_attachedDataRemove("SignalData");
-				return;
-			}
-		}
-		if (_attachedSignal == nullptr) {
-			_attachedDataRemove("SignalData");
-			return;
-		}
-		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Buffer>(&Buffer::_handlerForSignalDataEvent, this);
-		if (!_attachedSignal->hasSignalDataEventHandler(this)) {
-			_attachedSignal->addSignalDataEventHandler(handler, this);
-		}
-		_signalWithRegisteredHandler = _attachedSignal;
-		_attachedDataInsert("SignalData", _attachedSignal);
-	} else {
-		if (_signalWithRegisteredHandler != nullptr) {
-			_signalWithRegisteredHandler->removeSignalDataEventHandler(this);
-			_signalWithRegisteredHandler = nullptr;
-		}
-		_attachedDataRemove("SignalData");
-	}
+void Buffer::_createAttachedAttributes() {
+
 }
 
 void Buffer::_addSimulationControl(SimulationControl* property) {
@@ -309,11 +278,40 @@ Entity* Buffer::_advance(Entity* enteringEntity) {
 	return result;
 }
 
-void Buffer::_createReportStatisticsDataDefinitions() {
+void Buffer::_createInternalStatisticReporters() {
 }
 
 void Buffer::_createEditableDataDefinitions() {
-}
-
-void Buffer::_createOthersDataDefinitions() {
+	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
+	//attached
+	if (_advanceOn == AdvanceOn::Signal) {
+		if (_signalWithRegisteredHandler != nullptr && _signalWithRegisteredHandler != _attachedSignal) {
+			_signalWithRegisteredHandler->removeSignalDataEventHandler(this);
+			_signalWithRegisteredHandler = nullptr;
+		}
+		if (_attachedSignal  == nullptr) {
+			_attachedSignal = pm->newInstance<SignalData>(_parentModel, getName() + "." + "SignalData");
+			if (_attachedSignal == nullptr) {
+				traceError("Buffer \"" + getName() + "\" failed to create SignalData while configured with AdvanceOn=Signal");
+				_attachedDataRemove("SignalData");
+				return;
+			}
+		}
+		if (_attachedSignal == nullptr) {
+			_attachedDataRemove("SignalData");
+			return;
+		}
+		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Buffer>(&Buffer::_handlerForSignalDataEvent, this);
+		if (!_attachedSignal->hasSignalDataEventHandler(this)) {
+			_attachedSignal->addSignalDataEventHandler(handler, this);
+		}
+		_signalWithRegisteredHandler = _attachedSignal;
+		_attachedDataInsert("SignalData", _attachedSignal);
+	} else {
+		if (_signalWithRegisteredHandler != nullptr) {
+			_signalWithRegisteredHandler->removeSignalDataEventHandler(this);
+			_signalWithRegisteredHandler = nullptr;
+		}
+		_attachedDataRemove("SignalData");
+	}
 }

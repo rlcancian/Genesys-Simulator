@@ -153,7 +153,7 @@ bool BioSimulate::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioSimulate::_createInternalAndAttachedData() {
+void BioSimulate::_createAttachedAttributes() {
 	if (_bioNetwork != nullptr) {
 		_attachedDataInsert("BioNetwork", _bioNetwork);
 	} else {
@@ -264,11 +264,9 @@ std::string BioSimulate::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioSimulate::_createReportStatisticsDataDefinitions() {
+void BioSimulate::_createInternalStatisticReporters() {
 }
 
 void BioSimulate::_createEditableDataDefinitions() {
 }
 
-void BioSimulate::_createOthersDataDefinitions() {
-}

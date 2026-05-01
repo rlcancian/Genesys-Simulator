@@ -230,8 +230,8 @@ bool CppCompiler::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void CppCompiler::_createInternalAndAttachedData() {
-}
+// void CppCompiler::_createAttachedAttributes() {
+// }
 
 void CppCompiler::_initBetweenReplications() {
 
@@ -458,11 +458,11 @@ CppCompiler::CompilationResult CppCompiler::_invokeCompiler(std::string command)
 	return result;
 }
 
-void CppCompiler::_createReportStatisticsDataDefinitions() {
+void CppCompiler::_createInternalStatisticReporters() {
 }
 
 void CppCompiler::_createEditableDataDefinitions() {
 }
 
-void CppCompiler::_createOthersDataDefinitions() {
+void CppCompiler::_createAttachedAttributes() {
 }

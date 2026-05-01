@@ -297,7 +297,30 @@ ParserChangesInformation* Set::_getParserChangesInformation() {
     return changes;
 }
 
-void Set::_createInternalAndAttachedData() {
+// void Set::_createInternalAndAttachedData() {
+//     std::vector<std::string> previousSetMemberKeys;
+//     const std::string setMemberPrefix = getName() + ".";
+//     for (const auto& pair : *getAttachedData()) {
+//         if (pair.first.rfind(setMemberPrefix, 0) == 0) {
+//             previousSetMemberKeys.push_back(pair.first);
+//         }
+//     }
+//     for (const std::string& key : previousSetMemberKeys) {
+//         _attachedDataRemove(key);
+//     }
+//
+//     for(ModelDataDefinition* dd: *_elementSet->list()) {
+//         _attachedDataInsert(getName()+"."+dd->getName(), dd);
+//     }
+// }
+
+void Set::_createInternalStatisticReporters() {
+}
+
+void Set::_createEditableDataDefinitions() {
+}
+
+void Set::_createAttachedAttributes() {
     std::vector<std::string> previousSetMemberKeys;
     const std::string setMemberPrefix = getName() + ".";
     for (const auto& pair : *getAttachedData()) {
@@ -312,13 +335,4 @@ void Set::_createInternalAndAttachedData() {
     for(ModelDataDefinition* dd: *_elementSet->list()) {
         _attachedDataInsert(getName()+"."+dd->getName(), dd);
     }
-}
-
-void Set::_createReportStatisticsDataDefinitions() {
-}
-
-void Set::_createEditableDataDefinitions() {
-}
-
-void Set::_createOthersDataDefinitions() {
 }

@@ -334,7 +334,7 @@ void Batch::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	}
 }
 
-void Batch::_createInternalAndAttachedData() {
+void Batch::_createAttachedAttributes() {
 	// Keep attached-data keys stable across rechecks and remove stale aliases.
 	_attachedAttributesInsert({"Entity.Group"});
 	_attachedDataRemove("GroupdEntityType");
@@ -420,11 +420,9 @@ PluginInformation * Batch::GetPluginInformation() {
 	return info;
 }
 
-void Batch::_createReportStatisticsDataDefinitions() {
+void Batch::_createInternalStatisticReporters() {
 }
 
 void Batch::_createEditableDataDefinitions() {
 }
 
-void Batch::_createOthersDataDefinitions() {
-}

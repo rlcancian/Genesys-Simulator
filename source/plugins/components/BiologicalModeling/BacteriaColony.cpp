@@ -686,7 +686,7 @@ void BacteriaColony::_initBetweenReplications() {
 	(void)_resetRuntimeSignalField(signalErrorMessage);
 }
 
-void BacteriaColony::_createInternalAndAttachedData() {
+void BacteriaColony::_createAttachedAttributes() {
 	if (_groProgram != nullptr) {
 		_attachedDataInsert("GroProgram", _groProgram);
 	} else {
@@ -1880,11 +1880,9 @@ void BacteriaColony::_synchronizeGridDimensionsFromSignalGrid() {
 	_gridHeight = _signalGrid->getHeight();
 }
 
-void BacteriaColony::_createReportStatisticsDataDefinitions() {
+void BacteriaColony::_createInternalStatisticReporters() {
 }
 
 void BacteriaColony::_createEditableDataDefinitions() {
 }
 
-void BacteriaColony::_createOthersDataDefinitions() {
-}

@@ -54,14 +54,11 @@ protected:
 
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
 
 
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private:
 	bool _validateSourceCodeSyntax(const std::string& sourceCode, std::string& errorMessage) const;

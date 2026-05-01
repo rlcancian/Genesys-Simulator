@@ -136,11 +136,11 @@ ParserChangesInformation* Storage::_getParserChangesInformation() {
 	return changes;
 }
 
-void Storage::_createReportStatisticsDataDefinitions() {
+void Storage::_createInternalStatisticReporters() {
 }
 
 void Storage::_createEditableDataDefinitions() {
 }
 
-void Storage::_createOthersDataDefinitions() {
+void Storage::_createAttachedAttributes() {
 }

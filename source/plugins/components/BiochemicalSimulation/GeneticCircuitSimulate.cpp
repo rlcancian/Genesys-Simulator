@@ -163,7 +163,7 @@ bool GeneticCircuitSimulate::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void GeneticCircuitSimulate::_createInternalAndAttachedData() {
+void GeneticCircuitSimulate::_createAttachedAttributes() {
 	if (_geneticCircuit != nullptr) {
 		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
 	} else {
@@ -338,11 +338,9 @@ std::string GeneticCircuitSimulate::getLastMessage() const {
 	return _lastMessage;
 }
 
-void GeneticCircuitSimulate::_createReportStatisticsDataDefinitions() {
+void GeneticCircuitSimulate::_createInternalStatisticReporters() {
 }
 
 void GeneticCircuitSimulate::_createEditableDataDefinitions() {
 }
 
-void GeneticCircuitSimulate::_createOthersDataDefinitions() {
-}

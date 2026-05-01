@@ -69,11 +69,11 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected:
 	//virtual void _initBetweenReplications();
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+protected:
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 public:
 	const struct DEFAULT_VALUES {
 		const std::string delayExpression = "1.0";
@@ -83,9 +83,6 @@ public:
 	} DEFAULT;
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
 
 private:
 	std::string _delayExpression = DEFAULT.delayExpression;

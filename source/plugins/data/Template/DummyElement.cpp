@@ -199,11 +199,11 @@ void DummyElementt::_addSimulationControl(SimulationControl* property) {
 }
 */
 
-void DummyElement::_createReportStatisticsDataDefinitions() {
+void DummyElement::_createInternalStatisticReporters() {
 }
 
 void DummyElement::_createEditableDataDefinitions() {
 }
 
-void DummyElement::_createOthersDataDefinitions() {
+void DummyElement::_createAttachedAttributes() {
 }

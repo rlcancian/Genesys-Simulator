@@ -138,7 +138,7 @@ bool BioSteadyState::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioSteadyState::_createInternalAndAttachedData() {
+void BioSteadyState::_createAttachedAttributes() {
 	if (_bioNetwork != nullptr) {
 		_attachedDataInsert("BioNetwork", _bioNetwork);
 	} else {
@@ -251,11 +251,9 @@ std::string BioSteadyState::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioSteadyState::_createReportStatisticsDataDefinitions() {
+void BioSteadyState::_createInternalStatisticReporters() {
 }
 
 void BioSteadyState::_createEditableDataDefinitions() {
 }
 
-void BioSteadyState::_createOthersDataDefinitions() {
-}

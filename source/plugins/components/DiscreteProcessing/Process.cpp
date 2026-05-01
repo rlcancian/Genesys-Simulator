@@ -315,7 +315,7 @@ PluginInformation* Process::GetPluginInformation() {
 	return info;
 }
 
-void Process::_createInternalAndAttachedData() {
+void Process::_createAttachedAttributes() {
 	_ensureInternalComponents();
 	_adjustConnections();
 	if (!_flagConstructing) {
@@ -352,11 +352,9 @@ bool Process::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Process::_createReportStatisticsDataDefinitions() {
+void Process::_createInternalStatisticReporters() {
 }
 
 void Process::_createEditableDataDefinitions() {
 }
 
-void Process::_createOthersDataDefinitions() {
-}

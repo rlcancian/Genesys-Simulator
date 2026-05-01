@@ -93,10 +93,10 @@ public:
 	Batch::GroupedAttribs getGroupedAttributes() const;
 protected: // virtual should
 	//virtual void _initBetweenReplications();
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
-	virtual void _createInternalAndAttachedData() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalAndAttachedData() override;
 	virtual bool _check(std::string& errorMessage) override;
 protected: // virtual must
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
@@ -104,9 +104,6 @@ protected: // virtual must
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
 
 private: // methods
 private: // attributes 1:1

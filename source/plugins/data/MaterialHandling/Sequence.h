@@ -100,10 +100,10 @@ protected:
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createReportStatisticsDataDefinitions() override;
+protected:
+	virtual void _createInternalStatisticReporters() override;
 	virtual void _createEditableDataDefinitions() override;
-	virtual void _createOthersDataDefinitions() override;
-	virtual void _createInternalAndAttachedData() override;
+	virtual void _createAttachedAttributes() override;
 private:
 	List<SequenceStep*>* _steps = new List<SequenceStep*>();
 };

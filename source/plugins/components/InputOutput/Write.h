@@ -58,14 +58,11 @@ protected: // virtual
 
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
 
 
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private: // methods
 private: // attributes 1:1
@@ -83,4 +80,3 @@ private: // attributes 1:n
 
 
 #endif /* WRITE_H */
-

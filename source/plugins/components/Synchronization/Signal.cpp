@@ -128,7 +128,7 @@ bool Signal::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Signal::_createInternalAndAttachedData() {
+void Signal::_createAttachedAttributes() {
 	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
 	// Preserve loaded/configured association; only create SignalData if none is already associated.
 	if (_signalData == nullptr) {
@@ -155,11 +155,9 @@ void Signal::_initBetweenReplications() {
 
 }
 
-void Signal::_createReportStatisticsDataDefinitions() {
+void Signal::_createInternalStatisticReporters() {
 }
 
 void Signal::_createEditableDataDefinitions() {
 }
 
-void Signal::_createOthersDataDefinitions() {
-}

@@ -123,8 +123,10 @@ bool SourceModelComponent::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void SourceModelComponent::_createInternalAndAttachedData() {
-	_attachedAttributesInsert({"Entity.ArrivalTime", "Entity.Type"});
+void SourceModelComponent::_createInternalStatisticReporters() {
+}
+
+void SourceModelComponent::_createEditableDataDefinitions() {
 	if (this->_entityType == nullptr) {
 		std::string defaulName = DEFAULT.entityTypename;
 		for (ModelDataDefinition* elem : *_parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list()) {
@@ -143,6 +145,10 @@ void SourceModelComponent::_createInternalAndAttachedData() {
 	else {
 		_attachedDataRemove("EntityType");
 	}
+}
+
+void SourceModelComponent::_createAttachedAttributes() {
+	_attachedAttributesInsert({"Entity.ArrivalTime", "Entity.Type"});
 }
 
 void SourceModelComponent::setFirstCreation(double _firstCreation) {

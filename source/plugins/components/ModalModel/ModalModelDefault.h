@@ -65,7 +65,7 @@ protected: /// virtual protected methods that could be overriden by derived clas
 	/*! This method is called by ModelSimulation when initianting the replication. The model should set all value for a new replication (Ex: setting back to 0 any internal counter, clearing lists, etc. */
 	virtual void _initBetweenReplications() override;
 	/*! This method is called by ModelChecker and is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
-	virtual void _createInternalAndAttachedData() override; /*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
+	// virtual void _createInternalAndAttachedData() override;
 	/*! This method is not used yet. It should be usefull for new UIs */
 	// virtual void _addSimulationControl(SimulationControl* property);
 
@@ -95,14 +95,11 @@ protected: /// internal COMPONENTS (since it's a modal model / network) (Composi
 
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
 
 
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private: /// internal DataElements (Composition)
 	// ...

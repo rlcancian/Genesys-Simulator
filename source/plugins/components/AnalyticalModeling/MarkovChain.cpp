@@ -370,7 +370,17 @@ bool MarkovChain::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void MarkovChain::_createInternalAndAttachedData() {
+
+PluginInformation* MarkovChain::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<MarkovChain>(), &MarkovChain::LoadInstance, &MarkovChain::NewInstance);
+	info->setCategory("AnalyticalModeling");
+	return info;
+}
+
+void MarkovChain::_createInternalStatisticReporters() {
+}
+
+void MarkovChain::_createEditableDataDefinitions() {
 	_attachedDataClear();
 	if (_transitionProbMatrix != nullptr) {
 		_attachedDataInsert(_transitionProbMatrix->getName(), _transitionProbMatrix);
@@ -380,19 +390,8 @@ void MarkovChain::_createInternalAndAttachedData() {
 	}
 }
 
-PluginInformation* MarkovChain::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<MarkovChain>(), &MarkovChain::LoadInstance, &MarkovChain::NewInstance);
-	info->setCategory("AnalyticalModeling");
-	return info;
-}
+void MarkovChain::_createAttachedAttributes() {
 
-void MarkovChain::_createReportStatisticsDataDefinitions() {
-}
-
-void MarkovChain::_createEditableDataDefinitions() {
-}
-
-void MarkovChain::_createOthersDataDefinitions() {
 }
 
 unsigned int MarkovChain::_drawNextState(Entity* entity, unsigned int currentState) {

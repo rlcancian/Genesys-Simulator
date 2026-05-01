@@ -232,7 +232,25 @@ bool Remove::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Remove::_createInternalAndAttachedData() {
+void Remove::_createAttachedAttributes() {
+
+}
+
+PluginInformation* Remove::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<Remove>(), &Remove::LoadInstance, &Remove::NewInstance);
+	info->setCategory("Decisions");
+	info->insertDynamicLibFileDependence("queue.so");
+	info->insertDynamicLibFileDependence("entitygroup.so");
+	info->setMinimumOutputs(2);
+	info->setMaximumOutputs(2);
+	// ...
+	return info;
+}
+
+void Remove::_createInternalStatisticReporters() {
+}
+
+void Remove::_createEditableDataDefinitions() {
 	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 	if (_removeFromType == Remove::RemoveFromType::QUEUE) {
 		if (_removeFrom == nullptr) {
@@ -250,24 +268,4 @@ void Remove::_createInternalAndAttachedData() {
 	if (_removeFromType == Remove::RemoveFromType::ENTITYGROUP) {
 		// Not supported in this implementation batch. Explicitly validated in _check().
 	}
-}
-
-PluginInformation* Remove::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Remove>(), &Remove::LoadInstance, &Remove::NewInstance);
-	info->setCategory("Decisions");
-	info->insertDynamicLibFileDependence("queue.so");
-	info->insertDynamicLibFileDependence("entitygroup.so");
-	info->setMinimumOutputs(2);
-	info->setMaximumOutputs(2);
-	// ...
-	return info;
-}
-
-void Remove::_createReportStatisticsDataDefinitions() {
-}
-
-void Remove::_createEditableDataDefinitions() {
-}
-
-void Remove::_createOthersDataDefinitions() {
 }

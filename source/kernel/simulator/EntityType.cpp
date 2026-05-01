@@ -146,18 +146,6 @@ void EntityType::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues
 	fields->saveField("initialPicture", _initialPicture, DEFAULT.initialPicture, saveDefaults);
 }
 
-bool EntityType::_check(std::string& errorMessage) {
-	errorMessage += "";
-	return true;
-}
-
-void EntityType::_createInternalAndAttachedData() {
-	if (_reportStatistics) { // @ToDo: (importante): Fix inserting to _internalElements
-	} else {
-		while (_statisticsCollectors->size() > 0) {
-			_parentModel->getDataManager()->remove(_statisticsCollectors->front());
-			_statisticsCollectors->front()->~StatisticsCollector();
-			_statisticsCollectors->pop_front();
-		}
-	}
+void EntityType::_createInternalStatisticReporters() {
+	//@TODO
 }

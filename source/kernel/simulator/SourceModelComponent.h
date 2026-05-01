@@ -115,10 +115,14 @@ public:
 
 protected:
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
-	virtual void _initBetweenReplications() override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+protected:
+	virtual void _initBetweenReplications() override;
     virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+protected:
+	virtual void _createInternalStatisticReporters();
+	virtual void _createEditableDataDefinitions();
+	virtual void _createAttachedAttributes();
 protected: // get & set
 	EntityType* _entityType = nullptr;
 
@@ -140,4 +144,3 @@ protected: // get & set
 };
 //namespace\\}
 #endif /* SOURCEMODELCOMPONENT_H */
-

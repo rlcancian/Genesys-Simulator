@@ -188,9 +188,22 @@ void Delay::_reconcileAllocationAttachedAttributes() {
 	}
 }
 
-void Delay::_createInternalAndAttachedData() {
+void Delay::_createAttachedAttributes() {
 	_reconcileAllocationAttachedAttributes();
+}
 
+PluginInformation* Delay::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<Delay>(), &Delay::LoadInstance, &Delay::NewInstance);
+	std::string text = "The Delay module delays an entity by a specified amount of time.";
+	text += " When an entity arrives at a Delay module, the time delay expression is evaluated and the entity remains in the module for the resulting time.";
+	text += " The time is then allocated to the entity’s value-added, non-value added, transfer, wait, or other time.";
+	text += " Associated costs are calculated and allocated as well.";
+	text += " TYPICAL USES: (1) Processing a check at a bank; (2) Performing a setup on a machine; (3) Transferring a document to another department";
+	info->setDescriptionHelp(text);
+	return info;
+}
+
+void Delay::_createInternalStatisticReporters() {
 	if (_reportStatistics) {
 		if (_cstatWaitTime == nullptr) {
 			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
@@ -213,22 +226,5 @@ void Delay::_createInternalAndAttachedData() {
 	}
 }
 
-PluginInformation* Delay::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Delay>(), &Delay::LoadInstance, &Delay::NewInstance);
-	std::string text = "The Delay module delays an entity by a specified amount of time.";
-	text += " When an entity arrives at a Delay module, the time delay expression is evaluated and the entity remains in the module for the resulting time.";
-	text += " The time is then allocated to the entity’s value-added, non-value added, transfer, wait, or other time.";
-	text += " Associated costs are calculated and allocated as well.";
-	text += " TYPICAL USES: (1) Processing a check at a bank; (2) Performing a setup on a machine; (3) Transferring a document to another department";
-	info->setDescriptionHelp(text);
-	return info;
-}
-
-void Delay::_createReportStatisticsDataDefinitions() {
-}
-
 void Delay::_createEditableDataDefinitions() {
-}
-
-void Delay::_createOthersDataDefinitions() {
 }

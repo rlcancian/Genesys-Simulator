@@ -253,21 +253,21 @@ void ModelDataDefinition::_saveInstance(PersistenceRecord* fields, bool saveDefa
 	                  saveDefaultValues);
 }
 
-void ModelDataDefinition::_createReportStatisticsDataDefinitions() {
+void ModelDataDefinition::_createInternalStatisticReporters() {
 }
 
 void ModelDataDefinition::_createEditableDataDefinitions() {
 }
 
-void ModelDataDefinition::_createOthersDataDefinitions() {
+void ModelDataDefinition::_createNonEditableDataDefinitions() {
 }
 
-void ModelDataDefinition::_doCreateReportStatisticsDataDefinitions() {
-	if (!_reportStatistics) {
-		return;
-	}
+void ModelDataDefinition::_createAttachedAttributes() {
+}
+
+void ModelDataDefinition::_templateCreateInternalStatisticReporters() {
 	try {
-		_createReportStatisticsDataDefinitions();
+		_createInternalStatisticReporters();
 	}
 	catch (const std::exception& e) {
 		traceError("Error creating report-statistics data definitions for " + getClassname() + " " + getName(), e);
@@ -278,7 +278,18 @@ void ModelDataDefinition::_doCreateReportStatisticsDataDefinitions() {
 	}
 }
 
-void ModelDataDefinition::_doCreateEditableDataDefinitions() {
+void ModelDataDefinition::_templateCreateNonEditableDataDefinitions() {
+	try {
+		_createNonEditableDataDefinitions();
+	}
+	catch (const std::exception& e) {
+		traceError("Error creating non editable data definitions for " + getClassname() + " " + getName(), e);
+	}
+	catch (...) {
+		traceError("Unknown error creating non editable data definitions for " + getClassname() + " " + getName());
+	}
+}
+void ModelDataDefinition::_templateCreateEditableDataDefinitions() {
 	try {
 		_createEditableDataDefinitions();
 	}
@@ -290,15 +301,15 @@ void ModelDataDefinition::_doCreateEditableDataDefinitions() {
 	}
 }
 
-void ModelDataDefinition::_doCreateOthersDataDefinitions() {
+void ModelDataDefinition::_templateCreateAttachedAttributes() {
 	try {
-		_createOthersDataDefinitions();
+		_createAttachedAttributes();
 	}
 	catch (const std::exception& e) {
-		traceError("Error creating other data definitions for " + getClassname() + " " + getName(), e);
+		traceError("Error creating attributes for " + getClassname() + " " + getName(), e);
 	}
 	catch (...) {
-		traceError("Unknown error creating other data definitions for " + getClassname() + " " + getName());
+		traceError("Unknown error creating attribu for " + getClassname() + " " + getName());
 	}
 }
 
@@ -493,9 +504,10 @@ bool ModelDataDefinition::CreateRelatedDataElements(ModelDataDefinition* modelda
 }
 
 void ModelDataDefinition::_createInternalAndAttachedData() {
-	_createReportStatisticsDataDefinitions();
-	_createOthersDataDefinitions();
-	_createEditableDataDefinitions();
+	_templateCreateInternalStatisticReporters();
+	_templateCreateAttachedAttributes();
+	_templateCreateNonEditableDataDefinitions();
+	_templateCreateEditableDataDefinitions();
 }
 
 void ModelDataDefinition::_addSimulationControl(SimulationControl* control) {

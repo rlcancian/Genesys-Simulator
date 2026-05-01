@@ -242,7 +242,7 @@ void CppForG::_initBetweenReplications() {
 	}
 }
 
-void CppForG::_createInternalAndAttachedData() {
+void CppForG::_createAttachedAttributes() {
 	if (_cppCompiler == nullptr) {
 		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
 		_cppCompiler->setSourceFilename(getName() + ".cpp");
@@ -263,11 +263,9 @@ PluginInformation* CppForG::GetPluginInformation() {
 	return info;
 }
 
-void CppForG::_createReportStatisticsDataDefinitions() {
+void CppForG::_createInternalStatisticReporters() {
 }
 
 void CppForG::_createEditableDataDefinitions() {
 }
 
-void CppForG::_createOthersDataDefinitions() {
-}

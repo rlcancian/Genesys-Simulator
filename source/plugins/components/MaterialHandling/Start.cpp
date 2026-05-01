@@ -77,11 +77,11 @@ PluginInformation* Start::GetPluginInformation() {
 
 
 
-void Start::_createReportStatisticsDataDefinitions() {
+void Start::_createInternalStatisticReporters() {
 }
 
 void Start::_createEditableDataDefinitions() {
 }
 
-void Start::_createOthersDataDefinitions() {
+void Start::_createAttachedAttributes() {
 }

@@ -37,15 +37,12 @@ protected: // could be overriden
 	virtual bool _check(std::string& errorMessage) override;
 	//virtual ParserChangesInformation* _getParserChangesInformation();
 	//virtual void _initBetweenReplications();
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 	//virtual void _createInternalAndAttachedData();
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
 
 private:
 	std::string _label;

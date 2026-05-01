@@ -34,16 +34,16 @@ public: // get and set
 	ModelDataDefinition* getCurrentState() const;
 protected: // virtual
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
-	virtual void _initBetweenReplications() override;
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+protected: // virtual
+	virtual void _initBetweenReplications() override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
-
+//	virtual void _createInternalAndAttachedData() override;
 protected:
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private: // methods
 	unsigned int _drawNextState(Entity* entity, unsigned int currentState);

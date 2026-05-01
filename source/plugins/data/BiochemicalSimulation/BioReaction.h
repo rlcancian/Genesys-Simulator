@@ -69,18 +69,13 @@ protected:
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createInternalAndAttachedData() override;
 
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
-
-
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private:
 	bool checkTerms(const std::vector<StoichiometricTerm>& terms, const std::string& side, std::string& errorMessage) const;

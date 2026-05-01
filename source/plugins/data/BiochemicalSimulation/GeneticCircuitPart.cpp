@@ -198,11 +198,11 @@ bool GeneticCircuitPart::isEnabled() const {
 	return _enabled;
 }
 
-void GeneticCircuitPart::_createReportStatisticsDataDefinitions() {
+void GeneticCircuitPart::_createInternalStatisticReporters() {
 }
 
 void GeneticCircuitPart::_createEditableDataDefinitions() {
 }
 
-void GeneticCircuitPart::_createOthersDataDefinitions() {
+void GeneticCircuitPart::_createAttachedAttributes() {
 }

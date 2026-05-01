@@ -49,16 +49,13 @@ protected: // virtual
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: // virtual
 	//virtual void _initBetweenReplications();
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 	virtual bool _check(std::string& errorMessage) override;
 	//virtual void _createInternalAndAttachedData();
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
 
 private: // methods
 	bool _doStep();
@@ -76,4 +73,3 @@ private: // attributes 1:n
 };
 
 #endif /* LSODE_H */
-

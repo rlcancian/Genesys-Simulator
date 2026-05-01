@@ -277,7 +277,7 @@ void DiffEquations::_initBetweenReplications() {
 */
 
 
-void DiffEquations::_createInternalAndAttachedData() {
+void DiffEquations::_createAttachedAttributes() {
 	if (_cppCompiler == nullptr) {
 		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
 		_cppCompiler->setSourceFilename(getName() + ".cpp");
@@ -296,11 +296,9 @@ void DiffEquations::_addSimulationControl(SimulationControl* property) {
 }
 */
 
-void DiffEquations::_createReportStatisticsDataDefinitions() {
+void DiffEquations::_createInternalStatisticReporters() {
 }
 
 void DiffEquations::_createEditableDataDefinitions() {
 }
 
-void DiffEquations::_createOthersDataDefinitions() {
-}

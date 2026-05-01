@@ -104,7 +104,7 @@ PluginInformation* Leave::GetPluginInformation() {
 	return info;
 }
 
-void Leave::_createInternalAndAttachedData() {
+void Leave::_createAttachedAttributes() {
 	if (_reportStatistics) {
 		if (_numberIn == nullptr) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
@@ -128,11 +128,9 @@ bool Leave::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Leave::_createReportStatisticsDataDefinitions() {
+void Leave::_createInternalStatisticReporters() {
 }
 
 void Leave::_createEditableDataDefinitions() {
 }
 
-void Leave::_createOthersDataDefinitions() {
-}

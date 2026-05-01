@@ -205,9 +205,9 @@ void Schedule::_initBetweenReplications() {
 	//_someUint = 1;
 }
 
-void Schedule::_createInternalAndAttachedData() {
-	// Schedule currently has no internal or attached data to instantiate.
-}
+// void Schedule::_createInternalAndAttachedData() {
+// 	// Schedule currently has no internal or attached data to instantiate.
+// }
 
 ParserChangesInformation* Schedule::_getParserChangesInformation() {
 	ParserChangesInformation* changes = new ParserChangesInformation();
@@ -232,11 +232,12 @@ void Schedule::_addSimulationControl(SimulationControl* property) {
 // private
 //
 
-void Schedule::_createReportStatisticsDataDefinitions() {
+void Schedule::_createInternalStatisticReporters() {
 }
 
 void Schedule::_createEditableDataDefinitions() {
 }
 
-void Schedule::_createOthersDataDefinitions() {
+void Schedule::_createAttachedAttributes() {
+	// Schedule currently has no internal or attached data to instantiate.
 }

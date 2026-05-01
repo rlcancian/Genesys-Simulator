@@ -48,13 +48,17 @@ public:
 protected:
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override;
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
-	virtual void _initBetweenReplications() override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
+protected:
+	virtual void _initBetweenReplications() override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+protected:
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
+protected:
 private: // internal elements
 	Counter* _numberOut = nullptr;
 };
 
 #endif /* DISPOSE_H */
-

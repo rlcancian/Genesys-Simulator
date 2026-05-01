@@ -128,7 +128,7 @@ bool BioRunnerCommand::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioRunnerCommand::_createInternalAndAttachedData() {
+void BioRunnerCommand::_createAttachedAttributes() {
 	if (_runner != nullptr) {
 		_attachedDataInsert("BioSimulatorRunner", _runner);
 	} else {
@@ -217,11 +217,9 @@ std::string BioRunnerCommand::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioRunnerCommand::_createReportStatisticsDataDefinitions() {
+void BioRunnerCommand::_createInternalStatisticReporters() {
 }
 
 void BioRunnerCommand::_createEditableDataDefinitions() {
 }
 
-void BioRunnerCommand::_createOthersDataDefinitions() {
-}

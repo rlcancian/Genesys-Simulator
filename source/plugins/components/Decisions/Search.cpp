@@ -319,7 +319,25 @@ bool Search::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Search::_createInternalAndAttachedData() {
+void Search::_createAttachedAttributes() {
+}
+
+PluginInformation* Search::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<Search>(), &Search::LoadInstance, &Search::NewInstance);
+	info->setCategory("Decisions");
+	info->insertDynamicLibFileDependence("queue.so");
+	info->insertDynamicLibFileDependence("entitygroup.so");
+	info->setMinimumOutputs(2);
+	info->setMaximumOutputs(2);
+
+	// ...  @TODO
+	return info;
+}
+
+void Search::_createInternalStatisticReporters() {
+}
+
+void Search::_createEditableDataDefinitions() {
 	if (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), _saveFounRankAttribute) == nullptr) {
 		this->_attachedAttributesInsert({_saveFounRankAttribute});
 	}
@@ -340,25 +358,4 @@ void Search::_createInternalAndAttachedData() {
 	if (_searchInType == Search::SearchInType::ENTITYGROUP) {
 		// Not supported in this implementation batch. Explicitly validated in _check().
 	}
-}
-
-PluginInformation* Search::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Search>(), &Search::LoadInstance, &Search::NewInstance);
-	info->setCategory("Decisions");
-	info->insertDynamicLibFileDependence("queue.so");
-	info->insertDynamicLibFileDependence("entitygroup.so");
-	info->setMinimumOutputs(2);
-	info->setMaximumOutputs(2);
-
-	// ...  @TODO
-	return info;
-}
-
-void Search::_createReportStatisticsDataDefinitions() {
-}
-
-void Search::_createEditableDataDefinitions() {
-}
-
-void Search::_createOthersDataDefinitions() {
 }

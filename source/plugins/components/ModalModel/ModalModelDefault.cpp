@@ -304,7 +304,7 @@ bool ModalModelDefault::_check(std::string& errorMessage) {
 void ModalModelDefault::_initBetweenReplications() {
 }
 
-void ModalModelDefault::_createInternalAndAttachedData() {
+void ModalModelDefault::_createAttachedAttributes() {
 	std::string currentNodeAttribute = "Entity.ModalModel." + getName() + ".CurrentNode";
 	std::string lastNodeAttribute = "Entity.ModalModel." + getName() + ".LastNode";
 	_attachedAttributesInsert({currentNodeAttribute, lastNodeAttribute});
@@ -484,11 +484,9 @@ void ModalModelDefault::_addSimulationControl(SimulationControl* property) {
 }
 */
 
-void ModalModelDefault::_createReportStatisticsDataDefinitions() {
+void ModalModelDefault::_createInternalStatisticReporters() {
 }
 
 void ModalModelDefault::_createEditableDataDefinitions() {
 }
 
-void ModalModelDefault::_createOthersDataDefinitions() {
-}

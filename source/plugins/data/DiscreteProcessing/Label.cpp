@@ -159,11 +159,11 @@ bool Label::_check(std::string& errorMessage) {
 
 //void Label::_createInternalAndAttachedData() {}
 
-void Label::_createReportStatisticsDataDefinitions() {
+void Label::_createInternalStatisticReporters() {
 }
 
 void Label::_createEditableDataDefinitions() {
 }
 
-void Label::_createOthersDataDefinitions() {
+void Label::_createAttachedAttributes() {
 }

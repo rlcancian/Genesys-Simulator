@@ -272,7 +272,7 @@ PluginInformation* Route::GetPluginInformation() {
 	return info;
 }
 
-void Route::_createInternalAndAttachedData() {
+void Route::_createAttachedAttributes() {
 	if (_reportStatistics) {
 		if (_numberIn == nullptr) {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
@@ -337,11 +337,9 @@ bool Route::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Route::_createReportStatisticsDataDefinitions() {
+void Route::_createInternalStatisticReporters() {
 }
 
 void Route::_createEditableDataDefinitions() {
 }
 
-void Route::_createOthersDataDefinitions() {
-}

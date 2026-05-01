@@ -147,29 +147,29 @@ bool Sequence::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Sequence::_createInternalAndAttachedData() {
-	_attachedAttributesInsert({"Entity.Sequence", "Entity.SequenceStep"});
-
-	std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
-	std::list<std::string> staleStepKeys;
-	for (const auto& pair : *attachedData) {
-		if (pair.first.rfind("StepStation", 0) == 0 || pair.first.rfind("StepLabel", 0) == 0) {
-			staleStepKeys.push_back(pair.first);
-		}
-	}
-	for (const std::string& key : staleStepKeys) {
-		_attachedDataRemove(key);
-	}
-
-	unsigned int i = 0;
-	for (SequenceStep* step : *_steps->list()) {
-		if (step != nullptr) {
-			_attachedDataInsert("StepStation" + Util::StrIndex(i), step->getStation());
-			_attachedDataInsert("StepLabel" + Util::StrIndex(i), step->getLabel());
-		}
-		i++;
-	}
-}
+// void Sequence::_createInternalAndAttachedData() {
+// 	_attachedAttributesInsert({"Entity.Sequence", "Entity.SequenceStep"});
+//
+// 	std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
+// 	std::list<std::string> staleStepKeys;
+// 	for (const auto& pair : *attachedData) {
+// 		if (pair.first.rfind("StepStation", 0) == 0 || pair.first.rfind("StepLabel", 0) == 0) {
+// 			staleStepKeys.push_back(pair.first);
+// 		}
+// 	}
+// 	for (const std::string& key : staleStepKeys) {
+// 		_attachedDataRemove(key);
+// 	}
+//
+// 	unsigned int i = 0;
+// 	for (SequenceStep* step : *_steps->list()) {
+// 		if (step != nullptr) {
+// 			_attachedDataInsert("StepStation" + Util::StrIndex(i), step->getStation());
+// 			_attachedDataInsert("StepLabel" + Util::StrIndex(i), step->getLabel());
+// 		}
+// 		i++;
+// 	}
+// }
 
 SequenceStep::SequenceStep(Station* station, std::list<Assignment*>* assignments) {
 	this->_station = station;
@@ -308,11 +308,32 @@ Label* SequenceStep::getLabel() const {
 	return _label;
 }
 
-void Sequence::_createReportStatisticsDataDefinitions() {
+void Sequence::_createInternalStatisticReporters() {
 }
 
 void Sequence::_createEditableDataDefinitions() {
 }
 
-void Sequence::_createOthersDataDefinitions() {
+void Sequence::_createAttachedAttributes() {
+	_attachedAttributesInsert({"Entity.Sequence", "Entity.SequenceStep"});
+
+	std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
+	std::list<std::string> staleStepKeys;
+	for (const auto& pair : *attachedData) {
+		if (pair.first.rfind("StepStation", 0) == 0 || pair.first.rfind("StepLabel", 0) == 0) {
+			staleStepKeys.push_back(pair.first);
+		}
+	}
+	for (const std::string& key : staleStepKeys) {
+		_attachedDataRemove(key);
+	}
+
+	unsigned int i = 0;
+	for (SequenceStep* step : *_steps->list()) {
+		if (step != nullptr) {
+			_attachedDataInsert("StepStation" + Util::StrIndex(i), step->getStation());
+			_attachedDataInsert("StepLabel" + Util::StrIndex(i), step->getLabel());
+		}
+		i++;
+	}
 }

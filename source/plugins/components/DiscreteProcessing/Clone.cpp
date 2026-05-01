@@ -124,7 +124,10 @@ bool Clone::_check(std::string& errorMessage) {
 void Clone::_initBetweenReplications() {
 }
 
-void Clone::_createInternalAndAttachedData() {
+void Clone::_createAttachedAttributes() {
+}
+
+void Clone::_createInternalStatisticReporters() {
 	if (_reportStatistics) {
 		if (_counter == nullptr) {
 			//PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
@@ -134,17 +137,10 @@ void Clone::_createInternalAndAttachedData() {
 			_internalDataInsert("CountClones", _counter);
 		}
 	} else {
-		if (_counter != nullptr) {
-			_internalDataRemove("CountClones");
-		}
+		_internalDataRemove("CountClones");
+		_counter = nullptr;
 	}
 }
 
-void Clone::_createReportStatisticsDataDefinitions() {
-}
-
 void Clone::_createEditableDataDefinitions() {
-}
-
-void Clone::_createOthersDataDefinitions() {
 }

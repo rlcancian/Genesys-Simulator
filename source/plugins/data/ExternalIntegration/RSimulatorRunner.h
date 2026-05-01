@@ -95,18 +95,13 @@ protected:
 	/*! \brief Validates the runner configuration without executing R. */
 	virtual bool _check(std::string& errorMessage) override;
 	/*! \brief Creates internal/attached data definitions; currently no-op. */
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createInternalAndAttachedData() override;
 
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
-
-
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private:
 	const struct DEFAULT_VALUES {

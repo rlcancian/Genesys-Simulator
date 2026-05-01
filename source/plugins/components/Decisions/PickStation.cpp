@@ -326,7 +326,17 @@ void PickStation::_initBetweenReplications() {
 	//_someUint = 1;
 }
 
-void PickStation::_createInternalAndAttachedData() {
+void PickStation::_createAttachedAttributes() {
+}
+
+void PickStation::_addSimulationControl(SimulationControl* property) {
+	ModelDataDefinition::_addSimulationControl(property);
+}
+
+void PickStation::_createInternalStatisticReporters() {
+}
+
+void PickStation::_createEditableDataDefinitions() {
 	unsigned int i = 0;
 	_attachedDataClear();
 	for (PickableStationItem* item : *_pickableStationItens->list()) {
@@ -350,17 +360,4 @@ void PickStation::_createInternalAndAttachedData() {
 	//	_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
 	//	_internalDataInsert("JustaDummy", _internalDataDefinition);
 	//}
-}
-
-void PickStation::_addSimulationControl(SimulationControl* property) {
-	ModelDataDefinition::_addSimulationControl(property);
-}
-
-void PickStation::_createReportStatisticsDataDefinitions() {
-}
-
-void PickStation::_createEditableDataDefinitions() {
-}
-
-void PickStation::_createOthersDataDefinitions() {
 }

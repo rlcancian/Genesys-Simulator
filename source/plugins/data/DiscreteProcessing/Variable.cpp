@@ -425,11 +425,11 @@ SparseValueStore* Variable::getInitialValueStore() {
 	return _initialValues;
 }
 
-void Variable::_createReportStatisticsDataDefinitions() {
+void Variable::_createInternalStatisticReporters() {
 }
 
 void Variable::_createEditableDataDefinitions() {
 }
 
-void Variable::_createOthersDataDefinitions() {
+void Variable::_createAttachedAttributes() {
 }

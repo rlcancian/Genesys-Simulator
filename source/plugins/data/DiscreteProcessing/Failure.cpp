@@ -352,11 +352,11 @@ void Failure::_onFailureFailEventHandler(void* resourcePtr){
 	_scheduleActivation(resource);
 }
 
-void Failure::_createReportStatisticsDataDefinitions() {
+void Failure::_createInternalStatisticReporters() {
 }
 
 void Failure::_createEditableDataDefinitions() {
 }
 
-void Failure::_createOthersDataDefinitions() {
+void Failure::_createAttachedAttributes() {
 }

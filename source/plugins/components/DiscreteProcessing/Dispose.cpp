@@ -69,26 +69,31 @@ bool Dispose::_check(std::string& errorMessage) {
 	return true;
 }
 
-void Dispose::_createInternalAndAttachedData() {
-	_attachedAttributesInsert({"Entity.ArrivalTime"});
-	if (_reportStatistics && _numberOut == nullptr) {
-		// creates the counter (and then the CStats)
-		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
-	}
-	if (_reportStatistics && _numberOut != nullptr) {
+void Dispose::_createInternalStatisticReporters() {
+	if (_reportStatistics) {
+		if (_numberOut == nullptr) {
+			_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+		}
 		_internalDataInsert("CountNumberIn", _numberOut);
 		// include StatisticsCollector needed for each EntityType
 		std::list<ModelDataDefinition*>* enttypes = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
 		for (ModelDataDefinition* modeldatum : *enttypes) {
 			if (modeldatum->isReportStatistics()) {
 				static_cast<EntityType*> (modeldatum)->addGetStatisticsCollector(modeldatum->getName() + "." + "TotalTimeInSystem");
-				}// force create this CStat before model checking
+			}// force create this CStat before model checking
 		}
-	} else if (!_reportStatistics && _numberOut != nullptr) {
-
+	} else {
+		_numberOut= nullptr;
 		_internalDataClear();
 	}
 }
+void Dispose::_createEditableDataDefinitions() {
+
+}
+void Dispose::_createAttachedAttributes() {
+	_attachedAttributesInsert({"Entity.ArrivalTime"});
+}
+
 
 PluginInformation* Dispose::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Dispose>(), &Dispose::LoadInstance, &Dispose::NewInstance);
