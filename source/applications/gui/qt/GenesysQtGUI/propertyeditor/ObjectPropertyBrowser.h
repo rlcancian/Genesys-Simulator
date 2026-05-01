@@ -185,7 +185,7 @@ private:
 
     bool _openSpecializedEditorForCurrentItem();
     bool _openSpecializedEditor(QtProperty* property);
-    bool _openTextDialogEditor(const Binding& binding);
+    bool _openTextDialogEditor(const Binding& binding, bool compactEditor);
     bool _createObjectForProperty(QtProperty* property);
 
 protected:
