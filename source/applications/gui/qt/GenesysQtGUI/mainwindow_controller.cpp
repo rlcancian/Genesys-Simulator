@@ -32,6 +32,7 @@
 #include "dialogs/dialogpluginmanager.h"
 #include "dialogs/dialogsystempreferences.h"
 #include "dialogs/DialogFind.h"
+#include "dialogs/WebWorkerDialog.h"
 #include "controllers/SimulationController.h"
 
 // std
@@ -478,6 +479,20 @@ void MainWindow::on_actionToolsParserGrammarChecker_triggered() {
     if (_dialogUtilityController != nullptr) {
         _dialogUtilityController->onActionToolsParserGrammarCheckerTriggered();
     }
+}
+
+void MainWindow::on_actionToolsWebWorker_triggered() {
+    if (_webWorkerRuntime == nullptr) {
+        _showMessageNotImplemented();
+        return;
+    }
+
+    if (_webWorkerDialog == nullptr) {
+        _webWorkerDialog = new WebWorkerDialog(_webWorkerRuntime.get(), this);
+    }
+    _webWorkerDialog->show();
+    _webWorkerDialog->raise();
+    _webWorkerDialog->activateWindow();
 }
 
 

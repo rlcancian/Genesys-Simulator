@@ -6,10 +6,12 @@
 #include <cstring>
 #include <netinet/in.h>
 #include <optional>
+#include <sys/select.h>
 #include <sstream>
 #include <sys/socket.h>
 #include <sys/time.h>
 #include <unistd.h>
+#include <iostream>
 
 namespace {
 constexpr std::size_t kMaxRequestBytes = 1024 * 1024;  // 1 MiB transport guardrail.
@@ -273,6 +275,10 @@ void configureSocketTimeouts(int fd) {
 
 SimpleHttpServer::SimpleHttpServer(unsigned short port) : _port(port) {}
 
+void SimpleHttpServer::requestStop() {
+    _stopRequested.store(true);
+}
+
 /**
  * @brief Serves one request at a time over a blocking TCP listener.
  *
@@ -280,8 +286,10 @@ SimpleHttpServer::SimpleHttpServer(unsigned short port) : _port(port) {}
  * the provided handler, serializes the response and closes the connection.
  */
 bool SimpleHttpServer::serve(const RequestHandler& handler, unsigned long maxRequests) {
+    _stopRequested.store(false);
     const int serverFd = socket(AF_INET, SOCK_STREAM, 0);
     if (serverFd < 0) {
+        std::cerr << "[SimpleHttpServer] socket() failed: " << std::strerror(errno) << std::endl;
         return false;
     }
 
@@ -294,17 +302,43 @@ bool SimpleHttpServer::serve(const RequestHandler& handler, unsigned long maxReq
     address.sin_port = htons(_port);
 
     if (bind(serverFd, reinterpret_cast<sockaddr*>(&address), sizeof(address)) < 0) {
+        std::cerr << "[SimpleHttpServer] bind() failed on port " << _port << ": "
+                  << std::strerror(errno) << std::endl;
         close(serverFd);
         return false;
     }
 
     if (listen(serverFd, 16) < 0) {
+        std::cerr << "[SimpleHttpServer] listen() failed on port " << _port << ": "
+                  << std::strerror(errno) << std::endl;
         close(serverFd);
         return false;
     }
 
     unsigned long served = 0;
-    while (maxRequests == 0 || served < maxRequests) {
+    while (!_stopRequested.load() && (maxRequests == 0 || served < maxRequests)) {
+        fd_set readfds;
+        FD_ZERO(&readfds);
+        FD_SET(serverFd, &readfds);
+
+        timeval timeout{};
+        timeout.tv_sec = 0;
+        timeout.tv_usec = 250000;
+
+        const int ready = select(serverFd + 1, &readfds, nullptr, nullptr, &timeout);
+        if (ready < 0) {
+            if (errno == EINTR) {
+                continue;
+            }
+            std::cerr << "[SimpleHttpServer] select() failed on port " << _port << ": "
+                      << std::strerror(errno) << std::endl;
+            close(serverFd);
+            return false;
+        }
+        if (ready == 0) {
+            continue;
+        }
+
         sockaddr_in clientAddress{};
         socklen_t clientLen = sizeof(clientAddress);
         const int clientFd = accept(serverFd, reinterpret_cast<sockaddr*>(&clientAddress), &clientLen);
@@ -312,6 +346,11 @@ bool SimpleHttpServer::serve(const RequestHandler& handler, unsigned long maxReq
             if (errno == EINTR) {
                 continue;
             }
+            if (_stopRequested.load()) {
+                break;
+            }
+            std::cerr << "[SimpleHttpServer] accept() failed on port " << _port << ": "
+                      << std::strerror(errno) << std::endl;
             close(serverFd);
             return false;
         }

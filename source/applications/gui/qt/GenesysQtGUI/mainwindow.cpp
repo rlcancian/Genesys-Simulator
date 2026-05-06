@@ -56,6 +56,8 @@
 #include "services/CppModelExporter.h"
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
+#include "applications/web/service/WebWorkerRuntime.h"
+#include "dialogs/WebWorkerDialog.h"
 #include "UtilGUI.h"
 #include "guithememanager.h"
 // PropEditor
@@ -370,6 +372,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     simulator->getTraceManager()->addTraceReportHandler<MainWindow>(this, &MainWindow::_simulatorTraceReportsHandler);
     simulator->getTraceManager()->addTraceSimulationHandler<MainWindow>(this, &MainWindow::_simulatorTraceSimulationHandler);
 
+    // The GUI owns an independent web runtime so the HTTP API stays ready while the editor is open.
+    _webWorkerRuntime = std::make_unique<WebWorkerRuntime>();
+
 	propertyGenesys = new PropertyEditorGenesys();
     propertyList = new std::map<SimulationControl*, DataComponentProperty*>();
     propertyEditorUI = new std::map<SimulationControl*, DataComponentEditor*>();
@@ -558,6 +563,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         ui->menuAbout->addAction(actionAboutReportIssue);
     }
 
+    QAction* actionToolsWebWorker = new QAction(tr("Web Worker"), this);
+    actionToolsWebWorker->setObjectName(QStringLiteral("actionToolsWebWorker"));
+    actionToolsWebWorker->setToolTip(tr("Open the embedded web worker control panel."));
+    connect(actionToolsWebWorker, &QAction::triggered, this, [this]() {
+        on_actionToolsWebWorker_triggered();
+    });
+    if (ui->menuTools != nullptr) {
+        ui->menuTools->insertAction(ui->actionToolsParserGrammarChecker, actionToolsWebWorker);
+        ui->menuTools->insertSeparator(ui->actionToolsParserGrammarChecker);
+    }
+
     // system preferences
     SystemPreferences::load();
     _refreshRecentModelsMenu();
@@ -610,6 +626,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // finally
     _actualizeActions();
+    if (_webWorkerRuntime != nullptr) {
+        if (!_webWorkerRuntime->start()) {
+            qWarning() << "Could not start the embedded web worker runtime at GUI startup.";
+        }
+    }
     QTimer::singleShot(0, this, [this]() {
         if (_dialogUtilityController == nullptr || simulator == nullptr || simulator->getPluginManager() == nullptr) {
             return;
@@ -626,6 +647,9 @@ MainWindow::~MainWindow() {
     // Proactively disable trace callbacks before QWidget and simulator teardown starts.
     if (simulator != nullptr && simulator->getTraceManager() != nullptr) {
         simulator->getTraceManager()->beginShutdown();
+    }
+    if (_webWorkerRuntime != nullptr) {
+        _webWorkerRuntime->stop();
     }
     _shuttingDown = true;
     _disconnectSceneSignals("~MainWindow");
