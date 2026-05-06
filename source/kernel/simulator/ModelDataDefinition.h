@@ -23,6 +23,7 @@
 #include "ParserChangesInformation.h"
 #include "Persistence.h"
 //#include "PropertyGenesys.h"
+#include "ModelDataDefinitionAssociations.h"
 #include "SimulationControlAndResponse.h"
 #include "TraceManager.h"
 
@@ -193,6 +194,24 @@ protected: //! methods to be called inside the _createInternalAndAttachedData() 
 	void _attachedDataInsert(const std::string& key, ModelDataDefinition* data);
 	void _attachedDataRemove(const std::string& key);
 	void _attachedAttributesInsert(const std::vector<std::string>& neededNames);
+	void _statisticReporterInsert(const std::string& key, ModelDataDefinition* data);
+	void _statisticReporterRemove(const std::string& key);
+	void _statisticReportersClear();
+	void _mandatoryAttachedAttributeInsert(const std::string& key, ModelDataDefinition* data);
+	void _mandatoryAttachedAttributeRemove(const std::string& key);
+	void _mandatoryAttachedAttributesClear();
+	void _mandatoryEditableDataDefinitionInsert(const std::string& key, ModelDataDefinition* data);
+	void _mandatoryEditableDataDefinitionRemove(const std::string& key);
+	void _mandatoryEditableDataDefinitionsClear();
+	void _optionalEditableDataDefinitionInsert(const std::string& key, ModelDataDefinition* data);
+	void _optionalEditableDataDefinitionRemove(const std::string& key);
+	void _optionalEditableDataDefinitionsClear();
+	void _mandatoryNonEditableDataDefinitionInsert(const std::string& key, ModelDataDefinition* data);
+	void _mandatoryNonEditableDataDefinitionRemove(const std::string& key);
+	void _mandatoryNonEditableDataDefinitionsClear();
+	void _optionalNonEditableDataDefinitionInsert(const std::string& key, ModelDataDefinition* data);
+	void _optionalNonEditableDataDefinitionRemove(const std::string& key);
+	void _optionalNonEditableDataDefinitionsClear();
 protected:
 	//! method to be called to insert attached dataelements that are referenced by string expressions (detected by the parser), to avoid orphaned data definitions
 	void _checkCreateAttachedReferencedDataDefinition(const std::string& expression);
@@ -205,8 +224,8 @@ private:
 	std::string _label;
 
 private:
-	std::map<std::string, ModelDataDefinition*>* _internalData;
-	std::map<std::string, ModelDataDefinition*>* _attachedData;
+	friend class ModelDataDefinitionAssociations;
+	ModelDataDefinitionAssociations _dataAssociations;
 
 protected:
 	Util::identification _id;
