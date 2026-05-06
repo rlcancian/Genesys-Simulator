@@ -414,8 +414,18 @@ void EditCommandController::helpCopy() const {
             AnimationVariable* copiedItem = new AnimationVariable();
             copiedItem->setRect(0, 0, animationVariable->boundingRect().width(), animationVariable->boundingRect().height());
             copiedItem->setPos(animationVariable->pos());
-            copiedItem->setVariable(animationVariable->getVariable());
-            copiedItem->setValue(animationVariable->getValue());
+            auto* currentModel = (_graphicsView != nullptr && _graphicsView->getScene() != nullptr
+                                  && _graphicsView->getScene()->getSimulator() != nullptr
+                                  && _graphicsView->getScene()->getSimulator()->getModelManager() != nullptr)
+                                     ? _graphicsView->getScene()->getSimulator()->getModelManager()->current()
+                                     : nullptr;
+            copiedItem->setModel(currentModel);
+            copiedItem->setDataDefinition(animationVariable->getDataDefinition());
+            copiedItem->setTargetName(animationVariable->getTargetName().toStdString());
+            copiedItem->setIdVariable(animationVariable->getTargetId());
+            for (unsigned int dimensionIndex = 0; dimensionIndex + 2u < animationVariable->getDimensionCount(); ++dimensionIndex) {
+                copiedItem->setSliceIndex(dimensionIndex, animationVariable->getSliceIndex(dimensionIndex));
+            }
             drawingAux->append(copiedItem);
             continue;
         }

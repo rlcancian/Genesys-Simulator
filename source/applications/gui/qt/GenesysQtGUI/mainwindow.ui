@@ -922,7 +922,6 @@
       <string>Animate</string>
      </property>
      <addaction name="actionAnimateSimulatedTime"/>
-     <addaction name="actionAnimateAttribute"/>
      <addaction name="actionAnimateEntity"/>
      <addaction name="actionAnimateEvent"/>
      <addaction name="actionAnimateCounter"/>
@@ -1341,7 +1340,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <addaction name="actionAnimateSimulatedTime"/>
    <addaction name="actionAnimateEntity"/>
    <addaction name="actionAnimateEvent"/>
-   <addaction name="actionAnimateAttribute"/>
    <addaction name="actionAnimateStatistics"/>
    <addaction name="actionAnimateCounter"/>
    <addaction name="separator"/>
@@ -1856,7 +1854,10 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/resources/ToolBar/_animvalor.bmp</normaloff>:/resources/ToolBar/_animvalor.bmp</iconset>
    </property>
    <property name="text">
-    <string>Variable</string>
+    <string>Variable and Attribute</string>
+   </property>
+   <property name="toolTip">
+    <string>Animate Variable and Attribute</string>
    </property>
   </action>
   <action name="actionAnimateExpression">
@@ -2135,6 +2136,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <action name="actionAnimateAttribute">
    <property name="checkable">
     <bool>true</bool>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
    </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">

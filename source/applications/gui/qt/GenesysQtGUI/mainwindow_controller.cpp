@@ -442,7 +442,7 @@ void MainWindow::on_actionAnimateEvent_triggered()
 void MainWindow::on_actionAnimateAttribute_triggered()
 {
     if (_sceneToolController != nullptr) {
-        _sceneToolController->onActionAnimateAttributeTriggered();
+        _sceneToolController->onActionAnimateVariableTriggered();
     }
 }
 

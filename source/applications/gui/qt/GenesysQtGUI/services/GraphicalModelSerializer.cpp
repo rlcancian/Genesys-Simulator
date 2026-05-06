@@ -42,6 +42,8 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
+#include <QStringList>
+#include <algorithm>
 #include <cmath>
 #include <set>
 #include <vector>
@@ -644,13 +646,22 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     }
                     const int persistedId = nextAutonomousItemId--;
                     persistedItemIds.insert(variable, persistedId);
-                    int idVariable = -1;
-                    if (variable->getVariable() != nullptr) {
-                        idVariable = variable->getVariable()->getId();
-                    }
-                    line = QString("%1 \t AnimationVariable \t id=%2 \t position=(%3,%4) \t width=%5 \t height=%6")
+                    line = QString("%1 \t AnimationVariable \t id=%2 \t target=")
                                .arg(persistedId)
-                               .arg(idVariable)
+                               .arg(variable->getTargetId());
+                    line += encodeGuiText(variable->getTargetName());
+                    if (variable->getDimensionCount() > 2u) {
+                        QString sliceText;
+                        for (unsigned int i = 0; i < variable->getDimensionCount() - 2u; ++i) {
+                            if (i > 0) {
+                                sliceText += ",";
+                            }
+                            sliceText += QString::number(variable->getSliceIndex(i));
+                        }
+                        line += " \t slices=";
+                        line += sliceText;
+                    }
+                    line += QString(" \t position=(%1,%2) \t width=%3 \t height=%4")
                                .arg(variable->scenePos().x(), 0, 'f', 2)
                                .arg(variable->scenePos().y(), 0, 'f', 2)
                                .arg(variable->boundingRect().width(), 0, 'f', 2)
@@ -1527,10 +1538,22 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 if (animationType.compare("AnimationVariable", Qt::CaseInsensitive) == 0) {
                     AnimationVariable* variable = new AnimationVariable();
                     QRegularExpressionMatch idMatch = QRegularExpression("\\s*id=(-?\\d+)").match(rawLine);
+                    QRegularExpressionMatch targetMatch = QRegularExpression("\\s*target=([^\\t]*)").match(rawLine);
+                    QRegularExpressionMatch slicesMatch = QRegularExpression("\\s*slices=([^\\t]*)").match(rawLine);
                     QRegularExpressionMatch posMatch = regexPosition.match(rawLine);
                     QRegularExpressionMatch sizeMatch = regexSize.match(rawLine);
                     if (idMatch.hasMatch() && posMatch.hasMatch() && sizeMatch.hasMatch()) {
+                        variable->setModel(_graphicsView->getScene()->getSimulator()->getModelManager()->current());
                         variable->setIdVariable(idMatch.captured(1).toInt());
+                        if (targetMatch.hasMatch()) {
+                            variable->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()).toStdString());
+                        }
+                        if (slicesMatch.hasMatch()) {
+                            const QStringList slices = decodeGuiText(slicesMatch.captured(1).trimmed()).split(',', Qt::SkipEmptyParts);
+                            for (int sliceIndex = 0; sliceIndex < slices.size(); ++sliceIndex) {
+                                variable->setSliceIndex(static_cast<unsigned int>(sliceIndex), static_cast<unsigned int>(std::max(0, slices.at(sliceIndex).toInt())));
+                            }
+                        }
                         variable->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
                         variable->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
                         _graphicsView->getScene()->getAnimationsVariable()->append(variable);
@@ -1669,7 +1692,21 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 AnimationVariable* variable = new AnimationVariable();
                 QRegularExpressionMatch match = regex.match(line);
                 if (match.hasMatch()) {
+                    variable->setModel(_graphicsView->getScene()->getSimulator()->getModelManager()->current());
                     variable->setIdVariable(match.captured(2).toInt());
+                    const QRegularExpression targetRegex("\\s*target=([^\\t]*)");
+                    const QRegularExpression slicesRegex("\\s*slices=([^\\t]*)");
+                    const QRegularExpressionMatch targetMatch = targetRegex.match(line);
+                    const QRegularExpressionMatch slicesMatch = slicesRegex.match(line);
+                    if (targetMatch.hasMatch()) {
+                        variable->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()).toStdString());
+                    }
+                    if (slicesMatch.hasMatch()) {
+                        const QStringList slices = decodeGuiText(slicesMatch.captured(1).trimmed()).split(',', Qt::SkipEmptyParts);
+                        for (int sliceIndex = 0; sliceIndex < slices.size(); ++sliceIndex) {
+                            variable->setSliceIndex(static_cast<unsigned int>(sliceIndex), static_cast<unsigned int>(std::max(0, slices.at(sliceIndex).toInt())));
+                        }
+                    }
                     variable->setRect(QRectF(0, 0, match.captured(5).toDouble(), match.captured(6).toDouble()).normalized());
                     variable->setPos(QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
                     _graphicsView->getScene()->getAnimationsVariable()->append(variable);

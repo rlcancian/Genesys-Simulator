@@ -282,7 +282,7 @@ void SceneToolController::onActionAnimateCounterTriggered() {
 }
 
 void SceneToolController::onActionAnimateAttributeTriggered() {
-    activateAnimationDrawingTool(_ui->actionAnimateAttribute, &ModelGraphicsScene::drawingAttribute);
+    onActionAnimateVariableTriggered();
 }
 
 void SceneToolController::onActionAnimateEntityTriggered() {

@@ -4,8 +4,10 @@
 #include <QDialog>
 #include <QComboBox>
 #include <QPushButton>
+#include <QList>
+#include <QMap>
 
-#include "../../../../../plugins/data/Logic/Variable.h"
+class ModelDataDefinition;
 
 class DialogSelectVariable : public QDialog {
     Q_OBJECT
@@ -13,8 +15,8 @@ class DialogSelectVariable : public QDialog {
 public:
     explicit DialogSelectVariable(QWidget *parent = nullptr);
 
-    Variable* selectedIndex() const;
-    void setVariableItems(QList<Variable *> *variables, Variable *variable);
+    ModelDataDefinition* selectedIndex() const;
+    void setVariableItems(QList<ModelDataDefinition *> *definitions, ModelDataDefinition *definition);
 
 private slots:
     void onOkClicked();
@@ -24,7 +26,7 @@ private:
     QComboBox *comboBox;
     QPushButton *okButton;
     QPushButton *cancelButton;
-    QMap<int, Variable*> indexToVariable;
+    QMap<int, ModelDataDefinition*> indexToVariable;
 };
 
 #endif // DIALOGSELECTVARIABLE_H

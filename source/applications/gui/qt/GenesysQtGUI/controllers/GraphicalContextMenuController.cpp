@@ -473,7 +473,6 @@ void GraphicalContextMenuController::addAnimateMenu(QMenu* menu) const {
 
     QMenu* animateMenu = menu->addMenu("Animate");
     animateMenu->addAction(_ui->actionAnimateSimulatedTime);
-    animateMenu->addAction(_ui->actionAnimateAttribute);
     animateMenu->addAction(_ui->actionAnimateEntity);
     animateMenu->addAction(_ui->actionAnimateEvent);
     animateMenu->addAction(_ui->actionAnimateCounter);

@@ -76,6 +76,7 @@ private:
         bool isObjectSelector = false;
         bool isModelObjectAction = false;
         bool isObjectListAction = false;
+        bool isMultilineTextAction = false;
         QGraphicsItem* graphicsItem = nullptr;
         bool graphicsRequiresCommit = false;
         std::function<void(const QVariant&)> graphicsVariantSetter;
@@ -186,6 +187,7 @@ private:
     bool _openSpecializedEditorForCurrentItem();
     bool _openSpecializedEditor(QtProperty* property);
     bool _openTextDialogEditor(const Binding& binding, bool compactEditor);
+    bool _openMultilineTextDialogEditor(const Binding& binding);
     bool _createObjectForProperty(QtProperty* property);
 
 protected:
@@ -204,6 +206,8 @@ private:
     bool _isDeferredRebuildScheduled = false;
     // Coalesce queued model-change callbacks while one deferred dispatch is already scheduled.
     bool _isDeferredModelChangedScheduled = false;
+    // Prevent recursive handling when a multiline text action resets its combo-box selection.
+    bool _isHandlingMultilineTextAction = false;
 
 private:
     // Execute property rebuild with reentrancy suppression and deferred retry support.
