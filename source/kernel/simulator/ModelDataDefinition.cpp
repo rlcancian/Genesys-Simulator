@@ -472,7 +472,10 @@ bool ModelDataDefinition::Check(ModelDataDefinition* modeldatum, std::string& er
 void ModelDataDefinition::CreateInternalData(ModelDataDefinition* modeldatum) {
 	try {
 		Util::IncIndent();
-		modeldatum->_createInternalAndAttachedData();
+		modeldatum->_templateCreateInternalStatisticReporters();
+		modeldatum->_templateCreateNonEditableDataDefinitions();
+		modeldatum->_templateCreateEditableDataDefinitions();
+		modeldatum->_templateCreateAttachedAttributes();
 		Util::DecIndent();
 	}
 	catch (const std::exception& e) {

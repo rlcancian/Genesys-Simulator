@@ -173,7 +173,7 @@ protected: //! could be overriden by derived classes
  * and, I don´t know, maybe other kind of internal and attached nedded stuff?
  */
 protected:
-	/*! This method is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
+	/*! Legacy compatibility hook. Prefer the granular create* methods and the composed association manager. */
 	virtual void _createInternalAndAttachedData(); // final; //@Todo: will be final
 protected:
 	virtual void _createInternalStatisticReporters();
@@ -185,7 +185,7 @@ protected:
 	void _templateCreateAttachedAttributes();
 	void _templateCreateNonEditableDataDefinitions();
 	void _templateCreateEditableDataDefinitions();
-protected: //! methods to be called inside the _createInternalAndAttachedData() method
+protected: //! legacy helper methods used by the granular create* hooks
 	void _internaStatisticReportersClear();
 	void _internalDataClear();
 	void _internalDataInsert(const std::string& key, ModelDataDefinition* child);
