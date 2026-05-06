@@ -118,7 +118,7 @@ void BioRunnerCommand::_saveInstance(PersistenceRecord* fields, bool saveDefault
 
 bool BioRunnerCommand::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BioSimulatorRunner>(), _runner, "Runner", errorMessage);
 	if (_command.empty()) {

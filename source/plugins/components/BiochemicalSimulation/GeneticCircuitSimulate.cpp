@@ -150,7 +150,7 @@ void GeneticCircuitSimulate::_saveInstance(PersistenceRecord* fields, bool saveD
 
 bool GeneticCircuitSimulate::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<GeneticCircuit>(), _geneticCircuit, "GeneticCircuit", errorMessage);
 	if (_stepSize <= 0.0) {
 		errorMessage += "GeneticCircuitSimulate \"" + getName() + "\" must define stepSize > 0. ";

@@ -31,7 +31,7 @@ ModelDataDefinition* CppForG::NewInstance(Model* model, std::string name) {
 }
 
 CppForG::CppForG(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<CppForG>(), name) {
-	_createInternalAndAttachedData();
+	_createNonEditableDataDefinitions();
 
 	SimulationControlGeneric<std::string>* propDispatchEvent = new SimulationControlGeneric<std::string>(
 									std::bind(&CppForG::getOnDispatchEventCode, this), std::bind(&CppForG::setOnDispatchEventCode, this, std::placeholders::_1),
@@ -254,7 +254,7 @@ PluginInformation* CppForG::GetPluginInformation() {
 
 // void CppForG::_createInternalStatisticReporters() { }
 
-void CppForG::_createEditableDataDefinitions() {
+void CppForG::_createNonEditableDataDefinitions() {
 	if (_cppCompiler == nullptr) {
 		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
 		_cppCompiler->setSourceFilename(getName() + ".cpp");

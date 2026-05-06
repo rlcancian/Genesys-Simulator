@@ -80,7 +80,7 @@ ModelComponent* Match::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Match::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
-		_createInternalAndAttachedData();
+		_createEditableDataDefinitions();
 	}
 	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
 		traceError("Match internal queues are not initialized.", TraceManager::Level::L1_errorFatal);

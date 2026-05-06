@@ -137,7 +137,7 @@ void BioSimulate::_saveInstance(PersistenceRecord* fields, bool saveDefaultValue
 
 bool BioSimulate::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BioNetwork>(), _bioNetwork, "BioNetwork", errorMessage);
 	if (!_useNetworkTimeWindow) {

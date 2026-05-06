@@ -124,7 +124,7 @@ void GeneticExpressionStep::_saveInstance(PersistenceRecord* fields, bool saveDe
 
 bool GeneticExpressionStep::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<GeneticCircuit>(), _geneticCircuit, "GeneticCircuit", errorMessage);
 	if (_timeStep <= 0.0) {
 		errorMessage += "GeneticExpressionStep \"" + getName() + "\" must define timeStep > 0. ";

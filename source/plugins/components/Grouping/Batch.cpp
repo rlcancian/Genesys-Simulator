@@ -180,7 +180,7 @@ void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		_entityGroup = dynamic_cast<EntityGroup*>(groupByName);
 	}
 	if (_queue == nullptr || _entityGroup == nullptr) {
-		_createInternalAndAttachedData();
+		_createNonEditableDataDefinitions();
 		if (_queue == nullptr || _entityGroup == nullptr) {
 			traceError("Batch internal data is not initialized (Queue/EntityGroup).", TraceManager::Level::L1_errorFatal);
 			return;
@@ -334,15 +334,8 @@ void Batch::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	}
 }
 
-void Batch::_createAttachedAttributes() {
-	// Keep attached-data keys stable across rechecks and remove stale aliases.
-	_attachedAttributesInsert({"Entity.Group"});
-	_optionalEditableDataDefinitionRemove("GroupdEntityType");
-	if (_groupedEntityType != nullptr) {
-		_optionalEditableDataDefinitionInsert("GroupedEntityType", _groupedEntityType);
-	} else {
-		_optionalEditableDataDefinitionRemove("GroupedEntityType");
-	}
+void Batch::_createNonEditableDataDefinitions() {
+	// Keep the internal queue and grouping entity as mandatory non-editable data definitions.
 	if ((_queue == nullptr || _entityGroup == nullptr)) {
 		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 		if (_queue == nullptr) {
@@ -376,6 +369,15 @@ void Batch::_createAttachedAttributes() {
 	} else {
 		_mandatoryNonEditableDataDefinitionRemove("EntityGroup");
 	}
+}
+
+void Batch::_createEditableDataDefinitions() {
+	_optionalEditableDataDefinitionRemove("GroupedEntityType");
+	if (_groupedEntityType != nullptr) {
+		_optionalEditableDataDefinitionInsert("GroupedEntityType", _groupedEntityType);
+	} else {
+		_optionalEditableDataDefinitionRemove("GroupedEntityType");
+	}
 	if (_attributeName != "") {
 		ModelDataManager* elements = _parentModel->getDataManager();
 		ModelDataDefinition* attribute = elements->getDataDefinition(Util::TypeOf<Attribute>(), _attributeName);
@@ -383,6 +385,11 @@ void Batch::_createAttachedAttributes() {
 	} else {
 		_optionalEditableDataDefinitionRemove("AttributeName");
 	}
+}
+
+void Batch::_createAttachedAttributes() {
+	// Keep attached-data keys stable across rechecks.
+	_attachedAttributesInsert({"Entity.Group"});
 }
 
 bool Batch::_check(std::string& errorMessage) {

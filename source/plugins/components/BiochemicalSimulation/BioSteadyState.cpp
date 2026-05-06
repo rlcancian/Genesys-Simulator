@@ -128,7 +128,7 @@ void BioSteadyState::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 
 bool BioSteadyState::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BioNetwork>(), _bioNetwork, "BioNetwork", errorMessage);
 	if (_tolerance < 0.0) {

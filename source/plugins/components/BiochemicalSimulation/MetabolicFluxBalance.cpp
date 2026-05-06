@@ -116,7 +116,7 @@ void MetabolicFluxBalance::_saveInstance(PersistenceRecord* fields, bool saveDef
 
 bool MetabolicFluxBalance::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<MetabolicNetwork>(), _metabolicNetwork, "MetabolicNetwork", errorMessage);
 	if (_metabolicNetwork != nullptr) {
 		const std::string selectedObjective = _objectiveReactionName.empty() ? _metabolicNetwork->getObjectiveReactionName() : _objectiveReactionName;

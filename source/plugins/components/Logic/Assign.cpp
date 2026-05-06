@@ -77,7 +77,7 @@ List<Assignment*>* Assign::getAssignments() const {
 void Assign::addAssignment(Assignment* newAssignment) {
 	_prepareAssignment(newAssignment);
 	_assignments->insert(newAssignment);
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 }
 
 void Assign::removeAssignment(Assignment* assignment) {
@@ -85,7 +85,7 @@ void Assign::removeAssignment(Assignment* assignment) {
 		assignment->setChangeCallback(nullptr);
 	}
 	_assignments->remove(assignment);
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 }
 
 PluginInformation* Assign::GetPluginInformation() {
@@ -188,8 +188,7 @@ void Assign::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Assign::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
-	_optionalEditableDataDefinitionsClear();
+	_createEditableDataDefinitions();
 	int i = 0;
 	for (Assignment* let : *_assignments->list()) {
 		if (let->getDestination().empty()) {
@@ -243,7 +242,7 @@ void Assign::_prepareAssignment(Assignment* assignment) {
 	}
 	assignment->ensureSimulationControls(_parentModel);
 	assignment->setChangeCallback([this](Assignment&) {
-		this->_createInternalAndAttachedData();
+		this->_createEditableDataDefinitions();
 	});
 }
 

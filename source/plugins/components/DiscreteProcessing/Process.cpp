@@ -30,7 +30,7 @@ ModelDataDefinition* Process::NewInstance(Model* model, std::string name) {
 
 Process::Process(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Process>(), name) {
 	_flagConstructing = true;
-	_createInternalAndAttachedData(); // its's called by the constructor because internal components can be accessed by process' public methods, so they must exist ever since
+	_createNonEditableDataDefinitions(); // internal components must exist before public accessors can touch them
 	_flagConstructing = false;
 
 	SimulationControlGeneric<unsigned short>* propPriority = new SimulationControlGeneric<unsigned short>(
@@ -347,6 +347,10 @@ bool Process::_check(std::string& errorMessage) {
 }
 
 // void Process::_createInternalStatisticReporters() { }
+
+void Process::_createNonEditableDataDefinitions() {
+	_ensureInternalComponents();
+}
 
 void Process::_createEditableDataDefinitions() {
 	_ensureInternalComponents();

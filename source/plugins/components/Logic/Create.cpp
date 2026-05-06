@@ -178,8 +178,8 @@ bool Create::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Create::_createInternalAndAttachedData() {
-	SourceModelComponent::_createInternalAndAttachedData();
+void Create::_createEditableDataDefinitions() {
+	SourceModelComponent::_createEditableDataDefinitions();
 	if (_timeBetweenCreationsSchedule != nullptr) {
 		_optionalEditableDataDefinitionInsert("TimeBetweenCreationsSchedule", _timeBetweenCreationsSchedule);
 	} else {
@@ -190,7 +190,9 @@ void Create::_createInternalAndAttachedData() {
 	} else {
 		_optionalEditableDataDefinitionRemove("TimeBetweenCreationsFormula");
 	}
+}
 
+void Create::_createInternalStatisticReporters() {
 	if (_reportStatistics && _numberOut == nullptr) {
 		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberOut", this);
 		_statisticReporterInsert("CountNumberOut", _numberOut);

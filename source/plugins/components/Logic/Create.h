@@ -92,7 +92,8 @@ protected:
 	virtual void _initBetweenReplications() override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+	virtual void _createInternalStatisticReporters() override;
+	virtual void _createEditableDataDefinitions() override;
 private:
 	double _lastArrival = -1.0;
 private: // internal elements
