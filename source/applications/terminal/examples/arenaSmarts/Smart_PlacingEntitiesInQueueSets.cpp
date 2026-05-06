@@ -19,10 +19,10 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/Template/DummyComponent.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "plugins/components/Logic/Assign.h"
 #include "plugins/components/Synchronization/Wait.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "../../../TraitsApp.h"

@@ -80,11 +80,8 @@ PluginInformation* Access::GetPluginInformation() {
 
 
 
-void Access::_createReportStatisticsDataDefinitions() {
-}
+// void Access::_createInternalStatisticReporters() { }
 
-void Access::_createEditableDataDefinitions() {
-}
+// void Access::_createEditableDataDefinitions() { }
 
-void Access::_createOthersDataDefinitions() {
-}
+// void Access::_createAttachedAttributes() { }

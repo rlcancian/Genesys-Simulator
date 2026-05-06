@@ -160,10 +160,12 @@ protected:
 	virtual void _initBetweenReplications() override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createReportStatisticsDataDefinitions() override;
+protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
 	virtual void _createEditableDataDefinitions() override;
-	virtual void _createOthersDataDefinitions() override;
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalAndAttachedData() override;
 private:
 	void _handlerForResourceEvent(Resource* resource); //!< This method is indirectally invocked (notified) by resource when it's released, since it was added as ResourceEventHandler
 	Resource* _getResourceFromSeizableItem(SeizableItem* seizable, Entity* entity, unsigned int*indexPtr);

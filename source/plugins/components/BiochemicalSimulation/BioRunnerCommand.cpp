@@ -118,7 +118,7 @@ void BioRunnerCommand::_saveInstance(PersistenceRecord* fields, bool saveDefault
 
 bool BioRunnerCommand::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BioSimulatorRunner>(), _runner, "Runner", errorMessage);
 	if (_command.empty()) {
@@ -128,13 +128,7 @@ bool BioRunnerCommand::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioRunnerCommand::_createInternalAndAttachedData() {
-	if (_runner != nullptr) {
-		_attachedDataInsert("BioSimulatorRunner", _runner);
-	} else {
-		_attachedDataRemove("BioSimulatorRunner");
-	}
-}
+// void BioRunnerCommand::_createAttachedAttributes() {}
 
 void BioRunnerCommand::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
@@ -217,11 +211,12 @@ std::string BioRunnerCommand::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioRunnerCommand::_createReportStatisticsDataDefinitions() {
-}
+// void BioRunnerCommand::_createInternalStatisticReporters() { }
 
 void BioRunnerCommand::_createEditableDataDefinitions() {
-}
-
-void BioRunnerCommand::_createOthersDataDefinitions() {
+	if (_runner != nullptr) {
+		_optionalEditableDataDefinitionInsert("BioSimulatorRunner", _runner);
+	} else {
+		_optionalEditableDataDefinitionRemove("BioSimulatorRunner");
+	}
 }

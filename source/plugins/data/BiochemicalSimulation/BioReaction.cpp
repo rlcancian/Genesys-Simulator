@@ -224,10 +224,10 @@ bool BioReaction::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioReaction::_createInternalAndAttachedData() {
-	// BioReaction does not own internal children yet, but it exposes participant links as attached species.
-	syncParticipantAttachedSpecies();
-}
+// void BioReaction::_createInternalAndAttachedData() {
+// 	// BioReaction does not own internal children yet, but it exposes participant links as attached species.
+// 	syncParticipantAttachedSpecies();
+// }
 
 bool BioReaction::validateKineticLawExpression(std::string& errorMessage) const {
 	return validateKineticLawExpression(_kineticLawExpression, "kineticLawExpression", errorMessage);
@@ -456,7 +456,7 @@ void BioReaction::syncParticipantAttachedSpecies() {
 			}
 		}
 		for (const std::string& key : keysToRemove) {
-			_attachedDataRemove(key);
+			_optionalEditableDataDefinitionRemove(key);
 		}
 	};
 
@@ -473,7 +473,7 @@ void BioReaction::syncParticipantAttachedSpecies() {
 			auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(
 				Util::TypeOf<BioSpecies>(), terms[i].speciesName));
 			// Only existing species become visual links; missing names remain validated by _check().
-			_attachedDataInsert(prefix + Util::StrIndex(i), species);
+			_optionalEditableDataDefinitionInsert(prefix + Util::StrIndex(i), species);
 		}
 	};
 
@@ -483,15 +483,15 @@ void BioReaction::syncParticipantAttachedSpecies() {
 		auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(
 			Util::TypeOf<BioSpecies>(), _modifiers[i]));
 		// Modifier links are attached the same way as stoichiometric participants so the generic builder can render them.
-		_attachedDataInsert(std::string(kModifierAttachmentPrefix) + Util::StrIndex(i), species);
+		_optionalEditableDataDefinitionInsert(std::string(kModifierAttachmentPrefix) + Util::StrIndex(i), species);
 	}
 }
 
-void BioReaction::_createReportStatisticsDataDefinitions() {
-}
+// void BioReaction::_createInternalStatisticReporters() { }
 
-void BioReaction::_createEditableDataDefinitions() {
-}
+// void BioReaction::_createEditableDataDefinitions() { }
 
-void BioReaction::_createOthersDataDefinitions() {
+void BioReaction::_createAttachedAttributes() {
+	// BioReaction does not own internal children yet, but it exposes participant links as attached species.
+	syncParticipantAttachedSpecies();
 }

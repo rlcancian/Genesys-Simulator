@@ -80,7 +80,7 @@ ModelComponent* Match::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Match::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
-		_createInternalAndAttachedData();
+		_createEditableDataDefinitions();
 	}
 	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
 		traceError("Match internal queues are not initialized.", TraceManager::Level::L1_errorFatal);
@@ -247,28 +247,7 @@ bool Match::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Match::_createInternalAndAttachedData() {
-	while (_queues->size() > _numberOfQueues) {
-		Queue* obsoleteQueue = _queues->last();
-		_internalDataRemove(obsoleteQueue->getName());
-		_queues->remove(_queues->last());
-		_entitiesByAttrib->erase(obsoleteQueue);
-	}
-	while (_queues->size() < _numberOfQueues) {
-		Queue* newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
-		if (newQueue == nullptr) {
-			newQueue = new Queue(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
-		}
-		ModelDataDefinition::CreateInternalData(newQueue);
-		_queues->insert(newQueue);
-		_internalDataInsert(newQueue->getName(), newQueue);
-	}
-	for (Queue* queue : *_queues->list()) {
-		if (queue != nullptr) {
-			_internalDataInsert(queue->getName(), queue);
-		}
-	}
-}
+//void Match::_createAttachedAttributes() {}
 
 PluginInformation * Match::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Match>(), &Match::LoadInstance, &Match::NewInstance);
@@ -279,11 +258,28 @@ PluginInformation * Match::GetPluginInformation() {
 	return info;
 }
 
-void Match::_createReportStatisticsDataDefinitions() {
-}
+// void Match::_createInternalStatisticReporters() { }
 
 void Match::_createEditableDataDefinitions() {
-}
+	while (_queues->size() > _numberOfQueues) {
+		Queue* obsoleteQueue = _queues->last();
+		_mandatoryNonEditableDataDefinitionRemove(obsoleteQueue->getName());
+		_queues->remove(_queues->last());
+		_entitiesByAttrib->erase(obsoleteQueue);
+	}
+	while (_queues->size() < _numberOfQueues) {
+		Queue* newQueue = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Queue>(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+		if (newQueue == nullptr) {
+			newQueue = new Queue(_parentModel, getName() + ".Queue" + std::to_string(_queues->size()));
+		}
+		ModelDataDefinition::CreateInternalData(newQueue);
+		_queues->insert(newQueue);
+		_mandatoryNonEditableDataDefinitionInsert(newQueue->getName(), newQueue);
+	}
+	for (Queue* queue : *_queues->list()) {
+		if (queue != nullptr) {
+			_mandatoryNonEditableDataDefinitionInsert(queue->getName(), queue);
+		}
+	}
 
-void Match::_createOthersDataDefinitions() {
 }

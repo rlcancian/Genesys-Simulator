@@ -42,191 +42,243 @@ class Simulator;
  */
 class Model {
 public:
+	/*!
+	 * \brief Creates a model bound to a simulator.
+	 * \param simulator Parent simulator that owns the model.
+	 * \param level Hierarchy level of the model within the simulator.
+	 */
 	Model(Simulator* simulator, unsigned int level = 0);
+	/*!
+	 * \brief Releases model-owned runtime state.
+	 */
 	virtual ~Model();
 public: // model control
 	//void showReports();
 	/*!
-	 * \brief save
-	 * \param filename
-	 * \return
+	 * \brief Saves the model to a file.
+	 * \param filename Output filename.
+	 * \return \c true when saving succeeds.
 	 */
 	bool save(std::string filename);
 	/*!
-	 * \brief load
-	 * \param filename
-	 * \return
+	 * \brief Loads the model from a file.
+	 * \param filename Input filename.
+	 * \return \c true when loading succeeds.
 	 */
 	bool load(std::string filename);
 	/*!
-	 * \brief check
-	 * \return
+	 * \brief Validates the model structure and configuration.
+	 * \details Checks the integrity and consistency of the model, may correct
+	 * some inconsistencies, and returns whether the model is ready to be
+	 * simulated.
+	 * \return \c true when the model is ready to simulate.
 	 */
-	bool check(); //!< Checks the integrity and consistency of the model, possibly corrects some inconsistencies, and returns if the model is in position to the simulated.
+	bool check();
 	/*!
-	 * \brief clear
+	 * \brief Clears the current model content.
 	 */
 	void clear();
 	/*!
-	 * \brief showLanguage
-	 * \return
+	 * \brief Returns the model specification in the source language.
+	 * \return Textual model specification.
 	 */
 	std::string showLanguage();
 	/*!
-	 * \brief show
+	 * \brief Displays the model contents to the configured trace output.
 	 */
 	void show();
 	/*!
-	 * \brief insert
-	 * \param elemOrComp
-	 * \return
+	 * \brief Inserts a model data definition or component into the model.
+	 * \details This is a generic entry point for either
+	 * ComponentManager->insert() or ModelDataManager->insert().
+	 * \param elemOrComp Object to insert.
+	 * \return \c true when the object was accepted.
 	 */
-	bool insert(ModelDataDefinition* elemOrComp); //!< Insert a new ModelDataDefinition or ModelComponent into the model (since 20191015). It's a generic access to ComponentManager->insert() or ModelDatao->insert()
+	bool insert(ModelDataDefinition* elemOrComp);
 	/*!
-	 * \brief remove
-	 * \param elemOrComp
+	 * \brief Removes a model data definition or component from the model.
+	 * \details This is a generic entry point for either
+	 * ComponentManager->remove() or ModelDataManager->remove().
+	 * \param elemOrComp Object to remove.
 	 */
-	void remove(ModelDataDefinition* elemOrComp); //!< Remove a new ModelDataDefinition or ModelComponent into the model (since 20191015). It's a generic access to ComponentManager->remove() or ModelDatao->remove()
-	/*! \brief Computes data definitions that become removable with a localized root removal. */
+	void remove(ModelDataDefinition* elemOrComp);
+	/*!
+	 * \brief Computes the data definitions that should be removed together with a set of roots.
+	 * \param roots Root objects selected for removal.
+	 * \return Flattened list of dependent data definitions to remove as well.
+	 */
 	std::list<ModelDataDefinition*> collectDataDefinitionsRemovedWith(const std::list<ModelDataDefinition*>& roots) const;
 	/*!
-	 * \brief createEntity
-	 * \param name
-	 * \param insertIntoModel
-	 * \return
+	 * \brief Creates an entity owned by this model.
+	 * \param name Entity name.
+	 * \param insertIntoModel If \c true, inserts the entity into the model immediately.
+	 * \return Newly created entity.
 	 */
 	Entity* createEntity(std::string name, bool insertIntoModel = true);
 	/*!
-	 * \brief removeEntity
-	 * \param entity
+	 * \brief Removes an entity owned by this model.
+	 * \param entity Entity to remove.
 	 */
 	void removeEntity(Entity* entity); //, bool collectStatistics);
 	/*!
-	 * \brief sendEntityToComponent
-	 * \param entity
-	 * \param connection
-	 * \param timeDelay
+	 * \brief Schedules an entity transfer through a specific connection.
+	 * \details Used by components to send entities to the next connected
+	 * component, or by the model itself while processing an event.
+	 * \param entity Entity to transfer.
+	 * \param connection Destination connection.
+	 * \param timeDelay Delay applied before the entity reaches the destination.
 	 */
-	void sendEntityToComponent(Entity* entity, Connection* connection, double timeDelay = 0.0); //!< Used by components (ModelComponent) to send entities to another specific component, usually the next one connected to it, or used by the model itself, when processing an event (Event).
+	void sendEntityToComponent(Entity* entity, Connection* connection, double timeDelay = 0.0);
 	/*!
-	 * \brief sendEntityToComponent
-	 * \param entity
-	 * \param component
-	 * \param timeDelay
-	 * \param componentinputPortNumber
+	 * \brief Schedules an entity transfer to a specific component and input port.
+	 * \details Used by components to send entities to the next connected
+	 * component, or by the model itself while processing an event.
+	 * \param entity Entity to transfer.
+	 * \param component Destination component.
+	 * \param timeDelay Delay applied before the entity reaches the destination.
+	 * \param componentinputPortNumber Destination input port number.
 	 */
-	void sendEntityToComponent(Entity* entity, ModelComponent* component, double timeDelay = 0.0, unsigned int componentinputPortNumber = 0); //!< Used by components (ModelComponent) to send entities to another specific component, usually the next one connected to it, or used by the model itself, when processing an event (Event).
+	void sendEntityToComponent(Entity* entity, ModelComponent* component, double timeDelay = 0.0, unsigned int componentinputPortNumber = 0);
 	/*!
-	 * \brief parseExpression
-	 * \param expression
-	 * \return
+	 * \brief Parses and evaluates an expression.
+	 * \details The parser always returns a double, even when the expression has
+	 * syntax errors, in which case the result is 0.
+	 * \param expression Expression text.
+	 * \return Numeric result of the expression, or 0 on syntax failure.
 	 */
-	double parseExpression(const std::string expression); //!< Invokes the parser to evaluate tyhe expression. Result is always a double, even if expression has syntatic errors (returns 0)
+	double parseExpression(const std::string expression);
 	/*!
-	 * \brief parseExpression
-	 * \param expression
-	 * \param success
-	 * \param errorMessage
-	 * \return
+	 * \brief Parses and evaluates an expression while reporting success or failure.
+	 * \details The parser always returns a double, even when the expression has
+	 * syntax errors, in which case the result is 0. This overload also reports
+	 * whether an error occurred.
+	 * \param expression Expression text.
+	 * \param success Output flag that receives the parsing result.
+	 * \param errorMessage Output error message when parsing fails.
+	 * \return Numeric result of the expression, or 0 on syntax failure.
 	 */
-    double parseExpression(const std::string expression, bool& success, std::string& errorMessage); //!< Invokes the parser to evaluate tyhe expression. Result is always a double, even if expression has syntatic errors (returns 0). Explicitly informs if there was an error
+    double parseExpression(const std::string expression, bool& success, std::string& errorMessage);
 	/*!
-	 * \brief checkExpression
-	 * \param expression
-	 * \param expressionName
-	 * \param errorMessage
-	 * \return
+	 * \brief Checks whether an expression is syntactically valid.
+	 * \details This method is invoked by ModelComponents and ModelDatas in
+	 * their private _check() methods to validate user-defined expressions.
+	 * \param expression Expression text.
+	 * \param expressionName Logical name used in diagnostics.
+	 * \param errorMessage Output error message when validation fails.
+	 * \return \c true when the expression is valid.
 	 */
-    bool checkExpression(const std::string expression, const std::string expressionName, std::string& errorMessage); //!< This is invoked by ModelComponents and ModelDatas in their private method _check() to verify if an expression defined by user is valid or not
+    bool checkExpression(const std::string expression, const std::string expressionName, std::string& errorMessage);
 	/*!
-	 * \brief checkReferencesToDataDefinitions
-	 * \param expression
-	 * \param referencedDataDefinitions
+	 * \brief Collects data-definition references found in an expression.
+	 * \param expression Expression text.
+	 * \param referencedDataDefinitions Output map of referenced data definitions by name.
 	 */
 	void checkReferencesToDataDefinitions(std::string expression, std::map<std::string, std::list<std::string>*>* referencedDataDefinitions);
 
 public: // only gets
 	/*!
-	 * \brief getId
-	 * \return
+	 * \brief Returns the unique model identifier.
+	 * \return Model identifier.
 	*/
 	Util::identification getId() const;
 	/*!
-	 * \brief hasChanged
-	 * \return
+	 * \brief Indicates whether the model has pending changes.
+	 * \return \c true when the model or one of its owned objects changed.
 	 */
 	bool hasChanged() const;
-	/*! \brief Updates the changed flag for the model and its owned persistent objects. */
+	/*!
+	 * \brief Updates the changed flag for the model and its owned persistent objects.
+	 * \param hasChanged New changed-state value.
+	 */
 	void setHasChanged(bool hasChanged);
 	// 1:1
 	/*!
-	 * \brief getOnEvents
-	 * \return
+	 * \brief Returns the event manager that coordinates model-level events.
+	 * \details Provides access to the class that manages events generated by
+	 * the model, such as the beginning of a new simulation or replication and
+	 * the processing of an event.
+	 * \return On-event manager instance.
 	 */
-    OnEventManager* getOnEventManager() const; //!< Provides acccess to the class that manages events generated by the model, such as the beggining of a new simulation or replication, the processig of an event and much more
+    OnEventManager* getOnEventManager() const;
 	/*!
-	 * \brief getDataManager
-	 * \return
+	 * \brief Returns the data manager for model data definitions.
+	 * \details Provides access to the class that manages the basic elements of
+	 * the simulation model, such as queues, resources, variables and similar
+	 * model data definitions.
+	 * \return Data manager instance.
 	 */
-	ModelDataManager* getDataManager() const; //!< Provides access to the class that manages the most basic elements of the simulation model (such as queues, resources, variables, etc.).
+	ModelDataManager* getDataManager() const;
 	/*!
-	 * \brief getComponents
-	 * \return
+	 * \brief Returns the component manager for model components.
+	 * \return Component manager instance.
 	 */
     ComponentManager* getComponentManager() const;
 	/*!
-	 * \brief getInfos
-	 * \return
+	 * \brief Returns the model metadata object.
+	 * \return Model info instance.
 	 */
 	ModelInfo* getInfos() const;
 	/*!
-	 * \brief getParentSimulator
-	 * \return
+	 * \brief Returns the parent simulator that owns this model.
+	 * \return Parent simulator.
 	 */
 	Simulator* getParentSimulator() const;
 	/*!
-	 * \brief getSimulation
-	 * \return
+	 * \brief Returns the simulation controller associated with this model.
+	 * \details Provides access to the class that manages the model simulation.
+	 * \return Simulation controller instance.
 	 */
-	ModelSimulation* getSimulation() const; //!< Provides access to the class that manages the model simulation.
+	ModelSimulation* getSimulation() const;
 	// 1:n
 	/*!
-	 * \brief getFutureEvents
-	 * \return
+	 * \brief Returns the future-event queue.
+	 * \details The future events list is chronologically sorted. Events are
+	 * scheduled by components while processing other events, and a replication
+	 * evolves by sequentially processing the first event in this list. The list
+	 * is initialized with the events first described by source components.
+	 * \return Chronologically ordered list of scheduled events.
 	 */
-	List<Event*>* getFutureEvents() const; //!< The future events list chronologically sorted; Events are scheduled by components when processing other events, and a replication evolves over time by sequentially processing the very first event in this list. It's initialized with events first described by source components (SourceComponentModel).
+	List<Event*>* getFutureEvents() const;
 	/*!
-	 * \brief getControls
-	 * \return
+	 * \brief Returns the simulation controls exposed by the model.
+	 * \details These are the values that can be externally controlled and
+	 * usually correspond to input parameters that must be changed for an
+	 * experimental design.
+	 * \return List of writable simulation controls.
 	 */
-	List<SimulationControl*>* getControls() const; //!< Returns a list of values that can be externally controlled (changed). They usually correspond to input parameters in the simulation model that must be changed for an experimental design.
+	List<SimulationControl*>* getControls() const;
 	/*!
-	 * \brief getResponses
-	 * \return
+	 * \brief Returns the simulation responses exposed by the model.
+	 * \details These are the exits or simulation results that can be read
+	 * externally and usually correspond to statistics gathered for an
+	 * experimental design.
+	 * \return List of readable simulation responses.
 	 */
-	List<SimulationResponse*>* getResponses() const; //!< Returns a list of exits or simulation results that can be read externally. They usually correspond to statistics resulting from the simulation that must be read for an experiment design.
+	List<SimulationResponse*>* getResponses() const;
 
 public: // gets and sets
 	/*!
-	 * \brief setTracer
-	 * \param _traceManager
+	 * \brief Sets the trace manager used by this model.
+	 * \param _traceManager Trace manager instance.
 	 */
 	void setTracer(TraceManager* _traceManager);
 	/*!
-	 * \brief getTracer
-	 * \return
+	 * \brief Returns the trace manager used by this model.
+	 * \return Trace manager instance.
 	 */
 	TraceManager* getTracer() const;
 	/*!
-	 * \brief getPersistence
-	 * \return
+	 * \brief Returns the persistence interface used by this model.
+	 * \return Persistence interface instance.
 	 */
 	ModelPersistence_if* getPersistence() const;
 	/*!
-	 * \brief getLevel
-	 * \return
+	 * \brief Returns the hierarchy level of the model.
+	 * \details Provides access to the class that performs the trace of
+	 * simulation and replications.
+	 * \return Model level.
 	 */
-	unsigned int getLevel() const; //!< Provides access to the class that performs the trace of simulation and replications.
+	unsigned int getLevel() const;
 
 private:
 	void _showConnections() const;

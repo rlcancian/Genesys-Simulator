@@ -1,7 +1,7 @@
 #include "ContinuousModel.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/Continuous/DiffEquations.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 
 
 ContinuousModel::ContinuousModel() {

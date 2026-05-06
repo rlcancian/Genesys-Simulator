@@ -239,11 +239,8 @@ bool MetabolicNetwork::isEnabled() const {
 	return _enabled;
 }
 
-void MetabolicNetwork::_createReportStatisticsDataDefinitions() {
-}
+// void MetabolicNetwork::_createInternalStatisticReporters() { }
 
-void MetabolicNetwork::_createEditableDataDefinitions() {
-}
+// void MetabolicNetwork::_createEditableDataDefinitions() { }
 
-void MetabolicNetwork::_createOthersDataDefinitions() {
-}
+// void MetabolicNetwork::_createAttachedAttributes() { }

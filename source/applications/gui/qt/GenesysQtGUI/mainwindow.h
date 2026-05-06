@@ -6,6 +6,7 @@
 #include <QTreeWidgetItem>
 #include <QGraphicsItem>
 #include <QUndoView>
+#include <QPointer>
 #include <QMetaObject>
 #include <memory>
 #include <map>
@@ -42,6 +43,8 @@ class EditCommandController;
 class SceneToolController;
 class GraphicalContextMenuController;
 class DialogUtilityController;
+class WebWorkerRuntime;
+class WebWorkerDialog;
 class GuiExtensionManager;
 class QAction;
 class QMenu;
@@ -165,6 +168,7 @@ private slots:
 	void on_actionAlignLeft_triggered();
 
 	void on_actionToolsParserGrammarChecker_triggered();
+	void on_actionToolsWebWorker_triggered();
 	// Legacy slot: there is no matching QAction in mainwindow.ui at this moment.
 	void on_actionToolsExperimentation_triggered();
 	void on_actionToolsOptimizator_triggered();
@@ -572,6 +576,10 @@ private: // interface and model main elements to join
     std::unique_ptr<GraphicalContextMenuController> _graphicalContextMenuController;
     // Add the Phase 11 dialog-utility controller owned by MainWindow.
     std::unique_ptr<DialogUtilityController> _dialogUtilityController;
+    // Owns the embedded web worker runtime shared by the GUI and the standalone web app.
+    std::unique_ptr<WebWorkerRuntime> _webWorkerRuntime;
+    // Tracks the optional modeless control window for the worker runtime.
+    QPointer<WebWorkerDialog> _webWorkerDialog;
     // Keeps runtime GUI extension contributions isolated from core static menus/toolbars.
     std::unique_ptr<GuiExtensionManager> _guiExtensionManager;
 	PropertyEditorGenesys* propertyGenesys;

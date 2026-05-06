@@ -180,30 +180,12 @@ void DummyElementt::_initBetweenReplications() {
 */
 
 /*
-void DummyElementt::_createInternalAndAttachedData() {
-	if (_internalDataDefinition == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
-		_internalDataInsert("JustaDummy", _internalDataDefinition);
-	}
-	if (_attachedDataDefinition == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_attachedDataDefinition = pm->newInstance<DummyElement>(_parentModel);
-		_attachedDataInsert("JustaDummy", _attachedDataDefinition);
-	}
-}
-*/
-
-/*
 void DummyElementt::_addSimulationControl(SimulationControl* property) {
 }
 */
 
-void DummyElement::_createReportStatisticsDataDefinitions() {
-}
+// void DummyElement::_createInternalStatisticReporters() { }
 
-void DummyElement::_createEditableDataDefinitions() {
-}
+// void DummyElement::_createEditableDataDefinitions() { }
 
-void DummyElement::_createOthersDataDefinitions() {
-}
+// void DummyElement::_createAttachedAttributes() { }

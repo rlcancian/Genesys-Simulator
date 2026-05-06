@@ -56,6 +56,8 @@
 #include "services/CppModelExporter.h"
 #include "services/GraphicalModelSerializer.h"
 #include "services/GraphicalModelBuilder.h"
+#include "applications/web/service/WebWorkerRuntime.h"
+#include "dialogs/WebWorkerDialog.h"
 #include "UtilGUI.h"
 #include "guithememanager.h"
 // PropEditor
@@ -65,7 +67,7 @@
 //#include "actions/PasteUndoCommand.h"
 //#include "actions/DeleteUndoCommand.h"
 // @TODO: Should NOT be hardcoded!!! (Used to visualize variables)
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "../../../../plugins/data/Logic/Variable.h"
 // std
 #include <string>
 #include <fstream>
@@ -116,6 +118,11 @@ struct ReportPlotItem {
     double minimum = 0.0;
     double average = 0.0;
     double maximum = 0.0;
+};
+
+enum class SaveModelFormat {
+    GraphicalGui,
+    KernelGen
 };
 
 class ResultsBoxPlotWidget : public QFrame {
@@ -293,6 +300,11 @@ std::vector<std::string> collectLoadedModelPluginIds(const Simulator* simulator)
 	}
 	return ids;
 }
+
+SaveModelFormat requestedSaveModelFormat(const QString& selectedPath) {
+    const QString suffix = QFileInfo(selectedPath).suffix().toLower();
+    return suffix == "gen" ? SaveModelFormat::KernelGen : SaveModelFormat::GraphicalGui;
+}
 } // namespace
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWindow) {
@@ -359,6 +371,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     simulator->getTraceManager()->addTraceErrorHandler<MainWindow>(this, &MainWindow::_simulatorTraceErrorHandler);
     simulator->getTraceManager()->addTraceReportHandler<MainWindow>(this, &MainWindow::_simulatorTraceReportsHandler);
     simulator->getTraceManager()->addTraceSimulationHandler<MainWindow>(this, &MainWindow::_simulatorTraceSimulationHandler);
+
+    // The GUI owns an independent web runtime so the HTTP API stays ready while the editor is open.
+    _webWorkerRuntime = std::make_unique<WebWorkerRuntime>();
 
 	propertyGenesys = new PropertyEditorGenesys();
     propertyList = new std::map<SimulationControl*, DataComponentProperty*>();
@@ -548,6 +563,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
         ui->menuAbout->addAction(actionAboutReportIssue);
     }
 
+    QAction* actionToolsWebWorker = new QAction(tr("Web Worker"), this);
+    actionToolsWebWorker->setObjectName(QStringLiteral("actionToolsWebWorker"));
+    actionToolsWebWorker->setToolTip(tr("Open the embedded web worker control panel."));
+    connect(actionToolsWebWorker, &QAction::triggered, this, [this]() {
+        on_actionToolsWebWorker_triggered();
+    });
+    if (ui->menuTools != nullptr) {
+        ui->menuTools->insertAction(ui->actionToolsParserGrammarChecker, actionToolsWebWorker);
+        ui->menuTools->insertSeparator(ui->actionToolsParserGrammarChecker);
+    }
+
     // system preferences
     SystemPreferences::load();
     _refreshRecentModelsMenu();
@@ -600,6 +626,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
 
     // finally
     _actualizeActions();
+    if (_webWorkerRuntime != nullptr) {
+        if (!_webWorkerRuntime->start()) {
+            qWarning() << "Could not start the embedded web worker runtime at GUI startup.";
+        }
+    }
     QTimer::singleShot(0, this, [this]() {
         if (_dialogUtilityController == nullptr || simulator == nullptr || simulator->getPluginManager() == nullptr) {
             return;
@@ -616,6 +647,9 @@ MainWindow::~MainWindow() {
     // Proactively disable trace callbacks before QWidget and simulator teardown starts.
     if (simulator != nullptr && simulator->getTraceManager() != nullptr) {
         simulator->getTraceManager()->beginShutdown();
+    }
+    if (_webWorkerRuntime != nullptr) {
+        _webWorkerRuntime->stop();
     }
     _shuttingDown = true;
     _disconnectSceneSignals("~MainWindow");
@@ -967,6 +1001,49 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
             return false;
         }
         baseFileName = _modelSaveBaseFilename(selectedFileName);
+        const SaveModelFormat selectedFormat = requestedSaveModelFormat(selectedFileName);
+        if (selectedFormat == SaveModelFormat::KernelGen) {
+            _insertCommandInConsole("save " + selectedFileName.toStdString());
+
+            if (!_setSimulationModelBasedOnText()) {
+                QMessageBox::warning(this, "Save Model", "Could not synchronize simulation model from text before saving.");
+                return false;
+            }
+
+            const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
+            const QString textFilename = baseFileName + ".gen";
+            QFile saveFile(textFilename);
+            if (!saveFile.open(QIODevice::WriteOnly)) {
+                QMessageBox::information(this, QObject::tr("Unable to access file to save"), saveFile.errorString());
+                return false;
+            }
+
+            if (!_saveTextModel(&saveFile, textToSave)) {
+                saveFile.close();
+                QMessageBox::warning(this, "Save Model", "Error while saving model text.");
+                return false;
+            }
+            saveFile.close();
+
+            _modelFilenames[model] = baseFileName;
+            _modelfilename = baseFileName;
+            _modelTextContents[model] = textToSave;
+            _modelTextHasChanged[model] = false;
+            _modelGraphicalHasChanged[model] = false;
+            _textModelHasChanged = false;
+            _graphicalModelHasChanged = false;
+            model->setHasChanged(false);
+
+            SystemPreferences::pushRecentModelFile(textFilename.toStdString());
+            SystemPreferences::save();
+            if (ui != nullptr && ui->graphicsView != nullptr && ui->graphicsView->getScene() != nullptr &&
+                ui->graphicsView->getScene()->getUndoStack() != nullptr) {
+                ui->graphicsView->getScene()->getUndoStack()->clear();
+            }
+            _updateModelTabs();
+            _actualizeActions();
+            return true;
+        }
     }
 
     _insertCommandInConsole("save " + baseFileName.toStdString());
@@ -976,20 +1053,7 @@ bool MainWindow::_saveCurrentModel(bool promptForFilename) {
         return false;
     }
 
-    const QString textFilename = baseFileName + ".gen";
-    QFile saveFile(textFilename);
-    if (!saveFile.open(QIODevice::WriteOnly)) {
-        QMessageBox::information(this, QObject::tr("Unable to access file to save"), saveFile.errorString());
-        return false;
-    }
-
     const QString textToSave = _modelTextContents[model].isNull() ? ui->TextCodeEditor->toPlainText() : _modelTextContents[model];
-    if (!_saveTextModel(&saveFile, textToSave)) {
-        saveFile.close();
-        QMessageBox::warning(this, "Save Model", "Error while saving model text.");
-        return false;
-    }
-    saveFile.close();
 
     const QString graphicalFilename = baseFileName + ".gui";
     if (!_saveGraphicalModel(graphicalFilename)) {

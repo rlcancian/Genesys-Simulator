@@ -258,29 +258,7 @@ void Release::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	}
 }
 
-void Release::_createInternalAndAttachedData() {
-	int i = 0;
-	for (SeizableItem* seizable : * _releaseRequests->list()) {
-		if (seizable->getSeizableType() == SeizableItem::SeizableType::RESOURCE) {
-			Resource* resource = seizable->getResource();
-			if (resource == nullptr) {
-				_attachedDataRemove("SeizableItem" + Util::StrIndex(i));
-				i++;
-				continue;
-			}
-			_attachedDataInsert("SeizableItem" + Util::StrIndex(i), resource);
-		} else if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
-			Set* set = seizable->getSet();
-			if (set == nullptr) {
-				_attachedDataRemove("SeizableItem" + Util::StrIndex(i));
-				i++;
-				continue;
-			}
-			_attachedDataInsert("SeizableItem" + Util::StrIndex(i), set);
-		}
-		i++;
-	}
-}
+// void Release::_createAttachedAttributes() { }
 
 bool Release::_check(std::string& errorMessage) {
 	bool resultAll = true;
@@ -324,11 +302,28 @@ ModelComponent* Release::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 }
 
-void Release::_createReportStatisticsDataDefinitions() {
-}
+// void Release::_createInternalStatisticReporters() { }
 
 void Release::_createEditableDataDefinitions() {
-}
-
-void Release::_createOthersDataDefinitions() {
+	int i = 0;
+	for (SeizableItem* seizable : * _releaseRequests->list()) {
+		if (seizable->getSeizableType() == SeizableItem::SeizableType::RESOURCE) {
+			Resource* resource = seizable->getResource();
+			if (resource == nullptr) {
+				_optionalEditableDataDefinitionRemove("SeizableItem" + Util::StrIndex(i));
+				i++;
+				continue;
+			}
+			_optionalEditableDataDefinitionInsert("SeizableItem" + Util::StrIndex(i), resource);
+		} else if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
+			Set* set = seizable->getSet();
+			if (set == nullptr) {
+				_optionalEditableDataDefinitionRemove("SeizableItem" + Util::StrIndex(i));
+				i++;
+				continue;
+			}
+			_optionalEditableDataDefinitionInsert("SeizableItem" + Util::StrIndex(i), set);
+		}
+		i++;
+	}
 }

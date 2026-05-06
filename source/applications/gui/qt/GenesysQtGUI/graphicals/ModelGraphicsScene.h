@@ -54,8 +54,10 @@
 #include "animations/AnimationTimer.h"
 #include "animations/AnimationPlaceholder.h"
 #include "kernel/simulator/Counter.h"
+#include "kernel/simulator/Attribute.h"
 #include "kernel/simulator/PropertyGenesys.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../plugins/data/Logic/Variable.h"
 
 class GraphicalModelEvent {
 public:
@@ -301,7 +303,7 @@ public:
     void animateQueueInsert(ModelComponent *component, bool visivible);
     void animateQueueRemove(ModelComponent *component);
     void animateCounter();
-    void animateVariable();
+    void animateVariable(Entity* entity = nullptr);
     void animateTimer(double time);
 
 protected: // virtual functions
@@ -347,7 +349,7 @@ private:
     QMap<QGraphicsItemGroup *, QList<GraphicalModelComponent *> > _listComponentsGroup;
     QMap<QGraphicsItem *, QPointF> _oldPositionsItems;
     QList<Counter *> *_counters = new QList<Counter *>();
-    QList<Variable *> *_variables = new QList<Variable *>();
+    QList<ModelDataDefinition *> *_variables = new QList<ModelDataDefinition *>();
 private:
     DrawingMode _drawingMode = NONE;
     QGraphicsRectItem* _currentRectangle = nullptr;

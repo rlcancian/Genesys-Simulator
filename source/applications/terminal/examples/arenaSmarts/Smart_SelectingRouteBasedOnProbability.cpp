@@ -21,10 +21,10 @@
 #include "kernel/util/Util.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/MaterialHandling/Route.h"
 #include "plugins/components/MaterialHandling/Enter.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
 
@@ -162,4 +162,3 @@ int Smart_SelectingRouteBasedOnProbability::main(int argc, char** argv) {
 	return 0;
 	
 };
-

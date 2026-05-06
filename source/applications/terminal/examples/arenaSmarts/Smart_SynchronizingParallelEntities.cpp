@@ -19,10 +19,10 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Logic/Assign.h"
 #include "plugins/components/DiscreteProcessing/Clone.h"
 #include "plugins/components/Grouping/Batch.h"
 
@@ -139,4 +139,3 @@ int Smart_SynchronizingParallelEntities::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

@@ -29,6 +29,11 @@
 namespace {
 constexpr int kSimulationProgressScale = 1000000;
 
+/*! \brief Clamps a simulated-time value to a valid progress-bar range.
+ *
+ * Invalid values are forced to zero, and values past the replication horizon are limited to the
+ * configured replication length so the UI never displays an impossible progress position.
+ */
 static double clampProgressTime(double value, double replicationLength) {
     if (!std::isfinite(value) || value < 0.0) {
         return 0.0;
@@ -39,6 +44,11 @@ static double clampProgressTime(double value, double replicationLength) {
     return value;
 }
 
+/*! \brief Formats simulated time for progress-bar display with stable trimming of trailing zeros.
+ *
+ * The helper keeps the time label readable while still preserving fractional precision when it is
+ * meaningful for the current replication.
+ */
 static QString formatProgressTime(double value) {
     QString text = QString::number(value, 'f', 6);
     const int decimalPoint = text.indexOf('.');
@@ -51,6 +61,11 @@ static QString formatProgressTime(double value) {
     return text;
 }
 
+/*! \brief Converts the current replication length to the simulator base time unit.
+ *
+ * The returned value is used by the GUI progress bar so the display stays consistent regardless of
+ * the time unit selected in the simulation configuration.
+ */
 static double replicationLengthInBaseTimeUnit(ModelSimulation* simulation) {
     if (simulation == nullptr) {
         return 0.0;
@@ -60,6 +75,11 @@ static double replicationLengthInBaseTimeUnit(ModelSimulation* simulation) {
                                    simulation->getReplicationBaseTimeUnit());
 }
 
+/*! \brief Updates the simulation progress bar using the current replication time and horizon.
+ *
+ * The widget is switched to a normalized range so all replication lengths can reuse the same
+ * percentage scale while still displaying the actual time values in the label.
+ */
 static void updateSimulationProgressBar(QProgressBar* progressBar,
                                         ModelSimulation* simulation,
                                         double currentTime,
@@ -85,6 +105,11 @@ static void updateSimulationProgressBar(QProgressBar* progressBar,
 }
 
 // Select and detach the paused-animation list together with its effective resume key.
+/*! \brief Selects the paused-animation list that should resume for the current event.
+ *
+ * The helper prefers an exact event match, falls back to the only available entry when the map
+ * contains a single paused list, and otherwise leaves the caller without a resume target.
+ */
 static std::pair<Event*, QList<AnimationTransition*>*> takePausedAnimationListForResume(
     QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap,
     Event* currentEvent) {
@@ -106,6 +131,11 @@ static std::pair<Event*, QList<AnimationTransition*>*> takePausedAnimationListFo
 }
 
 // Release one paused-animation list and optionally destroy its animations.
+/*! \brief Releases one paused-animation list and optionally destroys each paused transition.
+ *
+ * Terminal cleanup paths destroy the paused animations, while resume paths only detach the list and
+ * let the scene continue reusing the transitions.
+ */
 static void cleanupPausedAnimationList(QList<AnimationTransition*>* pausedAnimations, bool destroyAnimations) {
     if (!pausedAnimations) {
         return;
@@ -127,6 +157,11 @@ static void cleanupPausedAnimationList(QList<AnimationTransition*>* pausedAnimat
 }
 
 // Release all paused-animation lists in the map and then clear the map keys.
+/*! \brief Releases every paused-animation list kept by the scene and clears the map keys.
+ *
+ * This is used during simulation end or forced animation shutdown so no stale paused transitions
+ * survive across a new simulation start.
+ */
 static void cleanupPausedAnimationMap(QMap<Event*, QList<AnimationTransition*>*>* pausedAnimationsMap,
                                       bool destroyAnimations) {
     if (!pausedAnimationsMap) {
@@ -408,7 +443,7 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
             << "destinationId=" << (destinationComponent ? destinationComponent->getId() : 0)
             << "destinationName=" << (destinationComponent ? QString::fromStdString(destinationComponent->getName()) : QStringLiteral("<null>"));
     _scene->animateCounter();
-    _scene->animateVariable();
+    _scene->animateVariable(re != nullptr && re->getCurrentEvent() != nullptr ? re->getCurrentEvent()->getEntity() : nullptr);
 
     if (re) {
         if (re->getCurrentEvent()) {
@@ -445,7 +480,7 @@ void SimulationEventController::onAfterProcessEvent(SimulationEvent* re) const {
         return;
     }
     _scene->animateCounter();
-    _scene->animateVariable();
+    _scene->animateVariable(re != nullptr && re->getCurrentEvent() != nullptr ? re->getCurrentEvent()->getEntity() : nullptr);
     _scene->animateTimer(_simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
 }
 

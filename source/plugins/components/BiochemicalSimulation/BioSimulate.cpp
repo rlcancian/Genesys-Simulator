@@ -137,7 +137,7 @@ void BioSimulate::_saveInstance(PersistenceRecord* fields, bool saveDefaultValue
 
 bool BioSimulate::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BioNetwork>(), _bioNetwork, "BioNetwork", errorMessage);
 	if (!_useNetworkTimeWindow) {
@@ -153,13 +153,7 @@ bool BioSimulate::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioSimulate::_createInternalAndAttachedData() {
-	if (_bioNetwork != nullptr) {
-		_attachedDataInsert("BioNetwork", _bioNetwork);
-	} else {
-		_attachedDataRemove("BioNetwork");
-	}
-}
+//void BioSimulate::_createAttachedAttributes() {}
 
 void BioSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
@@ -264,11 +258,12 @@ std::string BioSimulate::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioSimulate::_createReportStatisticsDataDefinitions() {
-}
+// void BioSimulate::_createInternalStatisticReporters() { }
 
 void BioSimulate::_createEditableDataDefinitions() {
-}
-
-void BioSimulate::_createOthersDataDefinitions() {
+	if (_bioNetwork != nullptr) {
+		_optionalEditableDataDefinitionInsert("BioNetwork", _bioNetwork);
+	} else {
+		_optionalEditableDataDefinitionRemove("BioNetwork");
+	}
 }

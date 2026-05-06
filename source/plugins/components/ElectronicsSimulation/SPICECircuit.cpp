@@ -1154,19 +1154,16 @@ void SPICECircuit::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
-void SPICECircuit::_createInternalAndAttachedData() {
+// void SPICECircuit::_createAttachedAttributes() { }
+
+// void SPICECircuit::_createInternalStatisticReporters() { }
+
+// void SPICECircuit::_createEditableDataDefinitions() { }
+
+void SPICECircuit::_createNonEditableDataDefinitions() {
 	if (compiler != nullptr) {
-		_attachedDataInsert("Runner", compiler);
+		_mandatoryNonEditableDataDefinitionInsert("Runner", compiler);
 	} else {
-		_attachedDataRemove("Runner");
+		_mandatoryNonEditableDataDefinitionRemove("Runner");
 	}
-}
-
-void SPICECircuit::_createReportStatisticsDataDefinitions() {
-}
-
-void SPICECircuit::_createEditableDataDefinitions() {
-}
-
-void SPICECircuit::_createOthersDataDefinitions() {
 }

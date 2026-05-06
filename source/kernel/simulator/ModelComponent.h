@@ -33,58 +33,113 @@ class Event;
  */
 class ModelComponent : public ModelDataDefinition {
 public: //! constructors
+	/*!
+	 * \brief Creates a model component and registers it in the component manager.
+	 * \param model Parent model.
+	 * \param componentTypename Runtime type name for the concrete component.
+	 * \param name Initial component name.
+	 */
 	ModelComponent(Model* model, std::string componentTypename, std::string name = "");
+	/*!
+	 * \brief Releases component-owned resources and unregisters it from the model.
+	 */
 	virtual ~ModelComponent();
 
 public: //! new public user methods for this component
 	/*!
-	 * \brief getConnections
-	 * \return
+	 * \brief Returns the connection manager owned by this component.
+	 * \details This manager stores the components directly connected to the
+	 * output. Usually a component has a single output, but it may have none
+	 * (such as Dispose) or more than one (such as Decide). Along with each
+	 * connected component, the manager stores the input port number where the
+	 * entity will be sent. Usually components have a single input, but they may
+	 * have none (such as Create) or more than one (such as Match).
+	 * \return Connection manager that stores outgoing connections.
 	 */
-    ConnectionManager* getConnectionManager() const; //!< Returns a list of components directly connected to the output. Usually the components have a single output, but they may have none (such as Dispose) or more than one (as Decide). In addition to the component, NextComponents specifies the inputPortNumber of the next component where the entity will be sent to. Ussually the components have a single input, but they may have none (such as Create) or more than one (as Match).
+    ConnectionManager* getConnectionManager() const;
     /*!
-     * \brief
-     * \return
-     */
+	 * \brief Connects this component to another component.
+	 * \param component Target component.
+	 * \param inputPortNumber Input port number of the target component.
+	 */
     void connectTo(ModelComponent* component, unsigned int inputPortNumber = 0);
     /*!
-	 * \brief hasBreakpointAt
-	 * \return
+	 * \brief Indicates whether a simulation breakpoint is set on this component.
+	 * \return \c true when the simulation breakpoint list contains this component.
 	 */
 	bool hasBreakpointAt();
 	/*!
-	 * \brief setDescription
-	 * \param _description
+	 * \brief Updates the free-form description shown by the GUI.
+	 * \param _description New description text.
 	 */
 	void setDescription(std::string _description);
 	/*!
-	 * \brief getDescription
-	 * \return
+	 * \brief Returns the free-form description associated with this component.
+	 * \return Description text.
 	 */
 	std::string getDescription() const;
 
     /*!
-     * \brief remove
+     * \brief Removes a connected component from this component.
+     * \param comp Component to remove from the outgoing connection set.
      */
     void remove(ModelComponent * comp);
 	// ...
 
 public: //! virtual public methods
+	/*!
+	 * \brief Returns a textual representation of this component.
+	 * \return Human-readable description used for tracing and debugging.
+	 */
 	virtual std::string show() override;
 
 public: //! static public methods that must have implementations (Load and New just the same. GetInformation must provide specific infos for the new component
+	/*!
+	 * \brief Loads a component instance from serialized fields.
+	 * \param model Parent model that will own the component.
+	 * \param fields Serialized fields for the component.
+	 * \return Newly created component instance.
+	 */
 	static ModelComponent* LoadInstance(Model* model, PersistenceRecord *fields);
 	// new static methods for all ModelComponents
+	/*!
+	 * \brief Validates a component instance.
+	 * \param component Component to validate.
+	 * \return \c true when the component is valid.
+	 */
 	static bool Check(ModelComponent* component);
+	/*!
+	 * \brief Creates internal data required by a component instance.
+	 * \param component Component whose related data should be created.
+	 */
 	static void CreateInternalData(ModelComponent* component);
+	/*!
+	 * \brief Serializes a component instance into a persistence record.
+	 * \param fields Output persistence record.
+	 * \param component Component to serialize.
+	 */
 	static void SaveInstance(PersistenceRecord *fields, ModelComponent* component);
-	static void DispatchEvent(Event* event); //!< This method triggers the simulation of the behavior of the component. It is invoked when an event (corresponding to this component) is taken from the list of future events or when an entity arrives at this component by connection.
+	/*!
+	 * \brief Dispatches a simulation event to the target component.
+	 * \details This method triggers the simulation behavior of the component.
+	 * It is invoked when an event corresponding to this component is taken from
+	 * the future events list or when an entity arrives through a connection.
+	 * \param event Event to process.
+	 */
+	static void DispatchEvent(Event* event);
 
 protected: //! virtual protected method that must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	// new virtual methods for all ModelComponents
-	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) = 0; //!< This method is only for ModelComponents, not ModelDataElements
+	/*!
+	 * \brief Handles a dispatched event for this component type.
+	 * \details This method is only for ModelComponents, not for
+	 * ModelDataElements.
+	 * \param entity Entity being processed.
+	 * \param inputPortNumber Input port where the entity arrived.
+	 */
+	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) = 0;
 
 protected: //! virtual protected methods that could be overriden by derived classes, if needed
 	/*! This method is called by ModelChecker during model check. The component should check itself to verify if user parameters are ok (ex: correct syntax for the parser) and everithing in its parameters allow the model too run without errors in this component */
@@ -93,8 +148,8 @@ protected: //! virtual protected methods that could be overriden by derived clas
 	// virtual ParserChangesInformation* _getParserChangesInformation();
 	/*! This method is called by ModelSimulation when initianting the replication. The model should set all value for a new replication (Ex: setting back to 0 any internal counter, clearing lists, etc. */
 	// virtual void _initBetweenReplications();
-	/*! This method is called by ModelChecker and is necessary only for those components that instantiate internal elements that must exist before simulation starts and even before model checking. That's the case of components that have internal StatisticsCollectors, since others components may refer to them as expressions (as in "TVAG(ThisCSTAT)") and therefore the modeldatum must exist before checking such expression */
-	// virtual void _createInternalAndAttachedData(); /*< A ModelDataDefinition or ModelComponent that includes (internal) ou refers to (attach) other ModelDataDefinition must register them inside this method. */
+	/*! Legacy compatibility hook. Prefer the granular create* methods and the composed association manager. */
+	// virtual void _createInternalAndAttachedData(); /* legacy combined lifecycle hook */
 	/*! This method is not used yet. It should be usefull for new UIs */
 	// virtual void _addSimulationControl(SimulationControl* property);
 

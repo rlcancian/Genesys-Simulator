@@ -102,7 +102,7 @@ StatisticsCollector* EntityType::addGetStatisticsCollector(std::string name) {
 	// not found. Create it, insert it into the list of cstats, into the model modeldatum manager, and then return it
 	StatisticsCollector* cstat = new StatisticsCollector(_parentModel, name, this);
 	_statisticsCollectors->insert(cstat); // @ToDo: (importante): _statisticsCollectors list is probabily redundant to _internelElements and unnecessary
-	_internalDataInsert(name, cstat);
+	_statisticReporterInsert(name, cstat);
 	//_parentModel->insert(cstat); // unnecessary
 	return cstat;
 }
@@ -146,18 +146,6 @@ void EntityType::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues
 	fields->saveField("initialPicture", _initialPicture, DEFAULT.initialPicture, saveDefaults);
 }
 
-bool EntityType::_check(std::string& errorMessage) {
-	errorMessage += "";
-	return true;
-}
-
-void EntityType::_createInternalAndAttachedData() {
-	if (_reportStatistics) { // @ToDo: (importante): Fix inserting to _internalElements
-	} else {
-		while (_statisticsCollectors->size() > 0) {
-			_parentModel->getDataManager()->remove(_statisticsCollectors->front());
-			_statisticsCollectors->front()->~StatisticsCollector();
-			_statisticsCollectors->pop_front();
-		}
-	}
+void EntityType::_createInternalStatisticReporters() {
+	//@TODO
 }

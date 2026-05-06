@@ -1,11 +1,13 @@
 #include "DialogSelectVariable.h"
 #include <QVBoxLayout>
+#include <QHBoxLayout>
+#include "kernel/simulator/ModelDataDefinition.h"
 
 DialogSelectVariable::DialogSelectVariable(QWidget *parent)
     : QDialog(parent), comboBox(new QComboBox(this)), okButton(new QPushButton("OK", this)),
     cancelButton(new QPushButton("Cancel", this)) {
 
-    setWindowTitle("Select a Variable");
+    setWindowTitle("Select a Variable or Attribute");
 
     // Layout
     QVBoxLayout *mainLayout = new QVBoxLayout(this);
@@ -21,7 +23,7 @@ DialogSelectVariable::DialogSelectVariable(QWidget *parent)
     connect(cancelButton, &QPushButton::clicked, this, &DialogSelectVariable::onCancelClicked);
 }
 
-Variable* DialogSelectVariable::selectedIndex() const {
+ModelDataDefinition* DialogSelectVariable::selectedIndex() const {
     int currentIndex = comboBox->currentIndex();
     return indexToVariable.value(currentIndex);
 }
@@ -34,20 +36,27 @@ void DialogSelectVariable::onCancelClicked() {
     reject();
 }
 
-void DialogSelectVariable::setVariableItems(QList<Variable *> *variables, Variable *variable) {
+void DialogSelectVariable::setVariableItems(QList<ModelDataDefinition *> *definitions, ModelDataDefinition *definition) {
     comboBox->clear();
+    indexToVariable.clear();
 
     QString standardInput = "None";
 
     comboBox->addItem(standardInput);
     indexToVariable[0] = nullptr;
 
-    for (unsigned int i = 0; i < (unsigned int) variables->size(); i++) {
-        // Adiciona entradas ao mapeamento ponteiro-nome
-        QString entryName = QString::fromStdString(variables->at(i)->getName());
-        indexToVariable[i+1] = variables->at(i);
-        comboBox->addItem(entryName);
+    if (definitions != nullptr) {
+        for (unsigned int i = 0; i < (unsigned int) definitions->size(); i++) {
+            ModelDataDefinition* dataDefinition = definitions->at(static_cast<int>(i));
+            if (dataDefinition == nullptr) {
+                continue;
+            }
+            QString entryName = QString::fromStdString(dataDefinition->getName());
+            entryName += QString(" (%1)").arg(QString::fromStdString(dataDefinition->getClassname()));
+            indexToVariable[i + 1] = dataDefinition;
+            comboBox->addItem(entryName);
+        }
     }
 
-    comboBox->setCurrentIndex(indexToVariable.key(variable, 0));
+    comboBox->setCurrentIndex(indexToVariable.key(definition, 0));
 }

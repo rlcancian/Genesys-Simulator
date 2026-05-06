@@ -124,7 +124,7 @@ void GeneticExpressionStep::_saveInstance(PersistenceRecord* fields, bool saveDe
 
 bool GeneticExpressionStep::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<GeneticCircuit>(), _geneticCircuit, "GeneticCircuit", errorMessage);
 	if (_timeStep <= 0.0) {
 		errorMessage += "GeneticExpressionStep \"" + getName() + "\" must define timeStep > 0. ";
@@ -133,13 +133,7 @@ bool GeneticExpressionStep::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void GeneticExpressionStep::_createInternalAndAttachedData() {
-	if (_geneticCircuit != nullptr) {
-		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
-	} else {
-		_attachedDataRemove("GeneticCircuit");
-	}
-}
+//void GeneticExpressionStep::_createAttachedAttributes() {}
 
 double GeneticExpressionStep::_computeRegulationMultiplier(const GeneticCircuitPart* part) const {
 	if (!_applyRegulation || _geneticCircuit == nullptr || part == nullptr) {
@@ -274,11 +268,13 @@ std::string GeneticExpressionStep::getLastMessage() const {
 	return _lastMessage;
 }
 
-void GeneticExpressionStep::_createReportStatisticsDataDefinitions() {
-}
+// void GeneticExpressionStep::_createInternalStatisticReporters() { }
 
 void GeneticExpressionStep::_createEditableDataDefinitions() {
-}
+	if (_geneticCircuit != nullptr) {
+		_optionalEditableDataDefinitionInsert("GeneticCircuit", _geneticCircuit);
+	} else {
+		_optionalEditableDataDefinitionRemove("GeneticCircuit");
+	}
 
-void GeneticExpressionStep::_createOthersDataDefinitions() {
 }

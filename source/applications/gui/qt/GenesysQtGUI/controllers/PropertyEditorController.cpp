@@ -28,12 +28,22 @@
 #include <set>
 
 namespace {
+/*! \brief Returns true for selection chrome that belongs to the scene infrastructure instead of a model object.
+ *
+ * Ports and diagram connections should not be treated as primary property-editor targets because they
+ * are owned by the graphical scene, not by the inspected model component or data definition.
+ */
 bool isSceneInfrastructureItem(QGraphicsItem* item) {
     return dynamic_cast<GraphicalComponentPort*>(item) != nullptr
         || dynamic_cast<GraphicalDiagramConnection*>(item) != nullptr
         || dynamic_cast<GraphicalConnection*>(item) != nullptr;
 }
 
+/*! \brief Collects the names of graphical data definitions that are already visible in the scene.
+ *
+ * The resulting set is used to tell the property browser which model data definitions can already be
+ * reached through a graphical representation and therefore should remain synchronized with the scene.
+ */
 QSet<QString> graphicallyRepresentedDataDefinitionNames(ModelGraphicsScene* scene) {
     QSet<QString> names;
     if (scene == nullptr || scene->getAllDataDefinitions() == nullptr) {
@@ -49,6 +59,11 @@ QSet<QString> graphicallyRepresentedDataDefinitionNames(ModelGraphicsScene* scen
     return names;
 }
 
+/*! \brief Recursively collects editable referenced data definitions exposed by simulation controls.
+ *
+ * The traversal follows nested control hierarchies, guards against cycles, and skips read-only
+ * references so the property browser only marks items that can actually be edited from the GUI.
+ */
 void collectEditableReferencedDataDefinitions(
     List<SimulationControl*>* controls,
     QSet<QString>& names,
@@ -95,6 +110,11 @@ void collectEditableReferencedDataDefinitions(
     }
 }
 
+/*! \brief Returns true when the attachment suffix is a positive integer index.
+ *
+ * Indexed attachments are used by list-based property editors, so the suffix must be numeric before
+ * the attached data can be treated as a list item binding.
+ */
 bool isPositiveIndexSuffix(const std::string& suffix) {
     if (suffix.empty()) {
         return false;
@@ -108,6 +128,11 @@ bool isPositiveIndexSuffix(const std::string& suffix) {
     return true;
 }
 
+/*! \brief Matches attached-data names against the property descriptor for a single editable control.
+ *
+ * This keeps the editability scan aligned with the property editor naming conventions for scalar
+ * controls, class controls, and list-based class controls.
+ */
 bool attachmentNameMatchesEditableControl(const std::string& attachmentName,
                                           const GenesysPropertyDescriptor& descriptor) {
     if (attachmentName.empty() || descriptor.readOnly || !descriptor.isClass) {
@@ -127,6 +152,11 @@ bool attachmentNameMatchesEditableControl(const std::string& attachmentName,
     return false;
 }
 
+/*! \brief Collects editable attached data definitions from one component.
+ *
+ * The function cross-checks each attachment name against the property descriptor so only bindings
+ * that correspond to editable class properties are surfaced as scene-editable data definitions.
+ */
 void collectEditableAttachedDataDefinitionNames(ModelComponent* component, QSet<QString>& names) {
     if (component == nullptr
         || component->getSimulationControls() == nullptr
@@ -148,6 +178,11 @@ void collectEditableAttachedDataDefinitionNames(ModelComponent* component, QSet<
     }
 }
 
+/*! \brief Builds the full editable data-definition set from the current scene and loaded model.
+ *
+ * The returned set combines referenced controls, attached data definitions, and recursively nested
+ * controls from both components and model data definitions.
+ */
 QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
     QSet<QString> names;
     if (scene == nullptr || scene->getSimulator() == nullptr ||
@@ -195,6 +230,11 @@ QSet<QString> editableDataDefinitionNames(ModelGraphicsScene* scene) {
     return names;
 }
 
+/*! \brief Updates the property-editor editability state for all graphical data definitions in the scene.
+ *
+ * This mirrors the computed editable set back into the graphical layer so the inspector can keep the
+ * correct rows enabled or disabled after selection changes and model refreshes.
+ */
 void refreshGraphicalDataDefinitionEditability(
     ModelGraphicsScene* scene,
     const QSet<QString>& editableDataDefinitions

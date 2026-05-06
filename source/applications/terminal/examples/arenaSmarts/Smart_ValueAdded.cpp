@@ -6,10 +6,10 @@
 #include "Smart_ValueAdded.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Template/DummyComponent.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Logic/Assign.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"

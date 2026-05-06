@@ -147,30 +147,12 @@ void DummyComponent::_initBetweenReplications() {
 */
 
 /*
-void DummyComponent::_createInternalAndAttachedData() {
-	if (_internalDataDefinition == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
-		_internalDataInsert("JustaDummy", _internalDataDefinition);
-	}
-	if (_attachedDataDefinition == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_attachedDataDefinition = pm->newInstance<DummyElement>(_parentModel);
-		_attachedDataInsert("JustaDummy", _attachedDataDefinition);
-	}
-}
-*/
-
-/*
 void DummyComponent::_addSimulationControl(SimulationControl* property) {
 }
 */
 
-void DummyComponent::_createReportStatisticsDataDefinitions() {
-}
+// void DummyComponent::_createInternalStatisticReporters() { }
 
-void DummyComponent::_createEditableDataDefinitions() {
-}
+// void DummyComponent::_createEditableDataDefinitions() { }
 
-void DummyComponent::_createOthersDataDefinitions() {
-}
+// void DummyComponent::_createAttachedAttributes() { }

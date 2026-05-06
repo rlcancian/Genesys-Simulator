@@ -5,6 +5,9 @@
 #include <stdexcept>
 #include <utility>
 
+/**
+ * @brief Builds the session registry and session workspace root.
+ */
 SessionManager::SessionManager(TokenService& tokenService, SimulatorFactory simulatorFactory)
     : _tokenService(tokenService),
       _simulatorFactory(std::move(simulatorFactory)),
@@ -16,6 +19,9 @@ SessionManager::SessionManager(TokenService& tokenService, SimulatorFactory simu
     }
 }
 
+/**
+ * @brief Creates a session, allocates token, simulator instance and workspace.
+ */
 SessionContext* SessionManager::createSession() {
     std::scoped_lock lock(_sessionsMutex);
 
@@ -45,6 +51,9 @@ SessionContext* SessionManager::createSession() {
     return raw;
 }
 
+/**
+ * @brief Resolves a session by bearer token.
+ */
 SessionContext* SessionManager::getSessionByToken(const std::string& token) {
     std::scoped_lock lock(_sessionsMutex);
 
@@ -55,6 +64,9 @@ SessionContext* SessionManager::getSessionByToken(const std::string& token) {
     return it->second.get();
 }
 
+/**
+ * @brief Returns the base workspace directory used for all web sessions.
+ */
 std::filesystem::path SessionManager::_buildWorkspaceRoot() {
     return std::filesystem::temp_directory_path() / "genesys_web_sessions";
 }

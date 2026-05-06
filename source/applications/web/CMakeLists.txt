@@ -2,6 +2,7 @@ add_library(genesys_web_core STATIC
     api/ApiRouter.cpp
     auth/TokenService.cpp
     http/SimpleHttpServer.cpp
+    service/WebWorkerRuntime.cpp
     service/SimulatorSessionService.cpp
     session/SessionManager.cpp
     worker/WorkerJobManager.cpp
@@ -20,14 +21,16 @@ target_link_libraries(genesys_web_core
 
 target_compile_features(genesys_web_core PUBLIC cxx_std_23)
 
-add_executable(genesys_webhook
+add_executable(genesys_web_app
     main.cpp
     BaseGenesysWebApplication.cpp
 )
 
-target_link_libraries(genesys_webhook
+target_link_libraries(genesys_web_app
     PRIVATE
-        genesys_web_core
+        "$<LINK_GROUP:RESCAN,genesys_web_core,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
 )
 
-target_compile_features(genesys_webhook PRIVATE cxx_std_23)
+target_compile_features(genesys_web_app PRIVATE cxx_std_23)
+
+add_executable(genesys_webhook ALIAS genesys_web_app)

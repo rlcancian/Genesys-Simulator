@@ -15,6 +15,7 @@
 #include <sstream>
 #include <exception>
 #include <utility>
+#include <algorithm>
 
 #include <QSignalBlocker>
 #include <QBrush>
@@ -43,6 +44,7 @@
 #include <QKeyEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QSizePolicy>
 #include <QHash>
 #include <QUndoStack>
 #include <QVBoxLayout>
@@ -54,6 +56,68 @@
 #include "kernel/simulator/Simulator.h"
 
 namespace {
+constexpr int kSourceCodePreviewContentLines = 4;
+constexpr int kSourceCodeCompactEditorLines = 5;
+
+QString normalizeMultilineText(const QString& text) {
+    QString normalized = text;
+    normalized.replace("\r\n", "\n");
+    normalized.replace('\r', '\n');
+    return normalized;
+}
+
+QString sourceCodePreviewText(const std::string& sourceCode) {
+    const QString normalized = normalizeMultilineText(QString::fromStdString(sourceCode));
+    if (normalized.isEmpty()) {
+        return normalized;
+    }
+
+    const QStringList lines = normalized.split('\n');
+    if (lines.size() <= kSourceCodePreviewContentLines) {
+        return normalized;
+    }
+
+    QStringList previewLines = lines.mid(0, kSourceCodePreviewContentLines);
+    // Keep the tree cell short so the property browser shows a compact preview instead of the whole file.
+    previewLines << QString("... (%1 more lines)").arg(lines.size() - kSourceCodePreviewContentLines);
+    return previewLines.join('\n');
+}
+
+void configureSourceCodeEditor(CodeEditor* editor, bool compactEditor) {
+    if (editor == nullptr) {
+        return;
+    }
+
+    // Use a fixed-pitch editor so Gro source stays line-oriented and easy to scan.
+    editor->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+    editor->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    editor->setTabStopDistance(editor->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 4);
+
+    if (compactEditor) {
+        // Keep the quick SourceCode editor compact and let the scrollbar expose the rest.
+        const int lineHeight = editor->fontMetrics().lineSpacing();
+        const int frameHeight = editor->frameWidth() * 2;
+        const int marginHeight = static_cast<int>(editor->document()->documentMargin() * 2.0);
+        const int compactHeight = (lineHeight * kSourceCodeCompactEditorLines) + frameHeight + marginHeight + 8;
+        editor->setFixedHeight(compactHeight);
+        editor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+}
+
+void configureMultilineTextEditor(QPlainTextEdit* editor) {
+    if (editor == nullptr) {
+        return;
+    }
+
+    // Keep the multiline text editor lightweight: plain text only, no line numbers, no code chrome.
+    editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+    editor->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    editor->setTabStopDistance(editor->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 4);
+}
+
 class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
     using CommitCallback = std::function<void(QtProperty*, const QVariant&)>;
@@ -660,6 +724,10 @@ int ObjectPropertyBrowser::_enumIndexFor(const GenesysPropertyDescriptor& desc) 
 }
 
 QVariant ObjectPropertyBrowser::_toVariant(const GenesysPropertyDescriptor& desc) const {
+    if (desc.technicalTypeName == Util::TypeOf<SourceCodeString>()) {
+        return QVariant(sourceCodePreviewText(desc.currentValue));
+    }
+
     switch (desc.kind) {
     case GenesysPropertyKind::Boolean: {
         const bool value = (desc.currentValue == "true" || desc.currentValue == "1");
@@ -712,7 +780,7 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
 bool ObjectPropertyBrowser::_hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const {
     return desc.supportsListEditor
         || desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
-        || desc.editorHint != SimulationControlEditorHint::Default;
+        || desc.editorHint == SimulationControlEditorHint::CodeEditor;
 }
 
 QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropertyDescriptor& desc) const {
@@ -728,6 +796,7 @@ QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropert
     case SimulationControlEditorHint::CodeEditor:
         return "Edit source code...";
     case SimulationControlEditorHint::Default:
+    case SimulationControlEditorHint::MultiLineText:
     default:
         return QString();
     }
@@ -735,6 +804,28 @@ QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropert
 
 QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDescriptor& desc) {
     const QString name = QString::fromStdString(desc.displayName);
+
+    if (desc.editorHint == SimulationControlEditorHint::MultiLineText) {
+        QtProperty* property = _enumManager->addProperty(name);
+        QStringList choices;
+        choices << QString::fromStdString(desc.currentValue);
+        choices << "Edit InitialValue";
+        _enumNames[property] = choices;
+        _enumManager->setEnumNames(property, choices);
+        _enumManager->setValue(property, 0);
+        property->setEnabled(_isKernelEditingEnabled(desc));
+        property->setToolTip("Select the current value or choose Edit InitialValue to open the multiline editor.");
+        property->setStatusTip("InitialValue");
+
+        Binding binding;
+        binding.owner = _modelObject;
+        binding.control = desc.control;
+        binding.descriptor = desc;
+        binding.isMultilineTextAction = true;
+        _bindings[property] = binding;
+
+        return property;
+    }
 
     if ((desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit)
         && !desc.choices.empty()) {
@@ -1619,18 +1710,33 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                 true
                 ));
         } else if (AnimationVariable* variable = dynamic_cast<AnimationVariable*>(rectItem)) {
-            QtProperty* animationGroup = _groupManager->addProperty("Animation variable");
+            QtProperty* animationGroup = _groupManager->addProperty("Animation variable and attribute");
             addProperty(animationGroup);
             animationGroup->addSubProperty(_createGraphicsVariantProperty(
-                "Value",
-                QVariant::Double,
-                variable->getValue(),
+                "Target",
+                QVariant::String,
+                variable->getTargetName(),
                 [variable, this](const QVariant& value) {
-                    variable->setValue(value.toDouble());
+                    variable->setTargetName(value.toString().toStdString());
                     _notifyGraphicsChangeApplied(variable);
                 },
                 true
                 ));
+            const unsigned int dimensionCount = variable->getDimensionCount();
+            if (dimensionCount > 2u) {
+                for (unsigned int dimensionIndex = 2u; dimensionIndex < dimensionCount; ++dimensionIndex) {
+                    animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                        QString("Dimension %1").arg(dimensionIndex + 1),
+                        QVariant::Int,
+                        static_cast<int>(variable->getSliceIndex(dimensionIndex - 2u)),
+                        [variable, dimensionIndex, this](const QVariant& value) {
+                            variable->setSliceIndex(dimensionIndex - 2u, static_cast<unsigned int>(std::max(0, value.toInt())));
+                            _notifyGraphicsChangeApplied(variable);
+                        },
+                        true
+                        ));
+                }
+            }
         } else if (AnimationTimer* timer = dynamic_cast<AnimationTimer*>(rectItem)) {
             QtProperty* animationGroup = _groupManager->addProperty("Animation timer");
             addProperty(animationGroup);
@@ -1982,13 +2088,17 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
 
     if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
         || binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
-        return _openTextDialogEditor(binding);
+        return _openTextDialogEditor(binding, false);
+    }
+
+    if (binding.descriptor.editorHint == SimulationControlEditorHint::MultiLineText) {
+        return _openMultilineTextDialogEditor(binding);
     }
 
     return false;
 }
 
-bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding) {
+bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding, bool compactEditor) {
     if (binding.control == nullptr) {
         return false;
     }
@@ -1996,17 +2106,14 @@ bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding) {
     QDialog dialog(this);
     dialog.setModal(true);
     dialog.setWindowTitle(QString("Edit %1").arg(QString::fromStdString(binding.descriptor.displayName)));
-    dialog.resize(900, 640);
+    dialog.resize(compactEditor ? QSize(720, 260) : QSize(900, 640));
 
     auto* layout = new QVBoxLayout(&dialog);
     auto* editor = new CodeEditor(&dialog);
     auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
     QPushButton* applyButton = buttons->addButton("Apply", QDialogButtonBox::ApplyRole);
 
-    // Use a fixed-pitch editor so long Gro source text remains readable and line-oriented.
-    editor->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    editor->setLineWrapMode(QPlainTextEdit::NoWrap);
-    editor->setTabStopDistance(editor->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 4);
+    configureSourceCodeEditor(editor, compactEditor);
     editor->setPlainText(QString::fromStdString(binding.descriptor.currentValue));
     layout->addWidget(editor);
     layout->addWidget(buttons);
@@ -2056,6 +2163,61 @@ bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding) {
     return dialog.exec() == QDialog::Accepted;
 }
 
+bool ObjectPropertyBrowser::_openMultilineTextDialogEditor(const Binding& binding) {
+    if (binding.control == nullptr) {
+        return false;
+    }
+
+    QDialog dialog(this);
+    dialog.setModal(true);
+    dialog.setWindowTitle(QString("Edit %1").arg(QString::fromStdString(binding.descriptor.displayName)));
+    dialog.resize(QSize(620, 260));
+
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* editor = new QPlainTextEdit(&dialog);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QPushButton* applyButton = buttons->addButton("Apply", QDialogButtonBox::ApplyRole);
+
+    configureMultilineTextEditor(editor);
+    editor->setPlainText(QString::fromStdString(binding.descriptor.currentValue));
+    layout->addWidget(editor);
+    layout->addWidget(buttons);
+
+    std::string appliedValue = binding.descriptor.currentValue;
+    auto applyChange = [this, &dialog, editor, control = binding.control, &appliedValue]() -> bool {
+        const std::string newValue = editor->toPlainText().toStdString();
+        if (newValue == appliedValue) {
+            return true;
+        }
+
+        std::string errorMessage;
+        if (!GenesysPropertyIntrospection::setValue(control, newValue, false, &errorMessage)) {
+            QMessageBox::warning(
+                &dialog,
+                "Unable to update property",
+                QString::fromStdString(errorMessage.empty() ? "Unknown property update error" : errorMessage)
+                );
+            return false;
+        }
+
+        appliedValue = newValue;
+        _notifyModelChangeApplied();
+        return true;
+    };
+
+    connect(applyButton, &QPushButton::clicked, &dialog, [applyChange]() {
+        applyChange();
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [&dialog, applyChange]() {
+        if (applyChange()) {
+            dialog.accept();
+        }
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    return dialog.exec() == QDialog::Accepted;
+}
+
 bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
     QtBrowserItem* item = currentItem();
     if (item == nullptr || item->property() == nullptr) {
@@ -2065,6 +2227,18 @@ bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
         qWarning() << "[PropertyEditor] openSpecializedEditorForCurrentItem aborted due to invalid binding context";
         return false;
     }
+
+    auto it = _bindings.find(item->property());
+    if (it == _bindings.end()) {
+        return false;
+    }
+
+    const Binding binding = it.value();
+    if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
+        return _openTextDialogEditor(binding, true);
+    }
+
     return _openSpecializedEditor(item->property());
 }
 
@@ -2771,6 +2945,31 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
 
     if (binding.isObjectListAction) {
         _applyObjectListSelection(property, value);
+        qInfo() << "[PropertyEditor] enumValueChanged exit";
+        return;
+    }
+
+    if (binding.isMultilineTextAction) {
+        if (_isHandlingMultilineTextAction) {
+            qInfo() << "[PropertyEditor] enumValueChanged ignored because multiline text action is resetting";
+            return;
+        }
+
+        if (value == 0) {
+            qInfo() << "[PropertyEditor] enumValueChanged left multiline text property on the current value";
+            return;
+        }
+        if (value != 1) {
+            return;
+        }
+
+        _isHandlingMultilineTextAction = true;
+        _enumManager->setValue(property, 0);
+        _isHandlingMultilineTextAction = false;
+
+        if (!_openMultilineTextDialogEditor(binding)) {
+            _scheduleDeferredRebuild();
+        }
         qInfo() << "[PropertyEditor] enumValueChanged exit";
         return;
     }
