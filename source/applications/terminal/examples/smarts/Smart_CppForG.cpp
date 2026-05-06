@@ -13,9 +13,9 @@
 #include "Smart_CppForG.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "kernel/simulator/ModelSimulation.h"
 #include "../../../TraitsApp.h"
 
@@ -73,4 +73,3 @@ int Smart_CppForG::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 }
-

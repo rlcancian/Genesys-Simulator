@@ -19,10 +19,10 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 //#include "../../../../plugins/components/ExtendedFinishStateMachine.h"
 #include "../../../../plugins/components/OLD_FiniteStateMachine.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 
 Smart_Old_ExtendedFSM::Smart_Old_ExtendedFSM() {
 }

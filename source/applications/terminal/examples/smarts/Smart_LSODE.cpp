@@ -13,9 +13,9 @@
 #include "Smart_LSODE.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/Continuous/LSODE.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/data/DiscreteProcessing/Variable.h"
 #include "../../../TraitsApp.h"
 

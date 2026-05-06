@@ -12,9 +12,9 @@
 
 #include "Book_Cap02_Example01.h"
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 
 Book_Cap02_Example01::Book_Cap02_Example01() {
 }
@@ -40,4 +40,3 @@ int Book_Cap02_Example01::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 }
-

@@ -9,8 +9,8 @@
 
 #include "kernel/simulator/Simulator.h"
 #include "plugins/components/BiochemicalSimulation/BacteriaColony.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "../../../TraitsApp.h"
 

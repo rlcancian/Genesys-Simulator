@@ -18,10 +18,10 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Assign.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Assign.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "../../../TraitsApp.h"
 
 Smart_Create::Smart_Create() {

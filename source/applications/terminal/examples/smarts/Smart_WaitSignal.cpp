@@ -19,11 +19,11 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/Synchronization/Wait.h"
 #include "plugins/components/Synchronization/Signal.h"
 #include "plugins/data/Synchronization/SignalData.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "../../../TraitsApp.h"
 
 // Model data definitions
@@ -91,4 +91,3 @@ int Smart_WaitSignal::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-
