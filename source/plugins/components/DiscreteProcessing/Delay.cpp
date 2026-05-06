@@ -174,43 +174,22 @@ std::string Delay::_allocationAttachedAttributeName(Util::AllocationType allocat
 void Delay::_reconcileAllocationAttachedAttributes() {
 	std::vector<std::string> allocationAttributes = _allAllocationAttachedAttributeNames();
 	if (_reportStatistics) {
-		const std::string currentAllocationAttribute = _allocationAttachedAttributeName(_allocation);
-		for (const std::string& allocationAttribute : allocationAttributes) {
-			if (allocationAttribute != currentAllocationAttribute) {
-				_attachedDataRemove(allocationAttribute);
+			const std::string currentAllocationAttribute = _allocationAttachedAttributeName(_allocation);
+			for (const std::string& allocationAttribute : allocationAttributes) {
+				if (allocationAttribute != currentAllocationAttribute) {
+					_mandatoryAttachedAttributeRemove(allocationAttribute);
+				}
+			}
+			_attachedAttributesInsert({currentAllocationAttribute});
+		} else {
+			for (const std::string& allocationAttribute : allocationAttributes) {
+				_mandatoryAttachedAttributeRemove(allocationAttribute);
 			}
 		}
-		_attachedAttributesInsert({currentAllocationAttribute});
-	} else {
-		for (const std::string& allocationAttribute : allocationAttributes) {
-			_attachedDataRemove(allocationAttribute);
-		}
 	}
-}
 
-void Delay::_createInternalAndAttachedData() {
+void Delay::_createAttachedAttributes() {
 	_reconcileAllocationAttachedAttributes();
-
-	if (_reportStatistics) {
-		if (_cstatWaitTime == nullptr) {
-			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
-		}
-		if (_cstatWaitTime != nullptr) {
-			_internalDataInsert("DelayTime", _cstatWaitTime);
-			// include StatisticsCollector needed in EntityType
-			//ModelDataManager* elements = _parentModel->getDataManager();
-			//std::list<ModelDataDefinition*>* enttypes = elements->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
-			//for (ModelDataDefinition* modeldatum : *enttypes) {
-			//	EntityType* enttype = static_cast<EntityType*> (modeldatum);
-			//	if (modeldatum->isReportStatistics())
-			//		enttype->addGetStatisticsCollector(enttype->getName() + ".DelayTime");
-			//}
-		}
-	} else if (_cstatWaitTime != nullptr) {
-		_internalDataClear();
-		_cstatWaitTime = nullptr;
-		// @TODO remove StatisticsCollector needed in EntityType
-	}
 }
 
 PluginInformation* Delay::GetPluginInformation() {
@@ -224,11 +203,27 @@ PluginInformation* Delay::GetPluginInformation() {
 	return info;
 }
 
-void Delay::_createReportStatisticsDataDefinitions() {
+void Delay::_createInternalStatisticReporters() {
+	if (_reportStatistics) {
+		if (_cstatWaitTime == nullptr) {
+			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
+		}
+		if (_cstatWaitTime != nullptr) {
+			_statisticReporterInsert("DelayTime", _cstatWaitTime);
+			// include StatisticsCollector needed in EntityType
+			//ModelDataManager* elements = _parentModel->getDataManager();
+			//std::list<ModelDataDefinition*>* enttypes = elements->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
+			//for (ModelDataDefinition* modeldatum : *enttypes) {
+			//	EntityType* enttype = static_cast<EntityType*> (modeldatum);
+			//	if (modeldatum->isReportStatistics())
+			//		enttype->addGetStatisticsCollector(enttype->getName() + ".DelayTime");
+			//}
+		}
+	} else {
+		_statisticReportersClear();
+		_cstatWaitTime = nullptr;
+		// @TODO remove StatisticsCollector needed in EntityType
+	}
 }
 
-void Delay::_createEditableDataDefinitions() {
-}
-
-void Delay::_createOthersDataDefinitions() {
-}
+// void Delay::_createEditableDataDefinitions() { }

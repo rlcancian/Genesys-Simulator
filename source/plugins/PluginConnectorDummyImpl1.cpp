@@ -17,18 +17,18 @@
 // Model Components
 
 #include "plugins/components/MaterialHandling/Access.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "components/Logic/Assign.h"
 #include "plugins/components/Grouping/Batch.h"
 #include "plugins/components/DiscreteProcessing/Buffer.h"
 #include "plugins/components/ModalModel/CellularAutomataComp.h"
 #include "plugins/components/DiscreteProcessing/Clone.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "components/Logic/Create.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/Continuous/DiffEquations.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "components/Logic/Dispose.h"
 #include "plugins/components/Decisions/DropOff.h"
 #include "plugins/components/Template/DummyComponent.h"
 #include "plugins/components/MaterialHandling/Enter.h"
@@ -57,13 +57,13 @@
 #include "plugins/components/MaterialHandling/Stop.h"
 #include "plugins/components/MaterialHandling/Store.h"
 #include "plugins/components/Grouping/Separate.h"
-#include "plugins/components/Logic/Submodel.h"
+#include "components/ModalModel/Submodel.h"
 #include "plugins/components/MaterialHandling/Unstore.h"
 #include "plugins/components/Synchronization/Wait.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/Continuous/LSODE.h"
 #include "plugins/components/Continuous/OLD_ODEelement.h"
-#include "plugins/components/BiologicalModeling/BacteriaColony.h"
+#include "components/BiochemicalSimulation/BacteriaColony.h"
 #include "plugins/components/ModalModel/DefaultNode.h"
 #include "plugins/components/ModalModel/PetriPlace.h"
 
@@ -79,19 +79,20 @@
 #include "plugins/data/Grouping/EntityGroup.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/InputOutput/File.h"
-#include "plugins/data/DiscreteProcessing/Formula.h"
-#include "plugins/data/BiologicalModeling/GroProgram.h"
-#include "plugins/data/BiologicalModeling/BacteriaSignalGrid.h"
-#include "plugins/data/DiscreteProcessing/Label.h"
+#include "data/Logic/Formula.h"
+#include "plugins/data/BiochemicalSimulation/GroProgram.h"
+#include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
+#include "data/Logic/Label.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 #include "plugins/data/MaterialHandling/Sequence.h"
-#include "plugins/data/DiscreteProcessing/Set.h"
+#include "data/Logic/Set.h"
 #include "plugins/data/Synchronization/SignalData.h"
-#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
+#include "data/ExternalIntegration/SPICERunner.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
+#include "plugins/data/ExternalIntegration/OctaveRunner.h"
 #include "plugins/data/MaterialHandling/Station.h"
 #include "plugins/data/MaterialHandling/Storage.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "data/Logic/Variable.h"
 //#include "../../plugins/data/Expression.h"
 //#include "../../plugins/data/Conveyor.h"
 //#include "../../plugins/data/Segment.h"
@@ -126,8 +127,8 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("buffer.so");
     filenames->insert("create.so");
     filenames->insert("dispose.so");
-    filenames->insert("dummy.so");
-    filenames->insert("dummyelement.so");
+    //filenames->insert("dummy.so");
+    //filenames->insert("dummyelement.so");
     filenames->insert("entitygroup.so");
     filenames->insert("failure.so");
     filenames->insert("formula.so");
@@ -183,7 +184,7 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("spicenode.so");
     filenames->insert("spicerunner.so");
     filenames->insert("rsimulatorrunner.so");
-    //filenames->insert("octave.so");
+    filenames->insert("octave.so");
     filenames->insert("file.so");
     //filenames->insert("read.so");
     filenames->insert("write.so");
@@ -242,10 +243,10 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &Create::GetPluginInformation;
     else if (fn == "dispose.so")
         GetInfo = &Dispose::GetPluginInformation;
-    else if (fn == "dummy.so")
-        GetInfo = &DummyComponent::GetPluginInformation;
-    else if (fn == "dummyelement.so")
-        GetInfo = &DummyElement::GetPluginInformation;
+    //else if (fn == "dummy.so")
+    //    GetInfo = &DummyComponent::GetPluginInformation;
+    //else if (fn == "dummyelement.so")
+    //    GetInfo = &DummyElement::GetPluginInformation;
     else if (fn == "entitygroup.so")
         GetInfo = &EntityGroup::GetPluginInformation;
     else if (fn == "failure.so")
@@ -356,8 +357,8 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &SPICERunner::GetPluginInformation;
     else if (fn == "rsimulatorrunner.so")
         GetInfo = &RSimulatorRunner::GetPluginInformation;
-    //else if (fn == "octave.so")
-    //	GetInfo = &Octave::GetPluginInformation;
+    else if (fn == "octave.so")
+    	GetInfo = &OctaveRunner::GetPluginInformation;
     else if (fn == "file.so")
         GetInfo = &File::GetPluginInformation;
     //else if (fn == "read.so")

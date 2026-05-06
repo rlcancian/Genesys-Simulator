@@ -152,7 +152,8 @@ public:
 
 enum class SimulationControlEditorHint {
     Default,
-    CodeEditor
+    CodeEditor,
+    MultiLineText
 };
 
 /**
@@ -357,7 +358,8 @@ public:
         _validator = validator;
         _readonly = setter == nullptr;
         _propertyType = Util::TypeOf<SourceCodeString>();
-    }
+        _preferredEditorHint = SimulationControlEditorHint::CodeEditor;
+	}
 public:
     virtual std::string getValue() const override { return _getter().str(); }
     virtual bool validateProposedValue(const std::string& value, std::string& errorMessage) const override {

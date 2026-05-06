@@ -197,11 +197,8 @@ std::string File::_normalizePathSeparators(const std::string& filename) {
 	return normalized;
 }
 
-void File::_createReportStatisticsDataDefinitions() {
-}
+// void File::_createInternalStatisticReporters() { }
 
-void File::_createEditableDataDefinitions() {
-}
+// void File::_createEditableDataDefinitions() { }
 
-void File::_createOthersDataDefinitions() {
-}
+// void File::_createAttachedAttributes() { }

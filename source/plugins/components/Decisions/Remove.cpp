@@ -232,25 +232,7 @@ bool Remove::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Remove::_createInternalAndAttachedData() {
-	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
-	if (_removeFromType == Remove::RemoveFromType::QUEUE) {
-		if (_removeFrom == nullptr) {
-			_removeFrom = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
-			if (_removeFrom == nullptr) {
-				_removeFrom = new Queue(_parentModel, getName() + ".Queue");
-			}
-		}
-		if (_removeFrom != nullptr) {
-			_attachedDataInsert("Queue", _removeFrom);
-		} else {
-			_attachedDataRemove("Queue");
-		}
-	}
-	if (_removeFromType == Remove::RemoveFromType::ENTITYGROUP) {
-		// Not supported in this implementation batch. Explicitly validated in _check().
-	}
-}
+// void Remove::_createAttachedAttributes() { }
 
 PluginInformation* Remove::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Remove>(), &Remove::LoadInstance, &Remove::NewInstance);
@@ -263,11 +245,24 @@ PluginInformation* Remove::GetPluginInformation() {
 	return info;
 }
 
-void Remove::_createReportStatisticsDataDefinitions() {
-}
+// void Remove::_createInternalStatisticReporters() { }
 
 void Remove::_createEditableDataDefinitions() {
-}
-
-void Remove::_createOthersDataDefinitions() {
+	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
+	if (_removeFromType == Remove::RemoveFromType::QUEUE) {
+		if (_removeFrom == nullptr) {
+			_removeFrom = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
+			if (_removeFrom == nullptr) {
+				_removeFrom = new Queue(_parentModel, getName() + ".Queue");
+			}
+		}
+		if (_removeFrom != nullptr) {
+			_optionalEditableDataDefinitionInsert("Queue", _removeFrom);
+		} else {
+			_optionalEditableDataDefinitionRemove("Queue");
+		}
+	}
+	if (_removeFromType == Remove::RemoveFromType::ENTITYGROUP) {
+		// Not supported in this implementation batch. Explicitly validated in _check().
+	}
 }

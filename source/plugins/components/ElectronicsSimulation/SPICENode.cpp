@@ -106,11 +106,8 @@ void SPICENode::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
 
-void SPICENode::_createReportStatisticsDataDefinitions() {
-}
+// void SPICENode::_createInternalStatisticReporters() { }
 
-void SPICENode::_createEditableDataDefinitions() {
-}
+// void SPICENode::_createEditableDataDefinitions() { }
 
-void SPICENode::_createOthersDataDefinitions() {
-}
+// void SPICENode::_createAttachedAttributes() { }

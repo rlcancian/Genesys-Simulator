@@ -31,7 +31,7 @@ ModelDataDefinition* CppForG::NewInstance(Model* model, std::string name) {
 }
 
 CppForG::CppForG(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<CppForG>(), name) {
-	_createInternalAndAttachedData();
+	_createNonEditableDataDefinitions();
 
 	SimulationControlGeneric<std::string>* propDispatchEvent = new SimulationControlGeneric<std::string>(
 									std::bind(&CppForG::getOnDispatchEventCode, this), std::bind(&CppForG::setOnDispatchEventCode, this, std::placeholders::_1),
@@ -242,18 +242,7 @@ void CppForG::_initBetweenReplications() {
 	}
 }
 
-void CppForG::_createInternalAndAttachedData() {
-	if (_cppCompiler == nullptr) {
-		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
-		_cppCompiler->setSourceFilename(getName() + ".cpp");
-		_cppCompiler->setOutputFilename(getName() + ".so");
-	}
-	if (_cppCompiler != nullptr) {
-		_internalDataInsert("CppCompiler", _cppCompiler);
-	} else {
-		_internalDataRemove("CppCompiler");
-	}
-}
+//void CppForG::_createAttachedAttributes() {}
 
 PluginInformation* CppForG::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<CppForG>(), &CppForG::LoadInstance, &CppForG::NewInstance);
@@ -263,11 +252,18 @@ PluginInformation* CppForG::GetPluginInformation() {
 	return info;
 }
 
-void CppForG::_createReportStatisticsDataDefinitions() {
-}
+// void CppForG::_createInternalStatisticReporters() { }
 
-void CppForG::_createEditableDataDefinitions() {
-}
+void CppForG::_createNonEditableDataDefinitions() {
+	if (_cppCompiler == nullptr) {
+		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
+		_cppCompiler->setSourceFilename(getName() + ".cpp");
+		_cppCompiler->setOutputFilename(getName() + ".so");
+	}
+	if (_cppCompiler != nullptr) {
+		_mandatoryNonEditableDataDefinitionInsert("CppCompiler", _cppCompiler);
+	} else {
+		_mandatoryNonEditableDataDefinitionRemove("CppCompiler");
+	}
 
-void CppForG::_createOthersDataDefinitions() {
 }

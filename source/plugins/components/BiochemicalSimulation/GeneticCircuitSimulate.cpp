@@ -150,7 +150,7 @@ void GeneticCircuitSimulate::_saveInstance(PersistenceRecord* fields, bool saveD
 
 bool GeneticCircuitSimulate::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<GeneticCircuit>(), _geneticCircuit, "GeneticCircuit", errorMessage);
 	if (_stepSize <= 0.0) {
 		errorMessage += "GeneticCircuitSimulate \"" + getName() + "\" must define stepSize > 0. ";
@@ -163,13 +163,7 @@ bool GeneticCircuitSimulate::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void GeneticCircuitSimulate::_createInternalAndAttachedData() {
-	if (_geneticCircuit != nullptr) {
-		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
-	} else {
-		_attachedDataRemove("GeneticCircuit");
-	}
-}
+//void GeneticCircuitSimulate::_createAttachedAttributes() {}
 
 double GeneticCircuitSimulate::_computeRegulationMultiplier(const GeneticCircuitPart* part) const {
 	if (!_applyRegulation || _geneticCircuit == nullptr || part == nullptr) {
@@ -338,11 +332,12 @@ std::string GeneticCircuitSimulate::getLastMessage() const {
 	return _lastMessage;
 }
 
-void GeneticCircuitSimulate::_createReportStatisticsDataDefinitions() {
-}
+// void GeneticCircuitSimulate::_createInternalStatisticReporters() { }
 
 void GeneticCircuitSimulate::_createEditableDataDefinitions() {
-}
-
-void GeneticCircuitSimulate::_createOthersDataDefinitions() {
+	if (_geneticCircuit != nullptr) {
+		_optionalEditableDataDefinitionInsert("GeneticCircuit", _geneticCircuit);
+	} else {
+		_optionalEditableDataDefinitionRemove("GeneticCircuit");
+	}
 }

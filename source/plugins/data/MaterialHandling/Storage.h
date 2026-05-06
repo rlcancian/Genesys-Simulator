@@ -59,14 +59,10 @@ protected: // could be overriden
 	virtual ParserChangesInformation* _getParserChangesInformation() override;
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
-
-
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 
 private:
 
@@ -83,4 +79,3 @@ private:
 	//@TODO: Add statisticCollector for ProportionOfStorageUsage
 };
 #endif /* STORAGE_H */
-

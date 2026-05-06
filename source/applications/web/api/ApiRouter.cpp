@@ -6,8 +6,20 @@
 #include <regex>
 #include <string_view>
 
+/**
+ * @brief Dispatches HTTP routes for the Genesys web API.
+ *
+ * The router keeps request parsing, token extraction, payload decoding and JSON
+ * formatting in one place so the HTTP server can stay transport-only.
+ */
 ApiRouter::ApiRouter(SimulatorSessionService& simulatorService) : _simulatorService(simulatorService) {}
 
+/**
+ * @brief Resolves a request into one of the public API operations.
+ *
+ * The route chain stays intentionally explicit so the generated PDF makes the
+ * supported endpoints and their validation rules easy to audit.
+ */
 HttpResponse ApiRouter::handle(const HttpRequest& request) const {
     if (request.method.empty() || request.path.empty()) {
         return _jsonError(400, "BAD_REQUEST", "Missing HTTP method or path");
@@ -385,6 +397,7 @@ HttpResponse ApiRouter::handle(const HttpRequest& request) const {
     return _jsonError(404, "NOT_FOUND", "Route not found");
 }
 
+/** @brief Builds a standard JSON error response for API failures. */
 HttpResponse ApiRouter::_jsonError(int status, const char* code, const char* message) {
     return HttpResponse{
         status,
@@ -393,6 +406,7 @@ HttpResponse ApiRouter::_jsonError(int status, const char* code, const char* mes
     };
 }
 
+/** @brief Extracts and trims a Bearer token from the Authorization header. */
 std::string ApiRouter::_extractBearerToken(const HttpRequest& request) {
     const std::string header = request.header("authorization");
     constexpr const char* prefix = "Bearer ";
@@ -406,6 +420,7 @@ std::string ApiRouter::_extractBearerToken(const HttpRequest& request) {
     return token;
 }
 
+/** @brief Parses the minimal JSON body used by model import and persistence routes. */
 bool ApiRouter::_tryExtractFilenameFromBody(const std::string& body, std::string& outFilename) {
     static const std::regex filenameRegex("\"filename\"\\s*:\\s*\"([^\"]+)\"");
     std::smatch match;
@@ -416,6 +431,7 @@ bool ApiRouter::_tryExtractFilenameFromBody(const std::string& body, std::string
     return !outFilename.empty();
 }
 
+/** @brief Parses an unsigned integer field from a JSON request body. */
 bool ApiRouter::_tryExtractUnsignedIntField(const std::string& body, const std::string& fieldName, unsigned int& outValue) {
     const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*([0-9]+)");
     std::smatch match;
@@ -434,6 +450,7 @@ bool ApiRouter::_tryExtractUnsignedIntField(const std::string& body, const std::
     return true;
 }
 
+/** @brief Parses a floating-point field from a JSON request body. */
 bool ApiRouter::_tryExtractDoubleField(const std::string& body, const std::string& fieldName, double& outValue) {
     const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*(-?(?:[0-9]+(?:\\.[0-9]+)?|\\.[0-9]+)(?:[eE][+-]?[0-9]+)?)");
     std::smatch match;
@@ -452,6 +469,7 @@ bool ApiRouter::_tryExtractDoubleField(const std::string& body, const std::strin
     return true;
 }
 
+/** @brief Parses a boolean field from a JSON request body. */
 bool ApiRouter::_tryExtractBooleanField(const std::string& body, const std::string& fieldName, bool& outValue) {
     const std::regex pattern("\"" + fieldName + "\"\\s*:\\s*(true|false)");
     std::smatch match;
@@ -463,6 +481,7 @@ bool ApiRouter::_tryExtractBooleanField(const std::string& body, const std::stri
     return true;
 }
 
+/** @brief Parses the simulation configuration payload expected by `/simulation/config`. */
 std::optional<SimulatorSessionService::SimulationConfigInput> ApiRouter::_parseSimulationConfigBody(const std::string& body) {
     SimulatorSessionService::SimulationConfigInput config{};
     if (!_tryExtractUnsignedIntField(body, "numberOfReplications", config.numberOfReplications) ||
@@ -478,6 +497,7 @@ std::optional<SimulatorSessionService::SimulationConfigInput> ApiRouter::_parseS
     return config;
 }
 
+/** @brief Serializes simulation status into a compact JSON object. */
 std::string ApiRouter::_simulationStatusDataJson(const SimulatorSessionService::SimulationStatusResult& status) {
     std::string json = "{\"hasCurrentModel\":" + std::string(status.hasCurrentModel ? "true" : "false");
     if (!status.hasCurrentModel) {
@@ -500,6 +520,7 @@ std::string ApiRouter::_simulationStatusDataJson(const SimulatorSessionService::
     return json;
 }
 
+/** @brief Maps persistence-layer errors into API-level HTTP responses. */
 HttpResponse ApiRouter::_mapPersistenceError(const SimulatorSessionService::ModelPersistenceResult& result) {
     switch (result.error) {
         case SimulatorSessionService::PersistenceError::InvalidToken:
@@ -518,6 +539,7 @@ HttpResponse ApiRouter::_mapPersistenceError(const SimulatorSessionService::Mode
     }
 }
 
+/** @brief Maps model-import errors into API-level HTTP responses. */
 HttpResponse ApiRouter::_mapModelImportError(const SimulatorSessionService::ModelImportResult& result) {
     switch (result.error) {
         case SimulatorSessionService::ModelImportError::InvalidToken:
@@ -534,6 +556,7 @@ HttpResponse ApiRouter::_mapModelImportError(const SimulatorSessionService::Mode
     }
 }
 
+/** @brief Escapes strings that are embedded directly in JSON payloads. */
 std::string ApiRouter::_escapeJson(const std::string& value) {
     std::string out;
     out.reserve(value.size());
@@ -549,6 +572,7 @@ std::string ApiRouter::_escapeJson(const std::string& value) {
     return out;
 }
 
+/** @brief Serializes model metadata to the public JSON wire format. */
 std::string ApiRouter::_modelInfoDataJson(const SimulatorSessionService::ModelInfoResult& info) {
     if (!info.exists) {
         return "{\"exists\":false}";
@@ -566,6 +590,7 @@ std::string ApiRouter::_modelInfoDataJson(const SimulatorSessionService::ModelIn
            "\"componentCount\":" + std::to_string(info.componentCount) + "}";
 }
 
+/** @brief Serializes worker discovery metadata to JSON. */
 std::string ApiRouter::_workerInfoDataJson(const SimulatorSessionService::WorkerInfoResult& info) {
     return "{\"role\":\"" + _escapeJson(info.role) + "\","
            "\"application\":\"" + _escapeJson(info.application) + "\","
@@ -576,6 +601,7 @@ std::string ApiRouter::_workerInfoDataJson(const SimulatorSessionService::Worker
            "\"simulatorVersionNumber\":" + std::to_string(info.simulatorVersionNumber) + "}";
 }
 
+/** @brief Serializes worker capability flags to JSON. */
 std::string ApiRouter::_workerCapabilitiesDataJson(const SimulatorSessionService::WorkerCapabilitiesResult& capabilities) {
     return "{\"supportsSessionApi\":" + std::string(capabilities.supportsSessionApi ? "true" : "false") + ","
            "\"supportsSessionScopedSimulator\":" + std::string(capabilities.supportsSessionScopedSimulator ? "true" : "false") +
@@ -596,7 +622,7 @@ std::string ApiRouter::_workerCapabilitiesDataJson(const SimulatorSessionService
            "}";
 }
 
-
+/** @brief Extracts a job identifier from `/api/v1/worker/jobs/{jobId}`. */
 bool ApiRouter::_tryExtractWorkerJobIdFromPath(const std::string& path, std::string& outJobId) {
     constexpr std::string_view prefix = "/api/v1/worker/jobs/";
     if (path.rfind(prefix, 0) != 0 || path.size() <= prefix.size()) {
@@ -610,6 +636,7 @@ bool ApiRouter::_tryExtractWorkerJobIdFromPath(const std::string& path, std::str
     return true;
 }
 
+/** @brief Extracts a job identifier from `/api/v1/worker/jobs/{jobId}/run`. */
 bool ApiRouter::_tryExtractWorkerJobRunIdFromPath(const std::string& path, std::string& outJobId) {
     constexpr std::string_view prefix = "/api/v1/worker/jobs/";
     constexpr std::string_view suffix = "/run";
@@ -630,6 +657,7 @@ bool ApiRouter::_tryExtractWorkerJobRunIdFromPath(const std::string& path, std::
     return true;
 }
 
+/** @brief Extracts a job identifier from `/api/v1/worker/jobs/{jobId}/result`. */
 bool ApiRouter::_tryExtractWorkerJobResultIdFromPath(const std::string& path, std::string& outJobId) {
     constexpr std::string_view prefix = "/api/v1/worker/jobs/";
     constexpr std::string_view suffix = "/result";
@@ -650,6 +678,7 @@ bool ApiRouter::_tryExtractWorkerJobResultIdFromPath(const std::string& path, st
     return true;
 }
 
+/** @brief Converts worker-job states to lowercase API strings. */
 const char* ApiRouter::_workerJobStateToString(WorkerJobState state) {
     switch (state) {
         case WorkerJobState::Queued:
@@ -665,6 +694,7 @@ const char* ApiRouter::_workerJobStateToString(WorkerJobState state) {
     }
 }
 
+/** @brief Serializes worker-job metadata to JSON. */
 std::string ApiRouter::_workerJobDataJson(const SimulatorSessionService::WorkerJobInfoResult& job) {
     return "{\"jobId\":\"" + _escapeJson(job.jobId) + "\","
            "\"state\":\"" + std::string(_workerJobStateToString(job.state)) + "\","
@@ -674,6 +704,7 @@ std::string ApiRouter::_workerJobDataJson(const SimulatorSessionService::WorkerJ
            "\"message\":\"" + _escapeJson(job.message) + "\"}";
 }
 
+/** @brief Serializes the terminal result payload returned by `/result`. */
 std::string ApiRouter::_workerJobResultDataJson(const SimulatorSessionService::WorkerJobResultInfo& result) {
     std::string json = "{\"jobId\":\"" + _escapeJson(result.jobId) + "\","
                        "\"state\":\"" + std::string(_workerJobStateToString(result.state)) + "\","
@@ -692,6 +723,7 @@ std::string ApiRouter::_workerJobResultDataJson(const SimulatorSessionService::W
     return json;
 }
 
+/** @brief Maps worker-job errors into the public HTTP error model. */
 HttpResponse ApiRouter::_mapWorkerJobError(
     SimulatorSessionService::WorkerJobError error,
     bool includeMissingModelMessage

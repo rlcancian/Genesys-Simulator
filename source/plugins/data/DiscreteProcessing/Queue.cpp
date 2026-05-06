@@ -213,22 +213,28 @@ bool Queue::_check(std::string& errorMessage) {
 	return _parentModel->getDataManager()->check(Util::TypeOf<Attribute>(), _attributeName, "AttributeName", attributeMandatory, errorMessage);
 }
 
-void Queue::_createInternalAndAttachedData() {
+void Queue::_createInternalStatisticReporters() {
 	if (_reportStatistics) {
 		if (_cstatNumberInQueue == nullptr) {
 			_cstatNumberInQueue = new StatisticsCollector(_parentModel, getName() + "." + "NumberInQueue", this);
 			_cstatTimeInQueue = new StatisticsCollector(_parentModel, getName() + "." + "TimeInQueue", this);
 		}
 		if (_cstatNumberInQueue != nullptr) {
-			_internalDataInsert("NumberInQueue", _cstatNumberInQueue);
+			_statisticReporterInsert("NumberInQueue", _cstatNumberInQueue);
 		}
 		if (_cstatTimeInQueue != nullptr) {
-			_internalDataInsert("TimeInQueue", _cstatTimeInQueue);
+			_statisticReporterInsert("TimeInQueue", _cstatTimeInQueue);
 		}
-	} else if (_cstatNumberInQueue != nullptr) {
-		_internalDataClear();
+	} else {
+		_statisticReportersClear();
+		_cstatNumberInQueue = nullptr;
+		_cstatTimeInQueue = nullptr;
 	}
 }
+
+// void Queue::_createEditableDataDefinitions() { }
+
+// void Queue::_createAttachedAttributes() { }
 
 ParserChangesInformation * Queue::_getParserChangesInformation() {
 	ParserChangesInformation* changes = new ParserChangesInformation();
@@ -268,13 +274,4 @@ void Queue::_configureListComparator() {
 				return a->getArrivalOrder() < b->getArrivalOrder();
 		}
 	});
-}
-
-void Queue::_createReportStatisticsDataDefinitions() {
-}
-
-void Queue::_createEditableDataDefinitions() {
-}
-
-void Queue::_createOthersDataDefinitions() {
 }

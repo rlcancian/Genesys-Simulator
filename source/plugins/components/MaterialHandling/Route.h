@@ -18,7 +18,7 @@
 #include "kernel/simulator/Counter.h"
 #include "../../data/MaterialHandling/Station.h"
 #include "../../data/MaterialHandling/Sequence.h"
-#include "plugins/data/DiscreteProcessing/Label.h"
+#include "../../data/Logic/Label.h"
 
 /*!
 Route module
@@ -90,16 +90,16 @@ protected:
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected:
 	//virtual void _initBetweenReplications();
-	void _createReportStatisticsDataDefinitions() override;
-	void _createEditableDataDefinitions() override;
-	void _createOthersDataDefinitions() override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
 
 protected:
-	void _doCreateReportStatisticsDataDefinitions();
-	void _doCreateEditableDataDefinitions();
-	void _doCreateOthersDataDefinitions();
+	 virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	 virtual void _createEditableDataDefinitions() override;
+	 virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalAndAttachedData() override;
+
+protected:
 
 private:
 
@@ -121,4 +121,3 @@ private: // internal elements
 };
 
 #endif /* ROUTE_H */
-

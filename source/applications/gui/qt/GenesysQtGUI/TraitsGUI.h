@@ -4,6 +4,12 @@
 #include <cstdint>
 #include <string>
 
+/**
+ * @brief GUI-specific trait constants used to tune default rendering behavior.
+ *
+ * These specializations keep visual defaults close to the legacy Qt interface
+ * without scattering magic numbers across the graphics and editor code.
+ */
 template <class T>
 struct TraitsGUI {
 };

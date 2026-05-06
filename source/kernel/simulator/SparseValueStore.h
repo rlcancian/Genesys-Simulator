@@ -13,6 +13,8 @@
 
 #include <list>
 #include <map>
+#include <algorithm>
+#include <cctype>
 #include <sstream>
 #include <string>
 #include <utility>
@@ -94,6 +96,161 @@ public:
 	std::string showValues() const;
 
 private:
+	static std::string trimCopy(const std::string& text) {
+		std::size_t first = 0;
+		while (first < text.size() && std::isspace(static_cast<unsigned char>(text[first]))) {
+			++first;
+		}
+		std::size_t last = text.size();
+		while (last > first && std::isspace(static_cast<unsigned char>(text[last - 1]))) {
+			--last;
+		}
+		return text.substr(first, last - first);
+	}
+
+	static std::vector<unsigned int> parseIndex(const std::string& index) {
+		std::vector<unsigned int> parsed;
+		if (index.empty()) {
+			return parsed;
+		}
+		std::stringstream input(index);
+		std::string token;
+		while (std::getline(input, token, ',')) {
+			token = trimCopy(token);
+			if (token.empty()) {
+				continue;
+			}
+			parsed.push_back(static_cast<unsigned int>(std::stoul(token)));
+		}
+		return parsed;
+	}
+
+	static std::size_t productOfDimensions(const std::list<unsigned int>& dimensions) {
+		std::size_t product = 1u;
+		for (unsigned int dimension : dimensions) {
+			product *= static_cast<std::size_t>(dimension);
+		}
+		return product;
+	}
+
+	static std::vector<std::size_t> stridesFor(const std::list<unsigned int>& dimensions) {
+		std::vector<std::size_t> strides;
+		strides.reserve(dimensions.size());
+		std::size_t stride = 1u;
+		for (auto it = dimensions.rbegin(); it != dimensions.rend(); ++it) {
+			strides.push_back(stride);
+			stride *= static_cast<std::size_t>(*it);
+		}
+		std::reverse(strides.begin(), strides.end());
+		return strides;
+	}
+
+	std::size_t linearIndex(const std::vector<unsigned int>& indexes) const {
+		if (_dimensionSizes.empty()) {
+			return indexes.empty() ? 0u : static_cast<std::size_t>(-1);
+		}
+		if (indexes.size() != _dimensionSizes.size()) {
+			return static_cast<std::size_t>(-1);
+		}
+		const std::vector<std::size_t> strides = stridesFor(_dimensionSizes);
+		std::size_t linear = 0u;
+		auto dimIt = _dimensionSizes.begin();
+		for (std::size_t i = 0; i < indexes.size(); ++i, ++dimIt) {
+			if (indexes[i] >= *dimIt) {
+				return static_cast<std::size_t>(-1);
+			}
+			linear += static_cast<std::size_t>(indexes[i]) * strides[i];
+		}
+		return linear;
+	}
+
+	void rebuildDenseFromCache() {
+		const std::size_t size = _dimensionSizes.empty() ? 1u : productOfDimensions(_dimensionSizes);
+		_denseValues.assign(size, 0.0);
+		for (const auto& entry : _values) {
+			if (entry.first.empty()) {
+				continue;
+			}
+			const std::vector<unsigned int> indexes = parseIndex(entry.first);
+			const std::size_t linear = linearIndex(indexes);
+			if (linear != static_cast<std::size_t>(-1) && linear < _denseValues.size()) {
+				_denseValues[linear] = entry.second;
+			}
+		}
+		_denseActive = true;
+	}
+
+	void syncCacheFromDense() {
+		_values.clear();
+		if (_hasScalarValue) {
+			_values[""] = _scalarValue;
+		}
+		if (!_denseActive) {
+			return;
+		}
+		if (_dimensionSizes.empty()) {
+			if (!_denseValues.empty() && !_hasScalarValue) {
+				_values[""] = _denseValues.front();
+			}
+			return;
+		}
+		std::vector<unsigned int> indexes;
+		indexes.reserve(_dimensionSizes.size());
+		const std::vector<std::size_t> strides = stridesFor(_dimensionSizes);
+		for (std::size_t linear = 0; linear < _denseValues.size(); ++linear) {
+			if (_denseValues[linear] == 0.0) {
+				continue;
+			}
+			std::size_t remainder = linear;
+			indexes.clear();
+			for (std::size_t i = 0; i < strides.size(); ++i) {
+				const unsigned int index = static_cast<unsigned int>(remainder / strides[i]);
+				indexes.push_back(index);
+				remainder %= strides[i];
+			}
+			_values[makeIndexKey(indexes)] = _denseValues[linear];
+		}
+	}
+
+	void ensureDenseForIndex(const std::vector<unsigned int>& indexes) {
+		if (indexes.empty() && _dimensionSizes.empty()) {
+			if (!_denseActive) {
+				_denseActive = true;
+				_denseValues.assign(1u, 0.0);
+			}
+			return;
+		}
+
+		if (_dimensionSizes.empty()) {
+			_dimensionSizes.clear();
+			for (unsigned int index : indexes) {
+				_dimensionSizes.push_back(index + 1u);
+			}
+			rebuildDenseFromCache();
+			return;
+		}
+
+		if (indexes.size() != _dimensionSizes.size()) {
+			return;
+		}
+
+		bool needsResize = false;
+		auto dimIt = _dimensionSizes.begin();
+		for (std::size_t i = 0; i < indexes.size(); ++i, ++dimIt) {
+			if (indexes[i] >= *dimIt) {
+				*dimIt = indexes[i] + 1u;
+				needsResize = true;
+			}
+		}
+		if (needsResize || !_denseActive) {
+			rebuildDenseFromCache();
+		}
+	}
+
+	bool _denseActive = false;
+	bool _hasScalarValue = false;
+	double _scalarValue = 0.0;
+	std::vector<double> _denseValues;
 	std::list<unsigned int> _dimensionSizes;
 	std::map<std::string, double> _values;
 };
@@ -137,6 +294,17 @@ inline std::string SparseValueStore::normalizeIndexKey(const std::string& index)
 }
 
 inline double SparseValueStore::value(const std::string& index) const {
+	if (index.empty() && _hasScalarValue) {
+		return _scalarValue;
+	}
+	if (_denseActive) {
+		const std::vector<unsigned int> indexes = parseIndex(index);
+		const std::size_t linear = linearIndex(indexes);
+		if (linear == static_cast<std::size_t>(-1) || linear >= _denseValues.size()) {
+			return 0.0;
+		}
+		return _denseValues[linear];
+	}
 	const auto it = _values.find(normalizeIndexKey(index));
 	if (it == _values.end()) {
 		return 0.0;
@@ -145,15 +313,57 @@ inline double SparseValueStore::value(const std::string& index) const {
 }
 
 inline void SparseValueStore::setValue(double value, const std::string& index) {
+	if (index.empty()) {
+		_scalarValue = value;
+		_hasScalarValue = true;
+		_values[""] = value;
+		if (_denseActive && _dimensionSizes.empty()) {
+			if (_denseValues.empty()) {
+				_denseValues.assign(1u, 0.0);
+			}
+			_denseValues.front() = value;
+		}
+		return;
+	}
+	const std::vector<unsigned int> indexes = parseIndex(index);
+	ensureDenseForIndex(indexes);
+	if (_denseActive) {
+		const std::size_t linear = linearIndex(indexes);
+		if (linear != static_cast<std::size_t>(-1)) {
+			if (linear >= _denseValues.size()) {
+				_denseValues.resize(linear + 1u, 0.0);
+			}
+			_denseValues[linear] = value;
+			syncCacheFromDense();
+			return;
+		}
+	}
 	_values[normalizeIndexKey(index)] = value;
 }
 
 inline void SparseValueStore::setValues(const std::map<std::string, double>& values) {
 	_values = values;
+	const auto scalarIt = _values.find("");
+	_hasScalarValue = scalarIt != _values.end();
+	if (_hasScalarValue) {
+		_scalarValue = scalarIt->second;
+	}
+	if (_dimensionSizes.empty()) {
+		if (_values.size() == 1u && _hasScalarValue) {
+			_denseActive = true;
+			_denseValues.assign(1u, _scalarValue);
+		} else {
+			_denseActive = false;
+			_denseValues.clear();
+		}
+		return;
+	}
+	rebuildDenseFromCache();
 }
 
 inline void SparseValueStore::insertDimensionSize(unsigned int size) {
 	_dimensionSizes.insert(_dimensionSizes.end(), size);
+	rebuildDenseFromCache();
 }
 
 inline std::list<unsigned int>* SparseValueStore::dimensionSizes() {
@@ -175,6 +385,10 @@ inline const std::map<std::string, double>* SparseValueStore::values() const {
 inline void SparseValueStore::clear() {
 	_dimensionSizes.clear();
 	_values.clear();
+	_hasScalarValue = false;
+	_scalarValue = 0.0;
+	_denseValues.clear();
+	_denseActive = false;
 }
 
 inline void SparseValueStore::loadDimensions(PersistenceRecord* fields) {
@@ -185,6 +399,9 @@ inline void SparseValueStore::loadDimensions(PersistenceRecord* fields) {
 	const unsigned int count = fields->loadField("dimensions", 0u);
 	for (unsigned int i = 0; i < count; i++) {
 		insertDimensionSize(fields->loadField("dimension" + Util::StrIndex(i), 0u));
+	}
+	if (!_dimensionSizes.empty()) {
+		rebuildDenseFromCache();
 	}
 }
 
@@ -234,6 +451,9 @@ inline void SparseValueStore::saveValues(PersistenceRecord* fields,
 }
 
 inline std::string SparseValueStore::showValues() const {
+	if (_denseActive && _values.empty() && !_denseValues.empty() && _dimensionSizes.empty()) {
+		return "{" + std::to_string(_denseValues.front()) + "}";
+	}
 	std::string text = "{";
 	for (const auto& value : _values) {
 		text += value.first + "=" + Util::StrTruncIfInt(std::to_string(value.second)) + ", ";

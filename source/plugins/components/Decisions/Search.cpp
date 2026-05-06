@@ -319,28 +319,7 @@ bool Search::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Search::_createInternalAndAttachedData() {
-	if (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), _saveFounRankAttribute) == nullptr) {
-		this->_attachedAttributesInsert({_saveFounRankAttribute});
-	}
-	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
-	if (_searchInType == Search::SearchInType::QUEUE) {
-		if (_searchIn == nullptr) {
-			_searchIn = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
-			if (_searchIn == nullptr) {
-				_searchIn = new Queue(_parentModel, getName() + ".Queue");
-			}
-		}
-		if (_searchIn != nullptr) {
-			_attachedDataInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
-		} else {
-			_attachedDataRemove("Queue");
-		}
-	}
-	if (_searchInType == Search::SearchInType::ENTITYGROUP) {
-		// Not supported in this implementation batch. Explicitly validated in _check().
-	}
-}
+// void Search::_createAttachedAttributes() { }
 
 PluginInformation* Search::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Search>(), &Search::LoadInstance, &Search::NewInstance);
@@ -354,11 +333,27 @@ PluginInformation* Search::GetPluginInformation() {
 	return info;
 }
 
-void Search::_createReportStatisticsDataDefinitions() {
-}
+// void Search::_createInternalStatisticReporters() { }
 
 void Search::_createEditableDataDefinitions() {
-}
-
-void Search::_createOthersDataDefinitions() {
+	if (_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), _saveFounRankAttribute) == nullptr) {
+		this->_attachedAttributesInsert({_saveFounRankAttribute});
+	}
+	PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
+	if (_searchInType == Search::SearchInType::QUEUE) {
+		if (_searchIn == nullptr) {
+			_searchIn = plugins->newInstance<Queue>(_parentModel, getName() + ".Queue");
+			if (_searchIn == nullptr) {
+				_searchIn = new Queue(_parentModel, getName() + ".Queue");
+			}
+		}
+		if (_searchIn != nullptr) {
+			_optionalEditableDataDefinitionInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
+		} else {
+			_optionalEditableDataDefinitionRemove("Queue");
+		}
+	}
+	if (_searchInType == Search::SearchInType::ENTITYGROUP) {
+		// Not supported in this implementation batch. Explicitly validated in _check().
+	}
 }

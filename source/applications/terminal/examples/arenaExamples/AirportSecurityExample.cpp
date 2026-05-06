@@ -1,9 +1,9 @@
 #include "AirportSecurityExample.h"
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
 #include "plugins/components/Decisions/Decide.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 
 AirportSecurityExample::AirportSecurityExample() {
 }
@@ -55,4 +55,3 @@ int AirportSecurityExample::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 }
-

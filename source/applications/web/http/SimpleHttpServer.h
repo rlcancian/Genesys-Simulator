@@ -3,6 +3,7 @@
 #include "HttpRequest.h"
 #include "HttpResponse.h"
 
+#include <atomic>
 #include <functional>
 
 /**
@@ -29,6 +30,12 @@ public:
      */
     bool serve(const RequestHandler& handler, unsigned long maxRequests = 0);
 
+    /**
+     * @brief Requests the serving loop to stop as soon as it reaches a safe point.
+     */
+    void requestStop();
+
 private:
     unsigned short _port;
+    std::atomic<bool> _stopRequested{false};
 };

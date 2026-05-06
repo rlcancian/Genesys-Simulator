@@ -13,9 +13,9 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "../../../TraitsApp.h"
 
 Smart_DefaultModalModel::Smart_DefaultModalModel() {

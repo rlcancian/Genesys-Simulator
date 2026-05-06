@@ -18,6 +18,11 @@
 #include <utility>
 
 namespace {
+enum class SaveModelFormat {
+    GraphicalGui,
+    KernelGen
+};
+
 QString findCompanionGuiFile(const QFileInfo& selectedInfo) {
     if (!selectedInfo.exists()) {
         return {};
@@ -66,6 +71,11 @@ QString normalizedModelBasePath(const QString& selectedPath) {
         }
     }
     return baseFileName;
+}
+
+SaveModelFormat requestedSaveModelFormat(const QString& selectedPath) {
+    const QString suffix = QFileInfo(selectedPath).suffix().toLower();
+    return suffix == "gen" ? SaveModelFormat::KernelGen : SaveModelFormat::GraphicalGui;
 }
 }
 
@@ -179,24 +189,45 @@ void ModelLifecycleController::onActionModelSaveTriggered() const {
         return;
     } else {
         const QString baseFileName = normalizedModelBasePath(fileName);
-        const QString finalGuiFileName = baseFileName + ".gui";
-        const QString finalGenFileName = baseFileName + ".gen";
+        const SaveModelFormat selectedFormat = requestedSaveModelFormat(fileName);
 
-        _callbacks.insertCommandInConsole("save " + finalGuiFileName.toStdString());
-        QFile saveFile(finalGenFileName);
+        if (selectedFormat == SaveModelFormat::KernelGen) {
+            const QString finalGenFileName = baseFileName + ".gen";
+            _callbacks.insertCommandInConsole("save " + finalGenFileName.toStdString());
+            QFile saveFile(finalGenFileName);
 
-        if (!saveFile.open(QIODevice::WriteOnly)) {
-            QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
-                                     saveFile.errorString());
-            return;
-        } else {
+            if (!saveFile.open(QIODevice::WriteOnly)) {
+                QMessageBox::information(_ownerWidget, QObject::tr("Unable to access file to save"),
+                                         saveFile.errorString());
+                return;
+            }
+
             if (!_callbacks.saveTextModel(&saveFile, _ui->TextCodeEditor->toPlainText())) {
                 saveFile.close();
                 QMessageBox::warning(_ownerWidget, "Save Model", "Error while saving model text.");
                 return;
             }
             saveFile.close();
+
+            *_modelFilename = finalGenFileName;
+            _callbacks.actualizeModelTextHasChanged(false);
+            if (_graphicalModelHasChanged != nullptr) {
+                *_graphicalModelHasChanged = false;
+            }
+            if (Model* currentModel = _simulator->getModelManager()->current()) {
+                currentModel->setHasChanged(false);
+            }
+            SystemPreferences::setLastModelFilename(finalGenFileName.toStdString());
+            SystemPreferences::pushRecentModelFile(finalGenFileName.toStdString());
+            SystemPreferences::save();
+            QMessageBox::information(_ownerWidget, "Save Model", "Model successfully saved");
+            _callbacks.actualizeActions();
+            clearUndoStackIfAvailable(_ui);
+            return;
         }
+
+        const QString finalGuiFileName = baseFileName + ".gui";
+        _callbacks.insertCommandInConsole("save " + finalGuiFileName.toStdString());
         if (!_callbacks.setSimulationModelBasedOnText()) {
             QMessageBox::warning(_ownerWidget, "Save Model", "Could not synchronize simulation model from text before saving graphical state.");
             return;

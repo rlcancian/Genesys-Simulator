@@ -788,11 +788,8 @@ bool BioNetwork::scanLocalParameterSensitivity(double relativeStep, double absol
 			relativeStep, absoluteStep, scan, errorMessage);
 }
 
-void BioNetwork::_createReportStatisticsDataDefinitions() {
-}
+// void BioNetwork::_createInternalStatisticReporters() { }
 
-void BioNetwork::_createEditableDataDefinitions() {
-}
+// void BioNetwork::_createEditableDataDefinitions() { }
 
-void BioNetwork::_createOthersDataDefinitions() {
-}
+// void BioNetwork::_createAttachedAttributes() { }

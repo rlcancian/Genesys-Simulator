@@ -36,6 +36,7 @@ add_executable(genesys_qt_gui_application
 target_include_directories(genesys_qt_gui_application
     PRIVATE
         ${CMAKE_SOURCE_DIR}/source
+        ${CMAKE_SOURCE_DIR}/source/applications/web
         ${CMAKE_CURRENT_SOURCE_DIR}
         ${CMAKE_CURRENT_SOURCE_DIR}/codeeditor
         ${CMAKE_CURRENT_SOURCE_DIR}/propertyeditor
@@ -49,7 +50,7 @@ target_link_libraries(genesys_qt_gui_application
         ${GENESYS_QT_PACKAGE}::Widgets
         ${GENESYS_QT_PACKAGE}::PrintSupport
         ${GENESYS_QT_PACKAGE}::Network
-        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_tools>"
+        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_web_core,genesys_tools>"
 )
 
 target_compile_features(genesys_qt_gui_application PRIVATE cxx_std_23)

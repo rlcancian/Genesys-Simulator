@@ -28,7 +28,9 @@ ModelDataDefinition* EntityGroup::NewInstance(Model* model, std::string name) {
 
 EntityGroup::EntityGroup(Model* model, std::string name) : ModelDataDefinition(model, Util::TypeOf<EntityGroup>(), name) {
 	// it is invoked in the constructor since EntityGroups are creted runtime by Components such as Batch
-	this->_createInternalAndAttachedData();
+	this->_createInternalStatisticReporters();
+	this->_createEditableDataDefinitions();
+	this->_createAttachedAttributes();
 }
 
 EntityGroup::~EntityGroup() {
@@ -125,20 +127,20 @@ ModelDataDefinition * EntityGroup::LoadInstance(Model* model, PersistenceRecord 
 	return newElement;
 }
 
-void EntityGroup::_createInternalAndAttachedData() {
-	this->_attachedAttributesInsert({"Entity.Group"});
-	if (_reportStatistics) {
-		if (_cstatNumberInGroup == nullptr) {
-			_cstatNumberInGroup = new StatisticsCollector(_parentModel, "NumberInGroup", this);
-		}
-		if (_cstatNumberInGroup != nullptr) {
-			_internalDataInsert("NumberInGroup", _cstatNumberInGroup);
-		}
-	} else if (_cstatNumberInGroup != nullptr) {
-		_internalDataClear();
-		_cstatNumberInGroup = nullptr;
-	}
-}
+// void EntityGroup::_createAttachedAttributes() {
+// 	this->_attachedAttributesInsert({"Entity.Group"});
+// 	if (_reportStatistics) {
+// 		if (_cstatNumberInGroup == nullptr) {
+// 			_cstatNumberInGroup = new StatisticsCollector(_parentModel, "NumberInGroup", this);
+// 		}
+// 		if (_cstatNumberInGroup != nullptr) {
+// 			_internalDataInsert("NumberInGroup", _cstatNumberInGroup);
+// 		}
+// 	} else if (_cstatNumberInGroup != nullptr) {
+// 		_internalDataClear();
+// 		_cstatNumberInGroup = nullptr;
+// 	}
+// }
 
 void EntityGroup::_initBetweenReplications() {
 	ModelDataDefinition::_initBetweenReplications();
@@ -150,11 +152,22 @@ bool EntityGroup::_check(std::string& errorMessage) {
 	return true;
 }
 
-void EntityGroup::_createReportStatisticsDataDefinitions() {
+void EntityGroup::_createInternalStatisticReporters() {
+	if (_reportStatistics) {
+		if (_cstatNumberInGroup == nullptr) {
+			_cstatNumberInGroup = new StatisticsCollector(_parentModel, "NumberInGroup", this);
+		}
+		if (_cstatNumberInGroup != nullptr) {
+			_mandatoryNonEditableDataDefinitionInsert("NumberInGroup", _cstatNumberInGroup);
+		}
+	} else {
+		_mandatoryNonEditableDataDefinitionsClear();
+		_cstatNumberInGroup = nullptr;
+	}
 }
 
-void EntityGroup::_createEditableDataDefinitions() {
-}
+// void EntityGroup::_createEditableDataDefinitions() { }
 
-void EntityGroup::_createOthersDataDefinitions() {
+void EntityGroup::_createAttachedAttributes() {
+	this->_attachedAttributesInsert({"Entity.Group"});
 }

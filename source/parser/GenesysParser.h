@@ -32,7 +32,7 @@
 
 
 /**
- ** \file GenesysParser.h
+ ** \file ../GenesysParser.h
  ** Define the yy::parser class.
  */
 
@@ -45,7 +45,7 @@
 #ifndef YY_YY_GENESYSPARSER_H_INCLUDED
 # define YY_YY_GENESYSPARSER_H_INCLUDED
 // "%code requires" blocks.
-#line 9 "parserBisonFlex/bisonparser.yy"
+#line 9 "bisonparser.yy"
 
 	#include <string>
 	#include <cmath>
@@ -58,7 +58,7 @@
 	/****begin_Includes_plugins****/
 
 		/**begin_Includes:Variable**/
-		#include "plugins/data/DiscreteProcessing/Variable.h"
+		#include "plugins/data/Logic/Variable.h"
 		/**end_Includes:Variable**/
 
 		/**begin_Includes:Queue**/
@@ -66,7 +66,7 @@
 		/**end_Includes:Queue**/
 
 		/**begin_Includes:Formula**/
-		#include "plugins/data/DiscreteProcessing/Formula.h"
+		#include "plugins/data/Logic/Formula.h"
 		/**end_Includes:Formula**/
 
 		/**begin_Includes:Resource**/
@@ -74,7 +74,7 @@
 		/**end_Includes:Resource**/
 
 		/**begin_Includes:Set**/
-		#include "plugins/data/DiscreteProcessing/Set.h"
+		#include "plugins/data/Logic/Set.h"
 		/**end_Includes:Set**/
 
 	/****end_Includes_plugins****/
@@ -85,7 +85,7 @@
 
 	class genesyspp_driver;
 
-#line 89 "GenesysParser.h"
+#line 89 "../GenesysParser.h"
 
 # include <cassert>
 # include <cstdlib> // std::abort
@@ -225,7 +225,7 @@
 #endif
 
 namespace yy {
-#line 229 "GenesysParser.h"
+#line 229 "../GenesysParser.h"
 
 
 
@@ -3503,7 +3503,7 @@ switch (yykind)
 
 
 } // yy
-#line 3507 "GenesysParser.h"
+#line 3507 "../GenesysParser.h"
 
 
 

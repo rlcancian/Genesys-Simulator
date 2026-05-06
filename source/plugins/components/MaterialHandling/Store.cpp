@@ -92,11 +92,8 @@ PluginInformation* Store::GetPluginInformation() {
 }
 
 
-void Store::_createReportStatisticsDataDefinitions() {
-}
+// void Store::_createInternalStatisticReporters() { }
 
-void Store::_createEditableDataDefinitions() {
-}
+// void Store::_createEditableDataDefinitions() { }
 
-void Store::_createOthersDataDefinitions() {
-}
+// void Store::_createAttachedAttributes() { }

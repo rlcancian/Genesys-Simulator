@@ -623,7 +623,7 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
     scene->getGraphicalModelComponents()->append(graphicalSeize);
     scene->getAllComponents()->append(graphicalSeize);
     ASSERT_NE(graphicalSeize, nullptr);
-    const QString expectedSavedComponentColor = graphicalSeize->getColor().name(QColor::HexRgb);
+    const QString expectedCategoryColor = QColor(Qt::darkGreen).name(QColor::HexRgb);
 
     GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(&simulator, scene);
     auto* queueGmdd = findGraphicalDataDefinition(*scene, queue);
@@ -753,7 +753,7 @@ TEST(GuiGmddLayout, SerializerRoundTripRestoresComponentColorAndDataDefinitionPo
 
     GraphicalModelComponent* loadedComponent = findGraphicalComponentByName(*scene, "Seize_Serializer");
     ASSERT_NE(loadedComponent, nullptr);
-    EXPECT_EQ(loadedComponent->getColor().name(QColor::HexRgb), expectedSavedComponentColor);
+    EXPECT_EQ(loadedComponent->getColor().name(QColor::HexRgb), expectedCategoryColor);
 
     GraphicalModelDataDefinition* loadedQueueGmdd = findGraphicalDataDefinitionByTypeAndName(
         *scene,

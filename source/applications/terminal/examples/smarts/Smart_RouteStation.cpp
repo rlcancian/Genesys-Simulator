@@ -19,11 +19,11 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/MaterialHandling/Route.h"
 #include "plugins/components/MaterialHandling/Enter.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "../../../TraitsApp.h"
 
 Smart_RouteStation::Smart_RouteStation() {
@@ -81,4 +81,3 @@ int Smart_RouteStation::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

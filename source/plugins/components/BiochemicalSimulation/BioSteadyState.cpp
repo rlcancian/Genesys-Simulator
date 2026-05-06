@@ -128,7 +128,7 @@ void BioSteadyState::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 
 bool BioSteadyState::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<BioNetwork>(), _bioNetwork, "BioNetwork", errorMessage);
 	if (_tolerance < 0.0) {
@@ -138,11 +138,11 @@ bool BioSteadyState::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void BioSteadyState::_createInternalAndAttachedData() {
+void BioSteadyState::_createAttachedAttributes() {
 	if (_bioNetwork != nullptr) {
-		_attachedDataInsert("BioNetwork", _bioNetwork);
+		_optionalEditableDataDefinitionInsert("BioNetwork", _bioNetwork);
 	} else {
-		_attachedDataRemove("BioNetwork");
+		_optionalEditableDataDefinitionRemove("BioNetwork");
 	}
 }
 
@@ -251,11 +251,6 @@ std::string BioSteadyState::getLastMessage() const {
 	return _lastMessage;
 }
 
-void BioSteadyState::_createReportStatisticsDataDefinitions() {
-}
+// void BioSteadyState::_createInternalStatisticReporters() { }
 
-void BioSteadyState::_createEditableDataDefinitions() {
-}
-
-void BioSteadyState::_createOthersDataDefinitions() {
-}
+// void BioSteadyState::_createEditableDataDefinitions() { }

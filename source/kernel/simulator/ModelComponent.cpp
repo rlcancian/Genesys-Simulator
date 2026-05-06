@@ -91,7 +91,7 @@ void ModelComponent::SaveInstance(PersistenceRecord *fields, ModelComponent* com
 void ModelComponent::CreateInternalData(ModelComponent* component) {
 	//component->_model->getTraceManager()->trace(TraceManager::Level::blockArrival, "Writing component \"" + component->_name + "\""); //std::to_string(component->_id));
 	try {
-		component->_createInternalAndAttachedData();
+		ModelDataDefinition::CreateInternalData(component);
 	} catch (const std::exception e) {
 		component->traceError("Error creating elements of component " + component->show(), e);
 	};

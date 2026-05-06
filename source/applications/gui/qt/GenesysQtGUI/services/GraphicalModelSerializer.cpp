@@ -42,6 +42,8 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
+#include <QStringList>
+#include <algorithm>
 #include <cmath>
 #include <set>
 #include <vector>
@@ -254,7 +256,9 @@ QString decodePersistedFileText(const QByteArray& rawBytes) {
 
 }
 
-// Build the serializer with explicit, narrow dependencies from MainWindow.
+/**
+ * @brief Builds the serializer with explicit, narrow dependencies from MainWindow.
+ */
 GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
                                                    QWidget* ownerWidget,
                                                    QPlainTextEdit* modelTextEditor,
@@ -296,17 +300,23 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
       _applyShowEditableElements(std::move(applyShowEditableElements)),
       _applyShowAttachedElements(std::move(applyShowAttachedElements)) {}
 
-// Encode free-form GUI text safely for persistence records.
+/**
+ * @brief Encodes free-form GUI text so it survives tab-separated persistence.
+ */
 QString GraphicalModelSerializer::encodeGuiText(const QString& text) {
     return QString::fromUtf8(QUrl::toPercentEncoding(text));
 }
 
-// Decode persisted GUI text back to plain UTF-8 text.
+/**
+ * @brief Decodes a tab-safe persisted GUI text field back to plain text.
+ */
 QString GraphicalModelSerializer::decodeGuiText(const QString& text) {
     return QUrl::fromPercentEncoding(text.toUtf8());
 }
 
-// Preserve the existing text persistence format line-by-line.
+/**
+ * @brief Writes model text line by line using the legacy persistence format.
+ */
 bool GraphicalModelSerializer::saveTextModel(QFile* saveFile, const QString& data) const {
     QTextStream out(saveFile);
     out.setEncoding(QStringConverter::Utf8);
@@ -484,14 +494,16 @@ void applyTextStyleState(const QString& line, QGraphicsTextItem* item) {
     }
 }
 
-// Persist the complete graphical model, including view options and overlays.
+/**
+ * @brief Persists the complete graphical model, including view options and overlays.
+ */
 bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const {
     try {
         if (_simulator == nullptr || _simulator->getModelManager() == nullptr || _simulator->getModelManager()->current() == nullptr) {
             return false;
         }
 
-        // Persist the canonical kernel state in GEN format first, using the .gui filename.
+        // Persist the canonical kernel state directly into the .gui file before appending GUI overlays.
         if (!_simulator->getModelManager()->saveModel(filename.toStdString())) {
             QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"), QObject::tr("Could not save kernel model to file."));
             return false;
@@ -644,13 +656,22 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     }
                     const int persistedId = nextAutonomousItemId--;
                     persistedItemIds.insert(variable, persistedId);
-                    int idVariable = -1;
-                    if (variable->getVariable() != nullptr) {
-                        idVariable = variable->getVariable()->getId();
-                    }
-                    line = QString("%1 \t AnimationVariable \t id=%2 \t position=(%3,%4) \t width=%5 \t height=%6")
+                    line = QString("%1 \t AnimationVariable \t id=%2 \t target=")
                                .arg(persistedId)
-                               .arg(idVariable)
+                               .arg(variable->getTargetId());
+                    line += encodeGuiText(variable->getTargetName());
+                    if (variable->getDimensionCount() > 2u) {
+                        QString sliceText;
+                        for (unsigned int i = 0; i < variable->getDimensionCount() - 2u; ++i) {
+                            if (i > 0) {
+                                sliceText += ",";
+                            }
+                            sliceText += QString::number(variable->getSliceIndex(i));
+                        }
+                        line += " \t slices=";
+                        line += sliceText;
+                    }
+                    line += QString(" \t position=(%1,%2) \t width=%3 \t height=%4")
                                .arg(variable->scenePos().x(), 0, 'f', 2)
                                .arg(variable->scenePos().y(), 0, 'f', 2)
                                .arg(variable->boundingRect().width(), 0, 'f', 2)
@@ -807,7 +828,9 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
     }
 }
 
-// Restore model text and GUI state from .gui or defer to .gen loading flow.
+/**
+ * @brief Loads `.gui` or `.gen` model files and restores persisted GUI state.
+ */
 Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename) const {
     QFile file(QString::fromStdString(filename));
 
@@ -1288,9 +1311,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             QPointF componentPos(state.position.x(), state.position.y() - existingComponent->getHeight() / 2.0);
             existingComponent->setPos(componentPos);
             existingComponent->setOldPosition(componentPos);
-            if (state.hasColor) {
-                existingComponent->setColor(state.color);
-            }
+            // Keep the builder-assigned plugin-category palette on reload; persisted colors are
+            // still parsed for backward compatibility but no longer override the category color.
             restorePortPositions(existingComponent, state.portPositions);
             persistedItems.insert(static_cast<int>(state.componentId), existingComponent);
             if (state.itemId != 0) {
@@ -1528,10 +1550,22 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 if (animationType.compare("AnimationVariable", Qt::CaseInsensitive) == 0) {
                     AnimationVariable* variable = new AnimationVariable();
                     QRegularExpressionMatch idMatch = QRegularExpression("\\s*id=(-?\\d+)").match(rawLine);
+                    QRegularExpressionMatch targetMatch = QRegularExpression("\\s*target=([^\\t]*)").match(rawLine);
+                    QRegularExpressionMatch slicesMatch = QRegularExpression("\\s*slices=([^\\t]*)").match(rawLine);
                     QRegularExpressionMatch posMatch = regexPosition.match(rawLine);
                     QRegularExpressionMatch sizeMatch = regexSize.match(rawLine);
                     if (idMatch.hasMatch() && posMatch.hasMatch() && sizeMatch.hasMatch()) {
+                        variable->setModel(_graphicsView->getScene()->getSimulator()->getModelManager()->current());
                         variable->setIdVariable(idMatch.captured(1).toInt());
+                        if (targetMatch.hasMatch()) {
+                            variable->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()).toStdString());
+                        }
+                        if (slicesMatch.hasMatch()) {
+                            const QStringList slices = decodeGuiText(slicesMatch.captured(1).trimmed()).split(',', Qt::SkipEmptyParts);
+                            for (int sliceIndex = 0; sliceIndex < slices.size(); ++sliceIndex) {
+                                variable->setSliceIndex(static_cast<unsigned int>(sliceIndex), static_cast<unsigned int>(std::max(0, slices.at(sliceIndex).toInt())));
+                            }
+                        }
                         variable->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
                         variable->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
                         _graphicsView->getScene()->getAnimationsVariable()->append(variable);
@@ -1670,7 +1704,21 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 AnimationVariable* variable = new AnimationVariable();
                 QRegularExpressionMatch match = regex.match(line);
                 if (match.hasMatch()) {
+                    variable->setModel(_graphicsView->getScene()->getSimulator()->getModelManager()->current());
                     variable->setIdVariable(match.captured(2).toInt());
+                    const QRegularExpression targetRegex("\\s*target=([^\\t]*)");
+                    const QRegularExpression slicesRegex("\\s*slices=([^\\t]*)");
+                    const QRegularExpressionMatch targetMatch = targetRegex.match(line);
+                    const QRegularExpressionMatch slicesMatch = slicesRegex.match(line);
+                    if (targetMatch.hasMatch()) {
+                        variable->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()).toStdString());
+                    }
+                    if (slicesMatch.hasMatch()) {
+                        const QStringList slices = decodeGuiText(slicesMatch.captured(1).trimmed()).split(',', Qt::SkipEmptyParts);
+                        for (int sliceIndex = 0; sliceIndex < slices.size(); ++sliceIndex) {
+                            variable->setSliceIndex(static_cast<unsigned int>(sliceIndex), static_cast<unsigned int>(std::max(0, slices.at(sliceIndex).toInt())));
+                        }
+                    }
                     variable->setRect(QRectF(0, 0, match.captured(5).toDouble(), match.captured(6).toDouble()).normalized());
                     variable->setPos(QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
                     _graphicsView->getScene()->getAnimationsVariable()->append(variable);

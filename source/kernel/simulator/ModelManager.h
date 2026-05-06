@@ -25,7 +25,14 @@
  */
 class ModelManager {
 public:
+	/*!
+	 * \brief Creates a model manager bound to a simulator instance.
+	 * \param simulator Parent simulator that owns this manager.
+	 */
 	ModelManager(Simulator* simulator);
+	/*!
+	 * \brief Releases the model manager and any owned bookkeeping structures.
+	 */
 	virtual ~ModelManager();
 public:
 	/*!
@@ -34,41 +41,42 @@ public:
 	 */
 	Model* newModel();
 	/*!
-	 * \brief insert
-	 * \param model
+	 * \brief Inserts an existing model into the open-model list.
+	 * \param model Model to register.
 	 */
 	void insert(Model* model);
 	/*!
-	 * \brief remove
-	 * \param model
+	 * \brief Removes a model from the open-model list.
+	 * \param model Model to remove.
 	 */
 	void remove(Model* model);
 	/*!
-	 * \brief setCurrent
-	 * \param model
+	 * \brief Makes an open model the current one.
+	 * \param model Model to activate.
+	 * \return \c true when the model was found and selected.
 	 */
 	bool setCurrent(Model* model);
 	/*!
-	 * \brief saveModel
-	 * \param filename
-	 * \return
+	 * \brief Saves the current model to a file.
+	 * \param filename Output filename.
+	 * \return \c true when saving succeeds.
 	 */
 	bool saveModel(std::string filename);
 	/*!
-	 * \brief loadModel
-	 * \param filename
-	 * \return
+	 * \brief Loads a model from a file and opens it in the manager.
+	 * \param filename Input filename.
+	 * \return Loaded model instance, or \c nullptr on failure.
 	 */
 	Model* loadModel(std::string filename);
 	/*!
-	 * \brief createFromLanguage
-	 * \param modelSpecification
-	 * \return
+	 * \brief Creates a model from a textual model specification.
+	 * \param modelSpecification Source text in the model language.
+	 * \return Newly created model instance, or \c nullptr on failure.
 	 */
 	Model* createFromLanguage(std::string modelSpecification);
 	/*!
-	 * \brief size
-	 * \return
+	 * \brief Returns the number of open models.
+	 * \return Open-model count.
 	 */
 	unsigned int size();
 public:
@@ -101,38 +109,38 @@ public:
 	 */
 	int currentIndex() const;
 	/*!
-	 * \brief front
-	 * \return
+	 * \brief Returns the first open model.
+	 * \return First model in open-model order, or \c nullptr when empty.
 	 */
 	Model* front();
 	/*!
-	 * \brief last
-	 * \return
+	 * \brief Returns the last open model.
+	 * \return Last model in open-model order, or \c nullptr when empty.
 	 */
 	Model* last();
 	/*!
-	 * \brief current
-	 * \return
+	 * \brief Returns the current model.
+	 * \return Currently selected model, or \c nullptr when none is selected.
 	 */
 	Model* current();
 	/*!
-	 * \brief next
-	 * \return
+	 * \brief Advances to the next open model.
+	 * \return Next model in order, or \c nullptr when already at the end.
 	 */
 	Model* next();
 	/*!
-	 * \brief previous
-	 * \return
+	 * \brief Moves to the previous open model.
+	 * \return Previous model in order, or \c nullptr when already at the beginning.
 	 */
 	Model* previous();
 	/*!
-	 * \brief canGoNext
-	 * \return
+	 * \brief Indicates whether a next model exists.
+	 * \return \c true when a call to \c next() can advance.
 	 */
 	bool canGoNext() const;
 	/*!
-	 * \brief canGoPrevious
-	 * \return
+	 * \brief Indicates whether a previous model exists.
+	 * \return \c true when a call to \c previous() can retreat.
 	 */
 	bool canGoPrevious() const;
 	//Model* end();

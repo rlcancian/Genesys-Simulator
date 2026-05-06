@@ -270,8 +270,8 @@ bool RSimulatorRunner::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void RSimulatorRunner::_createInternalAndAttachedData() {
-}
+// void RSimulatorRunner::_createAttachedAttributes() {
+// }
 
 bool RSimulatorRunner::executeCommand(std::string& errorMessage) {
 	errorMessage.clear();
@@ -459,11 +459,8 @@ std::string RSimulatorRunner::getLastResponseFilename() const {
 	return _lastResponseFilename;
 }
 
-void RSimulatorRunner::_createReportStatisticsDataDefinitions() {
-}
+// void RSimulatorRunner::_createInternalStatisticReporters() { }
 
-void RSimulatorRunner::_createEditableDataDefinitions() {
-}
+// void RSimulatorRunner::_createEditableDataDefinitions() { }
 
-void RSimulatorRunner::_createOthersDataDefinitions() {
-}
+// void RSimulatorRunner::_createAttachedAttributes() { }

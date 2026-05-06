@@ -13,6 +13,12 @@
 #include <string>
 #include <string_view>
 
+/**
+ * @brief Boots the web stack and keeps the request loop alive until shutdown.
+ *
+ * This entry point wires token management, session creation, worker-job storage,
+ * API routing and the embedded HTTP server into one runtime pipeline.
+ */
 int BaseGenesysWebApplication::main(int argc, char** argv) {
     const unsigned short port = _readPort(argc, argv);
     const unsigned long maxRequests = _readMaxRequests(argc, argv);
@@ -39,6 +45,9 @@ int BaseGenesysWebApplication::main(int argc, char** argv) {
     return 0;
 }
 
+/**
+ * @brief Parses the listening port from the command line or falls back to 8080.
+ */
 unsigned short BaseGenesysWebApplication::_readPort(int argc, char** argv) {
     for (int i = 1; i < argc - 1; ++i) {
         if (std::string_view(argv[i]) == "--port") {
@@ -53,6 +62,9 @@ unsigned short BaseGenesysWebApplication::_readPort(int argc, char** argv) {
     return 8080;
 }
 
+/**
+ * @brief Parses the optional request limit used to stop the server loop.
+ */
 unsigned long BaseGenesysWebApplication::_readMaxRequests(int argc, char** argv) {
     for (int i = 1; i < argc - 1; ++i) {
         if (std::string_view(argv[i]) == "--max-requests") {

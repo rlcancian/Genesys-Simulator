@@ -19,11 +19,11 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/Template/DummyComponent.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Logic/Assign.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
@@ -87,4 +87,3 @@ int Smart_ContinuousFlowEntities::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

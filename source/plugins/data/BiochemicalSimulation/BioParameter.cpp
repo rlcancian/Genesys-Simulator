@@ -91,11 +91,8 @@ std::string BioParameter::getUnit() const {
 	return _unit;
 }
 
-void BioParameter::_createReportStatisticsDataDefinitions() {
-}
+// void BioParameter::_createInternalStatisticReporters() { }
 
-void BioParameter::_createEditableDataDefinitions() {
-}
+// void BioParameter::_createEditableDataDefinitions() { }
 
-void BioParameter::_createOthersDataDefinitions() {
-}
+// void BioParameter::_createAttachedAttributes() { }

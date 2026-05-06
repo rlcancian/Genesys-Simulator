@@ -75,7 +75,7 @@
       "inherits": "terminal-app",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
-        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_Record.cpp"
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_MarkovChain.cpp"
       }
     },
     {
@@ -110,6 +110,13 @@
       }
     },
     {
+      "name": "genesys_web_app",
+      "displayName": "Application - Web",
+      "description": "Builds the web application executable genesys_web_app using the Web application tree.",
+      "inherits": "web-app",
+      "binaryDir": "${sourceDir}/build/genesys_web_app"
+    },
+    {
       "name": "gui-app",
       "displayName": "Application - GUI",
       "inherits": "debug-base",
@@ -117,6 +124,7 @@
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "OFF",
         "GENESYS_BUILD_GUI_APPLICATION": "ON",
+        "GENESYS_BUILD_WEB_APPLICATION": "ON",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
     },
@@ -179,7 +187,14 @@
       "name": "web-app",
       "configurePreset": "web-app",
       "targets": [
-        "genesys_webhook"
+        "genesys_web_app"
+      ]
+    },
+    {
+      "name": "genesys_web_app",
+      "configurePreset": "genesys_web_app",
+      "targets": [
+        "genesys_web_app"
       ]
     },
     {

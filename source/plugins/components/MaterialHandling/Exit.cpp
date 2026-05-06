@@ -76,11 +76,8 @@ PluginInformation* Exit::GetPluginInformation() {
 
 
 
-void Exit::_createReportStatisticsDataDefinitions() {
-}
+// void Exit::_createInternalStatisticReporters() { }
 
-void Exit::_createEditableDataDefinitions() {
-}
+// void Exit::_createEditableDataDefinitions() { }
 
-void Exit::_createOthersDataDefinitions() {
-}
+// void Exit::_createAttachedAttributes() { }

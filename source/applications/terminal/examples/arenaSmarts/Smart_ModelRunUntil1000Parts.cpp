@@ -17,11 +17,11 @@
 #include "kernel/simulator/Simulator.h"
 
 // Components for the model
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Logic/Assign.h"
 
 #include "plugins/data/DiscreteProcessing/Variable.h"
 #include "kernel/simulator/Attribute.h"

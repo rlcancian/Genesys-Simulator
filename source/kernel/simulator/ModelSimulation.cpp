@@ -21,6 +21,7 @@
 #include "StatisticsCollector.h"
 #include "Counter.h"
 #include "ComponentManager.h"
+#include "SourceModelComponent.h"
 #include "../TraitsKernel.h"
 
 //using namespace GenesysKernel;
@@ -407,9 +408,6 @@ void ModelSimulation::_initReplication() {
 	{
 		Util::ResetIdOfType(Util::TypeOf<Entity>());
 		Util::ResetIdOfType(Util::TypeOf<Event>());
-		for (auto it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); ++it) {
-			ModelComponent::InitBetweenReplications(*it);
-		}
 		// init all elements between replications
 		// Iterate over a value snapshot of class names so replication init does not depend on manual deletes.
 		std::list<std::string> elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
@@ -419,8 +417,23 @@ void ModelSimulation::_initReplication() {
 				ModelDataDefinition::InitBetweenReplications(modeldatum);
 			}
 		}
-		//}
-		if (this->_initializeStatisticsBetweenReplications) {
+			// init all components between replications
+			// Source components create entities during initialization, so run them after all non-source components.
+			std::list<ModelComponent*> sourceComponents;
+			for (auto it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); ++it) {
+				ModelComponent* component = *it;
+				if (dynamic_cast<SourceModelComponent*>(component) != nullptr) {
+					sourceComponents.push_back(component);
+				} else {
+					ModelComponent::InitBetweenReplications(component);
+				}
+			}
+			for (ModelComponent* component : sourceComponents) {
+				ModelComponent::InitBetweenReplications(component);
+			}
+
+			//}
+			if (this->_initializeStatisticsBetweenReplications) {
 			_clearStatistics();
 		}
 	}

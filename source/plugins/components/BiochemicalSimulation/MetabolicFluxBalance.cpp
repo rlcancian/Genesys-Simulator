@@ -116,7 +116,7 @@ void MetabolicFluxBalance::_saveInstance(PersistenceRecord* fields, bool saveDef
 
 bool MetabolicFluxBalance::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_createInternalAndAttachedData();
+	_createEditableDataDefinitions();
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<MetabolicNetwork>(), _metabolicNetwork, "MetabolicNetwork", errorMessage);
 	if (_metabolicNetwork != nullptr) {
 		const std::string selectedObjective = _objectiveReactionName.empty() ? _metabolicNetwork->getObjectiveReactionName() : _objectiveReactionName;
@@ -144,13 +144,7 @@ bool MetabolicFluxBalance::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void MetabolicFluxBalance::_createInternalAndAttachedData() {
-	if (_metabolicNetwork != nullptr) {
-		_attachedDataInsert("MetabolicNetwork", _metabolicNetwork);
-	} else {
-		_attachedDataRemove("MetabolicNetwork");
-	}
-}
+//void MetabolicFluxBalance::_createAttachedAttributes() {}
 
 void MetabolicFluxBalance::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
@@ -329,11 +323,12 @@ std::string MetabolicFluxBalance::getLastMessage() const {
 	return _lastMessage;
 }
 
-void MetabolicFluxBalance::_createReportStatisticsDataDefinitions() {
-}
+// void MetabolicFluxBalance::_createInternalStatisticReporters() { }
 
 void MetabolicFluxBalance::_createEditableDataDefinitions() {
-}
-
-void MetabolicFluxBalance::_createOthersDataDefinitions() {
+	if (_metabolicNetwork != nullptr) {
+		_optionalEditableDataDefinitionInsert("MetabolicNetwork", _metabolicNetwork);
+	} else {
+		_optionalEditableDataDefinitionRemove("MetabolicNetwork");
+	}
 }
