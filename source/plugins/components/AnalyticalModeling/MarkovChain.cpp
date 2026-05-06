@@ -21,8 +21,12 @@
 #include "../../data/Logic/Variable.h"
 
 #include <algorithm>
+#include <cassert>
+#include <cmath>
+#include <iterator>
 #include <stdexcept>
 #include <utility>
+#include <vector>
 
 namespace {
 
@@ -30,6 +34,118 @@ bool isMarkovChainSupportedDefinition(const ModelDataDefinition* definition) {
 	return definition == nullptr ||
 	       definition->getClassname() == Util::TypeOf<Variable>() ||
 	       definition->getClassname() == Util::TypeOf<Attribute>();
+}
+
+const std::list<unsigned int>* getDefinitionDimensionSizes(const ModelDataDefinition* definition) {
+	if (definition == nullptr) {
+		return nullptr;
+	}
+	if (definition->getClassname() == Util::TypeOf<Variable>()) {
+		return static_cast<const Variable*>(definition)->getDimensionSizes();
+	}
+	if (definition->getClassname() == Util::TypeOf<Attribute>()) {
+		return static_cast<const Attribute*>(definition)->getDimensionSizes();
+	}
+	return nullptr;
+}
+
+double readDefinitionInitialValue(const ModelDataDefinition* definition, const std::string& index) {
+	if (definition == nullptr) {
+		return 0.0;
+	}
+	if (definition->getClassname() == Util::TypeOf<Variable>()) {
+		return const_cast<Variable*>(static_cast<const Variable*>(definition))->getInitialValue(index);
+	}
+	if (definition->getClassname() == Util::TypeOf<Attribute>()) {
+		return const_cast<Attribute*>(static_cast<const Attribute*>(definition))->getInitialValue(index);
+	}
+	throw std::invalid_argument("Unsupported MarkovChain data definition type.");
+}
+
+bool validateTransitionMatrixDefinition(const ModelDataDefinition* definition, std::string& errorMessage) {
+	const std::list<unsigned int>* dimensions = getDefinitionDimensionSizes(definition);
+	if (dimensions == nullptr || dimensions->size() != 2u) {
+		errorMessage += "MarkovChain transition probability matrix must be two-dimensional. ";
+		return false;
+	}
+
+	const auto dimIt = dimensions->begin();
+	const unsigned int rowCount = *dimIt;
+	const unsigned int columnCount = *std::next(dimIt);
+	if (rowCount == 0u || columnCount == 0u) {
+		errorMessage += "MarkovChain transition probability matrix must not be empty. ";
+		return false;
+	}
+	if (rowCount != columnCount) {
+		errorMessage += "MarkovChain transition probability matrix must be square. ";
+		return false;
+	}
+
+	constexpr double probabilityTolerance = 1e-9;
+	for (unsigned int row = 0; row < rowCount; ++row) {
+		double rowSum = 0.0;
+		for (unsigned int column = 0; column < columnCount; ++column) {
+			const std::string index = std::to_string(row) + "," + std::to_string(column);
+			const double probability = readDefinitionInitialValue(definition, index);
+			if (!std::isfinite(probability) || probability < -probabilityTolerance || probability > 1.0 + probabilityTolerance) {
+				errorMessage += "MarkovChain transition probability p[" + index + "] must be between 0 and 1. ";
+				return false;
+			}
+			rowSum += probability;
+		}
+		if (std::fabs(rowSum - 1.0) > probabilityTolerance) {
+			errorMessage += "MarkovChain transition probability row " + std::to_string(row) +
+			                " must sum to 1.0. ";
+			return false;
+		}
+	}
+	return true;
+}
+
+bool validateInitialDistributionDefinition(const ModelDataDefinition* initialDistribution, unsigned int stateCount, std::string& errorMessage) {
+	const std::list<unsigned int>* dimensions = getDefinitionDimensionSizes(initialDistribution);
+	if (dimensions == nullptr) {
+		errorMessage += "MarkovChain initial distribution reference is invalid. ";
+		return false;
+	}
+	if (dimensions->size() > 1u) {
+		errorMessage += "MarkovChain initial distribution must be scalar or one-dimensional. ";
+		return false;
+	}
+	const unsigned int distributionSize = dimensions->empty() ? 1u : dimensions->front();
+	if (distributionSize != stateCount) {
+		errorMessage += "MarkovChain initial distribution vector size must match the transition matrix size. ";
+		return false;
+	}
+	constexpr double probabilityTolerance = 1e-9;
+	double probabilitySum = 0.0;
+	for (unsigned int state = 0; state < stateCount; ++state) {
+		const std::string index = dimensions->empty() ? "" : std::to_string(state);
+		const double probability = readDefinitionInitialValue(initialDistribution, index);
+		if (!std::isfinite(probability) || probability < -probabilityTolerance || probability > 1.0 + probabilityTolerance) {
+			errorMessage += "MarkovChain initial distribution p[" + std::to_string(state) + "] must be between 0 and 1. ";
+			return false;
+		}
+		probabilitySum += probability;
+	}
+	if (std::fabs(probabilitySum - 1.0) > probabilityTolerance) {
+		errorMessage += "MarkovChain initial distribution must sum to 1.0. ";
+		return false;
+	}
+	return true;
+}
+
+bool validateCurrentStateDefinition(const ModelDataDefinition* currentState, std::string& errorMessage) {
+	const std::list<unsigned int>* dimensions = getDefinitionDimensionSizes(currentState);
+	if (dimensions == nullptr) {
+		errorMessage += "MarkovChain current state reference is invalid. ";
+		return false;
+	}
+	if (dimensions->size() > 1u) {
+		errorMessage += "MarkovChain current state must be scalar or one-dimensional. ";
+		return false;
+	}
+	return true;
 }
 
 std::string formatDefinitionReference(const ModelDataDefinition* definition) {
@@ -218,10 +334,53 @@ void writeDefinitionValue(ModelDataDefinition* definition, Entity* entity, doubl
 			entity->setAttributeValue(definition->getName(), value, index, true);
 		} else {
 			static_cast<Attribute*>(definition)->setInitialValue(value, index);
+			//static_cast<Attribute*>(definition)->setValue(value, index);
 		}
 		return;
 	}
 	throw std::invalid_argument("Unsupported MarkovChain data definition type.");
+}
+
+std::string currentStateIndex(const ModelDataDefinition* definition) {
+	const std::list<unsigned int>* dimensions = getDefinitionDimensionSizes(definition);
+	if (dimensions == nullptr || dimensions->empty()) {
+		return "";
+	}
+	return "0";
+}
+
+unsigned int readCurrentStateIndex(ModelDataDefinition* definition, Entity* entity) {
+	if (definition == nullptr) {
+		return 0u;
+	}
+	const double value = readDefinitionValue(definition, entity, currentStateIndex(definition));
+	return static_cast<unsigned int>(std::max(0.0, value));
+}
+
+void writeCurrentStateIndex(ModelDataDefinition* definition, Entity* entity, unsigned int value) {
+	if (definition == nullptr) {
+		return;
+	}
+	writeDefinitionValue(definition, entity, static_cast<double>(value), currentStateIndex(definition));
+}
+
+unsigned int sampleStateFromDistribution(const ModelDataDefinition* distribution,
+                                         Sampler_if* sampler,
+                                         unsigned int stateCount) {
+	if (distribution == nullptr || sampler == nullptr || stateCount == 0u) {
+		return 0u;
+	}
+	std::vector<double> probabilities;
+	std::vector<double> values;
+	probabilities.reserve(stateCount);
+	values.reserve(stateCount);
+	const std::list<unsigned int>* dimensions = getDefinitionDimensionSizes(distribution);
+	for (unsigned int state = 0; state < stateCount; ++state) {
+		const std::string index = (dimensions == nullptr || dimensions->empty()) ? "" : std::to_string(state);
+		probabilities.push_back(readDefinitionInitialValue(distribution, index));
+		values.push_back(static_cast<double>(state));
+	}
+	return static_cast<unsigned int>(sampler->sampleDiscrete(probabilities.data(), values.data(), static_cast<int>(stateCount)));
 }
 
 } // namespace
@@ -245,15 +404,23 @@ MarkovChain::MarkovChain(Model* model, std::string name) : ModelComponent(model,
 			std::bind(&MarkovChain::getTransitionMatrix, this),
 			std::bind(&MarkovChain::setTransitionProbabilityMatrix, this, std::placeholders::_1),
 			Util::TypeOf<MarkovChain>(), getName(), "TransitionMatrix", "");
+	MarkovChainDataDefinitionReferenceControl* propInitialDistribution = new MarkovChainDataDefinitionReferenceControl(
+			_parentModel,
+			std::bind(&MarkovChain::getInitialDistribution, this),
+			std::bind(&MarkovChain::setInitialDistribution, this, std::placeholders::_1),
+			Util::TypeOf<MarkovChain>(), getName(), "InitialDistribution", "");
+
+	_parentModel->getControls()->insert(propTransitionMatrix);
+	_parentModel->getControls()->insert(propInitialDistribution);
+	_addSimulationControl(propTransitionMatrix);
+	_addSimulationControl(propInitialDistribution);
+
 	MarkovChainDataDefinitionReferenceControl* propCurrentState = new MarkovChainDataDefinitionReferenceControl(
 			_parentModel,
 			std::bind(&MarkovChain::getCurrentState, this),
 			std::bind(&MarkovChain::setCurrentState, this, std::placeholders::_1),
 			Util::TypeOf<MarkovChain>(), getName(), "CurrentState", "");
-
-	_parentModel->getControls()->insert(propTransitionMatrix);
 	_parentModel->getControls()->insert(propCurrentState);
-	_addSimulationControl(propTransitionMatrix);
 	_addSimulationControl(propCurrentState);
 }
 
@@ -287,6 +454,17 @@ ModelDataDefinition* MarkovChain::getTransitionMatrix() const {
 	return _transitionProbMatrix;
 }
 
+void MarkovChain::setInitialDistribution(ModelDataDefinition* initialDistribution) {
+	if (!isMarkovChainSupportedDefinition(initialDistribution)) {
+		throw std::invalid_argument("InitialDistribution must reference a Variable or an Attribute.");
+	}
+	_initialDistribution = initialDistribution;
+}
+
+ModelDataDefinition* MarkovChain::getInitialDistribution() const {
+	return _initialDistribution;
+}
+
 void MarkovChain::setCurrentState(ModelDataDefinition* currentState) {
 	if (!isMarkovChainSupportedDefinition(currentState)) {
 		throw std::invalid_argument("CurrentState must reference a Variable or an Attribute.");
@@ -300,23 +478,13 @@ ModelDataDefinition* MarkovChain::getCurrentState() const {
 
 void MarkovChain::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
-	if (entity == nullptr) {
-		traceSimulation(this, "MarkovChain received a null entity; no transition was sampled.", TraceManager::Level::L7_internal);
-		return;
-	}
-	if (_transitionProbMatrix == nullptr || _currentState == nullptr) {
-		traceSimulation(this, "MarkovChain is missing TransitionMatrix or CurrentState; entity was forwarded unchanged.", TraceManager::Level::L7_internal);
-		_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
-		return;
-	}
-	if (_currentState->getClassname() == Util::TypeOf<Attribute>() &&
-	    _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), _currentState->getName()) == nullptr) {
-		new Attribute(_parentModel, _currentState->getName());
-	}
-
-	const unsigned int currentState = static_cast<unsigned int>(std::max(0.0, _readStateValue(entity)));
+	assert(entity != nullptr);
+	assert(_transitionProbMatrix != nullptr);
+	assert(_initialDistribution != nullptr);
+	assert(_currentState != nullptr);
+	const unsigned int currentState = readCurrentStateIndex(_currentState, entity);
 	const unsigned int nextState = _drawNextState(entity, currentState);
-	_writeStateValue(entity, nextState);
+	writeCurrentStateIndex(_currentState, entity, nextState);
 
 		traceSimulation(this,
 	                "MarkovChain sampled entity " + entity->getName() + " transition " + std::to_string(currentState) + " -> " +
@@ -330,9 +498,12 @@ bool MarkovChain::_loadInstance(PersistenceRecord *fields) {
 	if (result) {
 		const std::string transitionReference = fields->loadField("transitionMatrixRef",
 		                                                          fields->loadField("transitionMatrix", ""));
+		const std::string initialDistributionReference = fields->loadField("initialDistributionRef",
+		                                                                    fields->loadField("initialDistribution", ""));
 		const std::string currentStateReference = fields->loadField("currentStateRef",
-		                                                            fields->loadField("currentState", ""));
+		                                                          fields->loadField("currentState", ""));
 		setTransitionProbabilityMatrix(resolveDefinitionReference(_parentModel, transitionReference));
+		setInitialDistribution(resolveDefinitionReference(_parentModel, initialDistributionReference));
 		setCurrentState(resolveDefinitionReference(_parentModel, currentStateReference));
 	}
 	return result;
@@ -344,6 +515,10 @@ void MarkovChain::_saveInstance(PersistenceRecord *fields, bool saveDefaultValue
 		fields->saveField("transitionMatrixRef", formatDefinitionPersistenceReference(_transitionProbMatrix), "", saveDefaultValues);
 		fields->saveField("transitionMatrix", _transitionProbMatrix->getName(), "", saveDefaultValues);
 	}
+	if (_initialDistribution != nullptr) {
+		fields->saveField("initialDistributionRef", formatDefinitionPersistenceReference(_initialDistribution), "", saveDefaultValues);
+		fields->saveField("initialDistribution", _initialDistribution->getName(), "", saveDefaultValues);
+	}
 	if (_currentState != nullptr) {
 		fields->saveField("currentStateRef", formatDefinitionPersistenceReference(_currentState), "", saveDefaultValues);
 		fields->saveField("currentState", _currentState->getName(), "", saveDefaultValues);
@@ -351,6 +526,15 @@ void MarkovChain::_saveInstance(PersistenceRecord *fields, bool saveDefaultValue
 }
 
 void MarkovChain::_initBetweenReplications() {
+	if (_transitionProbMatrix == nullptr || _initialDistribution == nullptr || _currentState == nullptr) {
+		return;
+	}
+	const unsigned int stateCount = _stateCount();
+	if (stateCount == 0u) {
+		return;
+	}
+	const unsigned int sampledState = sampleStateFromDistribution(_initialDistribution, _sampler, stateCount);
+	writeCurrentStateIndex(_currentState, nullptr, sampledState);
 }
 
 bool MarkovChain::_check(std::string& errorMessage) {
@@ -359,12 +543,26 @@ bool MarkovChain::_check(std::string& errorMessage) {
 		errorMessage += "MarkovChain requires a transition probability matrix. ";
 		resultAll = false;
 	}
+	if (_initialDistribution == nullptr) {
+		errorMessage += "MarkovChain requires an initial distribution reference. ";
+		resultAll = false;
+	}
 	if (_currentState == nullptr) {
 		errorMessage += "MarkovChain requires a current state reference. ";
 		resultAll = false;
 	}
 	if (_transitionProbMatrix != nullptr && _stateCount() == 0) {
 		errorMessage += "MarkovChain transition matrix must expose at least one state. ";
+		resultAll = false;
+	}
+	if (_transitionProbMatrix != nullptr && !validateTransitionMatrixDefinition(_transitionProbMatrix, errorMessage)) {
+		resultAll = false;
+	}
+	if (_transitionProbMatrix != nullptr && _initialDistribution != nullptr &&
+	    !validateInitialDistributionDefinition(_initialDistribution, _stateCount(), errorMessage)) {
+		resultAll = false;
+	}
+	if (_currentState != nullptr && !validateCurrentStateDefinition(_currentState, errorMessage)) {
 		resultAll = false;
 	}
 	return resultAll;
@@ -384,6 +582,9 @@ void MarkovChain::_createEditableDataDefinitions() {
 	if (_transitionProbMatrix != nullptr) {
 		_attachedDataInsert(_transitionProbMatrix->getName(), _transitionProbMatrix);
 	}
+	if (_initialDistribution != nullptr) {
+		_attachedDataInsert(_initialDistribution->getName(), _initialDistribution);
+	}
 	if (_currentState != nullptr) {
 		_attachedDataInsert(_currentState->getName(), _currentState);
 	}
@@ -402,22 +603,21 @@ unsigned int MarkovChain::_drawNextState(Entity* entity, unsigned int currentSta
 		                TraceManager::Level::L7_internal);
 		currentState = 0;
 	}
-
-	const double rnd = _sampler->random();
-	double sum = 0.0;
+	std::vector<double> probabilities;
+	std::vector<double> values;
+	probabilities.reserve(size);
+	values.reserve(size);
+	std::string message = "MarkovChain transition probability p[" + std::to_string(currentState) + "]= [";
 	for (unsigned int nextState = 0; nextState < size; ++nextState) {
 		const std::string index = std::to_string(currentState) + "," + std::to_string(nextState);
 		const double probability = _readTransitionProbability(entity, currentState, nextState);
-		sum += probability;
-		traceSimulation(this,
-		                "MarkovChain transition probability p[" + index + "]=" + std::to_string(probability) +
-		                    ", cumulative=" + std::to_string(sum),
-		                TraceManager::Level::L9_mostDetailed);
-		if (sum >= rnd) {
-			return nextState;
-		}
+		probabilities.push_back(probability);
+		values.push_back(static_cast<double>(nextState));
+		message += std::to_string(probability)+",";
 	}
-	return size - 1;
+	message += "]"; //@ToDo: (minor) remove extra ","
+	traceSimulation(this, message, TraceManager::Level::L9_mostDetailed);
+	return static_cast<unsigned int>(_sampler->sampleDiscrete(probabilities.data(), values.data(), static_cast<int>(size)));
 }
 
 unsigned int MarkovChain::_stateCount() const {

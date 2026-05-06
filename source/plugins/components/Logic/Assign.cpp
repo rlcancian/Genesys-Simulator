@@ -117,39 +117,44 @@ ModelComponent* Assign::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	Assignment* let;
-	std::string baseDestination, indexDestination;
-	ModelDataDefinition* data;
     std::list<Assignment*>* assignments = this->_assignments->list();
     for (std::list<Assignment*>::iterator it = assignments->begin(); it != assignments->end(); it++) {
 		let = (*it);
-		double value = _parentModel->parseExpression(let->getExpression());
-    	// substituir "," por '.'
-    	std::string textValue = std::to_string(value);
-    	std::replace(textValue.begin(), textValue.end(), ',', '.');
-    	_parentModel->parseExpression(let->getDestination() + " = " + textValue);
-    	/*
-		baseDestination = _destinationBaseName(let->getDestination());
-		indexDestination = _destinationIndex(let->getDestination());
+		bool expressionOk = false;
+		std::string expressionError;
+		const double value = _parentModel->parseExpression(let->getExpression(), expressionOk, expressionError);
+		if (!expressionOk) {
+			traceError("Assignment expression \"" + let->getExpression() + "\" failed: " + expressionError,
+			           TraceManager::Level::L3_errorRecover);
+			continue;
+		}
+
+		const std::string baseDestination = _destinationBaseName(let->getDestination());
+		const std::string indexDestination = _destinationIndex(let->getDestination());
 		if (baseDestination.empty()) {
 			traceError("Assignment destination cannot be empty", TraceManager::Level::L3_errorRecover);
 			continue;
 		}
+
 		if (let->isAttributeNotVariable()) {
-			data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), baseDestination);
+			if (entity == nullptr) {
+				traceError("Assignment destination \"" + let->getDestination() +
+				           "\" requires a current entity", TraceManager::Level::L3_errorRecover);
+				continue;
+			}
+			ModelDataDefinition* data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Attribute>(), baseDestination);
 			if (data == nullptr) {
 				data = new Attribute(_parentModel, baseDestination);
-				_parentModel->getDataManager()->insert(Util::TypeOf<Attribute>(), data);
 			}
 			entity->setAttributeValue(baseDestination, value, indexDestination);
 		} else {
-			data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), baseDestination);
+			ModelDataDefinition* data = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), baseDestination);
 			if (data == nullptr) {
 				data = new Variable(_parentModel, baseDestination);
-				_parentModel->getDataManager()->insert(Util::TypeOf<Variable>(), data);
 			}
 			static_cast<Variable*>(data)->setValue(value, indexDestination);
 		}
-		*/
+
     	traceSimulation(this, "Let " + let->getDestination() + " = \"" + let->getExpression() + "\" = " + Util::StrTruncIfInt(std::to_string(value)));
     }
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());

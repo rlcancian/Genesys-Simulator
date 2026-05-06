@@ -40,6 +40,7 @@
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
 #include "plugins/data/BiochemicalSimulation/GeneticCircuit.h"
 #include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
@@ -310,6 +311,10 @@ class AttributeLifecycleProbe : public Attribute {
 public:
     AttributeLifecycleProbe(Model* model, const std::string& name = "") : Attribute(model, name) {}
 
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
         _saveInstance(fields, saveDefaultValues);
     }
@@ -554,6 +559,10 @@ public:
 class MarkovChainProbe : public MarkovChain {
 public:
     MarkovChainProbe(Model* model, const std::string& name = "") : MarkovChain(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
 
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
@@ -1738,11 +1747,11 @@ TEST(SimulatorRuntimeTest, AttributeSupportsSparseInitialValuesAndPersistence) {
     source.insertDimentionSize(3u);
     source.insertDimentionSize(5u);
     source.setInitialValue(1.5, "");
-    source.setInitialValue(8.25, "1,2,3,4");
+    source.setInitialValue(8.25, "1,2,4");
 
     EXPECT_DOUBLE_EQ(source.getInitialValue(""), 1.5);
-    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,3,4"), 8.25);
-    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,3,5"), 0.0);
+    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,4"), 8.25);
+    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,5"), 0.0);
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
@@ -1754,8 +1763,84 @@ TEST(SimulatorRuntimeTest, AttributeSupportsSparseInitialValuesAndPersistence) {
     ASSERT_NE(loaded.getDimensionSizes(), nullptr);
     EXPECT_EQ(loaded.getDimensionSizes()->size(), 3u);
     EXPECT_DOUBLE_EQ(loaded.getInitialValue(""), 1.5);
-    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,4"), 8.25);
-    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,5"), 0.0);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,4"), 8.25);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,5"), 0.0);
+}
+
+TEST(SimulatorRuntimeTest, AttributeInitialValueTextParsesMatrices) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Attribute attribute(model, "AttributeMatrix");
+    attribute.setInitialValuesText("[ [0.25, 0.75], [0.5, 0.5] ]");
+
+    std::list<unsigned int>* dimensions = attribute.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("0,0"), 0.25);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("1,1"), 0.5);
+    EXPECT_EQ(attribute.getInitialValuesText(), "[[0.25,0.75],[0.5,0.5]]");
+}
+
+TEST(SimulatorRuntimeTest, AttributeInitialValueTextParsesOctaveMatrixSyntax) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Attribute attribute(model, "AttributeOctaveMatrix");
+    attribute.setInitialValuesText("[0.25 0.75; 0.5 0.5]");
+
+    std::list<unsigned int>* dimensions = attribute.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("0,0"), 0.25);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("0,1"), 0.75);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("1,0"), 0.5);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("1,1"), 0.5);
+}
+
+TEST(SimulatorRuntimeTest, AttributeInitialValueTextRejectsInvalidTextWithoutThrowing) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AttributeLifecycleProbe attribute(model, "AttributeInvalidInitialValue");
+    std::string errorMessage;
+
+    EXPECT_NO_THROW(attribute.setInitialValuesText("[0.1 0.2 0.3"));
+    EXPECT_FALSE(attribute.isInitialValuesTextValid());
+    EXPECT_FALSE(attribute.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("Unterminated"), std::string::npos);
+    EXPECT_EQ(attribute.getInitialValuesText(), "[0.1 0.2 0.3");
+}
+
+TEST(SimulatorRuntimeTest, AttributeInitialValuePropertyUsesMultiLineTextEditorHint) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Attribute attribute(model, "AttributeMatrixEditorHint");
+
+    SimulationControl* initialValueControl = nullptr;
+    for (SimulationControl* control : *model->getControls()->list()) {
+        if (control == nullptr) {
+            continue;
+        }
+        if (control->getClassname() == Util::TypeOf<Attribute>()
+            && control->getElementName() == attribute.getName()
+            && control->getName() == "InitialValue") {
+            initialValueControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(initialValueControl, nullptr);
+    EXPECT_EQ(initialValueControl->preferredEditorHint(), SimulationControlEditorHint::MultiLineText);
 }
 
 TEST(SimulatorRuntimeTest, ModelDataDefinitionAccessorsExposeStableStateAndMetadata) {
@@ -8121,12 +8206,16 @@ TEST(SimulatorRuntimeTest, MarkovChainStoresRealizedStateInEntityAttribute) {
     transitionMatrix->setValue(1.0, "0,1");
     transitionMatrix->setValue(1.0, "1,0");
     transitionMatrix->setValue(0.0, "1,1");
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistribution");
+    initialDistribution->insertDimentionSize(2);
+    initialDistribution->setInitialValues({{"0", 1.0}, {"1", 0.0}});
     auto* currentState = new Attribute(model, "Entity.CurrentMarkovState");
 
     MarkovChainProbe chain(model, "MarkovProbe");
     CollectorSinkComponentProbe sink(model, "AfterMarkov");
     chain.connectTo(&sink);
     chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
     chain.setCurrentState(currentState);
     chain.CreateInternalAndAttachedDataProbe();
 
@@ -8138,6 +8227,92 @@ TEST(SimulatorRuntimeTest, MarkovChainStoresRealizedStateInEntityAttribute) {
     EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.CurrentMarkovState"), 1.0);
     ASSERT_EQ(sink.ReceivedEntities().size(), 0u);
     ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainCheckAcceptsSquareTransitionMatrixAndMatchingInitialDistributionVector) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrixCheck");
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->setInitialValues({{"0,0", 0.25}, {"0,1", 0.75}, {"1,0", 0.4}, {"1,1", 0.6}});
+
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistributionCheck");
+    initialDistribution->insertDimentionSize(2);
+    initialDistribution->setInitialValues({{"0", 1.0}, {"1", 0.0}});
+    auto* currentState = new Attribute(model, "MarkovCurrentStateCheck");
+
+    MarkovChainProbe chain(model, "MarkovProbeCheck");
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentState);
+
+    std::string errorMessage;
+    EXPECT_TRUE(chain.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainCheckRejectsRowsThatDoNotSumToOne) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrixInvalid");
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->setValue(0.2, "0,0");
+    transitionMatrix->setValue(0.7, "0,1");
+    transitionMatrix->setValue(0.5, "1,0");
+    transitionMatrix->setValue(0.4, "1,1");
+
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistributionInvalid");
+    initialDistribution->insertDimentionSize(2);
+    initialDistribution->setInitialValues({{"0", 1.0}, {"1", 0.0}});
+    auto* currentStateReference = new Attribute(model, "MarkovCurrentStateInvalid");
+
+    MarkovChainProbe chain(model, "MarkovProbeInvalid");
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentStateReference);
+
+    std::string errorMessage;
+    EXPECT_FALSE(chain.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("row 0"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainCheckRejectsInitialDistributionSizeMismatch) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrixSize");
+    transitionMatrix->insertDimentionSize(3);
+    transitionMatrix->insertDimentionSize(3);
+    transitionMatrix->setValue(1.0, "0,0");
+    transitionMatrix->setValue(0.0, "0,1");
+    transitionMatrix->setValue(0.0, "0,2");
+    transitionMatrix->setValue(0.0, "1,0");
+    transitionMatrix->setValue(1.0, "1,1");
+    transitionMatrix->setValue(0.0, "1,2");
+    transitionMatrix->setValue(0.0, "2,0");
+    transitionMatrix->setValue(0.0, "2,1");
+    transitionMatrix->setValue(1.0, "2,2");
+
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistributionSizeMismatch");
+    initialDistribution->insertDimentionSize(2);
+    initialDistribution->setInitialValues({{"0", 1.0}, {"1", 0.0}});
+    auto* currentStateReference = new Attribute(model, "MarkovCurrentStateSizeMismatchRef");
+
+    MarkovChainProbe chain(model, "MarkovProbeSizeMismatch");
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentStateReference);
+
+    std::string errorMessage;
+    EXPECT_FALSE(chain.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("initial distribution vector size"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatrices) {
@@ -8160,6 +8335,25 @@ TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatrices) {
     EXPECT_EQ(variable.getInitialValuesText(), "[[1,2,3],[4,5,6],[7,8,9]]");
 }
 
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesOctaveMatrixSyntax) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableOctave");
+    variable.setInitialValuesText("[1 2 3; 4 5 6; 7 8 9]");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 3u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 3u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 1.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,2"), 6.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("2,1"), 8.0);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[1,2,3],[4,5,6],[7,8,9]]");
+}
+
 TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatricesWithSpaces) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -8178,6 +8372,143 @@ TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatricesWithSpaces) {
     EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.5);
     EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.5);
     EXPECT_EQ(variable.getInitialValuesText(), "[[0.5,0.5],[0.5,0.5]]");
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMultilineMatrices) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableMultiline");
+    variable.setInitialValuesText(R"([
+[0.2, 0.8],
+[0.8, 0.2]
+])");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.2);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.2);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[0.2,0.8],[0.8,0.2]]");
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesOctaveMultilineMatrices) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableOctaveMultiline");
+    variable.setInitialValuesText(R"([
+[0.2 0.8];
+[0.8 0.2]
+])");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.2);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.2);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMultilineMatricesWithLeadingSpace) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableMultilineSpace");
+    variable.setInitialValuesText(R"([ [0.2,0.8],
+[0.8,0.2]
+])");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.2);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.2);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesCompactMultilineMatrixForm) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableCompactMultiline");
+    variable.setInitialValuesText(R"([ [0.2,0.8],[0.8,0.2]])");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.2);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.2);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValuePropertyUsesTextEditorHint) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableEditorHint");
+
+    SimulationControl* initialValueControl = nullptr;
+    for (SimulationControl* control : *model->getControls()->list()) {
+        if (control == nullptr) {
+            continue;
+        }
+        if (control->getClassname() == Util::TypeOf<Variable>()
+            && control->getElementName() == variable.getName()
+            && control->getName() == "InitialValue") {
+            initialValueControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(initialValueControl, nullptr);
+    EXPECT_EQ(initialValueControl->preferredEditorHint(), SimulationControlEditorHint::MultiLineText);
+
+    std::string errorMessage;
+    EXPECT_TRUE(initialValueControl->validateProposedValue("[[0.3, 0.7], [0.1,0.9]]", errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, GroProgramSourceCodePropertyUsesCodeEditorHint) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram groProgram(model, "GroProgramEditorHint");
+
+    SimulationControl* sourceCodeControl = nullptr;
+    for (SimulationControl* control : *model->getControls()->list()) {
+        if (control == nullptr) {
+            continue;
+        }
+        if (control->getClassname() == Util::TypeOf<GroProgram>()
+            && control->getElementName() == groProgram.getName()
+            && control->getName() == "SourceCode") {
+            sourceCodeControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(sourceCodeControl, nullptr);
+    EXPECT_EQ(sourceCodeControl->preferredEditorHint(), SimulationControlEditorHint::CodeEditor);
 }
 
 TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {

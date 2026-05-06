@@ -14,7 +14,7 @@
 #ifndef VARIABLE_H
 #define VARIABLE_H
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "kernel/simulator/Attribute.h"
 #include "kernel/simulator/ModelDataManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/SparseValueStore.h"
@@ -88,7 +88,7 @@ new values to the variable at different stages of the model by
 using the Assign module.
 Initial Value Variable value at the start of the simulation.
  */
-class Variable : public ModelDataDefinition {
+class Variable : public Attribute {
 public:
     Variable(Model* model, std::string name = "");
     virtual ~Variable() override;
@@ -104,33 +104,17 @@ public:
 	/*! \brief Writes the current sparse value at the scalar or indexed position. */
 	void setValue(double value, std::string index="");
 	/*! \brief Returns the initial values serialized in bracket notation. */
-	std::string getInitialValuesText() const;
-	/*! \brief Parses bracket notation and replaces the initial value store. */
-	void setInitialValuesText(std::string valuesText);
-	/*! \brief Reads the initial sparse value, returning 0.0 when the index is absent. */
-	double getInitialValue(std::string index = "");
-	/*! \brief Writes the initial sparse value at the scalar or indexed position. */
-	void setInitialValue(double value, std::string index="");
-	/*! \brief Replaces/extends initial sparse values from textual index/value pairs. */
-	void setInitialValues(const std::vector<std::pair<std::string,double>> values);
+	std::string getInitialValuesText() const override;
+	/*! \brief Parses bracket notation and replaces both initial and runtime stores. */
+	void setInitialValuesText(std::string valuesText) override;
 	/*! \brief Appends one dimension size to the variable definition. */
 	void insertDimentionSize(unsigned int size);
-	/*! \brief Returns dimension sizes for compatibility with existing callers. */
-	std::list<unsigned int>* getDimensionSizes() const;
 	/*! \brief Returns mutable current sparse values for compatibility with existing callers. */
 	std::map<std::string, double> *getValues() const;
 	/*! \brief Returns current value store used by this variable. */
 	SparseValueStore* getValueStore();
-	/*! \brief Returns initial value store used by this variable. */
-	SparseValueStore* getInitialValueStore();
 	ModelDataDefinition* get_scope();
 	void set_scope(ModelDataDefinition* const scope);
-
-	//double getValue();
-	//void setValue(double value);
-	//void setValue(std::string index, double value);
-	//double getInitialValue();
-	//void setInitialValue(double value);
 
 protected:
     virtual bool _loadInstance(PersistenceRecord *fields) override;
@@ -148,7 +132,6 @@ protected:
 private:
     //const struct DEFAULT_VALUES {	} DEFAULT;
 	SparseValueStore* _values = new SparseValueStore();
-	SparseValueStore* _initialValues = new SparseValueStore();
 	ModelDataDefinition* scope = nullptr; // not used so far
 };
 

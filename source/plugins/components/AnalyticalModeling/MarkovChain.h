@@ -30,6 +30,8 @@ public: // static
 public: // get and set
 	void setTransitionProbabilityMatrix(ModelDataDefinition* transitionMatrix);
 	ModelDataDefinition* getTransitionMatrix() const;
+	void setInitialDistribution(ModelDataDefinition* initialDistribution);
+	ModelDataDefinition* getInitialDistribution() const;
 	void setCurrentState(ModelDataDefinition* currentState);
 	ModelDataDefinition* getCurrentState() const;
 protected: // virtual
@@ -54,6 +56,7 @@ private: // methods
 	unsigned int _stateCount() const;
 private: // attributes 1:1
 	ModelDataDefinition* _transitionProbMatrix = nullptr;
+	ModelDataDefinition* _initialDistribution = nullptr;
 	ModelDataDefinition* _currentState = nullptr;
 private: // attributes 1:n
 	Sampler_if* _sampler = nullptr;
