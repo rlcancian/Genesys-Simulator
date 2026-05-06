@@ -18,7 +18,7 @@
 	/****begin_Includes_plugins****/
 
 		/**begin_Includes:Variable**/
-		#include "plugins/data/DiscreteProcessing/Variable.h"
+		#include "plugins/data/Logic/Variable.h"
 		/**end_Includes:Variable**/
 
 		/**begin_Includes:Queue**/
@@ -26,7 +26,7 @@
 		/**end_Includes:Queue**/
 
 		/**begin_Includes:Formula**/
-		#include "plugins/data/DiscreteProcessing/Formula.h"
+		#include "plugins/data/Logic/Formula.h"
 		/**end_Includes:Formula**/
 
 		/**begin_Includes:Resource**/
@@ -34,7 +34,7 @@
 		/**end_Includes:Resource**/
 
 		/**begin_Includes:Set**/
-		#include "plugins/data/DiscreteProcessing/Set.h"
+		#include "plugins/data/Logic/Set.h"
 		/**end_Includes:Set**/
 
 	/****end_Includes_plugins****/
