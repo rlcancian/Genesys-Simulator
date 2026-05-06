@@ -21,21 +21,68 @@
 
 class Formula : public ModelDataDefinition {
 public:
+	/*!
+	 * \brief Creates an empty formula definition.
+	 * \param model Parent model.
+	 * \param name Initial formula name.
+	 */
 	Formula(Model* model, std::string name = "");
+	/*!
+	 * \brief Releases formula-owned resources.
+	 */
 	virtual ~Formula() = default;
 public: // virtual
+	/*!
+	 * \brief Returns a textual representation of the formula.
+	 * \return Human-readable formula summary.
+	 */
 	virtual std::string show() override;
 public:
+	/*!
+	 * \brief Returns the number of indexed expressions stored in this formula.
+	 * \return Number of expression slots.
+	 */
 	unsigned int size();
+	/*!
+	 * \brief Stores or updates the expression associated with an index.
+	 * \param formulaExpression Formula text.
+	 * \param index Optional index key used for vectorized formulas.
+	 */
 	void setExpression(std::string formulaExpression, std::string index = "");
 	//void setExpression(std::string formulaExpression);
+	/*!
+	 * \brief Returns the expression associated with an index.
+	 * \param index Optional index key used for vectorized formulas.
+	 * \return Stored formula text, or an empty string when absent.
+	 */
 	std::string getExpression(std::string index = "");
 	//std::string getExpression();
 	//double getValue();
+	/*!
+	 * \brief Evaluates the expression associated with an index.
+	 * \param index Optional index key used for vectorized formulas.
+	 * \return Numeric value of the indexed expression.
+	 */
 	double getValue(std::string index);
 public: // statics
+	/*!
+	 * \brief Returns plugin metadata for this formula type.
+	 * \return Plugin information block.
+	 */
 	static PluginInformation* GetPluginInformation();
+	/*!
+	 * \brief Loads a formula from serialized fields.
+	 * \param model Parent model.
+	 * \param fields Serialized fields.
+	 * \return Newly created formula instance.
+	 */
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
+	/*!
+	 * \brief Creates a new empty formula instance.
+	 * \param model Parent model.
+	 * \param name Initial formula name.
+	 * \return Newly created formula instance.
+	 */
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 protected: // must be overriden by derived classes
 	virtual bool _loadInstance(PersistenceRecord *fields) override;

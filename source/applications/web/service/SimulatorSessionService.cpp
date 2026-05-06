@@ -55,14 +55,23 @@ void _populateSimulationStatusFromModel(Model* model, SimulatorSessionService::S
 }
 }  // namespace
 
+/**
+ * @brief Wires session lookup with per-session worker job storage.
+ */
 SimulatorSessionService::SimulatorSessionService(SessionManager& sessionManager, WorkerJobManager& workerJobManager)
     : _sessionManager(sessionManager), _workerJobManager(workerJobManager) {}
 
+/**
+ * @brief Creates one authenticated session and returns its public identifiers.
+ */
 SimulatorSessionService::CreateSessionResult SimulatorSessionService::createSession() {
     SessionContext* session = _sessionManager.createSession();
     return CreateSessionResult{session->sessionId, session->accessToken};
 }
 
+/**
+ * @brief Resolves the simulator metadata visible to a session token.
+ */
 bool SimulatorSessionService::tryGetSimulatorInfo(const std::string& accessToken, SimulatorInfoResult& outInfo) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
@@ -76,6 +85,9 @@ bool SimulatorSessionService::tryGetSimulatorInfo(const std::string& accessToken
     return true;
 }
 
+/**
+ * @brief Returns the fixed worker identity metadata used for discovery.
+ */
 SimulatorSessionService::WorkerInfoResult SimulatorSessionService::getWorkerInfo() const {
     // A temporary simulator instance provides stable identity metadata for public worker discovery.
     Simulator simulator;
@@ -91,6 +103,9 @@ SimulatorSessionService::WorkerInfoResult SimulatorSessionService::getWorkerInfo
     return result;
 }
 
+/**
+ * @brief Advertises the runtime capabilities supported by this worker flavor.
+ */
 SimulatorSessionService::WorkerCapabilitiesResult SimulatorSessionService::getWorkerCapabilities() const {
     WorkerCapabilitiesResult result{};
     result.supportsSessionApi = true;
@@ -112,6 +127,9 @@ SimulatorSessionService::WorkerCapabilitiesResult SimulatorSessionService::getWo
     return result;
 }
 
+/**
+ * @brief Creates a new kernel model in the current session.
+ */
 bool SimulatorSessionService::tryCreateModel(const std::string& accessToken, ModelInfoResult& outInfo) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
@@ -134,6 +152,9 @@ bool SimulatorSessionService::tryCreateModel(const std::string& accessToken, Mod
     return true;
 }
 
+/**
+ * @brief Returns metadata for the current model if one exists.
+ */
 bool SimulatorSessionService::tryGetCurrentModelInfo(const std::string& accessToken, ModelInfoResult& outInfo) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
@@ -156,6 +177,9 @@ bool SimulatorSessionService::tryGetCurrentModelInfo(const std::string& accessTo
     return true;
 }
 
+/**
+ * @brief Returns the current simulation status for a session token.
+ */
 SimulatorSessionService::SimulationStatusResult SimulatorSessionService::getSimulationStatus(const std::string& accessToken) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
@@ -179,6 +203,9 @@ SimulatorSessionService::SimulationStatusResult SimulatorSessionService::getSimu
     return result;
 }
 
+/**
+ * @brief Applies user-provided simulation parameters to the current model.
+ */
 SimulatorSessionService::SimulationConfigResult SimulatorSessionService::configureSimulation(
     const std::string& accessToken,
     const SimulationConfigInput& input
@@ -219,6 +246,9 @@ SimulatorSessionService::SimulationConfigResult SimulatorSessionService::configu
     return result;
 }
 
+/**
+ * @brief Starts the current simulation for the token-scoped session.
+ */
 SimulatorSessionService::SimulationActionResult SimulatorSessionService::runSimulation(const std::string& accessToken) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
@@ -254,6 +284,9 @@ SimulatorSessionService::SimulationActionResult SimulatorSessionService::runSimu
     return result;
 }
 
+/**
+ * @brief Advances the current simulation by one step.
+ */
 SimulatorSessionService::SimulationActionResult SimulatorSessionService::stepSimulation(const std::string& accessToken) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
@@ -289,6 +322,9 @@ SimulatorSessionService::SimulationActionResult SimulatorSessionService::stepSim
     return result;
 }
 
+/**
+ * @brief Persists the current model into the session workspace.
+ */
 SimulatorSessionService::ModelPersistenceResult SimulatorSessionService::saveCurrentModel(
     const std::string& accessToken,
     const std::string& filename
@@ -326,6 +362,9 @@ SimulatorSessionService::ModelPersistenceResult SimulatorSessionService::saveCur
     return result;
 }
 
+/**
+ * @brief Loads a saved model file from the session workspace.
+ */
 SimulatorSessionService::ModelPersistenceResult SimulatorSessionService::loadModel(
     const std::string& accessToken,
     const std::string& filename
@@ -363,6 +402,9 @@ SimulatorSessionService::ModelPersistenceResult SimulatorSessionService::loadMod
     return result;
 }
 
+/**
+ * @brief Imports a model from textual Genesys language.
+ */
 SimulatorSessionService::ModelImportResult SimulatorSessionService::importModelFromLanguage(
     const std::string& accessToken,
     const std::string& modelSpecification
@@ -396,6 +438,9 @@ SimulatorSessionService::ModelImportResult SimulatorSessionService::importModelF
 }
 
 
+/**
+ * @brief Creates a queued worker job by snapshotting the current model.
+ */
 SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::createWorkerJob(const std::string& accessToken) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
@@ -434,6 +479,9 @@ SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::create
     return WorkerJobCreationResult{true, WorkerJobError::None, _toWorkerJobInfoResult(storedJob.value())};
 }
 
+/**
+ * @brief Retrieves worker-job metadata when the job belongs to the session.
+ */
 SimulatorSessionService::WorkerJobQueryResult SimulatorSessionService::getWorkerJob(
     const std::string& accessToken,
     const std::string& jobId
@@ -455,6 +503,9 @@ SimulatorSessionService::WorkerJobQueryResult SimulatorSessionService::getWorker
     return WorkerJobQueryResult{true, WorkerJobError::None, _toWorkerJobInfoResult(job.value())};
 }
 
+/**
+ * @brief Executes a queued worker job synchronously from its stored snapshot.
+ */
 SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJob(
     const std::string& accessToken,
     const std::string& jobId
@@ -550,6 +601,9 @@ SimulatorSessionService::WorkerJobRunResult SimulatorSessionService::runWorkerJo
     return WorkerJobRunResult{true, WorkerJobError::None, _toWorkerJobInfoResult(storedJob.value())};
 }
 
+/**
+ * @brief Retrieves the terminal result for a completed worker job.
+ */
 SimulatorSessionService::WorkerJobResultQueryResult SimulatorSessionService::getWorkerJobResult(
     const std::string& accessToken,
     const std::string& jobId
@@ -575,6 +629,9 @@ SimulatorSessionService::WorkerJobResultQueryResult SimulatorSessionService::get
     return WorkerJobResultQueryResult{true, WorkerJobError::None, _toWorkerJobResultInfo(job.value())};
 }
 
+/**
+ * @brief Rejects file names that would escape the session workspace.
+ */
 bool SimulatorSessionService::_isSafeFilename(const std::string& filename) {
     if (filename.empty()) {
         return false;
@@ -594,6 +651,9 @@ bool SimulatorSessionService::_isSafeFilename(const std::string& filename) {
     return std::regex_match(filename, safeNamePattern);
 }
 
+/**
+ * @brief Converts a stored worker job into the metadata payload returned by `/jobs`.
+ */
 SimulatorSessionService::WorkerJobInfoResult SimulatorSessionService::_toWorkerJobInfoResult(const WorkerJob& job) {
     WorkerJobInfoResult result{};
     result.jobId = job.jobId;
@@ -605,6 +665,9 @@ SimulatorSessionService::WorkerJobInfoResult SimulatorSessionService::_toWorkerJ
     return result;
 }
 
+/**
+ * @brief Converts a stored worker job into the terminal result payload returned by `/result`.
+ */
 SimulatorSessionService::WorkerJobResultInfo SimulatorSessionService::_toWorkerJobResultInfo(const WorkerJob& job) {
     WorkerJobResultInfo result{};
     result.jobId = job.jobId;

@@ -92,6 +92,9 @@ std::optional<std::size_t> parseContentLengthFromHeaders(const std::string& requ
     return 0;
 }
 
+/**
+ * @brief Parses a raw HTTP request into the lightweight transport model.
+ */
 std::optional<HttpRequest> parseRequest(const std::string& requestText) {
     const std::string separator = "\r\n\r\n";
     const auto headersEnd = requestText.find(separator);
@@ -167,6 +170,9 @@ enum class ReadRequestResult {
     Closed
 };
 
+/**
+ * @brief Reads a bounded HTTP request from a connected socket.
+ */
 ReadRequestResult readHttpRequest(int clientFd, std::string& requestText) {
     requestText.clear();
     requestText.reserve(kReadChunkSize);
@@ -219,6 +225,9 @@ ReadRequestResult readHttpRequest(int clientFd, std::string& requestText) {
     }
 }
 
+/**
+ * @brief Serializes the internal response model back to HTTP/1.1 wire format.
+ */
 std::string buildResponse(const HttpResponse& response) {
     const std::string payload = response.body;
     std::ostringstream builder;
@@ -264,6 +273,12 @@ void configureSocketTimeouts(int fd) {
 
 SimpleHttpServer::SimpleHttpServer(unsigned short port) : _port(port) {}
 
+/**
+ * @brief Serves one request at a time over a blocking TCP listener.
+ *
+ * The loop accepts a connection, reads a bounded HTTP/1.1 request, delegates to
+ * the provided handler, serializes the response and closes the connection.
+ */
 bool SimpleHttpServer::serve(const RequestHandler& handler, unsigned long maxRequests) {
     const int serverFd = socket(AF_INET, SOCK_STREAM, 0);
     if (serverFd < 0) {

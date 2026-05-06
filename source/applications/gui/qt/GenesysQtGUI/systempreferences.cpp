@@ -37,6 +37,9 @@ const char* const kRecentModelFilesKey = "recentModelFiles";
 const char* const kRecentModelFilesLimitKey = "recentModelFilesLimit";
 const char* const kAutomaticPositioningStrategyKey = "automaticPositioningStrategy";
 
+/**
+ * @brief Sanitizes the recent-model-file list loaded from disk.
+ */
 std::vector<std::string> sanitizeRecentModelFiles(const QJsonArray& array, unsigned int limit) {
     std::vector<std::string> sanitized;
     sanitized.reserve(std::min<unsigned int>(array.size(), limit));
@@ -59,6 +62,9 @@ std::vector<std::string> sanitizeRecentModelFiles(const QJsonArray& array, unsig
     return sanitized;
 }
 
+/**
+ * @brief Clamps and deduplicates the in-memory recent-model-file cache.
+ */
 void clampRecentModelFiles(std::vector<std::string>* recentFiles, unsigned int limit) {
     if (recentFiles == nullptr) {
         return;
@@ -84,6 +90,9 @@ void clampRecentModelFiles(std::vector<std::string>* recentFiles, unsigned int l
 }
 }
 
+/**
+ * @brief Returns the filesystem directory that stores GUI preferences.
+ */
 QString SystemPreferences::defaultConfigDirectory() {
     QString path = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
     if (path.isEmpty()) {
@@ -113,6 +122,9 @@ void SystemPreferences::resetToDefaults() {
     _automaticPositioningStrategy = AutomaticPositioningStrategy::Centered;
 }
 
+/**
+ * @brief Loads GUI preferences from disk and normalizes invalid data.
+ */
 bool SystemPreferences::load() {
     resetToDefaults();
 
@@ -167,6 +179,9 @@ bool SystemPreferences::load() {
     return true;
 }
 
+/**
+ * @brief Serializes the current GUI preferences to the preferences file.
+ */
 bool SystemPreferences::save() {
     QDir dir(defaultConfigDirectory());
     if (!dir.mkpath(".")) {
@@ -273,6 +288,9 @@ void SystemPreferences::setRecentModelFiles(const std::vector<std::string>& rece
     clampRecentModelFiles(&_recentModelFiles, _recentModelFilesLimit);
 }
 
+/**
+ * @brief Pushes a model file to the top of the recent-file list.
+ */
 void SystemPreferences::pushRecentModelFile(const std::string& modelFilename) {
     if (modelFilename.empty()) {
         return;

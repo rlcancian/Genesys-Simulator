@@ -614,7 +614,12 @@ void DialogUtilityController::onActionAboutGetInvolvedTriggered() {
                         html);
 }
 
-// Opens the GUI issue-report flow and submits it to the configured relay.
+/*! \brief Opens the GUI issue-report flow, captures runtime context, and submits the payload to the configured relay.
+ *
+ * The report draft can include the current model text, console tail, simulation and report logs,
+ * the latest process log, and an optional screenshot. The submission result is then surfaced back
+ * to the user, including a browser link when the relay returns a created GitHub issue URL.
+ */
 void DialogUtilityController::onActionAboutReportIssueTriggered() {
     DialogReportIssue dialog(_ownerWidget);
     QString relayStatusMessage;
@@ -708,7 +713,12 @@ void DialogUtilityController::onActionEditFindTriggered() {
     }
 }
 
-// Preserve the existing replace dialog and selection-based replace workflow.
+/*! \brief Opens the editor replacement dialog and preserves the current find/replace workflow.
+ *
+ * The dialog keeps the last search terms, supports case-sensitive matching, wraps the search to
+ * the start of the document, and performs single or bulk replacement directly on the code editor
+ * without detaching the current selection state.
+ */
 void DialogUtilityController::onActionEditReplaceTriggered() {
     if (_ui->TextCodeEditor == nullptr) {
         return;
@@ -860,7 +870,12 @@ void DialogUtilityController::onActionEditReplaceTriggered() {
     dialog.exec();
 }
 
-// Provide a parser management surface with grammar overview, function catalog and an expression console.
+/*! \brief Builds the parser diagnostics window with grammar overview, DOT export, catalog, and console tabs.
+ *
+ * The dialog combines a collapsible grammar map, a DOT text editor, a searchable function catalog,
+ * a parser console, and a lightweight model symbol browser so the user can inspect and exercise the
+ * expression language from one place.
+ */
 void DialogUtilityController::onActionToolsParserGrammarCheckerTriggered() {
     Model* model = _simulator->getModelManager()->current();
     QDialog dialog(_ownerWidget);

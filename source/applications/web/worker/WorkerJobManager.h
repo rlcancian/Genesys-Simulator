@@ -9,6 +9,9 @@
 
 /**
  * @brief Owns worker job records in memory and assigns unique identifiers.
+ *
+ * The manager is intentionally simple: it keeps all job metadata in memory and
+ * provides synchronized read/write helpers for the web API and background jobs.
  */
 class WorkerJobManager {
 public:

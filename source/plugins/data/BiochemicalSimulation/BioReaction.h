@@ -28,41 +28,168 @@ public:
 	};
 
 public:
+	/*!
+	 * \brief Creates an empty biochemical reaction definition.
+	 * \param model Parent model.
+	 * \param name Initial reaction name.
+	 */
 	BioReaction(Model* model, std::string name = "");
+	/*!
+	 * \brief Releases reaction-owned resources.
+	 */
 	virtual ~BioReaction() override = default;
 
 public:
+	/*!
+	 * \brief Loads a biochemical reaction from serialized fields.
+	 * \param model Parent model.
+	 * \param fields Serialized fields.
+	 * \return Newly created reaction instance.
+	 */
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
+	/*!
+	 * \brief Returns plugin metadata for this reaction type.
+	 * \return Plugin information block.
+	 */
 	static PluginInformation* GetPluginInformation();
+	/*!
+	 * \brief Creates a new empty reaction instance.
+	 * \param model Parent model.
+	 * \param name Initial reaction name.
+	 * \return Newly created reaction instance.
+	 */
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 public:
+	/*!
+	 * \brief Adds a reactant species to the reaction.
+	 * \param speciesName Reactant species name.
+	 * \param stoichiometry Reactant stoichiometry.
+	 */
 	void addReactant(std::string speciesName, double stoichiometry = 1.0);
+	/*!
+	 * \brief Adds a product species to the reaction.
+	 * \param speciesName Product species name.
+	 * \param stoichiometry Product stoichiometry.
+	 */
 	void addProduct(std::string speciesName, double stoichiometry = 1.0);
+	/*!
+	 * \brief Adds a modifier species that influences the reaction rate.
+	 * \param speciesName Modifier species name.
+	 */
 	void addModifier(std::string speciesName);
+	/*!
+	 * \brief Removes all reactants from the reaction.
+	 */
 	void clearReactants();
+	/*!
+	 * \brief Removes all products from the reaction.
+	 */
 	void clearProducts();
+	/*!
+	 * \brief Removes all modifiers from the reaction.
+	 */
 	void clearModifiers();
+	/*!
+	 * \brief Returns the registered reactants.
+	 * \return Constant reference to the reactant terms.
+	 */
 	const std::vector<StoichiometricTerm>& getReactants() const;
+	/*!
+	 * \brief Returns the registered products.
+	 * \return Constant reference to the product terms.
+	 */
 	const std::vector<StoichiometricTerm>& getProducts() const;
+	/*!
+	 * \brief Returns the registered modifiers.
+	 * \return Constant reference to the modifier names.
+	 */
 	const std::vector<std::string>& getModifiers() const;
+	/*!
+	 * \brief Sets the forward rate constant.
+	 * \param rateConstant Forward rate constant value.
+	 */
 	void setRateConstant(double rateConstant);
+	/*!
+	 * \brief Returns the forward rate constant.
+	 * \return Forward rate constant.
+	 */
 	double getRateConstant() const;
+	/*!
+	 * \brief Stores the name of the parameter used for the forward rate constant.
+	 * \param rateConstantParameterName Parameter name.
+	 */
 	void setRateConstantParameterName(std::string rateConstantParameterName);
+	/*!
+	 * \brief Returns the forward-rate parameter name.
+	 * \return Parameter name used to resolve the forward rate constant.
+	 */
 	std::string getRateConstantParameterName() const;
+	/*!
+	 * \brief Resolves the effective forward rate constant.
+	 * \return Forward rate constant after parameter resolution.
+	 */
 	double resolveRateConstant() const;
+	/*!
+	 * \brief Sets the reverse rate constant.
+	 * \param reverseRateConstant Reverse rate constant value.
+	 */
 	void setReverseRateConstant(double reverseRateConstant);
+	/*!
+	 * \brief Returns the reverse rate constant.
+	 * \return Reverse rate constant.
+	 */
 	double getReverseRateConstant() const;
+	/*!
+	 * \brief Stores the name of the parameter used for the reverse rate constant.
+	 * \param reverseRateConstantParameterName Parameter name.
+	 */
 	void setReverseRateConstantParameterName(std::string reverseRateConstantParameterName);
+	/*!
+	 * \brief Returns the reverse-rate parameter name.
+	 * \return Parameter name used to resolve the reverse rate constant.
+	 */
 	std::string getReverseRateConstantParameterName() const;
+	/*!
+	 * \brief Resolves the effective reverse rate constant.
+	 * \return Reverse rate constant after parameter resolution.
+	 */
 	double resolveReverseRateConstant() const;
+	/*!
+	 * \brief Sets the forward kinetic-law expression.
+	 * \param kineticLawExpression Expression text.
+	 */
 	void setKineticLawExpression(std::string kineticLawExpression);
+	/*!
+	 * \brief Returns the forward kinetic-law expression.
+	 * \return Forward kinetic-law expression.
+	 */
 	std::string getKineticLawExpression() const;
+	/*!
+	 * \brief Sets the reverse kinetic-law expression.
+	 * \param reverseKineticLawExpression Expression text.
+	 */
 	void setReverseKineticLawExpression(std::string reverseKineticLawExpression);
+	/*!
+	 * \brief Returns the reverse kinetic-law expression.
+	 * \return Reverse kinetic-law expression.
+	 */
 	std::string getReverseKineticLawExpression() const;
+	/*!
+	 * \brief Marks the reaction as reversible or irreversible.
+	 * \param reversible New reversible flag.
+	 */
 	void setReversible(bool reversible);
+	/*!
+	 * \brief Indicates whether the reaction is reversible.
+	 * \return \c true when the reaction has a reverse branch.
+	 */
 	bool isReversible() const;
 
+	/*!
+	 * \brief Returns a textual representation of the reaction.
+	 * \return Human-readable reaction summary.
+	 */
 	virtual std::string show() override;
 
 protected:

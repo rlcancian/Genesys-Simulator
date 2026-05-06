@@ -71,12 +71,14 @@ public:
 	 */
 	Connection* getConnectionAtPort(unsigned int rank);
 	/*!
-	 * \brief insert
-	 * \param component
-	 * \param inputPortNumber
-	 * \details Creates and inserts a connection to \p component at input port \p inputPortNumber.
+	 * \brief Inserts a new connection to a target component.
+	 * \details Creates and inserts a connection to \p component at input port
+	 * \p inputPortNumber. When the port is not specified, the connection uses
+	 * the default input port 0.
+	 * \param component Target component.
+	 * \param inputPortNumber Target input port number.
 	 */
-	void insert(ModelComponent* component, unsigned int inputPortNumber = 0); /*!< Insert a new connection by specifying the destnation component and optionally an input port, if not 0*/
+	void insert(ModelComponent* component, unsigned int inputPortNumber = 0);
 	/*!
 	 * \brief insert
 	 * \param connection
@@ -103,60 +105,60 @@ public:
 	 */
 	void removeAtPort(unsigned int port);
 	/*!
-	 * \brief connections
-	 * \return
+	 * \brief Returns the internal output-port to connection map.
+	 * \return Map of output ports to outgoing connections.
 	 */
 	std::map<unsigned int, Connection*>* connections() const;
 	//void setCurrentOutputConnections(unsigned int _currentOutputConnections);
 	/*!
-	 * \brief getCurrentOutputConnectionsSize
-	 * \return
+	 * \brief Returns the number of currently configured outgoing connections.
+	 * \return Current output connection count.
 	 */
 	unsigned int getCurrentOutputConnectionsSize() const;
 	/*!
-	 * \brief setMaxOutputConnections
-	 * \param _maxOutputConnections
+	 * \brief Sets the maximum number of outgoing connections allowed.
+	 * \param _maxOutputConnections Maximum outgoing connection count.
 	 */
 	void setMaxOutputConnections(unsigned int _maxOutputConnections);
 	/*!
-	 * \brief getMaxOutputConnections
-	 * \return
+	 * \brief Returns the maximum number of outgoing connections allowed.
+	 * \return Maximum outgoing connection count.
 	 */
 	unsigned int getMaxOutputConnections() const;
 	/*!
-	 * \brief setMinOutputConnections
-	 * \param _minOutputConnections
+	 * \brief Sets the minimum number of outgoing connections allowed.
+	 * \param _minOutputConnections Minimum outgoing connection count.
 	 */
 	void setMinOutputConnections(unsigned int _minOutputConnections);
 	/*!
-	 * \brief getMinOutputConnections
-	 * \return
+	 * \brief Returns the minimum number of outgoing connections allowed.
+	 * \return Minimum outgoing connection count.
 	 */
 	unsigned int getMinOutputConnections() const;
 	//void setCurrentInputConnections(unsigned int _currentInputConnections);
 	/*!
-	 * \brief getCurrentInputConnectionsSize
-	 * \return
+	 * \brief Returns the number of currently configured incoming connections.
+	 * \return Current input connection count.
 	 */
 	unsigned int getCurrentInputConnectionsSize() const;
 	/*!
-	 * \brief setMaxInputConnections
-	 * \param _maxInputConnections
+	 * \brief Sets the maximum number of incoming connections allowed.
+	 * \param _maxInputConnections Maximum incoming connection count.
 	 */
 	void setMaxInputConnections(unsigned int _maxInputConnections);
 	/*!
-	 * \brief getMaxInputConnections
-	 * \return
+	 * \brief Returns the maximum number of incoming connections allowed.
+	 * \return Maximum incoming connection count.
 	 */
 	unsigned int getMaxInputConnections() const;
 	/*!
-	 * \brief setMinInputConnections
-	 * \param _minInputConnections
+	 * \brief Sets the minimum number of incoming connections allowed.
+	 * \param _minInputConnections Minimum incoming connection count.
 	 */
 	void setMinInputConnections(unsigned int _minInputConnections);
 	/*!
-	 * \brief getMinInputConnections
-	 * \return
+	 * \brief Returns the minimum number of incoming connections allowed.
+	 * \return Minimum incoming connection count.
 	 */
 	unsigned int getMinInputConnections() const;
 private:

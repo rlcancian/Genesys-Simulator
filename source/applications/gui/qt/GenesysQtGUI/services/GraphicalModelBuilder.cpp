@@ -599,7 +599,9 @@ namespace {
     }
 }
 
-// Build the graphical reconstruction service with explicit dependencies.
+/**
+ * @brief Builds the graphical reconstruction service with explicit dependencies.
+ */
 GraphicalModelBuilder::GraphicalModelBuilder(Simulator* simulator,
                                              ModelGraphicsView* graphicsView,
                                              ModelGraphicsScene* scene,
@@ -631,7 +633,9 @@ bool GraphicalModelBuilder::componentBelongsToActiveModelLevel(ModelComponent* c
                || belongsToModelLevel(component, true, _scene->modelLevelFilter()));
 }
 
-// Preserve recursive layout traversal and connection restoration behavior.
+/**
+ * @brief Recursively rebuilds graphical items and connections from one branch.
+ */
 void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComponent* component,
                                                                        List<ModelComponent*>* visited,
                                                                        std::map<ModelComponent*, GraphicalModelComponent
@@ -719,14 +723,18 @@ void GraphicalModelBuilder::recursivalyGenerateGraphicalModelFromModel(ModelComp
     *y = yIni;
 }
 
-// Rebuild graphical data definitions and diagram links as part of the main model regeneration flow.
+/**
+ * @brief Rebuilds data-definition graphics and link overlays after component regeneration.
+ */
 void GraphicalModelBuilder::rebuildGraphicalDataDefinitionsLayer(
     std::map<ModelComponent*, GraphicalModelComponent*>* componentMap) {
     Q_UNUSED(componentMap);
     synchronizeGraphicalDataDefinitionsLayer(_simulator, _scene);
 }
 
-// Preserve the existing full-model generation flow and visitation semantics.
+/**
+ * @brief Rebuilds the full scene representation from the current kernel model.
+ */
 void GraphicalModelBuilder::generateGraphicalModelFromModel() {
     Model* m = _simulator->getModelManager()->current();
     if (m != nullptr) {
@@ -777,6 +785,9 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
     }
 }
 
+/**
+ * @brief Synchronizes the data-definition layer against the current kernel model.
+ */
 void GraphicalModelBuilder::synchronizeGraphicalDataDefinitionsLayer(Simulator* simulator, ModelGraphicsScene* scene) {
     if (simulator == nullptr || scene == nullptr) {
         return;

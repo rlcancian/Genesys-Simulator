@@ -256,7 +256,9 @@ QString decodePersistedFileText(const QByteArray& rawBytes) {
 
 }
 
-// Build the serializer with explicit, narrow dependencies from MainWindow.
+/**
+ * @brief Builds the serializer with explicit, narrow dependencies from MainWindow.
+ */
 GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
                                                    QWidget* ownerWidget,
                                                    QPlainTextEdit* modelTextEditor,
@@ -298,17 +300,23 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
       _applyShowEditableElements(std::move(applyShowEditableElements)),
       _applyShowAttachedElements(std::move(applyShowAttachedElements)) {}
 
-// Encode free-form GUI text safely for persistence records.
+/**
+ * @brief Encodes free-form GUI text so it survives tab-separated persistence.
+ */
 QString GraphicalModelSerializer::encodeGuiText(const QString& text) {
     return QString::fromUtf8(QUrl::toPercentEncoding(text));
 }
 
-// Decode persisted GUI text back to plain UTF-8 text.
+/**
+ * @brief Decodes a tab-safe persisted GUI text field back to plain text.
+ */
 QString GraphicalModelSerializer::decodeGuiText(const QString& text) {
     return QUrl::fromPercentEncoding(text.toUtf8());
 }
 
-// Preserve the existing text persistence format line-by-line.
+/**
+ * @brief Writes model text line by line using the legacy persistence format.
+ */
 bool GraphicalModelSerializer::saveTextModel(QFile* saveFile, const QString& data) const {
     QTextStream out(saveFile);
     out.setEncoding(QStringConverter::Utf8);
@@ -486,7 +494,9 @@ void applyTextStyleState(const QString& line, QGraphicsTextItem* item) {
     }
 }
 
-// Persist the complete graphical model, including view options and overlays.
+/**
+ * @brief Persists the complete graphical model, including view options and overlays.
+ */
 bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const {
     try {
         if (_simulator == nullptr || _simulator->getModelManager() == nullptr || _simulator->getModelManager()->current() == nullptr) {
@@ -818,7 +828,9 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
     }
 }
 
-// Restore model text and GUI state from .gui or defer to .gen loading flow.
+/**
+ * @brief Loads `.gui` or `.gen` model files and restores persisted GUI state.
+ */
 Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename) const {
     QFile file(QString::fromStdString(filename));
 
