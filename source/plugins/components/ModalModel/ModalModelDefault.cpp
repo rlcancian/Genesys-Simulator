@@ -465,21 +465,6 @@ void ModalModelDefault::_initBetweenReplications() {
 */
 
 /*
-void ModalModelDefault::_createInternalAndAttachedData() {
-	if (_internalDataDefinition == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
-		_internalDataInsert("JustaDummy", _internalDataDefinition);
-	}
-	if (_attachedDataDefinition == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_attachedDataDefinition = pm->newInstance<DummyElement>(_parentModel);
-		_attachedDataInsert("JustaDummy", _attachedDataDefinition);
-	}
-}
-*/
-
-/*
 void ModalModelDefault::_addSimulationControl(SimulationControl* property) {
 }
 */
