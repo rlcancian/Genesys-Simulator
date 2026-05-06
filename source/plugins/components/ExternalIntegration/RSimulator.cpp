@@ -289,7 +289,7 @@ void RSimulator::_createEditableDataDefinitions() {
 	_ensureRunner();
 	_syncRunnerConfiguration();
 	if (_runner != nullptr) {
-		_internalDataInsert("RSimulatorRunner", _runner);
+		_mandatoryNonEditableDataDefinitionInsert("RSimulatorRunner", _runner);
 	}
 
 }

@@ -209,7 +209,7 @@ void Delay::_createInternalStatisticReporters() {
 			_cstatWaitTime = new StatisticsCollector(_parentModel, getName() + "." + "DelayTime", this);
 		}
 		if (_cstatWaitTime != nullptr) {
-			_internalDataInsert("DelayTime", _cstatWaitTime);
+			_statisticReporterInsert("DelayTime", _cstatWaitTime);
 			// include StatisticsCollector needed in EntityType
 			//ModelDataManager* elements = _parentModel->getDataManager();
 			//std::list<ModelDataDefinition*>* enttypes = elements->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
@@ -220,7 +220,7 @@ void Delay::_createInternalStatisticReporters() {
 			//}
 		}
 	} else {
-		_internalDataClear();
+		_statisticReportersClear();
 		_cstatWaitTime = nullptr;
 		// @TODO remove StatisticsCollector needed in EntityType
 	}
