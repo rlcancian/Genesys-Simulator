@@ -323,14 +323,14 @@ void Sequence::_createAttachedAttributes() {
 		}
 	}
 	for (const std::string& key : staleStepKeys) {
-		_attachedDataRemove(key);
+		_optionalEditableDataDefinitionRemove(key);
 	}
 
 	unsigned int i = 0;
 	for (SequenceStep* step : *_steps->list()) {
 		if (step != nullptr) {
-			_attachedDataInsert("StepStation" + Util::StrIndex(i), step->getStation());
-			_attachedDataInsert("StepLabel" + Util::StrIndex(i), step->getLabel());
+			_optionalEditableDataDefinitionInsert("StepStation" + Util::StrIndex(i), step->getStation());
+			_optionalEditableDataDefinitionInsert("StepLabel" + Util::StrIndex(i), step->getLabel());
 		}
 		i++;
 	}

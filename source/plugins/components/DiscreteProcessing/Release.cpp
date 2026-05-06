@@ -310,19 +310,19 @@ void Release::_createEditableDataDefinitions() {
 		if (seizable->getSeizableType() == SeizableItem::SeizableType::RESOURCE) {
 			Resource* resource = seizable->getResource();
 			if (resource == nullptr) {
-				_attachedDataRemove("SeizableItem" + Util::StrIndex(i));
+				_optionalEditableDataDefinitionRemove("SeizableItem" + Util::StrIndex(i));
 				i++;
 				continue;
 			}
-			_attachedDataInsert("SeizableItem" + Util::StrIndex(i), resource);
+			_optionalEditableDataDefinitionInsert("SeizableItem" + Util::StrIndex(i), resource);
 		} else if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
 			Set* set = seizable->getSet();
 			if (set == nullptr) {
-				_attachedDataRemove("SeizableItem" + Util::StrIndex(i));
+				_optionalEditableDataDefinitionRemove("SeizableItem" + Util::StrIndex(i));
 				i++;
 				continue;
 			}
-			_attachedDataInsert("SeizableItem" + Util::StrIndex(i), set);
+			_optionalEditableDataDefinitionInsert("SeizableItem" + Util::StrIndex(i), set);
 		}
 		i++;
 	}

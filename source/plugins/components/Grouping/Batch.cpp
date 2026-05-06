@@ -337,11 +337,11 @@ void Batch::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 void Batch::_createAttachedAttributes() {
 	// Keep attached-data keys stable across rechecks and remove stale aliases.
 	_attachedAttributesInsert({"Entity.Group"});
-	_attachedDataRemove("GroupdEntityType");
+	_optionalEditableDataDefinitionRemove("GroupdEntityType");
 	if (_groupedEntityType != nullptr) {
-		_attachedDataInsert("GroupedEntityType", _groupedEntityType);
+		_optionalEditableDataDefinitionInsert("GroupedEntityType", _groupedEntityType);
 	} else {
-		_attachedDataRemove("GroupedEntityType");
+		_optionalEditableDataDefinitionRemove("GroupedEntityType");
 	}
 	if ((_queue == nullptr || _entityGroup == nullptr)) {
 		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
@@ -367,21 +367,21 @@ void Batch::_createAttachedAttributes() {
 		}
 	}
 	if (_queue != nullptr) {
-		_internalDataInsert("EntityQueue", _queue);
+		_mandatoryNonEditableDataDefinitionInsert("EntityQueue", _queue);
 	} else {
-		_internalDataRemove("EntityQueue");
+		_mandatoryNonEditableDataDefinitionRemove("EntityQueue");
 	}
 	if (_entityGroup != nullptr) {
-		_internalDataInsert("EntityGroup", _entityGroup);
+		_mandatoryNonEditableDataDefinitionInsert("EntityGroup", _entityGroup);
 	} else {
-		_internalDataRemove("EntityGroup");
+		_mandatoryNonEditableDataDefinitionRemove("EntityGroup");
 	}
 	if (_attributeName != "") {
 		ModelDataManager* elements = _parentModel->getDataManager();
 		ModelDataDefinition* attribute = elements->getDataDefinition(Util::TypeOf<Attribute>(), _attributeName);
-		_attachedDataInsert("AttributeName", attribute);
+		_optionalEditableDataDefinitionInsert("AttributeName", attribute);
 	} else {
-		_attachedDataRemove("AttributeName");
+		_optionalEditableDataDefinitionRemove("AttributeName");
 	}
 }
 

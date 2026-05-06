@@ -263,7 +263,7 @@ PluginInformation * Match::GetPluginInformation() {
 void Match::_createEditableDataDefinitions() {
 	while (_queues->size() > _numberOfQueues) {
 		Queue* obsoleteQueue = _queues->last();
-		_internalDataRemove(obsoleteQueue->getName());
+		_mandatoryNonEditableDataDefinitionRemove(obsoleteQueue->getName());
 		_queues->remove(_queues->last());
 		_entitiesByAttrib->erase(obsoleteQueue);
 	}
@@ -274,11 +274,11 @@ void Match::_createEditableDataDefinitions() {
 		}
 		ModelDataDefinition::CreateInternalData(newQueue);
 		_queues->insert(newQueue);
-		_internalDataInsert(newQueue->getName(), newQueue);
+		_mandatoryNonEditableDataDefinitionInsert(newQueue->getName(), newQueue);
 	}
 	for (Queue* queue : *_queues->list()) {
 		if (queue != nullptr) {
-			_internalDataInsert(queue->getName(), queue);
+			_mandatoryNonEditableDataDefinitionInsert(queue->getName(), queue);
 		}
 	}
 

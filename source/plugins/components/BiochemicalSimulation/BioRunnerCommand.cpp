@@ -215,8 +215,8 @@ std::string BioRunnerCommand::getLastMessage() const {
 
 void BioRunnerCommand::_createEditableDataDefinitions() {
 	if (_runner != nullptr) {
-		_attachedDataInsert("BioSimulatorRunner", _runner);
+		_optionalEditableDataDefinitionInsert("BioSimulatorRunner", _runner);
 	} else {
-		_attachedDataRemove("BioSimulatorRunner");
+		_optionalEditableDataDefinitionRemove("BioSimulatorRunner");
 	}
 }

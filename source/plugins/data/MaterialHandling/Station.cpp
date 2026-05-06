@@ -189,10 +189,10 @@ void Station::_createInternalStatisticReporters() {
 			_cstatTimeInStation = new StatisticsCollector(_parentModel, getName() + "." + "TimeInStation", this);
 		}
 		if (_cstatNumberInStation != nullptr) {
-			_internalDataInsert("NumberInStation", _cstatNumberInStation);
+			_statisticReporterInsert("NumberInStation", _cstatNumberInStation);
 		}
 		if (_cstatTimeInStation != nullptr) {
-			_internalDataInsert("TimeInStation", _cstatTimeInStation);
+			_statisticReporterInsert("TimeInStation", _cstatTimeInStation);
 		}
 		if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
 			//
@@ -205,7 +205,7 @@ void Station::_createInternalStatisticReporters() {
 
 		}
 	} else if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
-		_internalDataClear();
+		_statisticReportersClear();
 		_cstatNumberInStation = nullptr;
 		_cstatTimeInStation = nullptr;
 	}

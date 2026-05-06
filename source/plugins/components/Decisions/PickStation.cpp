@@ -336,20 +336,20 @@ void PickStation::_addSimulationControl(SimulationControl* property) {
 
 void PickStation::_createEditableDataDefinitions() {
 	unsigned int i = 0;
-	_attachedDataClear();
+	_optionalEditableDataDefinitionsClear();
 	for (PickableStationItem* item : *_pickableStationItens->list()) {
 		if (item == nullptr) {
 			i++;
 			continue;
 		}
 		if (item->getStation() != nullptr) {
-			_attachedDataInsert("Station" + std::to_string(i), item->getStation());
+			_optionalEditableDataDefinitionInsert("Station" + std::to_string(i), item->getStation());
 		}
 		if (item->getResource() != nullptr) {
-			_attachedDataInsert("Resource" + std::to_string(i), item->getResource());
+			_optionalEditableDataDefinitionInsert("Resource" + std::to_string(i), item->getResource());
 		}
 		if (item->getQueue() != nullptr) {
-			_attachedDataInsert("Queue" + std::to_string(i), item->getQueue());
+			_optionalEditableDataDefinitionInsert("Queue" + std::to_string(i), item->getQueue());
 		}
 		i++;
 	}

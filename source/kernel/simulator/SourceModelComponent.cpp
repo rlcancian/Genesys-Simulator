@@ -139,10 +139,10 @@ void SourceModelComponent::_createEditableDataDefinitions() {
 		}
 	}
 	if (_entityType != nullptr) {
-		_attachedDataInsert("EntityType", _entityType);
+		_mandatoryEditableDataDefinitionInsert("EntityType", _entityType);
 	}
 	else {
-		_attachedDataRemove("EntityType");
+		_mandatoryEditableDataDefinitionRemove("EntityType");
 	}
 }
 

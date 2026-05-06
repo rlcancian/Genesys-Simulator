@@ -348,9 +348,9 @@ void Search::_createEditableDataDefinitions() {
 			}
 		}
 		if (_searchIn != nullptr) {
-			_attachedDataInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
+			_optionalEditableDataDefinitionInsert("Queue", _searchIn); // @TODO: Check internal and attached and shared queues
 		} else {
-			_attachedDataRemove("Queue");
+			_optionalEditableDataDefinitionRemove("Queue");
 		}
 	}
 	if (_searchInType == Search::SearchInType::ENTITYGROUP) {

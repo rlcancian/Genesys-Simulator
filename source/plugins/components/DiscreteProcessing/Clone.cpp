@@ -133,10 +133,10 @@ void Clone::_createInternalStatisticReporters() {
 			_counter = new Counter(_parentModel, getName() + "." + "CountClones", this);//pm->newInstance<Counter>(_parentModel, getName() + "." + "CountClones", this);
 		}
 		if (_counter != nullptr) {
-			_internalDataInsert("CountClones", _counter);
+			_mandatoryNonEditableDataDefinitionInsert("CountClones", _counter);
 		}
 	} else {
-		_internalDataRemove("CountClones");
+		_mandatoryNonEditableDataDefinitionRemove("CountClones");
 		_counter = nullptr;
 	}
 }

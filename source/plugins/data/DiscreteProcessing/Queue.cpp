@@ -220,13 +220,13 @@ void Queue::_createInternalStatisticReporters() {
 			_cstatTimeInQueue = new StatisticsCollector(_parentModel, getName() + "." + "TimeInQueue", this);
 		}
 		if (_cstatNumberInQueue != nullptr) {
-			_internalDataInsert("NumberInQueue", _cstatNumberInQueue);
+			_statisticReporterInsert("NumberInQueue", _cstatNumberInQueue);
 		}
 		if (_cstatTimeInQueue != nullptr) {
-			_internalDataInsert("TimeInQueue", _cstatTimeInQueue);
+			_statisticReporterInsert("TimeInQueue", _cstatTimeInQueue);
 		}
 	} else {
-		_internalDataClear();
+		_statisticReportersClear();
 		_cstatNumberInQueue = nullptr;
 		_cstatTimeInQueue = nullptr;
 	}

@@ -153,8 +153,8 @@ void Signal::_createEditableDataDefinitions() {
 		_signalData = pm->newInstance<SignalData>(_parentModel);
 	}
 	if (_signalData != nullptr) {
-		_attachedDataInsert("SignalData", _signalData);
+		_optionalEditableDataDefinitionInsert("SignalData", _signalData);
 	} else {
-		_attachedDataRemove("SignalData");
+		_optionalEditableDataDefinitionRemove("SignalData");
 	}
 }

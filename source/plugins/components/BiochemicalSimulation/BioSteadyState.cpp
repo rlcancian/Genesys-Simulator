@@ -140,9 +140,9 @@ bool BioSteadyState::_check(std::string& errorMessage) {
 
 void BioSteadyState::_createAttachedAttributes() {
 	if (_bioNetwork != nullptr) {
-		_attachedDataInsert("BioNetwork", _bioNetwork);
+		_optionalEditableDataDefinitionInsert("BioNetwork", _bioNetwork);
 	} else {
-		_attachedDataRemove("BioNetwork");
+		_optionalEditableDataDefinitionRemove("BioNetwork");
 	}
 }
 

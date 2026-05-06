@@ -129,10 +129,10 @@ void Enter::_createInternalStatisticReporters() {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		}
 		if (_numberIn != nullptr) {
-			_internalDataInsert("CountNumberIn", _numberIn);
+			_statisticReporterInsert("CountNumberIn", _numberIn);
 		}
 	} else {
-			_internalDataClear();
+			_statisticReportersClear();
 		_numberIn = nullptr;
 	}
 }
@@ -142,9 +142,9 @@ void Enter::_createEditableDataDefinitions() {
 		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
 	}
 	if (_station != nullptr) {
-		_attachedDataInsert("Station", _station);
+		_optionalEditableDataDefinitionInsert("Station", _station);
 	} else {
-		_attachedDataRemove("Station");
+		_optionalEditableDataDefinitionRemove("Station");
 	}
 
 }

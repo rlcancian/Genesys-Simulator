@@ -316,10 +316,10 @@ void Route::_createInternalStatisticReporters() {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		}
 		if (_numberIn != nullptr) {
-			_internalDataInsert("CountNumberIn", _numberIn);
+			_statisticReporterInsert("CountNumberIn", _numberIn);
 		}
 	} else {
-		_internalDataClear();
+		_statisticReportersClear();
 		_numberIn = nullptr;
 	}
 }
@@ -332,14 +332,14 @@ void Route::_createEditableDataDefinitions() {
 		_label = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Label>(_parentModel);
 	}
 	if (_station != nullptr) {
-		_attachedDataInsert("Station", _station);
+		_optionalEditableDataDefinitionInsert("Station", _station);
 	} else {
-		_attachedDataRemove("Station");
+		_optionalEditableDataDefinitionRemove("Station");
 	}
 	if (_label != nullptr) {
-		_attachedDataInsert("Label", _label);
+		_optionalEditableDataDefinitionInsert("Label", _label);
 	} else {
-		_attachedDataRemove("Label");
+		_optionalEditableDataDefinitionRemove("Label");
 	}
 
 }

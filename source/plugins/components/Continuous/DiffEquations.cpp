@@ -294,8 +294,8 @@ void DiffEquations::_createEditableDataDefinitions() {
 		_cppCompiler->setOutputFilename(getName() + ".so");
 	}
 	if (_cppCompiler != nullptr) {
-		_internalDataInsert("CppCompiler", _cppCompiler);
+		_mandatoryNonEditableDataDefinitionInsert("CppCompiler", _cppCompiler);
 	} else {
-		_internalDataRemove("CppCompiler");
+		_mandatoryNonEditableDataDefinitionRemove("CppCompiler");
 	}
 }

@@ -456,7 +456,7 @@ void BioReaction::syncParticipantAttachedSpecies() {
 			}
 		}
 		for (const std::string& key : keysToRemove) {
-			_attachedDataRemove(key);
+			_optionalEditableDataDefinitionRemove(key);
 		}
 	};
 
@@ -473,7 +473,7 @@ void BioReaction::syncParticipantAttachedSpecies() {
 			auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(
 				Util::TypeOf<BioSpecies>(), terms[i].speciesName));
 			// Only existing species become visual links; missing names remain validated by _check().
-			_attachedDataInsert(prefix + Util::StrIndex(i), species);
+			_optionalEditableDataDefinitionInsert(prefix + Util::StrIndex(i), species);
 		}
 	};
 
@@ -483,7 +483,7 @@ void BioReaction::syncParticipantAttachedSpecies() {
 		auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(
 			Util::TypeOf<BioSpecies>(), _modifiers[i]));
 		// Modifier links are attached the same way as stoichiometric participants so the generic builder can render them.
-		_attachedDataInsert(std::string(kModifierAttachmentPrefix) + Util::StrIndex(i), species);
+		_optionalEditableDataDefinitionInsert(std::string(kModifierAttachmentPrefix) + Util::StrIndex(i), species);
 	}
 }
 

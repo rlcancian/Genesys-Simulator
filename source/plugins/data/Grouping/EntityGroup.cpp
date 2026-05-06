@@ -158,10 +158,10 @@ void EntityGroup::_createInternalStatisticReporters() {
 			_cstatNumberInGroup = new StatisticsCollector(_parentModel, "NumberInGroup", this);
 		}
 		if (_cstatNumberInGroup != nullptr) {
-			_internalDataInsert("NumberInGroup", _cstatNumberInGroup);
+			_mandatoryNonEditableDataDefinitionInsert("NumberInGroup", _cstatNumberInGroup);
 		}
 	} else {
-		_internalDataClear();
+		_mandatoryNonEditableDataDefinitionsClear();
 		_cstatNumberInGroup = nullptr;
 	}
 }

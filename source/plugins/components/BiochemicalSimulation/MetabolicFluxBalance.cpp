@@ -327,8 +327,8 @@ std::string MetabolicFluxBalance::getLastMessage() const {
 
 void MetabolicFluxBalance::_createEditableDataDefinitions() {
 	if (_metabolicNetwork != nullptr) {
-		_attachedDataInsert("MetabolicNetwork", _metabolicNetwork);
+		_optionalEditableDataDefinitionInsert("MetabolicNetwork", _metabolicNetwork);
 	} else {
-		_attachedDataRemove("MetabolicNetwork");
+		_optionalEditableDataDefinitionRemove("MetabolicNetwork");
 	}
 }

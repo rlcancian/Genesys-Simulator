@@ -272,9 +272,9 @@ std::string GeneticExpressionStep::getLastMessage() const {
 
 void GeneticExpressionStep::_createEditableDataDefinitions() {
 	if (_geneticCircuit != nullptr) {
-		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
+		_optionalEditableDataDefinitionInsert("GeneticCircuit", _geneticCircuit);
 	} else {
-		_attachedDataRemove("GeneticCircuit");
+		_optionalEditableDataDefinitionRemove("GeneticCircuit");
 	}
 
 }

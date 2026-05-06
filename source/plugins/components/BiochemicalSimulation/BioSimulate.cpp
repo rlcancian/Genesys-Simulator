@@ -262,8 +262,8 @@ std::string BioSimulate::getLastMessage() const {
 
 void BioSimulate::_createEditableDataDefinitions() {
 	if (_bioNetwork != nullptr) {
-		_attachedDataInsert("BioNetwork", _bioNetwork);
+		_optionalEditableDataDefinitionInsert("BioNetwork", _bioNetwork);
 	} else {
-		_attachedDataRemove("BioNetwork");
+		_optionalEditableDataDefinitionRemove("BioNetwork");
 	}
 }

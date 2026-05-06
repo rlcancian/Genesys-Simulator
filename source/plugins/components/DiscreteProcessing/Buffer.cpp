@@ -290,12 +290,12 @@ void Buffer::_createEditableDataDefinitions() {
 			_attachedSignal = pm->newInstance<SignalData>(_parentModel, getName() + "." + "SignalData");
 			if (_attachedSignal == nullptr) {
 				traceError("Buffer \"" + getName() + "\" failed to create SignalData while configured with AdvanceOn=Signal");
-				_attachedDataRemove("SignalData");
+				_optionalEditableDataDefinitionRemove("SignalData");
 				return;
 			}
 		}
 		if (_attachedSignal == nullptr) {
-			_attachedDataRemove("SignalData");
+			_optionalEditableDataDefinitionRemove("SignalData");
 			return;
 		}
 		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Buffer>(&Buffer::_handlerForSignalDataEvent, this);
@@ -303,12 +303,12 @@ void Buffer::_createEditableDataDefinitions() {
 			_attachedSignal->addSignalDataEventHandler(handler, this);
 		}
 		_signalWithRegisteredHandler = _attachedSignal;
-		_attachedDataInsert("SignalData", _attachedSignal);
+		_optionalEditableDataDefinitionInsert("SignalData", _attachedSignal);
 	} else {
 		if (_signalWithRegisteredHandler != nullptr) {
 			_signalWithRegisteredHandler->removeSignalDataEventHandler(this);
 			_signalWithRegisteredHandler = nullptr;
 		}
-		_attachedDataRemove("SignalData");
+		_optionalEditableDataDefinitionRemove("SignalData");
 	}
 }

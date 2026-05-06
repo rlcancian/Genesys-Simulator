@@ -118,17 +118,17 @@ void Leave::_createInternalStatisticReporters() {
 			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		}
 		if (_numberIn != nullptr) {
-			_internalDataInsert("CountNumberIn", _numberIn);
+			_statisticReporterInsert("CountNumberIn", _numberIn);
 		}
 	} else {
-		_internalDataClear();
+		_statisticReportersClear();
 	}
 }
 
 void Leave::_createEditableDataDefinitions() {
 	if (_station != nullptr) {
-		_attachedDataInsert("Station", _station);
+		_optionalEditableDataDefinitionInsert("Station", _station);
 	} else {
-		_attachedDataRemove("Station");
+		_optionalEditableDataDefinitionRemove("Station");
 	}
 }

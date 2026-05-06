@@ -257,9 +257,9 @@ void Remove::_createEditableDataDefinitions() {
 			}
 		}
 		if (_removeFrom != nullptr) {
-			_attachedDataInsert("Queue", _removeFrom);
+			_optionalEditableDataDefinitionInsert("Queue", _removeFrom);
 		} else {
-			_attachedDataRemove("Queue");
+			_optionalEditableDataDefinitionRemove("Queue");
 		}
 	}
 	if (_removeFromType == Remove::RemoveFromType::ENTITYGROUP) {

@@ -337,10 +337,10 @@ void Record::_createInternalStatisticReporters() {
 		//_parentModel->getDataDefinition()->insert(_cstatExpression);
 	}
 	if (_reportStatistics && _cstatExpression != nullptr) {
-		_internalDataInsert(_expressionName, _cstatExpression);
+		_statisticReporterInsert(_expressionName, _cstatExpression);
 	}
 	else if (!_reportStatistics && _cstatExpression != nullptr) {
-		this->_internalDataClear();
+		_statisticReportersClear();
 		_cstatExpression = nullptr;
 	}
 }

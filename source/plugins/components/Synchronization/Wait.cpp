@@ -272,14 +272,14 @@ void Wait::_createEditableDataDefinitions() {
 			_signalData = pm->newInstance<SignalData>(_parentModel);
 		}
 		if (_signalData == nullptr) {
-			_attachedDataRemove("SignalData");
+			_optionalEditableDataDefinitionRemove("SignalData");
 			return;
 		}
 		SignalData::SignalDataEventHandler handler = SignalData::SetSignalDataEventHandler<Wait>(&Wait::_handlerForSignalDataEvent, this);
 		_signalData->addSignalDataEventHandler(handler, this);
-		_attachedDataInsert("SignalData", _signalData);
+		_optionalEditableDataDefinitionInsert("SignalData", _signalData);
 	} else {
-		_attachedDataRemove("SignalData");
+		_optionalEditableDataDefinitionRemove("SignalData");
 	}
 }
 
@@ -290,8 +290,8 @@ void Wait::_createNonEditableDataDefinitions() {
 		_queue = pm->newInstance<Queue>(_parentModel, getName() + ".Queue");
 	}
 	if (_queue != nullptr) {
-		_internalDataInsert("Queue", _queue);
+		_mandatoryNonEditableDataDefinitionInsert("Queue", _queue);
 	} else {
-		_internalDataRemove("Queue");
+		_mandatoryNonEditableDataDefinitionRemove("Queue");
 	}
 }

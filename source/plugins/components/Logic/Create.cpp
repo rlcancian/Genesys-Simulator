@@ -181,23 +181,23 @@ bool Create::_check(std::string& errorMessage) {
 void Create::_createInternalAndAttachedData() {
 	SourceModelComponent::_createInternalAndAttachedData();
 	if (_timeBetweenCreationsSchedule != nullptr) {
-		_attachedDataInsert("TimeBetweenCreationsSchedule", _timeBetweenCreationsSchedule);
+		_optionalEditableDataDefinitionInsert("TimeBetweenCreationsSchedule", _timeBetweenCreationsSchedule);
 	} else {
-		_attachedDataRemove("TimeBetweenCreationsSchedule");
+		_optionalEditableDataDefinitionRemove("TimeBetweenCreationsSchedule");
 	}
 	if (_timeBetweenCreationsFormula != nullptr) {
-		_attachedDataInsert("TimeBetweenCreationsFormula", _timeBetweenCreationsFormula);
+		_optionalEditableDataDefinitionInsert("TimeBetweenCreationsFormula", _timeBetweenCreationsFormula);
 	} else {
-		_attachedDataRemove("TimeBetweenCreationsFormula");
+		_optionalEditableDataDefinitionRemove("TimeBetweenCreationsFormula");
 	}
 
 	if (_reportStatistics && _numberOut == nullptr) {
 		_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberOut", this);
-		_internalDataInsert("CountNumberOut", _numberOut);
+		_statisticReporterInsert("CountNumberOut", _numberOut);
 	} else if (_reportStatistics && _numberOut != nullptr) {
-		_internalDataInsert("CountNumberOut", _numberOut);
+		_statisticReporterInsert("CountNumberOut", _numberOut);
 	} else if (!_reportStatistics && _numberOut != nullptr) {
-		this->_internalDataClear();
+		_statisticReportersClear();
 		_numberOut = nullptr;
 	}
 }

@@ -137,7 +137,7 @@ void Label::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 
 bool Label::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	_attachedDataRemove("EnteringLabelComponent");
+	_optionalEditableDataDefinitionRemove("EnteringLabelComponent");
 	if (_enteringLabelComponent == nullptr) {
 		errorMessage += "Label \"" + getName() + "\" entering component was not defined. ";
 		resultAll = false;
@@ -147,7 +147,7 @@ bool Label::_check(std::string& errorMessage) {
 			errorMessage += "Label \"" + getName() + "\" entering component \"" + _enteringLabelComponent->getName() + "\" is stale or not owned by this model. ";
 			resultAll = false;
 		} else {
-			_attachedDataInsert("EnteringLabelComponent", _enteringLabelComponent);
+			_optionalEditableDataDefinitionInsert("EnteringLabelComponent", _enteringLabelComponent);
 		}
 	}
 	return resultAll;

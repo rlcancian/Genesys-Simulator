@@ -102,7 +102,7 @@ StatisticsCollector* EntityType::addGetStatisticsCollector(std::string name) {
 	// not found. Create it, insert it into the list of cstats, into the model modeldatum manager, and then return it
 	StatisticsCollector* cstat = new StatisticsCollector(_parentModel, name, this);
 	_statisticsCollectors->insert(cstat); // @ToDo: (importante): _statisticsCollectors list is probabily redundant to _internelElements and unnecessary
-	_internalDataInsert(name, cstat);
+	_statisticReporterInsert(name, cstat);
 	//_parentModel->insert(cstat); // unnecessary
 	return cstat;
 }

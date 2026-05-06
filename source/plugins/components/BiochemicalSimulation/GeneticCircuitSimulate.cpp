@@ -336,8 +336,8 @@ std::string GeneticCircuitSimulate::getLastMessage() const {
 
 void GeneticCircuitSimulate::_createEditableDataDefinitions() {
 	if (_geneticCircuit != nullptr) {
-		_attachedDataInsert("GeneticCircuit", _geneticCircuit);
+		_optionalEditableDataDefinitionInsert("GeneticCircuit", _geneticCircuit);
 	} else {
-		_attachedDataRemove("GeneticCircuit");
+		_optionalEditableDataDefinitionRemove("GeneticCircuit");
 	}
 }

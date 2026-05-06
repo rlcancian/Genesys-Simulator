@@ -517,11 +517,11 @@ void Seize::_createEditableDataDefinitions() {
 		if (seizable->getSeizableType() == SeizableItem::SeizableType::RESOURCE) {
 			Resource* resource = seizable->getResource();
 			if (resource == nullptr) {
-				_attachedDataRemove("SeizableItem" + Util::StrIndex(i));
+				_optionalEditableDataDefinitionRemove("SeizableItem" + Util::StrIndex(i));
 				i++;
 				continue;
 			}
-			_attachedDataInsert("SeizableItem" + Util::StrIndex(i), resource);
+			_optionalEditableDataDefinitionInsert("SeizableItem" + Util::StrIndex(i), resource);
 			Resource::ResourceEventHandler handler = Resource::SetResourceEventHandler<Seize>(
 					&Seize::_handlerForResourceEvent, this);
 			resource->addReleaseResourceEventHandler(handler, this, _priority);
@@ -529,11 +529,11 @@ void Seize::_createEditableDataDefinitions() {
 		else if (seizable->getSeizableType() == SeizableItem::SeizableType::SET) {
 			Set* set = seizable->getSet();
 			if (set == nullptr) {
-				_attachedDataRemove("SeizableItem" + Util::StrIndex(i));
+				_optionalEditableDataDefinitionRemove("SeizableItem" + Util::StrIndex(i));
 				i++;
 				continue;
 			}
-			_attachedDataInsert("SeizableItem" + Util::StrIndex(i), set);
+			_optionalEditableDataDefinitionInsert("SeizableItem" + Util::StrIndex(i), set);
 			Resource* rec;
 			for (ModelDataDefinition* datum: *seizable->getSet()->getElementSet()->list()) {
 				rec = static_cast<Resource*>(datum);
@@ -553,25 +553,25 @@ void Seize::_createEditableDataDefinitions() {
 	}
 	// Check QueueableItem
 	if (_queueableItem == nullptr) {
-		_attachedDataRemove("QueueableItem");
+		_optionalEditableDataDefinitionRemove("QueueableItem");
 	}
 	else {
 		if (_queueableItem->getQueueableType() == QueueableItem::QueueableType::QUEUE) {
 			Queue* queue = _queueableItem->getQueue();
 			if (queue == nullptr) {
-				_attachedDataRemove("QueueableItem");
+				_optionalEditableDataDefinitionRemove("QueueableItem");
 			}
 			else {
-				_attachedDataInsert("QueueableItem", queue);
+				_optionalEditableDataDefinitionInsert("QueueableItem", queue);
 			}
 		}
 		else if (_queueableItem->getQueueableType() == QueueableItem::QueueableType::SET) {
 			Set* set = _queueableItem->getSet();
 			if (set == nullptr) {
-				_attachedDataRemove("QueueableItem");
+				_optionalEditableDataDefinitionRemove("QueueableItem");
 			}
 			else {
-				_attachedDataInsert("QueueableItem", set);
+				_optionalEditableDataDefinitionInsert("QueueableItem", set);
 			}
 		}
 	}

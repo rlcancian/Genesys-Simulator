@@ -702,19 +702,19 @@ void BacteriaColony::_initBetweenReplications() {
 
 void BacteriaColony::_createAttachedAttributes() {
 	if (_groProgram != nullptr) {
-		_attachedDataInsert("GroProgram", _groProgram);
+		_optionalEditableDataDefinitionInsert("GroProgram", _groProgram);
 	} else {
-		_attachedDataRemove("GroProgram");
+		_optionalEditableDataDefinitionRemove("GroProgram");
 	}
 	if (_bioNetwork != nullptr) {
-		_attachedDataInsert("BioNetwork", _bioNetwork);
+		_optionalEditableDataDefinitionInsert("BioNetwork", _bioNetwork);
 	} else {
-		_attachedDataRemove("BioNetwork");
+		_optionalEditableDataDefinitionRemove("BioNetwork");
 	}
 	if (_signalGrid != nullptr) {
-		_attachedDataInsert("SignalGrid", _signalGrid);
+		_optionalEditableDataDefinitionInsert("SignalGrid", _signalGrid);
 	} else {
-		_attachedDataRemove("SignalGrid");
+		_optionalEditableDataDefinitionRemove("SignalGrid");
 	}
 }
 

@@ -270,7 +270,7 @@ bool Set::_check(std::string& errorMessage) {
         }
     }
     for (const std::string& key : previousMemberKeys) {
-        _attachedDataRemove(key);
+        _optionalEditableDataDefinitionRemove(key);
     }
 
     if (_elementSet->size() > 0) {
@@ -283,7 +283,7 @@ bool Set::_check(std::string& errorMessage) {
                 resultAll = false;
                 errorMessage += "Set is of type \"" + _setOfType + "\" but member[" + Util::StrIndex(i) + "]=\"" + data->getName() + "\" is of type \"" + currentType + "\"";
             }
-            _attachedDataInsert("Member" + Util::StrIndex(i), data);
+            _optionalEditableDataDefinitionInsert("Member" + Util::StrIndex(i), data);
             ++i;
         }
     }
@@ -327,10 +327,10 @@ void Set::_createAttachedAttributes() {
         }
     }
     for (const std::string& key : previousSetMemberKeys) {
-        _attachedDataRemove(key);
+        _optionalEditableDataDefinitionRemove(key);
     }
 
     for(ModelDataDefinition* dd: *_elementSet->list()) {
-        _attachedDataInsert(getName()+"."+dd->getName(), dd);
+        _optionalEditableDataDefinitionInsert(getName()+"."+dd->getName(), dd);
     }
 }

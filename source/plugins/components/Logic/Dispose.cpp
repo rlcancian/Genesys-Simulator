@@ -74,7 +74,7 @@ void Dispose::_createInternalStatisticReporters() {
 		if (_numberOut == nullptr) {
 			_numberOut = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
 		}
-		_internalDataInsert("CountNumberIn", _numberOut);
+		_statisticReporterInsert("CountNumberIn", _numberOut);
 		// include StatisticsCollector needed for each EntityType
 		std::list<ModelDataDefinition*>* enttypes = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
 		for (ModelDataDefinition* modeldatum : *enttypes) {
@@ -84,7 +84,7 @@ void Dispose::_createInternalStatisticReporters() {
 		}
 	} else {
 		_numberOut= nullptr;
-		_internalDataClear();
+		_statisticReportersClear();
 	}
 }
 // void Dispose::_createEditableDataDefinitions() { }

@@ -189,7 +189,7 @@ void Assign::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 bool Assign::_check(std::string& errorMessage) {
 	bool resultAll = true;
 	_createInternalAndAttachedData();
-	_attachedDataClear();
+	_optionalEditableDataDefinitionsClear();
 	int i = 0;
 	for (Assignment* let : *_assignments->list()) {
 		if (let->getDestination().empty()) {
@@ -205,7 +205,7 @@ bool Assign::_check(std::string& errorMessage) {
 			errorMessage += destinationType + " \"" + baseDestination + "\" for assignment destination is not in the model. ";
 			resultAll = false;
 		} else {
-			_attachedDataInsert("Assignment" + Util::StrIndex(i), data);
+			_optionalEditableDataDefinitionInsert("Assignment" + Util::StrIndex(i), data);
 		}
 
 		resultAll &= _parentModel->checkExpression(let->getExpression(), "assignment", errorMessage);
@@ -250,7 +250,7 @@ void Assign::_prepareAssignment(Assignment* assignment) {
 // void Assign::_createInternalStatisticReporters() { }
 
 void Assign::_createEditableDataDefinitions() {
-	_attachedDataClear();
+	_optionalEditableDataDefinitionsClear();
 	ModelDataManager* elems = _parentModel->getDataManager();
 	for (Assignment* ass : *_assignments->list()) {
 		_prepareAssignment(ass);
@@ -277,7 +277,7 @@ void Assign::_createEditableDataDefinitions() {
 		}
 		//assert elem != nullptr
 		if (elem != nullptr) {
-			this->_attachedDataInsert(name + "_" + baseDestination, elem);
+			this->_optionalEditableDataDefinitionInsert(name + "_" + baseDestination, elem);
 		}
 	}
 }

@@ -139,11 +139,11 @@ ModelDataDefinition* ModalModelDefault::NewInstance(Model* model, std::string na
 }
 
 void ModalModelDefault::addOutputExpressionReference(ModelDataDefinition* expressionReference) {
-	_attachedDataInsert(expressionReference->getName(), expressionReference);
+	_optionalEditableDataDefinitionInsert(expressionReference->getName(), expressionReference);
 }
 
 void ModalModelDefault::removeOutputExpressionReference(DefaultNodeTransition* expressionReference) {
-	_attachedDataRemove(expressionReference->getName());
+	_optionalEditableDataDefinitionRemove(expressionReference->getName());
 }
 
 
