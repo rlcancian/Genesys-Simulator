@@ -204,9 +204,9 @@ void Process::_ensureInternalComponents() {
 	_seize->getConnectionManager()->insert(_delay);
 	_delay->getConnectionManager()->insert(_release);
 
-	_internalDataInsert("Seize", _seize);
-	_internalDataInsert("Delay", _delay);
-	_internalDataInsert("Release", _release);
+	_mandatoryNonEditableDataDefinitionInsert("Seize", _seize);
+	_mandatoryNonEditableDataDefinitionInsert("Delay", _delay);
+	_mandatoryNonEditableDataDefinitionInsert("Release", _release);
 }
 
 void Process::_reconcileInternalComponents() {

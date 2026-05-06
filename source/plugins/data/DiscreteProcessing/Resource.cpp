@@ -570,20 +570,20 @@ void Resource::_createAttachedAttributes() {
         _parentModel->getOnEventManager()->addOnReplicationEndHandler(this, &Resource::_onReplicationEnd);
     }
     if (_reportStatistics) {
-        if (_cstatProportionSeized != nullptr) _internalDataInsert("ProportionSeized", _cstatProportionSeized);
-        if (_cstatCapacityUtilization != nullptr) _internalDataInsert("CapacityUtilization", _cstatCapacityUtilization);
-        if (_cstatTimeSeized != nullptr) _internalDataInsert("TimeSeized", _cstatTimeSeized);
-        if (_cstatTimeFailed != nullptr) _internalDataInsert("TimeFailed", _cstatTimeFailed);
-        if (_counterTotalTimeSeized != nullptr) _internalDataInsert("TotalTimeSeized", _counterTotalTimeSeized);
-        if (_counterTotalTimeFailed != nullptr) _internalDataInsert("TotalTimeFailed", _counterTotalTimeFailed);
-        if (_counterNumSeizes != nullptr) _internalDataInsert("Seizes", _counterNumSeizes);
-        if (_counterNumReleases != nullptr) _internalDataInsert("Releases", _counterNumReleases);
-        if (_counterTotalCostBusy != nullptr) _internalDataInsert("CostBusy", _counterTotalCostBusy);
-        if (_counterTotalCostIdle != nullptr) _internalDataInsert("CostIdle", _counterTotalCostIdle);
-        if (_counterTotalCostPerUse != nullptr) _internalDataInsert("CostPerUse", _counterTotalCostPerUse);
+        if (_cstatProportionSeized != nullptr) _mandatoryNonEditableDataDefinitionInsert("ProportionSeized", _cstatProportionSeized);
+        if (_cstatCapacityUtilization != nullptr) _mandatoryNonEditableDataDefinitionInsert("CapacityUtilization", _cstatCapacityUtilization);
+        if (_cstatTimeSeized != nullptr) _mandatoryNonEditableDataDefinitionInsert("TimeSeized", _cstatTimeSeized);
+        if (_cstatTimeFailed != nullptr) _mandatoryNonEditableDataDefinitionInsert("TimeFailed", _cstatTimeFailed);
+        if (_counterTotalTimeSeized != nullptr) _mandatoryNonEditableDataDefinitionInsert("TotalTimeSeized", _counterTotalTimeSeized);
+        if (_counterTotalTimeFailed != nullptr) _mandatoryNonEditableDataDefinitionInsert("TotalTimeFailed", _counterTotalTimeFailed);
+        if (_counterNumSeizes != nullptr) _mandatoryNonEditableDataDefinitionInsert("Seizes", _counterNumSeizes);
+        if (_counterNumReleases != nullptr) _mandatoryNonEditableDataDefinitionInsert("Releases", _counterNumReleases);
+        if (_counterTotalCostBusy != nullptr) _mandatoryNonEditableDataDefinitionInsert("CostBusy", _counterTotalCostBusy);
+        if (_counterTotalCostIdle != nullptr) _mandatoryNonEditableDataDefinitionInsert("CostIdle", _counterTotalCostIdle);
+        if (_counterTotalCostPerUse != nullptr) _mandatoryNonEditableDataDefinitionInsert("CostPerUse", _counterTotalCostPerUse);
     }
     else if (!_reportStatistics && _cstatTimeSeized != nullptr) {
-        _internalDataClear();
+        _mandatoryNonEditableDataDefinitionsClear();
         _cstatTimeSeized = nullptr;
         _cstatTimeFailed = nullptr;
         _cstatProportionSeized = nullptr;
@@ -599,10 +599,10 @@ void Resource::_createAttachedAttributes() {
 
     const std::string scheduleKey = getName() + ".CapacitySchedule";
     if (_capacitySchedule != nullptr) {
-        _attachedDataInsert(scheduleKey, _capacitySchedule);
+        _optionalEditableDataDefinitionInsert(scheduleKey, _capacitySchedule);
     }
     else {
-        _attachedDataRemove(scheduleKey);
+        _optionalEditableDataDefinitionRemove(scheduleKey);
     }
 
     std::map<std::string, ModelDataDefinition*>* attachedData = getAttachedData();
@@ -614,12 +614,12 @@ void Resource::_createAttachedAttributes() {
         }
     }
     for (const std::string& key : staleFailureKeys) {
-        _attachedDataRemove(key);
+        _optionalEditableDataDefinitionRemove(key);
     }
 
     for (Failure* failure : *_failures->list()) {
         if (failure != nullptr) {
-            _attachedDataInsert(failurePrefix + failure->getName(), failure);
+            _optionalEditableDataDefinitionInsert(failurePrefix + failure->getName(), failure);
         }
     }
 }

@@ -580,13 +580,13 @@ PluginInformation* MarkovChain::GetPluginInformation() {
 void MarkovChain::_createEditableDataDefinitions() {
 	// _attachedDataClear(); //@TODO Check commented
 	if (_transitionProbMatrix != nullptr) {
-		_attachedDataInsert(_transitionProbMatrix->getName(), _transitionProbMatrix);
+		_optionalEditableDataDefinitionInsert(_transitionProbMatrix->getName(), _transitionProbMatrix);
 	}
 	if (_initialDistribution != nullptr) {
-		_attachedDataInsert(_initialDistribution->getName(), _initialDistribution);
+		_optionalEditableDataDefinitionInsert(_initialDistribution->getName(), _initialDistribution);
 	}
 	if (_currentState != nullptr) {
-		_attachedDataInsert(_currentState->getName(), _currentState);
+		_optionalEditableDataDefinitionInsert(_currentState->getName(), _currentState);
 	}
 }
 

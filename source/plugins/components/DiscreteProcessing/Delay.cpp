@@ -174,19 +174,19 @@ std::string Delay::_allocationAttachedAttributeName(Util::AllocationType allocat
 void Delay::_reconcileAllocationAttachedAttributes() {
 	std::vector<std::string> allocationAttributes = _allAllocationAttachedAttributeNames();
 	if (_reportStatistics) {
-		const std::string currentAllocationAttribute = _allocationAttachedAttributeName(_allocation);
-		for (const std::string& allocationAttribute : allocationAttributes) {
-			if (allocationAttribute != currentAllocationAttribute) {
-				_attachedDataRemove(allocationAttribute);
+			const std::string currentAllocationAttribute = _allocationAttachedAttributeName(_allocation);
+			for (const std::string& allocationAttribute : allocationAttributes) {
+				if (allocationAttribute != currentAllocationAttribute) {
+					_mandatoryAttachedAttributeRemove(allocationAttribute);
+				}
+			}
+			_attachedAttributesInsert({currentAllocationAttribute});
+		} else {
+			for (const std::string& allocationAttribute : allocationAttributes) {
+				_mandatoryAttachedAttributeRemove(allocationAttribute);
 			}
 		}
-		_attachedAttributesInsert({currentAllocationAttribute});
-	} else {
-		for (const std::string& allocationAttribute : allocationAttributes) {
-			_attachedDataRemove(allocationAttribute);
-		}
 	}
-}
 
 void Delay::_createAttachedAttributes() {
 	_reconcileAllocationAttachedAttributes();

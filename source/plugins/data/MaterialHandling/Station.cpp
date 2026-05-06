@@ -224,7 +224,7 @@ void Station::_createAttachedAttributes() {
 		}
 	}
 	for (const std::string& staleKey : staleArrivalAttributes) {
-		_attachedDataRemove(staleKey);
+		_mandatoryAttachedAttributeRemove(staleKey);
 	}
 	_attachedAttributesInsert({"Entity.Station", currentArrivalAttributeName});
 }

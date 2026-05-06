@@ -149,16 +149,16 @@ void Decide::_createInternalStatisticReporters() {
 		for (unsigned int i = _numberOuts->size(); i<this->_connections->size(); i++) {
 			Counter* counter = new Counter(_parentModel, getName() + "." + "CountNumberOut" + Util::StrIndex(i), this);
 			_numberOuts->insert(counter);
-			_internalDataInsert("CountNumberOut" + Util::StrIndex(i), counter);
+			_mandatoryNonEditableDataDefinitionInsert("CountNumberOut" + Util::StrIndex(i), counter);
 		}
 		for (unsigned int i = 0; i < _numberOuts->size(); i++) {
 			Counter* counter = _numberOuts->getAtRank(i);
 			if (counter != nullptr) {
-				_internalDataInsert("CountNumberOut" + Util::StrIndex(i), counter);
+				_mandatoryNonEditableDataDefinitionInsert("CountNumberOut" + Util::StrIndex(i), counter);
 			}
 		}
 	} else  {
-		this->_internaStatisticReportersClear();
+		this->_statisticReportersClear();
 		_numberOuts = nullptr;
 	}
 }
