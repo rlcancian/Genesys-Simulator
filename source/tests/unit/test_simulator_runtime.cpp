@@ -6024,6 +6024,33 @@ TEST(SimulatorRuntimeTest, SPICERunnerRunUsesConfiguredOperationalFilenamesInCom
     ::rmdir(workingDir.c_str());
 }
 
+static void createSimpleBioRunnerNetwork(Model* model, const std::string& networkName) {
+    // Keep the network self-contained so the runner can resolve and simulate it deterministically.
+    auto* speciesA = new BioSpecies(model, "A");
+    speciesA->setInitialAmount(10.0);
+    speciesA->setAmount(10.0);
+
+    auto* speciesB = new BioSpecies(model, "B");
+    speciesB->setInitialAmount(0.0);
+    speciesB->setAmount(0.0);
+
+    auto* rateConstant = new BioParameter(model, "k");
+    rateConstant->setValue(0.25);
+
+    auto* reaction = new BioReaction(model, "A_to_B");
+    reaction->addReactant("A", 1.0);
+    reaction->addProduct("B", 1.0);
+    reaction->setRateConstantParameterName("k");
+
+    auto* network = new BioNetwork(model, networkName);
+    network->addSpecies("A");
+    network->addSpecies("B");
+    network->addReaction("A_to_B");
+    network->setStartTime(0.0);
+    network->setStopTime(1.0);
+    network->setStepSize(0.1);
+}
+
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerDefaultsExposeStructuralConfiguration) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -6038,6 +6065,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerDefaultsExposeStructuralConfigurati
     EXPECT_EQ(runner.getLastErrorMessage(), "");
     EXPECT_EQ(runner.getLastResponsePayload(), "");
     EXPECT_EQ(runner.getLastResponseFilename(), "");
+    EXPECT_EQ(runner.getTargetBioNetworkName(), "");
     EXPECT_EQ(runner.getWorkingDirectory(), "");
     EXPECT_EQ(runner.getWorkingInputFilename(), "biosim_input.xml");
     EXPECT_EQ(runner.getWorkingOutputFilename(), "biosim_output.json");
@@ -6080,6 +6108,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSettersAndGettersPreserveValues) {
     runner.setWorkingInputFilename("custom_input.xml");
     runner.setWorkingOutputFilename("custom_output.json");
     runner.setEndpointOrLibrary("/opt/copasi/CopasiSE");
+    runner.setTargetBioNetworkName("NetworkA");
     runner.setTimeoutSeconds(45u);
     runner.setAutoValidateModel(false);
 
@@ -6091,6 +6120,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSettersAndGettersPreserveValues) {
     EXPECT_EQ(runner.getWorkingInputFilename(), "custom_input.xml");
     EXPECT_EQ(runner.getWorkingOutputFilename(), "custom_output.json");
     EXPECT_EQ(runner.getEndpointOrLibrary(), "/opt/copasi/CopasiSE");
+    EXPECT_EQ(runner.getTargetBioNetworkName(), "NetworkA");
     EXPECT_EQ(runner.getTimeoutSeconds(), 45u);
     EXPECT_FALSE(runner.getAutoValidateModel());
 }
@@ -6157,6 +6187,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerPersistenceRoundTripPreservesMainFi
     source.setWorkingInputFilename("persist_input.xml");
     source.setWorkingOutputFilename("persist_output.json");
     source.setEndpointOrLibrary("https://example.invalid/stub");
+    source.setTargetBioNetworkName("PersistedNetwork");
     source.setTimeoutSeconds(75u);
     source.setAutoValidateModel(false);
 
@@ -6178,6 +6209,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerPersistenceRoundTripPreservesMainFi
     EXPECT_EQ(loaded.getWorkingInputFilename(), "persist_input.xml");
     EXPECT_EQ(loaded.getWorkingOutputFilename(), "persist_output.json");
     EXPECT_EQ(loaded.getEndpointOrLibrary(), "https://example.invalid/stub");
+    EXPECT_EQ(loaded.getTargetBioNetworkName(), "PersistedNetwork");
     EXPECT_EQ(loaded.getTimeoutSeconds(), 75u);
     EXPECT_FALSE(loaded.getAutoValidateModel());
 }
@@ -6196,6 +6228,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerShowIncludesMainObservabilityFields
     runner.setWorkingInputFilename("show_input.xml");
     runner.setWorkingOutputFilename("show_output.json");
     runner.setEndpointOrLibrary("copasi");
+    runner.setTargetBioNetworkName("ShowNetwork");
     runner.setTimeoutSeconds(12u);
 
     const std::string shown = runner.show();
@@ -6207,6 +6240,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerShowIncludesMainObservabilityFields
     EXPECT_NE(shown.find("workingInputFilename=\"show_input.xml\""), std::string::npos);
     EXPECT_NE(shown.find("workingOutputFilename=\"show_output.json\""), std::string::npos);
     EXPECT_NE(shown.find("endpointOrLibrary=\"copasi\""), std::string::npos);
+    EXPECT_NE(shown.find("targetBioNetworkName=\"ShowNetwork\""), std::string::npos);
     EXPECT_NE(shown.find("timeoutSeconds=12"), std::string::npos);
 }
 
@@ -6238,7 +6272,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelWithEmptySourceFailsCo
     std::string errorMessage;
     EXPECT_FALSE(runner.executeCommand(errorMessage));
     EXPECT_EQ(runner.getLastStatus(), "Failed");
-    EXPECT_NE(errorMessage.find("requires a non-empty modelSource"), std::string::npos);
+    EXPECT_NE(errorMessage.find("requires either a BioNetwork or a non-empty modelSource"), std::string::npos);
     EXPECT_EQ(runner.getLastResponsePayload(), "");
 }
 
@@ -6255,7 +6289,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelProducesStubPayload) {
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
     EXPECT_EQ(runner.getLastErrorMessage(), "");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_validation\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"source_validation\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"modelSourceType\":\"SBMLString\""), std::string::npos);
 }
 
@@ -6265,16 +6299,20 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSimulateProducesDeterministicStubPa
     ASSERT_NE(model, nullptr);
 
     BioSimulatorRunnerProbe runner(model, "BioSimulatorSimulateStub");
+    createSimpleBioRunnerNetwork(model, "RunnerNetwork");
+    runner.setTargetBioNetworkName("RunnerNetwork");
     runner.setCommand("simulate(0,10,101)");
 
     std::string errorMessage;
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
     EXPECT_EQ(runner.getLastResponseFilename(), "biosim_output.json");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_time_course\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"bio_time_course\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"targetBioNetworkName\":\"RunnerNetwork\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"start\":0"), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"stop\":10"), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"steps\":101"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"sampleCount\":"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerSteadyStateProducesStubPayload) {
@@ -6283,13 +6321,16 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSteadyStateProducesStubPayload) {
     ASSERT_NE(model, nullptr);
 
     BioSimulatorRunnerProbe runner(model, "BioSimulatorSteadyStateStub");
+    createSimpleBioRunnerNetwork(model, "RunnerSteadyStateNetwork");
+    runner.setTargetBioNetworkName("RunnerSteadyStateNetwork");
     runner.setCommand("steadyState()");
 
     std::string errorMessage;
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_steady_state\""), std::string::npos);
-    EXPECT_NE(runner.getLastResponsePayload().find("\"converged\":true"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"steady_state\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"targetBioNetworkName\":\"RunnerSteadyStateNetwork\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"steady\":"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerGetValueProducesStubPayload) {
@@ -6298,14 +6339,18 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerGetValueProducesStubPayload) {
     ASSERT_NE(model, nullptr);
 
     BioSimulatorRunnerProbe runner(model, "BioSimulatorGetValueStub");
+    auto* species = new BioSpecies(model, "S1");
+    species->setInitialAmount(7.5);
+    species->setAmount(7.5);
     runner.setCommand("getValue(\"S1\")");
 
     std::string errorMessage;
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_value\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"value_query\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"definitionType\":\"BioSpecies\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"symbol\":\"S1\""), std::string::npos);
-    EXPECT_NE(runner.getLastResponsePayload().find("\"value\":0.0"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"value\":7.5"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerSetValueProducesStubPayload) {
@@ -6314,15 +6359,20 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSetValueProducesStubPayload) {
     ASSERT_NE(model, nullptr);
 
     BioSimulatorRunnerProbe runner(model, "BioSimulatorSetValueStub");
+    auto* species = new BioSpecies(model, "S1");
+    species->setInitialAmount(1.0);
+    species->setAmount(1.0);
     runner.setCommand("setValue(\"S1\", 2.5)");
 
     std::string errorMessage;
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_set_value\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"value_update\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"definitionType\":\"BioSpecies\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"symbol\":\"S1\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"value\":2.5"), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"updated\":true"), std::string::npos);
+    EXPECT_DOUBLE_EQ(species->getAmount(), 2.5);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
@@ -6438,7 +6488,7 @@ TEST(SimulatorRuntimeTest, BioRunnerCommandComponentExecutesRunnerCommand) {
     component.DispatchEventProbe(nullptr);
     EXPECT_TRUE(component.getLastSucceeded());
     EXPECT_EQ(component.getLastStatus(), "Completed");
-    EXPECT_NE(component.getLastMessage().find("\"resultType\":\"stub_validation\""), std::string::npos);
+    EXPECT_NE(component.getLastMessage().find("\"resultType\":\"source_validation\""), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, GeneticExpressionStepComponentUpdatesProductSpecies) {

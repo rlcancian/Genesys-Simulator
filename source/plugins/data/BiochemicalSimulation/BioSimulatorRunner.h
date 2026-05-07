@@ -40,6 +40,8 @@ public:
 	std::string getLastResponsePayload() const;
 	void setLastResponseFilename(std::string lastResponseFilename);
 	std::string getLastResponseFilename() const;
+	void setTargetBioNetworkName(std::string targetBioNetworkName);
+	std::string getTargetBioNetworkName() const;
 	void setWorkingDirectory(std::string workingDirectory);
 	std::string getWorkingDirectory() const;
 	void setWorkingInputFilename(std::string workingInputFilename);
@@ -80,6 +82,7 @@ private:
 		std::string lastErrorMessage = "";
 		std::string lastResponsePayload = "";
 		std::string lastResponseFilename = "";
+		std::string targetBioNetworkName = "";
 		std::string workingDirectory = "";
 		std::string workingInputFilename = "biosim_input.xml";
 		std::string workingOutputFilename = "biosim_output.json";
@@ -96,6 +99,7 @@ private:
 	std::string _lastErrorMessage = DEFAULT.lastErrorMessage;
 	std::string _lastResponsePayload = DEFAULT.lastResponsePayload;
 	std::string _lastResponseFilename = DEFAULT.lastResponseFilename;
+	std::string _targetBioNetworkName = DEFAULT.targetBioNetworkName;
 	std::string _workingDirectory = DEFAULT.workingDirectory;
 	std::string _workingInputFilename = DEFAULT.workingInputFilename;
 	std::string _workingOutputFilename = DEFAULT.workingOutputFilename;
