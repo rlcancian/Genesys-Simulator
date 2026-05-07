@@ -6293,6 +6293,99 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelProducesStubPayload) {
     EXPECT_NE(runner.getLastResponsePayload().find("\"modelSourceType\":\"SBMLString\""), std::string::npos);
 }
 
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerReportCommandSummarizesStaticNetworkState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    createSimpleBioRunnerNetwork(model, "RunnerReportStaticNetwork");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReportStatic");
+    runner.setTargetBioNetworkName("RunnerReportStaticNetwork");
+    runner.setCommand("report()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_EQ(runner.getLastErrorMessage(), "");
+    EXPECT_NE(runner.getLastResponsePayload().find("BioNetwork Analysis Report"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Species membership"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Reaction membership"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Stoichiometry matrix"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("<no simulation result available>"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerReportCommandIncludesDynamicAnalysisAfterSimulation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    createSimpleBioRunnerNetwork(model, "RunnerReportDynamicNetwork");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReportDynamic");
+    runner.setTargetBioNetworkName("RunnerReportDynamicNetwork");
+    runner.setCommand("simulate(0,1,10)");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+
+    runner.setCommand("report()");
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("Reaction rates"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Steady-state"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Sensitivity"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("lastSampleTime"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("samples:"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerReportJsonCommandSummarizesStaticNetworkState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    createSimpleBioRunnerNetwork(model, "RunnerReportJsonStaticNetwork");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReportJsonStatic");
+    runner.setTargetBioNetworkName("RunnerReportJsonStaticNetwork");
+    runner.setCommand("reportJson()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"bio_network_report_json\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"hasSimulationResult\":false"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"speciesCount\":2"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"reactionCount\":1"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"speciesNames\":[\"A\",\"B\"]"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"reactionNames\":[\"A_to_B\"]"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerReportJsonCommandIncludesLastSampleAfterSimulation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    createSimpleBioRunnerNetwork(model, "RunnerReportJsonDynamicNetwork");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReportJsonDynamic");
+    runner.setTargetBioNetworkName("RunnerReportJsonDynamicNetwork");
+    runner.setCommand("simulate(0,1,10)");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+
+    runner.setCommand("reportJson()");
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"hasSimulationResult\":true"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"sampleCount\":"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"lastSample\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"time\":1"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"name\":\"A\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"name\":\"B\""), std::string::npos);
+}
+
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerSimulateProducesDeterministicStubPayload) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
