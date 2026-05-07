@@ -58,6 +58,9 @@ struct BacteriumVisualState {
 	double yfp = 0.0;
 	double cfp = 0.0;
 	double age = 0.0;
+	double localSignal = 0.0;
+	double neighborSignalSum = 0.0;
+	double localBacteriaCount = 0.0;
 	QString programName;
 	QString runtimeVariablesSummary;
 };
@@ -76,6 +79,10 @@ struct ColonyVisualSnapshot {
 	unsigned int gridWidth = 1;
 	unsigned int gridHeight = 1;
 	unsigned int maxBacteriaPerCell = 0;
+	bool chemostatEnabled = false;
+	std::vector<BacteriaColony::BarrierSegment> barriers;
+	QString mappedCellExpression;
+	std::size_t mappedCellValueCount = 0;
 	std::vector<double> signalValues;
 	std::vector<BacteriumVisualState> bacteria;
 };
@@ -276,6 +283,33 @@ protected:
 		drawCornerCross(gridFrame.topRight(), -1.0, 1.0);
 		drawCornerCross(gridFrame.bottomLeft(), 1.0, -1.0);
 		drawCornerCross(gridFrame.bottomRight(), -1.0, -1.0);
+
+		const auto pointForWorldCoordinate = [&gridFrame, cellWidth, cellHeight](double x, double y) {
+			return QPointF(gridFrame.left() + (x + 0.5) * cellWidth,
+			               gridFrame.top() + (y + 0.5) * cellHeight);
+		};
+		if (_snapshot.chemostatEnabled) {
+			QPen chemostatPen(QColor(59, 130, 246, 140));
+			chemostatPen.setCosmetic(true);
+			chemostatPen.setWidthF(2.2);
+			chemostatPen.setStyle(Qt::DashLine);
+			painter.setPen(chemostatPen);
+			painter.setBrush(Qt::NoBrush);
+			painter.drawRoundedRect(gridFrame.adjusted(cellWidth * 0.4, cellHeight * 0.4, -cellWidth * 0.4, -cellHeight * 0.4),
+			                        std::max(4.0, std::min(cellWidth, cellHeight)),
+			                        std::max(4.0, std::min(cellWidth, cellHeight)));
+		}
+		if (!_snapshot.barriers.empty()) {
+			QPen barrierPen(QColor(124, 45, 18, 200));
+			barrierPen.setCosmetic(true);
+			barrierPen.setWidthF(2.6);
+			barrierPen.setCapStyle(Qt::RoundCap);
+			painter.setPen(barrierPen);
+			for (const BacteriaColony::BarrierSegment& barrier : _snapshot.barriers) {
+				painter.drawLine(pointForWorldCoordinate(barrier.x1, barrier.y1),
+				                 pointForWorldCoordinate(barrier.x2, barrier.y2));
+			}
+		}
 
 		QFont axisFont = painter.font();
 		axisFont.setPointSizeF(std::max(8.0, axisFont.pointSizeF() > 0.0 ? axisFont.pointSizeF() - 1.0 : 8.0));
@@ -823,12 +857,18 @@ private:
 		snapshot.signalGridName = colony->getSignalGrid() != nullptr
 		                         ? QString::fromStdString(colony->getSignalGrid()->getName())
 		                         : tr("(none)");
+		snapshot.chemostatEnabled = colony->getChemostatMode();
+		snapshot.barriers = colony->getBarriers();
+		snapshot.mappedCellExpression = colony->getMappedCellExpression().empty()
+		                                ? tr("(none)")
+		                                : QString::fromStdString(colony->getMappedCellExpression());
+		snapshot.mappedCellValueCount = colony->getMappedCellValues().size();
 		snapshot.signalValues.reserve(static_cast<std::size_t>(snapshot.gridWidth) * snapshot.gridHeight);
 		double minSignal = std::numeric_limits<double>::max();
 		double maxSignal = std::numeric_limits<double>::lowest();
-		for (unsigned int y = 0; y < snapshot.gridHeight; ++y) {
-			for (unsigned int x = 0; x < snapshot.gridWidth; ++x) {
-				const double signalValue = colony->getSignalValueAt(x, y);
+		const std::vector<std::vector<double>> signalMatrix = colony->getSignalMatrix();
+		for (const std::vector<double>& row : signalMatrix) {
+			for (double signalValue : row) {
 				snapshot.signalValues.push_back(signalValue);
 				minSignal = std::min(minSignal, signalValue);
 				maxSignal = std::max(maxSignal, signalValue);
@@ -859,6 +899,21 @@ private:
 			visual.yfp = bacterium.yfp;
 			visual.cfp = bacterium.cfp;
 			visual.age = colony->getBacteriumAge(index);
+			visual.localSignal = colony->getBacteriumLocalSignal(index);
+			double neighborSignalSum = 0.0;
+			if (visual.gridX > 0) {
+				neighborSignalSum += colony->getSignalValueAt(visual.gridX - 1, visual.gridY);
+			}
+			if (visual.gridX + 1 < snapshot.gridWidth) {
+				neighborSignalSum += colony->getSignalValueAt(visual.gridX + 1, visual.gridY);
+			}
+			if (visual.gridY > 0) {
+				neighborSignalSum += colony->getSignalValueAt(visual.gridX, visual.gridY - 1);
+			}
+			if (visual.gridY + 1 < snapshot.gridHeight) {
+				neighborSignalSum += colony->getSignalValueAt(visual.gridX, visual.gridY + 1);
+			}
+			visual.neighborSignalSum = neighborSignalSum;
 			visual.programName = bacterium.programName.empty()
 			                     ? tr("(none)")
 			                     : QString::fromStdString(bacterium.programName);
@@ -875,9 +930,11 @@ private:
 				variableParts << tr("...");
 			}
 			visual.runtimeVariablesSummary = variableParts.isEmpty() ? tr("(none)") : variableParts.join(tr(", "));
-			snapshot.bacteria.push_back(visual);
 			const auto key = std::make_pair(visual.gridX, visual.gridY);
-			snapshot.maxBacteriaPerCell = std::max(snapshot.maxBacteriaPerCell, ++bacteriaPerCell[key]);
+			const unsigned int cellOccupancy = ++bacteriaPerCell[key];
+			visual.localBacteriaCount = static_cast<double>(cellOccupancy);
+			snapshot.bacteria.push_back(visual);
+			snapshot.maxBacteriaPerCell = std::max(snapshot.maxBacteriaPerCell, cellOccupancy);
 		}
 		_updateTrails(snapshot);
 
@@ -886,7 +943,7 @@ private:
 		}
 
 		_summaryLabel->setText(
-			tr("Colony <b>%1</b> | time=%2 | population=%3 | bacteria=%4 | grid=%5x%6 | BioNetwork=%7 | SignalGrid=%8")
+			tr("Colony <b>%1</b> | time=%2 | population=%3 | bacteria=%4 | grid=%5x%6 | BioNetwork=%7 | SignalGrid=%8 | chemostat=%9 | barriers=%10")
 			.arg(snapshot.colonyName)
 			.arg(QString::number(snapshot.colonyTime, 'g', 8))
 			.arg(snapshot.populationSize)
@@ -894,15 +951,20 @@ private:
 			.arg(snapshot.gridWidth)
 			.arg(snapshot.gridHeight)
 			.arg(snapshot.bioNetworkName)
-			.arg(snapshot.signalGridName));
+			.arg(snapshot.signalGridName)
+			.arg(snapshot.chemostatEnabled ? tr("on") : tr("off"))
+			.arg(static_cast<qulonglong>(snapshot.barriers.size())));
 		_detailsLabel->setText(
-			tr("Signal range: [%1, %2] | Peak occupancy per cell: %3 | Trail depth: %4 refreshes | Live=%5 | Manual run=%6")
+			tr("Signal range: [%1, %2] | Peak occupancy per cell: %3 | Trail depth: %4 refreshes | Live=%5 | Manual run=%6 | map_to_cells=%7 (%8 values)\nSignal matrix preview:\n%9")
 				.arg(QString::number(snapshot.minSignal, 'g', 4))
 				.arg(QString::number(snapshot.maxSignal, 'g', 4))
 				.arg(snapshot.maxBacteriaPerCell)
 				.arg(kTrailHistoryLimit)
 				.arg(_liveUpdatesEnabled ? tr("on") : tr("paused"))
-				.arg(_runEnabled ? tr("on") : tr("off")));
+				.arg(_runEnabled ? tr("on") : tr("off"))
+				.arg(snapshot.mappedCellExpression)
+				.arg(static_cast<qulonglong>(snapshot.mappedCellValueCount))
+				.arg(QString::fromStdString(colony->getSignalMatrixDump(4, 8))));
 		_executionLabel->setText(_lastExecutionMessage);
 		_lastSnapshot = snapshot;
 		_refreshSelectionSummary(_lastSnapshot);
@@ -935,7 +997,7 @@ private:
 			trailDepth = trailIt->second.size();
 		}
 		_selectionLabel->setText(
-			tr("Selection: bacterium #%1 | program=%2 | gen=%3 | cell=(%4,%5) | pos=(%6,%7) | age=%8 | size=%9 | volume=%10 | dir=%11 | gfp=%12 | rfp=%13 | yfp=%14 | cfp=%15 | trail samples=%16 | vars: %17")
+			tr("Selection: bacterium #%1 | program=%2 | gen=%3 | cell=(%4,%5) | pos=(%6,%7) | age=%8 | size=%9 | volume=%10 | dir=%11 | gfp=%12 | rfp=%13 | yfp=%14 | cfp=%15 | local signal=%16 | neighbor sum=%17 | cell occupancy=%18 | trail samples=%19 | vars: %20")
 				.arg(selectedBacterium->id)
 				.arg(selectedBacterium->programName)
 				.arg(selectedBacterium->generation)
@@ -951,6 +1013,9 @@ private:
 				.arg(QString::number(selectedBacterium->rfp, 'g', 5))
 				.arg(QString::number(selectedBacterium->yfp, 'g', 5))
 				.arg(QString::number(selectedBacterium->cfp, 'g', 5))
+				.arg(QString::number(selectedBacterium->localSignal, 'g', 5))
+				.arg(QString::number(selectedBacterium->neighborSignalSum, 'g', 5))
+				.arg(QString::number(selectedBacterium->localBacteriaCount, 'g', 5))
 				.arg(static_cast<qulonglong>(trailDepth))
 				.arg(selectedBacterium->runtimeVariablesSummary));
 	}

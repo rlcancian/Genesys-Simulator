@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <iomanip>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -158,6 +159,18 @@ std::vector<double> parseGroProgramArguments(const std::string& argumentsText) {
 	return arguments;
 }
 
+unsigned int toCenteredGridIndex(double value, unsigned int size) {
+	if (size == 0) {
+		return 0;
+	}
+
+	// Gro coordinates are centered on the origin; convert them into grid space.
+	const double centeredValue = value + 0.5 * static_cast<double>(size) - 0.5;
+	const long long rawIndex = std::llround(centeredValue);
+	const long long maxIndex = static_cast<long long>(size - 1);
+	return static_cast<unsigned int>(std::clamp(rawIndex, 0ll, maxIndex));
+}
+
 std::vector<GroSeedPlacement> parseGroSeedPlacements(const std::string& sourceCode) {
 	const std::regex ecoliPattern(
 			R"(ecoli\s*\(\s*\[([^\]]*)\]\s*,\s*program\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(([^)]*)\)\s*\))");
@@ -286,6 +299,8 @@ std::string BacteriaColony::show() {
 	       ",colonyTime=" + Util::StrTruncIfInt(std::to_string(getColonyTime())) +
 	       ",initialPopulation=" + std::to_string(_initialPopulation) +
 	       ",populationSize=" + std::to_string(_populationSize) +
+	       ",chemostatMode=" + std::string(_chemostatMode ? "true" : "false") +
+	       ",barriers=" + std::to_string(_barriers.size()) +
 	       ",gridWidth=" + std::to_string(getGridWidth()) +
 	       ",gridHeight=" + std::to_string(getGridHeight());
 }
@@ -474,9 +489,41 @@ double BacteriaColony::getSignalValueAt(unsigned int x, unsigned int y) const {
 	return _signalValueAt(x, y);
 }
 
+std::vector<std::vector<double>> BacteriaColony::getSignalMatrix() const {
+	return _buildSignalMatrix();
+}
+
+std::string BacteriaColony::getSignalMatrixDump(std::size_t maxRows, std::size_t maxColumns) const {
+	return _buildSignalFieldDump(maxRows, maxColumns);
+}
+
 double BacteriaColony::getBacteriumLocalSignal(std::size_t index) const {
 	const BacteriumState& bacterium = getBacteriumState(index);
 	return _signalValueAt(bacterium.gridX, bacterium.gridY);
+}
+
+void BacteriaColony::setChemostatMode(bool enabled) {
+	_chemostatMode = enabled;
+}
+
+bool BacteriaColony::getChemostatMode() const {
+	return _chemostatMode;
+}
+
+void BacteriaColony::addBarrier(double x1, double y1, double x2, double y2) {
+	_barriers.push_back(BarrierSegment{x1, y1, x2, y2});
+}
+
+const std::vector<BacteriaColony::BarrierSegment>& BacteriaColony::getBarriers() const {
+	return _barriers;
+}
+
+const std::vector<double>& BacteriaColony::getMappedCellValues() const {
+	return _mappedCellValues;
+}
+
+const std::string& BacteriaColony::getMappedCellExpression() const {
+	return _mappedCellExpression;
 }
 
 void BacteriaColony::setGridWidth(unsigned int gridWidth) {
@@ -525,6 +572,8 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 		return result;
 	}
 	_ensureGroSeededBacteriaInitialized();
+	_mappedCellExpression.clear();
+	_mappedCellValues.clear();
 
 	GroProgramParser::Result parseResult = GroProgramParser().parse(_groProgram->getSourceCode());
 	if (!parseResult.accepted) {
@@ -564,6 +613,11 @@ GroProgramRuntime::ExecutionResult BacteriaColony::executeGroProgram() {
 			result.succeeded = false;
 			result.errorMessage = "BacteriaColony aggregate Gro programs cannot mutate local signals. "
 			                      "Use program bacterium() for signal-aware colony logic. ";
+			return result;
+		}
+		if (!_applyColonyMutations(result.colonyMutations, result, true, result.errorMessage)) {
+			result.succeeded = false;
+			result.errorMessage = "BacteriaColony aggregate Gro program failed: " + result.errorMessage;
 			return result;
 		}
 		if (runtimeState.simulationStep > 0.0 &&
@@ -1039,6 +1093,66 @@ void BacteriaColony::_addSignalAt(unsigned int x, unsigned int y, double value) 
 	_signalField[index] += value;
 }
 
+std::vector<std::vector<double>> BacteriaColony::_buildSignalMatrix() const {
+	std::vector<std::vector<double>> matrix;
+	const unsigned int width = getGridWidth();
+	const unsigned int height = getGridHeight();
+	matrix.reserve(height);
+	for (unsigned int y = 0; y < height; ++y) {
+		std::vector<double> row;
+		row.reserve(width);
+		for (unsigned int x = 0; x < width; ++x) {
+			row.push_back(_signalValueAt(x, y));
+		}
+		matrix.push_back(std::move(row));
+	}
+	return matrix;
+}
+
+std::string BacteriaColony::_buildSignalFieldDump(std::size_t maxRows, std::size_t maxColumns) const {
+	const std::vector<std::vector<double>> matrix = _buildSignalMatrix();
+	const std::size_t availableRows = matrix.size();
+	const std::size_t availableColumns = availableRows > 0 ? matrix.front().size() : 0;
+	const std::size_t rowsToPrint = maxRows == 0 ? availableRows : std::min(maxRows, availableRows);
+	const std::size_t columnsToPrint = maxColumns == 0 ? availableColumns : std::min(maxColumns, availableColumns);
+
+	std::ostringstream dump;
+	dump << "signal_matrix " << getGridWidth() << "x" << getGridHeight();
+	if (rowsToPrint < availableRows || columnsToPrint < availableColumns) {
+		dump << " (preview)";
+	}
+	dump << '\n';
+	for (std::size_t rowIndex = 0; rowIndex < rowsToPrint; ++rowIndex) {
+		dump << "row " << rowIndex << ':';
+		for (std::size_t columnIndex = 0; columnIndex < columnsToPrint; ++columnIndex) {
+			dump << ' ' << std::setprecision(6) << matrix[rowIndex][columnIndex];
+		}
+		if (columnsToPrint < availableColumns) {
+			dump << " ...";
+		}
+		dump << '\n';
+	}
+	if (rowsToPrint < availableRows) {
+		dump << "...";
+	}
+	return dump.str();
+}
+
+void BacteriaColony::_captureSignalFieldSnapshot(GroProgramRuntime::ExecutionResult& result,
+                                                std::size_t maxRows,
+                                                std::size_t maxColumns) const {
+	const std::vector<std::vector<double>> matrix = _buildSignalMatrix();
+	result.signalMatrixWidth = getGridWidth();
+	result.signalMatrixHeight = getGridHeight();
+	result.signalMatrixValues.clear();
+	result.signalMatrixValues.reserve(static_cast<std::size_t>(result.signalMatrixWidth) *
+	                                  static_cast<std::size_t>(result.signalMatrixHeight));
+	for (const std::vector<double>& row : matrix) {
+		result.signalMatrixValues.insert(result.signalMatrixValues.end(), row.begin(), row.end());
+	}
+	result.signalFieldDump = _buildSignalFieldDump(maxRows, maxColumns);
+}
+
 double BacteriaColony::_computeNeighborSignalSum(unsigned int x, unsigned int y) const {
 	double sum = 0.0;
 	if (x > 0) {
@@ -1192,6 +1306,179 @@ void BacteriaColony::_applyRuntimePopulationMutations(const std::vector<GroProgr
 	_rebuildBacteriaGridPositions();
 }
 
+bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::ColonyMutation>& mutations,
+                                           GroProgramRuntime::ExecutionResult& result,
+                                           bool allowStructureMutations,
+                                           std::string& errorMessage) {
+	(void)result;
+	for (const GroProgramRuntime::ColonyMutation& mutation : mutations) {
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::Reset) {
+			if (!allowStructureMutations) {
+				errorMessage = "BacteriaColony bacterium-scoped programs cannot reset the colony. ";
+				return false;
+			}
+			_bacteria.clear();
+			_nextBacteriumId = 1;
+			_populationSize = 0;
+			_colonyTickCount = 0;
+			_groSeedsApplied = true;
+			std::string signalErrorMessage;
+			(void)_resetRuntimeSignalField(signalErrorMessage);
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SpawnSeed) {
+			if (!allowStructureMutations) {
+				errorMessage = "BacteriaColony bacterium-scoped programs cannot spawn seeds. ";
+				return false;
+			}
+			if (mutation.arguments.size() < 2) {
+				errorMessage = "BacteriaColony received an invalid runtime ecoli() mutation. ";
+				return false;
+			}
+			const std::string mutationSource =
+					"ecoli(" + trim(mutation.arguments[0]) + ", " + trim(mutation.arguments[1]) + ")";
+			const std::vector<GroSeedPlacement> placements = parseGroSeedPlacements(mutationSource);
+			if (placements.size() != 1) {
+				errorMessage = "BacteriaColony could not interpret a seeded program from runtime ecoli(). ";
+				return false;
+			}
+			const GroSeedPlacement& placement = placements.front();
+			GroSeedDefinition seedDefinition;
+			seedDefinition.gridX = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionX)));
+			seedDefinition.gridY = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionY)));
+			seedDefinition.programName = placement.programName;
+			seedDefinition.programArguments = placement.programArguments;
+			_appendBacterium(seedDefinition);
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SetChemostatMode) {
+			if (mutation.numericArguments.size() != 1) {
+				errorMessage = "BacteriaColony received an invalid chemostat mutation. ";
+				return false;
+			}
+			setChemostatMode(mutation.numericArguments.front() != 0.0);
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::AddBarrier) {
+			if (mutation.numericArguments.size() != 4) {
+				errorMessage = "BacteriaColony received an invalid barrier mutation. ";
+				return false;
+			}
+			addBarrier(mutation.numericArguments[0],
+			           mutation.numericArguments[1],
+			           mutation.numericArguments[2],
+			           mutation.numericArguments[3]);
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::MapToCells) {
+			if (mutation.expressionText.empty()) {
+				errorMessage = "BacteriaColony received an empty map_to_cells expression. ";
+				return false;
+			}
+			_mappedCellExpression = mutation.expressionText;
+			_mappedCellValues.clear();
+			_mappedCellValues.reserve(_bacteria.size());
+			for (std::size_t index = 0; index < _bacteria.size(); ++index) {
+				const BacteriumState& bacterium = _bacteria[index];
+				GroProgramRuntimeState runtimeState = _createBacteriumRuntimeState(bacterium, index);
+				double mappedValue = 0.0;
+				std::string evaluationErrorMessage;
+				if (!GroProgramRuntime::evaluateExpression(mutation.expressionText, runtimeState, mappedValue, evaluationErrorMessage)) {
+					errorMessage = "BacteriaColony map_to_cells expression failed: " + evaluationErrorMessage;
+					return false;
+				}
+				_mappedCellValues.push_back(mappedValue);
+			}
+			result.mappedCellExpression = _mappedCellExpression;
+			result.mappedCellValues = _mappedCellValues;
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SetSignalGridWidth) {
+			if (mutation.numericArguments.size() != 1) {
+				errorMessage = "BacteriaColony received an invalid signal_grid_width mutation. ";
+				return false;
+			}
+			setGridWidth(static_cast<unsigned int>(std::max(1.0, std::floor(mutation.numericArguments.front()))));
+			std::string resetErrorMessage;
+			if (!_resetRuntimeSignalField(resetErrorMessage)) {
+				errorMessage = "BacteriaColony failed to resize signal field after signal_grid_width mutation: " + resetErrorMessage;
+				return false;
+			}
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SetSignalGridHeight) {
+			if (mutation.numericArguments.size() != 1) {
+				errorMessage = "BacteriaColony received an invalid signal_grid_height mutation. ";
+				return false;
+			}
+			setGridHeight(static_cast<unsigned int>(std::max(1.0, std::floor(mutation.numericArguments.front()))));
+			std::string resetErrorMessage;
+			if (!_resetRuntimeSignalField(resetErrorMessage)) {
+				errorMessage = "BacteriaColony failed to resize signal field after signal_grid_height mutation: " + resetErrorMessage;
+				return false;
+			}
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SetSignalAt) {
+			if (mutation.numericArguments.size() != 4) {
+				errorMessage = "BacteriaColony received an invalid set_signal mutation. ";
+				return false;
+			}
+			const double xValue = mutation.numericArguments[1];
+			const double yValue = mutation.numericArguments[2];
+			const double signalValue = mutation.numericArguments[3];
+			const unsigned int x = toCenteredGridIndex(xValue, getGridWidth());
+			const unsigned int y = toCenteredGridIndex(yValue, getGridHeight());
+			_setSignalValueAt(x, y, signalValue);
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SetSignalRect) {
+			if (mutation.numericArguments.size() != 6) {
+				errorMessage = "BacteriaColony received an invalid set_signal_rect mutation. ";
+				return false;
+			}
+			const double x1Value = mutation.numericArguments[1];
+			const double y1Value = mutation.numericArguments[2];
+			const double x2Value = mutation.numericArguments[3];
+			const double y2Value = mutation.numericArguments[4];
+			const double signalValue = mutation.numericArguments[5];
+			const long long rawX1 = std::llround(x1Value + 0.5 * static_cast<double>(getGridWidth()) - 0.5);
+			const long long rawY1 = std::llround(y1Value + 0.5 * static_cast<double>(getGridHeight()) - 0.5);
+			const long long rawX2 = std::llround(x2Value + 0.5 * static_cast<double>(getGridWidth()) - 0.5);
+			const long long rawY2 = std::llround(y2Value + 0.5 * static_cast<double>(getGridHeight()) - 0.5);
+			const long long minX = std::min(rawX1, rawX2);
+			const long long maxX = std::max(rawX1, rawX2);
+			const long long minY = std::min(rawY1, rawY2);
+			const long long maxY = std::max(rawY1, rawY2);
+			const long long upperX = static_cast<long long>(getGridWidth() > 0 ? getGridWidth() - 1 : 0);
+			const long long upperY = static_cast<long long>(getGridHeight() > 0 ? getGridHeight() - 1 : 0);
+			for (long long x = std::max(0ll, minX); x <= std::min(upperX, maxX); ++x) {
+				for (long long y = std::max(0ll, minY); y <= std::min(upperY, maxY); ++y) {
+					_setSignalValueAt(static_cast<unsigned int>(x), static_cast<unsigned int>(y), signalValue);
+				}
+			}
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::GetSignalMatrix ||
+		    mutation.type == GroProgramRuntime::ColonyMutation::Type::DumpSignalField) {
+			_captureSignalFieldSnapshot(result, mutation.previewRows, mutation.previewColumns);
+			continue;
+		}
+	}
+
+	_populationSize = static_cast<unsigned int>(_bacteria.size());
+	return true;
+}
+
 bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
                                                     GroProgramRuntime::ExecutionResult& result) {
 	std::string unsupportedCommand;
@@ -1209,40 +1496,6 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 	}
 
 	GroProgramRuntime runtime;
-	auto applyColonyMutations = [this](const std::vector<GroProgramRuntime::ColonyMutation>& mutations,
-	                                   std::string& errorMessage) -> bool {
-		for (const GroProgramRuntime::ColonyMutation& mutation : mutations) {
-			if (mutation.type == GroProgramRuntime::ColonyMutation::Type::Reset) {
-				_bacteria.clear();
-				_nextBacteriumId = 1;
-				_populationSize = 0;
-				_colonyTickCount = 0;
-				_groSeedsApplied = true;
-				std::string signalErrorMessage;
-				(void)_resetRuntimeSignalField(signalErrorMessage);
-				continue;
-			}
-			if (mutation.type == GroProgramRuntime::ColonyMutation::Type::SpawnSeed) {
-				const std::string mutationSource =
-						"ecoli(" + trim(mutation.arguments[0]) + ", " + trim(mutation.arguments[1]) + ")";
-				const std::vector<GroSeedPlacement> placements = parseGroSeedPlacements(mutationSource);
-				if (placements.size() != 1) {
-					errorMessage = "BacteriaColony could not interpret a seeded program from runtime ecoli(). ";
-					return false;
-				}
-				const GroSeedPlacement& placement = placements.front();
-				GroSeedDefinition seedDefinition;
-				seedDefinition.gridX = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionX)));
-				seedDefinition.gridY = static_cast<unsigned int>(std::max(0.0, std::round(placement.positionY)));
-				seedDefinition.programName = placement.programName;
-				seedDefinition.programArguments = placement.programArguments;
-				_appendBacterium(seedDefinition);
-				continue;
-			}
-		}
-		_populationSize = static_cast<unsigned int>(_bacteria.size());
-		return true;
-	};
 	if (!ir.commands.empty()) {
 		GroProgramIr preludeIr;
 		preludeIr.commands = ir.commands;
@@ -1279,7 +1532,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			result.succeeded = false;
 			return false;
 		}
-		if (!applyColonyMutations(preludeResult.colonyMutations, result.errorMessage)) {
+		if (!_applyColonyMutations(preludeResult.colonyMutations, result, true, result.errorMessage)) {
 			result.succeeded = false;
 			return false;
 		}
@@ -1294,6 +1547,9 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		result.skippedRawStatements.insert(result.skippedRawStatements.end(),
 		                                   preludeResult.skippedRawStatements.begin(),
 		                                   preludeResult.skippedRawStatements.end());
+		for (const auto& mutation : preludeResult.colonyMutations) {
+			result.colonyMutations.push_back(mutation);
+		}
 	}
 
 	const auto mainEntry = ir.namedPrograms.find("main");
@@ -1336,7 +1592,7 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			result.succeeded = false;
 			return false;
 		}
-		if (!applyColonyMutations(mainResult.colonyMutations, result.errorMessage)) {
+		if (!_applyColonyMutations(mainResult.colonyMutations, result, true, result.errorMessage)) {
 			result.succeeded = false;
 			return false;
 		}
@@ -1354,6 +1610,9 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		result.skippedRawStatements.insert(result.skippedRawStatements.end(),
 		                                   mainResult.skippedRawStatements.begin(),
 		                                   mainResult.skippedRawStatements.end());
+		for (const auto& mutation : mainResult.colonyMutations) {
+			result.colonyMutations.push_back(mutation);
+		}
 	}
 
 	_refreshBacteriaUpdateTime();
@@ -1403,12 +1662,6 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
 			return false;
 		}
-		if (!bacteriumResult.colonyMutations.empty()) {
-			result.succeeded = false;
-			result.errorMessage =
-			        "BacteriaColony bacterium-scoped programs cannot mutate colony structure with reset or ecoli. ";
-			return false;
-		}
 		if (runtimeState.simulationStep > 0.0 &&
 		    std::fabs(runtimeState.simulationStep - getSimulationStep()) > 1e-12) {
 			setSimulationStep(runtimeState.simulationStep);
@@ -1442,8 +1695,21 @@ bool BacteriaColony::_executeSeededNamedGroPrograms(const GroProgramIr& ir,
 		for (const auto& mutation : bacteriumResult.signalMutations) {
 			result.signalMutations.push_back(mutation);
 		}
+		for (const auto& mutation : bacteriumResult.motionMutations) {
+			result.motionMutations.push_back(mutation);
+		}
+		for (const auto& mutation : bacteriumResult.colonyMutations) {
+			result.colonyMutations.push_back(mutation);
+		}
 
 		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
+		if (!bacteriumResult.colonyMutations.empty() &&
+		    !_applyColonyMutations(bacteriumResult.colonyMutations, result, false, result.errorMessage)) {
+			result.succeeded = false;
+			result.errorMessage = "BacteriaColony bacterium-scoped execution failed for bacterium id " +
+			                      std::to_string(bacteriumId) + ": " + result.errorMessage;
+			return false;
+		}
 		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
 		                                         bacteriumResult.populationMutations, result);
 		if (!result.succeeded) {
@@ -1546,6 +1812,9 @@ bool BacteriaColony::_executeBacteriumScopedGroProgram(const GroProgramIr& ir,
 		for (const auto& mutation : bacteriumResult.signalMutations) {
 			result.signalMutations.push_back(mutation);
 		}
+		for (const auto& mutation : bacteriumResult.motionMutations) {
+			result.motionMutations.push_back(mutation);
+		}
 
 		_applyBacteriumSignalMutations(bacterium, bacteriumResult.signalMutations);
 		_applyBacteriumScopedPopulationMutations(bacteriumId, bacterium.generation,
@@ -1588,7 +1857,10 @@ bool BacteriaColony::_containsBacteriumScopedOnlyUnsupportedCommand(const std::v
 		if (command.functionName == "tick" ||
 		    command.functionName == "reset" ||
 		    command.functionName == "ecoli" ||
-		    command.functionName == "set_population") {
+		    command.functionName == "set_population" ||
+		    command.functionName == "map_to_cells" ||
+		    command.functionName == "get_signal_matrix" ||
+		    command.functionName == "dump_signal_field") {
 			unsupportedCommand = command.sourceText;
 			return true;
 		}
@@ -1885,6 +2157,7 @@ void BacteriaColony::_applyBacteriumGrowth(BacteriumState& bacterium) const {
 	bacterium.runtimeVariables["ecoli_growth_rate"] = growthRate;
 	bacterium.runtimeVariables["volume"] = bacterium.volume;
 	bacterium.runtimeVariables["size"] = bacterium.size;
+	bacterium.runtimeVariables["speed"] = bacterium.speed;
 }
 
 void BacteriaColony::_rebuildBacteriaGridPositions() {
