@@ -1,0 +1,119 @@
+@startuml
+top to bottom direction
+skinparam linetype polyline
+skinparam shadowing false
+skinparam nodesep 45
+skinparam ranksep 60
+skinparam classBackgroundColor #e0e0f0
+skinparam interfaceBackgroundColor #e0e0f0
+skinparam packageBackgroundColor #e0e0f0
+skinparam ArrowColor #505060
+
+package "kernel/statistics" #e0e0f0 {
+interface Collector_if
+interface Statistics_if
+class StatisticsDefaultImpl1
+class StatisticsCollector
+}
+package "kernel/simulator" #e0e0f0 {
+class Simulator
+class LicenceManager
+class PluginManager
+class Plugin
+class PluginInformation
+class ModelManager
+class Model
+class ModelSimulation
+class ModelDataManager
+class ComponentManager
+abstract class PersistentObject_base
+class ModelDataDefinition
+class ModelDataDefinitionAssociations
+abstract class ModelComponent
+class SourceModelComponent
+class Entity
+class EntityType
+class Attribute
+class Counter
+class ConnectionManager
+class Connection
+class Event
+class TraceManager
+class OnEventManager
+interface ModelChecker_if
+interface Parser_if
+interface ModelPersistence_if
+class ModelCheckerDefaultImpl1
+class ParserDefaultImpl1
+class ModelPersistenceDefaultImpl1
+class ParserManager
+class ExperimentManager
+class SimulationControl
+class SimulationResponse
+}
+
+StatisticsDefaultImpl1 -up..|> Statistics_if
+StatisticsDefaultImpl1 o--> "1" Collector_if : collector
+StatisticsCollector -up-|> ModelDataDefinition
+StatisticsCollector *--> "1" Statistics_if : statistics
+
+ModelDataDefinition -up-|> PersistentObject_base
+ModelComponent -up-|> ModelDataDefinition
+SourceModelComponent -up-|> ModelComponent
+Entity -up-|> ModelDataDefinition
+EntityType -up-|> ModelDataDefinition
+Attribute -up-|> ModelDataDefinition
+Counter -up-|> ModelDataDefinition
+SimulationResponse -up-|> SimulationControl
+
+ModelCheckerDefaultImpl1 -up..|> ModelChecker_if
+ParserDefaultImpl1 -up..|> Parser_if
+ModelPersistenceDefaultImpl1 -up..|> ModelPersistence_if
+
+Simulator *--> "1" LicenceManager : _licenceManager
+Simulator *--> "1" PluginManager : _pluginManager
+Simulator *--> "1" ModelManager : _modelManager
+Simulator *--> "1" TraceManager : _traceManager
+Simulator *--> "1" ParserManager : _parserManager
+Simulator *--> "1" ExperimentManager : _experimentManager
+
+PluginManager o--> "1" Simulator : _simulator
+PluginManager *--> "0..n" Plugin : _plugins
+Plugin *--> "1" PluginInformation : pluginInfo
+
+ModelManager o--> "1" Simulator : _simulator
+ModelManager *--> "0..n" Model : _models
+ModelManager o--> "0..1" Model : _currentModel
+
+Model o--> "1" Simulator : _parentSimulator
+Model o--> "1" TraceManager : _traceManager
+Model *--> "1" OnEventManager : _eventManager
+Model *--> "1" ModelDataManager : _modeldataManager
+Model *--> "1" ComponentManager : _componentManager
+Model *--> "1" ModelSimulation : _simulation
+Model *--> "1" ModelPersistence_if : _modelPersistence
+Model *--> "1" ModelChecker_if : _modelChecker
+Model *--> "1" Parser_if : _parser
+Model *--> "0..n" Event : _futureEvents
+Model *--> "0..n" SimulationControl : _controls
+
+ModelDataManager o--> "1" Model : _parentModel
+ModelDataManager o--> "0..n" ModelDataDefinition : _datadefinitions
+ComponentManager o--> "1" Model : _parentModel
+ComponentManager o--> "0..n" ModelComponent : _components
+
+ModelDataDefinition o--> "1" Model : _parentModel
+ModelDataDefinition *--> "1" ModelDataDefinitionAssociations : _dataAssociations
+ModelDataDefinition *--> "0..n" SimulationControl : _simulationControls
+ModelDataDefinitionAssociations o--> "1" ModelDataDefinition : _owner
+ModelDataDefinitionAssociations *--> "0..n" ModelDataDefinition : internalData
+ModelDataDefinitionAssociations o--> "0..n" ModelDataDefinition : attachedData
+
+ModelComponent *--> "1" ConnectionManager : _connections
+ConnectionManager *--> "0..n" Connection : _nextConnections
+Connection o--> "1" ModelComponent : component
+Event o--> "0..1" Entity : entity
+Event o--> "1" ModelComponent : component
+ModelSimulation o--> "1" Model : _parentModel
+
+@enduml
