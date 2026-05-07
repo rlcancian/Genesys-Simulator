@@ -8304,6 +8304,45 @@ TEST(SimulatorRuntimeTest, MarkovChainCheckAcceptsSquareTransitionMatrixAndMatch
     EXPECT_TRUE(errorMessage.empty());
 }
 
+TEST(SimulatorRuntimeTest, MarkovChainCheckAcceptsRuntimeStoredVariableMatrixAndDistribution) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrixRuntime");
+    transitionMatrix->getValueStore()->insertDimensionSize(2);
+    transitionMatrix->getValueStore()->insertDimensionSize(2);
+    transitionMatrix->setValue(0.2, "0,0");
+    transitionMatrix->setValue(0.8, "0,1");
+    transitionMatrix->setValue(0.8, "1,0");
+    transitionMatrix->setValue(0.2, "1,1");
+    ASSERT_NE(transitionMatrix->getValueStore(), nullptr);
+    ASSERT_NE(transitionMatrix->getInitialValueStore(), nullptr);
+    EXPECT_EQ(transitionMatrix->getValueStore()->dimensionSizes()->size(), 2u);
+    EXPECT_EQ(transitionMatrix->getValueStore()->values()->size(), 4u);
+    EXPECT_TRUE(transitionMatrix->getInitialValueStore()->values()->empty());
+
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistributionRuntime");
+    initialDistribution->getValueStore()->insertDimensionSize(2);
+    initialDistribution->setValue(0.5, "0");
+    initialDistribution->setValue(0.5, "1");
+    ASSERT_NE(initialDistribution->getValueStore(), nullptr);
+    ASSERT_NE(initialDistribution->getInitialValueStore(), nullptr);
+    EXPECT_EQ(initialDistribution->getValueStore()->dimensionSizes()->size(), 1u);
+    EXPECT_EQ(initialDistribution->getValueStore()->values()->size(), 2u);
+    EXPECT_TRUE(initialDistribution->getInitialValueStore()->values()->empty());
+    auto* currentState = new Attribute(model, "MarkovCurrentStateRuntime");
+
+    MarkovChainProbe chain(model, "MarkovProbeRuntime");
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentState);
+
+    std::string errorMessage;
+    EXPECT_TRUE(chain.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_TRUE(errorMessage.empty());
+}
+
 TEST(SimulatorRuntimeTest, MarkovChainCheckRejectsRowsThatDoNotSumToOne) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();

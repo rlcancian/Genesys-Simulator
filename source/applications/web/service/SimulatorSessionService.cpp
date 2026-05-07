@@ -94,7 +94,7 @@ SimulatorSessionService::WorkerInfoResult SimulatorSessionService::getWorkerInfo
 
     WorkerInfoResult result{};
     result.role = "worker";
-    result.application = "genesys_webhook";
+    result.application = "genesys_web_app";
     result.apiFamily = "genesys-web-worker";
     result.apiVersion = "v1";
     result.simulatorName = simulator.getName();

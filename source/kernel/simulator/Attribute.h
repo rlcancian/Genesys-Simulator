@@ -37,16 +37,17 @@ Assign module, and can be used in any expression. Attribute values are unique fo
 each entity, as compared to Variables which are global to the simulation module.
 There are three methods for manually editing the Initial Values of an Attribute
 module:
- Using the standard spreadsheet interface. In the module spreadsheet, rightclick on the Initial Values cell and select the Edit via spreadsheet menu
-item. The values for two-dimensional arrays should be entered one column at
-a time. Array elements not explicitly assigned are assumed to have the last
-entered value.
- Using the module dialog box. In the module spreadsheet, right-click on any
-cell and select the Edit via dialog menu item. The values for two-dimensional
-arrays should be entered one column at a time. Array elements not explicitly
-assigned are assumed to have the last entered value.
- Using the two-dimensional (2-D) spreadsheet interface. In the module
-spreadsheet, click on the Initial Values cell.
+- Using the standard spreadsheet interface. In the module spreadsheet,
+  right-click on the Initial Values cell and select the Edit via spreadsheet
+  menu item. The values for two-dimensional arrays should be entered one
+  column at a time. Array elements not explicitly assigned are assumed to
+  have the last entered value.
+- Using the module dialog box. In the module spreadsheet, right-click on any
+  cell and select the Edit via dialog menu item. The values for two-dimensional
+  arrays should be entered one column at a time. Array elements not explicitly
+  assigned are assumed to have the last entered value.
+- Using the two-dimensional (2-D) spreadsheet interface. In the module
+  spreadsheet, click on the Initial Values cell.
 TYPICAL USES
 * Due date of an order (entity)
 * Priority of an order (entity)
