@@ -1799,7 +1799,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
   <action name="actionZoom_OneToOne">
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
-     <normaloff>:/icons2/resources/icons/pack4/iconsMxGraph/zoomactual.gif</normaloff>:/icons2/resources/icons/pack4/iconsMxGraph/zoomactual.gif</iconset>
+     <normaloff>:/icons3/resources/icons/pack3/ico/zoom.ico</normaloff>:/icons3/resources/icons/pack3/ico/zoom.ico</iconset>
    </property>
    <property name="text">
     <string>Zoom 1:1</string>
@@ -2151,9 +2151,6 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <property name="checkable">
     <bool>true</bool>
    </property>
-   <property name="visible">
-    <bool>false</bool>
-   </property>
    <property name="icon">
     <iconset resource="GenesysQtGUI_resources.qrc">
      <normaloff>:/icons3/resources/icons/pack3/ico/sum.ico</normaloff>:/icons3/resources/icons/pack3/ico/sum.ico</iconset>
@@ -2163,6 +2160,9 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="toolTip">
     <string>Anime Attribute</string>
+   </property>
+   <property name="visible">
+    <bool>false</bool>
    </property>
   </action>
   <action name="actionAnimateStatistics">
