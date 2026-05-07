@@ -115,11 +115,11 @@ genesys_add_unit_test(genesys_test_statistics
     genesys_kernel_util
 )
 
-find_package(Qt6 QUIET COMPONENTS Core Gui Widgets PrintSupport)
+find_package(Qt6 QUIET COMPONENTS Core Gui Widgets PrintSupport Network)
 if(Qt6_FOUND)
     set(GENESYS_QT_TEST_PACKAGE Qt6)
 else()
-    find_package(Qt5 QUIET COMPONENTS Core Gui Widgets PrintSupport)
+    find_package(Qt5 QUIET COMPONENTS Core Gui Widgets PrintSupport Network)
     if(Qt5_FOUND)
         set(GENESYS_QT_TEST_PACKAGE Qt5)
     endif()
@@ -178,6 +178,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     target_include_directories(genesys_test_gui_gmdd_layout
         PRIVATE
             ${CMAKE_SOURCE_DIR}/source
+            ${CMAKE_SOURCE_DIR}/source/applications/web
             ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI
             ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/codeeditor
             ${CMAKE_SOURCE_DIR}/source/applications/gui/qt/GenesysQtGUI/propertyeditor
@@ -191,6 +192,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             ${GENESYS_QT_TEST_PACKAGE}::Gui
             ${GENESYS_QT_TEST_PACKAGE}::Widgets
             "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
+            genesys_web_core
             genesys_tools
     )
 
@@ -198,6 +200,12 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
         target_link_libraries(genesys_test_gui_gmdd_layout
             PRIVATE
                 ${GENESYS_QT_TEST_PACKAGE}::PrintSupport
+        )
+    endif()
+    if(TARGET ${GENESYS_QT_TEST_PACKAGE}::Network)
+        target_link_libraries(genesys_test_gui_gmdd_layout
+            PRIVATE
+                ${GENESYS_QT_TEST_PACKAGE}::Network
         )
     endif()
 

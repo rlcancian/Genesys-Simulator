@@ -273,7 +273,6 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
             }
             menu->addSeparator();
             addShowMenu(menu);
-            addZoomMenu(menu);
             break;
 
         case ContextKind::SingleDataDefinition:
@@ -304,6 +303,10 @@ void GraphicalContextMenuController::populateItemMenu(QMenu* menu, ContextKind c
         case ContextKind::GenericItem:
         case ContextKind::Background:
             break;
+    }
+
+    if (contextKind != ContextKind::Background) {
+        addZoomMenu(menu);
     }
 }
 
@@ -348,6 +351,7 @@ void GraphicalContextMenuController::addZoomMenu(QMenu* menu) const {
     zoomMenu->addAction(_ui->actionZoom_In);
     zoomMenu->addAction(_ui->actionZoom_Out);
     zoomMenu->addAction(_ui->actionZoom_All);
+    zoomMenu->addAction(_ui->actionZoom_OneToOne);
 }
 
 void GraphicalContextMenuController::addTraceLevelMenu(QMenu* menu, QGraphicsItem* clickedItem) const {

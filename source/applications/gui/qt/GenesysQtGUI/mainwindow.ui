@@ -906,6 +906,7 @@
      <addaction name="actionZoom_In"/>
      <addaction name="actionZoom_Out"/>
      <addaction name="actionZoom_All"/>
+     <addaction name="actionZoom_OneToOne"/>
     </widget>
     <widget class="QMenu" name="menuViewDraw">
      <property name="title">
@@ -1273,6 +1274,7 @@ li.checked::marker { content: &quot;\2612&quot;; }
    <addaction name="actionZoom_In"/>
    <addaction name="actionZoom_Out"/>
    <addaction name="actionZoom_All"/>
+   <addaction name="actionZoom_OneToOne"/>
    <addaction name="separator"/>
    <addaction name="actionViewGroup"/>
    <addaction name="actionViewUngroup"/>
@@ -1792,6 +1794,18 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="shortcut">
     <string>Ctrl+0</string>
+   </property>
+  </action>
+  <action name="actionZoom_OneToOne">
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/icons2/resources/icons/pack4/iconsMxGraph/zoomactual.gif</normaloff>:/icons2/resources/icons/pack4/iconsMxGraph/zoomactual.gif</iconset>
+   </property>
+   <property name="text">
+    <string>Zoom 1:1</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+1</string>
    </property>
   </action>
   <action name="actionDrawLine">

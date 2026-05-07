@@ -282,6 +282,14 @@ void MainWindow::on_actionZoom_All_triggered() {
 }
 
 
+void MainWindow::on_actionZoom_OneToOne_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionZoomActualSizeTriggered();
+    }
+}
+
+
 void MainWindow::on_actionDrawLine_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {

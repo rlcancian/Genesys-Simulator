@@ -1649,6 +1649,7 @@ void MainWindow::_rebuildViewDependentControllers() {
         [this]() { _actualizeTabPanes(); },
         _zoomValue,
         _firstClickShowConnection);
+    _sceneToolController->syncZoomWidgetsForCurrentScale();
     _graphicalContextMenuController = std::make_unique<GraphicalContextMenuController>(
         ui->graphicsView,
         ui,
