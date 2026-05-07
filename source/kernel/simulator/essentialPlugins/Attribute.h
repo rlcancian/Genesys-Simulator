@@ -19,10 +19,10 @@
 #include <map>
 #include <utility>
 #include <vector>
-#include "model/ModelDataDefinition.h"
-#include "model/ModelDataManager.h"
-#include "PluginInformation.h"
-#include "SparseValueStore.h"
+#include "../model/ModelDataDefinition.h"
+#include "../model/ModelDataManager.h"
+#include "../PluginInformation.h"
+#include "../SparseValueStore.h"
 
 //namespace GenesysKernel {
 

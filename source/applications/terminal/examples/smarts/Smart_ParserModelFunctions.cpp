@@ -27,7 +27,7 @@
 #include "plugins/data/Logic/Formula.h"
 
 // Model data definitions
-#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "../../../TraitsApp.h"
 
 Smart_ParserModelFunctions::Smart_ParserModelFunctions() {

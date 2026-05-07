@@ -12,7 +12,7 @@
  */
 
 #include "StatisticsCollector.h"
-#include "../TraitsKernel.h"
+#include "../../TraitsKernel.h"
 
 //using namespace GenesysKernel;
 

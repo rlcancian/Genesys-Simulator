@@ -14,10 +14,10 @@
 #ifndef STATISTICSCOLLECTOR_H
 #define STATISTICSCOLLECTOR_H
 
-#include "model/ModelDataDefinition.h"
-#include "../statistics/Statistics_if.h"
-#include "model/ModelDataManager.h"
-#include "Plugin.h"
+#include "../model/ModelDataDefinition.h"
+#include "../../statistics/Statistics_if.h"
+#include "../model/ModelDataManager.h"
+#include "../Plugin.h"
 
 //namespace GenesysKernel {
 

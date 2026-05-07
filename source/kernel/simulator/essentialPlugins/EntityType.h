@@ -15,10 +15,10 @@
 #define ENTITYTYPE_H
 
 #include <string>
-#include "model/ModelDataDefinition.h"
-#include "StatisticsCollector.h"
-#include "model/ModelDataManager.h"
-#include "Plugin.h"
+#include "../model/ModelDataDefinition.h"
+#include "../StatisticsCollector.h"
+#include "../model/ModelDataManager.h"
+#include "../Plugin.h"
 
 //#include "Model.h"
 //namespace GenesysKernel {

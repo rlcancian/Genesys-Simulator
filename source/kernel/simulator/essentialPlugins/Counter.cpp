@@ -12,7 +12,7 @@
  */
 
 #include "Counter.h"
-#include "model/Model.h"
+#include "../model/Model.h"
 
 //using namespace GenesysKernel;
 

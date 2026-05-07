@@ -7,7 +7,7 @@
 #include "plugins/components/Logic/Assign.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/data/Logic/Variable.h"
-#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/essentialPlugins/Attribute.h"
 
 AirportSecurityExampleExtended::AirportSecurityExampleExtended() {
 }

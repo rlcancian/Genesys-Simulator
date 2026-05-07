@@ -14,9 +14,9 @@
 #ifndef COUNTERDEFAULTIMPL1_H
 #define COUNTERDEFAULTIMPL1_H
 
-#include "model/ModelDataDefinition.h"
-#include "model/ModelDataManager.h"
-#include "Plugin.h"
+#include "../model/ModelDataDefinition.h"
+#include "../model/ModelDataManager.h"
+#include "../Plugin.h"
 //namespace GenesysKernel {
 
 /*!
