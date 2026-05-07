@@ -18,10 +18,10 @@
 #include "PluginManager.h"
 #include "Simulator.h"
 #include "../TraitsKernel.h"
-#include "Attribute.h"
-#include "Counter.h"
-#include "EntityType.h"
-#include "StatisticsCollector.h"
+#include "essentialPlugins/Attribute.h"
+#include "essentialPlugins/Counter.h"
+#include "essentialPlugins/EntityType.h"
+#include "essentialPlugins/StatisticsCollector.h"
 #include "model/Model.h"
 
 //using namespace GenesysKernel;

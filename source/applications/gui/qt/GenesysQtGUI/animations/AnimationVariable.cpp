@@ -1,7 +1,7 @@
 #include "AnimationVariable.h"
 
-#include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/Entity.h"
+#include "../../../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../../../kernel/simulator/essentialPlugins/Entity.h"
 #include "../../../../../kernel/simulator/model/Model.h"
 #include "../../../../../kernel/simulator/model/ModelDataManager.h"
 #include "../../../../../plugins/data/Logic/Variable.h"

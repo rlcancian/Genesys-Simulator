@@ -9,7 +9,7 @@
 #include "ModelSerializer.h"
 #include "../Simulator.h"
 #include "../../util/Util.h"
-#include "../Counter.h"
+#include "../essentialPlugins/Counter.h"
 
 #include "../GenSerializer.h"
 #include "../XmlSerializer.h"

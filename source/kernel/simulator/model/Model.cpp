@@ -25,7 +25,7 @@
 #include "../SourceModelComponent.h"
 #include "../Simulator.h"
 #include "../OnEventManager.h"
-#include "../StatisticsCollector.h"
+#include "../essentialPlugins/StatisticsCollector.h"
 #include "../../TraitsKernel.h"
 //#include "Access.h"
 

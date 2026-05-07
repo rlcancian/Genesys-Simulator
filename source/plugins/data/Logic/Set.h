@@ -20,7 +20,7 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/ParserChangesInformation.h"
 #include "kernel/simulator/PluginInformation.h"
-#include "kernel/simulator/EntityType.h"
+#include "../../../kernel/simulator/essentialPlugins/EntityType.h"
 
 /*!
  Set module

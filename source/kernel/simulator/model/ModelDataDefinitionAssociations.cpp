@@ -13,7 +13,7 @@
 
 #include "ModelDataDefinitionAssociations.h"
 
-#include "../Attribute.h"
+#include "../essentialPlugins/Attribute.h"
 #include "Model.h"
 #include "ModelDataDefinition.h"
 #include "ModelDataManager.h"

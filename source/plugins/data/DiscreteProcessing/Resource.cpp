@@ -12,7 +12,7 @@
  */
 
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 

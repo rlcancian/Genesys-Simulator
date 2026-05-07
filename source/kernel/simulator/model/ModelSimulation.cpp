@@ -18,8 +18,8 @@
 #include <thread>
 #include "Model.h"
 #include "../Simulator.h"
-#include "../StatisticsCollector.h"
-#include "../Counter.h"
+#include "../essentialPlugins/StatisticsCollector.h"
+#include "../essentialPlugins/Counter.h"
 #include "ModelComponentManager.h"
 #include "../SourceModelComponent.h"
 #include "../../TraitsKernel.h"

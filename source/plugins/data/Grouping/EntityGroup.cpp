@@ -13,7 +13,7 @@
 
 #include "plugins/data/Grouping/EntityGroup.h"
 #include "../../../kernel/simulator/model/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 

@@ -56,7 +56,7 @@
 #include "services/GraphicalModelBuilder.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QThread>

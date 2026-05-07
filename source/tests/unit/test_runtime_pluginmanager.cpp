@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Counter.h"
+#include "../../kernel/simulator/essentialPlugins/Counter.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/SystemDependencyResolver.h"
 #include "plugins/PluginConnectorDummyImpl1.h"

@@ -17,7 +17,7 @@
 #include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/Plugin.h"
-#include "kernel/simulator/Entity.h"
+#include "../../../kernel/simulator/essentialPlugins/Entity.h"
 
 /*
  Station module

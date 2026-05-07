@@ -14,9 +14,9 @@
 // Dialogs
 // Kernel
 #include "kernel/simulator/SinkModelComponent.h"
-#include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/Counter.h"
-#include "kernel/simulator/StatisticsCollector.h"
+#include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "../../../../kernel/simulator/model/ModelComponent.h"

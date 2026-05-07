@@ -14,7 +14,7 @@
 #include <cassert>
 #include "plugins/components/MaterialHandling/Route.h"
 #include "../../../kernel/simulator/model/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/MaterialHandling/Sequence.h"
 #include "../../data/Logic/Label.h"

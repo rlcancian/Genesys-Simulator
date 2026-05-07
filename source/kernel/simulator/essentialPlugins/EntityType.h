@@ -16,7 +16,7 @@
 
 #include <string>
 #include "../model/ModelDataDefinition.h"
-#include "../StatisticsCollector.h"
+#include "StatisticsCollector.h"
 #include "../model/ModelDataManager.h"
 #include "../Plugin.h"
 

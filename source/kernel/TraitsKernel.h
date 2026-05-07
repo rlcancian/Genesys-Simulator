@@ -19,7 +19,7 @@
 #include "simulator/model/ModelPersistenceDefaultImpl2.h"
 #include "simulator/model/ModelPersistencePartialLoadImpl1.h"
 #include "simulator/SimulationReporterDefaultImpl1.h"
-#include "simulator/Counter.h"
+#include "simulator/essentialPlugins/Counter.h"
 #include "simulator/model/ModelCheckerDefaultImpl1.h"
 #include "simulator/ParserDefaultImpl2.h"
 #include "simulator/SimulationReporter_if.h"

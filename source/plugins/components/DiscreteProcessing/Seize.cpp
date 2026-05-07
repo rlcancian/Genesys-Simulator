@@ -13,7 +13,7 @@
 
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include <assert.h>

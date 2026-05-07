@@ -16,7 +16,7 @@
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/MaterialHandling/Station.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
 /*!
 Leave module

@@ -16,7 +16,7 @@
 #include <algorithm>
 #include <cctype>
 #include "../../../kernel/simulator/model/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"

@@ -2,7 +2,7 @@
 #include <functional>
 #include <gtest/gtest.h>
 
-#include "kernel/simulator/Attribute.h"
+#include "../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Event.h"
 #include "../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"

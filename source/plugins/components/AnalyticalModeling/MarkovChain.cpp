@@ -14,7 +14,7 @@
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 
 #include "kernel/TraitsKernel.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"

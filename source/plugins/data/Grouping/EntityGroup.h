@@ -15,7 +15,7 @@
 #define ENTITYGROUP_H
 
 #include "../../../kernel/simulator/model/ModelDataDefinition.h"
-#include "kernel/simulator/Entity.h"
+#include "../../../kernel/simulator/essentialPlugins/Entity.h"
 #include "kernel/util/List.h"
 #include <list>
 #include <map>

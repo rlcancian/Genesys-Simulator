@@ -15,7 +15,7 @@
 #define DECIDE_H
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
 /*!
  Decide module
