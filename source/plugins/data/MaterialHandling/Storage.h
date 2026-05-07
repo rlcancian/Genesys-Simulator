@@ -57,6 +57,13 @@ protected: // must be overriden
 protected: // could be overriden 
 	virtual bool _check(std::string& errorMessage) override;
 	virtual ParserChangesInformation* _getParserChangesInformation() override;
+
+protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+
 private:
 
 	const struct DEFAULT_VALUES {
@@ -72,4 +79,3 @@ private:
 	//@TODO: Add statisticCollector for ProportionOfStorageUsage
 };
 #endif /* STORAGE_H */
-

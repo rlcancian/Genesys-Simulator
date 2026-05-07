@@ -91,3 +91,9 @@ PluginInformation* Store::GetPluginInformation() {
 	return info;
 }
 
+
+// void Store::_createInternalStatisticReporters() { }
+
+// void Store::_createEditableDataDefinitions() { }
+
+// void Store::_createAttachedAttributes() { }

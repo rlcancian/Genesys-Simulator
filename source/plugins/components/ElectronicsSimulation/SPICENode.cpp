@@ -105,3 +105,9 @@ void SPICENode::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	traceSimulation(this, "I'm just an electric Node model and I'm not event oriented.");
 	this->_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
 }
+
+// void SPICENode::_createInternalStatisticReporters() { }
+
+// void SPICENode::_createEditableDataDefinitions() { }
+
+// void SPICENode::_createAttachedAttributes() { }

@@ -42,6 +42,9 @@
 #include <QTextStream>
 #include <QTimer>
 #include <QUrl>
+#include <QStringList>
+#include <algorithm>
+#include <cmath>
 #include <set>
 #include <vector>
 
@@ -145,6 +148,13 @@ QString commentedLine(const QString& payload) {
     return QString("# %1").arg(payload);
 }
 
+bool parsePersistedBool(const QString& text) {
+    const QString normalized = text.trimmed();
+    return normalized.compare("1") == 0
+           || normalized.compare("true", Qt::CaseInsensitive) == 0
+           || normalized.compare("yes", Qt::CaseInsensitive) == 0;
+}
+
 bool containsPersistenceMarkers(const QString& text) {
     return text.contains("# Genesys Simulation Model")
            || text.contains("# Genesys Graphic Model")
@@ -246,7 +256,9 @@ QString decodePersistedFileText(const QByteArray& rawBytes) {
 
 }
 
-// Build the serializer with explicit, narrow dependencies from MainWindow.
+/**
+ * @brief Builds the serializer with explicit, narrow dependencies from MainWindow.
+ */
 GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
                                                    QWidget* ownerWidget,
                                                    QPlainTextEdit* modelTextEditor,
@@ -288,17 +300,23 @@ GraphicalModelSerializer::GraphicalModelSerializer(Simulator* simulator,
       _applyShowEditableElements(std::move(applyShowEditableElements)),
       _applyShowAttachedElements(std::move(applyShowAttachedElements)) {}
 
-// Encode free-form GUI text safely for persistence records.
+/**
+ * @brief Encodes free-form GUI text so it survives tab-separated persistence.
+ */
 QString GraphicalModelSerializer::encodeGuiText(const QString& text) {
     return QString::fromUtf8(QUrl::toPercentEncoding(text));
 }
 
-// Decode persisted GUI text back to plain UTF-8 text.
+/**
+ * @brief Decodes a tab-safe persisted GUI text field back to plain text.
+ */
 QString GraphicalModelSerializer::decodeGuiText(const QString& text) {
     return QUrl::fromPercentEncoding(text.toUtf8());
 }
 
-// Preserve the existing text persistence format line-by-line.
+/**
+ * @brief Writes model text line by line using the legacy persistence format.
+ */
 bool GraphicalModelSerializer::saveTextModel(QFile* saveFile, const QString& data) const {
     QTextStream out(saveFile);
     out.setEncoding(QStringConverter::Utf8);
@@ -476,14 +494,16 @@ void applyTextStyleState(const QString& line, QGraphicsTextItem* item) {
     }
 }
 
-// Persist the complete graphical model, including view options and overlays.
+/**
+ * @brief Persists the complete graphical model, including view options and overlays.
+ */
 bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const {
     try {
         if (_simulator == nullptr || _simulator->getModelManager() == nullptr || _simulator->getModelManager()->current() == nullptr) {
             return false;
         }
 
-        // Persist the canonical kernel state in GEN format first, using the .gui filename.
+        // Persist the canonical kernel state directly into the .gui file before appending GUI overlays.
         if (!_simulator->getModelManager()->saveModel(filename.toStdString())) {
             QMessageBox::warning(_ownerWidget, QObject::tr("Save Model"), QObject::tr("Could not save kernel model to file."));
             return false;
@@ -636,13 +656,22 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     }
                     const int persistedId = nextAutonomousItemId--;
                     persistedItemIds.insert(variable, persistedId);
-                    int idVariable = -1;
-                    if (variable->getVariable() != nullptr) {
-                        idVariable = variable->getVariable()->getId();
-                    }
-                    line = QString("%1 \t AnimationVariable \t id=%2 \t position=(%3,%4) \t width=%5 \t height=%6")
+                    line = QString("%1 \t AnimationVariable \t id=%2 \t target=")
                                .arg(persistedId)
-                               .arg(idVariable)
+                               .arg(variable->getTargetId());
+                    line += encodeGuiText(variable->getTargetName());
+                    if (variable->getDimensionCount() > 2u) {
+                        QString sliceText;
+                        for (unsigned int i = 0; i < variable->getDimensionCount() - 2u; ++i) {
+                            if (i > 0) {
+                                sliceText += ",";
+                            }
+                            sliceText += QString::number(variable->getSliceIndex(i));
+                        }
+                        line += " \t slices=";
+                        line += sliceText;
+                    }
+                    line += QString(" \t position=(%1,%2) \t width=%3 \t height=%4")
                                .arg(variable->scenePos().x(), 0, 'f', 2)
                                .arg(variable->scenePos().y(), 0, 'f', 2)
                                .arg(variable->boundingRect().width(), 0, 'f', 2)
@@ -685,6 +714,32 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
                     line += encodeGuiText(placeholder->getAnimationType());
                     line += " \t target=";
                     line += encodeGuiText(placeholder->getTargetName());
+                    if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
+                        line += " \t title=";
+                        line += encodeGuiText(plot->getTitle());
+                        line += QString(" \t chart=%1 \t ytitle=").arg(
+                            plot->getPlotType() == AnimationPlot::PlotType::Bar ? "Bar" : "Line");
+                        line += encodeGuiText(plot->getYAxisTitle());
+                        line += " \t xtitle=";
+                        line += encodeGuiText(plot->getXAxisTitle());
+                        line += QString(" \t showgrid=%1 \t showticks=%2")
+                                    .arg(plot->getShowGridLines() ? 1 : 0)
+                                    .arg(plot->getShowTicks() ? 1 : 0);
+                        if (!std::isnan(plot->getXAxisMin())) {
+                            line += QString(" \t xmin=%1").arg(plot->getXAxisMin(), 0, 'g', 17);
+                        }
+                        if (!std::isnan(plot->getXAxisMax())) {
+                            line += QString(" \t xmax=%1").arg(plot->getXAxisMax(), 0, 'g', 17);
+                        }
+                        if (!std::isnan(plot->getYAxisMin())) {
+                            line += QString(" \t ymin=%1").arg(plot->getYAxisMin(), 0, 'g', 17);
+                        }
+                        if (!std::isnan(plot->getYAxisMax())) {
+                            line += QString(" \t ymax=%1").arg(plot->getYAxisMax(), 0, 'g', 17);
+                        }
+                        line += " \t datasets=";
+                        line += encodeGuiText(plot->getDatasetsText());
+                    }
                     line += QString(" \t position=(%1,%2) \t width=%3 \t height=%4")
                                 .arg(placeholder->scenePos().x(), 0, 'f', 2)
                                 .arg(placeholder->scenePos().y(), 0, 'f', 2)
@@ -773,7 +828,9 @@ bool GraphicalModelSerializer::saveGraphicalModel(const QString& filename) const
     }
 }
 
-// Restore model text and GUI state from .gui or defer to .gen loading flow.
+/**
+ * @brief Loads `.gui` or `.gen` model files and restores persisted GUI state.
+ */
 Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename) const {
     QFile file(QString::fromStdString(filename));
 
@@ -1254,9 +1311,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
             QPointF componentPos(state.position.x(), state.position.y() - existingComponent->getHeight() / 2.0);
             existingComponent->setPos(componentPos);
             existingComponent->setOldPosition(componentPos);
-            if (state.hasColor) {
-                existingComponent->setColor(state.color);
-            }
+            // Keep the builder-assigned plugin-category palette on reload; persisted colors are
+            // still parsed for backward compatibility but no longer override the category color.
             restorePortPositions(existingComponent, state.portPositions);
             persistedItems.insert(static_cast<int>(state.componentId), existingComponent);
             if (state.itemId != 0) {
@@ -1494,10 +1550,22 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 if (animationType.compare("AnimationVariable", Qt::CaseInsensitive) == 0) {
                     AnimationVariable* variable = new AnimationVariable();
                     QRegularExpressionMatch idMatch = QRegularExpression("\\s*id=(-?\\d+)").match(rawLine);
+                    QRegularExpressionMatch targetMatch = QRegularExpression("\\s*target=([^\\t]*)").match(rawLine);
+                    QRegularExpressionMatch slicesMatch = QRegularExpression("\\s*slices=([^\\t]*)").match(rawLine);
                     QRegularExpressionMatch posMatch = regexPosition.match(rawLine);
                     QRegularExpressionMatch sizeMatch = regexSize.match(rawLine);
                     if (idMatch.hasMatch() && posMatch.hasMatch() && sizeMatch.hasMatch()) {
+                        variable->setModel(_graphicsView->getScene()->getSimulator()->getModelManager()->current());
                         variable->setIdVariable(idMatch.captured(1).toInt());
+                        if (targetMatch.hasMatch()) {
+                            variable->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()).toStdString());
+                        }
+                        if (slicesMatch.hasMatch()) {
+                            const QStringList slices = decodeGuiText(slicesMatch.captured(1).trimmed()).split(',', Qt::SkipEmptyParts);
+                            for (int sliceIndex = 0; sliceIndex < slices.size(); ++sliceIndex) {
+                                variable->setSliceIndex(static_cast<unsigned int>(sliceIndex), static_cast<unsigned int>(std::max(0, slices.at(sliceIndex).toInt())));
+                            }
+                        }
                         variable->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
                         variable->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
                         _graphicsView->getScene()->getAnimationsVariable()->append(variable);
@@ -1544,8 +1612,59 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                         continue;
                     }
 
-                    AnimationPlaceholder* placeholder = new AnimationPlaceholder(decodeGuiText(typeMatch.captured(1).trimmed()));
+                    const QString decodedType = decodeGuiText(typeMatch.captured(1).trimmed());
+                    AnimationPlaceholder* placeholder = decodedType.compare("Plot", Qt::CaseInsensitive) == 0
+                        ? static_cast<AnimationPlaceholder*>(new AnimationPlot())
+                        : new AnimationPlaceholder(decodedType);
                     placeholder->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()));
+                    if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
+                        QRegularExpressionMatch titleMatch = QRegularExpression("\\s*title=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch chartMatch = QRegularExpression("\\s*chart=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch yTitleMatch = QRegularExpression("\\s*ytitle=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch xTitleMatch = QRegularExpression("\\s*xtitle=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch showGridMatch = QRegularExpression("\\s*showgrid=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch showTicksMatch = QRegularExpression("\\s*showticks=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch xMinMatch = QRegularExpression("\\s*xmin=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch xMaxMatch = QRegularExpression("\\s*xmax=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch yMinMatch = QRegularExpression("\\s*ymin=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch yMaxMatch = QRegularExpression("\\s*ymax=([^\\t]*)").match(rawLine);
+                        QRegularExpressionMatch datasetsMatch = QRegularExpression("\\s*datasets=([^\\t]*)").match(rawLine);
+                        if (titleMatch.hasMatch()) {
+                            plot->setTitle(decodeGuiText(titleMatch.captured(1).trimmed()));
+                        }
+                        if (chartMatch.hasMatch()) {
+                            plot->setPlotType(chartMatch.captured(1).trimmed().compare("Bar", Qt::CaseInsensitive) == 0
+                                                  ? AnimationPlot::PlotType::Bar
+                                                  : AnimationPlot::PlotType::Line);
+                        }
+                        if (yTitleMatch.hasMatch()) {
+                            plot->setYAxisTitle(decodeGuiText(yTitleMatch.captured(1).trimmed()));
+                        }
+                        if (xTitleMatch.hasMatch()) {
+                            plot->setXAxisTitle(decodeGuiText(xTitleMatch.captured(1).trimmed()));
+                        }
+                        if (showGridMatch.hasMatch()) {
+                            plot->setShowGridLines(parsePersistedBool(showGridMatch.captured(1)));
+                        }
+                        if (showTicksMatch.hasMatch()) {
+                            plot->setShowTicks(parsePersistedBool(showTicksMatch.captured(1)));
+                        }
+                        if (xMinMatch.hasMatch()) {
+                            plot->setXAxisMin(xMinMatch.captured(1).trimmed().toDouble());
+                        }
+                        if (xMaxMatch.hasMatch()) {
+                            plot->setXAxisMax(xMaxMatch.captured(1).trimmed().toDouble());
+                        }
+                        if (yMinMatch.hasMatch()) {
+                            plot->setYAxisMin(yMinMatch.captured(1).trimmed().toDouble());
+                        }
+                        if (yMaxMatch.hasMatch()) {
+                            plot->setYAxisMax(yMaxMatch.captured(1).trimmed().toDouble());
+                        }
+                        if (datasetsMatch.hasMatch()) {
+                            plot->setDatasetsText(decodeGuiText(datasetsMatch.captured(1).trimmed()));
+                        }
+                    }
                     placeholder->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
                     placeholder->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
                     _graphicsView->getScene()->getAnimationsPlaceholder()->append(placeholder);
@@ -1585,7 +1704,21 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 AnimationVariable* variable = new AnimationVariable();
                 QRegularExpressionMatch match = regex.match(line);
                 if (match.hasMatch()) {
+                    variable->setModel(_graphicsView->getScene()->getSimulator()->getModelManager()->current());
                     variable->setIdVariable(match.captured(2).toInt());
+                    const QRegularExpression targetRegex("\\s*target=([^\\t]*)");
+                    const QRegularExpression slicesRegex("\\s*slices=([^\\t]*)");
+                    const QRegularExpressionMatch targetMatch = targetRegex.match(line);
+                    const QRegularExpressionMatch slicesMatch = slicesRegex.match(line);
+                    if (targetMatch.hasMatch()) {
+                        variable->setTargetName(decodeGuiText(targetMatch.captured(1).trimmed()).toStdString());
+                    }
+                    if (slicesMatch.hasMatch()) {
+                        const QStringList slices = decodeGuiText(slicesMatch.captured(1).trimmed()).split(',', Qt::SkipEmptyParts);
+                        for (int sliceIndex = 0; sliceIndex < slices.size(); ++sliceIndex) {
+                            variable->setSliceIndex(static_cast<unsigned int>(sliceIndex), static_cast<unsigned int>(std::max(0, slices.at(sliceIndex).toInt())));
+                        }
+                    }
                     variable->setRect(QRectF(0, 0, match.captured(5).toDouble(), match.captured(6).toDouble()).normalized());
                     variable->setPos(QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
                     _graphicsView->getScene()->getAnimationsVariable()->append(variable);
@@ -1630,8 +1763,59 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 if (!match.hasMatch()) {
                     continue;
                 }
-                AnimationPlaceholder* placeholder = new AnimationPlaceholder(decodeGuiText(match.captured(2).trimmed()));
+                const QString decodedType = decodeGuiText(match.captured(2).trimmed());
+                AnimationPlaceholder* placeholder = decodedType.compare("Plot", Qt::CaseInsensitive) == 0
+                    ? static_cast<AnimationPlaceholder*>(new AnimationPlot())
+                    : new AnimationPlaceholder(decodedType);
                 placeholder->setTargetName(decodeGuiText(match.captured(3).trimmed()));
+                if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder)) {
+                    QRegularExpressionMatch titleMatch = QRegularExpression("\\s*title=([^\\t]*)").match(line);
+                    QRegularExpressionMatch chartMatch = QRegularExpression("\\s*chart=([^\\t]*)").match(line);
+                    QRegularExpressionMatch yTitleMatch = QRegularExpression("\\s*ytitle=([^\\t]*)").match(line);
+                    QRegularExpressionMatch xTitleMatch = QRegularExpression("\\s*xtitle=([^\\t]*)").match(line);
+                    QRegularExpressionMatch showGridMatch = QRegularExpression("\\s*showgrid=([^\\t]*)").match(line);
+                    QRegularExpressionMatch showTicksMatch = QRegularExpression("\\s*showticks=([^\\t]*)").match(line);
+                    QRegularExpressionMatch xMinMatch = QRegularExpression("\\s*xmin=([^\\t]*)").match(line);
+                    QRegularExpressionMatch xMaxMatch = QRegularExpression("\\s*xmax=([^\\t]*)").match(line);
+                    QRegularExpressionMatch yMinMatch = QRegularExpression("\\s*ymin=([^\\t]*)").match(line);
+                    QRegularExpressionMatch yMaxMatch = QRegularExpression("\\s*ymax=([^\\t]*)").match(line);
+                    QRegularExpressionMatch datasetsMatch = QRegularExpression("\\s*datasets=([^\\t]*)").match(line);
+                    if (titleMatch.hasMatch()) {
+                        plot->setTitle(decodeGuiText(titleMatch.captured(1).trimmed()));
+                    }
+                    if (chartMatch.hasMatch()) {
+                        plot->setPlotType(chartMatch.captured(1).trimmed().compare("Bar", Qt::CaseInsensitive) == 0
+                                              ? AnimationPlot::PlotType::Bar
+                                              : AnimationPlot::PlotType::Line);
+                    }
+                    if (yTitleMatch.hasMatch()) {
+                        plot->setYAxisTitle(decodeGuiText(yTitleMatch.captured(1).trimmed()));
+                    }
+                    if (xTitleMatch.hasMatch()) {
+                        plot->setXAxisTitle(decodeGuiText(xTitleMatch.captured(1).trimmed()));
+                    }
+                    if (showGridMatch.hasMatch()) {
+                        plot->setShowGridLines(parsePersistedBool(showGridMatch.captured(1)));
+                    }
+                    if (showTicksMatch.hasMatch()) {
+                        plot->setShowTicks(parsePersistedBool(showTicksMatch.captured(1)));
+                    }
+                    if (xMinMatch.hasMatch()) {
+                        plot->setXAxisMin(xMinMatch.captured(1).trimmed().toDouble());
+                    }
+                    if (xMaxMatch.hasMatch()) {
+                        plot->setXAxisMax(xMaxMatch.captured(1).trimmed().toDouble());
+                    }
+                    if (yMinMatch.hasMatch()) {
+                        plot->setYAxisMin(yMinMatch.captured(1).trimmed().toDouble());
+                    }
+                    if (yMaxMatch.hasMatch()) {
+                        plot->setYAxisMax(yMaxMatch.captured(1).trimmed().toDouble());
+                    }
+                    if (datasetsMatch.hasMatch()) {
+                        plot->setDatasetsText(decodeGuiText(datasetsMatch.captured(1).trimmed()));
+                    }
+                }
                 placeholder->setRect(QRectF(0, 0, match.captured(6).toDouble(), match.captured(7).toDouble()).normalized());
                 placeholder->setPos(QPointF(match.captured(4).toDouble(), match.captured(5).toDouble()));
                 _graphicsView->getScene()->getAnimationsPlaceholder()->append(placeholder);

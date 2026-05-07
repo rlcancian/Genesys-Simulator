@@ -96,6 +96,13 @@ protected: // could be overriden
 	virtual bool _check(std::string& errorMessage) override;
 	virtual ParserChangesInformation* _getParserChangesInformation() override;
 
+
+protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+
 private:
 	static std::string _accessModeToString(AccessMode accessMode);
 	static bool _stringToAccessMode(const std::string& accessMode, AccessMode* parsedAccessMode);

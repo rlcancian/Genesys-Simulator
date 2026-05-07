@@ -112,27 +112,7 @@ PluginInformation* Enter::GetPluginInformation() {
 	return info;
 }
 
-void Enter::_createInternalAndAttachedData() {
-	if (_reportStatistics) {
-		if (_numberIn == nullptr) {
-			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
-		}
-		if (_numberIn != nullptr) {
-			_internalDataInsert("CountNumberIn", _numberIn);
-		}
-	} else
-		if (_numberIn != nullptr) {
-			_internalDataClear();
-		}
-	if (_station == nullptr) {
-		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
-	}
-	if (_station != nullptr) {
-		_attachedDataInsert("Station", _station);
-	} else {
-		_attachedDataRemove("Station");
-	}
-}
+//void Enter::_createAttachedAttributes() {}
 
 bool Enter::_check(std::string& errorMessage) {
 	bool resultAll = true;
@@ -141,4 +121,30 @@ bool Enter::_check(std::string& errorMessage) {
 	}
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Station>(), _station, "Station", errorMessage);
 	return resultAll;
+}
+
+void Enter::_createInternalStatisticReporters() {
+	if (_reportStatistics) {
+		if (_numberIn == nullptr) {
+			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+		}
+		if (_numberIn != nullptr) {
+			_statisticReporterInsert("CountNumberIn", _numberIn);
+		}
+	} else {
+			_statisticReportersClear();
+		_numberIn = nullptr;
+	}
+}
+
+void Enter::_createEditableDataDefinitions() {
+	if (_station == nullptr) {
+		_station = _parentModel->getParentSimulator()->getPluginManager()->newInstance<Station>(_parentModel);
+	}
+	if (_station != nullptr) {
+		_optionalEditableDataDefinitionInsert("Station", _station);
+	} else {
+		_optionalEditableDataDefinitionRemove("Station");
+	}
+
 }

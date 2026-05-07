@@ -58,6 +58,8 @@ public:
     void onActionAboutLicenceTriggered();
     /** @brief Opens the get-involved/help contribution dialog flow. */
     void onActionAboutGetInvolvedTriggered();
+    /** @brief Opens the report-issue workflow and submits it through the configured relay. */
+    void onActionAboutReportIssueTriggered();
     /** @brief Runs find workflow for the currently focused text editor pane. */
     void onActionEditFindTriggered();
     /** @brief Runs replace workflow for the currently focused text editor pane. */

@@ -92,7 +92,14 @@ protected:
 protected:
 	//virtual void _initBetweenReplications();
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+protected:
+	virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+
+protected:
+
 private:
 	List<std::string>* _conditions = new List<std::string>();
 	List<Counter*>* _numberOuts = nullptr;
@@ -101,4 +108,3 @@ private:
 };
 
 #endif /* DECIDE_H */
-

@@ -4,8 +4,8 @@
  */
 
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/DiscreteProcessing/DummyComponent.h"
 
 int main(int argc, char** argv) {

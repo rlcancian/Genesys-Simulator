@@ -124,3 +124,9 @@ bool OLD_ODEelement::_check(std::string& errorMessage) {
 	}
 	return result;
 }
+
+// void OLD_ODEelement::_createInternalStatisticReporters() { }
+
+// void OLD_ODEelement::_createEditableDataDefinitions() { }
+
+// void OLD_ODEelement::_createAttachedAttributes() { }

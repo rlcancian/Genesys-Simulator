@@ -21,6 +21,7 @@ struct GraphicalModelItemRenderContext {
     QColor fillColor;
     QString primaryText;
     QString secondaryText;
+    QString tertiaryText;
     bool selected = false;
     bool breakpoint = false;
 

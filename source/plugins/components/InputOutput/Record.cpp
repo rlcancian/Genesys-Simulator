@@ -51,10 +51,11 @@ namespace {
 
 	static std::string quotedRecordValue(const std::string& value) {
 		std::string escaped = "\"";
-		for (char ch : value) {
+		for (char ch: value) {
 			if (ch == '"') {
 				escaped += "\"\"";
-			} else {
+			}
+			else {
 				escaped += ch;
 			}
 		}
@@ -76,29 +77,33 @@ ModelDataDefinition* Record::NewInstance(Model* model, std::string name) {
 
 Record::Record(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Record>(), name) {
 	SimulationControlGeneric<bool>* propTime = new SimulationControlGeneric<bool>(
-									std::bind(&Record::getTimeDependent, this), std::bind(&Record::setTimeDependent, this, std::placeholders::_1),
-									Util::TypeOf<Record>(), getName(), "TimeDependent", "");
+			std::bind(&Record::getTimeDependent, this),
+			std::bind(&Record::setTimeDependent, this, std::placeholders::_1),
+			Util::TypeOf<Record>(), getName(), "TimeDependent", "");
 	SimulationControlGeneric<std::string>* propExpression = new SimulationControlGeneric<std::string>(
-									std::bind(&Record::getExpression, this), std::bind(&Record::setExpression, this, std::placeholders::_1),
-									Util::TypeOf<Record>(), getName(), "Expression", "");
+			std::bind(&Record::getExpression, this), std::bind(&Record::setExpression, this, std::placeholders::_1),
+			Util::TypeOf<Record>(), getName(), "Expression", "");
 	SimulationControlGeneric<std::string>* propExpressionName = new SimulationControlGeneric<std::string>(
-									std::bind(&Record::getExpressionName, this), std::bind(&Record::setExpressionName, this, std::placeholders::_1),
-									Util::TypeOf<Record>(), getName(), "ExpressionName", "");
+			std::bind(&Record::getExpressionName, this),
+			std::bind(&Record::setExpressionName, this, std::placeholders::_1),
+			Util::TypeOf<Record>(), getName(), "ExpressionName", "");
 	SimulationControlGeneric<std::string>* propDatasetName = new SimulationControlGeneric<std::string>(
-									std::bind(&Record::getDatasetName, this), std::bind(&Record::setDatasetName, this, std::placeholders::_1),
-									Util::TypeOf<Record>(), getName(), "DatasetName", "");
+			std::bind(&Record::getDatasetName, this), std::bind(&Record::setDatasetName, this, std::placeholders::_1),
+			Util::TypeOf<Record>(), getName(), "DatasetName", "");
 	SimulationControlGeneric<std::string>* propRandomVariableName = new SimulationControlGeneric<std::string>(
-									std::bind(&Record::getRandomVariableName, this), std::bind(&Record::setRandomVariableName, this, std::placeholders::_1),
-									Util::TypeOf<Record>(), getName(), "RandomVariableName", "");
+			std::bind(&Record::getRandomVariableName, this),
+			std::bind(&Record::setRandomVariableName, this, std::placeholders::_1),
+			Util::TypeOf<Record>(), getName(), "RandomVariableName", "");
 	SimulationControlGeneric<std::string>* propVariableType = new SimulationControlGeneric<std::string>(
-									std::bind(&Record::getVariableType, this), std::bind(&Record::setVariableType, this, std::placeholders::_1),
-									Util::TypeOf<Record>(), getName(), "VariableType", "");
+			std::bind(&Record::getVariableType, this), std::bind(&Record::setVariableType, this, std::placeholders::_1),
+			Util::TypeOf<Record>(), getName(), "VariableType", "");
 	SimulationControlGeneric<std::string>* propDescription = new SimulationControlGeneric<std::string>(
-									std::bind(&Record::getDatasetDescription, this), std::bind(&Record::setDatasetDescription, this, std::placeholders::_1),
-									Util::TypeOf<Record>(), getName(), "Description", "");
+			std::bind(&Record::getDatasetDescription, this),
+			std::bind(&Record::setDatasetDescription, this, std::placeholders::_1),
+			Util::TypeOf<Record>(), getName(), "Description", "");
 	SimulationControlGeneric<std::string>* propFilename = new SimulationControlGeneric<std::string>(
-									std::bind(&Record::getFileName, this), std::bind(&Record::setFilename, this, std::placeholders::_1),
-									Util::TypeOf<Record>(), getName(), "Filename", "");
+			std::bind(&Record::getFileName, this), std::bind(&Record::setFilename, this, std::placeholders::_1),
+			Util::TypeOf<Record>(), getName(), "Filename", "");
 
 	_parentModel->getControls()->insert(propTime);
 	_parentModel->getControls()->insert(propExpression);
@@ -206,7 +211,7 @@ void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	}
 	if (_filename != "") {
 		// @TODO: open and close for every data is not a good idea. Should open when replication starts and close when it finishes.
-		fileinfos = " into \""+_filename+"\"";
+		fileinfos = " into \"" + _filename + "\"";
 		std::ofstream file;
 		file.open(_filename, std::ofstream::out | std::ofstream::app);
 		if (file.is_open()) {
@@ -218,12 +223,12 @@ void Record::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		}
 		file.close();
 	}
-	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, "Recording value " + fileinfos);
+	traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
+	                "Recording value " + fileinfos);
 	_parentModel->sendEntityToComponent(entity, this->getConnectionManager()->getFrontConnection());
-
 }
 
-void Record::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
+void Record::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("expression", this->_expression, "", saveDefaultValues);
 	fields->saveField("expressionName", this->_expressionName, "", saveDefaultValues);
@@ -232,10 +237,11 @@ void Record::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	fields->saveField("variableType", this->_variableType, DEFAULT.variableType, saveDefaultValues);
 	fields->saveField("description", this->_description, DEFAULT.description, saveDefaultValues);
 	fields->saveField("fileName", this->_filename, "", saveDefaultValues);
-	fields->saveField("timeDependent", static_cast<int>(this->_timeDependent), static_cast<int>(DEFAULT.timeDependent), saveDefaultValues);
+	fields->saveField("timeDependent", static_cast<int>(this->_timeDependent), static_cast<int>(DEFAULT.timeDependent),
+	                  saveDefaultValues);
 }
 
-bool Record::_loadInstance(PersistenceRecord *fields) {
+bool Record::_loadInstance(PersistenceRecord* fields) {
 	bool res = ModelComponent::_loadInstance(fields);
 	if (res) {
 		this->_expression = fields->loadField("expression", "");
@@ -260,33 +266,36 @@ void Record::_initBetweenReplications() {
 	if (_filename.empty()) {
 		return;
 	}
-		try {
-			unsigned int numRep =  _parentModel->getSimulation()->getCurrentReplicationNumber();
-			std::ofstream file;
-			file.open(_filename, std::ofstream::app);
-				if (file.is_open() && numRep==1) { // header
-					const std::string datasetName = _datasetName.empty() ? _expressionName : _datasetName;
-					const std::string randomVariableName = _randomVariableName.empty() ? _expressionName : _randomVariableName;
-					// Record remains append-friendly text instead of CSV; these metadata lines make the dataset semantic.
-					file << "#Format=" << quotedRecordValue("GenesysRecordDataset") << std::endl;
-					file << "#FormatVersion=" << quotedRecordValue("1") << std::endl;
-					file << "#DatasetName=" << quotedRecordValue(datasetName) << std::endl;
-					file << "#RandomVariableName=" << quotedRecordValue(randomVariableName) << std::endl;
-					file << "#VariableType=" << quotedRecordValue(_variableType) << std::endl;
-					file << "#Description=" << quotedRecordValue(_description) << std::endl;
-					file << "#Source=" << quotedRecordValue("Genesys Record") << std::endl;
-					file << "#Expression=" << quotedRecordValue(_expression) << std::endl;
-					file << "#ExpressionName=" << quotedRecordValue(_expressionName) << std::endl; // Legacy compatibility field.
-					file << "#TimeDependent=" << (_timeDependent ? "true" : "false") << std::endl;
-					file << "#Columns=" << quotedRecordValue(_timeDependent ? "time value" : "value") << std::endl;
-				}
-			if (file.is_open()) {
-				file << "#ReplicationNumber=" <<numRep << std::endl; //"/" << _parentModel->getSimulation()->getNumberOfReplications() << std::endl;
-			}
-			file.close();
-		} catch (...) {
-
+	try {
+		unsigned int numRep = _parentModel->getSimulation()->getCurrentReplicationNumber();
+		std::ofstream file;
+		file.open(_filename, std::ofstream::app);
+		if (file.is_open() && numRep == 1) {
+			// header
+			const std::string datasetName = _datasetName.empty() ? _expressionName : _datasetName;
+			const std::string randomVariableName = _randomVariableName.empty() ? _expressionName : _randomVariableName;
+			// Record remains append-friendly text instead of CSV; these metadata lines make the dataset semantic.
+			file << "#Format=" << quotedRecordValue("GenesysRecordDataset") << std::endl;
+			file << "#FormatVersion=" << quotedRecordValue("1") << std::endl;
+			file << "#DatasetName=" << quotedRecordValue(datasetName) << std::endl;
+			file << "#RandomVariableName=" << quotedRecordValue(randomVariableName) << std::endl;
+			file << "#VariableType=" << quotedRecordValue(_variableType) << std::endl;
+			file << "#Description=" << quotedRecordValue(_description) << std::endl;
+			file << "#Source=" << quotedRecordValue("Genesys Record") << std::endl;
+			file << "#Expression=" << quotedRecordValue(_expression) << std::endl;
+			file << "#ExpressionName=" << quotedRecordValue(_expressionName) << std::endl;
+			// Legacy compatibility field.
+			file << "#TimeDependent=" << (_timeDependent ? "true" : "false") << std::endl;
+			file << "#Columns=" << quotedRecordValue(_timeDependent ? "time value" : "value") << std::endl;
 		}
+		if (file.is_open()) {
+			file << "#ReplicationNumber=" << numRep << std::endl;
+			//"/" << _parentModel->getSimulation()->getNumberOfReplications() << std::endl;
+		}
+		file.close();
+	}
+	catch (...) {
+	}
 }
 
 bool Record::_check(std::string& errorMessage) {
@@ -295,18 +304,7 @@ bool Record::_check(std::string& errorMessage) {
 	return _parentModel->checkExpression(_expression, "expression", errorMessage);
 }
 
-void Record::_createInternalAndAttachedData() {
-	if (_reportStatistics && _cstatExpression == nullptr) {
-		_cstatExpression = new StatisticsCollector(_parentModel, getName() + "." + _expressionName, this);
-		//_parentModel->getDataDefinition()->insert(_cstatExpression);
-	}
-	if (_reportStatistics && _cstatExpression != nullptr) {
-		_internalDataInsert(_expressionName, _cstatExpression);
-	} else if (!_reportStatistics && _cstatExpression != nullptr) {
-		this->_internalDataClear();
-		_cstatExpression = nullptr;
-	}
-}
+//void Record::_createAttachedAttributes() {}
 
 bool Record::getTimeDependent() const {
 	return _timeDependent;
@@ -317,18 +315,34 @@ void Record::setTimeDependent(bool timeDependent) {
 }
 
 PluginInformation* Record::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Record>(), &Record::LoadInstance, &Record::NewInstance);
+	PluginInformation* info = new
+			PluginInformation(Util::TypeOf<Record>(), &Record::LoadInstance, &Record::NewInstance);
 	info->setCategory("InputOutput");
 	return info;
 }
 
-ModelComponent* Record::LoadInstance(Model* model, PersistenceRecord *fields) {
+ModelComponent* Record::LoadInstance(Model* model, PersistenceRecord* fields) {
 	Record* newComponent = new Record(model);
 	try {
 		newComponent->_loadInstance(fields);
-	} catch (const std::exception& e) {
-
+	}
+	catch (const std::exception& e) {
 	}
 	return newComponent;
-
 }
+
+void Record::_createInternalStatisticReporters() {
+	if (_reportStatistics && _cstatExpression == nullptr) {
+		_cstatExpression = new StatisticsCollector(_parentModel, getName() + "." + _expressionName, this);
+		//_parentModel->getDataDefinition()->insert(_cstatExpression);
+	}
+	if (_reportStatistics && _cstatExpression != nullptr) {
+		_statisticReporterInsert(_expressionName, _cstatExpression);
+	}
+	else if (!_reportStatistics && _cstatExpression != nullptr) {
+		_statisticReportersClear();
+		_cstatExpression = nullptr;
+	}
+}
+
+// void Record::_createEditableDataDefinitions() { }

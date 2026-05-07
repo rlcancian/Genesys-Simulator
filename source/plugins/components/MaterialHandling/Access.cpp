@@ -79,3 +79,9 @@ PluginInformation* Access::GetPluginInformation() {
 }
 
 
+
+// void Access::_createInternalStatisticReporters() { }
+
+// void Access::_createEditableDataDefinitions() { }
+
+// void Access::_createAttachedAttributes() { }

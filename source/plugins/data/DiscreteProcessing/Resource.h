@@ -141,8 +141,15 @@ protected: // protected must override
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: // protected could override
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createInternalAndAttachedData() override;
 	virtual void _initBetweenReplications() override;
+
+
+protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 
 private: //methods
 	void _notifyReleaseEventHandlers(); //!< Notify observer classes that some of the resource capacity has been released. It is useful for allocation components (such as Seize) to know when an entity waiting into a queue can try to seize the resource again

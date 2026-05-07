@@ -128,31 +128,71 @@ bool Station::_check(std::string& errorMessage) {
 	return true;
 }
 
-void Station::_createInternalAndAttachedData() {
-	const std::string baseArrivalAttributeName = "Entity.ArrivalAt";
-	std::string currentArrivalAttributeName = baseArrivalAttributeName + getName();
-	Util::Trimwithin(currentArrivalAttributeName);
-	std::vector<std::string> staleArrivalAttributes;
-	for (const auto& attached : *getAttachedData()) {
-		if (attached.first.rfind(baseArrivalAttributeName, 0) == 0 && attached.first != currentArrivalAttributeName) {
-			staleArrivalAttributes.push_back(attached.first);
-		}
-	}
-	for (const std::string& staleKey : staleArrivalAttributes) {
-		_attachedDataRemove(staleKey);
-	}
-	_attachedAttributesInsert({"Entity.Station", currentArrivalAttributeName});
+// void Station::_createAttachedAttributes() {
+// 	const std::string baseArrivalAttributeName = "Entity.ArrivalAt";
+// 	std::string currentArrivalAttributeName = baseArrivalAttributeName + getName();
+// 	Util::Trimwithin(currentArrivalAttributeName);
+// 	std::vector<std::string> staleArrivalAttributes;
+// 	for (const auto& attached : *getAttachedData()) {
+// 		if (attached.first.rfind(baseArrivalAttributeName, 0) == 0 && attached.first != currentArrivalAttributeName) {
+// 			staleArrivalAttributes.push_back(attached.first);
+// 		}
+// 	}
+// 	for (const std::string& staleKey : staleArrivalAttributes) {
+// 		_attachedDataRemove(staleKey);
+// 	}
+// 	_attachedAttributesInsert({"Entity.Station", currentArrivalAttributeName});
+//
+// 	if (_reportStatistics) {
+// 		if (_cstatNumberInStation == nullptr) {
+// 			_cstatNumberInStation = new StatisticsCollector(_parentModel, getName() + "." + "NumberInStation", this);
+// 			_cstatTimeInStation = new StatisticsCollector(_parentModel, getName() + "." + "TimeInStation", this);
+// 		}
+// 		if (_cstatNumberInStation != nullptr) {
+// 			_internalDataInsert("NumberInStation", _cstatNumberInStation);
+// 		}
+// 		if (_cstatTimeInStation != nullptr) {
+// 			_internalDataInsert("TimeInStation", _cstatTimeInStation);
+// 		}
+// 		if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
+// 			//
+// 			// include StatisticsCollector needed in EntityType
+// 			std::list<ModelDataDefinition*>* enttypes = _parentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<EntityType>())->list();
+// 			for (ModelDataDefinition* modeldatum : *enttypes) {
+// 				if (modeldatum->isReportStatistics())
+// 					static_cast<EntityType*> (modeldatum)->addGetStatisticsCollector(modeldatum->getName() + ".TimeInStations"); // force create this CStat before simulation starts
+// 			}
+//
+// 		}
+// 	} else if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
+// 		_internalDataClear();
+// 		_cstatNumberInStation = nullptr;
+// 		_cstatTimeInStation = nullptr;
+// 	}
+// }
 
+void Station::_initBetweenReplications() {
+	ModelDataDefinition::_initBetweenReplications();
+	_numberInStation = 0;
+	if (_cstatNumberInStation != nullptr) {
+		_cstatNumberInStation->getStatistics()->getCollector()->clear();
+	}
+	if (_cstatTimeInStation != nullptr) {
+		_cstatTimeInStation->getStatistics()->getCollector()->clear();
+	}
+}
+
+void Station::_createInternalStatisticReporters() {
 	if (_reportStatistics) {
 		if (_cstatNumberInStation == nullptr) {
 			_cstatNumberInStation = new StatisticsCollector(_parentModel, getName() + "." + "NumberInStation", this);
 			_cstatTimeInStation = new StatisticsCollector(_parentModel, getName() + "." + "TimeInStation", this);
 		}
 		if (_cstatNumberInStation != nullptr) {
-			_internalDataInsert("NumberInStation", _cstatNumberInStation);
+			_statisticReporterInsert("NumberInStation", _cstatNumberInStation);
 		}
 		if (_cstatTimeInStation != nullptr) {
-			_internalDataInsert("TimeInStation", _cstatTimeInStation);
+			_statisticReporterInsert("TimeInStation", _cstatTimeInStation);
 		}
 		if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
 			//
@@ -165,19 +205,26 @@ void Station::_createInternalAndAttachedData() {
 
 		}
 	} else if (_cstatNumberInStation != nullptr || _cstatTimeInStation != nullptr) {
-		_internalDataClear();
+		_statisticReportersClear();
 		_cstatNumberInStation = nullptr;
 		_cstatTimeInStation = nullptr;
 	}
 }
 
-void Station::_initBetweenReplications() {
-	ModelDataDefinition::_initBetweenReplications();
-	_numberInStation = 0;
-	if (_cstatNumberInStation != nullptr) {
-		_cstatNumberInStation->getStatistics()->getCollector()->clear();
+// void Station::_createEditableDataDefinitions() { }
+
+void Station::_createAttachedAttributes() {
+	const std::string baseArrivalAttributeName = "Entity.ArrivalAt";
+	std::string currentArrivalAttributeName = baseArrivalAttributeName + getName();
+	Util::Trimwithin(currentArrivalAttributeName);
+	std::vector<std::string> staleArrivalAttributes;
+	for (const auto& attached : *getAttachedData()) {
+		if (attached.first.rfind(baseArrivalAttributeName, 0) == 0 && attached.first != currentArrivalAttributeName) {
+			staleArrivalAttributes.push_back(attached.first);
+		}
 	}
-	if (_cstatTimeInStation != nullptr) {
-		_cstatTimeInStation->getStatistics()->getCollector()->clear();
+	for (const std::string& staleKey : staleArrivalAttributes) {
+		_mandatoryAttachedAttributeRemove(staleKey);
 	}
+	_attachedAttributesInsert({"Entity.Station", currentArrivalAttributeName});
 }

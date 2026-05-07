@@ -117,7 +117,15 @@ protected:
 protected:
 	//virtual void _initBetweenReplications();
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+
+	 virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	 virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalAndAttachedData() override;
+
+protected:
+
 private: // association
     Station* _station = nullptr;
 private: // internal elements
@@ -125,4 +133,3 @@ private: // internal elements
 };
 
 #endif /* ENTER_H */
-

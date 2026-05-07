@@ -76,3 +76,9 @@ PluginInformation* DropOff::GetPluginInformation() {
 	return info;
 }
 
+
+// void DropOff::_createInternalStatisticReporters() { }
+
+// void DropOff::_createEditableDataDefinitions() { }
+
+// void DropOff::_createAttachedAttributes() { }

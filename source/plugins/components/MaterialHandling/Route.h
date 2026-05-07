@@ -18,7 +18,7 @@
 #include "kernel/simulator/Counter.h"
 #include "../../data/MaterialHandling/Station.h"
 #include "../../data/MaterialHandling/Sequence.h"
-#include "plugins/data/DiscreteProcessing/Label.h"
+#include "../../data/Logic/Label.h"
 
 /*!
 Route module
@@ -91,7 +91,16 @@ protected:
 protected:
 	//virtual void _initBetweenReplications();
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+
+protected:
+	 virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	 virtual void _createEditableDataDefinitions() override;
+	 virtual void _createAttachedAttributes() override;
+	// virtual void _createInternalAndAttachedData() override;
+
+protected:
+
 private:
 
 	const struct DEFAULT_VALUES {
@@ -112,4 +121,3 @@ private: // internal elements
 };
 
 #endif /* ROUTE_H */
-

@@ -75,3 +75,9 @@ PluginInformation* Unstore::GetPluginInformation() {
 }
 
 
+
+// void Unstore::_createInternalStatisticReporters() { }
+
+// void Unstore::_createEditableDataDefinitions() { }
+
+// void Unstore::_createAttachedAttributes() { }

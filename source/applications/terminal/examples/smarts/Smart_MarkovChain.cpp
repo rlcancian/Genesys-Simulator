@@ -19,9 +19,11 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
+#include "kernel/simulator/Attribute.h"
+#include "plugins/data/Logic/Variable.h"
 #include "../../../TraitsApp.h"
 
 Smart_MarkovChain::Smart_MarkovChain() {
@@ -36,20 +38,20 @@ int Smart_MarkovChain::main(int argc, char** argv) {
 	genesys->getTraceManager()->setTraceLevel(TraitsApp<GenesysApplication_if>::traceLevel);
 	setDefaultTraceHandlers(genesys->getTraceManager());
 	PluginManager* plugins = genesys->getPluginManager();
-	plugins->autoInsertPlugins("autoloadplugins.txt");
+	plugins->autoInsertPlugins();
 	Model* model = genesys->getModelManager()->newModel();
 	// create model
 	Create* create1 = plugins->newInstance<Create>(model);
-	Variable* probTransition = plugins->newInstance<Variable>(model);
-	probTransition->setInitialValues({	{"1,1",0.3}, {"1,2",0.6}, {"1,3",0.1},
-										{"2,1",0.1}, {"2,2",0.1}, {"2,2",0.8},
-										{"3,1",0.1}, {"3,2",0.1}, {"3,2",0.8},
-									 });
-	Variable* initialDistribution = plugins->newInstance<Variable>(model);
-	initialDistribution->setInitialValues({ {"1",0.33}, {"2", 0.33}, {"3", 0.33} });
+	Variable* probTransition = plugins->newInstance<Variable>(model, "MarkovTransitionMatrix");
+	probTransition->setInitialValuesText("[0.1 0.7 0.1 0.1; 0.1 0.1 0.7 0.1; 0.1 0.1 0.1 0.7; 0.7 0.1 0.1 0.1]");
+	Variable* initialDistribution = plugins->newInstance<Variable>(model, "MarkovInitialDistribution");
+	initialDistribution->setInitialValuesText("[0.25 0.25 0.25 0.25]");
+	Variable* currentState = plugins->newInstance<Variable>(model, "CurrentMarkovState");
+	currentState->setInitialValue(0.0);
 	MarkovChain* markov1 = plugins->newInstance<MarkovChain>(model);
 	markov1->setTransitionProbabilityMatrix(probTransition);
 	markov1->setInitialDistribution(initialDistribution);
+	markov1->setCurrentState(currentState);
 	Dispose* dispose1 = plugins->newInstance<Dispose>(model);
 	// connect model components to create a "workflow"
 	create1->getConnectionManager()->insert(markov1);
@@ -61,4 +63,3 @@ int Smart_MarkovChain::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

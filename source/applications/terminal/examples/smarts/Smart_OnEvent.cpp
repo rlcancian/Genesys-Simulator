@@ -19,9 +19,9 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "../../../TraitsApp.h"
 
 Smart_OnEvent::Smart_OnEvent() {
@@ -120,4 +120,3 @@ int Smart_OnEvent::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

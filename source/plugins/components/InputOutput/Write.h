@@ -56,6 +56,13 @@ protected: // virtual
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _initBetweenReplications() override;
 
+
+protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+
 private: // methods
 private: // attributes 1:1
 	const struct DEFAULT_VALUES {
@@ -72,4 +79,3 @@ private: // attributes 1:n
 
 
 #endif /* WRITE_H */
-

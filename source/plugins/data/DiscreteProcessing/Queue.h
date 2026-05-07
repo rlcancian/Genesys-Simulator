@@ -59,6 +59,8 @@ public:
 	void setArrivalOrder(unsigned long long arrivalOrder) {
 		_arrivalOrder = arrivalOrder;
 	}
+
+protected:
 private:
 	Entity* _entity;
 	ModelComponent* _thisComponent;
@@ -136,8 +138,12 @@ protected: // must be overriden
 protected: // could be overriden
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _initBetweenReplications() override;
-	virtual void _createInternalAndAttachedData() override;
 	virtual ParserChangesInformation* _getParserChangesInformation() override;
+protected:
+	virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 
 private:
 	void _initCStats();

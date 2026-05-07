@@ -1,8 +1,8 @@
 #include "Smart_ModalModelDefaultNetwork.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/ModalModel/ModalModelDefault.h"
 #include "plugins/components/ModalModel/DefaultNode.h"
 #include "../../../TraitsApp.h"

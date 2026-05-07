@@ -10,7 +10,9 @@
 #include <fstream>
 #include <string>
 
-// Store explicit dependencies once to keep wrapper calls thin.
+/**
+ * @brief Stores explicit dependencies once to keep wrapper calls thin.
+ */
 ModelLanguageSynchronizer::ModelLanguageSynchronizer(Simulator* simulator,
                                                      QPlainTextEdit* modelTextEditor,
                                                      bool* textModelHasChangedFlag,
@@ -23,6 +25,9 @@ ModelLanguageSynchronizer::ModelLanguageSynchronizer(Simulator* simulator,
     , _onModelCreatedOrLoaded(std::move(onModelCreatedOrLoaded)) {
 }
 
+/**
+ * @brief Regenerates the text editor content from the current kernel model.
+ */
 void ModelLanguageSynchronizer::actualizeModelSimLanguage() const {
     if (_simulator == nullptr || _modelTextEditor == nullptr || _textModelHasChangedFlag == nullptr) {
         return;
@@ -48,6 +53,9 @@ void ModelLanguageSynchronizer::actualizeModelSimLanguage() const {
     }
 }
 
+/**
+ * @brief Applies the text editor content to the current kernel model.
+ */
 bool ModelLanguageSynchronizer::setSimulationModelBasedOnText() const {
     if (_simulator == nullptr || _modelTextEditor == nullptr) {
         return false;

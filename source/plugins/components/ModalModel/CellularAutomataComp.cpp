@@ -216,3 +216,9 @@ PluginInformation* CellularAutomataComp::GetPluginInformation() {
 	info->setDescriptionHelp("//@TODO");
 	return info;
 }
+
+// void CellularAutomataComp::_createInternalStatisticReporters() { }
+
+// void CellularAutomataComp::_createEditableDataDefinitions() { }
+
+// void CellularAutomataComp::_createAttachedAttributes() { }

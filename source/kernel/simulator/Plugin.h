@@ -30,42 +30,58 @@ PlugIns are NOT implemented yet
  */
 class Plugin {
 public:
+	/*!
+	 * \brief Creates a plugin wrapper for a dynamic library file.
+	 * \param filename_so_dll Plugin library filename or path.
+	 */
 	Plugin(std::string filename_so_dll);
+	/*!
+	 * \brief Creates a plugin wrapper from a compiled-in metadata callback.
+	 * \param getInformation Callback that returns the plugin metadata.
+	 */
 	Plugin(StaticGetPluginInformation getInformation); // @ToDo: (importante): temporary. Just while compiled together
-	// Destroy plugin-owned metadata allocated by the plugin-information callback.
+	/*!
+	 * \brief Releases metadata allocated for the wrapped plugin.
+	 */
 	virtual ~Plugin();
 public:
+	/*!
+	 * \brief Returns a human-readable description of the plugin state.
+	 * \return Textual summary used in traces and diagnostics.
+	 */
 	std::string show();
 public:
 	/*!
-	 * \brief isIsValidPlugin
-	 * \return
+	 * \brief Indicates whether the plugin metadata was successfully initialized.
+	 * \return \c true when this wrapper contains a valid plugin.
 	 */
 	bool isIsValidPlugin() const;
 	/*!
-	 * \brief getPluginInfo
-	 * \return
+	 * \brief Returns the plugin metadata object.
+	 * \return Plugin information block, or \c nullptr when invalid.
 	 */
 	PluginInformation* getPluginInfo() const;
 	/*!
-	 * \brief loadNew
-	 * \param model
-	 * \param fields
-	 * \return
+	 * \brief Creates a new data definition instance from serialized fields.
+	 * \details Creates a new ModelDataDefinition from fields loaded from a
+	 * file or another persistence source.
+	 * \param model Parent model that will own the new instance.
+	 * \param fields Serialized fields to deserialize.
+	 * \return New data definition instance, or \c nullptr on failure.
 	 */
-	ModelDataDefinition* loadNew(Model* model, PersistenceRecord *fields); //!< creates a new ModelDataDefinition from fields loaded from a file
+	ModelDataDefinition* loadNew(Model* model, PersistenceRecord *fields);
 	/*!
-     * \brief loadAndInsertNew
-     * \param model
-     * \param fields
-     * \return
+     * \brief Loads a new instance and inserts it into the model in one step.
+     * \param model Parent model that will own the new instance.
+     * \param fields Serialized fields to deserialize.
+     * \return \c true when loading and insertion succeed.
 	*/
 	bool loadAndInsertNew(Model* model, PersistenceRecord *fields);
 	/*!
-	 * \brief newInstance
-	 * \param model
-	 * \param name
-	 * \return
+	 * \brief Creates a new in-memory instance of the plugin's primary type.
+	 * \param model Parent model that will own the instance.
+	 * \param name Initial object name.
+	 * \return Newly created instance, or \c nullptr on failure.
 	 */
 	ModelDataDefinition* newInstance(Model* model, std::string name = "");
 

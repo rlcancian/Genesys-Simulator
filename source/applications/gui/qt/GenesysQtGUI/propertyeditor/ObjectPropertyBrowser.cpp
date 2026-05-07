@@ -5,6 +5,7 @@
 #include "../animations/AnimationTimer.h"
 #include "../animations/AnimationVariable.h"
 #include "../actions/DeleteUndoCommand.h"
+#include "../codeeditor/CodeEditor.h"
 #include "../graphicals/GraphicalModelDataDefinition.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../services/GraphicalModelBuilder.h"
@@ -14,11 +15,15 @@
 #include <sstream>
 #include <exception>
 #include <utility>
+#include <algorithm>
 
 #include <QSignalBlocker>
 #include <QBrush>
 #include <QColor>
+#include <QDialog>
+#include <QDialogButtonBox>
 #include <QFont>
+#include <QFontDatabase>
 #include <QGraphicsEllipseItem>
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
@@ -31,10 +36,18 @@
 #include <QVariant>
 #include <QMenu>
 #include <QDebug>
+#include <QEvent>
 #include <QMetaObject>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QAbstractSpinBox>
+#include <QKeyEvent>
+#include <QPlainTextEdit>
+#include <QPushButton>
+#include <QSizePolicy>
+#include <QHash>
 #include <QUndoStack>
+#include <QVBoxLayout>
 
 #include "kernel/simulator/Model.h"
 #include "kernel/simulator/ModelComponent.h"
@@ -43,9 +56,80 @@
 #include "kernel/simulator/Simulator.h"
 
 namespace {
+constexpr int kSourceCodePreviewContentLines = 4;
+constexpr int kSourceCodeCompactEditorLines = 5;
+
+QString normalizeMultilineText(const QString& text) {
+    QString normalized = text;
+    normalized.replace("\r\n", "\n");
+    normalized.replace('\r', '\n');
+    return normalized;
+}
+
+QString sourceCodePreviewText(const std::string& sourceCode) {
+    const QString normalized = normalizeMultilineText(QString::fromStdString(sourceCode));
+    if (normalized.isEmpty()) {
+        return normalized;
+    }
+
+    const QStringList lines = normalized.split('\n');
+    if (lines.size() <= kSourceCodePreviewContentLines) {
+        return normalized;
+    }
+
+    QStringList previewLines = lines.mid(0, kSourceCodePreviewContentLines);
+    // Keep the tree cell short so the property browser shows a compact preview instead of the whole file.
+    previewLines << QString("... (%1 more lines)").arg(lines.size() - kSourceCodePreviewContentLines);
+    return previewLines.join('\n');
+}
+
+void configureSourceCodeEditor(CodeEditor* editor, bool compactEditor) {
+    if (editor == nullptr) {
+        return;
+    }
+
+    // Use a fixed-pitch editor so Gro source stays line-oriented and easy to scan.
+    editor->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
+    editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+    editor->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    editor->setTabStopDistance(editor->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 4);
+
+    if (compactEditor) {
+        // Keep the quick SourceCode editor compact and let the scrollbar expose the rest.
+        const int lineHeight = editor->fontMetrics().lineSpacing();
+        const int frameHeight = editor->frameWidth() * 2;
+        const int marginHeight = static_cast<int>(editor->document()->documentMargin() * 2.0);
+        const int compactHeight = (lineHeight * kSourceCodeCompactEditorLines) + frameHeight + marginHeight + 8;
+        editor->setFixedHeight(compactHeight);
+        editor->setSizePolicy(QSizePolicy::Expanding, QSizePolicy::Fixed);
+    }
+}
+
+void configureMultilineTextEditor(QPlainTextEdit* editor) {
+    if (editor == nullptr) {
+        return;
+    }
+
+    // Keep the multiline text editor lightweight: plain text only, no line numbers, no code chrome.
+    editor->setLineWrapMode(QPlainTextEdit::NoWrap);
+    editor->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    editor->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    editor->setTabStopDistance(editor->fontMetrics().horizontalAdvance(QLatin1Char(' ')) * 4);
+}
+
 class CommitAwareVariantEditorFactory final : public QtVariantEditorFactory {
 public:
-    using CommitCallback = std::function<void(QtProperty*)>;
+    using CommitCallback = std::function<void(QtProperty*, const QVariant&)>;
+    using EditorCreationFilter = std::function<bool(QtProperty*)>;
+
+    struct EditorState {
+        QtVariantPropertyManager* manager = nullptr;
+        QtProperty* property = nullptr;
+        QWidget* editor = nullptr;
+        QVariant originalValue;
+        bool suppressCommit = false;
+    };
 
     explicit CommitAwareVariantEditorFactory(QObject* parent = nullptr)
         : QtVariantEditorFactory(parent) {}
@@ -54,31 +138,110 @@ public:
         _commitCallback = std::move(callback);
     }
 
+    void setEditorCreationFilter(EditorCreationFilter filter) {
+        _editorCreationFilter = std::move(filter);
+    }
+
 protected:
     QWidget* createEditor(QtVariantPropertyManager* manager, QtProperty* property, QWidget* parent) override {
+        if (_editorCreationFilter != nullptr && !_editorCreationFilter(property)) {
+            return nullptr;
+        }
         QWidget* editor = QtVariantEditorFactory::createEditor(manager, property, parent);
         if (editor == nullptr || _commitCallback == nullptr) {
             return editor;
         }
 
         if (QLineEdit* lineEdit = editor->findChild<QLineEdit*>()) {
-            QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [callback = _commitCallback, property]() {
-                callback(property);
+            _registerEditor(lineEdit, manager, property, editor);
+            QObject::connect(lineEdit, &QLineEdit::editingFinished, editor, [this, callback = _commitCallback, property, lineEdit]() {
+                const auto stateIt = _editorStates.find(lineEdit);
+                if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
+                    stateIt.value().suppressCommit = false;
+                    return;
+                }
+                callback(property, QVariant(lineEdit->text()));
             });
             return editor;
         }
 
         if (QAbstractSpinBox* spinBox = editor->findChild<QAbstractSpinBox*>()) {
-            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [callback = _commitCallback, property]() {
-                callback(property);
+            _registerEditor(spinBox, manager, property, editor);
+            QObject::connect(spinBox, &QAbstractSpinBox::editingFinished, editor, [this, callback = _commitCallback, property, spinBox]() {
+                const auto stateIt = _editorStates.find(spinBox);
+                if (stateIt != _editorStates.end() && stateIt.value().suppressCommit) {
+                    stateIt.value().suppressCommit = false;
+                    return;
+                }
+                callback(property, spinBox->property("value"));
             });
         }
 
         return editor;
     }
 
+    bool eventFilter(QObject* watched, QEvent* event) override {
+        auto stateIt = _editorStates.find(watched);
+        if (stateIt == _editorStates.end()) {
+            return QtVariantEditorFactory::eventFilter(watched, event);
+        }
+
+        if (event->type() == QEvent::KeyPress) {
+            auto* keyEvent = static_cast<QKeyEvent*>(event);
+            if (keyEvent->key() == Qt::Key_Escape) {
+                stateIt.value().suppressCommit = true;
+                _restoreEditorValue(watched, stateIt.value());
+                if (stateIt.value().editor != nullptr) {
+                    stateIt.value().editor->clearFocus();
+                    if (QWidget* parentWidget = stateIt.value().editor->parentWidget()) {
+                        parentWidget->setFocus();
+                    }
+                }
+                return true;
+            }
+        }
+
+        return QtVariantEditorFactory::eventFilter(watched, event);
+    }
+
 private:
+    void _registerEditor(QWidget* watched, QtVariantPropertyManager* manager, QtProperty* property, QWidget* editor) {
+        if (watched == nullptr) {
+            return;
+        }
+
+        _editorStates.insert(watched, EditorState{manager, property, editor, manager != nullptr && property != nullptr ? manager->value(property) : QVariant(), false});
+        watched->installEventFilter(this);
+        QObject::connect(watched, &QObject::destroyed, this, [this, watched]() {
+            _editorStates.remove(watched);
+        });
+    }
+
+    void _restoreEditorValue(QObject* watched, const EditorState& state) {
+        if (watched == nullptr || state.manager == nullptr || state.property == nullptr) {
+            return;
+        }
+
+        const QVariant restoredValue = state.originalValue.isValid() ? state.originalValue : state.manager->value(state.property);
+        if (QLineEdit* lineEdit = qobject_cast<QLineEdit*>(watched)) {
+            QSignalBlocker managerBlocker(state.manager);
+            QSignalBlocker blocker(lineEdit);
+            state.manager->setValue(state.property, restoredValue);
+            lineEdit->setText(restoredValue.toString());
+            return;
+        }
+
+        if (QAbstractSpinBox* spinBox = qobject_cast<QAbstractSpinBox*>(watched)) {
+            QSignalBlocker managerBlocker(state.manager);
+            QSignalBlocker blocker(spinBox);
+            state.manager->setValue(state.property, restoredValue);
+            spinBox->setProperty("value", restoredValue);
+        }
+    }
+
     CommitCallback _commitCallback;
+    EditorCreationFilter _editorCreationFilter;
+    QHash<QObject*, EditorState> _editorStates;
 };
 
 QString graphicsItemTypeName(QGraphicsItem* item) {
@@ -228,8 +391,12 @@ void ObjectPropertyBrowser::_ensureBrowserInfrastructure() {
     if (_variantFactory == nullptr) {
         // Preserve commit-aware variant editor factory behavior with one-time creation.
         auto* commitFactory = new CommitAwareVariantEditorFactory(this);
-        commitFactory->setCommitCallback([this](QtProperty* property) {
-            onVariantEditorCommitted(property);
+        commitFactory->setCommitCallback([this](QtProperty* property, const QVariant& committedValue) {
+            onVariantEditorCommitted(property, committedValue);
+        });
+        commitFactory->setEditorCreationFilter([this](QtProperty* property) {
+            const auto binding = _bindings.find(property);
+            return binding == _bindings.end() || !_hasSpecializedEditor(binding.value().descriptor);
         });
         _variantFactory = commitFactory;
     }
@@ -260,6 +427,7 @@ void ObjectPropertyBrowser::_clearAll() {
     _bindings.clear();
     _enumNames.clear();
     _objectListActions.clear();
+    _modelObjectActions.clear();
     _pendingCommittedProperties.clear();
     _pendingCommittedValues.clear();
 }
@@ -556,6 +724,10 @@ int ObjectPropertyBrowser::_enumIndexFor(const GenesysPropertyDescriptor& desc) 
 }
 
 QVariant ObjectPropertyBrowser::_toVariant(const GenesysPropertyDescriptor& desc) const {
+    if (desc.technicalTypeName == Util::TypeOf<SourceCodeString>()) {
+        return QVariant(sourceCodePreviewText(desc.currentValue));
+    }
+
     switch (desc.kind) {
     case GenesysPropertyKind::Boolean: {
         const bool value = (desc.currentValue == "true" || desc.currentValue == "1");
@@ -605,8 +777,55 @@ std::string ObjectPropertyBrowser::_fromVariant(const GenesysPropertyDescriptor&
     }
 }
 
+bool ObjectPropertyBrowser::_hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const {
+    return desc.supportsListEditor
+        || desc.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || desc.editorHint == SimulationControlEditorHint::CodeEditor;
+}
+
+QString ObjectPropertyBrowser::_specializedEditorActionText(const GenesysPropertyDescriptor& desc) const {
+    if (desc.supportsListEditor) {
+        return "Edit list...";
+    }
+
+    if (desc.technicalTypeName == Util::TypeOf<SourceCodeString>()) {
+        return "Edit source code...";
+    }
+
+    switch (desc.editorHint) {
+    case SimulationControlEditorHint::CodeEditor:
+        return "Edit source code...";
+    case SimulationControlEditorHint::Default:
+    case SimulationControlEditorHint::MultiLineText:
+    default:
+        return QString();
+    }
+}
+
 QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDescriptor& desc) {
     const QString name = QString::fromStdString(desc.displayName);
+
+    if (desc.editorHint == SimulationControlEditorHint::MultiLineText) {
+        QtProperty* property = _enumManager->addProperty(name);
+        QStringList choices;
+        choices << QString::fromStdString(desc.currentValue);
+        choices << "Edit InitialValue";
+        _enumNames[property] = choices;
+        _enumManager->setEnumNames(property, choices);
+        _enumManager->setValue(property, 0);
+        property->setEnabled(_isKernelEditingEnabled(desc));
+        property->setToolTip("Select the current value or choose Edit InitialValue to open the multiline editor.");
+        property->setStatusTip("InitialValue");
+
+        Binding binding;
+        binding.owner = _modelObject;
+        binding.control = desc.control;
+        binding.descriptor = desc;
+        binding.isMultilineTextAction = true;
+        _bindings[property] = binding;
+
+        return property;
+    }
 
     if ((desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit)
         && !desc.choices.empty()) {
@@ -648,19 +867,14 @@ QtProperty* ObjectPropertyBrowser::_createLeafProperty(const GenesysPropertyDesc
     QtVariantProperty* property = _variantManager->addProperty(variantType, name);
     property->setValue(_toVariant(desc));
 
-    // This block enables direct inline editing only for scalar-like properties handled by variant editors.
-    const bool editableInline =
-        _isKernelEditingEnabled(desc) &&
-        !desc.supportsListEditor &&
-        !desc.supportsInlineExpansion &&
-        !(desc.kind == GenesysPropertyKind::Enum || desc.kind == GenesysPropertyKind::TimeUnit);
+    // Specialized editors stay enabled for selection and shortcuts, but their inline widget is suppressed by the factory.
+    property->setEnabled(_isKernelEditingEnabled(desc));
 
-    property->setEnabled(editableInline);
-
-    // This block configures the list-editor hint based on explicit contract metadata instead of heuristics.
-    if (desc.supportsListEditor) {
-        property->setToolTip("List property. Use double click, Enter or context menu to open list editor.");
-        property->setStatusTip("List editor");
+    // Keep specialized editors discoverable while preserving the generic property browser flow.
+    if (_hasSpecializedEditor(desc)) {
+        const QString actionText = _specializedEditorActionText(desc);
+        property->setToolTip(QString("Use double click, Enter or context menu to %1").arg(actionText.left(actionText.size() - 3).toLower()));
+        property->setStatusTip(actionText);
     }
 
     Binding binding;
@@ -797,34 +1011,50 @@ QtProperty* ObjectPropertyBrowser::_createModelObjectActionProperty(const Genesy
     ModelDataDefinition* referencedDataDefinition = desc.control != nullptr
                                                         ? desc.control->getReferencedModelDataDefinition()
                                                         : nullptr;
-    const bool objectExists = referencedDataDefinition != nullptr
-                              && _isRegisteredModelDataDefinition(referencedDataDefinition);
+    const bool objectExists = referencedDataDefinition != nullptr;
+    const QString referencedType = objectExists
+                                       ? QString::fromStdString(referencedDataDefinition->getClassname())
+                                       : _modelObjectTypeName(desc);
 
     QStringList choices;
-    int currentIndex = -1;
+    std::vector<ModelObjectAction> actions;
     if (objectExists) {
         const QString objectName = QString::fromStdString(referencedDataDefinition->getName());
         choices << objectName;
-        choices << QString("Selecionar %1 e editá-lo").arg(objectName);
-        choices << QString("Remover referência a %1").arg(objectName);
-        currentIndex = 0;
+        choices << QString("Selecionar %1 e Editar").arg(referencedType);
+        choices << QString("Remover %1").arg(referencedType);
+        actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
+        actions.push_back(ModelObjectAction{ModelObjectAction::Kind::SelectAndEdit, "", ""});
+        actions.push_back(ModelObjectAction{ModelObjectAction::Kind::RemoveReference, "", ""});
     } else {
-        QSet<QString> seenNames;
-        for (const std::string& choice : desc.choices) {
-            const QString objectName = QString::fromStdString(choice);
-            if (objectName.isEmpty() || seenNames.contains(objectName)) {
+        choices << "";
+        actions.push_back(ModelObjectAction{ModelObjectAction::Kind::None, "", ""});
+        QSet<QString> seenLabels;
+        for (const std::string& choiceValue : desc.choices) {
+            const QString choiceLabel = QString::fromStdString(choiceValue);
+            if (choiceLabel.isEmpty() || seenLabels.contains(choiceLabel)) {
                 continue;
             }
-            seenNames.insert(objectName);
-            choices << objectName;
+            seenLabels.insert(choiceLabel);
+            choices << choiceLabel;
+            actions.push_back(ModelObjectAction{ModelObjectAction::Kind::SetReference, choiceValue, ""});
         }
-        choices << QString("Criar %1").arg(_modelObjectTypeName(desc));
+        if (!desc.creatableReferenceTypes.empty()) {
+            for (const std::string& typeName : desc.creatableReferenceTypes) {
+                choices << QString("Criar novo %1").arg(QString::fromStdString(typeName));
+                actions.push_back(ModelObjectAction{ModelObjectAction::Kind::CreateNew, "", typeName});
+            }
+        } else if (desc.supportsObjectCreation && _isKernelEditingEnabled(desc)) {
+            choices << QString("Criar novo %1").arg(_modelObjectTypeName(desc));
+            actions.push_back(ModelObjectAction{ModelObjectAction::Kind::CreateNew, "", ""});
+        }
     }
 
     _enumNames[property] = choices;
+    _modelObjectActions[property] = actions;
     _enumManager->setEnumNames(property, choices);
-    _enumManager->setValue(property, currentIndex);
-    property->setEnabled(!_activeKernelObjectReadOnly);
+    _enumManager->setValue(property, 0);
+    property->setEnabled(_isKernelEditingEnabled(desc));
     property->setToolTip("Selecione uma opção para vincular, criar, selecionar ou remover a referência do objeto.");
     property->setStatusTip("Referência para objeto gráfico do modelo");
 
@@ -881,17 +1111,8 @@ bool ObjectPropertyBrowser::_isModelObjectActionProperty(
     const GenesysPropertyDescriptor& desc,
     SimulationControl* control
     ) const {
-    if (!desc.isModelDataDefinitionReference || control == nullptr || _modelObject == nullptr) {
-        return false;
-    }
-
-    ModelDataDefinition* referencedDataDefinition = control->getReferencedModelDataDefinition();
-    if (_relationForDataDefinition(referencedDataDefinition).exists) {
-        return true;
-    }
-
-    // Empty model-object references are action rows so users can create the missing child from the parent.
-    return desc.supportsObjectCreation && !control->hasObjectInstance();
+    (void)control;
+    return desc.isModelDataDefinitionReference && _modelObject != nullptr;
 }
 
 ObjectPropertyBrowser::ModelObjectRelation ObjectPropertyBrowser::_relationForDataDefinition(
@@ -970,32 +1191,31 @@ QString ObjectPropertyBrowser::_modelObjectTypeName(const GenesysPropertyDescrip
     return QString::fromStdString(desc.displayName);
 }
 
-QString ObjectPropertyBrowser::_defaultModelObjectName(const GenesysPropertyDescriptor& desc) const {
-    const QString objectType = _modelObjectTypeName(desc);
+QString ObjectPropertyBrowser::_defaultModelObjectName(const GenesysPropertyDescriptor& desc, const std::string& concreteTypeName) const {
     const QString ownerName = _modelObject != nullptr
                                   ? QString::fromStdString(_modelObject->getName())
                                   : QStringLiteral("Object");
-    const QString baseName = QString("%1.%2").arg(ownerName, objectType);
+    const QString propertyName = QString::fromStdString(desc.displayName);
+    const QString baseName = QString("%1.%2").arg(ownerName, propertyName);
 
     ModelGraphicsScene* scene = dynamic_cast<ModelGraphicsScene*>(_graphicalItem != nullptr ? _graphicalItem->scene() : nullptr);
     Model* model = (scene != nullptr && scene->getSimulator() != nullptr &&
                     scene->getSimulator()->getModelManager() != nullptr)
                        ? scene->getSimulator()->getModelManager()->current()
                        : nullptr;
-    if (model == nullptr || model->getDataManager() == nullptr || desc.technicalTypeName.empty()) {
-        return baseName;
+    const std::string typeName = !concreteTypeName.empty()
+                                     ? concreteTypeName
+                                     : (!desc.currentReferenceType.empty() ? desc.currentReferenceType : desc.technicalTypeName);
+    if (model == nullptr || model->getDataManager() == nullptr || typeName.empty()) {
+        return QString("%1_1").arg(baseName);
     }
 
-    std::string candidate = baseName.toStdString();
-    if (model->getDataManager()->getDataDefinition(desc.technicalTypeName, candidate) == nullptr) {
-        return QString::fromStdString(candidate);
-    }
-
-    unsigned int suffix = 2;
+    unsigned int suffix = 1;
+    std::string candidate;
     do {
-        candidate = QString("%1 %2").arg(baseName).arg(suffix).toStdString();
+        candidate = QString("%1_%2").arg(baseName).arg(suffix).toStdString();
         suffix++;
-    } while (model->getDataManager()->getDataDefinition(desc.technicalTypeName, candidate) != nullptr);
+    } while (model->getDataManager()->getDataDefinition(typeName, candidate) != nullptr);
 
     return QString::fromStdString(candidate);
 }
@@ -1490,18 +1710,33 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                 true
                 ));
         } else if (AnimationVariable* variable = dynamic_cast<AnimationVariable*>(rectItem)) {
-            QtProperty* animationGroup = _groupManager->addProperty("Animation variable");
+            QtProperty* animationGroup = _groupManager->addProperty("Animation variable and attribute");
             addProperty(animationGroup);
             animationGroup->addSubProperty(_createGraphicsVariantProperty(
-                "Value",
-                QVariant::Double,
-                variable->getValue(),
+                "Target",
+                QVariant::String,
+                variable->getTargetName(),
                 [variable, this](const QVariant& value) {
-                    variable->setValue(value.toDouble());
+                    variable->setTargetName(value.toString().toStdString());
                     _notifyGraphicsChangeApplied(variable);
                 },
                 true
                 ));
+            const unsigned int dimensionCount = variable->getDimensionCount();
+            if (dimensionCount > 2u) {
+                for (unsigned int dimensionIndex = 2u; dimensionIndex < dimensionCount; ++dimensionIndex) {
+                    animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                        QString("Dimension %1").arg(dimensionIndex + 1),
+                        QVariant::Int,
+                        static_cast<int>(variable->getSliceIndex(dimensionIndex - 2u)),
+                        [variable, dimensionIndex, this](const QVariant& value) {
+                            variable->setSliceIndex(dimensionIndex - 2u, static_cast<unsigned int>(std::max(0, value.toInt())));
+                            _notifyGraphicsChangeApplied(variable);
+                        },
+                        true
+                        ));
+                }
+            }
         } else if (AnimationTimer* timer = dynamic_cast<AnimationTimer*>(rectItem)) {
             QtProperty* animationGroup = _groupManager->addProperty("Animation timer");
             addProperty(animationGroup);
@@ -1542,6 +1777,122 @@ void ObjectPropertyBrowser::_populateGraphicsProperties(QGraphicsItem* item) {
                 [timer, this](const QVariant& value) {
                     timer->setInitialSeconds(static_cast<unsigned int>(value.toInt()));
                     _notifyGraphicsChangeApplied(timer);
+                },
+                true
+                ));
+        } else if (AnimationPlot* plot = dynamic_cast<AnimationPlot*>(rectItem)) {
+            QtProperty* animationGroup = _groupManager->addProperty("Animation plot");
+            addProperty(animationGroup);
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Title",
+                QVariant::String,
+                plot->getTitle(),
+                [plot, this](const QVariant& value) {
+                    plot->setTitle(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Datasets",
+                QVariant::String,
+                plot->getDatasetsText(),
+                [plot, this](const QVariant& value) {
+                    plot->setDatasetsText(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Chart type",
+                QVariant::String,
+                plot->getPlotType() == AnimationPlot::PlotType::Bar ? "Bar" : "Line",
+                [plot, this](const QVariant& value) {
+                    const QString text = value.toString().trimmed();
+                    plot->setPlotType(text.compare("Bar", Qt::CaseInsensitive) == 0
+                                          ? AnimationPlot::PlotType::Bar
+                                          : AnimationPlot::PlotType::Line);
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Y axis title",
+                QVariant::String,
+                plot->getYAxisTitle(),
+                [plot, this](const QVariant& value) {
+                    plot->setYAxisTitle(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "X axis title",
+                QVariant::String,
+                plot->getXAxisTitle(),
+                [plot, this](const QVariant& value) {
+                    plot->setXAxisTitle(value.toString());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Show grid lines",
+                QVariant::Bool,
+                plot->getShowGridLines(),
+                [plot, this](const QVariant& value) {
+                    plot->setShowGridLines(value.toBool());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Show ticks",
+                QVariant::Bool,
+                plot->getShowTicks(),
+                [plot, this](const QVariant& value) {
+                    plot->setShowTicks(value.toBool());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "X axis min",
+                QVariant::Double,
+                plot->getXAxisMin(),
+                [plot, this](const QVariant& value) {
+                    plot->setXAxisMin(value.toDouble());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "X axis max",
+                QVariant::Double,
+                plot->getXAxisMax(),
+                [plot, this](const QVariant& value) {
+                    plot->setXAxisMax(value.toDouble());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Y axis min",
+                QVariant::Double,
+                plot->getYAxisMin(),
+                [plot, this](const QVariant& value) {
+                    plot->setYAxisMin(value.toDouble());
+                    _notifyGraphicsChangeApplied(plot);
+                },
+                true
+                ));
+            animationGroup->addSubProperty(_createGraphicsVariantProperty(
+                "Y axis max",
+                QVariant::Double,
+                plot->getYAxisMax(),
+                [plot, this](const QVariant& value) {
+                    plot->setYAxisMax(value.toDouble());
+                    _notifyGraphicsChangeApplied(plot);
                 },
                 true
                 ));
@@ -1708,7 +2059,7 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
     }
 
     SimulationControl* control = binding.control;
-    if (control == nullptr || _propertyEditor == nullptr) {
+    if (control == nullptr) {
         return false;
     }
 
@@ -1718,6 +2069,9 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
 
     // This block opens the specialized list editor only when the explicit list-editor contract is enabled.
     if (binding.descriptor.supportsListEditor) {
+        if (_propertyEditor == nullptr) {
+            return false;
+        }
         if (_propertyList != nullptr) {
             auto found = _propertyList->find(control);
             if (found == _propertyList->end() || found->second == nullptr) {
@@ -1732,7 +2086,136 @@ bool ObjectPropertyBrowser::_openSpecializedEditor(QtProperty* property) {
         return true;
     }
 
+    if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
+        return _openTextDialogEditor(binding, false);
+    }
+
+    if (binding.descriptor.editorHint == SimulationControlEditorHint::MultiLineText) {
+        return _openMultilineTextDialogEditor(binding);
+    }
+
     return false;
+}
+
+bool ObjectPropertyBrowser::_openTextDialogEditor(const Binding& binding, bool compactEditor) {
+    if (binding.control == nullptr) {
+        return false;
+    }
+
+    QDialog dialog(this);
+    dialog.setModal(true);
+    dialog.setWindowTitle(QString("Edit %1").arg(QString::fromStdString(binding.descriptor.displayName)));
+    dialog.resize(compactEditor ? QSize(720, 260) : QSize(900, 640));
+
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* editor = new CodeEditor(&dialog);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QPushButton* applyButton = buttons->addButton("Apply", QDialogButtonBox::ApplyRole);
+
+    configureSourceCodeEditor(editor, compactEditor);
+    editor->setPlainText(QString::fromStdString(binding.descriptor.currentValue));
+    layout->addWidget(editor);
+    layout->addWidget(buttons);
+
+    std::string appliedValue = binding.descriptor.currentValue;
+    auto applyChange = [this, &dialog, editor, control = binding.control, &appliedValue]() -> bool {
+        const std::string newValue = editor->toPlainText().toStdString();
+        if (newValue == appliedValue) {
+            return true;
+        }
+
+        std::string errorMessage;
+        // Run the control-side validator first so source editors can reject syntax errors before commit.
+        if (!control->validateProposedValue(newValue, errorMessage)) {
+            QMessageBox::warning(
+                &dialog,
+                "Invalid property value",
+                QString::fromStdString(errorMessage.empty() ? "The proposed value is invalid." : errorMessage)
+                );
+            return false;
+        }
+
+        if (!GenesysPropertyIntrospection::setValue(control, newValue, false, &errorMessage)) {
+            QMessageBox::warning(
+                &dialog,
+                "Unable to update property",
+                QString::fromStdString(errorMessage.empty() ? "Unknown property update error" : errorMessage)
+                );
+            return false;
+        }
+
+        appliedValue = newValue;
+        _notifyModelChangeApplied();
+        return true;
+    };
+
+    connect(applyButton, &QPushButton::clicked, &dialog, [applyChange]() {
+        applyChange();
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [&dialog, applyChange]() {
+        if (applyChange()) {
+            dialog.accept();
+        }
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    return dialog.exec() == QDialog::Accepted;
+}
+
+bool ObjectPropertyBrowser::_openMultilineTextDialogEditor(const Binding& binding) {
+    if (binding.control == nullptr) {
+        return false;
+    }
+
+    QDialog dialog(this);
+    dialog.setModal(true);
+    dialog.setWindowTitle(QString("Edit %1").arg(QString::fromStdString(binding.descriptor.displayName)));
+    dialog.resize(QSize(620, 260));
+
+    auto* layout = new QVBoxLayout(&dialog);
+    auto* editor = new QPlainTextEdit(&dialog);
+    auto* buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, &dialog);
+    QPushButton* applyButton = buttons->addButton("Apply", QDialogButtonBox::ApplyRole);
+
+    configureMultilineTextEditor(editor);
+    editor->setPlainText(QString::fromStdString(binding.descriptor.currentValue));
+    layout->addWidget(editor);
+    layout->addWidget(buttons);
+
+    std::string appliedValue = binding.descriptor.currentValue;
+    auto applyChange = [this, &dialog, editor, control = binding.control, &appliedValue]() -> bool {
+        const std::string newValue = editor->toPlainText().toStdString();
+        if (newValue == appliedValue) {
+            return true;
+        }
+
+        std::string errorMessage;
+        if (!GenesysPropertyIntrospection::setValue(control, newValue, false, &errorMessage)) {
+            QMessageBox::warning(
+                &dialog,
+                "Unable to update property",
+                QString::fromStdString(errorMessage.empty() ? "Unknown property update error" : errorMessage)
+                );
+            return false;
+        }
+
+        appliedValue = newValue;
+        _notifyModelChangeApplied();
+        return true;
+    };
+
+    connect(applyButton, &QPushButton::clicked, &dialog, [applyChange]() {
+        applyChange();
+    });
+    connect(buttons, &QDialogButtonBox::accepted, &dialog, [&dialog, applyChange]() {
+        if (applyChange()) {
+            dialog.accept();
+        }
+    });
+    connect(buttons, &QDialogButtonBox::rejected, &dialog, &QDialog::reject);
+
+    return dialog.exec() == QDialog::Accepted;
 }
 
 bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
@@ -1744,6 +2227,18 @@ bool ObjectPropertyBrowser::_openSpecializedEditorForCurrentItem() {
         qWarning() << "[PropertyEditor] openSpecializedEditorForCurrentItem aborted due to invalid binding context";
         return false;
     }
+
+    auto it = _bindings.find(item->property());
+    if (it == _bindings.end()) {
+        return false;
+    }
+
+    const Binding binding = it.value();
+    if (binding.descriptor.technicalTypeName == Util::TypeOf<SourceCodeString>()
+        || binding.descriptor.editorHint == SimulationControlEditorHint::CodeEditor) {
+        return _openTextDialogEditor(binding, true);
+    }
+
     return _openSpecializedEditor(item->property());
 }
 
@@ -1867,7 +2362,7 @@ bool ObjectPropertyBrowser::_setCurrentListElementTypeForProperty(QtProperty* pr
     return true;
 }
 
-bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property) {
+bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property, const std::string& typeName) {
     if (!_hasValidActiveBindingContext(property)) {
         qWarning() << "[PropertyEditor] createModelObjectForProperty aborted due to invalid binding context";
         return false;
@@ -1899,7 +2394,10 @@ bool ObjectPropertyBrowser::_createModelObjectForProperty(QtProperty* property) 
     bool created = referencedDataDefinition != nullptr;
     if (referencedDataDefinition == nullptr) {
         try {
-            created = binding.control->createObjectInstance(_defaultModelObjectName(binding.descriptor).toStdString());
+            const std::string defaultName = _defaultModelObjectName(binding.descriptor, typeName).toStdString();
+            created = typeName.empty()
+                          ? binding.control->createObjectInstance(defaultName)
+                          : binding.control->createObjectInstanceOfType(typeName, defaultName);
         } catch (...) {
             created = false;
         }
@@ -1988,13 +2486,19 @@ bool ObjectPropertyBrowser::_selectModelObjectForProperty(QtProperty* property) 
 
     GraphicalModelDataDefinition* graphicalDataDefinition =
         scene->findGraphicalModelDataDefinition(referencedDataDefinition);
-    if (graphicalDataDefinition == nullptr) {
-        return false;
+    if (graphicalDataDefinition != nullptr) {
+        scene->clearSelection();
+        graphicalDataDefinition->setSelected(true);
+        graphicalDataDefinition->setFocus();
     }
-
-    scene->clearSelection();
-    graphicalDataDefinition->setSelected(true);
-    graphicalDataDefinition->setFocus();
+    setActiveObject(nullptr,
+                    referencedDataDefinition,
+                    _graphicallyRepresentedModelObjects,
+                    _editableModelObjects,
+                    _propertyEditor,
+                    _propertyList,
+                    _propertyEditorUI,
+                    _propertyBox);
     return true;
 }
 
@@ -2021,6 +2525,7 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
     if (referencedDataDefinition == nullptr) {
         return false;
     }
+    Model* model = _modelObject != nullptr ? _modelObject->getParentModel() : nullptr;
 
     std::string errorMessage;
     const bool ok = GenesysPropertyIntrospection::setValue(
@@ -2038,6 +2543,9 @@ bool ObjectPropertyBrowser::_removeModelObjectReferenceForProperty(QtProperty* p
     }
 
     _materializeAffectedModelDataDefinitions();
+    if (model != nullptr) {
+        model->check();
+    }
     _synchronizeGraphicalModelDataDefinitionsNow();
     _notifyModelChangeApplied();
     return true;
@@ -2140,34 +2648,25 @@ bool ObjectPropertyBrowser::_applyModelObjectReferenceSelection(QtProperty* prop
         return false;
     }
 
-    const QStringList choices = _enumNames.value(property);
-    if (value < 0 || value >= choices.size()) {
+    const std::vector<ModelObjectAction> actions = _modelObjectActions.value(property);
+    if (value < 0 || value >= static_cast<int>(actions.size())) {
         return false;
     }
 
-    const Binding binding = it.value();
-    ModelDataDefinition* referencedDataDefinition = _referencedModelDataDefinition(binding);
-    const bool objectExists = referencedDataDefinition != nullptr
-                              && _isRegisteredModelDataDefinition(referencedDataDefinition);
-
-    if (objectExists) {
-        if (value == 0) {
+    const ModelObjectAction& action = actions[static_cast<std::size_t>(value)];
+    switch (action.kind) {
+        case ModelObjectAction::Kind::None:
             return true;
-        }
-        if (value == 1) {
+        case ModelObjectAction::Kind::SetReference:
+            return _setModelObjectReferenceForProperty(property, QString::fromStdString(action.objectValue));
+        case ModelObjectAction::Kind::CreateNew:
+            return _createModelObjectForProperty(property, action.typeName);
+        case ModelObjectAction::Kind::SelectAndEdit:
             return _selectModelObjectForProperty(property);
-        }
-        if (value == 2) {
+        case ModelObjectAction::Kind::RemoveReference:
             return _removeModelObjectReferenceForProperty(property);
-        }
-        return false;
     }
-
-    if (value == choices.size() - 1) {
-        return _createModelObjectForProperty(property);
-    }
-
-    return _setModelObjectReferenceForProperty(property, choices.at(value));
+    return false;
 }
 
 
@@ -2179,7 +2678,7 @@ bool ObjectPropertyBrowser::_requiresCommitConfirmation(const Binding& binding) 
         return false;
     }
 
-    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor) {
+    if (binding.descriptor.supportsInlineExpansion || _hasSpecializedEditor(binding.descriptor)) {
         return false;
     }
 
@@ -2222,7 +2721,7 @@ bool ObjectPropertyBrowser::_applyVariantChange(QtProperty* property, const QVar
         return false;
     }
 
-    if (binding.descriptor.supportsInlineExpansion || binding.descriptor.supportsListEditor
+    if (binding.descriptor.supportsInlineExpansion || _hasSpecializedEditor(binding.descriptor)
         || binding.descriptor.kind == GenesysPropertyKind::Enum
         || binding.descriptor.kind == GenesysPropertyKind::TimeUnit) {
         return false;
@@ -2301,7 +2800,7 @@ bool ObjectPropertyBrowser::_applyGraphicsEnumChange(QtProperty* property, int v
     return true;
 }
 
-void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
+void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property, const QVariant& committedValue) {
     if (property == nullptr) {
         return;
     }
@@ -2321,7 +2820,7 @@ void ObjectPropertyBrowser::onVariantEditorCommitted(QtProperty* property) {
         return;
     }
 
-    const QVariant pendingValue = _variantManager->value(property);
+    const QVariant pendingValue = committedValue.isValid() ? committedValue : _variantManager->value(property);
     _pendingCommittedProperties.insert(property);
     _pendingCommittedValues.insert(property, pendingValue);
     qInfo() << "[PropertyEditor] editor commit received for" << property->propertyName();
@@ -2450,6 +2949,31 @@ void ObjectPropertyBrowser::enumValueChanged(QtProperty *property, int value) {
         return;
     }
 
+    if (binding.isMultilineTextAction) {
+        if (_isHandlingMultilineTextAction) {
+            qInfo() << "[PropertyEditor] enumValueChanged ignored because multiline text action is resetting";
+            return;
+        }
+
+        if (value == 0) {
+            qInfo() << "[PropertyEditor] enumValueChanged left multiline text property on the current value";
+            return;
+        }
+        if (value != 1) {
+            return;
+        }
+
+        _isHandlingMultilineTextAction = true;
+        _enumManager->setValue(property, 0);
+        _isHandlingMultilineTextAction = false;
+
+        if (!_openMultilineTextDialogEditor(binding)) {
+            _scheduleDeferredRebuild();
+        }
+        qInfo() << "[PropertyEditor] enumValueChanged exit";
+        return;
+    }
+
     if (binding.control == nullptr) {
         qWarning() << "[PropertyEditor] enumValueChanged ignored due to null binding control";
         return;
@@ -2568,8 +3092,8 @@ void ObjectPropertyBrowser::contextMenuEvent(QContextMenuEvent* event) {
     QMenu menu(this);
     QAction* editAction = nullptr;
     QAction* createAction = nullptr;
-    if (binding.descriptor.supportsListEditor) {
-        editAction = menu.addAction("Edit list...");
+    if (_hasSpecializedEditor(binding.descriptor)) {
+        editAction = menu.addAction(_specializedEditorActionText(binding.descriptor));
     }
     if (binding.descriptor.supportsObjectCreation && !binding.control->hasObjectInstance()) {
         createAction = menu.addAction("Create object");

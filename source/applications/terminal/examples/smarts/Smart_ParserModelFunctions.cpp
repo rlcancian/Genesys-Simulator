@@ -19,10 +19,10 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
 #include "plugins/components/InputOutput/Write.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/data/DiscreteProcessing/Set.h"
 #include "plugins/data/DiscreteProcessing/Formula.h"
 
@@ -123,4 +123,3 @@ int Smart_ParserModelFunctions::main(int argc, char** argv) {
 	 */
 
 };
-

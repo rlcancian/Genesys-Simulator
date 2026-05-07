@@ -21,27 +21,39 @@
 #include "kernel/simulator/Plugin.h"
 #include "plugins/PluginConnectorDummyImpl1.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "../../plugins/data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
-#include "plugins/data/DiscreteProcessing/Formula.h"
+#include "plugins/data/Logic/Formula.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 #include "plugins/data/MaterialHandling/Sequence.h"
 #include "../../plugins/data/Synchronization/SignalData.h"
 #include "../../plugins/data/MaterialHandling/Station.h"
-#include "plugins/data/DiscreteProcessing/Set.h"
-#include "plugins/data/DiscreteProcessing/Label.h"
+#include "../../plugins/data/Logic/Set.h"
+#include "plugins/data/Logic/Label.h"
 #include "../../plugins/data/MaterialHandling/Storage.h"
 #include "../../plugins/data/InputOutput/File.h"
 #include "../../plugins/data/ExternalIntegration/CppCompiler.h"
-#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
+#include "../../plugins/data/ExternalIntegration/SPICERunner.h"
 #include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
+#include "plugins/data/BiochemicalSimulation/GroProgram.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuit.h"
+#include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
+#include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
+#include "plugins/data/BiochemicalSimulation/MetabolicNetwork.h"
+#include "plugins/components/BiochemicalSimulation/BioSimulate.h"
+#include "plugins/components/BiochemicalSimulation/BioSteadyState.h"
+#include "plugins/components/BiochemicalSimulation/BioRunnerCommand.h"
+#include "plugins/components/BiochemicalSimulation/GeneticExpressionStep.h"
+#include "plugins/components/BiochemicalSimulation/GeneticCircuitSimulate.h"
+#include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
-#include "plugins/data/DiscreteProcessing/AssignmentItem.h"
+#include "../../plugins/data/Logic/AssignmentItem.h"
 #include "plugins/data/Template/DummyElement.h"
 #include "kernel/util/Util.h"
 #include "tools/MassActionOdeSystem.h"
@@ -53,16 +65,17 @@
 #undef protected
 #undef private
 #include "plugins/components/DiscreteProcessing/Delay.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "../../plugins/components/Logic/Dispose.h"
 #include "plugins/components/Grouping/Batch.h"
 #include "plugins/components/Grouping/Separate.h"
 #include "plugins/components/Synchronization/Match.h"
 #include "plugins/components/Decisions/Search.h"
 #include "plugins/components/Decisions/Remove.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "../../plugins/components/Logic/Assign.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
+#include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
@@ -71,7 +84,7 @@
 #undef private
 #define private public
 #define protected public
-#include "plugins/components/DiscreteProcessing/Create.h"
+#include "plugins/components/Logic/Create.h"
 #undef protected
 #undef private
 #define private public
@@ -297,6 +310,10 @@ public:
 class AttributeLifecycleProbe : public Attribute {
 public:
     AttributeLifecycleProbe(Model* model, const std::string& name = "") : Attribute(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
 
     void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
         _saveInstance(fields, saveDefaultValues);
@@ -525,6 +542,23 @@ public:
 class PickStationProbe : public PickStation {
 public:
     PickStationProbe(Model* model, const std::string& name = "") : PickStation(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class MarkovChainProbe : public MarkovChain {
+public:
+    MarkovChainProbe(Model* model, const std::string& name = "") : MarkovChain(model, name) {}
 
     bool CheckProbe(std::string& errorMessage) {
         return _check(errorMessage);
@@ -976,6 +1010,217 @@ public:
 
     void InitBetweenReplicationsProbe() {
         _initBetweenReplications();
+    }
+};
+
+class GeneticCircuitPartProbe : public GeneticCircuitPart {
+public:
+    GeneticCircuitPartProbe(Model* model, const std::string& name = "") : GeneticCircuitPart(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class GeneticCircuitProbe : public GeneticCircuit {
+public:
+    GeneticCircuitProbe(Model* model, const std::string& name = "") : GeneticCircuit(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class GeneticRegulationProbe : public GeneticRegulation {
+public:
+    GeneticRegulationProbe(Model* model, const std::string& name = "") : GeneticRegulation(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class MetabolicReactionProbe : public MetabolicReaction {
+public:
+    MetabolicReactionProbe(Model* model, const std::string& name = "") : MetabolicReaction(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class MetabolicNetworkProbe : public MetabolicNetwork {
+public:
+    MetabolicNetworkProbe(Model* model, const std::string& name = "") : MetabolicNetwork(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+};
+
+class BioSimulateProbe : public BioSimulate {
+public:
+    BioSimulateProbe(Model* model, const std::string& name = "") : BioSimulate(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class BioSteadyStateProbe : public BioSteadyState {
+public:
+    BioSteadyStateProbe(Model* model, const std::string& name = "") : BioSteadyState(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class BioRunnerCommandProbe : public BioRunnerCommand {
+public:
+    BioRunnerCommandProbe(Model* model, const std::string& name = "") : BioRunnerCommand(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class GeneticExpressionStepProbe : public GeneticExpressionStep {
+public:
+    GeneticExpressionStepProbe(Model* model, const std::string& name = "") : GeneticExpressionStep(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class GeneticCircuitSimulateProbe : public GeneticCircuitSimulate {
+public:
+    GeneticCircuitSimulateProbe(Model* model, const std::string& name = "") : GeneticCircuitSimulate(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+};
+
+class MetabolicFluxBalanceProbe : public MetabolicFluxBalance {
+public:
+    MetabolicFluxBalanceProbe(Model* model, const std::string& name = "") : MetabolicFluxBalance(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
     }
 };
 
@@ -1502,11 +1747,11 @@ TEST(SimulatorRuntimeTest, AttributeSupportsSparseInitialValuesAndPersistence) {
     source.insertDimentionSize(3u);
     source.insertDimentionSize(5u);
     source.setInitialValue(1.5, "");
-    source.setInitialValue(8.25, "1,2,3,4");
+    source.setInitialValue(8.25, "1,2,4");
 
     EXPECT_DOUBLE_EQ(source.getInitialValue(""), 1.5);
-    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,3,4"), 8.25);
-    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,3,5"), 0.0);
+    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,4"), 8.25);
+    EXPECT_DOUBLE_EQ(source.getInitialValue("1,2,5"), 0.0);
 
     FakeModelPersistenceRuntime persistence;
     PersistenceRecord fields(persistence);
@@ -1518,8 +1763,84 @@ TEST(SimulatorRuntimeTest, AttributeSupportsSparseInitialValuesAndPersistence) {
     ASSERT_NE(loaded.getDimensionSizes(), nullptr);
     EXPECT_EQ(loaded.getDimensionSizes()->size(), 3u);
     EXPECT_DOUBLE_EQ(loaded.getInitialValue(""), 1.5);
-    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,4"), 8.25);
-    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,3,5"), 0.0);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,4"), 8.25);
+    EXPECT_DOUBLE_EQ(loaded.getInitialValue("1,2,5"), 0.0);
+}
+
+TEST(SimulatorRuntimeTest, AttributeInitialValueTextParsesMatrices) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Attribute attribute(model, "AttributeMatrix");
+    attribute.setInitialValuesText("[ [0.25, 0.75], [0.5, 0.5] ]");
+
+    std::list<unsigned int>* dimensions = attribute.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("0,0"), 0.25);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("1,1"), 0.5);
+    EXPECT_EQ(attribute.getInitialValuesText(), "[[0.25,0.75],[0.5,0.5]]");
+}
+
+TEST(SimulatorRuntimeTest, AttributeInitialValueTextParsesOctaveMatrixSyntax) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Attribute attribute(model, "AttributeOctaveMatrix");
+    attribute.setInitialValuesText("[0.25 0.75; 0.5 0.5]");
+
+    std::list<unsigned int>* dimensions = attribute.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("0,0"), 0.25);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("0,1"), 0.75);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("1,0"), 0.5);
+    EXPECT_DOUBLE_EQ(attribute.getInitialValue("1,1"), 0.5);
+}
+
+TEST(SimulatorRuntimeTest, AttributeInitialValueTextRejectsInvalidTextWithoutThrowing) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    AttributeLifecycleProbe attribute(model, "AttributeInvalidInitialValue");
+    std::string errorMessage;
+
+    EXPECT_NO_THROW(attribute.setInitialValuesText("[0.1 0.2 0.3"));
+    EXPECT_FALSE(attribute.isInitialValuesTextValid());
+    EXPECT_FALSE(attribute.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("Unterminated"), std::string::npos);
+    EXPECT_EQ(attribute.getInitialValuesText(), "[0.1 0.2 0.3");
+}
+
+TEST(SimulatorRuntimeTest, AttributeInitialValuePropertyUsesMultiLineTextEditorHint) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Attribute attribute(model, "AttributeMatrixEditorHint");
+
+    SimulationControl* initialValueControl = nullptr;
+    for (SimulationControl* control : *model->getControls()->list()) {
+        if (control == nullptr) {
+            continue;
+        }
+        if (control->getClassname() == Util::TypeOf<Attribute>()
+            && control->getElementName() == attribute.getName()
+            && control->getName() == "InitialValue") {
+            initialValueControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(initialValueControl, nullptr);
+    EXPECT_EQ(initialValueControl->preferredEditorHint(), SimulationControlEditorHint::MultiLineText);
 }
 
 TEST(SimulatorRuntimeTest, ModelDataDefinitionAccessorsExposeStableStateAndMetadata) {
@@ -6025,6 +6346,416 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
     EXPECT_EQ(errorMessage, "");
 }
 
+TEST(SimulatorRuntimeTest, BioSimulateComponentRunsAssignedBioNetwork) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpecies a(model, "A");
+    a.setInitialAmount(10.0);
+    a.setAmount(10.0);
+    BioSpecies b(model, "B");
+    b.setInitialAmount(0.0);
+    b.setAmount(0.0);
+
+    BioReaction reaction(model, "A_to_B");
+    reaction.addReactant("A", 1.0);
+    reaction.addProduct("B", 1.0);
+    reaction.setRateConstant(0.2);
+
+    BioNetwork network(model, "Net");
+    network.addSpecies("A");
+    network.addSpecies("B");
+    network.addReaction("A_to_B");
+    network.setStartTime(0.0);
+    network.setStopTime(10.0);
+    network.setStepSize(0.1);
+
+    BioSimulateProbe component(model, "BioSimulateComp");
+    component.setBioNetwork(&network);
+    component.setUseNetworkTimeWindow(true);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_LT(a.getAmount(), 10.0);
+    EXPECT_GT(b.getAmount(), 0.0);
+}
+
+TEST(SimulatorRuntimeTest, BioSteadyStateComponentStoresLastCheckOutput) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpecies a(model, "A");
+    a.setInitialAmount(5.0);
+    a.setAmount(5.0);
+
+    BioReaction noop(model, "Noop");
+    noop.addReactant("A", 1.0);
+    noop.addProduct("A", 1.0);
+    noop.setRateConstant(0.0);
+
+    BioNetwork network(model, "SteadyNet");
+    network.addSpecies("A");
+    network.addReaction("Noop");
+    network.setStartTime(0.0);
+    network.setStopTime(1.0);
+    network.setStepSize(0.1);
+
+    BioSteadyStateProbe component(model, "BioSteadyComp");
+    component.setBioNetwork(&network);
+    component.setTolerance(1e-8);
+    component.setRunSimulationBeforeCheck(true);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSteady());
+    EXPECT_NEAR(component.getLastMaxAbsoluteDerivative(), 0.0, 1e-12);
+}
+
+TEST(SimulatorRuntimeTest, BioRunnerCommandComponentExecutesRunnerCommand) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSimulatorRunnerProbe runner(model, "Runner");
+    runner.setModelSourceType("SBMLString");
+    runner.setModelSource("<sbml><model id=\"m\"/></sbml>");
+
+    BioRunnerCommandProbe component(model, "BioRunnerComp");
+    component.setRunner(&runner);
+    component.setCommand("validateModel()");
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_EQ(component.getLastStatus(), "Completed");
+    EXPECT_NE(component.getLastMessage().find("\"resultType\":\"stub_validation\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, GeneticExpressionStepComponentUpdatesProductSpecies) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe regulator(model, "LacI");
+    regulator.setAmount(0.0);
+    BioSpeciesProbe product(model, "GFP");
+    product.setAmount(0.0);
+
+    GeneticCircuitPartProbe promoter(model, "pLac");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+    promoter.setCopyNumber(2.0);
+    promoter.setBasalExpressionRate(0.5);
+    promoter.setDegradationRate(0.0);
+
+    GeneticRegulationProbe regulation(model, "LacI_represses_pLac");
+    regulation.setRegulatorSpeciesName("LacI");
+    regulation.setTargetPartName("pLac");
+    regulation.setRegulationType("Repression");
+    regulation.setHillCoefficient(2.0);
+    regulation.setDissociationConstant(1.0);
+    regulation.setMaxFoldChange(1.0);
+    regulation.setLeakiness(0.0);
+
+    GeneticCircuitProbe circuit(model, "Reporter");
+    circuit.addPart("pLac");
+    circuit.addRegulation("LacI_represses_pLac");
+
+    GeneticExpressionStepProbe component(model, "ExpressionStep");
+    component.setGeneticCircuit(&circuit);
+    component.setTimeStep(1.0);
+    component.setApplyRegulation(true);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_DOUBLE_EQ(component.getLastTotalExpression(), 1.0);
+    EXPECT_DOUBLE_EQ(product.getAmount(), 1.0);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentEvaluatesObjectiveReaction) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe intermediate(model, "B");
+
+    MetabolicReactionProbe source(model, "Source");
+    source.addProduct("B", 1.0);
+    source.setLowerBound(0.0);
+    source.setUpperBound(42.0);
+
+    MetabolicReactionProbe growth(model, "Growth");
+    growth.addReactant("B", 1.0);
+    growth.setLowerBound(0.0);
+    growth.setUpperBound(42.0);
+
+    MetabolicNetworkProbe network(model, "CellNetwork");
+    network.addReaction("Source");
+    network.addReaction("Growth");
+    network.setObjectiveReactionName("Growth");
+    network.setObjectiveSense("Maximize");
+
+    MetabolicFluxBalanceProbe component(model, "FluxBalance");
+    component.setMetabolicNetwork(&network);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_DOUBLE_EQ(component.getLastObjectiveValue(), 42.0);
+    EXPECT_NE(component.getLastMessage().find("\"Source\":42"), std::string::npos);
+    EXPECT_NE(component.getLastMessage().find("\"Growth\":42"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentRespectsSteadyStateConstraints) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe intermediate(model, "B");
+
+    MetabolicReactionProbe uptake(model, "Uptake");
+    uptake.addProduct("B", 1.0);
+    uptake.setLowerBound(0.0);
+    uptake.setUpperBound(5.0);
+
+    MetabolicReactionProbe drain(model, "Drain");
+    drain.addReactant("B", 1.0);
+    drain.setLowerBound(0.0);
+    drain.setUpperBound(100.0);
+
+    MetabolicNetworkProbe network(model, "BalancedNetwork");
+    network.addReaction("Uptake");
+    network.addReaction("Drain");
+    network.setObjectiveReactionName("Drain");
+    network.setObjectiveSense("Maximize");
+
+    MetabolicFluxBalanceProbe component(model, "FluxBalanceConstrained");
+    component.setMetabolicNetwork(&network);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_DOUBLE_EQ(component.getLastObjectiveValue(), 5.0);
+    EXPECT_NE(component.getLastMessage().find("\"Uptake\":5"), std::string::npos);
+    EXPECT_NE(component.getLastMessage().find("\"Drain\":5"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitSimulateComponentRunsMultipleExpressionSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe product(model, "GFP");
+    product.setAmount(0.0);
+
+    GeneticCircuitPartProbe promoter(model, "pConst");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+    promoter.setCopyNumber(1.0);
+    promoter.setBasalExpressionRate(2.0);
+    promoter.setDegradationRate(0.0);
+
+    GeneticCircuitProbe circuit(model, "ConstitutiveReporter");
+    circuit.addPart("pConst");
+
+    GeneticCircuitSimulateProbe component(model, "CircuitSimulate");
+    component.setGeneticCircuit(&circuit);
+    component.setStartTime(0.0);
+    component.setStopTime(2.0);
+    component.setStepSize(1.0);
+
+    std::string checkError;
+    ASSERT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+    component.DispatchEventProbe(nullptr);
+    EXPECT_TRUE(component.getLastSucceeded());
+    EXPECT_EQ(component.getLastSampleCount(), 3u);
+    EXPECT_DOUBLE_EQ(component.getLastTotalExpression(), 6.0);
+    EXPECT_DOUBLE_EQ(product.getAmount(), 6.0);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerImportSBMLCreatesNativeBioDefinitions) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    const std::string sbml = R"(<?xml version="1.0" encoding="UTF-8"?>
+<sbml level="3" version="2">
+  <model id="M1" name="ImportedNetwork" genesysStartTime="0" genesysStopTime="12" genesysStepSize="0.5">
+    <listOfSpecies>
+      <species id="S1" initialAmount="10" />
+      <species id="S2" initialAmount="0" />
+    </listOfSpecies>
+    <listOfParameters>
+      <parameter id="k1" value="0.2" />
+    </listOfParameters>
+    <listOfReactions>
+      <reaction id="R1" reversible="false" genesysRateConstantParameter="k1">
+        <listOfReactants>
+          <speciesReference species="S1" stoichiometry="1" />
+        </listOfReactants>
+        <listOfProducts>
+          <speciesReference species="S2" stoichiometry="1" />
+        </listOfProducts>
+        <kineticLaw formula="k1 * S1">
+          <math>k1 * S1</math>
+        </kineticLaw>
+      </reaction>
+    </listOfReactions>
+  </model>
+</sbml>)";
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorImportSBML");
+    runner.setModelSourceType("SBMLString");
+    runner.setModelSource(sbml);
+    runner.setCommand("importSBML(\"SBMLNet\")");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"sbml_import\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"networkName\":\"SBMLNet\""), std::string::npos);
+
+    auto* network = dynamic_cast<BioNetwork*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioNetwork>(), "SBMLNet"));
+    ASSERT_NE(network, nullptr);
+    EXPECT_DOUBLE_EQ(network->getStartTime(), 0.0);
+    EXPECT_DOUBLE_EQ(network->getStopTime(), 12.0);
+    EXPECT_DOUBLE_EQ(network->getStepSize(), 0.5);
+    EXPECT_EQ(network->getSpeciesNames().size(), 2u);
+    EXPECT_EQ(network->getReactionNames().size(), 1u);
+
+    auto* importedS1 = dynamic_cast<BioSpecies*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "S1"));
+    auto* importedK1 = dynamic_cast<BioParameter*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioParameter>(), "k1"));
+    auto* importedR1 = dynamic_cast<BioReaction*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioReaction>(), "R1"));
+    ASSERT_NE(importedS1, nullptr);
+    ASSERT_NE(importedK1, nullptr);
+    ASSERT_NE(importedR1, nullptr);
+    EXPECT_DOUBLE_EQ(importedS1->getInitialAmount(), 10.0);
+    EXPECT_DOUBLE_EQ(importedK1->getValue(), 0.2);
+    EXPECT_EQ(importedR1->getRateConstantParameterName(), "k1");
+    EXPECT_EQ(importedR1->getKineticLawExpression(), "k1 * S1");
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerExportSBMLReturnsSBMLStringPayload) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* a = new BioSpecies(model, "A");
+    a->setInitialAmount(5.0);
+    a->setAmount(5.0);
+
+    auto* b = new BioSpecies(model, "B");
+    b->setInitialAmount(0.0);
+    b->setAmount(0.0);
+
+    auto* k1 = new BioParameter(model, "k1");
+    k1->setValue(0.15);
+
+    auto* reaction = new BioReaction(model, "A_to_B");
+    reaction->addReactant("A", 1.0);
+    reaction->addProduct("B", 1.0);
+    reaction->setRateConstantParameterName("k1");
+
+    auto* network = new BioNetwork(model, "RoundTripNet");
+    network->setStartTime(0.0);
+    network->setStopTime(8.0);
+    network->setStepSize(0.2);
+    network->addSpecies("A");
+    network->addSpecies("B");
+    network->addReaction("A_to_B");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorExportSBML");
+    runner.setModelSourceType("SBMLString");
+    runner.setModelSource("");
+    runner.setCommand("exportSBML(\"RoundTripNet\")");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"sbml_export\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"networkName\":\"RoundTripNet\""), std::string::npos);
+    EXPECT_NE(runner.getModelSource().find("<sbml"), std::string::npos);
+    EXPECT_NE(runner.getModelSource().find("genesysStepSize=\"0.2\""), std::string::npos);
+    EXPECT_NE(runner.getModelSource().find("<reaction id=\"A_to_B\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerExportThenImportSBMLRoundTripsCoreBioCounts) {
+    Simulator sourceSimulator;
+    Model* sourceModel = sourceSimulator.getModelManager()->newModel();
+    ASSERT_NE(sourceModel, nullptr);
+
+    auto* s1 = new BioSpecies(sourceModel, "S1");
+    s1->setInitialAmount(7.0);
+    s1->setAmount(7.0);
+
+    auto* s2 = new BioSpecies(sourceModel, "S2");
+    s2->setInitialAmount(0.0);
+    s2->setAmount(0.0);
+
+    auto* kp = new BioParameter(sourceModel, "k_decay");
+    kp->setValue(0.07);
+
+    auto* decay = new BioReaction(sourceModel, "Decay");
+    decay->addReactant("S1", 1.0);
+    decay->addProduct("S2", 1.0);
+    decay->setRateConstantParameterName("k_decay");
+
+    auto* sourceNetwork = new BioNetwork(sourceModel, "ExportNet");
+    sourceNetwork->addSpecies("S1");
+    sourceNetwork->addSpecies("S2");
+    sourceNetwork->addReaction("Decay");
+
+    BioSimulatorRunnerProbe exporter(sourceModel, "BioSimulatorExporter");
+    exporter.setModelSourceType("SBMLString");
+    exporter.setModelSource("");
+    exporter.setCommand("exportSBML(\"ExportNet\")");
+
+    std::string exportError;
+    ASSERT_TRUE(exporter.executeCommand(exportError)) << exportError;
+    const std::string exportedSbml = exporter.getModelSource();
+    ASSERT_FALSE(exportedSbml.empty());
+
+    Simulator targetSimulator;
+    Model* targetModel = targetSimulator.getModelManager()->newModel();
+    ASSERT_NE(targetModel, nullptr);
+
+    BioSimulatorRunnerProbe importer(targetModel, "BioSimulatorImporter");
+    importer.setModelSourceType("SBMLString");
+    importer.setModelSource(exportedSbml);
+    importer.setCommand("importSBML(\"ImportedFromExport\")");
+
+    std::string importError;
+    EXPECT_TRUE(importer.executeCommand(importError)) << importError;
+    EXPECT_EQ(importer.getLastStatus(), "Completed");
+
+    auto* importedNetwork = dynamic_cast<BioNetwork*>(
+        targetModel->getDataManager()->getDataDefinition(Util::TypeOf<BioNetwork>(), "ImportedFromExport"));
+    ASSERT_NE(importedNetwork, nullptr);
+    EXPECT_EQ(importedNetwork->getSpeciesNames().size(), 2u);
+    EXPECT_EQ(importedNetwork->getReactionNames().size(), 1u);
+    EXPECT_NE(targetModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "S1"), nullptr);
+    EXPECT_NE(targetModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "S2"), nullptr);
+    EXPECT_NE(targetModel->getDataManager()->getDataDefinition(Util::TypeOf<BioReaction>(), "Decay"), nullptr);
+}
+
 TEST(SimulatorRuntimeTest, MassActionOdeSystemEvaluatesIrreversibleReaction) {
     MassActionOdeSystem system(
             {
@@ -6902,6 +7633,236 @@ TEST(SimulatorRuntimeTest, BioNetworkRejectsMissingSpeciesReferences) {
     EXPECT_EQ(network.getLastStatus(), "Failed");
 }
 
+TEST(SimulatorRuntimeTest, GeneticCircuitPartPersistenceAndValidation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe gfp(model, "GFP");
+
+    GeneticCircuitPartProbe source(model, "pLac");
+    source.setPartType("Promoter");
+    source.setSequence("TTTACACTTTATGCTTCCGGCTCGTATAATGTGTGGA");
+    source.setProductSpeciesName("GFP");
+    source.setCopyNumber(15.0);
+    source.setBasalExpressionRate(0.05);
+    source.setDegradationRate(0.01);
+
+    std::string errorMessage;
+    ASSERT_TRUE(source.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    GeneticCircuitPartProbe loaded(model, "loadedPart");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getName(), "pLac");
+    EXPECT_EQ(loaded.getPartType(), "Promoter");
+    EXPECT_EQ(loaded.getProductSpeciesName(), "GFP");
+    EXPECT_DOUBLE_EQ(loaded.getCopyNumber(), 15.0);
+    EXPECT_DOUBLE_EQ(loaded.getBasalExpressionRate(), 0.05);
+}
+
+TEST(SimulatorRuntimeTest, GeneticRegulationRejectsMissingReferencesAndPersists) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe lacI(model, "LacI");
+    GeneticCircuitPartProbe target(model, "pTet");
+    target.setPartType("Promoter");
+
+    GeneticRegulationProbe regulation(model, "LacI_represses_pTet");
+    regulation.setRegulatorSpeciesName("LacI");
+    regulation.setTargetPartName("pTet");
+    regulation.setRegulationType("Repression");
+    regulation.setHillCoefficient(2.0);
+    regulation.setDissociationConstant(12.5);
+    regulation.setMaxFoldChange(25.0);
+    regulation.setLeakiness(0.05);
+
+    std::string errorMessage;
+    ASSERT_TRUE(regulation.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    regulation.SaveInstanceProbe(&fields, true);
+
+    GeneticRegulationProbe loaded(model, "loadedRegulation");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getName(), "LacI_represses_pTet");
+    EXPECT_EQ(loaded.getRegulationType(), "Repression");
+    EXPECT_DOUBLE_EQ(loaded.getHillCoefficient(), 2.0);
+
+    GeneticRegulationProbe invalid(model, "InvalidRegulation");
+    invalid.setRegulatorSpeciesName("MissingTF");
+    invalid.setTargetPartName("MissingPart");
+    invalid.setRegulationType("Unsupported");
+    invalid.setHillCoefficient(0.0);
+    invalid.setDissociationConstant(0.0);
+    invalid.setLeakiness(2.0);
+
+    errorMessage.clear();
+    EXPECT_FALSE(invalid.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingTF"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingPart"), std::string::npos);
+    EXPECT_NE(errorMessage.find("regulationType"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicReactionValidatesBoundsAndPersistence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe glucose(model, "Glucose");
+    BioSpeciesProbe pyruvate(model, "Pyruvate");
+
+    MetabolicReactionProbe source(model, "GlycolysisStep");
+    source.addReactant("Glucose", 1.0);
+    source.addProduct("Pyruvate", 2.0);
+    source.setLowerBound(0.0);
+    source.setUpperBound(1000.0);
+    source.setObjectiveCoefficient(0.0);
+    source.setGeneRule("geneA and geneB");
+
+    std::string errorMessage;
+    ASSERT_TRUE(source.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    MetabolicReactionProbe loaded(model, "loadedMetabolicReaction");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getReactants().size(), 1u);
+    ASSERT_EQ(loaded.getProducts().size(), 1u);
+    EXPECT_EQ(loaded.getReactants()[0].speciesName, "Glucose");
+    EXPECT_EQ(loaded.getProducts()[0].speciesName, "Pyruvate");
+    EXPECT_DOUBLE_EQ(loaded.getProducts()[0].stoichiometry, 2.0);
+    EXPECT_DOUBLE_EQ(loaded.getUpperBound(), 1000.0);
+    EXPECT_EQ(loaded.getGeneRule(), "geneA and geneB");
+
+    MetabolicReactionProbe invalid(model, "InvalidMetabolicReaction");
+    invalid.addReactant("MissingMetabolite", 1.0);
+    invalid.setLowerBound(10.0);
+    invalid.setUpperBound(5.0);
+    invalid.setReversible(false);
+
+    errorMessage.clear();
+    EXPECT_FALSE(invalid.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingMetabolite"), std::string::npos);
+    EXPECT_NE(errorMessage.find("upperBound >= lowerBound"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitValidatesMembershipAndPersistence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe gfp(model, "GFP");
+    BioSpeciesProbe lacI(model, "LacI");
+
+    GeneticCircuitPartProbe promoter(model, "pLac");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+
+    GeneticCircuitPartProbe cds(model, "lacI_cds");
+    cds.setPartType("CDS");
+    cds.setProductSpeciesName("LacI");
+
+    GeneticRegulationProbe regulation(model, "LacI_represses_pLac");
+    regulation.setRegulatorSpeciesName("LacI");
+    regulation.setTargetPartName("pLac");
+    regulation.setRegulationType("Repression");
+
+    GeneticCircuitProbe source(model, "ToggleHalf");
+    source.addPart("pLac");
+    source.addPart("lacI_cds");
+    source.addRegulation("LacI_represses_pLac");
+    source.setHostOrganism("E.coli");
+    source.setCompartment("cytosol");
+
+    std::string errorMessage;
+    ASSERT_TRUE(source.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    GeneticCircuitProbe loaded(model, "LoadedCircuit");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getPartNames().size(), 2u);
+    ASSERT_EQ(loaded.getRegulationNames().size(), 1u);
+    EXPECT_EQ(loaded.getPartNames()[0], "pLac");
+    EXPECT_EQ(loaded.getRegulationNames()[0], "LacI_represses_pLac");
+    EXPECT_EQ(loaded.getHostOrganism(), "E.coli");
+    EXPECT_EQ(loaded.getCompartment(), "cytosol");
+
+    GeneticCircuitProbe invalid(model, "InvalidCircuit");
+    invalid.addPart("MissingPart");
+    invalid.addRegulation("MissingRegulation");
+    errorMessage.clear();
+    EXPECT_FALSE(invalid.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingPart"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingRegulation"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicNetworkValidatesMembershipAndPersistence) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe glucose(model, "Glucose");
+    BioSpeciesProbe oxygen(model, "Oxygen");
+    BioSpeciesProbe biomass(model, "Biomass");
+
+    MetabolicReactionProbe glycolysis(model, "Glycolysis");
+    glycolysis.addReactant("Glucose", 1.0);
+    glycolysis.addProduct("Biomass", 1.0);
+
+    MetabolicReactionProbe respiration(model, "Respiration");
+    respiration.addReactant("Oxygen", 1.0);
+    respiration.addProduct("Biomass", 1.0);
+
+    MetabolicNetworkProbe source(model, "CoreMetabolism");
+    source.addReaction("Glycolysis");
+    source.addReaction("Respiration");
+    source.addExchangeSpecies("Glucose");
+    source.addExchangeSpecies("Oxygen");
+    source.setObjectiveReactionName("Glycolysis");
+    source.setObjectiveSense("Maximize");
+    source.setCompartment("cytosol");
+
+    std::string errorMessage;
+    ASSERT_TRUE(source.CheckProbe(errorMessage)) << errorMessage;
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    MetabolicNetworkProbe loaded(model, "LoadedMetabolicNetwork");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    ASSERT_EQ(loaded.getReactionNames().size(), 2u);
+    ASSERT_EQ(loaded.getExchangeSpeciesNames().size(), 2u);
+    EXPECT_EQ(loaded.getReactionNames()[0], "Glycolysis");
+    EXPECT_EQ(loaded.getExchangeSpeciesNames()[1], "Oxygen");
+    EXPECT_EQ(loaded.getObjectiveReactionName(), "Glycolysis");
+    EXPECT_EQ(loaded.getObjectiveSense(), "Maximize");
+
+    MetabolicNetworkProbe invalid(model, "InvalidMetabolicNetwork");
+    invalid.addReaction("MissingReaction");
+    invalid.addExchangeSpecies("MissingSpecies");
+    invalid.setObjectiveReactionName("MissingObjective");
+    invalid.setObjectiveSense("Unsupported");
+    errorMessage.clear();
+    EXPECT_FALSE(invalid.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("MissingReaction"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingSpecies"), std::string::npos);
+    EXPECT_NE(errorMessage.find("MissingObjective"), std::string::npos);
+    EXPECT_NE(errorMessage.find("objectiveSense"), std::string::npos);
+}
+
 TEST(SimulatorRuntimeTest, BioPluginsAreAvailableThroughDummyConnector) {
     PluginConnectorDummyImpl1 connector;
 
@@ -7231,6 +8192,323 @@ TEST(SimulatorRuntimeTest, RSimulatorPluginInformationDeclaresRunnerDependency) 
                         info->getDynamicLibFilenameDependencies()->end(),
                         "rsimulatorrunner.so"),
               info->getDynamicLibFilenameDependencies()->end());
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainStoresRealizedStateInEntityAttribute) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrix");
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->setValue(0.0, "0,0");
+    transitionMatrix->setValue(1.0, "0,1");
+    transitionMatrix->setValue(1.0, "1,0");
+    transitionMatrix->setValue(0.0, "1,1");
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistribution");
+    initialDistribution->insertDimentionSize(2);
+    initialDistribution->setInitialValues({{"0", 1.0}, {"1", 0.0}});
+    auto* currentState = new Attribute(model, "Entity.CurrentMarkovState");
+
+    MarkovChainProbe chain(model, "MarkovProbe");
+    CollectorSinkComponentProbe sink(model, "AfterMarkov");
+    chain.connectTo(&sink);
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentState);
+    chain.CreateInternalAndAttachedDataProbe();
+
+    Entity* entity = model->createEntity("EntityOne", true);
+    ASSERT_NE(entity, nullptr);
+    entity->setAttributeValue("Entity.CurrentMarkovState", 0.0, "", true);
+
+    chain.DispatchEventProbe(entity);
+    EXPECT_DOUBLE_EQ(entity->getAttributeValue("Entity.CurrentMarkovState"), 1.0);
+    ASSERT_EQ(sink.ReceivedEntities().size(), 0u);
+    ASSERT_EQ(model->getFutureEvents()->size(), 1u);
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainCheckAcceptsSquareTransitionMatrixAndMatchingInitialDistributionVector) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrixCheck");
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->setInitialValues({{"0,0", 0.25}, {"0,1", 0.75}, {"1,0", 0.4}, {"1,1", 0.6}});
+
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistributionCheck");
+    initialDistribution->insertDimentionSize(2);
+    initialDistribution->setInitialValues({{"0", 1.0}, {"1", 0.0}});
+    auto* currentState = new Attribute(model, "MarkovCurrentStateCheck");
+
+    MarkovChainProbe chain(model, "MarkovProbeCheck");
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentState);
+
+    std::string errorMessage;
+    EXPECT_TRUE(chain.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainCheckRejectsRowsThatDoNotSumToOne) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrixInvalid");
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->insertDimentionSize(2);
+    transitionMatrix->setValue(0.2, "0,0");
+    transitionMatrix->setValue(0.7, "0,1");
+    transitionMatrix->setValue(0.5, "1,0");
+    transitionMatrix->setValue(0.4, "1,1");
+
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistributionInvalid");
+    initialDistribution->insertDimentionSize(2);
+    initialDistribution->setInitialValues({{"0", 1.0}, {"1", 0.0}});
+    auto* currentStateReference = new Attribute(model, "MarkovCurrentStateInvalid");
+
+    MarkovChainProbe chain(model, "MarkovProbeInvalid");
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentStateReference);
+
+    std::string errorMessage;
+    EXPECT_FALSE(chain.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("row 0"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainCheckRejectsInitialDistributionSizeMismatch) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrixSize");
+    transitionMatrix->insertDimentionSize(3);
+    transitionMatrix->insertDimentionSize(3);
+    transitionMatrix->setValue(1.0, "0,0");
+    transitionMatrix->setValue(0.0, "0,1");
+    transitionMatrix->setValue(0.0, "0,2");
+    transitionMatrix->setValue(0.0, "1,0");
+    transitionMatrix->setValue(1.0, "1,1");
+    transitionMatrix->setValue(0.0, "1,2");
+    transitionMatrix->setValue(0.0, "2,0");
+    transitionMatrix->setValue(0.0, "2,1");
+    transitionMatrix->setValue(1.0, "2,2");
+
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistributionSizeMismatch");
+    initialDistribution->insertDimentionSize(2);
+    initialDistribution->setInitialValues({{"0", 1.0}, {"1", 0.0}});
+    auto* currentStateReference = new Attribute(model, "MarkovCurrentStateSizeMismatchRef");
+
+    MarkovChainProbe chain(model, "MarkovProbeSizeMismatch");
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentStateReference);
+
+    std::string errorMessage;
+    EXPECT_FALSE(chain.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("initial distribution vector size"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatrices) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariable");
+    variable.setInitialValuesText("[[1,2,3],[4,5,6],[7,8,9]]");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 3u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 3u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 1.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,2"), 6.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("2,1"), 8.0);
+    EXPECT_DOUBLE_EQ(variable.getValue("2,2"), 9.0);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[1,2,3],[4,5,6],[7,8,9]]");
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesOctaveMatrixSyntax) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableOctave");
+    variable.setInitialValuesText("[1 2 3; 4 5 6; 7 8 9]");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 3u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 3u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 1.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,2"), 6.0);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("2,1"), 8.0);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[1,2,3],[4,5,6],[7,8,9]]");
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMatricesWithSpaces) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableWithSpaces");
+    variable.setInitialValuesText("[ [0.5 , 0.5] , [0.5 , 0.5] ]");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.5);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.5);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[0.5,0.5],[0.5,0.5]]");
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMultilineMatrices) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableMultiline");
+    variable.setInitialValuesText(R"([
+[0.2, 0.8],
+[0.8, 0.2]
+])");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.2);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.2);
+    EXPECT_EQ(variable.getInitialValuesText(), "[[0.2,0.8],[0.8,0.2]]");
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesOctaveMultilineMatrices) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableOctaveMultiline");
+    variable.setInitialValuesText(R"([
+[0.2 0.8];
+[0.8 0.2]
+])");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.2);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.2);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesMultilineMatricesWithLeadingSpace) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableMultilineSpace");
+    variable.setInitialValuesText(R"([ [0.2,0.8],
+[0.8,0.2]
+])");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.2);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.2);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValueTextParsesCompactMultilineMatrixForm) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableCompactMultiline");
+    variable.setInitialValuesText(R"([ [0.2,0.8],[0.8,0.2]])");
+
+    std::list<unsigned int>* dimensions = variable.getDimensionSizes();
+    ASSERT_NE(dimensions, nullptr);
+    ASSERT_EQ(dimensions->size(), 2u);
+    EXPECT_EQ(dimensions->front(), 2u);
+    EXPECT_EQ(*std::next(dimensions->begin()), 2u);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,0"), 0.2);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("0,1"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,0"), 0.8);
+    EXPECT_DOUBLE_EQ(variable.getInitialValue("1,1"), 0.2);
+}
+
+TEST(SimulatorRuntimeTest, VariableInitialValuePropertyUsesTextEditorHint) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "MatrixVariableEditorHint");
+
+    SimulationControl* initialValueControl = nullptr;
+    for (SimulationControl* control : *model->getControls()->list()) {
+        if (control == nullptr) {
+            continue;
+        }
+        if (control->getClassname() == Util::TypeOf<Variable>()
+            && control->getElementName() == variable.getName()
+            && control->getName() == "InitialValue") {
+            initialValueControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(initialValueControl, nullptr);
+    EXPECT_EQ(initialValueControl->preferredEditorHint(), SimulationControlEditorHint::MultiLineText);
+
+    std::string errorMessage;
+    EXPECT_TRUE(initialValueControl->validateProposedValue("[[0.3, 0.7], [0.1,0.9]]", errorMessage));
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, GroProgramSourceCodePropertyUsesCodeEditorHint) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GroProgram groProgram(model, "GroProgramEditorHint");
+
+    SimulationControl* sourceCodeControl = nullptr;
+    for (SimulationControl* control : *model->getControls()->list()) {
+        if (control == nullptr) {
+            continue;
+        }
+        if (control->getClassname() == Util::TypeOf<GroProgram>()
+            && control->getElementName() == groProgram.getName()
+            && control->getName() == "SourceCode") {
+            sourceCodeControl = control;
+            break;
+        }
+    }
+
+    ASSERT_NE(sourceCodeControl, nullptr);
+    EXPECT_EQ(sourceCodeControl->preferredEditorHint(), SimulationControlEditorHint::CodeEditor);
 }
 
 TEST(SimulatorRuntimeTest, CppSerializerEmitsCurrentApiAndPropertySetters) {

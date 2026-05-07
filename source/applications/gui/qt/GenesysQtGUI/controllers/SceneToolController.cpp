@@ -15,7 +15,9 @@
 #include <algorithm>
 #include <cmath>
 
-// Store only narrow collaborators needed for Phase 10 scene-tool orchestration.
+/**
+ * @brief Stores only the narrow collaborators needed for scene-tool orchestration.
+ */
 SceneToolController::SceneToolController(ModelGraphicsView* graphicsView,
                                          Ui::MainWindow* ui,
                                          std::function<ModelGraphicsScene*()> currentScene,
@@ -56,7 +58,7 @@ void SceneToolController::activateAnimationDrawingTool(QAction* action, void (Mo
     }
 }
 
-// Preserve deterministic action-to-scene grid synchronization.
+/** @brief Synchronizes the grid action with the current scene state. */
 void SceneToolController::onActionShowGridTriggered() {
     ModelGraphicsScene* scene = _currentScene();
     if (scene != nullptr) {
@@ -98,7 +100,9 @@ void SceneToolController::onActionZoomOutTriggered() {
     _ui->horizontalSlider_ZoomGraphical->setValue(value - TraitsGUI<GMainWindow>::zoomButtonChange);
 }
 
-// Preserve zoom-all fit behavior and reset the slider baseline coherently.
+/**
+ * @brief Fits the scene to view and resets the zoom slider baseline.
+ */
 void SceneToolController::onActionZoomAllTriggered() {
     ModelGraphicsScene* scene = _currentScene();
     if (scene == nullptr || scene->items().isEmpty()) {
@@ -137,7 +141,9 @@ void SceneToolController::onActionZoomAllTriggered() {
     _graphicsView->centerOn(bounds.center());
 }
 
-// Preserve graphical slider zoom delta behavior and gentle zoom scaling.
+/**
+ * @brief Applies the zoom slider value to the graphics view transform.
+ */
 void SceneToolController::onHorizontalSliderZoomGraphicalValueChanged(int value) {
     if (_graphicsView == nullptr || _graphicsView->scene() == nullptr) {
         return;
@@ -177,7 +183,7 @@ void SceneToolController::onHorizontalSliderZoomGraphicalValueChanged(int value)
     _zoomValue = value;
 }
 
-// Preserve line-drawing tool activation and cursor semantics.
+/** @brief Activates the line drawing tool while preserving cursor semantics. */
 void SceneToolController::onActionDrawLineTriggered() {
     ModelGraphicsScene* scene = _currentScene();
     if (scene == nullptr) {
@@ -282,7 +288,7 @@ void SceneToolController::onActionAnimateCounterTriggered() {
 }
 
 void SceneToolController::onActionAnimateAttributeTriggered() {
-    activateAnimationDrawingTool(_ui->actionAnimateAttribute, &ModelGraphicsScene::drawingAttribute);
+    onActionAnimateVariableTriggered();
 }
 
 void SceneToolController::onActionAnimateEntityTriggered() {

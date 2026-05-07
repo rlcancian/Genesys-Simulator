@@ -27,15 +27,54 @@ std::string QueueableItem::convertEnumToStr(QueueableType type) {
 	return "Unknown";
 }
 
+void QueueableItem::_ensureSimulationControls(Model* model) {
+	if (model == nullptr || _simulationControls == nullptr || _simulationControls->size() > 0) {
+		return;
+	}
+
+	_modeldataManager = model->getDataManager();
+
+	auto* propIndex = new SimulationControlGeneric<std::string>(
+		std::bind(&QueueableItem::getIndex, this), std::bind(&QueueableItem::setIndex, this, std::placeholders::_1),
+		Util::TypeOf<QueueableItem>(), getName(), "Index", "");
+	auto* propQueue = new SimulationControlGenericClass<Queue*, Model*, Queue>(
+		model,
+		std::bind(&QueueableItem::getQueue, this), std::bind(&QueueableItem::setQueue, this, std::placeholders::_1),
+		Util::TypeOf<QueueableItem>(), "", "Queue", "");
+	auto* propSet = new SimulationControlGenericClass<Set*, Model*, Set>(
+		model,
+		std::bind(&QueueableItem::getSet, this), std::bind(&QueueableItem::setSet, this, std::placeholders::_1),
+		Util::TypeOf<QueueableItem>(), "", "Set", "");
+	auto* propType = new SimulationControlGenericEnum<QueueableItem::QueueableType, QueueableItem>(
+		std::bind(&QueueableItem::getQueueableType, this),
+		std::bind(&QueueableItem::setQueueableType, this, std::placeholders::_1),
+		Util::TypeOf<QueueableItem>(), getName(), "QueueableType", "");
+
+	model->getControls()->insert(propIndex);
+	model->getControls()->insert(propQueue);
+	model->getControls()->insert(propSet);
+	model->getControls()->insert(propType);
+
+	_addSimulationControl(propIndex);
+	_addSimulationControl(propQueue);
+	_addSimulationControl(propSet);
+	_addSimulationControl(propType);
+}
+
 QueueableItem::QueueableItem(ModelDataDefinition* queueOrSet, QueueableItem::QueueableType queueableType, std::string index) {
 	_queueableType = queueableType;
 	_queueOrSet = queueOrSet;
+	_queueableName = queueOrSet != nullptr ? queueOrSet->getName() : "";
 	_index = index;
 	if (Set* set = dynamic_cast<Set*>(queueOrSet)) {
 		// A QueueableItem operates on queues; this contextual contract tells the property
 		// editor that newly-created Set members should be Queue objects.
 		set->setAllowedElementTypes({Util::TypeOf<Queue>()});
 		set->setSetOfType(Util::TypeOf<Queue>());
+	}
+	if (queueOrSet != nullptr) {
+		_modeldataManager = queueOrSet->getParentModel()->getDataManager();
+		_ensureSimulationControls(queueOrSet->getParentModel());
 	}
 }
 
@@ -53,33 +92,8 @@ QueueableItem::QueueableItem(Model* model, std::string queueName = "") {
 	}
 	_index = "0";
     _queueableName = queueName;
-
-    SimulationControlGeneric<std::string>* propIndex = new SimulationControlGeneric<std::string>(
-                                        std::bind(&QueueableItem::getIndex, this), std::bind(&QueueableItem::setIndex, this, std::placeholders::_1),
-                                        Util::TypeOf<QueueableItem>(), getName(), "Index", "");
-	SimulationControlGenericClass<Queue*, Model*, Queue>* propQueue = new SimulationControlGenericClass<Queue*, Model*, Queue>(
-										model,
-										std::bind(&QueueableItem::getQueue, this), std::bind(&QueueableItem::setQueue, this, std::placeholders::_1),
-										Util::TypeOf<QueueableItem>(), "", "Queue", "");
-	SimulationControlGenericClass<Set*, Model*, Set>* propSet = new SimulationControlGenericClass<Set*, Model*, Set>(
-										model,
-										std::bind(&QueueableItem::getSet, this), std::bind(&QueueableItem::setSet, this, std::placeholders::_1),
-										Util::TypeOf<QueueableItem>(), "", "Set", "");
-	SimulationControlGenericEnum<QueueableItem::QueueableType, QueueableItem>* propType = new SimulationControlGenericEnum<QueueableItem::QueueableType, QueueableItem>(
-										std::bind(&QueueableItem::getQueueableType, this),
-										std::bind(&QueueableItem::setQueueableType, this, std::placeholders::_1),
-										Util::TypeOf<QueueableItem>(), getName(), "QueueableType", "");
-
-    model->getControls()->insert(propIndex);
-	model->getControls()->insert(propQueue);
-	model->getControls()->insert(propSet);
-	model->getControls()->insert(propType);
-
-    // Register editable controls.
-    _addSimulationControl(propIndex);
-	_addSimulationControl(propQueue);
-	_addSimulationControl(propSet);
-	_addSimulationControl(propType);
+	_modeldataManager = model != nullptr ? model->getDataManager() : nullptr;
+	_ensureSimulationControls(model);
 }
 
 bool QueueableItem::loadInstance(PersistenceRecord *fields) {
@@ -108,6 +122,7 @@ bool QueueableItem::loadInstance(PersistenceRecord *fields) {
 				set->setAllowedElementTypes({Util::TypeOf<Queue>()});
 				set->setSetOfType(Util::TypeOf<Queue>());
 			}
+			_ensureSimulationControls(_modeldataManager->getParentModel());
 		}
 		assert(_queueOrSet != nullptr);
 	} catch (...) {
@@ -154,6 +169,12 @@ void QueueableItem::setQueue(Queue* queue) {
 	this->_queueOrSet = queue;
 	_queueableType = QueueableType::QUEUE;
 	_queueableName = queue != nullptr ? queue->getName() : "";
+	if (_modeldataManager == nullptr && queue != nullptr) {
+		_modeldataManager = queue->getParentModel()->getDataManager();
+	}
+	if (_simulationControls != nullptr && _simulationControls->size() == 0 && _modeldataManager != nullptr) {
+		_ensureSimulationControls(_modeldataManager->getParentModel());
+	}
 }
 
 Queue* QueueableItem::getQueue() const {
@@ -169,6 +190,12 @@ void QueueableItem::setSet(Set* set) {
 		// default and allowed type expected by QueueableItem-specific GUI editing.
 		set->setAllowedElementTypes({Util::TypeOf<Queue>()});
 		set->setSetOfType(Util::TypeOf<Queue>());
+		if (_modeldataManager == nullptr) {
+			_modeldataManager = set->getParentModel()->getDataManager();
+		}
+	}
+	if (_simulationControls != nullptr && _simulationControls->size() == 0 && _modeldataManager != nullptr) {
+		_ensureSimulationControls(_modeldataManager->getParentModel());
 	}
 }
 

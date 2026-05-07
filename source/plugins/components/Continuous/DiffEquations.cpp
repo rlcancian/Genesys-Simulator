@@ -277,21 +277,25 @@ void DiffEquations::_initBetweenReplications() {
 */
 
 
-void DiffEquations::_createInternalAndAttachedData() {
-	if (_cppCompiler == nullptr) {
-		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
-		_cppCompiler->setSourceFilename(getName() + ".cpp");
-		_cppCompiler->setOutputFilename(getName() + ".so");
-	}
-	if (_cppCompiler != nullptr) {
-		_internalDataInsert("CppCompiler", _cppCompiler);
-	} else {
-		_internalDataRemove("CppCompiler");
-	}
-}
+//void DiffEquations::_createAttachedAttributes() {}
 
 
 /*
 void DiffEquations::_addSimulationControl(SimulationControl* property) {
 }
 */
+
+// void DiffEquations::_createInternalStatisticReporters() { }
+
+void DiffEquations::_createEditableDataDefinitions() {
+	if (_cppCompiler == nullptr) {
+		_cppCompiler = new CppCompiler(_parentModel, getName() + ".CppCompiler");
+		_cppCompiler->setSourceFilename(getName() + ".cpp");
+		_cppCompiler->setOutputFilename(getName() + ".so");
+	}
+	if (_cppCompiler != nullptr) {
+		_mandatoryNonEditableDataDefinitionInsert("CppCompiler", _cppCompiler);
+	} else {
+		_mandatoryNonEditableDataDefinitionRemove("CppCompiler");
+	}
+}

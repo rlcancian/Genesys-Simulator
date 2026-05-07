@@ -77,8 +77,15 @@ public:
 	unsigned int getNumberOfQueues() const;
 protected: // virtual
 	//virtual void _initBetweenReplications();
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createInternalAndAttachedData() override;
+
+protected:
+
 private: // methods
 private: // attributes 1:1
 
@@ -100,4 +107,3 @@ private: // attributes 1:n
 
 
 #endif /* MATCH_H */
-

@@ -1,8 +1,8 @@
 #include "Smart_ModalModelFSM.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/ModalModel/ModalModelFSM.h"
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"

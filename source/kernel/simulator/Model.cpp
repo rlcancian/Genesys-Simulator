@@ -235,12 +235,14 @@ void Model::sendEntityToComponent(Entity* entity, ModelComponent* component, dou
                                            : nullptr);
     std::string sourceName = (sourceComponent != nullptr ? sourceComponent->getName() : "<null>");
     std::string destinationName = (component != nullptr ? component->getName() : "<null>");
+    /*
     std::string message = "Entity move event emitted sourceId=" + std::to_string(
             sourceComponent != nullptr ? sourceComponent->getId() : 0)
         + " sourceName=" + sourceName
         + " destinationId=" + std::to_string(component != nullptr ? component->getId() : 0)
         + " destinationName=" + destinationName;
-    this->getTracer()->traceSimulation(this, TraceManager::Level::L8_detailed, message);
+    this->getTracer()->traceSimulation(this, TraceManager::Level::L9_mostDetailed, message);
+    */
     this->getOnEventManager()->NotifyEntityMoveHandlers(se.get()); // it's my friend
     Event* newEvent = new Event(this->getSimulation()->getSimulatedTime() + timeDelay, entity, component,
                                 componentinputPortNumber);

@@ -3,10 +3,12 @@
 #include "../mainwindow.h"
 #include "ui_mainwindow.h"
 #include "../dialogs/DialogFind.h"
+#include "../dialogs/DialogReportIssue.h"
 #include "../dialogs/dialogBreakpoint.h"
 #include "../dialogs/dialogpluginmanager.h"
 #include "../dialogs/dialogsystempreferences.h"
 #include "../guithememanager.h"
+#include "../services/IssueReportRelayService.h"
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../tools/dataanalyzer/DataAnalyzerWindow.h"
@@ -30,6 +32,8 @@
 #include <QAction>
 #include <QCheckBox>
 #include <QComboBox>
+#include <QApplication>
+#include <QBuffer>
 #include <QDialog>
 #include <QSize>
 #include <QPixmap>
@@ -48,6 +52,7 @@
 #include <QGraphicsRectItem>
 #include <QGraphicsTextItem>
 #include <QGraphicsView>
+#include <QDesktopServices>
 #include <QGroupBox>
 #include <QHeaderView>
 #include <QHBoxLayout>
@@ -76,6 +81,8 @@
 #include <QTextEdit>
 #include <QTextStream>
 #include <QVBoxLayout>
+#include <QUrl>
+#include <QSysInfo>
 #include <QVector>
 #include <Qt>
 #include <algorithm>
@@ -459,6 +466,44 @@ static void showRichAboutDialog(QWidget* owner,
 
     dialog.exec();
 }
+
+static QString trimmedTail(const QString& text, int maxCharacters = 12000) {
+    const QString normalized = text.trimmed();
+    if (normalized.size() <= maxCharacters) {
+        return normalized;
+    }
+    return QStringLiteral("...[truncated]...\n") + normalized.right(maxCharacters);
+}
+
+static QString readTextFileTail(const QString& absolutePath, int maxBytes = 32768) {
+    QFile file(absolutePath);
+    if (!file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QString();
+    }
+
+    if (file.size() <= maxBytes) {
+        return QString::fromUtf8(file.readAll()).trimmed();
+    }
+
+    file.seek(std::max<qint64>(0, file.size() - maxBytes));
+    return QStringLiteral("...[truncated]...\n") + QString::fromUtf8(file.readAll()).trimmed();
+}
+
+static QByteArray captureWidgetScreenshotPng(QWidget* widget) {
+    QByteArray bytes;
+    if (widget == nullptr) {
+        return bytes;
+    }
+
+    const QPixmap screenshot = widget->grab();
+    if (screenshot.isNull()) {
+        return bytes;
+    }
+    QBuffer buffer(&bytes);
+    buffer.open(QIODevice::WriteOnly);
+    screenshot.save(&buffer, "PNG");
+    return bytes;
+}
 } // namespace
 
 // Initialize the Phase 11 controller with narrow dependencies and persisted GUI state references.
@@ -569,6 +614,96 @@ void DialogUtilityController::onActionAboutGetInvolvedTriggered() {
                         html);
 }
 
+/*! \brief Opens the GUI issue-report flow, captures runtime context, and submits the payload to the configured relay.
+ *
+ * The report draft can include the current model text, console tail, simulation and report logs,
+ * the latest process log, and an optional screenshot. The submission result is then surfaced back
+ * to the user, including a browser link when the relay returns a created GitHub issue URL.
+ */
+void DialogUtilityController::onActionAboutReportIssueTriggered() {
+    DialogReportIssue dialog(_ownerWidget);
+    QString relayStatusMessage;
+    const bool relayConfigured = IssueReportRelayService::isEndpointConfigured(&relayStatusMessage);
+    dialog.setRelayConfigurationStatus(IssueReportRelayService::configuredEndpoint(),
+                                       relayConfigured,
+                                       relayStatusMessage);
+
+    if (dialog.exec() != QDialog::Accepted) {
+        return;
+    }
+
+    const IssueReportDraft draft = dialog.draft();
+
+    IssueReportRuntimeContext runtimeContext;
+    runtimeContext.applicationName = QCoreApplication::applicationName().trimmed();
+    runtimeContext.applicationVersion = QCoreApplication::applicationVersion().trimmed();
+    if (runtimeContext.applicationVersion.isEmpty()) {
+        runtimeContext.applicationVersion = QObject::tr("unknown");
+    }
+    runtimeContext.qtVersion = QString::fromLatin1(QT_VERSION_STR);
+    runtimeContext.operatingSystem = QSysInfo::prettyProductName();
+
+    if (_simulator != nullptr && _simulator->getModelManager() != nullptr
+        && _simulator->getModelManager()->current() != nullptr) {
+        runtimeContext.currentModelName =
+                QString::fromStdString(_simulator->getModelManager()->current()->getInfos()->getName());
+    } else {
+        runtimeContext.currentModelName = QObject::tr("none");
+    }
+
+    if (draft.includeModelText && _ui != nullptr && _ui->TextCodeEditor != nullptr) {
+        runtimeContext.currentModelSimulanguage = trimmedTail(_ui->TextCodeEditor->toPlainText(), 64000);
+    }
+    if (_ui != nullptr && _ui->textEdit_Console != nullptr) {
+        runtimeContext.consoleTail = trimmedTail(_ui->textEdit_Console->toPlainText());
+    }
+    if (_ui != nullptr && _ui->textEdit_Simulation != nullptr) {
+        runtimeContext.simulationTail = trimmedTail(_ui->textEdit_Simulation->toPlainText());
+    }
+    if (_ui != nullptr && _ui->textEdit_Reports != nullptr) {
+        runtimeContext.reportsTail = trimmedTail(_ui->textEdit_Reports->toPlainText());
+    }
+    if (draft.includeLogTail) {
+        runtimeContext.processLogTail =
+                readTextFileTail(QDir::current().absoluteFilePath(QStringLiteral("crashesAndLogs.log")));
+    }
+    if (draft.includeScreenshot) {
+        runtimeContext.screenshotPngBase64 = captureWidgetScreenshotPng(_ownerWidget).toBase64();
+    }
+
+    QApplication::setOverrideCursor(Qt::WaitCursor);
+    const IssueReportSubmissionResult result = IssueReportRelayService::submit(draft, runtimeContext);
+    QApplication::restoreOverrideCursor();
+
+    if (!result.success) {
+        QMessageBox::warning(_ownerWidget,
+                             QObject::tr("Report Issue"),
+                             QObject::tr("The report could not be submitted.\n\n%1")
+                                 .arg(result.errorMessage));
+        return;
+    }
+
+    QMessageBox box(_ownerWidget);
+    box.setIcon(QMessageBox::Information);
+    box.setWindowTitle(QObject::tr("Issue submitted"));
+    box.setText(QObject::tr("The report was delivered to the configured relay and a GitHub issue was created."));
+    if (!result.issueUrl.isEmpty()) {
+        box.setInformativeText(QObject::tr("Issue #%1 created.\n\nOpen the issue in your browser?")
+                                   .arg(result.issueNumber > 0 ? QString::number(result.issueNumber)
+                                                               : QObject::tr("unknown")));
+        QPushButton* openButton = box.addButton(QObject::tr("Open Issue"), QMessageBox::AcceptRole);
+        box.addButton(QMessageBox::Close);
+        box.exec();
+        if (box.clickedButton() == openButton) {
+            QDesktopServices::openUrl(QUrl(result.issueUrl));
+        }
+    } else {
+        box.setInformativeText(QObject::tr("The relay did not return a browseable issue URL."));
+        box.addButton(QMessageBox::Close);
+        box.exec();
+    }
+}
+
 // Preserve the existing find dialog workflow using the current scene.
 void DialogUtilityController::onActionEditFindTriggered() {
     DialogFind* find = new DialogFind(_ownerWidget, _graphicsView->getScene());
@@ -578,7 +713,12 @@ void DialogUtilityController::onActionEditFindTriggered() {
     }
 }
 
-// Preserve the existing replace dialog and selection-based replace workflow.
+/*! \brief Opens the editor replacement dialog and preserves the current find/replace workflow.
+ *
+ * The dialog keeps the last search terms, supports case-sensitive matching, wraps the search to
+ * the start of the document, and performs single or bulk replacement directly on the code editor
+ * without detaching the current selection state.
+ */
 void DialogUtilityController::onActionEditReplaceTriggered() {
     if (_ui->TextCodeEditor == nullptr) {
         return;
@@ -730,7 +870,12 @@ void DialogUtilityController::onActionEditReplaceTriggered() {
     dialog.exec();
 }
 
-// Provide a parser management surface with grammar overview, function catalog and an expression console.
+/*! \brief Builds the parser diagnostics window with grammar overview, DOT export, catalog, and console tabs.
+ *
+ * The dialog combines a collapsible grammar map, a DOT text editor, a searchable function catalog,
+ * a parser console, and a lightweight model symbol browser so the user can inspect and exercise the
+ * expression language from one place.
+ */
 void DialogUtilityController::onActionToolsParserGrammarCheckerTriggered() {
     Model* model = _simulator->getModelManager()->current();
     QDialog dialog(_ownerWidget);

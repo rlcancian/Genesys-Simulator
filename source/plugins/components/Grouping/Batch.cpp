@@ -180,7 +180,7 @@ void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		_entityGroup = dynamic_cast<EntityGroup*>(groupByName);
 	}
 	if (_queue == nullptr || _entityGroup == nullptr) {
-		_createInternalAndAttachedData();
+		_createNonEditableDataDefinitions();
 		if (_queue == nullptr || _entityGroup == nullptr) {
 			traceError("Batch internal data is not initialized (Queue/EntityGroup).", TraceManager::Level::L1_errorFatal);
 			return;
@@ -334,15 +334,8 @@ void Batch::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	}
 }
 
-void Batch::_createInternalAndAttachedData() {
-	// Keep attached-data keys stable across rechecks and remove stale aliases.
-	_attachedAttributesInsert({"Entity.Group"});
-	_attachedDataRemove("GroupdEntityType");
-	if (_groupedEntityType != nullptr) {
-		_attachedDataInsert("GroupedEntityType", _groupedEntityType);
-	} else {
-		_attachedDataRemove("GroupedEntityType");
-	}
+void Batch::_createNonEditableDataDefinitions() {
+	// Keep the internal queue and grouping entity as mandatory non-editable data definitions.
 	if ((_queue == nullptr || _entityGroup == nullptr)) {
 		PluginManager* plugins = _parentModel->getParentSimulator()->getPluginManager();
 		if (_queue == nullptr) {
@@ -367,22 +360,36 @@ void Batch::_createInternalAndAttachedData() {
 		}
 	}
 	if (_queue != nullptr) {
-		_internalDataInsert("EntityQueue", _queue);
+		_mandatoryNonEditableDataDefinitionInsert("EntityQueue", _queue);
 	} else {
-		_internalDataRemove("EntityQueue");
+		_mandatoryNonEditableDataDefinitionRemove("EntityQueue");
 	}
 	if (_entityGroup != nullptr) {
-		_internalDataInsert("EntityGroup", _entityGroup);
+		_mandatoryNonEditableDataDefinitionInsert("EntityGroup", _entityGroup);
 	} else {
-		_internalDataRemove("EntityGroup");
+		_mandatoryNonEditableDataDefinitionRemove("EntityGroup");
+	}
+}
+
+void Batch::_createEditableDataDefinitions() {
+	_optionalEditableDataDefinitionRemove("GroupedEntityType");
+	if (_groupedEntityType != nullptr) {
+		_optionalEditableDataDefinitionInsert("GroupedEntityType", _groupedEntityType);
+	} else {
+		_optionalEditableDataDefinitionRemove("GroupedEntityType");
 	}
 	if (_attributeName != "") {
 		ModelDataManager* elements = _parentModel->getDataManager();
 		ModelDataDefinition* attribute = elements->getDataDefinition(Util::TypeOf<Attribute>(), _attributeName);
-		_attachedDataInsert("AttributeName", attribute);
+		_optionalEditableDataDefinitionInsert("AttributeName", attribute);
 	} else {
-		_attachedDataRemove("AttributeName");
+		_optionalEditableDataDefinitionRemove("AttributeName");
 	}
+}
+
+void Batch::_createAttachedAttributes() {
+	// Keep attached-data keys stable across rechecks.
+	_attachedAttributesInsert({"Entity.Group"});
 }
 
 bool Batch::_check(std::string& errorMessage) {
@@ -419,3 +426,7 @@ PluginInformation * Batch::GetPluginInformation() {
 	info->setDescriptionHelp(help);
 	return info;
 }
+
+// void Batch::_createInternalStatisticReporters() { }
+
+// void Batch::_createEditableDataDefinitions() { }

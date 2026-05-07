@@ -56,6 +56,7 @@
 #include "services/GraphicalModelBuilder.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
+#include "kernel/simulator/Attribute.h"
 #include <QCoreApplication>
 #include <QGuiApplication>
 #include <QThread>
@@ -117,7 +118,6 @@ namespace {
 
     bool isPlaceholderAnimationMode(ModelGraphicsScene::DrawingMode mode) {
         switch (mode) {
-        case ModelGraphicsScene::ATTRIBUTE:
         case ModelGraphicsScene::ENTITY:
         case ModelGraphicsScene::EVENT:
         case ModelGraphicsScene::EXPRESSION:
@@ -134,8 +134,6 @@ namespace {
 
     AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode) {
         switch (mode) {
-        case ModelGraphicsScene::ATTRIBUTE:
-            return new AnimationAttribute();
         case ModelGraphicsScene::ENTITY:
             return new AnimationEntity();
         case ModelGraphicsScene::EVENT:
@@ -2097,20 +2095,30 @@ void ModelGraphicsScene::animateCounter() {
     }
 }
 
-void ModelGraphicsScene::animateVariable() {
+void ModelGraphicsScene::animateVariable(Entity* entity) {
     for (unsigned int i = 0; i < (unsigned int)_animationsVariable->size(); i++) {
         AnimationVariable* animationVariable = _animationsVariable->at(i);
-        double currentValue = 0.0;
-        if (animationVariable->getVariable()) {
-            currentValue = animationVariable->getVariable()->getValue();
-        }
-        animationVariable->setValue(currentValue);
+        animationVariable->refreshValue(entity);
     }
 }
 
 void ModelGraphicsScene::animateTimer(double time) {
     for (unsigned int i = 0; i < (unsigned int)_animationsTimer->size(); i++) {
         _animationsTimer->at(i)->setTime(time);
+    }
+}
+
+void ModelGraphicsScene::animatePlot() {
+    Model* currentModel = _simulator != nullptr ? _simulator->getModelManager()->current() : nullptr;
+    if (currentModel == nullptr) {
+        return;
+    }
+
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
+        if (plot != nullptr) {
+            plot->appendSample(currentModel);
+        }
     }
 }
 
@@ -2971,16 +2979,16 @@ void ModelGraphicsScene::mouseDoubleClickEvent(QGraphicsSceneMouseEvent* mouseEv
     if (AnimationVariable* animationVariable = dynamic_cast<AnimationVariable*>(item)) {
         DialogSelectVariable dialog;
 
-        dialog.setVariableItems(_variables, animationVariable->getVariable());
+        dialog.setVariableItems(_variables, animationVariable->getDataDefinition());
 
         if (dialog.exec() == QDialog::Accepted) {
-            Variable* variableSelected = dialog.selectedIndex();
+            ModelDataDefinition* variableSelected = dialog.selectedIndex();
 
             if (variableSelected) {
-                animationVariable->setVariable(variableSelected);
+                animationVariable->setDataDefinition(variableSelected);
             }
             else {
-                animationVariable->setVariable(nullptr);
+                animationVariable->setDataDefinition(nullptr);
             }
         }
     }
@@ -3124,6 +3132,7 @@ void ModelGraphicsScene::initializeAnimationDrawing(QGraphicsSceneMouseEvent* mo
 
     if (_drawingMode == VARIABLE) {
         _currentVariable = new AnimationVariable();
+        _currentVariable->setModel(_simulator != nullptr ? _simulator->getModelManager()->current() : nullptr);
         _currentVariable->startDrawing(mouseEvent);
         addItem(_currentVariable);
     }
@@ -3161,12 +3170,14 @@ void ModelGraphicsScene::continueAnimationDrawing(QGraphicsSceneMouseEvent* mous
         if (_currentVariable) {
             if (_currentVariable->isDrawingInicialized() && !_currentVariable->isDrawingFinalized()) {
                 removeItem(_currentVariable);
+                _currentVariable->setModel(_simulator != nullptr ? _simulator->getModelManager()->current() : nullptr);
                 _currentVariable->continueDrawing(mouseEvent);
                 addItem(_currentVariable);
             }
         }
         else {
             _currentVariable = new AnimationVariable();
+            _currentVariable->setModel(_simulator != nullptr ? _simulator->getModelManager()->current() : nullptr);
         }
     }
 
@@ -3216,6 +3227,7 @@ void ModelGraphicsScene::finishAnimationDrawing(QGraphicsSceneMouseEvent* mouseE
         if (_currentVariable) {
             if (_currentVariable->isDrawingInicialized() && !_currentVariable->isDrawingFinalized()) {
                 removeItem(_currentVariable);
+                _currentVariable->setModel(_simulator != nullptr ? _simulator->getModelManager()->current() : nullptr);
                 _currentVariable->stopDrawing(mouseEvent);
                 addItem(_currentVariable);
                 animatedItem = _currentVariable;
@@ -3409,6 +3421,25 @@ void ModelGraphicsScene::dropEvent(QGraphicsSceneDragDropEvent* event) {
                     requestGraphicalDataDefinitionsSync();
                     return;
                 }
+
+                // Allow graphical authoring of data definitions by dropping them directly on the canvas.
+                ModelDataDefinition* dataDefinition = plugin->newInstance(_simulator->getModelManager()->current());
+                if (dataDefinition != nullptr) {
+                    event->setDropAction(Qt::IgnoreAction);
+                    event->accept();
+
+                    GraphicalModelDataDefinition* graphicalDataDefinition =
+                        addGraphicalModelDataDefinition(plugin, dataDefinition, event->scenePos(), color);
+                    if (graphicalDataDefinition != nullptr) {
+                        clearSelection();
+                        graphicalDataDefinition->setSelected(true);
+                        graphicalDataDefinition->setFocus();
+                    }
+
+                    // Reuse the canonical queued sync so editability and diagram links remain consistent.
+                    requestGraphicalDataDefinitionsSync();
+                    return;
+                }
             }
         }
     }
@@ -3535,7 +3566,7 @@ void ModelGraphicsScene::drawingTimer() {
 }
 
 void ModelGraphicsScene::drawingAttribute() {
-    _drawingMode = DrawingMode::ATTRIBUTE;
+    _drawingMode = DrawingMode::VARIABLE;
 }
 
 void ModelGraphicsScene::drawingEntity() {
@@ -3768,6 +3799,13 @@ void ModelGraphicsScene::clearAnimationsValues() {
     for (AnimationTimer* timer : *_animationsTimer) {
         timer->setTime(0.0);
     }
+
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
+        if (plot != nullptr) {
+            plot->clearValues();
+        }
+    }
 }
 
 
@@ -3799,17 +3837,21 @@ void ModelGraphicsScene::setVariables() {
     if (currentModel) {
         _variables->clear();
 
-        List<ModelDataDefinition*>* variablesList = currentModel->getDataManager()->getDataDefinitionList(
-            Util::TypeOf<Variable>());
+        List<ModelDataDefinition*>* variablesList = currentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Variable>());
+        if (variablesList != nullptr) {
+            for (ModelDataDefinition* variable : *variablesList->list()) {
+                if (variable != nullptr) {
+                    _variables->append(variable);
+                }
+            }
+        }
 
-        // Build the temporary data-definition list on the stack to avoid heap leaks.
-        QList<ModelDataDefinition*> variables(variablesList->list()->begin(), variablesList->list()->end());
-
-        foreach(ModelDataDefinition *variable, variables) {
-            Variable* newVariable = dynamic_cast<Variable*>(variable);
-
-            if (newVariable) {
-                _variables->append(newVariable);
+        List<ModelDataDefinition*>* attributesList = currentModel->getDataManager()->getDataDefinitionList(Util::TypeOf<Attribute>());
+        if (attributesList != nullptr) {
+            for (ModelDataDefinition* attribute : *attributesList->list()) {
+                if (attribute != nullptr) {
+                    _variables->append(attribute);
+                }
             }
         }
     }

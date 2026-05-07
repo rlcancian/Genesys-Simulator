@@ -43,7 +43,3 @@ bool ModalModelFSM::_check(std::string& errorMessage) {
 void ModalModelFSM::_initBetweenReplications() {
 
 }
-
-void ModalModelFSM::_createInternalAndAttachedData() {
-
-}

@@ -59,9 +59,10 @@ public: //get
 protected: // must be overriden 
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
-	virtual bool _check(std::string& errorMessage) override;
+protected: // could be ovveriden
+	//virtual bool _check(std::string& errorMessage) override;
 	virtual void _initBetweenReplications() override;
-	virtual void _createInternalAndAttachedData() override;
+	virtual void _createInternalStatisticReporters() override;
 private:
 	void _initCostsAndStatistics();
 private:

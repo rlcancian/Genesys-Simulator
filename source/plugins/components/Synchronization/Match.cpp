@@ -80,7 +80,7 @@ ModelComponent* Match::LoadInstance(Model* model, PersistenceRecord *fields) {
 
 void Match::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
-		_createInternalAndAttachedData();
+		_createEditableDataDefinitions();
 	}
 	if (_queues == nullptr || _queues->size() != _numberOfQueues) {
 		traceError("Match internal queues are not initialized.", TraceManager::Level::L1_errorFatal);
@@ -247,10 +247,23 @@ bool Match::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Match::_createInternalAndAttachedData() {
+//void Match::_createAttachedAttributes() {}
+
+PluginInformation * Match::GetPluginInformation() {
+	PluginInformation* info = new PluginInformation(Util::TypeOf<Match>(), &Match::LoadInstance, &Match::NewInstance);
+	info->setCategory("Synchronization");
+	info->setMaximumInputs(99);
+	//info->getDynamicLibFilenameDependencies()->insert("queue.so");
+	// ...
+	return info;
+}
+
+// void Match::_createInternalStatisticReporters() { }
+
+void Match::_createEditableDataDefinitions() {
 	while (_queues->size() > _numberOfQueues) {
 		Queue* obsoleteQueue = _queues->last();
-		_internalDataRemove(obsoleteQueue->getName());
+		_mandatoryNonEditableDataDefinitionRemove(obsoleteQueue->getName());
 		_queues->remove(_queues->last());
 		_entitiesByAttrib->erase(obsoleteQueue);
 	}
@@ -261,20 +274,12 @@ void Match::_createInternalAndAttachedData() {
 		}
 		ModelDataDefinition::CreateInternalData(newQueue);
 		_queues->insert(newQueue);
-		_internalDataInsert(newQueue->getName(), newQueue);
+		_mandatoryNonEditableDataDefinitionInsert(newQueue->getName(), newQueue);
 	}
 	for (Queue* queue : *_queues->list()) {
 		if (queue != nullptr) {
-			_internalDataInsert(queue->getName(), queue);
+			_mandatoryNonEditableDataDefinitionInsert(queue->getName(), queue);
 		}
 	}
-}
 
-PluginInformation * Match::GetPluginInformation() {
-	PluginInformation* info = new PluginInformation(Util::TypeOf<Match>(), &Match::LoadInstance, &Match::NewInstance);
-	info->setCategory("Synchronization");
-	info->setMaximumInputs(99);
-	//info->getDynamicLibFilenameDependencies()->insert("queue.so");
-	// ...
-	return info;
 }

@@ -1,0 +1,40 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=12.000000 
+
+# Model Data Definitions
+103 EntityType "BacteriaCarrier" 
+105 Attribute  "Entity.ArrivalTime" 
+106 Attribute  "Entity.Type" 
+107 EntityType "entitytype" 
+109 GroProgram "GroProgram_BacteriaColony_GRO" sourceCode="
+include gro
+
+program main() := {
+  if ( seeded == 0 ) {
+    reset(),
+    set ( "dt", 0.1 ),
+    set ( "ecoli_growth_rate", 0.18 ),
+    seeded := 1,
+    ecoli ( [ x := 2, y := 2 ], program colony() ),
+    ecoli ( [ x := 5, y := 2 ], program colony() ),
+    ecoli ( [ x := 2, y := 5 ], program colony() ),
+    ecoli ( [ x := 5, y := 5 ], program colony() )
+  }
+};
+
+program colony() := {
+  speed := 0.12 + 0.05 * local_signal + 0.01 * bacterium_generation;
+  direction := direction + 0.26 + 0.03 * bacterium_generation;
+  gfp := 18 + 28 * local_signal + 2 * volume;
+  emit_signal ( 0.55 + 0.15 * local_signal );
+}
+" 
+110 BacteriaSignalGrid "SignalGrid_BacteriaColony_GRO" decayRate=0.040000 height=16 diffusionRate=0.220000 width=16 
+
+# Model Components
+104 Create     "Create_BacteriaColony_GRO" entityType="BacteriaCarrier" maxCreations="10" nextId=111 timeBetweenCreations="1.0" 
+111 BacteriaColony "BacteriaColony_BacteriaColony_GRO" gridHeight=16 gridWidth=16 initialPopulation=4 simulationStep=0.100000 signalGrid="SignalGrid_BacteriaColony_GRO" numSteps=10 groProgram="GroProgram_BacteriaColony_GRO" nextId=112 
+112 Dispose    "Dispose_BacteriaColony_GRO" nexts=0 

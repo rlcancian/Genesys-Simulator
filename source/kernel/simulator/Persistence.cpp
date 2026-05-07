@@ -17,7 +17,12 @@ void PersistenceRecord::insert(PersistenceRecord::Entry entry) {
 
 void PersistenceRecord::insert(Iterator it, Iterator end) {
 	/// Insert the raw entry payload from the source iterator range.
-	for (; it != end; ++it) insert(it->second);
+	/// Skip entries that already exist to avoid overwriting without warning.
+	for (; it != end; ++it) {
+		if (_fields.find(it->first) == _fields.end()) {
+			insert(it->second);
+		}
+	}
 }
 
 void PersistenceRecord::erase(const std::string& key) {
@@ -47,55 +52,76 @@ PersistenceRecord* PersistenceRecord::newInstance() {
 	return new PersistenceRecord(_config);
 }
 
-std::string PersistenceRecord::loadField(std::string key, std::string defaultValue) {
+std::string PersistenceRecord::loadField(const std::string& key, const std::string& defaultValue) {
 	auto it = _fields.find(key);
 	return it != _fields.end() ? it->second.second : defaultValue;
 }
 
-double PersistenceRecord::loadField(std::string key, double defaultValue) {
+double PersistenceRecord::loadField(const std::string& key, double defaultValue) {
 	auto it = _fields.find(key);
-	return it != _fields.end() ? std::stod(it->second.second) : defaultValue;
+	if (it == _fields.end() || it->second.second.empty()) {
+		return defaultValue;
+	}
+	try {
+		return std::stod(it->second.second);
+	} catch (...) {
+		return defaultValue;
+	}
 }
 
-unsigned int PersistenceRecord::loadField(std::string key, unsigned int defaultValue) {
+unsigned int PersistenceRecord::loadField(const std::string& key, unsigned int defaultValue) {
 	auto it = _fields.find(key);
-	return it != _fields.end() ? std::stoi(it->second.second) : defaultValue;
+	if (it == _fields.end() || it->second.second.empty()) {
+		return defaultValue;
+	}
+	try {
+		return std::stoi(it->second.second);
+	} catch (...) {
+		return defaultValue;
+	}
 }
 
-int PersistenceRecord::loadField(std::string key, int defaultValue) {
+int PersistenceRecord::loadField(const std::string& key, int defaultValue) {
 	auto it = _fields.find(key);
-	return it != _fields.end() ? std::stoi(it->second.second) : defaultValue;
+	if (it == _fields.end() || it->second.second.empty()) {
+		return defaultValue;
+	}
+	try {
+		return std::stoi(it->second.second);
+	} catch (...) {
+		return defaultValue;
+	}
 }
 
-Util::TimeUnit PersistenceRecord::loadField(std::string key, Util::TimeUnit defaultValue) {
+Util::TimeUnit PersistenceRecord::loadField(const std::string& key, Util::TimeUnit defaultValue) {
 	auto it = _fields.find(key);
 	return it != _fields.end() ? static_cast<Util::TimeUnit> (std::stoi(it->second.second)) : defaultValue;
 }
 
-void PersistenceRecord::saveField(std::string key, std::string value, const std::string defaultValue, const bool saveIfDefault) {
+void PersistenceRecord::saveField(const std::string& key, const std::string& value, const std::string& defaultValue, const bool saveIfDefault) {
 	if (saveIfDefault || (value != defaultValue)) saveField(key, value);
 }
 
-void PersistenceRecord::saveField(std::string key, std::string value) {
+void PersistenceRecord::saveField(const std::string& key, const std::string& value) {
 	_fields[key] = {key, value, Entry::text};
 }
 
-void PersistenceRecord::saveField(std::string key, double value, const double defaultValue, const bool saveIfDefault) {
+void PersistenceRecord::saveField(const std::string& key, double value, const double defaultValue, const bool saveIfDefault) {
 	if (saveIfDefault || (value != defaultValue)) _fields[key] = {key, std::to_string(value), Entry::Kind::numeric};
 }
 
-void PersistenceRecord::saveField(std::string key, unsigned int value, const unsigned int defaultValue, const bool saveIfDefault) {
+void PersistenceRecord::saveField(const std::string& key, unsigned int value, const unsigned int defaultValue, const bool saveIfDefault) {
 	if (saveIfDefault || (value != defaultValue)) _fields[key] = {key, std::to_string(value), Entry::Kind::numeric};
 }
 
-void PersistenceRecord::saveField(std::string key, unsigned int value) {
+void PersistenceRecord::saveField(const std::string& key, unsigned int value) {
 	_fields[key] = {key, std::to_string(value), Entry::Kind::numeric};
 }
 
-void PersistenceRecord::saveField(std::string key, int value, const int defaultValue, const bool saveIfDefault) {
+void PersistenceRecord::saveField(const std::string& key, int value, const int defaultValue, const bool saveIfDefault) {
 	if (saveIfDefault || (value != defaultValue)) _fields[key] = {key, std::to_string(value), Entry::Kind::numeric};
 }
 
-void PersistenceRecord::saveField(std::string key, Util::TimeUnit value, const Util::TimeUnit defaultValue, const bool saveIfDefault) {
+void PersistenceRecord::saveField(const std::string& key, Util::TimeUnit value, const Util::TimeUnit defaultValue, const bool saveIfDefault) {
 	if (saveIfDefault || (value != defaultValue)) _fields[key] = {key, std::to_string(static_cast<int> (value)), Entry::Kind::numeric};
 }

@@ -16,14 +16,55 @@
 
 //using namespace GenesysKernel;
 
+std::string TraceManager::convertEnumToStr(TraceManager::Level level) {
+	switch (level) {
+		case TraceManager::Level::L0_noTraces: return "No Traces";
+		case TraceManager::Level::L1_errorFatal: return "Error Fatal";
+		case TraceManager::Level::L2_results: return "Results";
+		case TraceManager::Level::L3_errorRecover: return "Error Recover";
+		case TraceManager::Level::L4_warning: return "Warning";
+		case TraceManager::Level::L5_event: return "Event";
+		case TraceManager::Level::L6_arrival: return "Arrival";
+		case TraceManager::Level::L7_internal: return "Internal";
+		case TraceManager::Level::L8_detailed: return "Detailed";
+		case TraceManager::Level::L9_mostDetailed: return "Most Detailed";
+		case TraceManager::Level::num_elements: return "";
+	}
+	return "";
+}
+
 TraceManager::TraceManager(Simulator* simulator) {//(Model* model) {
 	_simulator = simulator;
-    _traceLevel = TraitsKernel<Simulator>::traceLevel; // inherits the kernel trace leval
+	_traceHandlers = new List<traceListener>();
+	_traceErrorHandlers = new List<traceErrorListener>();
+	_traceReportHandlers = new List<traceListener>();
+	_traceSimulationHandlers = new List<traceSimulationListener>();
+	_traceHandlersMethod = new List<traceListenerMethod>();
+	_traceErrorHandlersMethod = new List<traceErrorListenerMethod>();
+	_traceReportHandlersMethod = new List<traceListenerMethod>();
+	_traceSimulationHandlersMethod = new List<traceSimulationListenerMethod>();
+	_traceSimulationExceptionRule = new List<void*>();
+	_errorMessages = new List<std::string>();
+	_traceLevel = TraitsKernel<Simulator>::traceLevel; // inherits the kernel trace level
+	_shuttingDown = false;
+	_lastTimeTraceSimulation = -1.0; // an invalid time
+	_lastEntityTraceSimulation = 0;
+	_lastModuleTraceSimulation = 0;
+	_traceSimulationRuleAllAllowed = true;
 }
 
 TraceManager::~TraceManager() {
 	// Reuse shutdown path so callback vectors are neutralized before storage is released.
 	beginShutdown();
+	// Clear handler lists before deleting containers to ensure proper cleanup
+	_traceHandlers->clear();
+	_traceErrorHandlers->clear();
+	_traceReportHandlers->clear();
+	_traceSimulationHandlers->clear();
+	_traceHandlersMethod->clear();
+	_traceErrorHandlersMethod->clear();
+	_traceReportHandlersMethod->clear();
+	_traceSimulationHandlersMethod->clear();
 	delete _traceHandlers;
 	delete _traceErrorHandlers;
 	delete _traceReportHandlers;
@@ -70,18 +111,30 @@ bool TraceManager::isTraceSimulationRuleAllAllowed() const {
 }
 
 void TraceManager::addTraceHandler(traceListener traceListener) {
+	if (_shuttingDown) {
+		return;
+	}
 	this->_traceHandlers->insert(traceListener);
 }
 
 void TraceManager::addTraceSimulationHandler(traceSimulationListener traceSimulationListener) {
+	if (_shuttingDown) {
+		return;
+	}
 	this->_traceSimulationHandlers->insert(traceSimulationListener);
 }
 
 void TraceManager::addTraceErrorHandler(traceErrorListener traceErrorListener) {
+	if (_shuttingDown) {
+		return;
+	}
 	this->_traceErrorHandlers->insert(traceErrorListener);
 }
 
 void TraceManager::addTraceReportHandler(traceListener traceReportListener) {
+	if (_shuttingDown) {
+		return;
+	}
 	this->_traceReportHandlers->insert(traceReportListener);
 }
 
@@ -91,127 +144,113 @@ void TraceManager::addTraceSimulationExceptionRuleModelData(void* thisobject) {
 	}
 }
 
-void TraceManager::trace(TraceManager::Level level, std::string text) {
+void TraceManager::trace(TraceManager::Level level, const std::string& text) {
 	trace(text, level);
 }
 
-void TraceManager::trace(std::string text, TraceManager::Level level) {
+void TraceManager::trace(const std::string& text, TraceManager::Level level) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
 	}
 	if (_traceConditionPassed(level)) {
-		text = Util::Indent() + text;
-		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
-		TraceEvent e = TraceEvent(text, level);
-		for (auto handler : *this->_traceHandlers->list()) {
+		std::string indentedText = Util::Indent() + text;
+		TraceEvent e = TraceEvent(indentedText, level);
+		for (const auto& handler : *this->_traceHandlers->list()) {
 			handler(e);
 		}
-		for (auto& handlerMethod : *this->_traceHandlersMethod->list()) {
+		for (const auto& handlerMethod : *this->_traceHandlersMethod->list()) {
 			handlerMethod(e);
 		}
 	}
 }
 
-//void TraceManager::traceError(std::exception e, std::string text) {
-//	traceError(text, e);
-//}
-
-//void TraceManager::traceError(TraceManager::Level level, std::string text) {
-//	traceError(text, level);
-//}
-
-void TraceManager::traceError(std::string text, TraceManager::Level level) {
+void TraceManager::traceError(const std::string& text, TraceManager::Level level) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
 	}
-	text = Util::Indent() + text;
-	_errorMessages->insert(text);
-	TraceErrorEvent exceptEvent = TraceErrorEvent(text, level);
-	for (auto handler : *this->_traceErrorHandlers->list()) {
+	std::string indentedText = Util::Indent() + text;
+	_errorMessages->insert(indentedText);
+	TraceErrorEvent exceptEvent = TraceErrorEvent(indentedText, level);
+	for (const auto& handler : *this->_traceErrorHandlers->list()) {
 		handler(exceptEvent);
 	}
-	for (auto& handlerMethod : *this->_traceErrorHandlersMethod->list()) {
+	for (const auto& handlerMethod : *this->_traceErrorHandlersMethod->list()) {
 		handlerMethod(exceptEvent);
 	}
 }
 
-void TraceManager::traceError(std::string text, std::exception e) {
+void TraceManager::traceError(const std::string& text, const std::exception& e) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
 	}
-	text = Util::Indent() + text;
-	_errorMessages->insert(text);
-	TraceErrorEvent exceptEvent = TraceErrorEvent(text, e);
-	for (auto handler : *this->_traceErrorHandlers->list()) {
+	std::string indentedText = Util::Indent() + text;
+	_errorMessages->insert(indentedText);
+	TraceErrorEvent exceptEvent = TraceErrorEvent(indentedText, e);
+	for (const auto& handler : *this->_traceErrorHandlers->list()) {
 		handler(exceptEvent);
 	}
-	for (auto& handlerMethod : *this->_traceErrorHandlersMethod->list()) {
+	for (const auto& handlerMethod : *this->_traceErrorHandlersMethod->list()) {
 		handlerMethod(exceptEvent);
 	}
 }
 
-void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, std::string text) {
+void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, const std::string& text) {
 	traceSimulation(thisobject, text, level);
 }
 
-void TraceManager::traceSimulation(void* thisobject, std::string text, TraceManager::Level level, bool showAnyway) {
-	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
-	if (_shuttingDown) {
-		return;
-	}
-    if (_traceSimulationConditionPassed(level, thisobject,showAnyway)) {
-		text = Util::Indent() + text;
-		//text = "L" + std::to_string(static_cast<int> (level)) + "    " + Util::Indent() + text;
-		TraceSimulationEvent e = TraceSimulationEvent(level, 0.0, nullptr, nullptr, text);
-		for (auto handler : *this->_traceSimulationHandlers->list()) {
-			handler(e);
-		}
-		for (auto& handlerMethod : *this->_traceSimulationHandlersMethod->list()) {
-			handlerMethod(e);
-		}
-	}
-}
-
-void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, double time, Entity* entity, ModelComponent* component, std::string text) {
-	traceSimulation(thisobject, time, entity, component, text, level);
-}
-
-void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, std::string text, TraceManager::Level level, bool showAnyway) {
+void TraceManager::traceSimulation(void* thisobject, const std::string& text, TraceManager::Level level, bool showAnyway) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
 	}
     if (_traceSimulationConditionPassed(level, thisobject, showAnyway)) {
-		text = Util::Indent() + text;
-		TraceSimulationEvent e = TraceSimulationEvent(level, time, entity, component, text);
-		for (auto handler : *this->_traceSimulationHandlers->list()) {
+		std::string indentedText = Util::Indent() + text;
+		TraceSimulationEvent e = TraceSimulationEvent(level, 0.0, nullptr, nullptr, indentedText);
+		for (const auto& handler : *this->_traceSimulationHandlers->list()) {
 			handler(e);
 		}
-		for (auto& handlerMethod : *this->_traceSimulationHandlersMethod->list()) {
+		for (const auto& handlerMethod : *this->_traceSimulationHandlersMethod->list()) {
 			handlerMethod(e);
 		}
 	}
 }
 
-//void TraceManager::traceReport(TraceManager::Level level, std::string text) {
-//	traceReport(text, level);
-//}
+void TraceManager::traceSimulation(void* thisobject, TraceManager::Level level, double time, Entity* entity, ModelComponent* component, const std::string& text) {
+	traceSimulation(thisobject, time, entity, component, text, level);
+}
 
-void TraceManager::traceReport(std::string text, TraceManager::Level level) {
+void TraceManager::traceSimulation(void* thisobject, double time, Entity* entity, ModelComponent* component, const std::string& text, TraceManager::Level level, bool showAnyway) {
+	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
+	if (_shuttingDown) {
+		return;
+	}
+    if (_traceSimulationConditionPassed(level, thisobject, showAnyway)) {
+		std::string indentedText = Util::Indent() + text;
+		TraceSimulationEvent e = TraceSimulationEvent(level, time, entity, component, indentedText);
+		for (const auto& handler : *this->_traceSimulationHandlers->list()) {
+			handler(e);
+		}
+		for (const auto& handlerMethod : *this->_traceSimulationHandlersMethod->list()) {
+			handlerMethod(e);
+		}
+	}
+}
+
+void TraceManager::traceReport(const std::string& text, TraceManager::Level level) {
 	// Ignore traces during teardown to prevent late callbacks on already-destroyed objects.
 	if (_shuttingDown) {
 		return;
 	}
 	if (_traceConditionPassed(level)) {
-		text = Util::Indent() + text;
-		TraceEvent e = TraceEvent(text, level);
-		for (auto handler : *this->_traceReportHandlers->list()) {
+		std::string indentedText = Util::Indent() + text;
+		TraceEvent e = TraceEvent(indentedText, level);
+		for (const auto& handler : *this->_traceReportHandlers->list()) {
 			handler(e);
 		}
-		for (auto& handlerMethod : *this->_traceReportHandlersMethod->list()) {
+		for (const auto& handlerMethod : *this->_traceReportHandlersMethod->list()) {
 			handlerMethod(e);
 		}
 	}

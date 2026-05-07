@@ -15,7 +15,7 @@
 #define SEIZABLEITEM_H
 
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/DiscreteProcessing/Set.h"
+#include "../../../data/Logic/Set.h"
 #include "kernel/simulator/ModelDataManager.h"
 
 // @TODO should inhere from a common base to QueueableItem
@@ -78,6 +78,9 @@ public:
 	void _addSimulationControl(SimulationControl* control);
 
 	std::string getTypeDC() { return _typeDC; };
+
+private:
+	void _ensureSimulationControls(Model* model);
 
 private:
 	const struct DEFAULT_VALUES {

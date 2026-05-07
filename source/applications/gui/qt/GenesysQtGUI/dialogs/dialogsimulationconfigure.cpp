@@ -9,6 +9,11 @@
 #include <QPushButton>
 #include <algorithm>
 
+/*! \brief Builds the simulation-configuration dialog and seeds the static combobox content.
+ *
+ * The dialog currently owns a placeholder entry for distributed parallelization while the local
+ * simulation and parallelization settings are still exposed as editable GUI state.
+ */
 DialogSimulationConfigure::DialogSimulationConfigure(QWidget *parent) :
 	QDialog(parent),
 	ui(new Ui::DialogSimulationConfigure)
@@ -51,6 +56,11 @@ void DialogSimulationConfigure::setParallelizationSettings(bool* enabled, int* l
 	_loadParallelizationSettings();
 }
 
+/*! \brief Applies the edited configuration back to the model only when the dialog is accepted.
+ *
+ * This keeps the original values intact until the user confirms the dialog, while still supporting
+ * partial ownership of the parallelization fields when no model simulation is currently attached.
+ */
 void DialogSimulationConfigure::accept()
 {
 	if (_modelSimulation != nullptr || _parallelizationEnabled != nullptr || _parallelizationThreads != nullptr || _parallelizationBatchSize != nullptr) {
@@ -60,6 +70,11 @@ void DialogSimulationConfigure::accept()
 	QDialog::accept();
 }
 
+/*! \brief Asks for confirmation before discarding unsaved changes.
+ *
+ * The dialog checks the current widget state against the snapshot captured at load time so the user
+ * does not lose pending configuration edits accidentally.
+ */
 void DialogSimulationConfigure::reject()
 {
 	if (_hasPendingChanges()) {
@@ -100,6 +115,11 @@ void DialogSimulationConfigure::_populateTimeUnitComboBoxes()
 	}
 }
 
+/*! \brief Mirrors the current ModelSimulation values into the dialog and snapshots the original state.
+ *
+ * The method fills the widgets directly from the model so the UI always starts from the live kernel
+ * configuration instead of from stale dialog state.
+ */
 void DialogSimulationConfigure::_loadModelSimulation()
 {
 	if (_modelSimulation == nullptr) {
@@ -145,6 +165,11 @@ void DialogSimulationConfigure::_loadSimulationReporter()
 	ui->labelSimulationReporterStatus->setText(tr("SimulationReporter_if instance is loaded for the current ModelSimulation."));
 }
 
+/*! \brief Updates the experiment-manager status label with the currently loaded manager, if any.
+ *
+ * The dialog does not edit the manager directly yet, but it still reports the live kernel object so
+ * the user can see whether the runtime is ready for experiment-related configuration.
+ */
 void DialogSimulationConfigure::_loadExperimentManager()
 {
 	if (_experimentManager == nullptr) {
@@ -158,6 +183,11 @@ void DialogSimulationConfigure::_loadExperimentManager()
 	);
 }
 
+/*! \brief Mirrors the in-memory parallelization settings into the dialog widgets.
+ *
+ * The settings are copied from the external booleans and integers when present, and the dialog keeps
+ * the distributed-configuration fields as internal placeholders for future integration.
+ */
 void DialogSimulationConfigure::_loadParallelizationSettings()
 {
 	_originalConfiguration.parallelizationEnabled = _parallelizationEnabled != nullptr ? *_parallelizationEnabled : false;
@@ -238,6 +268,11 @@ void DialogSimulationConfigure::_setTimeUnitComboBoxIndex(QComboBox* comboBox, U
 	comboBox->setCurrentIndex(index >= 0 ? index : 0);
 }
 
+/*! \brief Applies only the fields that changed relative to the original snapshot.
+ *
+ * This avoids unnecessary setter calls on ModelSimulation while still propagating any edits that the
+ * user confirmed through the dialog.
+ */
 void DialogSimulationConfigure::_applyIfChanged(const SimulationConfiguration& edited)
 {
 	if (_modelSimulation != nullptr && edited.numberOfReplications != _originalConfiguration.numberOfReplications) {

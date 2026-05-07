@@ -15,8 +15,8 @@
 #define LSODE_H
 
 #include "kernel/simulator/ModelComponent.h"
-#include "plugins/data/DiscreteProcessing/Formula.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "../../data/Logic/Formula.h"
+#include "../../data/Logic/Variable.h"
 
 /*!
  This component ...
@@ -49,8 +49,15 @@ protected: // virtual
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: // virtual
 	//virtual void _initBetweenReplications();
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 	virtual bool _check(std::string& errorMessage) override;
 	//virtual void _createInternalAndAttachedData();
+
+protected:
+
 private: // methods
 	bool _doStep();
 private: // attributes 1:1
@@ -67,4 +74,3 @@ private: // attributes 1:n
 };
 
 #endif /* LSODE_H */
-

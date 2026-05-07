@@ -81,8 +81,15 @@ protected:
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createInternalAndAttachedData() override;
 	virtual void _initBetweenReplications() override;
+
+protected:
+	virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
+
 private:
 	unsigned int _numberInStation = 0;
 	ModelComponent* _enterIntoStationComponent;

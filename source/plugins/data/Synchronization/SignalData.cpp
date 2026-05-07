@@ -166,3 +166,9 @@ unsigned int SignalData::remainsToLimit() const {
 void SignalData::decreaseRemainLimit() {
 	_remainsToLimit--;
 }
+
+// void SignalData::_createInternalStatisticReporters() { }
+
+// void SignalData::_createEditableDataDefinitions() { }
+
+// void SignalData::_createAttachedAttributes() { }

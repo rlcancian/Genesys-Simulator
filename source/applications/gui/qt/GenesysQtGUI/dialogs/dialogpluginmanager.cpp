@@ -31,6 +31,11 @@
 
 namespace {
 
+/*! \brief Quotes a string for shell execution with POSIX single-quote escaping.
+ *
+ * The plugin manager uses this helper when composing fallback installation commands that need to be
+ * executed in an external terminal.
+ */
 QString ShellSingleQuote(const QString& text)
 {
 	QString escaped = text;
@@ -40,6 +45,11 @@ QString ShellSingleQuote(const QString& text)
 
 }
 
+/*! \brief Builds the plugin manager dialog and prepares the loaded/problem tables.
+ *
+ * The dialog is responsible for plugin insertion/removal, dependency diagnostics, and recovery of
+ * blocked plugins that require system-package installation before they can load.
+ */
 DialogPluginManager::DialogPluginManager(QWidget *parent) :
 	QDialog(parent),
 	ui(new Ui::DialogPluginManager)
@@ -159,6 +169,12 @@ void DialogPluginManager::on_pushButtonInsert_clicked()
 	);
 }
 
+/*! \brief Attempts to resolve the selected blocked plugins and reload them into the simulator.
+ *
+ * Each selected load issue is revalidated against current system dependencies, install commands are
+ * executed when possible, and the plugin is retried after remediation. The method then refreshes the
+ * plugin tables and reports which plugins were loaded, still blocked, or failed installation.
+ */
 void DialogPluginManager::on_pushButtonResolveSelected_clicked()
 {
 	if (_simulator == nullptr || _simulator->getPluginManager() == nullptr) {
@@ -235,6 +251,11 @@ void DialogPluginManager::on_pushButtonResolveSelected_clicked()
 	_showOperationResult(tr("Resolve / load plugins"), message);
 }
 
+/*! \brief Removes the selected plugin after verifying that it is safe to unload.
+ *
+ * Kernel plugins are protected, and plugins currently referenced by the active model are also kept
+ * in place. Successful removals refresh both the plugin tables and the main plugin catalog.
+ */
 void DialogPluginManager::on_pushButtonRemove_clicked()
 {
 	if (_simulator == nullptr || _simulator->getPluginManager() == nullptr) {

@@ -139,11 +139,11 @@ ModelDataDefinition* ModalModelDefault::NewInstance(Model* model, std::string na
 }
 
 void ModalModelDefault::addOutputExpressionReference(ModelDataDefinition* expressionReference) {
-	_attachedDataInsert(expressionReference->getName(), expressionReference);
+	_optionalEditableDataDefinitionInsert(expressionReference->getName(), expressionReference);
 }
 
 void ModalModelDefault::removeOutputExpressionReference(DefaultNodeTransition* expressionReference) {
-	_attachedDataRemove(expressionReference->getName());
+	_optionalEditableDataDefinitionRemove(expressionReference->getName());
 }
 
 
@@ -304,7 +304,7 @@ bool ModalModelDefault::_check(std::string& errorMessage) {
 void ModalModelDefault::_initBetweenReplications() {
 }
 
-void ModalModelDefault::_createInternalAndAttachedData() {
+void ModalModelDefault::_createAttachedAttributes() {
 	std::string currentNodeAttribute = "Entity.ModalModel." + getName() + ".CurrentNode";
 	std::string lastNodeAttribute = "Entity.ModalModel." + getName() + ".LastNode";
 	_attachedAttributesInsert({currentNodeAttribute, lastNodeAttribute});
@@ -465,21 +465,10 @@ void ModalModelDefault::_initBetweenReplications() {
 */
 
 /*
-void ModalModelDefault::_createInternalAndAttachedData() {
-	if (_internalDataDefinition == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_internalDataDefinition = pm->newInstance<DummyElement>(_parentModel, getName() + "." + "JustaDummy");
-		_internalDataInsert("JustaDummy", _internalDataDefinition);
-	}
-	if (_attachedDataDefinition == nullptr) {
-		PluginManager* pm = _parentModel->getParentSimulator()->getPlugins();
-		_attachedDataDefinition = pm->newInstance<DummyElement>(_parentModel);
-		_attachedDataInsert("JustaDummy", _attachedDataDefinition);
-	}
-}
-*/
-
-/*
 void ModalModelDefault::_addSimulationControl(SimulationControl* property) {
 }
 */
+
+// void ModalModelDefault::_createInternalStatisticReporters() { }
+
+// void ModalModelDefault::_createEditableDataDefinitions() { }

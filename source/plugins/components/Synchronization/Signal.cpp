@@ -128,18 +128,7 @@ bool Signal::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void Signal::_createInternalAndAttachedData() {
-	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
-	// Preserve loaded/configured association; only create SignalData if none is already associated.
-	if (_signalData == nullptr) {
-		_signalData = pm->newInstance<SignalData>(_parentModel);
-	}
-	if (_signalData != nullptr) {
-		_attachedDataInsert("SignalData", _signalData);
-	} else {
-		_attachedDataRemove("SignalData");
-	}
-}
+//void Signal::_createAttachedAttributes() {}
 
 const std::string&Signal::limitExpression() const
 {
@@ -153,4 +142,19 @@ void Signal::setLimitExpression(const std::string&newLimitExpression)
 
 void Signal::_initBetweenReplications() {
 
+}
+
+// void Signal::_createInternalStatisticReporters() { }
+
+void Signal::_createEditableDataDefinitions() {
+	PluginManager* pm = _parentModel->getParentSimulator()->getPluginManager();
+	// Preserve loaded/configured association; only create SignalData if none is already associated.
+	if (_signalData == nullptr) {
+		_signalData = pm->newInstance<SignalData>(_parentModel);
+	}
+	if (_signalData != nullptr) {
+		_optionalEditableDataDefinitionInsert("SignalData", _signalData);
+	} else {
+		_optionalEditableDataDefinitionRemove("SignalData");
+	}
 }

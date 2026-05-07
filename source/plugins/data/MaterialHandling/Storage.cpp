@@ -135,3 +135,9 @@ ParserChangesInformation* Storage::_getParserChangesInformation() {
 	//changes->getTokensToAdd()->insert(...);
 	return changes;
 }
+
+// void Storage::_createInternalStatisticReporters() { }
+
+// void Storage::_createEditableDataDefinitions() { }
+
+// void Storage::_createAttachedAttributes() { }

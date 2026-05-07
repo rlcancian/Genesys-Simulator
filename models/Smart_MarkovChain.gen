@@ -1,0 +1,18 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 
+
+# Model Data Definitions
+103 Attribute  "Entity.ArrivalTime" 
+104 Attribute  "Entity.Type" 
+105 EntityType "entitytype" 
+107 Variable   "MarkovTransitionMatrix" valuePos[0]="0,1" value[1]=1.000000 valuePos[1]="1,2" valuePos[3]="3,0" value[2]=1.000000 valuePos[2]="2,3" dimensions=2 values=4 dimension[0]=4 value[0]=1.000000 dimension[1]=4 value[3]=1.000000 
+108 Variable   "MarkovInitialDistribution" value[0]=1.000000 values=1 dimensions=1 dimension[0]=4 
+109 Attribute  "Entity.CurrentMarkovState" values=1 valuePos[0]="" 
+
+# Model Components
+102 Create     "Create_1" entityType="entitytype" nextId=110 
+110 MarkovChain "MarkovChain_1" currentState="Entity.CurrentMarkovState" currentStateRef="Attribute:Entity.CurrentMarkovState" initialDistributionRef="Variable:MarkovInitialDistribution" initialDistribution="MarkovInitialDistribution" transitionMatrixRef="Variable:MarkovTransitionMatrix" nextId=111 transitionMatrix="MarkovTransitionMatrix" 
+111 Dispose    "Dispose_1" nexts=0 

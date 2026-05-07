@@ -20,11 +20,11 @@
 
 // Model Components
 #include "plugins/components/Template/DummyComponent.h"
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
 #include "plugins/components/DiscreteProcessing/Process.h"
-#include "plugins/components/DiscreteProcessing/Assign.h"
+#include "plugins/components/Logic/Assign.h"
 #include "plugins/components/Decisions/Decide.h"
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"

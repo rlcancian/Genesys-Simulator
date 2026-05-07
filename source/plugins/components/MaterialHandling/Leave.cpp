@@ -104,26 +104,31 @@ PluginInformation* Leave::GetPluginInformation() {
 	return info;
 }
 
-void Leave::_createInternalAndAttachedData() {
-	if (_reportStatistics) {
-		if (_numberIn == nullptr) {
-			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
-		}
-		if (_numberIn != nullptr) {
-			_internalDataInsert("CountNumberIn", _numberIn);
-		}
-	} else if (_numberIn != nullptr) {
-			_internalDataClear();
-	}
-	if (_station != nullptr) {
-		_attachedDataInsert("Station", _station);
-	} else {
-		_attachedDataRemove("Station");
-	}
-}
+//void Leave::_createAttachedAttributes() {}
 
 bool Leave::_check(std::string& errorMessage) {
 	bool resultAll = true;
 	resultAll &= _parentModel->getDataManager()->check(Util::TypeOf<Station>(), _station, "Station", errorMessage);
 	return resultAll;
+}
+
+void Leave::_createInternalStatisticReporters() {
+	if (_reportStatistics) {
+		if (_numberIn == nullptr) {
+			_numberIn = new Counter(_parentModel, getName() + "." + "CountNumberIn", this);
+		}
+		if (_numberIn != nullptr) {
+			_statisticReporterInsert("CountNumberIn", _numberIn);
+		}
+	} else {
+		_statisticReportersClear();
+	}
+}
+
+void Leave::_createEditableDataDefinitions() {
+	if (_station != nullptr) {
+		_optionalEditableDataDefinitionInsert("Station", _station);
+	} else {
+		_optionalEditableDataDefinitionRemove("Station");
+	}
 }

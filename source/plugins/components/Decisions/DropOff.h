@@ -53,8 +53,15 @@ protected: // virtual
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 protected: // virtual
 	//virtual void _initBetweenReplications();
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual bool _check(std::string& errorMessage) override;
+
+protected:
+
 private: // methods
 private: // attributes 1:1
 private: // attributes 1:n
@@ -62,4 +69,3 @@ private: // attributes 1:n
 
 
 #endif /* DROPOFF_H */
-

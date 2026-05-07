@@ -96,10 +96,17 @@ protected: // could be overriden
 	virtual bool _check(std::string& errorMessage) override;
 	// virtual ParserChangesInformation* _getParserChangesInformation();
 	virtual void _initBetweenReplications() override;
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createInternalAndAttachedData() override;
 protected:
 	CompilationResult _invokeCompiler(std::string command);  //system(command.c_str());
 	std::string _read(std::string filename);
+
+protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+
 private:
 
 	const struct DEFAULT_VALUES {
@@ -131,4 +138,3 @@ private:
 };
 
 #endif /* CPPCOMPILER_H */
-

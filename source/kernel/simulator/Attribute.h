@@ -66,7 +66,7 @@ system.
 class Attribute : public ModelDataDefinition {
 public:
 	/*! \brief Creates an entity attribute definition in the model. */
-	Attribute(Model* model, std::string name = "");
+	Attribute(Model* model, std::string name = "", std::string dataDefinitionTypename = Util::TypeOf<Attribute>());
 	/*! \brief Releases sparse initial values owned by this definition. */
 	virtual ~Attribute() override;
 public:
@@ -76,6 +76,10 @@ public: // public static methods
 	static ModelDataDefinition* LoadInstance(Model* model, PersistenceRecord *fields);
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 public:
+	/*! \brief Returns the initial values serialized in bracket notation. */
+	virtual std::string getInitialValuesText() const;
+	/*! \brief Parses bracket notation and replaces the initial value store. */
+	virtual void setInitialValuesText(std::string valuesText);
 	/*! \brief Reads the initial sparse value, returning 0.0 when the index is absent. */
 	double getInitialValue(std::string index = "");
 	/*! \brief Writes the initial sparse value at the scalar or indexed position. */
@@ -90,13 +94,19 @@ public:
 	std::map<std::string, double>* getInitialValues() const;
 	/*! \brief Returns the sparse initial value store used by this attribute. */
 	SparseValueStore* getInitialValueStore();
+	/*! \brief Returns whether the last textual initial value is syntactically valid. */
+	bool isInitialValuesTextValid() const;
 protected: //! must be overriden by derived classes
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 protected: //! could be overriden by derived classes
 	virtual bool _check(std::string& errorMessage) override;
 private:
+	void _syncInitialValuesTextFromStore();
 	SparseValueStore* _initialValues = new SparseValueStore();
+	std::string _initialValuesText = "0";
+	bool _initialValuesTextValid = true;
+	std::string _initialValuesTextErrorMessage;
 };
 //namespace\\}
 #endif /* ATTRIBUTE_H */

@@ -30,7 +30,7 @@ ModelDataDefinition* Process::NewInstance(Model* model, std::string name) {
 
 Process::Process(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<Process>(), name) {
 	_flagConstructing = true;
-	_createInternalAndAttachedData(); // its's called by the constructor because internal components can be accessed by process' public methods, so they must exist ever since
+	_createNonEditableDataDefinitions(); // internal components must exist before public accessors can touch them
 	_flagConstructing = false;
 
 	SimulationControlGeneric<unsigned short>* propPriority = new SimulationControlGeneric<unsigned short>(
@@ -204,9 +204,9 @@ void Process::_ensureInternalComponents() {
 	_seize->getConnectionManager()->insert(_delay);
 	_delay->getConnectionManager()->insert(_release);
 
-	_internalDataInsert("Seize", _seize);
-	_internalDataInsert("Delay", _delay);
-	_internalDataInsert("Release", _release);
+	_mandatoryNonEditableDataDefinitionInsert("Seize", _seize);
+	_mandatoryNonEditableDataDefinitionInsert("Delay", _delay);
+	_mandatoryNonEditableDataDefinitionInsert("Release", _release);
 }
 
 void Process::_reconcileInternalComponents() {
@@ -315,13 +315,7 @@ PluginInformation* Process::GetPluginInformation() {
 	return info;
 }
 
-void Process::_createInternalAndAttachedData() {
-	_ensureInternalComponents();
-	_adjustConnections();
-	if (!_flagConstructing) {
-		_reconcileInternalComponents();
-	}
-}
+//void Process::_createAttachedAttributes() {}
 
 bool Process::_check(std::string& errorMessage) {
 	_ensureInternalComponents();
@@ -350,4 +344,18 @@ bool Process::_check(std::string& errorMessage) {
 	resultAll &= ModelComponent::Check(_delay);
 	resultAll &= ModelComponent::Check(_release);
 	return resultAll;
+}
+
+// void Process::_createInternalStatisticReporters() { }
+
+void Process::_createNonEditableDataDefinitions() {
+	_ensureInternalComponents();
+}
+
+void Process::_createEditableDataDefinitions() {
+	_ensureInternalComponents();
+	_adjustConnections();
+	if (!_flagConstructing) {
+		_reconcileInternalComponents();
+	}
 }

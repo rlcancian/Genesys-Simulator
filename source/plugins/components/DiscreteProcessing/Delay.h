@@ -70,7 +70,11 @@ protected:
 protected:
 	//virtual void _initBetweenReplications();
 	virtual bool _check(std::string& errorMessage) override;
-	virtual void _createInternalAndAttachedData() override;
+protected:
+	virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	// virtual void _createEditableDataDefinitions() override;
+	virtual void _createAttachedAttributes() override;
 public:
 	const struct DEFAULT_VALUES {
 		const std::string delayExpression = "1.0";
@@ -78,6 +82,9 @@ public:
 		const Util::AllocationType allocation = Util::AllocationType::Wait; 
 		
 	} DEFAULT;
+
+protected:
+
 private:
 	std::string _delayExpression = DEFAULT.delayExpression;
 	Util::TimeUnit _delayTimeUnit = DEFAULT.delayTimeUnit;

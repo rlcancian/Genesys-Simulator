@@ -12,8 +12,8 @@
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
-#include "plugins/components/DiscreteProcessing/Create.h"
-#include "plugins/components/DiscreteProcessing/Dispose.h"
+#include "plugins/components/Logic/Create.h"
+#include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/components/DiscreteProcessing/Delay.h"
@@ -94,4 +94,3 @@ int Smart_OverlappingResources::main(int argc, char** argv) {
 	delete genesys;
 	return 0;
 };
-

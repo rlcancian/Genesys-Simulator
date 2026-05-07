@@ -262,13 +262,7 @@ bool RSimulator::_check(std::string& errorMessage) {
 	return resultAll;
 }
 
-void RSimulator::_createInternalAndAttachedData() {
-	_ensureRunner();
-	_syncRunnerConfiguration();
-	if (_runner != nullptr) {
-		_internalDataInsert("RSimulatorRunner", _runner);
-	}
-}
+//void RSimulator::_createAttachedAttributes() {}
 
 void RSimulator::_ensureRunner() {
 	if (_runner == nullptr) {
@@ -287,4 +281,15 @@ void RSimulator::_syncRunnerConfiguration() {
 
 bool RSimulator::_isNonEmptyCommand(const std::string& command) const {
 	return !trimText(command).empty();
+}
+
+// void RSimulator::_createInternalStatisticReporters() { }
+
+void RSimulator::_createEditableDataDefinitions() {
+	_ensureRunner();
+	_syncRunnerConfiguration();
+	if (_runner != nullptr) {
+		_mandatoryNonEditableDataDefinitionInsert("RSimulatorRunner", _runner);
+	}
+
 }

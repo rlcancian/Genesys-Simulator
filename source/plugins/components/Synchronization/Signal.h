@@ -58,8 +58,15 @@ protected: // must be overriden
 protected: // could be overriden .
 	virtual bool _check(std::string& errorMessage) override;
 	virtual void _initBetweenReplications() override;
-	virtual void _createInternalAndAttachedData() override;
+	// virtual void _createInternalAndAttachedData() override;
 	//virtual ParserChangesInformation* _getParserChangesInformation();
+
+protected:
+	// virtual void _createInternalStatisticReporters() override;
+	// virtual void _createNonEditableDataDefinitions() override;
+	virtual void _createEditableDataDefinitions() override;
+	// virtual void _createAttachedAttributes() override;
+
 private: // methods
 private: // attributes 1:1
 	const struct DEFAULT_VALUES {
@@ -75,4 +82,3 @@ private: // attached
 
 
 #endif /* SIGNAL_H */
-

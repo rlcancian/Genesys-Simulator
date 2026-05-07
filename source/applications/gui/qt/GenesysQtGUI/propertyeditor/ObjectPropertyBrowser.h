@@ -76,6 +76,7 @@ private:
         bool isObjectSelector = false;
         bool isModelObjectAction = false;
         bool isObjectListAction = false;
+        bool isMultilineTextAction = false;
         QGraphicsItem* graphicsItem = nullptr;
         bool graphicsRequiresCommit = false;
         std::function<void(const QVariant&)> graphicsVariantSetter;
@@ -97,6 +98,20 @@ private:
         };
 
         Kind kind = Kind::None;
+        std::string typeName;
+    };
+
+    struct ModelObjectAction {
+        enum class Kind {
+            None,
+            SetReference,
+            CreateNew,
+            SelectAndEdit,
+            RemoveReference
+        };
+
+        Kind kind = Kind::None;
+        std::string objectValue;
         std::string typeName;
     };
 
@@ -130,12 +145,12 @@ private:
     ModelObjectRelation _relationForDataDefinition(ModelDataDefinition* dataDefinition) const;
     ModelDataDefinition* _referencedModelDataDefinition(const Binding& binding) const;
     QString _modelObjectTypeName(const GenesysPropertyDescriptor& desc) const;
-    QString _defaultModelObjectName(const GenesysPropertyDescriptor& desc) const;
+    QString _defaultModelObjectName(const GenesysPropertyDescriptor& desc, const std::string& concreteTypeName = "") const;
     bool _isRegisteredModelDataDefinition(ModelDataDefinition* dataDefinition) const;
     void _materializeAffectedModelDataDefinitions(ModelDataDefinition* referencedDataDefinition = nullptr) const;
     bool _createNewListElementForProperty(QtProperty* property, const std::string& typeName = "");
     bool _setCurrentListElementTypeForProperty(QtProperty* property, const std::string& typeName);
-    bool _createModelObjectForProperty(QtProperty* property);
+    bool _createModelObjectForProperty(QtProperty* property, const std::string& typeName = "");
     bool _setModelObjectReferenceForProperty(QtProperty* property, const QString& objectName);
     bool _selectModelObjectForProperty(QtProperty* property);
     bool _removeModelObjectReferenceForProperty(QtProperty* property);
@@ -166,9 +181,13 @@ private:
     std::string _fromVariant(const GenesysPropertyDescriptor& desc, const QVariant& value) const;
     int _enumIndexFor(const GenesysPropertyDescriptor& desc) const;
     QStringList _toQStringList(const std::vector<std::string>& values) const;
+    bool _hasSpecializedEditor(const GenesysPropertyDescriptor& desc) const;
+    QString _specializedEditorActionText(const GenesysPropertyDescriptor& desc) const;
 
     bool _openSpecializedEditorForCurrentItem();
     bool _openSpecializedEditor(QtProperty* property);
+    bool _openTextDialogEditor(const Binding& binding, bool compactEditor);
+    bool _openMultilineTextDialogEditor(const Binding& binding);
     bool _createObjectForProperty(QtProperty* property);
 
 protected:
@@ -187,6 +206,8 @@ private:
     bool _isDeferredRebuildScheduled = false;
     // Coalesce queued model-change callbacks while one deferred dispatch is already scheduled.
     bool _isDeferredModelChangedScheduled = false;
+    // Prevent recursive handling when a multiline text action resets its combo-box selection.
+    bool _isHandlingMultilineTextAction = false;
 
 private:
     // Execute property rebuild with reentrancy suppression and deferred retry support.
@@ -225,6 +246,7 @@ private:
     QMap<QtProperty*, Binding> _bindings;
     QMap<QtProperty*, QStringList> _enumNames;
     QMap<QtProperty*, std::vector<ObjectListAction>> _objectListActions;
+    QMap<QtProperty*, std::vector<ModelObjectAction>> _modelObjectActions;
     QSet<QtProperty*> _pendingCommittedProperties;
     QMap<QtProperty*, QVariant> _pendingCommittedValues;
     ModelChangedCallback _modelChangedCallback;
@@ -238,7 +260,7 @@ private:
 private slots:
     void valueChanged(QtProperty *property, const QVariant &value);
     void enumValueChanged(QtProperty *property, int value);
-    void onVariantEditorCommitted(QtProperty* property);
+    void onVariantEditorCommitted(QtProperty* property, const QVariant& committedValue = QVariant());
 
 public slots:
     void objectUpdated();

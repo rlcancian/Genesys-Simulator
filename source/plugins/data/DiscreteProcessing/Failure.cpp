@@ -351,3 +351,9 @@ void Failure::_onFailureFailEventHandler(void* resourcePtr){
 	// schedule next resource activation
 	_scheduleActivation(resource);
 }
+
+// void Failure::_createInternalStatisticReporters() { }
+
+// void Failure::_createEditableDataDefinitions() { }
+
+// void Failure::_createAttachedAttributes() { }
