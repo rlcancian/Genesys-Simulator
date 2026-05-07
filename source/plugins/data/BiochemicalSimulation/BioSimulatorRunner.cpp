@@ -17,8 +17,15 @@
 #include <sstream>
 #include <vector>
 
+#include "kernel/TraitsKernel.h"
 #include "kernel/simulator/Model.h"
+#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/util/List.h"
+#include "plugins/data/BiochemicalSimulation/BioNetwork.h"
+#include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSBMLBridge.h"
+#include "plugins/data/BiochemicalSimulation/BioParameter.h"
+#include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -156,6 +163,30 @@ bool parseQuotedSymbol(const std::string& text, std::string* symbol) {
 	return !symbol->empty() && symbol->find('"') == std::string::npos;
 }
 
+std::string boolText(bool value) {
+	return value ? "true" : "false";
+}
+
+std::string joinNames(const std::vector<std::string>& names, const std::string& separator) {
+	std::string joined;
+	for (const std::string& name : names) {
+		if (!joined.empty()) {
+			joined += separator;
+		}
+		joined += name;
+	}
+	return joined;
+}
+
+std::string formatStoichiometricTerm(const BioReaction::StoichiometricTerm& term) {
+	if (std::abs(term.stoichiometry - 1.0) < 1e-12) {
+		return term.speciesName;
+	}
+	std::ostringstream out;
+	out << term.speciesName << ":" << std::setprecision(15) << term.stoichiometry;
+	return out.str();
+}
+
 std::string makePayloadPrefix(bool success, const std::string& status, const std::string& backend, const std::string& command, const std::string& resultType) {
 	return "{\"success\":" + std::string(success ? "true" : "false") +
 			",\"status\":\"" + jsonEscape(status) + "\"" +
@@ -214,6 +245,359 @@ bool writeTextFile(const std::filesystem::path& path, const std::string& content
 	return true;
 }
 
+BioNetwork* resolveBioNetwork(Model* model, const std::string& targetBioNetworkName, std::string& errorMessage) {
+	if (model == nullptr || model->getDataManager() == nullptr) {
+		errorMessage = "BioSimulatorRunner requires a valid model to resolve BioNetwork definitions.";
+		return nullptr;
+	}
+
+	const std::string requestedName = trim(targetBioNetworkName);
+	if (!requestedName.empty()) {
+		ModelDataDefinition* definition = model->getDataManager()->getDataDefinition(Util::TypeOf<BioNetwork>(), requestedName);
+		auto* network = dynamic_cast<BioNetwork*>(definition);
+		if (network == nullptr) {
+			errorMessage = "BioSimulatorRunner could not resolve BioNetwork \"" + requestedName + "\".";
+		}
+		return network;
+	}
+
+	List<ModelDataDefinition*>* definitions = model->getDataManager()->getDataDefinitionList(Util::TypeOf<BioNetwork>());
+	if (definitions == nullptr || definitions->size() == 0) {
+		errorMessage = "BioSimulatorRunner requires at least one BioNetwork or an explicit targetBioNetworkName.";
+		return nullptr;
+	}
+
+	// Prefer the unique BioNetwork when the model has only one; otherwise require an explicit target name.
+	BioNetwork* uniqueNetwork = nullptr;
+	for (ModelDataDefinition* definition : *definitions->list()) {
+		auto* network = dynamic_cast<BioNetwork*>(definition);
+		if (network == nullptr) {
+			continue;
+		}
+		if (uniqueNetwork != nullptr) {
+			errorMessage = "BioSimulatorRunner found multiple BioNetwork definitions; set targetBioNetworkName to select one.";
+			return nullptr;
+		}
+		uniqueNetwork = network;
+	}
+	if (uniqueNetwork == nullptr) {
+		errorMessage = "BioSimulatorRunner could not resolve any BioNetwork definitions.";
+		return nullptr;
+	}
+	return uniqueNetwork;
+}
+
+ModelDataDefinition* resolveSymbolDefinition(Model* model, const std::string& symbol, std::string* definitionType) {
+	if (definitionType != nullptr) {
+		definitionType->clear();
+	}
+	if (model == nullptr || model->getDataManager() == nullptr) {
+		return nullptr;
+	}
+
+	ModelDataDefinition* definition = model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), symbol);
+	if (definition != nullptr) {
+		if (definitionType != nullptr) {
+			*definitionType = Util::TypeOf<BioSpecies>();
+		}
+		return definition;
+	}
+
+	definition = model->getDataManager()->getDataDefinition(Util::TypeOf<BioParameter>(), symbol);
+	if (definition != nullptr && definitionType != nullptr) {
+		*definitionType = Util::TypeOf<BioParameter>();
+	}
+	return definition;
+}
+
+std::string buildBioNetworkReport(Model* model, BioNetwork* network, std::string& errorMessage) {
+	if (model == nullptr || model->getDataManager() == nullptr) {
+		errorMessage = "BioSimulatorRunner requires a valid model to build a BioNetwork report.";
+		return "";
+	}
+	if (network == nullptr) {
+		errorMessage = "BioSimulatorRunner requires a valid BioNetwork to build a report.";
+		return "";
+	}
+
+	std::ostringstream out;
+	out << "BioNetwork Analysis Report\n";
+	out << "network: " << network->getName() << "\n";
+	out << "status: " << network->getLastStatus() << "\n";
+	out << "startTime: " << formatDouble(network->getStartTime()) << "\n";
+	out << "stopTime: " << formatDouble(network->getStopTime()) << "\n";
+	out << "stepSize: " << formatDouble(network->getStepSize()) << "\n";
+	out << "currentTime: " << formatDouble(network->getCurrentTime()) << "\n";
+	out << "autoSchedule: " << boolText(network->getAutoSchedule()) << "\n";
+	out << "lastErrorMessage: " << network->getLastErrorMessage() << "\n";
+
+	out << "\nSpecies membership\n";
+	if (network->getSpeciesNames().empty()) {
+		out << "  membership: implicit discovery of all BioSpecies definitions in the model\n";
+	} else {
+		out << "  membership: explicit\n";
+		out << "  names: " << joinNames(network->getSpeciesNames(), ", ") << "\n";
+	}
+	List<ModelDataDefinition*>* speciesDefinitions = model->getDataManager()->getDataDefinitionList(Util::TypeOf<BioSpecies>());
+	if (speciesDefinitions != nullptr) {
+		out << "  discoveredSpeciesCount: " << speciesDefinitions->size() << "\n";
+	}
+	out << "  details:\n";
+	if (network->getSpeciesNames().empty()) {
+		if (speciesDefinitions != nullptr) {
+			for (ModelDataDefinition* definition : *speciesDefinitions->list()) {
+				auto* species = dynamic_cast<BioSpecies*>(definition);
+				if (species == nullptr) {
+					continue;
+				}
+				out << "    - " << species->getName()
+				    << " | initial=" << formatDouble(species->getInitialAmount())
+				    << " | amount=" << formatDouble(species->getAmount())
+				    << " | constant=" << boolText(species->isConstant())
+				    << " | boundary=" << boolText(species->isBoundaryCondition())
+				    << " | unit=" << species->getUnit() << "\n";
+			}
+		}
+	} else {
+		for (const std::string& speciesName : network->getSpeciesNames()) {
+			ModelDataDefinition* definition = model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), speciesName);
+			auto* species = dynamic_cast<BioSpecies*>(definition);
+			if (species == nullptr) {
+				out << "    - " << speciesName << " <missing BioSpecies definition>\n";
+				continue;
+			}
+			out << "    - " << species->getName()
+			    << " | initial=" << formatDouble(species->getInitialAmount())
+			    << " | amount=" << formatDouble(species->getAmount())
+			    << " | constant=" << boolText(species->isConstant())
+			    << " | boundary=" << boolText(species->isBoundaryCondition())
+			    << " | unit=" << species->getUnit() << "\n";
+		}
+	}
+
+	out << "\nReaction membership\n";
+	if (network->getReactionNames().empty()) {
+		out << "  membership: implicit discovery of all BioReaction definitions in the model\n";
+	} else {
+		out << "  membership: explicit\n";
+		out << "  names: " << joinNames(network->getReactionNames(), ", ") << "\n";
+	}
+	List<ModelDataDefinition*>* reactionDefinitions = model->getDataManager()->getDataDefinitionList(Util::TypeOf<BioReaction>());
+	if (reactionDefinitions != nullptr) {
+		out << "  discoveredReactionCount: " << reactionDefinitions->size() << "\n";
+	}
+	out << "  details:\n";
+	auto appendReactionDetails = [&out, model](const std::string& reactionName) {
+		ModelDataDefinition* definition = model->getDataManager()->getDataDefinition(Util::TypeOf<BioReaction>(), reactionName);
+		auto* reaction = dynamic_cast<BioReaction*>(definition);
+		if (reaction == nullptr) {
+			out << "    - " << reactionName << " <missing BioReaction definition>\n";
+			return;
+		}
+		out << "    - " << reaction->getName()
+		    << " | reversible=" << boolText(reaction->isReversible())
+		    << " | rateConstant=" << formatDouble(reaction->getRateConstant())
+		    << " | reverseRateConstant=" << formatDouble(reaction->getReverseRateConstant())
+		    << " | rateParameter=" << reaction->getRateConstantParameterName()
+		    << " | reverseRateParameter=" << reaction->getReverseRateConstantParameterName()
+		    << " | kineticLaw=\"" << reaction->getKineticLawExpression() << "\""
+		    << " | reverseKineticLaw=\"" << reaction->getReverseKineticLawExpression() << "\"\n";
+		out << "      reactants: ";
+		if (reaction->getReactants().empty()) {
+			out << "<none>";
+		} else {
+			bool first = true;
+			for (const BioReaction::StoichiometricTerm& term : reaction->getReactants()) {
+				if (!first) {
+					out << " + ";
+				}
+				out << formatStoichiometricTerm(term);
+				first = false;
+			}
+		}
+		out << "\n";
+		out << "      products: ";
+		if (reaction->getProducts().empty()) {
+			out << "<none>";
+		} else {
+			bool first = true;
+			for (const BioReaction::StoichiometricTerm& term : reaction->getProducts()) {
+				if (!first) {
+					out << " + ";
+				}
+				out << formatStoichiometricTerm(term);
+				first = false;
+			}
+		}
+		out << "\n";
+		out << "      modifiers: ";
+		if (reaction->getModifiers().empty()) {
+			out << "<none>";
+		} else {
+			out << joinNames(reaction->getModifiers(), ", ");
+		}
+		out << "\n";
+	};
+	if (network->getReactionNames().empty()) {
+		if (reactionDefinitions != nullptr) {
+			for (ModelDataDefinition* definition : *reactionDefinitions->list()) {
+				auto* reaction = dynamic_cast<BioReaction*>(definition);
+				if (reaction != nullptr) {
+					appendReactionDetails(reaction->getName());
+				}
+			}
+		}
+	} else {
+		for (const std::string& reactionName : network->getReactionNames()) {
+			appendReactionDetails(reactionName);
+		}
+	}
+
+	out << "\nStoichiometry matrix\n";
+	BioStoichiometryMatrix stoichiometryMatrix;
+	std::string stoichiometryError;
+	if (network->getStoichiometryMatrix(&stoichiometryMatrix, &stoichiometryError)) {
+		out << "  species\\reaction";
+		for (const std::string& reactionName : stoichiometryMatrix.reactionNames) {
+			out << " | " << reactionName;
+		}
+		out << "\n";
+		for (unsigned int i = 0; i < stoichiometryMatrix.speciesNames.size(); ++i) {
+			out << "  " << stoichiometryMatrix.speciesNames[i];
+			for (unsigned int j = 0; j < stoichiometryMatrix.reactionNames.size(); ++j) {
+				out << " | " << formatDouble(stoichiometryMatrix.coefficient(i, j));
+			}
+			out << "\n";
+		}
+	} else {
+		out << "  unavailable: " << stoichiometryError << "\n";
+	}
+
+	out << "\nSimulation result\n";
+	const BioSimulationResult& result = network->getLastSimulationResult();
+	if (result.empty()) {
+		out << "  <no simulation result available>\n";
+	} else {
+		out << "  samples: " << result.sampleCount() << "\n";
+		out << "  timeWindow: [" << formatDouble(result.getStartTime()) << ", " << formatDouble(result.getStopTime()) << "]\n";
+		out << "  stepSize: " << formatDouble(result.getStepSize()) << "\n";
+		out << "  species: " << joinNames(result.getSpeciesNames(), ", ") << "\n";
+		const BioSimulationSample& lastSample = result.getSamples().back();
+		out << "  lastSampleTime: " << formatDouble(lastSample.time) << "\n";
+		out << "  lastSampleSpecies:\n";
+		for (const BioSimulationSpeciesAmount& amount : lastSample.species) {
+			out << "    - " << amount.speciesName << " = " << formatDouble(amount.amount) << "\n";
+		}
+
+		out << "\nReaction rates\n";
+		BioReactionRateTimeCourse rates;
+		std::string ratesError;
+		if (network->getReactionRateTimeCourse(&rates, &ratesError)) {
+			out << "  samples: " << rates.samples.size() << "\n";
+			for (unsigned int reactionIndex = 0; reactionIndex < rates.reactionNames.size(); ++reactionIndex) {
+				const std::string& reactionName = rates.reactionNames[reactionIndex];
+				const double firstForward = rates.samples.empty() ? 0.0 : rates.samples.front().forwardRates[reactionIndex];
+				const double firstNet = rates.samples.empty() ? 0.0 : rates.samples.front().netRates[reactionIndex];
+				const double lastForward = rates.samples.empty() ? 0.0 : rates.samples.back().forwardRates[reactionIndex];
+				const double lastNet = rates.samples.empty() ? 0.0 : rates.samples.back().netRates[reactionIndex];
+				out << "  - " << reactionName
+				    << " | firstForward=" << formatDouble(firstForward)
+				    << " | firstNet=" << formatDouble(firstNet)
+				    << " | lastForward=" << formatDouble(lastForward)
+				    << " | lastNet=" << formatDouble(lastNet) << "\n";
+			}
+		} else {
+			out << "  unavailable: " << ratesError << "\n";
+		}
+
+		out << "\nSteady-state\n";
+		BioSteadyStateCheck steadyState;
+		std::string steadyError;
+		if (network->checkLastSampleSteadyState(1e-9, &steadyState, &steadyError)) {
+			out << "  tolerance: " << formatDouble(steadyState.tolerance) << "\n";
+			out << "  steady: " << boolText(steadyState.steady) << "\n";
+			out << "  maxAbsoluteDerivative: " << formatDouble(steadyState.maxAbsoluteDerivative) << "\n";
+			for (const BioSpeciesDerivative& derivative : steadyState.derivatives) {
+				out << "    - " << derivative.speciesName << " = " << formatDouble(derivative.derivative) << "\n";
+			}
+		} else {
+			out << "  unavailable: " << steadyError << "\n";
+		}
+
+		out << "\nParameter sensitivity\n";
+		BioSensitivityScan sensitivity;
+		std::string sensitivityError;
+		if (network->scanLocalParameterSensitivity(0.01, 1.0e-6, &sensitivity, &sensitivityError)) {
+			out << "  time: " << formatDouble(sensitivity.time) << "\n";
+			out << "  species: " << joinNames(sensitivity.speciesNames, ", ") << "\n";
+			out << "  entries: " << sensitivity.entries.size() << "\n";
+			for (const BioParameterSensitivityEntry& entry : sensitivity.entries) {
+				out << "    - " << entry.parameterName
+				    << " | baseValue=" << formatDouble(entry.baseValue)
+				    << " | delta=" << formatDouble(entry.delta)
+				    << " | maxAbsoluteSensitivity=" << formatDouble(entry.maxAbsoluteSensitivity) << "\n";
+			}
+		} else {
+			out << "  unavailable: " << sensitivityError << "\n";
+		}
+	}
+
+	return out.str();
+}
+
+std::string buildBioNetworkReportJson(Model* model, BioNetwork* network, const std::string& command, const std::string& status, std::string& errorMessage) {
+	if (model == nullptr || model->getDataManager() == nullptr) {
+		errorMessage = "BioSimulatorRunner requires a valid model to build a BioNetwork JSON report.";
+		return "";
+	}
+	if (network == nullptr) {
+		errorMessage = "BioSimulatorRunner requires a valid BioNetwork to build a JSON report.";
+		return "";
+	}
+
+	std::ostringstream out;
+	out << makePayloadPrefix(true, status, "BioSimulatorRunner", command, "bio_network_report_json");
+	out << ",\"networkName\":\"" << jsonEscape(network->getName()) << "\"";
+	out << ",\"targetBioNetworkName\":\"" << jsonEscape(network->getName()) << "\"";
+	out << ",\"startTime\":" << formatDouble(network->getStartTime());
+	out << ",\"stopTime\":" << formatDouble(network->getStopTime());
+	out << ",\"stepSize\":" << formatDouble(network->getStepSize());
+	out << ",\"currentTime\":" << formatDouble(network->getCurrentTime());
+	out << ",\"autoSchedule\":" << boolText(network->getAutoSchedule());
+	out << ",\"speciesCount\":" << std::to_string(network->getSpeciesNames().size());
+	out << ",\"reactionCount\":" << std::to_string(network->getReactionNames().size());
+	out << ",\"speciesNames\":" << jsonArray(network->getSpeciesNames());
+	out << ",\"reactionNames\":" << jsonArray(network->getReactionNames());
+	out << ",\"hasSimulationResult\":" << boolText(!network->getLastSimulationResult().empty());
+
+	const BioSimulationResult& result = network->getLastSimulationResult();
+	if (!result.empty()) {
+		out << ",\"simulationResult\":{";
+		out << "\"sampleCount\":" << std::to_string(result.sampleCount());
+		out << ",\"startTime\":" << formatDouble(result.getStartTime());
+		out << ",\"stopTime\":" << formatDouble(result.getStopTime());
+		out << ",\"stepSize\":" << formatDouble(result.getStepSize());
+		out << ",\"speciesNames\":" << jsonArray(result.getSpeciesNames());
+		out << ",\"lastSample\":{";
+		const BioSimulationSample& lastSample = result.getSamples().back();
+		out << "\"time\":" << formatDouble(lastSample.time);
+		out << ",\"species\":[";
+		bool firstSpeciesAmount = true;
+		for (const BioSimulationSpeciesAmount& amount : lastSample.species) {
+			if (!firstSpeciesAmount) {
+				out << ",";
+			}
+			out << "{\"name\":\"" << jsonEscape(amount.speciesName) << "\",\"amount\":" << formatDouble(amount.amount) << "}";
+			firstSpeciesAmount = false;
+		}
+		out << "]}";
+		out << "}";
+	}
+
+	out << "}";
+	return out.str();
+}
+
 } // namespace
 
 ModelDataDefinition* BioSimulatorRunner::NewInstance(Model* model, std::string name) {
@@ -245,6 +629,9 @@ BioSimulatorRunner::BioSimulatorRunner(Model* model, std::string name) : ModelDa
 	SimulationControlGeneric<std::string>* propLastResponseFilename = new SimulationControlGeneric<std::string>(
 			std::bind(&BioSimulatorRunner::getLastResponseFilename, this), std::bind(&BioSimulatorRunner::setLastResponseFilename, this, std::placeholders::_1),
 			Util::TypeOf<BioSimulatorRunner>(), getName(), "LastResponseFilename", "");
+	SimulationControlGeneric<std::string>* propTargetBioNetworkName = new SimulationControlGeneric<std::string>(
+			std::bind(&BioSimulatorRunner::getTargetBioNetworkName, this), std::bind(&BioSimulatorRunner::setTargetBioNetworkName, this, std::placeholders::_1),
+			Util::TypeOf<BioSimulatorRunner>(), getName(), "TargetBioNetworkName", "");
 	SimulationControlGeneric<std::string>* propWorkingDirectory = new SimulationControlGeneric<std::string>(
 			std::bind(&BioSimulatorRunner::getWorkingDirectory, this), std::bind(&BioSimulatorRunner::setWorkingDirectory, this, std::placeholders::_1),
 			Util::TypeOf<BioSimulatorRunner>(), getName(), "WorkingDirectory", "");
@@ -272,6 +659,7 @@ BioSimulatorRunner::BioSimulatorRunner(Model* model, std::string name) : ModelDa
 	_parentModel->getControls()->insert(propLastErrorMessage);
 	_parentModel->getControls()->insert(propLastResponsePayload);
 	_parentModel->getControls()->insert(propLastResponseFilename);
+	_parentModel->getControls()->insert(propTargetBioNetworkName);
 	_parentModel->getControls()->insert(propWorkingDirectory);
 	_parentModel->getControls()->insert(propWorkingInputFilename);
 	_parentModel->getControls()->insert(propWorkingOutputFilename);
@@ -287,6 +675,7 @@ BioSimulatorRunner::BioSimulatorRunner(Model* model, std::string name) : ModelDa
 	_addSimulationControl(propLastErrorMessage);
 	_addSimulationControl(propLastResponsePayload);
 	_addSimulationControl(propLastResponseFilename);
+	_addSimulationControl(propTargetBioNetworkName);
 	_addSimulationControl(propWorkingDirectory);
 	_addSimulationControl(propWorkingInputFilename);
 	_addSimulationControl(propWorkingOutputFilename);
@@ -298,7 +687,7 @@ BioSimulatorRunner::BioSimulatorRunner(Model* model, std::string name) : ModelDa
 PluginInformation* BioSimulatorRunner::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioSimulatorRunner>(), &BioSimulatorRunner::LoadInstance, &BioSimulatorRunner::NewInstance);
 	info->setCategory("BiochemicalSimulation");
-	info->setDescriptionHelp("Structural biochemical simulator runner. This phase persists configuration and executes deterministic local stub commands without integrating a real biochemical backend.");
+	info->setDescriptionHelp("Structural biochemical simulator runner. This phase persists configuration and can validate, simulate, query and update a target BioNetwork using the native biochemical backend.");
 	info->insertSystemDependency(SystemDependency(
 			SystemDependency::OS::Linux,
 			"libSBML",
@@ -326,6 +715,7 @@ std::string BioSimulatorRunner::show() {
 			",workingInputFilename=\"" + _workingInputFilename + "\"" +
 			",workingOutputFilename=\"" + _workingOutputFilename + "\"" +
 			",endpointOrLibrary=\"" + _endpointOrLibrary + "\"" +
+			",targetBioNetworkName=\"" + _targetBioNetworkName + "\"" +
 			",timeoutSeconds=" + std::to_string(_timeoutSeconds) +
 			",lastResponsePayloadSize=" + std::to_string(_lastResponsePayload.size());
 }
@@ -341,6 +731,7 @@ bool BioSimulatorRunner::_loadInstance(PersistenceRecord *fields) {
 		_lastErrorMessage = fields->loadField("lastErrorMessage", DEFAULT.lastErrorMessage);
 		_lastResponsePayload = fields->loadField("lastResponsePayload", DEFAULT.lastResponsePayload);
 		_lastResponseFilename = fields->loadField("lastResponseFilename", DEFAULT.lastResponseFilename);
+		_targetBioNetworkName = fields->loadField("targetBioNetworkName", DEFAULT.targetBioNetworkName);
 		_workingDirectory = fields->loadField("workingDirectory", DEFAULT.workingDirectory);
 		_workingInputFilename = fields->loadField("workingInputFilename", DEFAULT.workingInputFilename);
 		_workingOutputFilename = fields->loadField("workingOutputFilename", DEFAULT.workingOutputFilename);
@@ -361,6 +752,7 @@ void BioSimulatorRunner::_saveInstance(PersistenceRecord *fields, bool saveDefau
 	fields->saveField("lastErrorMessage", _lastErrorMessage, DEFAULT.lastErrorMessage, saveDefaultValues);
 	fields->saveField("lastResponsePayload", _lastResponsePayload, DEFAULT.lastResponsePayload, saveDefaultValues);
 	fields->saveField("lastResponseFilename", _lastResponseFilename, DEFAULT.lastResponseFilename, saveDefaultValues);
+	fields->saveField("targetBioNetworkName", _targetBioNetworkName, DEFAULT.targetBioNetworkName, saveDefaultValues);
 	fields->saveField("workingDirectory", _workingDirectory, DEFAULT.workingDirectory, saveDefaultValues);
 	fields->saveField("workingInputFilename", _workingInputFilename, DEFAULT.workingInputFilename, saveDefaultValues);
 	fields->saveField("workingOutputFilename", _workingOutputFilename, DEFAULT.workingOutputFilename, saveDefaultValues);
@@ -397,6 +789,13 @@ bool BioSimulatorRunner::_check(std::string& errorMessage) {
 	if (_modelSourceType == "SBMLFile" && _modelSource.empty()) {
 		errorMessage += "BioSimulatorRunner \"" + getName() + "\" must define modelSource when modelSourceType is SBMLFile. ";
 		resultAll = false;
+	}
+	if (!_targetBioNetworkName.empty()) {
+		ModelDataDefinition* definition = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioNetwork>(), _targetBioNetworkName);
+		if (dynamic_cast<BioNetwork*>(definition) == nullptr) {
+			errorMessage += "BioSimulatorRunner \"" + getName() + "\" references missing BioNetwork \"" + _targetBioNetworkName + "\". ";
+			resultAll = false;
+		}
 	}
 	if (!_command.empty()) {
 		const std::string normalized = trim(_command);
@@ -441,15 +840,109 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 			errorMessage = _lastErrorMessage;
 			return false;
 		}
+		std::string networkResolutionError;
+		BioNetwork* network = resolveBioNetwork(_parentModel, _targetBioNetworkName, networkResolutionError);
+		if (network != nullptr) {
+			std::string networkCheckError;
+			if (!_parentModel->getDataManager()->check(Util::TypeOf<BioNetwork>(), network, "BioNetwork", networkCheckError)) {
+				_lastStatus = "Failed";
+				_lastErrorMessage = networkCheckError;
+				errorMessage = _lastErrorMessage;
+				return false;
+			}
+			_targetBioNetworkName = network->getName();
+			_lastStatus = "Completed";
+			_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "network_validation") +
+					",\"targetBioNetworkName\":\"" + jsonEscape(_targetBioNetworkName) + "\"" +
+					",\"networkName\":\"" + jsonEscape(network->getName()) + "\"" +
+					",\"speciesCount\":" + std::to_string(network->getSpeciesNames().size()) +
+					",\"reactionCount\":" + std::to_string(network->getReactionNames().size()) +
+					",\"modelSourceType\":\"" + jsonEscape(_modelSourceType) + "\"}";
+			return true;
+		}
+
+		if (!networkResolutionError.empty() && networkResolutionError.find("at least one BioNetwork") == std::string::npos) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = networkResolutionError;
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
 		if (_modelSource.empty()) {
 			_lastStatus = "Failed";
-			_lastErrorMessage = "validateModel() requires a non-empty modelSource.";
+			_lastErrorMessage = "validateModel() requires either a BioNetwork or a non-empty modelSource.";
 			errorMessage = _lastErrorMessage;
 			return false;
 		}
 		_lastStatus = "Completed";
-		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "stub_validation") +
-				",\"modelSourceType\":\"" + jsonEscape(_modelSourceType) + "\"}";
+		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "source_validation") +
+				",\"modelSourceType\":\"" + jsonEscape(_modelSourceType) + "\"" +
+				",\"modelSourceLength\":" + std::to_string(_modelSource.size()) + "}";
+		return true;
+	}
+	if (!errorMessage.empty()) {
+		_lastStatus = "Failed";
+		_lastErrorMessage = errorMessage;
+		return false;
+	}
+
+	if (parseCall(normalizedCommand, "report", &args, errorMessage)) {
+		if (!trim(args).empty()) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = "report() does not accept parameters.";
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		std::string networkResolutionError;
+		BioNetwork* network = resolveBioNetwork(_parentModel, _targetBioNetworkName, networkResolutionError);
+		if (network == nullptr) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = networkResolutionError;
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		_targetBioNetworkName = network->getName();
+		_lastStatus = "Completed";
+		_lastResponsePayload = buildBioNetworkReport(_parentModel, network, errorMessage);
+		if (!errorMessage.empty()) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = errorMessage;
+			return false;
+		}
+		return true;
+	}
+	if (!errorMessage.empty()) {
+		_lastStatus = "Failed";
+		_lastErrorMessage = errorMessage;
+		return false;
+	}
+
+	if (parseCall(normalizedCommand, "reportJson", &args, errorMessage)) {
+		if (!trim(args).empty()) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = "reportJson() does not accept parameters.";
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		std::string networkResolutionError;
+		BioNetwork* network = resolveBioNetwork(_parentModel, _targetBioNetworkName, networkResolutionError);
+		if (network == nullptr) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = networkResolutionError;
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		_targetBioNetworkName = network->getName();
+		_lastStatus = "Completed";
+		_lastResponsePayload = buildBioNetworkReportJson(_parentModel, network, normalizedCommand, _lastStatus, errorMessage);
+		if (!errorMessage.empty()) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = errorMessage;
+			return false;
+		}
 		return true;
 	}
 	if (!errorMessage.empty()) {
@@ -493,9 +986,12 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 			_lastErrorMessage = errorMessage;
 			return false;
 		}
+		// Remember the imported network so later simulate/get/set commands have an explicit target.
+		_targetBioNetworkName = importResult.networkName;
 		_lastStatus = "Completed";
 		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "sbml_import") +
 				",\"networkName\":\"" + jsonEscape(importResult.networkName) + "\"" +
+				",\"targetBioNetworkName\":\"" + jsonEscape(_targetBioNetworkName) + "\"" +
 				",\"speciesImported\":" + std::to_string(importResult.speciesImported) +
 				",\"parametersImported\":" + std::to_string(importResult.parametersImported) +
 				",\"reactionsImported\":" + std::to_string(importResult.reactionsImported) +
@@ -516,6 +1012,9 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 			_lastErrorMessage = "exportSBML() accepts zero arguments or one quoted BioNetwork name.";
 			errorMessage = _lastErrorMessage;
 			return false;
+		}
+		if (requestedNetworkName.empty()) {
+			requestedNetworkName = _targetBioNetworkName;
 		}
 
 		BioSBMLExportResult exportResult;
@@ -566,18 +1065,52 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 			errorMessage = _lastErrorMessage;
 			return false;
 		}
-		if (stop < start) {
+		if (stop <= start) {
 			_lastStatus = "Failed";
-			_lastErrorMessage = "simulate(start, stop, steps) requires stop >= start.";
+			_lastErrorMessage = "simulate(start, stop, steps) requires stop > start.";
 			errorMessage = _lastErrorMessage;
 			return false;
 		}
+
+		std::string networkResolutionError;
+		BioNetwork* network = resolveBioNetwork(_parentModel, _targetBioNetworkName, networkResolutionError);
+		if (network == nullptr) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = networkResolutionError;
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		const double stepSize = (stop - start) / static_cast<double>(steps);
+		if (stepSize <= 0.0) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = "simulate(start, stop, steps) produced a non-positive step size.";
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		network->setStartTime(start);
+		network->setStopTime(stop);
+		network->setStepSize(stepSize);
+		_targetBioNetworkName = network->getName();
+
+		if (!network->simulate(start, stop, stepSize, errorMessage)) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = errorMessage;
+			return false;
+		}
+
+		const BioSimulationResult& result = network->getLastSimulationResult();
 		_lastStatus = "Completed";
 		_lastResponseFilename = _workingOutputFilename;
-		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "stub_time_course") +
+		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "bio_time_course") +
+				",\"targetBioNetworkName\":\"" + jsonEscape(_targetBioNetworkName) + "\"" +
 				",\"start\":" + formatDouble(start) +
 				",\"stop\":" + formatDouble(stop) +
-				",\"steps\":" + std::to_string(steps) + "}";
+				",\"stepSize\":" + formatDouble(stepSize) +
+				",\"steps\":" + std::to_string(steps) +
+				",\"sampleCount\":" + std::to_string(result.sampleCount()) +
+				",\"finalTime\":" + (result.empty() ? std::string("0") : formatDouble(result.getSamples().back().time)) + "}";
 		return true;
 	}
 	if (!errorMessage.empty()) {
@@ -593,9 +1126,40 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 			errorMessage = _lastErrorMessage;
 			return false;
 		}
+
+		std::string networkResolutionError;
+		BioNetwork* network = resolveBioNetwork(_parentModel, _targetBioNetworkName, networkResolutionError);
+		if (network == nullptr) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = networkResolutionError;
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		// If the network has never been simulated yet, run it once with its own configured window.
+		if (network->getLastSimulationResult().empty()) {
+			if (!network->simulate(errorMessage)) {
+				_lastStatus = "Failed";
+				_lastErrorMessage = errorMessage;
+				return false;
+			}
+		}
+
+		BioSteadyStateCheck check;
+		if (!network->checkLastSampleSteadyState(1e-9, &check, &errorMessage)) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = errorMessage;
+			return false;
+		}
+
+		_targetBioNetworkName = network->getName();
 		_lastStatus = "Completed";
-		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "stub_steady_state") +
-				",\"converged\":true}";
+		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "steady_state") +
+				",\"targetBioNetworkName\":\"" + jsonEscape(_targetBioNetworkName) + "\"" +
+				",\"steady\":" + std::string(check.steady ? "true" : "false") +
+				",\"tolerance\":" + formatDouble(check.tolerance) +
+				",\"maxAbsoluteDerivative\":" + formatDouble(check.maxAbsoluteDerivative) +
+				",\"derivativeCount\":" + std::to_string(check.derivatives.size()) + "}";
 		return true;
 	}
 	if (!errorMessage.empty()) {
@@ -612,10 +1176,26 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 			errorMessage = _lastErrorMessage;
 			return false;
 		}
+		std::string definitionType;
+		ModelDataDefinition* definition = resolveSymbolDefinition(_parentModel, symbol, &definitionType);
+		if (definition == nullptr) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = "getValue(\"symbol\") could not resolve \"" + symbol + "\" as a BioSpecies or BioParameter.";
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		double value = 0.0;
+		if (definitionType == Util::TypeOf<BioSpecies>()) {
+			value = dynamic_cast<BioSpecies*>(definition)->getAmount();
+		} else if (definitionType == Util::TypeOf<BioParameter>()) {
+			value = dynamic_cast<BioParameter*>(definition)->getValue();
+		}
 		_lastStatus = "Completed";
-		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "stub_value") +
+		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "value_query") +
 				",\"symbol\":\"" + jsonEscape(symbol) + "\"" +
-				",\"value\":0.0}";
+				",\"definitionType\":\"" + jsonEscape(definitionType) + "\"" +
+				",\"value\":" + formatDouble(value) + "}";
 		return true;
 	}
 	if (!errorMessage.empty()) {
@@ -634,9 +1214,39 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 			errorMessage = _lastErrorMessage;
 			return false;
 		}
+		std::string definitionType;
+		ModelDataDefinition* definition = resolveSymbolDefinition(_parentModel, symbol, &definitionType);
+		if (definition == nullptr) {
+			_lastStatus = "Failed";
+			_lastErrorMessage = "setValue(\"symbol\", value) could not resolve \"" + symbol + "\" as a BioSpecies or BioParameter.";
+			errorMessage = _lastErrorMessage;
+			return false;
+		}
+
+		if (definitionType == Util::TypeOf<BioSpecies>()) {
+			auto* species = dynamic_cast<BioSpecies*>(definition);
+			if (species == nullptr || value < 0.0) {
+				_lastStatus = "Failed";
+				_lastErrorMessage = "setValue(\"symbol\", value) requires a non-negative species amount.";
+				errorMessage = _lastErrorMessage;
+				return false;
+			}
+			species->setAmount(value);
+		} else if (definitionType == Util::TypeOf<BioParameter>()) {
+			auto* parameter = dynamic_cast<BioParameter*>(definition);
+			if (parameter == nullptr) {
+				_lastStatus = "Failed";
+				_lastErrorMessage = "setValue(\"symbol\", value) could not update the resolved BioParameter.";
+				errorMessage = _lastErrorMessage;
+				return false;
+			}
+			parameter->setValue(value);
+		}
+		_parentModel->setHasChanged(true);
 		_lastStatus = "Completed";
-		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "stub_set_value") +
+		_lastResponsePayload = makePayloadPrefix(true, _lastStatus, _backend, normalizedCommand, "value_update") +
 				",\"symbol\":\"" + jsonEscape(symbol) + "\"" +
+				",\"definitionType\":\"" + jsonEscape(definitionType) + "\"" +
 				",\"value\":" + formatDouble(value) +
 				",\"updated\":true}";
 		return true;
@@ -653,6 +1263,12 @@ bool BioSimulatorRunner::executeCommand(std::string& errorMessage) {
 			_lastErrorMessage = "reset() does not accept parameters.";
 			errorMessage = _lastErrorMessage;
 			return false;
+		}
+		std::string networkResolutionError;
+		BioNetwork* network = resolveBioNetwork(_parentModel, _targetBioNetworkName, networkResolutionError);
+		if (network != nullptr) {
+			// Reset the selected network back to its initial amounts before clearing runner state.
+			ModelDataDefinition::InitBetweenReplications(network);
 		}
 		_lastStatus = "Idle";
 		_lastErrorMessage.clear();
@@ -734,6 +1350,14 @@ void BioSimulatorRunner::setLastResponseFilename(std::string lastResponseFilenam
 
 std::string BioSimulatorRunner::getLastResponseFilename() const {
 	return _lastResponseFilename;
+}
+
+void BioSimulatorRunner::setTargetBioNetworkName(std::string targetBioNetworkName) {
+	_targetBioNetworkName = targetBioNetworkName;
+}
+
+std::string BioSimulatorRunner::getTargetBioNetworkName() const {
+	return _targetBioNetworkName;
 }
 
 void BioSimulatorRunner::setWorkingDirectory(std::string workingDirectory) {
