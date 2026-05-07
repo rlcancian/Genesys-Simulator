@@ -6734,6 +6734,34 @@ TEST(SimulatorRuntimeTest, GeneticCircuitSimulateComponentRunsMultipleExpression
     EXPECT_DOUBLE_EQ(product.getAmount(), 6.0);
 }
 
+TEST(SimulatorRuntimeTest, GeneticCircuitSimulateStandaloneHelperRunsMultipleExpressionSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe product(model, "GFP");
+    product.setAmount(0.0);
+
+    GeneticCircuitPartProbe promoter(model, "pConst");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+    promoter.setCopyNumber(1.0);
+    promoter.setBasalExpressionRate(2.0);
+    promoter.setDegradationRate(0.0);
+
+    GeneticCircuitProbe circuit(model, "ConstitutiveReporter");
+    circuit.addPart("pConst");
+
+    GeneticCircuitSimulationSummary summary;
+    std::string errorMessage;
+    EXPECT_TRUE(GeneticCircuitSimulate::simulateCircuit(model, &circuit, 0.0, 2.0, 1.0, true, &summary, errorMessage)) << errorMessage;
+    EXPECT_TRUE(summary.succeeded);
+    EXPECT_EQ(summary.sampleCount, 3u);
+    EXPECT_DOUBLE_EQ(summary.totalExpression, 6.0);
+    EXPECT_DOUBLE_EQ(product.getAmount(), 6.0);
+    EXPECT_NE(summary.message.find("ConstitutiveReporter"), std::string::npos);
+}
+
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerImportSBMLCreatesNativeBioDefinitions) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -7805,6 +7833,73 @@ TEST(SimulatorRuntimeTest, GeneticCircuitPartPersistenceAndValidation) {
     EXPECT_EQ(loaded.getProductSpeciesName(), "GFP");
     EXPECT_DOUBLE_EQ(loaded.getCopyNumber(), 15.0);
     EXPECT_DOUBLE_EQ(loaded.getBasalExpressionRate(), 0.05);
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitPartShowClassifiesRoleAndSequenceLength) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GeneticCircuitPartProbe part(model, "pLac");
+    part.setPartType("TATA box");
+    part.setSequence("TTTACACTTTATGCTTCCGGCTCGTATAATGTGTGGA");
+    part.setCopyNumber(2.0);
+    part.setBasalExpressionRate(0.5);
+    part.setDegradationRate(0.01);
+
+    const std::string shown = part.show();
+    EXPECT_NE(shown.find("role=\"Pre-gene regulatory\""), std::string::npos);
+    EXPECT_NE(shown.find("sequenceLength=37"), std::string::npos);
+    EXPECT_NE(shown.find("partType=\"TATA box\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitShowSummarizesPartRolesAndRegulatoryLinks) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe lacI(model, "LacI");
+    BioSpeciesProbe gfp(model, "GFP");
+
+    GeneticCircuitPartProbe promoter(model, "pLac");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+
+    GeneticCircuitPartProbe rbs(model, "RBS1");
+    rbs.setPartType("RBS");
+    rbs.setProductSpeciesName("GFP");
+
+    GeneticCircuitPartProbe cds(model, "GFP_cds");
+    cds.setPartType("CDS");
+    cds.setProductSpeciesName("GFP");
+
+    GeneticCircuitPartProbe terminator(model, "T1");
+    terminator.setPartType("Terminator");
+
+    GeneticRegulationProbe regulation(model, "LacI_represses_pLac");
+    regulation.setRegulatorSpeciesName("LacI");
+    regulation.setTargetPartName("pLac");
+    regulation.setRegulationType("Repression");
+    regulation.setHillCoefficient(2.0);
+    regulation.setDissociationConstant(1.0);
+    regulation.setMaxFoldChange(1.0);
+    regulation.setLeakiness(0.0);
+
+    GeneticCircuitProbe circuit(model, "Reporter");
+    circuit.addPart("pLac");
+    circuit.addPart("RBS1");
+    circuit.addPart("GFP_cds");
+    circuit.addPart("T1");
+    circuit.addRegulation("LacI_represses_pLac");
+
+    const std::string shown = circuit.show();
+    EXPECT_NE(shown.find("partCount=4"), std::string::npos);
+    EXPECT_NE(shown.find("regulationCount=1"), std::string::npos);
+    EXPECT_NE(shown.find("Pre-gene regulatory=1"), std::string::npos);
+    EXPECT_NE(shown.find("Translation initiation=1"), std::string::npos);
+    EXPECT_NE(shown.find("Coding=1"), std::string::npos);
+    EXPECT_NE(shown.find("Termination=1"), std::string::npos);
+    EXPECT_NE(shown.find("LacI->pLac:Repression"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, GeneticRegulationRejectsMissingReferencesAndPersists) {

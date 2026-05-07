@@ -555,6 +555,7 @@ std::string buildBioNetworkReportJson(Model* model, BioNetwork* network, const s
 		return "";
 	}
 
+	// Keep this payload compact and machine-readable so the GUI can reuse it directly.
 	std::ostringstream out;
 	out << makePayloadPrefix(true, status, "BioSimulatorRunner", command, "bio_network_report_json");
 	out << ",\"networkName\":\"" << jsonEscape(network->getName()) << "\"";

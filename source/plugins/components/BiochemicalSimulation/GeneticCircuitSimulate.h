@@ -9,6 +9,13 @@
 
 class GeneticCircuitPart;
 
+struct GeneticCircuitSimulationSummary {
+	bool succeeded = false;
+	unsigned int sampleCount = 0;
+	double totalExpression = 0.0;
+	std::string message = "";
+};
+
 /**
  * Component that simulates a GeneticCircuit over a time window.
  */
@@ -41,6 +48,10 @@ public:
 	double getLastTotalExpression() const;
 	void setLastMessage(std::string lastMessage);
 	std::string getLastMessage() const;
+	static bool simulateCircuit(Model* model, GeneticCircuit* geneticCircuit, double startTime, double stopTime,
+	                            double stepSize, bool applyRegulation, GeneticCircuitSimulationSummary* summary,
+	                            std::string& errorMessage);
+	bool simulate(std::string& errorMessage);
 
 	virtual std::string show() override;
 
