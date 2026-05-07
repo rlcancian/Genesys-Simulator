@@ -13,7 +13,7 @@
 
 #include "plugins/components/Grouping/Batch.h"
 #include <cassert>
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Attribute.h"
 #include "../../data/Grouping/EntityGroup.h"
 #include "kernel/simulator/Simulator.h"

@@ -5310,7 +5310,7 @@ char *yytext;
 # include "kernel/util/List.h"
 # include "kernel/simulator/Attribute.h"
 # include "kernel/simulator/Counter.h"
-# include "kernel/simulator/ModelDataDefinition.h"
+#include "../kernel/simulator/model/ModelDataDefinition.h"
 # include "kernel/simulator/StatisticsCollector.h"
 /**begin_Includes_plugins**/
 /**begin_Includes:Variable**/

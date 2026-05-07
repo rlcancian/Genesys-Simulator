@@ -45,7 +45,7 @@
 #include "propertyeditor/DataComponentProperty.h"
 #include "propertyeditor/DataComponentEditor.h"
 #include "propertyeditor/ComboBoxEnum.h"
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/Plugin.h"
 #include "animations/AnimationTransition.h"
@@ -56,7 +56,7 @@
 #include "kernel/simulator/Counter.h"
 #include "kernel/simulator/Attribute.h"
 #include "kernel/simulator/PropertyGenesys.h"
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "../../../../../plugins/data/Logic/Variable.h"
 
 /**

@@ -250,7 +250,7 @@ bool CppSerializer::dump(std::ostream& output) {
     output << indent(1) << "\n";
 
     output << indent(1) << "// connect model components\n";
-    ComponentManager* cm = _model->getComponentManager();
+    ModelComponentManager* cm = _model->getComponentManager();
     for (auto& var : parts) {
         std::string type = var->loadField("typename");
         if (!components.count(type)) continue;

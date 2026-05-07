@@ -7,14 +7,14 @@
 #include <sstream>
 
 #include "ModelSerializer.h"
-#include "Simulator.h"
-#include "../util/Util.h"
-#include "Counter.h"
+#include "../Simulator.h"
+#include "../../util/Util.h"
+#include "../Counter.h"
 
-#include "GenSerializer.h"
-#include "XmlSerializer.h"
-#include "JsonSerializer.h"
-#include "CppSerializer.h"
+#include "../GenSerializer.h"
+#include "../XmlSerializer.h"
+#include "../JsonSerializer.h"
+#include "../CppSerializer.h"
 
 ModelPersistenceDefaultImpl2::ModelPersistenceDefaultImpl2(Model* model) :
 _model(model) {
@@ -191,7 +191,7 @@ bool ModelPersistenceDefaultImpl2::load(std::string filename) {
 
 	// after all components have been loaded, connect them at the toplevel
 	if (ok) {
-		ComponentManager* cm = _model->getComponentManager();
+		ModelComponentManager* cm = _model->getComponentManager();
 		_model->getTracer()->trace("Connecting loaded components");
 		Util::IncIndent();
 		for (auto& fields : componentFields) {

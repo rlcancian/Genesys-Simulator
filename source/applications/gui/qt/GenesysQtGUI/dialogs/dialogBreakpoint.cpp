@@ -31,7 +31,7 @@
 
 #include "dialogBreakpoint.h"
 #include "plugins/components/MaterialHandling/Access.h"
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/util/List.h"
 
 dialogBreakpoint::dialogBreakpoint() {

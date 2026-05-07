@@ -19,13 +19,13 @@
 #include <vector>
 #include <map>
 
-#include "../util/List.h"
-#include "ParserChangesInformation.h"
-#include "Persistence.h"
+#include "../../util/List.h"
+#include "../ParserChangesInformation.h"
+#include "../Persistence.h"
 //#include "PropertyGenesys.h"
 #include "ModelDataDefinitionAssociations.h"
-#include "SimulationControlAndResponse.h"
-#include "TraceManager.h"
+#include "../SimulationControlAndResponse.h"
+#include "../TraceManager.h"
 
 //namespace GenesysKernel {
 class Model;

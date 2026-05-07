@@ -13,7 +13,7 @@
 
 #include "plugins/components/Grouping/Separate.h"
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Attribute.h"
 #include "../../data/Grouping/EntityGroup.h"
 

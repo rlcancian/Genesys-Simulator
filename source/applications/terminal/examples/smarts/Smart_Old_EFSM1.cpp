@@ -5,7 +5,7 @@
 
 // GEnSyS Simulator
 #include "kernel/simulator/EntityType.h"
-#include "kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/model/ModelSimulation.h"
 #include "kernel/simulator/Simulator.h"
 
 // Model Components

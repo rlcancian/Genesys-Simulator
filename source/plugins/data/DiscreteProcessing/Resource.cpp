@@ -13,7 +13,7 @@
 
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "kernel/simulator/Counter.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

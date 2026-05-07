@@ -17,12 +17,12 @@
 #include <chrono>
 #include <thread>
 #include "Model.h"
-#include "Simulator.h"
-#include "StatisticsCollector.h"
-#include "Counter.h"
-#include "ComponentManager.h"
-#include "SourceModelComponent.h"
-#include "../TraitsKernel.h"
+#include "../Simulator.h"
+#include "../StatisticsCollector.h"
+#include "../Counter.h"
+#include "ModelComponentManager.h"
+#include "../SourceModelComponent.h"
+#include "../../TraitsKernel.h"
 
 //using namespace GenesysKernel;
 

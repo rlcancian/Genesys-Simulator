@@ -15,7 +15,7 @@
 
 #include "kernel/TraitsKernel.h"
 #include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/Logic/Variable.h"

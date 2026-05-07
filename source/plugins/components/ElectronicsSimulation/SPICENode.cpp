@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 
 

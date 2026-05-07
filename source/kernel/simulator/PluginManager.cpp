@@ -22,7 +22,7 @@
 #include "Counter.h"
 #include "EntityType.h"
 #include "StatisticsCollector.h"
-#include "Model.h"
+#include "model/Model.h"
 
 //using namespace GenesysKernel;
 

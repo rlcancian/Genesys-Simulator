@@ -12,7 +12,7 @@
 
 #ifndef LABEL_H
 #define LABEL_H
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/Entity.h"
 
 class Label : public ModelDataDefinition {

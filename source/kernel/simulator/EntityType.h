@@ -15,9 +15,9 @@
 #define ENTITYTYPE_H
 
 #include <string>
-#include "ModelDataDefinition.h"
+#include "model/ModelDataDefinition.h"
 #include "StatisticsCollector.h"
-#include "ModelDataManager.h"
+#include "model/ModelDataManager.h"
 #include "Plugin.h"
 
 //#include "Model.h"

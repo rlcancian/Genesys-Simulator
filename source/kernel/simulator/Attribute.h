@@ -19,8 +19,8 @@
 #include <map>
 #include <utility>
 #include <vector>
-#include "ModelDataDefinition.h"
-#include "ModelDataManager.h"
+#include "model/ModelDataDefinition.h"
+#include "model/ModelDataManager.h"
 #include "PluginInformation.h"
 #include "SparseValueStore.h"
 

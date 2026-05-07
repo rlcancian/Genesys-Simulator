@@ -15,8 +15,8 @@
 #define MODELINFO_H
 
 #include <string>
-#include "../util/Util.h"
-#include "Persistence.h"
+#include "../../util/Util.h"
+#include "../Persistence.h"
 
 //namespace GenesysKernel {
 

@@ -16,7 +16,7 @@
 
 #include <list>
 #include <map>
-#include "../util/List.h"
+#include "../../util/List.h"
 #include "ModelDataDefinition.h"
 
 //namespace GenesysKernel {

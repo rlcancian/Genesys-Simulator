@@ -4,8 +4,8 @@
 #include <iostream>
 #include <functional>
 
-#include "Persistence.h"
-#include "../util/Util.h"
+#include "../Persistence.h"
+#include "../../util/Util.h"
 
 /*!
  * @brief Serialization/Deserialization interface for simulation models.

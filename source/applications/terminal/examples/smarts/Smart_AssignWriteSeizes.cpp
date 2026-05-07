@@ -28,7 +28,7 @@
 #include "plugins/components/InputOutput/Write.h"
 
 // Model data definitions
-#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/Logic/Set.h"
 #include "../../../TraitsApp.h"
 

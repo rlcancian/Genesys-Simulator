@@ -2,7 +2,7 @@
 #define PROPERTY_H
 
 #include "SimulationControlAndResponse.h"
-#include "ModelComponent.h"
+#include "model/ModelComponent.h"
 
 class PropertyEditorGenesys {
 public:

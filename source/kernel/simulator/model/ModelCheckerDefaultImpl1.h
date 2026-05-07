@@ -16,7 +16,7 @@
 
 #include "ModelChecker_if.h"
 #include "Model.h"
-#include "PluginManager.h"
+#include "../PluginManager.h"
 
 //namespace GenesysKernel {
 

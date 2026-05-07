@@ -14,7 +14,7 @@
 #ifndef SINKMODELCOMPONENT_H
 #define SINKMODELCOMPONENT_H
 
-#include "ModelComponent.h"
+#include "model/ModelComponent.h"
 
 //namespace GenesysKernel {
 

@@ -8,13 +8,13 @@
 #include <vector>
 
 #include "ModelSerializer.h"
-#include "Simulator.h"
-#include "../util/Util.h"
+#include "../Simulator.h"
+#include "../../util/Util.h"
 
-#include "GenSerializer.h"
-#include "JsonSerializer.h"
-#include "Plugin.h"
-#include "XmlSerializer.h"
+#include "../GenSerializer.h"
+#include "../JsonSerializer.h"
+#include "../Plugin.h"
+#include "../XmlSerializer.h"
 
 ModelPersistencePartialLoadImpl1::ModelPersistencePartialLoadImpl1(Model* model) :
 ModelPersistenceDefaultImpl2(model),
@@ -208,7 +208,7 @@ bool ModelPersistencePartialLoadImpl1::load(std::string filename) {
 	loadDeferredItemsWithRetry(deferredDataDefinitions, nullptr, &loadedDataDefinitions, "data definitions");
 	loadDeferredItemsWithRetry(deferredComponents, &componentFields, &loadedComponents, "components");
 
-	ComponentManager* cm = _model->getComponentManager();
+	ModelComponentManager* cm = _model->getComponentManager();
 	_model->getTracer()->trace("Connecting loaded components");
 	Util::IncIndent();
 	for (auto& fields : componentFields) {

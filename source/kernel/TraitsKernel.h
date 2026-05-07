@@ -16,11 +16,11 @@
 #define TRAITSKERNEL_H
 
 
-#include "simulator/ModelPersistenceDefaultImpl2.h"
-#include "simulator/ModelPersistencePartialLoadImpl1.h"
+#include "simulator/model/ModelPersistenceDefaultImpl2.h"
+#include "simulator/model/ModelPersistencePartialLoadImpl1.h"
 #include "simulator/SimulationReporterDefaultImpl1.h"
 #include "simulator/Counter.h"
-#include "simulator/ModelCheckerDefaultImpl1.h"
+#include "simulator/model/ModelCheckerDefaultImpl1.h"
 #include "simulator/ParserDefaultImpl2.h"
 #include "simulator/SimulationReporter_if.h"
 

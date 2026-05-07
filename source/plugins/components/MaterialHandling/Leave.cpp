@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/MaterialHandling/Leave.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

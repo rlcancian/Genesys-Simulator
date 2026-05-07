@@ -15,7 +15,7 @@
 #define MODELMANAGER_H
 
 #include "Model.h"
-#include "TraceManager.h"
+#include "../TraceManager.h"
 #include <vector>
 
 //namespace GenesysKernel {

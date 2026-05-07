@@ -13,7 +13,7 @@
 
 #include "Station.h"
 #include "kernel/simulator/Entity.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Attribute.h"
 #include <vector>
 

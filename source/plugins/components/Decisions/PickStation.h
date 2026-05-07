@@ -14,8 +14,8 @@
 #ifndef PICKSTATION_H
 #define PICKSTATION_H
 
-#include "kernel/simulator/ModelComponent.h"
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/util/List.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"

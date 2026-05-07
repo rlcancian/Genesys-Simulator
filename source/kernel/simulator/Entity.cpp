@@ -14,7 +14,7 @@
 #include <typeinfo>
 #include "Entity.h"
 #include "Attribute.h"
-#include "Model.h"
+#include "model/Model.h"
 #include <cassert>
 
 //using namespace GenesysKernel;

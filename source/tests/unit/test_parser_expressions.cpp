@@ -4,7 +4,7 @@
 
 #include "kernel/simulator/Attribute.h"
 #include "kernel/simulator/Event.h"
-#include "kernel/simulator/Model.h"
+#include "../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/ParserDefaultImpl2.h"
 #include "kernel/statistics/SamplerDefaultImpl1.h"

@@ -12,10 +12,10 @@
  */
 
 #include "ModelCheckerDefaultImpl1.h"
-#include "SourceModelComponent.h"
-#include "SinkModelComponent.h"
-#include "ComponentManager.h"
-#include "Simulator.h"
+#include "../SourceModelComponent.h"
+#include "../SinkModelComponent.h"
+#include "ModelComponentManager.h"
+#include "../Simulator.h"
 
 #include <assert.h>
 #include <unordered_set>

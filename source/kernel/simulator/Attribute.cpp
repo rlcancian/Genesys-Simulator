@@ -12,7 +12,7 @@
  */
 
 #include "Attribute.h"
-#include "Model.h"
+#include "model/Model.h"
 
 #include <cctype>
 #include <cstdlib>

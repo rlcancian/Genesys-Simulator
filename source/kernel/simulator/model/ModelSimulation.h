@@ -16,12 +16,12 @@
 
 #include <chrono>
 #include <memory>
-#include "SimulationControlAndResponse.h"
-#include "Event.h"
-#include "Entity.h"
+#include "../SimulationControlAndResponse.h"
+#include "../Event.h"
+#include "../Entity.h"
 #include "ModelInfo.h"
-#include "SimulationReporter_if.h"
-#include "OnEventManager.h"
+#include "../SimulationReporter_if.h"
+#include "../OnEventManager.h"
 //#include "Counter.h"
 //namespace GenesysKernel {
 

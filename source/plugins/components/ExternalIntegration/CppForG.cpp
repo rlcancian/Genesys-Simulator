@@ -12,7 +12,7 @@
 
 
 #include "plugins/components/ExternalIntegration/CppForG.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 #include <fstream>
@@ -144,7 +144,7 @@ bool CppForG::_check(std::string& errorMessage) {
 #include <string>\n\
 //@TODO: Adjust depending on the running path\n\
 #include \"../../../../kernel/simulator/Entity.h\"\n\
-#include \"../../../../kernel/simulator/Model.h\"\n\
+#include \"../../../../kernel/simulator/model/Model.h\"\n\
 // user includes\n\
 " + this->_includesCode + "\n\
 \n\

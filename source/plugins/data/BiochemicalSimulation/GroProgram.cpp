@@ -7,7 +7,7 @@
 
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/BiochemicalSimulation/GroProgramParser.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #include <fstream>
 

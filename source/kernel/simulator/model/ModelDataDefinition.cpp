@@ -17,7 +17,7 @@
 #include <cassert>
 #include <string>
 #include "Model.h"
-#include "../TraitsKernel.h"
+#include "../../TraitsKernel.h"
 
 //using namespace GenesysKernel;
 

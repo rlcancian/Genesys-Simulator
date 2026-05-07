@@ -6,16 +6,16 @@
 #include "../graphicals/ModelGraphicsView.h"
 #include "../graphicals/ModelGraphicsScene.h"
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/ModelManager.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ComponentManager.h"
+#include "../../../../../kernel/simulator/model/ModelManager.h"
+#include "../../../../../kernel/simulator/model/Model.h"
+#include "../../../../../kernel/simulator/model/ModelComponentManager.h"
 #include "kernel/simulator/ConnectionManager.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/SourceModelComponent.h"
 #include "kernel/simulator/GenesysPropertyIntrospection.h"
-#include "kernel/simulator/ModelDataManager.h"
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../../../kernel/simulator/model/ModelDataDefinition.h"
 
 #include <QTextEdit>
 #include <QSet>
@@ -745,7 +745,7 @@ void GraphicalModelBuilder::generateGraphicalModelFromModel() {
         int y = static_cast<int>(initialPosition.y());
         int ymax = y;
 
-        ComponentManager* cm = m->getComponentManager();
+        ModelComponentManager* cm = m->getComponentManager();
         if (cm == nullptr) {
             _graphicsView->setCanNotifyGraphicalModelEventHandlers(true);
             return;

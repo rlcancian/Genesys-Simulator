@@ -9,8 +9,8 @@
 
 #include "kernel/simulator/Counter.h"
 #include "kernel/simulator/GenSerializer.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../kernel/simulator/model/Model.h"
+#include "../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"

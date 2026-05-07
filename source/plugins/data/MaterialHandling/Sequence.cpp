@@ -13,7 +13,7 @@
 
 #include "Sequence.h"
 #include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

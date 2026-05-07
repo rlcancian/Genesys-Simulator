@@ -19,7 +19,7 @@
 
 #include "../util/Util.h"
 #include "../util/List.h"
-#include "ModelDataDefinition.h"
+#include "model/ModelDataDefinition.h"
 #include "EntityType.h"
 #include "SparseValueStore.h"
 //namespace GenesysKernel {

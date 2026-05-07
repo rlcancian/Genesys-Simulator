@@ -14,7 +14,7 @@
 #ifndef DECIDE_H
 #define DECIDE_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Counter.h"
 
 /*!

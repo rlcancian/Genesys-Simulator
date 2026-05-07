@@ -5,8 +5,8 @@
 
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "tools/BioKineticLawExpression.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

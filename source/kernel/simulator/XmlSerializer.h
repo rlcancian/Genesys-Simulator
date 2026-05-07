@@ -4,8 +4,8 @@
 #include <unordered_map>
 #include<memory>
 
-#include "ModelSerializer.h"
-#include "Model.h"
+#include "model/ModelSerializer.h"
+#include "model/Model.h"
 
 class XmlSerializer : public ModelSerializer {
 public:

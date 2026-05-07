@@ -5,20 +5,20 @@
  */
 
 /*
- * File:   ComponentManager.cpp
+ * File:   ModelComponentManager.cpp
  * Author: rafael.luiz.cancian
  *
  * Created on 28 de Maio de 2019, 10:41
  */
 
-#include "ComponentManager.h"
-#include "../util/List.h"
+#include "ModelComponentManager.h"
+#include "../../util/List.h"
 #include "Model.h"
-#include "Simulator.h"
+#include "../Simulator.h"
 
 //using namespace GenesysKernel;
 
-ComponentManager::ComponentManager(Model* model) {
+ModelComponentManager::ModelComponentManager(Model* model) {
 	_parentModel = model;
 	_components = new List<ModelComponent*>();
 	_components->setSortFunc([](const ModelComponent* a, const ModelComponent* b) {
@@ -27,12 +27,12 @@ ComponentManager::ComponentManager(Model* model) {
 }
 
 // Releases the heap-allocated container that tracks components; component ownership is handled by Model.
-ComponentManager::~ComponentManager() {
+ModelComponentManager::~ModelComponentManager() {
 	delete _components;
 	_components = nullptr;
 }
 
-bool ComponentManager::insert(ModelComponent* comp) {
+bool ModelComponentManager::insert(ModelComponent* comp) {
 	if (_components->find(comp) == _components->list()->end()) {
 		_components->insert(comp);
 		_parentModel->getTracer()->trace("Component \"" + comp->getName() + "\" successfully inserted",
@@ -45,7 +45,7 @@ bool ComponentManager::insert(ModelComponent* comp) {
 	return false;
 }
 
-ModelComponent* ComponentManager::find(std::string name) {
+ModelComponent* ModelComponentManager::find(std::string name) {
 	for (ModelComponent* component : *_components->list()) {
 		if (component->getName() == name) {
 			return component;
@@ -54,7 +54,7 @@ ModelComponent* ComponentManager::find(std::string name) {
 	return nullptr;
 }
 
-ModelComponent* ComponentManager::find(Util::identification id) {
+ModelComponent* ModelComponentManager::find(Util::identification id) {
 	for (ModelComponent* component : *_components->list()) {
 		if (component->getId() == id) {
 			return component;
@@ -63,7 +63,7 @@ ModelComponent* ComponentManager::find(Util::identification id) {
 	return nullptr;
 }
 
-void ComponentManager::remove(ModelComponent* comp) {
+void ModelComponentManager::remove(ModelComponent* comp) {
 	std::string name = comp->getName();
 	_components->remove(comp);
 	_parentModel->getTracer()->trace("Component \"" + name + "\" successfully removed",
@@ -71,38 +71,38 @@ void ComponentManager::remove(ModelComponent* comp) {
 	_hasChanged = true;
 }
 
-void ComponentManager::clear() {
+void ModelComponentManager::clear() {
 	this->_components->clear();
 	_hasChanged = true;
 }
 
-//ModelComponent* ComponentManager::getComponent(Util::identification id) {
+//ModelComponent* ModelComponentManager::getComponent(Util::identification id) {
 //}
 
-//ModelComponent* ComponentManager::getComponent(std::string name) {
+//ModelComponent* ModelComponentManager::getComponent(std::string name) {
 //}
 
-unsigned int ComponentManager::getNumberOfComponents() {
+unsigned int ModelComponentManager::getNumberOfComponents() {
 	return _components->size();
 }
 
-std::list<ModelComponent*>::iterator ComponentManager::begin() {
+std::list<ModelComponent*>::iterator ModelComponentManager::begin() {
 	return _components->list()->begin();
 }
 
-std::list<ModelComponent*>::iterator ComponentManager::end() {
+std::list<ModelComponent*>::iterator ModelComponentManager::end() {
 	return _components->list()->end();
 }
 
-ModelComponent* ComponentManager::front() {
+ModelComponent* ModelComponentManager::front() {
 	return _components->front();
 }
 
-ModelComponent* ComponentManager::next() {
+ModelComponent* ModelComponentManager::next() {
 	return _components->next();
 }
 
-bool ComponentManager::hasChanged() const {
+bool ModelComponentManager::hasChanged() const {
 	if (_hasChanged)
 		return _hasChanged;
 	for (ModelComponent* component : *_components->list()) {
@@ -114,11 +114,11 @@ bool ComponentManager::hasChanged() const {
 	return false;
 }
 
-void ComponentManager::setHasChanged(bool _hasChanged) {
+void ModelComponentManager::setHasChanged(bool _hasChanged) {
 	this->_hasChanged = _hasChanged;
 }
 
-std::list<SourceModelComponent*>* ComponentManager::getSourceComponents() {
+std::list<SourceModelComponent*>* ModelComponentManager::getSourceComponents() {
 	std::list<SourceModelComponent*>* sourcelist = new std::list<SourceModelComponent*>();
 	SourceModelComponent* source;
 	for (ModelComponent* component : *_components->list()) {
@@ -130,7 +130,7 @@ std::list<SourceModelComponent*>* ComponentManager::getSourceComponents() {
 	return sourcelist;
 }
 
-std::list<ModelComponent*>* ComponentManager::getTransferInComponents() {
+std::list<ModelComponent*>* ModelComponentManager::getTransferInComponents() {
 	std::list<ModelComponent*>* sourcelist = new std::list<ModelComponent*>();
 	//  ModelComponent* source;
 	PluginManager* plugman = _parentModel->getParentSimulator()->getPluginManager();
@@ -144,6 +144,6 @@ std::list<ModelComponent*>* ComponentManager::getTransferInComponents() {
 	return sourcelist;
 }
 
-std::list<ModelComponent*>* ComponentManager::getAllComponents() const {
+std::list<ModelComponent*>* ModelComponentManager::getAllComponents() const {
 	return _components->list();
 }

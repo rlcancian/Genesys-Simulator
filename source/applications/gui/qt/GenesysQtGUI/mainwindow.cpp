@@ -19,9 +19,9 @@
 #include "kernel/simulator/StatisticsCollector.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Plugin.h"
-#include "kernel/simulator/ModelComponent.h"
-#include "kernel/simulator/ComponentManager.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../../kernel/simulator/model/ModelComponentManager.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"

@@ -17,8 +17,8 @@
 #include <cstdio>
 
 #include "ModelManager.h"
-#include "../util/List.h"
-#include "Simulator.h"
+#include "../../util/List.h"
+#include "../Simulator.h"
 
 //using namespace GenesysKernel;
 

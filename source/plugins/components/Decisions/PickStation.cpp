@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/Decisions/PickStation.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
 

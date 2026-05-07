@@ -8,7 +8,7 @@
 
 // GEnSyS Simulator
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "kernel/simulator/model/ModelDataManager.h"
 
 // Model Components
 #include "plugins/components/Logic/Create.h"
@@ -44,7 +44,7 @@ int FullSimulationOfComplexModel::main(int argc, char** argv) {
 	//
 	PluginManager* plugins = genesys->getPluginManager();
 	// get easy access to classes used to insert components and elements into a model
-	ComponentManager* components = model->getComponentManager();
+	ModelComponentManager* components = model->getComponentManager();
 	//
 	// build the simulation model
 	//

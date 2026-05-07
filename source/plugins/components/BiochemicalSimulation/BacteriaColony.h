@@ -8,7 +8,7 @@
 #ifndef BACTERIACOLONY_H
 #define BACTERIACOLONY_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/util/Util.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"

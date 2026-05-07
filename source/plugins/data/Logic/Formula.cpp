@@ -13,8 +13,8 @@
 
 #include "plugins/data/Logic/Formula.h"
 #include <iostream>
-#include "kernel/simulator/ModelDataManager.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/TraitsKernel.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

@@ -15,7 +15,7 @@
 #define VARIABLE_H
 
 #include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/SparseValueStore.h"
 

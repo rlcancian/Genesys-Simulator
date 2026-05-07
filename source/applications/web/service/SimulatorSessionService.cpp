@@ -29,7 +29,7 @@ void _populateModelInfoFromModel(Model* model, SimulatorSessionService::ModelInf
         outInfo.description = modelInfo->getDescription();
     }
 
-    if (ComponentManager* componentManager = model->getComponentManager(); componentManager != nullptr) {
+    if (ModelComponentManager* componentManager = model->getComponentManager(); componentManager != nullptr) {
         outInfo.componentCount = componentManager->getNumberOfComponents();
     }
 }

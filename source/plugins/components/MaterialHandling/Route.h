@@ -14,7 +14,7 @@
 #ifndef ROUTE_H
 #define ROUTE_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Counter.h"
 #include "../../data/MaterialHandling/Station.h"
 #include "../../data/MaterialHandling/Sequence.h"

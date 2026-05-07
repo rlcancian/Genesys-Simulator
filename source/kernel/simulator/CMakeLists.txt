@@ -1,3 +1,7 @@
+file(GLOB GENESYS_KERNEL_SIMULATOR_MODEL_SOURCES CONFIGURE_DEPENDS
+    "${CMAKE_CURRENT_SOURCE_DIR}/model/*.cpp"
+)
+
 set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     LicenceManager.cpp
     ParserManager.cpp
@@ -13,9 +17,11 @@ set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     ExperimentManager.cpp
     SimulationExperiment.cpp
     SimulationScenario.cpp
-    ModelInfo.cpp
     Persistence.cpp
-    ModelManager.cpp
+)
+
+list(APPEND GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
+    ${GENESYS_KERNEL_SIMULATOR_MODEL_SOURCES}
 )
 
 add_library(genesys_kernel_simulator_support STATIC

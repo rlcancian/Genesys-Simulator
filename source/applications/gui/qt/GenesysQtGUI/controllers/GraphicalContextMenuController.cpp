@@ -1,6 +1,6 @@
 #include "GraphicalContextMenuController.h"
 
-#include "kernel/simulator/Model.h"
+#include "../../../../../kernel/simulator/model/Model.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "ui_mainwindow.h"

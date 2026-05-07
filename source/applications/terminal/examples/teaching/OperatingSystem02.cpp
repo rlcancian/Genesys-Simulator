@@ -14,7 +14,7 @@
 #include "OperatingSystem02.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Model.h"
+#include "kernel/simulator/model/Model.h"
 #include "kernel/simulator/Attribute.h"
 
 #include "plugins/data/DiscreteProcessing/Queue.h"

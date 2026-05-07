@@ -17,19 +17,19 @@
 #include <list>
 #include <string>
 
-#include "../util/List.h"
+#include "../../util/List.h"
 #include "ModelComponent.h"
-#include "Event.h"
+#include "../Event.h"
 #include "ModelChecker_if.h"
-#include "Parser_if.h"
+#include "../Parser_if.h"
 #include "ModelPersistence_if.h"
 #include "ModelDataManager.h"
-#include "ComponentManager.h"
-#include "TraceManager.h"
-#include "OnEventManager.h"
+#include "ModelComponentManager.h"
+#include "../TraceManager.h"
+#include "../OnEventManager.h"
 #include "ModelInfo.h"
 #include "ModelSimulation.h"
-#include "SimulationControlAndResponse.h"
+#include "../SimulationControlAndResponse.h"
 
 //namespace GenesysKernel {
 class Simulator;
@@ -212,7 +212,7 @@ public: // only gets
 	 * \brief Returns the component manager for model components.
 	 * \return Component manager instance.
 	 */
-    ComponentManager* getComponentManager() const;
+    ModelComponentManager* getComponentManager() const;
 	/*!
 	 * \brief Returns the model metadata object.
 	 * \return Model info instance.
@@ -302,7 +302,7 @@ private: // read only public access (gets)
 	TraceManager* _traceManager;
 	OnEventManager* _eventManager;
 	ModelDataManager* _modeldataManager;
-	ComponentManager* _componentManager;
+	ModelComponentManager* _componentManager;
 	ModelInfo* _modelInfo;
 	ModelSimulation* _simulation;
 	ModelPersistence_if* _modelPersistence;

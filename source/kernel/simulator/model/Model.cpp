@@ -22,11 +22,11 @@
 #include <unordered_set>
 //#include <stdio.h>
 
-#include "SourceModelComponent.h"
-#include "Simulator.h"
-#include "OnEventManager.h"
-#include "StatisticsCollector.h"
-#include "../TraitsKernel.h"
+#include "../SourceModelComponent.h"
+#include "../Simulator.h"
+#include "../OnEventManager.h"
+#include "../StatisticsCollector.h"
+#include "../../TraitsKernel.h"
 //#include "Access.h"
 
 //using namespace GenesysKernel;
@@ -67,7 +67,7 @@ bool IsRegisteredDataDefinition(ModelDataManager* manager, ModelDataDefinition* 
 
 bool HasAttachedReferenceOutsideRemoval(ModelDataDefinition* candidate,
                                         ModelDataManager* dataManager,
-                                        ComponentManager* componentManager,
+                                        ModelComponentManager* componentManager,
                                         const std::unordered_set<ModelDataDefinition*>& removedDataDefinitions,
                                         const std::unordered_set<ModelComponent*>& removedComponents) {
     if (candidate == nullptr || dataManager == nullptr || componentManager == nullptr) {
@@ -121,7 +121,7 @@ Model::Model(Simulator* simulator, unsigned int level) {
 
     _eventManager = new OnEventManager(); // should be on .h (all that does not depends on THIS)
     _modeldataManager = new ModelDataManager(this);
-    _componentManager = new ComponentManager(this);
+    _componentManager = new ModelComponentManager(this);
     _simulation = new ModelSimulation(this);
     // 1:1 associations (Traits)
     _parser = new TraitsKernel<Parser_if>::Implementation(this, new TraitsKernel<Sampler_if>::Implementation());
@@ -831,7 +831,7 @@ void Model::setHasChanged(bool hasChanged) {
     }
 }
 
-ComponentManager* Model::getComponentManager() const {
+ModelComponentManager* Model::getComponentManager() const {
     return _componentManager;
 }
 

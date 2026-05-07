@@ -6,7 +6,7 @@
  */
 
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #include <cctype>
 #include <sstream>

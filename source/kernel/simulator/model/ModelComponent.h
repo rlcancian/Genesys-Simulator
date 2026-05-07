@@ -17,11 +17,11 @@
 #include <string>
 #include <list>
 
-#include "Plugin.h"
-#include "../util/List.h"
-#include "Entity.h"
+#include "../Plugin.h"
+#include "../../util/List.h"
+#include "../Entity.h"
 #include "ModelDataDefinition.h"
-#include "ConnectionManager.h"
+#include "../ConnectionManager.h"
 //namespace GenesysKernel {
 
 class Model;

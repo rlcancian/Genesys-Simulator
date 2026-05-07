@@ -1,8 +1,8 @@
 #include "GuiExtensionPluginCatalog.h"
 
-#include "kernel/simulator/ComponentManager.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelManager.h"
+#include "../../../../../kernel/simulator/model/ModelComponentManager.h"
+#include "../../../../../kernel/simulator/model/Model.h"
+#include "../../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "graphicals/GraphicalModelComponent.h"
 #include "graphicals/ModelGraphicsScene.h"

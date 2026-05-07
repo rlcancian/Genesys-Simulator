@@ -5,7 +5,7 @@
  */
 
 /*
- * File:   ComponentManager.h
+ * File:   ModelComponentManager.h
  * Author: rafael.luiz.cancian
  *
  * Created on 28 de Maio de 2019, 10:41
@@ -15,7 +15,7 @@
 #define COMPONENTMANAGER_H
 
 #include "ModelComponent.h"
-#include "SourceModelComponent.h"
+#include "../SourceModelComponent.h"
 
 //namespace GenesysKernel {
 //class Model;
@@ -26,11 +26,11 @@
  * Provides insertion/removal, lookup and iteration helpers while tracking
  * structural changes relevant to model validation/persistence workflows.
  */
-class ComponentManager {
+class ModelComponentManager {
 public:
 	/*! \brief Creates a component manager attached to a model. */
-	ComponentManager(Model* model);
-	virtual ~ComponentManager();
+	ModelComponentManager(Model* model);
+	virtual ~ModelComponentManager();
 public:
 	/*!
 	 * \brief insert

@@ -7,7 +7,7 @@
 
 #include "GraphicalModelDataDefinition.h"
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../kernel/simulator/model/ModelDataDefinition.h"
 
 #include <QRgba64>
 

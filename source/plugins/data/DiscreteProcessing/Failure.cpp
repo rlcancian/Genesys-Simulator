@@ -12,7 +12,7 @@
  */
 
 #include "plugins/data/DiscreteProcessing/Failure.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC

@@ -12,7 +12,7 @@
  */
 
 #include "EntityType.h"
-#include "Model.h"
+#include "model/Model.h"
 
 //using namespace GenesysKernel;
 

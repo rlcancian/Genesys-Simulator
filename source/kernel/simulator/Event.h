@@ -17,9 +17,9 @@
 #include <string>
 #include <functional>
 
-#include "ModelDataDefinition.h"
+#include "model/ModelDataDefinition.h"
 #include "Entity.h"
-#include "ModelComponent.h"
+#include "model/ModelComponent.h"
 
 //namespace GenesysKernel {
 
