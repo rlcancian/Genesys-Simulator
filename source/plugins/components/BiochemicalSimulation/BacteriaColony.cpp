@@ -16,6 +16,7 @@
 #include <algorithm>
 #include <cctype>
 #include <cmath>
+#include <iomanip>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -486,6 +487,14 @@ double BacteriaColony::getSignalValueAt(unsigned int x, unsigned int y) const {
 		throw std::out_of_range("BacteriaColony signal coordinate is out of range");
 	}
 	return _signalValueAt(x, y);
+}
+
+std::vector<std::vector<double>> BacteriaColony::getSignalMatrix() const {
+	return _buildSignalMatrix();
+}
+
+std::string BacteriaColony::getSignalMatrixDump(std::size_t maxRows, std::size_t maxColumns) const {
+	return _buildSignalFieldDump(maxRows, maxColumns);
 }
 
 double BacteriaColony::getBacteriumLocalSignal(std::size_t index) const {
@@ -1084,6 +1093,66 @@ void BacteriaColony::_addSignalAt(unsigned int x, unsigned int y, double value) 
 	_signalField[index] += value;
 }
 
+std::vector<std::vector<double>> BacteriaColony::_buildSignalMatrix() const {
+	std::vector<std::vector<double>> matrix;
+	const unsigned int width = getGridWidth();
+	const unsigned int height = getGridHeight();
+	matrix.reserve(height);
+	for (unsigned int y = 0; y < height; ++y) {
+		std::vector<double> row;
+		row.reserve(width);
+		for (unsigned int x = 0; x < width; ++x) {
+			row.push_back(_signalValueAt(x, y));
+		}
+		matrix.push_back(std::move(row));
+	}
+	return matrix;
+}
+
+std::string BacteriaColony::_buildSignalFieldDump(std::size_t maxRows, std::size_t maxColumns) const {
+	const std::vector<std::vector<double>> matrix = _buildSignalMatrix();
+	const std::size_t availableRows = matrix.size();
+	const std::size_t availableColumns = availableRows > 0 ? matrix.front().size() : 0;
+	const std::size_t rowsToPrint = maxRows == 0 ? availableRows : std::min(maxRows, availableRows);
+	const std::size_t columnsToPrint = maxColumns == 0 ? availableColumns : std::min(maxColumns, availableColumns);
+
+	std::ostringstream dump;
+	dump << "signal_matrix " << getGridWidth() << "x" << getGridHeight();
+	if (rowsToPrint < availableRows || columnsToPrint < availableColumns) {
+		dump << " (preview)";
+	}
+	dump << '\n';
+	for (std::size_t rowIndex = 0; rowIndex < rowsToPrint; ++rowIndex) {
+		dump << "row " << rowIndex << ':';
+		for (std::size_t columnIndex = 0; columnIndex < columnsToPrint; ++columnIndex) {
+			dump << ' ' << std::setprecision(6) << matrix[rowIndex][columnIndex];
+		}
+		if (columnsToPrint < availableColumns) {
+			dump << " ...";
+		}
+		dump << '\n';
+	}
+	if (rowsToPrint < availableRows) {
+		dump << "...";
+	}
+	return dump.str();
+}
+
+void BacteriaColony::_captureSignalFieldSnapshot(GroProgramRuntime::ExecutionResult& result,
+                                                std::size_t maxRows,
+                                                std::size_t maxColumns) const {
+	const std::vector<std::vector<double>> matrix = _buildSignalMatrix();
+	result.signalMatrixWidth = getGridWidth();
+	result.signalMatrixHeight = getGridHeight();
+	result.signalMatrixValues.clear();
+	result.signalMatrixValues.reserve(static_cast<std::size_t>(result.signalMatrixWidth) *
+	                                  static_cast<std::size_t>(result.signalMatrixHeight));
+	for (const std::vector<double>& row : matrix) {
+		result.signalMatrixValues.insert(result.signalMatrixValues.end(), row.begin(), row.end());
+	}
+	result.signalFieldDump = _buildSignalFieldDump(maxRows, maxColumns);
+}
+
 double BacteriaColony::_computeNeighborSignalSum(unsigned int x, unsigned int y) const {
 	double sum = 0.0;
 	if (x > 0) {
@@ -1396,6 +1465,12 @@ bool BacteriaColony::_applyColonyMutations(const std::vector<GroProgramRuntime::
 					_setSignalValueAt(static_cast<unsigned int>(x), static_cast<unsigned int>(y), signalValue);
 				}
 			}
+			continue;
+		}
+
+		if (mutation.type == GroProgramRuntime::ColonyMutation::Type::GetSignalMatrix ||
+		    mutation.type == GroProgramRuntime::ColonyMutation::Type::DumpSignalField) {
+			_captureSignalFieldSnapshot(result, mutation.previewRows, mutation.previewColumns);
 			continue;
 		}
 	}
@@ -1783,7 +1858,9 @@ bool BacteriaColony::_containsBacteriumScopedOnlyUnsupportedCommand(const std::v
 		    command.functionName == "reset" ||
 		    command.functionName == "ecoli" ||
 		    command.functionName == "set_population" ||
-		    command.functionName == "map_to_cells") {
+		    command.functionName == "map_to_cells" ||
+		    command.functionName == "get_signal_matrix" ||
+		    command.functionName == "dump_signal_field") {
 			unsupportedCommand = command.sourceText;
 			return true;
 		}

@@ -866,9 +866,9 @@ private:
 		snapshot.signalValues.reserve(static_cast<std::size_t>(snapshot.gridWidth) * snapshot.gridHeight);
 		double minSignal = std::numeric_limits<double>::max();
 		double maxSignal = std::numeric_limits<double>::lowest();
-		for (unsigned int y = 0; y < snapshot.gridHeight; ++y) {
-			for (unsigned int x = 0; x < snapshot.gridWidth; ++x) {
-				const double signalValue = colony->getSignalValueAt(x, y);
+		const std::vector<std::vector<double>> signalMatrix = colony->getSignalMatrix();
+		for (const std::vector<double>& row : signalMatrix) {
+			for (double signalValue : row) {
 				snapshot.signalValues.push_back(signalValue);
 				minSignal = std::min(minSignal, signalValue);
 				maxSignal = std::max(maxSignal, signalValue);
@@ -955,7 +955,7 @@ private:
 			.arg(snapshot.chemostatEnabled ? tr("on") : tr("off"))
 			.arg(static_cast<qulonglong>(snapshot.barriers.size())));
 		_detailsLabel->setText(
-			tr("Signal range: [%1, %2] | Peak occupancy per cell: %3 | Trail depth: %4 refreshes | Live=%5 | Manual run=%6 | map_to_cells=%7 (%8 values)")
+			tr("Signal range: [%1, %2] | Peak occupancy per cell: %3 | Trail depth: %4 refreshes | Live=%5 | Manual run=%6 | map_to_cells=%7 (%8 values)\nSignal matrix preview:\n%9")
 				.arg(QString::number(snapshot.minSignal, 'g', 4))
 				.arg(QString::number(snapshot.maxSignal, 'g', 4))
 				.arg(snapshot.maxBacteriaPerCell)
@@ -963,7 +963,8 @@ private:
 				.arg(_liveUpdatesEnabled ? tr("on") : tr("paused"))
 				.arg(_runEnabled ? tr("on") : tr("off"))
 				.arg(snapshot.mappedCellExpression)
-				.arg(static_cast<qulonglong>(snapshot.mappedCellValueCount)));
+				.arg(static_cast<qulonglong>(snapshot.mappedCellValueCount))
+				.arg(QString::fromStdString(colony->getSignalMatrixDump(4, 8))));
 		_executionLabel->setText(_lastExecutionMessage);
 		_lastSnapshot = snapshot;
 		_refreshSelectionSummary(_lastSnapshot);

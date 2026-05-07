@@ -911,6 +911,53 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			continue;
 		}
 
+		if (command.functionName == "get_signal_matrix") {
+			if (!command.arguments.empty()) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime get_signal_matrix command does not accept arguments. ";
+				return false;
+			}
+
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::GetSignalMatrix;
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "dump_signal_field") {
+			if (command.arguments.size() > 2) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime dump_signal_field command accepts zero, one or two numeric arguments. ";
+				return false;
+			}
+
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::DumpSignalField;
+			mutation.arguments = command.arguments;
+			if (!command.arguments.empty()) {
+				unsigned int previewRows = 0;
+				if (!evaluatePositiveIntegerExpression(command.arguments.front(), state, previewRows, result.errorMessage, true)) {
+					result.succeeded = false;
+					result.errorMessage = "GroProgramRuntime dump_signal_field row limit failed: " + result.errorMessage;
+					return false;
+				}
+				mutation.previewRows = previewRows;
+			}
+			if (command.arguments.size() >= 2) {
+				unsigned int previewColumns = 0;
+				if (!evaluatePositiveIntegerExpression(command.arguments[1], state, previewColumns, result.errorMessage, true)) {
+					result.succeeded = false;
+					result.errorMessage = "GroProgramRuntime dump_signal_field column limit failed: " + result.errorMessage;
+					return false;
+				}
+				mutation.previewColumns = previewColumns;
+			}
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
 			if (command.functionName == "run" || command.functionName == "tumble") {
 				double amount = 0.0;
 				const double defaultAmount = command.functionName == "run" ? 0.12 : 0.35;

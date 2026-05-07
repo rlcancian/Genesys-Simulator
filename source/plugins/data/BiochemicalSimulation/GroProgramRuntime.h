@@ -75,24 +75,28 @@ public:
 		double resultingSpeed = 0.0;
 	};
 
-	struct ColonyMutation {
-		enum class Type {
-			Reset,
-			SpawnSeed,
+		struct ColonyMutation {
+			enum class Type {
+				Reset,
+				SpawnSeed,
 			SetChemostatMode,
 			AddBarrier,
 			MapToCells,
 			SetSignalAt,
 			SetSignalRect,
 			SetSignalGridWidth,
-			SetSignalGridHeight
+			SetSignalGridHeight,
+			GetSignalMatrix,
+			DumpSignalField
 		};
 
-		Type type = Type::Reset;
-		std::vector<std::string> arguments;
-		std::vector<double> numericArguments;
-		std::string expressionText;
-	};
+			Type type = Type::Reset;
+			std::vector<std::string> arguments;
+			std::vector<double> numericArguments;
+			std::string expressionText;
+			std::size_t previewRows = 0;
+			std::size_t previewColumns = 0;
+		};
 
 	struct ExecutionResult {
 		bool succeeded = true;
@@ -104,6 +108,10 @@ public:
 		std::vector<ColonyMutation> colonyMutations;
 		std::vector<double> mappedCellValues;
 		std::string mappedCellExpression;
+		std::vector<double> signalMatrixValues;
+		unsigned int signalMatrixWidth = 0;
+		unsigned int signalMatrixHeight = 0;
+		std::string signalFieldDump;
 		std::vector<std::string> messages;
 		std::map<std::string, double> assignedVariables;
 		std::vector<std::string> unsupportedCommands;
