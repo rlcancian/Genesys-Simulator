@@ -22,7 +22,7 @@
 
 // Model data definitions
 #include "kernel/simulator/Attribute.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/Logic/Variable.h"
 
 FullSimulationOfComplexModel::FullSimulationOfComplexModel() {
 

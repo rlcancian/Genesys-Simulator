@@ -23,8 +23,8 @@
 #include "plugins/components/DiscreteProcessing/Process.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "plugins/data/DiscreteProcessing/Set.h"
-#include "plugins/data/DiscreteProcessing/Formula.h"
+#include "plugins/data/Logic/Set.h"
+#include "plugins/data/Logic/Formula.h"
 
 // Model data definitions
 #include "kernel/simulator/Attribute.h"
