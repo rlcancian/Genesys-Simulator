@@ -17,6 +17,69 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
+namespace {
+
+// Resolve the effective expression multiplier for one part using the current regulator species amounts.
+double computeRegulationMultiplier(Model* model, GeneticCircuit* circuit, bool applyRegulation, const GeneticCircuitPart* part) {
+	if (!applyRegulation || model == nullptr || circuit == nullptr || part == nullptr || model->getDataManager() == nullptr) {
+		return 1.0;
+	}
+
+	double multiplier = 1.0;
+	for (const std::string& regulationName : circuit->getRegulationNames()) {
+		auto* regulation = dynamic_cast<GeneticRegulation*>(model->getDataManager()->getDataDefinition(Util::TypeOf<GeneticRegulation>(), regulationName));
+		if (regulation == nullptr || !regulation->isEnabled() || regulation->getTargetPartName() != part->getName()) {
+			continue;
+		}
+		auto* regulator = dynamic_cast<BioSpecies*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), regulation->getRegulatorSpeciesName()));
+		if (regulator == nullptr) {
+			continue;
+		}
+
+		const double regulatorAmount = std::max(0.0, regulator->getAmount());
+		const double hill = regulation->getHillCoefficient();
+		const double kd = regulation->getDissociationConstant();
+		const double numerator = std::pow(regulatorAmount, hill);
+		const double kdPow = std::pow(kd, hill);
+		const double saturation = numerator / (kdPow + numerator);
+		double factor = 1.0;
+		if (regulation->getRegulationType() == "Activation" || regulation->getRegulationType() == "Dual") {
+			factor = regulation->getLeakiness() + regulation->getMaxFoldChange() * saturation;
+		} else if (regulation->getRegulationType() == "Repression") {
+			factor = regulation->getLeakiness() + regulation->getMaxFoldChange() * (1.0 - saturation);
+		}
+		multiplier *= factor;
+	}
+	return multiplier;
+}
+
+// Advance every enabled part once and accumulate the total expression increment.
+void executeExpressionStep(Model* model, GeneticCircuit* circuit, bool applyRegulation, double timeStep, double* totalExpression) {
+	if (model == nullptr || circuit == nullptr || model->getDataManager() == nullptr || totalExpression == nullptr) {
+		return;
+	}
+
+	for (const std::string& partName : circuit->getPartNames()) {
+		auto* part = dynamic_cast<GeneticCircuitPart*>(model->getDataManager()->getDataDefinition(Util::TypeOf<GeneticCircuitPart>(), partName));
+		if (part == nullptr || !part->isEnabled() || part->getProductSpeciesName().empty()) {
+			continue;
+		}
+		auto* product = dynamic_cast<BioSpecies*>(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), part->getProductSpeciesName()));
+		if (product == nullptr) {
+			continue;
+		}
+
+		const double regulationMultiplier = computeRegulationMultiplier(model, circuit, applyRegulation, part);
+		const double expressionIncrement = part->getBasalExpressionRate() * part->getCopyNumber() * regulationMultiplier * timeStep;
+		const double degradationLoss = part->getDegradationRate() * product->getAmount() * timeStep;
+		const double nextAmount = std::max(0.0, product->getAmount() + expressionIncrement - degradationLoss);
+		product->setAmount(nextAmount);
+		*totalExpression += expressionIncrement;
+	}
+}
+
+} // namespace
+
 ModelDataDefinition* GeneticCircuitSimulate::NewInstance(Model* model, std::string name) {
 	return new GeneticCircuitSimulate(model, name);
 }
@@ -165,86 +228,82 @@ bool GeneticCircuitSimulate::_check(std::string& errorMessage) {
 
 //void GeneticCircuitSimulate::_createAttachedAttributes() {}
 
-double GeneticCircuitSimulate::_computeRegulationMultiplier(const GeneticCircuitPart* part) const {
-	if (!_applyRegulation || _geneticCircuit == nullptr || part == nullptr) {
-		return 1.0;
+// Shared simulation entrypoint used by both the component runtime and the GUI helper actions.
+bool GeneticCircuitSimulate::simulateCircuit(Model* model, GeneticCircuit* geneticCircuit, double startTime, double stopTime,
+                                             double stepSize, bool applyRegulation, GeneticCircuitSimulationSummary* summary,
+                                             std::string& errorMessage) {
+	if (summary != nullptr) {
+		summary->succeeded = false;
+		summary->sampleCount = 0;
+		summary->totalExpression = 0.0;
+		summary->message.clear();
+	}
+	if (model == nullptr || model->getDataManager() == nullptr) {
+		errorMessage = "GeneticCircuitSimulate requires a valid model.";
+		return false;
+	}
+	if (geneticCircuit == nullptr) {
+		errorMessage = "GeneticCircuitSimulate requires a referenced GeneticCircuit.";
+		return false;
+	}
+	if (stepSize <= 0.0) {
+		errorMessage = "GeneticCircuitSimulate requires stepSize > 0.";
+		return false;
+	}
+	if (stopTime < startTime) {
+		errorMessage = "GeneticCircuitSimulate requires stopTime >= startTime.";
+		return false;
 	}
 
-	double multiplier = 1.0;
-	for (const std::string& regulationName : _geneticCircuit->getRegulationNames()) {
-		auto* regulation = dynamic_cast<GeneticRegulation*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<GeneticRegulation>(), regulationName));
-		if (regulation == nullptr || !regulation->isEnabled() || regulation->getTargetPartName() != part->getName()) {
-			continue;
-		}
-		auto* regulator = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), regulation->getRegulatorSpeciesName()));
-		if (regulator == nullptr) {
-			continue;
-		}
-
-		const double regulatorAmount = std::max(0.0, regulator->getAmount());
-		const double hill = regulation->getHillCoefficient();
-		const double kd = regulation->getDissociationConstant();
-		const double numerator = std::pow(regulatorAmount, hill);
-		const double kdPow = std::pow(kd, hill);
-		const double saturation = numerator / (kdPow + numerator);
-		double factor = 1.0;
-		if (regulation->getRegulationType() == "Activation" || regulation->getRegulationType() == "Dual") {
-			factor = regulation->getLeakiness() + regulation->getMaxFoldChange() * saturation;
-		} else if (regulation->getRegulationType() == "Repression") {
-			factor = regulation->getLeakiness() + regulation->getMaxFoldChange() * (1.0 - saturation);
-		}
-		multiplier *= factor;
+	unsigned int sampleCount = 0;
+	double totalExpression = 0.0;
+	for (double time = startTime; time <= stopTime + 1e-9; time += stepSize) {
+		(void)time;
+		executeExpressionStep(model, geneticCircuit, applyRegulation, stepSize, &totalExpression);
+		++sampleCount;
 	}
-	return multiplier;
-}
 
-void GeneticCircuitSimulate::_executeStep(double timeStep) {
-	for (const std::string& partName : _geneticCircuit->getPartNames()) {
-		auto* part = dynamic_cast<GeneticCircuitPart*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<GeneticCircuitPart>(), partName));
-		if (part == nullptr || !part->isEnabled() || part->getProductSpeciesName().empty()) {
-			continue;
-		}
-		auto* product = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), part->getProductSpeciesName()));
-		if (product == nullptr) {
-			continue;
-		}
-
-		const double regulationMultiplier = _computeRegulationMultiplier(part);
-		const double expressionIncrement = part->getBasalExpressionRate() * part->getCopyNumber() * regulationMultiplier * timeStep;
-		const double degradationLoss = part->getDegradationRate() * product->getAmount() * timeStep;
-		const double nextAmount = std::max(0.0, product->getAmount() + expressionIncrement - degradationLoss);
-		product->setAmount(nextAmount);
-		_lastTotalExpression += expressionIncrement;
+	if (summary != nullptr) {
+		summary->succeeded = true;
+		summary->sampleCount = sampleCount;
+		summary->totalExpression = totalExpression;
+		summary->message = "GeneticCircuitSimulate executed GeneticCircuit \"" + geneticCircuit->getName() + "\".";
 	}
+	return true;
 }
 
 void GeneticCircuitSimulate::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	(void)inputPortNumber;
 
-	if (_geneticCircuit == nullptr) {
-		_lastSucceeded = false;
-		_lastSampleCount = 0;
-		_lastTotalExpression = 0.0;
-		_lastMessage = "GeneticCircuitSimulate requires a referenced GeneticCircuit.";
-		traceSimulation(this, TraceManager::Level::L1_errorFatal, _lastMessage);
+	std::string errorMessage;
+	if (!simulate(errorMessage)) {
+		traceSimulation(this, TraceManager::Level::L1_errorFatal, errorMessage.empty() ? _lastMessage : errorMessage);
 		_forwardEntity(entity);
 		return;
 	}
-
-	_lastSampleCount = 0;
-	_lastTotalExpression = 0.0;
-	for (double time = _startTime; time <= _stopTime + 1e-9; time += _stepSize) {
-		_executeStep(_stepSize);
-		++_lastSampleCount;
-	}
-
-	_lastSucceeded = true;
-	_lastMessage = "GeneticCircuitSimulate executed GeneticCircuit \"" + _geneticCircuit->getName() + "\".";
 	traceSimulation(this, TraceManager::Level::L2_results,
 	                "GeneticCircuitSimulate executed GeneticCircuit \"" + _geneticCircuit->getName() +
 	                "\" samples=" + std::to_string(_lastSampleCount) +
 	                ", totalExpression=" + Util::StrTruncIfInt(std::to_string(_lastTotalExpression)));
 	_forwardEntity(entity);
+}
+
+bool GeneticCircuitSimulate::simulate(std::string& errorMessage) {
+	// Mirror the standalone helper into the component state so the GUI and traces see the same values.
+	GeneticCircuitSimulationSummary summary;
+	if (!simulateCircuit(_parentModel, _geneticCircuit, _startTime, _stopTime, _stepSize, _applyRegulation, &summary, errorMessage)) {
+		_lastSucceeded = false;
+		_lastSampleCount = 0;
+		_lastTotalExpression = 0.0;
+		_lastMessage = errorMessage;
+		return false;
+	}
+
+	_lastSucceeded = summary.succeeded;
+	_lastSampleCount = summary.sampleCount;
+	_lastTotalExpression = summary.totalExpression;
+	_lastMessage = summary.message;
+	return true;
 }
 
 void GeneticCircuitSimulate::_forwardEntity(Entity* entity) {

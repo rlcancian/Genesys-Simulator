@@ -1,4 +1,5 @@
-﻿/*
+﻿
+/*
  * The MIT License
  *
  * Copyright 2022 rlcancian.
