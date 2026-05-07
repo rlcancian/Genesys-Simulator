@@ -8,6 +8,8 @@
 #include "GraphicalModelDataDefinition.h"
 
 #include "../../../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
+#include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
 
 #include <QRgba64>
 
@@ -103,6 +105,72 @@ GraphicalModelItemRenderContext GraphicalModelDataDefinition::renderContext() co
 	context.primaryText = QString::fromStdString(_element->getClassname()); //QString::fromStdString(_element->getLabel());
 	context.secondaryText = QString::fromStdString(_element->getName());
 	context.tertiaryText = QString(); //QString::fromStdString();
+	context.semanticClassName = QString::fromStdString(_element->getClassname());
+	context.semanticSubtype = QString();
+
+    if (auto* geneticPart = dynamic_cast<GeneticCircuitPart*>(_element)) {
+        // Genetic parts need a more expressive canvas glyph than the generic data-definition block.
+        const QString partType = QString::fromStdString(geneticPart->getPartType());
+        const QString partTypeLower = partType.toLower();
+        QString role = "Other";
+        QColor roleColor = _color;
+
+        if (partTypeLower.contains("promoter") || partTypeLower.contains("pre-gene regulatory")) {
+            role = "Pre-gene regulatory";
+            roleColor = QColor(64, 170, 120);
+        } else if (partTypeLower.contains("regulatory") || partTypeLower.contains("operator")) {
+            role = "Regulatory";
+            roleColor = QColor(150, 92, 194);
+        } else if (partTypeLower.contains("rbs") || partTypeLower.contains("translation initiation")) {
+            role = "Translation initiation";
+            roleColor = QColor(229, 158, 44);
+        } else if (partTypeLower.contains("cds") || partTypeLower.contains("coding") || partTypeLower.contains("gene")) {
+            role = "Coding";
+            roleColor = QColor(52, 152, 219);
+        } else if (partTypeLower.contains("terminator") || partTypeLower.contains("termination")) {
+            role = "Termination";
+            roleColor = QColor(214, 82, 102);
+        } else if (partTypeLower.contains("region") || partTypeLower.contains("pre-gene")) {
+            role = "Pre-gene region";
+            roleColor = QColor(119, 136, 153);
+        }
+
+        context.primaryText = partType;
+        context.secondaryText = QString::fromStdString(geneticPart->getName());
+        context.tertiaryText = QString("role=%1").arg(role);
+        if (!geneticPart->getSequence().empty()) {
+            context.tertiaryText += QString(" | sequenceLength=%1")
+                                        .arg(static_cast<int>(geneticPart->getSequence().size()));
+        }
+        context.semanticSubtype = partType;
+        roleColor.setAlpha(context.fillColor.alpha());
+        context.fillColor = roleColor;
+    }
+    else if (auto* geneticRegulation = dynamic_cast<GeneticRegulation*>(_element)) {
+        // Regulation links should read like a directional control signal, not a generic block.
+        const QString regulationType = QString::fromStdString(geneticRegulation->getRegulationType());
+        const QString regulationTypeLower = regulationType.toLower();
+        QString role = "Regulation";
+        QColor roleColor = QColor(214, 82, 102);
+
+        if (regulationTypeLower.contains("activation")) {
+            role = "Activation";
+            roleColor = QColor(64, 170, 120);
+        } else if (regulationTypeLower.contains("repression")) {
+            role = "Repression";
+            roleColor = QColor(214, 82, 102);
+        } else if (regulationTypeLower.contains("dual")) {
+            role = "Dual";
+            roleColor = QColor(229, 158, 44);
+        }
+
+        context.primaryText = regulationType;
+        context.secondaryText = QString::fromStdString(geneticRegulation->getTargetPartName());
+        context.tertiaryText = QString("from=%1").arg(QString::fromStdString(geneticRegulation->getRegulatorSpeciesName()));
+        context.semanticSubtype = regulationType;
+        roleColor.setAlpha(context.fillColor.alpha());
+        context.fillColor = roleColor;
+    }
 	context.selected = isSelected();
 	context.breakpoint = false;
 	context.width = _width;

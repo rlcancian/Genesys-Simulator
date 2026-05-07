@@ -1,6 +1,8 @@
 #include "plugins/data/BiochemicalSimulation/GeneticCircuit.h"
 
+#include <cctype>
 #include <functional>
+#include <utility>
 
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
@@ -26,6 +28,117 @@ std::string namesToString(const std::vector<std::string>& names) {
 	}
 	text += "}";
 	return text;
+}
+
+std::string toLowerCopy(const std::string& text) {
+	std::string lowered;
+	lowered.reserve(text.size());
+	for (unsigned char ch : text) {
+		lowered += static_cast<char>(std::tolower(ch));
+	}
+	return lowered;
+}
+
+std::string classifyPartRole(const std::string& partType) {
+	const std::string lowered = toLowerCopy(partType);
+	if (lowered.find("promoter") != std::string::npos || lowered.find("tata") != std::string::npos) {
+		return "Pre-gene regulatory";
+	}
+	if (lowered.find("operator") != std::string::npos || lowered.find("enhancer") != std::string::npos ||
+	    lowered.find("insulator") != std::string::npos || lowered.find("silencer") != std::string::npos ||
+	    lowered.find("regulatory") != std::string::npos) {
+		return "Regulatory";
+	}
+	if (lowered.find("rbs") != std::string::npos || lowered.find("ribosome") != std::string::npos) {
+		return "Translation initiation";
+	}
+	if (lowered.find("cds") != std::string::npos || lowered.find("orf") != std::string::npos ||
+	    lowered.find("coding") != std::string::npos || lowered.find("gene") != std::string::npos) {
+		return "Coding";
+	}
+	if (lowered.find("terminator") != std::string::npos) {
+		return "Termination";
+	}
+	if (lowered.find("region") != std::string::npos || lowered.find("utr") != std::string::npos ||
+	    lowered.find("leader") != std::string::npos || lowered.find("trailer") != std::string::npos ||
+	    lowered.find("pre gene") != std::string::npos || lowered.find("pre-gene") != std::string::npos ||
+	    lowered.find("pregene") != std::string::npos) {
+		return "Pre-gene region";
+	}
+	return "Other";
+}
+
+std::string summarizePartRoles(Model* model, const std::vector<std::string>& partNames) {
+	std::vector<std::pair<std::string, unsigned int>> counts = {
+		{"Pre-gene regulatory", 0u},
+		{"Regulatory", 0u},
+		{"Translation initiation", 0u},
+		{"Coding", 0u},
+		{"Termination", 0u},
+		{"Pre-gene region", 0u},
+		{"Other", 0u},
+		{"Missing", 0u},
+	};
+
+	auto incrementCount = [&counts](const std::string& label) {
+		for (std::pair<std::string, unsigned int>& count : counts) {
+			if (count.first == label) {
+				++count.second;
+				return;
+			}
+		}
+		counts.push_back({label, 1u});
+	};
+
+	if (model == nullptr || model->getDataManager() == nullptr) {
+		incrementCount("Missing");
+	} else {
+		for (const std::string& partName : partNames) {
+			auto* part = dynamic_cast<GeneticCircuitPart*>(model->getDataManager()->getDataDefinition(Util::TypeOf<GeneticCircuitPart>(), partName));
+			if (part == nullptr) {
+				incrementCount("Missing");
+				continue;
+			}
+			incrementCount(classifyPartRole(part->getPartType()));
+		}
+	}
+
+	std::string summary = "{";
+	for (const std::pair<std::string, unsigned int>& count : counts) {
+		if (count.second == 0u) {
+			continue;
+		}
+		summary += count.first + "=" + std::to_string(count.second) + ",";
+	}
+	if (summary.back() == ',') {
+		summary.pop_back();
+	}
+	summary += "}";
+	return summary;
+}
+
+std::string summarizeRegulatoryLinks(Model* model, const std::vector<std::string>& regulationNames) {
+	if (model == nullptr || model->getDataManager() == nullptr) {
+		return "{}";
+	}
+
+	std::string summary = "{";
+	for (const std::string& regulationName : regulationNames) {
+		auto* regulation = dynamic_cast<GeneticRegulation*>(model->getDataManager()->getDataDefinition(Util::TypeOf<GeneticRegulation>(), regulationName));
+		if (regulation == nullptr) {
+			continue;
+		}
+		summary += regulation->getRegulatorSpeciesName() + "->" + regulation->getTargetPartName();
+		if (!regulation->getRegulationType().empty()) {
+			summary += ":" + regulation->getRegulationType();
+		}
+		summary += ",";
+	}
+	if (summary.back() == ',') {
+		summary.pop_back();
+	}
+	summary += "}";
+	return summary;
 }
 
 } // namespace
@@ -73,8 +186,12 @@ ModelDataDefinition* GeneticCircuit::LoadInstance(Model* model, PersistenceRecor
 
 std::string GeneticCircuit::show() {
 	return ModelDataDefinition::show() +
+	       ",partCount=" + std::to_string(_partNames.size()) +
+	       ",regulationCount=" + std::to_string(_regulationNames.size()) +
 	       ",parts=" + namesToString(_partNames) +
 	       ",regulations=" + namesToString(_regulationNames) +
+	       ",partsByRole=" + summarizePartRoles(_parentModel, _partNames) +
+	       ",regulatoryLinks=" + summarizeRegulatoryLinks(_parentModel, _regulationNames) +
 	       ",hostOrganism=\"" + _hostOrganism + "\"" +
 	       ",compartment=\"" + _compartment + "\"" +
 	       ",enabled=" + std::to_string(_enabled ? 1 : 0);
