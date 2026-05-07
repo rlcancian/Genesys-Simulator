@@ -31,6 +31,13 @@
  */
 class BacteriaColony : public ModelComponent {
 public:
+	struct BarrierSegment {
+		double x1 = 0.0;
+		double y1 = 0.0;
+		double x2 = 0.0;
+		double y2 = 0.0;
+	};
+
 	struct BacteriumState {
 		unsigned int id = 0;
 		unsigned int parentId = 0;
@@ -138,6 +145,18 @@ public:
 	double getSignalValueAt(unsigned int x, unsigned int y) const;
 	/*! \brief Returns the runtime signal value seen by one bacterium at its current cell. */
 	double getBacteriumLocalSignal(std::size_t index) const;
+	/*! \brief Enables or disables the colony chemostat mode used by Gro microfluidics. */
+	void setChemostatMode(bool enabled);
+	/*! \brief Returns whether the colony chemostat mode is enabled. */
+	bool getChemostatMode() const;
+	/*! \brief Adds one barrier segment to the colony environment. */
+	void addBarrier(double x1, double y1, double x2, double y2);
+	/*! \brief Returns the current barrier segments used by the viewer. */
+	const std::vector<BarrierSegment>& getBarriers() const;
+	/*! \brief Returns the latest per-cell values produced by map_to_cells, if any. */
+	const std::vector<double>& getMappedCellValues() const;
+	/*! \brief Returns the expression used by the latest map_to_cells call, if any. */
+	const std::string& getMappedCellExpression() const;
 	/*! \brief Sets the discrete spatial grid width reserved for the first colony model. */
 	void setGridWidth(unsigned int gridWidth);
 	/*! \brief Returns the discrete spatial grid width. */
@@ -190,8 +209,12 @@ private:
 	unsigned int _gridHeight = DEFAULT.gridHeight;
 	unsigned int _nextBacteriumId = 1;
 	unsigned int _colonyTickCount = 0;
+	bool _chemostatMode = false;
 	std::vector<BacteriumState> _bacteria;
 	std::map<std::string, double> _runtimeVariables;
+	std::vector<BarrierSegment> _barriers;
+	std::vector<double> _mappedCellValues;
+	std::string _mappedCellExpression;
 	std::vector<double> _signalField;
 	struct GroSeedDefinition {
 		unsigned int gridX = 0;
@@ -231,6 +254,10 @@ private:
 	void _resizeInternalBacteria(unsigned int populationSize);
 	void _applyRuntimePopulationMutations(const std::vector<GroProgramRuntime::PopulationMutation>& mutations,
 	                                      unsigned int finalPopulationSize);
+	bool _applyColonyMutations(const std::vector<GroProgramRuntime::ColonyMutation>& mutations,
+	                           GroProgramRuntime::ExecutionResult& result,
+	                           bool allowStructureMutations,
+	                           std::string& errorMessage);
 	bool _executeSeededNamedGroPrograms(const GroProgramIr& ir, GroProgramRuntime::ExecutionResult& result);
 	bool _executeBacteriumScopedGroProgram(const GroProgramIr& ir, GroProgramRuntime::ExecutionResult& result);
 	bool _containsBacteriumScopedOnlyUnsupportedCommand(const std::vector<GroProgramIr::Command>& commands,

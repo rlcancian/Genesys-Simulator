@@ -42,6 +42,41 @@ double deterministicUnitInterval(const GroProgramRuntimeState& state, std::uint6
 	       static_cast<double>(0x1fffffffffffffULL);
 }
 
+double normalizeAngle(double angle) {
+	constexpr double kTwoPi = 6.28318530717958647692;
+	if (!std::isfinite(angle)) {
+		return 0.0;
+	}
+	angle = std::fmod(angle, kTwoPi);
+	if (angle < 0.0) {
+		angle += kTwoPi;
+	}
+	return angle;
+}
+
+void assignMotionScalar(GroProgramRuntimeState& state,
+                        GroProgramRuntime::ExecutionResult& result,
+                        const std::string& name,
+                        double value) {
+	state.variables[name] = value;
+	result.assignedVariables[name] = value;
+}
+
+void assignMotionOrientation(GroProgramRuntimeState& state,
+                             GroProgramRuntime::ExecutionResult& result,
+                             double direction,
+                             double speed) {
+	// The runtime keeps motion in plain scalar fields so bacterium-scoped
+	// commands remain lightweight and the colony can apply the final spatial
+	// update using its existing motion loop.
+	assignMotionScalar(state, result, "direction", direction);
+	assignMotionScalar(state, result, "theta", direction);
+	assignMotionScalar(state, result, "speed", speed);
+	state.contextVariables["bacterium_direction"] = direction;
+	state.contextVariables["bacterium_speed"] = speed;
+	state.contextVariables["bacterium_theta"] = direction;
+}
+
 double resolveIdentifierValue(const std::string& identifier, const GroProgramRuntimeState& state) {
 	if (identifier == "population") {
 		return static_cast<double>(state.populationSize);
@@ -534,6 +569,21 @@ bool parseOptionalPositiveAmount(const GroProgramIr::Command& command, const Gro
 	return true;
 }
 
+bool parseOptionalScalarAmount(const GroProgramIr::Command& command, const GroProgramRuntimeState& state,
+                               double& amount, std::string& errorMessage, double defaultAmount) {
+	amount = defaultAmount;
+	if (command.arguments.empty()) {
+		return true;
+	}
+	if (command.arguments.size() != 1 ||
+	    !evaluateNonNegativeExpression(command.arguments.front(), state, amount, errorMessage)) {
+		errorMessage = "GroProgramRuntime command " + command.functionName +
+		              " expects zero or one non-negative numeric expression argument. ";
+		return false;
+	}
+	return true;
+}
+
 bool addPopulation(unsigned int currentPopulation, unsigned int amount, unsigned int& populationSize) {
 	if (amount > std::numeric_limits<unsigned int>::max() - currentPopulation) {
 		return false;
@@ -563,7 +613,7 @@ GroProgramRuntime::PopulationMutation makePopulationMutation(GroProgramRuntime::
 }
 
 bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProgramRuntimeState& state,
-	                 GroProgramRuntime::ExecutionResult& result) {
+	                 GroProgramRuntime::ExecutionResult& result, std::uint64_t& stochasticSampleIndex) {
 	for (const GroProgramIr::Command& command : commands) {
 		if (command.isAssignment()) {
 			if (command.assignmentOnlyIfUnset &&
@@ -593,7 +643,7 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			++result.executedCommands;
 			const std::vector<GroProgramIr::Command>& selectedBranch =
 					conditionValue != 0.0 ? command.thenCommands : command.elseCommands;
-			if (!executeCommands(selectedBranch, state, result)) {
+			if (!executeCommands(selectedBranch, state, result, stochasticSampleIndex)) {
 				return false;
 			}
 			continue;
@@ -638,6 +688,16 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 				state.simulationStep = settingValue;
 				state.variables["dt"] = settingValue;
 				result.assignedVariables["dt"] = settingValue;
+			} else if (settingName == "signal_grid_width" || settingName == "signal_grid_height") {
+				GroProgramRuntime::ColonyMutation mutation;
+				mutation.type = settingName == "signal_grid_width"
+				                     ? GroProgramRuntime::ColonyMutation::Type::SetSignalGridWidth
+				                     : GroProgramRuntime::ColonyMutation::Type::SetSignalGridHeight;
+				mutation.arguments = command.arguments;
+				mutation.numericArguments.push_back(settingValue);
+				result.colonyMutations.push_back(mutation);
+				state.variables[settingName] = settingValue;
+				result.assignedVariables[settingName] = settingValue;
 			} else {
 				// Preserve generic Gro set("name", value) state as a scalar variable when no dedicated binding exists yet.
 				state.variables[settingName] = settingValue;
@@ -769,7 +829,7 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			continue;
 		}
 
-			if (command.functionName == "set_population") {
+		if (command.functionName == "set_population") {
 				unsigned int populationSize = 0;
 				if (command.arguments.size() != 1 ||
 				    !evaluatePositiveIntegerExpression(command.arguments.front(), state, populationSize, result.errorMessage, false)) {
@@ -787,15 +847,117 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 				continue;
 			}
 
-			if (command.functionName == "emit_signal" ||
-			    command.functionName == "consume_signal" ||
-			    command.functionName == "absorb_signal" ||
-			    command.functionName == "set_signal") {
-				double signalValue = 0.0;
-				if ((command.arguments.size() != 1 && command.arguments.size() != 2) ||
-				    !evaluateNonNegativeExpression(command.arguments.back(), state, signalValue, result.errorMessage)) {
+		if (command.functionName == "chemostat") {
+			if (command.arguments.size() != 1) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime chemostat command expects one boolean or numeric argument. ";
+				return false;
+			}
+
+			double value = 0.0;
+			if (!evaluateExpression(command.arguments.front(), state, value, result.errorMessage)) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime chemostat command failed: " + result.errorMessage;
+				return false;
+			}
+
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::SetChemostatMode;
+			mutation.arguments = command.arguments;
+			mutation.numericArguments.push_back(value);
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "barrier") {
+			if (command.arguments.size() != 4) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime barrier command expects four numeric arguments. ";
+				return false;
+			}
+
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::AddBarrier;
+			mutation.arguments = command.arguments;
+			mutation.numericArguments.reserve(4);
+			for (const std::string& argumentText : command.arguments) {
+				double value = 0.0;
+				if (!evaluateExpression(argumentText, state, value, result.errorMessage)) {
 					result.succeeded = false;
-					result.errorMessage = "GroProgramRuntime " + command.functionName +
+					result.errorMessage = "GroProgramRuntime barrier command failed: " + result.errorMessage;
+					return false;
+				}
+				mutation.numericArguments.push_back(value);
+			}
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "map_to_cells") {
+			if (command.arguments.size() != 1) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime map_to_cells command expects one expression argument. ";
+				return false;
+			}
+
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::MapToCells;
+			mutation.arguments = command.arguments;
+			mutation.expressionText = command.arguments.front();
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
+			if (command.functionName == "run" || command.functionName == "tumble") {
+				double amount = 0.0;
+				const double defaultAmount = command.functionName == "run" ? 0.12 : 0.35;
+				if (!parseOptionalScalarAmount(command, state, amount, result.errorMessage, defaultAmount)) {
+					result.succeeded = false;
+					return false;
+				}
+
+				const double currentDirection = resolveIdentifierValue("direction", state);
+				const double currentSpeed = std::max(0.0, resolveIdentifierValue("speed", state));
+				GroProgramRuntime::MotionMutation mutation;
+				mutation.type = command.functionName == "run" ? GroProgramRuntime::MotionMutationType::Run :
+				                                                 GroProgramRuntime::MotionMutationType::Tumble;
+				mutation.value = amount;
+				mutation.previousDirection = currentDirection;
+				mutation.previousSpeed = currentSpeed;
+
+				if (command.functionName == "run") {
+					const double speedBoost = std::clamp(amount, 0.0, 2.0);
+					const double resultingSpeed = std::clamp(currentSpeed + speedBoost, 0.0, 4.0);
+					assignMotionOrientation(state, result, normalizeAngle(currentDirection), resultingSpeed);
+					mutation.resultingDirection = normalizeAngle(currentDirection);
+					mutation.resultingSpeed = resultingSpeed;
+				} else {
+					const double tumbleAngle = std::clamp(amount, 0.0, 6.28318530717958647692);
+					const double sample = deterministicUnitInterval(state, ++stochasticSampleIndex);
+					const double signedTurn = sample < 0.5 ? -tumbleAngle : tumbleAngle;
+					const double resultingDirection = normalizeAngle(currentDirection + signedTurn);
+					const double resultingSpeed = std::clamp(currentSpeed * 0.6, 0.0, 4.0);
+					assignMotionOrientation(state, result, resultingDirection, resultingSpeed);
+					mutation.resultingDirection = resultingDirection;
+					mutation.resultingSpeed = resultingSpeed;
+				}
+
+				result.motionMutations.push_back(mutation);
+				++result.executedCommands;
+				continue;
+			}
+
+		if (command.functionName == "emit_signal" ||
+		    command.functionName == "consume_signal" ||
+		    command.functionName == "absorb_signal") {
+			double signalValue = 0.0;
+			if ((command.arguments.size() != 1 && command.arguments.size() != 2) ||
+			    !evaluateNonNegativeExpression(command.arguments.back(), state, signalValue, result.errorMessage)) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime " + command.functionName +
 					                      " command expects one value argument or one signal handle plus one value argument. ";
 					return false;
 				}
@@ -805,10 +967,40 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 				                (command.functionName == "consume_signal" || command.functionName == "absorb_signal") ? GroProgramRuntime::SignalMutationType::Consume :
 				                                                          GroProgramRuntime::SignalMutationType::Set;
 				mutation.value = signalValue;
-				result.signalMutations.push_back(mutation);
-				++result.executedCommands;
-				continue;
+			result.signalMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "set_signal" || command.functionName == "set_signal_rect") {
+			const std::size_t expectedArgumentCount = command.functionName == "set_signal" ? 4u : 6u;
+			if (command.arguments.size() != expectedArgumentCount) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime " + command.functionName +
+				                      " command expects " + std::to_string(expectedArgumentCount) + " numeric arguments. ";
+				return false;
 			}
+
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = command.functionName == "set_signal"
+			                     ? GroProgramRuntime::ColonyMutation::Type::SetSignalAt
+			                     : GroProgramRuntime::ColonyMutation::Type::SetSignalRect;
+			mutation.arguments = command.arguments;
+			mutation.numericArguments.reserve(command.arguments.size());
+			for (const std::string& argumentText : command.arguments) {
+				double value = 0.0;
+				if (!evaluateExpression(argumentText, state, value, result.errorMessage)) {
+					result.succeeded = false;
+					result.errorMessage = "GroProgramRuntime " + command.functionName +
+					                      " command failed: " + result.errorMessage;
+					return false;
+				}
+				mutation.numericArguments.push_back(value);
+			}
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
 
 			result.unsupportedCommands.push_back(command.sourceText);
 		}
@@ -827,6 +1019,14 @@ GroProgramRuntime::ExecutionResult GroProgramRuntime::execute(const GroProgramIr
 		return result;
 	}
 
-	executeCommands(ir.commands, state, result);
+	std::uint64_t stochasticSampleIndex = 0;
+	executeCommands(ir.commands, state, result, stochasticSampleIndex);
 	return result;
+}
+
+bool GroProgramRuntime::evaluateExpression(const std::string& expressionText,
+                                           const GroProgramRuntimeState& state,
+                                           double& value,
+                                           std::string& errorMessage) {
+	return ::evaluateExpression(expressionText, state, value, errorMessage);
 }
