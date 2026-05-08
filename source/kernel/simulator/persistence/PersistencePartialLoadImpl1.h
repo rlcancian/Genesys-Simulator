@@ -1,12 +1,12 @@
 #ifndef MODELPERSISTENCEPARTIALLOADIMPL1_H
 #define MODELPERSISTENCEPARTIALLOADIMPL1_H
 
-#include "ModelPersistenceDefaultImpl2.h"
-#include "Model.h"
+#include "PersistenceDefaultImpl2.h"
+#include "../model/Model.h"
 
-class ModelPersistencePartialLoadImpl1 : public ModelPersistenceDefaultImpl2 {
+class PersistencePartialLoadImpl1 : public PersistenceDefaultImpl2 {
 public:
-	explicit ModelPersistencePartialLoadImpl1(Model* model);
+	explicit PersistencePartialLoadImpl1(Model* model);
 
 public:
 	bool load(std::string filename) override;

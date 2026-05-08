@@ -4,14 +4,14 @@
 #include <unordered_map>
 #include<memory>
 
-#include "model/ModelSerializer.h"
-#include "model/Model.h"
+#include "Serializer.h"
+#include "../model/Model.h"
 
-class XmlSerializer : public ModelSerializer {
+class XmlSerializer : public Serializer {
 public:
 	explicit XmlSerializer(Model *model);
 
-public: // ModelSerializer interface
+public: // Serializer interface
 	PersistenceRecord* newPersistenceRecord() override;
 	bool dump(std::ostream& output) override;
 	bool load(std::istream& input) override;

@@ -1,4 +1,4 @@
-#include "ModelPersistencePartialLoadImpl1.h"
+#include "PersistencePartialLoadImpl1.h"
 
 #include <exception>
 #include <fstream>
@@ -7,25 +7,25 @@
 #include <string>
 #include <vector>
 
-#include "ModelSerializer.h"
+#include "Serializer.h"
 #include "../Simulator.h"
 #include "../../util/Util.h"
 
-#include "../GenSerializer.h"
-#include "../JsonSerializer.h"
+#include "GenSerializer.h"
+#include "JsonSerializer.h"
 #include "../Plugin.h"
-#include "../XmlSerializer.h"
+#include "XmlSerializer.h"
 
-ModelPersistencePartialLoadImpl1::ModelPersistencePartialLoadImpl1(Model* model) :
-ModelPersistenceDefaultImpl2(model),
-_model(model) {
+PersistencePartialLoadImpl1::PersistencePartialLoadImpl1(Model* model) :
+	PersistenceDefaultImpl2(model),
+	_model(model) {
 }
 
-bool ModelPersistencePartialLoadImpl1::load(std::string filename) {
+bool PersistencePartialLoadImpl1::load(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Loading file \"" + filename + "\"");
 	Util::IncIndent();
 
-	std::unique_ptr<ModelSerializer> parser;
+	std::unique_ptr<Serializer> parser;
 	{
 		auto extension = filename.substr(filename.find_last_of('.') + 1);
 		if (extension == "xml") {

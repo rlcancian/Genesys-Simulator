@@ -8,8 +8,8 @@
 #ifndef SPARSEVALUESTORE_H
 #define SPARSEVALUESTORE_H
 
-#include "Persistence.h"
-#include "../util/Util.h"
+#include "../Persistence.h"
+#include "../../util/Util.h"
 
 #include <list>
 #include <map>

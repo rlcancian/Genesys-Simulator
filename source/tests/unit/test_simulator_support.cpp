@@ -135,14 +135,14 @@ struct KernelAccessorProbe {
     }
 };
 
-class FakeModelPersistence : public ModelPersistence_if {
+class FakeModelPersistence : public Persistence_if {
 public:
     bool save(std::string) override { return false; }
     bool load(std::string) override { return false; }
     bool hasChanged() override { return false; }
     void setHasChanged(bool) override {}
-    bool getOption(ModelPersistence_if::Options) override { return false; }
-    void setOption(ModelPersistence_if::Options, bool) override {}
+    bool getOption(Persistence_if::Options) override { return false; }
+    void setOption(Persistence_if::Options, bool) override {}
     std::string getFormatedField(PersistenceRecord*) override { return ""; }
 };
 

@@ -5,7 +5,7 @@
 #include <vector>
 #include <algorithm>
 
-#include "Simulator.h"
+#include "../Simulator.h"
 
 GenSerializer::GenSerializer(Model *model) :
 _model(model) {

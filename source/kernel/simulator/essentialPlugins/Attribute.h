@@ -22,7 +22,7 @@
 #include "../model/ModelDataDefinition.h"
 #include "../model/ModelDataManager.h"
 #include "../PluginInformation.h"
-#include "../SparseValueStore.h"
+#include "SparseValueStore.h"
 
 //namespace GenesysKernel {
 

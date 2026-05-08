@@ -22,7 +22,7 @@
 #include "../Event.h"
 #include "ModelChecker_if.h"
 #include "../Parser_if.h"
-#include "ModelPersistence_if.h"
+#include "../persistence/Persistence_if.h"
 #include "ModelDataManager.h"
 #include "ModelComponentManager.h"
 #include "../TraceManager.h"
@@ -271,7 +271,7 @@ public: // gets and sets
 	 * \brief Returns the persistence interface used by this model.
 	 * \return Persistence interface instance.
 	 */
-	ModelPersistence_if* getPersistence() const;
+	Persistence_if* getPersistence() const;
 	/*!
 	 * \brief Returns the hierarchy level of the model.
 	 * \details Provides access to the class that performs the trace of
@@ -305,7 +305,7 @@ private: // read only public access (gets)
 	ModelComponentManager* _componentManager;
 	ModelInfo* _modelInfo;
 	ModelSimulation* _simulation;
-	ModelPersistence_if* _modelPersistence;
+	Persistence_if* _modelPersistence;
 
 	// 1:n
 	//List<ModelComponent*>* _components;

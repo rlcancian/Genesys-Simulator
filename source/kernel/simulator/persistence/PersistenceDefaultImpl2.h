@@ -1,20 +1,20 @@
 #ifndef MODELPERSISTENCEDEFAULTIMPL_H
 #define MODELPERSISTENCEDEFAULTIMPL_H
 
-#include "ModelPersistence_if.h"
-#include "Model.h"
+#include "Persistence_if.h"
+#include "../model/Model.h"
 
-class ModelPersistenceDefaultImpl2 : public ModelPersistence_if {
+class PersistenceDefaultImpl2 : public Persistence_if {
 public:
-	ModelPersistenceDefaultImpl2(Model* model);
+	PersistenceDefaultImpl2(Model* model);
 
-public: // ModelPersistence_if interface
+public: // Persistence_if interface
 	bool save(std::string filename) override;
 	bool load(std::string filename) override;
 	bool hasChanged() override;
 	void setHasChanged(bool hasChanged) override;
-	bool getOption(ModelPersistence_if::Options option) override;
-	void setOption(ModelPersistence_if::Options option, bool value) override;
+	bool getOption(Persistence_if::Options option) override;
+	void setOption(Persistence_if::Options option, bool value) override;
 	std::string getFormatedField(PersistenceRecord *fields) override;
 
 private:

@@ -126,7 +126,7 @@ Model::Model(Simulator* simulator, unsigned int level) {
     // 1:1 associations (Traits)
     _parser = new TraitsKernel<Parser_if>::Implementation(this, new TraitsKernel<Sampler_if>::Implementation());
     _modelChecker = new TraitsKernel<ModelChecker_if>::Implementation(this);
-    _modelPersistence = new TraitsKernel<ModelPersistence_if>::Implementation(this);
+    _modelPersistence = new TraitsKernel<Persistence_if>::Implementation(this);
     // 1:n associations
     _futureEvents = new List<Event*>(); // The future events list must be chronologicaly sorted
     //_events->setSortFunc(&EventCompare); // It works too
@@ -791,7 +791,7 @@ TraceManager* Model::getTracer() const {
     return _traceManager;
 }
 
-ModelPersistence_if* Model::getPersistence() const {
+Persistence_if* Model::getPersistence() const {
     return _modelPersistence;
 }
 

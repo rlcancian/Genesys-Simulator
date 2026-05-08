@@ -20,9 +20,9 @@
  * Serializers also act as factories for `PersistenceRecord`s, which can then only be used
  * with the serializer which originated them.
  */
-class ModelSerializer {
+class Serializer {
 public:
-	virtual ~ModelSerializer();
+	virtual ~Serializer();
 
 	/*!
 	 * @brief Creates an empty persistence record.

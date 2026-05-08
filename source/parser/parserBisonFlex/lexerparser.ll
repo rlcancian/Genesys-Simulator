@@ -11,10 +11,10 @@
 # include "obj_t.h"
 # include "kernel/util/Util.h"
 # include "kernel/util/List.h"
-# include "kernel/simulator/Attribute.h"
-# include "kernel/simulator/Counter.h"
-# include "kernel/simulator/ModelDataDefinition.h"
-# include "kernel/simulator/StatisticsCollector.h"
+# include "kernel/simulator/essentialPlugins/Attribute.h"
+# include "kernel/simulator/essentialPlugins/Counter.h"
+# include "kernel/simulator/model/ModelDataDefinition.h"
+# include "kernel/simulator/essentialPlugins/StatisticsCollector.h"
 /**begin_Includes_plugins**/
 /**begin_Includes:Variable**/
 #include "plugins/data/Logic/Variable.h"

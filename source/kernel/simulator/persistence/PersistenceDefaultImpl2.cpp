@@ -1,4 +1,4 @@
-#include "ModelPersistenceDefaultImpl2.h"
+#include "PersistenceDefaultImpl2.h"
 
 #include <cassert>
 #include <memory>
@@ -6,27 +6,27 @@
 #include <vector>
 #include <sstream>
 
-#include "ModelSerializer.h"
+#include "Serializer.h"
 #include "../Simulator.h"
 #include "../../util/Util.h"
 #include "../essentialPlugins/Counter.h"
 
-#include "../GenSerializer.h"
-#include "../XmlSerializer.h"
-#include "../JsonSerializer.h"
-#include "../CppSerializer.h"
+#include "GenSerializer.h"
+#include "XmlSerializer.h"
+#include "JsonSerializer.h"
+#include "CppSerializer.h"
 
-ModelPersistenceDefaultImpl2::ModelPersistenceDefaultImpl2(Model* model) :
-_model(model) {
+PersistenceDefaultImpl2::PersistenceDefaultImpl2(Model* model) :
+	_model(model) {
 	assert(model != nullptr);
 }
 
-bool ModelPersistenceDefaultImpl2::save(std::string filename) {
+bool PersistenceDefaultImpl2::save(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Saving file \"" + filename + "\"");
 	Util::IncIndent();
 
 	// choose format
-	std::unique_ptr<ModelSerializer> serializer;
+	std::unique_ptr<Serializer> serializer;
 	{
 		auto extension = filename.substr(filename.find_last_of('.') + 1);
 		if (extension == "xml") {
@@ -44,7 +44,7 @@ bool ModelPersistenceDefaultImpl2::save(std::string filename) {
 		}
 	}
 
-	const bool saveDefaults = _model->getPersistence()->getOption(ModelPersistence_if::Options::SAVEDEFAULTS);
+	const bool saveDefaults = _model->getPersistence()->getOption(Persistence_if::Options::SAVEDEFAULTS);
 	auto fields = std::unique_ptr<PersistenceRecord>(serializer->newPersistenceRecord());
 
 	// grab simulator info
@@ -114,12 +114,12 @@ bool ModelPersistenceDefaultImpl2::save(std::string filename) {
 	return ok;
 }
 
-bool ModelPersistenceDefaultImpl2::load(std::string filename) {
+bool PersistenceDefaultImpl2::load(std::string filename) {
 	_model->getTracer()->trace(TraceManager::Level::L7_internal, "Loading file \"" + filename + "\"");
 	Util::IncIndent();
 
 	// choose format
-	std::unique_ptr<ModelSerializer> parser;
+	std::unique_ptr<Serializer> parser;
 	{
 		auto extension = filename.substr(filename.find_last_of('.') + 1);
 		if (extension == "xml") {
@@ -228,24 +228,24 @@ bool ModelPersistenceDefaultImpl2::load(std::string filename) {
 	return ok;
 }
 
-bool ModelPersistenceDefaultImpl2::hasChanged() {
+bool PersistenceDefaultImpl2::hasChanged() {
 	return _dirty;
 }
 
-void ModelPersistenceDefaultImpl2::setHasChanged(bool hasChanged) {
+void PersistenceDefaultImpl2::setHasChanged(bool hasChanged) {
 	_dirty = hasChanged;
 }
 
-bool ModelPersistenceDefaultImpl2::getOption(ModelPersistence_if::Options option) {
+bool PersistenceDefaultImpl2::getOption(Persistence_if::Options option) {
 	return (_options & static_cast<unsigned> (option)) != 0u;
 }
 
-void ModelPersistenceDefaultImpl2::setOption(ModelPersistence_if::Options option, bool value) {
+void PersistenceDefaultImpl2::setOption(Persistence_if::Options option, bool value) {
 	unsigned bit = static_cast<unsigned> (option);
 	if (value) _options |= bit;
 	else _options &= ~bit;
 }
 
-std::string ModelPersistenceDefaultImpl2::getFormatedField(PersistenceRecord *fields) {
+std::string PersistenceDefaultImpl2::getFormatedField(PersistenceRecord *fields) {
 	return GenSerializer::linearize(fields);
 }

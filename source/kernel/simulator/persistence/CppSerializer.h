@@ -1,17 +1,17 @@
-#ifndef GENSERIALIZER_H
-#define GENSERIALIZER_H
+#ifndef CPPSERIALIZER_H
+#define CPPSERIALIZER_H
 
 #include <unordered_map>
 #include<memory>
 
-#include "model/ModelSerializer.h"
-#include "model/Model.h"
+#include "Serializer.h"
+#include "../model/Model.h"
 
-class GenSerializer : public ModelSerializer {
+class CppSerializer : public Serializer {
 public:
-	explicit GenSerializer(Model *model);
+	explicit CppSerializer(Model *model);
 
-public: // ModelSerializer interface
+public: // Serializer interface
 	PersistenceRecord* newPersistenceRecord() override;
 	bool dump(std::ostream& output) override;
 	bool load(std::istream& input) override;
@@ -20,14 +20,13 @@ public: // ModelSerializer interface
 	int for_each(std::function<int(const std::string&) > delegate) override;
 
 private:
-	static std::string linearize(PersistenceRecord *fields);
-	friend class ModelPersistenceDefaultImpl2;
-
-private:
 	Model *_model{};
+	std::unordered_map<std::string, std::unique_ptr<PersistenceRecord>> _metaobjects
+	{
+	};
 	std::unordered_map<std::string, std::unique_ptr<PersistenceRecord>> _components
 	{
 	};
 };
 
-#endif // GENSERIALIZER_H
+#endif // CPPSERIALIZER_H

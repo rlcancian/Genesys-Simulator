@@ -21,7 +21,7 @@
 #include "../../util/List.h"
 #include "../model/ModelDataDefinition.h"
 #include "EntityType.h"
-#include "../SparseValueStore.h"
+#include "SparseValueStore.h"
 //namespace GenesysKernel {
 
 /*!

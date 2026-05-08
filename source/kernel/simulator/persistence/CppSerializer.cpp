@@ -9,7 +9,7 @@
 #include <set>
 #include <unordered_map>
 
-#include "Simulator.h"
+#include "../Simulator.h"
 
 #define INDENT "\t"
 

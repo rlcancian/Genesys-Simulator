@@ -2472,9 +2472,9 @@ void MainWindow::_initUiForNewModel(Model* m) {
         ui->TextCodeEditor->clear();
         // create a basic initial template for the model
         std::string tempFilename = "./temp.tmp";
-        m->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
+        m->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, true);
         bool res = m->save(tempFilename);
-        m->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, false);
+        m->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, false);
         if (res) { // read the file saved and copy its contents to the model text editor
             std::string line;
             std::ifstream file(tempFilename);

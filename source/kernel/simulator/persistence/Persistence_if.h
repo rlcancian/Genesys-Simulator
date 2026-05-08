@@ -5,7 +5,7 @@
  */
 
 /* 
- * File:   ModelPersistence_if.h
+ * File:   Persistence_if.h
  * Author: rafael.luiz.cancian
  *
  * Created on 24 de Agosto de 2018, 19:22
@@ -28,9 +28,9 @@ class PersistenceRecord;
  * representations (e.g., GEN/XML/JSON-like formats) and expose formatting/options
  * hooks used by the kernel persistence pipeline.
  */
-class ModelPersistence_if {
+class Persistence_if {
 public:
-	virtual ~ModelPersistence_if() = default;
+	virtual ~Persistence_if() = default;
 
 	enum class Options : int {
 		SAVEDEFAULTS = 1, HIDEIDKEY = 2, HIDETYPEKEY = 4, HIDENAMEKEY = 8, SORTALPHLY = 16
@@ -48,9 +48,9 @@ public:
 	/*! \brief Updates the persistent-state changed flag. */
 	virtual void setHasChanged(bool hasChanged) = 0;
 	/*! \brief Returns whether a persistence option is currently enabled. */
-	virtual bool getOption(ModelPersistence_if::Options option) = 0;
+	virtual bool getOption(Persistence_if::Options option) = 0;
 	/*! \brief Enables or disables a persistence option. */
-	virtual void setOption(ModelPersistence_if::Options option, bool value) = 0;
+	virtual void setOption(Persistence_if::Options option, bool value) = 0;
 public:
 	/*! \brief Formats a set of fields as text according to the persistence format. */
 	virtual std::string getFormatedField(PersistenceRecord *fields) = 0;

@@ -8,7 +8,7 @@
 #include "services/GraphicalModelSerializer.h"
 
 #include "../../kernel/simulator/essentialPlugins/Counter.h"
-#include "kernel/simulator/GenSerializer.h"
+#include "../../kernel/simulator/persistence/GenSerializer.h"
 #include "../../kernel/simulator/model/Model.h"
 #include "../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginManager.h"

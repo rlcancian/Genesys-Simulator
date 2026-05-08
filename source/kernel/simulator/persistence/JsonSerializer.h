@@ -1,17 +1,17 @@
-#ifndef CPPSERIALIZER_H
-#define CPPSERIALIZER_H
+#ifndef JSONSERIALIZER_H
+#define JSONSERIALIZER_H
 
 #include <unordered_map>
 #include<memory>
 
-#include "model/ModelSerializer.h"
-#include "model/Model.h"
+#include "Serializer.h"
+#include "../model/Model.h"
 
-class CppSerializer : public ModelSerializer {
+class JsonSerializer : public Serializer {
 public:
-	explicit CppSerializer(Model *model);
+	explicit JsonSerializer(Model *model);
 
-public: // ModelSerializer interface
+public: // Serializer interface
 	PersistenceRecord* newPersistenceRecord() override;
 	bool dump(std::ostream& output) override;
 	bool load(std::istream& input) override;
@@ -29,4 +29,4 @@ private:
 	};
 };
 
-#endif // CPPSERIALIZER_H
+#endif // JSONSERIALIZER_H

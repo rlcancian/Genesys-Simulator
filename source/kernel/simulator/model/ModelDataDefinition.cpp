@@ -13,6 +13,7 @@
 
 //#include <typeinfo>
 #include "ModelDataDefinition.h"
+#include "../persistence/Persistence_if.h"
 #include <iostream>
 #include <cassert>
 #include <string>
@@ -219,7 +220,7 @@ void ModelDataDefinition::_checkCreateAttachedReferencedDataDefinition(const std
 }
 
 bool ModelDataDefinition::_getSaveDefaultsOption() {
-	return _parentModel->getPersistence()->getOption(ModelPersistence_if::Options::SAVEDEFAULTS);
+	return _parentModel->getPersistence()->getOption(Persistence_if::Options::SAVEDEFAULTS);
 }
 
 bool ModelDataDefinition::_loadInstance(PersistenceRecord* fields) {
