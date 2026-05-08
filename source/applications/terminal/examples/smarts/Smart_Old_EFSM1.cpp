@@ -4,15 +4,15 @@
 // you have to included need libs
 
 // GEnSyS Simulator
-#include "kernel/simulator/EntityType.h"
-#include "kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/essentialPlugins/EntityType.h"
+#include "kernel/simulator/model/ModelSimulation.h"
 #include "kernel/simulator/Simulator.h"
 
 // Model Components
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/Logic/Assign.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/Logic/Variable.h"
 #include "../../../../plugins/data/EFSM.h"
 #include "../../../../plugins/components/FSM_State.h"
 #include "../../../../plugins/components/FSM_Transition.h"

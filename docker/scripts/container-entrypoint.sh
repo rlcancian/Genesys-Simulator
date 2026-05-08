@@ -130,7 +130,7 @@ build_gui() {
 }
 
 build_web() {
-    configure_and_build "$1" "web-app" "genesys-web" "genesys_webhook"
+    configure_and_build "$1" "genesys_web_app" "genesys-web" "genesys_web_app"
 }
 
 find_executable() {
@@ -183,7 +183,7 @@ run_web() {
     local repo_dir="$1"
     build_web "${repo_dir}"
     local executable
-    executable="$(find_executable "${repo_dir}" "build/web-app" "genesys_webhook")"
+    executable="$(find_executable "${repo_dir}" "build/genesys_web_app" "genesys_web_app")"
     log "Iniciando servidor web na porta ${GENESYS_WEB_PORT}."
     exec "${executable}" --port "${GENESYS_WEB_PORT}"
 }

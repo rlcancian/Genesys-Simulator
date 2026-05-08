@@ -13,7 +13,7 @@
 #ifndef SCHEDULE_H
 #define SCHEDULE_H
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 #include "kernel/util/List.h"
 

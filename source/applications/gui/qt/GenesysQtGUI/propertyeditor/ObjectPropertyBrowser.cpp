@@ -49,10 +49,10 @@
 #include <QUndoStack>
 #include <QVBoxLayout>
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelComponent.h"
-#include "kernel/simulator/ModelDataManager.h"
-#include "kernel/simulator/ModelManager.h"
+#include "../../../../../kernel/simulator/model/Model.h"
+#include "../../../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
 
 namespace {

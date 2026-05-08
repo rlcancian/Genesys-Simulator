@@ -312,6 +312,7 @@ PluginInformation* Process::GetPluginInformation() {
 	info->insertDynamicLibFileDependence("seize.so");
 	info->insertDynamicLibFileDependence("delay.so");
 	info->insertDynamicLibFileDependence("release.so");
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

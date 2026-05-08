@@ -29,7 +29,7 @@
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/Logic/Variable.h"
 
 Example_BasicOrderShipping::Example_BasicOrderShipping() {
 }

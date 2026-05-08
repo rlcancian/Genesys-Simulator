@@ -12,7 +12,7 @@
 
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include <cmath>
 #include <sstream>
 
@@ -119,6 +119,7 @@ PluginInformation* Schedule::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

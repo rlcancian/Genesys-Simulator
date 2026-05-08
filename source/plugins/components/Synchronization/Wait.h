@@ -14,7 +14,7 @@
 #ifndef WAIT_H
 #define WAIT_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "../../data/Synchronization/SignalData.h"
 #include "kernel/simulator/OnEventManager.h"

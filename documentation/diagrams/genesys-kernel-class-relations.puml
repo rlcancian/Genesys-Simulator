@@ -1,0 +1,180 @@
+@startuml
+' GenESyS — kernel class relation diagram, branch WiP20261
+' Scope: source/kernel and relevant nested subpackages.
+' No aliases are used.
+
+top to bottom direction
+skinparam linetype polyline
+skinparam shadowing false
+skinparam nodesep 34
+skinparam ranksep 52
+skinparam classBackgroundColor #FFFFF0
+skinparam interfaceBackgroundColor #FFFFF0
+skinparam ArrowColor #505060
+skinparam packageBorderColor #808090
+hide empty members
+
+package kernel #F8F8FF {
+  package statistics #FFF8F8 {
+    interface Statistics_if
+    interface Sampler_if
+    interface Collector_if
+    class StatisticsDefaultImpl1
+    class CollectorDefaultImpl1
+  }
+
+  package simulator #FFF8F8 {
+    class Simulator
+    class LicenceManager
+    class PluginManager
+    class Plugin
+    class PluginInformation
+    class ParserManager
+    interface Parser_if
+    class ParserDefaultImpl2
+    class TraceManager
+    class OnEventManager
+    class ConnectionManager
+    class Connection
+    class Event
+    class ExperimentManager
+    class SimulationExperiment
+    class SimulationScenario
+    class SimulationControl
+    class SimulationResponse
+    interface SimulationReporter_if
+    class SimulationReporterDefaultImpl1
+    class SourceModelComponent
+    class SinkModelComponent
+    class PersistenceRecord
+
+    package model #F8F8FF {
+      class Model
+      class ModelManager
+      class ModelDataManager
+      class ModelComponentManager
+      abstract class PersistentObject_base
+      class ModelDataDefinition
+      class ModelDataDefinitionAssociations
+      abstract class ModelComponent
+      class ModelInfo
+      class ModelSimulation
+      interface ModelChecker_if
+      class ModelCheckerDefaultImpl1
+    }
+
+    package essentialPlugins #F8F8FF {
+      class Entity
+      class EntityType
+      class Attribute
+      class Counter
+      class StatisticsCollector
+    }
+
+    package persistence #F8F8FF {
+      interface Persistence_if
+      class PersistenceDefaultImpl2
+      abstract class Serializer
+      class GenSerializer
+    }
+  }
+}
+
+kernel.statistics.CollectorDefaultImpl1 ..|> kernel.statistics.Collector_if
+kernel.statistics.StatisticsDefaultImpl1 ..|> kernel.statistics.Statistics_if
+kernel.statistics.StatisticsDefaultImpl1 o--> "1" kernel.statistics.Collector_if : collector
+
+kernel.simulator.model.ModelDataDefinition -up-|> kernel.simulator.model.PersistentObject_base
+kernel.simulator.model.ModelComponent -up-|> kernel.simulator.model.ModelDataDefinition
+kernel.simulator.SourceModelComponent -up-|> kernel.simulator.model.ModelComponent
+kernel.simulator.SinkModelComponent -up-|> kernel.simulator.model.ModelComponent
+kernel.simulator.essentialPlugins.Entity -up-|> kernel.simulator.model.ModelDataDefinition
+kernel.simulator.essentialPlugins.EntityType -up-|> kernel.simulator.model.ModelDataDefinition
+kernel.simulator.essentialPlugins.Attribute -up-|> kernel.simulator.model.ModelDataDefinition
+kernel.simulator.essentialPlugins.Counter -up-|> kernel.simulator.model.ModelDataDefinition
+kernel.simulator.essentialPlugins.StatisticsCollector -up-|> kernel.simulator.model.ModelDataDefinition
+kernel.simulator.SimulationResponse -up-|> kernel.simulator.SimulationControl
+
+kernel.simulator.model.ModelCheckerDefaultImpl1 ..|> kernel.simulator.model.ModelChecker_if
+kernel.simulator.ParserDefaultImpl2 ..|> kernel.simulator.Parser_if
+kernel.simulator.persistence.PersistenceDefaultImpl2 ..|> kernel.simulator.persistence.Persistence_if
+kernel.simulator.SimulationReporterDefaultImpl1 ..|> kernel.simulator.SimulationReporter_if
+kernel.simulator.persistence.GenSerializer -up-|> kernel.simulator.persistence.Serializer
+
+kernel.simulator.Simulator *--> "1" kernel.simulator.LicenceManager : _licenceManager
+kernel.simulator.Simulator *--> "1" kernel.simulator.PluginManager : _pluginManager
+kernel.simulator.Simulator *--> "1" kernel.simulator.model.ModelManager : _modelManager
+kernel.simulator.Simulator *--> "1" kernel.simulator.TraceManager : _traceManager
+kernel.simulator.Simulator *--> "1" kernel.simulator.ParserManager : _parserManager
+kernel.simulator.Simulator *--> "1" kernel.simulator.ExperimentManager : _experimentManager
+
+kernel.simulator.PluginManager o--> "1" kernel.simulator.Simulator : _simulator
+kernel.simulator.PluginManager *--> "0..n" kernel.simulator.Plugin : _plugins
+kernel.simulator.Plugin *--> "1" kernel.simulator.PluginInformation : _pluginInfo
+kernel.simulator.Plugin ..> kernel.simulator.model.ModelDataDefinition : newInstance
+
+kernel.simulator.model.ModelManager o--> "1" kernel.simulator.Simulator : _simulator
+kernel.simulator.model.ModelManager *--> "0..n" kernel.simulator.model.Model : _models
+kernel.simulator.model.ModelManager o--> "0..1" kernel.simulator.model.Model : _currentModel
+
+kernel.simulator.model.Model o--> "1" kernel.simulator.Simulator : _parentSimulator
+kernel.simulator.model.Model o--> "1" kernel.simulator.TraceManager : _traceManager
+kernel.simulator.model.Model *--> "1" kernel.simulator.OnEventManager : _eventManager
+kernel.simulator.model.Model *--> "1" kernel.simulator.model.ModelDataManager : _modeldataManager
+kernel.simulator.model.Model *--> "1" kernel.simulator.model.ModelComponentManager : _componentManager
+kernel.simulator.model.Model *--> "1" kernel.simulator.model.ModelInfo : _modelInfo
+kernel.simulator.model.Model *--> "1" kernel.simulator.model.ModelSimulation : _simulation
+kernel.simulator.model.Model *--> "1" kernel.simulator.persistence.Persistence_if : _modelPersistence
+kernel.simulator.model.Model *--> "1" kernel.simulator.model.ModelChecker_if : _modelChecker
+kernel.simulator.model.Model *--> "1" kernel.simulator.Parser_if : _parser
+kernel.simulator.model.Model *--> "0..n" kernel.simulator.Event : _futureEvents
+kernel.simulator.model.Model o--> "0..n" kernel.simulator.SimulationControl : _controls
+kernel.simulator.model.Model o--> "0..n" kernel.simulator.SimulationResponse : _responses
+
+kernel.simulator.model.ModelDataManager o--> "1" kernel.simulator.model.Model : _parentModel
+kernel.simulator.model.ModelDataManager o--> "0..n" kernel.simulator.model.ModelDataDefinition : _datadefinitions
+kernel.simulator.model.ModelComponentManager o--> "1" kernel.simulator.model.Model : _parentModel
+kernel.simulator.model.ModelComponentManager o--> "0..n" kernel.simulator.model.ModelComponent : _components
+
+kernel.simulator.model.ModelDataDefinition o--> "1" kernel.simulator.model.Model : _parentModel
+kernel.simulator.model.ModelDataDefinition *--> "1" kernel.simulator.model.ModelDataDefinitionAssociations : _dataAssociations
+kernel.simulator.model.ModelDataDefinition *--> "0..n" kernel.simulator.SimulationControl : _simulationControls
+kernel.simulator.model.ModelDataDefinitionAssociations o--> "1" kernel.simulator.model.ModelDataDefinition : _owner
+kernel.simulator.model.ModelDataDefinitionAssociations *--> "0..n" kernel.simulator.model.ModelDataDefinition : internalData
+kernel.simulator.model.ModelDataDefinitionAssociations o--> "0..n" kernel.simulator.model.ModelDataDefinition : attachedData
+
+kernel.simulator.model.ModelComponent *--> "1" kernel.simulator.ConnectionManager : _connections
+kernel.simulator.ConnectionManager *--> "0..n" kernel.simulator.Connection : _nextConnections
+kernel.simulator.Connection o--> "1" kernel.simulator.model.ModelComponent : component
+kernel.simulator.Event o--> "0..1" kernel.simulator.essentialPlugins.Entity : entity
+kernel.simulator.Event o--> "1" kernel.simulator.model.ModelComponent : component
+
+kernel.simulator.model.ModelSimulation o--> "1" kernel.simulator.model.Model : _model
+kernel.simulator.model.ModelSimulation o--> "1" kernel.simulator.model.ModelInfo : _info
+kernel.simulator.model.ModelSimulation o--> "1" kernel.simulator.SimulationReporter_if : _simulationReporter
+kernel.simulator.model.ModelSimulation *--> "0..n" kernel.simulator.SimulationControl : _ownedControls
+kernel.simulator.model.ModelSimulation o--> "0..n" kernel.simulator.model.ModelDataDefinition : _cstatsAndCountersSimulation
+kernel.simulator.model.ModelSimulation o--> "0..n" kernel.simulator.model.ModelComponent : _breakpointsOnComponent
+kernel.simulator.model.ModelSimulation o--> "0..n" kernel.simulator.essentialPlugins.Entity : _breakpointsOnEntity
+
+kernel.simulator.essentialPlugins.Entity o--> "0..1" kernel.simulator.essentialPlugins.EntityType : _entityType
+kernel.simulator.essentialPlugins.StatisticsCollector o--> "0..1" kernel.simulator.model.ModelDataDefinition : _parent
+kernel.simulator.essentialPlugins.StatisticsCollector o--> "1" kernel.statistics.Statistics_if : _statistics
+kernel.simulator.essentialPlugins.StatisticsCollector ..> kernel.statistics.Collector_if : createsCollector
+
+kernel.simulator.ParserDefaultImpl2 o--> "1" kernel.simulator.model.Model : _model
+kernel.simulator.ParserDefaultImpl2 o--> "0..1" kernel.statistics.Sampler_if : sampler
+kernel.simulator.model.ModelCheckerDefaultImpl1 o--> "1" kernel.simulator.model.Model : _model
+kernel.simulator.persistence.PersistenceDefaultImpl2 o--> "1" kernel.simulator.model.Model : _model
+kernel.simulator.persistence.GenSerializer o--> "1" kernel.simulator.model.Model : _model
+kernel.simulator.persistence.GenSerializer *--> "0..n" kernel.simulator.PersistenceRecord : _components
+kernel.simulator.persistence.Serializer ..> kernel.simulator.PersistenceRecord : createsRecords
+
+kernel.simulator.ExperimentManager o--> "1" kernel.simulator.Simulator : _simulator
+kernel.simulator.ExperimentManager *--> "0..n" kernel.simulator.SimulationExperiment : experiments
+kernel.simulator.SimulationExperiment o--> "1" kernel.simulator.model.Model : model
+kernel.simulator.SimulationExperiment *--> "0..n" kernel.simulator.SimulationScenario : scenarios
+kernel.simulator.SimulationScenario o--> "0..n" kernel.simulator.SimulationControl : controls
+kernel.simulator.SimulationScenario o--> "0..n" kernel.simulator.SimulationResponse : responses
+
+@enduml

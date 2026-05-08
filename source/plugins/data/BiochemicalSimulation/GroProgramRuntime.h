@@ -49,6 +49,11 @@ public:
 		Set
 	};
 
+	enum class MotionMutationType {
+		Run,
+		Tumble
+	};
+
 	struct PopulationMutation {
 		PopulationMutationType type = PopulationMutationType::Grow;
 		unsigned int value = 0;
@@ -61,15 +66,37 @@ public:
 		double value = 0.0;
 	};
 
-	struct ColonyMutation {
-		enum class Type {
-			Reset,
-			SpawnSeed
+	struct MotionMutation {
+		MotionMutationType type = MotionMutationType::Run;
+		double value = 0.0;
+		double previousDirection = 0.0;
+		double resultingDirection = 0.0;
+		double previousSpeed = 0.0;
+		double resultingSpeed = 0.0;
+	};
+
+		struct ColonyMutation {
+			enum class Type {
+				Reset,
+				SpawnSeed,
+			SetChemostatMode,
+			AddBarrier,
+			MapToCells,
+			SetSignalAt,
+			SetSignalRect,
+			SetSignalGridWidth,
+			SetSignalGridHeight,
+			GetSignalMatrix,
+			DumpSignalField
 		};
 
-		Type type = Type::Reset;
-		std::vector<std::string> arguments;
-	};
+			Type type = Type::Reset;
+			std::vector<std::string> arguments;
+			std::vector<double> numericArguments;
+			std::string expressionText;
+			std::size_t previewRows = 0;
+			std::size_t previewColumns = 0;
+		};
 
 	struct ExecutionResult {
 		bool succeeded = true;
@@ -77,7 +104,14 @@ public:
 		unsigned int executedCommands = 0;
 		std::vector<PopulationMutation> populationMutations;
 		std::vector<SignalMutation> signalMutations;
+		std::vector<MotionMutation> motionMutations;
 		std::vector<ColonyMutation> colonyMutations;
+		std::vector<double> mappedCellValues;
+		std::string mappedCellExpression;
+		std::vector<double> signalMatrixValues;
+		unsigned int signalMatrixWidth = 0;
+		unsigned int signalMatrixHeight = 0;
+		std::string signalFieldDump;
 		std::vector<std::string> messages;
 		std::map<std::string, double> assignedVariables;
 		std::vector<std::string> unsupportedCommands;
@@ -87,6 +121,11 @@ public:
 public:
 	/*! \brief Executes supported commands and reports unsupported commands. */
 	ExecutionResult execute(const GroProgramIr& ir, GroProgramRuntimeState& state) const;
+	/*! \brief Evaluates one scalar Gro expression against one runtime state. */
+	static bool evaluateExpression(const std::string& expressionText,
+	                               const GroProgramRuntimeState& state,
+	                               double& value,
+	                               std::string& errorMessage);
 };
 
 #endif /* GROPROGRAMRUNTIME_H */

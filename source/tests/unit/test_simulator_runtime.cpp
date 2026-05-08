@@ -10,10 +10,10 @@
 #include <vector>
 
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataDefinition.h"
-#include "kernel/simulator/Entity.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../kernel/simulator/model/Model.h"
+#include "../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../kernel/simulator/essentialPlugins/Entity.h"
+#include "../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Event.h"
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
@@ -79,7 +79,7 @@
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "plugins/components/Decisions/PickStation.h"
+#include "../../plugins/components/MaterialHandling/PickStation.h"
 #undef protected
 #undef private
 #define private public
@@ -1290,14 +1290,14 @@ public:
     }
 };
 
-class FakeModelPersistenceRuntime : public ModelPersistence_if {
+class FakeModelPersistenceRuntime : public Persistence_if {
 public:
     bool save(std::string) override { return false; }
     bool load(std::string) override { return false; }
     bool hasChanged() override { return false; }
     void setHasChanged(bool) override {}
-    bool getOption(ModelPersistence_if::Options) override { return false; }
-    void setOption(ModelPersistence_if::Options, bool) override {}
+    bool getOption(Persistence_if::Options) override { return false; }
+    void setOption(Persistence_if::Options, bool) override {}
     std::string getFormatedField(PersistenceRecord*) override { return ""; }
 };
 
@@ -6024,6 +6024,33 @@ TEST(SimulatorRuntimeTest, SPICERunnerRunUsesConfiguredOperationalFilenamesInCom
     ::rmdir(workingDir.c_str());
 }
 
+static void createSimpleBioRunnerNetwork(Model* model, const std::string& networkName) {
+    // Keep the network self-contained so the runner can resolve and simulate it deterministically.
+    auto* speciesA = new BioSpecies(model, "A");
+    speciesA->setInitialAmount(10.0);
+    speciesA->setAmount(10.0);
+
+    auto* speciesB = new BioSpecies(model, "B");
+    speciesB->setInitialAmount(0.0);
+    speciesB->setAmount(0.0);
+
+    auto* rateConstant = new BioParameter(model, "k");
+    rateConstant->setValue(0.25);
+
+    auto* reaction = new BioReaction(model, "A_to_B");
+    reaction->addReactant("A", 1.0);
+    reaction->addProduct("B", 1.0);
+    reaction->setRateConstantParameterName("k");
+
+    auto* network = new BioNetwork(model, networkName);
+    network->addSpecies("A");
+    network->addSpecies("B");
+    network->addReaction("A_to_B");
+    network->setStartTime(0.0);
+    network->setStopTime(1.0);
+    network->setStepSize(0.1);
+}
+
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerDefaultsExposeStructuralConfiguration) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -6038,6 +6065,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerDefaultsExposeStructuralConfigurati
     EXPECT_EQ(runner.getLastErrorMessage(), "");
     EXPECT_EQ(runner.getLastResponsePayload(), "");
     EXPECT_EQ(runner.getLastResponseFilename(), "");
+    EXPECT_EQ(runner.getTargetBioNetworkName(), "");
     EXPECT_EQ(runner.getWorkingDirectory(), "");
     EXPECT_EQ(runner.getWorkingInputFilename(), "biosim_input.xml");
     EXPECT_EQ(runner.getWorkingOutputFilename(), "biosim_output.json");
@@ -6080,6 +6108,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSettersAndGettersPreserveValues) {
     runner.setWorkingInputFilename("custom_input.xml");
     runner.setWorkingOutputFilename("custom_output.json");
     runner.setEndpointOrLibrary("/opt/copasi/CopasiSE");
+    runner.setTargetBioNetworkName("NetworkA");
     runner.setTimeoutSeconds(45u);
     runner.setAutoValidateModel(false);
 
@@ -6091,6 +6120,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSettersAndGettersPreserveValues) {
     EXPECT_EQ(runner.getWorkingInputFilename(), "custom_input.xml");
     EXPECT_EQ(runner.getWorkingOutputFilename(), "custom_output.json");
     EXPECT_EQ(runner.getEndpointOrLibrary(), "/opt/copasi/CopasiSE");
+    EXPECT_EQ(runner.getTargetBioNetworkName(), "NetworkA");
     EXPECT_EQ(runner.getTimeoutSeconds(), 45u);
     EXPECT_FALSE(runner.getAutoValidateModel());
 }
@@ -6157,6 +6187,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerPersistenceRoundTripPreservesMainFi
     source.setWorkingInputFilename("persist_input.xml");
     source.setWorkingOutputFilename("persist_output.json");
     source.setEndpointOrLibrary("https://example.invalid/stub");
+    source.setTargetBioNetworkName("PersistedNetwork");
     source.setTimeoutSeconds(75u);
     source.setAutoValidateModel(false);
 
@@ -6178,6 +6209,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerPersistenceRoundTripPreservesMainFi
     EXPECT_EQ(loaded.getWorkingInputFilename(), "persist_input.xml");
     EXPECT_EQ(loaded.getWorkingOutputFilename(), "persist_output.json");
     EXPECT_EQ(loaded.getEndpointOrLibrary(), "https://example.invalid/stub");
+    EXPECT_EQ(loaded.getTargetBioNetworkName(), "PersistedNetwork");
     EXPECT_EQ(loaded.getTimeoutSeconds(), 75u);
     EXPECT_FALSE(loaded.getAutoValidateModel());
 }
@@ -6196,6 +6228,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerShowIncludesMainObservabilityFields
     runner.setWorkingInputFilename("show_input.xml");
     runner.setWorkingOutputFilename("show_output.json");
     runner.setEndpointOrLibrary("copasi");
+    runner.setTargetBioNetworkName("ShowNetwork");
     runner.setTimeoutSeconds(12u);
 
     const std::string shown = runner.show();
@@ -6207,6 +6240,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerShowIncludesMainObservabilityFields
     EXPECT_NE(shown.find("workingInputFilename=\"show_input.xml\""), std::string::npos);
     EXPECT_NE(shown.find("workingOutputFilename=\"show_output.json\""), std::string::npos);
     EXPECT_NE(shown.find("endpointOrLibrary=\"copasi\""), std::string::npos);
+    EXPECT_NE(shown.find("targetBioNetworkName=\"ShowNetwork\""), std::string::npos);
     EXPECT_NE(shown.find("timeoutSeconds=12"), std::string::npos);
 }
 
@@ -6238,7 +6272,7 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelWithEmptySourceFailsCo
     std::string errorMessage;
     EXPECT_FALSE(runner.executeCommand(errorMessage));
     EXPECT_EQ(runner.getLastStatus(), "Failed");
-    EXPECT_NE(errorMessage.find("requires a non-empty modelSource"), std::string::npos);
+    EXPECT_NE(errorMessage.find("requires either a BioNetwork or a non-empty modelSource"), std::string::npos);
     EXPECT_EQ(runner.getLastResponsePayload(), "");
 }
 
@@ -6255,8 +6289,101 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerValidateModelProducesStubPayload) {
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
     EXPECT_EQ(runner.getLastErrorMessage(), "");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_validation\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"source_validation\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"modelSourceType\":\"SBMLString\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerReportCommandSummarizesStaticNetworkState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    createSimpleBioRunnerNetwork(model, "RunnerReportStaticNetwork");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReportStatic");
+    runner.setTargetBioNetworkName("RunnerReportStaticNetwork");
+    runner.setCommand("report()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_EQ(runner.getLastErrorMessage(), "");
+    EXPECT_NE(runner.getLastResponsePayload().find("BioNetwork Analysis Report"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Species membership"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Reaction membership"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Stoichiometry matrix"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("<no simulation result available>"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerReportCommandIncludesDynamicAnalysisAfterSimulation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    createSimpleBioRunnerNetwork(model, "RunnerReportDynamicNetwork");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReportDynamic");
+    runner.setTargetBioNetworkName("RunnerReportDynamicNetwork");
+    runner.setCommand("simulate(0,1,10)");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+
+    runner.setCommand("report()");
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("Reaction rates"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Steady-state"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("Sensitivity"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("lastSampleTime"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("samples:"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerReportJsonCommandSummarizesStaticNetworkState) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    createSimpleBioRunnerNetwork(model, "RunnerReportJsonStaticNetwork");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReportJsonStatic");
+    runner.setTargetBioNetworkName("RunnerReportJsonStaticNetwork");
+    runner.setCommand("reportJson()");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"bio_network_report_json\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"hasSimulationResult\":false"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"speciesCount\":2"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"reactionCount\":1"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"speciesNames\":[\"A\",\"B\"]"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"reactionNames\":[\"A_to_B\"]"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, BioSimulatorRunnerReportJsonCommandIncludesLastSampleAfterSimulation) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    createSimpleBioRunnerNetwork(model, "RunnerReportJsonDynamicNetwork");
+
+    BioSimulatorRunnerProbe runner(model, "BioSimulatorReportJsonDynamic");
+    runner.setTargetBioNetworkName("RunnerReportJsonDynamicNetwork");
+    runner.setCommand("simulate(0,1,10)");
+
+    std::string errorMessage;
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+
+    runner.setCommand("reportJson()");
+    EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
+    EXPECT_EQ(runner.getLastStatus(), "Completed");
+    EXPECT_NE(runner.getLastResponsePayload().find("\"hasSimulationResult\":true"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"sampleCount\":"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"lastSample\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"time\":1"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"name\":\"A\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"name\":\"B\""), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerSimulateProducesDeterministicStubPayload) {
@@ -6265,16 +6392,20 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSimulateProducesDeterministicStubPa
     ASSERT_NE(model, nullptr);
 
     BioSimulatorRunnerProbe runner(model, "BioSimulatorSimulateStub");
+    createSimpleBioRunnerNetwork(model, "RunnerNetwork");
+    runner.setTargetBioNetworkName("RunnerNetwork");
     runner.setCommand("simulate(0,10,101)");
 
     std::string errorMessage;
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
     EXPECT_EQ(runner.getLastResponseFilename(), "biosim_output.json");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_time_course\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"bio_time_course\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"targetBioNetworkName\":\"RunnerNetwork\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"start\":0"), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"stop\":10"), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"steps\":101"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"sampleCount\":"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerSteadyStateProducesStubPayload) {
@@ -6283,13 +6414,16 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSteadyStateProducesStubPayload) {
     ASSERT_NE(model, nullptr);
 
     BioSimulatorRunnerProbe runner(model, "BioSimulatorSteadyStateStub");
+    createSimpleBioRunnerNetwork(model, "RunnerSteadyStateNetwork");
+    runner.setTargetBioNetworkName("RunnerSteadyStateNetwork");
     runner.setCommand("steadyState()");
 
     std::string errorMessage;
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_steady_state\""), std::string::npos);
-    EXPECT_NE(runner.getLastResponsePayload().find("\"converged\":true"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"steady_state\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"targetBioNetworkName\":\"RunnerSteadyStateNetwork\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"steady\":"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerGetValueProducesStubPayload) {
@@ -6298,14 +6432,18 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerGetValueProducesStubPayload) {
     ASSERT_NE(model, nullptr);
 
     BioSimulatorRunnerProbe runner(model, "BioSimulatorGetValueStub");
+    auto* species = new BioSpecies(model, "S1");
+    species->setInitialAmount(7.5);
+    species->setAmount(7.5);
     runner.setCommand("getValue(\"S1\")");
 
     std::string errorMessage;
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_value\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"value_query\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"definitionType\":\"BioSpecies\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"symbol\":\"S1\""), std::string::npos);
-    EXPECT_NE(runner.getLastResponsePayload().find("\"value\":0.0"), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"value\":7.5"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerSetValueProducesStubPayload) {
@@ -6314,15 +6452,20 @@ TEST(SimulatorRuntimeTest, BioSimulatorRunnerSetValueProducesStubPayload) {
     ASSERT_NE(model, nullptr);
 
     BioSimulatorRunnerProbe runner(model, "BioSimulatorSetValueStub");
+    auto* species = new BioSpecies(model, "S1");
+    species->setInitialAmount(1.0);
+    species->setAmount(1.0);
     runner.setCommand("setValue(\"S1\", 2.5)");
 
     std::string errorMessage;
     EXPECT_TRUE(runner.executeCommand(errorMessage)) << errorMessage;
     EXPECT_EQ(runner.getLastStatus(), "Completed");
-    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"stub_set_value\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"resultType\":\"value_update\""), std::string::npos);
+    EXPECT_NE(runner.getLastResponsePayload().find("\"definitionType\":\"BioSpecies\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"symbol\":\"S1\""), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"value\":2.5"), std::string::npos);
     EXPECT_NE(runner.getLastResponsePayload().find("\"updated\":true"), std::string::npos);
+    EXPECT_DOUBLE_EQ(species->getAmount(), 2.5);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerResetClearsTransientState) {
@@ -6438,7 +6581,7 @@ TEST(SimulatorRuntimeTest, BioRunnerCommandComponentExecutesRunnerCommand) {
     component.DispatchEventProbe(nullptr);
     EXPECT_TRUE(component.getLastSucceeded());
     EXPECT_EQ(component.getLastStatus(), "Completed");
-    EXPECT_NE(component.getLastMessage().find("\"resultType\":\"stub_validation\""), std::string::npos);
+    EXPECT_NE(component.getLastMessage().find("\"resultType\":\"source_validation\""), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, GeneticExpressionStepComponentUpdatesProductSpecies) {
@@ -6589,6 +6732,34 @@ TEST(SimulatorRuntimeTest, GeneticCircuitSimulateComponentRunsMultipleExpression
     EXPECT_EQ(component.getLastSampleCount(), 3u);
     EXPECT_DOUBLE_EQ(component.getLastTotalExpression(), 6.0);
     EXPECT_DOUBLE_EQ(product.getAmount(), 6.0);
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitSimulateStandaloneHelperRunsMultipleExpressionSteps) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe product(model, "GFP");
+    product.setAmount(0.0);
+
+    GeneticCircuitPartProbe promoter(model, "pConst");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+    promoter.setCopyNumber(1.0);
+    promoter.setBasalExpressionRate(2.0);
+    promoter.setDegradationRate(0.0);
+
+    GeneticCircuitProbe circuit(model, "ConstitutiveReporter");
+    circuit.addPart("pConst");
+
+    GeneticCircuitSimulationSummary summary;
+    std::string errorMessage;
+    EXPECT_TRUE(GeneticCircuitSimulate::simulateCircuit(model, &circuit, 0.0, 2.0, 1.0, true, &summary, errorMessage)) << errorMessage;
+    EXPECT_TRUE(summary.succeeded);
+    EXPECT_EQ(summary.sampleCount, 3u);
+    EXPECT_DOUBLE_EQ(summary.totalExpression, 6.0);
+    EXPECT_DOUBLE_EQ(product.getAmount(), 6.0);
+    EXPECT_NE(summary.message.find("ConstitutiveReporter"), std::string::npos);
 }
 
 TEST(SimulatorRuntimeTest, BioSimulatorRunnerImportSBMLCreatesNativeBioDefinitions) {
@@ -7664,6 +7835,73 @@ TEST(SimulatorRuntimeTest, GeneticCircuitPartPersistenceAndValidation) {
     EXPECT_DOUBLE_EQ(loaded.getBasalExpressionRate(), 0.05);
 }
 
+TEST(SimulatorRuntimeTest, GeneticCircuitPartShowClassifiesRoleAndSequenceLength) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    GeneticCircuitPartProbe part(model, "pLac");
+    part.setPartType("TATA box");
+    part.setSequence("TTTACACTTTATGCTTCCGGCTCGTATAATGTGTGGA");
+    part.setCopyNumber(2.0);
+    part.setBasalExpressionRate(0.5);
+    part.setDegradationRate(0.01);
+
+    const std::string shown = part.show();
+    EXPECT_NE(shown.find("role=\"Pre-gene regulatory\""), std::string::npos);
+    EXPECT_NE(shown.find("sequenceLength=37"), std::string::npos);
+    EXPECT_NE(shown.find("partType=\"TATA box\""), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, GeneticCircuitShowSummarizesPartRolesAndRegulatoryLinks) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe lacI(model, "LacI");
+    BioSpeciesProbe gfp(model, "GFP");
+
+    GeneticCircuitPartProbe promoter(model, "pLac");
+    promoter.setPartType("Promoter");
+    promoter.setProductSpeciesName("GFP");
+
+    GeneticCircuitPartProbe rbs(model, "RBS1");
+    rbs.setPartType("RBS");
+    rbs.setProductSpeciesName("GFP");
+
+    GeneticCircuitPartProbe cds(model, "GFP_cds");
+    cds.setPartType("CDS");
+    cds.setProductSpeciesName("GFP");
+
+    GeneticCircuitPartProbe terminator(model, "T1");
+    terminator.setPartType("Terminator");
+
+    GeneticRegulationProbe regulation(model, "LacI_represses_pLac");
+    regulation.setRegulatorSpeciesName("LacI");
+    regulation.setTargetPartName("pLac");
+    regulation.setRegulationType("Repression");
+    regulation.setHillCoefficient(2.0);
+    regulation.setDissociationConstant(1.0);
+    regulation.setMaxFoldChange(1.0);
+    regulation.setLeakiness(0.0);
+
+    GeneticCircuitProbe circuit(model, "Reporter");
+    circuit.addPart("pLac");
+    circuit.addPart("RBS1");
+    circuit.addPart("GFP_cds");
+    circuit.addPart("T1");
+    circuit.addRegulation("LacI_represses_pLac");
+
+    const std::string shown = circuit.show();
+    EXPECT_NE(shown.find("partCount=4"), std::string::npos);
+    EXPECT_NE(shown.find("regulationCount=1"), std::string::npos);
+    EXPECT_NE(shown.find("Pre-gene regulatory=1"), std::string::npos);
+    EXPECT_NE(shown.find("Translation initiation=1"), std::string::npos);
+    EXPECT_NE(shown.find("Coding=1"), std::string::npos);
+    EXPECT_NE(shown.find("Termination=1"), std::string::npos);
+    EXPECT_NE(shown.find("LacI->pLac:Repression"), std::string::npos);
+}
+
 TEST(SimulatorRuntimeTest, GeneticRegulationRejectsMissingReferencesAndPersists) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -8245,6 +8483,45 @@ TEST(SimulatorRuntimeTest, MarkovChainCheckAcceptsSquareTransitionMatrixAndMatch
     auto* currentState = new Attribute(model, "MarkovCurrentStateCheck");
 
     MarkovChainProbe chain(model, "MarkovProbeCheck");
+    chain.setTransitionProbabilityMatrix(transitionMatrix);
+    chain.setInitialDistribution(initialDistribution);
+    chain.setCurrentState(currentState);
+
+    std::string errorMessage;
+    EXPECT_TRUE(chain.CheckProbe(errorMessage)) << errorMessage;
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST(SimulatorRuntimeTest, MarkovChainCheckAcceptsRuntimeStoredVariableMatrixAndDistribution) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* transitionMatrix = new Variable(model, "MarkovTransitionMatrixRuntime");
+    transitionMatrix->getValueStore()->insertDimensionSize(2);
+    transitionMatrix->getValueStore()->insertDimensionSize(2);
+    transitionMatrix->setValue(0.2, "0,0");
+    transitionMatrix->setValue(0.8, "0,1");
+    transitionMatrix->setValue(0.8, "1,0");
+    transitionMatrix->setValue(0.2, "1,1");
+    ASSERT_NE(transitionMatrix->getValueStore(), nullptr);
+    ASSERT_NE(transitionMatrix->getInitialValueStore(), nullptr);
+    EXPECT_EQ(transitionMatrix->getValueStore()->dimensionSizes()->size(), 2u);
+    EXPECT_EQ(transitionMatrix->getValueStore()->values()->size(), 4u);
+    EXPECT_TRUE(transitionMatrix->getInitialValueStore()->values()->empty());
+
+    auto* initialDistribution = new Variable(model, "MarkovInitialDistributionRuntime");
+    initialDistribution->getValueStore()->insertDimensionSize(2);
+    initialDistribution->setValue(0.5, "0");
+    initialDistribution->setValue(0.5, "1");
+    ASSERT_NE(initialDistribution->getValueStore(), nullptr);
+    ASSERT_NE(initialDistribution->getInitialValueStore(), nullptr);
+    EXPECT_EQ(initialDistribution->getValueStore()->dimensionSizes()->size(), 1u);
+    EXPECT_EQ(initialDistribution->getValueStore()->values()->size(), 2u);
+    EXPECT_TRUE(initialDistribution->getInitialValueStore()->values()->empty());
+    auto* currentState = new Attribute(model, "MarkovCurrentStateRuntime");
+
+    MarkovChainProbe chain(model, "MarkovProbeRuntime");
     chain.setTransitionProbabilityMatrix(transitionMatrix);
     chain.setInitialDistribution(initialDistribution);
     chain.setCurrentState(currentState);

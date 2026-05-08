@@ -2,7 +2,7 @@
 #define PROPERTY_H
 
 #include "SimulationControlAndResponse.h"
-#include "ModelComponent.h"
+#include "model/ModelComponent.h"
 
 class PropertyEditorGenesys {
 public:
@@ -35,14 +35,14 @@ public:
     }
 
     // Legacy compatibility wrapper. Prefer changeSimulationControl.
-    void changeProperty(SimulationControl* control, const std::string& value, bool remove = false) {
-        changeSimulationControl(control, value, remove);
-    }
+    //void changeProperty(SimulationControl* control, const std::string& value, bool remove = false) {
+    //    changeSimulationControl(control, value, remove);
+    //}
 
     // Legacy compatibility wrapper. Prefer findSimulationControl.
-    SimulationControl* findProperty(const std::string& id, const std::string& attribute) {
-        return findSimulationControl(id, attribute);
-    }
+    //SimulationControl* findProperty(const std::string& id, const std::string& attribute) {
+    //    return findSimulationControl(id, attribute);
+    //}
 
     void addElement(ModelComponent* component) {
         _elements.push_back(component);

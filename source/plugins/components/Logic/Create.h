@@ -17,8 +17,8 @@
 #include <string>
 #include <limits>
 #include "kernel/simulator/SourceModelComponent.h"
-#include "kernel/simulator/EntityType.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/essentialPlugins/EntityType.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 #include "kernel/simulator/Plugin.h"
 
 #include "../../data/Logic/Formula.h"

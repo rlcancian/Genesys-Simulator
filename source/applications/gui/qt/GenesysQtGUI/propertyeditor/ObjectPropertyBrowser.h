@@ -28,7 +28,7 @@
 #include "DataComponentEditor.h"
 #include "ComboBoxEnum.h"
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PropertyGenesys.h"
 #include "kernel/simulator/GenesysPropertyIntrospection.h"
 

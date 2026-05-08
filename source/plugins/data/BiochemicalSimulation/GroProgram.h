@@ -8,7 +8,7 @@
 #ifndef GROPROGRAM_H
 #define GROPROGRAM_H
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/Plugin.h"
 #include <string>
 

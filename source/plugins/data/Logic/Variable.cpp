@@ -12,7 +12,7 @@
  */
 
 #include "plugins/data/Logic/Variable.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #include <exception>
 
@@ -51,6 +51,7 @@ std::string Variable::show() {
 
 PluginInformation* Variable::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Variable>(), &Variable::LoadInstance, &Variable::NewInstance);
+	info->setCategory("Logic");
 	return info;
 }
 

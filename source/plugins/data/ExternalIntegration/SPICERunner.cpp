@@ -11,7 +11,7 @@
  */
 
 #include "plugins/data/ExternalIntegration/SPICERunner.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -280,7 +280,7 @@ std::string SPICERunner::show() {
 
 PluginInformation* SPICERunner::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<SPICERunner>(), &SPICERunner::LoadInstance, &SPICERunner::NewInstance);
-	info->setCategory("ElectronicsSimulation");
+	info->setCategory("Eletric/Electronic/Analogic");
 	info->setDescriptionHelp("Executes SPICE circuit simulations through ngspice. The runner generates an input circuit file, runs ngspice in batch mode and parses the output file for measured values.");
 	info->insertSystemDependency(SystemDependency(
 			SystemDependency::OS::Linux,

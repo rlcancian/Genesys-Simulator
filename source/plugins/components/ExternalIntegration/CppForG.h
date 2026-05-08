@@ -12,7 +12,7 @@
 
 #pragma once
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/ExternalIntegration/CppCompiler.h"
 

@@ -23,8 +23,8 @@
 #include "plugins/components/DiscreteProcessing/Process.h"
 #include "plugins/components/Logic/Assign.h"
 
-#include "plugins/data/DiscreteProcessing/Variable.h"
-#include "kernel/simulator/Attribute.h"
+#include "plugins/data/Logic/Variable.h"
+#include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "../../../TraitsApp.h"
 
 

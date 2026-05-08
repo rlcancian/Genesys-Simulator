@@ -33,7 +33,7 @@
 #define ASSIGNMENTITEM_H
 
 #include <functional>
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 /*!
  * While the assign ans sequence classes allows you to perform multiple assignments, the assignmentItem class defines an assignment itself.

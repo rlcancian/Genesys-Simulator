@@ -39,6 +39,7 @@
       "binaryDir": "${sourceDir}/build/tests-unit",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_WEB_APPLICATION": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "OFF",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
@@ -135,6 +136,7 @@
       "binaryDir": "${sourceDir}/build/tests-smoke",
       "cacheVariables": {
         "GENESYS_BUILD_TESTS": "ON",
+        "GENESYS_BUILD_WEB_APPLICATION": "ON",
         "GENESYS_BUILD_SMOKE_TESTS": "ON",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
