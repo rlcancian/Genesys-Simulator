@@ -12,8 +12,8 @@
  */
 
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "kernel/simulator/Counter.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -536,6 +536,7 @@ PluginInformation* Resource::GetPluginInformation() {
     info->insertDynamicLibFileDependence("failure.so");
     info->insertDynamicLibFileDependence("schedule.so");
     //info->set...
+    info->setCategory("DiscreteProcessing");
     return info;
 }
 

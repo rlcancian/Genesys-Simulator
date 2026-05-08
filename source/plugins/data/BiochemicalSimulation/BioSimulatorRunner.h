@@ -10,7 +10,7 @@
 
 #include <string>
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
 class BioSimulatorRunner : public ModelDataDefinition {

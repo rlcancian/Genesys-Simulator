@@ -29,7 +29,7 @@ void _populateModelInfoFromModel(Model* model, SimulatorSessionService::ModelInf
         outInfo.description = modelInfo->getDescription();
     }
 
-    if (ComponentManager* componentManager = model->getComponentManager(); componentManager != nullptr) {
+    if (ModelComponentManager* componentManager = model->getComponentManager(); componentManager != nullptr) {
         outInfo.componentCount = componentManager->getNumberOfComponents();
     }
 }
@@ -94,7 +94,7 @@ SimulatorSessionService::WorkerInfoResult SimulatorSessionService::getWorkerInfo
 
     WorkerInfoResult result{};
     result.role = "worker";
-    result.application = "genesys_webhook";
+    result.application = "genesys_web_app";
     result.apiFamily = "genesys-web-worker";
     result.apiVersion = "v1";
     result.simulatorName = simulator.getName();

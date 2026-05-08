@@ -14,7 +14,7 @@
 #ifndef BUFFER_H
 #define BUFFER_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/Synchronization/SignalData.h"
 
 /*!

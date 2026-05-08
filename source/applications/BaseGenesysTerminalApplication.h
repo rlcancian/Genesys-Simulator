@@ -18,7 +18,7 @@
 #include "kernel/simulator/TraceManager.h"
 #include "kernel/simulator/OnEventManager.h"
 #include "kernel/simulator/PluginManager.h"
-#include "kernel/simulator/Model.h"
+#include "../kernel/simulator/model/Model.h"
 
 #include <thread>
 

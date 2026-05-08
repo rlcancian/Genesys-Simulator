@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/Decisions/DropOff.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 

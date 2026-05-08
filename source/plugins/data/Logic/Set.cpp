@@ -12,7 +12,7 @@
  */
 
 #include "Set.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include <algorithm>
@@ -215,6 +215,7 @@ ModelDataDefinition* Set::createElementSetOfType(const std::string& typeName, co
 
 PluginInformation* Set::GetPluginInformation() {
     PluginInformation* info = new PluginInformation(Util::TypeOf<Set>(), &Set::LoadInstance, &Set::NewInstance);
+    info->setCategory("Logic");
     return info;
 }
 

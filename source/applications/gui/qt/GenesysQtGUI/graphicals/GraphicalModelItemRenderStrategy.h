@@ -22,6 +22,8 @@ struct GraphicalModelItemRenderContext {
     QString primaryText;
     QString secondaryText;
     QString tertiaryText;
+    QString semanticClassName;
+    QString semanticSubtype;
     bool selected = false;
     bool breakpoint = false;
 

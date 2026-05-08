@@ -11,7 +11,7 @@
  */
 
 #include "plugins/data/Logic/Label.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -64,6 +64,7 @@ PluginInformation* Label::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("Logic");
 	return info;
 }
 

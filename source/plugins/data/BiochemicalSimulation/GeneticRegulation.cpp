@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
 
@@ -66,7 +66,7 @@ GeneticRegulation::GeneticRegulation(Model* model, std::string name)
 
 PluginInformation* GeneticRegulation::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GeneticRegulation>(), &GeneticRegulation::LoadInstance, &GeneticRegulation::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical/Genetic");
 	info->setDescriptionHelp("Transcriptional regulation relation between a regulator BioSpecies and a target GeneticCircuitPart.");
 	return info;
 }

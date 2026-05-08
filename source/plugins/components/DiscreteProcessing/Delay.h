@@ -16,7 +16,7 @@
 
 #include <string>
 #include <vector>
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "kernel/simulator/Plugin.h"
 
 /*!

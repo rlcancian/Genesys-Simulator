@@ -9,8 +9,8 @@
 
 #include <functional>
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -74,7 +74,7 @@ BioSimulate::BioSimulate(Model* model, std::string name)
 
 PluginInformation* BioSimulate::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioSimulate>(), &BioSimulate::LoadInstance, &BioSimulate::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setMinimumInputs(1);
 	info->setMaximumInputs(1);
 	info->setMinimumOutputs(1);

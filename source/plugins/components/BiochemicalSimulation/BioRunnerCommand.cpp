@@ -9,8 +9,8 @@
 
 #include <functional>
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -62,7 +62,7 @@ BioRunnerCommand::BioRunnerCommand(Model* model, std::string name)
 
 PluginInformation* BioRunnerCommand::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioRunnerCommand>(), &BioRunnerCommand::LoadInstance, &BioRunnerCommand::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setMinimumInputs(1);
 	info->setMaximumInputs(1);
 	info->setMinimumOutputs(1);

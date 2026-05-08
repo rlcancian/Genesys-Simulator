@@ -17,7 +17,7 @@
 #include <iostream>
 #include <map>
 #include <list>
-#include "Counter.h"
+#include "essentialPlugins/Counter.h"
 
 //using namespace GenesysKernel;
 

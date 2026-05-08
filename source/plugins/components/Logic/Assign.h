@@ -14,10 +14,10 @@
 #ifndef ASSIGN_H
 #define ASSIGN_H
 
-#include "kernel/simulator/ModelComponent.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Plugin.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "../../data/Logic/AssignmentItem.h"
 #include "../../data/Logic/Variable.h"
 

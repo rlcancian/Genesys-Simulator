@@ -7,7 +7,7 @@
 
 #include "plugins/data/BiochemicalSimulation/GroProgram.h"
 #include "plugins/data/BiochemicalSimulation/GroProgramParser.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #include <fstream>
 
@@ -133,7 +133,7 @@ std::string GroProgram::show() {
 PluginInformation* GroProgram::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GroProgram>(), &GroProgram::LoadInstance,
 	                                                &GroProgram::NewInstance);
-	info->setCategory("BiologicalModeling");
+	info->setCategory("Biologic/OrganicSystem");
 	info->setDescriptionHelp("Stores reusable Gro source code for biological simulation components. "
 	                         "The default starter now seeds a small signaling colony so GUI work can "
 	                         "show motion, division, diffusion, and fluorescence without extra setup.");

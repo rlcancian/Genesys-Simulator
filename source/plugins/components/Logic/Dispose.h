@@ -15,7 +15,7 @@
 #define DISPOSE_H
 
 #include "kernel/simulator/SinkModelComponent.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 #include "kernel/simulator/Plugin.h"
 
 /*!

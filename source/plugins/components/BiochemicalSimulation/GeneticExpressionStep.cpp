@@ -4,8 +4,8 @@
 #include <cmath>
 #include <functional>
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiochemicalSimulation/GeneticCircuitPart.h"
 #include "plugins/data/BiochemicalSimulation/GeneticRegulation.h"
@@ -66,7 +66,7 @@ GeneticExpressionStep::GeneticExpressionStep(Model* model, std::string name)
 
 PluginInformation* GeneticExpressionStep::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GeneticExpressionStep>(), &GeneticExpressionStep::LoadInstance, &GeneticExpressionStep::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setMinimumInputs(1);
 	info->setMaximumInputs(1);
 	info->setMinimumOutputs(1);
