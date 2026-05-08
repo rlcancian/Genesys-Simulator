@@ -72,6 +72,7 @@ PluginInformation* Clone::GetPluginInformation() {
 	info->setDescriptionHelp("//@TODO");
 	info->setMinimumOutputs(2); // port 0: original ; port 1: clones
 	info->setMaximumOutputs(2);
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

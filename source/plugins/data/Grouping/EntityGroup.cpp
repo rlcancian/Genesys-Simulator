@@ -114,6 +114,7 @@ PluginInformation * EntityGroup::GetPluginInformation() {
 	text += "An EntityGroup my contain several groups indexed by that attribute.";
 	text += "Grouped entitties may be separated by a 'Separate' like coponent.";
 	info->setDescriptionHelp(text);
+	info->setCategory("Grouping");
 	return info;
 }
 

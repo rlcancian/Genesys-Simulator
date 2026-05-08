@@ -64,6 +64,7 @@ PluginInformation* Label::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("Logic");
 	return info;
 }
 

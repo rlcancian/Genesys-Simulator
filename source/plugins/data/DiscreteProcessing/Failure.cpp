@@ -202,6 +202,7 @@ PluginInformation* Failure::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Failure>(), &Failure::LoadInstance, &Failure::NewInstance);
 	//info->insertDynamicLibFileDependence("resource.so"); -- Circular dependence!! Do not add it
 	info->setDescriptionHelp("Defines failure behavior (time-based or count-based) that can be attached to one or more Resources.");
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

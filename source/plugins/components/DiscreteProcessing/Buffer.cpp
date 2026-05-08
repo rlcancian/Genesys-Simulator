@@ -96,6 +96,7 @@ PluginInformation* Buffer::GetPluginInformation() {
 	info->setDescriptionHelp("//@TODO");
 	info->insertDynamicLibFileDependence("queue.so");
 	info->insertDynamicLibFileDependence("signaldata.so");
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

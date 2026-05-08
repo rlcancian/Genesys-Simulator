@@ -107,6 +107,7 @@ PluginInformation* SignalData::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("Synchronization");
 	return info;
 }
 

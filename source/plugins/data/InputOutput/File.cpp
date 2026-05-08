@@ -49,6 +49,7 @@ std::string File::show() {
 PluginInformation* File::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<File>(), &File::LoadInstance, &File::NewInstance);
 	info->setDescriptionHelp("Defines metadata for external files used by model elements that read/write structured data.");
+	info->setCategory("InputOutput");
 	return info;
 }
 

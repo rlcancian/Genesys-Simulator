@@ -68,7 +68,7 @@ BioSteadyState::BioSteadyState(Model* model, std::string name)
 
 PluginInformation* BioSteadyState::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioSteadyState>(), &BioSteadyState::LoadInstance, &BioSteadyState::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setMinimumInputs(1);
 	info->setMaximumInputs(1);
 	info->setMinimumOutputs(1);

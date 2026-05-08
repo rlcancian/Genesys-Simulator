@@ -66,7 +66,7 @@ MetabolicReaction::MetabolicReaction(Model* model, std::string name)
 
 PluginInformation* MetabolicReaction::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<MetabolicReaction>(), &MetabolicReaction::LoadInstance, &MetabolicReaction::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical/Metabolic");
 	info->setDescriptionHelp("Metabolic reaction for constraint-based models with stoichiometry, flux bounds, and optional gene rule.");
 	return info;
 }

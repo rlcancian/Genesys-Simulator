@@ -132,6 +132,7 @@ PluginInformation* CppCompiler::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("ExternalIntegration");
 	return info;
 }
 

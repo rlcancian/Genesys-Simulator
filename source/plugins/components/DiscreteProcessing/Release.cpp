@@ -288,6 +288,7 @@ PluginInformation* Release::GetPluginInformation() {
 	help += " TYPICAL USES: (1) Finishing a customer order (release the operator); (2) Completing a tax return (release the accountant);";
 	help += " (3) Leaving the hospital (release the doctor, nurse, hospital room)";
 	info->setDescriptionHelp(help);
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

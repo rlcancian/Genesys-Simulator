@@ -85,7 +85,7 @@ PluginInformation* StatisticsCollector::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<StatisticsCollector>(), &StatisticsCollector::LoadInstance, &StatisticsCollector::NewInstance);
 	info->setGenerateReport(true);
 	info->setDescriptionHelp("The StatisticsCollector is the ModelDataDefinition responsible for collecting data from the model (using the Collector) and simultaneouly keeping statistics updated (using the Statistics)");
-
+	info->setCategory("Essential");
 	return info;
 }
 

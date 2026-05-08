@@ -79,7 +79,7 @@
 #define private public
 #define protected public
 #include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "plugins/components/Decisions/PickStation.h"
+#include "../../plugins/components/MaterialHandling/PickStation.h"
 #undef protected
 #undef private
 #define private public

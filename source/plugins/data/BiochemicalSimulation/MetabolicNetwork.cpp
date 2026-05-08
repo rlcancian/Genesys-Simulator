@@ -62,7 +62,7 @@ MetabolicNetwork::MetabolicNetwork(Model* model, std::string name)
 
 PluginInformation* MetabolicNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<MetabolicNetwork>(), &MetabolicNetwork::LoadInstance, &MetabolicNetwork::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical/Metabolic");
 	info->setDescriptionHelp("Aggregate metabolic network definition with reaction membership, exchange species, and objective metadata.");
 	return info;
 }

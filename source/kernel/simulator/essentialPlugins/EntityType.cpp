@@ -111,6 +111,7 @@ PluginInformation* EntityType::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<EntityType>(), &EntityType::LoadInstance, &EntityType::NewInstance);
 	// @ToDo: (pequena alteração): Add EntityType description help
 	info->setDescriptionHelp("");
+	info->setCategory("Essential");
 	return info;
 }
 

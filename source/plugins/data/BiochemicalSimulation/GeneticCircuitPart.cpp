@@ -103,7 +103,7 @@ GeneticCircuitPart::GeneticCircuitPart(Model* model, std::string name)
 
 PluginInformation* GeneticCircuitPart::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GeneticCircuitPart>(), &GeneticCircuitPart::LoadInstance, &GeneticCircuitPart::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical/Genetic");
 	info->setDescriptionHelp("Genetic circuit part definition with role classification for promoters, regulatory parts, coding parts, and terminators.");
 	return info;
 }

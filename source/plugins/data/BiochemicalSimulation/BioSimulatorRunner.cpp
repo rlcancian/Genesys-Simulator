@@ -687,7 +687,7 @@ BioSimulatorRunner::BioSimulatorRunner(Model* model, std::string name) : ModelDa
 
 PluginInformation* BioSimulatorRunner::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioSimulatorRunner>(), &BioSimulatorRunner::LoadInstance, &BioSimulatorRunner::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic");
 	info->setDescriptionHelp("Structural biochemical simulator runner. This phase persists configuration and can validate, simulate, query and update a target BioNetwork using the native biochemical backend.");
 	info->insertSystemDependency(SystemDependency(
 			SystemDependency::OS::Linux,

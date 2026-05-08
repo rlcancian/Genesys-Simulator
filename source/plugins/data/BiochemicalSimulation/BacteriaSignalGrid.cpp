@@ -123,7 +123,7 @@ PluginInformation* BacteriaSignalGrid::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BacteriaSignalGrid>(),
 	                                                &BacteriaSignalGrid::LoadInstance,
 	                                                &BacteriaSignalGrid::NewInstance);
-	info->setCategory("BiologicalModeling");
+	info->setCategory("Biologic/OrganicSystem");
 	info->setDescriptionHelp("Stores the reusable spatial configuration of a discrete bacteria signal field, "
 	                         "including dimensions, initial values, and simple diffusion/decay parameters.");
 	return info;

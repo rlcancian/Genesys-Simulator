@@ -515,6 +515,7 @@ PluginInformation* Attribute::GetPluginInformation() {
 	                                                &Attribute::NewInstance);
 	// @ToDo: (pequena alteração): Add Attribute description help
 	info->setDescriptionHelp("");
+	info->setCategory("Essential");
 	return info;
 }
 

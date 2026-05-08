@@ -11,7 +11,7 @@
  * Created on 11 de Setembro de 2019, 13:08
  */
 
-#include "plugins/components/Decisions/PickStation.h"
+#include "plugins/components/MaterialHandling/PickStation.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"

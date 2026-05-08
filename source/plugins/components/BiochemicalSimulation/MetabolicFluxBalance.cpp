@@ -61,7 +61,7 @@ MetabolicFluxBalance::MetabolicFluxBalance(Model* model, std::string name)
 
 PluginInformation* MetabolicFluxBalance::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<MetabolicFluxBalance>(), &MetabolicFluxBalance::LoadInstance, &MetabolicFluxBalance::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setMinimumInputs(1);
 	info->setMaximumInputs(1);
 	info->setMinimumOutputs(1);

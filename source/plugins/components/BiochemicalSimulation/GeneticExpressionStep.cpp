@@ -66,7 +66,7 @@ GeneticExpressionStep::GeneticExpressionStep(Model* model, std::string name)
 
 PluginInformation* GeneticExpressionStep::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GeneticExpressionStep>(), &GeneticExpressionStep::LoadInstance, &GeneticExpressionStep::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setMinimumInputs(1);
 	info->setMaximumInputs(1);
 	info->setMinimumOutputs(1);

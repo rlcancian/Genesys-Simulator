@@ -20,7 +20,7 @@
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 
-#include "plugins/components/Decisions/PickableStationItem.h"
+#include "PickableStationItem.h"
 
 /*!
  PickStation module

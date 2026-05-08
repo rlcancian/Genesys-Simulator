@@ -79,6 +79,7 @@ double Formula::getValue(std::string index) {
 
 PluginInformation* Formula::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Formula>(), &Formula::LoadInstance, &Formula::NewInstance);
+	info->setCategory("Logic");
 	return info;
 }
 

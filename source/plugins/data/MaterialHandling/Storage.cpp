@@ -80,6 +80,7 @@ double Storage::getUnitsPerArea() const {
 
 PluginInformation* Storage::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Storage>(), &Storage::LoadInstance, &Storage::NewInstance);
+	info->setCategory("MaterialHandling");
 	return info;
 }
 

@@ -200,6 +200,7 @@ PluginInformation* Delay::GetPluginInformation() {
 	text += " Associated costs are calculated and allocated as well.";
 	text += " TYPICAL USES: (1) Processing a check at a bank; (2) Performing a setup on a machine; (3) Transferring a document to another department";
 	info->setDescriptionHelp(text);
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

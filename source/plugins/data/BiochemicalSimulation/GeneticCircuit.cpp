@@ -170,7 +170,7 @@ GeneticCircuit::GeneticCircuit(Model* model, std::string name)
 
 PluginInformation* GeneticCircuit::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GeneticCircuit>(), &GeneticCircuit::LoadInstance, &GeneticCircuit::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical/Genetic");
 	info->setDescriptionHelp("Aggregate genetic circuit definition with ordered parts, regulations, host metadata, and enable flag.");
 	return info;
 }

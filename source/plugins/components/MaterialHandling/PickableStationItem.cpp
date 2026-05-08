@@ -10,7 +10,7 @@
  * Created on 1 de dezembro de 2022, 14:00
  */
 
-#include "plugins/components/Decisions/PickableStationItem.h"
+#include "plugins/components/MaterialHandling/PickableStationItem.h"
 #include "kernel/simulator/Simulator.h"
 
 PickableStationItem::PickableStationItem(Model* model, std::string stationName, std::string queueName, std::string resourceName) {

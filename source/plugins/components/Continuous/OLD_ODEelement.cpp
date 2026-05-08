@@ -93,6 +93,7 @@ void OLD_ODEelement::removeODEfunction(ODEfunction* function) {
 
 PluginInformation* OLD_ODEelement::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<OLD_ODEelement>(), &OLD_ODEelement::LoadInstance, &OLD_ODEelement::NewInstance);
+	info->setCategory("Continuous");
 	return info;
 }
 

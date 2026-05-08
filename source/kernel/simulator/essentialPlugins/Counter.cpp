@@ -57,6 +57,7 @@ ModelDataDefinition* Counter::getParent() const {
 PluginInformation* Counter::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Counter>(), &Counter::LoadInstance, &Counter::NewInstance);
 	info->setGenerateReport(true);
+	info->setCategory("Essential");
 	info->setDescriptionHelp("The Counter modeldatum is used to count events, and its internal count value is added by a configurable amount, usually incremented by one.");
 	return info;
 }

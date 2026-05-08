@@ -108,6 +108,7 @@
 #include <QSplitter>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QTreeWidget>
 #include <QTimer>
 #include <QToolBar>
 #include <QVBoxLayout>
@@ -346,6 +347,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->treeWidget_Plugins->setAcceptDrops(false);
     ui->treeWidget_Plugins->viewport()->setAcceptDrops(false);
     ui->treeWidget_Plugins->setDropIndicatorShown(false);
+    ui->treeWidget_Plugins->setContextMenuPolicy(Qt::CustomContextMenu);
+    ui->treeWidget_Plugins->setSortingEnabled(false);
     //
     // Genesys Simulator
     simulator = new Simulator();
@@ -397,7 +400,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     splitDockWidget(ui->dockWidgetPropertyEditor, ui->dockWidgetConsole, Qt::Vertical);
     //...
     // plugins
-    ui->treeWidget_Plugins->sortByColumn(0, Qt::AscendingOrder);
     // Text Code Editor // @todo No need for programming
     //QVBoxLayout* layout = dynamic_cast<QVBoxLayout*> (ui->tabModelText->layout());
     //ui->TextCodeEditor = new CodeEditor(ui->tabModelText);
@@ -500,6 +502,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                                                          ui->treeWidget_Plugins,
                                                                          ui->TextCodeEditor,
                                                                          _pluginCategoryColor);
+    connect(ui->treeWidget_Plugins, &QTreeWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        if (_pluginCatalogController != nullptr) {
+            _pluginCatalogController->showContextMenu(pos);
+        }
+    });
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);

@@ -119,6 +119,7 @@ PluginInformation* Schedule::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

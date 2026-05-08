@@ -147,7 +147,7 @@ GeneticCircuitSimulate::GeneticCircuitSimulate(Model* model, std::string name)
 
 PluginInformation* GeneticCircuitSimulate::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<GeneticCircuitSimulate>(), &GeneticCircuitSimulate::LoadInstance, &GeneticCircuitSimulate::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setMinimumInputs(1);
 	info->setMaximumInputs(1);
 	info->setMinimumOutputs(1);
