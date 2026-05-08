@@ -21,7 +21,6 @@ set(GENESYS_KERNEL_SIMULATOR_SUPPORT_SOURCES
     OnEventManager.cpp
     ConnectionManager.cpp
     Event.cpp
-    PropertyManager.cpp
     ExperimentManager.cpp
     SimulationExperiment.cpp
     SimulationScenario.cpp
