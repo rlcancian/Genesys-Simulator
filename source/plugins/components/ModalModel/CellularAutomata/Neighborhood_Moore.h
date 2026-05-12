@@ -11,6 +11,8 @@
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
 #include "plugins/components/ModalModel/CellularAutomata/Cell.h"
 
+#include <iostream>
+
 class Neighborhood_Moore : public Neighborhood {
 public:
     Neighborhood_Moore(CellularAutomataBase* parentCellularAutomata, unsigned short radius = 1, BoundaryCondition* boundary = nullptr)

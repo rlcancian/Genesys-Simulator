@@ -64,14 +64,14 @@ private:
 
 class State {
 public:
-	State() {}
-	State(long value) {_value=value;}
-	State(const State& orig){}
+	State() : _value(0) {}
+	State(long value) : _value(value) {}
+	State(const State& orig) : _value(orig._value) {}
 	virtual ~State() = default;
 public:
 	long getValue(){return _value;}
 	void setValue(long value) {_value=value;}
-	std::string show();
+	std::string show() { return std::to_string(_value); }
 protected:
 	long _value;
 private:
