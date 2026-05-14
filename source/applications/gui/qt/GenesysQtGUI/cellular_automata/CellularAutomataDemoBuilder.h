@@ -2,7 +2,6 @@
 
 /*
 
-
 • Para que a GUI use um novo autômato celular com nova regra local,
   você mexe em 3 camadas:
 
@@ -84,8 +83,6 @@
     CellularAutomataViewerWindow.cpp
   - source/applications/gui/qt/GenesysQtGUI/cellular_automata/
     CellularAutomataViewerController.cpp
-
-
 
 */
 
