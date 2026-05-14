@@ -38,6 +38,10 @@ int presetValue(CellularAutomataNeighborhoodPreset preset) {
 	return static_cast<int>(preset);
 }
 
+int presetValue(CellularAutomataBoundaryPreset preset) {
+	return static_cast<int>(preset);
+}
+
 int presetValue(CellularAutomataStatePreset preset) {
 	return static_cast<int>(preset);
 }
@@ -50,6 +54,8 @@ CellularAutomataRulePreset rulePresetFromInt(int value) {
 		return CellularAutomataRulePreset::Identity;
 	case 3:
 		return CellularAutomataRulePreset::ForestFire;
+	case 4:
+		return CellularAutomataRulePreset::HppLatticeGas;
 	case 0:
 	default:
 		return CellularAutomataRulePreset::GameOfLife;
@@ -66,12 +72,24 @@ CellularAutomataNeighborhoodPreset neighborhoodPresetFromInt(int value) {
 	}
 }
 
+CellularAutomataBoundaryPreset boundaryPresetFromInt(int value) {
+	switch (value) {
+	case 1:
+		return CellularAutomataBoundaryPreset::Fixed;
+	case 0:
+	default:
+		return CellularAutomataBoundaryPreset::Closed;
+	}
+}
+
 CellularAutomataStatePreset statePresetFromInt(int value) {
 	switch (value) {
 	case 1:
 		return CellularAutomataStatePreset::Enumerated;
 	case 2:
 		return CellularAutomataStatePreset::Numeric;
+	case 3:
+		return CellularAutomataStatePreset::HppLatticeGas;
 	case 0:
 	default:
 		return CellularAutomataStatePreset::Binary;
@@ -115,7 +133,8 @@ QString CellularAutomataViewerController::configurationSummary() const {
 	return QStringLiteral("%1 / %2 / %3 / %4x%5")
 	    .arg(cellularAutomataRulePresetText(_settings.rulePreset))
 	    .arg(cellularAutomataNeighborhoodPresetText(_settings.neighborhoodPreset))
-	    .arg(cellularAutomataStatePresetText(_settings.statePreset))
+	    .arg(cellularAutomataBoundaryPresetText(_settings.boundaryPreset) + QStringLiteral(" / ") +
+	         cellularAutomataStatePresetText(_settings.statePreset))
 	    .arg(_settings.latticeSize.width())
 	    .arg(_settings.latticeSize.height());
 }
@@ -222,6 +241,10 @@ void CellularAutomataViewerController::setRulePreset(CellularAutomataRulePreset 
 	if (preset == CellularAutomataRulePreset::ForestFire) {
 		settings.statePreset = CellularAutomataStatePreset::Enumerated;
 	}
+	if (preset == CellularAutomataRulePreset::HppLatticeGas) {
+		settings.statePreset = CellularAutomataStatePreset::HppLatticeGas;
+		settings.neighborhoodPreset = CellularAutomataNeighborhoodPreset::VonNeumann;
+	}
 	rebuildDemo(settings);
 }
 
@@ -234,12 +257,26 @@ void CellularAutomataViewerController::setNeighborhoodPreset(CellularAutomataNei
 	rebuildDemo(settings);
 }
 
+void CellularAutomataViewerController::setBoundaryPreset(CellularAutomataBoundaryPreset preset) {
+	if (_settings.boundaryPreset == preset) {
+		return;
+	}
+	auto settings = _settings;
+	settings.boundaryPreset = preset;
+	rebuildDemo(settings);
+	emit statusMessage(QObject::tr("Boundary condition changed; simulation was reinitialized."));
+}
+
 void CellularAutomataViewerController::setStatePreset(CellularAutomataStatePreset preset) {
 	if (_settings.statePreset == preset) {
 		return;
 	}
 	auto settings = _settings;
 	settings.statePreset = preset;
+	if (preset == CellularAutomataStatePreset::HppLatticeGas) {
+		settings.rulePreset = CellularAutomataRulePreset::HppLatticeGas;
+		settings.neighborhoodPreset = CellularAutomataNeighborhoodPreset::VonNeumann;
+	}
 	rebuildDemo(settings);
 }
 
@@ -312,12 +349,13 @@ bool CellularAutomataViewerController::saveConfiguration(const QString& filePath
 	settings["latticeHeight"] = _settings.latticeSize.height();
 	settings["rulePreset"] = presetValue(_settings.rulePreset);
 	settings["neighborhoodPreset"] = presetValue(_settings.neighborhoodPreset);
+	settings["boundaryPreset"] = presetValue(_settings.boundaryPreset);
 	settings["statePreset"] = presetValue(_settings.statePreset);
 	root["settings"] = settings;
 
 	QJsonObject metadata;
 	metadata["lattice"] = QStringLiteral("reticular");
-	metadata["boundary"] = QStringLiteral("closed");
+	metadata["boundary"] = cellularAutomataBoundaryPresetText(_settings.boundaryPreset);
 	metadata["neighborhood"] = cellularAutomataNeighborhoodPresetText(_settings.neighborhoodPreset);
 	metadata["radius"] = 1;
 	metadata["rule"] = cellularAutomataRulePresetText(_settings.rulePreset);
@@ -376,9 +414,15 @@ bool CellularAutomataViewerController::loadConfiguration(const QString& filePath
 	loadedSettings.rulePreset = rulePresetFromInt(settingsObject.value("rulePreset").toInt(presetValue(_settings.rulePreset)));
 	loadedSettings.neighborhoodPreset =
 	    neighborhoodPresetFromInt(settingsObject.value("neighborhoodPreset").toInt(presetValue(_settings.neighborhoodPreset)));
+	loadedSettings.boundaryPreset =
+	    boundaryPresetFromInt(settingsObject.value("boundaryPreset").toInt(presetValue(_settings.boundaryPreset)));
 	loadedSettings.statePreset = statePresetFromInt(settingsObject.value("statePreset").toInt(presetValue(_settings.statePreset)));
 	if (loadedSettings.rulePreset == CellularAutomataRulePreset::ForestFire) {
 		loadedSettings.statePreset = CellularAutomataStatePreset::Enumerated;
+	}
+	if (loadedSettings.rulePreset == CellularAutomataRulePreset::HppLatticeGas) {
+		loadedSettings.statePreset = CellularAutomataStatePreset::HppLatticeGas;
+		loadedSettings.neighborhoodPreset = CellularAutomataNeighborhoodPreset::VonNeumann;
 	}
 
 	const QJsonArray rowsArray = root.value("cells").toArray();

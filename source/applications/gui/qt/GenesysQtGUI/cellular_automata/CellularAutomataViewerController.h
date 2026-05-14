@@ -43,6 +43,7 @@ public:
 	void setSettings(CellularAutomataDemoSettings settings);
 	void setRulePreset(CellularAutomataRulePreset preset);
 	void setNeighborhoodPreset(CellularAutomataNeighborhoodPreset preset);
+	void setBoundaryPreset(CellularAutomataBoundaryPreset preset);
 	void setStatePreset(CellularAutomataStatePreset preset);
 	void resetToInitialState();
 	void step();
@@ -73,6 +74,6 @@ private:
 	QTimer _timer;
 	unsigned int _simulatedTime = 0;
 	bool _running = false;
-	int _autoStepIntervalMs = 200;
+	int _autoStepIntervalMs = 0;
 	std::optional<long> _selectedPaintState;
 };

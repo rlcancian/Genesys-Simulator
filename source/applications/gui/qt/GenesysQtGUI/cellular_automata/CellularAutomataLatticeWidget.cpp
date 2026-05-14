@@ -2,6 +2,7 @@
 
 #include "CellularAutomataStateColorMap.h"
 #include "CellularAutomataViewerController.h"
+#include "plugins/components/ModalModel/CellularAutomata/State.h"
 
 #include <algorithm>
 #include <cmath>
@@ -81,8 +82,9 @@ void CellularAutomataLatticeWidget::paintEvent(QPaintEvent* event) {
 	for (int y = 0; y < rows; ++y) {
 		for (int x = 0; x < columns; ++x) {
 			const long state = _controller->cellState(x, y);
+			const QString stateText = _controller->model()->stateTextAt(x, y);
 			const QRectF cellRect(originX + x * cellWidth, originY + y * cellHeight, cellWidth, cellHeight);
-			painter.fillRect(cellRect, CellularAutomataStateColorMap::colorForState(state));
+			painter.fillRect(cellRect, CellularAutomataStateColorMap::colorForStateText(stateText, state));
 		}
 	}
 
@@ -287,7 +289,12 @@ void CellularAutomataLatticeWidget::_showStateContextMenu(const QPoint& globalPo
 	std::vector<QAction*> stateActions;
 	stateActions.reserve(paintStates.size());
 	for (long state : paintStates) {
-		stateActions.push_back(menu.addAction(tr("Paint with %1").arg(state)));
+		HppLatticeGasState hppState;
+		hppState.setValue(state);
+		const QString label = _controller->settings().statePreset == CellularAutomataStatePreset::HppLatticeGas
+			                      ? QString::fromStdString(hppState.toString())
+			                      : QString::number(state);
+		stateActions.push_back(menu.addAction(tr("Paint with %1").arg(label)));
 	}
 	if (!stateActions.empty()) {
 		menu.addSeparator();

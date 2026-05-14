@@ -146,6 +146,7 @@ CellularAutomataViewerWindow::CellularAutomataViewerWindow(QWidget* parent)
 
 	auto* ruleLabel = new QLabel(tr("Rule:"), configurationContainer);
 	_ruleCombo = new QComboBox(configurationContainer);
+	_ruleCombo->setObjectName(QStringLiteral("cellularAutomataRuleCombo"));
 	_ruleCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 	_ruleCombo->setMinimumWidth(150);
 	configurationLayout->addWidget(ruleLabel);
@@ -153,13 +154,23 @@ CellularAutomataViewerWindow::CellularAutomataViewerWindow(QWidget* parent)
 
 	auto* neighborhoodLabel = new QLabel(tr("Neighborhood:"), configurationContainer);
 	_neighborhoodCombo = new QComboBox(configurationContainer);
+	_neighborhoodCombo->setObjectName(QStringLiteral("cellularAutomataNeighborhoodCombo"));
 	_neighborhoodCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 	_neighborhoodCombo->setMinimumWidth(150);
 	configurationLayout->addWidget(neighborhoodLabel);
 	configurationLayout->addWidget(_neighborhoodCombo);
 
+	auto* boundaryLabel = new QLabel(tr("Boundary:"), configurationContainer);
+	_boundaryCombo = new QComboBox(configurationContainer);
+	_boundaryCombo->setObjectName(QStringLiteral("cellularAutomataBoundaryCombo"));
+	_boundaryCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
+	_boundaryCombo->setMinimumWidth(150);
+	configurationLayout->addWidget(boundaryLabel);
+	configurationLayout->addWidget(_boundaryCombo);
+
 	auto* stateLabel = new QLabel(tr("State type:"), configurationContainer);
 	_stateCombo = new QComboBox(configurationContainer);
+	_stateCombo->setObjectName(QStringLiteral("cellularAutomataStateCombo"));
 	_stateCombo->setSizeAdjustPolicy(QComboBox::AdjustToContents);
 	_stateCombo->setMinimumWidth(150);
 	configurationLayout->addWidget(stateLabel);
@@ -238,6 +249,7 @@ CellularAutomataViewerWindow::CellularAutomataViewerWindow(QWidget* parent)
 
 	connect(_ruleCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, &CellularAutomataViewerWindow::_onRulePresetChanged);
 	connect(_neighborhoodCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, &CellularAutomataViewerWindow::_onNeighborhoodPresetChanged);
+	connect(_boundaryCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, &CellularAutomataViewerWindow::_onBoundaryPresetChanged);
 	connect(_stateCombo, qOverload<int>(&QComboBox::currentIndexChanged), this, &CellularAutomataViewerWindow::_onStatePresetChanged);
 
 	connect(_controller, &CellularAutomataViewerController::timeChanged, this, &CellularAutomataViewerWindow::_updateTimeLabel);
@@ -318,6 +330,7 @@ void CellularAutomataViewerWindow::_syncControlsFromController() {
 		        {CellularAutomataRulePreset::Growty, cellularAutomataRulePresetText(CellularAutomataRulePreset::Growty)},
 		        {CellularAutomataRulePreset::Identity, cellularAutomataRulePresetText(CellularAutomataRulePreset::Identity)},
 		        {CellularAutomataRulePreset::ForestFire, cellularAutomataRulePresetText(CellularAutomataRulePreset::ForestFire)},
+		        {CellularAutomataRulePreset::HppLatticeGas, cellularAutomataRulePresetText(CellularAutomataRulePreset::HppLatticeGas)},
 		    },
 		    settings.rulePreset);
 	}
@@ -335,6 +348,17 @@ void CellularAutomataViewerWindow::_syncControlsFromController() {
 	}
 
 	{
+		QSignalBlocker blockBoundary(_boundaryCombo);
+		populatePresetCombo(
+		    _boundaryCombo,
+		    {
+		        {CellularAutomataBoundaryPreset::Closed, cellularAutomataBoundaryPresetText(CellularAutomataBoundaryPreset::Closed)},
+		        {CellularAutomataBoundaryPreset::Fixed, cellularAutomataBoundaryPresetText(CellularAutomataBoundaryPreset::Fixed)},
+		    },
+		    settings.boundaryPreset);
+	}
+
+	{
 		QSignalBlocker blockState(_stateCombo);
 		populatePresetCombo(
 		    _stateCombo,
@@ -342,6 +366,7 @@ void CellularAutomataViewerWindow::_syncControlsFromController() {
 		        {CellularAutomataStatePreset::Binary, cellularAutomataStatePresetText(CellularAutomataStatePreset::Binary)},
 		        {CellularAutomataStatePreset::Enumerated, cellularAutomataStatePresetText(CellularAutomataStatePreset::Enumerated)},
 		        {CellularAutomataStatePreset::Numeric, cellularAutomataStatePresetText(CellularAutomataStatePreset::Numeric)},
+		        {CellularAutomataStatePreset::HppLatticeGas, cellularAutomataStatePresetText(CellularAutomataStatePreset::HppLatticeGas)},
 		    },
 		    settings.statePreset);
 	}
@@ -372,6 +397,14 @@ void CellularAutomataViewerWindow::_onNeighborhoodPresetChanged(int index) {
 	}
 	const auto preset = static_cast<CellularAutomataNeighborhoodPreset>(_neighborhoodCombo->currentData().toInt());
 	_controller->setNeighborhoodPreset(preset);
+}
+
+void CellularAutomataViewerWindow::_onBoundaryPresetChanged(int index) {
+	if (_controller == nullptr || index < 0) {
+		return;
+	}
+	const auto preset = static_cast<CellularAutomataBoundaryPreset>(_boundaryCombo->currentData().toInt());
+	_controller->setBoundaryPreset(preset);
 }
 
 void CellularAutomataViewerWindow::_onStatePresetChanged(int index) {

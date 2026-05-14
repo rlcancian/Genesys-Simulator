@@ -95,6 +95,7 @@
 #include <QSize>
 
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
 #include "plugins/components/ModalModel/CellularAutomata/Cell.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
@@ -102,6 +103,7 @@
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_FlorestalFire.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Growty.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_HppLatticeGas.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
 #include "plugins/components/ModalModel/CellularAutomata/StateSet_Enumerable.h"
@@ -110,7 +112,8 @@ enum class CellularAutomataRulePreset {
 	GameOfLife = 0,
 	Growty = 1,
 	Identity = 2,
-	ForestFire = 3
+	ForestFire = 3,
+	HppLatticeGas = 4
 };
 
 enum class CellularAutomataNeighborhoodPreset {
@@ -118,21 +121,29 @@ enum class CellularAutomataNeighborhoodPreset {
 	VonNeumann = 1
 };
 
+enum class CellularAutomataBoundaryPreset {
+	Closed = 0,
+	Fixed = 1
+};
+
 enum class CellularAutomataStatePreset {
 	Binary = 0,
 	Enumerated = 1,
-	Numeric = 2
+	Numeric = 2,
+	HppLatticeGas = 3
 };
 
 struct CellularAutomataDemoSettings {
-	QSize latticeSize = QSize{32, 24};
+	QSize latticeSize = QSize{200, 200};
 	CellularAutomataRulePreset rulePreset = CellularAutomataRulePreset::GameOfLife;
 	CellularAutomataNeighborhoodPreset neighborhoodPreset = CellularAutomataNeighborhoodPreset::Moore;
+	CellularAutomataBoundaryPreset boundaryPreset = CellularAutomataBoundaryPreset::Closed;
 	CellularAutomataStatePreset statePreset = CellularAutomataStatePreset::Binary;
 };
 
 QString cellularAutomataRulePresetText(CellularAutomataRulePreset preset);
 QString cellularAutomataNeighborhoodPresetText(CellularAutomataNeighborhoodPreset preset);
+QString cellularAutomataBoundaryPresetText(CellularAutomataBoundaryPreset preset);
 QString cellularAutomataStatePresetText(CellularAutomataStatePreset preset);
 
 class LocalRule_CopyCurrentState final : public LocalRule {
@@ -156,8 +167,8 @@ struct CellularAutomataDemoModel {
 	std::vector<State*> statePointers;
 	std::unique_ptr<CellularAutomata_Classic> automaton;
 	std::unique_ptr<Lattice> lattice;
-	std::unique_ptr<StateSet_Enumerable> stateSet;
-	std::unique_ptr<Boundary_Closed> boundary;
+	std::unique_ptr<StateSet> stateSet;
+	std::unique_ptr<BoundaryCondition> boundary;
 	std::unique_ptr<Neighborhood> neighborhood;
 	std::unique_ptr<LocalRule> localRule;
 	std::unique_ptr<LocalRule_CopyCurrentState> identityLocalRule;
@@ -167,6 +178,7 @@ struct CellularAutomataDemoModel {
 	bool isValidPosition(int x, int y) const;
 	Cell* cellAt(int x, int y) const;
 	long stateAt(int x, int y) const;
+	QString stateTextAt(int x, int y) const;
 	bool setStateAt(int x, int y, long value);
 	void fill(long value);
 	void seedDefaultPattern();

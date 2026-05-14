@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QColor>
+#include <QString>
+#include <functional>
 
 class CellularAutomataStateColorMap {
 public:
@@ -14,6 +16,14 @@ public:
 
 		const int hue = static_cast<int>((state * 47) % 360);
 		return QColor::fromHsv(hue, 180, 215);
+	}
+
+	static QColor colorForStateText(const QString& stateText, long fallbackState) {
+		if (stateText.isEmpty() || stateText == QString::number(fallbackState)) {
+			return colorForState(fallbackState);
+		}
+		const size_t hash = std::hash<std::string>{}(stateText.toStdString());
+		return QColor::fromHsv(static_cast<int>(hash % 360), 170, 220);
 	}
 
 	static QColor backgroundColor() {

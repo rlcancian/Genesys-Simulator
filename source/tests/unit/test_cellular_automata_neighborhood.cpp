@@ -5,8 +5,10 @@
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_HppLatticeGas.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
+#include "plugins/components/ModalModel/CellularAutomata/StateSet_Enumerable.h"
 
 #include <algorithm>
 #include <cstdlib>
@@ -72,6 +74,68 @@ unsigned long expectedVonNeumannCount(unsigned short dimensions, unsigned short 
 }
 
 } // namespace
+
+TEST(CellularAutomataStateSet, SupportsFiniteIntegerRealAndCompositeDomains) {
+	State zero(0);
+	State one(1);
+	State two(2);
+	State three(3);
+	State four(4);
+	StateSet_Enumerable binary(nullptr, {&zero, &one});
+	StateSet_Enumerable fiveStates(nullptr, {&zero, &one, &two, &three, &four});
+
+	EXPECT_TRUE(binary.contains(State(0)));
+	EXPECT_TRUE(binary.contains(State(1)));
+	EXPECT_FALSE(binary.contains(State(2)));
+	EXPECT_EQ(binary.createDefaultState()->getValue(), 0);
+	EXPECT_TRUE(binary.parseState("1")->equals(State(1)));
+	EXPECT_EQ(fiveStates.enumerateStates().size(), 5);
+
+	NaturalStateSet naturals(nullptr);
+	EXPECT_TRUE(naturals.contains(State(42)));
+	EXPECT_FALSE(naturals.contains(State(-1)));
+
+	RealIntervalStateSet unitInterval(nullptr, 0.0, 1.0);
+	EXPECT_TRUE(unitInterval.contains(RealState(0.5)));
+	EXPECT_FALSE(unitInterval.contains(RealState(1.5)));
+	EXPECT_EQ(unitInterval.parseState("0.25")->typeName(), "RealState");
+
+	HppLatticeGasState hpp({{true, false, true, false}});
+	HppLatticeGasStateSet hppSet(nullptr);
+	EXPECT_TRUE(hppSet.contains(hpp));
+	EXPECT_FALSE(hppSet.contains(State(5)));
+	EXPECT_EQ(hppSet.enumerateStates().size(), 16);
+	EXPECT_EQ(hpp.toString(), "{N:1,E:0,S:1,W:0}");
+
+	CompositeState composite;
+	composite.addField("num_particles", State(2));
+	composite.addField("direction", State(1));
+	CompositeStateSet compositeSet(nullptr);
+	EXPECT_TRUE(compositeSet.contains(composite));
+	EXPECT_NE(composite.clone().get(), &composite);
+}
+
+TEST(CellularAutomataCell, ClonesStatesAndValidatesAgainstStateSet) {
+	State zero(0);
+	State one(1);
+	StateSet_Enumerable binary(nullptr, {&zero, &one});
+	Cell cell(&binary);
+
+	EXPECT_TRUE(cell.setCurrentState(one));
+	EXPECT_EQ(cell.getCurrentState().getValue(), 1);
+
+	State rejected(2);
+	EXPECT_FALSE(cell.setCurrentState(rejected));
+	EXPECT_EQ(cell.getCurrentState().getValue(), 1);
+
+	EXPECT_TRUE(cell.setNextState(zero));
+	EXPECT_TRUE(cell.isUpdatePending());
+	EXPECT_TRUE(cell.updateState());
+	EXPECT_EQ(cell.getCurrentState().getValue(), 0);
+
+	HppLatticeGasState hpp({{true, false, false, false}});
+	EXPECT_FALSE(cell.setCurrentState(hpp));
+}
 
 TEST(CellularAutomataLattice, ConvertsLinearCellNumbersAndNDimPositionsRoundTrip) {
 	CellularAutomata_Classic automaton;
@@ -201,4 +265,27 @@ TEST(CellularAutomataGameOfLife, KeepsTwoDimensionalMooreBlinkerRegression) {
 	EXPECT_EQ(lattice.getCell({2, 3})->getCurrentState().getValue(), 1);
 	EXPECT_EQ(lattice.getCell({1, 2})->getCurrentState().getValue(), 0);
 	EXPECT_EQ(lattice.getCell({3, 2})->getCurrentState().getValue(), 0);
+}
+
+TEST(CellularAutomataHppLatticeGas, PropagatesAndCollidesCompositeParticleStates) {
+	CellularAutomata_Classic automaton;
+	HppLatticeGasStateSet stateSet(&automaton);
+	Boundary_Closed boundary;
+	Neighborhood_VonNeumann neighborhood(&automaton, 1, &boundary);
+	LocalRule_HppLatticeGas localRule(&automaton);
+	Lattice lattice(&automaton, nullptr, {5, 5});
+
+	ASSERT_TRUE(automaton.init());
+	lattice.getCell({2, 1})->setCurrentState(HppLatticeGasState({{false, false, true, false}}));
+	lattice.getCell({2, 3})->setCurrentState(HppLatticeGasState({{true, false, false, false}}));
+
+	automaton.step();
+
+	const auto* center = lattice.getCell({2, 2})->getCurrentState().as<HppLatticeGasState>();
+	ASSERT_NE(center, nullptr);
+	EXPECT_FALSE(center->has(HppLatticeGasState::North));
+	EXPECT_TRUE(center->has(HppLatticeGasState::East));
+	EXPECT_FALSE(center->has(HppLatticeGasState::South));
+	EXPECT_TRUE(center->has(HppLatticeGasState::West));
+	EXPECT_TRUE(stateSet.contains(*center));
 }

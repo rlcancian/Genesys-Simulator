@@ -122,6 +122,16 @@ Neighborhood* makeNeighborhood(CellularAutomataDemoModel& demo) {
 	}
 }
 
+BoundaryCondition* makeBoundary(CellularAutomataDemoModel& demo) {
+	switch (demo.settings.boundaryPreset) {
+	case CellularAutomataBoundaryPreset::Fixed:
+		return new Boundary_Fixed();
+	case CellularAutomataBoundaryPreset::Closed:
+	default:
+		return new Boundary_Closed();
+	}
+}
+
 LocalRule* makeLocalRule(CellularAutomataDemoModel& demo) {
 	switch (demo.settings.rulePreset) {
 	case CellularAutomataRulePreset::Growty:
@@ -131,6 +141,8 @@ LocalRule* makeLocalRule(CellularAutomataDemoModel& demo) {
 		return demo.identityLocalRule.get();
 	case CellularAutomataRulePreset::ForestFire:
 		return new LocalRule_FlorestalFire(demo.automaton.get());
+	case CellularAutomataRulePreset::HppLatticeGas:
+		return new LocalRule_HppLatticeGas(demo.automaton.get());
 	case CellularAutomataRulePreset::GameOfLife:
 	default:
 		return new LocalRule_GameOfLife(demo.automaton.get());
@@ -143,6 +155,8 @@ std::vector<long> paintStatesForPreset(CellularAutomataStatePreset preset) {
 		return {0, 1, 2, 3};
 	case CellularAutomataStatePreset::Numeric:
 		return {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+	case CellularAutomataStatePreset::HppLatticeGas:
+		return {0, 1, 2, 4, 8, 5, 10};
 	case CellularAutomataStatePreset::Binary:
 	default:
 		return {0, 1};
@@ -158,6 +172,8 @@ QString cellularAutomataRulePresetText(CellularAutomataRulePreset preset) {
 		return QObject::tr("Identity");
 	case CellularAutomataRulePreset::ForestFire:
 		return QObject::tr("Forest Fire");
+	case CellularAutomataRulePreset::HppLatticeGas:
+		return QObject::tr("HPP Lattice Gas");
 	case CellularAutomataRulePreset::GameOfLife:
 	default:
 		return QObject::tr("Game of Life");
@@ -174,12 +190,24 @@ QString cellularAutomataNeighborhoodPresetText(CellularAutomataNeighborhoodPrese
 	}
 }
 
+QString cellularAutomataBoundaryPresetText(CellularAutomataBoundaryPreset preset) {
+	switch (preset) {
+	case CellularAutomataBoundaryPreset::Fixed:
+		return QObject::tr("Fixed");
+	case CellularAutomataBoundaryPreset::Closed:
+	default:
+		return QObject::tr("Closed / periodic");
+	}
+}
+
 QString cellularAutomataStatePresetText(CellularAutomataStatePreset preset) {
 	switch (preset) {
 	case CellularAutomataStatePreset::Enumerated:
 		return QObject::tr("Enumerated");
 	case CellularAutomataStatePreset::Numeric:
 		return QObject::tr("Numeric");
+	case CellularAutomataStatePreset::HppLatticeGas:
+		return QObject::tr("HPP lattice gas");
 	case CellularAutomataStatePreset::Binary:
 	default:
 		return QObject::tr("Binary");
@@ -214,14 +242,23 @@ long CellularAutomataDemoModel::stateAt(int x, int y) const {
 	return cell != nullptr ? cell->getCurrentState().getValue() : 0;
 }
 
+QString CellularAutomataDemoModel::stateTextAt(int x, int y) const {
+	Cell* cell = cellAt(x, y);
+	return cell != nullptr ? QString::fromStdString(cell->getCurrentState().toString()) : QStringLiteral("0");
+}
+
 bool CellularAutomataDemoModel::setStateAt(int x, int y, long value) {
 	Cell* cell = cellAt(x, y);
 	if (cell == nullptr) {
 		return false;
 	}
-	cell->setCurrentState(State(value));
-	cell->setNextState(State(value));
-	return true;
+	if (settings.statePreset == CellularAutomataStatePreset::HppLatticeGas) {
+		HppLatticeGasState state;
+		state.setValue(value);
+		return cell->setCurrentState(state) && cell->setNextState(state);
+	}
+	State state(value);
+	return cell->setCurrentState(state) && cell->setNextState(state);
 }
 
 void CellularAutomataDemoModel::fill(long value) {
@@ -265,6 +302,12 @@ void CellularAutomataDemoModel::seedDefaultPattern() {
 		setStateAt(columns() / 2, rows() / 2 - 1, 2);
 		setStateAt(columns() / 2, rows() / 2 + 1, 2);
 		return;
+	case CellularAutomataRulePreset::HppLatticeGas:
+		setStateAt(columns() / 2 - 1, rows() / 2, 2);
+		setStateAt(columns() / 2 + 1, rows() / 2, 8);
+		setStateAt(columns() / 2, rows() / 2 - 1, 4);
+		setStateAt(columns() / 2, rows() / 2 + 1, 1);
+		return;
 	case CellularAutomataRulePreset::GameOfLife:
 	default:
 		break;
@@ -293,6 +336,9 @@ std::vector<long> CellularAutomataDemoModel::availablePaintStates() const {
 	if (settings.rulePreset == CellularAutomataRulePreset::ForestFire) {
 		return {0, 1, 2, 3};
 	}
+	if (settings.rulePreset == CellularAutomataRulePreset::HppLatticeGas) {
+		return paintStatesForPreset(CellularAutomataStatePreset::HppLatticeGas);
+	}
 	return paintStatesForPreset(settings.statePreset);
 }
 
@@ -300,6 +346,10 @@ std::unique_ptr<CellularAutomataDemoModel> CellularAutomataDemoBuilder::buildDem
 	settings.latticeSize = normalizedSize(settings.latticeSize);
 	if (settings.rulePreset == CellularAutomataRulePreset::ForestFire) {
 		settings.statePreset = CellularAutomataStatePreset::Enumerated;
+	}
+	if (settings.rulePreset == CellularAutomataRulePreset::HppLatticeGas) {
+		settings.statePreset = CellularAutomataStatePreset::HppLatticeGas;
+		settings.neighborhoodPreset = CellularAutomataNeighborhoodPreset::VonNeumann;
 	}
 	auto demo = std::make_unique<CellularAutomataDemoModel>(settings);
 
@@ -310,15 +360,19 @@ std::unique_ptr<CellularAutomataDemoModel> CellularAutomataDemoBuilder::buildDem
 		std::vector<unsigned short>{static_cast<unsigned short>(demo->columns()),
 		                            static_cast<unsigned short>(demo->rows())},
 		LatticeType::RETICULAR);
-	demo->boundary = std::make_unique<Boundary_Closed>();
+	demo->boundary.reset(makeBoundary(*demo));
 	demo->neighborhood.reset(makeNeighborhood(*demo));
 	demo->localRule.reset(makeLocalRule(*demo));
-	const int stateCount = demo->settings.rulePreset == CellularAutomataRulePreset::ForestFire
-		                           ? 4
-		                           : std::max<int>(2, static_cast<int>(demo->availablePaintStates().size()));
-	demo->stateSet = std::make_unique<StateSet_Enumerable>(
-		demo->automaton.get(),
-		enumerableStates(*demo, stateCount));
+	if (demo->settings.statePreset == CellularAutomataStatePreset::HppLatticeGas) {
+		demo->stateSet = std::make_unique<HppLatticeGasStateSet>(demo->automaton.get());
+	} else {
+		const int stateCount = demo->settings.rulePreset == CellularAutomataRulePreset::ForestFire
+			                           ? 4
+			                           : std::max<int>(2, static_cast<int>(demo->availablePaintStates().size()));
+		demo->stateSet = std::make_unique<StateSet_Enumerable>(
+			demo->automaton.get(),
+			enumerableStates(*demo, stateCount));
+	}
 	demo->localRule->setStateSet(demo->stateSet.get());
 
 	demo->automaton->setLattice(demo->lattice.get());

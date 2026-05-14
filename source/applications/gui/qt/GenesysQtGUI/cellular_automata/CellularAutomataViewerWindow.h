@@ -23,6 +23,7 @@ private:
 	void _syncControlsFromController();
 	void _onRulePresetChanged(int index);
 	void _onNeighborhoodPresetChanged(int index);
+	void _onBoundaryPresetChanged(int index);
 	void _onStatePresetChanged(int index);
 	bool _promptSavePath(QString* path) const;
 	bool _promptLoadPath(QString* path) const;
@@ -32,6 +33,7 @@ private:
 	CellularAutomataLatticeWidget* _latticeWidget = nullptr;
 	QComboBox* _ruleCombo = nullptr;
 	QComboBox* _neighborhoodCombo = nullptr;
+	QComboBox* _boundaryCombo = nullptr;
 	QComboBox* _stateCombo = nullptr;
 	QLabel* _timeLabel = nullptr;
 	QLabel* _runningLabel = nullptr;

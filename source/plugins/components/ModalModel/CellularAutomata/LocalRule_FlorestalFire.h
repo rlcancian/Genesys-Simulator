@@ -77,11 +77,11 @@ public:
     }
 protected:
 private:
-    double pSoil2Grass = 0.001;
-    double pGrass2Tree = 0.0001;
+    double pSoil2Grass = 0.01;
+    double pGrass2Tree = 0.001;
     double pGrass2Fire = 0.00001;
-    double pTree2Fire =  0.00005;
-    double pGrassPropagateFire = 0.5;
-    double pTreePropagateFire = 0.85;
+    double pTree2Fire =  0.00001;
+    double pGrassPropagateFire = 0.05;
+    double pTreePropagateFire = 0.5;
     double pTree2Soil = 0.0005;
 };
