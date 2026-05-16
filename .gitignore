@@ -44,3 +44,6 @@ temp*
 
 .idea/
 .aider*
+
+# VS Code
+.vscode/

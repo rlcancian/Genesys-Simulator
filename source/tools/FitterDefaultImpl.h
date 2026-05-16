@@ -1,16 +1,15 @@
 #ifndef FITTERDEFAULTIMPL_H
 #define FITTERDEFAULTIMPL_H
 
+#include "DatasetLoader.h"
 #include "Fitter_if.h"
 #include "ProbabilityDistributionBase.h"
 #include "SolverDefaultImpl1.h"
 
 #include <algorithm>
 #include <cmath>
-#include <fstream>
 #include <functional>
 #include <limits>
-#include <numeric>
 #include <string>
 #include <vector>
 
@@ -18,8 +17,8 @@
  * @brief Functional implementation of Fitter_if consolidated through FITTER-2.
  *
  * Current scope:
- * - Supports real dataset loading from binary file with raw sequential doubles
- *   (compatible with CollectorDatafileDefaultImpl1 persistence format).
+ * - Uses DatasetLoader as the single owner of dataset loading, ordering and
+ *   descriptive statistics.
  * - Implements fitting for Uniform, Triangular, Normal, Exponential, Erlang,
  *   Beta (scaled) and Weibull.
  *
@@ -47,7 +46,7 @@ public:
 		if (!std::isfinite(sqrerror)) {
 			return false;
 		}
-		if (_count < 8) {
+		if (_dataset.count() < 8) {
 			return false;
 		}
 		double cl = confidencelevel;
@@ -55,18 +54,18 @@ public:
 			cl /= 100.0;
 		}
 		cl = std::max(0.0, std::min(1.0, cl));
-		const double normalizedSse = sqrerror / static_cast<double>(_count);
+		const double normalizedSse = sqrerror / static_cast<double>(_dataset.count());
 		const double threshold = 0.008 + (1.0 - cl) * 0.02;
 		return normalizedSse <= threshold;
 	}
 
 	virtual void fitUniform(double *sqrerror, double *min, double *max) override {
-		if (!_ensureDataLoaded() || _count < 2 || !(_sampleMax > _sampleMin)) {
+		if (!_hasUsableDataset() || _dataset.count() < 2 || !(_dataset.max() > _dataset.min())) {
 			_setFailure3(sqrerror, min, max);
 			return;
 		}
-		const double fittedMin = _sampleMin;
-		const double fittedMax = _sampleMax;
+		const double fittedMin = _dataset.min();
+		const double fittedMax = _dataset.max();
 
 		if (min != nullptr) {
 			*min = fittedMin;
@@ -86,15 +85,16 @@ public:
 	}
 
 	virtual void fitTriangular(double *sqrerror, double *min, double *mo, double *max) override {
-		if (!_ensureDataLoaded() || _count < 2 || !(_sampleMax > _sampleMin)) {
+		if (!_hasUsableDataset() || _dataset.count() < 2 || !(_dataset.max() > _dataset.min())) {
 			_setFailure4(sqrerror, min, mo, max);
 			return;
 		}
 
-		const double fittedMin = _sampleMin;
-		const double fittedMax = _sampleMax;
+		const double fittedMin = _dataset.min();
+		const double fittedMax = _dataset.max();
 		const double range = fittedMax - fittedMin;
-		double mode = 3.0 * _sampleMean - fittedMin - fittedMax;
+		const double sampleMean = _dataset.mean();
+		double mode = 3.0 * sampleMean - fittedMin - fittedMax;
 		mode = std::max(fittedMin, std::min(fittedMax, mode));
 
 		const double eps = range * 1e-9;
@@ -138,54 +138,59 @@ public:
 	}
 
 	virtual void fitNormal(double *sqrerror, double *avg, double *stddev) override {
-		if (!_ensureDataLoaded() || _count < 2 || !(_sampleStddev > 0.0) || !std::isfinite(_sampleStddev)) {
+		const double sampleStddev = _dataset.stddev();
+		if (!_hasUsableDataset() || _dataset.count() < 2 || !(sampleStddev > 0.0) || !std::isfinite(sampleStddev)) {
 			_setFailure3(sqrerror, avg, stddev);
 			return;
 		}
+		const double sampleMean = _dataset.mean();
 		if (avg != nullptr) {
-			*avg = _sampleMean;
+			*avg = sampleMean;
 		}
 		if (stddev != nullptr) {
-			*stddev = _sampleStddev;
+			*stddev = sampleStddev;
 		}
-		_setSse(sqrerror, [this](double x) {
-			const double z = (x - _sampleMean) / (_sampleStddev * std::sqrt(2.0));
+		_setSse(sqrerror, [sampleMean, sampleStddev](double x) {
+			const double z = (x - sampleMean) / (sampleStddev * std::sqrt(2.0));
 			return 0.5 * std::erfc(-z);
 		});
 	}
 
 	virtual void fitExpo(double *sqrerror, double *avg1) override {
-		if (!_ensureDataLoaded() || !(_sampleMean > 0.0) || _hasNegativeData) {
+		const double sampleMean = _dataset.mean();
+		if (!_hasUsableDataset() || !(sampleMean > 0.0) || _dataset.hasNegativeData()) {
 			_setFailure2(sqrerror, avg1);
 			return;
 		}
 		if (avg1 != nullptr) {
-			*avg1 = _sampleMean;
+			*avg1 = sampleMean;
 		}
-		_setSse(sqrerror, [this](double x) {
+		_setSse(sqrerror, [sampleMean](double x) {
 			if (x < 0.0) {
 				return 0.0;
 			}
-			return 1.0 - std::exp(-x / _sampleMean);
+			return 1.0 - std::exp(-x / sampleMean);
 		});
 	}
 
 	virtual void fitErlang(double *sqrerror, double *avg, double *m) override {
-		if (!_ensureDataLoaded() || !(_sampleMean > 0.0) || !(_sampleVariance > 0.0) || _hasNegativeData) {
+		const double sampleMean = _dataset.mean();
+		const double sampleVariance = _dataset.variance();
+		if (!_hasUsableDataset() || !(sampleMean > 0.0) || !(sampleVariance > 0.0) || _dataset.hasNegativeData()) {
 			_setFailure3(sqrerror, avg, m);
 			return;
 		}
-		long int mInt = static_cast<long int>(std::llround((_sampleMean * _sampleMean) / _sampleVariance));
+		long int mInt = static_cast<long int>(std::llround((sampleMean * sampleMean) / sampleVariance));
 		if (mInt < 1) {
 			mInt = 1;
 		}
-		const double scale = _sampleMean / static_cast<double>(mInt);
+		const double scale = sampleMean / static_cast<double>(mInt);
 		if (!(scale > 0.0) || !std::isfinite(scale)) {
 			_setFailure3(sqrerror, avg, m);
 			return;
 		}
 		if (avg != nullptr) {
-			*avg = _sampleMean;
+			*avg = sampleMean;
 		}
 		if (m != nullptr) {
 			*m = static_cast<double>(mInt);
@@ -234,12 +239,14 @@ public:
 	}
 
 	virtual void fitWeibull(double *sqrerror, double *alpha, double *scale) override {
-		if (!_ensureDataLoaded() || _count < 2 || _hasNegativeData || !(_sampleMean > 0.0) || !(_sampleVariance > 0.0)) {
+		const double sampleMean = _dataset.mean();
+		const double sampleVariance = _dataset.variance();
+		if (!_hasUsableDataset() || _dataset.count() < 2 || _dataset.hasNegativeData() || !(sampleMean > 0.0) || !(sampleVariance > 0.0)) {
 			_setFailure3(sqrerror, alpha, scale);
 			return;
 		}
 
-		const double cv = _sampleStddev / _sampleMean;
+		const double cv = _dataset.stddev() / sampleMean;
 		double fittedShape = _nan();
 		if (!_estimateWeibullShapeFromCv(cv, &fittedShape)) {
 			_setFailure3(sqrerror, alpha, scale);
@@ -247,7 +254,7 @@ public:
 		}
 
 		const double gammaTerm = std::tgamma(1.0 + 1.0 / fittedShape);
-		const double fittedScale = _sampleMean / gammaTerm;
+		const double fittedScale = sampleMean / gammaTerm;
 		if (!_isFinitePositive(fittedShape) || !_isFinitePositive(fittedScale)) {
 			_setFailure3(sqrerror, alpha, scale);
 			return;
@@ -266,7 +273,7 @@ public:
 	}
 
 	virtual void fitAll(double *sqrerror, std::string *name) override {
-		if (!_ensureDataLoaded()) {
+		if (!_hasUsableDataset()) {
 			if (sqrerror != nullptr) {
 				*sqrerror = std::numeric_limits<double>::infinity();
 			}
@@ -319,10 +326,8 @@ public:
 	}
 
 	virtual void setDataFilename(std::string dataFilename) override {
-		if (_dataFilename != dataFilename) {
-			_dataFilename = dataFilename;
-			_invalidateCache();
-		}
+		_dataFilename = dataFilename;
+		_dataset.loadFromFile(_dataFilename);
 	}
 
 	virtual std::string getDataFilename() override {
@@ -330,100 +335,24 @@ public:
 	}
 
 private:
-	void _invalidateCache() {
-		_cacheLoaded = false;
-		_cacheUsable = false;
-		_data.clear();
-		_sortedData.clear();
-		_count = 0;
-		_sampleMin = _nan();
-		_sampleMax = _nan();
-		_sampleMean = _nan();
-		_sampleVariance = _nan();
-		_sampleStddev = _nan();
-		_hasNegativeData = false;
-	}
-
-	bool _ensureDataLoaded() {
-		if (!_cacheLoaded) {
-			_cacheUsable = _loadDataFromBinaryFile();
-			_cacheLoaded = true;
-		}
-		return _cacheUsable;
-	}
-
-	bool _loadDataFromBinaryFile() {
-		_invalidateCache();
-		if (_dataFilename.empty()) {
-			return false;
-		}
-
-		std::ifstream file(_dataFilename.c_str(), std::ios::in | std::ios::binary | std::ios::ate);
-		if (!file.good()) {
-			return false;
-		}
-
-		const std::streamsize bytes = file.tellg();
-		if (bytes <= 0 || (bytes % static_cast<std::streamsize>(sizeof(double))) != 0) {
-			return false;
-		}
-
-		file.seekg(0, std::ios::beg);
-		const std::size_t n = static_cast<std::size_t>(bytes / static_cast<std::streamsize>(sizeof(double)));
-		std::vector<double> values(n, 0.0);
-		file.read(reinterpret_cast<char*>(values.data()), bytes);
-		if (!file || file.gcount() != bytes) {
-			return false;
-		}
-
-		for (double value : values) {
-			if (!std::isfinite(value)) {
-				return false;
-			}
-		}
-
-		_data = values;
-		_sortedData = _data;
-		std::sort(_sortedData.begin(), _sortedData.end());
-		_count = _data.size();
-		if (_count == 0) {
-			return false;
-		}
-
-		_sampleMin = _sortedData.front();
-		_sampleMax = _sortedData.back();
-		const double sum = std::accumulate(_data.begin(), _data.end(), 0.0);
-		_sampleMean = sum / static_cast<double>(_count);
-		_hasNegativeData = (_sampleMin < 0.0);
-
-		if (_count >= 2) {
-			double sq = 0.0;
-			for (double x : _data) {
-				const double d = x - _sampleMean;
-				sq += d * d;
-			}
-			_sampleVariance = sq / static_cast<double>(_count - 1U);
-			_sampleStddev = std::sqrt(_sampleVariance);
-		} else {
-			_sampleVariance = _nan();
-			_sampleStddev = _nan();
-		}
-		return true;
+	bool _hasUsableDataset() const {
+		return _dataset.isUsable();
 	}
 
 	void _setSse(double* sqrerror, const std::function<double(double)>& cdf) {
 		if (sqrerror == nullptr) {
 			return;
 		}
-		if (_sortedData.empty()) {
+		const std::vector<double>& sortedData = _dataset.sortedData();
+		if (sortedData.empty()) {
 			*sqrerror = std::numeric_limits<double>::infinity();
 			return;
 		}
 		double sse = 0.0;
-		const std::size_t n = _sortedData.size();
+		const std::size_t n = sortedData.size();
 		for (std::size_t i = 0; i < n; ++i) {
 			const double pi = (static_cast<double>(i) + 0.5) / static_cast<double>(n);
-			double model = cdf(_sortedData[i]);
+			double model = cdf(sortedData[i]);
 			if (!std::isfinite(model)) {
 				*sqrerror = std::numeric_limits<double>::infinity();
 				return;
@@ -500,12 +429,13 @@ private:
 	}
 
 	bool _estimateScaledBetaMoments(double* alpha, double* beta, double* infLimit, double* supLimit) {
-		if (!_ensureDataLoaded() || _count < 2 || !(_sampleMax > _sampleMin) || !(_sampleVariance > 0.0)) {
+		if (!_hasUsableDataset() || _dataset.count() < 2 || !(_dataset.max() > _dataset.min()) || !(_dataset.variance() > 0.0)) {
 			return false;
 		}
 
-		const double a = _sampleMin;
-		const double b = _sampleMax;
+		const std::vector<double>& data = _dataset.data();
+		const double a = _dataset.min();
+		const double b = _dataset.max();
 		const double range = b - a;
 		if (!(range > 0.0) || !std::isfinite(range)) {
 			return false;
@@ -513,25 +443,25 @@ private:
 
 		const double eps = 1e-12;
 		double sum = 0.0;
-		for (double x : _data) {
+		for (double x : data) {
 			const double y = (x - a) / range;
 			const double yc = std::max(eps, std::min(1.0 - eps, y));
 			sum += yc;
 		}
-		const double n = static_cast<double>(_data.size());
+		const double n = static_cast<double>(data.size());
 		const double m = sum / n;
 		if (!(m > 0.0 && m < 1.0) || !std::isfinite(m)) {
 			return false;
 		}
 
 		double varSum = 0.0;
-		for (double x : _data) {
+		for (double x : data) {
 			const double y = (x - a) / range;
 			const double yc = std::max(eps, std::min(1.0 - eps, y));
 			const double d = yc - m;
 			varSum += d * d;
 		}
-		const double v = varSum / static_cast<double>(_data.size() - 1U);
+		const double v = varSum / static_cast<double>(data.size() - 1U);
 		if (!(v > 0.0) || !std::isfinite(v)) {
 			return false;
 		}
@@ -642,19 +572,7 @@ private:
 
 private:
 	std::string _dataFilename = "";
-
-	bool _cacheLoaded = false;
-	bool _cacheUsable = false;
-	std::vector<double> _data;
-	std::vector<double> _sortedData;
-
-	std::size_t _count = 0;
-	double _sampleMin = _nan();
-	double _sampleMax = _nan();
-	double _sampleMean = _nan();
-	double _sampleVariance = _nan();
-	double _sampleStddev = _nan();
-	bool _hasNegativeData = false;
+	DatasetLoader _dataset;
 };
 
 #endif /* FITTERDEFAULTIMPL_H */
