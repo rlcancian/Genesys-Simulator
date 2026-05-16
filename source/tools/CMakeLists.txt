@@ -1,4 +1,5 @@
 add_library(genesys_tools STATIC
+    DatasetLoader.cpp
     FitterDummyImpl.cpp
     HypothesisTesterDefaultImpl1.cpp
     OptimizerDefaultImpl1.cpp

@@ -20,6 +20,26 @@ function(genesys_add_unit_test test_target test_source)
     set_property(TARGET ${test_target} PROPERTY FOLDER tests/unit)
 endfunction()
 
+function(genesys_add_tools_unit_test test_target test_source)
+    add_executable(${test_target}
+        ${test_source}
+    )
+
+    target_link_libraries(${test_target}
+        PRIVATE
+            ${ARGN}
+            GTest::gtest_main
+    )
+
+    gtest_discover_tests(${test_target}
+        TEST_PREFIX "tools."
+        PROPERTIES
+            LABELS "unit"
+    )
+
+    set_property(TARGET ${test_target} PROPERTY FOLDER tests/unit/tools)
+endfunction()
+
 genesys_add_unit_test(genesys_test_util
     test_util.cpp
     genesys_kernel_util
@@ -170,6 +190,9 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     if(NOT TARGET genesys_tools)
         add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-gui-tests)
     endif()
+    if(NOT TARGET genesys_web_core)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/source/applications/web ${CMAKE_BINARY_DIR}/source/web-for-gui-tests)
+    endif()
 
     add_executable(genesys_test_gui_gmdd_layout
         test_gui_gmdd_layout.cpp
@@ -233,7 +256,7 @@ else()
 endif()
 
 add_executable(genesys_test_tools_hypothesistester
-    test_tools_hypothesistester.cpp
+    tools/test_tools_hypothesistester.cpp
     ${CMAKE_SOURCE_DIR}/source/tools/HypothesisTesterDefaultImpl1.cpp
     ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistribution.cpp
     ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistributionBase.cpp
@@ -254,15 +277,28 @@ target_link_libraries(genesys_test_tools_hypothesistester
 )
 
 gtest_discover_tests(genesys_test_tools_hypothesistester
+    TEST_PREFIX "tools."
     PROPERTIES
         LABELS "unit"
 )
 
-set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit)
+set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit/tools)
 
-genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
-    test_tools_simulation_results_dataset.cpp
+genesys_add_tools_unit_test(genesys_test_tools_simulation_results_dataset
+    tools/test_tools_simulation_results_dataset.cpp
     genesys_tools
+)
+
+genesys_add_tools_unit_test(genesys_test_tools_dataset_loader
+    tools/test_tools_dataset_loader.cpp
+    genesys_tools
+)
+
+add_custom_target(genesys_tools_unit_tests
+    DEPENDS
+        genesys_test_tools_hypothesistester
+        genesys_test_tools_simulation_results_dataset
+        genesys_test_tools_dataset_loader
 )
 
 add_custom_target(genesys_kernel_unit_tests
@@ -284,6 +320,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_statistics
         genesys_test_tools_hypothesistester
         genesys_test_tools_simulation_results_dataset
+        genesys_test_tools_dataset_loader
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -363,6 +400,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
     COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
+    COMMAND $<TARGET_FILE:genesys_test_tools_dataset_loader>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests

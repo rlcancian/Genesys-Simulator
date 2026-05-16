@@ -57,6 +57,7 @@ SOURCES += \
     $$files($$SOURCE_ROOT/plugins/data/*.cpp, true) \
     $$SOURCE_ROOT/plugins/PluginConnectorStaticImpl1.cpp \
     $$SOURCE_ROOT/plugins/PluginConnectorDummyImpl1.cpp \
+    $$SOURCE_ROOT/tools/DatasetLoader.cpp \
     $$SOURCE_ROOT/tools/FitterDummyImpl.cpp \
     $$SOURCE_ROOT/tools/HypothesisTesterDefaultImpl1.cpp \
     $$SOURCE_ROOT/tools/OptimizerDefaultImpl1.cpp \
