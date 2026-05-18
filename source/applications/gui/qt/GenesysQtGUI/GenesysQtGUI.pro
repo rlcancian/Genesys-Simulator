@@ -147,7 +147,6 @@ HEADERS -= \
 FORMS += \
     dialogs/DialogTimerConfigure.ui \
     dialogs/Dialogmodelinformation.ui \
-    dialogs/DialogExpressionBuilder.ui \
     dialogs/dialogBreakpoint.ui \
     dialogs/dialogpluginmanager.ui \
     dialogs/dialogsimulationconfigure.ui \

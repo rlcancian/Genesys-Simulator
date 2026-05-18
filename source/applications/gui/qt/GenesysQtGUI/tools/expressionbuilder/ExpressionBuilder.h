@@ -1,5 +1,5 @@
-#ifndef DIALOGEXPRESSIONBUILDER_H
-#define DIALOGEXPRESSIONBUILDER_H
+#ifndef EXPRESSIONBUILDER_H
+#define EXPRESSIONBUILDER_H
 
 #include <QDialog>
 #include <QTreeWidget>
@@ -17,7 +17,7 @@
 #include <QList>
 
 namespace Ui {
-class DialogExpressionBuilder;
+class ExpressionBuilder;
 }
 
 struct ExpressionParameter {
@@ -38,13 +38,13 @@ struct ExpressionCategory {
     QList<ExpressionTemplate> expressions;
 };
 
-class DialogExpressionBuilder : public QDialog
+class ExpressionBuilder : public QDialog
 {
     Q_OBJECT
 
 public:
-    explicit DialogExpressionBuilder(QWidget *parent = nullptr);
-    ~DialogExpressionBuilder();
+    explicit ExpressionBuilder(QWidget *parent = nullptr);
+    ~ExpressionBuilder();
 
 private slots:
     void on_categorySelected(QTreeWidgetItem *item, int column);
@@ -53,7 +53,7 @@ private slots:
     void on_close_clicked();
 
 private:
-    Ui::DialogExpressionBuilder *ui;
+    Ui::ExpressionBuilder *ui;
     
     // Expression data
     QList<ExpressionCategory> categories;
@@ -84,4 +84,4 @@ private:
     void registerExpression(const QString &categoryName, const ExpressionTemplate &expression);
 };
 
-#endif // DIALOGEXPRESSIONBUILDER_H
+#endif // EXPRESSIONBUILDER_H

@@ -146,8 +146,6 @@ private slots:
 	void on_actionAnimateStatistics_triggered();
 	void on_actionAnimatePlot_triggered();
 
-	void on_actionExpressionBuilder_triggered();
-
 	void on_actionSimulationStop_triggered();
     /** @brief Starts full simulation run after precondition validation. */
 	void on_actionSimulationStart_triggered();
@@ -175,6 +173,7 @@ private slots:
 	// Legacy slot: there is no matching QAction in mainwindow.ui at this moment.
 	void on_actionToolsExperimentation_triggered();
 	void on_actionToolsOptimizator_triggered();
+	void on_actionToolsExpressionBuilder_triggered();
 	void on_actionToolsDataAnalyzer_triggered();
 
     void on_actionSimulatorsPluginManager_triggered();

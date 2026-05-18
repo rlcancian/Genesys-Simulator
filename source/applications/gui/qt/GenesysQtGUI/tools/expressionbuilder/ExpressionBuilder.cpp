@@ -1,10 +1,10 @@
-#include "DialogExpressionBuilder.h"
-#include "ui_DialogExpressionBuilder.h"
+#include "ExpressionBuilder.h"
+#include "ui_ExpressionBuilder.h"
 #include <QMessageBox>
 
-DialogExpressionBuilder::DialogExpressionBuilder(QWidget *parent) :
+ExpressionBuilder::ExpressionBuilder(QWidget *parent) :
     QDialog(parent),
-    ui(new Ui::DialogExpressionBuilder),
+    ui(new Ui::ExpressionBuilder),
     currentExpression(nullptr)
 {
     ui->setupUi(this);
@@ -22,10 +22,10 @@ DialogExpressionBuilder::DialogExpressionBuilder(QWidget *parent) :
     parameterWidget->setLayout(parameterLayout);
     
     // Connect signals
-    connect(treeCategories, &QTreeWidget::itemClicked, this, &DialogExpressionBuilder::on_categorySelected);
-    connect(listExpressions, &QListWidget::itemClicked, this, &DialogExpressionBuilder::on_expressionSelected);
-    connect(btnCopyToClipboard, &QPushButton::clicked, this, &DialogExpressionBuilder::on_copyToClipboard_clicked);
-    connect(btnClose, &QPushButton::clicked, this, &DialogExpressionBuilder::on_close_clicked);
+    connect(treeCategories, &QTreeWidget::itemClicked, this, &ExpressionBuilder::on_categorySelected);
+    connect(listExpressions, &QListWidget::itemClicked, this, &ExpressionBuilder::on_expressionSelected);
+    connect(btnCopyToClipboard, &QPushButton::clicked, this, &ExpressionBuilder::on_copyToClipboard_clicked);
+    connect(btnClose, &QPushButton::clicked, this, &ExpressionBuilder::on_close_clicked);
     
     // Initialize expression categories
     initializeCategories();
@@ -40,12 +40,12 @@ DialogExpressionBuilder::DialogExpressionBuilder(QWidget *parent) :
     treeCategories->expandAll();
 }
 
-DialogExpressionBuilder::~DialogExpressionBuilder()
+ExpressionBuilder::~ExpressionBuilder()
 {
     delete ui;
 }
 
-void DialogExpressionBuilder::initializeCategories()
+void ExpressionBuilder::initializeCategories()
 {
     // Math Category
     ExpressionCategory mathCategory;
@@ -198,7 +198,7 @@ void DialogExpressionBuilder::initializeCategories()
     categories.append(distCategory);
 }
 
-void DialogExpressionBuilder::on_categorySelected(QTreeWidgetItem *item, int column)
+void ExpressionBuilder::on_categorySelected(QTreeWidgetItem *item, int column)
 {
     if (!item) return;
     
@@ -225,7 +225,7 @@ void DialogExpressionBuilder::on_categorySelected(QTreeWidgetItem *item, int col
     }
 }
 
-void DialogExpressionBuilder::on_expressionSelected(QListWidgetItem *item)
+void ExpressionBuilder::on_expressionSelected(QListWidgetItem *item)
 {
     if (!item) return;
     
@@ -249,7 +249,7 @@ void DialogExpressionBuilder::on_expressionSelected(QListWidgetItem *item)
     updateExpressionPreview();
 }
 
-void DialogExpressionBuilder::updateParameterForm()
+void ExpressionBuilder::updateParameterForm()
 {
     // Clear existing parameter inputs
     QLayoutItem *item;
@@ -268,20 +268,20 @@ void DialogExpressionBuilder::updateParameterForm()
         input->setPlaceholderText(param.description);
         
         // Connect to update preview on change
-        connect(input, &QLineEdit::textChanged, this, &DialogExpressionBuilder::updateExpressionPreview);
+        connect(input, &QLineEdit::textChanged, this, &ExpressionBuilder::updateExpressionPreview);
         
         parameterInputs[param.name] = input;
         parameterLayout->addRow(param.name + ":", input);
     }
 }
 
-void DialogExpressionBuilder::updateExpressionPreview()
+void ExpressionBuilder::updateExpressionPreview()
 {
     QString expression = buildExpression();
     expressionPreview->setText("<b>Expression:</b> " + expression);
 }
 
-QString DialogExpressionBuilder::buildExpression()
+QString ExpressionBuilder::buildExpression()
 {
     if (!currentExpression) return "";
     
@@ -299,7 +299,7 @@ QString DialogExpressionBuilder::buildExpression()
     return result;
 }
 
-void DialogExpressionBuilder::on_copyToClipboard_clicked()
+void ExpressionBuilder::on_copyToClipboard_clicked()
 {
     QString expression = buildExpression();
     if (expression.isEmpty()) {
@@ -313,12 +313,12 @@ void DialogExpressionBuilder::on_copyToClipboard_clicked()
     QMessageBox::information(this, "Expression Builder", "Expression copied to clipboard:\n" + expression);
 }
 
-void DialogExpressionBuilder::on_close_clicked()
+void ExpressionBuilder::on_close_clicked()
 {
     this->close();
 }
 
-void DialogExpressionBuilder::registerCategory(const ExpressionCategory &category)
+void ExpressionBuilder::registerCategory(const ExpressionCategory &category)
 {
     categories.append(category);
     
@@ -328,7 +328,7 @@ void DialogExpressionBuilder::registerCategory(const ExpressionCategory &categor
     item->setData(0, Qt::UserRole, QVariant::fromValue(category.name));
 }
 
-void DialogExpressionBuilder::registerExpression(const QString &categoryName, const ExpressionTemplate &expression)
+void ExpressionBuilder::registerExpression(const QString &categoryName, const ExpressionTemplate &expression)
 {
     // Find the category
     for (auto &category : categories) {
