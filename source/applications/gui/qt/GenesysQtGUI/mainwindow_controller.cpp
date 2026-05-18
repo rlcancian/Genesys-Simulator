@@ -32,6 +32,7 @@
 #include "dialogs/dialogpluginmanager.h"
 #include "dialogs/dialogsystempreferences.h"
 #include "dialogs/DialogFind.h"
+#include "dialogs/DialogExpressionBuilder.h"
 #include "dialogs/WebWorkerDialog.h"
 #include "controllers/SimulationController.h"
 
@@ -537,6 +538,11 @@ void MainWindow::on_actionAnimatePlot_triggered()
     }
 }
 
+void MainWindow::on_actionExpressionBuilder_triggered()
+{
+    DialogExpressionBuilder* dialog = new DialogExpressionBuilder(this);
+    dialog->show();
+}
 
 void MainWindow::on_actionViewConfigure_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.

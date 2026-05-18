@@ -146,6 +146,8 @@ private slots:
 	void on_actionAnimateStatistics_triggered();
 	void on_actionAnimatePlot_triggered();
 
+	void on_actionExpressionBuilder_triggered();
+
 	void on_actionSimulationStop_triggered();
     /** @brief Starts full simulation run after precondition validation. */
 	void on_actionSimulationStart_triggered();
