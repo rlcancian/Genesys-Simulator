@@ -28,7 +28,7 @@ O script mostra três opções:
 3. **Iniciar o servidor web do GenESyS**
    - usa o branch padrão do repositório remoto, resolvido pelo `HEAD` simbólico;
    - baixa ou atualiza o repositório Docker-local;
-   - compila o alvo `genesys_web_app`;
+   - compila o alvo `genesys_webhook`;
    - inicia o servidor web na porta `8080`.
 
 Na primeira execução, se a imagem Docker ainda não existir, o script avisa o

@@ -9,6 +9,8 @@ GENESYS_STATE_DIR="${GENESYS_STATE_DIR:-${SCRIPT_DIR}/.genesys-state}"
 GENESYS_NOVNC_PORT="${GENESYS_NOVNC_PORT:-6080}"
 GENESYS_WEB_PORT="${GENESYS_WEB_PORT:-8080}"
 GENESYS_DEFAULT_BRANCH="default"
+GENESYS_MODE="${GENESYS_MODE:-local}"
+GENESYS_PROJECT_DIR="${GENESYS_PROJECT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
 log() {
     printf '[exec_genesys] %s\n' "$*"
@@ -60,6 +62,16 @@ open_url() {
     fi
 }
 
+local_extra_args() {
+    LOCAL_EXTRA_ARGS=()
+    if [[ "${GENESYS_MODE}" == "local" ]]; then
+        LOCAL_EXTRA_ARGS+=(
+            --volume "${GENESYS_PROJECT_DIR}:/workspace/sources/local"
+            --env "GENESYS_LOCAL=1"
+        )
+    fi
+}
+
 open_url_when_ready() {
     local url="$1"
     local port="$2"
@@ -82,7 +94,9 @@ run_graphical_mode() {
     local url="http://localhost:${GENESYS_NOVNC_PORT}/vnc.html?autoconnect=1&resize=scale"
 
     log "${label}"
-    if [[ "${branch}" == "${GENESYS_DEFAULT_BRANCH}" ]]; then
+    if [[ "${GENESYS_MODE}" == "local" ]]; then
+        log "Modo local: usando código em '${GENESYS_PROJECT_DIR}'."
+    elif [[ "${branch}" == "${GENESYS_DEFAULT_BRANCH}" ]]; then
         log "O branch padrão do repositório remoto será detectado antes da execução."
     else
         log "O branch remoto '${branch}' será verificado antes da execução."
@@ -90,12 +104,14 @@ run_graphical_mode() {
     log "A interface gráfica abrirá no navegador: ${url}"
     open_url_when_ready "${url}" "${GENESYS_NOVNC_PORT}"
 
+    local_extra_args
     docker run --rm -it \
         --name "genesys-${mode}" \
         --publish "127.0.0.1:${GENESYS_NOVNC_PORT}:6080" \
         --env "GENESYS_REPO_URL=${GENESYS_REPO_URL}" \
         --volume "${GENESYS_STATE_DIR}:/workspace" \
         --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
+        "${LOCAL_EXTRA_ARGS[@]}" \
         "${GENESYS_IMAGE}" "${mode}" "${branch}"
 }
 
@@ -103,9 +119,14 @@ run_web_mode() {
     local branch="${GENESYS_DEFAULT_BRANCH}"
 
     log "Iniciando servidor web do GenESyS."
-    log "O branch padrão do repositório remoto será detectado antes da execução."
+    if [[ "${GENESYS_MODE}" == "local" ]]; then
+        log "Modo local: usando código em '${GENESYS_PROJECT_DIR}'."
+    else
+        log "O branch padrão do repositório remoto será detectado antes da execução."
+    fi
     log "Servidor disponível em http://localhost:${GENESYS_WEB_PORT}"
 
+    local_extra_args
     docker run --rm -it \
         --name "genesys-web" \
         --publish "${GENESYS_WEB_PORT}:${GENESYS_WEB_PORT}" \
@@ -113,18 +134,45 @@ run_web_mode() {
         --env "GENESYS_WEB_PORT=${GENESYS_WEB_PORT}" \
         --volume "${GENESYS_STATE_DIR}:/workspace" \
         --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
+        "${LOCAL_EXTRA_ARGS[@]}" \
         "${GENESYS_IMAGE}" web "${branch}"
 }
 
+run_attach_mode() {
+    log "Abrindo bash interativo no container."
+    if [[ "${GENESYS_MODE}" == "local" ]]; then
+        log "Modo local: código em '${GENESYS_PROJECT_DIR}' disponível em /workspace/sources/local."
+    fi
+
+    local_extra_args
+    docker run --rm -it \
+        --name "genesys-attach" \
+        --volume "${GENESYS_STATE_DIR}:/workspace" \
+        --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
+        "${LOCAL_EXTRA_ARGS[@]}" \
+        "${GENESYS_IMAGE}" attach
+}
+
 show_menu() {
+    local mode_label
+    if [[ "${GENESYS_MODE}" == "local" ]]; then
+        mode_label="local  →  ${GENESYS_PROJECT_DIR}"
+    else
+        mode_label="remoto →  ${GENESYS_REPO_URL}"
+    fi
+
     cat <<MENU
 
 GenESyS Docker
 ==============
+Modo atual: ${mode_label}
+
 1. Usar o GenESyS como usuário
 2. Usar o GenESyS como desenvolvedor
 3. Iniciar o servidor web do GenESyS
-4. Sair
+4. Abrir bash no container (attach)
+5. Alternar modo local/remoto
+6. Sair
 
 MENU
 }
@@ -149,6 +197,18 @@ main() {
                 run_web_mode
                 ;;
             4)
+                run_attach_mode
+                ;;
+            5)
+                if [[ "${GENESYS_MODE}" == "local" ]]; then
+                    GENESYS_MODE="remote"
+                    log "Modo alterado para: remoto."
+                else
+                    GENESYS_MODE="local"
+                    log "Modo alterado para: local (${GENESYS_PROJECT_DIR})."
+                fi
+                ;;
+            6)
                 log "Encerrando."
                 exit 0
                 ;;

@@ -7,6 +7,8 @@ GENESYS_SOURCES_DIR="${GENESYS_SOURCES_DIR:-${GENESYS_WORKSPACE}/sources}"
 GENESYS_WEB_PORT="${GENESYS_WEB_PORT:-8080}"
 GENESYS_VNC_GEOMETRY="${GENESYS_VNC_GEOMETRY:-1600x1000x24}"
 GENESYS_NOVNC_PORT="6080"
+GENESYS_LOCAL="${GENESYS_LOCAL:-0}"
+GENESYS_LOCAL_SOURCES="${GENESYS_LOCAL_SOURCES:-${GENESYS_SOURCES_DIR}/local}"
 
 usage() {
     cat <<USAGE
@@ -14,9 +16,13 @@ Uso interno:
   genesys-container gui <branch>
   genesys-container ide <branch>
   genesys-container web <branch>
+  genesys-container attach
 
 Use "default" como <branch> para resolver automaticamente o branch padrao
 apontado pelo HEAD simbolico do repositorio remoto.
+
+Em modo local (GENESYS_LOCAL=1), o argumento <branch> e ignorado e o codigo
+e lido de GENESYS_LOCAL_SOURCES (padrao: ${GENESYS_LOCAL_SOURCES}).
 USAGE
 }
 
@@ -130,7 +136,7 @@ build_gui() {
 }
 
 build_web() {
-    configure_and_build "$1" "genesys_web_app" "genesys-web" "genesys_web_app"
+    configure_and_build "$1" "web-app" "genesys-web" "genesys_webhook"
 }
 
 find_executable() {
@@ -183,38 +189,52 @@ run_web() {
     local repo_dir="$1"
     build_web "${repo_dir}"
     local executable
-    executable="$(find_executable "${repo_dir}" "build/genesys_web_app" "genesys_web_app")"
+    executable="$(find_executable "${repo_dir}" "build/web-app" "genesys_webhook")"
     log "Iniciando servidor web na porta ${GENESYS_WEB_PORT}."
     exec "${executable}" --port "${GENESYS_WEB_PORT}"
 }
 
 main() {
-    if [[ $# -ne 2 ]]; then
+    if [[ $# -lt 1 ]] || [[ $# -gt 2 ]]; then
         usage >&2
         exit 2
     fi
 
     local mode="$1"
-    local requested_branch="$2"
-    local branch
-    local repo_dir
-
-    branch="$(resolve_branch "${requested_branch}")"
-    if [[ "${requested_branch}" != "${branch}" ]]; then
-        log "Branch padrão remoto resolvido como '${branch}'."
-    fi
-
-    repo_dir="$(sync_repository "${branch}")"
 
     case "${mode}" in
-        gui)
-            run_gui "${repo_dir}"
+        attach)
+            log "Abrindo bash interativo no container."
+            exec /bin/bash
             ;;
-        ide)
-            run_ide "${repo_dir}"
-            ;;
-        web)
-            run_web "${repo_dir}"
+        gui|ide|web)
+            if [[ $# -ne 2 ]]; then
+                usage >&2
+                exit 2
+            fi
+
+            local requested_branch="$2"
+            local branch
+            local repo_dir
+
+            if [[ "${GENESYS_LOCAL}" == "1" ]]; then
+                log "Modo local ativado."
+                [[ -d "${GENESYS_LOCAL_SOURCES}" ]] || \
+                    die "Diretorio local '${GENESYS_LOCAL_SOURCES}' nao encontrado. Monte o repositorio com -v."
+                repo_dir="${GENESYS_LOCAL_SOURCES}"
+            else
+                branch="$(resolve_branch "${requested_branch}")"
+                if [[ "${requested_branch}" != "${branch}" ]]; then
+                    log "Branch padrao remoto resolvido como '${branch}'."
+                fi
+                repo_dir="$(sync_repository "${branch}")"
+            fi
+
+            case "${mode}" in
+                gui) run_gui "${repo_dir}";;
+                ide) run_ide "${repo_dir}";;
+                web) run_web "${repo_dir}";;
+            esac
             ;;
         *)
             usage >&2
