@@ -6,7 +6,6 @@ ARG GROUP_ID=1000
 ENV DEBIAN_FRONTEND=noninteractive
 ENV LANG=C.UTF-8
 ENV LC_ALL=C.UTF-8
-ENV QT_QPA_PLATFORM=xcb
 ENV QT_X11_NO_MITSHM=1
 
 RUN apt-get update && \
@@ -45,6 +44,7 @@ RUN apt-get update && \
         qt6-l10n-tools \
         qt6-tools-dev \
         qt6-tools-dev-tools \
+        qt6-wayland \
         qtcreator \
         valgrind \
         websockify \
@@ -77,4 +77,4 @@ RUN chmod +x /usr/local/bin/genesys-container
 USER genesys
 WORKDIR /workspace
 
-ENTRYPOINT ["/usr/local/bin/genesys-container"]
+CMD ["/usr/bin/bash"]

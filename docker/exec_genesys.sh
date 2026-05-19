@@ -10,6 +10,8 @@ GENESYS_NOVNC_PORT="${GENESYS_NOVNC_PORT:-6080}"
 GENESYS_WEB_PORT="${GENESYS_WEB_PORT:-8080}"
 GENESYS_DEFAULT_BRANCH="default"
 
+DISPLAY_ARGS="" # Configuration changes depending on the host's window manager
+
 log() {
     printf '[exec_genesys] %s\n' "$*"
 }
@@ -116,6 +118,32 @@ run_web_mode() {
         "${GENESYS_IMAGE}" web "${branch}"
 }
 
+run_tty_mode() {
+    log "Abrindo container em um terminal interativo"
+    log "O diretório do repositório no host será montado em /workspace"
+    log "Iniciando container como root"
+
+    local local_repo_dir="$(cd "$(dirname "$0")/.." && pwd)"
+    echo $local_repo_dir
+
+    docker run -it \
+        --user 0:0 \
+        $DISPLAY_ARGS \
+        --mount type=bind,src=$local_repo_dir,dst=/workspace \
+        --rm genesys-simulator:latest
+}
+
+detect_window_manager() {
+    if [ -n "$WAYLAND_DISPLAY" ]; then
+        DISPLAY_ARGS="-e WAYLAND_DISPLAY=$WAYLAND_DISPLAY \
+            -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+            -v $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY:$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY"
+    elif [ -n "$DISPLAY" ]; then
+        DISPLAY_ARGS="-e DISPLAY=$DISPLAY \
+            -v /tmp/.X11-unix:/tmp/.X11-unix"
+    fi 
+}
+
 show_menu() {
     cat <<MENU
 
@@ -124,7 +152,8 @@ GenESyS Docker
 1. Usar o GenESyS como usuário
 2. Usar o GenESyS como desenvolvedor
 3. Iniciar o servidor web do GenESyS
-4. Sair
+4. Carregar repositório local e iniciar terminal interativo
+5. Sair
 
 MENU
 }
@@ -133,6 +162,8 @@ main() {
     require_docker
     mkdir -p "${GENESYS_STATE_DIR}/home"
     ensure_image
+    detect_window_manager 
+    local_repo="$(cd "$(dirname "$0")/.." && pwd)"
 
     while true; do
         show_menu
@@ -149,6 +180,9 @@ main() {
                 run_web_mode
                 ;;
             4)
+                run_tty_mode "tty" $local_repo "Montando repositório local e abrindo terminal interativo" # The second argument here is useless
+                ;;
+            5)
                 log "Encerrando."
                 exit 0
                 ;;

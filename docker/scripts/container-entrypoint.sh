@@ -160,6 +160,16 @@ start_novnc() {
     log "Interface gráfica disponível em http://localhost:${GENESYS_NOVNC_PORT}/vnc.html?autoconnect=1&resize=scale"
 }
 
+set_qt_qpa_platform() {
+    if [ -n "$WAYLAND_DISPLAY" ]; then
+        export QT_QPA_PLATFORM=wayland
+    elif [ -n "$DISPLAY" ]; then
+        export QT_QPA_PLATFORM=xcb
+    else
+        export QT_QPA_PLATFORM=offscreen
+    fi
+}
+
 run_gui() {
     local repo_dir="$1"
     build_gui "${repo_dir}"
@@ -215,6 +225,9 @@ main() {
             ;;
         web)
             run_web "${repo_dir}"
+            ;;
+        tty)
+            break
             ;;
         *)
             usage >&2
