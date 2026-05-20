@@ -17,6 +17,7 @@ option(GENESYS_BUILD_KERNEL "Build kernel static libraries" ON)
 option(GENESYS_BUILD_PARSER "Build parser static library" ON)
 option(GENESYS_BUILD_PLUGINS "Build plugins static libraries" ON)
 option(GENESYS_BUILD_TOOLS "Build tools static libraries" OFF)
+option(GENESYS_BUILD_EXAMPLES "Build examples" OFF)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -75,6 +76,10 @@ endif()
 
 if(GENESYS_BUILD_TOOLS OR GENESYS_BUILD_GUI_APPLICATION)
     add_subdirectory(source/tools)
+endif()
+
+if(GENESYS_BUILD_EXAMPLES)
+    add_subdirectory(examples)
 endif()
 
 if(GENESYS_BUILD_TESTS)

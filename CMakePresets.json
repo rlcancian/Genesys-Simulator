@@ -138,6 +138,19 @@
         "GENESYS_BUILD_SMOKE_TESTS": "ON",
         "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
       }
+    },
+    {
+      "name": "examples",
+      "displayName": "Examples",
+      "description": "Builds standalone examples, including the distribution fit analysis tool.",
+      "inherits": "base",
+      "binaryDir": "${sourceDir}/build/examples",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "Release",
+        "GENESYS_BUILD_TESTS": "OFF",
+        "GENESYS_BUILD_EXAMPLES": "ON",
+        "GENESYS_BUILD_TERMINAL_APPLICATION": "OFF"
+      }
     }
   ],
   "buildPresets": [
@@ -209,6 +222,13 @@
       "configurePreset": "tests-smoke",
       "targets": [
         "genesys_smoke_tests"
+      ]
+    },
+    {
+      "name": "examples",
+      "configurePreset": "examples",
+      "targets": [
+        "genesys_fit_analysis"
       ]
     }
   ],
