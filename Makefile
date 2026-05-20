@@ -27,10 +27,16 @@ GUI_CMAKE_CACHE := $(GUI_BUILD_DIR)/CMakeCache.txt
 TERMINAL_CMAKE_CACHE := $(TERMINAL_BUILD_DIR)/CMakeCache.txt
 UNIT_TEST_CMAKE_CACHE := $(UNIT_TEST_BUILD_DIR)/CMakeCache.txt
 
+EXAMPLES_BUILD_DIR := build/examples
+EXAMPLES_BINARY := $(EXAMPLES_BUILD_DIR)/examples/genesys_fit_analysis
+EXAMPLES_DATA := examples/data/sample_data.csv
+EXAMPLES_CMAKE_CACHE := $(EXAMPLES_BUILD_DIR)/CMakeCache.txt
+
 .PHONY: \
 	gui run-gui gui-clean gui-reconfigure \
 	terminal run-terminal terminal-clean terminal-reconfigure \
 	unit-tests unit-tests-configure run-unit-tests test tests unit-tests-clean unit-tests-reconfigure \
+	examples run-examples examples-clean \
 	clean
 
 # ==========================================================
@@ -116,6 +122,25 @@ unit-tests-reconfigure:
 
 
 # ==========================================================
+# EXAMPLES
+# ==========================================================
+
+$(EXAMPLES_CMAKE_CACHE):
+	cmake --preset examples
+
+examples: $(EXAMPLES_CMAKE_CACHE)
+	cmake --build --preset examples -j$(JOBS)
+
+# Compila e executa o exemplo de análise de distribuições.
+# Passa o caminho do arquivo de dados a partir da raiz do projeto.
+run-examples: examples
+	$(EXAMPLES_BINARY) $(EXAMPLES_DATA)
+
+examples-clean:
+	rm -rf $(EXAMPLES_BUILD_DIR)
+
+
+# ==========================================================
 # CLEAN
 # ==========================================================
 
@@ -128,4 +153,4 @@ terminal-clean:
 unit-tests-clean:
 	rm -rf $(UNIT_TEST_BUILD_DIR)
 
-clean: gui-clean terminal-clean unit-tests-clean
+clean: gui-clean terminal-clean unit-tests-clean examples-clean

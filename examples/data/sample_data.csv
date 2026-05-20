@@ -1,0 +1,43 @@
+# Fictitious dataset: 40 samples drawn from Normal(mean=50, stddev=10)
+# Generated as quantiles of N(50,10) at positions p_i = (i+0.5)/40
+# Suitable for testing distribution fitting — expected best fit: Normal
+27.6
+32.2
+34.7
+36.5
+37.9
+39.1
+40.2
+41.1
+42.0
+42.9
+43.7
+44.4
+45.1
+45.8
+46.5
+47.2
+47.8
+48.4
+49.1
+49.7
+50.3
+50.9
+51.6
+52.2
+52.8
+53.5
+54.2
+54.9
+55.6
+56.3
+57.1
+58.0
+58.9
+59.8
+60.9
+62.1
+63.5
+65.3
+67.8
+72.4
