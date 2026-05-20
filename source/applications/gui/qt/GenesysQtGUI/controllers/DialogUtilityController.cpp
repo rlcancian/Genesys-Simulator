@@ -24,8 +24,8 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "../../../../../kernel/simulator/essentialPlugins/Entity.h"
-#include "../../../../../tools/FitterDefaultImpl.h"
-#include "../../../../../tools/HypothesisTesterDefaultImpl1.h"
+#include "../../../../../tools/analysis/FitterDefaultImpl.h"
+#include "../../../../../tools/analysis/HypothesisTesterDefaultImpl1.h"
 #include "../../../../../tools/OptimizerDefaultImpl1.h"
 #include "../../../../../tools/SolverDefaultImpl1.h"
 

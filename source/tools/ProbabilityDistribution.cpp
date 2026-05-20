@@ -13,7 +13,7 @@
 #include "ProbabilityDistribution.h"
 #include <cmath>
 #include <cassert>
-#include "TraitsTools.h"
+#include "analysis/TraitsTools.h"
 
 std::map<std::string, double>* ProbabilityDistribution::memory = new std::map<std::string, double>();
 Solver_if* ProbabilityDistribution::integrator = new TraitsTools<Solver_if>::Implementation(TraitsTools<Solver_if>::Precision, TraitsTools<Solver_if>::MaxSteps);

@@ -5,7 +5,7 @@
 #include <fstream>
 #include <string>
 
-#include "tools/SimulationResultsDataset.h"
+#include "tools/analysis/SimulationResultsDataset.h"
 
 namespace {
 	std::filesystem::path writeDatasetFile(const std::string& name, const std::string& contents) {

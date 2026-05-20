@@ -4,9 +4,9 @@
 #include "../../../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
-#include "tools/FitterDefaultImpl.h"
-#include "tools/HypothesisTesterDefaultImpl1.h"
-#include "tools/SimulationResultsDataset.h"
+#include "tools/analysis/FitterDefaultImpl.h"
+#include "tools/analysis/HypothesisTesterDefaultImpl1.h"
+#include "tools/analysis/SimulationResultsDataset.h"
 
 #include <QAction>
 #include <QCheckBox>
