@@ -66,8 +66,8 @@ local_extra_args() {
     LOCAL_EXTRA_ARGS=()
     if [[ "${GENESYS_MODE}" == "local" ]]; then
         LOCAL_EXTRA_ARGS+=(
-            --volume "${GENESYS_PROJECT_DIR}:/workspace/sources/local"
-            --env "GENESYS_LOCAL=1"
+            --volume "${GENESYS_PROJECT_DIR}:/workspace/sources/local:Z"
+            --env GENESYS_LOCAL=1
         )
     fi
 }
@@ -109,10 +109,61 @@ run_graphical_mode() {
         --name "genesys-${mode}" \
         --publish "127.0.0.1:${GENESYS_NOVNC_PORT}:6080" \
         --env "GENESYS_REPO_URL=${GENESYS_REPO_URL}" \
-        --volume "${GENESYS_STATE_DIR}:/workspace" \
         --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
         "${LOCAL_EXTRA_ARGS[@]}" \
         "${GENESYS_IMAGE}" "${mode}" "${branch}"
+}
+
+run_gui_release() {
+    local api_url="https://api.github.com/repos/joaomeloo/Genesys-Simulator/releases/latest"
+
+    log "Obtendo último release do GitHub..."
+
+    local release_url
+
+    release_url=$(
+        curl -fsSL "${api_url}" \
+        | jq -r '.assets[0].browser_download_url'
+    )
+
+    if [[ -z "${release_url}" || "${release_url}" == "null" ]]; then
+        log "Nenhum asset encontrado no latest release."
+        exit 1
+    fi
+
+    local release_dir="${HOME}/genesys-release"
+    local archive="${release_dir}/release.tar.gz"
+
+    mkdir -p "${release_dir}"
+
+    log "Baixando release:"
+    log "${release_url}"
+
+    curl -L "${release_url}" -o "${archive}"
+
+    log "Extraindo arquivos..."
+
+    tar -xzf "${archive}" -C "${release_dir}"
+
+    local binary
+
+    binary=$(
+        find "${release_dir}" \
+            -type f \
+            -name "genesys_qt_gui_application" \
+            | head -n1
+    )
+
+    if [[ -z "${binary}" ]]; then
+        log "Executável genesys_qt_gui_application não encontrado."
+        exit 1
+    fi
+
+    chmod +x "${binary}"
+
+    log "Iniciando GenESyS..."
+
+    exec "${binary}"
 }
 
 run_web_mode() {
@@ -132,7 +183,6 @@ run_web_mode() {
         --publish "${GENESYS_WEB_PORT}:${GENESYS_WEB_PORT}" \
         --env "GENESYS_REPO_URL=${GENESYS_REPO_URL}" \
         --env "GENESYS_WEB_PORT=${GENESYS_WEB_PORT}" \
-        --volume "${GENESYS_STATE_DIR}:/workspace" \
         --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
         "${LOCAL_EXTRA_ARGS[@]}" \
         "${GENESYS_IMAGE}" web "${branch}"
@@ -147,7 +197,6 @@ run_attach_mode() {
     local_extra_args
     docker run --rm -it \
         --name "genesys-attach" \
-        --volume "${GENESYS_STATE_DIR}:/workspace" \
         --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
         "${LOCAL_EXTRA_ARGS[@]}" \
         "${GENESYS_IMAGE}" attach
@@ -188,7 +237,7 @@ main() {
 
         case "${option}" in
             1)
-                run_graphical_mode "gui" "${GENESYS_DEFAULT_BRANCH}" "Compilando e abrindo GenesysQtGUI."
+                run_gui_release
                 ;;
             2)
                 run_graphical_mode "ide" "currentStable" "Abrindo QtCreator para desenvolvimento do GenESyS."
