@@ -288,11 +288,17 @@ genesys_add_tools_unit_test(genesys_test_tools_dataset_loader
     genesys_tools
 )
 
+genesys_add_tools_unit_test(genesys_test_tools_fitter_distributions
+    tools/analysis/test_fitter_distributions.cpp
+    genesys_tools
+)
+
 add_custom_target(genesys_tools_unit_tests
     DEPENDS
         genesys_test_tools_hypothesistester
         genesys_test_tools_simulation_results_dataset
         genesys_test_tools_dataset_loader
+        genesys_test_tools_fitter_distributions
 )
 
 add_custom_target(genesys_kernel_unit_tests
