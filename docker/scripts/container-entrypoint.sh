@@ -204,17 +204,21 @@ main() {
         exit 2
     fi
 
+    log "here1"
     local mode="$1"
     local requested_branch="$2"
     local branch
     local repo_dir
 
-    branch="$(resolve_branch "${requested_branch}")"
-    if [[ "${requested_branch}" != "${branch}" ]]; then
-        log "Branch padrão remoto resolvido como '${branch}'."
-    fi
+    if [ "$mode" != "tty" ]; then
+        echo "here"
+        branch="$(resolve_branch "${requested_branch}")"
+        if [[ "${requested_branch}" != "${branch}" ]]; then
+            log "Branch padrão remoto resolvido como '${branch}'."
+        fi
 
-    repo_dir="$(sync_repository "${branch}")"
+        repo_dir="$(sync_repository "${branch}")"
+    fi
 
     case "${mode}" in
         gui)
@@ -227,7 +231,7 @@ main() {
             run_web "${repo_dir}"
             ;;
         tty)
-            break
+            exec "/usr/bin/bash"
             ;;
         *)
             usage >&2

@@ -77,4 +77,4 @@ RUN chmod +x /usr/local/bin/genesys-container
 USER genesys
 WORKDIR /workspace
 
-CMD ["/usr/local/bin/genesys-container"]
+ENTRYPOINT ["/usr/local/bin/genesys-container"]
