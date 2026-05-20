@@ -130,7 +130,7 @@ run_tty_mode() {
         --user 0:0 \
         $DISPLAY_ARGS \
         --mount type=bind,src=$local_repo_dir,dst=/workspace \
-        --rm genesys-simulator:latest
+        --rm "${GENESYS_IMAGE}" "tty" ""
 }
 
 detect_window_manager() {
