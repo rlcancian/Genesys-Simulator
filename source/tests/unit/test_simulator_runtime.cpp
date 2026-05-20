@@ -58,7 +58,7 @@
 #include "kernel/util/Util.h"
 #include "tools/MassActionOdeSystem.h"
 #include "tools/RungeKutta4OdeSolver.h"
-#include "tools/SimulationResultsDataset.h"
+#include "tools/analysis/SimulationResultsDataset.h"
 #define private public
 #define protected public
 #include "../../plugins/data/Grouping/EntityGroup.h"

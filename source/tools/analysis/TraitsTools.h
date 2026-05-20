@@ -14,7 +14,7 @@
 #define TRAITSTOOLS_H
 
 // TOOLS
-#include "SolverDefaultImpl1.h"
+#include "tools/SolverDefaultImpl1.h"
 #include "HypothesisTesterDefaultImpl1.h"
 #include "HypothesisTester_if.h"
 #include "FitterDefaultImpl.h"

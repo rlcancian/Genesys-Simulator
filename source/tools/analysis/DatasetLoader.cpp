@@ -91,6 +91,25 @@ bool DatasetLoader::loadFromFile(const std::string& filename, char separator) {
 	return false;
 }
 
+bool DatasetLoader::loadFromVector(const std::vector<double>& values) {
+    clear();
+    if (values.empty()) {
+        _loaded = true;
+        return false;
+    }
+    for (double v : values) {
+        if (!std::isfinite(v)) {
+            clear();
+            return false;
+        }
+    }
+    _data = values;
+    _loaded = true;
+    _usable = true;
+    _computeStatistics();
+    return true;
+}
+
 void DatasetLoader::clear() {
 	_loaded = false;
 	_usable = false;

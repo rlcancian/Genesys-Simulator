@@ -2,7 +2,7 @@
 
 #include <cmath>
 
-#include "tools/HypothesisTesterDefaultImpl1.h"
+#include "tools/analysis/HypothesisTesterDefaultImpl1.h"
 
 namespace {
 

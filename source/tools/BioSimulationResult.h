@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "tools/SimulationResultsDataset.h"
+#include "tools/analysis/SimulationResultsDataset.h"
 
 struct BioSimulationSpeciesAmount {
 	std::string speciesName;

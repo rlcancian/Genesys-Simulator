@@ -1,18 +1,18 @@
 #include "ContinuousDistribution_if.h"
-#include "DataAnalyser_if.h"
-#include "DataSet_if.h"
+#include "analysis/DataAnalyser_if.h"
+#include "analysis/DataSet_if.h"
 #include "DiscreteDistribution_if.h"
 #include "Distribution_if.h"
 #include "FactorialDesign/FactorialDesign.h"
-#include "Fitter_if.h"
-#include "HypothesisTester_if.h"
+#include "analysis/Fitter_if.h"
+#include "analysis/HypothesisTester_if.h"
 #include "OdeSolver_if.h"
 #include "OdeSystem_if.h"
 #include "Optimizer_if.h"
 #include "Quadrature_if.h"
 #include "RootFinder_if.h"
 #include "Solver_if.h"
-#include "TraitsTools.h"
+#include "analysis/TraitsTools.h"
 
 #include <iostream>
 #include <string_view>

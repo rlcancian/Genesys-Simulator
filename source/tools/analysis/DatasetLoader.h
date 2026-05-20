@@ -15,6 +15,8 @@ public:
         char separator = ','
     );
 
+    bool loadFromVector(const std::vector<double>& values);
+
     void clear();
 
 public:

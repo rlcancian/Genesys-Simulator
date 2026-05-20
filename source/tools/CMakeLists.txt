@@ -1,11 +1,13 @@
 add_library(genesys_tools STATIC
-    DatasetLoader.cpp
-    FitterDummyImpl.cpp
-    HypothesisTesterDefaultImpl1.cpp
+    analysis/DatasetLoader.cpp
+    analysis/FitterDummyImpl.cpp
+    analysis/HypothesisTesterDefaultImpl1.cpp
+    analysis/DataAnalyserDefaultImpl.cpp
+    analysis/SimulationResultsDataset.cpp
+    analysis/SimulationResultsParser.cpp
     OptimizerDefaultImpl1.cpp
     ProbabilityDistribution.cpp
     ProbabilityDistributionBase.cpp
-    SimulationResultsDataset.cpp
     SolverDefaultImpl1.cpp
     FactorialDesign/FactorialDesign.cpp
 )

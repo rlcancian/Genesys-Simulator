@@ -7,7 +7,7 @@
 #include <string>
 #include <vector>
 
-#include "tools/DatasetLoader.h"
+#include "tools/analysis/DatasetLoader.h"
 
 namespace {
 	std::filesystem::path temporaryPath(const std::string& name, const std::string& extension) {
