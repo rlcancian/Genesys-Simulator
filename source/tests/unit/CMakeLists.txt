@@ -256,7 +256,7 @@ else()
 endif()
 
 add_executable(genesys_test_tools_hypothesistester
-    tools/test_tools_hypothesistester.cpp
+    tools/analysis/test_tools_hypothesistester.cpp
     ${CMAKE_SOURCE_DIR}/source/tools/analysis/HypothesisTesterDefaultImpl1.cpp
     ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistribution.cpp
     ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistributionBase.cpp
@@ -285,12 +285,12 @@ gtest_discover_tests(genesys_test_tools_hypothesistester
 set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit/tools)
 
 genesys_add_tools_unit_test(genesys_test_tools_simulation_results_dataset
-    tools/test_tools_simulation_results_dataset.cpp
+    tools/analysis/test_tools_simulation_results_dataset.cpp
     genesys_tools
 )
 
 genesys_add_tools_unit_test(genesys_test_tools_dataset_loader
-    tools/test_tools_dataset_loader.cpp
+    tools/analysis/test_tools_dataset_loader.cpp
     genesys_tools
 )
 
