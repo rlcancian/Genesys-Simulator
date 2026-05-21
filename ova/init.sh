@@ -60,9 +60,7 @@ until getent hosts github.com >/dev/null 2>&1; do
     sleep 1
 done
 
-# =========================
 # REPOSITÓRIO DEV
-# =========================
 
 if [ ! -d "$DEV_REPO_PATH" ]; then
 
@@ -83,9 +81,7 @@ cd "$DEV_REPO_PATH"
 
 git fetch origin || true
 
-# =========================
 # USER VIA GITHUB RELEASES
-# =========================
 
 INSTALLED_VERSION=$(cat "$USER_VERSION_FILE" 2>/dev/null || echo "none")
 
@@ -147,9 +143,7 @@ if [[ "$INSTALLED_VERSION" != "$LATEST_VERSION" ]]; then
     kill $PID 2>/dev/null || true
 fi
 
-# =========================
 # VALIDAÇÃO DE BRANCH
-# =========================
 
 # detecta detached HEAD
 if ! git symbolic-ref -q HEAD > /dev/null; then
@@ -161,9 +155,7 @@ fi
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 LAST_APPLIED_BRANCH=$(git config --get genesys.lastAppliedBranch || echo "")
 
-# =========================
-# CASO 1: usuário alterou config
-# =========================
+# caso 1: usuário alterou config
 
 if [[ "$DEV_BRANCH" != "$LAST_APPLIED_BRANCH" ]]; then
 
@@ -196,9 +188,7 @@ if [[ "$DEV_BRANCH" != "$LAST_APPLIED_BRANCH" ]]; then
     exit 0
 fi
 
-# =========================
-# CASO 2: usuário fez checkout manual
-# =========================
+# caso 2: usuário fez checkout manual
 
 if [[ "$CURRENT_BRANCH" != "$DEV_BRANCH" ]]; then
     gxmessage -center -buttons "OK" \
@@ -209,9 +199,7 @@ $'Nenhuma atualização será realizada.'
     exit 0
 fi
 
-# =========================
-# VERIFICA ALTERAÇÕES LOCAIS
-# =========================
+# verifica alterações locais
 
 if [[ -n "$(git status --porcelain)" ]]; then
     gxmessage -center -buttons "OK" \
@@ -223,9 +211,7 @@ $'Resolva manualmente com:\n'\
     exit 0
 fi
 
-# =========================
-# ATUALIZAÇÃO SEGURA
-# =========================
+# atualização segura
 
 git fetch origin
 
