@@ -1,4 +1,4 @@
-FROM ubuntu:24.04
+FROM debian:stable-slim
 
 ARG USER_ID=1000
 ARG GROUP_ID=1000
@@ -23,6 +23,7 @@ RUN apt-get update && \
         gh \
         git \
         graphviz \
+        jq \
         libgl1 \
         libgl1-mesa-dri \
         libglx-mesa0 \
@@ -45,11 +46,16 @@ RUN apt-get update && \
         qt6-l10n-tools \
         qt6-tools-dev \
         qt6-tools-dev-tools \
+        qt6-wayland \
         qtcreator \
         valgrind \
         websockify \
         x11vnc \
         xterm \
+        octave \
+        ngspice \
+        r-base \
+        libsbml5-dev \
         xvfb && \
     rm -rf /var/lib/apt/lists/*
 

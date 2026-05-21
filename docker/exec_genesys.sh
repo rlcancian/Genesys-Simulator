@@ -12,6 +12,9 @@ GENESYS_DEFAULT_BRANCH="default"
 GENESYS_MODE="${GENESYS_MODE:-local}"
 GENESYS_PROJECT_DIR="${GENESYS_PROJECT_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
+DISPLAY_ARGS="" # Configuration changes depending on the host's window manager
+GENESYS_VNC="${GENESYS_VNC:-auto}" # auto|0|1  — auto detecta pelo display do host
+
 log() {
     printf '[exec_genesys] %s\n' "$*"
 }
@@ -32,7 +35,7 @@ require_docker() {
 }
 
 image_exists() {
-    docker image inspect "${GENESYS_IMAGE}" >/dev/null 2>&1
+    return 1
 }
 
 build_image() {
@@ -91,7 +94,6 @@ run_graphical_mode() {
     local mode="$1"
     local branch="$2"
     local label="$3"
-    local url="http://localhost:${GENESYS_NOVNC_PORT}/vnc.html?autoconnect=1&resize=scale"
 
     log "${label}"
     if [[ "${GENESYS_MODE}" == "local" ]]; then
@@ -101,69 +103,54 @@ run_graphical_mode() {
     else
         log "O branch remoto '${branch}' será verificado antes da execução."
     fi
-    log "A interface gráfica abrirá no navegador: ${url}"
-    open_url_when_ready "${url}" "${GENESYS_NOVNC_PORT}"
+
+    local vnc_docker_args=()
+    if [[ "${GENESYS_VNC}" == "1" ]]; then
+        local url="http://localhost:${GENESYS_NOVNC_PORT}/vnc.html?autoconnect=1&resize=scale"
+        log "VNC ativo — interface gráfica disponível em: ${url}"
+        open_url_when_ready "${url}" "${GENESYS_NOVNC_PORT}"
+        vnc_docker_args+=(--publish "127.0.0.1:${GENESYS_NOVNC_PORT}:6080")
+    else
+        log "Display direto — usando display do host."
+    fi
 
     local_extra_args
     docker run --rm -it \
         --name "genesys-${mode}" \
-        --publish "127.0.0.1:${GENESYS_NOVNC_PORT}:6080" \
+        --env "GENESYS_VNC=${GENESYS_VNC}" \
         --env "GENESYS_REPO_URL=${GENESYS_REPO_URL}" \
         --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
+        --user 0:0 \
+        "${vnc_docker_args[@]}" \
+        $DISPLAY_ARGS \
         "${LOCAL_EXTRA_ARGS[@]}" \
         "${GENESYS_IMAGE}" "${mode}" "${branch}"
 }
 
 run_gui_release() {
-    local api_url="https://api.github.com/repos/joaomeloo/Genesys-Simulator/releases/latest"
+    log "Iniciando o GenESyS (versão Release) no Docker."
 
-    log "Obtendo último release do GitHub..."
-
-    local release_url
-
-    release_url=$(
-        curl -fsSL "${api_url}" \
-        | jq -r '.assets[0].browser_download_url'
-    )
-
-    if [[ -z "${release_url}" || "${release_url}" == "null" ]]; then
-        log "Nenhum asset encontrado no latest release."
-        exit 1
+    local vnc_docker_args=()
+    if [[ "${GENESYS_VNC}" == "1" ]]; then
+        local url="http://localhost:${GENESYS_NOVNC_PORT}/vnc.html?autoconnect=1&resize=scale"
+        log "VNC ativo — interface gráfica disponível em: ${url}"
+        open_url_when_ready "${url}" "${GENESYS_NOVNC_PORT}"
+        vnc_docker_args+=(--publish "127.0.0.1:${GENESYS_NOVNC_PORT}:6080")
+    else
+        log "Display direto — usando display do host."
     fi
 
-    local release_dir="${HOME}/genesys-release"
-    local archive="${release_dir}/release.tar.gz"
-
-    mkdir -p "${release_dir}"
-
-    log "Baixando release:"
-    log "${release_url}"
-
-    curl -L "${release_url}" -o "${archive}"
-
-    log "Extraindo arquivos..."
-
-    tar -xzf "${archive}" -C "${release_dir}"
-
-    local binary
-
-    binary=$(
-        find "${release_dir}" \
-            -type f \
-            -name "genesys_qt_gui_application" \
-            | head -n1
-    )
-
-    if [[ -z "${binary}" ]]; then
-        log "Executável genesys_qt_gui_application não encontrado."
-        exit 1
-    fi
-
-    chmod +x "${binary}"
-
-    log "Iniciando GenESyS..."
-
-    exec "${binary}"
+    local_extra_args
+    docker run --rm -it \
+        --name "genesys-release" \
+        --env "GENESYS_VNC=${GENESYS_VNC}" \
+        --env "GENESYS_REPO_URL=${GENESYS_REPO_URL}" \
+        --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
+        --user 0:0 \
+        "${vnc_docker_args[@]}" \
+        $DISPLAY_ARGS \
+        "${LOCAL_EXTRA_ARGS[@]}" \
+        "${GENESYS_IMAGE}" release
 }
 
 run_web_mode() {
@@ -184,6 +171,7 @@ run_web_mode() {
         --env "GENESYS_REPO_URL=${GENESYS_REPO_URL}" \
         --env "GENESYS_WEB_PORT=${GENESYS_WEB_PORT}" \
         --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
+        --user 0:0 \
         "${LOCAL_EXTRA_ARGS[@]}" \
         "${GENESYS_IMAGE}" web "${branch}"
 }
@@ -198,16 +186,55 @@ run_attach_mode() {
     docker run --rm -it \
         --name "genesys-attach" \
         --volume "${GENESYS_STATE_DIR}/home:/home/genesys" \
+        --user 0:0 \
         "${LOCAL_EXTRA_ARGS[@]}" \
         "${GENESYS_IMAGE}" attach
 }
 
+detect_window_manager() {
+    # Verifica se o host tem GPU acessível para o container
+    local gpu_args=""
+    if [[ -d "/dev/dri" ]]; then
+        gpu_args="--device /dev/dri"
+    else
+        gpu_args="-e LIBGL_ALWAYS_SOFTWARE=1"
+    fi
+
+    if [[ -v WAYLAND_DISPLAY && -n "$WAYLAND_DISPLAY" ]]; then
+        DISPLAY_ARGS="-e WAYLAND_DISPLAY=$WAYLAND_DISPLAY \
+            -e XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR \
+            -v $XDG_RUNTIME_DIR/$WAYLAND_DISPLAY:$XDG_RUNTIME_DIR/$WAYLAND_DISPLAY \
+            ${gpu_args}"
+        [[ "${GENESYS_VNC}" == "auto" ]] && GENESYS_VNC=0
+    elif [[ -v DISPLAY && -n "$DISPLAY" ]]; then
+        local xauth_file="${XAUTHORITY:-${HOME}/.Xauthority}"
+        # Permite que o container acesse o X server do host
+        xhost +local:docker >/dev/null 2>&1 || true
+        DISPLAY_ARGS="-e DISPLAY=$DISPLAY \
+            -v /tmp/.X11-unix:/tmp/.X11-unix \
+            ${gpu_args}"
+        if [[ -f "${xauth_file}" ]]; then
+            DISPLAY_ARGS="${DISPLAY_ARGS} \
+                -e XAUTHORITY=${xauth_file} \
+                -v ${xauth_file}:${xauth_file}:ro"
+        fi
+        [[ "${GENESYS_VNC}" == "auto" ]] && GENESYS_VNC=0
+    else
+        [[ "${GENESYS_VNC}" == "auto" ]] && GENESYS_VNC=1
+    fi
+}
+
 show_menu() {
-    local mode_label
+    local mode_label vnc_label
     if [[ "${GENESYS_MODE}" == "local" ]]; then
         mode_label="local  →  ${GENESYS_PROJECT_DIR}"
     else
         mode_label="remoto →  ${GENESYS_REPO_URL}"
+    fi
+    if [[ "${GENESYS_VNC}" == "1" ]]; then
+        vnc_label="VNC (http://localhost:${GENESYS_NOVNC_PORT})"
+    else
+        vnc_label="display direto (${DISPLAY:-${WAYLAND_DISPLAY:-sem display}})"
     fi
 
     cat <<MENU
@@ -215,13 +242,15 @@ show_menu() {
 GenESyS Docker
 ==============
 Modo atual: ${mode_label}
+Display:    ${vnc_label}
 
 1. Usar o GenESyS como usuário
 2. Usar o GenESyS como desenvolvedor
 3. Iniciar o servidor web do GenESyS
 4. Abrir bash no container (attach)
 5. Alternar modo local/remoto
-6. Sair
+6. Alternar VNC / display direto
+7. Sair
 
 MENU
 }
@@ -230,6 +259,7 @@ main() {
     require_docker
     mkdir -p "${GENESYS_STATE_DIR}/home"
     ensure_image
+    detect_window_manager
 
     while true; do
         show_menu
@@ -258,6 +288,15 @@ main() {
                 fi
                 ;;
             6)
+                if [[ "${GENESYS_VNC}" == "1" ]]; then
+                    GENESYS_VNC=0
+                    log "VNC desativado — display direto será usado."
+                else
+                    GENESYS_VNC=1
+                    log "VNC ativado — acesse http://localhost:${GENESYS_NOVNC_PORT}"
+                fi
+                ;;
+            7)
                 log "Encerrando."
                 exit 0
                 ;;
