@@ -7,6 +7,9 @@ GENESYS_SOURCES_DIR="${GENESYS_SOURCES_DIR:-${GENESYS_WORKSPACE}/sources}"
 GENESYS_WEB_PORT="${GENESYS_WEB_PORT:-8080}"
 GENESYS_VNC_GEOMETRY="${GENESYS_VNC_GEOMETRY:-1600x1000x24}"
 GENESYS_NOVNC_PORT="6080"
+GENESYS_LOCAL="${GENESYS_LOCAL:-0}"
+GENESYS_LOCAL_SOURCES="${GENESYS_LOCAL_SOURCES:-${GENESYS_SOURCES_DIR}/local}"
+GENESYS_VNC="${GENESYS_VNC:-1}" # 1=VNC (headless), 0=display direto do host
 
 usage() {
     cat <<USAGE
@@ -14,9 +17,14 @@ Uso interno:
   genesys-container gui <branch>
   genesys-container ide <branch>
   genesys-container web <branch>
+  genesys-container release
+  genesys-container attach
 
 Use "default" como <branch> para resolver automaticamente o branch padrao
 apontado pelo HEAD simbolico do repositorio remoto.
+
+Em modo local (GENESYS_LOCAL=1), o argumento <branch> e ignorado e o codigo
+e lido de GENESYS_LOCAL_SOURCES (padrao: ${GENESYS_LOCAL_SOURCES}).
 USAGE
 }
 
@@ -130,7 +138,7 @@ build_gui() {
 }
 
 build_web() {
-    configure_and_build "$1" "genesys_web_app" "genesys-web" "genesys_web_app"
+    configure_and_build "$1" "web-app" "genesys-web" "genesys_web_app"
 }
 
 find_executable() {
@@ -144,20 +152,38 @@ find_executable() {
     printf '%s\n' "${found}"
 }
 
-start_novnc() {
-    export DISPLAY=:99
-    export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-genesys}"
-    mkdir -p "${XDG_RUNTIME_DIR}"
+setup_display() {
+    if [[ "${GENESYS_VNC}" == "1" ]]; then
+        export DISPLAY=:99
+        export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/tmp/runtime-genesys}"
+        mkdir -p "${XDG_RUNTIME_DIR}"
 
-    log "Iniciando desktop virtual para aplicações gráficas."
-    Xvfb "${DISPLAY}" -screen 0 "${GENESYS_VNC_GEOMETRY}" >/tmp/genesys-xvfb.log 2>&1 &
-    sleep 1
-    openbox >/tmp/genesys-openbox.log 2>&1 &
-    x11vnc -display "${DISPLAY}" -forever -shared -nopw -quiet -listen 0.0.0.0 >/tmp/genesys-x11vnc.log 2>&1 &
-    websockify --web=/usr/share/novnc 0.0.0.0:${GENESYS_NOVNC_PORT} localhost:5900 >/tmp/genesys-novnc.log 2>&1 &
-    sleep 2
+        log "Iniciando desktop virtual para aplicações gráficas."
+        Xvfb "${DISPLAY}" -screen 0 "${GENESYS_VNC_GEOMETRY}" >/tmp/genesys-xvfb.log 2>&1 &
+        sleep 1
+        openbox >/tmp/genesys-openbox.log 2>&1 &
+        x11vnc -display "${DISPLAY}" -forever -shared -nopw -quiet -listen 0.0.0.0 >/tmp/genesys-x11vnc.log 2>&1 &
+        websockify --web=/usr/share/novnc 0.0.0.0:${GENESYS_NOVNC_PORT} localhost:5900 >/tmp/genesys-novnc.log 2>&1 &
+        sleep 2
 
-    log "Interface gráfica disponível em http://localhost:${GENESYS_NOVNC_PORT}/vnc.html?autoconnect=1&resize=scale"
+        export QT_QPA_PLATFORM=xcb
+        export QT_X11_NO_MITSHM=1
+        export QT_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/qt6/plugins"
+        log "Interface gráfica disponível em http://localhost:${GENESYS_NOVNC_PORT}/vnc.html?autoconnect=1&resize=scale"
+    else
+        # Display direto: o host passou DISPLAY ou WAYLAND_DISPLAY via -e no docker run
+        if [[ -n "${WAYLAND_DISPLAY:-}" ]]; then
+            export QT_QPA_PLATFORM=wayland
+            log "Usando display Wayland do host (${WAYLAND_DISPLAY})."
+        elif [[ -n "${DISPLAY:-}" ]]; then
+            export QT_QPA_PLATFORM=xcb
+            export QT_X11_NO_MITSHM=1
+            export QT_PLUGIN_PATH="/usr/lib/x86_64-linux-gnu/qt6/plugins"
+            log "Usando display X11 do host (${DISPLAY})."
+        else
+            log "AVISO: nenhum display detectado. Defina DISPLAY/WAYLAND_DISPLAY ou ative o VNC."
+        fi
+    fi
 }
 
 run_gui() {
@@ -165,7 +191,7 @@ run_gui() {
     build_gui "${repo_dir}"
     local executable
     executable="$(find_executable "${repo_dir}" "build/gui-app" "genesys_qt_gui_application")"
-    start_novnc
+    setup_display
     log "Abrindo GenesysQtGUI."
     exec "${executable}"
 }
@@ -174,7 +200,7 @@ run_ide() {
     local repo_dir="$1"
     log "Pré-configurando projeto CMake para QtCreator."
     cmake -S "${repo_dir}" --preset gui-app
-    start_novnc
+    setup_display
     log "Abrindo QtCreator com o projeto GenESyS."
     exec qtcreator "${repo_dir}/CMakeLists.txt"
 }
@@ -183,38 +209,110 @@ run_web() {
     local repo_dir="$1"
     build_web "${repo_dir}"
     local executable
-    executable="$(find_executable "${repo_dir}" "build/genesys_web_app" "genesys_web_app")"
+    executable="$(find_executable "${repo_dir}" "build/web-app" "genesys_web_app")"
     log "Iniciando servidor web na porta ${GENESYS_WEB_PORT}."
     exec "${executable}" --port "${GENESYS_WEB_PORT}"
 }
 
+run_release() {
+    local api_url="https://api.github.com/repos/rlcancian/Genesys-Simulator/releases/latest"
+
+    log "Obtendo último release do GitHub..."
+
+    local release_url
+    release_url=$(
+        curl -fsSL "${api_url}" \
+        | jq -r '.assets[0].browser_download_url'
+    )
+
+    if [[ -z "${release_url}" || "${release_url}" == "null" ]]; then
+        log "Nenhum asset encontrado no latest release."
+        exit 1
+    fi
+
+    local release_dir="/home/genesys/genesys-release"
+    local archive="${release_dir}/release.tar.gz"
+
+    mkdir -p "${release_dir}"
+
+    log "Baixando release:"
+    log "${release_url}"
+
+    curl -L "${release_url}" -o "${archive}"
+
+    log "Extraindo arquivos..."
+
+    tar -xzf "${archive}" -C "${release_dir}"
+
+    local binary
+    binary=$(
+        find "${release_dir}" \
+            -type f \
+            -name "genesys_qt_gui_application" \
+            | head -n1
+    )
+
+    if [[ -z "${binary}" ]]; then
+        log "Executável genesys_qt_gui_application não encontrado."
+        exit 1
+    fi
+
+    chmod +x "${binary}"
+
+    setup_display
+
+    log "Executando release."
+    exec "${binary}"
+}
+
 main() {
-    if [[ $# -ne 2 ]]; then
+    if [[ $# -lt 1 ]] || [[ $# -gt 2 ]]; then
         usage >&2
         exit 2
     fi
 
     local mode="$1"
-    local requested_branch="$2"
-    local branch
-    local repo_dir
-
-    branch="$(resolve_branch "${requested_branch}")"
-    if [[ "${requested_branch}" != "${branch}" ]]; then
-        log "Branch padrão remoto resolvido como '${branch}'."
-    fi
-
-    repo_dir="$(sync_repository "${branch}")"
 
     case "${mode}" in
-        gui)
-            run_gui "${repo_dir}"
+        attach)
+            log "Abrindo bash interativo no container."
+            exec /bin/bash
             ;;
-        ide)
-            run_ide "${repo_dir}"
+        release)
+            if [[ $# -ne 1 ]]; then
+                usage >&2
+                exit 2
+            fi
+            run_release
             ;;
-        web)
-            run_web "${repo_dir}"
+        gui|ide|web)
+            if [[ $# -ne 2 ]]; then
+                usage >&2
+                exit 2
+            fi
+
+            local requested_branch="$2"
+            local branch
+            local repo_dir
+
+            if [[ "${GENESYS_LOCAL}" == "1" ]]; then
+                log "Modo local ativado."
+                [[ -d "${GENESYS_LOCAL_SOURCES}" ]] || \
+                    die "Diretorio local '${GENESYS_LOCAL_SOURCES}' nao encontrado. Monte o repositorio com -v."
+                repo_dir="${GENESYS_LOCAL_SOURCES}"
+            else
+                branch="$(resolve_branch "${requested_branch}")"
+                if [[ "${requested_branch}" != "${branch}" ]]; then
+                    log "Branch padrao remoto resolvido como '${branch}'."
+                fi
+                repo_dir="$(sync_repository "${branch}")"
+            fi
+
+            case "${mode}" in
+                gui) run_gui "${repo_dir}";;
+                ide) run_ide "${repo_dir}";;
+                web) run_web "${repo_dir}";;
+            esac
             ;;
         *)
             usage >&2
