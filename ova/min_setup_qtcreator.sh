@@ -136,7 +136,7 @@ setup_startup_script() {
   AUTOSTART_DIR="$USER_HOME/.config/autostart"
   AUTOSTART_FILE="$AUTOSTART_DIR/genesys_init.desktop"
 
-  SCRIPT_URL="https://raw.githubusercontent.com/genJTests/scripts/refs/heads/main/init.sh"
+  SCRIPT_URL="https://raw.githubusercontent.com/Vitor-Calegari/Genesys-Simulator/refs/heads/currentStable-ova/ova/init.sh"
 
   echo "[+] Criando diretórios..."
   mkdir -p "$USER_HOME/.local/bin"
