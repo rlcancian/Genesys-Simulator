@@ -136,7 +136,7 @@ setup_startup_script() {
   AUTOSTART_DIR="$USER_HOME/.config/autostart"
   AUTOSTART_FILE="$AUTOSTART_DIR/genesys_init.desktop"
 
-  SCRIPT_URL="https://raw.githubusercontent.com/rlcancian/Genesys-Simulator/refs/heads/currentStable/ova/init.sh"
+  SCRIPT_URL="https://raw.githubusercontent.com/genJTests/scripts/refs/heads/main/init.sh"
 
   echo "[+] Criando diretórios..."
   mkdir -p "$USER_HOME/.local/bin"
@@ -169,6 +169,16 @@ EOF
   chown -R "$USER_NAME:$USER_NAME" "$USER_HOME/.config"
   chown "$USER_NAME:$USER_NAME" "$USER_HOME/Documents"
   chmod +x "$AUTOSTART_FILE"
+}
+
+create_ova_version_file() {
+  echo "[+] Criando /etc/genesys_ova_version"
+
+  cat > /etc/genesys_ova_version <<EOF
+1.0
+EOF
+
+  chmod 644 /etc/genesys_ova_version
 }
 
 install_guest_add_util() {
@@ -267,6 +277,7 @@ main() {
   setup_startup_script
   install_guest_add_util
   setup_ova_updater
+  create_ova_version_file
   cleanup_system
   trim_and_zerofill
 
