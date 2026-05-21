@@ -136,7 +136,7 @@ setup_startup_script() {
   AUTOSTART_DIR="$USER_HOME/.config/autostart"
   AUTOSTART_FILE="$AUTOSTART_DIR/genesys_init.desktop"
 
-  SCRIPT_URL="https://raw.githubusercontent.com/Vitor-Calegari/Genesys-Simulator/refs/heads/currentStable-ova/ova/init.sh"
+  SCRIPT_URL="https://raw.githubusercontent.com/rlcancian/Genesys-Simulator/refs/heads/currentStable/ova/init.sh"
 
   echo "[+] Criando diretórios..."
   mkdir -p "$USER_HOME/.local/bin"
@@ -182,7 +182,7 @@ EOF
 }
 
 install_guest_add_util() {
-  local URL="https://raw.githubusercontent.com/Vitor-Calegari/Genesys-Simulator/refs/heads/currentStable-ova/ova/install_guest_add.sh"
+  local URL="https://raw.githubusercontent.com/rlcancian/Genesys-Simulator/refs/heads/currentStable/ova/install_guest_add.sh"
   local TARGET="/usr/local/bin/install_guest_add"
 
   echo "[+] Instalando utilitário install_guest_add..."
