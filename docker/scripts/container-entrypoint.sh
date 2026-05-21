@@ -215,7 +215,7 @@ run_web() {
 }
 
 run_release() {
-    local api_url="https://api.github.com/repos/joaomeloo/Genesys-Simulator/releases/latest"
+    local api_url="https://api.github.com/repos/rlcancian/Genesys-Simulator/releases/latest"
 
     log "Obtendo último release do GitHub..."
 
