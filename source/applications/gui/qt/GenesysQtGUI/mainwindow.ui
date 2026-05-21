@@ -929,6 +929,8 @@
      <addaction name="actionAnimateStatistics"/>
      <addaction name="actionAnimatePlot"/>
      <addaction name="separator"/>
+     <addaction name="actionExpressionBuilder"/>
+     <addaction name="separator"/>
      <addaction name="actionAnimateVariable"/>
      <addaction name="actionAnimateResource"/>
      <addaction name="actionAnimateQueue"/>
@@ -999,6 +1001,7 @@
     </property>
     <addaction name="actionToolsDataAnalyzer"/>
     <addaction name="actionToolsOptimizator"/>
+	<addaction name="actionToolsExpressionBuilder"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuSimulator">
@@ -1898,6 +1901,18 @@ li.checked::marker { content: &quot;\2612&quot;; }
     <string>Resource</string>
    </property>
   </action>
+  <action name="actionExpressionBuilder">
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/icons3/resources/icons/pack3/ico/calculator.ico</normaloff>:/icons3/resources/icons/pack3/ico/calculator.ico</iconset>
+   </property>
+   <property name="text">
+    <string>Expression Builder</string>
+   </property>
+   <property name="toolTip">
+    <string>Open Expression Builder</string>
+   </property>
+  </action>
   <action name="actionAnimateQueue">
    <property name="checkable">
     <bool>true</bool>
@@ -2229,6 +2244,14 @@ li.checked::marker { content: &quot;\2612&quot;; }
    </property>
    <property name="text">
     <string>Optimization</string>
+   </property>
+  </action>
+    <action name="actionToolsExpressionBuilder">
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/icons3/resources/icons/pack3/ico/calculator.ico</normaloff>:/icons3/resources/icons/pack3/ico/calculator.ico</iconset>   </property>
+   <property name="text">
+    <string>ExpressionBuilder</string>
    </property>
   </action>
   <action name="actionToolsParserGrammarChecker">

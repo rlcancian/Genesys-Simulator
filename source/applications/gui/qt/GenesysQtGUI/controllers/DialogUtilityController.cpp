@@ -13,6 +13,7 @@
 #include "../graphicals/ModelGraphicsScene.h"
 #include "../tools/dataanalyzer/DataAnalyzerWindow.h"
 #include "../tools/optimizer/OptimizerWindow.h"
+#include "../tools/expressionbuilder/ExpressionBuilder.h"
 
 #include "kernel/simulator/Simulator.h"
 #include "../../../../../kernel/simulator/model/Model.h"
@@ -1283,6 +1284,15 @@ void DialogUtilityController::onActionToolsParserGrammarCheckerTriggered() {
 // Launch the standalone-leaning Optimizer workstation connected to the current model when available.
 void DialogUtilityController::onActionToolsOptimizatorTriggered() {
     auto* window = new OptimizerWindow(_simulator, _ownerWidget);
+    window->setAttribute(Qt::WA_DeleteOnClose, true);
+    window->show();
+    window->raise();
+    window->activateWindow();
+}
+
+// Launch the standalone-leaning Optimizer workstation connected to the current model when available.
+void DialogUtilityController::onActionToolsExpressionBuilderTriggered() {
+    auto* window = new ExpressionBuilder(_ownerWidget);
     window->setAttribute(Qt::WA_DeleteOnClose, true);
     window->show();
     window->raise();

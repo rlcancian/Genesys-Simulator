@@ -520,6 +520,13 @@ void MainWindow::on_actionToolsOptimizator_triggered() {
 }
 
 
+void MainWindow::on_actionToolsExpressionBuilder_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionToolsExpressionBuilderTriggered();
+    }
+}
+
 
 void MainWindow::on_actionToolsDataAnalyzer_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
