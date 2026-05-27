@@ -162,7 +162,7 @@ private: //1::1
 	std::string _attributeName = DEFAULT.attributeName;
 private: // inner internal elements
 	StatisticsCollector* _cstatNumberInQueue = nullptr;
-	StatisticsCollector* _cstatTimeInQueue;
+	StatisticsCollector* _cstatTimeInQueue = nullptr;
 };
 
 #endif /* QUEUE_H */

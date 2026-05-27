@@ -79,7 +79,7 @@ public:
 	static std::string convertEnumToStr(TestCondition condition);
 public: // constructors
 	PickStation(Model* model, std::string name = "");
-	virtual ~PickStation() = default;
+	virtual ~PickStation() override;
 public: // virtual
 	virtual std::string show() override;
 public:

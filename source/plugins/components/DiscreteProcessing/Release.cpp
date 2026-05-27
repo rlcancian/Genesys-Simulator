@@ -51,6 +51,13 @@ Release::Release(Model* model, std::string name) : ModelComponent(model, Util::T
 	_addSimulationControl(propReleaseRequests);
 }
 
+Release::~Release() {
+	for (SeizableItem* item : *_releaseRequests->list()) {
+		delete item;
+	}
+	delete _releaseRequests;
+}
+
 std::string Release::show() {
 	std::string txt = ModelComponent::show() +
 			"priority=" + std::to_string(_priority) +
@@ -111,7 +118,8 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 				index = 0;
 				bestValue = std::numeric_limits<double>::min();
 				for (ModelDataDefinition* dd : *seizable->getSet()->getElementSet()->list()) {
-					resource = static_cast<Resource*> (dd);
+					resource = dynamic_cast<Resource*>(dd);
+					if (resource == nullptr) { index++; continue; }
 					value = resource->getCapacity() - resource->getNumberBusy();
 					if (value > bestValue) {
 						bestValue = value;
@@ -131,7 +139,8 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 				bestValue = std::numeric_limits<double>::max();
 				index = 0;
 				for (ModelDataDefinition* dd : *seizable->getSet()->getElementSet()->list()) {
-					resource = static_cast<Resource*> (dd);
+					resource = dynamic_cast<Resource*>(dd);
+					if (resource == nullptr) { index++; continue; }
 					value = resource->getNumberBusy();
 					if (value < bestValue) {
 						bestValue = value;
@@ -153,14 +162,15 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 				unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
 				unsigned int numRecAvaliable = 0;
 				for (ModelDataDefinition* dd : *seizable->getSet()->getElementSet()->list()) {
-					resource = static_cast<Resource*> (dd);
+					resource = dynamic_cast<Resource*>(dd);
+					if (resource == nullptr) { continue; }
 					if ((resource->getCapacity() - resource->getNumberBusy()) >= quantity) { // resource "avaliable"
 						numRecAvaliable++;
 					}
 				}
 				unsigned int lastPreferedOrder = seizable->getLastPreferedOrder();
 				if (numRecAvaliable == 0) {
-					// to avoid the entity always to be waiting on the queue of the resource index 0 when there is no avaliable resource, 
+					// to avoid the entity always to be waiting on the queue of the resource index 0 when there is no avaliable resource,
 					// it will be waiting on the "preferedOrder"-th index member
 					if (++lastPreferedOrder < seizable->getSet()->getElementSet()->size()) {
 						index = lastPreferedOrder;
@@ -173,7 +183,8 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 						trace("There isn't " + std::to_string(lastPreferedOrder) + " available resources. Preferable order is now the 1th", TraceManager::Level::L9_mostDetailed);
 					}
 					for (ModelDataDefinition* dd : *seizable->getSet()->getElementSet()->list()) {
-						resource = static_cast<Resource*> (dd);
+						resource = dynamic_cast<Resource*>(dd);
+						if (resource == nullptr) { index++; continue; }
 						if (resource->getCapacity() - resource->getNumberBusy() >= quantity) { // resource "avaliable"
 							bestValue++; // bestValue is always the i-th available resource index
 							if (bestValue <= lastPreferedOrder) { // changed "==" to "<=" so if not enought available resources, entity will not be always on the index=0 resource's queue
@@ -197,8 +208,11 @@ Resource* Release::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* 
 				break;
 		}
 		trace("Member of set " + set->getName() + " chosen index " + std::to_string(index), TraceManager::Level::L8_detailed);
-		resource = static_cast<Resource*> (set->getElementSet()->getAtRank(index));
-		assert(resource != nullptr);
+		resource = dynamic_cast<Resource*>(set->getElementSet()->getAtRank(index));
+		if (resource == nullptr) {
+			traceError("Set member at index " + std::to_string(index) + " of \"" + set->getName() + "\" is not a Resource");
+			return nullptr;
+		}
 	}
 	return resource;
 }
@@ -297,7 +311,7 @@ ModelComponent* Release::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Release instance: " + std::string(e.what()));
 	}
 	return newComponent;
 

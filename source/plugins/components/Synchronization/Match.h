@@ -55,7 +55,7 @@ public:
 	static std::string convertEnumToStr(Rule rule);
 public: // constructors
 	Match(Model* model, std::string name = "");
-	virtual ~Match() = default;
+	virtual ~Match() override;
 public: // virtual
 	virtual std::string show() override;
 public: // static

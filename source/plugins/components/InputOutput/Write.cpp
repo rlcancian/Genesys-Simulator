@@ -26,6 +26,10 @@ ModelDataDefinition* Write::NewInstance(Model* model, std::string name) {
 	return new Write(model, name);
 }
 
+Write::~Write() {
+	delete _writeElements;
+}
+
 std::string Write::convertEnumToStr(WriteToType type) {
 	switch (static_cast<int> (type)) {
 		case 0: return "SCREEN";
@@ -61,7 +65,7 @@ ModelComponent* Write::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Write instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

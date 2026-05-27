@@ -29,6 +29,13 @@ ModelDataDefinition* PickStation::NewInstance(Model* model, std::string name) {
 	return new PickStation(model, name);
 }
 
+PickStation::~PickStation() {
+	for (PickableStationItem* item : *_pickableStationItens->list()) {
+		delete item;
+	}
+	delete _pickableStationItens;
+}
+
 void PickStation::setPickConditionExpression(bool _pickConditionExpression) {
 	this->_pickConditionExpression = _pickConditionExpression;
 }

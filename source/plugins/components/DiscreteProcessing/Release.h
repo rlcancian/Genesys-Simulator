@@ -64,7 +64,7 @@ Set Index Member index of the resource set that the entity will release.
 class Release : public ModelComponent {
 public:
 	Release(Model* model, std::string name = "");
-	virtual ~Release() = default;
+	virtual ~Release() override;
 public:
 	virtual std::string show() override;
 public: //static
