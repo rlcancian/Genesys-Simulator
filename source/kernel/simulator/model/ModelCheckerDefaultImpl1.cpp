@@ -61,8 +61,8 @@ void ModelCheckerDefaultImpl1::_recursiveConnectedTo(PluginManager* pluginManage
 			*drenoFound = false;
 		} else {
 			ModelComponent* nextComp;
-			for (std::map<unsigned int, Connection*>::iterator it = comp->getConnectionManager()->connections()->begin(); it != comp->getConnectionManager()->connections()->end(); it++) {
-				nextComp = (*it).second->component;
+			for (const auto& [port, conn] : *comp->getConnectionManager()->connections()) {
+				nextComp = conn->component;
 				if (visited->find(nextComp) == visited->list()->end()) { // not visited yet
 					*drenoFound = false;
 					Util::IncIndent();
@@ -89,9 +89,7 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 		// Use automatic local containers to avoid leaking traversal bookkeeping structures.
 		List<ModelComponent*> visited;
 		List<ModelComponent*> unconnected;
-		ModelComponent* comp;
-		for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); it++) {
-			comp = (*it);
+		for (ModelComponent* comp : *_model->getComponentManager()) {
 			plugin = pluginManager->find(comp->getClassname());
 			assert(plugin != nullptr);
 			if (plugin->getPluginInfo()->isSource() || plugin->getPluginInfo()->isReceiveTransfer()) { //(dynamic_cast<SourceModelComponent*> (comp) != nullptr) {
@@ -104,8 +102,7 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 			}
 		}
 		// check if any component remains unconnected
-		for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); it++) {
-			comp = (*it);
+		for (ModelComponent* comp : *_model->getComponentManager()) {
 			if (visited.find(comp) == visited.list()->end()) { //not found
 				resultAll = false;
 				_model->getTracer()->traceError("Component \"" + comp->getName() + "\" is unconnected.");
@@ -127,8 +124,8 @@ bool ModelCheckerDefaultImpl1::checkSymbols() {
 		Util::IncIndent();
 		{
 			//List<ModelComponent*>* components = _model->getComponents();
-			for (std::list<ModelComponent*>::iterator it = _model->getComponentManager()->begin(); it != _model->getComponentManager()->end(); it++) {
-				res &= (*it)->Check((*it));
+			for (ModelComponent* comp : *_model->getComponentManager()) {
+				res &= comp->Check(comp);
 			}
 		}
 		Util::DecIndent();
@@ -138,23 +135,18 @@ bool ModelCheckerDefaultImpl1::checkSymbols() {
 			_model->getTracer()->trace("Elements:");
 			Util::IncIndent();
 			{
-				std::string elementType;
 				bool result;
-				ModelDataDefinition* modeldatum;
                 std::string errorMessage = "";
 				// Iterate over a value snapshot of type names while checking all registered data definitions.
-				std::list<std::string> elementTypes = _model->getDataManager()->getDataDefinitionClassnames();
-				for (std::list<std::string>::iterator typeIt = elementTypes.begin(); typeIt != elementTypes.end(); typeIt++) {
-					elementType = (*typeIt);
+				for (const std::string& elementType : _model->getDataManager()->getDataDefinitionClassnames()) {
 					List<ModelDataDefinition*>* elements = _model->getDataManager()->getDataDefinitionList(elementType);
-					for (std::list<ModelDataDefinition*>::iterator it = elements->list()->begin(); it != elements->list()->end(); it++) {
-						modeldatum = (*it);
+					for (ModelDataDefinition* modeldatum : *elements->list()) {
 						// copyed from modelCOmponent. It is not inside the ModelDataDefinition::Check because ModelDataDefinition has no access to Model to call Tracer
 						_model->getTracer()->trace("Checking " + modeldatum->getClassname() + ": \"" + modeldatum->getName() + "\" (id " + std::to_string(modeldatum->getId()) + ")"); //std::to_string(component->_id));
 						Util::IncIndent();
 						{
 							try {
-                                result = modeldatum->Check((*it), errorMessage);
+                                result = modeldatum->Check(modeldatum, errorMessage);
 								res &= result;
 								if (!result) {
                                     _model->getTracer()->traceError("Error: Checking has failed with message '" + errorMessage + "'");
