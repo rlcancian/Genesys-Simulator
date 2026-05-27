@@ -230,7 +230,7 @@
       "name": "examples",
       "configurePreset": "examples",
       "targets": [
-        "genesys_fit_analysis"
+        "genesys_examples_analysis_tools"
       ]
     }
   ],
