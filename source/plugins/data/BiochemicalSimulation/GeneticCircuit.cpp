@@ -180,6 +180,7 @@ ModelDataDefinition* GeneticCircuit::LoadInstance(Model* model, PersistenceRecor
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load GeneticCircuit instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

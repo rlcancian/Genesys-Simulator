@@ -24,7 +24,7 @@
 class LSODE : public ModelComponent {
 public: // constructors
 	LSODE(Model* model, std::string name = "");
-	virtual ~LSODE() = default;
+	virtual ~LSODE() override;
 public: // virtual
 	virtual std::string show() override;
 public: // static

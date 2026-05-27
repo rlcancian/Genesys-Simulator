@@ -203,7 +203,7 @@ ModelComponent* DefaultNode::LoadInstance(Model* model, PersistenceRecord *field
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load DefaultNode instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

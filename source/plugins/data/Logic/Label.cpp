@@ -46,7 +46,7 @@ ModelDataDefinition* Label::LoadInstance(Model* model, PersistenceRecord *fields
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Label instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

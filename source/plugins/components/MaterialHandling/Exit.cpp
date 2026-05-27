@@ -38,7 +38,7 @@ ModelComponent* Exit::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Exit instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

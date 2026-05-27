@@ -58,7 +58,7 @@ ModelDataDefinition* Sequence::LoadInstance(Model* model, PersistenceRecord *fie
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Sequence instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

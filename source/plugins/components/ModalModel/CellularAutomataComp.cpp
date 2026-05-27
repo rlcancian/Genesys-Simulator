@@ -48,7 +48,7 @@ ModelComponent* CellularAutomataComp::LoadInstance(Model* model, PersistenceReco
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load CellularAutomataComp instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

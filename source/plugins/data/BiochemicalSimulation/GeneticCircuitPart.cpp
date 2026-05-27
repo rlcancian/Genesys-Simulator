@@ -113,6 +113,7 @@ ModelDataDefinition* GeneticCircuitPart::LoadInstance(Model* model, PersistenceR
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load GeneticCircuitPart instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

@@ -84,7 +84,8 @@ ModelDataDefinition* Variable::LoadInstance(Model* model, PersistenceRecord *fie
 	Variable* newElement = new Variable(model);
 	try {
 		newElement->_loadInstance(fields);
-	} catch (const std::exception&) {
+	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load Variable instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

@@ -212,6 +212,7 @@ ModelDataDefinition* BioNetwork::LoadInstance(Model* model, PersistenceRecord *f
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load BioNetwork instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

@@ -107,7 +107,7 @@ ModelComponent* Batch::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Batch instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -304,6 +304,7 @@ void Batch::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 		} else { // by entity type
 		}
 	}
+	delete entitiesToGroup;
 }
 
 bool Batch::_loadInstance(PersistenceRecord *fields) {

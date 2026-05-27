@@ -76,6 +76,7 @@ ModelDataDefinition* MetabolicReaction::LoadInstance(Model* model, PersistenceRe
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load MetabolicReaction instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

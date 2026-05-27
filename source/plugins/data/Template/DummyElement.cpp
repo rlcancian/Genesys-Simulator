@@ -106,7 +106,7 @@ ModelDataDefinition* DummyElement::LoadInstance(Model* model, PersistenceRecord 
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load DummyElement instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

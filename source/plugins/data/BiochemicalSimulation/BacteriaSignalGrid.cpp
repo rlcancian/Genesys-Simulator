@@ -134,6 +134,7 @@ ModelDataDefinition* BacteriaSignalGrid::LoadInstance(Model* model, PersistenceR
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load BacteriaSignalGrid instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
