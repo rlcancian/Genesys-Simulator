@@ -10,9 +10,13 @@ Módulo de análise estatística de dados do Genesys Simulator. Fornece as imple
 | `Fitter_if` / `FitterDefaultImpl` | Interface e implementação do ajustador de distribuições. Suporta Uniforme, Triangular, Normal, Exponencial, Erlang, Beta e Weibull. |
 | `FitterDummyImpl` | Implementação vazia da interface `Fitter_if`, útil para injeção em contextos que não requerem ajuste real. |
 | `DataAnalyser_if` / `DataAnalyserDefaultImpl` | Fachada de alto nível que orquestra o ciclo de vida do dataset e delega o ajuste ao `Fitter_if` injetado. |
-| `HypothesisTester_if` / `HypothesisTesterDefaultImpl1` | Interface e implementação de testes de hipóteses (médias, proporções, variâncias). |
+| `HypothesisTester_if` / `HypothesisTesterDefaultImpl` | Interface e implementação de testes de hipóteses (médias, proporções, variâncias). |
 | `TraitsTools` | Template de traits que associa interfaces às suas implementações padrão. |
 | `SimulationResultsDataset` / `SimulationResultsParser` | Estruturas e parser para datasets gerados por simulação. |
+
+## Build boundary
+
+`tools/analysis` is exposed by the `genesys_tools_analysis` CMake target and must remain independent from `source/kernel`. File-based hypothesis-test overloads load data through `DatasetLoader` and `SimulationResultsParser`, not through kernel statistics collectors. `DataAnalyser_if` still exposes sampler and experiment-manager hooks for the future analysis roadmap, but the default implementation reports those paths as TODO when no service is injected.
 
 ## Estimativa de parâmetros
 

@@ -51,7 +51,7 @@ genesys_add_unit_test(genesys_test_simulator_support
     genesys_kernel_util
 )
 
-if(NOT TARGET genesys_tools)
+if(NOT TARGET genesys_tools_analysis)
     add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-unit-tests)
 endif()
 
@@ -249,53 +249,35 @@ else()
     message(STATUS "Qt was not found; skipping GUI render strategy unit test.")
 endif()
 
-add_executable(genesys_test_tools_hypothesistester
+genesys_add_tools_unit_test(genesys_test_tools_hypothesistester
     tools/analysis/test_tools_hypothesistester.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/analysis/HypothesisTesterDefaultImpl1.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistribution.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistributionBase.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/SolverDefaultImpl1.cpp
+    genesys_tools_analysis
 )
 
-target_include_directories(genesys_test_tools_hypothesistester
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/source
+genesys_add_tools_unit_test(genesys_test_tools_dataanalyser
+    tools/analysis/test_tools_dataanalyser.cpp
+    genesys_tools_analysis
 )
-
-target_link_libraries(genesys_test_tools_hypothesistester
-    PRIVATE
-        genesys_kernel_simulator_runtime
-        genesys_kernel_statistics
-        genesys_kernel_util
-        GTest::gtest_main
-)
-
-gtest_discover_tests(genesys_test_tools_hypothesistester
-    TEST_PREFIX "tools."
-    PROPERTIES
-        LABELS "unit"
-)
-
-set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit/tools)
 
 genesys_add_tools_unit_test(genesys_test_tools_simulation_results_dataset
     tools/analysis/test_tools_simulation_results_dataset.cpp
-    genesys_tools
+    genesys_tools_analysis
 )
 
 genesys_add_tools_unit_test(genesys_test_tools_dataset_loader
     tools/analysis/test_tools_dataset_loader.cpp
-    genesys_tools
+    genesys_tools_analysis
 )
 
 genesys_add_tools_unit_test(genesys_test_tools_fitter_distributions
     tools/analysis/test_fitter_distributions.cpp
-    genesys_tools
+    genesys_tools_analysis
 )
 
 add_custom_target(genesys_tools_unit_tests
     DEPENDS
         genesys_test_tools_hypothesistester
+        genesys_test_tools_dataanalyser
         genesys_test_tools_simulation_results_dataset
         genesys_test_tools_dataset_loader
         genesys_test_tools_fitter_distributions
@@ -318,6 +300,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_experimentmanager
         genesys_test_statistics
         genesys_test_tools_hypothesistester
+        genesys_test_tools_dataanalyser
         genesys_test_tools_simulation_results_dataset
         genesys_test_tools_dataset_loader
 )

@@ -15,7 +15,7 @@
 
 // TOOLS
 #include "tools/SolverDefaultImpl1.h"
-#include "HypothesisTesterDefaultImpl1.h"
+#include "HypothesisTesterDefaultImpl.h"
 #include "HypothesisTester_if.h"
 #include "FitterDefaultImpl.h"
 #include "Fitter_if.h"
@@ -51,7 +51,7 @@ template <> struct TraitsTools<Solver_if> {
  *  Configure the Hypothesis Tester to be used
  */
 template <> struct TraitsTools<HypothesisTester_if> {
-	typedef HypothesisTesterDefaultImpl1 Implementation;
+	typedef HypothesisTesterDefaultImpl Implementation;
 	static constexpr unsigned int ConfidenceLevel = 95;
 };
 

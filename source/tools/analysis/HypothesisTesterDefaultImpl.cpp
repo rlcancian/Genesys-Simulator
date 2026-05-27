@@ -4,22 +4,22 @@
  */
 
 /*
- * File:   HypothesisTesterDefaultImpl1.cpp
+ * File:   HypothesisTesterDefaultImpl.cpp
  * Author: rlcancian
  *
  * Created on 24 de novembro de 2021, 02:52
  */
 
-#include "HypothesisTesterDefaultImpl1.h"
+#include "HypothesisTesterDefaultImpl.h"
+#include "DatasetLoader.h"
+#include "SimulationResultsDataset.h"
 #include "tools/ProbabilityDistribution.h"
 #include "tools/SolverDefaultImpl1.h"
-#include "kernel/statistics/StatisticsDataFile_if.h"
-#include "kernel/TraitsKernel.h"
 #include <algorithm>
 #include <cmath>
 #include <limits>
-#include <memory>
 #include <stdexcept>
+#include <vector>
 
 namespace {
 
@@ -97,24 +97,55 @@ double pValueFromCdf(double cdf, HypothesisTester_if::H1Comparition comp) {
 	return clampProbability(2.0 * std::min(cdf, 1.0 - cdf));
 }
 
+DatasetLoader loadSampleData(const std::string& sampleDataFilename) {
+	SimulationResultsDataset dataset;
+	std::string parserError;
+	if (SimulationResultsParser::loadFromTextFile(sampleDataFilename, &dataset, &parserError) && dataset.hasNumericData()) {
+		DatasetLoader loader;
+		if (loader.loadFromVector(dataset.values())) {
+			return loader;
+		}
+	}
+
+	DatasetLoader loader;
+	if (loader.loadFromFile(sampleDataFilename, ',') || loader.loadFromFile(sampleDataFilename, ' ')) {
+		return loader;
+	}
+	throw std::invalid_argument("Could not load a usable numeric sample dataset: " + sampleDataFilename);
 }
 
-HypothesisTesterDefaultImpl1::HypothesisTesterDefaultImpl1() {
+unsigned int countMatches(const std::vector<double>& data, checkProportionFunction function) {
+	if (function == nullptr) {
+		throw std::invalid_argument("checkProportionFunction must not be null");
+	}
+	unsigned int count = 0;
+	for (double value : data) {
+		if (function(value)) {
+			++count;
+		}
+	}
+	return count;
+}
+
+}
+
+HypothesisTesterDefaultImpl::HypothesisTesterDefaultImpl() {
 }
 
 // confidence intervals
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageConfidenceInterval(double avg, double stddev, unsigned int n, double confidenceLevel) {
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::averageConfidenceInterval(double avg, double stddev, unsigned int n, double confidenceLevel) {
 	if (n < 2 || stddev < 0.0) {
 		throw std::invalid_argument("averageConfidenceInterval requires n >= 2 and stddev >= 0");
 	}
+	validateConfidenceLevel(confidenceLevel);
 	double correctConf = (1.0 - confidenceLevel) / 2.0;
 	double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n - 1);
 	double e0 = critic * stddev / sqrt(n);
 	return HypothesisTester_if::ConfidenceInterval(avg - e0, avg + e0, e0);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionConfidenceInterval(double prop, unsigned int n, double confidenceLevel) {
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::proportionConfidenceInterval(double prop, unsigned int n, double confidenceLevel) {
 	if (n < 2 || prop < 0.0 || prop > 1.0) {
 		throw std::invalid_argument("proportionConfidenceInterval requires n >= 2 and 0 <= prop <= 1");
 	}
@@ -128,7 +159,7 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 	return HypothesisTester_if::ConfidenceInterval(prop - e0, prop + e0, e0);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionConfidenceInterval(double prop, unsigned int n, int N, double confidenceLevel) {
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::proportionConfidenceInterval(double prop, unsigned int n, int N, double confidenceLevel) {
 	if (N <= 1 || n < 2 || n > static_cast<unsigned int> (N) || prop < 0.0 || prop > 1.0) {
 		throw std::invalid_argument("proportionConfidenceInterval(population) requires N > 1, 2 <= n <= N and 0 <= prop <= 1");
 	}
@@ -142,10 +173,11 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 	return HypothesisTester_if::ConfidenceInterval(prop - e0, prop + e0, e0);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceConfidenceInterval(double var, unsigned int n, double confidenceLevel) {
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::varianceConfidenceInterval(double var, unsigned int n, double confidenceLevel) {
 	if (n < 2 || var < 0.0) {
 		throw std::invalid_argument("varianceConfidenceInterval requires n >= 2 and var >= 0");
 	}
+	validateConfidenceLevel(confidenceLevel);
 	const double alpha = 1.0 - confidenceLevel;
 	double il = (n - 1) * var / ProbabilityDistribution::inverseChi2(1.0 - alpha / 2.0, n - 1);
 	double sl = (n - 1) * var / ProbabilityDistribution::inverseChi2(alpha / 2.0, n - 1);
@@ -153,10 +185,11 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceCo
 	return HypothesisTester_if::ConfidenceInterval(il, sl, e0);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageDifferenceConfidenceInterval(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel) {
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::averageDifferenceConfidenceInterval(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel) {
 	if (n1 < 2 || n2 < 2 || stddev1 < 0.0 || stddev2 < 0.0) {
 		throw std::invalid_argument("averageDifferenceConfidenceInterval requires n1,n2 >= 2 and stddev1,stddev2 >= 0");
 	}
+	validateConfidenceLevel(confidenceLevel);
 	double correctConf = (1.0 - confidenceLevel) / 2.0;
 	double e0;
 	HypothesisTester_if::ConfidenceInterval varIC = varianceRatioConfidenceInterval(pow(stddev1, 2), n1, pow(stddev2, 2), n2, confidenceLevel);
@@ -176,7 +209,7 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageDif
 	return HypothesisTester_if::ConfidenceInterval(avg1 - avg2 - e0, avg1 - avg2 + e0, e0);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionDifferenceConfidenceInterval(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel) {
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::proportionDifferenceConfidenceInterval(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel) {
 	// Legacy signature compatibility: avg1/avg2 are interpreted as p1/p2 and stddev1/stddev2 are intentionally unused.
 	(void) stddev1;
 	(void) stddev2;
@@ -194,10 +227,11 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportion
 	return HypothesisTester_if::ConfidenceInterval((prop1 - prop2) - e0, (prop1 - prop2) + e0, e0);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceRatioConfidenceInterval(double var1, unsigned int n1, double var2, unsigned int n2, double confidenceLevel) {
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::varianceRatioConfidenceInterval(double var1, unsigned int n1, double var2, unsigned int n2, double confidenceLevel) {
 	if (n1 < 2 || n2 < 2 || var1 < 0.0 || var2 <= 0.0) {
 		throw std::invalid_argument("varianceRatioConfidenceInterval requires n1,n2 >= 2, var1 >= 0 and var2 > 0");
 	}
+	validateConfidenceLevel(confidenceLevel);
 	double ratio = var1 / var2;
 	const double alpha = 1.0 - confidenceLevel;
 	double il = 1 / ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha / 2.0, n2 - 1, n1 - 1);
@@ -211,53 +245,38 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceRa
 
 // confidence intervals based on datafile
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::averageConfidenceInterval(std::string sampleDataFilename, double confidenceLevel) {
-	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
-	return averageConfidenceInterval(stat->average(), stat->stddeviation(), stat->numElements(), confidenceLevel);
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::averageConfidenceInterval(std::string sampleDataFilename, double confidenceLevel) {
+	const DatasetLoader data = loadSampleData(sampleDataFilename);
+	return averageConfidenceInterval(data.mean(), data.stddev(), static_cast<unsigned int>(data.count()), confidenceLevel);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionConfidenceInterval(std::string sampleDataFilename, checkProportionFunction function, double confidenceLevel) {
-	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
-	unsigned long count = 0;
-	double value;
-	for (unsigned long i = 0; i < stat->numElements(); i++) {
-		value = static_cast<CollectorDatafile_if*> (stat->getCollector())->getValue(i);
-		if (function(value))
-			count++;
-	}
-	double prop = (double) count / stat->numElements();
-	return proportionConfidenceInterval(prop, stat->numElements(), confidenceLevel);
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::proportionConfidenceInterval(std::string sampleDataFilename, checkProportionFunction function, double confidenceLevel) {
+	const DatasetLoader data = loadSampleData(sampleDataFilename);
+	const unsigned int count = countMatches(data.data(), function);
+	const double prop = static_cast<double>(count) / static_cast<double>(data.count());
+	return proportionConfidenceInterval(prop, static_cast<unsigned int>(data.count()), confidenceLevel);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::proportionConfidenceInterval(std::string sampleDataFilename, checkProportionFunction function, double N, double confidenceLevel) {
-	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
-	unsigned long count = 0;
-	for (unsigned long i = 0; i < stat->numElements(); i++) {
-		const double value = static_cast<CollectorDatafile_if*> (stat->getCollector())->getValue(i);
-		if (function(value)) {
-			++count;
-		}
-	}
-	double prop = static_cast<double> (count) / stat->numElements();
-	return proportionConfidenceInterval(prop, stat->numElements(), static_cast<int> (N), confidenceLevel);
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::proportionConfidenceInterval(std::string sampleDataFilename, checkProportionFunction function, double N, double confidenceLevel) {
+	const DatasetLoader data = loadSampleData(sampleDataFilename);
+	const unsigned int count = countMatches(data.data(), function);
+	const double prop = static_cast<double>(count) / static_cast<double>(data.count());
+	return proportionConfidenceInterval(prop, static_cast<unsigned int>(data.count()), static_cast<int>(N), confidenceLevel);
 }
 
-HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl1::varianceConfidenceInterval(std::string sampleDataFilename, double confidenceLevel) {
-	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
-	return varianceConfidenceInterval(stat->variance(), stat->numElements(), confidenceLevel);
+HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::varianceConfidenceInterval(std::string sampleDataFilename, double confidenceLevel) {
+	const DatasetLoader data = loadSampleData(sampleDataFilename);
+	return varianceConfidenceInterval(data.variance(), static_cast<unsigned int>(data.count()), confidenceLevel);
 }
 
 // estimate sample size
 
-unsigned int HypothesisTesterDefaultImpl1::estimateSampleSize(double avg, double stddev, double desiredE0, double confidenceLevel) {
+unsigned int HypothesisTesterDefaultImpl::estimateSampleSize(double avg, double stddev, double desiredE0, double confidenceLevel) {
 	(void) avg;
 	if (desiredE0 <= 0.0 || stddev < 0.0) {
 		return 0;
 	}
+	validateConfidenceLevel(confidenceLevel);
 	const double alphaHalf = (1.0 - confidenceLevel) / 2.0;
 	const double z = -ProbabilityDistribution::inverseNormal(alphaHalf, 0.0, 1.0);
 	const double n = std::pow((z * stddev) / desiredE0, 2.0);
@@ -268,10 +287,11 @@ unsigned int HypothesisTesterDefaultImpl1::estimateSampleSize(double avg, double
 // parametric tests
 // one population
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(double avg, double stddev, unsigned int n, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(double avg, double stddev, unsigned int n, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	if (n < 2 || stddev <= 0.0) {
 		throw std::invalid_argument("testAverage requires n >= 2 and stddev > 0");
 	}
+	validateConfidenceLevel(confidenceLevel);
 	double significanceLevel = (1.0 - confidenceLevel);
 	double acceptInfLimit = -std::numeric_limits<double>::infinity();
 	double acceptSupLimit = std::numeric_limits<double>::infinity();
@@ -299,10 +319,11 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(double
 	return HypothesisTester_if::TestResult(clampProbability(pvalue), pvalue < significanceLevel, acceptInfLimit, acceptSupLimit, testStat);
 }
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(double prop, unsigned int n, double proptest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testProportion(double prop, unsigned int n, double proptest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	if (n < 2 || prop <= 0.0 || prop >= 1.0 || proptest < 0.0 || proptest > 1.0) {
 		throw std::invalid_argument("testProportion requires n >= 2, 0 < prop < 1 and 0 <= proptest <= 1");
 	}
+	validateConfidenceLevel(confidenceLevel);
 	const double significanceLevel = 1.0 - confidenceLevel;
 	const double standardError = std::sqrt(prop * (1.0 - prop) / n);
 	const double testStat = (proptest - prop) / standardError;
@@ -324,10 +345,11 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(dou
 	return HypothesisTester_if::TestResult(clampProbability(pValue), pValue < significanceLevel, acceptInfLim, acceptSupLim, testStat);
 }
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(double var, unsigned int n, double vartest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(double var, unsigned int n, double vartest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	if (n < 2 || var < 0.0 || vartest <= 0.0) {
 		throw std::invalid_argument("testVariance requires n >= 2, var >= 0 and vartest > 0");
 	}
+	validateConfidenceLevel(confidenceLevel);
 	const double significanceLevel = 1.0 - confidenceLevel;
 	const double dof = n - 1;
 	const double testStat = (dof * var) / vartest;
@@ -353,7 +375,7 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(doubl
 }
 // two populations
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	if (n1 < 2 || n2 < 2 || stddev1 < 0.0 || stddev2 < 0.0) {
 		throw std::invalid_argument("testAverage(2pop) requires n1,n2 >= 2 and stddev1,stddev2 >= 0");
 	}
@@ -405,7 +427,7 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(double
 	return HypothesisTester_if::TestResult(pvalue, pvalue < alpha, acceptInfLimit, acceptSupLimit, testStat);
 }
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(double prop1, unsigned int n1, double prop2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testProportion(double prop1, unsigned int n1, double prop2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	if (n1 < 2 || n2 < 2 || prop1 < 0.0 || prop1 > 1.0 || prop2 < 0.0 || prop2 > 1.0) {
 		throw std::invalid_argument("testProportion(2pop) requires n1,n2 >= 2 and 0 <= prop1,prop2 <= 1");
 	}
@@ -434,7 +456,7 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(dou
 	return HypothesisTester_if::TestResult(pValue, pValue < alpha, acceptInfLim, acceptSupLim, testStat);
 }
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(double var1, unsigned int n1, double var2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(double var1, unsigned int n1, double var2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	if (n1 < 2 || n2 < 2 || !(var1 > 0.0) || !(var2 > 0.0)) {
 		throw std::invalid_argument("testVariance(2pop) requires n1,n2 >= 2 and var1,var2 > 0");
 	}
@@ -459,70 +481,43 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(doubl
 }
 // one population based on datafile
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(std::string sampleDataFilename, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
-	return testAverage(avgSample, stat->stddeviation(), stat->numElements(), stat->average(), confidenceLevel, comp);
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(std::string sampleDataFilename, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+	const DatasetLoader data = loadSampleData(sampleDataFilename);
+	return testAverage(avgSample, data.stddev(), static_cast<unsigned int>(data.count()), data.mean(), confidenceLevel, comp);
 }
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(std::string sampleDataFilename, checkProportionFunction function, double proptest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
-	unsigned long count = 0;
-	for (unsigned long i = 0; i < stat->numElements(); i++) {
-		const double value = static_cast<CollectorDatafile_if*> (stat->getCollector())->getValue(i);
-		if (function(value)) {
-			++count;
-		}
-	}
-	const double sampleProp = static_cast<double> (count) / stat->numElements();
-	return testProportion(proptest, stat->numElements(), sampleProp, confidenceLevel, comp);
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testProportion(std::string sampleDataFilename, checkProportionFunction function, double proptest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+	const DatasetLoader data = loadSampleData(sampleDataFilename);
+	const unsigned int count = countMatches(data.data(), function);
+	const double sampleProp = static_cast<double>(count) / static_cast<double>(data.count());
+	return testProportion(proptest, static_cast<unsigned int>(data.count()), sampleProp, confidenceLevel, comp);
 }
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(std::string sampleDataFilename, double vartest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	auto stat = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (stat->getCollector())->setDataFilename(sampleDataFilename);
-	return testVariance(stat->variance(), stat->numElements(), vartest, confidenceLevel, comp);
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(std::string sampleDataFilename, double vartest, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+	const DatasetLoader data = loadSampleData(sampleDataFilename);
+	return testVariance(data.variance(), static_cast<unsigned int>(data.count()), vartest, confidenceLevel, comp);
 }
 // two populations based on datafile
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testAverage(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	auto first = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	auto second = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (first->getCollector())->setDataFilename(firstSampleDataFilename);
-	static_cast<CollectorDatafile_if*> (second->getCollector())->setDataFilename(secondSampleDataFilename);
-	return testAverage(first->average(), first->stddeviation(), first->numElements(), second->average(), second->stddeviation(), second->numElements(), confidenceLevel, comp);
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+	const DatasetLoader first = loadSampleData(firstSampleDataFilename);
+	const DatasetLoader second = loadSampleData(secondSampleDataFilename);
+	return testAverage(first.mean(), first.stddev(), static_cast<unsigned int>(first.count()), second.mean(), second.stddev(), static_cast<unsigned int>(second.count()), confidenceLevel, comp);
 }
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testProportion(std::string firstSampleDataFilename, std::string secondSampleDataFilename, checkProportionFunction function, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	auto first = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	auto second = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (first->getCollector())->setDataFilename(firstSampleDataFilename);
-	static_cast<CollectorDatafile_if*> (second->getCollector())->setDataFilename(secondSampleDataFilename);
-	unsigned long firstCount = 0;
-	for (unsigned long i = 0; i < first->numElements(); ++i) {
-		const double value = static_cast<CollectorDatafile_if*> (first->getCollector())->getValue(i);
-		if (function(value)) {
-			++firstCount;
-		}
-	}
-	unsigned long secondCount = 0;
-	for (unsigned long i = 0; i < second->numElements(); ++i) {
-		const double value = static_cast<CollectorDatafile_if*> (second->getCollector())->getValue(i);
-		if (function(value)) {
-			++secondCount;
-		}
-	}
-	const double firstProp = static_cast<double> (firstCount) / first->numElements();
-	const double secondProp = static_cast<double> (secondCount) / second->numElements();
-	return testProportion(firstProp, first->numElements(), secondProp, second->numElements(), confidenceLevel, comp);
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testProportion(std::string firstSampleDataFilename, std::string secondSampleDataFilename, checkProportionFunction function, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+	const DatasetLoader first = loadSampleData(firstSampleDataFilename);
+	const DatasetLoader second = loadSampleData(secondSampleDataFilename);
+	const unsigned int firstCount = countMatches(first.data(), function);
+	const unsigned int secondCount = countMatches(second.data(), function);
+	const double firstProp = static_cast<double>(firstCount) / static_cast<double>(first.count());
+	const double secondProp = static_cast<double>(secondCount) / static_cast<double>(second.count());
+	return testProportion(firstProp, static_cast<unsigned int>(first.count()), secondProp, static_cast<unsigned int>(second.count()), confidenceLevel, comp);
 }
 
-HypothesisTester_if::TestResult HypothesisTesterDefaultImpl1::testVariance(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
-	auto first = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	auto second = std::make_unique<TraitsKernel<StatisticsDatafile_if>::Implementation>();
-	static_cast<CollectorDatafile_if*> (first->getCollector())->setDataFilename(firstSampleDataFilename);
-	static_cast<CollectorDatafile_if*> (second->getCollector())->setDataFilename(secondSampleDataFilename);
-	return testVariance(first->variance(), first->numElements(), second->variance(), second->numElements(), confidenceLevel, comp);
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
+	const DatasetLoader first = loadSampleData(firstSampleDataFilename);
+	const DatasetLoader second = loadSampleData(secondSampleDataFilename);
+	return testVariance(first.variance(), static_cast<unsigned int>(first.count()), second.variance(), static_cast<unsigned int>(second.count()), confidenceLevel, comp);
 }
 // @TODO: Add interface for non-parametrical tests, such as chi-square (based on values and on datafile)

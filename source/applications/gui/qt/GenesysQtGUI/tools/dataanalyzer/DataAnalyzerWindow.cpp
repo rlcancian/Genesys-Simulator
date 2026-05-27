@@ -5,7 +5,7 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/Simulator.h"
 #include "tools/analysis/FitterDefaultImpl.h"
-#include "tools/analysis/HypothesisTesterDefaultImpl1.h"
+#include "tools/analysis/HypothesisTesterDefaultImpl.h"
 #include "tools/analysis/SimulationResultsDataset.h"
 
 #include <QAction>
@@ -659,7 +659,7 @@ void DataAnalyzerWindow::buildWorkspace() {
     _inferenceTable->setHorizontalHeaderLabels({tr("Measure"), tr("Lower"), tr("Upper"), tr("Half width")});
     _inferenceTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     inferenceLayout->addWidget(new QLabel(
-            tr("Confidence intervals use HypothesisTesterDefaultImpl1 for the loaded numeric dataset."), inferenceTab));
+            tr("Confidence intervals use HypothesisTesterDefaultImpl for the loaded numeric dataset."), inferenceTab));
     inferenceLayout->addWidget(_inferenceTable, 1);
     _workspaceTabs->addTab(inferenceTab, tr("Inference"));
 
@@ -1705,7 +1705,7 @@ void DataAnalyzerWindow::refreshInferenceView(const DataSummary& summary) {
     if (scopedValues().size() < 2) {
         return;
     }
-    HypothesisTesterDefaultImpl1 tester;
+    HypothesisTesterDefaultImpl tester;
     auto addInferenceRow = [this](const QString& measure, HypothesisTester_if::ConfidenceInterval interval) {
         const int row = _inferenceTable->rowCount();
         _inferenceTable->insertRow(row);
