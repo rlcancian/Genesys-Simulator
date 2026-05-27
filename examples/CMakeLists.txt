@@ -1,16 +1,16 @@
-if(NOT TARGET genesys_tools)
+if(NOT TARGET genesys_tools_analysis)
     add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-examples)
 endif()
 
-add_executable(genesys_fit_analysis
-    fit_analysis.cpp
+add_executable(genesys_examples_analysis_tools
+    examples_analysis_tools.cpp
 )
 
-target_link_libraries(genesys_fit_analysis
+target_link_libraries(genesys_examples_analysis_tools
     PRIVATE
-        genesys_tools
+        genesys_tools_analysis
 )
 
-target_compile_features(genesys_fit_analysis PRIVATE cxx_std_23)
+target_compile_features(genesys_examples_analysis_tools PRIVATE cxx_std_23)
 
-set_property(TARGET genesys_fit_analysis PROPERTY FOLDER examples)
+set_property(TARGET genesys_examples_analysis_tools PROPERTY FOLDER examples)
