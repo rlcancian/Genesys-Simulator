@@ -4,14 +4,14 @@
  */
 
 /*
- * File:   HypothesisTesterDefaultImpl1.h
+ * File:   HypothesisTesterDefaultImpl.h
  * Author: rlcancian
  *
  * Created on 24 de novembro de 2021, 02:52
  */
 
-#ifndef HYPOTHESISTESTERDEFAULTIMPL1_H
-#define HYPOTHESISTESTERDEFAULTIMPL1_H
+#ifndef HypothesisTesterDefaultImpl_H
+#define HypothesisTesterDefaultImpl_H
 
 #include "HypothesisTester_if.h"
 
@@ -30,10 +30,10 @@
  * - Continue converging to a fully consistent implementation based on formal
  *   classical hypothesis-testing theory.
  */
-class HypothesisTesterDefaultImpl1 : public HypothesisTester_if {
+class HypothesisTesterDefaultImpl : public HypothesisTester_if {
 public:
-	HypothesisTesterDefaultImpl1();
-	~HypothesisTesterDefaultImpl1() = default;
+	HypothesisTesterDefaultImpl();
+	~HypothesisTesterDefaultImpl() = default;
 public:
 	// confidence intervals of parameters
 	HypothesisTester_if::ConfidenceInterval averageConfidenceInterval(double avg, double stddev, unsigned int n, double confidenceLevel) override;
@@ -69,4 +69,4 @@ public:
 	HypothesisTester_if::TestResult testVariance(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
 };
 
-#endif /* HYPOTHESISTESTERDEFAULTIMPL1_H */
+#endif /* HypothesisTesterDefaultImpl_H */

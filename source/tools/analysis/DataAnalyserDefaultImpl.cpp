@@ -1,20 +1,24 @@
 #include "DataAnalyserDefaultImpl.h"
 
+#include <stdexcept>
+
 DataAnalyserDefaultImpl::DataAnalyserDefaultImpl(
 	Fitter_if* fitter,
 	Sampler_if* sampler,
 	ExperimentManager_if* experimenter,
 	HypothesisTester_if* tester
 ) :
-	_fitter(fitter),
+	_fitter(fitter != nullptr ? fitter : &_defaultFitter),
 	_sampler(sampler),
 	_experimenter(experimenter),
-	_tester(tester) {
+	_tester(tester != nullptr ? tester : &_defaultTester) {
 }
 
 bool DataAnalyserDefaultImpl::loadDataSet(std::string datafilename) {
 	_dataFilename = datafilename;
-    _fitter->setDataFilename(datafilename);
+	if (_fitter != nullptr) {
+		_fitter->setDataFilename(datafilename);
+	}
 
 	return true;
 }
@@ -34,10 +38,16 @@ Fitter_if* DataAnalyserDefaultImpl::fitter() {
 }
 
 Sampler_if* DataAnalyserDefaultImpl::sampler() {
+	if (_sampler == nullptr) {
+		throw std::runtime_error("TODO: implement DataAnalyserDefaultImpl::sampler");
+	}
 	return _sampler;
 }
 
 ExperimentManager_if* DataAnalyserDefaultImpl::experimenter() {
+	if (_experimenter == nullptr) {
+		throw std::runtime_error("TODO: implement DataAnalyserDefaultImpl::experimenter");
+	}
 	return _experimenter;
 }
 

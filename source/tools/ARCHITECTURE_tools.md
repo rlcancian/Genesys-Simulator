@@ -9,7 +9,7 @@ The `tools` package provides domain-support services for statistical analysis an
 - Dataset-oriented analysis orchestration (`DataAnalyser_if`).
 - Simulation result dataset loading, including Genesys `Record` text output with replication metadata.
 - Distribution fitting contracts (`Fitter_if`).
-- Parametric hypothesis testing (`HypothesisTester_if`, default impl 1).
+- Parametric hypothesis testing (`HypothesisTester_if`, `HypothesisTesterDefaultImpl`).
 - Distribution mathematical utilities and quantile inversion.
 - Numerical integration and derivation utilities via legacy solver abstractions.
 - Binding of abstractions to implementations through traits.
@@ -28,6 +28,7 @@ The `tools` package provides domain-support services for statistical analysis an
 - Maintain current contract and refine implementation completeness, especially two-population methods.
 - HYPTEST-1 alignment keeps the current pooled-vs-Welch heuristic, but documents it as a TODO while consolidating one-population p-value coherence and the two-proportion-difference confidence interval formula.
 - HYPTEST-2 final alignment updates one-population proportion confidence intervals to the normal-approximation formulation (including finite-population correction when `N` is provided).
+- HYPTEST-3 consolidates `HypothesisTesterDefaultImpl` under `tools/analysis` and removes direct kernel/statistics dependencies from hypothesis-testing interfaces and implementation.
 
 ### Distribution abstractions
 - Introduce `Distribution_if` and specialized continuous/discrete interfaces.
@@ -62,6 +63,6 @@ The `tools` package provides domain-support services for statistical analysis an
 
 - FITTER-2 consolidated additional fitting algorithms in `FitterDefaultImpl` (beta and weibull) on top of FITTER-1 families; FITTER-3 now switches the default trait binding so `TraitsTools<Fitter_if>` points to `FitterDefaultImpl`.
 - `FitterDummyImpl` is intentionally preserved as a legacy/documental placeholder and is no longer the default fitter binding.
-- No full completion of hypothesis-testing theory coverage.
+- Hypothesis-testing theory coverage is consolidated for the current parametric interface; goodness-of-fit tests remain a future addition to the analysis facade.
 - No numerical refactor of legacy solver internals.
-- No cross-package behavior changes outside `source/tools`.
+- `tools/analysis` must remain buildable through `genesys_tools_analysis` without linking `genesys_kernel_*`; consumers should depend on analysis rather than analysis depending on them.

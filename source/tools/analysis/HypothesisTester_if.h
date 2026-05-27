@@ -15,7 +15,6 @@
 #define HYPOTHESISTESTER_IF_H
 
 #include <string>
-#include "kernel/statistics/StatisticsDataFile_if.h"
 
 typedef bool (*checkProportionFunction)(double value);
 
