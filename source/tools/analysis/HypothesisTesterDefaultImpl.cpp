@@ -87,6 +87,26 @@ double fisherSnedecorCdf(double f, double d1, double d2) {
 	return clampProbability(integral);
 }
 
+double kolmogorovSmirnovPValue(double d, unsigned int n) {
+	if (d <= 0.0) {
+		return 1.0;
+	}
+	if (n == 0) {
+		throw std::invalid_argument("kolmogorovSmirnovPValue requires n > 0");
+	}
+	const double sqrtN = std::sqrt(static_cast<double>(n));
+	const double lambda = (sqrtN + 0.12 + 0.11 / sqrtN) * d;
+	double sum = 0.0;
+	for (unsigned int k = 1; k <= 100; ++k) {
+		const double term = std::exp(-2.0 * static_cast<double>(k * k) * lambda * lambda);
+		sum += (k % 2 == 1) ? term : -term;
+		if (term < 1e-12) {
+			break;
+		}
+	}
+	return clampProbability(2.0 * sum);
+}
+
 double pValueFromCdf(double cdf, HypothesisTester_if::H1Comparition comp) {
 	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
 		return clampProbability(cdf);
@@ -520,4 +540,71 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(std::s
 	const DatasetLoader second = loadSampleData(secondSampleDataFilename);
 	return testVariance(first.variance(), static_cast<unsigned int>(first.count()), second.variance(), static_cast<unsigned int>(second.count()), confidenceLevel, comp);
 }
-// @TODO: Add interface for non-parametrical tests, such as chi-square (based on values and on datafile)
+
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::chiSquareGoodnessOfFit(const std::vector<double>& observedFrequencies, const std::vector<double>& expectedFrequencies, unsigned int estimatedParameters, double confidenceLevel) {
+	validateConfidenceLevel(confidenceLevel);
+	if (observedFrequencies.size() != expectedFrequencies.size() || observedFrequencies.size() < 2) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires observed and expected vectors with equal size >= 2");
+	}
+	if (observedFrequencies.size() <= static_cast<std::size_t>(estimatedParameters + 1U)) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires positive degrees of freedom");
+	}
+
+	double testStat = 0.0;
+	for (std::size_t i = 0; i < observedFrequencies.size(); ++i) {
+		const double observed = observedFrequencies[i];
+		const double expected = expectedFrequencies[i];
+		if (observed < 0.0 || expected <= 0.0 || !std::isfinite(observed) || !std::isfinite(expected)) {
+			throw std::invalid_argument("chiSquareGoodnessOfFit requires finite observed >= 0 and expected > 0 frequencies");
+		}
+		const double diff = observed - expected;
+		testStat += (diff * diff) / expected;
+	}
+
+	const double alpha = 1.0 - confidenceLevel;
+	const double dof = static_cast<double>(observedFrequencies.size() - 1U - estimatedParameters);
+	const double cdf = chi2CdfByIntegration(testStat, dof);
+	const double pValue = clampProbability(1.0 - cdf);
+	const double acceptSupLim = ProbabilityDistribution::inverseChi2(1.0 - alpha, dof);
+	return HypothesisTester_if::TestResult(pValue, pValue < alpha, 0.0, acceptSupLim, testStat);
+}
+
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::kolmogorovSmirnov(const std::vector<double>& sample, distributionCdfFunction cdf, double confidenceLevel) {
+	validateConfidenceLevel(confidenceLevel);
+	if (sample.empty()) {
+		throw std::invalid_argument("kolmogorovSmirnov requires a non-empty sample");
+	}
+	if (!cdf) {
+		throw std::invalid_argument("kolmogorovSmirnov requires a valid CDF function");
+	}
+
+	std::vector<double> sorted = sample;
+	for (double value : sorted) {
+		if (!std::isfinite(value)) {
+			throw std::invalid_argument("kolmogorovSmirnov requires finite sample values");
+		}
+	}
+	std::sort(sorted.begin(), sorted.end());
+
+	const double n = static_cast<double>(sorted.size());
+	double d = 0.0;
+	for (std::size_t i = 0; i < sorted.size(); ++i) {
+		const double theoretical = cdf(sorted[i]);
+		if (theoretical < 0.0 || theoretical > 1.0 || !std::isfinite(theoretical)) {
+			throw std::invalid_argument("kolmogorovSmirnov CDF must return finite probabilities in [0,1]");
+		}
+		const double empiricalUpper = static_cast<double>(i + 1U) / n;
+		const double empiricalLower = static_cast<double>(i) / n;
+		d = std::max(d, std::max(std::fabs(empiricalUpper - theoretical), std::fabs(theoretical - empiricalLower)));
+	}
+
+	const double alpha = 1.0 - confidenceLevel;
+	const double pValue = kolmogorovSmirnovPValue(d, static_cast<unsigned int>(sorted.size()));
+	const double acceptSupLim = std::sqrt(-0.5 * std::log(alpha / 2.0) / n);
+	return HypothesisTester_if::TestResult(pValue, pValue < alpha, 0.0, acceptSupLim, d);
+}
+
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::kolmogorovSmirnov(std::string sampleDataFilename, distributionCdfFunction cdf, double confidenceLevel) {
+	const DatasetLoader data = loadSampleData(sampleDataFilename);
+	return kolmogorovSmirnov(data.data(), cdf, confidenceLevel);
+}

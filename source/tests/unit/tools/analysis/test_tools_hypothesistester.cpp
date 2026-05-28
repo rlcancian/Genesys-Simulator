@@ -16,6 +16,16 @@ bool isPositive(double value) {
     return value > 0.0;
 }
 
+double uniform01Cdf(double value) {
+    if (value <= 0.0) {
+        return 0.0;
+    }
+    if (value >= 1.0) {
+        return 1.0;
+    }
+    return value;
+}
+
 std::string writeSampleFile(const std::string& name, const std::string& contents) {
     const auto path = std::filesystem::temp_directory_path() / name;
     std::ofstream file(path);
@@ -174,6 +184,66 @@ TEST(HypothesisTesterDefaultImplTest, InvalidConfidenceLevelThrows) {
 
     EXPECT_THROW(tester.averageConfidenceInterval(10.0, 2.0, 30, 1.0), std::invalid_argument);
     EXPECT_THROW(tester.testAverage(10.0, 2.0, 30, 10.2, 0.0, HypothesisTester_if::H1Comparition::DIFFERENT), std::invalid_argument);
+}
+
+TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitCoversNonRejectionAndRejection) {
+    HypothesisTesterDefaultImpl tester;
+
+    auto nonRejection = tester.chiSquareGoodnessOfFit({18.0, 22.0, 20.0}, {20.0, 20.0, 20.0}, 0, 0.95);
+    EXPECT_FALSE(nonRejection.rejectH0());
+    expectValidResult(nonRejection);
+    EXPECT_GE(nonRejection.testStat(), 0.0);
+
+    auto rejection = tester.chiSquareGoodnessOfFit({40.0, 10.0, 10.0}, {20.0, 20.0, 20.0}, 0, 0.95);
+    EXPECT_TRUE(rejection.rejectH0());
+    expectValidResult(rejection);
+    EXPECT_GE(rejection.testStat(), 0.0);
+}
+
+TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitRejectsInvalidInputs) {
+    HypothesisTesterDefaultImpl tester;
+
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit({1.0, 2.0}, {1.0}, 0, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit({1.0, 2.0}, {1.0, 0.0}, 0, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit({1.0, 2.0}, {1.0, 2.0}, 1, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit({1.0, 2.0}, {1.0, 2.0}, 0, 1.0), std::invalid_argument);
+}
+
+TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovCoversNonRejectionAndRejection) {
+    HypothesisTesterDefaultImpl tester;
+
+    auto nonRejection = tester.kolmogorovSmirnov(std::vector<double>{0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.9}, uniform01Cdf, 0.95);
+    EXPECT_FALSE(nonRejection.rejectH0());
+    expectValidResult(nonRejection);
+    EXPECT_GE(nonRejection.testStat(), 0.0);
+    EXPECT_LE(nonRejection.testStat(), 1.0);
+
+    auto rejection = tester.kolmogorovSmirnov(std::vector<double>{0.01, 0.02, 0.03, 0.04, 0.05}, uniform01Cdf, 0.95);
+    EXPECT_TRUE(rejection.rejectH0());
+    expectValidResult(rejection);
+    EXPECT_GE(rejection.testStat(), 0.0);
+    EXPECT_LE(rejection.testStat(), 1.0);
+}
+
+TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovFileBasedOverloadUsesAnalysisDatasetLoader) {
+    HypothesisTesterDefaultImpl tester;
+    const std::string sample = writeSampleFile("genesys_ks_uniform_sample.txt", "0.1\n0.2\n0.35\n0.5\n0.65\n0.8\n0.9\n");
+
+    auto result = tester.kolmogorovSmirnov(sample, uniform01Cdf, 0.95);
+
+    EXPECT_FALSE(result.rejectH0());
+    expectValidResult(result);
+    EXPECT_GE(result.testStat(), 0.0);
+    EXPECT_LE(result.testStat(), 1.0);
+}
+
+TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovRejectsInvalidInputs) {
+    HypothesisTesterDefaultImpl tester;
+
+    EXPECT_THROW(tester.kolmogorovSmirnov(std::vector<double>{}, uniform01Cdf, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.kolmogorovSmirnov(std::vector<double>{0.1, 0.2}, distributionCdfFunction{}, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.kolmogorovSmirnov(std::vector<double>{0.1, 0.2}, [](double) { return 2.0; }, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.kolmogorovSmirnov(std::vector<double>{0.1, 0.2}, uniform01Cdf, 0.0), std::invalid_argument);
 }
 
 } // namespace

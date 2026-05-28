@@ -14,9 +14,12 @@
 #ifndef HYPOTHESISTESTER_IF_H
 #define HYPOTHESISTESTER_IF_H
 
+#include <functional>
 #include <string>
+#include <vector>
 
 typedef bool (*checkProportionFunction)(double value);
+typedef std::function<double(double value)> distributionCdfFunction;
 
 /**
  * @brief Interface for classical parametric inference.
@@ -160,6 +163,10 @@ public:
 	virtual HypothesisTester_if::TestResult testAverage(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) = 0;
 	virtual HypothesisTester_if::TestResult testProportion(std::string firstSampleDataFilename, std::string secondSampleDataFilename, checkProportionFunction function, double confidenceLevel, HypothesisTester_if::H1Comparition comp) = 0;
 	virtual HypothesisTester_if::TestResult testVariance(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) = 0;
+	// Goodness-of-fit tests.
+	virtual HypothesisTester_if::TestResult chiSquareGoodnessOfFit(const std::vector<double>& observedFrequencies, const std::vector<double>& expectedFrequencies, unsigned int estimatedParameters, double confidenceLevel) = 0;
+	virtual HypothesisTester_if::TestResult kolmogorovSmirnov(const std::vector<double>& sample, distributionCdfFunction cdf, double confidenceLevel) = 0;
+	virtual HypothesisTester_if::TestResult kolmogorovSmirnov(std::string sampleDataFilename, distributionCdfFunction cdf, double confidenceLevel) = 0;
 };
 
 #endif /* HYPOTHESISTESTER_IF_H */

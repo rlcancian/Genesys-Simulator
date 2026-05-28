@@ -1,6 +1,6 @@
 # tools/analysis
 
-`tools/analysis` is the standalone statistical-analysis layer used by GenESyS tools and examples. It provides dataset loading, distribution fitting and parametric hypothesis testing behind a small facade, `DataAnalyserDefaultImpl`.
+`tools/analysis` is the standalone statistical-analysis layer used by GenESyS tools and examples. It provides dataset loading, distribution fitting, parametric hypothesis testing and goodness-of-fit tests behind a small facade, `DataAnalyserDefaultImpl`.
 
 The CMake target for this layer is `genesys_tools_analysis`. It must remain independent from `source/kernel`: analysis code should not include kernel headers directly. Consumers that need analysis should depend on this target.
 
@@ -85,6 +85,15 @@ File-based overloads load numeric data through `DatasetLoader` and `SimulationRe
 
 All inference methods expect `confidenceLevel` in `(0, 1)`, for example `0.95`.
 
+Implemented goodness-of-fit tests:
+
+| Method | Statistical model | Inputs |
+|---|---|---|
+| `chiSquareGoodnessOfFit` | Chi-square adherence test. | Observed frequencies, expected frequencies, number of estimated parameters and confidence level. |
+| `kolmogorovSmirnov` | One-sample Kolmogorov-Smirnov test for continuous distributions. | Sample or sample file, theoretical CDF function and confidence level. |
+
+Both methods return `TestResult`: `testStat()` contains chi-square or KS `D`, `pValue()` contains the adherence-test p-value, and `rejectH0()` indicates whether the fitted/theoretical distribution should be rejected at the requested confidence level.
+
 ## Error Measure
 
 The fitter reports an error computed as a Cramer-von Mises-style squared difference between the theoretical CDF and the empirical CDF over the sorted sample:
@@ -100,8 +109,10 @@ where `F(x_i)` is the theoretical CDF at the sorted sample value and `p_i = (i +
 ```cpp
 #include "tools/analysis/DataAnalyserDefaultImpl.h"
 
+#include <cmath>
 #include <iostream>
 #include <string>
+#include <vector>
 
 bool greaterThan50(double value) {
     return value > 50.0;
@@ -136,6 +147,18 @@ int main() {
         0.95
     );
 
+    auto normalCdf = [mean, stddev](double value) {
+        return 0.5 * std::erfc(-(value - mean) / (stddev * std::sqrt(2.0)));
+    };
+    auto ks = analyser.tester()->kolmogorovSmirnov(dataFile, normalCdf, 0.95);
+
+    auto chiSquare = analyser.tester()->chiSquareGoodnessOfFit(
+        std::vector<double>{8.0, 8.0, 8.0, 8.0, 8.0},
+        std::vector<double>{8.0, 8.0, 8.0, 8.0, 8.0},
+        2,
+        0.95
+    );
+
     std::cout << "Normal fit: mean=" << mean
               << " stddev=" << stddev
               << " error=" << normalError << "\n";
@@ -147,6 +170,10 @@ int main() {
               << " rejectH0=" << meanTest.rejectH0() << "\n";
     std::cout << "P(value > 50) CI: [" << proportionCi.inferiorLimit()
               << ", " << proportionCi.superiorLimit() << "]\n";
+    std::cout << "KS p-value: " << ks.pValue()
+              << " rejectH0=" << ks.rejectH0() << "\n";
+    std::cout << "Chi-square p-value: " << chiSquare.pValue()
+              << " rejectH0=" << chiSquare.rejectH0() << "\n";
 }
 ```
 
