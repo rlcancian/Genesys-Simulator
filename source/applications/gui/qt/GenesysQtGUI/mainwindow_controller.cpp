@@ -528,6 +528,13 @@ void MainWindow::on_actionToolsExpressionBuilder_triggered() {
 }
 
 
+void MainWindow::on_actionToolsAIAssistant_triggered() {
+    if (_dialogUtilityController != nullptr) {
+        _dialogUtilityController->onActionToolsAIAssistantTriggered();
+    }
+}
+
+
 void MainWindow::on_actionToolsDataAnalyzer_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 11 refactor.
     if (_dialogUtilityController != nullptr) {

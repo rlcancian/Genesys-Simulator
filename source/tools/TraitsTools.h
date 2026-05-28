@@ -14,6 +14,8 @@
 #define TRAITSTOOLS_H
 
 // TOOLS
+#include "AIAssistant_if.h"
+#include "AIAssistantDefaultImpl.h"
 #include "SolverDefaultImpl1.h"
 #include "HypothesisTesterDefaultImpl1.h"
 #include "HypothesisTester_if.h"
@@ -60,6 +62,13 @@ template <> struct TraitsTools<HypothesisTester_if> {
  */
 template <> struct TraitsTools<Fitter_if> {
 	typedef FitterDefaultImpl Implementation;
+};
+
+/*!
+ *  Configure the AI Assistant to be used
+ */
+template <> struct TraitsTools<AIAssistant_if> {
+	typedef AIAssistantDefaultImpl Implementation;
 };
 
 #endif /* TRAITSTOOLS_H */

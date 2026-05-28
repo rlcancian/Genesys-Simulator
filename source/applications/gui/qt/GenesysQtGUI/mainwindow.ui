@@ -1002,6 +1002,7 @@
     <addaction name="actionToolsDataAnalyzer"/>
     <addaction name="actionToolsOptimizator"/>
 	<addaction name="actionToolsExpressionBuilder"/>
+    <addaction name="actionToolsAIAssistant"/>
     <addaction name="separator"/>
    </widget>
    <widget class="QMenu" name="menuSimulator">
@@ -2252,6 +2253,15 @@ li.checked::marker { content: &quot;\2612&quot;; }
      <normaloff>:/icons3/resources/icons/pack3/ico/calculator.ico</normaloff>:/icons3/resources/icons/pack3/ico/calculator.ico</iconset>   </property>
    <property name="text">
     <string>ExpressionBuilder</string>
+   </property>
+  </action>
+  <action name="actionToolsAIAssistant">
+   <property name="icon">
+    <iconset resource="GenesysQtGUI_resources.qrc">
+     <normaloff>:/icons3/resources/icons/pack3/ico/magic wand.ico</normaloff>:/icons3/resources/icons/pack3/ico/magic wand.ico</iconset>
+   </property>
+   <property name="text">
+    <string>AI Assistant</string>
    </property>
   </action>
   <action name="actionToolsParserGrammarChecker">

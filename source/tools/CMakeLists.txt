@@ -1,4 +1,9 @@
 add_library(genesys_tools STATIC
+    AIAssistantDefaultImpl.cpp
+    AnthropicProviderClientImpl.cpp
+    HttpProviderClientBase.cpp
+    LocalProviderClientImpl.cpp
+    OpenAIProviderClientImpl.cpp
     FitterDummyImpl.cpp
     HypothesisTesterDefaultImpl1.cpp
     OptimizerDefaultImpl1.cpp
