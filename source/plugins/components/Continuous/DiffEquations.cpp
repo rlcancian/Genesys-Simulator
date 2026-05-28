@@ -176,7 +176,7 @@ bool DiffEquations::_check(std::string& errorMessage) {
 #include \"../../../../kernel/simulator/Simulator.h\"\n\
 #include \"../../../../kernel/simulator/model/Model.h\"\n\
 #include \"../../../../kernel/simulator/Entity.h\"\n\
-#include \"../../../../tools/SolverDefaultImpl1.h\"\n\
+#include \"../../../../tools/Continuous/SolverDefaultImpl1.h\"\n\
 \n\
 \n\
 void _onDispatchEvent_" + name + "(Simulator* simulator, Model* model, Entity* entity) {\n\

@@ -6,8 +6,8 @@
 #include <string>
 #include <vector>
 
-#include "tools/BioSimulationResult.h"
-#include "tools/MassActionOdeSystem.h"
+#include "tools/Biochemical/BioSimulationResult.h"
+#include "tools/Biochemical/MassActionOdeSystem.h"
 
 struct BioStoichiometryMatrix {
 	std::vector<std::string> speciesNames;

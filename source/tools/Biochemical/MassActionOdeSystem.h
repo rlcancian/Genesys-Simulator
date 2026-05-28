@@ -8,7 +8,7 @@
 #include <vector>
 
 #include "BioKineticLawExpression.h"
-#include "OdeSystem_if.h"
+#include "tools/Continuous/OdeSystem_if.h"
 
 /**
  * @brief ODE system generated from biochemical reactions using mass-action kinetics.

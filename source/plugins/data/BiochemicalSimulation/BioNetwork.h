@@ -6,8 +6,8 @@
 
 #include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
-#include "tools/BioSimulationAnalysis.h"
-#include "tools/BioSimulationResult.h"
+#include "tools/Biochemical/BioSimulationAnalysis.h"
+#include "tools/Biochemical/BioSimulationResult.h"
 
 class BioReaction;
 class BioSpecies;

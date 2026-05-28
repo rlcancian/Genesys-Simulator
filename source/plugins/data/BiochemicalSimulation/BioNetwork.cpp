@@ -12,9 +12,9 @@
 #include "kernel/simulator/Event.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
-#include "tools/BioKineticLawExpression.h"
-#include "tools/MassActionOdeSystem.h"
-#include "tools/RungeKutta4OdeSolver.h"
+#include "tools/Biochemical/BioKineticLawExpression.h"
+#include "tools/Biochemical/MassActionOdeSystem.h"
+#include "tools/Continuous/RungeKutta4OdeSolver.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 

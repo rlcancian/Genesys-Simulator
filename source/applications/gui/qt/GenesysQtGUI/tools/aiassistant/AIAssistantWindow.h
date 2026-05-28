@@ -1,8 +1,8 @@
 #ifndef AIASSISTANTWINDOW_H
 #define AIASSISTANTWINDOW_H
 
-#include "../../../../../../tools/AIAssistantDefaultImpl.h"
-#include "../../../../../../tools/AISecretStore.h"
+#include "../../../../../../tools/AIAssistant/AIAssistantDefaultImpl.h"
+#include "../../../../../../tools/AIAssistant/AISecretStore.h"
 #include "../../../../../../kernel/simulator/SimulatorFacade.h"
 
 #include <QMainWindow>

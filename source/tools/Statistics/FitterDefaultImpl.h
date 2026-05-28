@@ -3,7 +3,7 @@
 
 #include "Fitter_if.h"
 #include "ProbabilityDistributionBase.h"
-#include "SolverDefaultImpl1.h"
+#include "tools/Continuous/SolverDefaultImpl1.h"
 
 #include <algorithm>
 #include <cmath>
