@@ -10,24 +10,24 @@ The CMake target for this layer is `genesys_tools_analysis`. It must remain inde
 
 Implemented behavior:
 
-| Method | Current behavior |
-|---|---|
-| `DataAnalyserDefaultImpl()` | Builds a ready-to-use analyser with default fitter and hypothesis tester selected by `TraitsAnalysis`. |
-| `DataAnalyserDefaultImpl(fitter, sampler, experimenter, tester)` | Allows dependency injection. Null `fitter` and `tester` are replaced by defaults. |
-| `loadDataSet(filename)` | Stores the dataset filename and forwards it to `fitter()->setDataFilename(filename)`. |
-| `fitter()` | Returns the active `Fitter_if`. By default this is `FitterDefaultImpl`. |
-| `tester()` | Returns the active `HypothesisTester_if`. By default this is `HypothesisTesterDefaultImpl`. |
-| `sampler()` | Future roadmap hook. Returns injected sampler, or throws `std::runtime_error("TODO: implement ...")` when none is injected. |
-| `experimenter()` | Future roadmap hook. Returns injected experiment manager, or throws `std::runtime_error("TODO: implement ...")` when none is injected. |
-| `saveDataSet(...)`, `newDataSet(...)` | Not implemented yet; both throw `std::runtime_error`. |
+| Method                                                           | Current behavior                                                                                                                       |
+| ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| `DataAnalyserDefaultImpl()`                                      | Builds a ready-to-use analyser with default fitter and hypothesis tester selected by `TraitsAnalysis`.                                 |
+| `DataAnalyserDefaultImpl(fitter, sampler, experimenter, tester)` | Allows dependency injection. Null `fitter` and `tester` are replaced by defaults.                                                      |
+| `loadDataSet(filename)`                                          | Stores the dataset filename and forwards it to `fitter()->setDataFilename(filename)`.                                                  |
+| `fitter()`                                                       | Returns the active `Fitter_if`. By default this is `FitterDefaultImpl`.                                                                |
+| `tester()`                                                       | Returns the active `HypothesisTester_if`. By default this is `HypothesisTesterDefaultImpl`.                                            |
+| `sampler()`                                                      | Future roadmap hook. Returns injected sampler, or throws `std::runtime_error("TODO: implement ...")` when none is injected.            |
+| `experimenter()`                                                 | Future roadmap hook. Returns injected experiment manager, or throws `std::runtime_error("TODO: implement ...")` when none is injected. |
+| `saveDataSet(...)`, `newDataSet(...)`                            | Not implemented yet; both throw `std::runtime_error`.                                                                                  |
 
 Default implementations are centralized in `TraitsAnalysis`:
 
-| Interface | Default implementation |
-|---|---|
-| `Fitter_if` | `FitterDefaultImpl` |
+| Interface             | Default implementation        |
+| --------------------- | ----------------------------- |
+| `Fitter_if`           | `FitterDefaultImpl`           |
 | `HypothesisTester_if` | `HypothesisTesterDefaultImpl` |
-| `Solver_if` | `SolverDefaultImpl1` |
+| `Solver_if`           | `SolverDefaultImpl1`          |
 
 ## Fitter
 
@@ -35,17 +35,17 @@ Default implementations are centralized in `TraitsAnalysis`:
 
 Implemented fitting methods:
 
-| Method | Distribution / purpose | Main returned parameters |
-|---|---|---|
-| `fitUniform` | Uniform | `min`, `max` |
-| `fitTriangular` | Triangular | `min`, `mo`, `max` |
-| `fitNormal` | Normal | `avg`, `stddev` |
-| `fitExpo` | Exponential | `avg` |
-| `fitErlang` | Erlang | `avg`, `m` |
-| `fitBeta` | Scaled Beta | `alpha`, `beta`, `infLimit`, `supLimit` |
-| `fitWeibull` | Weibull | `alpha`, `scale` |
-| `fitAll` | Compares all candidates | best error and distribution name |
-| `isNormalDistributed` | Normality check | boolean decision |
+| Method                | Distribution / purpose  | Main returned parameters                |
+| --------------------- | ----------------------- | --------------------------------------- |
+| `fitUniform`          | Uniform                 | `min`, `max`                            |
+| `fitTriangular`       | Triangular              | `min`, `mo`, `max`                      |
+| `fitNormal`           | Normal                  | `avg`, `stddev`                         |
+| `fitExpo`             | Exponential             | `avg`                                   |
+| `fitErlang`           | Erlang                  | `avg`, `m`                              |
+| `fitBeta`             | Scaled Beta             | `alpha`, `beta`, `infLimit`, `supLimit` |
+| `fitWeibull`          | Weibull                 | `alpha`, `scale`                        |
+| `fitAll`              | Compares all candidates | best error and distribution name        |
+| `isNormalDistributed` | Normality check         | boolean decision                        |
 
 Parameter estimation uses the Method of Moments (MOM), based on sample mean, sample variance and observed extremes.
 
@@ -55,30 +55,30 @@ Parameter estimation uses the Method of Moments (MOM), based on sample mean, sam
 
 Implemented confidence intervals:
 
-| Method group | Statistical model |
-|---|---|
-| `averageConfidenceInterval` | Mean, using Student-t. |
-| `proportionConfidenceInterval` | Proportion, using normal approximation; supports finite-population correction. |
-| `varianceConfidenceInterval` | Variance, using chi-square. |
-| `averageDifferenceConfidenceInterval` | Difference of means; pooled t or Welch depending on variance-ratio compatibility. |
-| `proportionDifferenceConfidenceInterval` | Difference of proportions, using normal approximation. |
-| `varianceRatioConfidenceInterval` | Ratio of variances, using F distribution. |
+| Method group                             | Statistical model                                                                 |
+| ---------------------------------------- | --------------------------------------------------------------------------------- |
+| `averageConfidenceInterval`              | Mean, using Student-t.                                                            |
+| `proportionConfidenceInterval`           | Proportion, using normal approximation; supports finite-population correction.    |
+| `varianceConfidenceInterval`             | Variance, using chi-square.                                                       |
+| `averageDifferenceConfidenceInterval`    | Difference of means; pooled t or Welch depending on variance-ratio compatibility. |
+| `proportionDifferenceConfidenceInterval` | Difference of proportions, using normal approximation.                            |
+| `varianceRatioConfidenceInterval`        | Ratio of variances, using F distribution.                                         |
 
 Implemented hypothesis tests:
 
-| Method group | Statistical model |
-|---|---|
-| `testAverage` | Mean test for one or two populations. |
+| Method group     | Statistical model                           |
+| ---------------- | ------------------------------------------- |
+| `testAverage`    | Mean test for one or two populations.       |
 | `testProportion` | Proportion test for one or two populations. |
-| `testVariance` | Variance test for one or two populations. |
+| `testVariance`   | Variance test for one or two populations.   |
 
 Each `TestResult` exposes:
 
-| Field / method | Meaning |
-|---|---|
-| `pValue()` | Test p-value. |
-| `testStat()` | Observed test statistic. |
-| `rejectH0()` / `acceptH0()` | Decision at the requested confidence level. |
+| Field / method                                            | Meaning                                          |
+| --------------------------------------------------------- | ------------------------------------------------ |
+| `pValue()`                                                | Test p-value.                                    |
+| `testStat()`                                              | Observed test statistic.                         |
+| `rejectH0()` / `acceptH0()`                               | Decision at the requested confidence level.      |
 | `acceptanceInferiorLimit()` / `acceptanceSuperiorLimit()` | Acceptance region limits for the test statistic. |
 
 File-based overloads load numeric data through `DatasetLoader` and `SimulationResultsParser`, not through kernel statistics collectors.
@@ -87,10 +87,10 @@ All inference methods expect `confidenceLevel` in `(0, 1)`, for example `0.95`.
 
 Implemented goodness-of-fit tests:
 
-| Method | Statistical model | Inputs |
-|---|---|---|
-| `chiSquareGoodnessOfFit` | Chi-square adherence test. | Observed frequencies, expected frequencies, number of estimated parameters and confidence level. |
-| `kolmogorovSmirnov` | One-sample Kolmogorov-Smirnov test for continuous distributions. | Sample or sample file, theoretical CDF function and confidence level. |
+| Method                   | Statistical model                                                | Inputs                                                                                           |
+| ------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| `chiSquareGoodnessOfFit` | Chi-square adherence test.                                       | Observed frequencies, expected frequencies, number of estimated parameters and confidence level. |
+| `kolmogorovSmirnov`      | One-sample Kolmogorov-Smirnov test for continuous distributions. | Sample or sample file, theoretical CDF function and confidence level.                            |
 
 Both methods return `TestResult`: `testStat()` contains chi-square or KS `D`, `pValue()` contains the adherence-test p-value, and `rejectH0()` indicates whether the fitted/theoretical distribution should be rejected at the requested confidence level.
 
@@ -190,3 +190,5 @@ Some results may differ from Arena Input Analyzer even when the fitted distribut
 - **Standard deviation:** Arena displays the value computed with denominator `n` (MLE estimator), while this module uses denominator `n - 1` (unbiased sample estimator). For large samples the difference is small; for smaller samples, such as `n = 40`, it can be visible.
 - **Rounding:** Arena performs intermediate display rounding. Means, standard deviations and fitted parameters may look different even when the underlying numerical difference is insignificant.
 - **Squared error formula:** this module uses a Cramer-von Mises-style pointwise empirical CDF comparison. Arena Input Analyzer commonly reports a histogram-based `chi-square / n` measure. These metrics are not numerically comparable.
+- **Chi-square goodness-of-fit:** the chi-square statistic depends directly on the class intervals, grouping policy and number of fitted parameters removed from the degrees of freedom. Arena may merge or choose histogram intervals internally. The example uses equiprobable normal-quantile classes for the fitted Normal distribution, so its chi-square statistic is not expected to match Arena unless the exact same class bounds, expected frequencies and degrees of freedom are used.
+- **Kolmogorov-Smirnov:** the KS statistic depends on the exact theoretical CDF used for comparison, including parameter-estimation conventions such as MLE versus unbiased sample estimates. Small differences in fitted parameters change the CDF and therefore the KS `D` statistic. Tools may also differ in how they approximate or report p-values; for example, some report threshold ranges while this module prints its numeric approximation.
