@@ -46,3 +46,5 @@ temp*
 .aider*
 
 documentation/diagrams/
+
+.claude/settings.local.json
