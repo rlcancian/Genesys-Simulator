@@ -13,7 +13,7 @@
 #ifndef PROBABILITYDISTRIBUTIONBASE_H
 #define PROBABILITYDISTRIBUTIONBASE_H
 
-#include "Solver_if.h"
+#include "tools/Continuous/Solver_if.h"
 #include <string>
 #include <map>
 

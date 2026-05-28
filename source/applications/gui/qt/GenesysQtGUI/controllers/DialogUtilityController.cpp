@@ -26,10 +26,10 @@
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "kernel/simulator/LicenceManager.h"
 #include "../../../../../kernel/simulator/essentialPlugins/Entity.h"
-#include "../../../../../tools/FitterDefaultImpl.h"
-#include "../../../../../tools/HypothesisTesterDefaultImpl1.h"
-#include "../../../../../tools/OptimizerDefaultImpl1.h"
-#include "../../../../../tools/SolverDefaultImpl1.h"
+#include "../../../../../tools/Statistics/FitterDefaultImpl.h"
+#include "../../../../../tools/Statistics/HypothesisTesterDefaultImpl1.h"
+#include "../../../../../tools/Optimization/OptimizerDefaultImpl1.h"
+#include "../../../../../tools/Continuous/SolverDefaultImpl1.h"
 
 #include <QAction>
 #include <QCheckBox>

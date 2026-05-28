@@ -1,18 +1,18 @@
 add_library(genesys_tools STATIC
-    AIAssistantDefaultImpl.cpp
-    AIAuditLog.cpp
-    AISecretStore.cpp
-    AnthropicProviderClientImpl.cpp
-    HttpProviderClientBase.cpp
-    LocalProviderClientImpl.cpp
-    OpenAIProviderClientImpl.cpp
-    FitterDummyImpl.cpp
-    HypothesisTesterDefaultImpl1.cpp
-    OptimizerDefaultImpl1.cpp
-    ProbabilityDistribution.cpp
-    ProbabilityDistributionBase.cpp
-    SimulationResultsDataset.cpp
-    SolverDefaultImpl1.cpp
+    AIAssistant/AIAssistantDefaultImpl.cpp
+    AIAssistant/AIAuditLog.cpp
+    AIAssistant/AISecretStore.cpp
+    AIAssistant/AnthropicProviderClientImpl.cpp
+    AIAssistant/HttpProviderClientBase.cpp
+    AIAssistant/LocalProviderClientImpl.cpp
+    AIAssistant/OpenAIProviderClientImpl.cpp
+    Statistics/FitterDummyImpl.cpp
+    Statistics/HypothesisTesterDefaultImpl1.cpp
+    Statistics/ProbabilityDistribution.cpp
+    Statistics/ProbabilityDistributionBase.cpp
+    Statistics/SimulationResultsDataset.cpp
+    Optimization/OptimizerDefaultImpl1.cpp
+    Continuous/SolverDefaultImpl1.cpp
     FactorialDesign/FactorialDesign.cpp
 )
 

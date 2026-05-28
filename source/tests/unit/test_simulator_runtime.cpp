@@ -56,9 +56,9 @@
 #include "../../plugins/data/Logic/AssignmentItem.h"
 #include "plugins/data/Template/DummyElement.h"
 #include "kernel/util/Util.h"
-#include "tools/MassActionOdeSystem.h"
-#include "tools/RungeKutta4OdeSolver.h"
-#include "tools/SimulationResultsDataset.h"
+#include "tools/Biochemical/MassActionOdeSystem.h"
+#include "tools/Continuous/RungeKutta4OdeSolver.h"
+#include "tools/Statistics/SimulationResultsDataset.h"
 #define private public
 #define protected public
 #include "../../plugins/data/Grouping/EntityGroup.h"

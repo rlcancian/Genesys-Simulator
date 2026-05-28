@@ -9,7 +9,7 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
-#include "tools/MetabolicFluxBalanceSolver.h"
+#include "tools/Biochemical/MetabolicFluxBalanceSolver.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
