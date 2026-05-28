@@ -21,11 +21,35 @@
 #include "kernel/util/Util.h"
 
 #include <algorithm>   // std::fill
+#include <chrono>      // steady_clock for timing
 #include <cstdlib>     // std::getenv
 #include <cstdio>      // std::snprintf
 #include <sstream>
 #include <unistd.h>    // mkstemp, write, close, unlink
 #include <sys/stat.h>  // fchmod
+
+// ---------------------------------------------------------------------------
+// Module-level helpers
+// ---------------------------------------------------------------------------
+
+static std::string providerToString(AIProvider p) {
+    switch (p) {
+        case AIProvider::OpenAI:     return "OpenAI";
+        case AIProvider::Anthropic:  return "Anthropic";
+        case AIProvider::Local:      return "Local";
+        case AIProvider::CustomHttp: return "CustomHttp";
+        default:                     return "Undefined";
+    }
+}
+
+static std::string promptPreview(const AIAssistantRequest& req) {
+    const std::string& src = req.userPrompt.empty()
+                             ? (req.modelDescription.empty()
+                                ? req.experimentDescription
+                                : req.modelDescription)
+                             : req.userPrompt;
+    return src.size() > 120 ? src.substr(0, 120) : src;
+}
 
 // ---------------------------------------------------------------------------
 // Constructor / destructor
@@ -626,6 +650,14 @@ bool AIAssistantDefaultImpl::checkReady(std::string* message) const {
 
 AIAssistantResponse AIAssistantDefaultImpl::analyzePrompt(
         const AIAssistantRequest& request) {
+    const auto _t0 = std::chrono::steady_clock::now();
+    const std::string _pp = promptPreview(request);
+    auto _audit = [&](const AIAssistantResponse& r) {
+        _appendAudit("analyzePrompt", r,
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _t0).count(), _pp);
+    };
+
     // Permission check
     if (!_config.allowNetworkAccess) {
         AIAssistantResponse response;
@@ -635,6 +667,7 @@ AIAssistantResponse AIAssistantDefaultImpl::analyzePrompt(
                            "Set AIAssistantConfiguration::allowNetworkAccess = true to enable it.";
         _state     = ExecutionState::Failed;
         _lastError = response.message;
+        _audit(response);
         return response;
     }
 
@@ -647,6 +680,7 @@ AIAssistantResponse AIAssistantDefaultImpl::analyzePrompt(
         response.message = "Assistant is not ready: " + readyMsg;
         _state     = ExecutionState::Failed;
         _lastError = response.message;
+        _audit(response);
         return response;
     }
 
@@ -659,6 +693,7 @@ AIAssistantResponse AIAssistantDefaultImpl::analyzePrompt(
                            "Call setProviderClient() or createAndAttachProviderClient() first.";
         _state     = ExecutionState::Failed;
         _lastError = response.message;
+        _audit(response);
         return response;
     }
 
@@ -670,6 +705,7 @@ AIAssistantResponse AIAssistantDefaultImpl::analyzePrompt(
                            "(check API key and base URL configuration).";
         _state     = ExecutionState::Failed;
         _lastError = response.message;
+        _audit(response);
         return response;
     }
 
@@ -743,6 +779,7 @@ AIAssistantResponse AIAssistantDefaultImpl::analyzePrompt(
         _state                = ExecutionState::Failed;
         _lastError            = response.message;
         _lastDiagnostics      = response.diagnostics;
+        _audit(response);
         return response;
     }
 
@@ -751,11 +788,20 @@ AIAssistantResponse AIAssistantDefaultImpl::analyzePrompt(
     response.message  = provResp.content;
     _state            = ExecutionState::Finished;
     _lastDiagnostics  = response.diagnostics;
+    _audit(response);
     return response;
 }
 
 AIAssistantResponse AIAssistantDefaultImpl::createModelPlan(
         const AIAssistantRequest& request) {
+    const auto _t0 = std::chrono::steady_clock::now();
+    const std::string _pp = promptPreview(request);
+    auto _audit = [&](const AIAssistantResponse& r) {
+        _appendAudit("createModelPlan", r,
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _t0).count(), _pp);
+    };
+
     // Permission and readiness checks mirror analyzePrompt.
     if (!_config.allowNetworkAccess) {
         AIAssistantResponse response;
@@ -765,6 +811,7 @@ AIAssistantResponse AIAssistantDefaultImpl::createModelPlan(
                            "Set AIAssistantConfiguration::allowNetworkAccess = true to enable it.";
         _state     = ExecutionState::Failed;
         _lastError = response.message;
+        _audit(response);
         return response;
     }
 
@@ -776,6 +823,7 @@ AIAssistantResponse AIAssistantDefaultImpl::createModelPlan(
         response.message = "Assistant is not ready: " + readyMsg;
         _state     = ExecutionState::Failed;
         _lastError = response.message;
+        _audit(response);
         return response;
     }
 
@@ -787,6 +835,7 @@ AIAssistantResponse AIAssistantDefaultImpl::createModelPlan(
                            "Call setProviderClient() or createAndAttachProviderClient() first.";
         _state     = ExecutionState::Failed;
         _lastError = response.message;
+        _audit(response);
         return response;
     }
 
@@ -866,6 +915,7 @@ AIAssistantResponse AIAssistantDefaultImpl::createModelPlan(
         _state                = ExecutionState::Failed;
         _lastError            = response.message;
         _lastDiagnostics      = response.diagnostics;
+        _audit(response);
         return response;
     }
 
@@ -875,6 +925,7 @@ AIAssistantResponse AIAssistantDefaultImpl::createModelPlan(
     response.message       = "Model plan generated successfully.";
     _state                 = ExecutionState::Finished;
     _lastDiagnostics       = response.diagnostics;
+    _audit(response);
     return response;
 }
 
@@ -957,13 +1008,21 @@ static std::string genFormatReference() {
 // ---------------------------------------------------------------------------
 
 AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest& request) {
+    const auto _t0 = std::chrono::steady_clock::now();
+    const std::string _pp = promptPreview(request);
+    auto _audit = [&](const AIAssistantResponse& r) {
+        _appendAudit("buildModel", r,
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _t0).count(), _pp);
+    };
+
     if (!_config.allowModelMutation) {
         AIAssistantResponse r;
         r.success = false; r.state = ExecutionState::Failed;
         r.message = "Model construction is not permitted. "
                     "Set AIAssistantConfiguration::allowModelMutation = true.";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
     if (!_config.allowNetworkAccess) {
         AIAssistantResponse r;
@@ -971,7 +1030,7 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
         r.message = "Network access is not permitted. "
                     "Set AIAssistantConfiguration::allowNetworkAccess = true.";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
     if (_simulatorFacade == nullptr) {
         AIAssistantResponse r;
@@ -979,7 +1038,7 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
         r.message = "No SimulatorFacade attached. "
                     "Call setSimulatorFacade() before buildModel().";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
     if (_providerClient == nullptr || !_providerClient->isAvailable()) {
         AIAssistantResponse r;
@@ -987,10 +1046,18 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
         r.message = "Provider client not available. "
                     "Call setProviderClient() or createAndAttachProviderClient() first.";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
 
     _state = ExecutionState::Running;
+
+    // ------------------------------------------------------------------
+    // Sandbox: clear current model before building so the LLM starts
+    // from an empty canvas without inheriting the user's existing model.
+    // ------------------------------------------------------------------
+    if (_config.sandboxEnabled && !_config.dryRun) {
+        _simulatorFacade->modelClear();
+    }
 
     // ------------------------------------------------------------------
     // 1. Ask the LLM to generate a .gen model file.
@@ -1042,7 +1109,9 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
     response.diagnostics = "buildModel; provider=" + _providerClient->getProviderName()
                          + "; model=" + _config.modelName
                          + "; inputTokens=" + std::to_string(provResp.inputTokens)
-                         + "; outputTokens=" + std::to_string(provResp.outputTokens);
+                         + "; outputTokens=" + std::to_string(provResp.outputTokens)
+                         + ((_config.dryRun)    ? "; dryRun=ON"    : "")
+                         + ((_config.sandboxEnabled) ? "; sandbox=ON" : "");
 
     if (!provResp.success) {
         response.success = false;
@@ -1050,18 +1119,32 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
         response.message = "LLM call failed during buildModel: " + provResp.errorMessage;
         _state = ExecutionState::Failed; _lastError = response.message;
         _lastDiagnostics = response.diagnostics;
-        return response;
+        _audit(response); return response;
     }
 
     const std::string genContent = extractGenContent(provResp.content);
     response.generatedModelLanguage = genContent;
 
     // ------------------------------------------------------------------
+    // Dry-run: return the generated .gen preview without loading it.
+    // ------------------------------------------------------------------
+    if (_config.dryRun) {
+        const std::string preview = genContent.size() > 400
+                                    ? genContent.substr(0, 400) + "\n..." : genContent;
+        response.success = true;
+        response.state   = ExecutionState::Finished;
+        response.message = "[DRY RUN] .gen file generated — not loaded into simulator.\n\n"
+                           "Preview:\n" + preview;
+        _state = ExecutionState::Finished;
+        _lastDiagnostics = response.diagnostics;
+        _audit(response); return response;
+    }
+
+    // ------------------------------------------------------------------
     // 2. Write .gen content to a temp file and load it.
     // ------------------------------------------------------------------
-    char tmpPath[] = "/tmp/genesys-ai-model-XXXXXX.gen";
-    // mkstemp doesn't support a suffix; use a two-step approach:
-    // create temp file, rename it to add .gen extension.
+    // mkstemp doesn't support a suffix; create a temp file and rename it
+    // to add the .gen extension so the ModelManager recognises it.
     char basePath[] = "/tmp/genesys-ai-model-XXXXXX";
     int fd = ::mkstemp(basePath);
     if (fd == -1) {
@@ -1069,7 +1152,7 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
         response.state   = ExecutionState::Failed;
         response.message = "Failed to create temporary .gen file for model loading.";
         _state = ExecutionState::Failed; _lastError = response.message;
-        return response;
+        _audit(response); return response;
     }
     ::fchmod(fd, 0600);
 
@@ -1081,13 +1164,11 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
         response.state   = ExecutionState::Failed;
         response.message = "Failed to write generated .gen content to temp file.";
         _state = ExecutionState::Failed; _lastError = response.message;
-        return response;
+        _audit(response); return response;
     }
 
-    // Rename so the ModelManager recognises the .gen extension.
     std::string genPath = std::string(basePath) + ".gen";
     if (::rename(basePath, genPath.c_str()) != 0) {
-        // If rename fails (cross-device or permission), use the base path as-is.
         genPath = basePath;
     }
 
@@ -1105,7 +1186,7 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
                            "Check generatedModelLanguage in the response for details.";
         _state = ExecutionState::Failed; _lastError = response.message;
         _lastDiagnostics = response.diagnostics;
-        return response;
+        _audit(response); return response;
     }
 
     response.success  = true;
@@ -1113,7 +1194,7 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
     response.message  = "Model loaded successfully from generated .gen file.";
     _state            = ExecutionState::Finished;
     _lastDiagnostics  = response.diagnostics;
-    return response;
+    _audit(response); return response;
 }
 
 // ---------------------------------------------------------------------------
@@ -1121,13 +1202,23 @@ AIAssistantResponse AIAssistantDefaultImpl::buildModel(const AIAssistantRequest&
 // ---------------------------------------------------------------------------
 
 AIAssistantResponse AIAssistantDefaultImpl::configureSimulation(const AIAssistantRequest& request) {
+    const auto _t0 = std::chrono::steady_clock::now();
+    const std::string _pp = request.experimentDescription.size() > 120
+                            ? request.experimentDescription.substr(0, 120)
+                            : request.experimentDescription;
+    auto _audit = [&](const AIAssistantResponse& r) {
+        _appendAudit("configureSimulation", r,
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _t0).count(), _pp);
+    };
+
     if (!_config.allowModelMutation) {
         AIAssistantResponse r;
         r.success = false; r.state = ExecutionState::Failed;
         r.message = "Simulation configuration is not permitted. "
                     "Set AIAssistantConfiguration::allowModelMutation = true.";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
     if (_simulatorFacade == nullptr) {
         AIAssistantResponse r;
@@ -1135,21 +1226,34 @@ AIAssistantResponse AIAssistantDefaultImpl::configureSimulation(const AIAssistan
         r.message = "No SimulatorFacade attached. "
                     "Call setSimulatorFacade() before configureSimulation().";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
 
     _state = ExecutionState::Running;
 
     // ------------------------------------------------------------------
-    // Extract simulation parameters from the experiment description via LLM.
-    // If no provider is available, skip LLM extraction and return success
-    // (parameters from the loaded .gen file remain in effect).
+    // Extract simulation parameters from the experiment description via LLM,
+    // then apply them — or just preview them when dry-run is enabled.
     // ------------------------------------------------------------------
     std::string descSource = request.experimentDescription;
     if (descSource.empty() && !request.modelPlan.empty()) {
-        // Fall back to the model plan for parameter extraction.
         descSource = request.modelPlan;
     }
+
+    auto parseTimeUnit = [](const std::string& unitStr) -> Util::TimeUnit {
+        if (unitStr == "second") return Util::TimeUnit::second;
+        if (unitStr == "minute") return Util::TimeUnit::minute;
+        if (unitStr == "hour")   return Util::TimeUnit::hour;
+        if (unitStr == "day")    return Util::TimeUnit::day;
+        return Util::TimeUnit::minute;
+    };
+
+    // Extracted values — populated when the LLM call succeeds.
+    int    extractedReps   = 0;
+    double extractedRl     = 0.0;
+    std::string extractedRlUnit;
+    double extractedWu     = 0.0;
+    std::string extractedWuUnit;
 
     if (!descSource.empty() && _config.allowNetworkAccess
             && _providerClient != nullptr && _providerClient->isAvailable()) {
@@ -1184,43 +1288,50 @@ AIAssistantResponse AIAssistantDefaultImpl::configureSimulation(const AIAssistan
 
         if (provResp.success && !provResp.content.empty()) {
             const std::string& json = provResp.content;
-
-            auto parseTimeUnit = [](const std::string& unitStr) -> Util::TimeUnit {
-                if (unitStr == "second")  return Util::TimeUnit::second;
-                if (unitStr == "minute")  return Util::TimeUnit::minute;
-                if (unitStr == "hour")    return Util::TimeUnit::hour;
-                if (unitStr == "day")     return Util::TimeUnit::day;
-                return Util::TimeUnit::minute; // default
-            };
-
-            // numberOfReplications
-            const int reps = HttpProviderClientBase::_extractJsonInt(json, "numberOfReplications");
-            if (reps > 0) {
-                _simulatorFacade->simSetNumberOfReplications(static_cast<unsigned int>(reps));
-            }
-
-            // replicationLength
-            {
-                const double rl = HttpProviderClientBase::_extractJsonDouble(
-                    json, "replicationLength");
-                if (rl > 0.0) {
-                    const std::string unitStr = HttpProviderClientBase::_extractJsonString(
-                        json, "replicationLengthTimeUnit");
-                    _simulatorFacade->simSetReplicationLength(rl, parseTimeUnit(unitStr));
-                }
-            }
-
-            // warmUpPeriod
-            {
-                const double wu = HttpProviderClientBase::_extractJsonDouble(
-                    json, "warmUpPeriod");
-                if (wu > 0.0) {
-                    const std::string unitStr = HttpProviderClientBase::_extractJsonString(
-                        json, "warmUpPeriodTimeUnit");
-                    _simulatorFacade->simSetWarmUpPeriod(wu, parseTimeUnit(unitStr));
-                }
-            }
+            extractedReps   = HttpProviderClientBase::_extractJsonInt(json, "numberOfReplications");
+            extractedRl     = HttpProviderClientBase::_extractJsonDouble(json, "replicationLength");
+            extractedRlUnit = HttpProviderClientBase::_extractJsonString(json, "replicationLengthTimeUnit");
+            extractedWu     = HttpProviderClientBase::_extractJsonDouble(json, "warmUpPeriod");
+            extractedWuUnit = HttpProviderClientBase::_extractJsonString(json, "warmUpPeriodTimeUnit");
         }
+    }
+
+    // ------------------------------------------------------------------
+    // Dry-run: show what would be applied without touching the simulator.
+    // ------------------------------------------------------------------
+    if (_config.dryRun) {
+        std::ostringstream msg;
+        msg << "[DRY RUN] configureSimulation would apply:\n";
+        if (extractedReps > 0)
+            msg << "  numberOfReplications = " << extractedReps << "\n";
+        if (extractedRl > 0.0)
+            msg << "  replicationLength    = " << extractedRl << " " << extractedRlUnit << "\n";
+        if (extractedWu > 0.0)
+            msg << "  warmUpPeriod         = " << extractedWu << " " << extractedWuUnit << "\n";
+        if (extractedReps == 0 && extractedRl == 0.0 && extractedWu == 0.0)
+            msg << "  (no parameters extracted from description)\n";
+
+        AIAssistantResponse response;
+        response.success     = true;
+        response.state       = ExecutionState::Finished;
+        response.message     = msg.str();
+        response.diagnostics = "configureSimulation dryRun=ON";
+        _state               = ExecutionState::Finished;
+        _lastDiagnostics     = response.diagnostics;
+        _audit(response); return response;
+    }
+
+    // ------------------------------------------------------------------
+    // Apply extracted values (skip zero/empty ones — .gen defaults remain).
+    // ------------------------------------------------------------------
+    if (extractedReps > 0) {
+        _simulatorFacade->simSetNumberOfReplications(static_cast<unsigned int>(extractedReps));
+    }
+    if (extractedRl > 0.0) {
+        _simulatorFacade->simSetReplicationLength(extractedRl, parseTimeUnit(extractedRlUnit));
+    }
+    if (extractedWu > 0.0) {
+        _simulatorFacade->simSetWarmUpPeriod(extractedWu, parseTimeUnit(extractedWuUnit));
     }
 
     // Build diagnostic string with current settings.
@@ -1242,7 +1353,7 @@ AIAssistantResponse AIAssistantDefaultImpl::configureSimulation(const AIAssistan
                          + std::to_string(_simulatorFacade->simGetWarmUpPeriod()) + ".";
     response.diagnostics = _lastDiagnostics;
     _state               = ExecutionState::Finished;
-    return response;
+    _audit(response); return response;
 }
 
 // ---------------------------------------------------------------------------
@@ -1251,13 +1362,20 @@ AIAssistantResponse AIAssistantDefaultImpl::configureSimulation(const AIAssistan
 
 AIAssistantResponse AIAssistantDefaultImpl::runSimulation(const AIAssistantRequest& request) {
     (void)request;
+    const auto _t0 = std::chrono::steady_clock::now();
+    auto _audit = [&](const AIAssistantResponse& r) {
+        _appendAudit("runSimulation", r,
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _t0).count(), "");
+    };
+
     if (!_config.allowSimulationExecution) {
         AIAssistantResponse r;
         r.success = false; r.state = ExecutionState::Failed;
         r.message = "Simulation execution is not permitted. "
                     "Set AIAssistantConfiguration::allowSimulationExecution = true.";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
     if (_simulatorFacade == nullptr) {
         AIAssistantResponse r;
@@ -1265,22 +1383,36 @@ AIAssistantResponse AIAssistantDefaultImpl::runSimulation(const AIAssistantReque
         r.message = "No SimulatorFacade attached. "
                     "Call setSimulatorFacade() before runSimulation().";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
     if (_simulatorFacade->simIsRunning()) {
         AIAssistantResponse r;
         r.success = false; r.state = ExecutionState::Failed;
         r.message = "A simulation is already running.";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
 
     _state = ExecutionState::Running;
 
+    const unsigned int reps = _simulatorFacade->simGetNumberOfReplications();
+
+    // ------------------------------------------------------------------
+    // Dry-run: report what would run without calling simStart().
+    // ------------------------------------------------------------------
+    if (_config.dryRun) {
+        AIAssistantResponse response;
+        response.success = true;
+        response.state   = ExecutionState::Finished;
+        response.message = "[DRY RUN] Simulation would start "
+                         + std::to_string(reps) + " replication(s) — not executed.";
+        _state = ExecutionState::Finished;
+        _lastDiagnostics = "runSimulation dryRun=ON";
+        _audit(response); return response;
+    }
+
     // simStart() is synchronous — it runs all replications and returns.
     _simulatorFacade->simStart();
-
-    const unsigned int reps = _simulatorFacade->simGetNumberOfReplications();
 
     AIAssistantResponse response;
     response.success  = true;
@@ -1289,7 +1421,7 @@ AIAssistantResponse AIAssistantDefaultImpl::runSimulation(const AIAssistantReque
                       + std::to_string(reps) + " replication(s) executed.";
     _state            = ExecutionState::Finished;
     _lastDiagnostics  = response.message;
-    return response;
+    _audit(response); return response;
 }
 
 // ---------------------------------------------------------------------------
@@ -1298,21 +1430,43 @@ AIAssistantResponse AIAssistantDefaultImpl::runSimulation(const AIAssistantReque
 
 AIAssistantResponse AIAssistantDefaultImpl::collectResults(const AIAssistantRequest& request) {
     (void)request;
+    const auto _t0 = std::chrono::steady_clock::now();
+    auto _audit = [&](const AIAssistantResponse& r) {
+        _appendAudit("collectResults", r,
+            std::chrono::duration_cast<std::chrono::milliseconds>(
+                std::chrono::steady_clock::now() - _t0).count(), "");
+    };
+
     if (_simulatorFacade == nullptr) {
         AIAssistantResponse r;
         r.success = false; r.state = ExecutionState::Failed;
         r.message = "No SimulatorFacade attached. "
                     "Call setSimulatorFacade() before collectResults().";
         _state = ExecutionState::Failed; _lastError = r.message;
-        return r;
+        _audit(r); return r;
     }
 
     List<SimulationResponse*>* responses = _simulatorFacade->modelGetResponses();
+    const unsigned int count = (responses != nullptr) ? responses->size() : 0u;
+
+    // ------------------------------------------------------------------
+    // Dry-run: just report the count of available responses.
+    // ------------------------------------------------------------------
+    if (_config.dryRun) {
+        AIAssistantResponse response;
+        response.success = true;
+        response.state   = ExecutionState::Finished;
+        response.message = "[DRY RUN] " + std::to_string(count)
+                         + " response(s) available in current model — not rendered.";
+        _state = ExecutionState::Finished;
+        _lastDiagnostics = "collectResults dryRun=ON";
+        _audit(response); return response;
+    }
 
     std::ostringstream md;
     md << "## Simulation Results\n\n";
 
-    if (responses == nullptr || responses->size() == 0u) {
+    if (count == 0u) {
         md << "*No simulation responses available.*\n";
     } else {
         md << "| Metric | Value |\n";
@@ -1326,16 +1480,13 @@ AIAssistantResponse AIAssistantDefaultImpl::collectResults(const AIAssistantRequ
         }
     }
 
-    const std::string resultsText = md.str();
-
     AIAssistantResponse response;
     response.success  = true;
     response.state    = ExecutionState::Finished;
-    response.message  = resultsText;
+    response.message  = md.str();
     _state            = ExecutionState::Finished;
-    _lastDiagnostics  = "collectResults: rendered " +
-        std::to_string(responses != nullptr ? responses->size() : 0u) + " response(s).";
-    return response;
+    _lastDiagnostics  = "collectResults: rendered " + std::to_string(count) + " response(s).";
+    _audit(response); return response;
 }
 
 // ---------------------------------------------------------------------------
@@ -1413,6 +1564,45 @@ std::string AIAssistantDefaultImpl::getLastDiagnostics() const {
 void AIAssistantDefaultImpl::clearDiagnostics() {
     _lastError.clear();
     _lastDiagnostics.clear();
+}
+
+// ---------------------------------------------------------------------------
+// Audit log (Stage 8)
+// ---------------------------------------------------------------------------
+
+std::vector<AuditEntry> AIAssistantDefaultImpl::getAuditEntries(
+        unsigned int maxEntries) const {
+    return _auditLog.loadRecentEntries(maxEntries);
+}
+
+std::string AIAssistantDefaultImpl::getAuditLogPath() const {
+    return _auditLog.logFilePath();
+}
+
+unsigned int AIAssistantDefaultImpl::exportAuditLog(const std::string& csvPath) const {
+    return _auditLog.exportCsv(csvPath);
+}
+
+void AIAssistantDefaultImpl::_appendAudit(const std::string& operation,
+                                          const AIAssistantResponse& resp,
+                                          long long durationMs,
+                                          const std::string& preview) {
+    AuditEntry entry;
+    entry.timestamp    = std::chrono::system_clock::now();
+    entry.operation    = operation;
+    entry.provider     = _config.providerName.empty()
+                         ? providerToString(_config.provider)
+                         : _config.providerName;
+    entry.modelName    = _config.modelName;
+    entry.promptPreview = preview.size() > 120 ? preview.substr(0, 120) : preview;
+    entry.success      = resp.success;
+    entry.dryRun       = _config.dryRun;
+    entry.durationMs   = durationMs;
+    if (!resp.success) {
+        entry.errorSummary = resp.message.size() > 200
+                             ? resp.message.substr(0, 200) : resp.message;
+    }
+    _auditLog.append(entry);
 }
 
 // ---------------------------------------------------------------------------

@@ -8,6 +8,8 @@
 #ifndef AIASSISTANT_IF_H
 #define AIASSISTANT_IF_H
 
+#include "AIAuditLog.h"
+
 #include <string>
 #include <vector>
 
@@ -95,6 +97,33 @@ struct AIAssistantConfiguration {
     bool         allowModelMutation        = false; ///< Permit creation or modification of GenESyS models.
     bool         allowSimulationExecution  = false; ///< Permit starting simulation replications.
     bool         allowFileSystemWrites     = false; ///< Permit writing model/result files to disk.
+
+    /**
+     * @brief When @c true, clears the current model before every buildModel() call.
+     *
+     * @details
+     * Sandbox mode provides a clean-room environment: any existing model
+     * elements are discarded so the LLM always starts from an empty canvas.
+     * This prevents the AI from accidentally inheriting components from a model
+     * the user was editing. The cleared state is permanent; no undo is provided.
+     */
+    bool         sandboxEnabled            = false;
+
+    /**
+     * @brief When @c true, workflow methods simulate their actions without
+     *        mutating the simulator state or consuming network quota beyond
+     *        what is needed for planning.
+     *
+     * @details
+     * - buildModel()          — generates the .gen text via LLM but does NOT load it.
+     * - configureSimulation() — extracts parameters via LLM but does NOT apply them.
+     * - runSimulation()       — reports what would run without calling simStart().
+     * - collectResults()      — reports the count of available responses without rendering.
+     * - analyzePrompt() / createModelPlan() — always execute regardless of this flag.
+     *
+     * Use dry-run to verify the LLM output before committing changes.
+     */
+    bool         dryRun                    = false;
 };
 
 // ---------------------------------------------------------------------------
@@ -558,6 +587,29 @@ public:
 
     /** @brief Clears both the last error and diagnostics strings. */
     virtual void clearDiagnostics() = 0;
+
+    // -----------------------------------------------------------------------
+    // Audit log
+    // -----------------------------------------------------------------------
+
+    /**
+     * @brief Returns up to @p maxEntries most-recent audit entries (oldest first).
+     *
+     * @details
+     * Reads from the persistent audit log file. Returns an empty vector when
+     * the file does not yet exist or cannot be read.
+     */
+    virtual std::vector<AuditEntry> getAuditEntries(unsigned int maxEntries = 200) const = 0;
+
+    /** @brief Returns the absolute path of the audit log file. */
+    virtual std::string getAuditLogPath() const = 0;
+
+    /**
+     * @brief Exports all audit entries to a CSV file.
+     * @param csvPath Destination file path.
+     * @return Number of data rows written (excluding the header).
+     */
+    virtual unsigned int exportAuditLog(const std::string& csvPath) const = 0;
 };
 
 #endif /* AIASSISTANT_IF_H */

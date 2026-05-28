@@ -2,6 +2,7 @@
 #define AIASSISTANTWINDOW_H
 
 #include "../../../../../../tools/AIAssistantDefaultImpl.h"
+#include "../../../../../../tools/AISecretStore.h"
 #include "../../../../../../kernel/simulator/SimulatorFacade.h"
 
 #include <QMainWindow>
@@ -16,6 +17,7 @@ class QPlainTextEdit;
 class QPushButton;
 class QSpinBox;
 class QTabWidget;
+class QTableWidget;
 class QTextBrowser;
 class Simulator;
 
@@ -33,6 +35,7 @@ private:
     QWidget* buildConfigTab();
     QWidget* buildPromptTab();
     QWidget* buildExecutionTab();
+    QWidget* buildAuditTab();
 
     void applyConfigurationToBackend();
     void runAnalyzePrompt();
@@ -42,10 +45,15 @@ private:
     void runSimulation();
     void runCollectResults();
     void runFullPipeline();
+    void saveApiKeyToKeyring();
+    void loadApiKeyFromKeyring();
+    void refreshAuditTable();
+    void exportAuditLog();
     void appendLog(const QString& text);
     void setStatus(const QString& text);
     void setRunning(bool running);
     AIAssistantRequest buildRequest() const;
+    QString providerKeyringAccount() const;
 
 private:
     Simulator*          _simulator = nullptr;
@@ -57,6 +65,8 @@ private:
     QLineEdit*        _modelNameEdit       = nullptr;
     QLineEdit*        _apiKeyEdit          = nullptr;
     QPushButton*      _apiKeyToggleBtn     = nullptr;
+    QPushButton*      _saveKeyringBtn      = nullptr;
+    QPushButton*      _loadKeyringBtn      = nullptr;
     QLineEdit*        _apiKeyEnvVarEdit    = nullptr;
     QLineEdit*        _baseUrlEdit         = nullptr;
     QSpinBox*         _timeoutSpin         = nullptr;
@@ -65,6 +75,8 @@ private:
     QCheckBox*        _allowMutationChk    = nullptr;
     QCheckBox*        _allowExecutionChk   = nullptr;
     QCheckBox*        _allowFilesystemChk  = nullptr;
+    QCheckBox*        _sandboxChk          = nullptr;
+    QCheckBox*        _dryRunChk           = nullptr;
 
     // Prompt & Plan tab
     QPlainTextEdit*   _modelDescEdit       = nullptr;
@@ -83,11 +95,18 @@ private:
     QTextBrowser*     _executionLog        = nullptr;
     QLabel*           _statusLabel         = nullptr;
 
+    // Audit log tab
+    QTableWidget*     _auditTable          = nullptr;
+    QPushButton*      _refreshAuditBtn     = nullptr;
+    QPushButton*      _exportAuditBtn      = nullptr;
+    QLabel*           _auditLogPathLabel   = nullptr;
+
     QTabWidget*       _tabs                = nullptr;
 
     // Actions
     QAction*          _applyConfigAction   = nullptr;
     QAction*          _clearLogAction      = nullptr;
+    QAction*          _refreshAuditAction  = nullptr;
 };
 
 #endif // AIASSISTANTWINDOW_H

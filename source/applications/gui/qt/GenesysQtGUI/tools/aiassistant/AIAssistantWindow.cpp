@@ -9,14 +9,19 @@
 
 #include "kernel/simulator/Simulator.h"
 
+#include <chrono>
+#include <ctime>
+
 #include <QAction>
 #include <QApplication>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDoubleSpinBox>
+#include <QFileDialog>
 #include <QFormLayout>
 #include <QGroupBox>
 #include <QHBoxLayout>
+#include <QHeaderView>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
@@ -28,6 +33,7 @@
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QScrollBar>
+#include <QTableWidget>
 #include <QTextBrowser>
 #include <QToolBar>
 #include <QVBoxLayout>
@@ -67,11 +73,17 @@ void AIAssistantWindow::buildMenus() {
     _clearLogAction = toolsMenu->addAction(tr("Clear Execution Log"));
     _clearLogAction->setToolTip(tr("Clear the execution log panel"));
 
+    toolsMenu->addSeparator();
+    _refreshAuditAction = toolsMenu->addAction(tr("Refresh Audit Log"));
+    _refreshAuditAction->setToolTip(tr("Reload the audit log from disk"));
+
     auto* toolbar = addToolBar(tr("AI Assistant"));
     toolbar->setMovable(false);
     toolbar->addAction(_applyConfigAction);
     toolbar->addSeparator();
     toolbar->addAction(_clearLogAction);
+    toolbar->addSeparator();
+    toolbar->addAction(_refreshAuditAction);
 }
 
 // ---------------------------------------------------------------------------
@@ -83,6 +95,7 @@ void AIAssistantWindow::buildWorkspace() {
     _tabs->addTab(buildConfigTab(),    tr("Configuration"));
     _tabs->addTab(buildPromptTab(),    tr("Prompt && Plan"));
     _tabs->addTab(buildExecutionTab(), tr("Execution && Results"));
+    _tabs->addTab(buildAuditTab(),     tr("Audit Log"));
     setCentralWidget(_tabs);
 
     _statusLabel = new QLabel(this);
@@ -126,6 +139,23 @@ QWidget* AIAssistantWindow::buildConfigTab() {
     keyRow->addWidget(_apiKeyToggleBtn);
     providerForm->addRow(tr("API Key:"), keyRow);
 
+    auto* keyringRow = new QHBoxLayout;
+    _saveKeyringBtn = new QPushButton(tr("Save to keyring"), tab);
+    _loadKeyringBtn = new QPushButton(tr("Load from keyring"), tab);
+    _saveKeyringBtn->setToolTip(tr("Store the current API key in the OS keyring (requires secret-tool)"));
+    _loadKeyringBtn->setToolTip(tr("Retrieve the API key from the OS keyring"));
+    const bool keyringOk = AISecretStore::isAvailable();
+    _saveKeyringBtn->setEnabled(keyringOk);
+    _loadKeyringBtn->setEnabled(keyringOk);
+    if (!keyringOk) {
+        _saveKeyringBtn->setToolTip(tr("OS keyring unavailable (install libsecret-tools)"));
+        _loadKeyringBtn->setToolTip(tr("OS keyring unavailable (install libsecret-tools)"));
+    }
+    keyringRow->addWidget(_saveKeyringBtn);
+    keyringRow->addWidget(_loadKeyringBtn);
+    keyringRow->addStretch(1);
+    providerForm->addRow(tr("Keyring:"), keyringRow);
+
     _apiKeyEnvVarEdit = new QLineEdit(tab);
     _apiKeyEnvVarEdit->setPlaceholderText(tr("e.g. OPENAI_API_KEY  (name, not value)"));
     providerForm->addRow(tr("API Key env-var:"), _apiKeyEnvVarEdit);
@@ -164,6 +194,29 @@ QWidget* AIAssistantWindow::buildConfigTab() {
     permLayout->addWidget(_allowFilesystemChk);
 
     outer->addWidget(permGroup);
+
+    // -- Operation Mode group --
+    auto* modeGroup  = new QGroupBox(tr("Operation Mode"), tab);
+    auto* modeLayout = new QVBoxLayout(modeGroup);
+
+    _sandboxChk = new QCheckBox(
+        tr("Sandbox mode — clears current model before every Build Model call"), tab);
+    _sandboxChk->setToolTip(
+        tr("Provides a clean-room environment: the AI always starts from an empty model, "
+           "preventing accidental inheritance of existing model elements."));
+
+    _dryRunChk = new QCheckBox(
+        tr("Dry-run mode — simulate actions without applying them to the simulator"), tab);
+    _dryRunChk->setToolTip(
+        tr("Build Model generates the .gen file but does not load it.\n"
+           "Configure Simulation extracts parameters but does not apply them.\n"
+           "Run Simulation reports what would run but does not call simStart().\n"
+           "Collect Results reports the count of responses without rendering them."));
+
+    modeLayout->addWidget(_sandboxChk);
+    modeLayout->addWidget(_dryRunChk);
+
+    outer->addWidget(modeGroup);
 
     auto* applyBtn = new QPushButton(tr("Apply Configuration"), tab);
     applyBtn->setToolTip(tr("Push these settings to the assistant backend"));
@@ -306,6 +359,13 @@ void AIAssistantWindow::connectActions() {
     connect(_runSimBtn,          &QPushButton::clicked, this, &AIAssistantWindow::runSimulation);
     connect(_collectResultsBtn,  &QPushButton::clicked, this, &AIAssistantWindow::runCollectResults);
     connect(_fullPipelineBtn,    &QPushButton::clicked, this, &AIAssistantWindow::runFullPipeline);
+
+    connect(_saveKeyringBtn,     &QPushButton::clicked, this, &AIAssistantWindow::saveApiKeyToKeyring);
+    connect(_loadKeyringBtn,     &QPushButton::clicked, this, &AIAssistantWindow::loadApiKeyFromKeyring);
+
+    connect(_refreshAuditAction, &QAction::triggered,   this, &AIAssistantWindow::refreshAuditTable);
+    connect(_refreshAuditBtn,    &QPushButton::clicked,  this, &AIAssistantWindow::refreshAuditTable);
+    connect(_exportAuditBtn,     &QPushButton::clicked,  this, &AIAssistantWindow::exportAuditLog);
 }
 
 // ---------------------------------------------------------------------------
@@ -328,6 +388,8 @@ void AIAssistantWindow::applyConfigurationToBackend() {
     cfg.allowModelMutation       = _allowMutationChk->isChecked();
     cfg.allowSimulationExecution = _allowExecutionChk->isChecked();
     cfg.allowFileSystemWrites    = _allowFilesystemChk->isChecked();
+    cfg.sandboxEnabled           = _sandboxChk->isChecked();
+    cfg.dryRun                   = _dryRunChk->isChecked();
 
     _assistant.setConfiguration(cfg);
 
@@ -513,6 +575,148 @@ void AIAssistantWindow::runFullPipeline() {
         appendLog(tr("[diag] %1").arg(QString::fromStdString(resp.diagnostics)));
     }
     setRunning(false);
+}
+
+// ---------------------------------------------------------------------------
+// buildAuditTab
+// ---------------------------------------------------------------------------
+
+QWidget* AIAssistantWindow::buildAuditTab() {
+    auto* tab   = new QWidget;
+    auto* outer = new QVBoxLayout(tab);
+    outer->setContentsMargins(12, 12, 12, 12);
+    outer->setSpacing(8);
+
+    // Log file path label
+    _auditLogPathLabel = new QLabel(tab);
+    _auditLogPathLabel->setText(
+        tr("Log: %1").arg(QString::fromStdString(_assistant.getAuditLogPath())));
+    _auditLogPathLabel->setTextInteractionFlags(Qt::TextSelectableByMouse);
+    outer->addWidget(_auditLogPathLabel);
+
+    // Table
+    _auditTable = new QTableWidget(0, 8, tab);
+    _auditTable->setHorizontalHeaderLabels({
+        tr("Timestamp"), tr("Operation"), tr("Provider"), tr("Model"),
+        tr("Prompt"), tr("Success"), tr("Dry Run"), tr("ms")
+    });
+    _auditTable->horizontalHeader()->setStretchLastSection(false);
+    _auditTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
+    _auditTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    _auditTable->setSelectionBehavior(QAbstractItemView::SelectRows);
+    _auditTable->setAlternatingRowColors(true);
+    outer->addWidget(_auditTable, 1);
+
+    // Buttons
+    auto* btnRow = new QHBoxLayout;
+    _refreshAuditBtn = new QPushButton(tr("Refresh"), tab);
+    _exportAuditBtn  = new QPushButton(tr("Export CSV..."), tab);
+    _refreshAuditBtn->setToolTip(tr("Reload audit entries from disk"));
+    _exportAuditBtn->setToolTip(tr("Export all entries to a CSV file"));
+    btnRow->addWidget(_refreshAuditBtn);
+    btnRow->addWidget(_exportAuditBtn);
+    btnRow->addStretch(1);
+    outer->addLayout(btnRow);
+
+    return tab;
+}
+
+// ---------------------------------------------------------------------------
+// Keyring helpers
+// ---------------------------------------------------------------------------
+
+QString AIAssistantWindow::providerKeyringAccount() const {
+    const int idx = _providerCombo ? _providerCombo->currentIndex() : 0;
+    return _providerCombo
+           ? _providerCombo->itemText(idx).toLower().replace(' ', '-')
+           : QString("default");
+}
+
+void AIAssistantWindow::saveApiKeyToKeyring() {
+    const QString key = _apiKeyEdit->text().trimmed();
+    if (key.isEmpty()) {
+        QMessageBox::warning(this, tr("No Key"), tr("Enter an API key before saving to keyring."));
+        return;
+    }
+    const bool ok = AISecretStore::save("genesys-ai-assistant",
+                                        providerKeyringAccount().toStdString(),
+                                        key.toStdString());
+    if (ok) {
+        appendLog(tr("API key saved to OS keyring (%1).").arg(providerKeyringAccount()));
+        setStatus(tr("Key saved to keyring."));
+    } else {
+        QMessageBox::warning(this, tr("Keyring Error"),
+            tr("Failed to save to keyring. Ensure secret-tool (libsecret-tools) is installed."));
+    }
+}
+
+void AIAssistantWindow::loadApiKeyFromKeyring() {
+    const auto result = AISecretStore::load("genesys-ai-assistant",
+                                            providerKeyringAccount().toStdString());
+    if (result.has_value() && !result->empty()) {
+        _apiKeyEdit->setText(QString::fromStdString(*result));
+        appendLog(tr("API key loaded from OS keyring (%1).").arg(providerKeyringAccount()));
+        setStatus(tr("Key loaded from keyring."));
+    } else {
+        QMessageBox::information(this, tr("Keyring"),
+            tr("No key found in keyring for account '%1'.").arg(providerKeyringAccount()));
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Audit log helpers
+// ---------------------------------------------------------------------------
+
+void AIAssistantWindow::refreshAuditTable() {
+    if (_auditTable == nullptr) return;
+
+    const auto entries = _assistant.getAuditEntries(500);
+    _auditTable->setRowCount(0);
+    _auditTable->setRowCount(static_cast<int>(entries.size()));
+
+    auto boolCell = [](bool v) -> QTableWidgetItem* {
+        auto* item = new QTableWidgetItem(v ? QStringLiteral("✓") : QStringLiteral("✗"));
+        item->setTextAlignment(Qt::AlignCenter);
+        return item;
+    };
+
+    for (int row = 0; row < static_cast<int>(entries.size()); ++row) {
+        const auto& e = entries[static_cast<unsigned int>(row)];
+        const std::time_t t = std::chrono::system_clock::to_time_t(e.timestamp);
+        char tsBuf[32];
+        std::tm gmt{};
+        ::gmtime_r(&t, &gmt);
+        std::strftime(tsBuf, sizeof(tsBuf), "%Y-%m-%d %H:%M:%S", &gmt);
+
+        _auditTable->setItem(row, 0, new QTableWidgetItem(QString::fromLatin1(tsBuf)));
+        _auditTable->setItem(row, 1, new QTableWidgetItem(QString::fromStdString(e.operation)));
+        _auditTable->setItem(row, 2, new QTableWidgetItem(QString::fromStdString(e.provider)));
+        _auditTable->setItem(row, 3, new QTableWidgetItem(QString::fromStdString(e.modelName)));
+        _auditTable->setItem(row, 4, new QTableWidgetItem(QString::fromStdString(e.promptPreview)));
+        _auditTable->setItem(row, 5, boolCell(e.success));
+        _auditTable->setItem(row, 6, boolCell(e.dryRun));
+        _auditTable->setItem(row, 7, new QTableWidgetItem(QString::number(e.durationMs)));
+    }
+
+    _auditTable->resizeColumnsToContents();
+    _auditTable->horizontalHeader()->setSectionResizeMode(4, QHeaderView::Stretch);
+
+    appendLog(tr("Audit log refreshed — %1 entries loaded.").arg(entries.size()));
+}
+
+void AIAssistantWindow::exportAuditLog() {
+    const QString path = QFileDialog::getSaveFileName(
+        this, tr("Export Audit Log"), QString(), tr("CSV files (*.csv);;All files (*)"));
+    if (path.isEmpty()) return;
+
+    const unsigned int rows = _assistant.exportAuditLog(path.toStdString());
+    if (rows > 0) {
+        appendLog(tr("Audit log exported: %1 rows → %2").arg(rows).arg(path));
+        setStatus(tr("Audit log exported."));
+    } else {
+        QMessageBox::warning(this, tr("Export Failed"),
+            tr("Could not write to '%1'. Check path and permissions.").arg(path));
+    }
 }
 
 // ---------------------------------------------------------------------------

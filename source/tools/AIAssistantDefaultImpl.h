@@ -9,6 +9,7 @@
 #define AIASSISTANTDEFAULTIMPL_H
 
 #include "AIAssistant_if.h"
+#include "AIAuditLog.h"
 #include "AIProviderClient_if.h"
 
 #include <memory>
@@ -159,6 +160,13 @@ public:
     virtual std::string getLastDiagnostics() const override;
     virtual void clearDiagnostics() override;
 
+    // -----------------------------------------------------------------------
+    // Audit log
+    // -----------------------------------------------------------------------
+    virtual std::vector<AuditEntry> getAuditEntries(unsigned int maxEntries) const override;
+    virtual std::string getAuditLogPath() const override;
+    virtual unsigned int exportAuditLog(const std::string& csvPath) const override;
+
 private:
     // -----------------------------------------------------------------------
     // Private helpers
@@ -189,6 +197,19 @@ private:
      * Called after any configuration change that could affect readiness.
      */
     void _updateState();
+
+    /**
+     * @brief Appends one entry to the audit log.
+     *
+     * @param operation      Short name of the operation (e.g. "buildModel").
+     * @param resp           Final response produced by the operation.
+     * @param durationMs     Wall-clock duration in milliseconds.
+     * @param promptPreview  First 120 chars of the input prompt (no keys).
+     */
+    void _appendAudit(const std::string& operation,
+                      const AIAssistantResponse& resp,
+                      long long durationMs,
+                      const std::string& promptPreview);
 
 private:
     // -----------------------------------------------------------------------
@@ -233,6 +254,9 @@ private:
 
     /** @brief Technical diagnostics from the most recent operation. */
     std::string _lastDiagnostics;
+
+    /** @brief Persistent audit log; directory is created on first write. */
+    AIAuditLog _auditLog;
 };
 
 #endif /* AIASSISTANTDEFAULTIMPL_H */

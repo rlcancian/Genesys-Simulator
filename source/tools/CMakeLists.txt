@@ -1,5 +1,7 @@
 add_library(genesys_tools STATIC
     AIAssistantDefaultImpl.cpp
+    AIAuditLog.cpp
+    AISecretStore.cpp
     AnthropicProviderClientImpl.cpp
     HttpProviderClientBase.cpp
     LocalProviderClientImpl.cpp
