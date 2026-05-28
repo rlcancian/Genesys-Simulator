@@ -1,7 +1,5 @@
 #include "tools/analysis/DataAnalyserDefaultImpl.h"
 #include "tools/analysis/DatasetLoader.h"
-#include "tools/analysis/FitterDefaultImpl.h"
-#include "tools/analysis/HypothesisTesterDefaultImpl.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -115,9 +113,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    FitterDefaultImpl fitter;
-    HypothesisTesterDefaultImpl tester;
-    DataAnalyserDefaultImpl analyser(&fitter, nullptr, nullptr, &tester);
+    DataAnalyserDefaultImpl analyser;
 
     analyser.loadDataSet(dataFile);
 

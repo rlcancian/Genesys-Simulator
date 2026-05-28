@@ -13,10 +13,10 @@
 #include "ProbabilityDistribution.h"
 #include <cmath>
 #include <cassert>
-#include "analysis/TraitsTools.h"
+#include "analysis/TraitsAnalysis.h"
 
 std::map<std::string, double>* ProbabilityDistribution::memory = new std::map<std::string, double>();
-Solver_if* ProbabilityDistribution::integrator = new TraitsTools<Solver_if>::Implementation(TraitsTools<Solver_if>::Precision, TraitsTools<Solver_if>::MaxSteps);
+Solver_if* ProbabilityDistribution::integrator = new TraitsAnalysis<Solver_if>::Implementation(TraitsAnalysis<Solver_if>::Precision, TraitsAnalysis<Solver_if>::MaxSteps);
 
 double ProbabilityDistribution::inverseFFisherSnedecor(double cumulativeProbability, double d1, double d2) {
 	std::string key = "fisher(" + std::to_string(d1) + "," + std::to_string(d2) + ")" + std::to_string(cumulativeProbability);

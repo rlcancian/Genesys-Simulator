@@ -2,8 +2,7 @@
 #define DATAANALYSERDEFAULTIMPL_H
 
 #include "DataAnalyser_if.h"
-#include "FitterDefaultImpl.h"
-#include "HypothesisTesterDefaultImpl.h"
+#include "TraitsAnalysis.h"
 
 #include <string>
 
@@ -46,8 +45,8 @@ public:
 	virtual HypothesisTester_if* tester() override;
 
 private:
-	FitterDefaultImpl _defaultFitter;
-	HypothesisTesterDefaultImpl _defaultTester;
+	TraitsAnalysis<Fitter_if>::Implementation _defaultFitter;
+	TraitsAnalysis<HypothesisTester_if>::Implementation _defaultTester;
 
 	// Injected dependencies (non-owning)
 	Fitter_if* _fitter = nullptr;

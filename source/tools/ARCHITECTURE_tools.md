@@ -22,7 +22,7 @@ The `tools` package provides domain-support services for statistical analysis an
 
 ### Fitting
 - Preserve legacy fitting API.
-- Transition from dummy implementation to a concrete default implementation in phased manner (FITTER-1 delivered baseline behavior, FITTER-2 added functional Beta and Weibull fitting in `FitterDefaultImpl`, and FITTER-3 promotes `TraitsTools<Fitter_if>` to `FitterDefaultImpl`).
+- Transition from dummy implementation to a concrete default implementation in phased manner (FITTER-1 delivered baseline behavior, FITTER-2 added functional Beta and Weibull fitting in `FitterDefaultImpl`, and FITTER-3 promotes `TraitsAnalysis<Fitter_if>` to `FitterDefaultImpl`).
 
 ### Hypothesis testing
 - Maintain current contract and refine implementation completeness, especially two-population methods.
@@ -61,7 +61,7 @@ The `tools` package provides domain-support services for statistical analysis an
 
 ## 6. Stability notes and non-goals for this phase
 
-- FITTER-2 consolidated additional fitting algorithms in `FitterDefaultImpl` (beta and weibull) on top of FITTER-1 families; FITTER-3 now switches the default trait binding so `TraitsTools<Fitter_if>` points to `FitterDefaultImpl`.
+- FITTER-2 consolidated additional fitting algorithms in `FitterDefaultImpl` (beta and weibull) on top of FITTER-1 families; FITTER-3 now switches the default trait binding so `TraitsAnalysis<Fitter_if>` points to `FitterDefaultImpl`.
 - `FitterDummyImpl` is intentionally preserved as a legacy/documental placeholder and is no longer the default fitter binding.
 - Hypothesis-testing theory coverage is consolidated for the current parametric interface; goodness-of-fit tests remain a future addition to the analysis facade.
 - No numerical refactor of legacy solver internals.

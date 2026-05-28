@@ -1,55 +1,165 @@
 # tools/analysis
 
-Módulo de análise estatística de dados do Genesys Simulator. Fornece as implementações concretas para ajuste de distribuições de probabilidade, carregamento de datasets e testes de hipóteses.
+`tools/analysis` is the standalone statistical-analysis layer used by GenESyS tools and examples. It provides dataset loading, distribution fitting and parametric hypothesis testing behind a small facade, `DataAnalyserDefaultImpl`.
 
-## Estrutura
+The CMake target for this layer is `genesys_tools_analysis`. It must remain independent from `source/kernel`: analysis code should not include kernel headers directly. Consumers that need analysis should depend on this target.
 
-| Arquivo | Descrição |
+## DataAnalyser
+
+`DataAnalyser_if` is the facade contract. `DataAnalyserDefaultImpl` is the concrete implementation currently used by examples and tests.
+
+Implemented behavior:
+
+| Method | Current behavior |
 |---|---|
-| `DatasetLoader` | Carrega dados numéricos de arquivos texto (delimitado ou espaços) e binários. Calcula estatísticas básicas (média, variância, min, max) via algoritmo de Welford. |
-| `Fitter_if` / `FitterDefaultImpl` | Interface e implementação do ajustador de distribuições. Suporta Uniforme, Triangular, Normal, Exponencial, Erlang, Beta e Weibull. |
-| `FitterDummyImpl` | Implementação vazia da interface `Fitter_if`, útil para injeção em contextos que não requerem ajuste real. |
-| `DataAnalyser_if` / `DataAnalyserDefaultImpl` | Fachada de alto nível que orquestra o ciclo de vida do dataset e delega o ajuste ao `Fitter_if` injetado. |
-| `HypothesisTester_if` / `HypothesisTesterDefaultImpl` | Interface e implementação de testes de hipóteses (médias, proporções, variâncias). |
-| `TraitsTools` | Template de traits que associa interfaces às suas implementações padrão. |
-| `SimulationResultsDataset` / `SimulationResultsParser` | Estruturas e parser para datasets gerados por simulação. |
+| `DataAnalyserDefaultImpl()` | Builds a ready-to-use analyser with default fitter and hypothesis tester selected by `TraitsAnalysis`. |
+| `DataAnalyserDefaultImpl(fitter, sampler, experimenter, tester)` | Allows dependency injection. Null `fitter` and `tester` are replaced by defaults. |
+| `loadDataSet(filename)` | Stores the dataset filename and forwards it to `fitter()->setDataFilename(filename)`. |
+| `fitter()` | Returns the active `Fitter_if`. By default this is `FitterDefaultImpl`. |
+| `tester()` | Returns the active `HypothesisTester_if`. By default this is `HypothesisTesterDefaultImpl`. |
+| `sampler()` | Future roadmap hook. Returns injected sampler, or throws `std::runtime_error("TODO: implement ...")` when none is injected. |
+| `experimenter()` | Future roadmap hook. Returns injected experiment manager, or throws `std::runtime_error("TODO: implement ...")` when none is injected. |
+| `saveDataSet(...)`, `newDataSet(...)` | Not implemented yet; both throw `std::runtime_error`. |
 
-## Build boundary
+Default implementations are centralized in `TraitsAnalysis`:
 
-`tools/analysis` is exposed by the `genesys_tools_analysis` CMake target and must remain independent from `source/kernel`. File-based hypothesis-test overloads load data through `DatasetLoader` and `SimulationResultsParser`, not through kernel statistics collectors. `DataAnalyser_if` still exposes sampler and experiment-manager hooks for the future analysis roadmap, but the default implementation reports those paths as TODO when no service is injected.
-
-## Estimativa de parâmetros
-
-Todos os métodos de ajuste utilizam o **Método dos Momentos (MOM)**, calculando os parâmetros diretamente das estatísticas da amostra (média, variância, extremos) sem agrupamento em classes.
-
-| Distribuição | Parâmetros estimados |
+| Interface | Default implementation |
 |---|---|
-| Uniforme | min = mínimo da amostra, max = máximo da amostra |
-| Triangular | min, max (extremos da amostra), moda = 3μ − min − max |
-| Normal | média amostral μ, desvio padrão amostral σ (denominador n−1) |
-| Exponencial | média amostral μ |
-| Erlang | média amostral μ, número de fases m = round(μ²/σ²) |
-| Beta | α, β (MOM sobre dados escalados para [0,1]), limite inferior, limite superior |
-| Weibull | forma α (via coeficiente de variação CV = σ/μ), escala = μ / Γ(1 + 1/α) |
+| `Fitter_if` | `FitterDefaultImpl` |
+| `HypothesisTester_if` | `HypothesisTesterDefaultImpl` |
+| `Solver_if` | `SolverDefaultImpl1` |
 
-## Erro Quadrático
+## Fitter
 
-O erro quadrático é calculado pela estatística de **Cramér-von Mises**, que compara a CDF teórica com a CDF empírica ponto a ponto sobre os dados ordenados:
+`Fitter_if` defines the distribution-fitting API. `FitterDefaultImpl` reads the dataset configured by `setDataFilename(...)`, estimates parameters and reports a squared-error-like adherence measure.
 
+Implemented fitting methods:
+
+| Method | Distribution / purpose | Main returned parameters |
+|---|---|---|
+| `fitUniform` | Uniform | `min`, `max` |
+| `fitTriangular` | Triangular | `min`, `mo`, `max` |
+| `fitNormal` | Normal | `avg`, `stddev` |
+| `fitExpo` | Exponential | `avg` |
+| `fitErlang` | Erlang | `avg`, `m` |
+| `fitBeta` | Scaled Beta | `alpha`, `beta`, `infLimit`, `supLimit` |
+| `fitWeibull` | Weibull | `alpha`, `scale` |
+| `fitAll` | Compares all candidates | best error and distribution name |
+| `isNormalDistributed` | Normality check | boolean decision |
+
+Parameter estimation uses the Method of Moments (MOM), based on sample mean, sample variance and observed extremes.
+
+## Hypothesis Tester
+
+`HypothesisTester_if` defines classical parametric inference methods. `HypothesisTesterDefaultImpl` implements confidence intervals and hypothesis tests for mean, proportion and variance, for one and two populations.
+
+Implemented confidence intervals:
+
+| Method group | Statistical model |
+|---|---|
+| `averageConfidenceInterval` | Mean, using Student-t. |
+| `proportionConfidenceInterval` | Proportion, using normal approximation; supports finite-population correction. |
+| `varianceConfidenceInterval` | Variance, using chi-square. |
+| `averageDifferenceConfidenceInterval` | Difference of means; pooled t or Welch depending on variance-ratio compatibility. |
+| `proportionDifferenceConfidenceInterval` | Difference of proportions, using normal approximation. |
+| `varianceRatioConfidenceInterval` | Ratio of variances, using F distribution. |
+
+Implemented hypothesis tests:
+
+| Method group | Statistical model |
+|---|---|
+| `testAverage` | Mean test for one or two populations. |
+| `testProportion` | Proportion test for one or two populations. |
+| `testVariance` | Variance test for one or two populations. |
+
+Each `TestResult` exposes:
+
+| Field / method | Meaning |
+|---|---|
+| `pValue()` | Test p-value. |
+| `testStat()` | Observed test statistic. |
+| `rejectH0()` / `acceptH0()` | Decision at the requested confidence level. |
+| `acceptanceInferiorLimit()` / `acceptanceSuperiorLimit()` | Acceptance region limits for the test statistic. |
+
+File-based overloads load numeric data through `DatasetLoader` and `SimulationResultsParser`, not through kernel statistics collectors.
+
+All inference methods expect `confidenceLevel` in `(0, 1)`, for example `0.95`.
+
+## Error Measure
+
+The fitter reports an error computed as a Cramer-von Mises-style squared difference between the theoretical CDF and the empirical CDF over the sorted sample:
+
+```text
+SE = sum_i (F(x_i) - p_i)^2
 ```
-SE = Σᵢ (F(xᵢ) − pᵢ)²
+
+where `F(x_i)` is the theoretical CDF at the sorted sample value and `p_i = (i + 0.5) / n` is Hazen's empirical plotting position. The `+ 0.5` avoids exact 0 and 1 endpoints, which are numerically problematic for distributions with infinite support such as the Normal.
+
+## Example
+
+```cpp
+#include "tools/analysis/DataAnalyserDefaultImpl.h"
+
+#include <iostream>
+#include <string>
+
+bool greaterThan50(double value) {
+    return value > 50.0;
+}
+
+int main() {
+    const std::string dataFile = "examples/data/sample_data.csv";
+
+    DataAnalyserDefaultImpl analyser;
+    analyser.loadDataSet(dataFile);
+
+    double normalError = 0.0;
+    double mean = 0.0;
+    double stddev = 0.0;
+    analyser.fitter()->fitNormal(&normalError, &mean, &stddev);
+
+    std::string bestDistribution;
+    double bestError = 0.0;
+    analyser.fitter()->fitAll(&bestError, &bestDistribution);
+
+    auto meanCi = analyser.tester()->averageConfidenceInterval(dataFile, 0.95);
+    auto meanTest = analyser.tester()->testAverage(
+        dataFile,
+        50.0,
+        0.95,
+        HypothesisTester_if::DIFFERENT
+    );
+
+    auto proportionCi = analyser.tester()->proportionConfidenceInterval(
+        dataFile,
+        greaterThan50,
+        0.95
+    );
+
+    std::cout << "Normal fit: mean=" << mean
+              << " stddev=" << stddev
+              << " error=" << normalError << "\n";
+    std::cout << "Best fit: " << bestDistribution
+              << " error=" << bestError << "\n";
+    std::cout << "Mean CI: [" << meanCi.inferiorLimit()
+              << ", " << meanCi.superiorLimit() << "]\n";
+    std::cout << "Mean test p-value: " << meanTest.pValue()
+              << " rejectH0=" << meanTest.rejectH0() << "\n";
+    std::cout << "P(value > 50) CI: [" << proportionCi.inferiorLimit()
+              << ", " << proportionCi.superiorLimit() << "]\n";
+}
 ```
 
-onde `F(xᵢ)` é a CDF teórica avaliada no i-ésimo valor ordenado e `pᵢ = (i + 0.5) / n` é a posição empírica de Hazen. A soma percorre todos os `n` pontos da amostra.
+A more complete runnable example is available in `examples/examples_analysis_tools.cpp` and can be executed from the repository root with:
 
-O `+ 0.5` na posição de Hazen evita os extremos 0 e 1, que causariam problemas numéricos em distribuições com suporte infinito como a Normal.
+```sh
+make run-examples
+```
 
-## Observações
+## Arena Input Analyzer Differences
 
-### Diferenças em relação ao Arena Input Analyzer
+Some results may differ from Arena Input Analyzer even when the fitted distribution is the same. These differences are expected:
 
-- **Desvio padrão:** o Arena exibe o valor calculado com denominador `n` (estimador MLE), enquanto este módulo utiliza denominador `n − 1` (estimador amostral não-viesado). Para amostras grandes a diferença é desprezível; para amostras pequenas (ex.: n = 40) pode haver divergência visível (ex.: 9.95 vs. 9.83).
-
-- **Arredondamentos:** o Arena Input Analyzer realiza arredondamentos intermediários na exibição dos resultados — média, desvio padrão e parâmetros ajustados são apresentados com precisão reduzida. Isso faz com que valores como média e desvio padrão pareçam diferentes dos obtidos pelo fitter do Genesys, mesmo que a diferença real seja numericamente insignificante.
-
-- **Fórmula do erro quadrático:** este módulo utiliza o critério de Cramér-von Mises (comparação ponto a ponto na CDF empírica), enquanto o Arena Input Analyzer utiliza `χ²/n` por histograma de classes. As duas métricas não são numericamente comparáveis, o que explica a diferença nos valores de erro quadrático exibidos.
+- **Standard deviation:** Arena displays the value computed with denominator `n` (MLE estimator), while this module uses denominator `n - 1` (unbiased sample estimator). For large samples the difference is small; for smaller samples, such as `n = 40`, it can be visible.
+- **Rounding:** Arena performs intermediate display rounding. Means, standard deviations and fitted parameters may look different even when the underlying numerical difference is insignificant.
+- **Squared error formula:** this module uses a Cramer-von Mises-style pointwise empirical CDF comparison. Arena Input Analyzer commonly reports a histogram-based `chi-square / n` measure. These metrics are not numerically comparable.

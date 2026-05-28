@@ -12,7 +12,7 @@
 #include "Quadrature_if.h"
 #include "RootFinder_if.h"
 #include "Solver_if.h"
-#include "analysis/TraitsTools.h"
+#include "analysis/TraitsAnalysis.h"
 
 #include <iostream>
 #include <string_view>
@@ -21,8 +21,8 @@ namespace {
 void printToolsOverview() {
 	std::cout << "GenESyS tools interfaces\n"
 	          << "  analysis: DataSet_if, DataAnalyser_if\n"
-	          << "  fitting: Fitter_if -> TraitsTools<Fitter_if>::Implementation\n"
-	          << "  hypothesis: HypothesisTester_if -> TraitsTools<HypothesisTester_if>::Implementation\n"
+	          << "  fitting: Fitter_if -> TraitsAnalysis<Fitter_if>::Implementation\n"
+	          << "  hypothesis: HypothesisTester_if -> TraitsAnalysis<HypothesisTester_if>::Implementation\n"
 	          << "  distributions: Distribution_if, ContinuousDistribution_if, DiscreteDistribution_if\n"
 	          << "  numerics: Solver_if, Quadrature_if, RootFinder_if, OdeSystem_if, OdeSolver_if\n"
 	          << "  optimization: Optimizer_if\n"
