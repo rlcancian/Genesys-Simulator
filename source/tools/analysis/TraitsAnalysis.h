@@ -4,14 +4,14 @@
  */
 
 /*
- * File:   TraitsTools.h
+ * File:   TraitsAnalysis.h
  * Author: rlcancian
  *
  * Created on 3 de maio de 2022, 18:57
  */
 
-#ifndef TRAITSTOOLS_H
-#define TRAITSTOOLS_H
+#ifndef TRAITSANALYSIS_H
+#define TRAITSANALYSIS_H
 
 // TOOLS
 #include "tools/SolverDefaultImpl1.h"
@@ -21,7 +21,7 @@
 #include "Fitter_if.h"
 
 /**
- * @brief Registry-like traits to bind abstractions to concrete tools classes.
+ * @brief Registry-like traits to bind analysis abstractions to concrete classes.
  *
  * Architectural role:
  * - Central selection point for concrete implementations used by this package.
@@ -35,13 +35,13 @@
  *   documented-only for now to avoid build instability.
  */
 template <typename T>
-struct TraitsTools {
+struct TraitsAnalysis {
 };
 
 /*!
  *  Configure the Solver to be used
  */
-template <> struct TraitsTools<Solver_if> {
+template <> struct TraitsAnalysis<Solver_if> {
 	typedef SolverDefaultImpl1 Implementation;
 	static constexpr double Precision = 1e-5;
 	static constexpr unsigned int MaxSteps = 1e2;
@@ -50,7 +50,7 @@ template <> struct TraitsTools<Solver_if> {
 /*!
  *  Configure the Hypothesis Tester to be used
  */
-template <> struct TraitsTools<HypothesisTester_if> {
+template <> struct TraitsAnalysis<HypothesisTester_if> {
 	typedef HypothesisTesterDefaultImpl Implementation;
 	static constexpr unsigned int ConfidenceLevel = 95;
 };
@@ -58,8 +58,8 @@ template <> struct TraitsTools<HypothesisTester_if> {
 /*!
  *  Configure the Fitter to be used
  */
-template <> struct TraitsTools<Fitter_if> {
+template <> struct TraitsAnalysis<Fitter_if> {
 	typedef FitterDefaultImpl Implementation;
 };
 
-#endif /* TRAITSTOOLS_H */
+#endif /* TRAITSANALYSIS_H */

@@ -12,7 +12,7 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 - `HypothesisTester_if`: parametric inference API (confidence intervals and tests).
 - `ProbabilityDistributionBase` / `ProbabilityDistribution`: static math façade for PDF/PMF and inverse/quantile routines.
 - `Solver_if`: legacy numerical contract mixing integration and derivation/advancement.
-- `TraitsTools`: traits registry binding abstractions to concrete implementations.
+- `TraitsAnalysis`: traits registry binding analysis abstractions to concrete implementations.
 
 ## 3. Current limitations
 
@@ -35,7 +35,7 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 
 ## 6. Current status by topic
 
-- **Fitting**: interface defined; `FitterDefaultImpl` is functional for uniform/triangular/normal/exponential/erlang/beta/weibull with binary dataset loading and SSE-CDF comparison and is now the default `TraitsTools<Fitter_if>` binding (FITTER-3). `FitterDummyImpl` remains available as legacy placeholder.
+- **Fitting**: interface defined; `FitterDefaultImpl` is functional for uniform/triangular/normal/exponential/erlang/beta/weibull with binary dataset loading and SSE-CDF comparison and is now the default `TraitsAnalysis<Fitter_if>` binding (FITTER-3). `FitterDummyImpl` remains available as legacy placeholder.
 - **Hypothesis testing**: functional baseline exists in `HypothesisTesterDefaultImpl`, with known partial areas.
   - HYPTEST-1 alignment update: proportion-difference CI now follows the classical two-proportion formula, and one-population average/variance tests now compute p-values with Student-t/chi-square-coherent CDF paths.
   - HYPTEST-2 final alignment update: one-population proportion confidence intervals (with and without finite-population correction) now use the large-sample normal quantile formulation.
