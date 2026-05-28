@@ -29,6 +29,7 @@ The `tools` package provides domain-support services for statistical analysis an
 - HYPTEST-1 alignment keeps the current pooled-vs-Welch heuristic, but documents it as a TODO while consolidating one-population p-value coherence and the two-proportion-difference confidence interval formula.
 - HYPTEST-2 final alignment updates one-population proportion confidence intervals to the normal-approximation formulation (including finite-population correction when `N` is provided).
 - HYPTEST-3 consolidates `HypothesisTesterDefaultImpl` under `tools/analysis` and removes direct kernel/statistics dependencies from hypothesis-testing interfaces and implementation.
+- HYPTEST-4 adds goodness-of-fit coverage through chi-square and one-sample Kolmogorov-Smirnov tests.
 
 ### Distribution abstractions
 - Introduce `Distribution_if` and specialized continuous/discrete interfaces.
@@ -63,6 +64,6 @@ The `tools` package provides domain-support services for statistical analysis an
 
 - FITTER-2 consolidated additional fitting algorithms in `FitterDefaultImpl` (beta and weibull) on top of FITTER-1 families; FITTER-3 now switches the default trait binding so `TraitsAnalysis<Fitter_if>` points to `FitterDefaultImpl`.
 - `FitterDummyImpl` is intentionally preserved as a legacy/documental placeholder and is no longer the default fitter binding.
-- Hypothesis-testing theory coverage is consolidated for the current parametric interface; goodness-of-fit tests remain a future addition to the analysis facade.
+- Hypothesis-testing theory coverage is consolidated for the current parametric interface and baseline goodness-of-fit tests.
 - No numerical refactor of legacy solver internals.
 - `tools/analysis` must remain buildable through `genesys_tools_analysis` without linking `genesys_kernel_*`; consumers should depend on analysis rather than analysis depending on them.
