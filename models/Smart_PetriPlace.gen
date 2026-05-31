@@ -1,0 +1,18 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=10.000000 
+
+# Model Data Definitions
+104 EntityType "entitytype" 
+105 Attribute  "Entity.ArrivalTime" 
+106 Attribute  "Entity.Type" 
+
+# Model Components
+102 Create     "Create_1" entityType="entitytype" nextId=107 
+107 ModalModelDefault "SubModeloPetriColorida" node[2].name="Lugar3_Roxo" node[0].petriColors=1 node[1].petriTokens[0]=1 node[1].typename="PetriPlace" node[1].nexts=0 node[1].petriColors=1 node[0].typename="PetriPlace" node[1].initialNode=1 transitionDestination[0]="Lugar3_Roxo" node[2].id=113 node[2].typename="PetriPlace" node[0].petriTokens[0]=2 transitionSource[0]="Lugar1_Azul" nextId=108 transitionName[0]="TransicaoMistura" node[0].petriColor[0]="blue" node[0].nexts=0 node[0].initialNode=1 node[1].petriColor[0]="red" node[1].id=112 nodesSize=3 node[1].name="Lugar2_Vermelho" transitionsSize=1 node[0].id=111 entryNode="Lugar1_Azul" node[2].nexts=0 node[0].name="Lugar1_Azul" 
+108 Dispose    "Dispose_1" nexts=0 
+111 PetriPlace "Lugar1_Azul" petriTokens[0]=2 petriColor[0]="blue" petriColors=1 initialNode=1 nexts=0 
+112 PetriPlace "Lugar2_Vermelho" petriTokens[0]=1 petriColor[0]="red" petriColors=1 initialNode=1 nexts=0 
+113 PetriPlace "Lugar3_Roxo" nexts=0 
