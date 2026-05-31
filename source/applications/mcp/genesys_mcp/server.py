@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from typing import Any
 
+import httpx
 from mcp.server.fastmcp import FastMCP
 
 from .client import GenesysClient, GenesysClientError
@@ -38,8 +39,12 @@ def _client(base_url: str, token: str | None = None) -> GenesysClient:
     return c
 
 
-def _fmt_error(e: GenesysClientError) -> str:
-    return f"Error {e.status_code}: {e.args[0]}"
+def _err(e: GenesysClientError) -> dict[str, str]:
+    return {"error": str(e)}
+
+
+def _conn_err(e: httpx.RequestError) -> dict[str, str]:
+    return {"error": f"Connection error: {e}"}
 
 
 # ---------------------------------------------------------------------------
@@ -58,7 +63,9 @@ def genesys_health(base_url: str = _DEFAULT_URL) -> dict[str, Any]:
         with _client(base_url) as c:
             return c.health()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -72,7 +79,9 @@ def genesys_auth(base_url: str = _DEFAULT_URL) -> dict[str, Any]:
         with _client(base_url) as c:
             return c.create_session()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 # ---------------------------------------------------------------------------
@@ -90,7 +99,9 @@ def genesys_info(token: str, base_url: str = _DEFAULT_URL) -> dict[str, Any]:
         with _client(base_url, token) as c:
             return c.simulator_info()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 # ---------------------------------------------------------------------------
@@ -109,7 +120,9 @@ def genesys_new_model(token: str, base_url: str = _DEFAULT_URL) -> dict[str, Any
         with _client(base_url, token) as c:
             return c.new_model()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -122,7 +135,9 @@ def genesys_get_model(token: str, base_url: str = _DEFAULT_URL) -> dict[str, Any
         with _client(base_url, token) as c:
             return c.get_model()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -141,7 +156,9 @@ def genesys_save_model(
         with _client(base_url, token) as c:
             return c.save_model(filename)
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -159,7 +176,9 @@ def genesys_load_model(
         with _client(base_url, token) as c:
             return c.load_model(filename)
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -178,7 +197,9 @@ def genesys_import_model_language(
         with _client(base_url, token) as c:
             return c.import_model_language(model_text)
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 # ---------------------------------------------------------------------------
@@ -199,7 +220,9 @@ def genesys_simulation_status(
         with _client(base_url, token) as c:
             return c.simulation_status()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -239,7 +262,9 @@ def genesys_configure_simulation(
                 initialize_system=initialize_system,
             )
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -256,7 +281,9 @@ def genesys_run_simulation(
         with _client(base_url, token) as c:
             return c.run_simulation()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -273,7 +300,9 @@ def genesys_step_simulation(
         with _client(base_url, token) as c:
             return c.step_simulation()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 # ---------------------------------------------------------------------------
@@ -291,7 +320,9 @@ def genesys_worker_info(base_url: str = _DEFAULT_URL) -> dict[str, Any]:
         with _client(base_url) as c:
             return c.worker_info()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -305,7 +336,9 @@ def genesys_worker_capabilities(base_url: str = _DEFAULT_URL) -> dict[str, Any]:
         with _client(base_url) as c:
             return c.worker_capabilities()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +362,9 @@ def genesys_create_job(
         with _client(base_url, token) as c:
             return c.create_job()
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -346,7 +381,9 @@ def genesys_job_status(
         with _client(base_url, token) as c:
             return c.get_job(job_id)
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -365,7 +402,9 @@ def genesys_run_job(
         with _client(base_url, token) as c:
             return c.run_job(job_id)
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 @mcp.tool()
@@ -383,7 +422,9 @@ def genesys_job_result(
         with _client(base_url, token) as c:
             return c.get_job_result(job_id)
     except GenesysClientError as e:
-        return {"error": _fmt_error(e)}
+        return _err(e)
+    except httpx.RequestError as e:
+        return _conn_err(e)
 
 
 # ---------------------------------------------------------------------------
