@@ -39,7 +39,7 @@ PluginInformation* PetriPlace::GetPluginInformation() {
 
 ModelComponent* PetriPlace::LoadInstance(Model* model, PersistenceRecord *fields) {
 	PetriPlace* component = new PetriPlace(model);
-	component->_loadInstance(fields);
+    component->_loadInstance(fields);
 	return component;
 }
 
