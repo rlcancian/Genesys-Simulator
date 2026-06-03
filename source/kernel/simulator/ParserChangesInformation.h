@@ -49,6 +49,12 @@ public: // gets and sets
 	std::string getfunctionProdutions() const;
 	void setFunctionProdutions(const std::string &newFunctionProdutions);
 
+	std::string getlexicalRules() const;
+	void setLexicalRules(const std::string &newLexicalRules);
+
+	std::string getlexicalLiterals() const;
+	void setLexicalLiterals(const std::string &newLexicalLiterals);
+
 private:
 	std::string _includes = "";
 	std::string _tokens = "";
@@ -57,6 +63,8 @@ private:
 	std::string _expressionProductions = "";
 	std::string _assignments = "";
 	std::string _functionProdutions = "";
+	std::string _lexicalRules = "";
+	std::string _lexicalLiterals = "";
 
 };
 

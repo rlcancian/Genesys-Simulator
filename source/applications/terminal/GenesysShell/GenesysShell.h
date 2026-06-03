@@ -70,6 +70,7 @@ public: // commands
 	void cmdReplication();
 	//void cmdShowReport();
 	void cmdModel();
+	void cmdDynamicParser();
 	//void cmdModelClose();
 	void cmdModelLoad();
 	//void cmdModelCheck();

@@ -1,4 +1,5 @@
 #include <cmath>
+#include <filesystem>
 #include <functional>
 #include <gtest/gtest.h>
 
@@ -10,6 +11,27 @@
 #include "kernel/statistics/SamplerDefaultImpl1.h"
 #include "parser/Genesys++-driver.h"
 #include "../../plugins/data/Logic/Variable.h"
+
+static std::filesystem::path FindSourceRoot() {
+    std::filesystem::path marker = "source/parser/parserBisonFlex/bisonparser.yy";
+    // Try from current working directory (ctest runs from build dir)
+    std::filesystem::path check = std::filesystem::current_path();
+    for (int i = 0; i < 4; ++i) {
+        if (std::filesystem::exists(check / marker)) {
+            return check;
+        }
+        check = check.parent_path();
+    }
+    // Fallback: from executable path
+    check = std::filesystem::canonical("/proc/self/exe").parent_path();
+    for (int i = 0; i < 6; ++i) {
+        if (std::filesystem::exists(check / marker)) {
+            return check;
+        }
+        check = check.parent_path();
+    }
+    return "";
+}
 
 class ParserExpressionsTest : public ::testing::Test {
 protected:
@@ -437,4 +459,88 @@ TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerSameExternalPointerDoe
 
     EXPECT_FALSE(externalDestroyed);
     EXPECT_EQ(destroyedCounter, 1);
+}
+
+class DemoPlugin : public ModelDataDefinition {
+public:
+    DemoPlugin(Model* model) : ModelDataDefinition(model, "DemoPlugin") {}
+
+    ParserChangesInformation* _getParserChangesInformation() override {
+        auto* changes = new ParserChangesInformation();
+        changes->setTokens("%token <obj_t> fDEMO\n");
+        changes->setFunctionProdutions(
+            "    | fDEMO \"(\" expression \")\" { $$.valor = $3.valor + 1; }\n"
+        );
+        changes->setLexicalRules(
+            "[dD][eE][mM][oO] {return yy::genesyspp_parser::make_fDEMO(obj_t(0, std::string(yytext)), loc);}\n"
+        );
+        return changes;
+    }
+
+    static ModelDataDefinition* LoadInstance(Model* model, std::map<std::string, std::string>* /*args*/) {
+        return new DemoPlugin(model);
+    }
+};
+
+TEST_F(ParserExpressionsTest, DynamicParserDemoPluginAddsNewFunction) {
+    auto* demo = new DemoPlugin(model);
+    model->getDataManager()->insert(demo);
+
+    ParserManager* pm = model->getParserManager();
+    ASSERT_NE(pm, nullptr);
+    pm->setModel(model);
+    std::filesystem::path sourceRoot = FindSourceRoot();
+    ASSERT_FALSE(sourceRoot.empty()) << "Could not find GenESyS source root";
+    pm->setSourceDir(sourceRoot.string());
+    std::filesystem::path workDir = std::filesystem::temp_directory_path() / "genesys_parser_demo_build";
+    pm->setWorkDir(workDir.string());
+
+    std::list<ParserChangesInformation*> allChanges = pm->aggregateChanges();
+    ASSERT_FALSE(allChanges.empty());
+
+    // Combine changes into a single object for injection
+    auto* combined = new ParserChangesInformation();
+    for (ParserChangesInformation* ch : allChanges) {
+        if (ch == nullptr) continue;
+        combined->setTokens(combined->gettokens() + ch->gettokens());
+        combined->setFunctionProdutions(combined->getfunctionProdutions() + ch->getfunctionProdutions());
+        combined->setLexicalRules(combined->getlexicalRules() + ch->getlexicalRules());
+        combined->setLexicalLiterals(combined->getlexicalLiterals() + ch->getlexicalLiterals());
+    }
+
+    ParserManager::GenerateNewParserResult result = pm->generateNewParser(combined);
+    if (!result.result) {
+        std::cout << "Bison messages:\n" << result.bisonMessages << std::endl;
+        std::cout << "Flex messages:\n" << result.lexMessages << std::endl;
+        std::cout << "Compilation messages:\n" << result.compilationMessages << std::endl;
+    }
+    EXPECT_TRUE(result.result) << "generateNewParser failed";
+    if (!result.result) {
+        return;
+    }
+
+    bool connected = pm->connectNewParser(result.newParser);
+    EXPECT_TRUE(connected) << "connectNewParser failed";
+    if (!connected) {
+        return;
+    }
+
+    // After connecting the new parser, the demo() function should be recognized
+    bool success = false;
+    std::string errorMsg;
+    double result1 = model->parseExpression("demo(5)", success, errorMsg);
+    if (!success) {
+        std::cout << "parse demo(5) failed: " << errorMsg << std::endl;
+    }
+    EXPECT_TRUE(success) << "demo(5) parse failed: " << errorMsg;
+    EXPECT_DOUBLE_EQ(result1, 6.0);
+
+    double result2 = model->parseExpression("demo(0)");
+    EXPECT_DOUBLE_EQ(result2, 1.0);
+
+    double result3 = model->parseExpression("demo(demo(2))");
+    EXPECT_DOUBLE_EQ(result3, 4.0);
+
+    model->getDataManager()->remove(demo);
+    delete demo;
 }

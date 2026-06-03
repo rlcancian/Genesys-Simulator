@@ -1,10 +1,4 @@
 /*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
-/* 
  * File:   ParserManager.h
  * Author: rlcancian
  *
@@ -15,24 +9,20 @@
 #define PARSERMANAGER_H
 
 #include "ParserChangesInformation.h"
+#include <string>
+#include <list>
 
-//namespace GenesysKernel {
+class Model;
+class ModelDataDefinition;
 
 class ParserManager {
 public:
-
-	/**
-	 * @brief Paths associated with a generated parser artifact set.
-	 */
 	struct NewParser {
 		std::string bisonFilename;
 		std::string flexFilename;
 		std::string compiledParserFilename;
 	};
 
-	/**
-	 * @brief Result bundle for parser generation requests.
-	 */
 	struct GenerateNewParserResult {
 		bool result = false;
 		std::string bisonMessages;
@@ -42,23 +32,42 @@ public:
 	};
 public:
 	ParserManager();
-	virtual ~ParserManager() = default;
+	virtual ~ParserManager();
 public:
-	/*!
-	 * \brief generateNewParser
-	 * \param changes
-	 * \return
-	 */
-	// @ToDo: (importante): Implement parser generation workflow and define the expected filesystem/toolchain contract.
-	ParserManager::GenerateNewParserResult generateNewParser(ParserChangesInformation* changes);
-	/*!
-	 * \brief connectNewParser
-	 * \param newParser
-	 * \return
-	 */
-	// @ToDo: (importante): Implement parser loading/activation and define ownership/lifetime rules for connected parsers.
-	bool connectNewParser(ParserManager::NewParser newParser);
+	void setModel(Model* model);
+	Model* getModel() const;
+	void setSourceDir(const std::string& sourceDir);
+	std::string getSourceDir() const;
+
+	std::list<ParserChangesInformation*> aggregateChanges();
+
+	GenerateNewParserResult generateNewParser(ParserChangesInformation* changes);
+	bool connectNewParser(NewParser newParser, std::string* errorMessage = nullptr);
+
+	void setWorkDir(const std::string& workDir);
+	std::string getWorkDir() const;
+
 private:
+	std::string _readFile(const std::string& filename);
+	bool _writeFile(const std::string& filename, const std::string& content);
+	bool _copyFile(const std::string& src, const std::string& dst);
+	std::string _findBaseFile(const std::string& relativePath);
+
+	bool _injectBisonChanges(std::string& content, ParserChangesInformation* changes);
+	bool _injectFlexChanges(std::string& content, ParserChangesInformation* changes);
+	bool _injectSection(std::string& content, const std::string& beginMarker, const std::string& endMarker, const std::string& block);
+
+	bool _invokeBison(const std::string& workDir, const std::string& bisonFile, std::string& messages);
+	bool _invokeFlex(const std::string& workDir, const std::string& flexFile, std::string& messages);
+	bool _compileDynamicLibrary(const std::string& workDir, std::string& messages);
+
+	std::string _buildCompilerCommand(const std::string& workDir);
+
+private:
+	Model* _model = nullptr;
+	std::string _sourceDir = ".";
+	std::string _workDir = ".genesys_parser_build/";
+	void* _dynamicLibraryHandle = nullptr;
 };
-//namespace\\}
+
 #endif /* PARSERMANAGER_H */

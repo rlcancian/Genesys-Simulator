@@ -30,6 +30,7 @@
 #include "ModelInfo.h"
 #include "ModelSimulation.h"
 #include "../SimulationControlAndResponse.h"
+#include "../ParserManager.h"
 
 //namespace GenesysKernel {
 class Simulator;
@@ -182,6 +183,16 @@ public: // only gets
 	*/
 	Util::identification getId() const;
 	/*!
+	 * \brief Returns the parser manager used by this model.
+	 * \return ParserManager instance.
+	 */
+	ParserManager* getParserManager() const;
+	/*!
+	 * \brief Returns the active parser interface.
+	 * \return Current parser instance.
+	 */
+	Parser_if* getParser() const;
+	/*!
 	 * \brief Indicates whether the model has pending changes.
 	 * \return \c true when the model or one of its owned objects changed.
 	 */
@@ -263,6 +274,12 @@ public: // gets and sets
 	 */
 	void setTracer(TraceManager* _traceManager);
 	/*!
+	 * \brief Replaces the active parser with a new parser instance.
+	 * \details Transfers sampler ownership safely and deletes the old parser.
+	 * \param parser New parser to activate.
+	 */
+	void setParser(Parser_if* parser);
+	/*!
 	 * \brief Returns the trace manager used by this model.
 	 * \return Trace manager instance.
 	 */
@@ -317,6 +334,7 @@ private: // read only public access (gets)
 private: // no public access (no gets / sets)
 	ModelChecker_if* _modelChecker;
 	Parser_if* _parser;
+	ParserManager* _parserManager = nullptr;
 };
 //namespace\\}
 #endif /* SIMULATIONMODEL_H */

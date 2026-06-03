@@ -127,6 +127,7 @@ Model::Model(Simulator* simulator, unsigned int level) {
     _parser = new TraitsKernel<Parser_if>::Implementation(this, new TraitsKernel<Sampler_if>::Implementation());
     _modelChecker = new TraitsKernel<ModelChecker_if>::Implementation(this);
     _modelPersistence = new TraitsKernel<Persistence_if>::Implementation(this);
+    _parserManager = new ParserManager();
     // 1:n associations
     _futureEvents = new List<Event*>(); // The future events list must be chronologicaly sorted
     //_events->setSortFunc(&EventCompare); // It works too
@@ -192,6 +193,8 @@ Model::~Model() {
     _modelChecker = nullptr;
     delete _parser;
     _parser = nullptr;
+    delete _parserManager;
+    _parserManager = nullptr;
 
     // Destroys infrastructure containers owned by Model after contained objects were released.
     delete _futureEvents;
@@ -340,6 +343,26 @@ double Model::parseExpression(const std::string expression, bool& success, std::
     //_parser->getParser().error(l, m);
     //std::cout << "l:" <<l<<", m:"<<m<<std::endl;
     return value;
+}
+
+ParserManager* Model::getParserManager() const {
+    return _parserManager;
+}
+
+Parser_if* Model::getParser() const {
+    return _parser;
+}
+
+void Model::setParser(Parser_if* parser) {
+    if (parser == _parser) {
+        return;
+    }
+    Sampler_if* currentSampler = (_parser != nullptr) ? _parser->releaseSampler() : nullptr;
+    if (parser != nullptr && currentSampler != nullptr) {
+        parser->setSampler(currentSampler);
+    }
+    delete _parser;
+    _parser = parser;
 }
 
 std::string Model::showLanguage() {

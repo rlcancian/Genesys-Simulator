@@ -120,6 +120,13 @@ Sampler_if* ParserDefaultImpl2::getSampler() const {
 	return _wrapper.getSampler();
 }
 
+Sampler_if* ParserDefaultImpl2::releaseSampler() {
+	Sampler_if* s = _wrapper.getSampler();
+	_ownsSampler = false;
+	_wrapper.setSampler(nullptr);
+	return s;
+}
+
 genesyspp_driver ParserDefaultImpl2::getParser() const {
 	return _wrapper;
 }

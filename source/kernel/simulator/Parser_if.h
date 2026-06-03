@@ -76,6 +76,11 @@ public:
 	 */
 	/*! \brief Exposes the internal parser driver for advanced integration scenarios. */
 	virtual genesyspp_driver getParser() const = 0;
+	/*!
+	 * \brief Releases sampler ownership from this parser without deleting it.
+	 * \return The previously owned sampler pointer, or nullptr if none was owned.
+	 */
+	virtual Sampler_if* releaseSampler() { return nullptr; }
 };
 
 #endif /* PARSER_IF_H */
