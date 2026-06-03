@@ -280,6 +280,14 @@ public: // gets and sets
 	 */
 	void setParser(Parser_if* parser);
 	/*!
+	 * \brief Marks whether the parser should be regenerated before next expression evaluation.
+	 */
+	void setParserIsStale(bool stale);
+	/*!
+	 * \brief Returns whether the parser needs regeneration.
+	 */
+	bool isParserStale() const;
+	/*!
 	 * \brief Returns the trace manager used by this model.
 	 * \return Trace manager instance.
 	 */
@@ -311,6 +319,7 @@ private:
     void _createInternalDataDefinitions();
 private:
 	bool _hasChanged = false;
+	bool _parserIsStale = true;
 private: // read only public access (gets)
 	Util::identification _id;
 	unsigned int _level = 0;

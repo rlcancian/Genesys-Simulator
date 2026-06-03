@@ -27,6 +27,7 @@
 #include "../OnEventManager.h"
 #include "../essentialPlugins/StatisticsCollector.h"
 #include "../../TraitsKernel.h"
+#include "../ParserChangesInformation.h"
 //#include "Access.h"
 
 //using namespace GenesysKernel;
@@ -128,6 +129,24 @@ Model::Model(Simulator* simulator, unsigned int level) {
     _modelChecker = new TraitsKernel<ModelChecker_if>::Implementation(this);
     _modelPersistence = new TraitsKernel<Persistence_if>::Implementation(this);
     _parserManager = new ParserManager();
+    _parserManager->setModel(this);
+    {
+        std::filesystem::path marker = "source/parser/parserBisonFlex/bisonparser.yy";
+        std::filesystem::path sourceRoot = std::filesystem::canonical("/proc/self/exe").parent_path();
+        for (int i = 0; i < 8; ++i) {
+            if (std::filesystem::exists(sourceRoot / marker)) break;
+            sourceRoot = sourceRoot.parent_path();
+        }
+        if (!std::filesystem::exists(sourceRoot / marker)) {
+            sourceRoot = std::filesystem::current_path();
+            for (int i = 0; i < 6; ++i) {
+                if (std::filesystem::exists(sourceRoot / marker)) break;
+                sourceRoot = sourceRoot.parent_path();
+            }
+        }
+        _parserManager->setSourceDir(sourceRoot.string());
+        _parserManager->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_auto").string());
+    }
     // 1:n associations
     _futureEvents = new List<Event*>(); // The future events list must be chronologicaly sorted
     //_events->setSortFunc(&EventCompare); // It works too
@@ -337,11 +356,34 @@ void Model::checkReferencesToDataDefinitions(std::string expression,
 }
 
 double Model::parseExpression(const std::string expression, bool& success, std::string& errorMessage) {
+    if (_parserIsStale) {
+        _parserIsStale = false;
+        auto allChanges = _parserManager->aggregateChanges();
+        if (!allChanges.empty()) {
+            auto* combined = new ParserChangesInformation();
+            for (auto* ch : allChanges) {
+                if (ch == nullptr) continue;
+                combined->setTokens(combined->gettokens() + ch->gettokens());
+                combined->setFunctionProdutions(combined->getfunctionProdutions() + ch->getfunctionProdutions());
+                combined->setLexicalRules(combined->getlexicalRules() + ch->getlexicalRules());
+                combined->setLexicalLiterals(combined->getlexicalLiterals() + ch->getlexicalLiterals());
+            }
+            auto result = _parserManager->generateNewParser(combined);
+            if (result.result) {
+                std::string connectError;
+                if (!_parserManager->connectNewParser(result.newParser, &connectError)) {
+                    errorMessage = "Lazy parser regeneration failed: " + connectError;
+                    success = false;
+                    return 0.0;
+                }
+            } else {
+                errorMessage = "Lazy parser regeneration failed: generation error";
+                success = false;
+                return 0.0;
+            }
+        }
+    }
     double value = _parser->parse(expression, success, errorMessage);
-    //yy::location l/
-    //std::string m;
-    //_parser->getParser().error(l, m);
-    //std::cout << "l:" <<l<<", m:"<<m<<std::endl;
     return value;
 }
 
@@ -363,6 +405,14 @@ void Model::setParser(Parser_if* parser) {
     }
     delete _parser;
     _parser = parser;
+}
+
+void Model::setParserIsStale(bool stale) {
+    _parserIsStale = stale;
+}
+
+bool Model::isParserStale() const {
+    return _parserIsStale;
 }
 
 std::string Model::showLanguage() {

@@ -13,6 +13,7 @@
 
 #include "ModelDataManager.h"
 #include "Model.h"
+#include "../ParserChangesInformation.h"
 
 //using namespace GenesysKernel;
 
@@ -42,6 +43,11 @@ bool ModelDataManager::insert(ModelDataDefinition* anElement) {
 		// the model, otherwise GUI flows that create objects interactively observe an incomplete
 		// kernel state until a later model check forces internal-data creation.
 		ModelDataDefinition::CreateInternalData(anElement);
+		// Mark parser as stale if this element contributes parser changes.
+		ParserChangesInformation* changes = anElement->_getParserChangesInformation();
+		if (changes != nullptr) {
+			_parentModel->setParserIsStale(true);
+		}
 	}
 	return result;
 }
