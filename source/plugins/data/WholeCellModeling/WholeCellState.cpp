@@ -152,17 +152,24 @@ void WholeCellState::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 }
 
 bool WholeCellState::_check(std::string& errorMessage) {
+	// Snapshot programmatically-set counts/pool as initial state when not yet set by _loadInstance.
+	if (_initialMoleculeCounts.empty() && !_moleculeCounts.empty()) {
+		_initialMoleculeCounts = _moleculeCounts;
+	}
+	if (_initialMetabolitePool.empty() && !_metabolitePool.empty()) {
+		_initialMetabolitePool = _metabolitePool;
+	}
 	bool resultAll = true;
 	if (getName().empty()) {
 		errorMessage += "WholeCellState must define a non-empty name. ";
 		resultAll = false;
 	}
-	if (_cellVolume <= 0.0) {
-		errorMessage += "WholeCellState \"" + getName() + "\" cellVolume must be > 0. ";
+	if (_cellVolume < 0.0) {
+		errorMessage += "WholeCellState \"" + getName() + "\" cellVolume must be >= 0. ";
 		resultAll = false;
 	}
-	if (_cellMass <= 0.0) {
-		errorMessage += "WholeCellState \"" + getName() + "\" cellMass must be > 0. ";
+	if (_cellMass < 0.0) {
+		errorMessage += "WholeCellState \"" + getName() + "\" cellMass must be >= 0. ";
 		resultAll = false;
 	}
 	return resultAll;

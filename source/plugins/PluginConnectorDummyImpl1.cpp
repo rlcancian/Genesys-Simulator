@@ -16,6 +16,10 @@
 
 // Model Components
 
+#include "plugins/components/WholeCellModeling/CellDivisionEvent.h"
+#include "plugins/components/WholeCellModeling/StochasticReactionComponent.h"
+#include "plugins/components/WholeCellModeling/StochasticTranscription.h"
+#include "plugins/components/WholeCellModeling/StochasticTranslation.h"
 #include "plugins/components/MaterialHandling/Access.h"
 #include "components/Logic/Assign.h"
 #include "plugins/components/Grouping/Batch.h"
@@ -69,6 +73,9 @@
 
 
 // Model data definitions
+#include "plugins/data/WholeCellModeling/MolecularSpecies.h"
+#include "plugins/data/WholeCellModeling/StochasticReactionRule.h"
+#include "plugins/data/WholeCellModeling/WholeCellState.h"
 #include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
@@ -123,6 +130,13 @@ bool PluginConnectorDummyImpl1::disconnect(Plugin* plugin) {
 
 List<std::string>* PluginConnectorDummyImpl1::find() {
     List<std::string>* filenames = new List<std::string>();
+    filenames->insert("celldivisionevent.so");
+    filenames->insert("molecularspecies.so");
+    filenames->insert("stochasticreactioncomponent.so");
+    filenames->insert("stochasticreactionrule.so");
+    filenames->insert("stochastictranscription.so");
+    filenames->insert("stochastictranslation.so");
+    filenames->insert("wholecellstate.so");
     filenames->insert("assign.so");
     filenames->insert("buffer.so");
     filenames->insert("create.so");
@@ -235,7 +249,21 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
 	StaticGetPluginInformation GetInfo = nullptr;
     // @TODO: Dummy connections basically does nothing but give access to PluginInformation already compiled
 
-    if (fn == "assign.so")
+    if (fn == "celldivisionevent.so")
+        GetInfo = &CellDivisionEvent::GetPluginInformation;
+    else if (fn == "molecularspecies.so")
+        GetInfo = &MolecularSpecies::GetPluginInformation;
+    else if (fn == "stochasticreactioncomponent.so")
+        GetInfo = &StochasticReactionComponent::GetPluginInformation;
+    else if (fn == "stochasticreactionrule.so")
+        GetInfo = &StochasticReactionRule::GetPluginInformation;
+    else if (fn == "stochastictranscription.so")
+        GetInfo = &StochasticTranscription::GetPluginInformation;
+    else if (fn == "stochastictranslation.so")
+        GetInfo = &StochasticTranslation::GetPluginInformation;
+    else if (fn == "wholecellstate.so")
+        GetInfo = &WholeCellState::GetPluginInformation;
+    else if (fn == "assign.so")
         GetInfo = &Assign::GetPluginInformation;
     else if (fn == "buffer.so")
         GetInfo = &Buffer::GetPluginInformation;

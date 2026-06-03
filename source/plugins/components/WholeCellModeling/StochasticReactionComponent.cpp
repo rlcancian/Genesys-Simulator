@@ -147,10 +147,10 @@ void StochasticReactionComponent::_onDispatchEvent(Entity* entity, unsigned int 
 	std::map<std::string, int> counts;
 	_collectCountsFromState(counts);
 
+	// Resource budget is intentionally empty — no hard floor constraint. Using the initial counts
+	// as the budget would block every consuming reaction (count - stoich < initial). If a minimum
+	// reserved pool per species is later needed, add a dedicated field to WholeCellState.
 	std::map<std::string, int> resourceBudget;
-	if (_wholeCellState != nullptr) {
-		resourceBudget = _wholeCellState->getMoleculeCounts();
-	}
 
 	const GillespieState result = _runGillespie(counts, rules, resourceBudget, _timeWindow);
 
@@ -304,6 +304,14 @@ void StochasticReactionComponent::_createEditableDataDefinitions() {
 		_optionalEditableDataDefinitionInsert("WholeCellState", _wholeCellState);
 	} else {
 		_optionalEditableDataDefinitionRemove("WholeCellState");
+	}
+	// Register all StochasticReactionRule instances from the model as optional editable (attached)
+	// data. "Editable"/attached references do not transfer lifecycle ownership to this component —
+	// the rules remain independently managed in the model data manager. This protects them from
+	// orphan cleanup without risking double-deletion: attachedDataRemove just removes the map
+	// entry, unlike internalDataRemove which calls _deleteOwnedInternalData and deletes the object.
+	for (StochasticReactionRule* rule : _collectRules()) {
+		_optionalEditableDataDefinitionInsert(rule->getName(), rule);
 	}
 }
 

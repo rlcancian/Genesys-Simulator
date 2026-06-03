@@ -1,0 +1,45 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "WCM M. genitalium Karr 2012 Analog" version="1.0" projectTitle="" description="Whole-cell simulation of Mycoplasma genitalium inspired by Karr et al. (2012). 10 representative genes, all four WCM plugins: Transcription, Translation, MetabolicSSA, and CellDivision. FtsZ-driven cell division. Parameters from CovertLab/WholeCell (MIT license)." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=36000.000000 numberOfReplications=3 
+
+# Model Data Definitions
+109 WholeCellState "CellState" moleculeSpeciesCount[19]=120 moleculeSpeciesName[24]="prot_MG_462" moleculeSpeciesName[20]="prot_MG_196" moleculeSpeciesName[3]="FtsZ_ring_completion" moleculeSpeciesName[23]="prot_MG_398" moleculeSpeciesName[18]="prot_MG_139" moleculeSpeciesName[25]="ribosome_free" metaboliteName[1]="ATP" moleculeSpeciesCount[7]=1 moleculeSpeciesCount[9]=3 moleculeSpeciesCount[14]=4 moleculeSpeciesCount[23]=70 metaboliteAmount[3]=0.000500 moleculeSpeciesCount[15]=80 moleculeSpeciesName[9]="mRNA_MG_175" moleculeSpeciesName[7]="mRNA_MG_055" moleculeSpeciesCount[18]=50 moleculeSpeciesCount[13]=2 moleculeSpeciesCount[6]=1 moleculeSpeciesName[19]="prot_MG_175" moleculeSpeciesName[21]="prot_MG_203" moleculeSpeciesName[22]="prot_MG_339" moleculeSpeciesCount[8]=1 moleculeSpeciesCount[25]=400 moleculeSpeciesName[12]="mRNA_MG_339" moleculeSpeciesCount[22]=60 moleculeSpeciesCount[5]=2 moleculeSpeciesCount[24]=160 moleculeSpeciesCount[2]=500 moleculeSpeciesCount[21]=30 cellMass=0.000000 moleculeSpeciesCount[0]=500 moleculeSpeciesCount[10]=2 moleculeSpeciesName[17]="prot_MG_055" metaboliteName[0]="ADP" metaboliteAmount[1]=0.002000 metaboliteName[3]="GTP" metaboliteAmount[2]=0.000100 metaboliteName[2]="GDP" moleculeSpeciesName[2]="FtsZ_monomer" metaboliteAmount[0]=0.000500 moleculeSpeciesName[4]="RNAP_free" cellVolume=0.000000 moleculeSpeciesName[10]="mRNA_MG_196" moleculeSpeciesName[8]="mRNA_MG_139" moleculeSpeciesCount[12]=2 moleculeSpeciesName[6]="mRNA_MG_006" moleculeSpeciesCount[11]=1 moleculeSpeciesName[0]="ADP_pool" moleculeSpeciesName[1]="ATP_pool" moleculeSpeciesName[11]="mRNA_MG_203" moleculeSpeciesCount[4]=200 moleculeSpeciesCount[1]=2000 moleculeSpeciesName[14]="mRNA_MG_462" moleculeSpeciesName[5]="mRNA_MG_001" moleculeSpeciesCount=26 moleculeSpeciesName[13]="mRNA_MG_398" moleculeSpeciesName[15]="prot_MG_001" metaboliteCount=4 moleculeSpeciesName[16]="prot_MG_006" moleculeSpeciesCount[16]=40 moleculeSpeciesCount[20]=250 moleculeSpeciesCount[17]=10 
+110 StochasticReactionRule "R_ATP_Regeneration" reactants=1 rateConstant=0.050000 reactantSpecies[0]="ADP_pool" productSpecies[0]="ATP_pool" products=1 
+111 StochasticReactionRule "R_ATP_Consumption" reactants=1 rateConstant=0.020000 reactantSpecies[0]="ATP_pool" productSpecies[0]="ADP_pool" products=1 
+112 StochasticReactionRule "R_FtsZ_Polymerization" reactants=1 rateConstant=0.002000 reactantSpecies[0]="FtsZ_monomer" productSpecies[0]="FtsZ_ring_completion" products=1 
+113 StochasticReactionRule "R_FtsZ_Depolymerization" reactants=1 rateConstant=0.000500 reactantSpecies[0]="FtsZ_ring_completion" productSpecies[0]="FtsZ_monomer" products=1 
+114 StochasticReactionRule "R_deg_mRNA_MG_001" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_001" 
+115 StochasticReactionRule "R_deg_mRNA_MG_006" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_006" 
+116 StochasticReactionRule "R_deg_mRNA_MG_055" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_055" 
+117 StochasticReactionRule "R_deg_mRNA_MG_139" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_139" 
+118 StochasticReactionRule "R_deg_mRNA_MG_175" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_175" 
+119 StochasticReactionRule "R_deg_mRNA_MG_196" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_196" 
+120 StochasticReactionRule "R_deg_mRNA_MG_203" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_203" 
+121 StochasticReactionRule "R_deg_mRNA_MG_339" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_339" 
+122 StochasticReactionRule "R_deg_mRNA_MG_398" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_398" 
+123 StochasticReactionRule "R_deg_mRNA_MG_462" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_462" 
+124 StochasticReactionRule "R_deg_prot_MG_001" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_001" 
+125 StochasticReactionRule "R_deg_prot_MG_006" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_006" 
+126 StochasticReactionRule "R_deg_prot_MG_055" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_055" 
+127 StochasticReactionRule "R_deg_prot_MG_139" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_139" 
+128 StochasticReactionRule "R_deg_prot_MG_175" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_175" 
+129 StochasticReactionRule "R_deg_prot_MG_196" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_196" 
+130 StochasticReactionRule "R_deg_prot_MG_203" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_203" 
+131 StochasticReactionRule "R_deg_prot_MG_339" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_339" 
+132 StochasticReactionRule "R_deg_prot_MG_398" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_398" 
+133 StochasticReactionRule "R_deg_prot_MG_462" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_462" 
+136 EntityType "entitytype" 
+137 Attribute  "Entity.ArrivalTime" 
+138 Attribute  "Entity.Type" 
+
+# Model Components
+134 Create     "SimClock" entityType="entitytype" maxCreations="600" timeBetweenCreations="60" nextId=139 
+139 StochasticTranscription "Transcription" randomSeed=1001 timeWindow=60.000000 wholeCellState="CellState" nextId=140 
+140 StochasticTranslation "Translation" randomSeed=2002 timeWindow=60.000000 wholeCellState="CellState" nextId=141 
+141 StochasticReactionComponent "MetabolicSSA" randomSeed=3003 timeWindow=60.000000 wholeCellState="CellState" nextId=142 
+142 CellDivisionEvent "CellDivision" randomSeed=4004 ftsZThreshold=0.350000 wholeCellState="CellState" divisionMassThreshold=0.000000 nextId[1]=143 nexts=2 nextId[0]=145 
+143 Record     "Division_Record" description="Simulation times at which cell division events occurred (M. genitalium Karr 2012 analog)." randomVariableName="Time of cell division" datasetName="CellDivisionTimes" expressionName="Cell Division Time" expression="TNOW" nextId=148 
+145 Dispose    "Step_Done" nexts=0 
+148 Dispose    "Post_Division" nexts=0 

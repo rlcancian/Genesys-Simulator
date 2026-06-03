@@ -124,8 +124,8 @@ void CellDivisionEvent::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 
 bool CellDivisionEvent::_check(std::string& errorMessage) {
 	bool resultAll = true;
-	if (_divisionMassThreshold <= 0.0) {
-		errorMessage += "CellDivisionEvent \"" + getName() + "\" divisionMassThreshold must be > 0. ";
+	if (_divisionMassThreshold < 0.0) {
+		errorMessage += "CellDivisionEvent \"" + getName() + "\" divisionMassThreshold must be >= 0 (0 disables mass-based trigger). ";
 		resultAll = false;
 	}
 	if (_wholeCellState == nullptr) {

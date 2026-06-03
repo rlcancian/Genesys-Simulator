@@ -1,0 +1,26 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "WCM Gene Expression" version="1.0" projectTitle="" description="Central dogma: stochastic transcription (Poisson tau-leaping) + translation (Poisson tau-leaping) + mRNA/protein degradation (Gillespie SSA). Four genes with RNAP_free=200 and ribosome_free=400 (M. genitalium ballpark)." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=3600.000000 numberOfReplications=10 
+
+# Model Data Definitions
+109 WholeCellState "CellState" moleculeSpeciesName[6]="prot_geneB" moleculeSpeciesName[1]="mRNA_geneA" moleculeSpeciesName[0]="RNAP_free" moleculeSpeciesName[7]="prot_geneC" moleculeSpeciesName[5]="prot_geneA" moleculeSpeciesName[8]="prot_geneD" moleculeSpeciesCount[9]=400 moleculeSpeciesCount[0]=200 moleculeSpeciesName[4]="mRNA_geneD" moleculeSpeciesName[9]="ribosome_free" moleculeSpeciesName[3]="mRNA_geneC" moleculeSpeciesName[2]="mRNA_geneB" moleculeSpeciesCount=10 
+110 StochasticReactionRule "R_deg_mRNA_geneA" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_geneA" 
+111 StochasticReactionRule "R_deg_prot_geneA" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_geneA" 
+112 StochasticReactionRule "R_deg_mRNA_geneB" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_geneB" 
+113 StochasticReactionRule "R_deg_prot_geneB" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_geneB" 
+114 StochasticReactionRule "R_deg_mRNA_geneC" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_geneC" 
+115 StochasticReactionRule "R_deg_prot_geneC" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_geneC" 
+116 StochasticReactionRule "R_deg_mRNA_geneD" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_geneD" 
+117 StochasticReactionRule "R_deg_prot_geneD" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_geneD" 
+120 EntityType "entitytype" 
+121 Attribute  "Entity.ArrivalTime" 
+122 Attribute  "Entity.Type" 
+
+# Model Components
+118 Create     "SimClock" entityType="entitytype" maxCreations="60" timeBetweenCreations="60" nextId=123 
+123 StochasticTranscription "Transcription" randomSeed=101 timeWindow=60.000000 wholeCellState="CellState" nextId=124 bindingProbability=0.250000 
+124 StochasticTranslation "Translation" randomSeed=202 timeWindow=60.000000 wholeCellState="CellState" nextId=125 
+125 StochasticReactionComponent "Degradation_SSA" randomSeed=303 timeWindow=60.000000 wholeCellState="CellState" nextId=126 
+126 Dispose    "Done" nexts=0 
