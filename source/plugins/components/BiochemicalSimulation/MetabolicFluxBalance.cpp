@@ -10,6 +10,9 @@
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
 #include "tools/Biochemical/MetabolicFluxBalanceSolver.h"
+#ifdef GENESYS_HAVE_GLPK
+#include "tools/Biochemical/GlpkFluxBalanceSolver.h"
+#endif
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -67,7 +70,7 @@ PluginInformation* MetabolicFluxBalance::GetPluginInformation() {
 	info->setMinimumOutputs(1);
 	info->setMaximumOutputs(1);
 	info->insertDynamicLibFileDependence("metabolicnetwork.so");
-	info->setDescriptionHelp("Evaluates a stub flux-balance objective over a MetabolicNetwork and stores the selected objective value for downstream logic.");
+	info->setDescriptionHelp("Evaluates a flux-balance objective over a MetabolicNetwork using GLPK simplex LP when available, falling back to built-in basis enumeration for small models.");
 	return info;
 }
 
@@ -239,7 +242,11 @@ void MetabolicFluxBalance::_onDispatchEvent(Entity* entity, unsigned int inputPo
 		return;
 	}
 
+#ifdef GENESYS_HAVE_GLPK
+	MetabolicFluxBalanceSolver::Solution solution = GlpkFluxBalanceSolver::solve(problem);
+#else
 	MetabolicFluxBalanceSolver::Solution solution = MetabolicFluxBalanceSolver::solve(problem);
+#endif
 	if (!solution.feasible) {
 		_lastSucceeded = false;
 		_lastObjectiveValue = 0.0;

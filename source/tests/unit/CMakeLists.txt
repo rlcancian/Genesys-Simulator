@@ -234,10 +234,10 @@ endif()
 
 add_executable(genesys_test_tools_hypothesistester
     test_tools_hypothesistester.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/HypothesisTesterDefaultImpl1.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistribution.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistributionBase.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/SolverDefaultImpl1.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/HypothesisTesterDefaultImpl1.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/ProbabilityDistribution.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/ProbabilityDistributionBase.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Continuous/SolverDefaultImpl1.cpp
 )
 
 target_include_directories(genesys_test_tools_hypothesistester

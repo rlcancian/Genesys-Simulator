@@ -8,7 +8,31 @@
 #include "plugins/data/BiochemicalSimulation/MetabolicNetwork.h"
 
 /**
- * Component that evaluates a stub flux-balance objective over a MetabolicNetwork.
+ * Component that evaluates flux-balance analysis (FBA) over a MetabolicNetwork.
+ *
+ * ## LP solver dependency (GLPK)
+ *
+ * MetabolicFluxBalance requires GLPK for metabolic networks with more than a
+ * few dozen reactions (e.g., M. genitalium: 641 reactions; yeast-GEM: 4131
+ * reactions). Without GLPK, a built-in basis-enumeration fallback is used,
+ * which is only practical for small toy networks.
+ *
+ * ### Installation
+ *   Ubuntu/Debian:  sudo apt-get install libglpk-dev
+ *   Fedora/RHEL:    sudo dnf install glpk-devel
+ *   macOS (Brew):   brew install glpk
+ *
+ * ### Re-configuration after installation
+ *   cmake --preset terminal-app   # or any other preset
+ *   cmake --build build/terminal-app --target genesys_plugins_components
+ *
+ * CMake will print at configure time:
+ *   GenESyS: GLPK found — MetabolicFluxBalance ... will use GLPK LP solver
+ * or:
+ *   GenESyS: GLPK not found — ... (suitable for small models only; install libglpk-dev ...)
+ *
+ * The preprocessor guard is GENESYS_HAVE_GLPK. The GLPK solver wrapper is in
+ * source/tools/Biochemical/GlpkFluxBalanceSolver.h.
  */
 class MetabolicFluxBalance : public ModelComponent {
 public:
