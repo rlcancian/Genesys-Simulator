@@ -152,13 +152,20 @@ void WholeCellState::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 }
 
 bool WholeCellState::_check(std::string& errorMessage) {
-	// Snapshot programmatically-set counts/pool as initial state when not yet set by _loadInstance.
+	// Snapshot programmatically-set state as initial values for _initBetweenReplications.
+	// Only take the snapshot once (first _check call) so that later checks during a
+	// running simulation do not overwrite the baseline.
 	if (_initialMoleculeCounts.empty() && !_moleculeCounts.empty()) {
 		_initialMoleculeCounts = _moleculeCounts;
 	}
 	if (_initialMetabolitePool.empty() && !_metabolitePool.empty()) {
 		_initialMetabolitePool = _metabolitePool;
 	}
+	// Geometry snapshot: always overwrite from current values because _check is called
+	// once before the first replication, at which point geometry reflects the user setup.
+	_initialCellMass   = _cellMass;
+	_initialCellVolume = _cellVolume;
+
 	bool resultAll = true;
 	if (getName().empty()) {
 		errorMessage += "WholeCellState must define a non-empty name. ";
@@ -181,6 +188,10 @@ void WholeCellState::_initBetweenReplications() {
 	_resourceBudget.clear();
 	_currentTime = DEFAULT.currentTime;
 	_stepCount   = DEFAULT.stepCount;
+	// Restore cell geometry so mass-based division triggers reproduce across replications.
+	// _initial* fields are snapshotted in _check() when values are set programmatically.
+	_cellMass   = _initialCellMass;
+	_cellVolume = _initialCellVolume;
 }
 
 bool WholeCellState::loadFixedConstants(const std::string& jsonPath) {

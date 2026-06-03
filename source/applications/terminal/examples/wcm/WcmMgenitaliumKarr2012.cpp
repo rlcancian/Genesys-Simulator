@@ -9,6 +9,10 @@
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/InputOutput/Record.h"
+#include "plugins/components/WholeCellModeling/CellGrowthComponent.h"
+#include "plugins/components/WholeCellModeling/FtsZPolymerizationComponent.h"
+#include "plugins/components/WholeCellModeling/MetabolicSubmodelComponent.h"
+#include "plugins/components/WholeCellModeling/ResourceAllocationComponent.h"
 #include "plugins/components/WholeCellModeling/StochasticTranscription.h"
 #include "plugins/components/WholeCellModeling/StochasticTranslation.h"
 #include "plugins/components/WholeCellModeling/StochasticReactionComponent.h"
@@ -108,23 +112,8 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
     rAtpConsume->addProduct("ADP_pool", 1);
     rAtpConsume->setRateConstant(0.02);  // ATP hydrolysis to ADP, k = 0.02/s
 
-    // FtsZ ring polymerization: FtsZ_monomer → FtsZ_ring_completion
-    // k_poly = 0.002/s, k_depoly = 0.0005/s.
-    // Equilibrium: R_eq = k_poly/(k_poly+k_depoly) × 500 ≈ 400 ring units.
-    // Division threshold is 0.35 (350/1000), reached around step 12 (720 s), demonstrating
-    // the division event clearly within the 36000 s simulation window.
-    StochasticReactionRule* rFtsZPoly = plugins->newInstance<StochasticReactionRule>(
-        model, "R_FtsZ_Polymerization");
-    rFtsZPoly->addReactant("FtsZ_monomer", 1);
-    rFtsZPoly->addProduct("FtsZ_ring_completion", 1);
-    rFtsZPoly->setRateConstant(0.002);
-
-    // FtsZ ring depolymerization (slower reversal — net ring assembly over time)
-    StochasticReactionRule* rFtsZDepoly = plugins->newInstance<StochasticReactionRule>(
-        model, "R_FtsZ_Depolymerization");
-    rFtsZDepoly->addReactant("FtsZ_ring_completion", 1);
-    rFtsZDepoly->addProduct("FtsZ_monomer", 1);
-    rFtsZDepoly->setRateConstant(0.0005);  // k_depoly < k_poly → net ring assembly
+    // FtsZ ring kinetics are handled by FtsZPolymerizationComponent (Phase 3).
+    // SSA reactions only cover mRNA/protein degradation and ATP cycle below.
 
     // mRNA degradation for all 10 genes (first-order, k = 0.01/s)
     for (const auto& [gene, counts] : geneInitial) {
@@ -152,14 +141,37 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
     clock->setTimeBetweenCreationsExpression("60", Util::TimeUnit::second);
     clock->setMaxCreations(600);
 
+    // Phase 2: Cell growth — exponential mass increase each 60 s step
+    CellGrowthComponent* growth = plugins->newInstance<CellGrowthComponent>(model, "CellGrowth");
+    growth->setWholeCellState(state);
+    growth->setGrowthRate(2.1393e-05);  // /s — states.MetabolicReaction.meanInitialGrowthRate
+    growth->setDensity(1100.0);          // kg/m³ — states.Geometry.density
+    growth->setDeltaT(60.0);
+
+    // Phase 4: Metabolic submodel — ATP production each step
+    MetabolicSubmodelComponent* metabolism = plugins->newInstance<MetabolicSubmodelComponent>(
+        model, "Metabolism");
+    metabolism->setWholeCellState(state);
+    metabolism->setAtpYieldRate(1.0e-3); // mmol ATP/fL/s
+    metabolism->setDeltaT(60.0);
+
+    // Phase 5: Resource allocation — divide RNAP and ribosomes across genes
+    ResourceAllocationComponent* resAlloc = plugins->newInstance<ResourceAllocationComponent>(
+        model, "ResourceAllocation");
+    resAlloc->setWholeCellState(state);
+    resAlloc->setRnapCountKey("RNAP_free");
+    resAlloc->setRibosomeCountKey("ribosome_free");
+    resAlloc->setMRNASpeciesPrefix("mRNA_");
+    resAlloc->setProteinSpeciesPrefix("prot_");
+
     // Transcription (Poisson tau-leaping)
-    // λ_gene = (50 nt/s / 900 nt) × 1.0 × RNAP_free × 60 s
-    //        = 0.0556 × 200 × 60 ≈ 667 mRNA events per step across 10 genes ≈ 67 per gene
+    // bindingProbability calibrated to ~0.67 mRNA per gene per step (Phase 6a)
+    // λ_gene = (50 nt/s / 900 nt) × 0.01 × RNAP_free × 60 s ≈ 0.67 per gene
     StochasticTranscription* txn = plugins->newInstance<StochasticTranscription>(model, "Transcription");
     txn->setWholeCellState(state);
     txn->setElongationRate(50.0);       // nt/s — M. genitalium RNAP elongation (parameters.json)
     txn->setMeanGeneLength(900.0);      // nt — weighted average across 473 genes
-    txn->setBindingProbability(1.0);    // full binding probability for simplified model
+    txn->setBindingProbability(0.01);   // calibrated: ~0.67 mRNA/gene/step (Phase 6a fix)
     txn->setTimeWindow(60.0);           // s — tau-leaping step size
     txn->setMRNASpeciesPrefix("mRNA_");
     txn->setRnapCountKey("RNAP_free");
@@ -184,12 +196,22 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
     metabolicSsa->setTimeWindow(60.0);
     metabolicSsa->setRandomSeed(3003u);
 
-    // Cell division: FtsZ-driven, triggers when ring_completion >= 500/1000 = 50%
-    // Mass threshold disabled (set to 0.0) so only FtsZ condition is checked.
+    // Phase 3: FtsZ ring polymerization — real kinetics, ~35% at ~12000 s
+    FtsZPolymerizationComponent* ftsZ = plugins->newInstance<FtsZPolymerizationComponent>(
+        model, "FtsZPolymerization");
+    ftsZ->setWholeCellState(state);
+    ftsZ->setActivationFwd(1.1);    // /s — processes.FtsZPolymerization.activationFwd
+    ftsZ->setActivationRev(0.01);   // /s
+    ftsZ->setVolumeNorm(3.94e-5);   // calibrated for ~35% ring completion at ~12000 s
+    ftsZ->setDeltaT(60.0);
+    ftsZ->setFtsZRingKey("FtsZ_ring_completion");
+    ftsZ->setFtsZMonomerKey("FtsZ_monomer");
+
+    // Cell division: FtsZ ring threshold 35% (≥350/1000), mass threshold disabled
     CellDivisionEvent* divisionEvent = plugins->newInstance<CellDivisionEvent>(model, "CellDivision");
     divisionEvent->setWholeCellState(state);
-    divisionEvent->setDivisionMassThreshold(0.0);   // mass-only trigger disabled
-    divisionEvent->setFtsZThreshold(0.35);           // 350/1000 = 35% ring completion (reachable with current rates)
+    divisionEvent->setDivisionMassThreshold(0.0);   // FtsZ-only trigger
+    divisionEvent->setFtsZThreshold(0.35);           // 350/1000 = 35% — reached ~12000 s (Phase 3)
     divisionEvent->setFtsZRingKey("FtsZ_ring_completion");
     divisionEvent->setRandomSeed(4004u);
 
@@ -208,10 +230,17 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
     // -----------------------------------------------------------------------
     // Connections
     // -----------------------------------------------------------------------
-    clock->connectTo(txn);
+    // Pipeline: Clock → Growth → Metabolism → ResourceAlloc →
+    //           Transcription → Translation → MetabolicSSA(degradation) →
+    //           FtsZPolymerization → CellDivision
+    clock->connectTo(growth);
+    growth->connectTo(metabolism);
+    metabolism->connectTo(resAlloc);
+    resAlloc->connectTo(txn);
     txn->connectTo(tln);
     tln->connectTo(metabolicSsa);
-    metabolicSsa->connectTo(divisionEvent);
+    metabolicSsa->connectTo(ftsZ);
+    ftsZ->connectTo(divisionEvent);
 
     // CellDivisionEvent has two output ports:
     //   port 0 — no division this step → normal sink

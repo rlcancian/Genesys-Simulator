@@ -17,6 +17,10 @@
 // Model Components
 
 #include "plugins/components/WholeCellModeling/CellDivisionEvent.h"
+#include "plugins/components/WholeCellModeling/CellGrowthComponent.h"
+#include "plugins/components/WholeCellModeling/FtsZPolymerizationComponent.h"
+#include "plugins/components/WholeCellModeling/MetabolicSubmodelComponent.h"
+#include "plugins/components/WholeCellModeling/ResourceAllocationComponent.h"
 #include "plugins/components/WholeCellModeling/StochasticReactionComponent.h"
 #include "plugins/components/WholeCellModeling/StochasticTranscription.h"
 #include "plugins/components/WholeCellModeling/StochasticTranslation.h"
@@ -131,6 +135,10 @@ bool PluginConnectorDummyImpl1::disconnect(Plugin* plugin) {
 List<std::string>* PluginConnectorDummyImpl1::find() {
     List<std::string>* filenames = new List<std::string>();
     filenames->insert("celldivisionevent.so");
+    filenames->insert("cellgrowthcomponent.so");
+    filenames->insert("ftszpolymerizationcomponent.so");
+    filenames->insert("metabolicsubmodelcomponent.so");
+    filenames->insert("resourceallocationcomponent.so");
     filenames->insert("molecularspecies.so");
     filenames->insert("stochasticreactioncomponent.so");
     filenames->insert("stochasticreactionrule.so");
@@ -251,6 +259,14 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
 
     if (fn == "celldivisionevent.so")
         GetInfo = &CellDivisionEvent::GetPluginInformation;
+    else if (fn == "cellgrowthcomponent.so")
+        GetInfo = &CellGrowthComponent::GetPluginInformation;
+    else if (fn == "ftszpolymerizationcomponent.so")
+        GetInfo = &FtsZPolymerizationComponent::GetPluginInformation;
+    else if (fn == "metabolicsubmodelcomponent.so")
+        GetInfo = &MetabolicSubmodelComponent::GetPluginInformation;
+    else if (fn == "resourceallocationcomponent.so")
+        GetInfo = &ResourceAllocationComponent::GetPluginInformation;
     else if (fn == "molecularspecies.so")
         GetInfo = &MolecularSpecies::GetPluginInformation;
     else if (fn == "stochasticreactioncomponent.so")

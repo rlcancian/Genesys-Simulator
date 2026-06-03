@@ -96,8 +96,10 @@ private:
 	std::map<std::string, double> _initialMetabolitePool;
 	std::map<std::string, int>    _resourceBudget;
 
-	double _cellVolume = DEFAULT.cellVolume;
-	double _cellMass   = DEFAULT.cellMass;
+	double _cellVolume        = DEFAULT.cellVolume;
+	double _cellMass          = DEFAULT.cellMass;
+	double _initialCellVolume = DEFAULT.cellVolume;
+	double _initialCellMass   = DEFAULT.cellMass;
 	double _currentTime = DEFAULT.currentTime;
 	int    _stepCount   = DEFAULT.stepCount;
 	std::string _fixedConstantsPath = DEFAULT.fixedConstantsPath;

@@ -1,6 +1,7 @@
 #include "plugins/components/WholeCellModeling/CellDivisionEvent.h"
 
 #include <cmath>
+#include <iomanip>
 #include <sstream>
 
 #include "../../../kernel/simulator/model/Model.h"
@@ -159,10 +160,14 @@ void CellDivisionEvent::_onDispatchEvent(Entity* entity, unsigned int inputPortN
 		_lastDivided = true;
 		++_divisionCount;
 
-		traceSimulation(this, TraceManager::Level::L2_results,
-			"CellDivisionEvent \"" + getName() + "\": division event #" + std::to_string(_divisionCount) +
-			" — cell mass=" + std::to_string(_wholeCellState->getCellMass()) +
-			" volume=" + std::to_string(_wholeCellState->getCellVolume()));
+		{
+			std::ostringstream _msg;
+			_msg << std::scientific << std::setprecision(3);
+			_msg << "CellDivisionEvent \"" << getName() << "\": division event #" << _divisionCount
+			     << " — cell mass=" << _wholeCellState->getCellMass() << " g"
+			     << " volume=" << _wholeCellState->getCellVolume() << " fL";
+			traceSimulation(this, TraceManager::Level::L2_results, _msg.str());
+		}
 
 		// Port 1 is optional; fall back to port 0 if not connected
 		Connection* divConn = this->getConnectionManager()->getConnectionAtPort(1u);
