@@ -1,0 +1,29 @@
+\section{Introdução}
+
+\subsection{Contextualização}
+
+O GenESyS (\textit{Generic Extensible Simulator}) é uma plataforma de modelagem e simulação de eventos discretos desenvolvida em C++, cujo código-fonte é mantido em repositório público no GitHub \cite{genesys-github}. A plataforma adota uma arquitetura extensível baseada em interfaces abstratas e implementações concretas intercambiáveis, permitindo a adição de novos componentes sem alteração do núcleo do simulador.
+
+No contexto de simulação, a análise estatística dos resultados produzidos por modelos é uma etapa fundamental do processo científico. Após a execução de um modelo, é necessário verificar a distribuição dos dados de saída, ajustar distribuições teóricas, aplicar testes de aderência e realizar inferências sobre as populações simuladas \cite{law2015}. Até o início deste trabalho, o pacote \texttt{source/tools/} do GenESyS já oferecia implementações para ajuste de distribuições (\texttt{Fitter\_if}), testes de hipóteses (\texttt{Hpothesis\-Tester\_if}) e resolução numérica (\texttt{Solver\_if}), porém sem uma fachada unificada que integrasse todas essas capacidades em um único ponto de acesso.
+
+\subsection{Objetivo}
+
+O objetivo deste trabalho é implementar o componente \texttt{DataAnalyzer}, uma ferramenta de análise de dados integrada ao GenESyS que oferece:
+
+\begin{itemize}
+    \item carregamento de dados a partir de memória ou de arquivos texto nos formatos suportados pelo simulador;
+    \item estatísticas descritivas completas (média, mediana, moda, quartis, assimetria, curtose, entre outras);
+    \item estruturas exploratórias de histograma e boxplot;
+    \item ajuste de sete distribuições de probabilidade com seleção automática da melhor;
+    \item testes de aderência qui-quadrado e Kolmogorov-Smirnov;
+    \item análise de séries temporais (média móvel e autocorrelação);
+    \item intervalos de confiança e testes de hipóteses para uma e duas populações.
+\end{itemize}
+
+O tema enquadra-se na diretriz 11.3.1 da proposta -- \textit{foco maior em diagnósticos adicionais e ajustes de curvas} -- e é referenciado no GenESyS como \texttt{DataAnalyzer}.
+
+\subsection{Justificativa}
+
+A ausência de uma interface unificada de análise forçava o usuário a instanciar e coordenar manualmente \texttt{Fitter\_if}, \texttt{Hypothesis\-Tester\_if} e parsers de arquivo, além de reimplementar cálculos estatísticos básicos em cada contexto de uso. Um componente façade reduz o acoplamento entre camadas do simulador e serve como base para futuros painéis gráficos de análise de resultados.
+
+Do ponto de vista pedagógico, o trabalho exigiu compreensão profunda da arquitetura do GenESyS -- especialmente o padrão \texttt{TraitsTools<T>} de injeção de implementações -- e a integração de métodos numéricos já existentes na plataforma (integração por quadratura, busca de raízes por bissecção) para suportar novas funcionalidades.

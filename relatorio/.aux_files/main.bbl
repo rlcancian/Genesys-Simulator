@@ -1,0 +1,14 @@
+\begin{thebibliography}{1}
+
+\bibitem{law2015}
+Averill~M. Law.
+\newblock {\em Simulation Modeling and Analysis}.
+\newblock McGraw-Hill, 5 edition, 2015.
+
+\bibitem{genesys-github}
+Renato Rego Leal~Cancian.
+\newblock {GenESyS} -- generic extensible simulator.
+\newblock \url{https://github.com/rlcancian/Genesys-Simulator}, 2024.
+\newblock Branch 2026-1.
+
+\end{thebibliography}

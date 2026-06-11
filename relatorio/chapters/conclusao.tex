@@ -1,0 +1,19 @@
+\section{Conclusão}
+
+Este trabalho implementou o componente \texttt{DataAnalyzer} para o GenESyS, atendendo à diretriz 11.3.1 (\textit{foco maior em diagnósticos adicionais e ajustes de curvas}). O componente está efetivamente integrado ao simulador por meio do padrão \texttt{TraitsTools<DataAnalyzer\_if>} e expõe as seguintes capacidades:
+
+\begin{enumerate}
+    \item \textbf{Carregamento de dados} -- a partir de vetores em memória ou de arquivos texto nos quatro formatos suportados pelo GenESyS;
+    \item \textbf{Estatísticas descritivas} -- n, mínimo, máximo, amplitude, média, mediana, moda, Q1, Q3, variância, desvio-padrão, CV, assimetria e curtose;
+    \item \textbf{Quantis} -- acessores diretos para quartis, decis e centis (método R7);
+    \item \textbf{Histograma} -- número de classes configurável, limites, frequências absolutas e relativas;
+    \item \textbf{Boxplot} -- Q1, mediana, Q3, IIQ, limites de whisker e identificação de outliers;
+    \item \textbf{Ajuste de distribuições} -- sete distribuições com seleção automática da melhor por SSE;
+    \item \textbf{Testes de aderência} -- qui-quadrado (com fusão de classes $E < 5$) e Kolmogorov-Smirnov;
+    \item \textbf{Análise de séries temporais} -- média móvel, autocorrelação e correlograma;
+    \item \textbf{Inferência paramétrica} -- intervalos de confiança e testes de hipóteses para média, proporção e variância, em uma e duas populações.
+\end{enumerate}
+
+O desenvolvimento exigiu a extensão da interface \texttt{Fitter\_if} com o método \texttt{setDataValues}, a criação de uma nova interface pública \texttt{DataAnalyzer\_if} com cinco structs de saída, a implementação de rotinas numéricas para CDF e quantis das distribuições suportadas reutilizando \texttt{SolverDefaultImpl1}, e a correção de um bug nas sobrecargas de testes de duas populações.
+
+A validação por 26 testes automatizados confirma o funcionamento correto de todas as funcionalidades. O componente está pronto para ser consumido por outros módulos do GenESyS, incluindo futuros painéis gráficos de análise de resultados de simulação.
