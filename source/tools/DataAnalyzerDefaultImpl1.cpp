@@ -798,12 +798,15 @@ HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testProportionTwoSampl
 	const double p2 = static_cast<double>(s2) / static_cast<double>(_count2);
 	// Delegate: use proportion difference test (stddev args hold proportion estimates)
 	return _tester.testProportion(
-		p1, static_cast<unsigned int>(_count), p2, _confidenceLevel, comp);
+		p1, static_cast<unsigned int>(_count),
+		p2, static_cast<unsigned int>(_count2),
+		_confidenceLevel, comp);
 }
 
 HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testVarianceTwoSamples(
 		HypothesisTester_if::H1Comparition comp) {
 	return _tester.testVariance(
 		_sampleVariance, static_cast<unsigned int>(_count),
-		_sampleVariance2, _confidenceLevel, comp);
+		_sampleVariance2, static_cast<unsigned int>(_count2),
+		_confidenceLevel, comp);
 }
