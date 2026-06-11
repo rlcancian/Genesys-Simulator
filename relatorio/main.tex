@@ -1,4 +1,4 @@
-\documentclass[12pt,a4paper]{article}
+\documentclass[11pt,a4paper]{article}
 
 % ---- Encoding and language ----
 \usepackage[utf8]{inputenc}
@@ -10,10 +10,10 @@
 
 % ---- Typography ----
 \usepackage{setspace}
-\onehalfspacing
-\usepackage{parskip}
+\setstretch{1.25}
+\usepackage{indentfirst}
 \setlength{\parindent}{1.25cm}
-\setlength{\parskip}{0pt}
+\setlength{\parskip}{4pt}
 
 % ---- Math ----
 \usepackage{amsmath}
@@ -27,7 +27,7 @@
 \usepackage{listings}
 \usepackage{xcolor}
 \lstset{
-    basicstyle=\ttfamily\small,
+    basicstyle=\ttfamily\footnotesize,
     keywordstyle=\color{blue}\bfseries,
     commentstyle=\color{gray}\itshape,
     stringstyle=\color{teal},
@@ -48,7 +48,6 @@
 \usepackage[hidelinks]{hyperref}
 
 % ---- Bibliography ----
-% Using traditional BibTeX (compatible with latexmk -bibtex)
 \bibliographystyle{plain}
 
 % ========================================================
@@ -57,24 +56,27 @@
 % ---- Cover page ----
 \begin{titlepage}
     \centering
-    \vspace*{2cm}
+    \vspace*{1.5cm}
 
-    {\large Universidade Federal de Santa Catarina}\\[0.3cm]
-    {\large Departamento de Informática e Estatística}\\[0.3cm]
-    {\large Modelagem e Simulação}
+    {\large Universidade Federal de Santa Catarina}\\[0.2cm]
+    {\large Departamento de Informática e Estatística}\\[0.2cm]
+    {\large Modelagem e Simulação -- INE5425}
 
-    \vspace{3cm}
+    \vspace{2.5cm}
 
-    {\LARGE \textbf{Desenvolvimento de Componente de Análise de Dados no GenESyS}}\\[0.5cm]
-    {\large Tema 11.3.1 -- Foco em Diagnósticos Adicionais e Ajustes de Curvas}
+    {\large Gabriel Salmoria}\\[0.15cm]
+    {\large Lucas Vieira de Souza}\\[0.15cm]
+    {\large Diego Martins Meditsch}
 
-    \vspace{3cm}
+    \vspace{2.5cm}
 
-    {\large \textbf{Autor:} Gabriel Salmoria}
+    {\LARGE \textbf{Implementação de um Componente Unificado\\[0.3cm]
+    de Análise de Dados no GenESyS}}\\[0.5cm]
+    {\large Tema 11.3.1 -- Diagnósticos Adicionais e Ajustes de Curvas}
 
     \vfill
 
-    {\large Florianópolis, \the\year}
+    {\large Florianópolis, junho de \the\year}
 \end{titlepage}
 
 % ---- Table of contents ----

@@ -1,109 +1,98 @@
 \section{Desenvolvimento}
 
-\subsection{Visão geral da arquitetura}
+\subsection{Organização do trabalho}
 
-O componente foi desenvolvido em três camadas, seguindo o padrão arquitetural já adotado pelo GenESyS:
+O trabalho foi dividido em nove marcos (\textit{milestones} M1--M9), cada um com escopo bem delimitado e verificado por compilação e teste antes de avançar. A divisão não foi estritamente por pessoa, mas por dependência técnica: os primeiros marcos estabeleceram as interfaces e extensões necessárias; os seguintes adicionaram funcionalidades sobre essa base; M9 fechou com o harness de testes.
 
-\begin{enumerate}
-    \item \textbf{Interface abstrata} (\texttt{DataAnalyzer\_if.h}) -- define os tipos de saída e os métodos puros virtuais;
-    \item \textbf{Implementação concreta} (\texttt{DataAnalyzerDefaultImpl1}) -- realiza todos os cálculos e delega para \texttt{FitterDefaultImpl} e \texttt{HypothesisTesterDefaultImpl1};
-    \item \textbf{Registro de traits} (\texttt{TraitsTools<DataAnalyzer\_if>}) -- vincula a interface à implementação concreta, tornando a substituição transparente.
-\end{enumerate}
+Como artefatos do processo, o grupo manteve três documentos ao longo do desenvolvimento. O primeiro é o \texttt{DEVELOPMENT\_DataAnalyzer.md}, um diário técnico que registra, para cada marco, o problema que motivou a mudança, o que foi alterado e as decisões de projeto -- inclusive as que foram deliberadamente rejeitadas, como o uso de \texttt{StatisticsDataFile\_if} (discutido na Seção~\ref{sec:decisoes}). O segundo é a própria suíte de testes do comando \texttt{-{}-demo}, que funciona como especificação executável: ao documentar comportamentos esperados em código, ela serve tanto de validação quanto de referência para quem for manter o componente. O terceiro é o pull request sem conflitos direcionado ao branch \texttt{2026-1}, que inclui todos os arquivos modificados e criados.
 
-A Tabela~\ref{tab:arquivos} lista os arquivos criados ou modificados.
+A Tabela~\ref{tab:arquivos} lista os arquivos afetados.
 
 \begin{table}[htbp]
 \centering
 \caption{Arquivos modificados ou criados}
 \label{tab:arquivos}
+\small
 \begin{tabular}{ll}
-\hline
+\toprule
 \textbf{Arquivo} & \textbf{Ação} \\
-\hline
-\texttt{source/tools/Fitter\_if.h}              & Adicionado \texttt{setDataValues()} \\
-\texttt{source/tools/FitterDefaultImpl.h}        & Adicionados \texttt{setDataValues()} e \texttt{\_computeStatsFromLoadedData()} \\
-\texttt{source/tools/FitterDummyImpl.h/.cpp}     & Adicionado stub vazio \\
-\texttt{source/tools/DataAnalyzer\_if.h}         & Novo (interface + structs de saída) \\
-\texttt{source/tools/DataAnalyzerDefaultImpl1.h} & Novo (declaração da classe) \\
-\texttt{source/tools/DataAnalyzerDefaultImpl1.cpp} & Novo ($\approx$810 linhas, toda a lógica) \\
-\texttt{source/tools/TraitsTools.h}              & Adicionada especialização para \texttt{DataAnalyzer\_if} \\
-\texttt{source/tools/CMakeLists.txt}             & Adicionado \texttt{DataAnalyzerDefaultImpl1.cpp} \\
-\texttt{source/tools/main.cpp}                   & Adicionado comando \texttt{-{}-demo} \\
-\hline
+\midrule
+\texttt{Fitter\_if.h}              & Adicionado \texttt{setDataValues()} \\
+\texttt{FitterDefaultImpl.h}        & Adicionados \texttt{setDataValues()} e \texttt{\_computeStatsFromLoadedData()} \\
+\texttt{FitterDummyImpl.h/.cpp}     & Stub vazio para satisfazer a interface \\
+\texttt{DataAnalyzer\_if.h}         & Novo -- interface pública e structs de saída \\
+\texttt{DataAnalyzerDefaultImpl1.h} & Novo -- declaração da classe concreta \\
+\texttt{DataAnalyzerDefaultImpl1.cpp} & Novo -- toda a lógica ($\approx$810 linhas) \\
+\texttt{TraitsTools.h}              & Especialização \texttt{TraitsTools<DataAnalyzer\_if>} \\
+\texttt{CMakeLists.txt}             & \texttt{DataAnalyzerDefaultImpl1.cpp} adicionado às fontes \\
+\texttt{main.cpp}                   & Comando \texttt{-{}-demo} \\
+\bottomrule
 \end{tabular}
+
+\medskip
+\small Todos os arquivos estão em \texttt{source/tools/}.
 \end{table}
 
 \subsection{Extensão da interface Fitter\_if (M1)}
 
-\texttt{FitterDefaultImpl} só aceitava dados via arquivo binário (\texttt{setDataFilename}). Para que o \texttt{DataAnalyzer} pudesse repassar ao fitter um vetor já carregado em memória, foi adicionado o método \texttt{setDataValues(const std::vector<double>\&)} à interface \texttt{Fitter\_if} e à implementação concreta.
+\texttt{FitterDefaultImpl} só aceitava dados via arquivo binário. Para que o \texttt{DataAnalyzer} pudesse repassar ao fitter um vetor já em memória, foi preciso adicionar \texttt{setDataValues(const std::vector<double>\&)} tanto à interface \texttt{Fitter\_if} quanto à implementação concreta.
 
-A lógica interna de \texttt{FitterDefaultImpl} foi refatorada: o código que computava estatísticas de cache foi extraído para o método privado \texttt{\_computeStatsFromLoadedData()}, chamado tanto pelo caminho original de arquivo binário quanto pelo novo caminho de memória. Os flags de cache \texttt{\_cacheLoaded} e \texttt{\_cacheUsable} são definidos por ambos os caminhos, de modo que o mecanismo de \textit{lazy loading} existente em \texttt{\_ensureDataLoaded()} enxerga os dados como já carregados e não tenta abrir arquivo algum.
+A lógica interna de \texttt{FitterDefaultImpl} foi ligeiramente refatorada: o bloco que calculava estatísticas de cache foi extraído para o método privado \texttt{\_computeStatsFromLoadedData()}, chamado agora tanto pelo caminho de arquivo binário quanto pelo novo caminho em memória. Os flags \texttt{\_cacheLoaded} e \texttt{\_cacheUsable} são definidos por ambos, de modo que o mecanismo de \textit{lazy loading} em \texttt{\_ensureDataLoaded()} enxerga os dados como já carregados e não tenta abrir arquivo algum.
 
 \subsection{Interface DataAnalyzer\_if e structs de saída (M2)}
 
-A interface \texttt{DataAnalyzer\_if} define cinco structs de saída puramente de dados (sem métodos):
+A interface \texttt{DataAnalyzer\_if} define cinco structs de saída puramente de dados, sem métodos:
 
 \begin{itemize}
     \item \texttt{SummaryStatistics} -- n, mín, máx, amplitude, média, mediana, moda, Q1, Q3, variância, desvio-padrão, CV, assimetria, curtose;
     \item \texttt{HistogramData} -- número de classes, limites inferiores, frequências absolutas e relativas;
-    \item \texttt{BoxplotData} -- mín, Q1, mediana, Q3, máx, IIQ, lista de \textit{outliers};
+    \item \texttt{BoxplotData} -- mín, Q1, mediana, Q3, máx, IIQ, lista de outliers;
     \item \texttt{FitResult} -- nome da distribuição, SSE, até cinco parâmetros, flag de validade;
-    \item \texttt{GoFResult} -- nome, estatística de teste, p-valor, valor crítico, nível de significância, decisão, conclusão textual.
+    \item \texttt{GoFResult} -- nome, estatística de teste, p-valor, valor crítico, nível de significância, decisão e conclusão em texto.
 \end{itemize}
 
-A grafia americana (\textit{Analyzer}) foi adotada para evitar confusão com o antigo \texttt{DataAnalyser\_if} (grafia britânica), que possui dependência de \texttt{ExperimentManager\_if} e pertence a outra camada arquitetural.
+A grafia americana (\textit{Analyzer}) foi adotada para evitar colisão com o antigo \texttt{DataAnalyser\_if} (grafia britânica), que possui dependência de \texttt{ExperimentManager\_if} e pertence a outra camada arquitetural.
 
-\subsection{Implementação: carregamento de dados e estatísticas descritivas (M3)}
+\subsection{Carregamento de dados e estatísticas descritivas (M3)}
 
-O carregamento de dados suporta dois caminhos:
+O carregamento de dados suporta dois caminhos. Via \texttt{setDataValues(vector<double>)}, os dados são armazenados em memória, o vetor é ordenado em \texttt{\_sortedData} e as estatísticas de cache são computadas. Via \texttt{setDataFilename}, o parser \texttt{SimulationResultsDatasetParser::loadFromTextFile} converte arquivos nos quatro formatos texto do GenESyS (RawNumeric, RecordLegacy, RecordEnriched, GuiTabular) e chama \texttt{setDataValues} em seguida.
 
-\begin{itemize}
-    \item \texttt{setDataValues(vector<double>)}: armazena os dados em memória, ordena o vetor em \texttt{\_sortedData} e computa média, variância e desvio-padrão em uma única passagem (\texttt{\_rebuildCache()});
-    \item \texttt{setDataFilename(string)}: utiliza \texttt{SimulationResultsDatasetParser::loadFromTextFile} para suportar os formatos de texto do GenESyS (RawNumeric, RecordLegacy, RecordEnriched, GuiTabular), depois chama \texttt{setDataValues}.
-\end{itemize}
+Os quantis são calculados pelo método R7 (interpolação linear): dado percentil $p$, calcula-se $h = (n-1)p$, $i = \lfloor h \rfloor$, $f = h - i$, e o resultado é $x_{(i)}(1-f) + x_{(i+1)}f$. Assimetria e curtose são calculadas como momentos padronizados de terceira e quarta ordem, com curtose em excesso (subtraindo 3).
 
-Os quantis são calculados pelo método R7 (interpolação linear): dado percentil $p$, calcula-se $h = (n-1)p$, $i = \lfloor h \rfloor$, $f = h - i$, e o resultado é $x_{(i)}(1-f) + x_{(i+1)}f$. Assimetria e curtose são calculadas diretamente como momentos padronizados de terceira e quarta ordem (curtose em excesso, subtraindo 3).
+\subsubsection*{Decisão de projeto: StatisticsDataFile\_if}
 
-\textbf{Decisão de projeto -- \texttt{StatisticsDataFile\_if}:} A proposta sugeria encaminhar as estatísticas descritivas pela interface \texttt{StatisticsDatafile\_if}. Essa interface estende \texttt{CollectorDatafile\_if}, que é estruturalmente acoplada a um arquivo binário de coletor -- não há construtor nem setter que aceite \texttt{vector<double>}. Utilizá-la exigiria escrever os dados em arquivo binário e relê-los, o que derrota o propósito de operação em memória. A decisão foi calcular as estatísticas diretamente, produzindo resultados equivalentes sem o custo de I/O.
+A proposta sugeria encaminhar as estatísticas descritivas pela interface \texttt{StatisticsDatafile\_if}. Essa interface estende \texttt{CollectorDatafile\_if}, que é estruturalmente acoplada a um arquivo binário de coletor -- não há construtor nem setter que aceite \texttt{vector<double>}. Utilizá-la exigiria escrever os dados em arquivo binário e relê-los, derrotando o propósito de trabalhar em memória. A decisão foi calcular as estatísticas diretamente, produzindo resultados equivalentes sem o custo de I/O adicional.
 
 \subsection{Ajuste de distribuições (M4)}
 
-O método \texttt{fitDistribution(name)} despacha para o método correto de \texttt{FitterDefaultImpl} com base no nome da distribuição e empacota SSE e parâmetros em \texttt{FitResult}. As sete distribuições suportadas e seus parâmetros são:
+O método \texttt{fitDistribution(name)} despacha para o método correto de \texttt{FitterDefaultImpl} com base no nome e empacota SSE e parâmetros em \texttt{FitResult}. São suportadas sete distribuições: uniforme, triangular, normal, exponencial, erlang, beta e Weibull.
 
-\begin{center}
-\texttt{uniform} (mín, máx), \texttt{triangular} (mín, moda, máx), \texttt{normal} (média, dp), \texttt{exponential} (média), \texttt{erlang} (média, m), \texttt{beta} ($\alpha$, $\beta$, inf, sup), \texttt{weibull} (forma, escala).
-\end{center}
-
-O método \texttt{fitAll()} chama \texttt{\_fitter.fitAll()} para obter o nome da melhor distribuição e, em seguida, chama \texttt{fitDistribution(nome)} para recuperar os parâmetros. O duplo ajuste é intencional: \texttt{fitAll} retorna apenas nome e SSE.
+O método \texttt{fitAll()} chama \texttt{\_fitter.fitAll()} para obter o nome da melhor distribuição e, em seguida, chama \texttt{fitDistribution(nome)} para recuperar os parâmetros. O duplo ajuste é intencional: \texttt{fitAll} retorna apenas nome e SSE, não os parâmetros.
 
 \subsection{Testes de aderência (M5 e M6)}
 
-\textbf{Qui-quadrado (M5):} O número de classes é determinado pela fórmula de Sturges ($k = \max(5,\ 1 + \lceil \log_2 n \rceil)$). Classes com frequência esperada $E < 5$ são fundidas com a adjacente. O grau de liberdade é $k_{\text{fundido}} - 1 - p$, onde $p$ é o número de parâmetros estimados a partir dos dados. O p-valor é calculado integrando numericamente a PDF da distribuição qui-quadrado usando \texttt{SolverDefaultImpl1}; o valor crítico é obtido por bissecção sobre a CDF acumulada.
+Para o qui-quadrado, o número de classes segue a fórmula de Sturges ($k = \max(5,\ 1 + \lceil \log_2 n \rceil)$). Classes com frequência esperada $E < 5$ são fundidas com a adjacente. O grau de liberdade é $k_{\text{fundido}} - 1 - p$, onde $p$ é o número de parâmetros estimados a partir dos dados. O p-valor é obtido integrando numericamente a PDF da qui-quadrado via \texttt{SolverDefaultImpl1}; o valor crítico por bissecção sobre a CDF acumulada.
 
-\textbf{Kolmogorov-Smirnov (M6):} A estatística $D_n = \max_i |F_n(x_i) - F(x_i)|$ é calculada sobre as estatísticas de ordem. O p-valor usa a série assintótica de Kolmogorov com 200 termos ($2\sum_{k=1}^{200}(-1)^{k+1}e^{-2k^2(\sqrt{n}\,D_n)^2}$); o valor crítico usa a fórmula aproximada $D_\alpha \approx \sqrt{-\ln(\alpha/2)/(2n)}$. A aproximação assintótica subestima levemente o p-valor para $n < 35$.
+Para o Kolmogorov-Smirnov, a estatística $D_n = \max_i |F_n(x_i) - F(x_i)|$ é calculada sobre as estatísticas de ordem. O p-valor usa a série assintótica de Kolmogorov com 200 termos; o valor crítico usa a fórmula aproximada $D_\alpha \approx \sqrt{-\ln(\alpha/2)/(2n)}$. A aproximação assintótica subestima levemente o p-valor para $n < 35$, o que é aceitável para o contexto.
 
 \subsection{Análise de séries temporais (M7)}
 
-\begin{itemize}
-    \item \texttt{movingAverage(w)}: janela deslizante com soma acumulada $O(n)$; saída com $n - w + 1$ elementos;
-    \item \texttt{autocorrelation(maxLag)}: estimador enviesado $\hat{r}(k) = \hat{c}(k)/\hat{c}(0)$, onde $\hat{c}(k) = \frac{1}{n}\sum_{i=0}^{n-k-1}(x_i - \bar{x})(x_{i+k} - \bar{x})$; \texttt{maxLag} é silenciosamente limitado a $n-1$;
-    \item \texttt{correlogram(maxLag)}: retorna o mesmo cálculo de \texttt{autocorrelation}, diferenciado conceitualmente para uso como gráfico de barras por defasagem.
-\end{itemize}
+A média móvel usa janela deslizante com soma acumulada em $O(n)$, produzindo $n - w + 1$ valores. A autocorrelação usa o estimador enviesado $\hat{r}(k) = \hat{c}(k)/\hat{c}(0)$, com \texttt{maxLag} silenciosamente limitado a $n-1$ para evitar leitura fora dos limites. O correlograma retorna o mesmo cálculo que a autocorrelação, distinguindo-se apenas conceitualmente -- sua intenção é ser renderizado como gráfico de barras por defasagem.
 
 \subsection{Inferência paramétrica (M8)}
 
-Os métodos de intervalo de confiança e teste de hipóteses delegam para \texttt{HypothesisTesterDefaultImpl1}, usando as estatísticas em cache (\texttt{\_sampleMean}, \texttt{\_sampleVariance}, \texttt{\_sampleStddev}, \texttt{\_count}, \texttt{\_confidenceLevel}). Os testes para duas populações requerem que \texttt{loadSecondSample()} tenha sido chamado previamente.
+Os métodos de IC e teste de hipóteses delegam para \texttt{HypothesisTesterDefaultImpl1}, usando as estatísticas em cache. Os testes para duas populações requerem que \texttt{loadSecondSample()} tenha sido chamado previamente.
 
-\textbf{Correção de bug:} A versão inicial de \texttt{testProportionTwoSamples} e \texttt{testVarianceTwoSamples} invocava, por engano, as sobrecargas de uma população de \texttt{HypothesisTesterDefaultImpl1}, tratando a estatística da segunda amostra como valor da hipótese nula. A correção foi passar \texttt{\_count2} como quarto argumento, selecionando as sobrecargas corretas de duas populações já existentes na implementação.
+Uma versão inicial de \texttt{testProportionTwoSamples} e \texttt{testVarianceTwoSamples} invocava por engano as sobrecargas de uma população do \texttt{HypothesisTesterDefaultImpl1}, tratando a estatística da segunda amostra como valor da hipótese nula. A correção foi passar \texttt{\_count2} como quarto argumento, selecionando as sobrecargas corretas de duas populações, que já existiam na implementação.
 
-\subsection{Integração com o GenESyS}
+\subsection{Integração com o simulador}
 
-O componente integra-se ao simulador por meio do mecanismo \texttt{TraitsTools<T>}:
+O componente é registrado no mecanismo \texttt{TraitsTools<T>} do GenESyS:
 
-\begin{lstlisting}[language=C++, caption={Registro da implementação em TraitsTools.h}]
+\begin{lstlisting}[language=C++, caption={Registro em TraitsTools.h}]
 template <> struct TraitsTools<DataAnalyzer_if> {
     typedef DataAnalyzerDefaultImpl1 Implementation;
 };
 \end{lstlisting}
 
-Qualquer código do simulador pode obter uma instância concreta por meio de \texttt{TraitsTools<DataAnalyzer\_if>::Implementation}, sem depender da classe concreta diretamente. A ferramenta de linha de comando (\texttt{genesys\_tools\_application}) foi estendida com o comando \texttt{-{}-demo} para demonstrar e validar o componente sem interface gráfica.
+Qualquer módulo do simulador pode obter uma instância concreta via \texttt{TraitsTools<DataAnalyzer\_if>::Implementation} sem depender da classe concreta diretamente. O executável \texttt{genesys\_tools\_application} foi estendido com o comando \texttt{-{}-demo}, descrito na seção de validação.

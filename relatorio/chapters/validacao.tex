@@ -1,90 +1,29 @@
 \section{Validação}
 
-\subsection{Estratégia de teste}
+A validação foi integrada ao próprio executável como o comando \texttt{-{}-demo}, que instancia \texttt{DataAnalyzerDefaultImpl1} diretamente e executa 26 verificações organizadas em sete seções. Cada verificação imprime \texttt{[PASS]} ou \texttt{[FAIL]}. Três conjuntos de dados fixos são usados: 50 valores amostrados de $N(5, 1)$, 20 valores de $\text{Exp}(2)$ e 20 valores com tendência crescente de 1,1 a 3,0.
 
-A validação foi realizada por meio de um \textit{harness} de testes automatizados integrado ao executável \texttt{genesys\_tools\_application}, acionado pelo comando \texttt{-{}-demo}. O harness instancia \texttt{DataAnalyzerDefaultImpl1} diretamente e executa 26 verificações organizadas em 7 seções, imprimindo \texttt{[PASS]} ou \texttt{[FAIL]} para cada uma.
+\paragraph{Carregamento de dados.} Verifica que \texttt{setDataValues} aceita 50 valores, que \texttt{setDataFilename} carrega os mesmos 50 valores de um arquivo RawNumeric temporário, que \texttt{clearData} esvazia o conjunto e que \texttt{loadSecondSample} armazena um segundo vetor.
 
-Três conjuntos de dados fixos são usados:
-\begin{itemize}
-    \item \texttt{kNormalData}: 50 valores amostrados de $N(5, 1)$;
-    \item \texttt{kExpoData}: 20 valores amostrados de $\text{Exp}(2)$ (média $= 2$);
-    \item \texttt{kTemporalData}: 20 valores com tendência crescente, de 1,1 a 3,0.
-\end{itemize}
+\paragraph{Estatísticas descritivas.} Verifica que a média está em $[4{,}5;\ 5{,}5]$ para dados $N(5,1)$, que o ordenamento $\text{mín} < Q_1 < \text{mediana} < Q_3 < \text{máx}$ se mantém, que o desvio-padrão é positivo, e que \texttt{quartile(2)}, \texttt{decile(5)} e \texttt{centile(50)} retornam o mesmo valor (todos são a mediana).
 
-\subsection{Seção 1 -- Carregamento de dados}
+\paragraph{Histograma e boxplot.} Verifica que a soma das frequências absolutas é $n = 50$, que o histograma tem exatamente 8 classes, que as frequências relativas somam 1,0, e que $\text{IIQ} = Q_3 - Q_1$.
 
-\begin{itemize}
-    \item \texttt{setDataValues} aceita 50 valores e \texttt{summaryStatistics().n == 50};
-    \item \texttt{setDataFilename} carrega os mesmos 50 valores de arquivo RawNumeric temporário;
-    \item \texttt{clearData} esvazie o conjunto (\texttt{n == 0});
-    \item \texttt{loadSecondSample} armazena um segundo vetor de 20 valores.
-\end{itemize}
+\paragraph{Ajuste de distribuições.} Verifica que o ajuste normal é válido e com média em $[4{,}5;\ 5{,}5]$, que \texttt{fitAll} retorna resultado válido com SSE menor ou igual ao do ajuste normal, e que a média do ajuste exponencial nos dados $\text{Exp}(2)$ fica em $[1{,}0;\ 3{,}5]$.
 
-\subsection{Seção 2 -- Estatísticas descritivas}
+\paragraph{Testes de aderência.} Verifica que nem o qui-quadrado nem o KS rejeitam o ajuste normal a $\alpha = 0{,}05$ quando os dados são de fato normais.
 
-\begin{itemize}
-    \item Média dentro do intervalo $[4{,}5;\ 5{,}5]$ para dados $N(5,1)$;
-    \item Ordenamento: $\text{mín} < Q_1 < \text{mediana} < Q_3 < \text{máx}$;
-    \item Desvio-padrão $> 0$;
-    \item Consistência entre \texttt{quartile(2)}, \texttt{decile(5)} e \texttt{centile(50)} (todos devem ser iguais à mediana).
-\end{itemize}
+\paragraph{Séries temporais.} Verifica que \texttt{movingAverage(3)} produz $n - w + 1 = 18$ valores, que o primeiro valor é a média dos três primeiros elementos, que \texttt{autocorrelation(5)} retorna 6 valores com $\hat{r}(0) = 1$ e $\hat{r}(1) > 0{,}5$ para dados com tendência, e que \texttt{correlogram(5)} retorna o mesmo que \texttt{autocorrelation(5)}.
 
-\subsection{Seção 3 -- Histograma e boxplot}
+\paragraph{Inferência paramétrica.} Verifica que o IC 95\% para a média contém o valor verdadeiro 5,0, que o teste t não rejeita $\mu_0 = 5{,}2$ (próximo à média amostral de 5,206) mas rejeita $\mu_0 = 10{,}0$, que o IC de variância tem limite superior maior que o inferior, e que o teste de médias para duas populações rejeita $H_0: \mu_1 = \mu_2$ ao comparar dados normais com exponenciais.
 
-\begin{itemize}
-    \item Soma das frequências absolutas igual a $n = 50$;
-    \item Histograma com exatamente 8 classes;
-    \item Soma das frequências relativas igual a 1,0 (tolerância $10^{-10}$);
-    \item $\text{IIQ} = Q_3 - Q_1$ (verificação da fórmula do boxplot).
-\end{itemize}
+\vspace{6pt}
 
-\subsection{Seção 4 -- Ajuste de distribuições}
-
-\begin{itemize}
-    \item Ajuste normal válido (\texttt{FitResult.valid == true});
-    \item Parâmetro de média do ajuste normal dentro de $[4{,}5;\ 5{,}5]$;
-    \item \texttt{fitAll} retorna resultado válido;
-    \item SSE do \texttt{fitAll} $\leq$ SSE do ajuste normal (é a melhor entre todas);
-    \item Média do ajuste exponencial nos dados \texttt{kExpoData} dentro de $[1{,}0;\ 3{,}5]$ (esperada $\approx 2$).
-\end{itemize}
-
-\subsection{Seção 5 -- Testes de aderência}
-
-\begin{itemize}
-    \item Teste qui-quadrado não rejeita ajuste normal a $\alpha = 0{,}05$ (dados são normais);
-    \item Teste KS não rejeita ajuste normal a $\alpha = 0{,}05$.
-\end{itemize}
-
-\subsection{Seção 6 -- Séries temporais}
-
-\begin{itemize}
-    \item \texttt{movingAverage(3)} produz $n - w + 1 = 18$ valores;
-    \item Primeiro valor da média móvel igual à média dos três primeiros elementos ($(1{,}1 + 1{,}3 + 1{,}2)/3$);
-    \item \texttt{autocorrelation(5)} retorna \texttt{maxLag + 1 = 6} valores;
-    \item $\hat{r}(0) = 1{,}0$ por construção;
-    \item $\hat{r}(1) > 0{,}5$ para dados com tendência crescente;
-    \item \texttt{correlogram(5) == autocorrelation(5)} (implementação compartilhada).
-\end{itemize}
-
-\subsection{Seção 7 -- Inferência paramétrica}
-
-\begin{itemize}
-    \item IC 95\% para a média contém o verdadeiro valor 5,0;
-    \item Teste t bilateral para $\mu_0 = 5{,}2$ não rejeita ($\mu_0$ próximo à média amostral de 5,206);
-    \item Teste t bilateral para $\mu_0 = 10{,}0$ rejeita (valor muito afastado);
-    \item Limite superior do IC de variância $>$ limite inferior;
-    \item Teste de médias para duas populações (normal vs.\ exponencial) rejeita $H_0: \mu_1 = \mu_2$.
-\end{itemize}
-
-\subsection{Resultado da execução}
-
-A saída do comando \texttt{-{}-demo} é apresentada abaixo (trecho):
+Todos os 26 testes passam com a implementação atual. A saída completa do comando é:
 
 \begin{verbatim}
 ============================================================
-DataAnalyzer Demo — GenESyS tools
+DataAnalyzer Demo -- GenESyS tools
 ============================================================
-...
 1. DATA LOADING
 ------------------------------------------------------------
   [PASS] setDataValues accepted 50 values
@@ -97,16 +36,12 @@ Demo complete.
 ============================================================
 \end{verbatim}
 
-Todos os 26 testes passam com a implementação atual.
+\subsection{Problemas encontrados durante o desenvolvimento}
 
-\subsection{Problemas encontrados e corrigidos}
+Três problemas foram encontrados e corrigidos antes da versão final.
 
-Durante o desenvolvimento foram encontrados e corrigidos três problemas:
+O primeiro foi uma incompatibilidade de tipos no CDF de Erlang: \texttt{std::llround} retorna \texttt{long long int}, enquanto a literal \texttt{1L} é \texttt{long int}. O compilador recusou \texttt{std::max(1L, std::llround(p2))} por tipos conflitantes; a correção foi usar \texttt{1LL}.
 
-\begin{enumerate}
-    \item \textbf{Incompatibilidade de tipos no CDF de Erlang:} \texttt{std::llround} retorna \texttt{long long int}, enquanto a literal \texttt{1L} é \texttt{long int}. O compilador recusou \texttt{std::max(1L, std::llround(p2))} por tipos conflitantes. Corrigido com \texttt{std::max(1LL, std::llround(p2))}.
+O segundo envolveu variáveis de intervalo de confiança declaradas como \texttt{const auto}: os métodos \texttt{inferiorLimit()} e \texttt{superiorLimit()} de \texttt{HypothesisTester\_if::ConfidenceInterval} não são declarados \texttt{const}, então a qualificação \texttt{const} na variável local impedia a chamada. A correção foi declarar as variáveis CI simplesmente como \texttt{auto}.
 
-    \item \textbf{Métodos não-const de \texttt{ConfidenceInterval}:} Os métodos \texttt{inferiorLimit()} e \texttt{superiorLimit()} de \texttt{HypothesisTester\_if::ConfidenceInterval} não são declarados \texttt{const}, portanto variáveis locais \texttt{const auto ci} falham com erro de qualificador. Corrigido declarando as variáveis CI como \texttt{auto ci} (não-const).
-
-    \item \textbf{Testes de duas populações usando sobrecargas de uma população:} As versões iniciais de \texttt{testProportionTwoSamples} e \texttt{testVarianceTwoSamples} omitiam o argumento \texttt{\_count2}, ativando as sobrecargas de uma população e tratando a estatística da segunda amostra como valor nulo. Corrigido passando \texttt{\_count2} como quarto argumento, selecionando as sobrecargas de duas populações corretas.
-\end{enumerate}
+O terceiro foi o bug nas sobrecargas dos testes de duas populações, descrito na Seção 2.8. A correção foi detectada ao revisar os testes e constatar que o segundo conjunto de dados não estava influenciando o resultado do teste (detalhes na Seção~2.8).
