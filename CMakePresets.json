@@ -75,7 +75,7 @@
       "inherits": "terminal-app",
       "binaryDir": "${sourceDir}/build/terminal-smart",
       "cacheVariables": {
-        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_PetriPlace.cpp"
+        "GENESYS_TERMINAL_EXAMPLE": "smarts/Smart_PetriNet_Factory.cpp"
       }
     },
     {
