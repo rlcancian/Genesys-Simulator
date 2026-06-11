@@ -15,6 +15,7 @@
 #define FITTER_IF_H
 
 #include <string>
+#include <vector>
 
 /**
  * @brief Interface for fitting theoretical distributions to real datasets.
@@ -69,6 +70,10 @@ public:
 	 * @brief Retrieves the currently configured dataset source filename.
 	 */
 	virtual std::string getDataFilename() = 0;
+	/**
+	 * @brief Loads the dataset directly from an in-memory vector, bypassing file I/O.
+	 */
+	virtual void setDataValues(const std::vector<double>& values) = 0;
 };
 
 #endif /* FITTER_IF_H */
