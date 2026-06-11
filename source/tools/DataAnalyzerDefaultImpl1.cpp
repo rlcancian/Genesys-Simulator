@@ -796,7 +796,6 @@ HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testProportionTwoSampl
 	for (double x : _data2) { if (checker(x)) ++s2; }
 	const double p1 = static_cast<double>(s1) / static_cast<double>(_count);
 	const double p2 = static_cast<double>(s2) / static_cast<double>(_count2);
-	// Delegate: use proportion difference test (stddev args hold proportion estimates)
 	return _tester.testProportion(
 		p1, static_cast<unsigned int>(_count),
 		p2, static_cast<unsigned int>(_count2),

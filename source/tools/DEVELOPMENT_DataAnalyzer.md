@@ -43,20 +43,29 @@ This document tracks the evolution of the unified data analysis tool in `source/
 
 **Problem to solve:** The interface needed a concrete implementation. The first working slice is data loading and descriptive statistics — the foundation everything else depends on.
 
+**Note on StatisticsDataFile_if:** The proposta (section 6) recommends routing descriptive statistics through `StatisticsDatafile_if`. This was studied and deliberately not used: that interface extends `CollectorDatafile_if` and is structurally bound to a binary file collector — there is no constructor or setter that accepts a `vector<double>`. Routing through it would require writing data to a binary file and reading it back, which defeats the purpose. The statistics are instead computed inline from the in-memory sorted vector, producing the same results. This decision is documented here rather than hidden.
+
 **What changed:**
 
-- `DataAnalyzerDefaultImpl1.h` (new) — Class declaration. Private state: `_data` + `_sortedData` (primary sample), same pair for second sample (`_data2`/`_sortedData2`), cached stats (`_count`, `_sampleMean`, `_sampleVariance`, `_sampleStddev`, same for second sample), `_confidenceLevel = 0.95`, a `FitterDefaultImpl _fitter` member, and a `HypothesisTesterDefaultImpl1 _tester` member.
+- `DataAnalyzerDefaultImpl1.h` (new) — Class declaration. Private state: `_data` + `_sortedData` (primary sample), same pair for second sample (`_data2`/`_sortedData2`), cached stats (`_count`, `_sampleMean`, `_sampleVariance`, `_sampleStddev`, same for second sample with `_count2`/`_sampleMean2`/`_sampleVariance2`/`_sampleStddev2`), `_confidenceLevel = 0.95`, a `FitterDefaultImpl _fitter` member, and a `HypothesisTesterDefaultImpl1 _tester` member.
 
 - `DataAnalyzerDefaultImpl1.cpp` (new) — Data loading:
   - `setDataFilename` uses `SimulationResultsDatasetParser::loadFromTextFile` (text formats: RawNumeric, RecordLegacy, RecordEnriched, GuiTabular) then calls `setDataValues`.
   - `setDataValues` stores the vector, calls `_rebuildCache()` (sort + compute stats), and syncs the embedded fitter via `_fitter.setDataValues(_data)`.
-  - `_rebuildCache()` sorts into `_sortedData` and computes `_sampleMean`, `_sampleVariance`, `_sampleStddev` from the raw data.
+  - `loadSecondSampleFromFile` parses a text file and calls `loadSecondSample`, which stores into `_data2` and calls `_rebuildCache2()`.
+  - `_rebuildCache()` / `_rebuildCache2()` sort their respective vectors and compute `_sampleMean`, `_sampleVariance`, `_sampleStddev`, `_count` from the raw data.
 
   Descriptive statistics:
   - `_quantile(sorted, p)` — linear interpolation (R method R7): `h = (n-1)*p; i = floor(h); result = sorted[i]*(1-f) + sorted[i+1]*f`. Returns NaN for empty input.
   - `_sampleMode()` — scans sorted data for runs of equal values; returns NaN if all values are distinct (appropriate for continuous data).
   - `summaryStatistics()` — assembles all fields from cached stats and `_quantile`. Skewness = (1/n) Σ((x-μ)/σ)³, excess kurtosis = (1/n) Σ((x-μ)/σ)⁴ - 3.
   - `quartile/decile/centile` — thin wrappers over `_quantile`.
+
+- Configuration methods:
+  - `setConfidenceLevel(cl)` / `getConfidenceLevel()` — stores `_confidenceLevel` directly.
+  - `setSignificanceLevel(alpha)` / `getSignificanceLevel()` — linked to confidence level: `setSignificanceLevel` sets `_confidenceLevel = 1 - alpha`; `getSignificanceLevel` returns `1 - _confidenceLevel`. The two are always consistent; there is no separate alpha field.
+
+- `clearData()` clears both samples — it resets `_data`, `_sortedData`, and all cached stats for the primary sample, and also clears `_data2`, `_sortedData2`, and all second-sample stats. The second sample is therefore implicitly invalidated whenever the primary sample is cleared.
 
 - `source/tools/CMakeLists.txt` — Added `DataAnalyzerDefaultImpl1.cpp` to `genesys_tools` sources.
 - `source/tools/TraitsTools.h` — Added `TraitsTools<DataAnalyzer_if>` specialization pointing to `DataAnalyzerDefaultImpl1`.
@@ -96,7 +105,9 @@ This document tracks the evolution of the unified data analysis tool in `source/
   6. DoF = k_merged - 1 - p, where p = estimated parameters per distribution (uniform=0, exponential=1, normal/erlang/beta/weibull=2, triangular=1).
   7. p-value = 1 - chi2_cdf(χ², DoF); reject H0 if χ² > critical value.
 
-- `_cdfAt(x, fit)` — Computes the theoretical CDF at `x` for any of the seven supported distributions, using the parameters stored in `FitResult`. The beta CDF uses `SolverDefaultImpl1` integration over the beta PDF (same approach as `FitterDefaultImpl`).
+- `_cdfAt(x, fit)` — Computes the theoretical CDF at `x` for any of the seven supported distributions, using the parameters stored in `FitResult`. The beta CDF uses `SolverDefaultImpl1` integration over a file-scope static `_betaPdfIntegrand(t, alpha, beta)` helper (required because `SolverDefaultImpl1::integrate` takes function pointers, not lambdas).
+
+- `_numParams(distName)` — Returns the number of parameters estimated from data for each distribution (uniform=0, exponential=1, triangular=1, normal/erlang/beta/weibull=2). Used to compute degrees of freedom after bin merging.
 
 ---
 
@@ -126,7 +137,7 @@ This document tracks the evolution of the unified data analysis tool in `source/
 
 - `movingAverage(window)` — Trailing window: output[i] = mean(data[i .. i+window-1]). Uses an O(n) sliding sum (add new element, subtract oldest). Output has size n - window + 1.
 
-- `autocorrelation(maxLag)` — Biased estimator: r[k] = c[k]/c[0] where c[k] = (1/n) Σ_{i=0}^{n-k-1} (x_i - μ)(x_{i+k} - μ). Output is a vector of size maxLag + 1 (lags 0 through maxLag). r[0] = 1.0 by construction.
+- `autocorrelation(maxLag)` — Biased estimator: r[k] = c[k]/c[0] where c[k] = (1/n) Σ_{i=0}^{n-k-1} (x_i - μ)(x_{i+k} - μ). Output is a vector of size maxLag + 1 (lags 0 through maxLag). r[0] = 1.0 by construction. If `maxLag >= n`, it is silently capped at `n - 1` to avoid reading out of bounds.
 
 - `correlogram(maxLag)` — Returns the same computation as `autocorrelation`. The distinction is conceptual: `autocorrelation` returns raw ACF values, `correlogram` returns the same values intended for plotting as a bar chart by lag. Sharing the implementation avoids duplication.
 
@@ -140,9 +151,27 @@ This document tracks the evolution of the unified data analysis tool in `source/
 
 - One-population confidence intervals: `averageConfidenceInterval`, `proportionConfidenceInterval`, `varianceConfidenceInterval` — each delegates to `_tester` with `_sampleMean`/`_sampleStddev`/`_sampleVariance`/`_count`/`_confidenceLevel`.
 
-- One-population hypothesis tests: `testAverage`, `testProportion`, `testVariance` — same delegation pattern. For proportion tests, the checker function is applied to `_data` inline to compute the sample proportion.
+- One-population hypothesis tests: `testAverage`, `testProportion`, `testVariance` — same delegation pattern. For proportion tests, the checker function is applied to `_data` inline to compute the sample proportion before delegating.
 
-- Two-population tests: `testAverageTwoSamples`, `testProportionTwoSamples`, `testVarianceTwoSamples` — delegate to `_tester` with both samples' cached stats. Require `loadSecondSample` to have been called first.
+- Two-population tests: `testAverageTwoSamples`, `testProportionTwoSamples`, `testVarianceTwoSamples` — delegate to `_tester` using both samples' cached stats. Require `loadSecondSample` to have been called first.
+
+**Bug found and fixed post-implementation:** The initial versions of `testProportionTwoSamples` and `testVarianceTwoSamples` accidentally called the one-sample overloads of `_tester.testProportion` and `_tester.testVariance`, treating the second sample's statistic as the null-hypothesis value. `HypothesisTesterDefaultImpl1` already had correct two-population overloads — `testProportion(prop1, n1, prop2, n2, cl, comp)` and `testVariance(var1, n1, var2, n2, cl, comp)`. The fix was passing `_count2` as the fourth argument to both calls, selecting the proper overloads. A stale comment left over from the wrong implementation (`// Delegate: use proportion difference test`) was also removed from `testProportionTwoSamples`.
+
+---
+
+---
+
+## M9 — Demo and test harness
+
+**Problem to solve:** The implementation needed to be exercisable without the GUI. The existing `main.cpp` only printed an interface overview.
+
+**What changed:**
+
+- `source/tools/main.cpp` — Added `--demo` command that instantiates `DataAnalyzerDefaultImpl1` directly and runs 26 checks across 7 sections. Each check prints `[PASS]` or `[FAIL]`. Run with: `./build/gui-app/source/tools/genesys_tools_application --demo` (requires `GENESYS_BUILD_TOOLS=ON` at configure time).
+
+  Sections: (1) data loading from memory and text file, (2) descriptive statistics correctness and quantile consistency, (3) histogram frequency sum and boxplot IQR formula, (4) fitting validity and `fitAll` ordering, (5) chi-square and KS not rejecting a correct fit at α=0.05, (6) moving-average size and first value, ACF[0]=1 and positive lag-1 for trending data, correlogram equality, (7) CI coverage, single-sample t-test accept/reject, two-sample average test.
+
+**Build fix during M9:** `HypothesisTester_if::ConfidenceInterval` accessor methods (`inferiorLimit`, `superiorLimit`, `halfWidth`) are not declared `const`. Local variables holding CI objects in `main.cpp` must be non-`const` `auto`, otherwise calling these methods fails with a qualifier error.
 
 ---
 
@@ -152,4 +181,6 @@ This document tracks the evolution of the unified data analysis tool in `source/
 |-----------|---------------|--------------|
 | M1 | Fitter_if.h, FitterDefaultImpl.h, FitterDummyImpl.h, FitterDummyImpl.cpp | Clean (pre-existing warnings in FitterDummyImpl only) |
 | M2 | DataAnalyzer_if.h (new) | Clean |
-| M3–M8 | DataAnalyzerDefaultImpl1.h (new), DataAnalyzerDefaultImpl1.cpp (new), CMakeLists.txt, TraitsTools.h | Clean after one fix (long int vs long long int in erlang CDF) |
+| M3–M8 | DataAnalyzerDefaultImpl1.h (new), DataAnalyzerDefaultImpl1.cpp (new), CMakeLists.txt, TraitsTools.h | One fix: `long long int` vs `long int` mismatch in erlang CDF (`std::llround` returns `long long int`) |
+| M9 | main.cpp | One fix: `const auto ci` → `auto ci` for ConfidenceInterval locals (non-const accessors) |
+| M8 fix | DataAnalyzerDefaultImpl1.cpp | Two-sample proportion and variance tests corrected to use two-population overloads; `_count2` added as fourth argument |
