@@ -34,6 +34,7 @@
 #include "../../plugins/data/MaterialHandling/Storage.h"
 #include "../../plugins/data/InputOutput/File.h"
 #include "../../plugins/data/ExternalIntegration/CppCompiler.h"
+#include "../../plugins/data/ExternalIntegration/PythonRuntime.h"
 #include "../../plugins/data/ExternalIntegration/SPICERunner.h"
 #include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
@@ -47,11 +48,13 @@
 #include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
 #include "plugins/data/BiochemicalSimulation/MetabolicNetwork.h"
 #include "plugins/components/BiochemicalSimulation/BioSimulate.h"
+#include "plugins/components/WholeCellModeling/BioStateProjectionComponent.h"
 #include "plugins/components/BiochemicalSimulation/BioSteadyState.h"
 #include "plugins/components/BiochemicalSimulation/BioRunnerCommand.h"
 #include "plugins/components/BiochemicalSimulation/GeneticExpressionStep.h"
 #include "plugins/components/BiochemicalSimulation/GeneticCircuitSimulate.h"
 #include "plugins/components/BiochemicalSimulation/MetabolicFluxBalance.h"
+#include "plugins/components/WholeCellModeling/MetabolicStateProjectionComponent.h"
 #include "plugins/data/ExternalIntegration/RSimulatorRunner.h"
 #include "../../plugins/data/Logic/AssignmentItem.h"
 #include "plugins/data/Template/DummyElement.h"
@@ -59,6 +62,18 @@
 #include "tools/Biochemical/MassActionOdeSystem.h"
 #include "tools/Continuous/RungeKutta4OdeSolver.h"
 #include "tools/Statistics/SimulationResultsDataset.h"
+#include "plugins/data/WholeCellModeling/BioCompartment.h"
+#include "plugins/data/WholeCellModeling/WholeCellState.h"
+#include "plugins/components/WholeCellModeling/CellCycleCheckpointComponent.h"
+#include "plugins/components/WholeCellModeling/CellFateDecisionComponent.h"
+#include "plugins/components/WholeCellModeling/CompartmentExchangeComponent.h"
+#include "plugins/components/WholeCellModeling/EukaryoticCellCycleComponent.h"
+#include "plugins/components/WholeCellModeling/PathwayStressResponseComponent.h"
+#include "plugins/components/WholeCellModeling/ResourceAllocationComponent.h"
+#include "plugins/components/WholeCellModeling/CellGrowthComponent.h"
+#include "plugins/components/WholeCellModeling/CellDivisionEvent.h"
+#include "plugins/components/WholeCellModeling/StochasticTranscription.h"
+#include "plugins/components/WholeCellModeling/StochasticTranslation.h"
 #define private public
 #define protected public
 #include "../../plugins/data/Grouping/EntityGroup.h"
@@ -75,6 +90,7 @@
 #include "plugins/components/InputOutput/Record.h"
 #include "plugins/components/InputOutput/Write.h"
 #include "plugins/components/ExternalIntegration/RSimulator.h"
+#include "plugins/components/ExternalIntegration/PythonForG.h"
 #include "plugins/components/AnalyticalModeling/MarkovChain.h"
 #define private public
 #define protected public
@@ -98,6 +114,10 @@
 #include "../../plugins/components/Synchronization/Signal.h"
 #undef protected
 #undef private
+
+#ifndef GENESYS_HAS_PYTHON_INTEGRATION
+#define GENESYS_HAS_PYTHON_INTEGRATION 0
+#endif
 
 class DelayProbe : public Delay {
 public:
@@ -208,6 +228,10 @@ public:
 
     bool Check(std::string& errorMessage) {
         return _check(errorMessage);
+    }
+
+    void CreateInternalStatisticReporters() {
+        _createInternalStatisticReporters();
     }
 };
 
@@ -745,6 +769,24 @@ public:
     void CreateInternalAndAttachedDataProbe() {
         _createInternalAndAttachedData();
     }
+
+    void AttachEditableDataDefinitionProbe(const std::string& key, ModelDataDefinition* data) {
+        _extraEditableDataKey = key;
+        _extraEditableData = data;
+        _optionalEditableDataDefinitionInsert(key, data);
+    }
+
+protected:
+    virtual void _createEditableDataDefinitions() override {
+        Assign::_createEditableDataDefinitions();
+        if (_extraEditableData != nullptr) {
+            _optionalEditableDataDefinitionInsert(_extraEditableDataKey, _extraEditableData);
+        }
+    }
+
+private:
+    std::string _extraEditableDataKey;
+    ModelDataDefinition* _extraEditableData = nullptr;
 };
 
 class CreateProbe : public Create {
@@ -779,6 +821,14 @@ static void DrainFutureEvents(Model* model) {
         ModelComponent::DispatchEvent(event);
         delete event;
     }
+}
+
+static std::string JoinTraceErrors(Model* model) {
+    std::ostringstream errors;
+    for (const std::string& error : *model->getTracer()->errorMessages()->list()) {
+        errors << error << '\n';
+    }
+    return errors.str();
 }
 
 class FailureProbe : public Failure {
@@ -913,6 +963,23 @@ public:
 
     CompilationResult InvokeCompilerProbe(const std::string& command) {
         return _invokeCompiler(command);
+    }
+};
+
+class PythonRuntimeProbe : public PythonRuntime {
+public:
+    PythonRuntimeProbe(Model* model, const std::string& name = "") : PythonRuntime(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
     }
 };
 
@@ -1262,6 +1329,35 @@ public:
     }
 };
 
+class PythonForGProbe : public PythonForG {
+public:
+    PythonForGProbe(Model* model, const std::string& name = "") : PythonForG(model, name) {}
+
+    bool CheckProbe(std::string& errorMessage) {
+        return _check(errorMessage);
+    }
+
+    bool LoadInstanceProbe(PersistenceRecord* fields) {
+        return _loadInstance(fields);
+    }
+
+    void SaveInstanceProbe(PersistenceRecord* fields, bool saveDefaultValues = false) {
+        _saveInstance(fields, saveDefaultValues);
+    }
+
+    void DispatchEventProbe(Entity* entity, unsigned int inputPortNumber = 0) {
+        _onDispatchEvent(entity, inputPortNumber);
+    }
+
+    void InitBetweenReplicationsProbe() {
+        _initBetweenReplications();
+    }
+
+    void CreateInternalAndAttachedDataProbe() {
+        _createInternalAndAttachedData();
+    }
+};
+
 struct ReplicationStartEventInjector {
     Model* model = nullptr;
     ScheduleProbe* owner = nullptr;
@@ -1481,6 +1577,30 @@ TEST(SimulatorRuntimeTest, RecordCheckDoesNotDeleteExistingOutputFile) {
     contents << file.rdbuf();
     EXPECT_EQ(contents.str(), "preserve-this-content\n");
     ::unlink(filename.c_str());
+}
+
+TEST(SimulatorRuntimeTest, RecordExpressionNameChangeRekeysStatisticReporterOwnership) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* record = new RecordCheckProbe(model, "RecordStatisticReporterRekey");
+    ASSERT_NE(record, nullptr);
+
+    record->CreateInternalStatisticReporters();
+    StatisticsCollector* initialReporter = record->getCstatExpression();
+    ASSERT_NE(initialReporter, nullptr);
+    EXPECT_EQ(record->getInternalData(""), initialReporter);
+
+    record->setExpressionName("Cell Division Time");
+    EXPECT_EQ(record->getCstatExpression(), nullptr);
+    EXPECT_EQ(record->getInternalData(""), nullptr);
+
+    record->CreateInternalStatisticReporters();
+    StatisticsCollector* renamedReporter = record->getCstatExpression();
+    ASSERT_NE(renamedReporter, nullptr);
+    EXPECT_EQ(record->getInternalData("Cell Division Time"), renamedReporter);
+    EXPECT_EQ(record->getInternalData(""), nullptr);
 }
 
 // Ensures creating a new current model repeatedly keeps runtime usable and updates current() consistently.
@@ -6660,6 +6780,9 @@ TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentEvaluatesObjectiveReacti
     component.DispatchEventProbe(nullptr);
     EXPECT_TRUE(component.getLastSucceeded());
     EXPECT_DOUBLE_EQ(component.getLastObjectiveValue(), 42.0);
+    ASSERT_EQ(component.getLastFluxes().size(), 2u);
+    EXPECT_DOUBLE_EQ(component.getLastFluxes().at("Source"), 42.0);
+    EXPECT_DOUBLE_EQ(component.getLastFluxes().at("Growth"), 42.0);
     EXPECT_NE(component.getLastMessage().find("\"Source\":42"), std::string::npos);
     EXPECT_NE(component.getLastMessage().find("\"Growth\":42"), std::string::npos);
 }
@@ -6696,8 +6819,270 @@ TEST(SimulatorRuntimeTest, MetabolicFluxBalanceComponentRespectsSteadyStateConst
     component.DispatchEventProbe(nullptr);
     EXPECT_TRUE(component.getLastSucceeded());
     EXPECT_DOUBLE_EQ(component.getLastObjectiveValue(), 5.0);
+    ASSERT_EQ(component.getLastFluxes().size(), 2u);
+    EXPECT_DOUBLE_EQ(component.getLastFluxes().at("Uptake"), 5.0);
+    EXPECT_DOUBLE_EQ(component.getLastFluxes().at("Drain"), 5.0);
     EXPECT_NE(component.getLastMessage().find("\"Uptake\":5"), std::string::npos);
     EXPECT_NE(component.getLastMessage().find("\"Drain\":5"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicStateProjectionBridgesFluxBalanceIntoWholeCellState) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "FluxProjectionEntity");
+    auto* create = new Create(model, "FluxProjectionCreate");
+    auto* fluxBalance = new MetabolicFluxBalance(model, "FluxBalanceComponent");
+    auto* projection = new MetabolicStateProjectionComponent(model, "FluxProjection");
+    auto* dispose = new Dispose(model, "FluxProjectionDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(fluxBalance, nullptr);
+    ASSERT_NE(projection, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(1);
+    create->connectTo(fluxBalance);
+    fluxBalance->connectTo(projection);
+    projection->connectTo(dispose);
+
+    auto* atpIntermediate = new BioSpecies(model, "ATP_i");
+    ASSERT_NE(atpIntermediate, nullptr);
+    atpIntermediate->setInitialAmount(0.0);
+    atpIntermediate->setAmount(0.0);
+
+    MetabolicReactionProbe uptake(model, "ATP_Uptake");
+    uptake.addProduct("ATP_i", 1.0);
+    uptake.setLowerBound(0.0);
+    uptake.setUpperBound(4.0);
+
+    MetabolicReactionProbe maintenance(model, "ATP_Maintenance");
+    maintenance.addReactant("ATP_i", 1.0);
+    maintenance.setLowerBound(1.0);
+    maintenance.setUpperBound(1.0);
+
+    MetabolicReactionProbe biomass(model, "BiomassFlux");
+    biomass.addReactant("ATP_i", 1.0);
+    biomass.setLowerBound(0.0);
+    biomass.setUpperBound(100.0);
+
+    MetabolicNetworkProbe network(model, "FluxProjectionNetwork");
+    network.addReaction("ATP_Uptake");
+    network.addReaction("ATP_Maintenance");
+    network.addReaction("BiomassFlux");
+    network.setObjectiveReactionName("BiomassFlux");
+    network.setObjectiveSense("Maximize");
+    network.setCompartment("cytosol");
+
+    auto* state = new WholeCellState(model, "FluxProjectionState");
+    ASSERT_NE(state, nullptr);
+
+    fluxBalance->setMetabolicNetwork(&network);
+    projection->setWholeCellState(state);
+    projection->setFluxBalanceComponent(fluxBalance);
+    projection->setObjectiveAsPathwayActivity("biomass_objective");
+    projection->addMetaboliteProjection("ATP_Uptake", "ATP", 0.5);
+    projection->addCompartmentMetaboliteProjection("ATP_Uptake", "cytosol", "ATP_c", 0.5);
+    projection->addPathwayProjection("BiomassFlux", "biomass_flux");
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(1.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_TRUE(fluxBalance->getLastSucceeded());
+    EXPECT_TRUE(projection->getLastSucceeded());
+    EXPECT_DOUBLE_EQ(fluxBalance->getLastObjectiveValue(), 3.0);
+    EXPECT_DOUBLE_EQ(state->getMetaboliteAmount("ATP"), 2.0);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("cytosol", "ATP_c"), 2.0);
+    EXPECT_DOUBLE_EQ(state->getPathwayActivity("biomass_objective"), 3.0);
+    EXPECT_DOUBLE_EQ(state->getPathwayActivity("biomass_flux"), 3.0);
+}
+
+TEST(SimulatorRuntimeTest, MetabolicStateProjectionSupportsAccumulationAndTurnoverModes) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "FluxAccumulationEntity");
+    auto* create = new Create(model, "FluxAccumulationCreate");
+    auto* fluxBalance = new MetabolicFluxBalance(model, "FluxAccumulationBalance");
+    auto* projection = new MetabolicStateProjectionComponent(model, "FluxAccumulationProjection");
+    auto* dispose = new Dispose(model, "FluxAccumulationDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(fluxBalance, nullptr);
+    ASSERT_NE(projection, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(2);
+    create->connectTo(fluxBalance);
+    fluxBalance->connectTo(projection);
+    projection->connectTo(dispose);
+
+    auto* atpIntermediate = new BioSpecies(model, "ATP_pool");
+    ASSERT_NE(atpIntermediate, nullptr);
+    atpIntermediate->setInitialAmount(0.0);
+    atpIntermediate->setAmount(0.0);
+
+    MetabolicReactionProbe uptake(model, "ATP_UptakeAccum");
+    uptake.addProduct("ATP_pool", 1.0);
+    uptake.setLowerBound(0.0);
+    uptake.setUpperBound(4.0);
+
+    MetabolicReactionProbe maintenance(model, "ATP_MaintenanceAccum");
+    maintenance.addReactant("ATP_pool", 1.0);
+    maintenance.setLowerBound(1.0);
+    maintenance.setUpperBound(1.0);
+
+    MetabolicReactionProbe biomass(model, "BiomassFluxAccum");
+    biomass.addReactant("ATP_pool", 1.0);
+    biomass.setLowerBound(0.0);
+    biomass.setUpperBound(100.0);
+
+    MetabolicNetworkProbe network(model, "FluxAccumulationNetwork");
+    network.addReaction("ATP_UptakeAccum");
+    network.addReaction("ATP_MaintenanceAccum");
+    network.addReaction("BiomassFluxAccum");
+    network.setObjectiveReactionName("BiomassFluxAccum");
+    network.setObjectiveSense("Maximize");
+    network.setCompartment("cytosol");
+
+    auto* state = new WholeCellState(model, "FluxAccumulationState");
+    ASSERT_NE(state, nullptr);
+
+    fluxBalance->setMetabolicNetwork(&network);
+    projection->setWholeCellState(state);
+    projection->setFluxBalanceComponent(fluxBalance);
+    projection->setObjectiveAsPathwayActivity("biomass_objective", 1.0, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Accumulate);
+    projection->addMetaboliteProjection("ATP_UptakeAccum", "ATP_pool_proxy", 0.5, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Accumulate);
+    projection->addCompartmentMetaboliteProjection("ATP_UptakeAccum", "cytosol", "ATP_c", 0.5, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Turnover, 0.5);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(2.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_TRUE(fluxBalance->getLastSucceeded());
+    EXPECT_TRUE(projection->getLastSucceeded());
+    EXPECT_DOUBLE_EQ(fluxBalance->getLastObjectiveValue(), 3.0);
+    EXPECT_DOUBLE_EQ(state->getMetaboliteAmount("ATP_pool_proxy"), 4.0);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("cytosol", "ATP_c"), 3.0);
+    EXPECT_DOUBLE_EQ(state->getPathwayActivity("biomass_objective"), 6.0);
+}
+
+TEST(SimulatorRuntimeTest, CompartmentExchangeComponentMovesMetaboliteBetweenPools) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "ExchangeEntity");
+    auto* create = new Create(model, "ExchangeCreate");
+    auto* exchange = new CompartmentExchangeComponent(model, "ExchangeComponent");
+    auto* dispose = new Dispose(model, "ExchangeDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(exchange, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    auto* state = new WholeCellState(model, "ExchangeState");
+    ASSERT_NE(state, nullptr);
+    state->setCompartmentMetaboliteAmount("extracellular", "ATP_ext", 10.0);
+    state->setCompartmentMetaboliteAmount("cytosol", "ATP_c", 0.0);
+    state->setPathwayActivity("transport_flux", 1.0);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(2);
+    create->connectTo(exchange);
+    exchange->connectTo(dispose);
+
+    exchange->setWholeCellState(state);
+    exchange->setSourceRegion("extracellular");
+    exchange->setSourceMetaboliteKey("ATP_ext");
+    exchange->setTargetRegion("cytosol");
+    exchange->setTargetMetaboliteKey("ATP_c");
+    exchange->setExchangeFraction(0.25);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(2.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("extracellular", "ATP_ext"), 5.625);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("cytosol", "ATP_c"), 4.375);
+    EXPECT_DOUBLE_EQ(exchange->getLastTransferAmount(), 1.875);
+}
+
+TEST(SimulatorRuntimeTest, CompartmentExchangeComponentSupportsMultipleExchangeRules) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "ExchangeMultiEntity");
+    auto* create = new Create(model, "ExchangeMultiCreate");
+    auto* exchange = new CompartmentExchangeComponent(model, "ExchangeMultiComponent");
+    auto* dispose = new Dispose(model, "ExchangeMultiDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(exchange, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    auto* state = new WholeCellState(model, "ExchangeMultiState");
+    ASSERT_NE(state, nullptr);
+    state->setCompartmentMetaboliteAmount("extracellular", "GLC_ext", 8.0);
+    state->setCompartmentMetaboliteAmount("extracellular", "O2_ext", 4.0);
+    state->setCompartmentMetaboliteAmount("cytosol", "GLC_c", 0.0);
+    state->setCompartmentMetaboliteAmount("mitochondria", "O2_m", 0.0);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(1);
+    create->connectTo(exchange);
+    exchange->connectTo(dispose);
+
+    exchange->setWholeCellState(state);
+    exchange->addExchangeRule("glucose_import", "extracellular", "GLC_ext", "cytosol", "GLC_c", 0.25);
+    exchange->addExchangeRule("oxygen_import", "extracellular", "O2_ext", "mitochondria", "O2_m", 0.50);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(1.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("extracellular", "GLC_ext"), 6.0);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("cytosol", "GLC_c"), 2.0);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("extracellular", "O2_ext"), 2.0);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("mitochondria", "O2_m"), 2.0);
+    EXPECT_DOUBLE_EQ(exchange->getLastTransferAmount(), 4.0);
 }
 
 TEST(SimulatorRuntimeTest, GeneticCircuitSimulateComponentRunsMultipleExpressionSteps) {
@@ -7551,6 +7936,1206 @@ TEST(SimulatorRuntimeTest, BioNetworkSimulatesKineticLawWithModifierSpecies) {
     EXPECT_DOUBLE_EQ(enzyme.getAmount(), 2.0);
 }
 
+TEST(SimulatorRuntimeTest, BioNetworkMvpReversibleEnzymeExampleProducesAnalysisArtifacts) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    BioSpeciesProbe substrate(model, "Substrate");
+    substrate.setInitialAmount(12.0);
+    substrate.setAmount(12.0);
+    BioSpeciesProbe product(model, "Product");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+    BioSpeciesProbe enzyme(model, "Enzyme");
+    enzyme.setInitialAmount(1.5);
+    enzyme.setAmount(1.5);
+    enzyme.setConstant(true);
+
+    BioParameter kForward(model, "kForward");
+    kForward.setValue(0.09);
+    BioParameter kReverse(model, "kReverse");
+    kReverse.setValue(0.03);
+
+    BioReactionProbe conversion(model, "Substrate_to_Product");
+    conversion.addReactant("Substrate", 1.0);
+    conversion.addProduct("Product", 1.0);
+    conversion.addModifier("Enzyme");
+    conversion.setKineticLawExpression("kForward * Enzyme * Substrate");
+    conversion.setReverseKineticLawExpression("kReverse * Enzyme * Product");
+    conversion.setReversible(true);
+
+    BioNetworkProbe network(model, "BioNetworkMvp");
+    network.addSpecies("Substrate");
+    network.addSpecies("Product");
+    network.addSpecies("Enzyme");
+    network.addReaction("Substrate_to_Product");
+
+    std::string errorMessage;
+    ASSERT_TRUE(network.simulate(0.0, 6.0, 0.02, errorMessage)) << errorMessage;
+
+    const double kf = kForward.getValue() * enzyme.getAmount();
+    const double kr = kReverse.getValue() * enzyme.getAmount();
+    const double total = 12.0;
+    const double expectedSubstrate = (total * kr / (kf + kr)) +
+            (12.0 - (total * kr / (kf + kr))) * std::exp(-(kf + kr) * 6.0);
+    const double expectedProduct = total - expectedSubstrate;
+
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_NEAR(substrate.getAmount(), expectedSubstrate, 1e-3);
+    EXPECT_NEAR(product.getAmount(), expectedProduct, 1e-3);
+    EXPECT_DOUBLE_EQ(enzyme.getAmount(), 1.5);
+    EXPECT_NEAR(substrate.getAmount() + product.getAmount(), total, 1e-6);
+
+    const BioSimulationResult& result = network.getLastSimulationResult();
+    ASSERT_FALSE(result.empty());
+    EXPECT_EQ(result.getNetworkName(), "BioNetworkMvp");
+    EXPECT_EQ(result.getSpeciesNames().size(), 3u);
+    EXPECT_GT(result.sampleCount(), 250u);
+
+    SimulationResultsDataset substrateDataset;
+    ASSERT_TRUE(network.getSpeciesTimeCourseDataset("Substrate", &substrateDataset, &errorMessage)) << errorMessage;
+    ASSERT_EQ(substrateDataset.observations.size(), result.sampleCount());
+    EXPECT_TRUE(substrateDataset.timeDependent);
+    EXPECT_DOUBLE_EQ(substrateDataset.observations.front().time, 0.0);
+    EXPECT_DOUBLE_EQ(substrateDataset.observations.front().value, 12.0);
+    EXPECT_NEAR(substrateDataset.observations.back().value, expectedSubstrate, 1e-3);
+
+    BioStoichiometryMatrix matrix;
+    ASSERT_TRUE(network.getStoichiometryMatrix(&matrix, &errorMessage)) << errorMessage;
+    ASSERT_EQ(matrix.speciesNames.size(), 3u);
+    ASSERT_EQ(matrix.reactionNames.size(), 1u);
+    EXPECT_EQ(matrix.reactionNames[0], "Substrate_to_Product");
+    EXPECT_DOUBLE_EQ(matrix.coefficient(0, 0), -1.0);
+    EXPECT_DOUBLE_EQ(matrix.coefficient(1, 0), 1.0);
+    EXPECT_DOUBLE_EQ(matrix.coefficient(2, 0), 0.0);
+
+    BioReactionRateTimeCourse rates;
+    ASSERT_TRUE(network.getReactionRateTimeCourse(&rates, &errorMessage)) << errorMessage;
+    ASSERT_EQ(rates.samples.size(), result.sampleCount());
+    ASSERT_FALSE(rates.samples.front().netRates.empty());
+    ASSERT_FALSE(rates.samples.back().netRates.empty());
+    EXPECT_GT(rates.samples.front().netRates[0], rates.samples.back().netRates[0]);
+    EXPECT_GT(rates.samples.back().netRates[0], 0.0);
+
+    BioSteadyStateCheck steady;
+    ASSERT_TRUE(network.checkLastSampleSteadyState(0.05, &steady, &errorMessage)) << errorMessage;
+    EXPECT_FALSE(steady.steady);
+    EXPECT_GT(steady.maxAbsoluteDerivative, steady.tolerance);
+
+    BioSensitivityScan sensitivity;
+    ASSERT_TRUE(network.scanLocalParameterSensitivity(0.01, 1.0e-6, &sensitivity, &errorMessage)) << errorMessage;
+    EXPECT_EQ(sensitivity.speciesNames.size(), 3u);
+    ASSERT_EQ(sensitivity.entries.size(), 2u);
+    EXPECT_EQ(sensitivity.entries[0].parameterName, "kForward");
+    EXPECT_EQ(sensitivity.entries[1].parameterName, "kReverse");
+    EXPECT_GT(sensitivity.entries[0].maxAbsoluteSensitivity, 0.0);
+    EXPECT_GT(sensitivity.entries[1].maxAbsoluteSensitivity, 0.0);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkAutoScheduleAdvancesWithKernelInternalEvents) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "AutoScheduleEntity");
+    auto* create = new Create(model, "AutoScheduleCreate");
+    auto* owner = new AssignProbe(model, "AutoScheduleOwner");
+    auto* dispose = new Dispose(model, "AutoScheduleDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(owner, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(2.0);
+    create->setTimeBetweenCreationsExpression("2");
+    create->setMaxCreations(1);
+    create->connectTo(owner);
+    owner->connectTo(dispose);
+
+    BioSpeciesProbe substrate(model, "AutoA");
+    substrate.setInitialAmount(10.0);
+    substrate.setAmount(10.0);
+    BioSpeciesProbe product(model, "AutoB");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+
+    BioReactionProbe reaction(model, "AutoA_to_AutoB");
+    reaction.addReactant("AutoA", 1.0);
+    reaction.addProduct("AutoB", 1.0);
+    reaction.setRateConstant(0.1);
+
+    BioNetworkProbe network(model, "AutoScheduledNetwork");
+    network.addSpecies("AutoA");
+    network.addSpecies("AutoB");
+    network.addReaction("AutoA_to_AutoB");
+    network.setStartTime(0.0);
+    network.setStopTime(1.0);
+    network.setStepSize(0.25);
+    network.setAutoSchedule(true);
+    owner->AttachEditableDataDefinitionProbe("BioNetwork", &network);
+
+    ModelSimulation* simulation = model->getSimulation();
+    simulation->setNumberOfReplications(1);
+    simulation->setReplicationLength(1.0, Util::TimeUnit::second);
+    simulation->setShowReportsAfterReplication(false);
+    simulation->setShowReportsAfterSimulation(false);
+
+    ASSERT_TRUE(model->check());
+    simulation->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_DOUBLE_EQ(network.getCurrentTime(), 1.0);
+    EXPECT_DOUBLE_EQ(simulation->getSimulatedTime(), 1.0);
+    EXPECT_NEAR(substrate.getAmount(), 10.0 * std::exp(-0.1), 1e-4);
+    EXPECT_NEAR(product.getAmount(), 10.0 - 10.0 * std::exp(-0.1), 1e-4);
+
+    const BioSimulationResult& result = network.getLastSimulationResult();
+    ASSERT_EQ(result.sampleCount(), 5u);
+    EXPECT_DOUBLE_EQ(result.getSamples().front().time, 0.0);
+    EXPECT_DOUBLE_EQ(result.getSamples().back().time, 1.0);
+}
+
+TEST(SimulatorRuntimeTest, BioStateProjectionBridgesBioNetworkIntoWholeCellState) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "BridgeEntity");
+    auto* create = new Create(model, "BridgeCreate");
+    auto* bioSimulate = new BioSimulate(model, "BridgeBioSimulate");
+    auto* projection = new BioStateProjectionComponent(model, "BridgeProjection");
+    auto* transcription = new StochasticTranscription(model, "BridgeTranscription");
+    auto* translation = new StochasticTranslation(model, "BridgeTranslation");
+    auto* dispose = new Dispose(model, "BridgeDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(bioSimulate, nullptr);
+    ASSERT_NE(projection, nullptr);
+    ASSERT_NE(transcription, nullptr);
+    ASSERT_NE(translation, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("1");
+    create->setMaxCreations(1);
+    create->connectTo(bioSimulate);
+    bioSimulate->connectTo(projection);
+    projection->connectTo(transcription);
+    transcription->connectTo(translation);
+    translation->connectTo(dispose);
+
+    BioSpeciesProbe nutrient(model, "BridgeNutrient");
+    nutrient.setInitialAmount(100.0);
+    nutrient.setAmount(100.0);
+    BioSpeciesProbe energy(model, "EnergyPool");
+    energy.setInitialAmount(0.0);
+    energy.setAmount(0.0);
+
+    BioParameter uptakeRate(model, "BridgeUptakeRate");
+    uptakeRate.setValue(0.05);
+
+    BioReactionProbe uptakeReaction(model, "BridgeUptakeReaction");
+    uptakeReaction.addReactant("BridgeNutrient", 1.0);
+    uptakeReaction.addProduct("EnergyPool", 1.0);
+    uptakeReaction.setKineticLawExpression("BridgeUptakeRate * BridgeNutrient");
+
+    BioNetworkProbe network(model, "BridgeMetabolism");
+    network.addSpecies("BridgeNutrient");
+    network.addSpecies("EnergyPool");
+    network.addReaction("BridgeUptakeReaction");
+    network.setStartTime(0.0);
+    network.setStopTime(10.0);
+    network.setStepSize(1.0);
+    bioSimulate->setBioNetwork(&network);
+
+    auto* state = new WholeCellState(model, "BridgeCellState");
+    ASSERT_NE(state, nullptr);
+    state->setMoleculeCount("mRNA_geneA", 0);
+    state->setMoleculeCount("prot_geneA", 0);
+    state->setMoleculeCount("RNAP_free", 0);
+    state->setMoleculeCount("ribosome_free", 0);
+
+    projection->setWholeCellState(state);
+    projection->addMetaboliteProjection("EnergyPool", "ATP", 1.0);
+    projection->addMoleculeProjection("EnergyPool", "RNAP_free", 0.25);
+    projection->addMoleculeProjection("EnergyPool", "ribosome_free", 0.5);
+
+    transcription->setWholeCellState(state);
+    transcription->setElongationRate(50.0);
+    transcription->setMeanGeneLength(900.0);
+    transcription->setBindingProbability(0.25);
+    transcription->setTimeWindow(60.0);
+    transcription->setMRNASpeciesPrefix("mRNA_");
+    transcription->setRnapCountKey("RNAP_free");
+    transcription->setRandomSeed(101u);
+
+    translation->setWholeCellState(state);
+    translation->setElongationRate(16.0);
+    translation->setMeanProteinLength(300.0);
+    translation->setTimeWindow(60.0);
+    translation->setMRNASpeciesPrefix("mRNA_");
+    translation->setProteinSpeciesPrefix("prot_");
+    translation->setRibosomeCountKey("ribosome_free");
+    translation->setRandomSeed(202u);
+
+    EXPECT_NE(simulator.getPluginManager()->find(Util::TypeOf<BioStateProjectionComponent>()), nullptr);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(1.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_TRUE(projection->getLastSucceeded());
+
+    const double expectedEnergy = energy.getAmount();
+    ASSERT_GT(expectedEnergy, 0.0);
+    EXPECT_NEAR(state->getMetaboliteAmount("ATP"), expectedEnergy, 1e-9);
+    EXPECT_EQ(state->getMoleculeCount("RNAP_free"), static_cast<int>(std::llround(expectedEnergy * 0.25)));
+    EXPECT_EQ(state->getMoleculeCount("ribosome_free"), static_cast<int>(std::llround(expectedEnergy * 0.5)));
+    EXPECT_GT(state->getMoleculeCount("mRNA_geneA"), 0);
+    EXPECT_GT(state->getMoleculeCount("prot_geneA"), 0);
+}
+
+TEST(SimulatorRuntimeTest, CellCycleCheckpointComponentSynchronizesWholeCellClockAndLifecycle) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "CheckpointEntity");
+    auto* create = new Create(model, "CheckpointCreate");
+    auto* checkpoint = new CellCycleCheckpointComponent(model, "Checkpoint");
+    auto* dispose = new Dispose(model, "CheckpointDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(checkpoint, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("60", Util::TimeUnit::second);
+    create->setMaxCreations(2);
+    create->connectTo(checkpoint);
+    checkpoint->connectTo(dispose);
+
+    auto* state = new WholeCellState(model, "CheckpointState");
+    ASSERT_NE(state, nullptr);
+    state->setMetaboliteAmount("ATP", 1.5);
+    state->setCellMass(1.0e-15);
+
+    checkpoint->setWholeCellState(state);
+    checkpoint->setDeltaT(60.0);
+    checkpoint->setStarvationAtpThreshold(0.5);
+    checkpoint->setDivisionMassThreshold(1.5e-15);
+    checkpoint->setAdvanceWholeCellClock(true);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(60.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_DOUBLE_EQ(state->getCurrentTime(), 120.0);
+    EXPECT_EQ(state->getStepCount(), 2);
+    EXPECT_EQ(state->getLifecyclePhase(), "growth");
+    EXPECT_TRUE(state->isViable());
+}
+
+TEST(SimulatorRuntimeTest, CellFateDecisionComponentRoutesStarvedAndDeadCellsToDedicatedOutputs) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "FateEntity");
+    auto* create = new Create(model, "FateCreate");
+    auto* checkpoint = new CellCycleCheckpointComponent(model, "FateCheckpoint");
+    auto* fate = new CellFateDecisionComponent(model, "FateDecision");
+    auto* normalSink = new Dispose(model, "FateNormalSink");
+    auto* divisionSink = new Dispose(model, "FateDivisionSink");
+    auto* starvedSink = new Dispose(model, "FateStarvedSink");
+    auto* deadSink = new Dispose(model, "FateDeadSink");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(checkpoint, nullptr);
+    ASSERT_NE(fate, nullptr);
+    ASSERT_NE(normalSink, nullptr);
+    ASSERT_NE(divisionSink, nullptr);
+    ASSERT_NE(starvedSink, nullptr);
+    ASSERT_NE(deadSink, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("60", Util::TimeUnit::second);
+    create->setMaxCreations(3);
+    create->connectTo(checkpoint);
+    checkpoint->connectTo(fate);
+    fate->connectTo(normalSink);
+    fate->connectTo(divisionSink);
+    fate->connectTo(starvedSink);
+    fate->connectTo(deadSink);
+
+    auto* state = new WholeCellState(model, "FateState");
+    ASSERT_NE(state, nullptr);
+    state->setMetaboliteAmount("ATP", 0.0);
+    state->setCellMass(1.0e-15);
+
+    checkpoint->setWholeCellState(state);
+    checkpoint->setDeltaT(60.0);
+    checkpoint->setEnergyMetaboliteKey("ATP");
+    checkpoint->setStarvationAtpThreshold(0.5);
+    checkpoint->setLethalStarvationSteps(2u);
+    checkpoint->setAdvanceWholeCellClock(true);
+
+    fate->setWholeCellState(state);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(120.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_EQ(state->getLifecyclePhase(), "dead");
+    EXPECT_FALSE(state->isViable());
+    EXPECT_EQ(fate->getLastRoutedPort(), 3u);
+}
+
+TEST(SimulatorRuntimeTest, PathwayStressResponseComponentCanArrestRuntimeWholeCellFlow) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "PathwayStressEntity");
+    auto* create = new Create(model, "PathwayStressCreate");
+    auto* checkpoint = new CellCycleCheckpointComponent(model, "PathwayStressCheckpoint");
+    auto* response = new PathwayStressResponseComponent(model, "PathwayStressResponse");
+    auto* fate = new CellFateDecisionComponent(model, "PathwayStressFate");
+    auto* normalSink = new Dispose(model, "PathwayStressNormalSink");
+    auto* divisionSink = new Dispose(model, "PathwayStressDivisionSink");
+    auto* stressSink = new Dispose(model, "PathwayStressStressSink");
+    auto* deadSink = new Dispose(model, "PathwayStressDeadSink");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(checkpoint, nullptr);
+    ASSERT_NE(response, nullptr);
+    ASSERT_NE(fate, nullptr);
+    ASSERT_NE(normalSink, nullptr);
+    ASSERT_NE(divisionSink, nullptr);
+    ASSERT_NE(stressSink, nullptr);
+    ASSERT_NE(deadSink, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("60", Util::TimeUnit::second);
+    create->setMaxCreations(2);
+    create->connectTo(checkpoint);
+    checkpoint->connectTo(response);
+    response->connectTo(fate);
+    fate->connectTo(normalSink);
+    fate->connectTo(divisionSink);
+    fate->connectTo(stressSink);
+    fate->connectTo(deadSink);
+
+    auto* state = new WholeCellState(model, "PathwayStressState");
+    ASSERT_NE(state, nullptr);
+    state->setMetaboliteAmount("ATP", 2.0);
+    state->setPathwayActivity("biomass_objective", 0.5);
+    state->setLifecyclePhase("growth");
+    state->setViable(true);
+
+    checkpoint->setWholeCellState(state);
+    checkpoint->setDeltaT(60.0);
+    checkpoint->setEnergyMetaboliteKey("ATP");
+    checkpoint->setStarvationAtpThreshold(0.25);
+    checkpoint->setAdvanceWholeCellClock(true);
+
+    response->setWholeCellState(state);
+    response->setMonitoredPathwayKey("biomass_objective");
+    response->setStressThreshold(1.0);
+    response->setArrestAfterSteps(2u);
+    response->setDeathAfterSteps(4u);
+    response->setArrestPhase("arrested");
+    response->setRecoveryPhase("growth");
+
+    fate->setWholeCellState(state);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(120.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_EQ(state->getLifecyclePhase(), "arrested");
+    EXPECT_TRUE(state->isViable());
+    EXPECT_EQ(response->getStressStreak(), 2u);
+    EXPECT_EQ(fate->getLastRoutedPort(), 2u);
+}
+
+TEST(SimulatorRuntimeTest, EukaryoticCellCycleComponentCoordinatesRuntimeLifecycleAndDivision) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "EukCycleEntity");
+    auto* create = new Create(model, "EukCycleCreate");
+    auto* cycle = new EukaryoticCellCycleComponent(model, "EukCycleComponent");
+    auto* fate = new CellFateDecisionComponent(model, "EukCycleFate");
+    auto* division = new CellDivisionEvent(model, "EukCycleDivision");
+    auto* steadySink = new Dispose(model, "EukCycleSteadySink");
+    auto* divisionSink = new Dispose(model, "EukCycleDivisionSink");
+    auto* arrestedSink = new Dispose(model, "EukCycleArrestedSink");
+    auto* deadSink = new Dispose(model, "EukCycleDeadSink");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(cycle, nullptr);
+    ASSERT_NE(fate, nullptr);
+    ASSERT_NE(division, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("60", Util::TimeUnit::second);
+    create->setMaxCreations(5);
+    create->connectTo(cycle);
+    cycle->connectTo(fate);
+    fate->connectTo(steadySink);
+    fate->connectTo(division);
+    fate->connectTo(arrestedSink);
+    fate->connectTo(deadSink);
+    division->connectTo(steadySink);
+    division->connectTo(divisionSink);
+
+    auto* cytosol = new BioCompartment(model, "cytosol");
+    auto* nucleus = new BioCompartment(model, "nucleus");
+    auto* mitochondria = new BioCompartment(model, "mitochondria");
+    auto* bud = new BioCompartment(model, "bud");
+    ASSERT_NE(cytosol, nullptr);
+    ASSERT_NE(nucleus, nullptr);
+    ASSERT_NE(mitochondria, nullptr);
+    ASSERT_NE(bud, nullptr);
+    nucleus->setParentCompartmentName("cytosol");
+    mitochondria->setParentCompartmentName("cytosol");
+    bud->setParentCompartmentName("cytosol");
+
+    auto* state = new WholeCellState(model, "EukCycleState");
+    ASSERT_NE(state, nullptr);
+    state->setCellMass(1.0e-15);
+    state->setMetaboliteAmount("ATP", 3.0);
+    state->setCompartmentMetaboliteAmount("cytosol", "ATP_c", 2.0);
+    state->setCompartmentMetaboliteAmount("mitochondria", "ATP_m", 2.0);
+    state->setCompartmentMetaboliteAmount("bud", "ATP_bud", 1.0);
+    state->setPathwayActivity("biomass_flux", 8.0);
+    state->setPathwayActivity("respiration_flux", 4.0);
+
+    cycle->setWholeCellState(state);
+    cycle->setDeltaT(60.0);
+    cycle->setBudProgressRate(0.60);
+    cycle->setDnaReplicationRate(0.60);
+    cycle->setSpindleAssemblyRate(0.60);
+    cycle->setMitoticExitRate(0.60);
+
+    fate->setWholeCellState(state);
+
+    division->setWholeCellState(state);
+    division->setDivisionMassThreshold(0.0);
+    division->setFtsZThreshold(0.0);
+    division->setRandomSeed(701u);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(300.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_DOUBLE_EQ(state->getCurrentTime(), 300.0);
+    EXPECT_EQ(state->getGenerationCount(), 1);
+    EXPECT_EQ(division->getDivisionCount(), 1);
+    EXPECT_EQ(state->getLifecyclePhase(), "post_division");
+    EXPECT_GT(state->getPathwayActivity("bud_growth_progress"), 1.0);
+    EXPECT_GT(state->getPathwayActivity("dna_replication_progress"), 1.0);
+    EXPECT_GT(state->getPathwayActivity("spindle_assembly_progress"), 1.0);
+    EXPECT_GT(state->getPathwayActivity("mitotic_exit_progress"), 1.0);
+}
+
+TEST(SimulatorRuntimeTest, WholeCellMvpCombinesMetabolismExpressionGrowthAndDivision) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "MiniWholeCellEntity");
+    auto* create = new Create(model, "MiniWholeCellClock");
+    auto* bioSimulate = new BioSimulate(model, "MiniWholeCellMetabolism");
+    auto* projection = new BioStateProjectionComponent(model, "MiniWholeCellProjection");
+    auto* allocation = new ResourceAllocationComponent(model, "MiniWholeCellAllocation");
+    auto* transcription = new StochasticTranscription(model, "MiniWholeCellTranscription");
+    auto* translation = new StochasticTranslation(model, "MiniWholeCellTranslation");
+    auto* growth = new CellGrowthComponent(model, "MiniWholeCellGrowth");
+    auto* checkpoint = new CellCycleCheckpointComponent(model, "MiniWholeCellCheckpoint");
+    auto* fate = new CellFateDecisionComponent(model, "MiniWholeCellFate");
+    auto* division = new CellDivisionEvent(model, "MiniWholeCellDivision");
+    auto* steadySink = new Dispose(model, "MiniWholeCellSteadySink");
+    auto* divisionSink = new Dispose(model, "MiniWholeCellDivisionSink");
+    auto* starvedSink = new Dispose(model, "MiniWholeCellStarvedSink");
+    auto* deadSink = new Dispose(model, "MiniWholeCellDeadSink");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(bioSimulate, nullptr);
+    ASSERT_NE(projection, nullptr);
+    ASSERT_NE(allocation, nullptr);
+    ASSERT_NE(transcription, nullptr);
+    ASSERT_NE(translation, nullptr);
+    ASSERT_NE(growth, nullptr);
+    ASSERT_NE(checkpoint, nullptr);
+    ASSERT_NE(fate, nullptr);
+    ASSERT_NE(division, nullptr);
+    ASSERT_NE(steadySink, nullptr);
+    ASSERT_NE(divisionSink, nullptr);
+    ASSERT_NE(starvedSink, nullptr);
+    ASSERT_NE(deadSink, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("60", Util::TimeUnit::second);
+    create->setMaxCreations(8);
+    create->connectTo(bioSimulate);
+    bioSimulate->connectTo(projection);
+    projection->connectTo(allocation);
+    allocation->connectTo(transcription);
+    transcription->connectTo(translation);
+    translation->connectTo(growth);
+    growth->connectTo(checkpoint);
+    checkpoint->connectTo(fate);
+    fate->connectTo(steadySink);
+    fate->connectTo(division);
+    fate->connectTo(starvedSink);
+    fate->connectTo(deadSink);
+    division->connectTo(steadySink);
+    division->connectTo(divisionSink);
+
+    BioSpeciesProbe nutrient(model, "MiniWholeCellNutrient");
+    nutrient.setInitialAmount(200.0);
+    nutrient.setAmount(200.0);
+    BioSpeciesProbe energy(model, "MiniWholeCellEnergy");
+    energy.setInitialAmount(0.0);
+    energy.setAmount(0.0);
+
+    BioParameter uptakeRate(model, "MiniWholeCellUptakeRate");
+    uptakeRate.setValue(0.03);
+
+    BioReactionProbe uptakeReaction(model, "MiniWholeCellUptakeReaction");
+    uptakeReaction.addReactant("MiniWholeCellNutrient", 1.0);
+    uptakeReaction.addProduct("MiniWholeCellEnergy", 1.0);
+    uptakeReaction.setKineticLawExpression("MiniWholeCellUptakeRate * MiniWholeCellNutrient");
+
+    BioNetworkProbe network(model, "MiniWholeCellBioNetwork");
+    network.addSpecies("MiniWholeCellNutrient");
+    network.addSpecies("MiniWholeCellEnergy");
+    network.addReaction("MiniWholeCellUptakeReaction");
+    network.setStartTime(0.0);
+    network.setStopTime(60.0);
+    network.setStepSize(5.0);
+    bioSimulate->setBioNetwork(&network);
+
+    auto* state = new WholeCellState(model, "MiniWholeCellState");
+    ASSERT_NE(state, nullptr);
+    state->setCellMass(1.0e-15);
+    state->setCellVolume(1.0e-3);
+    state->setMoleculeCount("mRNA_geneA", 0);
+    state->setMoleculeCount("mRNA_geneB", 0);
+    state->setMoleculeCount("prot_geneA", 0);
+    state->setMoleculeCount("prot_geneB", 0);
+    state->setMoleculeCount("RNAP_free", 0);
+    state->setMoleculeCount("ribosome_free", 0);
+    state->setMetaboliteAmount("ATP", 0.0);
+
+    projection->setWholeCellState(state);
+    projection->addMetaboliteProjection("MiniWholeCellEnergy", "ATP", 0.02);
+    projection->addMoleculeProjection("MiniWholeCellEnergy", "RNAP_free", 0.05);
+    projection->addMoleculeProjection("MiniWholeCellEnergy", "ribosome_free", 0.08);
+
+    allocation->setWholeCellState(state);
+    allocation->setRnapCountKey("RNAP_free");
+    allocation->setRibosomeCountKey("ribosome_free");
+    allocation->setMRNASpeciesPrefix("mRNA_");
+    allocation->setProteinSpeciesPrefix("prot_");
+
+    transcription->setWholeCellState(state);
+    transcription->setElongationRate(50.0);
+    transcription->setMeanGeneLength(900.0);
+    transcription->setBindingProbability(0.40);
+    transcription->setTimeWindow(60.0);
+    transcription->setMRNASpeciesPrefix("mRNA_");
+    transcription->setRnapCountKey("RNAP_free");
+    transcription->setRandomSeed(110u);
+
+    translation->setWholeCellState(state);
+    translation->setElongationRate(16.0);
+    translation->setMeanProteinLength(300.0);
+    translation->setTimeWindow(60.0);
+    translation->setMRNASpeciesPrefix("mRNA_");
+    translation->setProteinSpeciesPrefix("prot_");
+    translation->setRibosomeCountKey("ribosome_free");
+    translation->setRandomSeed(220u);
+
+    growth->setWholeCellState(state);
+    growth->setGrowthRate(0.0025);
+    growth->setDeltaT(60.0);
+    growth->setDensity(1000.0);
+    growth->setEnergyMetaboliteKey("ATP");
+    growth->setEnergyHalfSaturation(1.0);
+
+    checkpoint->setWholeCellState(state);
+    checkpoint->setDeltaT(60.0);
+    checkpoint->setEnergyMetaboliteKey("ATP");
+    checkpoint->setStarvationAtpThreshold(0.25);
+    checkpoint->setDivisionMassThreshold(1.8e-15);
+    checkpoint->setAdvanceWholeCellClock(true);
+
+    fate->setWholeCellState(state);
+
+    division->setWholeCellState(state);
+    division->setDivisionMassThreshold(1.8e-15);
+    division->setFtsZThreshold(0.0);
+    division->setRandomSeed(330u);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(480.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_TRUE(projection->getLastSucceeded());
+    EXPECT_GT(energy.getAmount(), 0.0);
+    EXPECT_GT(state->getMetaboliteAmount("ATP"), 0.0);
+    EXPECT_GT(state->getMoleculeCount("RNAP_free"), 0);
+    EXPECT_GT(state->getMoleculeCount("ribosome_free"), 0);
+    EXPECT_GE(state->getMoleculeCount("mRNA_geneA") + state->getMoleculeCount("mRNA_geneB"), 1);
+    EXPECT_GE(state->getMoleculeCount("prot_geneA") + state->getMoleculeCount("prot_geneB"), 1);
+    EXPECT_DOUBLE_EQ(state->getCurrentTime(), 480.0);
+    EXPECT_EQ(state->getGenerationCount(), division->getDivisionCount());
+    EXPECT_EQ(state->getLifecyclePhase(), "growth");
+    EXPECT_GT(state->getLastDivisionTime(), 0.0);
+    EXPECT_GE(division->getDivisionCount(), 1);
+    EXPECT_LT(state->getCellMass(), 1.8e-15);
+}
+
+TEST(SimulatorRuntimeTest, FluxBalanceWholeCellMvpCombinesFbaExpressionGrowthAndDivision) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "FbaWholeCellEntity");
+    auto* create = new Create(model, "FbaWholeCellClock");
+    auto* fluxBalance = new MetabolicFluxBalance(model, "FbaWholeCellFluxBalance");
+    auto* projection = new MetabolicStateProjectionComponent(model, "FbaWholeCellProjection");
+    auto* allocation = new ResourceAllocationComponent(model, "FbaWholeCellAllocation");
+    auto* transcription = new StochasticTranscription(model, "FbaWholeCellTranscription");
+    auto* translation = new StochasticTranslation(model, "FbaWholeCellTranslation");
+    auto* growth = new CellGrowthComponent(model, "FbaWholeCellGrowth");
+    auto* checkpoint = new CellCycleCheckpointComponent(model, "FbaWholeCellCheckpoint");
+    auto* fate = new CellFateDecisionComponent(model, "FbaWholeCellFate");
+    auto* division = new CellDivisionEvent(model, "FbaWholeCellDivision");
+    auto* steadySink = new Dispose(model, "FbaWholeCellSteadySink");
+    auto* divisionSink = new Dispose(model, "FbaWholeCellDivisionSink");
+    auto* starvedSink = new Dispose(model, "FbaWholeCellStarvedSink");
+    auto* deadSink = new Dispose(model, "FbaWholeCellDeadSink");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(fluxBalance, nullptr);
+    ASSERT_NE(projection, nullptr);
+    ASSERT_NE(allocation, nullptr);
+    ASSERT_NE(transcription, nullptr);
+    ASSERT_NE(translation, nullptr);
+    ASSERT_NE(growth, nullptr);
+    ASSERT_NE(checkpoint, nullptr);
+    ASSERT_NE(fate, nullptr);
+    ASSERT_NE(division, nullptr);
+    ASSERT_NE(steadySink, nullptr);
+    ASSERT_NE(divisionSink, nullptr);
+    ASSERT_NE(starvedSink, nullptr);
+    ASSERT_NE(deadSink, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("60", Util::TimeUnit::second);
+    create->setMaxCreations(8);
+    create->connectTo(fluxBalance);
+    fluxBalance->connectTo(projection);
+    projection->connectTo(allocation);
+    allocation->connectTo(transcription);
+    transcription->connectTo(translation);
+    translation->connectTo(growth);
+    growth->connectTo(checkpoint);
+    checkpoint->connectTo(fate);
+    fate->connectTo(steadySink);
+    fate->connectTo(division);
+    fate->connectTo(starvedSink);
+    fate->connectTo(deadSink);
+    division->connectTo(steadySink);
+    division->connectTo(divisionSink);
+
+    auto* atpIntermediate = new BioSpecies(model, "FbaATP_i");
+    ASSERT_NE(atpIntermediate, nullptr);
+    atpIntermediate->setInitialAmount(0.0);
+    atpIntermediate->setAmount(0.0);
+
+    MetabolicReactionProbe uptake(model, "FbaATPUptake");
+    uptake.addProduct("FbaATP_i", 1.0);
+    uptake.setLowerBound(0.0);
+    uptake.setUpperBound(4.0);
+
+    MetabolicReactionProbe maintenance(model, "FbaATPMaintenance");
+    maintenance.addReactant("FbaATP_i", 1.0);
+    maintenance.setLowerBound(1.0);
+    maintenance.setUpperBound(1.0);
+
+    MetabolicReactionProbe biomass(model, "FbaBiomassFlux");
+    biomass.addReactant("FbaATP_i", 1.0);
+    biomass.setLowerBound(0.0);
+    biomass.setUpperBound(100.0);
+
+    MetabolicNetworkProbe network(model, "FbaWholeCellNetwork");
+    network.addReaction("FbaATPUptake");
+    network.addReaction("FbaATPMaintenance");
+    network.addReaction("FbaBiomassFlux");
+    network.setObjectiveReactionName("FbaBiomassFlux");
+    network.setObjectiveSense("Maximize");
+    network.setCompartment("cytosol");
+
+    auto* state = new WholeCellState(model, "FbaWholeCellState");
+    ASSERT_NE(state, nullptr);
+    state->setCellMass(1.0e-15);
+    state->setCellVolume(1.0e-3);
+    state->setMoleculeCount("mRNA_geneA", 0);
+    state->setMoleculeCount("mRNA_geneB", 0);
+    state->setMoleculeCount("prot_geneA", 0);
+    state->setMoleculeCount("prot_geneB", 0);
+    state->setMoleculeCount("RNAP_free", 4);
+    state->setMoleculeCount("ribosome_free", 6);
+    state->setMetaboliteAmount("ATP", 0.0);
+
+    fluxBalance->setMetabolicNetwork(&network);
+
+    projection->setWholeCellState(state);
+    projection->setFluxBalanceComponent(fluxBalance);
+    projection->setObjectiveAsPathwayActivity("biomass_objective");
+    projection->addMetaboliteProjection("FbaATPUptake", "ATP", 0.25, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Accumulate);
+    projection->addCompartmentMetaboliteProjection("FbaATPUptake", "cytosol", "ATP_c", 0.5, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Turnover, 0.25);
+    projection->addPathwayProjection("FbaBiomassFlux", "biomass_flux");
+
+    allocation->setWholeCellState(state);
+    allocation->setRnapCountKey("RNAP_free");
+    allocation->setRibosomeCountKey("ribosome_free");
+    allocation->setMRNASpeciesPrefix("mRNA_");
+    allocation->setProteinSpeciesPrefix("prot_");
+
+    transcription->setWholeCellState(state);
+    transcription->setElongationRate(50.0);
+    transcription->setMeanGeneLength(900.0);
+    transcription->setBindingProbability(0.30);
+    transcription->setTimeWindow(60.0);
+    transcription->setMRNASpeciesPrefix("mRNA_");
+    transcription->setRnapCountKey("RNAP_free");
+    transcription->setRandomSeed(401u);
+
+    translation->setWholeCellState(state);
+    translation->setElongationRate(16.0);
+    translation->setMeanProteinLength(300.0);
+    translation->setTimeWindow(60.0);
+    translation->setMRNASpeciesPrefix("mRNA_");
+    translation->setProteinSpeciesPrefix("prot_");
+    translation->setRibosomeCountKey("ribosome_free");
+    translation->setRandomSeed(402u);
+
+    growth->setWholeCellState(state);
+    growth->setGrowthRate(0.0025);
+    growth->setDeltaT(60.0);
+    growth->setDensity(1000.0);
+    growth->setEnergyMetaboliteKey("ATP");
+    growth->setEnergyHalfSaturation(1.0);
+
+    checkpoint->setWholeCellState(state);
+    checkpoint->setDeltaT(60.0);
+    checkpoint->setEnergyMetaboliteKey("ATP");
+    checkpoint->setStarvationAtpThreshold(0.25);
+    checkpoint->setCompartmentEnergyRegion("cytosol");
+    checkpoint->setCompartmentEnergyMetaboliteKey("ATP_c");
+    checkpoint->setCompartmentStarvationThreshold(0.5);
+    checkpoint->setCriticalPathwayActivityKey("biomass_objective");
+    checkpoint->setCriticalPathwayActivityThreshold(2.5);
+    checkpoint->setDivisionMassThreshold(1.8e-15);
+    checkpoint->setAdvanceWholeCellClock(true);
+
+    fate->setWholeCellState(state);
+
+    division->setWholeCellState(state);
+    division->setDivisionMassThreshold(1.8e-15);
+    division->setFtsZThreshold(0.0);
+    division->setRandomSeed(403u);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(480.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_TRUE(fluxBalance->getLastSucceeded());
+    EXPECT_TRUE(projection->getLastSucceeded());
+    EXPECT_DOUBLE_EQ(state->getMetaboliteAmount("ATP"), 8.0);
+    EXPECT_DOUBLE_EQ(state->getCompartmentMetaboliteAmount("cytosol", "ATP_c"), 7.1990966796875);
+    EXPECT_DOUBLE_EQ(state->getPathwayActivity("biomass_objective"), 3.0);
+    EXPECT_DOUBLE_EQ(state->getPathwayActivity("biomass_flux"), 3.0);
+    EXPECT_GE(state->getMoleculeCount("mRNA_geneA") + state->getMoleculeCount("mRNA_geneB"), 1);
+    EXPECT_GE(state->getMoleculeCount("prot_geneA") + state->getMoleculeCount("prot_geneB"), 1);
+    EXPECT_DOUBLE_EQ(state->getCurrentTime(), 480.0);
+    EXPECT_EQ(state->getGenerationCount(), division->getDivisionCount());
+    EXPECT_EQ(state->getLifecyclePhase(), "growth");
+    EXPECT_TRUE(state->isViable());
+    EXPECT_GE(division->getDivisionCount(), 1);
+}
+
+TEST(SimulatorRuntimeTest, YeastDidacticWholeCellMvpCombinesGemInspiredMetabolismTransportAndLifecycle) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "YeastWholeCellEntity");
+    auto* create = new Create(model, "YeastWholeCellClock");
+    auto* fluxBalance = new MetabolicFluxBalance(model, "YeastWholeCellFluxBalance");
+    auto* projection = new MetabolicStateProjectionComponent(model, "YeastWholeCellProjection");
+    auto* exchange = new CompartmentExchangeComponent(model, "YeastWholeCellExchange");
+    auto* allocation = new ResourceAllocationComponent(model, "YeastWholeCellAllocation");
+    auto* transcription = new StochasticTranscription(model, "YeastWholeCellTranscription");
+    auto* translation = new StochasticTranslation(model, "YeastWholeCellTranslation");
+    auto* growth = new CellGrowthComponent(model, "YeastWholeCellGrowth");
+    auto* checkpoint = new CellCycleCheckpointComponent(model, "YeastWholeCellCheckpoint");
+    auto* fate = new CellFateDecisionComponent(model, "YeastWholeCellFate");
+    auto* division = new CellDivisionEvent(model, "YeastWholeCellDivision");
+    auto* steadySink = new Dispose(model, "YeastWholeCellSteadySink");
+    auto* divisionSink = new Dispose(model, "YeastWholeCellDivisionSink");
+    auto* starvedSink = new Dispose(model, "YeastWholeCellStarvedSink");
+    auto* deadSink = new Dispose(model, "YeastWholeCellDeadSink");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(fluxBalance, nullptr);
+    ASSERT_NE(projection, nullptr);
+    ASSERT_NE(exchange, nullptr);
+    ASSERT_NE(allocation, nullptr);
+    ASSERT_NE(transcription, nullptr);
+    ASSERT_NE(translation, nullptr);
+    ASSERT_NE(growth, nullptr);
+    ASSERT_NE(checkpoint, nullptr);
+    ASSERT_NE(fate, nullptr);
+    ASSERT_NE(division, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(0.0);
+    create->setTimeBetweenCreationsExpression("60", Util::TimeUnit::second);
+    create->setMaxCreations(8);
+    create->connectTo(fluxBalance);
+    fluxBalance->connectTo(projection);
+    projection->connectTo(exchange);
+    exchange->connectTo(allocation);
+    allocation->connectTo(transcription);
+    transcription->connectTo(translation);
+    translation->connectTo(growth);
+    growth->connectTo(checkpoint);
+    checkpoint->connectTo(fate);
+    fate->connectTo(steadySink);
+    fate->connectTo(division);
+    fate->connectTo(starvedSink);
+    fate->connectTo(deadSink);
+    division->connectTo(steadySink);
+    division->connectTo(divisionSink);
+
+    auto* glucoseCytosol = new BioSpecies(model, "YeastGLC_c_i");
+    auto* oxygenMito = new BioSpecies(model, "YeastO2_m_i");
+    auto* atpPool = new BioSpecies(model, "YeastATP_i");
+    auto* ethanolCytosol = new BioSpecies(model, "YeastEtOH_c_i");
+    ASSERT_NE(glucoseCytosol, nullptr);
+    ASSERT_NE(oxygenMito, nullptr);
+    ASSERT_NE(atpPool, nullptr);
+    ASSERT_NE(ethanolCytosol, nullptr);
+    glucoseCytosol->setInitialAmount(0.0);
+    glucoseCytosol->setAmount(0.0);
+    oxygenMito->setInitialAmount(0.0);
+    oxygenMito->setAmount(0.0);
+    atpPool->setInitialAmount(0.0);
+    atpPool->setAmount(0.0);
+    ethanolCytosol->setInitialAmount(0.0);
+    ethanolCytosol->setAmount(0.0);
+
+    MetabolicReactionProbe glucoseImport(model, "YeastGlucoseTransportFlux");
+    glucoseImport.addProduct("YeastGLC_c_i", 1.0);
+    glucoseImport.setLowerBound(6.0);
+    glucoseImport.setUpperBound(6.0);
+
+    MetabolicReactionProbe oxygenImport(model, "YeastOxygenTransportFlux");
+    oxygenImport.addProduct("YeastO2_m_i", 1.0);
+    oxygenImport.setLowerBound(0.0);
+    oxygenImport.setUpperBound(2.0);
+
+    MetabolicReactionProbe fermentation(model, "YeastFermentationFlux");
+    fermentation.addReactant("YeastGLC_c_i", 1.0);
+    fermentation.addProduct("YeastATP_i", 1.0);
+    fermentation.addProduct("YeastEtOH_c_i", 1.0);
+    fermentation.setLowerBound(0.0);
+    fermentation.setUpperBound(100.0);
+
+    MetabolicReactionProbe respiration(model, "YeastRespirationFlux");
+    respiration.addReactant("YeastGLC_c_i", 1.0);
+    respiration.addReactant("YeastO2_m_i", 1.0);
+    respiration.addProduct("YeastATP_i", 3.0);
+    respiration.setLowerBound(0.0);
+    respiration.setUpperBound(100.0);
+
+    MetabolicReactionProbe maintenance(model, "YeastMaintenanceFlux");
+    maintenance.addReactant("YeastATP_i", 1.0);
+    maintenance.setLowerBound(1.0);
+    maintenance.setUpperBound(1.0);
+
+    MetabolicReactionProbe ethanolExport(model, "YeastEthanolExportFlux");
+    ethanolExport.addReactant("YeastEtOH_c_i", 1.0);
+    ethanolExport.setLowerBound(0.0);
+    ethanolExport.setUpperBound(100.0);
+
+    MetabolicReactionProbe biomass(model, "YeastBiomassFlux");
+    biomass.addReactant("YeastATP_i", 1.0);
+    biomass.setLowerBound(0.0);
+    biomass.setUpperBound(100.0);
+
+    MetabolicNetworkProbe network(model, "YeastDidacticNetwork");
+    network.addReaction("YeastGlucoseTransportFlux");
+    network.addReaction("YeastOxygenTransportFlux");
+    network.addReaction("YeastFermentationFlux");
+    network.addReaction("YeastRespirationFlux");
+    network.addReaction("YeastMaintenanceFlux");
+    network.addReaction("YeastEthanolExportFlux");
+    network.addReaction("YeastBiomassFlux");
+    network.setObjectiveReactionName("YeastBiomassFlux");
+    network.setObjectiveSense("Maximize");
+    network.setCompartment("cell");
+
+    auto* state = new WholeCellState(model, "YeastDidacticState");
+    ASSERT_NE(state, nullptr);
+    state->setCellMass(1.0e-15);
+    state->setCellVolume(1.0e-3);
+    state->setMoleculeCount("mRNA_HXT", 0);
+    state->setMoleculeCount("mRNA_PFK", 0);
+    state->setMoleculeCount("mRNA_ADH1", 0);
+    state->setMoleculeCount("prot_HXT", 0);
+    state->setMoleculeCount("prot_PFK", 0);
+    state->setMoleculeCount("prot_ADH1", 0);
+    state->setMoleculeCount("RNAP_free", 6);
+    state->setMoleculeCount("ribosome_free", 8);
+    state->setMetaboliteAmount("ATP", 0.0);
+    state->setLifecyclePhase("newborn");
+
+    fluxBalance->setMetabolicNetwork(&network);
+
+    projection->setWholeCellState(state);
+    projection->setFluxBalanceComponent(fluxBalance);
+    projection->setObjectiveAsPathwayActivity("biomass_objective");
+    projection->addCompartmentMetaboliteProjection("YeastGlucoseTransportFlux", "extracellular", "GLC_ext", 0.20, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Accumulate);
+    projection->addCompartmentMetaboliteProjection("YeastOxygenTransportFlux", "extracellular", "O2_ext", 0.25, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Accumulate);
+    projection->addCompartmentMetaboliteProjection("YeastFermentationFlux", "cytosol", "EtOH_c", 0.20, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Accumulate);
+    projection->addMetaboliteProjection("YeastFermentationFlux", "ATP", 0.15, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Accumulate);
+    projection->addCompartmentMetaboliteProjection("YeastFermentationFlux", "cytosol", "ATP_c", 0.15, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Turnover, 0.20);
+    projection->addMetaboliteProjection("YeastRespirationFlux", "ATP", 0.40, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Accumulate);
+    projection->addCompartmentMetaboliteProjection("YeastRespirationFlux", "mitochondria", "ATP_m", 0.50, 0.0,
+        MetabolicStateProjectionComponent::ProjectionUpdateMode::Turnover, 0.20);
+    projection->addPathwayProjection("YeastGlucoseTransportFlux", "glucose_transport_flux");
+    projection->addPathwayProjection("YeastOxygenTransportFlux", "oxygen_transport_flux");
+    projection->addPathwayProjection("YeastFermentationFlux", "fermentation_flux");
+    projection->addPathwayProjection("YeastRespirationFlux", "respiration_flux");
+    projection->addPathwayProjection("YeastEthanolExportFlux", "ethanol_export_flux");
+    projection->addPathwayProjection("YeastBiomassFlux", "biomass_flux");
+
+    exchange->setWholeCellState(state);
+    exchange->addExchangeRule("glucose_import", "extracellular", "GLC_ext", "cytosol", "GLC_c", 1.0, 0.0,
+        "glucose_transport_flux", 0.20, 2.0, true);
+    exchange->addExchangeRule("oxygen_import", "extracellular", "O2_ext", "mitochondria", "O2_m", 1.0, 0.0,
+        "oxygen_transport_flux", 0.50, 1.0, true);
+    exchange->addExchangeRule("ethanol_export", "cytosol", "EtOH_c", "extracellular", "EtOH_ext", 1.0, 0.0,
+        "ethanol_export_flux", 0.25, 1.5, true);
+
+    allocation->setWholeCellState(state);
+    allocation->setRnapCountKey("RNAP_free");
+    allocation->setRibosomeCountKey("ribosome_free");
+    allocation->setMRNASpeciesPrefix("mRNA_");
+    allocation->setProteinSpeciesPrefix("prot_");
+
+    transcription->setWholeCellState(state);
+    transcription->setElongationRate(55.0);
+    transcription->setMeanGeneLength(1200.0);
+    transcription->setBindingProbability(0.35);
+    transcription->setTimeWindow(60.0);
+    transcription->setMRNASpeciesPrefix("mRNA_");
+    transcription->setRnapCountKey("RNAP_free");
+    transcription->setRandomSeed(601u);
+
+    translation->setWholeCellState(state);
+    translation->setElongationRate(18.0);
+    translation->setMeanProteinLength(420.0);
+    translation->setTimeWindow(60.0);
+    translation->setMRNASpeciesPrefix("mRNA_");
+    translation->setProteinSpeciesPrefix("prot_");
+    translation->setRibosomeCountKey("ribosome_free");
+    translation->setRandomSeed(602u);
+
+    growth->setWholeCellState(state);
+    growth->setGrowthRate(0.0027);
+    growth->setDeltaT(60.0);
+    growth->setDensity(1000.0);
+    growth->setEnergyMetaboliteKey("ATP");
+    growth->setEnergyHalfSaturation(1.5);
+
+    checkpoint->setWholeCellState(state);
+    checkpoint->setDeltaT(60.0);
+    checkpoint->setEnergyMetaboliteKey("ATP");
+    checkpoint->setStarvationAtpThreshold(0.50);
+    checkpoint->setCompartmentEnergyRegion("cytosol");
+    checkpoint->setCompartmentEnergyMetaboliteKey("ATP_c");
+    checkpoint->setCompartmentStarvationThreshold(0.40);
+    checkpoint->setCriticalPathwayActivityKey("biomass_objective");
+    checkpoint->setCriticalPathwayActivityThreshold(6.0);
+    checkpoint->setDivisionMassThreshold(1.75e-15);
+    checkpoint->setAdvanceWholeCellClock(true);
+
+    fate->setWholeCellState(state);
+
+    division->setWholeCellState(state);
+    division->setDivisionMassThreshold(1.75e-15);
+    division->setFtsZThreshold(0.0);
+    division->setRandomSeed(603u);
+
+    model->getSimulation()->setNumberOfReplications(1);
+    model->getSimulation()->setReplicationLength(480.0, Util::TimeUnit::second);
+    model->getSimulation()->setReplicationReportBaseTimeUnit(Util::TimeUnit::second);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    model->getSimulation()->start();
+
+    ASSERT_TRUE(model->getTracer()->errorMessages()->empty()) << JoinTraceErrors(model);
+    EXPECT_TRUE(fluxBalance->getLastSucceeded());
+    EXPECT_TRUE(projection->getLastSucceeded());
+    EXPECT_EQ(exchange->getExchangeRuleCount(), 3u);
+    EXPECT_DOUBLE_EQ(fluxBalance->getLastObjectiveValue(), 9.0);
+    EXPECT_GT(state->getMetaboliteAmount("ATP"), 0.0);
+    EXPECT_GT(state->getCompartmentMetaboliteAmount("cytosol", "GLC_c"), 0.0);
+    EXPECT_GT(state->getCompartmentMetaboliteAmount("mitochondria", "O2_m"), 0.0);
+    EXPECT_GT(state->getCompartmentMetaboliteAmount("extracellular", "EtOH_ext"), 0.0);
+    EXPECT_DOUBLE_EQ(state->getPathwayActivity("fermentation_flux"), 4.0);
+    EXPECT_DOUBLE_EQ(state->getPathwayActivity("respiration_flux"), 2.0);
+    EXPECT_DOUBLE_EQ(state->getPathwayActivity("biomass_flux"), 9.0);
+    EXPECT_DOUBLE_EQ(state->getCurrentTime(), 480.0);
+    EXPECT_TRUE(state->isViable());
+    EXPECT_EQ(state->getLifecyclePhase(), "growth");
+    EXPECT_GE(division->getDivisionCount(), 1);
+}
+
+TEST(SimulatorRuntimeTest, BioNetworkExplicitMembersSurviveModelCheckWhenNetworkIsReferenced) {
+    Simulator simulator;
+    simulator.getPluginManager()->autoInsertPlugins();
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    auto* entityType = new EntityType(model, "BioCheckEntity");
+    auto* create = new Create(model, "BioCheckCreate");
+    auto* owner = new AssignProbe(model, "BioCheckOwner");
+    auto* dispose = new Dispose(model, "BioCheckDispose");
+    ASSERT_NE(entityType, nullptr);
+    ASSERT_NE(create, nullptr);
+    ASSERT_NE(owner, nullptr);
+    ASSERT_NE(dispose, nullptr);
+
+    create->setEntityType(entityType);
+    create->setFirstCreation(2.0);
+    create->setTimeBetweenCreationsExpression("2");
+    create->setMaxCreations(1);
+    create->connectTo(owner);
+    owner->connectTo(dispose);
+
+    BioSpeciesProbe substrate(model, "CheckedSubstrate");
+    substrate.setInitialAmount(5.0);
+    substrate.setAmount(5.0);
+    BioSpeciesProbe product(model, "CheckedProduct");
+    product.setInitialAmount(0.0);
+    product.setAmount(0.0);
+    BioSpeciesProbe enzyme(model, "CheckedEnzyme");
+    enzyme.setInitialAmount(2.0);
+    enzyme.setAmount(2.0);
+    enzyme.setConstant(true);
+
+    BioParameter kForward(model, "CheckedKForward");
+    kForward.setValue(0.25);
+
+    BioReactionProbe reaction(model, "CheckedReaction");
+    reaction.addReactant("CheckedSubstrate", 1.0);
+    reaction.addProduct("CheckedProduct", 1.0);
+    reaction.addModifier("CheckedEnzyme");
+    reaction.setKineticLawExpression("CheckedKForward * CheckedEnzyme * CheckedSubstrate");
+
+    BioNetworkProbe network(model, "CheckedNetwork");
+    network.addSpecies("CheckedSubstrate");
+    network.addSpecies("CheckedProduct");
+    network.addSpecies("CheckedEnzyme");
+    network.addReaction("CheckedReaction");
+    network.setStartTime(0.0);
+    network.setStopTime(1.0);
+    network.setStepSize(0.1);
+    owner->AttachEditableDataDefinitionProbe("BioNetwork", &network);
+
+    ASSERT_TRUE(model->check()) << JoinTraceErrors(model);
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<BioNetwork>(), "CheckedNetwork"), nullptr);
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<BioReaction>(), "CheckedReaction"), nullptr);
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "CheckedSubstrate"), nullptr);
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "CheckedProduct"), nullptr);
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), "CheckedEnzyme"), nullptr);
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<BioParameter>(), "CheckedKForward"), nullptr);
+
+    std::string errorMessage;
+    ASSERT_TRUE(network.CheckProbe(errorMessage)) << errorMessage;
+    ASSERT_TRUE(network.simulate(errorMessage)) << errorMessage;
+    EXPECT_EQ(network.getLastStatus(), "Completed");
+    EXPECT_LT(substrate.getAmount(), 5.0);
+    EXPECT_GT(product.getAmount(), 0.0);
+    EXPECT_DOUBLE_EQ(enzyme.getAmount(), 2.0);
+}
+
 TEST(SimulatorRuntimeTest, BioNetworkRejectsKineticLawSpeciesOutsideMembership) {
     Simulator simulator;
     Model* model = simulator.getModelManager()->newModel();
@@ -8108,15 +9693,51 @@ TEST(SimulatorRuntimeTest, BioPluginsAreAvailableThroughDummyConnector) {
     std::unique_ptr<Plugin> parameterPlugin(connector.connect("bioparameter.so"));
     std::unique_ptr<Plugin> reactionPlugin(connector.connect("bioreaction.so"));
     std::unique_ptr<Plugin> networkPlugin(connector.connect("bionetwork.so"));
+    std::unique_ptr<Plugin> simulatePlugin(connector.connect("biosimulate.so"));
+    std::unique_ptr<Plugin> projectionPlugin(connector.connect("biostateprojectioncomponent.so"));
+    std::unique_ptr<Plugin> metabolicReactionPlugin(connector.connect("metabolicreaction.so"));
+    std::unique_ptr<Plugin> metabolicNetworkPlugin(connector.connect("metabolicnetwork.so"));
+    std::unique_ptr<Plugin> fluxBalancePlugin(connector.connect("metabolicfluxbalance.so"));
+    std::unique_ptr<Plugin> metabolicProjectionPlugin(connector.connect("metabolicstateprojectioncomponent.so"));
+    std::unique_ptr<Plugin> checkpointPlugin(connector.connect("cellcyclecheckpointcomponent.so"));
+    std::unique_ptr<Plugin> fatePlugin(connector.connect("cellfatedecisioncomponent.so"));
+    std::unique_ptr<Plugin> exchangePlugin(connector.connect("compartmentexchangecomponent.so"));
+    std::unique_ptr<Plugin> compartmentPlugin(connector.connect("biocompartment.so"));
+    std::unique_ptr<Plugin> eukaryoticCyclePlugin(connector.connect("eukaryoticcellcyclecomponent.so"));
+    std::unique_ptr<Plugin> pathwayStressPlugin(connector.connect("pathwaystressresponsecomponent.so"));
 
     ASSERT_NE(speciesPlugin, nullptr);
     ASSERT_NE(parameterPlugin, nullptr);
     ASSERT_NE(reactionPlugin, nullptr);
     ASSERT_NE(networkPlugin, nullptr);
+    ASSERT_NE(simulatePlugin, nullptr);
+    ASSERT_NE(projectionPlugin, nullptr);
+    ASSERT_NE(metabolicReactionPlugin, nullptr);
+    ASSERT_NE(metabolicNetworkPlugin, nullptr);
+    ASSERT_NE(fluxBalancePlugin, nullptr);
+    ASSERT_NE(metabolicProjectionPlugin, nullptr);
+    ASSERT_NE(checkpointPlugin, nullptr);
+    ASSERT_NE(fatePlugin, nullptr);
+    ASSERT_NE(exchangePlugin, nullptr);
+    ASSERT_NE(compartmentPlugin, nullptr);
+    ASSERT_NE(eukaryoticCyclePlugin, nullptr);
+    ASSERT_NE(pathwayStressPlugin, nullptr);
     EXPECT_EQ(speciesPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioSpecies>());
     EXPECT_EQ(parameterPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioParameter>());
     EXPECT_EQ(reactionPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioReaction>());
     EXPECT_EQ(networkPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioNetwork>());
+    EXPECT_EQ(simulatePlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioSimulate>());
+    EXPECT_EQ(projectionPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioStateProjectionComponent>());
+    EXPECT_EQ(metabolicReactionPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<MetabolicReaction>());
+    EXPECT_EQ(metabolicNetworkPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<MetabolicNetwork>());
+    EXPECT_EQ(fluxBalancePlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<MetabolicFluxBalance>());
+    EXPECT_EQ(metabolicProjectionPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<MetabolicStateProjectionComponent>());
+    EXPECT_EQ(checkpointPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<CellCycleCheckpointComponent>());
+    EXPECT_EQ(fatePlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<CellFateDecisionComponent>());
+    EXPECT_EQ(exchangePlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<CompartmentExchangeComponent>());
+    EXPECT_EQ(compartmentPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<BioCompartment>());
+    EXPECT_EQ(eukaryoticCyclePlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<EukaryoticCellCycleComponent>());
+    EXPECT_EQ(pathwayStressPlugin->getPluginInfo()->getPluginTypename(), Util::TypeOf<PathwayStressResponseComponent>());
 }
 
 bool RscriptAvailableForRuntimeTest() {
@@ -8430,6 +10051,391 @@ TEST(SimulatorRuntimeTest, RSimulatorPluginInformationDeclaresRunnerDependency) 
                         info->getDynamicLibFilenameDependencies()->end(),
                         "rsimulatorrunner.so"),
               info->getDynamicLibFilenameDependencies()->end());
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimeDefaultsExposeMainConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonRuntimeProbe runtime(model, "PyDefaults");
+
+    EXPECT_EQ(runtime.getPythonExecutable(), "python3");
+    EXPECT_EQ(runtime.getFacadeObjectName(), "simulator");
+    EXPECT_TRUE(runtime.isCaptureOutput());
+    EXPECT_EQ(runtime.getLastStatus(), "Idle");
+    EXPECT_EQ(runtime.getLastErrorMessage(), "");
+    EXPECT_EQ(runtime.getLastStdout(), "");
+    EXPECT_EQ(runtime.getLastStderr(), "");
+    EXPECT_GE(runtime.getSimulationControls()->size(), 7u);
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimeCheckRejectsInvalidConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonRuntimeProbe runtime(model, "PyCheckInvalid");
+    runtime.setPythonExecutable("");
+    runtime.setFacadeObjectName("123 invalid");
+
+    std::string errorMessage;
+    EXPECT_FALSE(runtime.CheckProbe(errorMessage));
+    EXPECT_NE(errorMessage.find("PythonExecutable must not be empty"), std::string::npos);
+    EXPECT_NE(errorMessage.find("FacadeObjectName must be a valid Python identifier"), std::string::npos);
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimePersistenceRoundTripPreservesConfigurationAndResults) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonRuntimeProbe source(model, "PyPersistSource");
+    source.setPythonExecutable("/usr/bin/python3");
+    source.setFacadeObjectName("genesys");
+    source.setCaptureOutput(false);
+    source.setLastStatus("Succeeded");
+    source.setLastErrorMessage("no error");
+    source.setLastStdout("stdout");
+    source.setLastStderr("stderr");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    PythonRuntimeProbe loaded(model, "PyPersistLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getPythonExecutable(), "/usr/bin/python3");
+    EXPECT_EQ(loaded.getFacadeObjectName(), "genesys");
+    EXPECT_FALSE(loaded.isCaptureOutput());
+    EXPECT_EQ(loaded.getLastStatus(), "Succeeded");
+    EXPECT_EQ(loaded.getLastErrorMessage(), "no error");
+    EXPECT_EQ(loaded.getLastStdout(), "stdout");
+    EXPECT_EQ(loaded.getLastStderr(), "stderr");
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimeValidateHooksRejectsSyntaxError) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonRuntimeProbe runtime(model, "PySyntax");
+    std::string errorMessage;
+
+    EXPECT_FALSE(runtime.validateHooks("if True print('broken')", "", errorMessage));
+#if GENESYS_HAS_PYTHON_INTEGRATION
+    EXPECT_NE(errorMessage.find("SyntaxError"), std::string::npos);
+#else
+    EXPECT_NE(errorMessage.find("not available in this build"), std::string::npos);
+#endif
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimeExecutesInitHookAndCapturesOutput) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonRuntimeProbe runtime(model, "PyExecuteInit");
+    CollectorSinkComponentProbe component(model, "PyContextSink");
+    std::string errorMessage;
+
+#if GENESYS_HAS_PYTHON_INTEGRATION
+    EXPECT_TRUE(runtime.executeInitHook(&component,
+                                        "print('hello from init')\n"
+                                        "context.log('init trace')\n"
+                                        "simulator.infoSetDescription('python-init-ok')\n",
+                                        "",
+                                        errorMessage)) << errorMessage;
+    EXPECT_EQ(model->getInfos()->getDescription(), "python-init-ok");
+    EXPECT_EQ(runtime.getLastStatus(), "Succeeded");
+    EXPECT_NE(runtime.getLastStdout().find("hello from init"), std::string::npos);
+    EXPECT_EQ(runtime.getLastErrorMessage(), "");
+#else
+    EXPECT_FALSE(runtime.executeInitHook(&component, "print('noop')", "", errorMessage));
+    EXPECT_NE(errorMessage.find("not available in this build"), std::string::npos);
+#endif
+}
+
+TEST(SimulatorRuntimeTest, PythonForGCreatesInternalRuntimeAndPersistsConfiguration) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonForGProbe source(model, "PyComponentSource");
+    source.setInitBetweenReplicationCode("simulator.trace('init')");
+    source.setOnDispatchEventCode("simulator.trace(entity.getName())");
+    source.setForwardEntityOnError(false);
+
+    ModelDataDefinition* internalData = source.getInternalData("PythonRuntime");
+    ASSERT_NE(internalData, nullptr);
+    PythonRuntime* runtime = dynamic_cast<PythonRuntime*>(internalData);
+    ASSERT_NE(runtime, nullptr);
+    EXPECT_EQ(runtime->getName(), "PyComponentSource.PythonRuntime");
+
+    FakeModelPersistenceRuntime persistence;
+    PersistenceRecord fields(persistence);
+    source.SaveInstanceProbe(&fields, true);
+
+    PythonForGProbe loaded(model, "PyComponentLoaded");
+    ASSERT_TRUE(loaded.LoadInstanceProbe(&fields));
+    EXPECT_EQ(loaded.getInitBetweenReplicationCode(), "simulator.trace('init')");
+    EXPECT_EQ(loaded.getOnDispatchEventCode(), "simulator.trace(entity.getName())");
+    EXPECT_FALSE(loaded.isForwardEntityOnError());
+}
+
+TEST(SimulatorRuntimeTest, PythonForGPluginInformationDeclaresRuntimeDependency) {
+    std::unique_ptr<PluginInformation> info(PythonForG::GetPluginInformation());
+
+    ASSERT_NE(info, nullptr);
+    EXPECT_EQ(info->getPluginTypename(), Util::TypeOf<PythonForG>());
+    EXPECT_EQ(info->getCategory(), "ExternalIntegration");
+    ASSERT_NE(info->getDynamicLibFilenameDependencies(), nullptr);
+    EXPECT_NE(std::find(info->getDynamicLibFilenameDependencies()->begin(),
+                        info->getDynamicLibFilenameDependencies()->end(),
+                        "pythonruntime.so"),
+              info->getDynamicLibFilenameDependencies()->end());
+}
+
+TEST(SimulatorRuntimeTest, PythonForGDispatchHookExecutesAndForwardsEntity) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonForGProbe component(model, "PyDispatch");
+    CollectorSinkComponentProbe sink(model, "PyDispatchSink");
+    component.getConnectionManager()->insert(&sink);
+    component.setInitBetweenReplicationCode("simulator.infoSetDescription('initialized by python')\n");
+    component.setOnDispatchEventCode(
+        "print('dispatching ' + entity.getName())\n"
+        "simulator.infoSetDescription(entity.getName())\n");
+
+    std::string checkError;
+    EXPECT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+#if GENESYS_HAS_PYTHON_INTEGRATION
+    component.InitBetweenReplicationsProbe();
+    EXPECT_EQ(model->getInfos()->getDescription(), "initialized by python");
+
+    Entity* entity = model->createEntity("PyEntity", true);
+    ASSERT_NE(entity, nullptr);
+    component.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(sink.ReceivedEntities().front(), entity);
+    EXPECT_EQ(model->getInfos()->getDescription(), "PyEntity");
+    ASSERT_NE(component.getPythonRuntime(), nullptr);
+    EXPECT_EQ(component.getPythonRuntime()->getLastStatus(), "Succeeded");
+    EXPECT_NE(component.getPythonRuntime()->getLastStdout().find("dispatching PyEntity"), std::string::npos);
+#else
+    EXPECT_NE(checkError.find("not available in this build"), std::string::npos);
+#endif
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimePhase2FacadeMethodsManageModelsAndSimulationMetadata) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    PythonRuntimeProbe runtime(model, "PyPhase2Models");
+    CollectorSinkComponentProbe component(model, "PyPhase2Component");
+    std::string errorMessage;
+
+#if GENESYS_HAS_PYTHON_INTEGRATION
+    EXPECT_TRUE(runtime.executeInitHook(&component,
+                                        "base = simulator.currentModel()\n"
+                                        "simulator.infoSetName('base-model')\n"
+                                        "simulator.infoSetAnalystName('phase2-analyst')\n"
+                                        "simulator.infoSetProjectTitle('phase2-project')\n"
+                                        "simulator.infoSetVersion('phase2-version')\n"
+                                        "simulator.simSetNumberOfReplications(3)\n"
+                                        "simulator.simSetReplicationLength(17.5)\n"
+                                        "simulator.simSetWarmUpPeriod(2.5)\n"
+                                        "shadow = simulator.newModel()\n"
+                                        "simulator.setCurrentModel(shadow)\n"
+                                        "simulator.infoSetName('shadow-model')\n"
+                                        "simulator.setCurrentModel(base)\n"
+                                        "print(simulator.modelCount())\n",
+                                        "",
+                                        errorMessage)) << errorMessage;
+
+    EXPECT_EQ(simulator.getModelManager()->size(), 2u);
+    EXPECT_EQ(simulator.getModelManager()->current()->getInfos()->getName(), "base-model");
+    EXPECT_EQ(simulator.getModelManager()->current()->getInfos()->getAnalystName(), "phase2-analyst");
+    EXPECT_EQ(simulator.getModelManager()->current()->getInfos()->getProjectTitle(), "phase2-project");
+    EXPECT_EQ(simulator.getModelManager()->current()->getInfos()->getVersion(), "phase2-version");
+    EXPECT_EQ(simulator.getModelManager()->current()->getSimulation()->getNumberOfReplications(), 3u);
+    EXPECT_DOUBLE_EQ(simulator.getModelManager()->current()->getSimulation()->getReplicationLength(), 17.5);
+    EXPECT_DOUBLE_EQ(simulator.getModelManager()->current()->getSimulation()->getWarmUpPeriod(), 2.5);
+    EXPECT_NE(runtime.getLastStdout().find("2"), std::string::npos);
+#else
+    EXPECT_FALSE(runtime.executeInitHook(&component, "print('noop')", "", errorMessage));
+    EXPECT_NE(errorMessage.find("not available in this build"), std::string::npos);
+#endif
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimePhase2WrappersExposeModelLookupAndEntityAttributes) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "PyTrackedVariable");
+    variable.setValue(12.0);
+    CollectorSinkComponentProbe sink(model, "PyTrackedSink");
+    PythonForGProbe component(model, "PyWrapperDispatch");
+    component.getConnectionManager()->insert(&sink);
+    component.setOnDispatchEventCode(
+        "current = simulator.currentModel()\n"
+        "found_component = current.componentFind('PyTrackedSink')\n"
+        "found_data = current.dataGetDataDefinition('Variable', 'PyTrackedVariable')\n"
+        "details = current.parseExpressionDetailed('40+2')\n"
+        "entity.setAttributeValue('PyScore', 7.5, '', True)\n"
+        "simulator.infoSetDescription(found_component.getClassname() + '|' + found_data.getClassname())\n"
+        "simulator.infoSetVersion(str(details['value']))\n"
+        "print(found_component.getName() + '|' + found_data.getName() + '|' + str(current.getComponentCount()) + '|' + str(current.getDataDefinitionCount()))\n");
+
+    std::string checkError;
+    EXPECT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+#if GENESYS_HAS_PYTHON_INTEGRATION
+    Entity* entity = model->createEntity("WrappedEntity", true);
+    ASSERT_NE(entity, nullptr);
+    component.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    EXPECT_EQ(entity->getAttributeValue("PyScore"), 7.5);
+    EXPECT_EQ(model->getInfos()->getDescription(), "CollectorSinkComponentProbe|Variable");
+    EXPECT_EQ(model->getInfos()->getVersion(), "42.0");
+    ASSERT_NE(component.getPythonRuntime(), nullptr);
+    EXPECT_NE(component.getPythonRuntime()->getLastStdout().find("PyTrackedSink|PyTrackedVariable|"), std::string::npos);
+#else
+    EXPECT_NE(checkError.find("not available in this build"), std::string::npos);
+#endif
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimePhase3MutatesModelDataComponentsAndSimulationFlags) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "PyPhase3Variable");
+    CollectorSinkComponentProbe removableSink(model, "PyPhase3RemovableSink");
+    CollectorSinkComponentProbe flowSink(model, "PyPhase3FlowSink");
+    PythonForGProbe component(model, "PyPhase3Component");
+    component.getConnectionManager()->insert(&flowSink);
+    component.setOnDispatchEventCode(
+        "current = simulator.currentModel()\n"
+        "variable = current.dataGetDataDefinition('Variable', 'PyPhase3Variable')\n"
+        "removable = current.componentFind('PyPhase3RemovableSink')\n"
+        "simulator.modelRemove(variable)\n"
+        "simulator.modelInsert(variable)\n"
+        "simulator.dataRemove(variable)\n"
+        "simulator.dataInsert(variable)\n"
+        "simulator.modelRemove(removable)\n"
+        "simulator.modelInsert(removable)\n"
+        "simulator.componentRemove(removable)\n"
+        "simulator.componentInsert(removable)\n"
+        "simulator.simSetPauseOnEvent(True)\n"
+        "simulator.simSetStepByStep(True)\n"
+        "simulator.simSetInitializeStatistics(False)\n"
+        "simulator.simSetInitializeSystem(False)\n"
+        "simulator.simSetPauseOnReplication(True)\n"
+        "simulator.simSetShowReportsAfterReplication(False)\n"
+        "simulator.simSetShowReportsAfterSimulation(False)\n"
+        "simulator.simSetShowSimulationResponsesInReport(True)\n"
+        "simulator.simSetShowSimulationControlsInReport(True)\n"
+        "print('phase3 ok')\n");
+
+    std::string checkError;
+    EXPECT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+#if GENESYS_HAS_PYTHON_INTEGRATION
+    Entity* entity = model->createEntity("Phase3Entity", true);
+    ASSERT_NE(entity, nullptr);
+    component.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(flowSink.ReceivedEntities().size(), 1u);
+    EXPECT_NE(component.getPythonRuntime()->getLastStdout().find("phase3 ok"), std::string::npos);
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "PyPhase3Variable"), nullptr);
+    EXPECT_NE(model->getComponentManager()->find("PyPhase3RemovableSink"), nullptr);
+    EXPECT_TRUE(model->getSimulation()->isPauseOnEvent());
+    EXPECT_TRUE(model->getSimulation()->isStepByStep());
+    EXPECT_FALSE(model->getSimulation()->isInitializeStatistics());
+    EXPECT_FALSE(model->getSimulation()->isInitializeSystem());
+    EXPECT_TRUE(model->getSimulation()->isPauseOnReplication());
+    EXPECT_FALSE(model->getSimulation()->isShowReportsAfterReplication());
+    EXPECT_FALSE(model->getSimulation()->isShowReportsAfterSimulation());
+    EXPECT_TRUE(model->getSimulation()->isShowSimulationResposesInReport());
+    EXPECT_TRUE(model->getSimulation()->isShowSimulationControlsInReport());
+#else
+    EXPECT_NE(checkError.find("not available in this build"), std::string::npos);
+#endif
+}
+
+TEST(SimulatorRuntimeTest, PythonRuntimePhase4ExposesRemainingFacadeListsAndEvents) {
+    Simulator simulator;
+    Model* model = simulator.getModelManager()->newModel();
+    ASSERT_NE(model, nullptr);
+
+    Variable variable(model, "PyPhase4Variable");
+    CollectorSinkComponentProbe sink(model, "PyPhase4Sink");
+    PythonForGProbe component(model, "PyPhase4Component");
+    component.getConnectionManager()->insert(&sink);
+    component.setOnDispatchEventCode(
+        "current = simulator.currentModel()\n"
+        "variable = current.dataGetDataDefinition('Variable', 'PyPhase4Variable')\n"
+        "future_events = simulator.modelGetFutureEvents()\n"
+        "controls = simulator.modelGetControls()\n"
+        "responses = simulator.modelGetResponses()\n"
+        "class_names = simulator.dataGetDataDefinitionClassnames()\n"
+        "data_defs = simulator.dataGetDataDefinitionList('Variable')\n"
+        "all_components = simulator.componentGetAllComponents()\n"
+        "source_components = simulator.componentGetSourceComponents()\n"
+        "transfer_components = simulator.componentGetTransferInComponents()\n"
+        "breakpoints_time = simulator.simGetBreakpointsOnTime()\n"
+        "current_event = simulator.simGetCurrentEvent()\n"
+        "removed = simulator.modelCollectDataDefinitionsRemovedWith([variable])\n"
+        "simulator.infoSetHasChanged(True)\n"
+        "simulator.simSetReplicationLengthTimeUnit(2)\n"
+        "simulator.simSetReplicationReportBaseTimeUnit(1)\n"
+        "simulator.simSetWarmUpPeriodTimeUnit(3)\n"
+        "simulator.simSetTerminatingCondition('time > 5')\n"
+        "print(simulator.infoShow())\n"
+        "print(len(future_events), len(controls), len(responses), len(class_names), len(data_defs), len(all_components), len(source_components), len(transfer_components), len(breakpoints_time), len(removed))\n"
+        "print('none' if current_event is None else current_event.getComponent().getName())\n"
+        "print('none' if current_event is None or current_event.getEntity() is None else current_event.getEntity().getName())\n"
+        "print(simulator.infoHasChanged())\n"
+        "print(simulator.simGetReplicationLengthTimeUnit())\n"
+        "print(simulator.simGetReplicationBaseTimeUnit())\n"
+        "print(simulator.simGetWarmUpPeriodTimeUnit())\n"
+        "print(simulator.simGetTerminatingCondition())\n"
+        "print(simulator.dataGetRankOf('Variable', 'PyPhase4Variable'))\n"
+        "print('phase4 ok')\n");
+
+    std::string checkError;
+    EXPECT_TRUE(component.CheckProbe(checkError)) << checkError;
+
+#if GENESYS_HAS_PYTHON_INTEGRATION
+    Entity* entity = model->createEntity("Phase4Entity", true);
+    ASSERT_NE(entity, nullptr);
+    component.DispatchEventProbe(entity);
+    DrainFutureEvents(model);
+
+    ASSERT_EQ(sink.ReceivedEntities().size(), 1u);
+    ASSERT_NE(component.getPythonRuntime(), nullptr);
+    EXPECT_NE(component.getPythonRuntime()->getLastStdout().find("phase4 ok"), std::string::npos);
+    EXPECT_TRUE(model->getInfos()->hasChanged());
+    EXPECT_EQ(model->getSimulation()->getTerminatingCondition(), "time > 5");
+    EXPECT_EQ(model->getSimulation()->getReplicationLengthTimeUnit(), static_cast<Util::TimeUnit>(2));
+    EXPECT_EQ(model->getSimulation()->getReplicationBaseTimeUnit(), static_cast<Util::TimeUnit>(1));
+    EXPECT_EQ(model->getSimulation()->getWarmUpPeriodTimeUnit(), static_cast<Util::TimeUnit>(3));
+    EXPECT_NE(model->getDataManager()->getDataDefinition(Util::TypeOf<Variable>(), "PyPhase4Variable"), nullptr);
+    EXPECT_NE(model->getComponentManager()->find("PyPhase4Sink"), nullptr);
+#else
+    EXPECT_NE(checkError.find("not available in this build"), std::string::npos);
+#endif
 }
 
 TEST(SimulatorRuntimeTest, MarkovChainStoresRealizedStateInEntityAttribute) {
