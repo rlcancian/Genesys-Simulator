@@ -5,43 +5,47 @@
 0   ModelSimulation "" traceLevel=2 replicationLength=36000.000000 numberOfReplications=3 
 
 # Model Data Definitions
-113 WholeCellState "CellState" moleculeSpeciesCount[19]=120 moleculeSpeciesName[24]="prot_MG_462" moleculeSpeciesName[20]="prot_MG_196" moleculeSpeciesName[3]="FtsZ_ring_completion" moleculeSpeciesName[23]="prot_MG_398" moleculeSpeciesName[18]="prot_MG_139" moleculeSpeciesName[25]="ribosome_free" metaboliteName[1]="ATP" moleculeSpeciesCount[7]=1 moleculeSpeciesCount[9]=3 moleculeSpeciesCount[14]=4 moleculeSpeciesCount[23]=70 metaboliteAmount[3]=0.000500 moleculeSpeciesCount[15]=80 moleculeSpeciesName[9]="mRNA_MG_175" moleculeSpeciesName[7]="mRNA_MG_055" moleculeSpeciesCount[18]=50 moleculeSpeciesCount[13]=2 moleculeSpeciesCount[6]=1 moleculeSpeciesName[19]="prot_MG_175" moleculeSpeciesName[21]="prot_MG_203" moleculeSpeciesName[22]="prot_MG_339" moleculeSpeciesCount[8]=1 moleculeSpeciesCount[25]=400 moleculeSpeciesName[12]="mRNA_MG_339" moleculeSpeciesCount[22]=60 moleculeSpeciesCount[5]=2 moleculeSpeciesCount[24]=160 moleculeSpeciesCount[2]=500 moleculeSpeciesCount[21]=30 cellMass=0.000000 moleculeSpeciesCount[0]=500 moleculeSpeciesCount[10]=2 moleculeSpeciesName[17]="prot_MG_055" metaboliteName[0]="ADP" metaboliteAmount[1]=0.002000 metaboliteName[3]="GTP" metaboliteAmount[2]=0.000100 metaboliteName[2]="GDP" moleculeSpeciesName[2]="FtsZ_monomer" metaboliteAmount[0]=0.000500 moleculeSpeciesName[4]="RNAP_free" cellVolume=0.000000 moleculeSpeciesName[10]="mRNA_MG_196" moleculeSpeciesName[8]="mRNA_MG_139" moleculeSpeciesCount[12]=2 moleculeSpeciesName[6]="mRNA_MG_006" moleculeSpeciesCount[11]=1 moleculeSpeciesName[0]="ADP_pool" moleculeSpeciesName[1]="ATP_pool" moleculeSpeciesName[11]="mRNA_MG_203" moleculeSpeciesCount[4]=200 moleculeSpeciesCount[1]=2000 moleculeSpeciesName[14]="mRNA_MG_462" moleculeSpeciesName[5]="mRNA_MG_001" moleculeSpeciesCount=26 moleculeSpeciesName[13]="mRNA_MG_398" moleculeSpeciesName[15]="prot_MG_001" metaboliteCount=4 moleculeSpeciesName[16]="prot_MG_006" moleculeSpeciesCount[16]=40 moleculeSpeciesCount[20]=250 moleculeSpeciesCount[17]=10 
-114 StochasticReactionRule "R_ATP_Regeneration" reactants=1 rateConstant=0.050000 reactantSpecies[0]="ADP_pool" productSpecies[0]="ATP_pool" products=1 
-115 StochasticReactionRule "R_ATP_Consumption" reactants=1 rateConstant=0.020000 reactantSpecies[0]="ATP_pool" productSpecies[0]="ADP_pool" products=1 
-116 StochasticReactionRule "R_deg_mRNA_MG_001" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_001" 
-117 StochasticReactionRule "R_deg_mRNA_MG_006" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_006" 
-118 StochasticReactionRule "R_deg_mRNA_MG_055" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_055" 
-119 StochasticReactionRule "R_deg_mRNA_MG_139" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_139" 
-120 StochasticReactionRule "R_deg_mRNA_MG_175" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_175" 
-121 StochasticReactionRule "R_deg_mRNA_MG_196" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_196" 
-122 StochasticReactionRule "R_deg_mRNA_MG_203" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_203" 
-123 StochasticReactionRule "R_deg_mRNA_MG_339" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_339" 
-124 StochasticReactionRule "R_deg_mRNA_MG_398" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_398" 
-125 StochasticReactionRule "R_deg_mRNA_MG_462" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_462" 
-126 StochasticReactionRule "R_deg_prot_MG_001" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_001" 
-127 StochasticReactionRule "R_deg_prot_MG_006" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_006" 
-128 StochasticReactionRule "R_deg_prot_MG_055" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_055" 
-129 StochasticReactionRule "R_deg_prot_MG_139" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_139" 
-130 StochasticReactionRule "R_deg_prot_MG_175" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_175" 
-131 StochasticReactionRule "R_deg_prot_MG_196" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_196" 
-132 StochasticReactionRule "R_deg_prot_MG_203" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_203" 
-133 StochasticReactionRule "R_deg_prot_MG_339" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_339" 
-134 StochasticReactionRule "R_deg_prot_MG_398" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_398" 
-135 StochasticReactionRule "R_deg_prot_MG_462" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_462" 
-138 EntityType "entitytype" 
-139 Attribute  "Entity.ArrivalTime" 
-140 Attribute  "Entity.Type" 
+121 WholeCellState "CellState" moleculeSpeciesCount[19]=120 moleculeSpeciesName[24]="prot_MG_462" moleculeSpeciesName[20]="prot_MG_196" moleculeSpeciesName[3]="FtsZ_ring_completion" moleculeSpeciesName[23]="prot_MG_398" moleculeSpeciesName[18]="prot_MG_139" moleculeSpeciesName[25]="ribosome_free" metaboliteName[1]="ATP" moleculeSpeciesCount[7]=1 moleculeSpeciesCount[9]=3 moleculeSpeciesCount[14]=4 moleculeSpeciesCount[23]=70 metaboliteAmount[3]=0.000500 moleculeSpeciesCount[15]=80 moleculeSpeciesName[9]="mRNA_MG_175" moleculeSpeciesName[7]="mRNA_MG_055" moleculeSpeciesCount[18]=50 moleculeSpeciesCount[13]=2 moleculeSpeciesCount[6]=1 moleculeSpeciesName[19]="prot_MG_175" moleculeSpeciesName[21]="prot_MG_203" moleculeSpeciesName[22]="prot_MG_339" moleculeSpeciesCount[8]=1 moleculeSpeciesCount[25]=400 moleculeSpeciesName[12]="mRNA_MG_339" moleculeSpeciesCount[22]=60 moleculeSpeciesCount[5]=2 moleculeSpeciesCount[24]=160 moleculeSpeciesCount[2]=500 moleculeSpeciesCount[21]=30 cellMass=0.000000 moleculeSpeciesCount[0]=500 moleculeSpeciesCount[10]=2 moleculeSpeciesName[17]="prot_MG_055" metaboliteName[0]="ADP" metaboliteAmount[1]=0.002000 metaboliteName[3]="GTP" metaboliteAmount[2]=0.000100 metaboliteName[2]="GDP" moleculeSpeciesName[2]="FtsZ_monomer" metaboliteAmount[0]=0.000500 moleculeSpeciesName[4]="RNAP_free" cellVolume=0.000000 moleculeSpeciesName[10]="mRNA_MG_196" moleculeSpeciesName[8]="mRNA_MG_139" moleculeSpeciesCount[12]=2 moleculeSpeciesName[6]="mRNA_MG_006" moleculeSpeciesCount[11]=1 moleculeSpeciesName[0]="ADP_pool" moleculeSpeciesName[1]="ATP_pool" moleculeSpeciesName[11]="mRNA_MG_203" moleculeSpeciesCount[4]=200 moleculeSpeciesCount[1]=2000 moleculeSpeciesName[14]="mRNA_MG_462" moleculeSpeciesName[5]="mRNA_MG_001" moleculeSpeciesCount=26 moleculeSpeciesName[13]="mRNA_MG_398" moleculeSpeciesName[15]="prot_MG_001" metaboliteCount=4 moleculeSpeciesName[16]="prot_MG_006" moleculeSpeciesCount[16]=40 moleculeSpeciesCount[20]=250 moleculeSpeciesCount[17]=10 
+122 StochasticReactionRule "R_ATP_Regeneration" reactants=1 rateConstant=0.050000 reactantSpecies[0]="ADP_pool" productSpecies[0]="ATP_pool" products=1 
+123 StochasticReactionRule "R_ATP_Consumption" reactants=1 rateConstant=0.020000 reactantSpecies[0]="ATP_pool" productSpecies[0]="ADP_pool" products=1 
+124 StochasticReactionRule "R_deg_mRNA_MG_001" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_001" 
+125 StochasticReactionRule "R_deg_mRNA_MG_006" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_006" 
+126 StochasticReactionRule "R_deg_mRNA_MG_055" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_055" 
+127 StochasticReactionRule "R_deg_mRNA_MG_139" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_139" 
+128 StochasticReactionRule "R_deg_mRNA_MG_175" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_175" 
+129 StochasticReactionRule "R_deg_mRNA_MG_196" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_196" 
+130 StochasticReactionRule "R_deg_mRNA_MG_203" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_203" 
+131 StochasticReactionRule "R_deg_mRNA_MG_339" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_339" 
+132 StochasticReactionRule "R_deg_mRNA_MG_398" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_398" 
+133 StochasticReactionRule "R_deg_mRNA_MG_462" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_MG_462" 
+134 StochasticReactionRule "R_deg_prot_MG_001" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_001" 
+135 StochasticReactionRule "R_deg_prot_MG_006" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_006" 
+136 StochasticReactionRule "R_deg_prot_MG_055" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_055" 
+137 StochasticReactionRule "R_deg_prot_MG_139" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_139" 
+138 StochasticReactionRule "R_deg_prot_MG_175" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_175" 
+139 StochasticReactionRule "R_deg_prot_MG_196" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_196" 
+140 StochasticReactionRule "R_deg_prot_MG_203" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_203" 
+141 StochasticReactionRule "R_deg_prot_MG_339" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_339" 
+142 StochasticReactionRule "R_deg_prot_MG_398" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_398" 
+143 StochasticReactionRule "R_deg_prot_MG_462" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_MG_462" 
+146 EntityType "entitytype" 
+147 Attribute  "Entity.ArrivalTime" 
+148 Attribute  "Entity.Type" 
 
 # Model Components
-136 Create     "SimClock" entityType="entitytype" maxCreations="600" timeBetweenCreations="60" nextId=141 
-141 CellGrowthComponent "CellGrowth" wholeCellState="CellState" nextId=142 
-142 MetabolicSubmodelComponent "Metabolism" wholeCellState="CellState" nextId=143 
-143 ResourceAllocationComponent "ResourceAllocation" proteinSpeciesPrefix="prot_" wholeCellState="CellState" nextId=144 
-144 StochasticTranscription "Transcription" randomSeed=1001 timeWindow=60.000000 bindingProbability=0.010000 wholeCellState="CellState" nextId=145 
-145 StochasticTranslation "Translation" randomSeed=2002 timeWindow=60.000000 wholeCellState="CellState" nextId=146 
-146 StochasticReactionComponent "MetabolicSSA" randomSeed=3003 timeWindow=60.000000 wholeCellState="CellState" nextId=147 
-147 FtsZPolymerizationComponent "FtsZPolymerization" wholeCellState="CellState" nextId=148 
-148 CellDivisionEvent "CellDivision" randomSeed=4004 ftsZThreshold=0.350000 wholeCellState="CellState" divisionMassThreshold=0.000000 nextId[1]=149 nexts=2 nextId[0]=151 
-149 Record     "Division_Record" description="Simulation times at which cell division events occurred (M. genitalium Karr 2012 analog)." randomVariableName="Time of cell division" datasetName="CellDivisionTimes" expressionName="Cell Division Time" expression="TNOW" nextId=154 
-151 Dispose    "Step_Done" nexts=0 
-154 Dispose    "Post_Division" nexts=0 
+144 Create     "SimClock" entityType="entitytype" maxCreations="600" timeBetweenCreations="60" nextId=149 
+149 CellGrowthComponent "CellGrowth" wholeCellState="CellState" nextId=150 
+150 MetabolicSubmodelComponent "Metabolism" wholeCellState="CellState" nextId=151 
+151 ResourceAllocationComponent "ResourceAllocation" proteinSpeciesPrefix="prot_" wholeCellState="CellState" nextId=152 
+152 StochasticTranscription "Transcription" randomSeed=1001 timeWindow=60.000000 bindingProbability=0.010000 wholeCellState="CellState" nextId=153 
+153 StochasticTranslation "Translation" randomSeed=2002 timeWindow=60.000000 wholeCellState="CellState" nextId=154 
+154 StochasticReactionComponent "MetabolicSSA" randomSeed=3003 advanceWholeCellClock=0 timeWindow=60.000000 wholeCellState="CellState" nextId=155 
+155 FtsZPolymerizationComponent "FtsZPolymerization" wholeCellState="CellState" nextId=156 
+156 CellCycleCheckpointComponent "LifecycleCheckpoint" ftsZThreshold=0.350000 wholeCellState="CellState" nextId=157 starvationAtpThreshold=0.000500 
+157 CellFateDecisionComponent "CellFate" wholeCellState="CellState" nextId[3]=168 nextId[2]=166 nextId[0]=161 nextId[1]=158 nexts=4 
+158 CellDivisionEvent "CellDivision" randomSeed=4004 ftsZThreshold=0.350000 wholeCellState="CellState" divisionMassThreshold=0.000000 nextId[1]=159 nexts=2 nextId[0]=161 
+159 Record     "Division_Record" description="Simulation times at which cell division events occurred (M. genitalium Karr 2012 analog)." randomVariableName="Time of cell division" datasetName="CellDivisionTimes" expressionName="Cell Division Time" expression="TNOW" nextId=164 
+161 Dispose    "Step_Done" nexts=0 
+164 Dispose    "Post_Division" nexts=0 
+166 Dispose    "Starved_Done" nexts=0 
+168 Dispose    "Dead_Done" nexts=0 

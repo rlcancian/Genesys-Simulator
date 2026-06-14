@@ -1,0 +1,20 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Whole-Cell Lifecycle Stress" version="1.0" projectTitle="" description="Minimal stress example that demonstrates whole-cell starvation and death routing." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=180.000000 
+
+# Model Data Definitions
+121 WholeCellState "StressState" cellMass=0.000000 cellVolume=0.001000 metaboliteName[0]="ATP" metaboliteCount=1 
+124 EntityType "entitytype" 
+125 Attribute  "Entity.ArrivalTime" 
+126 Attribute  "Entity.Type" 
+
+# Model Components
+122 Create     "StressClock" entityType="entitytype" maxCreations="3" nextId=127 timeBetweenCreations="60" 
+127 CellCycleCheckpointComponent "StressCheckpoint" lethalStarvationSteps=2 wholeCellState="StressState" nextId=128 
+128 CellFateDecisionComponent "StressFate" wholeCellState="StressState" nextId[3]=136 nextId[2]=134 nextId[0]=129 nextId[1]=132 nexts=4 
+129 Dispose    "StressViableSink" nexts=0 
+132 Dispose    "StressDivisionSink" nexts=0 
+134 Dispose    "StressStarvedSink" nexts=0 
+136 Dispose    "StressDeadSink" nexts=0 

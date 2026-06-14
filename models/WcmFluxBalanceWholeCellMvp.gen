@@ -1,0 +1,32 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Flux-Balance Whole-Cell MVP" version="1.0" projectTitle="" description="Whole-cell MVP using MetabolicFluxBalance plus MetabolicStateProjectionComponent to drive expression, growth, lifecycle checkpointing, and cell division." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=480.000000 
+
+# Model Data Definitions
+121 BioSpecies "FbaATP_i" 
+122 MetabolicReaction "FbaATPUptake" upperBound=4.000000 productSpecies[0]="FbaATP_i" products=1 
+123 MetabolicReaction "FbaATPMaintenance" upperBound=1.000000 lowerBound=1.000000 reactants=1 reactantSpecies[0]="FbaATP_i" 
+124 MetabolicReaction "FbaBiomassFlux" upperBound=100.000000 reactants=1 reactantSpecies[0]="FbaATP_i" 
+125 MetabolicNetwork "FbaWholeCellNetwork" compartment="cytosol" objectiveReactionName="FbaBiomassFlux" reactionName[2]="FbaBiomassFlux" reactionName[1]="FbaATPMaintenance" reactionName[0]="FbaATPUptake" reactions=3 
+126 WholeCellState "CellState" moleculeSpeciesName[0]="RNAP_free" moleculeSpeciesCount=6 moleculeSpeciesName[2]="mRNA_geneB" moleculeSpeciesName[5]="ribosome_free" metaboliteName[0]="ATP" metaboliteCount=1 moleculeSpeciesCount[0]=4 moleculeSpeciesCount[5]=6 cellVolume=0.001000 moleculeSpeciesName[1]="mRNA_geneA" cellMass=0.000000 moleculeSpeciesName[4]="prot_geneB" moleculeSpeciesName[3]="prot_geneA" 
+129 EntityType "entitytype" 
+130 Attribute  "Entity.ArrivalTime" 
+131 Attribute  "Entity.Type" 
+
+# Model Components
+127 Create     "CellClock" entityType="entitytype" maxCreations="8" timeBetweenCreations="60" nextId=132 
+132 MetabolicFluxBalance "FluxBalance" metabolicNetwork="FbaWholeCellNetwork" nextId=133 
+133 MetabolicStateProjectionComponent "FluxProjection" projectionTarget[0]="ATP" objectiveTargetKey="biomass_objective" projectionUpdateMode[0]="Accumulate" objectiveKind="PathwayActivity" projectionReaction[0]="FbaATPUptake" projectionKind[1]="CompartmentMetaboliteAmount" projectionReaction[2]="FbaBiomassFlux" projectionUpdateMode[1]="Turnover" projectionScale[0]=0.250000 projectionTurnoverFraction[1]=0.250000 projectionCompartment[1]="cytosol" projectionKind[2]="PathwayActivity" projectionTarget[1]="ATP_c" projectionTarget[2]="biomass_flux" objectiveProjectionEnabled=1 projectionReaction[1]="FbaATPUptake" fluxBalanceComponentName="FluxBalance" wholeCellState="CellState" projectionScale[1]=0.500000 projectionCount=3 nextId=134 
+134 ResourceAllocationComponent "ResourceAllocation" proteinSpeciesPrefix="prot_" wholeCellState="CellState" nextId=135 
+135 StochasticTranscription "Transcription" randomSeed=401 timeWindow=60.000000 wholeCellState="CellState" nextId=136 bindingProbability=0.300000 
+136 StochasticTranslation "Translation" randomSeed=402 timeWindow=60.000000 wholeCellState="CellState" nextId=137 
+137 CellGrowthComponent "Growth" density=1000.000000 energyMetaboliteKey="ATP" energyHalfSaturation=1.000000 growthRate=0.002500 wholeCellState="CellState" nextId=138 
+138 CellCycleCheckpointComponent "LifecycleCheckpoint" criticalPathwayActivityThreshold=2.500000 criticalPathwayActivityKey="biomass_objective" divisionMassThreshold=0.000000 compartmentStarvationThreshold=0.500000 compartmentEnergyMetaboliteKey="ATP_c" compartmentEnergyRegion="cytosol" wholeCellState="CellState" nextId=139 
+139 CellFateDecisionComponent "CellFate" wholeCellState="CellState" nextId[3]=148 nextId[0]=141 nextId[2]=146 nextId[1]=140 nexts=4 
+140 CellDivisionEvent "Division" randomSeed=403 divisionMassThreshold=0.000000 wholeCellState="CellState" nextId[0]=141 nextId[1]=144 nexts=2 
+141 Dispose    "SteadySink" nexts=0 
+144 Dispose    "DivisionSink" nexts=0 
+146 Dispose    "StarvedSink" nexts=0 
+148 Dispose    "DeadSink" nexts=0 

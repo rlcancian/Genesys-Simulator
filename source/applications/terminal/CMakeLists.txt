@@ -5,6 +5,7 @@ set_property(CACHE GENESYS_TERMINAL_APP PROPERTY STRINGS
     Smart_SeizeDelayRelease
     Smart_SeizeDelayReleaseMany
     Smart_SeizeDelayReleaseNoDataDefs
+    Smart_PythonForG
     Smart_R_Simulator
     AnElectronicAssemblyAndTestSystem
 )
@@ -69,6 +70,10 @@ elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_SeizeDelayReleaseMany")
 elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_SeizeDelayReleaseNoDataDefs")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
         examples/smarts/Smart_SeizeDelayReleaseNoDataDefs.cpp
+    )
+elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_PythonForG")
+    list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES
+        examples/smarts/Smart_PythonForG.cpp
     )
 elseif(GENESYS_TERMINAL_APP STREQUAL "Smart_R_Simulator")
     list(APPEND GENESYS_TERMINAL_APPLICATION_SOURCES

@@ -137,7 +137,7 @@ std::list<ModelComponent*>* ModelComponentManager::getTransferInComponents() {
 	Plugin* plugin;
 	for (ModelComponent* component : *_components->list()) {
 		plugin = plugman->find(component->getClassname());
-		if (plugin->getPluginInfo()->isReceiveTransfer()) {
+		if (plugin != nullptr && plugin->getPluginInfo() != nullptr && plugin->getPluginInfo()->isReceiveTransfer()) {
 			sourcelist->insert(sourcelist->end(), component);
 		}
 	}

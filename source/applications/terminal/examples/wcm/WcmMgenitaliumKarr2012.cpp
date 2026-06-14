@@ -9,6 +9,8 @@
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/Logic/Dispose.h"
 #include "plugins/components/InputOutput/Record.h"
+#include "plugins/components/WholeCellModeling/CellCycleCheckpointComponent.h"
+#include "plugins/components/WholeCellModeling/CellFateDecisionComponent.h"
 #include "plugins/components/WholeCellModeling/CellGrowthComponent.h"
 #include "plugins/components/WholeCellModeling/FtsZPolymerizationComponent.h"
 #include "plugins/components/WholeCellModeling/MetabolicSubmodelComponent.h"
@@ -63,6 +65,7 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
     // FtsZ_monomer: initial pool from which the ring assembles
     state->setMoleculeCount("FtsZ_monomer",        500);  // ~500 FtsZ molecules in M. genitalium
     state->setMoleculeCount("FtsZ_ring_completion", 0);
+    state->setLifecyclePhase("newborn");
 
     // 10 representative M. genitalium genes: initial state (new cell born after division)
     // mRNA and protein counts represent one daughter cell's allocation
@@ -194,6 +197,7 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
         model, "MetabolicSSA");
     metabolicSsa->setWholeCellState(state);
     metabolicSsa->setTimeWindow(60.0);
+    metabolicSsa->setAdvanceWholeCellClock(false);
     metabolicSsa->setRandomSeed(3003u);
 
     // Phase 3: FtsZ ring polymerization — real kinetics, ~35% at ~12000 s
@@ -206,6 +210,21 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
     ftsZ->setDeltaT(60.0);
     ftsZ->setFtsZRingKey("FtsZ_ring_completion");
     ftsZ->setFtsZMonomerKey("FtsZ_monomer");
+
+    CellCycleCheckpointComponent* checkpoint = plugins->newInstance<CellCycleCheckpointComponent>(
+        model, "LifecycleCheckpoint");
+    checkpoint->setWholeCellState(state);
+    checkpoint->setDeltaT(60.0);
+    checkpoint->setEnergyMetaboliteKey("ATP");
+    checkpoint->setStarvationAtpThreshold(5.0e-4);
+    checkpoint->setDivisionMassThreshold(0.0);
+    checkpoint->setFtsZRingKey("FtsZ_ring_completion");
+    checkpoint->setFtsZThreshold(0.35);
+    checkpoint->setAdvanceWholeCellClock(true);
+
+    CellFateDecisionComponent* fate = plugins->newInstance<CellFateDecisionComponent>(
+        model, "CellFate");
+    fate->setWholeCellState(state);
 
     // Cell division: FtsZ ring threshold 35% (≥350/1000), mass threshold disabled
     CellDivisionEvent* divisionEvent = plugins->newInstance<CellDivisionEvent>(model, "CellDivision");
@@ -226,13 +245,15 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
 
     Dispose* sinkNormal   = plugins->newInstance<Dispose>(model, "Step_Done");
     Dispose* sinkDivision = plugins->newInstance<Dispose>(model, "Post_Division");
+    Dispose* sinkStarved  = plugins->newInstance<Dispose>(model, "Starved_Done");
+    Dispose* sinkDead     = plugins->newInstance<Dispose>(model, "Dead_Done");
 
     // -----------------------------------------------------------------------
     // Connections
     // -----------------------------------------------------------------------
     // Pipeline: Clock → Growth → Metabolism → ResourceAlloc →
     //           Transcription → Translation → MetabolicSSA(degradation) →
-    //           FtsZPolymerization → CellDivision
+    //           FtsZPolymerization → LifecycleCheckpoint → CellFateDecision
     clock->connectTo(growth);
     growth->connectTo(metabolism);
     metabolism->connectTo(resAlloc);
@@ -240,13 +261,24 @@ int WcmMgenitaliumKarr2012::main(int argc, char** argv) {
     txn->connectTo(tln);
     tln->connectTo(metabolicSsa);
     metabolicSsa->connectTo(ftsZ);
-    ftsZ->connectTo(divisionEvent);
+    ftsZ->connectTo(checkpoint);
+    checkpoint->connectTo(fate);
 
-    // CellDivisionEvent has two output ports:
-    //   port 0 — no division this step → normal sink
-    //   port 1 — division occurred → record + sink
-    divisionEvent->connectTo(sinkNormal);    // port 0: no division
-    divisionEvent->connectTo(recordDivision); // port 1: division event
+    // CellFateDecisionComponent:
+    //   port 0 — viable flow without division
+    //   port 1 — division-ready cell
+    //   port 2 — starved but still viable
+    //   port 3 — dead cell
+    fate->connectTo(sinkNormal);
+    fate->connectTo(divisionEvent);
+    fate->connectTo(sinkStarved);
+    fate->connectTo(sinkDead);
+
+    // CellDivisionEvent:
+    //   port 0 — fallback if division condition is no longer satisfied
+    //   port 1 — division occurred
+    divisionEvent->connectTo(sinkNormal);
+    divisionEvent->connectTo(recordDivision);
     recordDivision->connectTo(sinkDivision);
 
     // -----------------------------------------------------------------------

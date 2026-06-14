@@ -554,6 +554,9 @@ bool PluginManager::remove(Plugin* plugin) {
 
 Plugin* PluginManager::find(const std::string& pluginTypeName) {
 	for (Plugin* const plugin : *this->_plugins->list()) {
+		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+			continue;
+		}
 		if (plugin->getPluginInfo()->getPluginTypename() == pluginTypeName) {
 			return plugin;
 		}

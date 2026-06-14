@@ -50,7 +50,13 @@ void ModelCheckerDefaultImpl1::_recursiveConnectedTo(PluginManager* pluginManage
 	visited->insert(comp);
 	_model->getTracer()->trace("Connected to \"" + comp->getName() + "\"");
 	Plugin* plugin = pluginManager->find(comp->getClassname());
-	assert(plugin != nullptr);
+	if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+		unconnected->insert(comp);
+		_model->getTracer()->traceError(
+			"Component \"" + comp->getName() + "\" uses unregistered plugin type \"" + comp->getClassname() + "\".");
+		*drenoFound = false;
+		return;
+	}
 	if (plugin->getPluginInfo()->isSink() || (plugin->getPluginInfo()->isSendTransfer() && comp->getConnectionManager()->size() == 0)) {//(dynamic_cast<SinkModelComponent*> (comp) != nullptr) {
 		// it is a sink OR it can send entities throught a transfer and has no nextConnections
 		*drenoFound = true;
@@ -91,7 +97,13 @@ bool ModelCheckerDefaultImpl1::checkConnected() {
 		List<ModelComponent*> unconnected;
 		for (ModelComponent* comp : *_model->getComponentManager()) {
 			plugin = pluginManager->find(comp->getClassname());
-			assert(plugin != nullptr);
+			if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+				resultAll = false;
+				unconnected.insert(comp);
+				_model->getTracer()->traceError(
+					"Component \"" + comp->getName() + "\" uses unregistered plugin type \"" + comp->getClassname() + "\".");
+				continue;
+			}
 			if (plugin->getPluginInfo()->isSource() || plugin->getPluginInfo()->isReceiveTransfer()) { //(dynamic_cast<SourceModelComponent*> (comp) != nullptr) {
 				// it is a source component OR it can receive enetities from transfer
 				bool drenoFound = false;
