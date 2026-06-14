@@ -44,6 +44,8 @@ public:
 	WholeCellState* getWholeCellState() const;
 	void setTimeWindow(double timeWindow);
 	double getTimeWindow() const;
+	void setAdvanceWholeCellClock(bool advance);
+	bool getAdvanceWholeCellClock() const;
 	void setRandomSeed(unsigned int seed);
 	unsigned int getRandomSeed() const;
 	int getLastReactionCount() const;
@@ -81,14 +83,16 @@ private:
 	void _forwardEntity(Entity* entity);
 
 private:
-	const struct DEFAULT_VALUES {
-		std::string wholeCellStateName = "";
-		double timeWindow = 1.0;
-		unsigned int randomSeed = 42u;
-	} DEFAULT;
+		const struct DEFAULT_VALUES {
+			std::string wholeCellStateName = "";
+			double timeWindow = 1.0;
+			bool advanceWholeCellClock = true;
+			unsigned int randomSeed = 42u;
+		} DEFAULT;
 
 	WholeCellState* _wholeCellState = nullptr;
 	double _timeWindow = DEFAULT.timeWindow;
+	bool _advanceWholeCellClock = DEFAULT.advanceWholeCellClock;
 	unsigned int _randomSeed = DEFAULT.randomSeed;
 	int _lastReactionCount = 0;
 	double _lastSimulatedTime = 0.0;

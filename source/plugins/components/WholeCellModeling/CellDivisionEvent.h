@@ -22,6 +22,7 @@
  *   - This simulated cell becomes daughter 1
  *   - Cell mass and volume are set to half the pre-division values
  *   - Simulation step count is reset to 0 (new generation)
+ *   - WholeCellState lifecycle metadata is updated to reflect the new generation
  *
  * Output ports:
  *   Port 0: entity forwarded when no division occurred this step (normal flow)

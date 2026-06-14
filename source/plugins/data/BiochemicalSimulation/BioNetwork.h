@@ -81,7 +81,14 @@ protected:
 protected:
 	// virtual void _createInternalStatisticReporters() override;
 	// virtual void _createNonEditableDataDefinitions() override;
-	// virtual void _createEditableDataDefinitions() override;
+	/*!
+	 * \brief Refreshes editable associations to referenced biochemical definitions.
+	 *
+	 * BioNetwork stores model membership by name for persistence. During model
+	 * checking these associations keep referenced species, reactions, and
+	 * parameters from being pruned as orphan ModelDataDefinitions.
+	 */
+	virtual void _createEditableDataDefinitions() override;
 	// virtual void _createAttachedAttributes() override;
 
 private:

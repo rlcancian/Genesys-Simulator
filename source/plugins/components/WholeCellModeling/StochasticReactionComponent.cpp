@@ -30,6 +30,10 @@ StochasticReactionComponent::StochasticReactionComponent(Model* model, std::stri
 			std::bind(&StochasticReactionComponent::getTimeWindow, this),
 			std::bind(&StochasticReactionComponent::setTimeWindow, this, std::placeholders::_1),
 			Util::TypeOf<StochasticReactionComponent>(), getName(), "TimeWindow", "");
+	auto* propAdvanceWholeCellClock = new SimulationControlBool(
+			std::bind(&StochasticReactionComponent::getAdvanceWholeCellClock, this),
+			std::bind(&StochasticReactionComponent::setAdvanceWholeCellClock, this, std::placeholders::_1),
+			Util::TypeOf<StochasticReactionComponent>(), getName(), "AdvanceWholeCellClock", "");
 	auto* propRandomSeed = new SimulationControlUInt(
 			std::bind(&StochasticReactionComponent::getRandomSeed, this),
 			std::bind(&StochasticReactionComponent::setRandomSeed, this, std::placeholders::_1),
@@ -45,12 +49,14 @@ StochasticReactionComponent::StochasticReactionComponent(Model* model, std::stri
 
 	_parentModel->getControls()->insert(propWholeCellState);
 	_parentModel->getControls()->insert(propTimeWindow);
+	_parentModel->getControls()->insert(propAdvanceWholeCellClock);
 	_parentModel->getControls()->insert(propRandomSeed);
 	_parentModel->getControls()->insert(propLastReactionCount);
 	_parentModel->getControls()->insert(propLastSimulatedTime);
 
 	_addSimulationControl(propWholeCellState);
 	_addSimulationControl(propTimeWindow);
+	_addSimulationControl(propAdvanceWholeCellClock);
 	_addSimulationControl(propRandomSeed);
 	_addSimulationControl(propLastReactionCount);
 	_addSimulationControl(propLastSimulatedTime);
@@ -64,9 +70,10 @@ PluginInformation* StochasticReactionComponent::GetPluginInformation() {
 	info->setMinimumOutputs(1);
 	info->setMaximumOutputs(1);
 	info->setDescriptionHelp(
-		"Runs the Gillespie Direct Method SSA (Gillespie 1977) for a configurable time window "
-		"using all StochasticReactionRule definitions in the model. Reads and writes molecule "
-		"counts via the referenced WholeCellState. Implements the Q7b contract for WCM integration.");
+			"Runs the Gillespie Direct Method SSA (Gillespie 1977) for a configurable time window "
+			"using all StochasticReactionRule definitions in the model. Reads and writes molecule "
+			"counts via the referenced WholeCellState. Optionally advances WholeCellState time when "
+			"no external whole-cell checkpoint component is being used.");
 	return info;
 }
 
@@ -82,10 +89,11 @@ ModelComponent* StochasticReactionComponent::LoadInstance(Model* model, Persiste
 
 std::string StochasticReactionComponent::show() {
 	return ModelComponent::show() +
-			",wholeCellState=\"" + (_wholeCellState != nullptr ? _wholeCellState->getName() : std::string()) + "\"" +
-			",timeWindow=" + std::to_string(_timeWindow) +
-			",randomSeed=" + std::to_string(_randomSeed) +
-			",lastReactionCount=" + std::to_string(_lastReactionCount) +
+				",wholeCellState=\"" + (_wholeCellState != nullptr ? _wholeCellState->getName() : std::string()) + "\"" +
+				",timeWindow=" + std::to_string(_timeWindow) +
+				",advanceWholeCellClock=" + std::string(_advanceWholeCellClock ? "true" : "false") +
+				",randomSeed=" + std::to_string(_randomSeed) +
+				",lastReactionCount=" + std::to_string(_lastReactionCount) +
 			",lastSimulatedTime=" + std::to_string(_lastSimulatedTime);
 }
 
@@ -97,10 +105,11 @@ bool StochasticReactionComponent::_loadInstance(PersistenceRecord* fields) {
 		if (!stateName.empty()) {
 			auto* def = _parentModel->getDataManager()->getDataDefinition(Util::TypeOf<WholeCellState>(), stateName);
 			_wholeCellState = dynamic_cast<WholeCellState*>(def);
-		}
-		_timeWindow  = fields->loadField("timeWindow",  DEFAULT.timeWindow);
-		_randomSeed  = fields->loadField("randomSeed",  DEFAULT.randomSeed);
-		_rng.seed(_randomSeed);
+			}
+			_timeWindow  = fields->loadField("timeWindow",  DEFAULT.timeWindow);
+			_advanceWholeCellClock = fields->loadField("advanceWholeCellClock", DEFAULT.advanceWholeCellClock);
+			_randomSeed  = fields->loadField("randomSeed",  DEFAULT.randomSeed);
+			_rng.seed(_randomSeed);
 	}
 	return res;
 }
@@ -109,6 +118,7 @@ void StochasticReactionComponent::_saveInstance(PersistenceRecord* fields, bool 
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("wholeCellState", _wholeCellState != nullptr ? _wholeCellState->getName() : DEFAULT.wholeCellStateName, DEFAULT.wholeCellStateName, saveDefaultValues);
 	fields->saveField("timeWindow",  _timeWindow,  DEFAULT.timeWindow,  saveDefaultValues);
+	fields->saveField("advanceWholeCellClock", _advanceWholeCellClock, DEFAULT.advanceWholeCellClock, saveDefaultValues);
 	fields->saveField("randomSeed",  _randomSeed,  DEFAULT.randomSeed,  saveDefaultValues);
 }
 
@@ -158,7 +168,7 @@ void StochasticReactionComponent::_onDispatchEvent(Entity* entity, unsigned int 
 	_lastReactionCount = result.reactionCount;
 	_lastSimulatedTime = result.simulatedTime;
 
-	if (_wholeCellState != nullptr) {
+	if (_wholeCellState != nullptr && _advanceWholeCellClock) {
 		_wholeCellState->setCurrentTime(_wholeCellState->getCurrentTime() + _timeWindow);
 		_wholeCellState->incrementStep();
 	}
@@ -330,6 +340,8 @@ void StochasticReactionComponent::setWholeCellState(WholeCellState* state) { _wh
 WholeCellState* StochasticReactionComponent::getWholeCellState() const     { return _wholeCellState; }
 void StochasticReactionComponent::setTimeWindow(double timeWindow)          { _timeWindow = timeWindow; }
 double StochasticReactionComponent::getTimeWindow() const                   { return _timeWindow; }
+void StochasticReactionComponent::setAdvanceWholeCellClock(bool advance)    { _advanceWholeCellClock = advance; }
+bool StochasticReactionComponent::getAdvanceWholeCellClock() const          { return _advanceWholeCellClock; }
 void StochasticReactionComponent::setRandomSeed(unsigned int seed)          { _randomSeed = seed; _rng.seed(seed); }
 unsigned int StochasticReactionComponent::getRandomSeed() const             { return _randomSeed; }
 int StochasticReactionComponent::getLastReactionCount() const               { return _lastReactionCount; }

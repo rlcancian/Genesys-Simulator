@@ -34,6 +34,10 @@ public:
 	WholeCellState* getWholeCellState() const;
 	void setGrowthRate(double rate);
 	double getGrowthRate() const;
+	void setEnergyMetaboliteKey(std::string key);
+	std::string getEnergyMetaboliteKey() const;
+	void setEnergyHalfSaturation(double value);
+	double getEnergyHalfSaturation() const;
 	void setDensity(double density);
 	double getDensity() const;
 	void setDeltaT(double dt);
@@ -58,12 +62,16 @@ private:
 	const struct DEFAULT_VALUES {
 		std::string wholeCellStateName = "";
 		double growthRate = 2.1393e-05;  // /s — M. genitalium (parameters.json)
+		std::string energyMetaboliteKey = "";
+		double energyHalfSaturation = 0.0; // 0 disables energy gating
 		double density    = 1100.0;      // kg/m³ — states.Geometry.density
 		double deltaT     = 60.0;        // s — must match clock step
 	} DEFAULT;
 
 	WholeCellState* _wholeCellState = nullptr;
 	double _growthRate = DEFAULT.growthRate;
+	std::string _energyMetaboliteKey = DEFAULT.energyMetaboliteKey;
+	double _energyHalfSaturation = DEFAULT.energyHalfSaturation;
 	double _density    = DEFAULT.density;
 	double _deltaT     = DEFAULT.deltaT;
 };

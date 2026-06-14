@@ -1,6 +1,6 @@
 /*
  * File:   BioSimulatorRunner.cpp
- * Author: GenESyS
+ * Author: rlcancian
  *
  * Structural biochemical simulator runner data definition.
  */

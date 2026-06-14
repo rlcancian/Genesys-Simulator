@@ -44,6 +44,18 @@ public:
 	double getMetaboliteAmount(const std::string& metaboliteName) const;
 	const std::map<std::string, double>& getMetabolitePool() const;
 
+	// Compartment-specific metabolite pool access (continuous, for compartment-aware metabolism)
+	void setCompartmentMetaboliteAmount(const std::string& compartmentName, const std::string& metaboliteName, double amount);
+	double getCompartmentMetaboliteAmount(const std::string& compartmentName, const std::string& metaboliteName) const;
+	bool hasCompartmentMetaboliteAmount(const std::string& compartmentName, const std::string& metaboliteName) const;
+	const std::map<std::string, double>& getCompartmentMetabolitePool() const;
+
+	// Pathway activity access (continuous, for FBA objective/flux summaries)
+	void setPathwayActivity(const std::string& pathwayName, double activity);
+	double getPathwayActivity(const std::string& pathwayName) const;
+	bool hasPathwayActivity(const std::string& pathwayName) const;
+	const std::map<std::string, double>& getPathwayActivities() const;
+
 	// Resource budget access (integer, set by fair allocation before SSA)
 	void setResourceBudget(const std::string& speciesName, int budget);
 	int getResourceBudget(const std::string& speciesName) const;
@@ -61,6 +73,16 @@ public:
 	void setStepCount(int stepCount);
 	int getStepCount() const;
 	void incrementStep();
+
+	// Lifecycle metadata
+	void setLifecyclePhase(const std::string& phase);
+	std::string getLifecyclePhase() const;
+	void setGenerationCount(int generationCount);
+	int getGenerationCount() const;
+	void setViable(bool viable);
+	bool isViable() const;
+	void setLastDivisionTime(double time);
+	double getLastDivisionTime() const;
 
 	// JSON loading from CovertLab/WholeCell data files (MIT)
 	bool loadFixedConstants(const std::string& jsonPath);
@@ -81,29 +103,45 @@ protected:
 	virtual void _initBetweenReplications() override;
 
 private:
-	const struct DEFAULT_VALUES {
-		double cellVolume = 1.0e-15;  // 1 fL, typical M. genitalium volume
-		double cellMass = 1.0e-13;   // ~100 fg, typical M. genitalium mass
-		double currentTime = 0.0;
-		int stepCount = 0;
-		std::string fixedConstantsPath = "";
-		std::string parametersPath = "";
-	} DEFAULT;
+		const struct DEFAULT_VALUES {
+			double cellVolume = 1.0e-15;  // 1 fL, typical M. genitalium volume
+			double cellMass = 1.0e-13;   // ~100 fg, typical M. genitalium mass
+			double currentTime = 0.0;
+			int stepCount = 0;
+			std::string lifecyclePhase = "newborn";
+			int generationCount = 0;
+			bool viable = true;
+			double lastDivisionTime = -1.0;
+			std::string fixedConstantsPath = "";
+			std::string parametersPath = "";
+		} DEFAULT;
 
 	std::map<std::string, int>    _moleculeCounts;
 	std::map<std::string, int>    _initialMoleculeCounts;
 	std::map<std::string, double> _metabolitePool;
 	std::map<std::string, double> _initialMetabolitePool;
+	std::map<std::string, double> _compartmentMetabolitePool;
+	std::map<std::string, double> _initialCompartmentMetabolitePool;
+	std::map<std::string, double> _pathwayActivities;
+	std::map<std::string, double> _initialPathwayActivities;
 	std::map<std::string, int>    _resourceBudget;
 
-	double _cellVolume        = DEFAULT.cellVolume;
-	double _cellMass          = DEFAULT.cellMass;
-	double _initialCellVolume = DEFAULT.cellVolume;
-	double _initialCellMass   = DEFAULT.cellMass;
-	double _currentTime = DEFAULT.currentTime;
-	int    _stepCount   = DEFAULT.stepCount;
-	std::string _fixedConstantsPath = DEFAULT.fixedConstantsPath;
-	std::string _parametersPath     = DEFAULT.parametersPath;
+		double _cellVolume        = DEFAULT.cellVolume;
+		double _cellMass          = DEFAULT.cellMass;
+		double _initialCellVolume = DEFAULT.cellVolume;
+		double _initialCellMass   = DEFAULT.cellMass;
+		double _currentTime = DEFAULT.currentTime;
+		int    _stepCount   = DEFAULT.stepCount;
+		std::string _lifecyclePhase = DEFAULT.lifecyclePhase;
+		std::string _initialLifecyclePhase = DEFAULT.lifecyclePhase;
+		int _generationCount = DEFAULT.generationCount;
+		int _initialGenerationCount = DEFAULT.generationCount;
+		bool _viable = DEFAULT.viable;
+		bool _initialViable = DEFAULT.viable;
+		double _lastDivisionTime = DEFAULT.lastDivisionTime;
+		double _initialLastDivisionTime = DEFAULT.lastDivisionTime;
+		std::string _fixedConstantsPath = DEFAULT.fixedConstantsPath;
+		std::string _parametersPath     = DEFAULT.parametersPath;
 };
 
 #endif /* WHOLECELLSTATE_H */

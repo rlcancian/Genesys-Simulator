@@ -213,6 +213,12 @@ void CellDivisionEvent::_applyDivision() {
 	_wholeCellState->setCellMass(_wholeCellState->getCellMass() * 0.5);
 	_wholeCellState->setCellVolume(_wholeCellState->getCellVolume() * 0.5);
 
+	// Lifecycle bookkeeping for the daughter cell that remains in this state object.
+	_wholeCellState->setGenerationCount(_wholeCellState->getGenerationCount() + 1);
+	_wholeCellState->setLastDivisionTime(_wholeCellState->getCurrentTime());
+	_wholeCellState->setLifecyclePhase("post_division");
+	_wholeCellState->setViable(true);
+
 	// Reset step counter for new generation
 	_wholeCellState->setStepCount(0);
 }

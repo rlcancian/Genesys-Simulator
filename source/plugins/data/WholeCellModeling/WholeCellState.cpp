@@ -14,6 +14,14 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
+namespace {
+
+std::string makeCompartmentMetaboliteKey(const std::string& compartmentName, const std::string& metaboliteName) {
+	return compartmentName + "::" + metaboliteName;
+}
+
+} // namespace
+
 ModelDataDefinition* WholeCellState::NewInstance(Model* model, std::string name) {
 	return new WholeCellState(model, name);
 }
@@ -36,6 +44,22 @@ WholeCellState::WholeCellState(Model* model, std::string name)
 			std::bind(&WholeCellState::getStepCount, this),
 			std::bind(&WholeCellState::setStepCount, this, std::placeholders::_1),
 			Util::TypeOf<WholeCellState>(), getName(), "StepCount", "");
+	auto* propLifecyclePhase = new SimulationControlGeneric<std::string>(
+			std::bind(&WholeCellState::getLifecyclePhase, this),
+			std::bind(&WholeCellState::setLifecyclePhase, this, std::placeholders::_1),
+			Util::TypeOf<WholeCellState>(), getName(), "LifecyclePhase", "");
+	auto* propGenerationCount = new SimulationControlInt(
+			std::bind(&WholeCellState::getGenerationCount, this),
+			std::bind(&WholeCellState::setGenerationCount, this, std::placeholders::_1),
+			Util::TypeOf<WholeCellState>(), getName(), "GenerationCount", "");
+	auto* propViable = new SimulationControlBool(
+			std::bind(&WholeCellState::isViable, this),
+			std::bind(&WholeCellState::setViable, this, std::placeholders::_1),
+			Util::TypeOf<WholeCellState>(), getName(), "Viable", "");
+	auto* propLastDivisionTime = new SimulationControlDouble(
+			std::bind(&WholeCellState::getLastDivisionTime, this),
+			std::bind(&WholeCellState::setLastDivisionTime, this, std::placeholders::_1),
+			Util::TypeOf<WholeCellState>(), getName(), "LastDivisionTime", "");
 	auto* propFixedConstantsPath = new SimulationControlGeneric<std::string>(
 			std::bind(&WholeCellState::getFixedConstantsPath, this),
 			std::bind(&WholeCellState::setFixedConstantsPath, this, std::placeholders::_1),
@@ -49,6 +73,10 @@ WholeCellState::WholeCellState(Model* model, std::string name)
 	_parentModel->getControls()->insert(propCellMass);
 	_parentModel->getControls()->insert(propCurrentTime);
 	_parentModel->getControls()->insert(propStepCount);
+	_parentModel->getControls()->insert(propLifecyclePhase);
+	_parentModel->getControls()->insert(propGenerationCount);
+	_parentModel->getControls()->insert(propViable);
+	_parentModel->getControls()->insert(propLastDivisionTime);
 	_parentModel->getControls()->insert(propFixedConstantsPath);
 	_parentModel->getControls()->insert(propParametersPath);
 
@@ -56,6 +84,10 @@ WholeCellState::WholeCellState(Model* model, std::string name)
 	_addSimulationControl(propCellMass);
 	_addSimulationControl(propCurrentTime);
 	_addSimulationControl(propStepCount);
+	_addSimulationControl(propLifecyclePhase);
+	_addSimulationControl(propGenerationCount);
+	_addSimulationControl(propViable);
+	_addSimulationControl(propLastDivisionTime);
 	_addSimulationControl(propFixedConstantsPath);
 	_addSimulationControl(propParametersPath);
 }
@@ -64,9 +96,9 @@ PluginInformation* WholeCellState::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<WholeCellState>(), &WholeCellState::LoadInstance, &WholeCellState::NewInstance);
 	info->setCategory("Biologic/WholeCellModeling");
 	info->setDescriptionHelp(
-		"Shared state container for whole-cell model simulations. Holds discrete molecule counts "
-		"(for SSA), continuous metabolite pool (for FBA), resource budget (for fair allocation), "
-		"and cell geometry. Analogous to the Vivarium Store.");
+			"Shared state container for whole-cell model simulations. Holds discrete molecule counts "
+			"(for SSA), continuous metabolite pool (for FBA), resource budget (for fair allocation), "
+			"cell geometry, and lifecycle metadata. Analogous to the Vivarium Store.");
 	return info;
 }
 
@@ -86,19 +118,29 @@ std::string WholeCellState::show() {
 			",cellMass=" + std::to_string(_cellMass) +
 			",currentTime=" + std::to_string(_currentTime) +
 			",stepCount=" + std::to_string(_stepCount) +
+			",lifecyclePhase=\"" + _lifecyclePhase + "\"" +
+			",generationCount=" + std::to_string(_generationCount) +
+			",viable=" + std::string(_viable ? "true" : "false") +
+			",lastDivisionTime=" + std::to_string(_lastDivisionTime) +
 			",moleculeSpeciesCount=" + std::to_string(_moleculeCounts.size()) +
-			",metaboliteCount=" + std::to_string(_metabolitePool.size());
+			",metaboliteCount=" + std::to_string(_metabolitePool.size()) +
+			",compartmentMetaboliteCount=" + std::to_string(_compartmentMetabolitePool.size()) +
+			",pathwayActivityCount=" + std::to_string(_pathwayActivities.size());
 }
 
 bool WholeCellState::_loadInstance(PersistenceRecord* fields) {
 	bool res = ModelDataDefinition::_loadInstance(fields);
 	if (res) {
 		_cellVolume          = fields->loadField("cellVolume",          DEFAULT.cellVolume);
-		_cellMass            = fields->loadField("cellMass",            DEFAULT.cellMass);
-		_currentTime         = fields->loadField("currentTime",         DEFAULT.currentTime);
-		_stepCount           = static_cast<int>(fields->loadField("stepCount", static_cast<unsigned int>(DEFAULT.stepCount)));
-		_fixedConstantsPath  = fields->loadField("fixedConstantsPath",  DEFAULT.fixedConstantsPath);
-		_parametersPath      = fields->loadField("parametersPath",      DEFAULT.parametersPath);
+			_cellMass            = fields->loadField("cellMass",            DEFAULT.cellMass);
+			_currentTime         = fields->loadField("currentTime",         DEFAULT.currentTime);
+			_stepCount           = static_cast<int>(fields->loadField("stepCount", static_cast<unsigned int>(DEFAULT.stepCount)));
+			_lifecyclePhase      = fields->loadField("lifecyclePhase",      DEFAULT.lifecyclePhase);
+			_generationCount     = static_cast<int>(fields->loadField("generationCount", static_cast<unsigned int>(DEFAULT.generationCount)));
+			_viable              = fields->loadField("viable",              DEFAULT.viable);
+			_lastDivisionTime    = fields->loadField("lastDivisionTime",    DEFAULT.lastDivisionTime);
+			_fixedConstantsPath  = fields->loadField("fixedConstantsPath",  DEFAULT.fixedConstantsPath);
+			_parametersPath      = fields->loadField("parametersPath",      DEFAULT.parametersPath);
 
 		_moleculeCounts.clear();
 		const unsigned int moleculeCount = fields->loadField("moleculeSpeciesCount", 0u);
@@ -109,7 +151,7 @@ bool WholeCellState::_loadInstance(PersistenceRecord* fields) {
 				_moleculeCounts[speciesName] = count;
 			}
 		}
-		_initialMoleculeCounts = _moleculeCounts;
+			_initialMoleculeCounts = _moleculeCounts;
 
 		_metabolitePool.clear();
 		const unsigned int metaboliteCount = fields->loadField("metaboliteCount", 0u);
@@ -120,10 +162,36 @@ bool WholeCellState::_loadInstance(PersistenceRecord* fields) {
 				_metabolitePool[metaboliteName] = amount;
 			}
 		}
-		_initialMetabolitePool = _metabolitePool;
+			_initialMetabolitePool = _metabolitePool;
+
+		_compartmentMetabolitePool.clear();
+		const unsigned int compartmentMetaboliteCount = fields->loadField("compartmentMetaboliteCount", 0u);
+		for (unsigned int i = 0; i < compartmentMetaboliteCount; ++i) {
+			const std::string key = fields->loadField("compartmentMetaboliteKey" + Util::StrIndex(i), std::string(""));
+			const double amount = fields->loadField("compartmentMetaboliteAmount" + Util::StrIndex(i), 0.0);
+			if (!key.empty()) {
+				_compartmentMetabolitePool[key] = amount;
+			}
+		}
+			_initialCompartmentMetabolitePool = _compartmentMetabolitePool;
+
+		_pathwayActivities.clear();
+		const unsigned int pathwayActivityCount = fields->loadField("pathwayActivityCount", 0u);
+		for (unsigned int i = 0; i < pathwayActivityCount; ++i) {
+			const std::string pathwayName = fields->loadField("pathwayActivityName" + Util::StrIndex(i), std::string(""));
+			const double activity = fields->loadField("pathwayActivityValue" + Util::StrIndex(i), 0.0);
+			if (!pathwayName.empty()) {
+				_pathwayActivities[pathwayName] = activity;
+			}
+		}
+			_initialPathwayActivities = _pathwayActivities;
+			_initialLifecyclePhase = _lifecyclePhase;
+			_initialGenerationCount = _generationCount;
+			_initialViable = _viable;
+			_initialLastDivisionTime = _lastDivisionTime;
+		}
+		return res;
 	}
-	return res;
-}
 
 void WholeCellState::_saveInstance(PersistenceRecord* fields, bool saveDefaultValues) {
 	ModelDataDefinition::_saveInstance(fields, saveDefaultValues);
@@ -131,6 +199,10 @@ void WholeCellState::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 	fields->saveField("cellMass",           _cellMass,    DEFAULT.cellMass,    saveDefaultValues);
 	fields->saveField("currentTime",        _currentTime, DEFAULT.currentTime, saveDefaultValues);
 	fields->saveField("stepCount",          static_cast<unsigned int>(_stepCount), static_cast<unsigned int>(DEFAULT.stepCount), saveDefaultValues);
+	fields->saveField("lifecyclePhase",     _lifecyclePhase, DEFAULT.lifecyclePhase, saveDefaultValues);
+	fields->saveField("generationCount",    static_cast<unsigned int>(_generationCount), static_cast<unsigned int>(DEFAULT.generationCount), saveDefaultValues);
+	fields->saveField("viable",             _viable, DEFAULT.viable, saveDefaultValues);
+	fields->saveField("lastDivisionTime",   _lastDivisionTime, DEFAULT.lastDivisionTime, saveDefaultValues);
 	fields->saveField("fixedConstantsPath", _fixedConstantsPath, DEFAULT.fixedConstantsPath, saveDefaultValues);
 	fields->saveField("parametersPath",     _parametersPath,     DEFAULT.parametersPath,     saveDefaultValues);
 
@@ -149,6 +221,22 @@ void WholeCellState::_saveInstance(PersistenceRecord* fields, bool saveDefaultVa
 		fields->saveField("metaboliteAmount" + Util::StrIndex(idx), amount, 0.0,             saveDefaultValues);
 		++idx;
 	}
+
+	idx = 0u;
+	fields->saveField("compartmentMetaboliteCount", static_cast<unsigned int>(_compartmentMetabolitePool.size()), 0u, saveDefaultValues);
+	for (const auto& [key, amount] : _compartmentMetabolitePool) {
+		fields->saveField("compartmentMetaboliteKey" + Util::StrIndex(idx), key, std::string(""), saveDefaultValues);
+		fields->saveField("compartmentMetaboliteAmount" + Util::StrIndex(idx), amount, 0.0, saveDefaultValues);
+		++idx;
+	}
+
+	idx = 0u;
+	fields->saveField("pathwayActivityCount", static_cast<unsigned int>(_pathwayActivities.size()), 0u, saveDefaultValues);
+	for (const auto& [pathwayName, activity] : _pathwayActivities) {
+		fields->saveField("pathwayActivityName" + Util::StrIndex(idx), pathwayName, std::string(""), saveDefaultValues);
+		fields->saveField("pathwayActivityValue" + Util::StrIndex(idx), activity, 0.0, saveDefaultValues);
+		++idx;
+	}
 }
 
 bool WholeCellState::_check(std::string& errorMessage) {
@@ -161,10 +249,20 @@ bool WholeCellState::_check(std::string& errorMessage) {
 	if (_initialMetabolitePool.empty() && !_metabolitePool.empty()) {
 		_initialMetabolitePool = _metabolitePool;
 	}
+	if (_initialCompartmentMetabolitePool.empty() && !_compartmentMetabolitePool.empty()) {
+		_initialCompartmentMetabolitePool = _compartmentMetabolitePool;
+	}
+	if (_initialPathwayActivities.empty() && !_pathwayActivities.empty()) {
+		_initialPathwayActivities = _pathwayActivities;
+	}
 	// Geometry snapshot: always overwrite from current values because _check is called
 	// once before the first replication, at which point geometry reflects the user setup.
 	_initialCellMass   = _cellMass;
 	_initialCellVolume = _cellVolume;
+	_initialLifecyclePhase = _lifecyclePhase;
+	_initialGenerationCount = _generationCount;
+	_initialViable = _viable;
+	_initialLastDivisionTime = _lastDivisionTime;
 
 	bool resultAll = true;
 	if (getName().empty()) {
@@ -179,15 +277,25 @@ bool WholeCellState::_check(std::string& errorMessage) {
 		errorMessage += "WholeCellState \"" + getName() + "\" cellMass must be >= 0. ";
 		resultAll = false;
 	}
+	if (_generationCount < 0) {
+		errorMessage += "WholeCellState \"" + getName() + "\" generationCount must be >= 0. ";
+		resultAll = false;
+	}
 	return resultAll;
 }
 
 void WholeCellState::_initBetweenReplications() {
 	_moleculeCounts  = _initialMoleculeCounts;
 	_metabolitePool  = _initialMetabolitePool;
+	_compartmentMetabolitePool = _initialCompartmentMetabolitePool;
+	_pathwayActivities = _initialPathwayActivities;
 	_resourceBudget.clear();
 	_currentTime = DEFAULT.currentTime;
 	_stepCount   = DEFAULT.stepCount;
+	_lifecyclePhase = _initialLifecyclePhase;
+	_generationCount = _initialGenerationCount;
+	_viable = _initialViable;
+	_lastDivisionTime = _initialLastDivisionTime;
 	// Restore cell geometry so mass-based division triggers reproduce across replications.
 	// _initial* fields are snapshotted in _check() when values are set programmatically.
 	_cellMass   = _initialCellMass;
@@ -262,6 +370,34 @@ double WholeCellState::getMetaboliteAmount(const std::string& metaboliteName) co
 }
 const std::map<std::string, double>& WholeCellState::getMetabolitePool() const { return _metabolitePool; }
 
+void WholeCellState::setCompartmentMetaboliteAmount(const std::string& compartmentName, const std::string& metaboliteName, double amount) {
+	_compartmentMetabolitePool[makeCompartmentMetaboliteKey(compartmentName, metaboliteName)] = amount;
+}
+
+double WholeCellState::getCompartmentMetaboliteAmount(const std::string& compartmentName, const std::string& metaboliteName) const {
+	auto it = _compartmentMetabolitePool.find(makeCompartmentMetaboliteKey(compartmentName, metaboliteName));
+	return (it != _compartmentMetabolitePool.end()) ? it->second : 0.0;
+}
+
+bool WholeCellState::hasCompartmentMetaboliteAmount(const std::string& compartmentName, const std::string& metaboliteName) const {
+	return _compartmentMetabolitePool.count(makeCompartmentMetaboliteKey(compartmentName, metaboliteName)) > 0u;
+}
+
+const std::map<std::string, double>& WholeCellState::getCompartmentMetabolitePool() const { return _compartmentMetabolitePool; }
+
+void WholeCellState::setPathwayActivity(const std::string& pathwayName, double activity) { _pathwayActivities[pathwayName] = activity; }
+
+double WholeCellState::getPathwayActivity(const std::string& pathwayName) const {
+	auto it = _pathwayActivities.find(pathwayName);
+	return (it != _pathwayActivities.end()) ? it->second : 0.0;
+}
+
+bool WholeCellState::hasPathwayActivity(const std::string& pathwayName) const {
+	return _pathwayActivities.count(pathwayName) > 0u;
+}
+
+const std::map<std::string, double>& WholeCellState::getPathwayActivities() const { return _pathwayActivities; }
+
 void WholeCellState::setResourceBudget(const std::string& speciesName, int budget) { _resourceBudget[speciesName] = budget; }
 int  WholeCellState::getResourceBudget(const std::string& speciesName) const {
 	auto it = _resourceBudget.find(speciesName);
@@ -278,6 +414,14 @@ double WholeCellState::getCurrentTime() const         { return _currentTime; }
 void   WholeCellState::setStepCount(int stepCount)    { _stepCount = stepCount; }
 int    WholeCellState::getStepCount() const           { return _stepCount; }
 void   WholeCellState::incrementStep()                { ++_stepCount; }
+void   WholeCellState::setLifecyclePhase(const std::string& phase) { _lifecyclePhase = phase; }
+std::string WholeCellState::getLifecyclePhase() const              { return _lifecyclePhase; }
+void   WholeCellState::setGenerationCount(int generationCount)     { _generationCount = generationCount; }
+int    WholeCellState::getGenerationCount() const                  { return _generationCount; }
+void   WholeCellState::setViable(bool viable)                      { _viable = viable; }
+bool   WholeCellState::isViable() const                            { return _viable; }
+void   WholeCellState::setLastDivisionTime(double time)            { _lastDivisionTime = time; }
+double WholeCellState::getLastDivisionTime() const                 { return _lastDivisionTime; }
 
 void        WholeCellState::setFixedConstantsPath(std::string path) { _fixedConstantsPath = std::move(path); }
 std::string WholeCellState::getFixedConstantsPath() const           { return _fixedConstantsPath; }

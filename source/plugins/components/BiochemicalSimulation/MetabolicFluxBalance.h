@@ -1,6 +1,7 @@
 #ifndef METABOLICFLUXBALANCE_H
 #define METABOLICFLUXBALANCE_H
 
+#include <map>
 #include <string>
 
 #include "../../../kernel/simulator/model/ModelComponent.h"
@@ -55,6 +56,7 @@ public:
 	double getLastObjectiveValue() const;
 	void setLastMessage(std::string lastMessage);
 	std::string getLastMessage() const;
+	const std::map<std::string, double>& getLastFluxes() const;
 
 	virtual std::string show() override;
 
@@ -88,6 +90,7 @@ private:
 	bool _lastSucceeded = DEFAULT.lastSucceeded;
 	double _lastObjectiveValue = DEFAULT.lastObjectiveValue;
 	std::string _lastMessage = DEFAULT.lastMessage;
+	std::map<std::string, double> _lastFluxes;
 };
 
 #endif /* METABOLICFLUXBALANCE_H */

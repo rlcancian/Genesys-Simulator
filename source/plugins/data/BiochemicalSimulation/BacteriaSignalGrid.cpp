@@ -1,8 +1,8 @@
 /*
  * File:   BacteriaSignalGrid.cpp
- * Author: GRO
+ * Author: rlcancian
  *
- * Created on 28 de Abril de 2026
+ * Created on 28 de Abril de 2022
  */
 
 #include "plugins/data/BiochemicalSimulation/BacteriaSignalGrid.h"

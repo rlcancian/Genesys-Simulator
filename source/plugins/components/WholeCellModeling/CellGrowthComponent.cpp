@@ -24,6 +24,14 @@ CellGrowthComponent::CellGrowthComponent(Model* model, std::string name)
 			std::bind(&CellGrowthComponent::getGrowthRate, this),
 			std::bind(&CellGrowthComponent::setGrowthRate, this, std::placeholders::_1),
 			Util::TypeOf<CellGrowthComponent>(), getName(), "GrowthRate", "");
+	auto* propEnergyKey = new SimulationControlString(
+			std::bind(&CellGrowthComponent::getEnergyMetaboliteKey, this),
+			std::bind(&CellGrowthComponent::setEnergyMetaboliteKey, this, std::placeholders::_1),
+			Util::TypeOf<CellGrowthComponent>(), getName(), "EnergyMetaboliteKey", "");
+	auto* propEnergyHalfSaturation = new SimulationControlDouble(
+			std::bind(&CellGrowthComponent::getEnergyHalfSaturation, this),
+			std::bind(&CellGrowthComponent::setEnergyHalfSaturation, this, std::placeholders::_1),
+			Util::TypeOf<CellGrowthComponent>(), getName(), "EnergyHalfSaturation", "");
 	auto* propDensity = new SimulationControlDouble(
 			std::bind(&CellGrowthComponent::getDensity, this),
 			std::bind(&CellGrowthComponent::setDensity, this, std::placeholders::_1),
@@ -35,11 +43,15 @@ CellGrowthComponent::CellGrowthComponent(Model* model, std::string name)
 
 	_parentModel->getControls()->insert(propState);
 	_parentModel->getControls()->insert(propGrowthRate);
+	_parentModel->getControls()->insert(propEnergyKey);
+	_parentModel->getControls()->insert(propEnergyHalfSaturation);
 	_parentModel->getControls()->insert(propDensity);
 	_parentModel->getControls()->insert(propDeltaT);
 
 	_addSimulationControl(propState);
 	_addSimulationControl(propGrowthRate);
+	_addSimulationControl(propEnergyKey);
+	_addSimulationControl(propEnergyHalfSaturation);
 	_addSimulationControl(propDensity);
 	_addSimulationControl(propDeltaT);
 }
@@ -54,6 +66,8 @@ PluginInformation* CellGrowthComponent::GetPluginInformation() {
 	info->setDescriptionHelp(
 		"Continuous cell growth applied at each simulation step. "
 		"Applies exponential mass growth: mass += mass * growthRate * deltaT. "
+		"Optionally gates growth by a WholeCellState metabolite using a Michaelis-like "
+		"saturation factor energy / (energy + halfSaturation). "
 		"Updates cell volume from mass and cytoplasm density. "
 		"Default growthRate=2.1393e-05/s and density=1100 kg/m3 from M. genitalium parameters.json.");
 	return info;
@@ -87,6 +101,8 @@ bool CellGrowthComponent::_loadInstance(PersistenceRecord* fields) {
 			_wholeCellState = dynamic_cast<WholeCellState*>(def);
 		}
 		_growthRate = fields->loadField("growthRate", DEFAULT.growthRate);
+		_energyMetaboliteKey = fields->loadField("energyMetaboliteKey", DEFAULT.energyMetaboliteKey);
+		_energyHalfSaturation = fields->loadField("energyHalfSaturation", DEFAULT.energyHalfSaturation);
 		_density    = fields->loadField("density",    DEFAULT.density);
 		_deltaT     = fields->loadField("deltaT",     DEFAULT.deltaT);
 	}
@@ -97,6 +113,8 @@ void CellGrowthComponent::_saveInstance(PersistenceRecord* fields, bool saveDefa
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("wholeCellState", _wholeCellState != nullptr ? _wholeCellState->getName() : DEFAULT.wholeCellStateName, DEFAULT.wholeCellStateName, saveDefaultValues);
 	fields->saveField("growthRate", _growthRate, DEFAULT.growthRate, saveDefaultValues);
+	fields->saveField("energyMetaboliteKey", _energyMetaboliteKey, DEFAULT.energyMetaboliteKey, saveDefaultValues);
+	fields->saveField("energyHalfSaturation", _energyHalfSaturation, DEFAULT.energyHalfSaturation, saveDefaultValues);
 	fields->saveField("density",    _density,    DEFAULT.density,    saveDefaultValues);
 	fields->saveField("deltaT",     _deltaT,     DEFAULT.deltaT,     saveDefaultValues);
 }
@@ -109,6 +127,10 @@ bool CellGrowthComponent::_check(std::string& errorMessage) {
 	}
 	if (_growthRate < 0.0) {
 		errorMessage += "CellGrowthComponent \"" + getName() + "\" growthRate must be >= 0. ";
+		resultAll = false;
+	}
+	if (_energyHalfSaturation < 0.0) {
+		errorMessage += "CellGrowthComponent \"" + getName() + "\" energyHalfSaturation must be >= 0. ";
 		resultAll = false;
 	}
 	if (_density <= 0.0) {
@@ -138,7 +160,12 @@ void CellGrowthComponent::_onDispatchEvent(Entity* entity, unsigned int inputPor
 	}
 
 	const double mass = _wholeCellState->getCellMass();
-	const double newMass = mass + mass * _growthRate * _deltaT;
+	double growthFactor = 1.0;
+	if (!_energyMetaboliteKey.empty() && _energyHalfSaturation > 0.0) {
+		const double energy = std::max(0.0, _wholeCellState->getMetaboliteAmount(_energyMetaboliteKey));
+		growthFactor = energy / (energy + _energyHalfSaturation);
+	}
+	const double newMass = mass + mass * _growthRate * growthFactor * _deltaT;
 	const double newVolume = (newMass * 1e-3) / _density * 1e15;  // g→kg; m³→fL
 
 	_wholeCellState->setCellMass(newMass);
@@ -170,6 +197,10 @@ void CellGrowthComponent::setWholeCellState(WholeCellState* state) { _wholeCellS
 WholeCellState* CellGrowthComponent::getWholeCellState() const      { return _wholeCellState; }
 void CellGrowthComponent::setGrowthRate(double rate)                 { _growthRate = rate; }
 double CellGrowthComponent::getGrowthRate() const                    { return _growthRate; }
+void CellGrowthComponent::setEnergyMetaboliteKey(std::string key)    { _energyMetaboliteKey = std::move(key); }
+std::string CellGrowthComponent::getEnergyMetaboliteKey() const      { return _energyMetaboliteKey; }
+void CellGrowthComponent::setEnergyHalfSaturation(double value)      { _energyHalfSaturation = value; }
+double CellGrowthComponent::getEnergyHalfSaturation() const          { return _energyHalfSaturation; }
 void CellGrowthComponent::setDensity(double density)                 { _density = density; }
 double CellGrowthComponent::getDensity() const                       { return _density; }
 void CellGrowthComponent::setDeltaT(double dt)                       { _deltaT = dt; }
