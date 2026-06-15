@@ -258,13 +258,15 @@ double DataAnalyzerDefaultImpl1::_cdfAt(double x, const FitResult& fit) const {
 }
 
 unsigned int DataAnalyzerDefaultImpl1::_numParams(const std::string& distName) {
-	if (distName == "uniform") return 0;
-	if (distName == "exponential") return 1;
-	if (distName == "normal") return 2;
-	if (distName == "triangular") return 1;
-	if (distName == "erlang") return 2;
-	if (distName == "beta") return 2;
-	if (distName == "weibull") return 2;
+	// Returns the number of parameters estimated from the data.
+	// Used to compute chi-square degrees of freedom: df = k_merged - 1 - p.
+	if (distName == "uniform")     return 2;  // min, max
+	if (distName == "triangular")  return 3;  // min, mode, max
+	if (distName == "normal")      return 2;  // mean, stddev
+	if (distName == "exponential") return 1;  // mean
+	if (distName == "erlang")      return 2;  // mean, m (integer shape)
+	if (distName == "beta")        return 4;  // alpha, beta, infLimit, supLimit
+	if (distName == "weibull")     return 2;  // shape, scale
 	return 0;
 }
 
