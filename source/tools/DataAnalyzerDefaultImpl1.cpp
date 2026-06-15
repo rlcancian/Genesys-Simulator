@@ -782,6 +782,9 @@ HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testVariance(
 
 HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testAverageTwoSamples(
 		HypothesisTester_if::H1Comparition comp) {
+	if (_count == 0 || _count2 == 0) {
+		return HypothesisTester_if::TestResult(0.0, false, 0.0, 0.0, 0.0);
+	}
 	return _tester.testAverage(
 		_sampleMean, _sampleStddev, static_cast<unsigned int>(_count),
 		_sampleMean2, _sampleStddev2, static_cast<unsigned int>(_count2),
@@ -790,7 +793,7 @@ HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testAverageTwoSamples(
 
 HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testProportionTwoSamples(
 		checkProportionFunction checker, HypothesisTester_if::H1Comparition comp) {
-	if (_data.empty() || _data2.empty() || checker == nullptr) {
+	if (_count == 0 || _count2 == 0 || checker == nullptr) {
 		return HypothesisTester_if::TestResult(0.0, false, 0.0, 0.0, 0.0);
 	}
 	unsigned int s1 = 0, s2 = 0;
@@ -806,6 +809,9 @@ HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testProportionTwoSampl
 
 HypothesisTester_if::TestResult DataAnalyzerDefaultImpl1::testVarianceTwoSamples(
 		HypothesisTester_if::H1Comparition comp) {
+	if (_count == 0 || _count2 == 0) {
+		return HypothesisTester_if::TestResult(0.0, false, 0.0, 0.0, 0.0);
+	}
 	return _tester.testVariance(
 		_sampleVariance, static_cast<unsigned int>(_count),
 		_sampleVariance2, static_cast<unsigned int>(_count2),
