@@ -122,6 +122,16 @@ public:
 	virtual FitResult fitDistribution(const std::string& name) = 0;
 	virtual FitResult fitAll() = 0;
 
+	/**
+	 * @brief Fits all supported distributions and returns a ranked list.
+	 *
+	 * Returns one FitResult per distribution (uniform, triangular, normal,
+	 * exponential, erlang, beta, weibull), sorted by SSE ascending so the
+	 * best-fitting candidate comes first. Distributions that failed to fit
+	 * (valid == false) are placed at the end of the list.
+	 */
+	virtual std::vector<FitResult> fitAllRanked() = 0;
+
 	// ---- goodness-of-fit tests ------------------------------------------
 
 	virtual GoFResult chiSquareGoodnessOfFit(const std::string& distributionName, double significanceLevel) = 0;

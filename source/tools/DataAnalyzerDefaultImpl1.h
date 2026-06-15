@@ -41,6 +41,7 @@ public:
 	// distribution fitting
 	virtual FitResult fitDistribution(const std::string& name) override;
 	virtual FitResult fitAll() override;
+	virtual std::vector<FitResult> fitAllRanked() override;
 
 	// goodness-of-fit tests
 	virtual GoFResult chiSquareGoodnessOfFit(const std::string& distributionName, double significanceLevel) override;

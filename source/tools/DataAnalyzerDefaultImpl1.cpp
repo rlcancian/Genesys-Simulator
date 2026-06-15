@@ -537,6 +537,31 @@ DataAnalyzer_if::FitResult DataAnalyzerDefaultImpl1::fitAll() {
 	return fitDistribution(bestName);
 }
 
+std::vector<DataAnalyzer_if::FitResult> DataAnalyzerDefaultImpl1::fitAllRanked() {
+	// Canonical list of all supported distribution names.
+	static const std::vector<std::string> kAllNames = {
+		"uniform", "triangular", "normal", "exponential", "erlang", "beta", "weibull"
+	};
+
+	std::vector<FitResult> results;
+	results.reserve(kAllNames.size());
+	for (const auto& name : kAllNames) {
+		results.push_back(fitDistribution(name));
+	}
+
+	// Sort: valid results (finite SSE) first, ordered by SSE ascending.
+	// Invalid results go to the end in their original order.
+	std::stable_sort(results.begin(), results.end(),
+		[](const FitResult& a, const FitResult& b) {
+			if (a.valid && b.valid)  return a.sse < b.sse;
+			if (a.valid && !b.valid) return true;
+			return false;
+		});
+
+	return results;
+}
+
+
 // ============================================================
 // Goodness-of-fit tests
 // ============================================================
