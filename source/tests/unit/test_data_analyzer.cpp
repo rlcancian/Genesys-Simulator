@@ -88,4 +88,111 @@ TEST(DataAnalyzerDefaultImpl1Test, QuantilesDecilesAndCentilesReturnCorrectInter
     EXPECT_NEAR(analyzer.centile(25), 2.0, kTolerance);
 }
 
+TEST(DataAnalyzerDefaultImpl1Test, HistogramStructureGroupsDataCorrectly) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    std::vector<double> data = {1.0, 1.5, 2.0, 2.5, 3.0, 3.5, 4.0, 4.5, 5.0, 5.5};
+    analyzer.setDataValues(data);
+    
+    // min is 1.0, max is 5.5. Range = 4.5
+    // numClasses = 3
+    // width = 4.5 / 3 = 1.5
+    // Class 0: [1.0, 2.5) -> 1.0, 1.5, 2.0 (3 items)
+    // Class 1: [2.5, 4.0) -> 2.5, 3.0, 3.5 (3 items)
+    // Class 2: [4.0, 5.5] -> 4.0, 4.5, 5.0, 5.5 (4 items)
+    auto hist = analyzer.histogramStructure(3);
+    
+    EXPECT_EQ(hist.numClasses, 3);
+    ASSERT_EQ(hist.frequencies.size(), 3);
+    EXPECT_EQ(hist.frequencies[0], 3);
+    EXPECT_EQ(hist.frequencies[1], 3);
+    EXPECT_EQ(hist.frequencies[2], 4);
+    
+    EXPECT_NEAR(hist.lowerLimits[0], 1.0, kTolerance);
+    EXPECT_NEAR(hist.lowerLimits[1], 2.5, kTolerance);
+    EXPECT_NEAR(hist.lowerLimits[2], 4.0, kTolerance);
+    
+    EXPECT_NEAR(hist.relativeFrequencies[0], 0.3, kTolerance);
+    EXPECT_NEAR(hist.relativeFrequencies[1], 0.3, kTolerance);
+    EXPECT_NEAR(hist.relativeFrequencies[2], 0.4, kTolerance);
+}
+
+TEST(DataAnalyzerDefaultImpl1Test, BoxplotStatisticsDetectsOutliers) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    std::vector<double> data = {2.0, 3.0, 3.5, 4.0, 4.0, 4.5, 5.0, 15.0, -10.0};
+    analyzer.setDataValues(data);
+    
+    auto boxplot = analyzer.boxplotStatistics();
+    
+    EXPECT_NEAR(boxplot.min, -10.0, kTolerance);
+    EXPECT_NEAR(boxplot.max, 15.0, kTolerance);
+    
+    // Q1, Median, Q3 with R type 7:
+    // n=9, p=0.25 -> h=(9-1)*0.25=2 -> index 2 -> sorted[2] -> (-10, 2, 3, 3.5, 4, 4, 4.5, 5, 15) -> Q1 = 3.0
+    // Q3: p=0.75 -> h=6 -> sorted[6] -> 4.5
+    // IQR = 4.5 - 3.0 = 1.5
+    // fenceLow = 3.0 - 1.5*1.5 = 0.75
+    // fenceHigh = 4.5 + 1.5*1.5 = 6.75
+    // Outliers: < 0.75 or > 6.75 -> -10.0 and 15.0
+    
+    EXPECT_NEAR(boxplot.q1, 3.0, kTolerance);
+    EXPECT_NEAR(boxplot.q3, 4.5, kTolerance);
+    EXPECT_NEAR(boxplot.iqr, 1.5, kTolerance);
+    
+    ASSERT_EQ(boxplot.outliers.size(), 2);
+    EXPECT_TRUE(std::find(boxplot.outliers.begin(), boxplot.outliers.end(), -10.0) != boxplot.outliers.end());
+    EXPECT_TRUE(std::find(boxplot.outliers.begin(), boxplot.outliers.end(), 15.0) != boxplot.outliers.end());
+}
+
+TEST(DataAnalyzerDefaultImpl1Test, FitDistributionReturnsValidResultsForCommonDistributions) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    // Simple uniform-like data in [0, 10]
+    std::vector<double> data = {0.1, 1.2, 2.5, 3.8, 4.5, 5.5, 6.2, 7.5, 8.8, 9.9};
+    analyzer.setDataValues(data);
+    
+    auto fitUni = analyzer.fitDistribution("uniform");
+    EXPECT_TRUE(fitUni.valid);
+    EXPECT_EQ(fitUni.distributionName, "uniform");
+    EXPECT_NEAR(fitUni.param1, 0.1, kTolerance); // min
+    EXPECT_NEAR(fitUni.param2, 9.9, kTolerance); // max
+    EXPECT_TRUE(std::isfinite(fitUni.sse));
+    
+    auto fitNorm = analyzer.fitDistribution("normal");
+    EXPECT_TRUE(fitNorm.valid);
+    EXPECT_NEAR(fitNorm.param1, 5.0, kTolerance); // mean
+    EXPECT_TRUE(std::isfinite(fitNorm.param2));   // stddev
+    EXPECT_TRUE(std::isfinite(fitNorm.sse));
+}
+
+TEST(DataAnalyzerDefaultImpl1Test, FitAllRankedReturnsAllSevenDistributionsSortedBySSE) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    // Data roughly exponential
+    std::vector<double> data = {0.1, 0.2, 0.4, 0.8, 1.6, 3.2, 6.4};
+    analyzer.setDataValues(data);
+    
+    auto ranked = analyzer.fitAllRanked();
+    EXPECT_EQ(ranked.size(), 7); // uniform, triangular, normal, expo, erlang, beta, weibull
+    
+    // Check that it's sorted by SSE ascending for valid fits
+    for (size_t i = 1; i < ranked.size(); ++i) {
+        if (ranked[i-1].valid && ranked[i].valid) {
+            EXPECT_LE(ranked[i-1].sse, ranked[i].sse);
+        }
+    }
+    
+    // fitAll() should return the best one, which matches the first valid element of ranked
+    auto best = analyzer.fitAll();
+    
+    // Find first valid in ranked
+    size_t firstValid = 0;
+    while (firstValid < ranked.size() && !ranked[firstValid].valid) {
+        firstValid++;
+    }
+    
+    if (firstValid < ranked.size()) {
+        EXPECT_TRUE(best.valid);
+        EXPECT_EQ(best.distributionName, ranked[firstValid].distributionName);
+        EXPECT_EQ(best.sse, ranked[firstValid].sse);
+    }
+}
+
 } // namespace
