@@ -759,9 +759,20 @@ std::vector<double> DataAnalyzerDefaultImpl1::autocorrelation(unsigned int maxLa
 	return acf;
 }
 
-std::vector<double> DataAnalyzerDefaultImpl1::correlogram(unsigned int maxLag) {
-	// Correlogram is the ACF by lag — same computation
-	return autocorrelation(maxLag);
+DataAnalyzer_if::CorrelogramData DataAnalyzerDefaultImpl1::correlogram(unsigned int maxLag) {
+	CorrelogramData out{};
+	out.n = static_cast<unsigned int>(_count);
+	out.confidenceBound = 0.0;
+
+	if (_count < 2) {
+		return out;
+	}
+
+	out.acf = autocorrelation(maxLag);
+
+	// Bartlett 95% confidence bound for white-noise hypothesis: ±1.96/sqrt(n)
+	out.confidenceBound = 1.96 / std::sqrt(static_cast<double>(_count));
+	return out;
 }
 
 // ============================================================

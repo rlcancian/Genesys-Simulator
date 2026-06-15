@@ -50,7 +50,7 @@ public:
 	// time-series analysis
 	virtual std::vector<double> movingAverage(unsigned int window) override;
 	virtual std::vector<double> autocorrelation(unsigned int maxLag) override;
-	virtual std::vector<double> correlogram(unsigned int maxLag) override;
+	virtual CorrelogramData correlogram(unsigned int maxLag) override;
 
 	// inference: one-population confidence intervals
 	virtual HypothesisTester_if::ConfidenceInterval averageConfidenceInterval() override;

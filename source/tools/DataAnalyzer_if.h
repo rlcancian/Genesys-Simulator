@@ -77,6 +77,20 @@ public:
 		std::string conclusion;
 	};
 
+	/**
+	 * @brief Output of correlogram(): ACF values plus the 95% confidence band.
+	 *
+	 * confidenceBound is the Bartlett approximation ±1.96/sqrt(n), which is
+	 * the standard threshold for declaring an autocorrelation lag significant
+	 * at the 95% level under the white-noise null hypothesis.
+	 * acf[0] is always 1.0 (lag 0).
+	 */
+	struct CorrelogramData {
+		std::vector<double> acf;   // acf[k] = autocorrelation at lag k, k in [0, maxLag]
+		double confidenceBound;    // +/- 1.96 / sqrt(n)
+		unsigned int n;            // sample size used
+	};
+
 	// ---- data loading ----------------------------------------------------
 
 	/**
@@ -141,7 +155,17 @@ public:
 
 	virtual std::vector<double> movingAverage(unsigned int window) = 0;
 	virtual std::vector<double> autocorrelation(unsigned int maxLag) = 0;
-	virtual std::vector<double> correlogram(unsigned int maxLag) = 0;
+
+	/**
+	 * @brief Returns the autocorrelation function together with its 95%
+	 *        confidence bounds (±1.96/sqrt(n)).
+	 *
+	 * Unlike autocorrelation(), which returns only the ACF values,
+	 * correlogram() provides the information needed to render a proper
+	 * correlogram chart: the confidence band that separates significant
+	 * from non-significant lags.
+	 */
+	virtual CorrelogramData correlogram(unsigned int maxLag) = 0;
 
 	// ---- inference: one-population confidence intervals -----------------
 

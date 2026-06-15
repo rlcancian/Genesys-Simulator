@@ -248,7 +248,8 @@ void demoTimeSeries(DataAnalyzerDefaultImpl1& da) {
 	check("acf[1] > 0 for trending data", acf.size() >= 2 && acf[1] > 0.5);
 
 	const auto cgram = da.correlogram(5);
-	check("correlogram == autocorrelation", cgram == acf);
+	check("correlogram returns confidence bounds", cgram.confidenceBound > 0.0);
+	check("correlogram ACF matches autocorrelation", cgram.acf == acf);
 
 	da.setDataValues(kNormalData);  // restore
 }
