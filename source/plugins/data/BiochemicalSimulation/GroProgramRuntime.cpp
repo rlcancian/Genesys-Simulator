@@ -1,8 +1,8 @@
 /*
  * File:   GroProgramRuntime.cpp
- * Author: GRO
+ * Author: rlcancian
  *
- * Created on 17 de Abril de 2026
+ * Created on 17 de Abril de 2022
  */
 
 #include "plugins/data/BiochemicalSimulation/GroProgramRuntime.h"
@@ -906,6 +906,53 @@ bool executeCommands(const std::vector<GroProgramIr::Command>& commands, GroProg
 			mutation.type = GroProgramRuntime::ColonyMutation::Type::MapToCells;
 			mutation.arguments = command.arguments;
 			mutation.expressionText = command.arguments.front();
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "get_signal_matrix") {
+			if (!command.arguments.empty()) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime get_signal_matrix command does not accept arguments. ";
+				return false;
+			}
+
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::GetSignalMatrix;
+			result.colonyMutations.push_back(mutation);
+			++result.executedCommands;
+			continue;
+		}
+
+		if (command.functionName == "dump_signal_field") {
+			if (command.arguments.size() > 2) {
+				result.succeeded = false;
+				result.errorMessage = "GroProgramRuntime dump_signal_field command accepts zero, one or two numeric arguments. ";
+				return false;
+			}
+
+			GroProgramRuntime::ColonyMutation mutation;
+			mutation.type = GroProgramRuntime::ColonyMutation::Type::DumpSignalField;
+			mutation.arguments = command.arguments;
+			if (!command.arguments.empty()) {
+				unsigned int previewRows = 0;
+				if (!evaluatePositiveIntegerExpression(command.arguments.front(), state, previewRows, result.errorMessage, true)) {
+					result.succeeded = false;
+					result.errorMessage = "GroProgramRuntime dump_signal_field row limit failed: " + result.errorMessage;
+					return false;
+				}
+				mutation.previewRows = previewRows;
+			}
+			if (command.arguments.size() >= 2) {
+				unsigned int previewColumns = 0;
+				if (!evaluatePositiveIntegerExpression(command.arguments[1], state, previewColumns, result.errorMessage, true)) {
+					result.succeeded = false;
+					result.errorMessage = "GroProgramRuntime dump_signal_field column limit failed: " + result.errorMessage;
+					return false;
+				}
+				mutation.previewColumns = previewColumns;
+			}
 			result.colonyMutations.push_back(mutation);
 			++result.executedCommands;
 			continue;

@@ -14,7 +14,7 @@
 #ifndef LSODE_H
 #define LSODE_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/Logic/Formula.h"
 #include "../../data/Logic/Variable.h"
 
@@ -24,7 +24,7 @@
 class LSODE : public ModelComponent {
 public: // constructors
 	LSODE(Model* model, std::string name = "");
-	virtual ~LSODE() = default;
+	virtual ~LSODE() override;
 public: // virtual
 	virtual std::string show() override;
 public: // static

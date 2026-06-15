@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/Decisions/Remove.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "../../data/Grouping/EntityGroup.h"
@@ -112,7 +112,7 @@ ModelComponent* Remove::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Remove instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

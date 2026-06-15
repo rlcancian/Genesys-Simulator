@@ -16,12 +16,12 @@
 
 #include <string>
 #include <iostream>
-#include "Model.h"
+#include "model/Model.h"
 #include "Plugin.h"
 #include "../util/List.h"
 #include "LicenceManager.h"
 #include "PluginManager.h"
-#include "ModelManager.h"
+#include "model/ModelManager.h"
 //#include "ToolManager.h"
 #include "ParserManager.h"
 #include "ExperimentManager.h"

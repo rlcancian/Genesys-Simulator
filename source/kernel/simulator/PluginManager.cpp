@@ -18,11 +18,11 @@
 #include "PluginManager.h"
 #include "Simulator.h"
 #include "../TraitsKernel.h"
-#include "Attribute.h"
-#include "Counter.h"
-#include "EntityType.h"
-#include "StatisticsCollector.h"
-#include "Model.h"
+#include "essentialPlugins/Attribute.h"
+#include "essentialPlugins/Counter.h"
+#include "essentialPlugins/EntityType.h"
+#include "essentialPlugins/StatisticsCollector.h"
+#include "model/Model.h"
 
 //using namespace GenesysKernel;
 
@@ -554,6 +554,9 @@ bool PluginManager::remove(Plugin* plugin) {
 
 Plugin* PluginManager::find(const std::string& pluginTypeName) {
 	for (Plugin* const plugin : *this->_plugins->list()) {
+		if (plugin == nullptr || plugin->getPluginInfo() == nullptr) {
+			continue;
+		}
 		if (plugin->getPluginInfo()->getPluginTypename() == pluginTypeName) {
 			return plugin;
 		}

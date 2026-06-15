@@ -1,0 +1,28 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Pathway-Stress Whole-Cell MVP" version="1.0" projectTitle="" description="Whole-cell stress example using FBA, pathway projection, checkpointing, and sustained pathway-collapse response." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=240.000000 
+
+# Model Data Definitions
+122 BioSpecies "StressATP_i" 
+123 MetabolicReaction "StressATPUptake" upperBound=4.000000 productSpecies[0]="StressATP_i" products=1 
+124 MetabolicReaction "StressATPMaintenance" upperBound=1.000000 lowerBound=1.000000 reactants=1 reactantSpecies[0]="StressATP_i" 
+125 MetabolicReaction "StressBiomassFlux" upperBound=100.000000 reactants=1 reactantSpecies[0]="StressATP_i" 
+126 MetabolicNetwork "StressNetwork" compartment="cytosol" objectiveReactionName="StressBiomassFlux" reactionName[2]="StressBiomassFlux" reactionName[1]="StressATPMaintenance" reactionName[0]="StressATPUptake" reactions=3 
+127 WholeCellState "StressCellState" metaboliteName[0]="ATP" metaboliteCount=1 
+130 EntityType "entitytype" 
+131 Attribute  "Entity.ArrivalTime" 
+132 Attribute  "Entity.Type" 
+
+# Model Components
+128 Create     "StressClock" entityType="entitytype" maxCreations="4" nextId=133 timeBetweenCreations="60" 
+133 MetabolicFluxBalance "StressFluxBalance" metabolicNetwork="StressNetwork" nextId=134 
+134 MetabolicStateProjectionComponent "StressProjection" projectionScale[0]=0.500000 objectiveKind="PathwayActivity" projectionTarget[0]="ATP" objectiveTargetKey="biomass_objective" fluxBalanceComponentName="StressFluxBalance" projectionReaction[1]="StressBiomassFlux" objectiveProjectionEnabled=1 wholeCellState="StressCellState" projectionTarget[1]="biomass_flux" projectionKind[1]="PathwayActivity" nextId=135 projectionCount=2 projectionReaction[0]="StressATPUptake" 
+135 CellCycleCheckpointComponent "StressCheckpoint" wholeCellState="StressCellState" nextId=136 
+136 PathwayStressResponseComponent "StressResponse" deathAfterSteps=4 arrestAfterSteps=2 stressThreshold=4.000000 wholeCellState="StressCellState" nextId=137 
+137 CellFateDecisionComponent "StressFate" wholeCellState="StressCellState" nextId[3]=145 nextId[0]=138 nextId[2]=143 nextId[1]=141 nexts=4 
+138 Dispose    "StressSteadySink" nexts=0 
+141 Dispose    "StressDivisionSink" nexts=0 
+143 Dispose    "StressArrestSink" nexts=0 
+145 Dispose    "StressDeadSink" nexts=0 

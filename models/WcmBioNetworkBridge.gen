@@ -1,0 +1,29 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "WCM BioNetwork Bridge" version="1.0" projectTitle="" description="Didactic bridge from deterministic BioNetwork metabolism to stochastic whole-cell gene-expression components. Unitless toy parameters." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=600.000000 
+
+# Model Data Definitions
+115 BioSpecies "Nutrient" amount=120.000000 initialAmount=120.000000 
+116 BioSpecies "EnergyPool" 
+117 BioParameter "kUptake" value=0.004000 
+118 BioReaction "Nutrient_to_Energy" reactants=1 reactantSpecies[0]="Nutrient" productSpecies[0]="EnergyPool" kineticLawExpression="kUptake * Nutrient" products=1 
+119 BioNetwork "DeterministicMetabolism" reactionName[0]="Nutrient_to_Energy" reactions=1 speciesName[0]="Nutrient" species=2 speciesName[1]="EnergyPool" 
+121 WholeCellState "CellState" moleculeSpeciesName[2]="mRNA_geneA" moleculeSpeciesCount=7 moleculeSpeciesName[5]="prot_geneB" metaboliteName[0]="ATP" metaboliteCount=1 moleculeSpeciesName[4]="prot_geneA" moleculeSpeciesName[3]="mRNA_geneB" moleculeSpeciesCount[6]=1 moleculeSpeciesCount[1]=1 moleculeSpeciesName[0]="EnergyPool" moleculeSpeciesName[1]="RNAP_free" moleculeSpeciesName[6]="ribosome_free" 
+123 StochasticReactionRule "R_deg_mRNA_geneA" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_geneA" 
+124 StochasticReactionRule "R_deg_prot_geneA" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_geneA" 
+125 StochasticReactionRule "R_deg_mRNA_geneB" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_geneB" 
+126 StochasticReactionRule "R_deg_prot_geneB" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_geneB" 
+129 EntityType "entitytype" 
+130 Attribute  "Entity.ArrivalTime" 
+131 Attribute  "Entity.Type" 
+
+# Model Components
+120 BioSimulate "DeterministicMetabolismStep" bioNetwork="DeterministicMetabolism" nextId=122 
+122 BioStateProjectionComponent "EnergyProjection" projectionSource[1]="EnergyPool" projectionScale[1]=0.250000 nextId=132 projectionCount=3 wholeCellState="CellState" projectionSource[0]="EnergyPool" projectionSource[2]="EnergyPool" projectionTarget[0]="ATP" projectionTarget[1]="RNAP_free" projectionTarget[2]="ribosome_free" projectionScale[2]=0.500000 projectionKind[0]="MetaboliteAmount" 
+127 Create     "SimClock" entityType="entitytype" maxCreations="1" timeBetweenCreations="60" nextId=120 
+132 StochasticTranscription "Transcription" randomSeed=1101 timeWindow=60.000000 wholeCellState="CellState" nextId=133 bindingProbability=0.200000 
+133 StochasticTranslation "Translation" randomSeed=1202 timeWindow=60.000000 wholeCellState="CellState" nextId=134 
+134 StochasticReactionComponent "Degradation_SSA" randomSeed=1303 timeWindow=60.000000 wholeCellState="CellState" nextId=135 
+135 Dispose    "Done" nexts=0 

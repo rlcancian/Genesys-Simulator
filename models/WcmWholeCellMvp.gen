@@ -1,0 +1,29 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Whole-Cell MVP" version="1.0" projectTitle="" description="Minimal whole-cell MVP with deterministic metabolism, runtime state projection, stochastic gene expression, energy-gated growth, and mass-triggered division." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=480.000000 
+
+# Model Data Definitions
+116 BioSpecies "Nutrient" amount=200.000000 initialAmount=200.000000 
+117 BioSpecies "EnergyPool" 
+118 BioParameter "kUptake" value=0.030000 
+119 BioReaction "NutrientToEnergy" reactants=1 reactantSpecies[0]="Nutrient" productSpecies[0]="EnergyPool" kineticLawExpression="kUptake * Nutrient" products=1 
+120 BioNetwork "Metabolism" reactionName[0]="NutrientToEnergy" reactions=1 speciesName[0]="Nutrient" stepSize=5.000000 stopTime=60.000000 species=2 speciesName[1]="EnergyPool" 
+121 WholeCellState "CellState" metaboliteCount=1 metaboliteName[0]="ATP" moleculeSpeciesName[5]="ribosome_free" cellVolume=0.001000 moleculeSpeciesName[1]="mRNA_geneA" cellMass=0.000000 moleculeSpeciesName[4]="prot_geneB" moleculeSpeciesName[3]="prot_geneA" moleculeSpeciesName[2]="mRNA_geneB" moleculeSpeciesCount=6 moleculeSpeciesName[0]="RNAP_free" 
+124 EntityType "entitytype" 
+125 Attribute  "Entity.ArrivalTime" 
+126 Attribute  "Entity.Type" 
+
+# Model Components
+122 Create     "CellClock" entityType="entitytype" maxCreations="8" timeBetweenCreations="60" nextId=127 
+127 BioSimulate "BioSimulateMetabolism" bioNetwork="Metabolism" nextId=128 
+128 BioStateProjectionComponent "EnergyProjection" projectionSource[1]="EnergyPool" projectionScale[1]=0.050000 nextId=129 projectionCount=3 wholeCellState="CellState" projectionSource[0]="EnergyPool" projectionSource[2]="EnergyPool" projectionTarget[0]="ATP" projectionScale[0]=0.020000 projectionTarget[1]="RNAP_free" projectionTarget[2]="ribosome_free" projectionScale[2]=0.080000 projectionKind[0]="MetaboliteAmount" 
+129 ResourceAllocationComponent "ResourceAllocation" proteinSpeciesPrefix="prot_" wholeCellState="CellState" nextId=130 
+130 StochasticTranscription "Transcription" randomSeed=110 timeWindow=60.000000 wholeCellState="CellState" nextId=131 bindingProbability=0.400000 
+131 StochasticTranslation "Translation" randomSeed=220 timeWindow=60.000000 wholeCellState="CellState" nextId=132 
+132 CellGrowthComponent "Growth" density=1000.000000 energyMetaboliteKey="ATP" energyHalfSaturation=1.000000 growthRate=0.002500 wholeCellState="CellState" nextId=133 
+133 CellCycleCheckpointComponent "LifecycleCheckpoint" divisionMassThreshold=0.000000 wholeCellState="CellState" nextId=134 
+134 CellDivisionEvent "Division" randomSeed=330 divisionMassThreshold=0.000000 wholeCellState="CellState" nextId[0]=135 nextId[1]=138 nexts=2 
+135 Dispose    "SteadySink" nexts=0 
+138 Dispose    "DivisionSink" nexts=0 

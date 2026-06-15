@@ -12,8 +12,8 @@
  */
 
 #include "plugins/data/Grouping/EntityGroup.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -114,6 +114,7 @@ PluginInformation * EntityGroup::GetPluginInformation() {
 	text += "An EntityGroup my contain several groups indexed by that attribute.";
 	text += "Grouped entitties may be separated by a 'Separate' like coponent.";
 	info->setDescriptionHelp(text);
+	info->setCategory("Grouping");
 	return info;
 }
 
@@ -122,7 +123,7 @@ ModelDataDefinition * EntityGroup::LoadInstance(Model* model, PersistenceRecord 
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load EntityGroup instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

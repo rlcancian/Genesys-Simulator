@@ -12,8 +12,8 @@
  */
 
 #include "plugins/components/DiscreteProcessing/Delay.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -131,7 +131,7 @@ ModelComponent* Delay::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Delay instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -200,6 +200,7 @@ PluginInformation* Delay::GetPluginInformation() {
 	text += " Associated costs are calculated and allocated as well.";
 	text += " TYPICAL USES: (1) Processing a check at a bank; (2) Performing a setup on a machine; (3) Transferring a document to another department";
 	info->setDescriptionHelp(text);
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

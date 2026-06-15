@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/ModalModel/DefaultNode.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include <algorithm>
 //#include "kernel/simulator/Simulator.h"
 //#include "kernel/simulator/PluginManager.h"
@@ -203,7 +203,7 @@ ModelComponent* DefaultNode::LoadInstance(Model* model, PersistenceRecord *field
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load DefaultNode instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

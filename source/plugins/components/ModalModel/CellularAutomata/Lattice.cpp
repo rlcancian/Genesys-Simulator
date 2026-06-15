@@ -40,7 +40,7 @@ std::string Lattice::show() {
 			lastDim = cell->getPosition().at(dimensions.size() - 1);
 			m += "\n";
 		}
-		m += (std::to_string(cell->getCurrentState().getValue())[0] );
+		m += cell->getCurrentState().toString().empty() ? '?' : cell->getCurrentState().toString().front();
 	}
 	return m + "\n";
 }
@@ -67,6 +67,7 @@ bool Lattice::init() {
 			}
 			newCell->setCellNumber(cellNumber);
 			newCell->setPosition(cellNumber2NDimPosition(cellNumber));
+			newCell->setStateSet(parentCellularAutomata->getStateSet());
 			//if (newCell->getCurrentState() == nullptr) {
 			//	unsigned int numPossibleStates = parentCellularAutomata->getStateSet()->size(); //newCell->getStateSet()->getStates()->size();
 			//	unsigned int choosenState = /*std::trunc*/(unsigned int) (unif(rng) * numPossibleStates);
@@ -124,6 +125,7 @@ bool Lattice::setCellState(long cellNumber, State* state, Cell* cell) {
 	newCell->setPosition(position);
 	if (state != nullptr)
 		newCell->setCurrentState(*state);
+	newCell->setStateSet(parentCellularAutomata->getStateSet());
 	cells.at(cellNumber) = newCell;
 	return true;
 }

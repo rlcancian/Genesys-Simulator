@@ -12,7 +12,7 @@
 
 #include "plugins/data/DiscreteProcessing/Schedule.h"
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include <cmath>
 #include <sstream>
 
@@ -105,7 +105,7 @@ ModelDataDefinition* Schedule::LoadInstance(Model* model, PersistenceRecord *fie
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Schedule instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -119,6 +119,7 @@ PluginInformation* Schedule::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

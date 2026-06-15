@@ -2,6 +2,7 @@
 
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
 #include "plugins/components/ModalModel/CellularAutomata/Cell.h"
+#include "plugins/components/ModalModel/CellularAutomata/StateSet_Enumerable.h"
 
 class LocalRule_ShowNeighbordhood : public LocalRule {
 public:
@@ -11,16 +12,19 @@ public:
     virtual ~LocalRule_ShowNeighbordhood() = default;
 public:
     virtual void applyRule(Cell* cell) {
-        if (cell->getCurrentState()==stateSet->getState(1))
+        auto* enumerableStateSet = dynamic_cast<StateSet_Enumerable*>(stateSet);
+        if (cell == nullptr || enumerableStateSet == nullptr || enumerableStateSet->getStatesSize() < 3)
+            return;
+        if (cell->getCurrentState()==*enumerableStateSet->getState(1))
             cell->setNextState(cell->getCurrentState());
         else {
             for (Cell* n: cell->getNeighbors()) {
-                if (n->getCurrentState()==stateSet->getState(1)) {
-                    cell->setNextState(stateSet->getState(2));
+                if (n != nullptr && n->getCurrentState()==*enumerableStateSet->getState(1)) {
+                    cell->setNextState(*enumerableStateSet->getState(2));
                     return;
                 }
             }
-            cell->setNextState(stateSet->getState(0));
+            cell->setNextState(*enumerableStateSet->getState(0));
         }
     }
 };

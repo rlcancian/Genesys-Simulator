@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/ModalModel/CellularAutomataComp.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
@@ -48,7 +48,7 @@ ModelComponent* CellularAutomataComp::LoadInstance(Model* model, PersistenceReco
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load CellularAutomataComp instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

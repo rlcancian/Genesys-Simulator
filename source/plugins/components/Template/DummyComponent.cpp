@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/Template/DummyComponent.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 //#include "kernel/simulator/Simulator.h"
 //#include "kernel/simulator/PluginManager.h"
 
@@ -78,7 +78,7 @@ ModelComponent* DummyComponent::LoadInstance(Model* model, PersistenceRecord *fi
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load DummyComponent instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

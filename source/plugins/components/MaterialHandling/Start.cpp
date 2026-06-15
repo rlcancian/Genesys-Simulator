@@ -13,7 +13,7 @@
 
 #include "plugins/components/MaterialHandling/Start.h"
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -38,7 +38,7 @@ ModelComponent* Start::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Start instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

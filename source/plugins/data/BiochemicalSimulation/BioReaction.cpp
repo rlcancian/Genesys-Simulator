@@ -5,9 +5,9 @@
 
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
-#include "tools/BioKineticLawExpression.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
+#include "tools/Biochemical/BioKineticLawExpression.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -94,7 +94,7 @@ BioReaction::BioReaction(Model* model, std::string name) : ModelDataDefinition(m
 
 PluginInformation* BioReaction::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioReaction>(), &BioReaction::LoadInstance, &BioReaction::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setDescriptionHelp("Biochemical reaction with reactants, products, modifiers, stoichiometry, forward/reverse mass-action rate constants, and optional kinetic-law expressions.");
 	return info;
 }
@@ -104,6 +104,7 @@ ModelDataDefinition* BioReaction::LoadInstance(Model* model, PersistenceRecord *
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load BioReaction instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

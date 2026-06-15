@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
 
@@ -75,6 +75,10 @@ Buffer::Buffer(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_addSimulationControl(propSignal);
 }
 
+Buffer::~Buffer() {
+	delete _buffer;
+}
+
 std::string Buffer::show() {
 	return ModelComponent::show() + "";
 }
@@ -86,7 +90,7 @@ ModelComponent* Buffer::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Buffer instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -96,6 +100,7 @@ PluginInformation* Buffer::GetPluginInformation() {
 	info->setDescriptionHelp("//@TODO");
 	info->insertDynamicLibFileDependence("queue.so");
 	info->insertDynamicLibFileDependence("signaldata.so");
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

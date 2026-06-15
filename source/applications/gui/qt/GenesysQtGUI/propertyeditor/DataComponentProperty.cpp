@@ -150,7 +150,7 @@ void DataComponentProperty::addElement() {
     }
 
     if (!isInList(newValue.toStdString())) {
-        _editor->changeProperty(_property, newValue.toStdString(), false);
+        _editor->changeSimulationControl(_property, newValue.toStdString(), false);
         config_values();
         _notifyChanged();
     }
@@ -169,7 +169,7 @@ void DataComponentProperty::removeElement() {
     }
 
     const QString itemValue = selectedItem->text(0);
-    _editor->changeProperty(_property, itemValue.toStdString(), true);
+    _editor->changeSimulationControl(_property, itemValue.toStdString(), true);
     config_values();
     _notifyChanged();
     qInfo() << "[DataComponentProperty] removeElement exit";

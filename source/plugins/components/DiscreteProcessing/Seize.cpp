@@ -13,7 +13,7 @@
 
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include <assert.h>
@@ -83,6 +83,14 @@ Seize::Seize(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_addSimulationControl(propRequests);
 }
 
+Seize::~Seize() {
+	for (SeizableItem* item : *_seizeRequests->list()) {
+		delete item;
+	}
+	delete _seizeRequests;
+	delete _queueableItem;
+}
+
 // public
 
 std::string Seize::show() {
@@ -129,8 +137,9 @@ void Seize::removeRequest(SeizableItem* request) {
 	_seizeRequests->remove(request);
 }
 
-void Seize::setQueueableItem(QueueableItem* _queueableItem) {
-	this->_queueableItem = _queueableItem;
+void Seize::setQueueableItem(QueueableItem* newItem) {
+	delete _queueableItem;
+	_queueableItem = newItem;
 }
 
 QueueableItem* Seize::getQueueableItem() const {
@@ -162,6 +171,7 @@ PluginInformation* Seize::GetPluginInformation() {
 			" TYPICAL USES: (1) Beginning a customer order (seize the operator); (2) Starting a tax return (seize the accountant);";
 	help += " (3) Being admitted to hospital (seize the hospital room, nurse, doctor)";
 	info->setDescriptionHelp(help);
+	info->setCategory("DiscreteProcessing");
 
 	return info;
 }
@@ -172,6 +182,7 @@ ModelComponent* Seize::LoadInstance(Model* model, PersistenceRecord* fields) {
 		newComponent->_loadInstance(fields);
 	}
 	catch (const std::exception& e) {
+		newComponent->traceError("Failed to load Seize instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -180,8 +191,8 @@ ModelComponent* Seize::LoadInstance(Model* model, PersistenceRecord* fields) {
 
 void Seize::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	for (SeizableItem* seizable: *_seizeRequests->list()) {
-		unsigned int* index = new unsigned int(99999);
-		Resource* resource = _getResourceFromSeizableItem(seizable, entity, index);
+		unsigned int index = 99999;
+		Resource* resource = _getResourceFromSeizableItem(seizable, entity, &index);
 		double priority = _priority;
 		if (_priorityExpression != "") {
 			priority = _parentModel->parseExpression(_priorityExpression);
@@ -215,7 +226,7 @@ void Seize::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 			entity->setAttributeValue("Entity.Allocation." + resource->getName(),
 			                          static_cast<int>(this->_allocationType), attribIndex, true); //@TODO: Check it!
 			if (seizable->getSaveAttribute() != "") {
-				entity->setAttributeValue(seizable->getSaveAttribute(), *index, attribIndex);
+				entity->setAttributeValue(seizable->getSaveAttribute(), index, attribIndex);
 			}
 			traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this,
 			                entity->getName() + " seizes " + std::to_string(quantity) + " elements of resource \"" +
@@ -233,9 +244,10 @@ bool Seize::_loadInstance(PersistenceRecord* fields) {
 				"allocationType", static_cast<int>(DEFAULT.allocationType)));
 		this->_priority = fields->loadField("priority", DEFAULT.priority);
 		this->_priorityExpression = fields->loadField("priorityExpression", DEFAULT.priority);
-		_queueableItem = new QueueableItem(nullptr);
-		_queueableItem->setElementManager(_parentModel->getDataManager());
-		_queueableItem->loadInstance(fields);
+		QueueableItem* newQueueableItem = new QueueableItem(nullptr);
+		newQueueableItem->setElementManager(_parentModel->getDataManager());
+		newQueueableItem->loadInstance(fields);
+		setQueueableItem(newQueueableItem);
 		unsigned short numRequests = fields->loadField("resquests", DEFAULT.seizeRequestSize);
 		for (unsigned short i = 0; i < numRequests; i++) {
 			SeizableItem* item = new SeizableItem(nullptr, "", SeizableItem::SelectionRule::LARGESTREMAININGCAPACITY);
@@ -339,9 +351,9 @@ void Seize::_handlerForResourceEvent(Resource* resource) {
 		// check if all Seize requests can be seized by the entity in the queue
 		bool canSeizeAll = true;
 		unsigned int quantityRequested,quantityAvailable;
-		unsigned int* index = new unsigned int(0);
+		unsigned int index = 0;
 		for (SeizableItem* seizable: *_seizeRequests->list()) {
-			Resource* resource = _getResourceFromSeizableItem(seizable, first->getEntity(), index);
+			Resource* resource = _getResourceFromSeizableItem(seizable, first->getEntity(), &index);
 			quantityRequested = _parentModel->parseExpression(seizable->getQuantityExpression());
 			quantityAvailable = resource->getCapacity() - resource->getNumberBusy();
 			if (quantityAvailable < quantityRequested) {
@@ -398,7 +410,8 @@ Resource* Seize::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* en
 			index = 0;
 			bestValue = std::numeric_limits<double>::min();
 			for (ModelDataDefinition* dd: *seizable->getSet()->getElementSet()->list()) {
-				resource = static_cast<Resource*>(dd);
+				resource = dynamic_cast<Resource*>(dd);
+				if (resource == nullptr) { (index)++; continue; }
 				value = resource->getCapacity() - resource->getNumberBusy();
 				if (value > bestValue) {
 					bestValue = value;
@@ -421,7 +434,8 @@ Resource* Seize::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* en
 			bestValue = std::numeric_limits<double>::max();
 			index = 0;
 			for (ModelDataDefinition* dd: *seizable->getSet()->getElementSet()->list()) {
-				resource = static_cast<Resource*>(dd);
+				resource = dynamic_cast<Resource*>(dd);
+				if (resource == nullptr) { (index)++; continue; }
 				value = resource->getNumberBusy();
 				if (value < bestValue) {
 					bestValue = value;
@@ -445,7 +459,8 @@ Resource* Seize::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* en
 			unsigned int quantity = _parentModel->parseExpression(seizable->getQuantityExpression());
 			unsigned int numRecAvaliable = 0;
 			for (ModelDataDefinition* dd: *seizable->getSet()->getElementSet()->list()) {
-				resource = static_cast<Resource*>(dd);
+				resource = dynamic_cast<Resource*>(dd);
+				if (resource == nullptr) { continue; }
 				if ((resource->getCapacity() - resource->getNumberBusy()) >= quantity) {
 					// resource "avaliable"
 					numRecAvaliable++;
@@ -470,7 +485,8 @@ Resource* Seize::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* en
 					      TraceManager::Level::L9_mostDetailed);
 				}
 				for (ModelDataDefinition* dd: *seizable->getSet()->getElementSet()->list()) {
-					resource = static_cast<Resource*>(dd);
+					resource = dynamic_cast<Resource*>(dd);
+					if (resource == nullptr) { index++; continue; }
 					if (resource->getCapacity() - resource->getNumberBusy() >= quantity) {
 						// resource "avaliable"
 						bestValue++; // bestValue is always the i-th available resource index
@@ -501,8 +517,11 @@ Resource* Seize::_getResourceFromSeizableItem(SeizableItem* seizable, Entity* en
 		}
 		trace("Member of set " + set->getName() + " chosen index " + std::to_string(index),
 		      TraceManager::Level::L8_detailed);
-		resource = static_cast<Resource*>(set->getElementSet()->getAtRank(index));
-		assert(resource != nullptr);
+		resource = dynamic_cast<Resource*>(set->getElementSet()->getAtRank(index));
+		if (resource == nullptr) {
+			traceError("Set member at index " + std::to_string(index) + " of \"" + set->getName() + "\" is not a Resource");
+			return nullptr;
+		}
 	}
 	*(indexPtr) = index;
 	return resource;
@@ -534,9 +553,9 @@ void Seize::_createEditableDataDefinitions() {
 				continue;
 			}
 			_optionalEditableDataDefinitionInsert("SeizableItem" + Util::StrIndex(i), set);
-			Resource* rec;
 			for (ModelDataDefinition* datum: *seizable->getSet()->getElementSet()->list()) {
-				rec = static_cast<Resource*>(datum);
+				Resource* rec = dynamic_cast<Resource*>(datum);
+				if (rec == nullptr) { continue; }
 				rec->addReleaseResourceEventHandler(
 						Resource::SetResourceEventHandler<Seize>(&Seize::_handlerForResourceEvent, this), this,
 						_priority);

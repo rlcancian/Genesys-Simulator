@@ -2,10 +2,11 @@
 
 #include "kernel/TraitsKernel.h"
 #include "kernel/util/List.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
-#include "kernel/simulator/ModelManager.h"
+#include "../../../../../kernel/simulator/model/Model.h"
+#include "../../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Simulator.h"
+#include "plugins/data/BiochemicalSimulation/BioSimulatorRunner.h"
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioNetwork.h"
@@ -13,12 +14,18 @@
 
 #include <QDialog>
 #include <QDialogButtonBox>
+#include <QApplication>
+#include <QClipboard>
+#include <QFile>
+#include <QFileDialog>
 #include <QInputDialog>
 #include <QMainWindow>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QString>
 #include <QStringList>
+#include <QPushButton>
+#include <QTextStream>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -44,6 +51,57 @@ void showTextDialog(QWidget* parentWidget, const QString& title, const QString& 
 	layout->addWidget(editor);
 
 	auto* buttons = new QDialogButtonBox(QDialogButtonBox::Close, dialog);
+	QObject::connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
+	QObject::connect(buttons, &QDialogButtonBox::accepted, dialog, &QDialog::close);
+	layout->addWidget(buttons);
+
+	dialog->show();
+	dialog->raise();
+	dialog->activateWindow();
+}
+
+void showJsonDialog(QWidget* parentWidget, const QString& title, const QString& text, const QString& defaultFileName) {
+	auto* dialog = new QDialog(parentWidget);
+	dialog->setWindowTitle(title);
+	dialog->resize(980, 620);
+	dialog->setAttribute(Qt::WA_DeleteOnClose);
+
+	auto* layout = new QVBoxLayout(dialog);
+	auto* editor = new QPlainTextEdit(dialog);
+	editor->setReadOnly(true);
+	editor->setPlainText(text);
+	layout->addWidget(editor);
+
+	auto* buttons = new QDialogButtonBox(dialog);
+	auto* copyButton = buttons->addButton(QObject::tr("Copy JSON"), QDialogButtonBox::ActionRole);
+	auto* saveButton = buttons->addButton(QObject::tr("Save JSON..."), QDialogButtonBox::ActionRole);
+	auto* closeButton = buttons->addButton(QDialogButtonBox::Close);
+	QObject::connect(closeButton, &QPushButton::clicked, dialog, &QDialog::close);
+	QObject::connect(copyButton, &QPushButton::clicked, [editor]() {
+		// Keep the raw payload available for paste into external tools.
+		QApplication::clipboard()->setText(editor->toPlainText());
+	});
+	QObject::connect(saveButton, &QPushButton::clicked, [dialog, editor, defaultFileName, title]() {
+		const QString selectedFile = QFileDialog::getSaveFileName(
+			dialog,
+			title,
+			defaultFileName,
+			QObject::tr("JSON Files (*.json);;Text Files (*.txt);;All Files (*)"));
+		if (selectedFile.isEmpty()) {
+			return;
+		}
+
+		QFile file(selectedFile);
+		if (!file.open(QIODevice::WriteOnly | QIODevice::Truncate | QIODevice::Text)) {
+			QMessageBox::warning(dialog, QObject::tr("BioNetwork Execution"),
+			                     QObject::tr("Could not save JSON to %1.").arg(selectedFile));
+			return;
+		}
+
+		QTextStream stream(&file);
+		stream << editor->toPlainText();
+		file.close();
+	});
 	QObject::connect(buttons, &QDialogButtonBox::rejected, dialog, &QDialog::close);
 	QObject::connect(buttons, &QDialogButtonBox::accepted, dialog, &QDialog::close);
 	layout->addWidget(buttons);
@@ -397,6 +455,36 @@ QString buildAnalysisReport(Model* model, const BioNetwork* network, bool simula
 	return QString::fromStdString(out.str());
 }
 
+QString buildAnalysisJsonReport(Model* model, BioNetwork* network, bool simulatedThisPass) {
+	if (model == nullptr || network == nullptr) {
+		return QObject::tr("BioNetwork Analysis JSON\n<no network available>\n");
+	}
+
+	// Reuse the runner command so the GUI shows the same JSON payload the backend emits.
+	BioSimulatorRunner runner(model, network->getName());
+	runner.setTargetBioNetworkName(network->getName());
+	runner.setCommand("reportJson()");
+
+	std::string errorMessage;
+	if (!runner.executeCommand(errorMessage)) {
+		std::ostringstream out;
+		out << "BioNetwork Analysis JSON\n";
+		out << "network: " << network->getName() << "\n";
+		out << "simulatedThisPass: " << boolText(simulatedThisPass) << "\n";
+		out << "status: failed\n";
+		out << "error: " << errorMessage << "\n";
+		return QString::fromStdString(out.str());
+	}
+
+	std::ostringstream out;
+	out << "BioNetwork Analysis JSON\n";
+	out << "network: " << network->getName() << "\n";
+	out << "simulatedThisPass: " << boolText(simulatedThisPass) << "\n";
+	out << "payload:\n";
+	out << runner.getLastResponsePayload() << "\n";
+	return QString::fromStdString(out.str());
+}
+
 bool ensureNetworkSimulation(Model* model, QWidget* parentWidget, BioNetwork* network, std::string* errorMessage) {
 	if (network == nullptr) {
 		if (errorMessage != nullptr) {
@@ -646,6 +734,53 @@ public:
 			               buildAnalysisReport(model, network, simulatedThisPass));
 		};
 		registry->addAction(std::move(analysisAction));
+
+		GuiActionContribution analysisJsonAction;
+		analysisJsonAction.id = "actionGuiExtensionsBioNetworkAnalysisJson";
+		analysisJsonAction.menuPath = "Tools/Extensions/Biochemical";
+		analysisJsonAction.text = "Inspect BioNetwork Analysis JSON...";
+		analysisJsonAction.statusTip = "Show the JSON report generated by BioSimulatorRunner for the selected BioNetwork.";
+		analysisJsonAction.isVisible = [](const GuiExtensionRuntimeContext& context) {
+			return context.mainWindow != nullptr && context.simulator != nullptr;
+		};
+		analysisJsonAction.isEnabled = [](const GuiExtensionRuntimeContext& context) {
+			return context.mainWindow != nullptr && context.simulator != nullptr;
+		};
+		analysisJsonAction.trigger = [](const GuiExtensionRuntimeContext& context) {
+			if (context.mainWindow == nullptr || context.simulator == nullptr) {
+				return;
+			}
+
+			QWidget* parentWidget = static_cast<QWidget*>(context.mainWindow);
+			Model* model = context.simulator->getModelManager() != nullptr
+			               ? context.simulator->getModelManager()->current()
+			               : nullptr;
+			if (model == nullptr || model->getDataManager() == nullptr) {
+				QMessageBox::warning(parentWidget, QObject::tr("BioNetwork Execution"), QObject::tr("No opened model."));
+				return;
+			}
+
+			BioNetwork* network = selectBioNetwork(model, parentWidget);
+			if (network == nullptr) {
+				return;
+			}
+
+			bool simulatedThisPass = false;
+			if (network->getLastSimulationResult().empty()) {
+				std::string simulationError;
+				if (!ensureNetworkSimulation(model, parentWidget, network, &simulationError)) {
+					return;
+				}
+				simulatedThisPass = true;
+				model->setHasChanged(true);
+			}
+
+			// Present the backend JSON in a read-only dialog for quick inspection.
+			showJsonDialog(parentWidget, QObject::tr("BioNetwork Analysis JSON"),
+			               buildAnalysisJsonReport(model, network, simulatedThisPass),
+			               QString::fromStdString(network->getName() + "_analysis.json"));
+		};
+		registry->addAction(std::move(analysisJsonAction));
 	}
 };
 

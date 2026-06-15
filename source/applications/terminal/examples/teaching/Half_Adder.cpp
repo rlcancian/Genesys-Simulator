@@ -15,7 +15,7 @@
 // Model Components
 #include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
-#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
+#include "plugins/data/ExternalIntegration/SPICERunner.h"
 #include "../../../TraitsApp.h"
 
 Half_Adder::Half_Adder() {
@@ -90,4 +90,3 @@ int Half_Adder::main(int argc, char** argv) {
 
 	return 0;
 };
-

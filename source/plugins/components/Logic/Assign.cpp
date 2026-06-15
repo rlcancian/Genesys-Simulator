@@ -15,8 +15,8 @@
 #include <string>
 #include <algorithm>
 #include <cctype>
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/Logic/Variable.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
@@ -58,10 +58,17 @@ Assign::Assign(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_addSimulationControl(propAssignments);
 }
 
+Assign::~Assign() {
+	for (Assignment* item : *_assignments->list()) {
+		delete item;
+	}
+	delete _assignments;
+}
+
 std::string Assign::show() {
 	std::string txt = ModelComponent::show() + ",assignments=[";
-	for (std::list<Assignment*>::iterator it = _assignments->list()->begin(); it != _assignments->list()->end(); it++) {
-		txt += (*it)->getDestination() + "=" + (*it)->getExpression() + ",";
+	for (Assignment* let : *_assignments->list()) {
+		txt += let->getDestination() + "=" + let->getExpression() + ",";
 	}
 	txt = txt.substr(0, txt.length() - 1) + "]";
 	return txt;
@@ -109,17 +116,14 @@ ModelComponent* Assign::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Assign instance: " + std::string(e.what()));
 	}
 
 	return newComponent;
 }
 
 void Assign::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
-	Assignment* let;
-    std::list<Assignment*>* assignments = this->_assignments->list();
-    for (std::list<Assignment*>::iterator it = assignments->begin(); it != assignments->end(); it++) {
-		let = (*it);
+	for (Assignment* let : *_assignments->list()) {
 		bool expressionOk = false;
 		std::string expressionError;
 		const double value = _parentModel->parseExpression(let->getExpression(), expressionOk, expressionError);
@@ -177,12 +181,11 @@ bool Assign::_loadInstance(PersistenceRecord *fields) {
 
 void Assign::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	Assignment* let;
 	fields->saveField("assignments", _assignments->size(), DEFAULT.assignmentsSize, saveDefaultValues);
 	unsigned short i = 0;
-	for (std::list<Assignment*>::iterator it = _assignments->list()->begin(); it != _assignments->list()->end(); it++, i++) {
-		let = (*it);
+	for (Assignment* let : *_assignments->list()) {
 		let->saveInstance(fields, i, saveDefaultValues);
+		i++;
 	}
 }
 

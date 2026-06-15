@@ -153,7 +153,7 @@ ModelComponent* Process::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Process instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -312,6 +312,7 @@ PluginInformation* Process::GetPluginInformation() {
 	info->insertDynamicLibFileDependence("seize.so");
 	info->insertDynamicLibFileDependence("delay.so");
 	info->insertDynamicLibFileDependence("release.so");
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

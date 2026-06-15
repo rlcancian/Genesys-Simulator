@@ -13,7 +13,7 @@
 
 #include <fstream>
 #include "plugins/components/Continuous/LSODE.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -60,6 +60,10 @@ LSODE::LSODE(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_addSimulationControl(propDiffEquations);
 }
 
+LSODE::~LSODE() {
+	delete _diffEquations;
+}
+
 std::string LSODE::show() {
 	return ModelComponent::show() + "";
 }
@@ -69,7 +73,7 @@ ModelComponent* LSODE::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load LSODE instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

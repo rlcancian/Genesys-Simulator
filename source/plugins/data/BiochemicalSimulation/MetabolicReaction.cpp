@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -14,6 +14,8 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 #endif
 
 namespace {
+
+constexpr const char* kReactionSpeciesAttachmentPrefix = "MetabolicSpecies_";
 
 std::string termsToString(const std::vector<MetabolicReaction::StoichiometricTerm>& terms) {
 	std::string text = "{";
@@ -66,7 +68,7 @@ MetabolicReaction::MetabolicReaction(Model* model, std::string name)
 
 PluginInformation* MetabolicReaction::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<MetabolicReaction>(), &MetabolicReaction::LoadInstance, &MetabolicReaction::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical/Metabolic");
 	info->setDescriptionHelp("Metabolic reaction for constraint-based models with stoichiometry, flux bounds, and optional gene rule.");
 	return info;
 }
@@ -76,6 +78,7 @@ ModelDataDefinition* MetabolicReaction::LoadInstance(Model* model, PersistenceRe
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load MetabolicReaction instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -136,6 +139,7 @@ void MetabolicReaction::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 
 bool MetabolicReaction::_check(std::string& errorMessage) {
 	bool resultAll = true;
+	_createEditableDataDefinitions();
 	if (getName().empty()) {
 		errorMessage += "MetabolicReaction must define a non-empty name. ";
 		resultAll = false;
@@ -243,6 +247,30 @@ std::string MetabolicReaction::getGeneRule() const {
 
 // void MetabolicReaction::_createInternalStatisticReporters() { }
 
-// void MetabolicReaction::_createEditableDataDefinitions() { }
+void MetabolicReaction::_createEditableDataDefinitions() {
+	std::vector<std::string> keysToRemove;
+	for (const auto& attachedEntry : *getAttachedData()) {
+		if (attachedEntry.first.rfind(kReactionSpeciesAttachmentPrefix, 0) == 0) {
+			keysToRemove.push_back(attachedEntry.first);
+		}
+	}
+	for (const std::string& key : keysToRemove) {
+		_optionalEditableDataDefinitionRemove(key);
+	}
+
+	if (_parentModel == nullptr || _parentModel->getDataManager() == nullptr) {
+		return;
+	}
+
+	unsigned int index = 0u;
+	auto attachTermSpecies = [this, &index](const std::vector<StoichiometricTerm>& terms) {
+		for (const StoichiometricTerm& term : terms) {
+			auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), term.speciesName));
+			_optionalEditableDataDefinitionInsert(std::string(kReactionSpeciesAttachmentPrefix) + Util::StrIndex(index++), species);
+		}
+	};
+	attachTermSpecies(_reactants);
+	attachTermSpecies(_products);
+}
 
 // void MetabolicReaction::_createAttachedAttributes() { }

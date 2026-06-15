@@ -12,9 +12,9 @@
  */
 
 #include "plugins/components/MaterialHandling/Enter.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -48,7 +48,7 @@ ModelComponent* Enter::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Enter instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

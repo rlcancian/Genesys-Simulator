@@ -9,6 +9,7 @@
 #include "../animations/AnimationTransition.h"
 
 #include <QGraphicsItem>
+#include <QLabel>
 #include <QSignalBlocker>
 #include <QDebug>
 #include <Qt>
@@ -100,13 +101,10 @@ void SceneToolController::onActionZoomOutTriggered() {
     _ui->horizontalSlider_ZoomGraphical->setValue(value - TraitsGUI<GMainWindow>::zoomButtonChange);
 }
 
-/**
- * @brief Fits the scene to view and resets the zoom slider baseline.
- */
-void SceneToolController::onActionZoomAllTriggered() {
+QRectF SceneToolController::_zoomableModelBounds() const {
     ModelGraphicsScene* scene = _currentScene();
     if (scene == nullptr || scene->items().isEmpty()) {
-        return;
+        return {};
     }
 
     QList<QGraphicsItem*> userItems = scene->userOperableItems(scene->items());
@@ -117,6 +115,7 @@ void SceneToolController::onActionZoomAllTriggered() {
             }
         }
     }
+
     QRectF bounds;
     for (QGraphicsItem* item : userItems) {
         if (item == nullptr || !item->isVisible() || item->scene() != scene) {
@@ -127,18 +126,103 @@ void SceneToolController::onActionZoomAllTriggered() {
     if (!bounds.isValid() || bounds.isEmpty()) {
         bounds = scene->itemsBoundingRect();
     }
+    return bounds;
+}
+
+double SceneToolController::_currentViewScale() const {
+    return _graphicsView != nullptr ? _graphicsView->transform().m11() : 1.0;
+}
+
+double SceneToolController::_minimumZoomScale() const {
+    return 1.0e-3;
+}
+
+double SceneToolController::_maximumZoomScale() const {
+    return 2.0;
+}
+
+double SceneToolController::_zoomScaleFromSliderValue(int value) const {
+    if (_ui == nullptr || _ui->horizontalSlider_ZoomGraphical == nullptr) {
+        return _currentViewScale();
+    }
+
+    const int sliderMin = _ui->horizontalSlider_ZoomGraphical->minimum();
+    const int sliderMax = _ui->horizontalSlider_ZoomGraphical->maximum();
+    const double t = (sliderMax <= sliderMin)
+                         ? 0.0
+                         : static_cast<double>(value - sliderMin) / static_cast<double>(sliderMax - sliderMin);
+    const double minScale = _minimumZoomScale();
+    const double maxScale = _maximumZoomScale();
+    return minScale * std::pow(maxScale / minScale, std::clamp(t, 0.0, 1.0));
+}
+
+int SceneToolController::_sliderValueForZoomScale(double scale) const {
+    if (_ui == nullptr || _ui->horizontalSlider_ZoomGraphical == nullptr) {
+        return 0;
+    }
+
+    const int sliderMin = _ui->horizontalSlider_ZoomGraphical->minimum();
+    const int sliderMax = _ui->horizontalSlider_ZoomGraphical->maximum();
+    const double minScale = _minimumZoomScale();
+    const double maxScale = _maximumZoomScale();
+    const double safeScale = std::clamp(scale, minScale, maxScale);
+    const double t = (maxScale <= minScale)
+                         ? 0.0
+                         : std::log(safeScale / minScale) / std::log(maxScale / minScale);
+    const double sliderPosition = static_cast<double>(sliderMin)
+                                  + std::clamp(t, 0.0, 1.0) * static_cast<double>(sliderMax - sliderMin);
+    return static_cast<int>(std::lround(sliderPosition));
+}
+
+void SceneToolController::_syncZoomWidgetsForCurrentScale() {
+    if (_ui == nullptr || _ui->horizontalSlider_ZoomGraphical == nullptr) {
+        return;
+    }
+
+    const double scale = _currentViewScale();
+    const int sliderValue = _sliderValueForZoomScale(scale);
+    {
+        const QSignalBlocker blocker(_ui->horizontalSlider_ZoomGraphical);
+        _zoomValue = sliderValue;
+        _ui->horizontalSlider_ZoomGraphical->setValue(sliderValue);
+    }
+    if (_ui->label_ZoomValue != nullptr) {
+        _ui->label_ZoomValue->setText(QStringLiteral("%1x").arg(scale, 0, 'f', 2));
+    }
+}
+
+void SceneToolController::syncZoomWidgetsForCurrentScale() {
+    _syncZoomWidgetsForCurrentScale();
+}
+
+/**
+ * @brief Fits the scene to view and resets the zoom slider baseline.
+ */
+void SceneToolController::onActionZoomAllTriggered() {
+    const QRectF bounds = _zoomableModelBounds();
     if (!bounds.isValid() || bounds.isEmpty()) {
         return;
     }
 
     _graphicsView->resetTransform();
     _graphicsView->fitInView(bounds.adjusted(-20.0, -20.0, 20.0, 20.0), Qt::KeepAspectRatio);
-    {
-        QSignalBlocker blocker(_ui->horizontalSlider_ZoomGraphical);
-        _zoomValue = _ui->horizontalSlider_ZoomGraphical->maximum() / 2;
-        _ui->horizontalSlider_ZoomGraphical->setValue(_zoomValue);
-    }
+    _syncZoomWidgetsForCurrentScale();
     _graphicsView->centerOn(bounds.center());
+}
+
+/**
+ * @brief Restores the graphics view to the 1:1 zoom level and re-synchronizes the slider.
+ */
+void SceneToolController::onActionZoomActualSizeTriggered() {
+    const QRectF bounds = _zoomableModelBounds();
+    if (_graphicsView == nullptr || !bounds.isValid() || bounds.isEmpty()) {
+        return;
+    }
+
+    _graphicsView->resetTransform();
+    _graphicsView->scale(1.0, 1.0);
+    _graphicsView->centerOn(bounds.center());
+    _syncZoomWidgetsForCurrentScale();
 }
 
 /**
@@ -159,21 +243,7 @@ void SceneToolController::onHorizontalSliderZoomGraphicalValueChanged(int value)
         return;
     }
 
-    const int sliderMin = _ui->horizontalSlider_ZoomGraphical->minimum();
-    const int sliderMax = _ui->horizontalSlider_ZoomGraphical->maximum();
-    const double t = (sliderMax <= sliderMin)
-                         ? 0.0
-                         : static_cast<double>(value - sliderMin) / static_cast<double>(sliderMax - sliderMin);
-
-    // Slider minimum shows the entire scene (0..50000 by current scene rect),
-    // and maximum focuses to roughly a 400x400 area (smaller viewport dimension ~= 400 scene units).
-    const double minScale = std::min(static_cast<double>(viewportRect.width()) / sceneRect.width(),
-                                     static_cast<double>(viewportRect.height()) / sceneRect.height());
-    const double maxScale = std::min(static_cast<double>(viewportRect.width()),
-                                     static_cast<double>(viewportRect.height())) / 400.0;
-    const double safeMinScale = std::max(1.0e-6, minScale);
-    const double safeMaxScale = std::max(safeMinScale, maxScale);
-    const double desiredScale = safeMinScale * std::pow(safeMaxScale / safeMinScale, std::clamp(t, 0.0, 1.0));
+    const double desiredScale = _zoomScaleFromSliderValue(value);
     const QPoint viewportCenter = _graphicsView->viewport()->rect().center();
     const QPointF targetSceneCenter = _graphicsView->mapToScene(viewportCenter);
 
@@ -181,6 +251,9 @@ void SceneToolController::onHorizontalSliderZoomGraphicalValueChanged(int value)
     _graphicsView->scale(desiredScale, desiredScale);
     _graphicsView->centerOn(targetSceneCenter);
     _zoomValue = value;
+    if (_ui->label_ZoomValue != nullptr) {
+        _ui->label_ZoomValue->setText(QStringLiteral("%1x").arg(desiredScale, 0, 'f', 2));
+    }
 }
 
 /** @brief Activates the line drawing tool while preserving cursor semantics. */

@@ -18,7 +18,7 @@ Adicionar um terceiro tipo de aplicação em `source/applications`, além de Ter
 ### Evidence
 - Existe `source/applications/web/CMakeLists.txt`.
 - Existe biblioteca `genesys_web_core`.
-- Existe executável `genesys_webhook`.
+- Existe executável `genesys_web_app`.
 - Existe `main.cpp` e `BaseGenesysWebApplication.cpp` operando como entrypoint da aplicação web.
 
 ### Remaining gaps

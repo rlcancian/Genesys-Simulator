@@ -12,7 +12,7 @@
  */
 
 #include "Storage.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -80,6 +80,7 @@ double Storage::getUnitsPerArea() const {
 
 PluginInformation* Storage::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<Storage>(), &Storage::LoadInstance, &Storage::NewInstance);
+	info->setCategory("MaterialHandling");
 	return info;
 }
 
@@ -88,7 +89,7 @@ ModelDataDefinition* Storage::LoadInstance(Model* model, PersistenceRecord *fiel
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Storage instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

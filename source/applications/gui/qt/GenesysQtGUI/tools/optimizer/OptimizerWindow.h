@@ -1,7 +1,7 @@
 #ifndef OPTIMIZERWINDOW_H
 #define OPTIMIZERWINDOW_H
 
-#include "tools/OptimizerDefaultImpl1.h"
+#include "tools/Optimization/OptimizerDefaultImpl1.h"
 
 #include <QList>
 #include <QMainWindow>

@@ -3,12 +3,14 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 #include <QColor>
 
 class Plugin;
 class Simulator;
 class QPlainTextEdit;
+class QPoint;
 class QString;
 class QTreeWidget;
 class QTreeWidgetItem;
@@ -45,24 +47,34 @@ public:
     void reloadFromPluginManager() const;
     /** @brief Applies the default expansion policy for plugin category roots. */
     void applyCategoryExpansionPolicy() const;
+    /** @brief Shows the plugin-tree context menu used to reorder top-level categories. */
+    void showContextMenu(const QPoint& pos) const;
     /** @brief Inserts compatibility fake plugins used by legacy GUI flows. */
     void insertFakePlugins() const;
     /** @brief Handles plugin double-click by delegating insertion/selection behavior. */
     void handlePluginItemDoubleClicked(QTreeWidgetItem* item, int column) const;
     /** @brief Handles plugin single-click behavior without mutating model lifecycle state. */
     void handlePluginItemClicked(QTreeWidgetItem* item, int column) const;
+    /** @brief Moves a top-level category before or after its siblings. */
+    void moveTopLevelCategory(QTreeWidgetItem* item, int delta) const;
 
 private:
-    // Resolve or create the category root item with legacy styling and colors.
-    QTreeWidgetItem* ensureCategoryRoot(const QString& category, const std::string& pluginCategoryName) const;
-    // Return whether a category root should be expanded by default.
-    static bool shouldExpandCategoryRoot(const QString& category);
+    static QString topLevelCategory(const QString& categoryPath);
+    QTreeWidgetItem* ensureCategoryPath(const QString& categoryPath) const;
+    QTreeWidgetItem* ensureCategoryChild(QTreeWidgetItem* parent, const QString& segment) const;
+    QTreeWidgetItem* findDirectChild(QTreeWidgetItem* parent, const QString& text) const;
+    QColor backgroundColorForCategory(const QString& categoryPath) const;
+    void rememberTopLevelCategory(const QString& topLevelCategory) const;
+    void applyTopLevelCategoryOrder() const;
+    void applyExpansionPolicyRecursive(QTreeWidgetItem* item) const;
+    void registerCategoryColorPrefixes(const QString& categoryPath, const QColor& categoryColor) const;
 
 private:
     Simulator* _simulator;
     QTreeWidget* _pluginsTree;
     QPlainTextEdit* _modelTextEditor;
     std::map<std::string, QColor>* _pluginCategoryColor;
+    mutable std::vector<std::string> _topLevelCategoryOrder;
 };
 
 #endif /* PLUGINCATALOGCONTROLLER_H */

@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 
 
@@ -66,7 +66,7 @@ std::string SPICENode::show() {
 
 PluginInformation* SPICENode::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<SPICENode>(), &SPICENode::LoadInstance, &SPICENode::NewInstance);
-	info->setCategory("ElectronicsSimulation");
+	info->setCategory("Eletric");
 	return info;
 }
 
@@ -75,7 +75,7 @@ ModelComponent* SPICENode::LoadInstance(Model* model, PersistenceRecord *fields)
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load SPICENode instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

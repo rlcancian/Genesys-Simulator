@@ -6,15 +6,16 @@
 #include "propertyeditor/ObjectPropertyBrowser.h"
 #include "services/GraphicalModelBuilder.h"
 #include "services/GraphicalModelSerializer.h"
+#include "cellular_automata/CellularAutomataViewerWindow.h"
 
-#include "kernel/simulator/Counter.h"
-#include "kernel/simulator/GenSerializer.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../kernel/simulator/persistence/GenSerializer.h"
+#include "../../kernel/simulator/model/Model.h"
+#include "../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
-#include "kernel/simulator/StatisticsCollector.h"
+#include "../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
 #include "../../plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 #include "../../plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
@@ -28,6 +29,7 @@
 #include <QAction>
 #include <QByteArray>
 #include <QColor>
+#include <QComboBox>
 #include <QFile>
 #include <QGraphicsItemGroup>
 #include <QGraphicsLineItem>
@@ -175,6 +177,14 @@ QLineF expectedDiagramConnectionLine(const QRectF& startRect, const QRectF& endR
 }
 
 } // namespace
+
+TEST(GuiCellularAutomata, ViewerCreatesBoundaryConditionCombo) {
+    CellularAutomataViewerWindow window;
+    auto* boundaryCombo = window.findChild<QComboBox*>(QStringLiteral("cellularAutomataBoundaryCombo"));
+    ASSERT_NE(boundaryCombo, nullptr);
+    EXPECT_GE(boundaryCombo->count(), 2);
+    EXPECT_GE(boundaryCombo->findText(QStringLiteral("Fixed")), 0);
+}
 
 TEST(GuiGmddLayout, SeizeEditableReferencesStayAboveAndLowerDefinitionsUseTwoRows) {
     Simulator simulator;

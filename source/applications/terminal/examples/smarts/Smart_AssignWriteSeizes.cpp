@@ -28,8 +28,8 @@
 #include "plugins/components/InputOutput/Write.h"
 
 // Model data definitions
-#include "kernel/simulator/ModelDataManager.h"
-#include "plugins/data/DiscreteProcessing/Set.h"
+#include "kernel/simulator/model/ModelDataManager.h"
+#include "plugins/data/Logic/Set.h"
 #include "../../../TraitsApp.h"
 
 Smart_AssignWriteSeizes::Smart_AssignWriteSeizes() {

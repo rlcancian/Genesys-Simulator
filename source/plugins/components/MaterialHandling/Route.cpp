@@ -13,8 +13,8 @@
 
 #include <cassert>
 #include "plugins/components/MaterialHandling/Route.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "../../data/MaterialHandling/Sequence.h"
 #include "../../data/Logic/Label.h"
@@ -91,7 +91,7 @@ ModelComponent* Route::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Route instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

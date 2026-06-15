@@ -14,8 +14,8 @@
 #include "plugins/components/Synchronization/Match.h"
 
 #include <algorithm>
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
@@ -64,6 +64,16 @@ Match::Match(Model* model, std::string name) : ModelComponent(model, Util::TypeO
 	_addSimulationControl(propAttributeName);
 }
 
+Match::~Match() {
+	// Queue* elements are owned by the internal-data associations system and
+	// deleted by ~ModelDataDefinition(). Only the list container is freed here.
+	delete _queues;
+	for (auto& pair : *_entitiesByAttrib) {
+		delete pair.second;
+	}
+	delete _entitiesByAttrib;
+}
+
 std::string Match::show() {
 	return ModelComponent::show() + "";
 }
@@ -73,7 +83,7 @@ ModelComponent* Match::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Match instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

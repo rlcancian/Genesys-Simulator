@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/ExternalIntegration/CppCompiler.h"
 
 //extern "C" typedef void (*initBetweenReplications_t)(Model* model);
@@ -25,7 +25,7 @@ extern "C" typedef void (*onDispatchEvent_t)(Simulator* simulator, Model* model,
 class DiffEquations : public ModelComponent {
 public: //! constructors
 	DiffEquations(Model* model, std::string name = "");
-	virtual ~DiffEquations() = default;
+	virtual ~DiffEquations() override;
 
 public: //! new public user methods for this component
 	List<std::string> *getEquations() const; //!< equations should be in terms of x[i] ; f[i](x[],t)

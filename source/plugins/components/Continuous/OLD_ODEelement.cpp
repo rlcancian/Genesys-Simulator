@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/Continuous/OLD_ODEelement.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -93,6 +93,7 @@ void OLD_ODEelement::removeODEfunction(ODEfunction* function) {
 
 PluginInformation* OLD_ODEelement::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<OLD_ODEelement>(), &OLD_ODEelement::LoadInstance, &OLD_ODEelement::NewInstance);
+	info->setCategory("Continuous");
 	return info;
 }
 
@@ -101,7 +102,7 @@ ModelDataDefinition* OLD_ODEelement::LoadInstance(Model* model, PersistenceRecor
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load OLD_ODEelement instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
