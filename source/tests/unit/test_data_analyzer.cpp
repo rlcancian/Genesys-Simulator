@@ -195,4 +195,108 @@ TEST(DataAnalyzerDefaultImpl1Test, FitAllRankedReturnsAllSevenDistributionsSorte
     }
 }
 
+TEST(DataAnalyzerDefaultImpl1Test, GoodnessOfFitTestsProduceValidConclusions) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    // 50 samples of roughly normal data to pass GoF
+    std::vector<double> data = {
+        4.1, 4.3, 4.5, 4.7, 4.8, 4.9, 4.9, 5.0, 5.1, 5.2,
+        5.2, 5.3, 5.4, 5.5, 5.5, 5.6, 5.7, 5.8, 5.9, 6.0,
+        4.6, 4.8, 5.1, 5.3, 5.6, 5.9, 4.4, 5.4, 4.2, 5.8,
+        5.0, 5.0, 5.1, 4.9, 5.1, 5.0, 4.9, 5.0, 5.1, 4.8,
+        4.9, 5.2, 5.3, 4.7, 5.1, 5.0, 5.1, 5.2, 5.3, 5.4
+    };
+    analyzer.setDataValues(data);
+    
+    // chi-square test for normality
+    auto chi2 = analyzer.chiSquareGoodnessOfFit("normal", 0.05);
+    EXPECT_EQ(chi2.distributionName, "normal");
+    EXPECT_NEAR(chi2.significanceLevel, 0.05, kTolerance);
+    EXPECT_TRUE(std::isfinite(chi2.testStatistic));
+    EXPECT_TRUE(std::isfinite(chi2.pValue));
+    EXPECT_TRUE(std::isfinite(chi2.criticalValue));
+    
+    // KS test
+    auto ks = analyzer.kolmogorovSmirnov("normal", 0.05);
+    EXPECT_EQ(ks.distributionName, "normal");
+    EXPECT_NEAR(ks.significanceLevel, 0.05, kTolerance);
+    EXPECT_TRUE(std::isfinite(ks.testStatistic));
+    EXPECT_TRUE(std::isfinite(ks.pValue));
+    EXPECT_TRUE(std::isfinite(ks.criticalValue));
+}
+
+TEST(DataAnalyzerDefaultImpl1Test, TimeSeriesAnalysisReturnsCorrectMovingAverageAndCorrelogram) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    std::vector<double> data = {1.0, 2.0, 3.0, 4.0, 5.0};
+    analyzer.setDataValues(data);
+    
+    // Moving Average (window=3)
+    auto ma = analyzer.movingAverage(3);
+    ASSERT_EQ(ma.size(), 3); // n - w + 1 = 5 - 3 + 1 = 3
+    EXPECT_NEAR(ma[0], (1+2+3)/3.0, kTolerance);
+    EXPECT_NEAR(ma[1], (2+3+4)/3.0, kTolerance);
+    EXPECT_NEAR(ma[2], (3+4+5)/3.0, kTolerance);
+    
+    // Autocorrelation (maxLag=2)
+    auto acf = analyzer.autocorrelation(2);
+    ASSERT_EQ(acf.size(), 3);
+    EXPECT_NEAR(acf[0], 1.0, kTolerance); // lag 0 is always 1.0
+    
+    // Correlogram
+    auto correlogram = analyzer.correlogram(2);
+    ASSERT_EQ(correlogram.acf.size(), 3);
+    EXPECT_NEAR(correlogram.acf[0], 1.0, kTolerance);
+    EXPECT_EQ(correlogram.acf, acf);
+    EXPECT_EQ(correlogram.n, 5);
+    // 95% confidence bound: 1.96 / sqrt(5) = 1.96 / 2.236 = 0.8765
+    EXPECT_NEAR(correlogram.confidenceBound, 1.96 / std::sqrt(5.0), kTolerance);
+}
+
+TEST(DataAnalyzerDefaultImpl1Test, InferenceOnePopulationConfidenceIntervalsAreFinite) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    std::vector<double> data = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+    analyzer.setDataValues(data);
+    analyzer.setConfidenceLevel(0.95);
+    
+    auto avgCi = analyzer.averageConfidenceInterval();
+    EXPECT_TRUE(std::isfinite(avgCi.inferiorLimit()));
+    EXPECT_TRUE(std::isfinite(avgCi.superiorLimit()));
+    
+    auto varCi = analyzer.varianceConfidenceInterval();
+    EXPECT_TRUE(std::isfinite(varCi.inferiorLimit()));
+    EXPECT_TRUE(std::isfinite(varCi.superiorLimit()));
+    
+    auto propCi = analyzer.proportionConfidenceInterval([](double v){ return v > 5.0; });
+    EXPECT_TRUE(std::isfinite(propCi.inferiorLimit()));
+    EXPECT_TRUE(std::isfinite(propCi.superiorLimit()));
+}
+
+TEST(DataAnalyzerDefaultImpl1Test, InferenceTwoPopulationGuardsAgainstEmptySecondDataset) {
+    DataAnalyzerDefaultImpl1 analyzer;
+    std::vector<double> data1 = {1.0, 2.0, 3.0, 4.0, 5.0};
+    analyzer.setDataValues(data1);
+    
+    // _data2 is empty by default
+    auto tAvg = analyzer.testAverageTwoSamples(HypothesisTester_if::H1Comparition::DIFFERENT);
+    EXPECT_FALSE(tAvg.rejectH0());
+    EXPECT_EQ(tAvg.testStat(), 0.0);
+    
+    auto tVar = analyzer.testVarianceTwoSamples(HypothesisTester_if::H1Comparition::DIFFERENT);
+    EXPECT_FALSE(tVar.rejectH0());
+    EXPECT_EQ(tVar.testStat(), 0.0);
+    
+    auto tProp = analyzer.testProportionTwoSamples([](double v){ return v > 2.0; }, HypothesisTester_if::H1Comparition::DIFFERENT);
+    EXPECT_FALSE(tProp.rejectH0());
+    EXPECT_EQ(tProp.testStat(), 0.0);
+    
+    // Now load valid second dataset
+    std::vector<double> data2 = {2.0, 3.0, 4.0, 5.0, 6.0};
+    EXPECT_TRUE(analyzer.loadSecondSample(data2));
+    
+    tAvg = analyzer.testAverageTwoSamples(HypothesisTester_if::H1Comparition::DIFFERENT);
+    EXPECT_TRUE(std::isfinite(tAvg.testStat()));
+    
+    tVar = analyzer.testVarianceTwoSamples(HypothesisTester_if::H1Comparition::DIFFERENT);
+    EXPECT_TRUE(std::isfinite(tVar.testStat()));
+}
+
 } // namespace
