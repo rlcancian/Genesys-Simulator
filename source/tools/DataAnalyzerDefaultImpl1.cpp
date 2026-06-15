@@ -361,7 +361,11 @@ DataAnalyzer_if::SummaryStatistics DataAnalyzerDefaultImpl1::summaryStatistics()
 	s.stddev = _sampleStddev;
 	s.cv = (_sampleMean != 0.0) ? _sampleStddev / std::abs(_sampleMean) : std::numeric_limits<double>::quiet_NaN();
 
-	if (_count >= 2 && _sampleStddev > 0.0) {
+	// Fisher bias-corrected skewness (G1) and excess kurtosis (G2).
+	// These match the formulas used by R, SPSS and Excel.
+	// G1 requires n >= 3; G2 requires n >= 4.
+	if (_count >= 3 && _sampleStddev > 0.0) {
+		const double n = static_cast<double>(_count);
 		double m3 = 0.0, m4 = 0.0;
 		for (double x : _data) {
 			const double d = (x - _sampleMean) / _sampleStddev;
@@ -369,14 +373,24 @@ DataAnalyzer_if::SummaryStatistics DataAnalyzerDefaultImpl1::summaryStatistics()
 			m3 += d2 * d;
 			m4 += d2 * d2;
 		}
-		s.skewness = m3 / static_cast<double>(_count);
-		s.kurtosis = m4 / static_cast<double>(_count) - 3.0;
+		// G1 = [n / ((n-1)(n-2))] * sum((x-mean)/s)^3
+		s.skewness = (n / ((n - 1.0) * (n - 2.0))) * m3;
+
+		if (_count >= 4) {
+			// G2 = [n(n+1) / ((n-1)(n-2)(n-3))] * sum((x-mean)/s)^4
+			//      - 3(n-1)^2 / ((n-2)(n-3))
+			s.kurtosis = ((n * (n + 1.0)) / ((n - 1.0) * (n - 2.0) * (n - 3.0))) * m4
+			             - (3.0 * (n - 1.0) * (n - 1.0)) / ((n - 2.0) * (n - 3.0));
+		} else {
+			s.kurtosis = std::numeric_limits<double>::quiet_NaN();
+		}
 	} else {
 		s.skewness = std::numeric_limits<double>::quiet_NaN();
 		s.kurtosis = std::numeric_limits<double>::quiet_NaN();
 	}
 	return s;
 }
+
 
 double DataAnalyzerDefaultImpl1::quartile(unsigned short num) {
 	if (_sortedData.empty() || num < 1 || num > 3) {
