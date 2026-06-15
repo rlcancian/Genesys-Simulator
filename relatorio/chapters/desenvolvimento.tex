@@ -41,7 +41,28 @@ A lógica interna de \texttt{FitterDefaultImpl} foi ligeiramente refatorada: o b
 
 \subsection{Interface DataAnalyzer\_if e structs de saída (M2)}
 
-A interface \texttt{DataAnalyzer\_if} define cinco structs de saída puramente de dados, sem métodos:
+A interface \texttt{DataAnalyzer\_if} define cinco structs de saída puramente de dados, sem métodos. A arquitetura de classes pode ser resumida pelo diagrama UML a seguir:
+
+\begin{verbatim}
++-----------------------+
+|  <<interface>>        |
+|  DataAnalyzer_if      |
++-----------------------+
+           ^
+           | implements
+           |
++--------------------------+        +------------------------------+
+| DataAnalyzerDefaultImpl1 |------->| HypothesisTesterDefaultImpl1 |
++--------------------------+        +------------------------------+
+           |
+           | uses
+           v
++--------------------------+
+|    FitterDefaultImpl     |
++--------------------------+
+\end{verbatim}
+
+As structs de saída são:
 
 \begin{itemize}
     \item \texttt{SummaryStatistics} -- n, mín, máx, amplitude, média, mediana, moda, Q1, Q3, variância, desvio-padrão, CV, assimetria, curtose;

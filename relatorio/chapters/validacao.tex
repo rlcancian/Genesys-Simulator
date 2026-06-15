@@ -18,7 +18,9 @@ A validação foi integrada ao próprio executável como o comando \texttt{-{}-d
 
 \vspace{6pt}
 
-Todos os 26 testes passam com a implementação atual. A saída completa do comando é:
+Além da validação interativa via terminal, a funcionalidade do componente foi rigidamente atestada por meio de uma suíte de testes unitários automatizados desenvolvida no framework Google Test (GTest) \cite{gtest}. Os testes estão concentrados no arquivo \texttt{source/tests/unit/test\_data\_analyzer.cpp} e foram integrados ao sistema de build CMake do GenESyS. A suíte cobre casos limite (como vetor vazio em testes de duas amostras), assegura a exatidão matemática dos estimadores (como as fórmulas de Fisher \cite{fisher1930} para assimetria e curtose) e isola o comportamento da API em 13 casos de teste contendo centenas de asserções, provendo segurança contínua contra regressões.
+
+Todos os 26 testes de integração e os 13 testes unitários passam com a implementação atual. A saída completa do comando de demonstração é:
 
 \begin{verbatim}
 ============================================================

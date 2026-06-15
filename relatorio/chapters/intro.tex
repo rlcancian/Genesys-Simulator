@@ -4,4 +4,17 @@ O pacote \texttt{source/tools/} do GenESyS já contava com implementações para
 
 O objetivo deste trabalho foi implementar o componente \texttt{DataAnalyzer}: uma fachada que centraliza análise estatística descritiva, ajuste de curvas, testes de aderência, análise de séries temporais e inferência paramétrica em uma única interface, integrada ao mecanismo de traits do simulador. O tema se enquadra na diretriz 11.3.1 da proposta -- \textit{foco maior em diagnósticos adicionais e ajustes de curvas}.
 
-O trabalho foi desenvolvido por três estudantes ao longo do semestre. A implementação foi feita incrementalmente, em marcos bem definidos, cada um validado antes de avançar para o próximo. O resultado é um componente funcional, com 26 testes automatizados e pull request direcionado ao branch \texttt{2026-1} do repositório.
+O trabalho foi desenvolvido por três estudantes ao longo do semestre. A implementação foi feita incrementalmente, em marcos bem definidos, cada um validado antes de avançar para o próximo. O resultado é um componente funcional, com 26 testes no executável principal, além de uma suíte de testes unitários desenvolvida em Google Test \cite{gtest}, e o pull request direcionado ao branch \texttt{2026-1} do repositório.
+
+\subsection{Instruções de Compilação}
+
+Para compilar e executar as ferramentas e os testes unitários do componente \texttt{DataAnalyzer}, recomenda-se o uso do CMake:
+
+\begin{verbatim}
+$ cd build/
+$ cmake -S .. -B . -DBUILD_TESTING=ON
+$ cmake --build . --target genesys_tools_application
+$ cmake --build . --target genesys_test_data_analyzer
+\end{verbatim}
+
+Após a compilação, o comando de demonstração pode ser executado em \texttt{./source/tools/genesys\_tools\_application -{}-demo}, e a suíte de testes unitários através do executável \texttt{./source/tests/unit/genesys\_test\_data\_analyzer}.
