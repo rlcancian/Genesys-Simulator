@@ -1,46 +1,50 @@
 #include "plugins/components/ModalModel/CellularAutomata/Cell.h"
-#include "plugins/components/ModalModel/CellularAutomata/State.h"
 
-/* **************
- *  PUBLIC
- * **************/
-
-Cell::Cell(/*StateSet* stateSet, */long cellNum, std::vector<int> position) {
-    //this->stateSet = stateSet;
-    this->cellNum = cellNum;
-    this->position = position;
+Cell::Cell(StateSet* stateSet, long cellNum, std::vector<int> position) {
+	this->stateSet = stateSet;
+	this->cellNum = cellNum;
+	this->position = position;
+	previousState = std::make_unique<State>(0);
+	currentState = stateSet != nullptr ? stateSet->createDefaultState() : std::make_unique<State>(0);
+	nextState = currentState->clone();
 	updatePending = false;
+}
+
+Cell::Cell(long cellNum, std::vector<int> position)
+	: Cell(nullptr, cellNum, position) {
 }
 
 Cell::Cell(const Cell& orig) {
-	position.reserve(orig.position.size());
-	for (unsigned int pos : orig.position) {
-		this->position.emplace_back(pos);
-	}
-	//this->stateSet = orig.stateSet; // TODO Singleton
-	this->currentState = orig.currentState; // TODO: Singleton
+	*this = orig;
 }
 
-/* **************
- *  PUBLIC
- * **************/
+Cell& Cell::operator=(const Cell& orig) {
+	if (this == &orig) {
+		return *this;
+	}
+	position = orig.position;
+	stateSet = orig.stateSet;
+	previousState = orig.previousState != nullptr ? orig.previousState->clone() : std::make_unique<State>(0);
+	currentState = orig.currentState != nullptr ? orig.currentState->clone() : std::make_unique<State>(0);
+	nextState = orig.nextState != nullptr ? orig.nextState->clone() : currentState->clone();
+	updatePending = orig.updatePending;
+	cellNum = orig.cellNum;
+	neighbors = orig.neighbors;
+	return *this;
+}
 
 std::string Cell::show() {
-    std::string m = "num=" + std::to_string(cellNum) 
-			//+",pos=" +Util::showNDimPosition(position)
-            //+",state=(" + currentState->show()+ ")"
-            ;
-    return m;
+	return "num=" + std::to_string(cellNum) + ",state=(" + currentState->show() + ")";
 }
 
 bool Cell::updateState() {
-	if (!updatePending)
+	if (!updatePending) {
 		return false;
-    previousState = currentState;
-    currentState = nextState;
+	}
+	previousState = currentState != nullptr ? currentState->clone() : std::make_unique<State>(0);
+	currentState = nextState != nullptr ? nextState->clone() : std::make_unique<State>(0);
 	updatePending = false;
-	// TODO Notify
-    return true;
+	return true;
 }
 
 bool Cell::isUpdatePending() {
@@ -48,31 +52,40 @@ bool Cell::isUpdatePending() {
 }
 
 void Cell::draw() {
-     
 }
 
-//void Cell::applyLocalRule() {    }
-
-/* **************
- *  PUBLIC
- * **************/
-
-/*
 void Cell::setStateSet(StateSet* stateSet) {
-    this->stateSet = stateSet;
+	this->stateSet = stateSet;
+	if (this->stateSet == nullptr) {
+		return;
+	}
+	if (currentState == nullptr || !this->stateSet->contains(*currentState)) {
+		currentState = this->stateSet->createDefaultState();
+		updatePending = false;
+	}
+	if (nextState == nullptr || !this->stateSet->contains(*nextState)) {
+		nextState = currentState->clone();
+		updatePending = false;
+	}
+	if (previousState == nullptr || !this->stateSet->contains(*previousState)) {
+		previousState = currentState->clone();
+	}
 }
 
 StateSet* Cell::getStateSet() const {
-    return stateSet;
+	return stateSet;
 }
-*/ 
+
+bool Cell::acceptsState(const State& state) const {
+	return stateSet == nullptr || stateSet->contains(state);
+}
 
 void Cell::setCellNumber(long cellNum) {
-    this->cellNum = cellNum;
+	this->cellNum = cellNum;
 }
 
 long Cell::getCellNumber() const {
-    return cellNum;
+	return cellNum;
 }
 
 void Cell::setPosition(std::vector<int> position) {
@@ -80,37 +93,46 @@ void Cell::setPosition(std::vector<int> position) {
 }
 
 std::vector<int> Cell::getPosition() const {
-    return position;
+	return position;
 }
 
-void Cell::setCurrentState(State currentState) {
-    this->previousState = this->currentState;
-	this->currentState = currentState;
+bool Cell::setCurrentState(const State& currentState) {
+	if (!acceptsState(currentState)) {
+		return false;
+	}
+	previousState = this->currentState != nullptr ? this->currentState->clone() : std::make_unique<State>(0);
+	this->currentState = currentState.clone();
+	nextState = this->currentState->clone();
 	updatePending = false;
+	return true;
 }
 
-State Cell::getCurrentState() const {
-	return currentState;
+const State& Cell::getCurrentState() const {
+	return *currentState;
 }
 
-State Cell::getPreviousState() const {
-	return previousState;
+const State& Cell::getPreviousState() const {
+	return *previousState;
 }
 
-void Cell::setNextState(State nextState) {
-	this->nextState = nextState;
+bool Cell::setNextState(const State& nextState) {
+	if (!acceptsState(nextState)) {
+		return false;
+	}
+	this->nextState = nextState.clone();
 	updatePending = true;
+	return true;
 }
 
-State Cell::getNextState() const {
-	return nextState;
+const State& Cell::getNextState() const {
+	return *nextState;
 }
 
 void Cell::setNeighbors(std::vector<Cell*> neighbors) {
-    this->neighbors.reserve(neighbors.size());
-    this->neighbors = neighbors;
+	this->neighbors.reserve(neighbors.size());
+	this->neighbors = neighbors;
 }
 
 std::vector<Cell*> Cell::getNeighbors() const {
-    return neighbors;
+	return neighbors;
 }

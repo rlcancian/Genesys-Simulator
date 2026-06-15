@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <string>
 #include <vector>
 #include "plugins/components/ModalModel/CellularAutomata/State.h"
@@ -14,15 +15,25 @@ public:
 	virtual ~StateSet_Enumerable()=default;
 public:
 	virtual std::string show();
+	bool contains(const State& state) const override;
+	std::unique_ptr<State> createDefaultState() const override;
+	std::unique_ptr<State> parseState(const std::string& text) const override;
+	bool isFinite() const override;
+	bool isDiscrete() const override;
+	std::vector<std::unique_ptr<State>> enumerateStates() const override;
+	std::string name() const override;
 	unsigned int size();
 	void addState(State* state);
+	void addState(const State& state);
 	unsigned int getStatesSize();
 	State* getState(unsigned int rank);
+	const State* getState(unsigned int rank) const;
 	State* getState(std::string name);
 	void setStates(std::vector<State*> states);
 	std::vector<State*> getStates() const;
 protected:
 	CellularAutomataBase* parentCellularAutomata;
+	std::vector<std::unique_ptr<State>> ownedStates;
 	std::vector<State*> states;
 private:
 };

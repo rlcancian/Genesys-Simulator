@@ -1,6 +1,6 @@
 /*
  * File:   BioSimulatorRunner.cpp
- * Author: GenESyS
+ * Author: rlcancian
  *
  * Structural biochemical simulator runner data definition.
  */
@@ -702,6 +702,7 @@ ModelDataDefinition* BioSimulatorRunner::LoadInstance(Model* model, PersistenceR
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load BioSimulatorRunner instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

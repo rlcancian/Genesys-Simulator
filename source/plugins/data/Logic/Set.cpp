@@ -224,7 +224,7 @@ ModelDataDefinition* Set::LoadInstance(Model* model, PersistenceRecord *fields) 
     try {
         newElement->_loadInstance(fields);
     } catch (const std::exception& e) {
-
+        newElement->traceError("Failed to load Set instance: " + std::string(e.what()));
     }
     return newElement;
 }

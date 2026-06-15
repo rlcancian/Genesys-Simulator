@@ -7,7 +7,7 @@
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/model/ModelDataManager.h"
-#include "tools/BioKineticLawExpression.h"
+#include "tools/Biochemical/BioKineticLawExpression.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -104,6 +104,7 @@ ModelDataDefinition* BioReaction::LoadInstance(Model* model, PersistenceRecord *
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load BioReaction instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

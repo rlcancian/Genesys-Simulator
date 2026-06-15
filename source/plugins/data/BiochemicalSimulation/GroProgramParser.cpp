@@ -1,8 +1,8 @@
 /*
  * File:   GroProgramParser.cpp
- * Author: GRO
+ * Author: rlcancian
  *
- * Created on 17 de Abril de 2026
+ * Created on 17 de Abril de 2022
  */
 
 #include "plugins/data/BiochemicalSimulation/GroProgramParser.h"

@@ -30,7 +30,7 @@ public:
 	/*!
 	 * \brief Releases formula-owned resources.
 	 */
-	virtual ~Formula() = default;
+	virtual ~Formula() override;
 public: // virtual
 	/*!
 	 * \brief Returns a textual representation of the formula.

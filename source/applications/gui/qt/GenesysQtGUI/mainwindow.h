@@ -173,6 +173,8 @@ private slots:
 	// Legacy slot: there is no matching QAction in mainwindow.ui at this moment.
 	void on_actionToolsExperimentation_triggered();
 	void on_actionToolsOptimizator_triggered();
+	void on_actionToolsExpressionBuilder_triggered();
+	void on_actionToolsAIAssistant_triggered();
 	void on_actionToolsDataAnalyzer_triggered();
 
     void on_actionSimulatorsPluginManager_triggered();

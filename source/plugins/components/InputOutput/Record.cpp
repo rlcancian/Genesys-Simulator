@@ -142,6 +142,10 @@ std::string Record::show() {
 }
 
 void Record::setExpressionName(std::string expressionName) {
+	if (_cstatExpression != nullptr && _expressionName != expressionName) {
+		_statisticReporterRemove(_expressionName);
+		_cstatExpression = nullptr;
+	}
 	this->_expressionName = expressionName;
 	if (_cstatExpression != nullptr)
 		this->_cstatExpression->setName(getName() + "." + expressionName);
@@ -333,7 +337,7 @@ ModelComponent* Record::LoadInstance(Model* model, PersistenceRecord* fields) {
 
 void Record::_createInternalStatisticReporters() {
 	if (_reportStatistics && _cstatExpression == nullptr) {
-		_cstatExpression = new StatisticsCollector(_parentModel, getName() + "." + _expressionName, this);
+		_cstatExpression = new StatisticsCollector(_parentModel, getName() + "." + _expressionName, this, false);
 		//_parentModel->getDataDefinition()->insert(_cstatExpression);
 	}
 	if (_reportStatistics && _cstatExpression != nullptr) {

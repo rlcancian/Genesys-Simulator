@@ -1,6 +1,6 @@
 /*
  * File:   BioRunnerCommand.h
- * Author: GenESyS
+ * Author: rlcancian
  *
  * Component that executes BioSimulatorRunner commands when entities arrive.
  */

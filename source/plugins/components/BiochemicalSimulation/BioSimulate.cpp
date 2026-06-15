@@ -1,6 +1,6 @@
 /*
  * File:   BioSimulate.cpp
- * Author: GenESyS
+ * Author: rlcancian
  *
  * Component that executes BioNetwork simulation when entities arrive.
  */

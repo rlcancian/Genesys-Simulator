@@ -108,6 +108,20 @@ private:
 		return text.substr(first, last - first);
 	}
 
+	// Returns true when every comma-separated token in index consists of digits only
+	// (or when index is empty, representing the scalar position).
+	static bool isNumericKey(const std::string& index) {
+		if (index.empty()) {
+			return true;
+		}
+		for (char c : index) {
+			if (!std::isdigit(static_cast<unsigned char>(c)) && c != ',' && c != ' ' && c != '\t') {
+				return false;
+			}
+		}
+		return true;
+	}
+
 	static std::vector<unsigned int> parseIndex(const std::string& index) {
 		std::vector<unsigned int> parsed;
 		if (index.empty()) {
@@ -171,6 +185,10 @@ private:
 			if (entry.first.empty()) {
 				continue;
 			}
+			// Skip non-numeric string keys — they live only in the sparse map.
+			if (!isNumericKey(entry.first)) {
+				continue;
+			}
 			const std::vector<unsigned int> indexes = parseIndex(entry.first);
 			const std::size_t linear = linearIndex(indexes);
 			if (linear != static_cast<std::size_t>(-1) && linear < _denseValues.size()) {
@@ -181,17 +199,26 @@ private:
 	}
 
 	void syncCacheFromDense() {
+		// Preserve non-numeric string keys across the rebuild.
+		std::map<std::string, double> stringKeyed;
+		for (const auto& entry : _values) {
+			if (!entry.first.empty() && !isNumericKey(entry.first)) {
+				stringKeyed.insert(entry);
+			}
+		}
 		_values.clear();
 		if (_hasScalarValue) {
 			_values[""] = _scalarValue;
 		}
 		if (!_denseActive) {
+			_values.insert(stringKeyed.begin(), stringKeyed.end());
 			return;
 		}
 		if (_dimensionSizes.empty()) {
 			if (!_denseValues.empty() && !_hasScalarValue) {
 				_values[""] = _denseValues.front();
 			}
+			_values.insert(stringKeyed.begin(), stringKeyed.end());
 			return;
 		}
 		std::vector<unsigned int> indexes;
@@ -210,6 +237,7 @@ private:
 			}
 			_values[makeIndexKey(indexes)] = _denseValues[linear];
 		}
+		_values.insert(stringKeyed.begin(), stringKeyed.end());
 	}
 
 	void ensureDenseForIndex(const std::vector<unsigned int>& indexes) {
@@ -297,11 +325,18 @@ inline double SparseValueStore::value(const std::string& index) const {
 	if (index.empty() && _hasScalarValue) {
 		return _scalarValue;
 	}
+	// Non-numeric string keys (e.g. "slot", "pi") bypass dense storage.
+	if (!index.empty() && !isNumericKey(index)) {
+		const auto it = _values.find(index);
+		return (it != _values.end()) ? it->second : 0.0;
+	}
 	if (_denseActive) {
 		const std::vector<unsigned int> indexes = parseIndex(index);
 		const std::size_t linear = linearIndex(indexes);
 		if (linear == static_cast<std::size_t>(-1) || linear >= _denseValues.size()) {
-			return 0.0;
+			// Dimension count mismatch or out of bounds — fall back to sparse map.
+			const auto it = _values.find(normalizeIndexKey(index));
+			return (it != _values.end()) ? it->second : 0.0;
 		}
 		return _denseValues[linear];
 	}
@@ -323,6 +358,12 @@ inline void SparseValueStore::setValue(double value, const std::string& index) {
 			}
 			_denseValues.front() = value;
 		}
+		return;
+	}
+	// Non-numeric string keys (e.g. "slot", "pi") are stored directly in the
+	// sparse map without touching the dense storage or dimension metadata.
+	if (!isNumericKey(index)) {
+		_values[index] = value;
 		return;
 	}
 	const std::vector<unsigned int> indexes = parseIndex(index);

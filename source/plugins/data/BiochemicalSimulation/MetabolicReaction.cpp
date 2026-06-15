@@ -15,6 +15,8 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 
 namespace {
 
+constexpr const char* kReactionSpeciesAttachmentPrefix = "MetabolicSpecies_";
+
 std::string termsToString(const std::vector<MetabolicReaction::StoichiometricTerm>& terms) {
 	std::string text = "{";
 	for (const MetabolicReaction::StoichiometricTerm& term : terms) {
@@ -76,6 +78,7 @@ ModelDataDefinition* MetabolicReaction::LoadInstance(Model* model, PersistenceRe
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load MetabolicReaction instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -136,6 +139,7 @@ void MetabolicReaction::_saveInstance(PersistenceRecord* fields, bool saveDefaul
 
 bool MetabolicReaction::_check(std::string& errorMessage) {
 	bool resultAll = true;
+	_createEditableDataDefinitions();
 	if (getName().empty()) {
 		errorMessage += "MetabolicReaction must define a non-empty name. ";
 		resultAll = false;
@@ -243,6 +247,30 @@ std::string MetabolicReaction::getGeneRule() const {
 
 // void MetabolicReaction::_createInternalStatisticReporters() { }
 
-// void MetabolicReaction::_createEditableDataDefinitions() { }
+void MetabolicReaction::_createEditableDataDefinitions() {
+	std::vector<std::string> keysToRemove;
+	for (const auto& attachedEntry : *getAttachedData()) {
+		if (attachedEntry.first.rfind(kReactionSpeciesAttachmentPrefix, 0) == 0) {
+			keysToRemove.push_back(attachedEntry.first);
+		}
+	}
+	for (const std::string& key : keysToRemove) {
+		_optionalEditableDataDefinitionRemove(key);
+	}
+
+	if (_parentModel == nullptr || _parentModel->getDataManager() == nullptr) {
+		return;
+	}
+
+	unsigned int index = 0u;
+	auto attachTermSpecies = [this, &index](const std::vector<StoichiometricTerm>& terms) {
+		for (const StoichiometricTerm& term : terms) {
+			auto* species = dynamic_cast<BioSpecies*>(_parentModel->getDataManager()->getDataDefinition(Util::TypeOf<BioSpecies>(), term.speciesName));
+			_optionalEditableDataDefinitionInsert(std::string(kReactionSpeciesAttachmentPrefix) + Util::StrIndex(index++), species);
+		}
+	};
+	attachTermSpecies(_reactants);
+	attachTermSpecies(_products);
+}
 
 // void MetabolicReaction::_createAttachedAttributes() { }

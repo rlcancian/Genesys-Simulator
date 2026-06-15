@@ -37,6 +37,13 @@ Decide::Decide(Model* model, std::string name) : ModelComponent(model, Util::Typ
 	_addSimulationControl(propConditions);
 }
 
+Decide::~Decide() {
+	delete _conditions;
+	// Counter* elements in _numberOuts are owned by the associations system and
+	// deleted by ~ModelDataDefinition(). Only the list container itself is freed here.
+	delete _numberOuts;
+}
+
 List<std::string>* Decide::getConditions() const {
 	return _conditions;
 }
@@ -56,9 +63,9 @@ std::string Decide::show() {
 void Decide::_onDispatchEvent(Entity* entity, unsigned int inputPortNumber) {
 	double value;
 	unsigned short i = 0;
-	for (std::list<std::string>::iterator it = _conditions->list()->begin(); it != _conditions->list()->end(); it++) {
-		value = _parentModel->parseExpression((*it));
-        traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, std::to_string(i + 1) + "th condition evaluated to " + Util::StrTruncIfInt(std::to_string(value)) + "  // " + (*it));
+	for (const std::string& condition : *_conditions->list()) {
+		value = _parentModel->parseExpression(condition);
+		traceSimulation(this, _parentModel->getSimulation()->getSimulatedTime(), entity, this, std::to_string(i + 1) + "th condition evaluated to " + Util::StrTruncIfInt(std::to_string(value)) + "  // " + condition);
 		if (value) {
 			if (_reportStatistics) {
 				_numberOuts->getAtRank(i)->incCountValue();
@@ -98,19 +105,17 @@ void Decide::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
 	fields->saveField("conditions", _conditions->size(), 0u, saveDefaultValues);
 	unsigned short i = 0;
-	for (std::list<std::string>::iterator it = _conditions->list()->begin(); it != _conditions->list()->end(); it++, i++) {
-		fields->saveField("condition" + Util::StrIndex(i), (*it), "", saveDefaultValues);
+	for (const std::string& condition : *_conditions->list()) {
+		fields->saveField("condition" + Util::StrIndex(i), condition, "", saveDefaultValues);
+		i++;
 	}
 }
 
 bool Decide::_check(std::string& errorMessage) {
 	bool allResult = true;
-	std::string condition;
-	for (std::list<std::string>::iterator it = _conditions->list()->begin(); it != _conditions->list()->end(); it++) {
-		condition = (*it);
+	for (const std::string& condition : *_conditions->list()) {
 		allResult &= _parentModel->checkExpression(condition, "condition", errorMessage);
 		_checkCreateAttachedReferencedDataDefinition(condition);
-		//_parentModel->checkReferencesToDataDefinitions(condition);
 	}
 	return allResult;
 }
@@ -136,7 +141,7 @@ ModelComponent* Decide::LoadInstance(Model* model, PersistenceRecord *fields) {
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load Decide instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -159,6 +164,7 @@ void Decide::_createInternalStatisticReporters() {
 		}
 	} else  {
 		this->_statisticReportersClear();
+		delete _numberOuts;
 		_numberOuts = nullptr;
 	}
 }

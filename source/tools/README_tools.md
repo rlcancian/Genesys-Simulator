@@ -33,7 +33,31 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 
 `source/tools` consumes kernel/statistics contracts (collectors, samplers and data files) but this phase does not modify kernel or statistics code. The package remains a consumer and adapter layer over those existing contracts.
 
-## 6. Current status by topic
+## 6. AI Assistant abstraction
+
+`source/tools` includes an AI-assisted simulation model-building tool across four completed stages:
+
+- `AIAssistant_if`: interface defining configuration, security, knowledge base, provider client injection, workflow and diagnostics contracts.
+- `AIAssistantDefaultImpl`: concrete implementation covering all six complete stages:
+  - Full configuration management and secure API key handling.
+  - Knowledge base: static catalog of 15 well-known components plus dynamic plugin introspection.
+  - `createAndAttachProviderClient()` factory for owned provider clients.
+  - `analyzePrompt()` / `createModelPlan()` — LLM-backed prompt analysis and plan generation.
+  - `buildModel()` — LLM generates a `.gen` file, loaded via `SimulatorFacade::loadModel()`.
+  - `configureSimulation()` — LLM extracts simulation parameters; applies via `simSet*()`.
+  - `runSimulation()` — calls `SimulatorFacade::simStart()` (synchronous).
+  - `collectResults()` — formats `modelGetResponses()` as a Markdown results table.
+  - `execute()` — orchestrates the full pipeline with plan propagation between steps.
+- `AIProviderClient_if`: interface for a single HTTP chat-completion call.
+- `HttpProviderClientBase`: abstract base with popen+curl transport; API key stored in 0600 temp file, never on command line.
+- `OpenAIProviderClientImpl`: OpenAI chat completions with o-series reasoning support.
+- `AnthropicProviderClientImpl`: Anthropic Messages API with extended-thinking support.
+- `LocalProviderClientImpl`: Ollama/LM Studio/llama.cpp — no API key required.
+- `TraitsTools<AIAssistant_if>`: binds the abstraction to `AIAssistantDefaultImpl`.
+
+See `source/tools/ARCHITECTURE_tools.md` for the full 8-stage roadmap.
+
+## 7. Current status by topic
 
 - **Fitting**: interface defined; `FitterDefaultImpl` is functional for uniform/triangular/normal/exponential/erlang/beta/weibull with binary dataset loading and SSE-CDF comparison and is now the default `TraitsTools<Fitter_if>` binding (FITTER-3). `FitterDummyImpl` remains available as legacy placeholder.
 - **Hypothesis testing**: functional baseline exists in `HypothesisTesterDefaultImpl1`, with known partial areas.

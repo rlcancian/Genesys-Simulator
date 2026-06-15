@@ -58,7 +58,7 @@ ModelDataDefinition* File::LoadInstance(Model* model, PersistenceRecord *fields)
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load File instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

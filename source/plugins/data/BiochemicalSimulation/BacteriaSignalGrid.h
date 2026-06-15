@@ -1,8 +1,8 @@
 /*
  * File:   BacteriaSignalGrid.h
- * Author: GRO
+ * Author: rlcancian
  *
- * Created on 28 de Abril de 2026
+ * Created on 28 de Abril de 2022
  */
 
 #ifndef BACTERIASIGNALGRID_H

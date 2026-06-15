@@ -1,8 +1,8 @@
 /*
  * File:   GroProgram.h
- * Author: GRO
+ * Author: rlcancian
  *
- * Created on 17 de Abril de 2026
+ * Created on 17 de Abril de 2022
  */
 
 #ifndef GROPROGRAM_H

@@ -16,4 +16,16 @@ target_link_libraries(genesys_plugins_data
         genesys_kernel_util
 )
 
+target_compile_definitions(genesys_plugins_data
+    PUBLIC
+        GENESYS_HAS_PYTHON_INTEGRATION=$<BOOL:${GENESYS_HAS_PYTHON_INTEGRATION}>
+)
+
+if(GENESYS_HAS_PYTHON_INTEGRATION)
+    target_link_libraries(genesys_plugins_data
+        PUBLIC
+            Python3::Python
+    )
+endif()
+
 target_compile_features(genesys_plugins_data PUBLIC cxx_std_23)

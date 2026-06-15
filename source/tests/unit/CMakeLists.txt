@@ -52,6 +52,11 @@ genesys_add_unit_test(genesys_test_parser_expressions
     genesys_kernel_simulator_runtime
 )
 
+genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
+    test_cellular_automata_neighborhood.cpp
+    genesys_plugins_components_minimal
+)
+
 genesys_add_unit_test(genesys_test_support_modelmanager
     test_support_modelmanager.cpp
     genesys_kernel_simulator_support
@@ -70,6 +75,13 @@ genesys_add_unit_test(genesys_test_runtime_pluginmanager
     genesys_kernel_util
     genesys_plugins_components_minimal
     genesys_kernel_simulator_runtime
+)
+
+genesys_add_unit_test(genesys_test_wcm_plugins
+    test_wcm_plugins.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
 )
 
 genesys_add_unit_test(genesys_test_support_oneventmanager
@@ -229,10 +241,10 @@ endif()
 
 add_executable(genesys_test_tools_hypothesistester
     test_tools_hypothesistester.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/HypothesisTesterDefaultImpl1.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistribution.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistributionBase.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/SolverDefaultImpl1.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/HypothesisTesterDefaultImpl1.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/ProbabilityDistribution.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Statistics/ProbabilityDistributionBase.cpp
+    ${CMAKE_SOURCE_DIR}/source/tools/Continuous/SolverDefaultImpl1.cpp
 )
 
 target_include_directories(genesys_test_tools_hypothesistester
@@ -266,6 +278,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_simulator_support
         genesys_test_simulator_runtime
         genesys_test_parser_expressions
+        genesys_test_cellular_automata_neighborhood
         genesys_test_support_modelmanager
         genesys_test_support_persistence
         genesys_test_runtime_pluginmanager
@@ -278,6 +291,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_statistics
         genesys_test_tools_hypothesistester
         genesys_test_tools_simulation_results_dataset
+        genesys_test_wcm_plugins
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -344,6 +358,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_simulator_support>
     COMMAND $<TARGET_FILE:genesys_test_simulator_runtime>
     COMMAND $<TARGET_FILE:genesys_test_parser_expressions>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_neighborhood>
     COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_persistence>
     COMMAND $<TARGET_FILE:genesys_test_runtime_pluginmanager>
@@ -356,6 +371,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
     COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
+    COMMAND $<TARGET_FILE:genesys_test_wcm_plugins>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests

@@ -1,0 +1,35 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Compartment-Transport Whole-Cell MVP" version="1.0" projectTitle="" description="Whole-cell MVP using flux balance, extracellular-to-cytosol transport, compartment-aware metabolic projection, reusable exchange policies, and pathway-sensitive lifecycle checkpoints." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=480.000000 
+
+# Model Data Definitions
+123 BioSpecies "FbaATP_ext_i" 
+124 BioSpecies "FbaATP_c_i" 
+125 MetabolicReaction "FbaExternalUptake" upperBound=6.000000 productSpecies[0]="FbaATP_ext_i" products=1 
+126 MetabolicReaction "FbaTransportToCytosol" upperBound=6.000000 reactants=1 reactantSpecies[0]="FbaATP_ext_i" productSpecies[0]="FbaATP_c_i" products=1 
+127 MetabolicReaction "FbaCytosolMaintenance" upperBound=1.000000 lowerBound=1.000000 reactants=1 reactantSpecies[0]="FbaATP_c_i" 
+128 MetabolicReaction "FbaCytosolBiomass" upperBound=100.000000 reactants=1 reactantSpecies[0]="FbaATP_c_i" 
+129 MetabolicNetwork "FbaTransportWholeCellNetwork" compartment="cytosol" reactionName[3]="FbaCytosolBiomass" objectiveReactionName="FbaCytosolBiomass" reactionName[2]="FbaCytosolMaintenance" reactionName[1]="FbaTransportToCytosol" reactionName[0]="FbaExternalUptake" reactions=4 
+130 WholeCellState "TransportCellState" moleculeSpeciesName[0]="RNAP_free" moleculeSpeciesCount=6 moleculeSpeciesName[2]="mRNA_geneB" moleculeSpeciesName[5]="ribosome_free" metaboliteName[0]="ATP" metaboliteCount=1 moleculeSpeciesCount[0]=4 moleculeSpeciesCount[5]=6 cellVolume=0.001000 moleculeSpeciesName[1]="mRNA_geneA" cellMass=0.000000 moleculeSpeciesName[4]="prot_geneB" moleculeSpeciesName[3]="prot_geneA" 
+133 EntityType "entitytype" 
+134 Attribute  "Entity.ArrivalTime" 
+135 Attribute  "Entity.Type" 
+
+# Model Components
+131 Create     "TransportClock" entityType="entitytype" maxCreations="8" timeBetweenCreations="60" nextId=136 
+136 MetabolicFluxBalance "TransportFluxBalance" metabolicNetwork="FbaTransportWholeCellNetwork" nextId=137 
+137 MetabolicStateProjectionComponent "TransportFluxProjection" projectionTarget[3]="biomass_flux" projectionTarget[0]="ATP_ext" objectiveTargetKey="biomass_objective" objectiveKind="PathwayActivity" projectionUpdateMode[0]="Accumulate" projectionScale[0]=0.250000 projectionReaction[3]="FbaCytosolBiomass" projectionCompartment[0]="extracellular" projectionUpdateMode[1]="Accumulate" projectionReaction[2]="FbaTransportToCytosol" projectionTarget[2]="transport_flux" projectionTarget[1]="ATP" projectionKind[2]="PathwayActivity" projectionReaction[0]="FbaExternalUptake" projectionKind[3]="PathwayActivity" objectiveProjectionEnabled=1 projectionReaction[1]="FbaTransportToCytosol" fluxBalanceComponentName="TransportFluxBalance" wholeCellState="TransportCellState" projectionScale[1]=0.200000 projectionCount=4 nextId=138 projectionKind[0]="CompartmentMetaboliteAmount" 
+138 CompartmentExchangeComponent "TransportExchange" maxTransferAmount=2.000000 driverScale=0.200000 exchangeFraction=1.000000 driverPathwayKey="transport_flux" sourceMetaboliteKey="ATP_ext" targetMetaboliteKey="ATP_c" targetRegion="cytosol" wholeCellState="TransportCellState" nextId=139 sourceRegion="extracellular" 
+139 ResourceAllocationComponent "TransportAllocation" proteinSpeciesPrefix="prot_" wholeCellState="TransportCellState" nextId=140 
+140 StochasticTranscription "TransportTranscription" randomSeed=501 timeWindow=60.000000 wholeCellState="TransportCellState" nextId=141 bindingProbability=0.300000 
+141 StochasticTranslation "TransportTranslation" randomSeed=502 timeWindow=60.000000 wholeCellState="TransportCellState" nextId=142 
+142 CellGrowthComponent "TransportGrowth" density=1000.000000 energyMetaboliteKey="ATP" energyHalfSaturation=1.000000 growthRate=0.002500 wholeCellState="TransportCellState" nextId=143 
+143 CellCycleCheckpointComponent "TransportCheckpoint" criticalPathwayActivityThreshold=4.500000 criticalPathwayActivityKey="biomass_objective" divisionMassThreshold=0.000000 compartmentStarvationThreshold=0.750000 compartmentEnergyMetaboliteKey="ATP_c" compartmentEnergyRegion="cytosol" wholeCellState="TransportCellState" nextId=144 
+144 CellFateDecisionComponent "TransportFate" wholeCellState="TransportCellState" nextId[3]=153 nextId[0]=146 nextId[2]=151 nextId[1]=145 nexts=4 
+145 CellDivisionEvent "TransportDivision" randomSeed=503 divisionMassThreshold=0.000000 wholeCellState="TransportCellState" nextId[0]=146 nextId[1]=149 nexts=2 
+146 Dispose    "TransportSteadySink" nexts=0 
+149 Dispose    "TransportDivisionSink" nexts=0 
+151 Dispose    "TransportStarvedSink" nexts=0 
+153 Dispose    "TransportDeadSink" nexts=0 

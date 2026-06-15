@@ -32,7 +32,7 @@ public:
 	static std::string convertEnumToStr(ArrivalOnFullBufferRule arrival);
 public: // constructors
 	Buffer(Model* model, std::string name = "");
-	virtual ~Buffer() = default;
+	virtual ~Buffer() override;
 public: // virtual
 	virtual std::string show() override;
 public: // static

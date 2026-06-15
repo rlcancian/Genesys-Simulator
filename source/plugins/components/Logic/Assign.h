@@ -61,7 +61,7 @@ Picture.
 class Assign : public ModelComponent {
 public:
 	Assign(Model* model, std::string name = "");
-	virtual ~Assign() = default;
+	virtual ~Assign() override;
 public:
 	virtual std::string show() override;
 public:

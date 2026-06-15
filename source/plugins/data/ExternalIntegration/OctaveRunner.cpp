@@ -195,6 +195,7 @@ ModelDataDefinition* OctaveRunner::LoadInstance(Model* model, PersistenceRecord 
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load OctaveRunner instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

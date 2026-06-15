@@ -25,7 +25,7 @@ extern "C" typedef void (*onDispatchEvent_t)(Simulator* simulator, Model* model,
 class DiffEquations : public ModelComponent {
 public: //! constructors
 	DiffEquations(Model* model, std::string name = "");
-	virtual ~DiffEquations() = default;
+	virtual ~DiffEquations() override;
 
 public: //! new public user methods for this component
 	List<std::string> *getEquations() const; //!< equations should be in terms of x[i] ; f[i](x[],t)

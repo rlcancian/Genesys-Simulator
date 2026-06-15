@@ -78,7 +78,7 @@ ModelComponent* DummyComponent::LoadInstance(Model* model, PersistenceRecord *fi
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load DummyComponent instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }

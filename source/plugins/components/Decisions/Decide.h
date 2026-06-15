@@ -74,7 +74,7 @@ evaluator (for example, Color<>Red).
 class Decide : public ModelComponent {
 public:
 	Decide(Model* model, std::string name = "");
-	virtual ~Decide() = default;
+	virtual ~Decide() override;
 public:
 	List<std::string>* getConditions() const;
 	void addConditions(std::string newCondition);

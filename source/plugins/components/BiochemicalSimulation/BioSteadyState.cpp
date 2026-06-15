@@ -1,6 +1,6 @@
 /*
  * File:   BioSteadyState.cpp
- * Author: GenESyS
+ * Author: rlcancian
  *
  * Component that evaluates BioNetwork steady-state status.
  */

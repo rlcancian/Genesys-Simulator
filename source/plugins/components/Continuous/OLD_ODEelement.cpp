@@ -102,7 +102,7 @@ ModelDataDefinition* OLD_ODEelement::LoadInstance(Model* model, PersistenceRecor
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load OLD_ODEelement instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

@@ -68,9 +68,9 @@ void ConnectionManager::insertAtPort(unsigned int port, Connection* connection) 
 
 void ConnectionManager::remove(Connection* connection) {
 	// Remove and destroy the matched owned connection to keep teardown complete.
-	for (std::map<unsigned int, Connection*>::iterator it = _nextConnections->begin(); it != _nextConnections->end(); it++) {
-		if ((*it).second == connection) {
-			delete (*it).second;
+	for (auto it = _nextConnections->begin(); it != _nextConnections->end(); ++it) {
+		if (it->second == connection) {
+			delete it->second;
 			_nextConnections->erase(it);
 			return;
 		}

@@ -16,8 +16,7 @@ public:
     virtual ~CellularAutomata_1DTimed() = default;
 protected:
     virtual void applyLocalRule() override {
-        Cell* cell;
-		State* state;
+		Cell* cell;
         int nextRow;
 		int maxRows = std::min<int>(lattice->getDimension(1)-2, lattice->getDimension(1)-2); // simulatedTime);
         for (int row=maxRows; row>=0; row--) {
@@ -25,8 +24,7 @@ protected:
             // move cell states to the next row 
 			for (int col=0; col<lattice->getDimension(0); col++) { // move to row bellow
 				cell = lattice->getCell({col,row});
-				*state = cell->getCurrentState();
-				lattice->setCellState({col,nextRow}, state);
+				lattice->setCellState({col,nextRow}, const_cast<State*>(&cell->getCurrentState()));
             }
             if (row==0) {
                 // apply the same local rule for all unidimensional cells at the same time

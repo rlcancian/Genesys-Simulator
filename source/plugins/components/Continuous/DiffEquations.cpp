@@ -36,6 +36,11 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 DiffEquations::DiffEquations(Model* model, std::string name) : ModelComponent(model, Util::TypeOf<DiffEquations>(), name) {
 }
 
+DiffEquations::~DiffEquations() {
+	delete _equations;
+	delete _valuesOnFinalTime;
+}
+
 
 //
 // public: //! new public user methods for this component
@@ -113,7 +118,7 @@ ModelComponent* DiffEquations::LoadInstance(Model* model, PersistenceRecord *fie
 	try {
 		newComponent->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newComponent->traceError("Failed to load DiffEquations instance: " + std::string(e.what()));
 	}
 	return newComponent;
 }
@@ -171,7 +176,7 @@ bool DiffEquations::_check(std::string& errorMessage) {
 #include \"../../../../kernel/simulator/Simulator.h\"\n\
 #include \"../../../../kernel/simulator/model/Model.h\"\n\
 #include \"../../../../kernel/simulator/Entity.h\"\n\
-#include \"../../../../tools/SolverDefaultImpl1.h\"\n\
+#include \"../../../../tools/Continuous/SolverDefaultImpl1.h\"\n\
 \n\
 \n\
 void _onDispatchEvent_" + name + "(Simulator* simulator, Model* model, Entity* entity) {\n\

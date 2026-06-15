@@ -16,6 +16,9 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 
 namespace {
 
+constexpr const char* kNetworkReactionAttachmentPrefix = "MetabolicReaction_";
+constexpr const char* kNetworkExchangeSpeciesAttachmentPrefix = "ExchangeSpecies_";
+
 std::string namesToString(const std::vector<std::string>& names) {
 	std::string text = "{";
 	for (const std::string& name : names) {
@@ -72,6 +75,7 @@ ModelDataDefinition* MetabolicNetwork::LoadInstance(Model* model, PersistenceRec
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
+		newElement->traceError("Failed to load MetabolicNetwork instance: " + std::string(e.what()));
 	}
 	return newElement;
 }
@@ -125,6 +129,7 @@ void MetabolicNetwork::_saveInstance(PersistenceRecord* fields, bool saveDefault
 
 bool MetabolicNetwork::_check(std::string& errorMessage) {
 	bool resultAll = true;
+	_createEditableDataDefinitions();
 	if (getName().empty()) {
 		errorMessage += "MetabolicNetwork must define a non-empty name. ";
 		resultAll = false;
@@ -241,6 +246,35 @@ bool MetabolicNetwork::isEnabled() const {
 
 // void MetabolicNetwork::_createInternalStatisticReporters() { }
 
-// void MetabolicNetwork::_createEditableDataDefinitions() { }
+void MetabolicNetwork::_createEditableDataDefinitions() {
+	auto removeAttachedDataWithPrefix = [this](const std::string& prefix) {
+		std::vector<std::string> keysToRemove;
+		for (const auto& attachedEntry : *getAttachedData()) {
+			if (attachedEntry.first.rfind(prefix, 0) == 0) {
+				keysToRemove.push_back(attachedEntry.first);
+			}
+		}
+		for (const std::string& key : keysToRemove) {
+			_optionalEditableDataDefinitionRemove(key);
+		}
+	};
+
+	removeAttachedDataWithPrefix(kNetworkReactionAttachmentPrefix);
+	removeAttachedDataWithPrefix(kNetworkExchangeSpeciesAttachmentPrefix);
+
+	if (_parentModel == nullptr || _parentModel->getDataManager() == nullptr) {
+		return;
+	}
+
+	ModelDataManager* dataManager = _parentModel->getDataManager();
+	for (unsigned int i = 0; i < _reactionNames.size(); ++i) {
+		auto* reaction = dynamic_cast<MetabolicReaction*>(dataManager->getDataDefinition(Util::TypeOf<MetabolicReaction>(), _reactionNames[i]));
+		_optionalEditableDataDefinitionInsert(std::string(kNetworkReactionAttachmentPrefix) + Util::StrIndex(i), reaction);
+	}
+	for (unsigned int i = 0; i < _exchangeSpeciesNames.size(); ++i) {
+		auto* species = dynamic_cast<BioSpecies*>(dataManager->getDataDefinition(Util::TypeOf<BioSpecies>(), _exchangeSpeciesNames[i]));
+		_optionalEditableDataDefinitionInsert(std::string(kNetworkExchangeSpeciesAttachmentPrefix) + Util::StrIndex(i), species);
+	}
+}
 
 // void MetabolicNetwork::_createAttachedAttributes() { }

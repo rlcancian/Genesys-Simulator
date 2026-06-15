@@ -9,7 +9,10 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/BiochemicalSimulation/MetabolicReaction.h"
-#include "tools/MetabolicFluxBalanceSolver.h"
+#include "tools/Biochemical/MetabolicFluxBalanceSolver.h"
+#ifdef GENESYS_HAVE_GLPK
+#include "tools/Biochemical/GlpkFluxBalanceSolver.h"
+#endif
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -67,7 +70,7 @@ PluginInformation* MetabolicFluxBalance::GetPluginInformation() {
 	info->setMinimumOutputs(1);
 	info->setMaximumOutputs(1);
 	info->insertDynamicLibFileDependence("metabolicnetwork.so");
-	info->setDescriptionHelp("Evaluates a stub flux-balance objective over a MetabolicNetwork and stores the selected objective value for downstream logic.");
+	info->setDescriptionHelp("Evaluates a flux-balance objective over a MetabolicNetwork using GLPK simplex LP when available, falling back to built-in basis enumeration for small models.");
 	return info;
 }
 
@@ -152,6 +155,7 @@ void MetabolicFluxBalance::_onDispatchEvent(Entity* entity, unsigned int inputPo
 	if (_metabolicNetwork == nullptr) {
 		_lastSucceeded = false;
 		_lastObjectiveValue = 0.0;
+		_lastFluxes.clear();
 		_lastMessage = "MetabolicFluxBalance requires a referenced MetabolicNetwork.";
 		traceSimulation(this, TraceManager::Level::L1_errorFatal, _lastMessage);
 		_forwardEntity(entity);
@@ -169,6 +173,7 @@ void MetabolicFluxBalance::_onDispatchEvent(Entity* entity, unsigned int inputPo
 		if (reaction == nullptr) {
 			_lastSucceeded = false;
 			_lastObjectiveValue = 0.0;
+			_lastFluxes.clear();
 			_lastMessage = "MetabolicFluxBalance could not resolve MetabolicReaction \"" + reactionName + "\".";
 			traceSimulation(this, TraceManager::Level::L1_errorFatal, _lastMessage);
 			_forwardEntity(entity);
@@ -233,16 +238,22 @@ void MetabolicFluxBalance::_onDispatchEvent(Entity* entity, unsigned int inputPo
 	if (!hasObjective) {
 		_lastSucceeded = false;
 		_lastObjectiveValue = 0.0;
+		_lastFluxes.clear();
 		_lastMessage = "MetabolicFluxBalance could not build a non-zero objective vector.";
 		traceSimulation(this, TraceManager::Level::L1_errorFatal, _lastMessage);
 		_forwardEntity(entity);
 		return;
 	}
 
+#ifdef GENESYS_HAVE_GLPK
+	MetabolicFluxBalanceSolver::Solution solution = GlpkFluxBalanceSolver::solve(problem);
+#else
 	MetabolicFluxBalanceSolver::Solution solution = MetabolicFluxBalanceSolver::solve(problem);
+#endif
 	if (!solution.feasible) {
 		_lastSucceeded = false;
 		_lastObjectiveValue = 0.0;
+		_lastFluxes.clear();
 		_lastMessage = solution.errorMessage;
 		traceSimulation(this, TraceManager::Level::L1_errorFatal,
 		                "MetabolicFluxBalance failed for MetabolicNetwork \"" + _metabolicNetwork->getName() + "\": " + solution.errorMessage);
@@ -252,11 +263,13 @@ void MetabolicFluxBalance::_onDispatchEvent(Entity* entity, unsigned int inputPo
 
 	_lastObjectiveValue = solution.objectiveValue;
 	_lastSucceeded = true;
+	_lastFluxes.clear();
 	std::ostringstream payload;
 	payload << "{";
 	payload << "\"objectiveValue\":" << Util::StrTruncIfInt(std::to_string(_lastObjectiveValue));
 	payload << ",\"fluxes\":{";
 	for (std::size_t i = 0; i < reactionNames.size(); ++i) {
+		_lastFluxes[reactionNames[i]] = solution.fluxes[i];
 		payload << "\"" << reactionNames[i] << "\":" << Util::StrTruncIfInt(std::to_string(solution.fluxes[i]));
 		if (i + 1u < reactionNames.size()) {
 			payload << ",";
@@ -321,6 +334,10 @@ void MetabolicFluxBalance::setLastMessage(std::string lastMessage) {
 
 std::string MetabolicFluxBalance::getLastMessage() const {
 	return _lastMessage;
+}
+
+const std::map<std::string, double>& MetabolicFluxBalance::getLastFluxes() const {
+	return _lastFluxes;
 }
 
 // void MetabolicFluxBalance::_createInternalStatisticReporters() { }

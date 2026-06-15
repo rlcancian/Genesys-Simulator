@@ -128,7 +128,7 @@ which queue is to be used.
 class Seize : public ModelComponent {
 public:
 	Seize(Model* model, std::string name = "");
-	virtual ~Seize() = default;
+	virtual ~Seize() override;
 public:
 	virtual std::string show() override;
 public:

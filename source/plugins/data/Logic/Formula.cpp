@@ -34,6 +34,10 @@ Formula::Formula(Model* model, std::string name) : ModelDataDefinition(model, Ut
 	//_myPrivateParser = new TraitsKernel<Parser_if>::Implementation(_parentModel, new TraitsKernel<Sampler_if>::Implementation()); //@TODO: !! Really, really BAD. 
 }
 
+Formula::~Formula() {
+	delete _formulaExpressions;
+}
+
 std::string Formula::show() {
 	std::string expressions = "";
 	//unsigned int i = 0;
@@ -88,7 +92,7 @@ ModelDataDefinition* Formula::LoadInstance(Model* model, PersistenceRecord *fiel
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Formula instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

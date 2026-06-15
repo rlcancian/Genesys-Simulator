@@ -211,7 +211,7 @@ ModelDataDefinition* Failure::LoadInstance(Model* model, PersistenceRecord *fiel
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Failure instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

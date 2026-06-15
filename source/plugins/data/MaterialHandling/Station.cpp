@@ -110,7 +110,7 @@ ModelDataDefinition* Station::LoadInstance(Model* model, PersistenceRecord *fiel
 	try {
 		newElement->_loadInstance(fields);
 	} catch (const std::exception& e) {
-
+		newElement->traceError("Failed to load Station instance: " + std::string(e.what()));
 	}
 	return newElement;
 }

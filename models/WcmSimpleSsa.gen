@@ -1,0 +1,20 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "WCM Simple SSA" version="1.0" projectTitle="" description="Stochastic gene expression of a single gene via Gillespie SSA. Analogous to the canonical two-state gene model (Raj & van Oudenaarden 2008). Four reactions: transcription, mRNA degradation, translation, protein degradation." analystName="" 
+0   ModelSimulation "" traceLevel=2 replicationLength=3600.000000 numberOfReplications=30 
+
+# Model Data Definitions
+109 WholeCellState "CellState" moleculeSpeciesName[2]="mRNA_geneA" moleculeSpeciesName[1]="RNAP" moleculeSpeciesName[0]="DNA_geneA" moleculeSpeciesName[3]="prot_geneA" moleculeSpeciesCount=4 moleculeSpeciesCount[1]=10 moleculeSpeciesCount[0]=1 
+110 StochasticReactionRule "R1_Transcription" productSpecies[2]="mRNA_geneA" reactantSpecies[1]="RNAP" reactants=2 rateConstant=0.020000 reactantSpecies[0]="DNA_geneA" productSpecies[1]="RNAP" productSpecies[0]="DNA_geneA" products=3 
+111 StochasticReactionRule "R2_mRNA_Degradation" reactants=1 rateConstant=0.010000 reactantSpecies[0]="mRNA_geneA" 
+112 StochasticReactionRule "R3_Translation" reactants=1 rateConstant=0.100000 reactantSpecies[0]="mRNA_geneA" productSpecies[1]="prot_geneA" productSpecies[0]="mRNA_geneA" products=2 
+113 StochasticReactionRule "R4_Protein_Degradation" reactants=1 rateConstant=0.001000 reactantSpecies[0]="prot_geneA" 
+116 EntityType "entitytype" 
+117 Attribute  "Entity.ArrivalTime" 
+118 Attribute  "Entity.Type" 
+
+# Model Components
+114 Create     "SimClock" entityType="entitytype" maxCreations="60" nextId=119 timeBetweenCreations="60" 
+119 StochasticReactionComponent "GillespieSSA" timeWindow=60.000000 wholeCellState="CellState" nextId=120 
+120 Dispose    "Done" nexts=0 
