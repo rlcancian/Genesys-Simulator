@@ -187,6 +187,21 @@ void demoFitting(DataAnalyzerDefaultImpl1& da) {
 	check("fitAll returned a valid result", rBest.valid);
 	check("fitAll SSE <= normal SSE (it's the best)", rBest.sse <= rNorm.sse + 1e-9);
 
+	const auto ranked = da.fitAllRanked();
+	std::cout << "  fitAllRanked: returned " << ranked.size() << " distributions.\n";
+	for (size_t i = 0; i < ranked.size(); ++i) {
+		std::cout << "    " << (i + 1) << ". " << std::setw(12) << std::left 
+		          << ranked[i].distributionName << " (sse: " << ranked[i].sse << ")\n";
+	}
+	check("fitAllRanked returns exactly 7 distributions", ranked.size() == 7);
+	check("fitAllRanked is sorted by SSE ascending (for valid fits)", 
+	      [&]() {
+		      for (size_t i = 1; i < ranked.size(); ++i) {
+			      if (ranked[i-1].valid && ranked[i].valid && ranked[i-1].sse > ranked[i].sse) return false;
+		      }
+		      return true;
+	      }());
+
 	// Exponential data fitting
 	da.setDataValues(kExpoData);
 	const auto rExpo = da.fitDistribution("exponential");
