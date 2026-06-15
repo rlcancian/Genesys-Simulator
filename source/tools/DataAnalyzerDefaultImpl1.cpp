@@ -274,14 +274,17 @@ unsigned int DataAnalyzerDefaultImpl1::_numParams(const std::string& distName) {
 // Data loading
 // ============================================================
 
-void DataAnalyzerDefaultImpl1::setDataFilename(const std::string& filename) {
+bool DataAnalyzerDefaultImpl1::setDataFilename(const std::string& filename) {
 	SimulationResultsDataset dataset;
 	std::string err;
 	if (SimulationResultsDatasetParser::loadFromTextFile(filename, &dataset, &err)) {
+		_lastError.clear();
 		setDataValues(dataset.values());
-	} else {
-		clearData();
+		return true;
 	}
+	_lastError = "setDataFilename(\"" + filename + "\"): " + err;
+	clearData();
+	return false;
 }
 
 void DataAnalyzerDefaultImpl1::setDataValues(const std::vector<double>& values) {
@@ -314,9 +317,15 @@ bool DataAnalyzerDefaultImpl1::loadSecondSampleFromFile(const std::string& filen
 	SimulationResultsDataset dataset;
 	std::string err;
 	if (!SimulationResultsDatasetParser::loadFromTextFile(filename, &dataset, &err)) {
+		_lastError = "loadSecondSampleFromFile(\"" + filename + "\"): " + err;
 		return false;
 	}
+	_lastError.clear();
 	return loadSecondSample(dataset.values());
+}
+
+std::string DataAnalyzerDefaultImpl1::getLastError() const {
+	return _lastError;
 }
 
 // ============================================================

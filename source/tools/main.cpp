@@ -94,6 +94,13 @@ void demoDataLoading(DataAnalyzerDefaultImpl1& da) {
 	check("setDataFilename loaded same 50 values from RawNumeric text file",
 	      da.summaryStatistics().n == 50);
 
+	// Test that a missing file is detected and reported
+	const bool failedLoad = !da.setDataFilename("/nonexistent/path/file.txt");
+	check("setDataFilename returns false for a missing file", failedLoad);
+	check("getLastError is non-empty after a failed load", !da.getLastError().empty());
+	da.setDataValues(kNormalData);  // restore
+
+
 	// Restore in-memory data for subsequent tests
 	da.setDataValues(kNormalData);
 

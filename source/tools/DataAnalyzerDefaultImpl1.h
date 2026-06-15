@@ -15,11 +15,12 @@ public:
 
 public:
 	// data loading
-	virtual void setDataFilename(const std::string& filename) override;
+	virtual bool setDataFilename(const std::string& filename) override;
 	virtual void setDataValues(const std::vector<double>& values) override;
 	virtual void clearData() override;
 	virtual bool loadSecondSample(const std::vector<double>& values) override;
 	virtual bool loadSecondSampleFromFile(const std::string& filename) override;
+	virtual std::string getLastError() const override;
 
 	// configuration
 	virtual void setConfidenceLevel(double confidenceLevel) override;
@@ -100,6 +101,7 @@ private:
 	double _sampleStddev2 = 0.0;
 
 	double _confidenceLevel = 0.95;
+	std::string _lastError;
 	FitterDefaultImpl _fitter;
 	HypothesisTesterDefaultImpl1 _tester;
 };

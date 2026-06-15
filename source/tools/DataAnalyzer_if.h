@@ -79,11 +79,24 @@ public:
 
 	// ---- data loading ----------------------------------------------------
 
-	virtual void setDataFilename(const std::string& filename) = 0;
+	/**
+	 * @brief Loads data from a text file (RawNumeric, RecordLegacy, RecordEnriched,
+	 *        or GuiTabular). Returns true on success, false on failure.
+	 *        On failure the dataset is cleared and getLastError() contains
+	 *        a human-readable description.
+	 */
+	virtual bool setDataFilename(const std::string& filename) = 0;
 	virtual void setDataValues(const std::vector<double>& values) = 0;
 	virtual void clearData() = 0;
 	virtual bool loadSecondSample(const std::vector<double>& values) = 0;
 	virtual bool loadSecondSampleFromFile(const std::string& filename) = 0;
+
+	/**
+	 * @brief Returns the error message from the most recent failed operation
+	 *        (setDataFilename or loadSecondSampleFromFile). Empty string when
+	 *        no error has occurred.
+	 */
+	virtual std::string getLastError() const = 0;
 
 	// ---- configuration ---------------------------------------------------
 
