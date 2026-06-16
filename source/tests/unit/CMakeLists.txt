@@ -52,6 +52,14 @@ genesys_add_unit_test(genesys_test_parser_expressions
     genesys_kernel_simulator_runtime
 )
 
+genesys_add_unit_test(genesys_test_modal_model_efsm
+    test_modal_model_efsm.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
 genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
     test_cellular_automata_neighborhood.cpp
     genesys_plugins_components_minimal

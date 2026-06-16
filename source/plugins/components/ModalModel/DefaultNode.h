@@ -52,7 +52,9 @@ public:
 
 public:
 	virtual bool canFire(Model* model, Entity* entity) const;
+	virtual bool canFire(Model* model, Entity* entity, const std::string& dispatchEvent) const;
 	virtual void execute(Model* model, Entity* entity) const;
+	virtual double effectiveProbability(Model* model, Entity* entity) const;
 
 
 protected:

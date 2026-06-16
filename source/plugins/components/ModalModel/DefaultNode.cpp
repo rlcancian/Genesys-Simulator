@@ -14,8 +14,22 @@
 #include "plugins/components/ModalModel/DefaultNode.h"
 #include "../../../kernel/simulator/model/Model.h"
 #include <algorithm>
+#include <cerrno>
+#include <cstdlib>
 //#include "kernel/simulator/Simulator.h"
 //#include "kernel/simulator/PluginManager.h"
+
+namespace {
+bool IsNumericLiteral(const std::string& value) {
+	if (value.empty()) {
+		return false;
+	}
+	char* end = nullptr;
+	errno = 0;
+	std::strtod(value.c_str(), &end);
+	return errno == 0 && end != value.c_str() && *end == '\0';
+}
+}
 
 DefaultNodeTransition::DefaultNodeTransition(DefaultNode* source, DefaultNode* destination, std::string name) {
 	_source = source;
@@ -96,7 +110,28 @@ DefaultNodeTransition::TransitionKind DefaultNodeTransition::getTransitionKind()
 }
 
 bool DefaultNodeTransition::canFire(Model* model, Entity* entity) const {
+	std::string dispatchEvent = "";
+	if (model != nullptr && model->getSimulation() != nullptr && model->getSimulation()->getCurrentEvent() != nullptr) {
+		dispatchEvent = std::to_string(model->getSimulation()->getCurrentEvent()->getComponentinputPortNumber());
+	}
+	return canFire(model, entity, dispatchEvent);
+}
+
+bool DefaultNodeTransition::canFire(Model* model, Entity* entity, const std::string& dispatchEvent) const {
 	(void) entity;
+	if (_inputEvent != "") {
+		bool eventMatched = _inputEvent == dispatchEvent;
+		const bool numericInputEvent = IsNumericLiteral(_inputEvent);
+		if (!eventMatched && numericInputEvent && IsNumericLiteral(dispatchEvent)) {
+			eventMatched = std::strtod(_inputEvent.c_str(), nullptr) == std::strtod(dispatchEvent.c_str(), nullptr);
+		}
+		if (!eventMatched && !numericInputEvent && model != nullptr) {
+			eventMatched = model->parseExpression(_inputEvent) != 0.0;
+		}
+		if (!eventMatched) {
+			return false;
+		}
+	}
 	if (_guardExpression == "") {
 		return true;
 	}
@@ -108,6 +143,12 @@ void DefaultNodeTransition::execute(Model* model, Entity* entity) const {
 	if (_outputExpression != "") {
 		model->parseExpression(_outputExpression);
 	}
+}
+
+double DefaultNodeTransition::effectiveProbability(Model* model, Entity* entity) const {
+	(void) model;
+	(void) entity;
+	return _probability;
 }
 
 

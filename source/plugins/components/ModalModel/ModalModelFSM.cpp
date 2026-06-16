@@ -8,9 +8,7 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 #endif
 
 ModalModelFSM::ModalModelFSM(Model* model, std::string name) : ModalModelDefault(model, name) {
-	_fsmInitialState = new FSMState(model);
-	_fsmInitialState->setModelLevel(_id);
-
+	_fsmInitialState = nullptr;
 }
 
 PluginInformation* ModalModelFSM::GetPluginInformation() {
@@ -33,9 +31,26 @@ ModelDataDefinition* ModalModelFSM::NewInstance(Model* model, std::string name) 
 bool ModalModelFSM::_check(std::string& errorMessage) {
 	bool resultAll = true;
 	resultAll &= ModalModelDefault::_check(errorMessage);
-	resultAll &= getNodes()->size() > 0;
-	if (!resultAll) {
-		errorMessage += "ModalModelFSM requires at least one state node.";
+	if (getNodes()->size() == 0) {
+		errorMessage += "ModalModelFSM requires at least one state node. ";
+		resultAll = false;
+	}
+
+	bool hasInitialState = false;
+	for (DefaultNode* node : *getNodes()->list()) {
+		FSMState* state = dynamic_cast<FSMState*>(node);
+		if (state == nullptr) {
+			errorMessage += "ModalModelFSM node \"" + (node != nullptr ? node->getName() : "<null>") + "\" is not an FSMState. ";
+			resultAll = false;
+			continue;
+		}
+		if (state->isInitialNode()) {
+			hasInitialState = true;
+		}
+	}
+	if (!hasInitialState) {
+		errorMessage += "ModalModelFSM requires at least one initial state. ";
+		resultAll = false;
 	}
 	return resultAll;
 }

@@ -8,6 +8,7 @@ EFSMTransition::EFSMTransition(DefaultNode* source, DefaultNode* destination, st
 
 void EFSMTransition::setTriggerEvent(std::string triggerEvent) {
 	_triggerEvent = triggerEvent;
+	setInputEvent(triggerEvent);
 }
 
 std::string EFSMTransition::getTriggerEvent() const {
@@ -34,8 +35,28 @@ bool EFSMTransition::canFire(Model* model, Entity* entity) const {
 	return true;
 }
 
+bool EFSMTransition::canFire(Model* model, Entity* entity, const std::string& dispatchEvent) const {
+	bool parentCanFire = DefaultNodeTransition::canFire(model, entity, dispatchEvent);
+	if (!parentCanFire) {
+		return false;
+	}
+	if (_probabilityExpression != "") {
+		double p = model->parseExpression(_probabilityExpression);
+		return p > 0.0;
+	}
+	return true;
+}
+
 void EFSMTransition::execute(Model* model, Entity* entity) const {
 	DefaultNodeTransition::execute(model, entity);
+}
+
+double EFSMTransition::effectiveProbability(Model* model, Entity* entity) const {
+	(void) entity;
+	if (_probabilityExpression != "") {
+		return model->parseExpression(_probabilityExpression);
+	}
+	return DefaultNodeTransition::effectiveProbability(model, entity);
 }
 
 PetriTransition::PetriTransition(DefaultNode* source, DefaultNode* destination, std::string name)
