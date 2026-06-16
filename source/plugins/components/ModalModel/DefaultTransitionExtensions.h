@@ -17,7 +17,9 @@ public:
 
 public:
 	virtual bool canFire(Model* model, Entity* entity) const override;
+	virtual bool canFire(Model* model, Entity* entity, const std::string& dispatchEvent) const override;
 	virtual void execute(Model* model, Entity* entity) const override;
+	virtual double effectiveProbability(Model* model, Entity* entity) const override;
 
 private:
 	std::string _triggerEvent = "";
