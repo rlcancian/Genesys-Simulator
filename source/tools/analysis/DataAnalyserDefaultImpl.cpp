@@ -49,11 +49,11 @@ bool DataAnalyserDefaultImpl::loadDataSet(std::string datafilename) {
 		return false;
 	}
 
-	_dataFilename = datafilename;
-	if (_fitter != nullptr) {
-		_fitter->setDataFilename(datafilename);
+	if (_fitter != nullptr && !_fitter->setData(dataset.data(), datafilename)) {
+		return false;
 	}
 	_dataset = dataset;
+	_dataFilename = datafilename;
 
 	return true;
 }
@@ -70,6 +70,14 @@ bool DataAnalyserDefaultImpl::loadDataSet(const std::vector<double>& data) {
 	_dataset = dataset;
 	_dataFilename.clear();
 	return true;
+}
+
+const std::vector<double>& DataAnalyserDefaultImpl::data() const {
+	return _dataset.data();
+}
+
+const std::vector<double>& DataAnalyserDefaultImpl::sortedData() const {
+	return _dataset.sortedData();
 }
 
 DataSetSummary DataAnalyserDefaultImpl::summary() const {

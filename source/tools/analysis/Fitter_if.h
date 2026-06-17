@@ -92,6 +92,13 @@ public:
 	 */
 	virtual bool setData(const std::vector<double>& data) = 0;
 	/**
+	 * @brief Defines the in-memory dataset and records its source filename.
+	 */
+	virtual bool setData(const std::vector<double>& data, std::string dataFilename) {
+		(void) dataFilename;
+		return setData(data);
+	}
+	/**
 	 * @brief Retrieves the currently configured dataset source filename.
 	 */
 	virtual std::string getDataFilename() = 0;

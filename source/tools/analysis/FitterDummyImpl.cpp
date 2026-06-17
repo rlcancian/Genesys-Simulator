@@ -81,6 +81,12 @@ bool FitterDummyImpl::setData(const std::vector<double>& data) {
 	return false;
 }
 
+bool FitterDummyImpl::setData(const std::vector<double>& data, std::string dataFilename) {
+	(void) data;
+	_dataFilename = dataFilename;
+	return false;
+}
+
 std::string FitterDummyImpl::getDataFilename() {
 	return _dataFilename;
 }

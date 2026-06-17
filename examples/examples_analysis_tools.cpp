@@ -106,22 +106,18 @@ void printTestResult(const std::string& name, HypothesisTester_if::TestResult re
 int main(int argc, char* argv[]) {
     const std::string dataFile = (argc > 1) ? argv[1] : "examples/data/sample_data.csv";
 
-    DatasetLoader dataset;
-    if (!dataset.loadFromFile(dataFile, ',') && !dataset.loadFromFile(dataFile, ' ')) {
-        std::cerr << "ERROR: Could not load data from '" << dataFile << "'.\n"
-                  << "       Run from the project root or pass a data file path as argument.\n";
-        return 1;
-    }
-
     DataAnalyserDefaultImpl analyser;
 
     if (!analyser.loadDataSet(dataFile)) {
-        std::cerr << "ERROR: Could not configure DataAnalyser with '" << dataFile << "'.\n";
+        std::cerr << "ERROR: Could not load data from '" << dataFile << "'.\n"
+                  << "       Run from the project root or pass a data file path as argument.\n";
         return 1;
     }
     const DataSetSummary summary = analyser.summary();
     const DataSetHistogram histogram = analyser.histogram(6);
     const DataSetBoxPlot boxplot = analyser.boxplot();
+    const std::vector<double>& data = analyser.data();
+    const std::vector<double>& sortedData = analyser.sortedData();
 
     // Verify that data was loaded by probing the Normal fit result.
     {
@@ -209,29 +205,24 @@ int main(int argc, char* argv[]) {
     const double varianceH0 = 100.0;
     const double proportionH0 = 0.5;
     const double sampleProportionGreaterThan50 = static_cast<double>(
-            std::count_if(dataset.data().begin(), dataset.data().end(), isGreaterThan50)
-    ) / static_cast<double>(dataset.count());
+            std::count_if(data.begin(), data.end(), isGreaterThan50)
+    ) / static_cast<double>(summary.count);
 
     printSection("Confidence intervals");
-    printConfidenceInterval("Average mean", h->averageConfidenceInterval(dataset.mean(), dataset.stddev(), static_cast<unsigned int>(dataset.count()), confidenceLevel));
-    printConfidenceInterval("Average mean (file)", h->averageConfidenceInterval(dataFile, confidenceLevel));
-    printConfidenceInterval("Variance", h->varianceConfidenceInterval(dataset.variance(), static_cast<unsigned int>(dataset.count()), confidenceLevel));
-    printConfidenceInterval("P(value > 50)", h->proportionConfidenceInterval(sampleProportionGreaterThan50, static_cast<unsigned int>(dataset.count()), confidenceLevel));
-    printConfidenceInterval("P(value > 50) (file)", h->proportionConfidenceInterval(dataFile, isGreaterThan50, confidenceLevel));
+    printConfidenceInterval("Average mean", h->averageConfidenceInterval(summary.mean, summary.stddev, static_cast<unsigned int>(summary.count), confidenceLevel));
+    printConfidenceInterval("Variance", h->varianceConfidenceInterval(summary.variance, static_cast<unsigned int>(summary.count), confidenceLevel));
+    printConfidenceInterval("P(value > 50)", h->proportionConfidenceInterval(sampleProportionGreaterThan50, static_cast<unsigned int>(summary.count), confidenceLevel));
 
     printSection("Hypothesis tests");
-    printTestResult("Mean == 50", h->testAverage(meanH0, dataset.stddev(), static_cast<unsigned int>(dataset.count()), dataset.mean(), confidenceLevel, HypothesisTester_if::DIFFERENT));
-    printTestResult("Mean == 50 (file)", h->testAverage(dataFile, meanH0, confidenceLevel, HypothesisTester_if::DIFFERENT));
-    printTestResult("Variance == 100", h->testVariance(dataset.variance(), static_cast<unsigned int>(dataset.count()), varianceH0, confidenceLevel, HypothesisTester_if::DIFFERENT));
-    printTestResult("P(value > 50) == 0.5", h->testProportion(proportionH0, static_cast<unsigned int>(dataset.count()), sampleProportionGreaterThan50, confidenceLevel, HypothesisTester_if::DIFFERENT));
-    printTestResult("P(value > 50) == 0.5 (file)", h->testProportion(dataFile, isGreaterThan50, proportionH0, confidenceLevel, HypothesisTester_if::DIFFERENT));
+    printTestResult("Mean == 50", h->testAverage(meanH0, summary.stddev, static_cast<unsigned int>(summary.count), summary.mean, confidenceLevel, HypothesisTester_if::DIFFERENT));
+    printTestResult("Variance == 100", h->testVariance(summary.variance, static_cast<unsigned int>(summary.count), varianceH0, confidenceLevel, HypothesisTester_if::DIFFERENT));
+    printTestResult("P(value > 50) == 0.5", h->testProportion(proportionH0, static_cast<unsigned int>(summary.count), sampleProportionGreaterThan50, confidenceLevel, HypothesisTester_if::DIFFERENT));
 
-    const auto& sorted = dataset.sortedData();
-    const std::size_t half = sorted.size() / 2;
+    const std::size_t half = sortedData.size() / 2;
     DatasetLoader lowerHalf;
     DatasetLoader upperHalf;
-    lowerHalf.loadFromVector(std::vector<double>(sorted.begin(), sorted.begin() + static_cast<std::ptrdiff_t>(half)));
-    upperHalf.loadFromVector(std::vector<double>(sorted.begin() + static_cast<std::ptrdiff_t>(half), sorted.end()));
+    lowerHalf.loadFromVector(std::vector<double>(sortedData.begin(), sortedData.begin() + static_cast<std::ptrdiff_t>(half)));
+    upperHalf.loadFromVector(std::vector<double>(sortedData.begin() + static_cast<std::ptrdiff_t>(half), sortedData.end()));
 
     printSection("Two-sample examples");
     printConfidenceInterval("Mean lower-upper", h->averageDifferenceConfidenceInterval(
@@ -252,14 +243,13 @@ int main(int argc, char* argv[]) {
 	    return 0.5 * std::erfc(-(value - avg) / (sd * std::sqrt(2.0)));
 	};
 	printTestResult("Chi-square normal fit", h->chiSquareGoodnessOfFit(
-	        dataset.data(),
+	        data,
 	        fittedNormalCdf,
 	        2,
 	        confidenceLevel,
 	        6,
 	        5.0));
-	printTestResult("KS normal fit", h->kolmogorovSmirnov(dataset.data(), fittedNormalCdf, confidenceLevel));
-    printTestResult("KS normal fit (file)", h->kolmogorovSmirnov(dataFile, fittedNormalCdf, confidenceLevel));
+	printTestResult("KS normal fit", h->kolmogorovSmirnov(data, fittedNormalCdf, confidenceLevel));
 
     return 0;
 }

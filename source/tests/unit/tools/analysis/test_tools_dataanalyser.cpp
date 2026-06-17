@@ -21,6 +21,15 @@ std::filesystem::path writeSampleFile(const std::string& name) {
     return path;
 }
 
+std::filesystem::path writeSampleFile(const std::string& name, const std::string& contents) {
+    const auto suffix = std::chrono::steady_clock::now().time_since_epoch().count();
+    const auto path = std::filesystem::temp_directory_path()
+                    / (name + "_" + std::to_string(suffix) + ".csv");
+    std::ofstream file(path);
+    file << contents;
+    return path;
+}
+
 TEST(DataAnalyserDefaultImplTest, ProvidesDefaultFitterAndTester) {
     DataAnalyserDefaultImpl analyser;
 
@@ -71,6 +80,42 @@ TEST(DataAnalyserDefaultImplTest, LoadDataSetConfiguresFitter) {
     EXPECT_FALSE(summary.hasNegativeData);
 
     std::filesystem::remove(path);
+}
+
+TEST(DataAnalyserDefaultImplTest, FileLoadKeepsFacadeAndFitterOnSameValidatedDataset) {
+    DataAnalyserDefaultImpl analyser;
+    const auto path = writeSampleFile("genesys_dataanalyser_space_separated", "3.0 5.0 7.0\n");
+
+    ASSERT_TRUE(analyser.loadDataSet(path.string()));
+    EXPECT_EQ(analyser.fitter()->getDataFilename(), path.string());
+
+    const DataSetSummary summary = analyser.summary();
+    ASSERT_TRUE(summary.usable);
+    EXPECT_EQ(summary.count, 3u);
+    EXPECT_DOUBLE_EQ(summary.mean, 5.0);
+    EXPECT_DOUBLE_EQ(summary.stddev, 2.0);
+
+    double sqrerror = 0.0;
+    double avg = 0.0;
+    double stddev = 0.0;
+    analyser.fitter()->fitNormal(&sqrerror, &avg, &stddev);
+
+    EXPECT_TRUE(std::isfinite(sqrerror));
+    EXPECT_DOUBLE_EQ(avg, summary.mean);
+    EXPECT_DOUBLE_EQ(stddev, summary.stddev);
+
+    std::filesystem::remove(path);
+}
+
+TEST(DataAnalyserDefaultImplTest, ExposesTheLoadedDatasetSnapshot) {
+    DataAnalyserDefaultImpl analyser;
+    ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{5.0, 1.0, 3.0}));
+
+    const std::vector<double> expectedData = {5.0, 1.0, 3.0};
+    const std::vector<double> expectedSortedData = {1.0, 3.0, 5.0};
+
+    EXPECT_EQ(analyser.data(), expectedData);
+    EXPECT_EQ(analyser.sortedData(), expectedSortedData);
 }
 
 TEST(DataAnalyserDefaultImplTest, HistogramReturnsNumericBinsWithFrequencies) {
