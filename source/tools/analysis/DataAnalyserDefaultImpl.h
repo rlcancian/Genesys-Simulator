@@ -39,6 +39,8 @@ public:
 public:
 	virtual bool loadDataSet(std::string datafilename) override;
 	virtual bool loadDataSet(const std::vector<double>& data) override;
+	virtual const std::vector<double>& data() const override;
+	virtual const std::vector<double>& sortedData() const override;
 	virtual DataSetSummary summary() const override;
 	virtual DataSetHistogram histogram(std::size_t classCount = 0) const override;
 	virtual DataSetBoxPlot boxplot() const override;

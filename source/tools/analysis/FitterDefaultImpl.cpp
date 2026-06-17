@@ -321,10 +321,14 @@ void FitterDefaultImpl::setDataFilename(std::string dataFilename) {
 }
 
 bool FitterDefaultImpl::setData(const std::vector<double>& data) {
+	return setData(data, "");
+}
+
+bool FitterDefaultImpl::setData(const std::vector<double>& data, std::string dataFilename) {
 	if (!_dataset.loadFromVector(data)) {
 		return false;
 	}
-	_dataFilename.clear();
+	_dataFilename = dataFilename;
 	return true;
 }
 

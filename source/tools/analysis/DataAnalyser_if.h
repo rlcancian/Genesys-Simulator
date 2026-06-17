@@ -90,6 +90,8 @@ public:
 	virtual ~DataAnalyser_if() = default;
 	virtual bool loadDataSet(std::string datafilename) = 0;
 	virtual bool loadDataSet(const std::vector<double>& data) = 0;
+	virtual const std::vector<double>& data() const = 0;
+	virtual const std::vector<double>& sortedData() const = 0;
 	virtual DataSetSummary summary() const = 0;
 	virtual DataSetHistogram histogram(std::size_t classCount = 0) const = 0;
 	virtual DataSetBoxPlot boxplot() const = 0;

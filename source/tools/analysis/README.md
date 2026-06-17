@@ -14,8 +14,10 @@ Implemented behavior:
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `DataAnalyserDefaultImpl()`                                      | Builds a ready-to-use analyser with default fitter and hypothesis tester selected by `TraitsAnalysis`.                                 |
 | `DataAnalyserDefaultImpl(fitter, sampler, experimenter, tester)` | Allows dependency injection. Null `fitter` and `tester` are replaced by defaults.                                                      |
-| `loadDataSet(filename)`                                          | Validates that the dataset is loadable, stores the dataset filename and forwards it to `fitter()->setDataFilename(filename)`. Returns `false` when the file cannot be loaded as a usable numeric dataset. |
-| `loadDataSet(data)`                                              | Validates an in-memory numeric dataset and forwards it to `fitter()->setData(data)`. Returns `false` for empty or non-finite data.     |
+| `loadDataSet(filename)`                                          | Validates that the dataset is loadable, stores one in-memory snapshot, preserves the source filename and forwards the same validated values to the fitter. Returns `false` when the file cannot be loaded as a usable numeric dataset. |
+| `loadDataSet(data)`                                              | Validates an in-memory numeric dataset, stores one snapshot and forwards the same values to `fitter()->setData(data)`. Returns `false` for empty or non-finite data. |
+| `data()`                                                         | Returns a read-only view of the current dataset snapshot in input order. Use this when calling tester methods that accept raw samples. |
+| `sortedData()`                                                   | Returns a read-only sorted view of the current dataset snapshot.                                                                      |
 | `summary()`                                                      | Returns a minimal descriptive summary for the currently loaded dataset.                                                                |
 | `histogram(classCount)`                                          | Returns numeric histogram bins. `classCount = 0` uses Sturges' rule; bins are half-open except the last bin, which includes the upper bound. |
 | `boxplot()`                                                      | Returns quartiles, fences, whiskers and outliers using the 1.5 IQR rule.                                                              |
@@ -41,9 +43,11 @@ Default implementations are centralized in `TraitsAnalysis`:
 
 These descriptive structures are computed by `DatasetLoader` and local `tools/analysis` helpers, so the facade remains independent from `source/kernel`.
 
+The facade keeps `summary()`, `histogram()`, `boxplot()`, `fitter()` and direct `tester()` calls aligned by loading the dataset once into an internal snapshot. File-based loads preserve the source filename for diagnostics and compatibility, but the default fitter receives the already validated vector instead of re-reading the file. `HypothesisTesterDefaultImpl` is stateless; when a test needs raw observations, pass `analyser.data()` or `analyser.sortedData()` so it uses the same snapshot as the fitter and descriptive statistics.
+
 ## Fitter
 
-`Fitter_if` defines the distribution-fitting API. `FitterDefaultImpl` reads the dataset configured by `setDataFilename(...)` or `setData(...)`, estimates parameters and reports a squared-error-like adherence measure.
+`Fitter_if` defines the distribution-fitting API. `FitterDefaultImpl` reads the dataset configured by `setDataFilename(...)`, `setData(...)` or `setData(data, sourceFilename)`, estimates parameters and reports a squared-error-like adherence measure.
 
 Implemented fitting methods:
 
@@ -132,6 +136,7 @@ where `F(x_i)` is the theoretical CDF at the sorted sample value and `p_i = (i +
 ```cpp
 #include "tools/analysis/DataAnalyserDefaultImpl.h"
 
+#include <algorithm>
 #include <cmath>
 #include <iostream>
 #include <string>
@@ -151,6 +156,7 @@ int main() {
     auto summary = analyser.summary();
     auto histogram = analyser.histogram(6);
     auto boxplot = analyser.boxplot();
+    const auto& data = analyser.data();
 
     // In-memory data is also supported:
     // analyser.loadDataSet(std::vector<double>{27.6, 33.4, 50.0, 66.6, 72.4});
@@ -162,33 +168,42 @@ int main() {
 
     auto fitSummary = analyser.fitter()->fitAllSummary();
 
-    auto meanCi = analyser.tester()->averageConfidenceInterval(dataFile, 0.95);
+    auto meanCi = analyser.tester()->averageConfidenceInterval(
+        summary.mean,
+        summary.stddev,
+        static_cast<unsigned int>(summary.count),
+        0.95
+    );
     auto meanTest = analyser.tester()->testAverage(
-        dataFile,
         50.0,
+        summary.stddev,
+        static_cast<unsigned int>(summary.count),
+        summary.mean,
         0.95,
         HypothesisTester_if::DIFFERENT
     );
 
+    const double sampleProportion = static_cast<double>(
+        std::count_if(data.begin(), data.end(), greaterThan50)
+    ) / static_cast<double>(summary.count);
     auto proportionCi = analyser.tester()->proportionConfidenceInterval(
-        dataFile,
-        greaterThan50,
+        sampleProportion,
+        static_cast<unsigned int>(summary.count),
         0.95
     );
 
 	auto normalCdf = [mean, stddev](double value) {
 	    return 0.5 * std::erfc(-(value - mean) / (stddev * std::sqrt(2.0)));
 	};
-	std::vector<double> chiSample = {27.6, 33.4, 43.5, 50.0, 56.5, 66.6, 72.4};
 	auto chiSquare = analyser.tester()->chiSquareGoodnessOfFit(
-	    chiSample,
+	    data,
 	    normalCdf,
 	    2,
 	    0.95,
 	    4,
 	    1.0
 	);
-	auto ks = analyser.tester()->kolmogorovSmirnov(dataFile, normalCdf, 0.95);
+	auto ks = analyser.tester()->kolmogorovSmirnov(data, normalCdf, 0.95);
 
     std::cout << "Normal fit: mean=" << mean
               << " stddev=" << stddev

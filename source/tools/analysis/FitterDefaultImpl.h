@@ -25,6 +25,7 @@ public:
 	virtual FitSummary fitAllSummary() override;
 	virtual void setDataFilename(std::string dataFilename) override;
 	virtual bool setData(const std::vector<double>& data) override;
+	virtual bool setData(const std::vector<double>& data, std::string dataFilename) override;
 	virtual std::string getDataFilename() override;
 
 private:
