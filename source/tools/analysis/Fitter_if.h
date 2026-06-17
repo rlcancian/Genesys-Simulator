@@ -17,6 +17,25 @@
 #include <string>
 #include <vector>
 
+struct FittedParameter {
+	std::string name;
+	double value = 0.0;
+};
+
+struct FittingResult {
+	std::string distributionName;
+	bool success = false;
+	double squaredError = 0.0;
+	std::vector<FittedParameter> parameters;
+	std::string message;
+};
+
+struct FitSummary {
+	bool success = false;
+	FittingResult bestFit;
+	std::vector<FittingResult> ranking;
+};
+
 /**
  * @brief Interface for fitting theoretical distributions to real datasets.
  *
@@ -34,7 +53,7 @@
  * - isNormalDistributed() should be interpreted as a normality adherence check
  *   under the given confidence level.
  *
- * Preconditions:
+	 * Preconditions:
 	 * - Output pointers must be valid non-null addresses.
 	 * - Data source must be configured through setDataFilename() or setData()
 	 *   before fitting.
@@ -62,6 +81,7 @@ public:
 	virtual void fitBeta(double *sqrerror, double *alpha, double *beta, double *infLimit, double *supLimit) = 0;
 	virtual void fitWeibull(double *sqrerror, double *alpha, double *scale) = 0;
 	virtual void fitAll(double *sqrerror, std::string *name) = 0;
+	virtual FitSummary fitAllSummary() = 0;
 public:
 	/**
 	 * @brief Defines the dataset source filename used by fitting operations.

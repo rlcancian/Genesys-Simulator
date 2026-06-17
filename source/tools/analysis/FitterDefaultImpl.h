@@ -22,6 +22,7 @@ public:
 	virtual void fitBeta(double* sqrerror, double* alpha, double* beta, double* infLimit, double* supLimit) override;
 	virtual void fitWeibull(double* sqrerror, double* alpha, double* scale) override;
 	virtual void fitAll(double* sqrerror, std::string* name) override;
+	virtual FitSummary fitAllSummary() override;
 	virtual void setDataFilename(std::string dataFilename) override;
 	virtual bool setData(const std::vector<double>& data) override;
 	virtual std::string getDataFilename() override;
