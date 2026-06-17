@@ -36,20 +36,5 @@ public:
 	static double inverseFFisherSnedecor(double cumulativeProbability, double d1, double d2);
 	static double inverseNormal(double cumulativeProbability, double mean, double stddev);
 	static double inverseTStudent(double cumulativeProbability, double mean, double stddev, double degreeFreedom);
-private:
-	static double _findInverseChi2(double a, double fa, double b, double fb, unsigned int recursions, double cumulativeProbability, double degreeFreedom);
-	static double _findInverseFFisherSnedecor(double a, double fa, double b, double fb, unsigned int recursions, double cumulativeProbability, double d1, double d2);
-	static double _findInverseNormal(double a, double fa, double b, double fb, unsigned int recursions, double cumulativeProbability, double mean, double stddev);
-	static double _findInverseTStudent(double a, double fa, double b, double fb, unsigned int recursions, double cumulativeProbability, double mean, double stddev, double degreeFreedom);
-private:
-	/**
-	 * Cache for previously computed inversion values. It improves performance but
-	 * keeps process-local static state.
-	 */
-	static std::map<std::string, double>* memory; // = std::map<std::string, double>();
-	/**
-	 * Legacy numerical engine used by inverse computations.
-	 */
-	static Solver_if* integrator;
 };
 #endif /* PROBABILITYDISTRIBUTION_H */

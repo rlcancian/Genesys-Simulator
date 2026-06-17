@@ -13,7 +13,7 @@
 #include "HypothesisTesterDefaultImpl.h"
 #include "DatasetLoader.h"
 #include "SimulationResultsDataset.h"
-#include "tools/ProbabilityDistribution.h"
+#include "tools/analysis/ProbabilityDistribution.h"
 #include "tools/SolverDefaultImpl1.h"
 #include <algorithm>
 #include <cmath>

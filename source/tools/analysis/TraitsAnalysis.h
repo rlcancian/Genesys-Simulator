@@ -38,6 +38,21 @@ template <typename T>
 struct TraitsAnalysis {
 };
 
+class ProbabilityDistribution;
+
+/*!
+ * Configure numerical constants used by probability distribution helpers.
+ */
+template <> struct TraitsAnalysis<ProbabilityDistribution> {
+	static constexpr unsigned int IntegrationIntervals = 8192U;
+	static constexpr unsigned int MaxBracketExpansions = 128U;
+	static constexpr unsigned int MaxBisectionIterations = 120U;
+	static constexpr double CdfTolerance = 1e-8;
+	static constexpr double QuantileTolerance = 1e-10;
+	static constexpr double NormalTailBreakPoint = 0.02425;
+	static constexpr double TStudentNormalApproximationDegreesFreedom = 341.0;
+};
+
 /*!
  *  Configure the Solver to be used
  */

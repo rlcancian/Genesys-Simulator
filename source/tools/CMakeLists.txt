@@ -6,8 +6,8 @@ add_library(genesys_tools_analysis STATIC
     analysis/DataAnalyserDefaultImpl.cpp
     analysis/SimulationResultsDataset.cpp
     analysis/SimulationResultsParser.cpp
-    ProbabilityDistribution.cpp
-    ProbabilityDistributionBase.cpp
+    analysis/ProbabilityDistribution.cpp
+    analysis/ProbabilityDistributionBase.cpp
     SolverDefaultImpl1.cpp
 )
 

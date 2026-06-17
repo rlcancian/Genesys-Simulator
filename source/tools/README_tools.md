@@ -10,7 +10,7 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 - `SimulationResultsDatasetParser`: loader for numeric result files, including Genesys `Record` outputs split by replication and optional time/value columns.
 - `Fitter_if`: fitting contract for distribution parameter inference from sample data.
 - `HypothesisTester_if`: parametric inference API (confidence intervals and tests).
-- `ProbabilityDistributionBase` / `ProbabilityDistribution`: static math façade for PDF/PMF and inverse/quantile routines.
+- `analysis/ProbabilityDistributionBase` / `analysis/ProbabilityDistribution`: static math façade for PDF/PMF and inverse/quantile routines used by the analysis tool.
 - `Solver_if`: legacy numerical contract mixing integration and derivation/advancement.
 - `TraitsAnalysis`: traits registry binding analysis abstractions to concrete implementations.
 

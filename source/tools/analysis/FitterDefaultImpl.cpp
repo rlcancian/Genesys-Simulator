@@ -1,5 +1,5 @@
 #include "FitterDefaultImpl.h"
-#include "tools/ProbabilityDistributionBase.h"
+#include "tools/analysis/ProbabilityDistributionBase.h"
 #include "tools/SolverDefaultImpl1.h"
 
 #include <algorithm>
