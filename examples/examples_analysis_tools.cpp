@@ -101,19 +101,6 @@ void printTestResult(const std::string& name, HypothesisTester_if::TestResult re
               << "  decision=" << decision(result.rejectH0()) << "\n";
 }
 
-std::vector<double> normalQuantileObservedFrequencies(const std::vector<double>& sortedData, double mean, double stddev) {
-    const std::vector<double> zBreaks = {-0.841621, -0.253347, 0.253347, 0.841621};
-    std::vector<double> observed(5, 0.0);
-    for (double value : sortedData) {
-        std::size_t bucket = 0;
-        while (bucket < zBreaks.size() && value > mean + zBreaks[bucket] * stddev) {
-            ++bucket;
-        }
-        observed[bucket] += 1.0;
-    }
-    return observed;
-}
-
 } // namespace
 
 int main(int argc, char* argv[]) {
@@ -260,19 +247,18 @@ int main(int argc, char* argv[]) {
             upperHalf.variance(), static_cast<unsigned int>(upperHalf.count()),
             confidenceLevel, HypothesisTester_if::DIFFERENT));
 
-    printSection("Goodness-of-fit tests");
-    const std::vector<double> observedNormalQuantiles = normalQuantileObservedFrequencies(dataset.sortedData(), avg, sd);
-    const std::vector<double> expectedNormalQuantiles(5, static_cast<double>(dataset.count()) / 5.0);
-    printTestResult("Chi-square normal fit", h->chiSquareGoodnessOfFit(
-            observedNormalQuantiles,
-            expectedNormalQuantiles,
-            2,
-            confidenceLevel));
-
-    auto fittedNormalCdf = [avg, sd](double value) {
-        return 0.5 * std::erfc(-(value - avg) / (sd * std::sqrt(2.0)));
-    };
-    printTestResult("KS normal fit", h->kolmogorovSmirnov(dataset.data(), fittedNormalCdf, confidenceLevel));
+	printSection("Goodness-of-fit tests");
+	auto fittedNormalCdf = [avg, sd](double value) {
+	    return 0.5 * std::erfc(-(value - avg) / (sd * std::sqrt(2.0)));
+	};
+	printTestResult("Chi-square normal fit", h->chiSquareGoodnessOfFit(
+	        dataset.data(),
+	        fittedNormalCdf,
+	        2,
+	        confidenceLevel,
+	        6,
+	        5.0));
+	printTestResult("KS normal fit", h->kolmogorovSmirnov(dataset.data(), fittedNormalCdf, confidenceLevel));
     printTestResult("KS normal fit (file)", h->kolmogorovSmirnov(dataFile, fittedNormalCdf, confidenceLevel));
 
     return 0;

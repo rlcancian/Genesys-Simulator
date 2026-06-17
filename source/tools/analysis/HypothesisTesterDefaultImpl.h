@@ -67,9 +67,11 @@ public:
 	HypothesisTester_if::TestResult testAverage(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
 	HypothesisTester_if::TestResult testProportion(std::string firstSampleDataFilename, std::string secondSampleDataFilename, checkProportionFunction function, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
 	HypothesisTester_if::TestResult testVariance(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) override;
-	// goodness-of-fit tests
-	HypothesisTester_if::TestResult chiSquareGoodnessOfFit(const std::vector<double>& observedFrequencies, const std::vector<double>& expectedFrequencies, unsigned int estimatedParameters, double confidenceLevel) override;
-	HypothesisTester_if::TestResult kolmogorovSmirnov(const std::vector<double>& sample, distributionCdfFunction cdf, double confidenceLevel) override;
+		// goodness-of-fit tests
+		HypothesisTester_if::TestResult chiSquareGoodnessOfFit(const std::vector<double>& observedFrequencies, const std::vector<double>& expectedFrequencies, unsigned int estimatedParameters, double confidenceLevel) override;
+		HypothesisTester_if::TestResult chiSquareGoodnessOfFit(const std::vector<double>& sample, distributionCdfFunction cdf, unsigned int estimatedParameters, double confidenceLevel, std::size_t classCount = 0, double minExpectedFrequency = 5.0) override;
+		HypothesisTester_if::TestResult chiSquareGoodnessOfFit(const std::vector<double>& sample, distributionCdfFunction cdf, const std::vector<double>& classBoundaries, unsigned int estimatedParameters, double confidenceLevel, double minExpectedFrequency = 5.0) override;
+		HypothesisTester_if::TestResult kolmogorovSmirnov(const std::vector<double>& sample, distributionCdfFunction cdf, double confidenceLevel) override;
 	HypothesisTester_if::TestResult kolmogorovSmirnov(std::string sampleDataFilename, distributionCdfFunction cdf, double confidenceLevel) override;
 };
 

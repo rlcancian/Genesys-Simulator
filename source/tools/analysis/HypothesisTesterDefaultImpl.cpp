@@ -17,12 +17,17 @@
 #include "tools/SolverDefaultImpl1.h"
 #include <algorithm>
 #include <cmath>
+#include <iterator>
 #include <limits>
 #include <stdexcept>
 #include <vector>
 
 namespace {
 
+struct ChiSquareClass {
+	double observed = 0.0;
+	double expected = 0.0;
+};
 
 double clampProbability(double value) {
 	return std::clamp(value, 0.0, 1.0);
@@ -48,6 +53,12 @@ double chi2CdfByIntegration(double chi2, double degreesOfFreedom) {
 	}
 	if (degreesOfFreedom <= 0.0 || !std::isfinite(degreesOfFreedom)) {
 		throw std::invalid_argument("chi2CdfByIntegration requires positive finite degreesOfFreedom");
+	}
+	if (std::fabs(degreesOfFreedom - 1.0) < 1e-12) {
+		return clampProbability(std::erf(std::sqrt(chi2 / 2.0)));
+	}
+	if (std::fabs(degreesOfFreedom - 2.0) < 1e-12) {
+		return clampProbability(1.0 - std::exp(-chi2 / 2.0));
 	}
 	// Use numerical integration of the chi-square PDF to keep p-values coherent with chi-square quantiles.
 	SolverDefaultImpl1 integrator(1e-6, 10000);
@@ -145,6 +156,148 @@ unsigned int countMatches(const std::vector<double>& data, checkProportionFuncti
 		}
 	}
 	return count;
+}
+
+std::size_t defaultChiSquareClassCount(std::size_t count) {
+	if (count == 0) {
+		return 0;
+	}
+	return static_cast<std::size_t>(std::ceil(1.0 + 3.322 * std::log10(static_cast<double>(count))));
+}
+
+void validateSampleAndCdf(const std::vector<double>& sample, const distributionCdfFunction& cdf) {
+	if (sample.empty()) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires a non-empty sample");
+	}
+	if (!cdf) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires a valid CDF function");
+	}
+	for (double value : sample) {
+		if (!std::isfinite(value)) {
+			throw std::invalid_argument("chiSquareGoodnessOfFit requires finite sample values");
+		}
+	}
+}
+
+double checkedCdf(const distributionCdfFunction& cdf, double value) {
+	const double probability = cdf(value);
+	if (probability < 0.0 || probability > 1.0 || !std::isfinite(probability)) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit CDF must return finite probabilities in [0,1]");
+	}
+	return probability;
+}
+
+std::vector<double> automaticClassBoundaries(const std::vector<double>& sample, std::size_t classCount) {
+	auto minmax = std::minmax_element(sample.begin(), sample.end());
+	const double min = *minmax.first;
+	const double max = *minmax.second;
+	if (!(max > min)) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires sample range > 0 for automatic classes");
+	}
+	if (classCount == 0) {
+		classCount = defaultChiSquareClassCount(sample.size());
+	}
+	if (classCount < 2) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires at least two initial classes");
+	}
+
+	std::vector<double> boundaries;
+	boundaries.reserve(classCount + 1U);
+	const double width = (max - min) / static_cast<double>(classCount);
+	for (std::size_t i = 0; i <= classCount; ++i) {
+		boundaries.push_back((i == classCount) ? max : min + static_cast<double>(i) * width);
+	}
+	return boundaries;
+}
+
+void validateClassBoundaries(const std::vector<double>& classBoundaries) {
+	if (classBoundaries.size() < 3) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires at least two classes");
+	}
+	for (double boundary : classBoundaries) {
+		if (!std::isfinite(boundary)) {
+			throw std::invalid_argument("chiSquareGoodnessOfFit requires finite class boundaries");
+		}
+	}
+	for (std::size_t i = 1; i < classBoundaries.size(); ++i) {
+		if (!(classBoundaries[i] > classBoundaries[i - 1U])) {
+			throw std::invalid_argument("chiSquareGoodnessOfFit requires strictly increasing class boundaries");
+		}
+	}
+}
+
+std::vector<ChiSquareClass> buildChiSquareClasses(const std::vector<double>& sample, const distributionCdfFunction& cdf, const std::vector<double>& classBoundaries) {
+	validateClassBoundaries(classBoundaries);
+	std::vector<ChiSquareClass> classes(classBoundaries.size() - 1U);
+	const double lowerLimit = classBoundaries.front();
+	const double upperLimit = classBoundaries.back();
+	const double totalProbability = checkedCdf(cdf, upperLimit) - checkedCdf(cdf, lowerLimit);
+	if (!(totalProbability > 0.0) || !std::isfinite(totalProbability)) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires positive CDF probability over class boundaries");
+	}
+
+	for (double value : sample) {
+		if (value < lowerLimit || value > upperLimit) {
+			throw std::invalid_argument("chiSquareGoodnessOfFit sample values must be covered by class boundaries");
+		}
+		auto upper = std::upper_bound(classBoundaries.begin(), classBoundaries.end(), value);
+		std::size_t index = static_cast<std::size_t>(std::distance(classBoundaries.begin(), upper));
+		if (index == 0) {
+			index = 1;
+		}
+		if (index >= classBoundaries.size()) {
+			index = classBoundaries.size() - 1U;
+		}
+		++classes[index - 1U].observed;
+	}
+
+	const double n = static_cast<double>(sample.size());
+	for (std::size_t i = 0; i < classes.size(); ++i) {
+		const double lower = classBoundaries[i];
+		const double upper = classBoundaries[i + 1U];
+		const double probability = checkedCdf(cdf, upper) - checkedCdf(cdf, lower);
+		if (probability < 0.0 || !std::isfinite(probability)) {
+			throw std::invalid_argument("chiSquareGoodnessOfFit requires nondecreasing CDF over class boundaries");
+		}
+		classes[i].expected = n * probability / totalProbability;
+	}
+	return classes;
+}
+
+std::vector<ChiSquareClass> groupChiSquareClasses(const std::vector<ChiSquareClass>& initialClasses, double minExpectedFrequency) {
+	if (!(minExpectedFrequency >= 0.0) || !std::isfinite(minExpectedFrequency)) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires finite minExpectedFrequency >= 0");
+	}
+
+	std::vector<ChiSquareClass> grouped;
+	ChiSquareClass current;
+	for (std::size_t i = 0; i < initialClasses.size(); ++i) {
+		current.observed += initialClasses[i].observed;
+		current.expected += initialClasses[i].expected;
+		const bool last = (i + 1U == initialClasses.size());
+		if (current.expected >= minExpectedFrequency || last) {
+			grouped.push_back(current);
+			current = ChiSquareClass{};
+		}
+	}
+
+	if (grouped.size() > 1U && grouped.back().expected < minExpectedFrequency) {
+		grouped[grouped.size() - 2U].observed += grouped.back().observed;
+		grouped[grouped.size() - 2U].expected += grouped.back().expected;
+		grouped.pop_back();
+	}
+	return grouped;
+}
+
+void splitChiSquareClasses(const std::vector<ChiSquareClass>& classes, std::vector<double>* observed, std::vector<double>* expected) {
+	observed->clear();
+	expected->clear();
+	observed->reserve(classes.size());
+	expected->reserve(classes.size());
+	for (const ChiSquareClass& cls : classes) {
+		observed->push_back(cls.observed);
+		expected->push_back(cls.expected);
+	}
 }
 
 }
@@ -567,6 +720,24 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::chiSquareGoodnessOf
 	const double pValue = clampProbability(1.0 - cdf);
 	const double acceptSupLim = ProbabilityDistribution::inverseChi2(1.0 - alpha, dof);
 	return HypothesisTester_if::TestResult(pValue, pValue < alpha, 0.0, acceptSupLim, testStat);
+}
+
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::chiSquareGoodnessOfFit(const std::vector<double>& sample, distributionCdfFunction cdf, unsigned int estimatedParameters, double confidenceLevel, std::size_t classCount, double minExpectedFrequency) {
+	validateSampleAndCdf(sample, cdf);
+	const std::vector<double> boundaries = automaticClassBoundaries(sample, classCount);
+	return chiSquareGoodnessOfFit(sample, cdf, boundaries, estimatedParameters, confidenceLevel, minExpectedFrequency);
+}
+
+HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::chiSquareGoodnessOfFit(const std::vector<double>& sample, distributionCdfFunction cdf, const std::vector<double>& classBoundaries, unsigned int estimatedParameters, double confidenceLevel, double minExpectedFrequency) {
+	validateConfidenceLevel(confidenceLevel);
+	validateSampleAndCdf(sample, cdf);
+	const std::vector<ChiSquareClass> initialClasses = buildChiSquareClasses(sample, cdf, classBoundaries);
+	const std::vector<ChiSquareClass> groupedClasses = groupChiSquareClasses(initialClasses, minExpectedFrequency);
+
+	std::vector<double> observed;
+	std::vector<double> expected;
+	splitChiSquareClasses(groupedClasses, &observed, &expected);
+	return chiSquareGoodnessOfFit(observed, expected, estimatedParameters, confidenceLevel);
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::kolmogorovSmirnov(const std::vector<double>& sample, distributionCdfFunction cdf, double confidenceLevel) {
