@@ -70,6 +70,19 @@ Parameter estimation uses the Method of Moments (MOM), based on sample mean, sam
 
 `FittingResult` exposes `distributionName`, `success`, `squaredError`, named fitted `parameters` and a short `message`. `FitSummary` exposes `success`, `bestFit` and the full `ranking` returned by `fitAllSummary()`. The legacy pointer-based `fitAll(...)` remains available and delegates to the structured best fit.
 
+## Probability Distribution Helpers
+
+`ProbabilityDistributionBase` and `ProbabilityDistribution` live inside `tools/analysis` and are part of the `genesys_tools_analysis` target. They provide static mathematical helpers used by `FitterDefaultImpl`, `HypothesisTesterDefaultImpl` and callers that need distribution PDFs or reference quantiles.
+
+Public API:
+
+| Class                         | Methods / purpose                                                                                                 |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `ProbabilityDistributionBase` | Static PDF/PMF helpers: `normal`, `tStudent`, `chi2`, `fisherSnedecor`, `beta`, `gamma`, `erlang`, `exponential`, `logNormal`, `poisson`, `triangular`, `uniform`, `weibull`. |
+| `ProbabilityDistribution`     | Static quantile helpers: `inverseNormal`, `inverseTStudent`, `inverseChi2`, `inverseFFisherSnedecor`.             |
+
+The public headers expose only this mathematical API. They do not include kernel headers and do not expose solver, parser, simulator or statistics types. Numerical integration and quantile caching are private implementation details in `ProbabilityDistribution.cpp`.
+
 ## Hypothesis Tester
 
 `HypothesisTester_if` defines classical parametric inference methods. `HypothesisTesterDefaultImpl` implements confidence intervals and hypothesis tests for mean, proportion and variance, for one and two populations.
@@ -139,6 +152,7 @@ where `F(x_i)` is the theoretical CDF at the sorted sample value and `p_i = (i +
 
 ```cpp
 #include "tools/analysis/DataAnalyserDefaultImpl.h"
+#include "tools/analysis/ProbabilityDistribution.h"
 
 #include <algorithm>
 #include <cmath>
@@ -171,6 +185,8 @@ int main() {
     analyser.fitter()->fitNormal(&normalError, &mean, &stddev);
 
     auto fitSummary = analyser.fitter()->fitAllSummary();
+    auto normalCritical = ProbabilityDistribution::inverseNormal(0.975, 0.0, 1.0);
+    auto fittedPdfAtMean = ProbabilityDistribution::normal(mean, mean, stddev);
 
     auto meanCi = analyser.tester()->averageConfidenceInterval(
         summary.mean,
@@ -219,6 +235,8 @@ int main() {
     std::cout << "Best fit: " << fitSummary.bestFit.distributionName
               << " error=" << fitSummary.bestFit.squaredError
               << " candidates=" << fitSummary.ranking.size() << "\n";
+    std::cout << "Normal q(0.975): " << normalCritical
+              << " fitted PDF at mean=" << fittedPdfAtMean << "\n";
     std::cout << "Mean CI: [" << meanCi.inferiorLimit()
               << ", " << meanCi.superiorLimit() << "]\n";
     std::cout << "Mean test p-value: " << meanTest.pValue()

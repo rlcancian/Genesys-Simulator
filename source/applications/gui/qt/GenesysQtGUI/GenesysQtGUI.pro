@@ -64,8 +64,8 @@ SOURCES += \
     $$SOURCE_ROOT/tools/analysis/SimulationResultsDataset.cpp \
     $$SOURCE_ROOT/tools/analysis/SimulationResultsParser.cpp \
     $$SOURCE_ROOT/tools/OptimizerDefaultImpl1.cpp \
-    $$SOURCE_ROOT/tools/ProbabilityDistribution.cpp \
-    $$SOURCE_ROOT/tools/ProbabilityDistributionBase.cpp \
+    $$SOURCE_ROOT/tools/analysis/ProbabilityDistribution.cpp \
+    $$SOURCE_ROOT/tools/analysis/ProbabilityDistributionBase.cpp \
     $$SOURCE_ROOT/tools/SolverDefaultImpl1.cpp \
     $$SOURCE_ROOT/tools/FactorialDesign/FactorialDesign.cpp \
     $$SOURCE_ROOT/applications/BaseGenesysTerminalApplication.cpp \

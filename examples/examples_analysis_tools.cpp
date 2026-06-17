@@ -1,5 +1,6 @@
 #include "tools/analysis/DataAnalyserDefaultImpl.h"
 #include "tools/analysis/DatasetLoader.h"
+#include "tools/analysis/ProbabilityDistribution.h"
 
 #include <algorithm>
 #include <cstddef>
@@ -197,6 +198,14 @@ int main(int argc, char* argv[]) {
     const bool isNormal99 = f->isNormalDistributed(0.01);
     std::cout << "=> Is normally distributed (alpha=0.05): " << (isNormal95 ? "YES" : "NO") << "\n"
               << "=> Is normally distributed (alpha=0.01): " << (isNormal99 ? "YES" : "NO") << "\n";
+
+	printSection("Distribution helpers");
+	const double z975 = ProbabilityDistribution::inverseNormal(0.975, 0.0, 1.0);
+	const double t975 = ProbabilityDistribution::inverseTStudent(0.975, 0.0, 1.0, static_cast<double>(summary.count - 1U));
+	const double fittedNormalPdfAtMean = ProbabilityDistribution::normal(avg, avg, sd);
+	std::cout << "Standard normal q(0.975): " << std::fixed << std::setprecision(4) << z975 << "\n"
+	          << "Student t q(0.975, df=" << (summary.count - 1U) << "): " << t975 << "\n"
+	          << "Fitted normal PDF at mean: " << fittedNormalPdfAtMean << "\n";
 
     // --- Parametric inference examples ---
     HypothesisTester_if* h = analyser.tester();

@@ -5,12 +5,14 @@
 #include <fstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "tools/analysis/HypothesisTesterDefaultImpl.h"
 
 namespace {
 
 constexpr double kCenterTolerance = 1e-9;
+constexpr double kReferenceTolerance = 1e-3;
 
 bool isPositive(double value) {
     return value > 0.0;
@@ -38,6 +40,83 @@ void expectValidResult(const HypothesisTester_if::TestResult& result) {
     EXPECT_GE(result.pValue(), 0.0);
     EXPECT_LE(result.pValue(), 1.0);
     EXPECT_TRUE(std::isfinite(result.testStat()));
+}
+
+TEST(HypothesisTesterDefaultImplTest, ConfidenceIntervalsMatchPublishedReferenceValues) {
+    HypothesisTesterDefaultImpl tester;
+
+    // Reference values:
+    // t(0.975, 29) = 2.0452
+    // z(0.975) = 1.9600
+    // chi-square(0.975, 29) = 45.7223; chi-square(0.025, 29) = 16.0471
+    auto meanCi = tester.averageConfidenceInterval(10.0, 2.0, 30, 0.95);
+    EXPECT_NEAR(meanCi.inferiorLimit(), 9.2531, kReferenceTolerance);
+    EXPECT_NEAR(meanCi.superiorLimit(), 10.7469, kReferenceTolerance);
+    EXPECT_NEAR(meanCi.halfWidth(), 0.7469, kReferenceTolerance);
+
+    auto proportionCi = tester.proportionConfidenceInterval(0.80, 200, 0.95);
+    EXPECT_NEAR(proportionCi.inferiorLimit(), 0.7446, kReferenceTolerance);
+    EXPECT_NEAR(proportionCi.superiorLimit(), 0.8554, kReferenceTolerance);
+    EXPECT_NEAR(proportionCi.halfWidth(), 0.0554, kReferenceTolerance);
+
+    auto varianceCi = tester.varianceConfidenceInterval(4.0, 30, 0.95);
+    EXPECT_NEAR(varianceCi.inferiorLimit(), 2.5370, 2e-3);
+    EXPECT_NEAR(varianceCi.superiorLimit(), 7.2287, 2e-3);
+}
+
+TEST(HypothesisTesterDefaultImplTest, ParametricTestsMatchPublishedReferenceValues) {
+    HypothesisTesterDefaultImpl tester;
+
+    // t = (11.5 - 10) / (2 / sqrt(30)) = 4.1079; t(0.975, 29) = 2.0452.
+    auto meanTest = tester.testAverage(10.0, 2.0, 30, 11.5, 0.95, HypothesisTester_if::DIFFERENT);
+    EXPECT_NEAR(meanTest.testStat(), 4.1079, kReferenceTolerance);
+    EXPECT_NEAR(meanTest.acceptanceInferiorLimit(), -2.0452, kReferenceTolerance);
+    EXPECT_NEAR(meanTest.acceptanceSuperiorLimit(), 2.0452, kReferenceTolerance);
+    EXPECT_NEAR(meanTest.pValue(), 0.0003, 5e-4);
+    EXPECT_TRUE(meanTest.rejectH0());
+
+    // z = (0.80 - 0.50) / sqrt(0.50 * 0.50 / 100) = 6.0000; z(0.95) = 1.6449.
+    auto proportionTest = tester.testProportion(0.50, 100, 0.80, 0.95, HypothesisTester_if::GREATER_THAN);
+    EXPECT_NEAR(proportionTest.testStat(), 6.0000, kReferenceTolerance);
+    EXPECT_NEAR(proportionTest.acceptanceSuperiorLimit(), 1.6449, kReferenceTolerance);
+    EXPECT_NEAR(proportionTest.pValue(), 0.0, 1e-8);
+    EXPECT_TRUE(proportionTest.rejectH0());
+
+    // chi-square observed = (n - 1) * s^2 / sigma0^2 = 29 * 4.0 / 4.2 = 27.6190.
+    auto varianceTest = tester.testVariance(4.0, 30, 4.2, 0.95, HypothesisTester_if::DIFFERENT);
+    EXPECT_NEAR(varianceTest.testStat(), 27.6190, kReferenceTolerance);
+    EXPECT_NEAR(varianceTest.acceptanceInferiorLimit(), 16.0471, 2e-3);
+    EXPECT_NEAR(varianceTest.acceptanceSuperiorLimit(), 45.7223, 2e-3);
+    EXPECT_FALSE(varianceTest.rejectH0());
+}
+
+TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitMatchesReferenceValues) {
+    HypothesisTesterDefaultImpl tester;
+
+    // Sum((O - E)^2 / E) = 0.4, df = 2, p-value = exp(-0.4 / 2) = 0.8187.
+    auto result = tester.chiSquareGoodnessOfFit({18.0, 22.0, 20.0}, {20.0, 20.0, 20.0}, 0, 0.95);
+
+    EXPECT_NEAR(result.testStat(), 0.4000, kReferenceTolerance);
+    EXPECT_NEAR(result.pValue(), 0.8187, kReferenceTolerance);
+    EXPECT_NEAR(result.acceptanceInferiorLimit(), 0.0, kReferenceTolerance);
+    EXPECT_NEAR(result.acceptanceSuperiorLimit(), 5.9915, 2e-3);
+    EXPECT_FALSE(result.rejectH0());
+}
+
+TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovMatchesReferenceValues) {
+    HypothesisTesterDefaultImpl tester;
+
+    const std::vector<double> sample = {0.1, 0.2, 0.35, 0.5, 0.65, 0.8, 0.9};
+    auto result = tester.kolmogorovSmirnov(sample, uniform01Cdf, 0.95);
+
+    // For this sample against U(0,1), D = max(D+, D-) = 0.1000.
+    // The implemented critical value follows the standard asymptotic form:
+    // sqrt(-0.5 * ln(alpha / 2) / n), which gives 0.5133 for alpha=0.05, n=7.
+    EXPECT_NEAR(result.testStat(), 0.1000, kReferenceTolerance);
+    EXPECT_NEAR(result.acceptanceInferiorLimit(), 0.0, kReferenceTolerance);
+    EXPECT_NEAR(result.acceptanceSuperiorLimit(), 0.5133, kReferenceTolerance);
+    EXPECT_NEAR(result.pValue(), 1.0000, kReferenceTolerance);
+    EXPECT_FALSE(result.rejectH0());
 }
 
 TEST(HypothesisTesterDefaultImplTest, ProportionDifferenceConfidenceIntervalHasExpectedCenterAndFiniteBounds) {

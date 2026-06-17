@@ -13,10 +13,6 @@
 #ifndef PROBABILITYDISTRIBUTIONBASE_H
 #define PROBABILITYDISTRIBUTIONBASE_H
 
-#include "Solver_if.h"
-#include <string>
-#include <map>
-
 /**
  * @brief Mathematical base library for distribution-related functions.
  *
