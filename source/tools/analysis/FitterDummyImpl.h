@@ -47,6 +47,7 @@ public:
 	void fitAll(double *sqrerror, std::string *name);
 public:
 	void setDataFilename(std::string dataFilename);
+	bool setData(const std::vector<double>& data);
 	std::string getDataFilename();
 private:
 	std::string _dataFilename = "";

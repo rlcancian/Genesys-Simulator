@@ -14,7 +14,8 @@ Implemented behavior:
 | ---------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | `DataAnalyserDefaultImpl()`                                      | Builds a ready-to-use analyser with default fitter and hypothesis tester selected by `TraitsAnalysis`.                                 |
 | `DataAnalyserDefaultImpl(fitter, sampler, experimenter, tester)` | Allows dependency injection. Null `fitter` and `tester` are replaced by defaults.                                                      |
-| `loadDataSet(filename)`                                          | Stores the dataset filename and forwards it to `fitter()->setDataFilename(filename)`.                                                  |
+| `loadDataSet(filename)`                                          | Validates that the dataset is loadable, stores the dataset filename and forwards it to `fitter()->setDataFilename(filename)`. Returns `false` when the file cannot be loaded as a usable numeric dataset. |
+| `loadDataSet(data)`                                              | Validates an in-memory numeric dataset and forwards it to `fitter()->setData(data)`. Returns `false` for empty or non-finite data.     |
 | `fitter()`                                                       | Returns the active `Fitter_if`. By default this is `FitterDefaultImpl`.                                                                |
 | `tester()`                                                       | Returns the active `HypothesisTester_if`. By default this is `HypothesisTesterDefaultImpl`.                                            |
 | `sampler()`                                                      | Future roadmap hook. Returns injected sampler, or throws `std::runtime_error("TODO: implement ...")` when none is injected.            |
@@ -31,7 +32,7 @@ Default implementations are centralized in `TraitsAnalysis`:
 
 ## Fitter
 
-`Fitter_if` defines the distribution-fitting API. `FitterDefaultImpl` reads the dataset configured by `setDataFilename(...)`, estimates parameters and reports a squared-error-like adherence measure.
+`Fitter_if` defines the distribution-fitting API. `FitterDefaultImpl` reads the dataset configured by `setDataFilename(...)` or `setData(...)`, estimates parameters and reports a squared-error-like adherence measure.
 
 Implemented fitting methods:
 
@@ -122,7 +123,12 @@ int main() {
     const std::string dataFile = "examples/data/sample_data.csv";
 
     DataAnalyserDefaultImpl analyser;
-    analyser.loadDataSet(dataFile);
+    if (!analyser.loadDataSet(dataFile)) {
+        return 1;
+    }
+
+    // In-memory data is also supported:
+    // analyser.loadDataSet(std::vector<double>{27.6, 33.4, 50.0, 66.6, 72.4});
 
     double normalError = 0.0;
     double mean = 0.0;

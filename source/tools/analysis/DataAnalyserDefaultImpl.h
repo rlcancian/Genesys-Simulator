@@ -5,6 +5,7 @@
 #include "TraitsAnalysis.h"
 
 #include <string>
+#include <vector>
 
 /**
  * @brief Default implementation of DataAnalyser_if.
@@ -36,6 +37,7 @@ public:
 
 public:
 	virtual bool loadDataSet(std::string datafilename) override;
+	virtual bool loadDataSet(const std::vector<double>& data) override;
 	virtual bool saveDataSet(std::string datasetname) override;
 	virtual void newDataSet(std::string datasetname, std::string datafilename) override;
 
