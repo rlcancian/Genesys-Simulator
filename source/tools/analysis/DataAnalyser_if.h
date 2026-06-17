@@ -13,6 +13,7 @@
 #ifndef DATAANALYSERIF_H
 #define DATAANALYSERIF_H
 
+#include <cstddef>
 #include <string>
 #include <vector>
 #include "Fitter_if.h"
@@ -20,6 +21,17 @@
 
 class Sampler_if;
 class ExperimentManager_if;
+
+struct DataSetSummary {
+	bool usable = false;
+	std::size_t count = 0;
+	double min = 0.0;
+	double max = 0.0;
+	double mean = 0.0;
+	double variance = 0.0;
+	double stddev = 0.0;
+	bool hasNegativeData = false;
+};
 
 /**
  * @brief High-level façade for applied statistical analysis over datasets.
@@ -46,6 +58,7 @@ public:
 	virtual ~DataAnalyser_if() = default;
 	virtual bool loadDataSet(std::string datafilename) = 0;
 	virtual bool loadDataSet(const std::vector<double>& data) = 0;
+	virtual DataSetSummary summary() const = 0;
 	virtual bool saveDataSet(std::string datasetname) = 0;
 	virtual void newDataSet(std::string datasetname, std::string datafilename) = 0;
 	virtual Fitter_if* fitter() = 0;

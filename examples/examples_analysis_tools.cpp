@@ -132,6 +132,7 @@ int main(int argc, char* argv[]) {
         std::cerr << "ERROR: Could not configure DataAnalyser with '" << dataFile << "'.\n";
         return 1;
     }
+    const DataSetSummary summary = analyser.summary();
 
     // Verify that data was loaded by probing the Normal fit result.
     {
@@ -154,7 +155,7 @@ int main(int argc, char* argv[]) {
     double uMin, uMax, uSse;
     f->fitUniform(&uSse, &uMin, &uMax);
 
-    printHeader(dataFile, dataset.count(), dataset.mean(), dataset.stddev(), dataset.min(), dataset.max());
+    printHeader(dataFile, summary.count, summary.mean, summary.stddev, summary.min, summary.max);
 
     // --- Individual fits ---
     printSection("Distribution fitting");

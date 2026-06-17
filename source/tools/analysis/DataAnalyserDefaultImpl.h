@@ -2,6 +2,7 @@
 #define DATAANALYSERDEFAULTIMPL_H
 
 #include "DataAnalyser_if.h"
+#include "DatasetLoader.h"
 #include "TraitsAnalysis.h"
 
 #include <string>
@@ -38,6 +39,7 @@ public:
 public:
 	virtual bool loadDataSet(std::string datafilename) override;
 	virtual bool loadDataSet(const std::vector<double>& data) override;
+	virtual DataSetSummary summary() const override;
 	virtual bool saveDataSet(std::string datasetname) override;
 	virtual void newDataSet(std::string datasetname, std::string datafilename) override;
 
@@ -57,6 +59,7 @@ private:
 	HypothesisTester_if* _tester = nullptr;
 
 	// Dataset state
+	DatasetLoader _dataset;
 	std::string _datasetName = "";
 	std::string _dataFilename = "";
 };
