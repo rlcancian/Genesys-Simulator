@@ -300,6 +300,52 @@ void splitChiSquareClasses(const std::vector<ChiSquareClass>& classes, std::vect
 	}
 }
 
+HypothesisTester_if::TestResult makeChiSquareResult(const std::vector<double>& observedFrequencies,
+		const std::vector<double>& expectedFrequencies,
+		unsigned int estimatedParameters,
+		double confidenceLevel,
+		std::size_t initialClasses) {
+	validateConfidenceLevel(confidenceLevel);
+	if (observedFrequencies.size() != expectedFrequencies.size() || observedFrequencies.size() < 2) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires observed and expected vectors with equal size >= 2");
+	}
+	if (observedFrequencies.size() <= static_cast<std::size_t>(estimatedParameters + 1U)) {
+		throw std::invalid_argument("chiSquareGoodnessOfFit requires positive degrees of freedom");
+	}
+
+	double testStat = 0.0;
+	double observedTotal = 0.0;
+	double expectedTotal = 0.0;
+	for (std::size_t i = 0; i < observedFrequencies.size(); ++i) {
+		const double observed = observedFrequencies[i];
+		const double expected = expectedFrequencies[i];
+		if (observed < 0.0 || expected <= 0.0 || !std::isfinite(observed) || !std::isfinite(expected)) {
+			throw std::invalid_argument("chiSquareGoodnessOfFit requires finite observed >= 0 and expected > 0 frequencies");
+		}
+		const double diff = observed - expected;
+		testStat += (diff * diff) / expected;
+		observedTotal += observed;
+		expectedTotal += expected;
+	}
+
+	const double alpha = 1.0 - confidenceLevel;
+	const double dof = static_cast<double>(observedFrequencies.size() - 1U - estimatedParameters);
+	const double cdf = chi2CdfByIntegration(testStat, dof);
+	const double pValue = clampProbability(1.0 - cdf);
+	const double acceptSupLim = ProbabilityDistribution::inverseChi2(1.0 - alpha, dof);
+
+	HypothesisTester_if::TestResult::GoodnessOfFitDetails details;
+	details.available = true;
+	details.initialClasses = initialClasses;
+	details.effectiveClasses = observedFrequencies.size();
+	details.estimatedParameters = estimatedParameters;
+	details.degreesOfFreedom = dof;
+	details.observedTotal = observedTotal;
+	details.expectedTotal = expectedTotal;
+
+	return HypothesisTester_if::TestResult(pValue, pValue < alpha, 0.0, acceptSupLim, testStat, details);
+}
+
 }
 
 HypothesisTesterDefaultImpl::HypothesisTesterDefaultImpl() {
@@ -407,9 +453,11 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::varianceRat
 	validateConfidenceLevel(confidenceLevel);
 	double ratio = var1 / var2;
 	const double alpha = 1.0 - confidenceLevel;
-	double il = 1 / ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha / 2.0, n2 - 1, n1 - 1);
+	const double d1 = n1 - 1;
+	const double d2 = n2 - 1;
+	double il = 1.0 / ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha / 2.0, d1, d2);
 	il *= ratio;
-	double sl = ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha / 2.0, n1 - 1, n2 - 1);
+	double sl = ProbabilityDistribution::inverseFFisherSnedecor(1.0 - alpha / 2.0, d2, d1);
 	sl *= ratio;
 	double e0 = (sl - il) / 2.0;
 	return HypothesisTester_if::ConfidenceInterval(il, sl, e0);
@@ -695,31 +743,7 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(std::s
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::chiSquareGoodnessOfFit(const std::vector<double>& observedFrequencies, const std::vector<double>& expectedFrequencies, unsigned int estimatedParameters, double confidenceLevel) {
-	validateConfidenceLevel(confidenceLevel);
-	if (observedFrequencies.size() != expectedFrequencies.size() || observedFrequencies.size() < 2) {
-		throw std::invalid_argument("chiSquareGoodnessOfFit requires observed and expected vectors with equal size >= 2");
-	}
-	if (observedFrequencies.size() <= static_cast<std::size_t>(estimatedParameters + 1U)) {
-		throw std::invalid_argument("chiSquareGoodnessOfFit requires positive degrees of freedom");
-	}
-
-	double testStat = 0.0;
-	for (std::size_t i = 0; i < observedFrequencies.size(); ++i) {
-		const double observed = observedFrequencies[i];
-		const double expected = expectedFrequencies[i];
-		if (observed < 0.0 || expected <= 0.0 || !std::isfinite(observed) || !std::isfinite(expected)) {
-			throw std::invalid_argument("chiSquareGoodnessOfFit requires finite observed >= 0 and expected > 0 frequencies");
-		}
-		const double diff = observed - expected;
-		testStat += (diff * diff) / expected;
-	}
-
-	const double alpha = 1.0 - confidenceLevel;
-	const double dof = static_cast<double>(observedFrequencies.size() - 1U - estimatedParameters);
-	const double cdf = chi2CdfByIntegration(testStat, dof);
-	const double pValue = clampProbability(1.0 - cdf);
-	const double acceptSupLim = ProbabilityDistribution::inverseChi2(1.0 - alpha, dof);
-	return HypothesisTester_if::TestResult(pValue, pValue < alpha, 0.0, acceptSupLim, testStat);
+	return makeChiSquareResult(observedFrequencies, expectedFrequencies, estimatedParameters, confidenceLevel, observedFrequencies.size());
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::chiSquareGoodnessOfFit(const std::vector<double>& sample, distributionCdfFunction cdf, unsigned int estimatedParameters, double confidenceLevel, std::size_t classCount, double minExpectedFrequency) {
@@ -737,7 +761,7 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::chiSquareGoodnessOf
 	std::vector<double> observed;
 	std::vector<double> expected;
 	splitChiSquareClasses(groupedClasses, &observed, &expected);
-	return chiSquareGoodnessOfFit(observed, expected, estimatedParameters, confidenceLevel);
+	return makeChiSquareResult(observed, expected, estimatedParameters, confidenceLevel, initialClasses.size());
 }
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::kolmogorovSmirnov(const std::vector<double>& sample, distributionCdfFunction cdf, double confidenceLevel) {

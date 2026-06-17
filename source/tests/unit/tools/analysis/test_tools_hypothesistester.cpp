@@ -62,6 +62,16 @@ TEST(HypothesisTesterDefaultImplTest, ConfidenceIntervalsMatchPublishedReference
     auto varianceCi = tester.varianceConfidenceInterval(4.0, 30, 0.95);
     EXPECT_NEAR(varianceCi.inferiorLimit(), 2.5370, 2e-3);
     EXPECT_NEAR(varianceCi.superiorLimit(), 7.2287, 2e-3);
+
+    // F-ratio CI reference with unequal sample sizes:
+    // s1^2/s2^2 = 61.1617/62.2748, df1=79, df2=84.
+    auto varianceRatioCi = tester.varianceRatioConfidenceInterval(61.1617, 80, 62.2748, 85, 0.95);
+    EXPECT_NEAR(varianceRatioCi.inferiorLimit(), 0.6351, 5e-3);
+    EXPECT_NEAR(varianceRatioCi.superiorLimit(), 1.5234, 5e-3);
+
+    auto reciprocalVarianceRatioCi = tester.varianceRatioConfidenceInterval(62.2748, 85, 61.1617, 80, 0.95);
+    EXPECT_NEAR(reciprocalVarianceRatioCi.inferiorLimit(), 1.0 / varianceRatioCi.superiorLimit(), 5e-4);
+    EXPECT_NEAR(reciprocalVarianceRatioCi.superiorLimit(), 1.0 / varianceRatioCi.inferiorLimit(), 5e-4);
 }
 
 TEST(HypothesisTesterDefaultImplTest, ParametricTestsMatchPublishedReferenceValues) {
@@ -88,6 +98,14 @@ TEST(HypothesisTesterDefaultImplTest, ParametricTestsMatchPublishedReferenceValu
     EXPECT_NEAR(varianceTest.acceptanceInferiorLimit(), 16.0471, 2e-3);
     EXPECT_NEAR(varianceTest.acceptanceSuperiorLimit(), 45.7223, 2e-3);
     EXPECT_FALSE(varianceTest.rejectH0());
+
+    // Equal-variance two-sample t reference:
+    // pooled variance = 4.1977, t = (10.0 - 8.5) / sqrt(sp^2 * (1/30 + 1/28)) = 2.7847.
+    auto twoMeanTest = tester.testAverage(10.0, 2.0, 30, 8.5, 2.1, 28, 0.95, HypothesisTester_if::DIFFERENT);
+    EXPECT_NEAR(twoMeanTest.testStat(), 2.7847, 2e-3);
+    EXPECT_NEAR(twoMeanTest.acceptanceInferiorLimit(), -2.0032, 2e-3);
+    EXPECT_NEAR(twoMeanTest.acceptanceSuperiorLimit(), 2.0032, 2e-3);
+    EXPECT_TRUE(twoMeanTest.rejectH0());
 }
 
 TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitMatchesReferenceValues) {
@@ -101,6 +119,14 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitMatchesReferenceValu
     EXPECT_NEAR(result.acceptanceInferiorLimit(), 0.0, kReferenceTolerance);
     EXPECT_NEAR(result.acceptanceSuperiorLimit(), 5.9915, 2e-3);
     EXPECT_FALSE(result.rejectH0());
+    ASSERT_TRUE(result.hasGoodnessOfFitDetails());
+    const auto details = result.goodnessOfFitDetails();
+    EXPECT_EQ(details.initialClasses, 3u);
+    EXPECT_EQ(details.effectiveClasses, 3u);
+    EXPECT_EQ(details.estimatedParameters, 0u);
+    EXPECT_DOUBLE_EQ(details.degreesOfFreedom, 2.0);
+    EXPECT_DOUBLE_EQ(details.observedTotal, 60.0);
+    EXPECT_DOUBLE_EQ(details.expectedTotal, 60.0);
 }
 
 TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovMatchesReferenceValues) {
@@ -334,6 +360,12 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitGroupsLowExpectedCla
 
     EXPECT_FALSE(result.rejectH0());
     expectValidResult(result);
+    ASSERT_TRUE(result.hasGoodnessOfFitDetails());
+    const auto details = result.goodnessOfFitDetails();
+    EXPECT_EQ(details.initialClasses, 10u);
+    EXPECT_EQ(details.effectiveClasses, 2u);
+    EXPECT_EQ(details.estimatedParameters, 0u);
+    EXPECT_DOUBLE_EQ(details.degreesOfFreedom, 1.0);
     EXPECT_NEAR(result.testStat(), 0.0, 1e-9);
 }
 
@@ -349,6 +381,7 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitRejectsInvalidInputs
     EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 0.2}, uniform01Cdf, std::vector<double>{0.0, 1.0}, 0, 0.95), std::invalid_argument);
     EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 1.2}, uniform01Cdf, std::vector<double>{0.0, 0.5, 1.0}, 0, 0.95), std::invalid_argument);
     EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 0.2}, uniform01Cdf, std::vector<double>{0.0, 0.5, 0.4}, 0, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 0.2, 0.8, 0.9}, uniform01Cdf, std::vector<double>{0.0, 0.5, 1.0}, 1, 0.95), std::invalid_argument);
 }
 
 TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovCoversNonRejectionAndRejection) {

@@ -64,9 +64,19 @@ Implemented fitting methods:
 | `fitWeibull`          | Weibull                 | `alpha`, `scale`                        |
 | `fitAll`              | Compares all candidates | best error and distribution name        |
 | `fitAllSummary`       | Compares all candidates | structured best fit and ranked results  |
-| `isNormalDistributed` | Normality check         | boolean decision                        |
+| `isNormalDistributed` | Normal EDF/CDF SSE heuristic | boolean pass/fail decision         |
 
-Parameter estimation uses the Method of Moments (MOM), based on sample mean, sample variance and observed extremes.
+Parameter estimation is distribution-specific, and the fitted candidates are then compared with the EDF/CDF squared error described below. The current parameter policies are:
+
+- Uniform: observed minimum and maximum.
+- Triangular: observed minimum/maximum and MOM-based mode.
+- Normal: sample mean and unbiased sample standard deviation.
+- Exponential: sample mean.
+- Erlang: MOM-based mean and shape.
+- Beta: scaled MOM using observed limits.
+- Weibull: MOM/numerical shape estimate and scale.
+
+`isNormalDistributed(...)` is not a formal normality test and does not return a p-value. It fits a Normal distribution, computes the normalized EDF/CDF squared error, and compares that value with an internal threshold derived from the confidence-like input. Use `kolmogorovSmirnov(...)` or `chiSquareGoodnessOfFit(...)` when an explicit goodness-of-fit statistic is needed.
 
 `FittingResult` exposes `distributionName`, `success`, `squaredError`, named fitted `parameters` and a short `message`. `FitSummary` exposes `success`, `bestFit` and the full `ranking` returned by `fitAllSummary()`. The legacy pointer-based `fitAll(...)` remains available and delegates to the structured best fit.
 
@@ -115,6 +125,8 @@ Each `TestResult` exposes:
 | `rejectH0()` / `acceptH0()`                               | Decision at the requested confidence level.      |
 | `acceptanceInferiorLimit()` / `acceptanceSuperiorLimit()` | Acceptance region limits for the test statistic. |
 
+`ConfidenceInterval::halfWidth()` is the usual margin of error only for symmetric intervals, such as mean and proportion intervals. For asymmetric intervals, such as variance and variance-ratio intervals, it is just half of the displayed interval width and should not be interpreted as a symmetric error margin.
+
 File-based overloads load numeric data through `DatasetLoader` and `SimulationResultsParser`, not through kernel statistics collectors.
 
 All inference methods expect `confidenceLevel` in `(0, 1)`, for example `0.95`.
@@ -128,6 +140,8 @@ Implemented goodness-of-fit tests:
 
 Both methods return `TestResult`: `testStat()` contains chi-square or KS `D`, `pValue()` contains the adherence-test p-value, and `rejectH0()` indicates whether the fitted/theoretical distribution should be rejected at the requested confidence level.
 
+For chi-square results, `TestResult::hasGoodnessOfFitDetails()` indicates whether additional audit metadata is available. `goodnessOfFitDetails()` exposes the number of initial classes, effective classes after grouping, estimated parameters, degrees of freedom, observed total and expected total.
+
 KS p-value limitation: `kolmogorovSmirnov(...)` computes the classical one-sample KS p-value assuming the theoretical CDF is fully specified before observing the sample. When distribution parameters are estimated from the same sample being tested, that assumption is not valid and the returned p-value should be treated as an approximation/diagnostic value, not as an exact calibrated p-value. No Lilliefors correction, bootstrap calibration or Monte Carlo calibration is applied.
 
 For chi-square tests from raw samples, the class policy is:
@@ -137,6 +151,7 @@ For chi-square tests from raw samples, the class policy is:
 - Expected frequencies are computed from the provided CDF and normalized over the covered class range so the expected total matches the sample size.
 - Adjacent classes are merged until the grouped expected frequency reaches `minExpectedFrequency` (default `5.0`). A final low-expected class is merged backward.
 - Degrees of freedom are computed after grouping as `groupedClasses - 1 - estimatedParameters`.
+- If this expression is not positive, the chi-square call throws `std::invalid_argument` instead of returning an unauditable statistic.
 
 ## Error Measure
 
@@ -245,6 +260,12 @@ int main() {
 	          << ", " << proportionCi.superiorLimit() << "]\n";
 	std::cout << "Chi-square p-value: " << chiSquare.pValue()
 	          << " rejectH0=" << chiSquare.rejectH0() << "\n";
+	if (chiSquare.hasGoodnessOfFitDetails()) {
+	    auto details = chiSquare.goodnessOfFitDetails();
+	    std::cout << "Chi-square df: " << details.degreesOfFreedom
+	              << " classes: " << details.initialClasses
+	              << " -> " << details.effectiveClasses << "\n";
+	}
 	std::cout << "KS p-value: " << ks.pValue()
 	          << " rejectH0=" << ks.rejectH0() << "\n";
 }

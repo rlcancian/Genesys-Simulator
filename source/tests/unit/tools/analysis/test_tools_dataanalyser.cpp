@@ -30,6 +30,30 @@ std::filesystem::path writeSampleFile(const std::string& name, const std::string
     return path;
 }
 
+std::size_t histogramFrequencySum(const DataSetHistogram& histogram) {
+    std::size_t total = 0u;
+    for (const auto& bin : histogram.bins) {
+        total += bin.frequency;
+    }
+    return total;
+}
+
+void expectOrderedAndContiguousHistogram(const DataSetHistogram& histogram) {
+    ASSERT_TRUE(histogram.usable);
+    ASSERT_FALSE(histogram.bins.empty());
+    EXPECT_DOUBLE_EQ(histogram.bins.front().lowerLimit, histogram.min);
+    EXPECT_DOUBLE_EQ(histogram.bins.back().upperLimit, histogram.max);
+    for (std::size_t i = 0; i < histogram.bins.size(); ++i) {
+        EXPECT_LE(histogram.bins[i].lowerLimit, histogram.bins[i].upperLimit);
+        EXPECT_GE(histogram.bins[i].frequency, 0u);
+        EXPECT_GE(histogram.bins[i].relativeFrequency, 0.0);
+        if (i > 0u) {
+            EXPECT_DOUBLE_EQ(histogram.bins[i - 1u].upperLimit, histogram.bins[i].lowerLimit);
+        }
+    }
+    EXPECT_EQ(histogramFrequencySum(histogram), histogram.count);
+}
+
 TEST(DataAnalyserDefaultImplTest, ProvidesDefaultFitterAndTester) {
     DataAnalyserDefaultImpl analyser;
 
@@ -140,6 +164,7 @@ TEST(DataAnalyserDefaultImplTest, HistogramReturnsNumericBinsWithFrequencies) {
     EXPECT_DOUBLE_EQ(histogram.bins[1].upperLimit, 5.0);
     EXPECT_EQ(histogram.bins[1].frequency, 3u);
     EXPECT_DOUBLE_EQ(histogram.bins[1].relativeFrequency, 0.6);
+    expectOrderedAndContiguousHistogram(histogram);
 }
 
 TEST(DataAnalyserDefaultImplTest, HistogramUsesSingleBinForConstantData) {
@@ -158,6 +183,19 @@ TEST(DataAnalyserDefaultImplTest, HistogramUsesSingleBinForConstantData) {
     EXPECT_DOUBLE_EQ(histogram.bins[0].upperLimit, 4.0);
     EXPECT_EQ(histogram.bins[0].frequency, 3u);
     EXPECT_DOUBLE_EQ(histogram.bins[0].relativeFrequency, 1.0);
+    expectOrderedAndContiguousHistogram(histogram);
+}
+
+TEST(DataAnalyserDefaultImplTest, HistogramUsesDefaultClassPolicyForZeroClassCount) {
+    DataAnalyserDefaultImpl analyser;
+    ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{1.0, 2.0, 3.0, 4.0, 5.0}));
+
+    const DataSetHistogram histogram = analyser.histogram(0);
+
+    ASSERT_TRUE(histogram.usable);
+    EXPECT_EQ(histogram.count, 5u);
+    EXPECT_FALSE(histogram.bins.empty());
+    expectOrderedAndContiguousHistogram(histogram);
 }
 
 TEST(DataAnalyserDefaultImplTest, LoadInMemoryDataSetConfiguresFitter) {
@@ -205,6 +243,10 @@ TEST(DataAnalyserDefaultImplTest, BoxplotReturnsQuartilesAndWhiskers) {
     EXPECT_DOUBLE_EQ(boxplot.lowerWhisker, 1.0);
     EXPECT_DOUBLE_EQ(boxplot.upperWhisker, 5.0);
     EXPECT_TRUE(boxplot.outliers.empty());
+    EXPECT_LE(boxplot.min, boxplot.firstQuartile);
+    EXPECT_LE(boxplot.firstQuartile, boxplot.median);
+    EXPECT_LE(boxplot.median, boxplot.thirdQuartile);
+    EXPECT_LE(boxplot.thirdQuartile, boxplot.max);
 }
 
 TEST(DataAnalyserDefaultImplTest, BoxplotIdentifiesOutliers) {
@@ -221,6 +263,32 @@ TEST(DataAnalyserDefaultImplTest, BoxplotIdentifiesOutliers) {
     EXPECT_DOUBLE_EQ(boxplot.upperWhisker, 4.0);
     ASSERT_EQ(boxplot.outliers.size(), 1u);
     EXPECT_DOUBLE_EQ(boxplot.outliers[0], 100.0);
+    EXPECT_LE(boxplot.min, boxplot.firstQuartile);
+    EXPECT_LE(boxplot.firstQuartile, boxplot.median);
+    EXPECT_LE(boxplot.median, boxplot.thirdQuartile);
+    EXPECT_LE(boxplot.thirdQuartile, boxplot.max);
+}
+
+TEST(DataAnalyserDefaultImplTest, BoxplotHandlesEvenAndSmallSamples) {
+    DataAnalyserDefaultImpl evenAnalyser;
+    ASSERT_TRUE(evenAnalyser.loadDataSet(std::vector<double>{1.0, 2.0, 3.0, 4.0}));
+    const DataSetBoxPlot even = evenAnalyser.boxplot();
+    ASSERT_TRUE(even.usable);
+    EXPECT_DOUBLE_EQ(even.firstQuartile, 1.75);
+    EXPECT_DOUBLE_EQ(even.median, 2.5);
+    EXPECT_DOUBLE_EQ(even.thirdQuartile, 3.25);
+    EXPECT_LE(even.min, even.firstQuartile);
+    EXPECT_LE(even.firstQuartile, even.median);
+    EXPECT_LE(even.median, even.thirdQuartile);
+    EXPECT_LE(even.thirdQuartile, even.max);
+
+    DataAnalyserDefaultImpl pairAnalyser;
+    ASSERT_TRUE(pairAnalyser.loadDataSet(std::vector<double>{2.0, 4.0}));
+    const DataSetBoxPlot pair = pairAnalyser.boxplot();
+    ASSERT_TRUE(pair.usable);
+    EXPECT_DOUBLE_EQ(pair.firstQuartile, 2.5);
+    EXPECT_DOUBLE_EQ(pair.median, 3.0);
+    EXPECT_DOUBLE_EQ(pair.thirdQuartile, 3.5);
 }
 
 TEST(DataAnalyserDefaultImplTest, LoadDataSetReturnsFalseForInvalidDataset) {
