@@ -197,7 +197,65 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitCoversNonRejectionAn
     auto rejection = tester.chiSquareGoodnessOfFit({40.0, 10.0, 10.0}, {20.0, 20.0, 20.0}, 0, 0.95);
     EXPECT_TRUE(rejection.rejectH0());
     expectValidResult(rejection);
-    EXPECT_GE(rejection.testStat(), 0.0);
+	EXPECT_GE(rejection.testStat(), 0.0);
+}
+
+TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitBuildsFrequenciesFromSampleAndExplicitClasses) {
+    HypothesisTesterDefaultImpl tester;
+    const std::vector<double> boundaries = {0.0, 0.25, 0.50, 0.75, 1.0};
+
+    auto nonRejection = tester.chiSquareGoodnessOfFit(
+            std::vector<double>{0.05, 0.10, 0.30, 0.45, 0.55, 0.70, 0.80, 0.95},
+            uniform01Cdf,
+            boundaries,
+            0,
+            0.95,
+            1.0);
+    EXPECT_FALSE(nonRejection.rejectH0());
+    expectValidResult(nonRejection);
+
+    auto rejection = tester.chiSquareGoodnessOfFit(
+            std::vector<double>{0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08},
+            uniform01Cdf,
+            boundaries,
+            0,
+            0.95,
+            1.0);
+    EXPECT_TRUE(rejection.rejectH0());
+    expectValidResult(rejection);
+}
+
+TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitSupportsAutomaticClasses) {
+    HypothesisTesterDefaultImpl tester;
+
+    auto result = tester.chiSquareGoodnessOfFit(
+            std::vector<double>{0.0, 0.25, 0.50, 0.75, 1.0},
+            uniform01Cdf,
+            0,
+            0.95,
+            2,
+            1.0);
+
+    EXPECT_FALSE(result.rejectH0());
+    expectValidResult(result);
+}
+
+TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitGroupsLowExpectedClasses) {
+    HypothesisTesterDefaultImpl tester;
+    const std::vector<double> sample = {
+        0.05, 0.15, 0.25, 0.35, 0.45,
+        0.55, 0.65, 0.75, 0.85, 0.95
+    };
+    const std::vector<double> boundaries = {
+        0.0, 0.1, 0.2, 0.3, 0.4, 0.5,
+        0.6, 0.7, 0.8, 0.9, 1.0
+    };
+
+    auto result = tester.chiSquareGoodnessOfFit(sample, uniform01Cdf, boundaries, 0, 0.95, 5.0);
+
+    EXPECT_FALSE(result.rejectH0());
+    expectValidResult(result);
+    EXPECT_NEAR(result.testStat(), 0.0, 1e-9);
 }
 
 TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitRejectsInvalidInputs) {
@@ -207,6 +265,11 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitRejectsInvalidInputs
     EXPECT_THROW(tester.chiSquareGoodnessOfFit({1.0, 2.0}, {1.0, 0.0}, 0, 0.95), std::invalid_argument);
     EXPECT_THROW(tester.chiSquareGoodnessOfFit({1.0, 2.0}, {1.0, 2.0}, 1, 0.95), std::invalid_argument);
     EXPECT_THROW(tester.chiSquareGoodnessOfFit({1.0, 2.0}, {1.0, 2.0}, 0, 1.0), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{}, uniform01Cdf, 0, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 0.2}, distributionCdfFunction{}, 0, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 0.2}, uniform01Cdf, std::vector<double>{0.0, 1.0}, 0, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 1.2}, uniform01Cdf, std::vector<double>{0.0, 0.5, 1.0}, 0, 0.95), std::invalid_argument);
+    EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 0.2}, uniform01Cdf, std::vector<double>{0.0, 0.5, 0.4}, 0, 0.95), std::invalid_argument);
 }
 
 TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovCoversNonRejectionAndRejection) {

@@ -14,6 +14,7 @@
 #ifndef HYPOTHESISTESTER_IF_H
 #define HYPOTHESISTESTER_IF_H
 
+#include <cstddef>
 #include <functional>
 #include <string>
 #include <vector>
@@ -165,6 +166,8 @@ public:
 	virtual HypothesisTester_if::TestResult testVariance(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) = 0;
 	// Goodness-of-fit tests.
 	virtual HypothesisTester_if::TestResult chiSquareGoodnessOfFit(const std::vector<double>& observedFrequencies, const std::vector<double>& expectedFrequencies, unsigned int estimatedParameters, double confidenceLevel) = 0;
+	virtual HypothesisTester_if::TestResult chiSquareGoodnessOfFit(const std::vector<double>& sample, distributionCdfFunction cdf, unsigned int estimatedParameters, double confidenceLevel, std::size_t classCount = 0, double minExpectedFrequency = 5.0) = 0;
+	virtual HypothesisTester_if::TestResult chiSquareGoodnessOfFit(const std::vector<double>& sample, distributionCdfFunction cdf, const std::vector<double>& classBoundaries, unsigned int estimatedParameters, double confidenceLevel, double minExpectedFrequency = 5.0) = 0;
 	virtual HypothesisTester_if::TestResult kolmogorovSmirnov(const std::vector<double>& sample, distributionCdfFunction cdf, double confidenceLevel) = 0;
 	virtual HypothesisTester_if::TestResult kolmogorovSmirnov(std::string sampleDataFilename, distributionCdfFunction cdf, double confidenceLevel) = 0;
 };

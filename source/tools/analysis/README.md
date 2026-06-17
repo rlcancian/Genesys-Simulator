@@ -104,10 +104,18 @@ Implemented goodness-of-fit tests:
 
 | Method                   | Statistical model                                                | Inputs                                                                                           |
 | ------------------------ | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
-| `chiSquareGoodnessOfFit` | Chi-square adherence test.                                       | Observed frequencies, expected frequencies, number of estimated parameters and confidence level. |
+| `chiSquareGoodnessOfFit` | Chi-square adherence test.                                       | Observed/expected frequencies, or raw sample + theoretical CDF + class policy.                  |
 | `kolmogorovSmirnov`      | One-sample Kolmogorov-Smirnov test for continuous distributions. | Sample or sample file, theoretical CDF function and confidence level.                            |
 
 Both methods return `TestResult`: `testStat()` contains chi-square or KS `D`, `pValue()` contains the adherence-test p-value, and `rejectH0()` indicates whether the fitted/theoretical distribution should be rejected at the requested confidence level.
+
+For chi-square tests from raw samples, the class policy is:
+
+- If `classBoundaries` are provided, they must be finite, strictly increasing and cover all sample values.
+- If only `classCount` is provided, equal-width classes are built from the sample min/max. `classCount = 0` uses Sturges' rule.
+- Expected frequencies are computed from the provided CDF and normalized over the covered class range so the expected total matches the sample size.
+- Adjacent classes are merged until the grouped expected frequency reaches `minExpectedFrequency` (default `5.0`). A final low-expected class is merged backward.
+- Degrees of freedom are computed after grouping as `groupedClasses - 1 - estimatedParameters`.
 
 ## Error Measure
 
@@ -168,17 +176,19 @@ int main() {
         0.95
     );
 
-    auto normalCdf = [mean, stddev](double value) {
-        return 0.5 * std::erfc(-(value - mean) / (stddev * std::sqrt(2.0)));
-    };
-    auto ks = analyser.tester()->kolmogorovSmirnov(dataFile, normalCdf, 0.95);
-
-    auto chiSquare = analyser.tester()->chiSquareGoodnessOfFit(
-        std::vector<double>{8.0, 8.0, 8.0, 8.0, 8.0},
-        std::vector<double>{8.0, 8.0, 8.0, 8.0, 8.0},
-        2,
-        0.95
-    );
+	auto normalCdf = [mean, stddev](double value) {
+	    return 0.5 * std::erfc(-(value - mean) / (stddev * std::sqrt(2.0)));
+	};
+	std::vector<double> chiSample = {27.6, 33.4, 43.5, 50.0, 56.5, 66.6, 72.4};
+	auto chiSquare = analyser.tester()->chiSquareGoodnessOfFit(
+	    chiSample,
+	    normalCdf,
+	    2,
+	    0.95,
+	    4,
+	    1.0
+	);
+	auto ks = analyser.tester()->kolmogorovSmirnov(dataFile, normalCdf, 0.95);
 
     std::cout << "Normal fit: mean=" << mean
               << " stddev=" << stddev
@@ -194,12 +204,12 @@ int main() {
               << ", " << meanCi.superiorLimit() << "]\n";
     std::cout << "Mean test p-value: " << meanTest.pValue()
               << " rejectH0=" << meanTest.rejectH0() << "\n";
-    std::cout << "P(value > 50) CI: [" << proportionCi.inferiorLimit()
-              << ", " << proportionCi.superiorLimit() << "]\n";
-    std::cout << "KS p-value: " << ks.pValue()
-              << " rejectH0=" << ks.rejectH0() << "\n";
-    std::cout << "Chi-square p-value: " << chiSquare.pValue()
-              << " rejectH0=" << chiSquare.rejectH0() << "\n";
+	std::cout << "P(value > 50) CI: [" << proportionCi.inferiorLimit()
+	          << ", " << proportionCi.superiorLimit() << "]\n";
+	std::cout << "Chi-square p-value: " << chiSquare.pValue()
+	          << " rejectH0=" << chiSquare.rejectH0() << "\n";
+	std::cout << "KS p-value: " << ks.pValue()
+	          << " rejectH0=" << ks.rejectH0() << "\n";
 }
 ```
 
@@ -216,5 +226,5 @@ Some results may differ from Arena Input Analyzer even when the fitted distribut
 - **Standard deviation:** Arena displays the value computed with denominator `n` (MLE estimator), while this module uses denominator `n - 1` (unbiased sample estimator). For large samples the difference is small; for smaller samples, such as `n = 40`, it can be visible.
 - **Rounding:** Arena performs intermediate display rounding. Means, standard deviations and fitted parameters may look different even when the underlying numerical difference is insignificant.
 - **Squared error formula:** this module uses a Cramer-von Mises-style pointwise empirical CDF comparison. Arena Input Analyzer commonly reports a histogram-based `chi-square / n` measure. These metrics are not numerically comparable.
-- **Chi-square goodness-of-fit:** the chi-square statistic depends directly on the class intervals, grouping policy and number of fitted parameters removed from the degrees of freedom. Arena may merge or choose histogram intervals internally. The example uses equiprobable normal-quantile classes for the fitted Normal distribution, so its chi-square statistic is not expected to match Arena unless the exact same class bounds, expected frequencies and degrees of freedom are used.
+- **Chi-square goodness-of-fit:** the chi-square statistic depends directly on the class intervals, grouping policy and number of fitted parameters removed from the degrees of freedom. Arena may merge or choose histogram intervals internally. The example uses equal-width classes plus the documented minimum-expected-frequency grouping policy, so its chi-square statistic is not expected to match Arena unless the exact same class bounds, expected frequencies, grouping policy and degrees of freedom are used.
 - **Kolmogorov-Smirnov:** the KS statistic depends on the exact theoretical CDF used for comparison, including parameter-estimation conventions such as MLE versus unbiased sample estimates. Small differences in fitted parameters change the CDF and therefore the KS `D` statistic. Tools may also differ in how they approximate or report p-values; for example, some report threshold ranges while this module prints its numeric approximation.
