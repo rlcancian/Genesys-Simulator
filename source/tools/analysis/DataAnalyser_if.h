@@ -33,6 +33,38 @@ struct DataSetSummary {
 	bool hasNegativeData = false;
 };
 
+struct HistogramBin {
+	double lowerLimit = 0.0;
+	double upperLimit = 0.0;
+	std::size_t frequency = 0;
+	double relativeFrequency = 0.0;
+};
+
+struct DataSetHistogram {
+	bool usable = false;
+	std::size_t count = 0;
+	double min = 0.0;
+	double max = 0.0;
+	double classWidth = 0.0;
+	std::vector<HistogramBin> bins;
+};
+
+struct DataSetBoxPlot {
+	bool usable = false;
+	std::size_t count = 0;
+	double min = 0.0;
+	double firstQuartile = 0.0;
+	double median = 0.0;
+	double thirdQuartile = 0.0;
+	double max = 0.0;
+	double interquartileRange = 0.0;
+	double lowerFence = 0.0;
+	double upperFence = 0.0;
+	double lowerWhisker = 0.0;
+	double upperWhisker = 0.0;
+	std::vector<double> outliers;
+};
+
 /**
  * @brief High-level façade for applied statistical analysis over datasets.
  *
@@ -59,6 +91,8 @@ public:
 	virtual bool loadDataSet(std::string datafilename) = 0;
 	virtual bool loadDataSet(const std::vector<double>& data) = 0;
 	virtual DataSetSummary summary() const = 0;
+	virtual DataSetHistogram histogram(std::size_t classCount = 0) const = 0;
+	virtual DataSetBoxPlot boxplot() const = 0;
 	virtual bool saveDataSet(std::string datasetname) = 0;
 	virtual void newDataSet(std::string datasetname, std::string datafilename) = 0;
 	virtual Fitter_if* fitter() = 0;

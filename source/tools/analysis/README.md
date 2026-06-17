@@ -17,6 +17,8 @@ Implemented behavior:
 | `loadDataSet(filename)`                                          | Validates that the dataset is loadable, stores the dataset filename and forwards it to `fitter()->setDataFilename(filename)`. Returns `false` when the file cannot be loaded as a usable numeric dataset. |
 | `loadDataSet(data)`                                              | Validates an in-memory numeric dataset and forwards it to `fitter()->setData(data)`. Returns `false` for empty or non-finite data.     |
 | `summary()`                                                      | Returns a minimal descriptive summary for the currently loaded dataset.                                                                |
+| `histogram(classCount)`                                          | Returns numeric histogram bins. `classCount = 0` uses Sturges' rule; bins are half-open except the last bin, which includes the upper bound. |
+| `boxplot()`                                                      | Returns quartiles, fences, whiskers and outliers using the 1.5 IQR rule.                                                              |
 | `fitter()`                                                       | Returns the active `Fitter_if`. By default this is `FitterDefaultImpl`.                                                                |
 | `tester()`                                                       | Returns the active `HypothesisTester_if`. By default this is `HypothesisTesterDefaultImpl`.                                            |
 | `sampler()`                                                      | Future roadmap hook. Returns injected sampler, or throws `std::runtime_error("TODO: implement ...")` when none is injected.            |
@@ -31,7 +33,13 @@ Default implementations are centralized in `TraitsAnalysis`:
 | `HypothesisTester_if` | `HypothesisTesterDefaultImpl` |
 | `Solver_if`           | `SolverDefaultImpl1`          |
 
-`DataSetSummary` exposes `usable`, `count`, `min`, `max`, `mean`, `variance`, `stddev` and `hasNegativeData`. These values are computed by `DatasetLoader` inside `tools/analysis`, so the facade remains independent from `source/kernel`.
+`DataSetSummary` exposes `usable`, `count`, `min`, `max`, `mean`, `variance`, `stddev` and `hasNegativeData`.
+
+`DataSetHistogram` exposes `usable`, `count`, `min`, `max`, `classWidth` and a vector of `HistogramBin` entries with `lowerLimit`, `upperLimit`, `frequency` and `relativeFrequency`.
+
+`DataSetBoxPlot` exposes `usable`, `count`, `min`, `firstQuartile`, `median`, `thirdQuartile`, `max`, `interquartileRange`, `lowerFence`, `upperFence`, `lowerWhisker`, `upperWhisker` and `outliers`.
+
+These descriptive structures are computed by `DatasetLoader` and local `tools/analysis` helpers, so the facade remains independent from `source/kernel`.
 
 ## Fitter
 
@@ -130,6 +138,8 @@ int main() {
         return 1;
     }
     auto summary = analyser.summary();
+    auto histogram = analyser.histogram(6);
+    auto boxplot = analyser.boxplot();
 
     // In-memory data is also supported:
     // analyser.loadDataSet(std::vector<double>{27.6, 33.4, 50.0, 66.6, 72.4});
@@ -174,6 +184,8 @@ int main() {
               << " error=" << normalError << "\n";
     std::cout << "Sample count: " << summary.count
               << " sample mean=" << summary.mean << "\n";
+    std::cout << "Histogram bins: " << histogram.bins.size()
+              << " median=" << boxplot.median << "\n";
     std::cout << "Best fit: " << bestDistribution
               << " error=" << bestError << "\n";
     std::cout << "Mean CI: [" << meanCi.inferiorLimit()
