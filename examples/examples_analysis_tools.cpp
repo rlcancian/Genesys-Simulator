@@ -133,6 +133,8 @@ int main(int argc, char* argv[]) {
         return 1;
     }
     const DataSetSummary summary = analyser.summary();
+    const DataSetHistogram histogram = analyser.histogram(6);
+    const DataSetBoxPlot boxplot = analyser.boxplot();
 
     // Verify that data was loaded by probing the Normal fit result.
     {
@@ -156,6 +158,13 @@ int main(int argc, char* argv[]) {
     f->fitUniform(&uSse, &uMin, &uMax);
 
     printHeader(dataFile, summary.count, summary.mean, summary.stddev, summary.min, summary.max);
+    std::cout << "Median     : " << boxplot.median
+              << "   Q1: " << boxplot.firstQuartile
+              << "   Q3: " << boxplot.thirdQuartile
+              << "\n"
+              << "Hist bins  : " << histogram.bins.size()
+              << "   Class width: " << histogram.classWidth
+              << "\n";
 
     // --- Individual fits ---
     printSection("Distribution fitting");
