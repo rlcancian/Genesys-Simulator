@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <string>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -39,6 +41,20 @@ void setFailure4(double* v1, double* v2, double* v3, double* v4) {
 void setFailure5(double* v1, double* v2, double* v3, double* v4, double* v5) {
 	setFailure4(v1, v2, v3, v4);
 	if (v5 != nullptr) { *v5 = nanVal(); }
+}
+
+FittedParameter parameter(const std::string& name, double value) {
+	return FittedParameter{name, value};
+}
+
+FittingResult fittingResult(const std::string& name, double error, std::vector<FittedParameter> parameters) {
+	FittingResult result;
+	result.distributionName = name;
+	result.squaredError = error;
+	result.parameters = std::move(parameters);
+	result.success = std::isfinite(error);
+	result.message = result.success ? "ok" : "fit failed";
+	return result;
 }
 
 } // namespace
@@ -217,35 +233,86 @@ void FitterDefaultImpl::fitWeibull(double* sqrerror, double* alpha, double* scal
 }
 
 void FitterDefaultImpl::fitAll(double* sqrerror, std::string* name) {
+	const FitSummary summary = fitAllSummary();
+	if (sqrerror != nullptr) { *sqrerror = summary.bestFit.squaredError; }
+	if (name     != nullptr) { *name     = summary.bestFit.distributionName; }
+}
+
+FitSummary FitterDefaultImpl::fitAllSummary() {
+	FitSummary summary;
+	summary.bestFit.distributionName = "invalid-dataset";
+	summary.bestFit.squaredError = std::numeric_limits<double>::infinity();
+	summary.bestFit.message = "invalid dataset";
 	if (!_hasUsableDataset()) {
-		if (sqrerror != nullptr) { *sqrerror = std::numeric_limits<double>::infinity(); }
-		if (name     != nullptr) { *name     = "invalid-dataset"; }
-		return;
+		return summary;
 	}
 
-	double bestError = std::numeric_limits<double>::infinity();
-	std::string bestName = "no-valid-fit";
-
-	auto consider = [&bestError, &bestName](double error, const std::string& candidate) {
-		if (std::isfinite(error) && error < bestError) {
-			bestError = error;
-			bestName  = candidate;
-		}
-	};
-
 	double error = std::numeric_limits<double>::infinity();
-	double p1, p2, p3, p4;
+	double p1 = nanVal();
+	double p2 = nanVal();
+	double p3 = nanVal();
+	double p4 = nanVal();
 
-	fitUniform(&error, &p1, &p2);         consider(error, "uniform");
-	fitTriangular(&error, &p1, &p2, &p3); consider(error, "triangular");
-	fitNormal(&error, &p1, &p2);          consider(error, "normal");
-	fitExpo(&error, &p1);                 consider(error, "exponential");
-	fitErlang(&error, &p1, &p2);          consider(error, "erlang");
-	fitBeta(&error, &p1, &p2, &p3, &p4); consider(error, "beta");
-	fitWeibull(&error, &p1, &p2);         consider(error, "weibull");
+	fitUniform(&error, &p1, &p2);
+	summary.ranking.push_back(fittingResult("uniform", error, {
+		parameter("min", p1),
+		parameter("max", p2)
+	}));
 
-	if (sqrerror != nullptr) { *sqrerror = bestError; }
-	if (name     != nullptr) { *name     = bestName;  }
+	fitTriangular(&error, &p1, &p2, &p3);
+	summary.ranking.push_back(fittingResult("triangular", error, {
+		parameter("min", p1),
+		parameter("mode", p2),
+		parameter("max", p3)
+	}));
+
+	fitNormal(&error, &p1, &p2);
+	summary.ranking.push_back(fittingResult("normal", error, {
+		parameter("mean", p1),
+		parameter("stddev", p2)
+	}));
+
+	fitExpo(&error, &p1);
+	summary.ranking.push_back(fittingResult("exponential", error, {
+		parameter("mean", p1)
+	}));
+
+	fitErlang(&error, &p1, &p2);
+	summary.ranking.push_back(fittingResult("erlang", error, {
+		parameter("mean", p1),
+		parameter("m", p2)
+	}));
+
+	fitBeta(&error, &p1, &p2, &p3, &p4);
+	summary.ranking.push_back(fittingResult("beta", error, {
+		parameter("alpha", p1),
+		parameter("beta", p2),
+		parameter("infLimit", p3),
+		parameter("supLimit", p4)
+	}));
+
+	fitWeibull(&error, &p1, &p2);
+	summary.ranking.push_back(fittingResult("weibull", error, {
+		parameter("alpha", p1),
+		parameter("scale", p2)
+	}));
+
+	std::stable_sort(summary.ranking.begin(), summary.ranking.end(), [](const FittingResult& lhs, const FittingResult& rhs) {
+		if (lhs.success != rhs.success) {
+			return lhs.success;
+		}
+		return lhs.squaredError < rhs.squaredError;
+	});
+
+	if (!summary.ranking.empty() && summary.ranking.front().success) {
+		summary.success = true;
+		summary.bestFit = summary.ranking.front();
+	} else {
+		summary.bestFit.distributionName = "no-valid-fit";
+		summary.bestFit.squaredError = std::numeric_limits<double>::infinity();
+		summary.bestFit.message = "no valid fit";
+	}
+	return summary;
 }
 
 void FitterDefaultImpl::setDataFilename(std::string dataFilename) {

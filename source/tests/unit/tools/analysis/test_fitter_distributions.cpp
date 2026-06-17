@@ -320,6 +320,12 @@ TEST_F(FitterTest, FitAll_NoDataLoaded_ReturnsInvalidDataset) {
 	fitter.fitAll(&sqrerror, &name);
 	EXPECT_EQ(sqrerror, std::numeric_limits<double>::infinity());
 	EXPECT_EQ(name, "invalid-dataset");
+
+	const FitSummary summary = fitter.fitAllSummary();
+	EXPECT_FALSE(summary.success);
+	EXPECT_TRUE(summary.ranking.empty());
+	EXPECT_EQ(summary.bestFit.distributionName, "invalid-dataset");
+	EXPECT_EQ(summary.bestFit.squaredError, std::numeric_limits<double>::infinity());
 }
 
 TEST_F(FitterTest, FitAll_ValidData_ReturnsKnownNameAndFiniteSse) {
@@ -357,6 +363,43 @@ TEST_F(FitterTest, FitAll_SelectedSseIsMinimumAcrossAllFits) {
 	fitter.fitErlang(&sse, &p1, &p2);          checkFit(sse);
 	fitter.fitBeta(&sse, &p1, &p2, &p3, &p4); checkFit(sse);
 	fitter.fitWeibull(&sse, &p1, &p2);         checkFit(sse);
+}
+
+TEST_F(FitterTest, FitAllSummary_ReturnsCompleteOrderedRankingAndBestFit) {
+	loadData("fitall_summary", {1.0, 2.0, 3.0, 4.0, 5.0});
+
+	const FitSummary summary = fitter.fitAllSummary();
+
+	ASSERT_TRUE(summary.success);
+	ASSERT_EQ(summary.ranking.size(), 7u);
+	ASSERT_TRUE(summary.ranking.front().success);
+	EXPECT_EQ(summary.bestFit.distributionName, summary.ranking.front().distributionName);
+	EXPECT_DOUBLE_EQ(summary.bestFit.squaredError, summary.ranking.front().squaredError);
+	EXPECT_FALSE(summary.bestFit.parameters.empty());
+
+	double previousError = -1.0;
+	for (const FittingResult& result : summary.ranking) {
+		EXPECT_FALSE(result.distributionName.empty());
+		EXPECT_FALSE(result.parameters.empty());
+		if (result.success) {
+			EXPECT_TRUE(std::isfinite(result.squaredError));
+			EXPECT_GE(result.squaredError, previousError);
+			previousError = result.squaredError;
+		}
+	}
+}
+
+TEST_F(FitterTest, FitAllLegacyOutputMatchesStructuredBestFit) {
+	loadData("fitall_legacy_summary", {1.0, 2.0, 3.0, 4.0, 5.0});
+
+	double legacyError = std::numeric_limits<double>::infinity();
+	std::string legacyName;
+	fitter.fitAll(&legacyError, &legacyName);
+	const FitSummary summary = fitter.fitAllSummary();
+
+	ASSERT_TRUE(summary.success);
+	EXPECT_EQ(legacyName, summary.bestFit.distributionName);
+	EXPECT_DOUBLE_EQ(legacyError, summary.bestFit.squaredError);
 }
 
 // ============================= isNormalDistributed =============================

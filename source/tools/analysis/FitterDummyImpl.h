@@ -45,6 +45,7 @@ public:
 	void fitBeta(double *sqrerror, double *alpha, double *beta, double *infLimit, double *supLimit);
 	void fitWeibull(double *sqrerror, double *alpha, double *scale);
 	void fitAll(double *sqrerror, std::string *name);
+	FitSummary fitAllSummary();
 public:
 	void setDataFilename(std::string dataFilename);
 	bool setData(const std::vector<double>& data);

@@ -201,14 +201,13 @@ int main(int argc, char* argv[]) {
     f->fitWeibull(&sse, &wAlpha, &wScale);
     printRow("Weibull", "alpha", wAlpha, "scale", wScale, "", 0.0, "", 0.0, sse);
 
-    // --- Best fit ---
-    std::string bestName;
-    double bestSse;
-    f->fitAll(&bestSse, &bestName);
+	// --- Best fit ---
+	const FitSummary fitSummary = f->fitAllSummary();
 
-    std::cout << "\n"
-              << "=> Best fit : " << bestName
-              << "  (SSE = " << std::fixed << std::setprecision(6) << bestSse << ")\n";
+	std::cout << "\n"
+	          << "=> Best fit : " << fitSummary.bestFit.distributionName
+	          << "  (SSE = " << std::fixed << std::setprecision(6) << fitSummary.bestFit.squaredError
+	          << ", ranked candidates = " << fitSummary.ranking.size() << ")\n";
 
     // --- Normality check ---
     const bool isNormal95 = f->isNormalDistributed(0.05);

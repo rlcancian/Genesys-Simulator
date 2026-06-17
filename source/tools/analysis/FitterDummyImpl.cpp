@@ -63,6 +63,14 @@ void FitterDummyImpl::fitAll(double *sqrerror, std::string *name) {
 	if (name != nullptr) { *name = "dummy"; }
 }
 
+FitSummary FitterDummyImpl::fitAllSummary() {
+	FitSummary summary;
+	summary.bestFit.distributionName = "dummy";
+	summary.bestFit.squaredError = std::numeric_limits<double>::infinity();
+	summary.bestFit.message = "dummy fitter";
+	return summary;
+}
+
 void FitterDummyImpl::setDataFilename(std::string dataFilename) {
 	_dataFilename = dataFilename;
 }

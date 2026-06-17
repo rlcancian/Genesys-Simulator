@@ -57,9 +57,12 @@ Implemented fitting methods:
 | `fitBeta`             | Scaled Beta             | `alpha`, `beta`, `infLimit`, `supLimit` |
 | `fitWeibull`          | Weibull                 | `alpha`, `scale`                        |
 | `fitAll`              | Compares all candidates | best error and distribution name        |
+| `fitAllSummary`       | Compares all candidates | structured best fit and ranked results  |
 | `isNormalDistributed` | Normality check         | boolean decision                        |
 
 Parameter estimation uses the Method of Moments (MOM), based on sample mean, sample variance and observed extremes.
+
+`FittingResult` exposes `distributionName`, `success`, `squaredError`, named fitted `parameters` and a short `message`. `FitSummary` exposes `success`, `bestFit` and the full `ranking` returned by `fitAllSummary()`. The legacy pointer-based `fitAll(...)` remains available and delegates to the structured best fit.
 
 ## Hypothesis Tester
 
@@ -149,9 +152,7 @@ int main() {
     double stddev = 0.0;
     analyser.fitter()->fitNormal(&normalError, &mean, &stddev);
 
-    std::string bestDistribution;
-    double bestError = 0.0;
-    analyser.fitter()->fitAll(&bestError, &bestDistribution);
+    auto fitSummary = analyser.fitter()->fitAllSummary();
 
     auto meanCi = analyser.tester()->averageConfidenceInterval(dataFile, 0.95);
     auto meanTest = analyser.tester()->testAverage(
@@ -186,8 +187,9 @@ int main() {
               << " sample mean=" << summary.mean << "\n";
     std::cout << "Histogram bins: " << histogram.bins.size()
               << " median=" << boxplot.median << "\n";
-    std::cout << "Best fit: " << bestDistribution
-              << " error=" << bestError << "\n";
+    std::cout << "Best fit: " << fitSummary.bestFit.distributionName
+              << " error=" << fitSummary.bestFit.squaredError
+              << " candidates=" << fitSummary.ranking.size() << "\n";
     std::cout << "Mean CI: [" << meanCi.inferiorLimit()
               << ", " << meanCi.superiorLimit() << "]\n";
     std::cout << "Mean test p-value: " << meanTest.pValue()
