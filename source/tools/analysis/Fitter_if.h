@@ -15,6 +15,7 @@
 #define FITTER_IF_H
 
 #include <string>
+#include <vector>
 
 /**
  * @brief Interface for fitting theoretical distributions to real datasets.
@@ -34,8 +35,9 @@
  *   under the given confidence level.
  *
  * Preconditions:
- * - Output pointers must be valid non-null addresses.
- * - Data source must be configured through setDataFilename() before fitting.
+	 * - Output pointers must be valid non-null addresses.
+	 * - Data source must be configured through setDataFilename() or setData()
+	 *   before fitting.
  *
  * Postconditions:
  * - Output pointers are filled with estimated values when operation succeeds.
@@ -65,6 +67,10 @@ public:
 	 * @brief Defines the dataset source filename used by fitting operations.
 	 */
 	virtual void setDataFilename(std::string dataFilename) = 0;
+	/**
+	 * @brief Defines the in-memory dataset used by fitting operations.
+	 */
+	virtual bool setData(const std::vector<double>& data) = 0;
 	/**
 	 * @brief Retrieves the currently configured dataset source filename.
 	 */

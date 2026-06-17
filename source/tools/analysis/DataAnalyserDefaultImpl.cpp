@@ -1,4 +1,5 @@
 #include "DataAnalyserDefaultImpl.h"
+#include "DatasetLoader.h"
 
 #include <stdexcept>
 
@@ -15,11 +16,29 @@ DataAnalyserDefaultImpl::DataAnalyserDefaultImpl(
 }
 
 bool DataAnalyserDefaultImpl::loadDataSet(std::string datafilename) {
+	DatasetLoader dataset;
+	if (!dataset.loadFromFile(datafilename, ',') && !dataset.loadFromFile(datafilename, ' ')) {
+		return false;
+	}
+
 	_dataFilename = datafilename;
 	if (_fitter != nullptr) {
 		_fitter->setDataFilename(datafilename);
 	}
 
+	return true;
+}
+
+bool DataAnalyserDefaultImpl::loadDataSet(const std::vector<double>& data) {
+	DatasetLoader dataset;
+	if (!dataset.loadFromVector(data)) {
+		return false;
+	}
+
+	if (_fitter != nullptr && !_fitter->setData(data)) {
+		return false;
+	}
+	_dataFilename.clear();
 	return true;
 }
 

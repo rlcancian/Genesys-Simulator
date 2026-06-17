@@ -253,6 +253,14 @@ void FitterDefaultImpl::setDataFilename(std::string dataFilename) {
 	_dataset.loadFromFile(_dataFilename);
 }
 
+bool FitterDefaultImpl::setData(const std::vector<double>& data) {
+	if (!_dataset.loadFromVector(data)) {
+		return false;
+	}
+	_dataFilename.clear();
+	return true;
+}
+
 std::string FitterDefaultImpl::getDataFilename() {
 	return _dataFilename;
 }

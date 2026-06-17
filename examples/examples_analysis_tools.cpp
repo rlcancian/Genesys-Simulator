@@ -128,7 +128,10 @@ int main(int argc, char* argv[]) {
 
     DataAnalyserDefaultImpl analyser;
 
-    analyser.loadDataSet(dataFile);
+    if (!analyser.loadDataSet(dataFile)) {
+        std::cerr << "ERROR: Could not configure DataAnalyser with '" << dataFile << "'.\n";
+        return 1;
+    }
 
     // Verify that data was loaded by probing the Normal fit result.
     {
