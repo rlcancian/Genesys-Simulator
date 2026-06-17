@@ -19,6 +19,8 @@ The `source/tools` package hosts statistical and numerical support abstractions 
 - Fitting baseline was expanded in FITTER-2: `FitterDefaultImpl` now also provides functional Beta (scaled) and Weibull fitting, still preserving controlled-failure behavior when constraints are not met.
 - `FitterDummyImpl` is preserved as a legacy placeholder/documental implementation, but it is no longer the default trait binding after FITTER-3.
 - Some hypothesis-testing paths, especially two-population paths, remain partially consolidated.
+- The one-sample KS goodness-of-fit p-value is exact only when the tested CDF is fully specified before observing the sample. When parameters are fitted from the same sample, it is reported as an approximation/diagnostic value.
+- `DataAnalyserDefaultImpl::newDataSet`, `saveDataSet`, default `sampler` and default `experimenter` are roadmap hooks and are not supported in the current analysis-tool scope.
 - Distribution APIs are static utilities, not yet an OO hierarchy with reusable distribution objects.
 - Solver abstraction conflates quadrature and ODE-like concerns.
 

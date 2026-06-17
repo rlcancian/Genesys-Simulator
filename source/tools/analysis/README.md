@@ -23,9 +23,9 @@ Implemented behavior:
 | `boxplot()`                                                      | Returns quartiles, fences, whiskers and outliers using the 1.5 IQR rule.                                                              |
 | `fitter()`                                                       | Returns the active `Fitter_if`. By default this is `FitterDefaultImpl`.                                                                |
 | `tester()`                                                       | Returns the active `HypothesisTester_if`. By default this is `HypothesisTesterDefaultImpl`.                                            |
-| `sampler()`                                                      | Future roadmap hook. Returns injected sampler, or throws `std::runtime_error("TODO: implement ...")` when none is injected.            |
-| `experimenter()`                                                 | Future roadmap hook. Returns injected experiment manager, or throws `std::runtime_error("TODO: implement ...")` when none is injected. |
-| `saveDataSet(...)`, `newDataSet(...)`                            | Not implemented yet; both throw `std::runtime_error`.                                                                                  |
+| `sampler()`                                                      | Not supported in the current analysis-tool scope. Returns an injected sampler when provided, otherwise throws `std::runtime_error("TODO: implement ...")`. |
+| `experimenter()`                                                 | Not supported in the current analysis-tool scope. Returns an injected experiment manager when provided, otherwise throws `std::runtime_error("TODO: implement ...")`. |
+| `saveDataSet(...)`, `newDataSet(...)`                            | Outside the current scope and not supported. Both throw `std::runtime_error`.                                                          |
 
 Default implementations are centralized in `TraitsAnalysis`:
 
@@ -44,6 +44,8 @@ Default implementations are centralized in `TraitsAnalysis`:
 These descriptive structures are computed by `DatasetLoader` and local `tools/analysis` helpers, so the facade remains independent from `source/kernel`.
 
 The facade keeps `summary()`, `histogram()`, `boxplot()`, `fitter()` and direct `tester()` calls aligned by loading the dataset once into an internal snapshot. File-based loads preserve the source filename for diagnostics and compatibility, but the default fitter receives the already validated vector instead of re-reading the file. `HypothesisTesterDefaultImpl` is stateless; when a test needs raw observations, pass `analyser.data()` or `analyser.sortedData()` so it uses the same snapshot as the fitter and descriptive statistics.
+
+Dataset creation/persistence and simulation workflow orchestration are intentionally outside this consolidation. `newDataSet(...)`, `saveDataSet(...)`, default `sampler()` and default `experimenter()` are placeholders for future work, not partial implementations of supported features.
 
 ## Fitter
 
@@ -112,6 +114,8 @@ Implemented goodness-of-fit tests:
 | `kolmogorovSmirnov`      | One-sample Kolmogorov-Smirnov test for continuous distributions. | Sample or sample file, theoretical CDF function and confidence level.                            |
 
 Both methods return `TestResult`: `testStat()` contains chi-square or KS `D`, `pValue()` contains the adherence-test p-value, and `rejectH0()` indicates whether the fitted/theoretical distribution should be rejected at the requested confidence level.
+
+KS p-value limitation: `kolmogorovSmirnov(...)` computes the classical one-sample KS p-value assuming the theoretical CDF is fully specified before observing the sample. When distribution parameters are estimated from the same sample being tested, that assumption is not valid and the returned p-value should be treated as an approximation/diagnostic value, not as an exact calibrated p-value. No Lilliefors correction, bootstrap calibration or Monte Carlo calibration is applied.
 
 For chi-square tests from raw samples, the class policy is:
 
