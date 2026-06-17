@@ -3,7 +3,7 @@ if(NOT TARGET genesys_tools_analysis)
 endif()
 
 add_executable(genesys_examples_analysis_tools
-    examples_analysis_tools.cpp
+    analysis_tools_example.cpp
 )
 
 target_link_libraries(genesys_examples_analysis_tools
