@@ -41,7 +41,11 @@ public:
 	virtual ~HypothesisTester_if() = default;
 
 	/**
-	 * @brief Confidence interval [inferior, superior] and its half-width e0.
+	 * @brief Confidence interval [inferior, superior] and e0.
+	 *
+	 * e0 is the usual margin of error for symmetric intervals. For asymmetric
+	 * intervals, such as variance and variance-ratio intervals, it is only half
+	 * of the reported interval width.
 	 */
 	class ConfidenceInterval {
 	public:
@@ -50,22 +54,22 @@ public:
 			if (inferiorLimit <= superiorLimit) {
 				_infLim = inferiorLimit;
 				_supLim = superiorLimit;
-				_e0 = e0;
 			} else {
 				_infLim = superiorLimit;
 				_supLim = inferiorLimit;
 			}
+			_e0 = e0;
 		}
 
-		double inferiorLimit() {
+		double inferiorLimit() const {
 			return _infLim;
 		}
 
-		double superiorLimit() {
+		double superiorLimit() const {
 			return _supLim;
 		}
 
-		double halfWidth() {
+		double halfWidth() const {
 			return _e0;
 		}
 
@@ -91,13 +95,37 @@ public:
 	 */
 	class TestResult {
 	public:
+		struct GoodnessOfFitDetails {
+			GoodnessOfFitDetails()
+					: available(false),
+					initialClasses(0),
+					effectiveClasses(0),
+					estimatedParameters(0),
+					degreesOfFreedom(0.0),
+					observedTotal(0.0),
+					expectedTotal(0.0) {
+			}
 
-		TestResult(double pvalue, bool rejectH0, double acceptanceInferiorLimit, double acceptanceSuperiorLimit, double testStat) {
+			bool available;
+			std::size_t initialClasses;
+			std::size_t effectiveClasses;
+			unsigned int estimatedParameters;
+			double degreesOfFreedom;
+			double observedTotal;
+			double expectedTotal;
+		};
+
+		TestResult(double pvalue, bool rejectH0, double acceptanceInferiorLimit, double acceptanceSuperiorLimit, double testStat)
+				: TestResult(pvalue, rejectH0, acceptanceInferiorLimit, acceptanceSuperiorLimit, testStat, GoodnessOfFitDetails()) {
+		}
+
+		TestResult(double pvalue, bool rejectH0, double acceptanceInferiorLimit, double acceptanceSuperiorLimit, double testStat, GoodnessOfFitDetails goodnessOfFitDetails) {
 			_pvalue = pvalue;
 			_rejectH0 = rejectH0;
 			_acceptanceInferiorLimit = acceptanceInferiorLimit;
 			_acceptanceSuperiorLimit = acceptanceSuperiorLimit;
 			_testStat = testStat;
+			_goodnessOfFitDetails = goodnessOfFitDetails;
 		}
 
 		inline bool rejectH0() const {
@@ -124,9 +152,18 @@ public:
 			return _acceptanceSuperiorLimit;
 		}
 
+		inline bool hasGoodnessOfFitDetails() const {
+			return _goodnessOfFitDetails.available;
+		}
+
+		inline GoodnessOfFitDetails goodnessOfFitDetails() const {
+			return _goodnessOfFitDetails;
+		}
+
 	private:
 		double _pvalue, _acceptanceInferiorLimit, _acceptanceSuperiorLimit, _testStat;
 		bool _rejectH0;
+		GoodnessOfFitDetails _goodnessOfFitDetails;
 	};
 
 

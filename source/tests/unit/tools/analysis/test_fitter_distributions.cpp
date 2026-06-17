@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <fstream>
 #include <limits>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -378,14 +379,25 @@ TEST_F(FitterTest, FitAllSummary_ReturnsCompleteOrderedRankingAndBestFit) {
 	EXPECT_FALSE(summary.bestFit.parameters.empty());
 
 	double previousError = -1.0;
+	std::set<std::string> names;
 	for (const FittingResult& result : summary.ranking) {
 		EXPECT_FALSE(result.distributionName.empty());
+		EXPECT_TRUE(names.insert(result.distributionName).second);
 		EXPECT_FALSE(result.parameters.empty());
 		if (result.success) {
 			EXPECT_TRUE(std::isfinite(result.squaredError));
+			EXPECT_GE(result.squaredError, 0.0);
 			EXPECT_GE(result.squaredError, previousError);
 			previousError = result.squaredError;
 		}
+	}
+
+	const FitSummary repeated = fitter.fitAllSummary();
+	ASSERT_TRUE(repeated.success);
+	ASSERT_EQ(repeated.ranking.size(), summary.ranking.size());
+	for (std::size_t i = 0; i < summary.ranking.size(); ++i) {
+		EXPECT_EQ(repeated.ranking[i].distributionName, summary.ranking[i].distributionName);
+		EXPECT_DOUBLE_EQ(repeated.ranking[i].squaredError, summary.ranking[i].squaredError);
 	}
 }
 

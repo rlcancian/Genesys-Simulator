@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <iostream>
 #include <limits>
+#include <set>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -19,6 +20,11 @@ constexpr int COL_NAME = 14;
 constexpr int COL_PARAM = 18;
 constexpr int COL_SSE = 12;
 constexpr double EPSILON = 1.0e-9;
+
+enum class IntervalPrintMode {
+    HalfWidth,
+    IntervalWidth
+};
 
 bool isGreaterThan50(double value) {
     return value > 50.0;
@@ -123,20 +129,49 @@ void printRow(const std::string& name,
     std::cout << "\n";
 }
 
+void printFixedLabel(const std::string& name) {
+    if (name.size() < 34U) {
+        std::cout << std::left << std::setw(34) << name;
+    } else {
+        std::cout << name << "  ";
+    }
+}
+
 void printConfidenceInterval(const std::string& name,
-                             HypothesisTester_if::ConfidenceInterval interval) {
-    std::cout << std::left << std::setw(34) << name
-              << "[" << std::fixed << std::setprecision(4)
-              << interval.inferiorLimit() << ", " << interval.superiorLimit() << "]"
-              << "  half-width=" << interval.halfWidth() << "\n";
+                             HypothesisTester_if::ConfidenceInterval interval,
+                             IntervalPrintMode mode = IntervalPrintMode::HalfWidth) {
+    printFixedLabel(name);
+    std::cout << "[" << std::fixed << std::setprecision(4)
+              << interval.inferiorLimit() << ", " << interval.superiorLimit() << "]";
+    if (mode == IntervalPrintMode::HalfWidth) {
+        std::cout << "  half-width=" << interval.halfWidth();
+    } else {
+        std::cout << "  interval-width="
+                  << (interval.superiorLimit() - interval.inferiorLimit());
+    }
+    std::cout << "\n";
 }
 
 void printTestResult(const std::string& name,
                      const HypothesisTester_if::TestResult& result) {
-    std::cout << std::left << std::setw(34) << name
-              << "stat=" << std::fixed << std::setprecision(4) << result.testStat()
+    printFixedLabel(name);
+    std::cout << "stat=" << std::fixed << std::setprecision(4) << result.testStat()
               << "  p=" << pValueText(result.pValue())
               << "  decision=" << decision(result.rejectH0()) << "\n";
+}
+
+void printChiSquareResult(const std::string& name,
+                          const HypothesisTester_if::TestResult& result) {
+    printTestResult(name, result);
+    if (result.hasGoodnessOfFitDetails()) {
+        const auto details = result.goodnessOfFitDetails();
+        std::cout << "  initial classes     : " << details.initialClasses << "\n"
+                  << "  effective classes   : " << details.effectiveClasses << "\n"
+                  << "  estimated parameters: " << details.estimatedParameters << "\n"
+                  << "  degrees of freedom  : " << details.degreesOfFreedom << "\n"
+                  << "  observed / expected : " << std::fixed << std::setprecision(4)
+                  << details.observedTotal << " / " << details.expectedTotal << "\n";
+    }
 }
 
 bool load(DataAnalyserDefaultImpl& analyser, const std::string& filename) {
@@ -150,6 +185,103 @@ bool load(DataAnalyserDefaultImpl& analyser, const std::string& filename) {
 
 bool approximatelyEqual(double lhs, double rhs, double tolerance = EPSILON) {
     return std::abs(lhs - rhs) <= tolerance;
+}
+
+bool summariesEquivalent(const DataSetSummary& lhs, const DataSetSummary& rhs) {
+    return lhs.usable == rhs.usable
+           && lhs.count == rhs.count
+           && approximatelyEqual(lhs.min, rhs.min)
+           && approximatelyEqual(lhs.max, rhs.max)
+           && approximatelyEqual(lhs.mean, rhs.mean)
+           && approximatelyEqual(lhs.variance, rhs.variance)
+           && approximatelyEqual(lhs.stddev, rhs.stddev)
+           && lhs.hasNegativeData == rhs.hasNegativeData;
+}
+
+bool boxplotsEquivalent(const DataSetBoxPlot& lhs, const DataSetBoxPlot& rhs) {
+    return lhs.usable == rhs.usable
+           && lhs.count == rhs.count
+           && approximatelyEqual(lhs.min, rhs.min)
+           && approximatelyEqual(lhs.firstQuartile, rhs.firstQuartile)
+           && approximatelyEqual(lhs.median, rhs.median)
+           && approximatelyEqual(lhs.thirdQuartile, rhs.thirdQuartile)
+           && approximatelyEqual(lhs.max, rhs.max)
+           && approximatelyEqual(lhs.interquartileRange, rhs.interquartileRange)
+           && approximatelyEqual(lhs.lowerWhisker, rhs.lowerWhisker)
+           && approximatelyEqual(lhs.upperWhisker, rhs.upperWhisker)
+           && lhs.outliers == rhs.outliers;
+}
+
+bool histogramsEquivalent(const DataSetHistogram& lhs, const DataSetHistogram& rhs) {
+    if (lhs.usable != rhs.usable
+        || lhs.count != rhs.count
+        || !approximatelyEqual(lhs.min, rhs.min)
+        || !approximatelyEqual(lhs.max, rhs.max)
+        || !approximatelyEqual(lhs.classWidth, rhs.classWidth)
+        || lhs.bins.size() != rhs.bins.size()) {
+        return false;
+    }
+
+    for (std::size_t i = 0; i < lhs.bins.size(); ++i) {
+        if (!approximatelyEqual(lhs.bins[i].lowerLimit, rhs.bins[i].lowerLimit)
+            || !approximatelyEqual(lhs.bins[i].upperLimit, rhs.bins[i].upperLimit)
+            || lhs.bins[i].frequency != rhs.bins[i].frequency
+            || !approximatelyEqual(lhs.bins[i].relativeFrequency, rhs.bins[i].relativeFrequency)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+std::size_t histogramFrequencySum(const DataSetHistogram& histogram) {
+    std::size_t total = 0U;
+    for (const auto& bin : histogram.bins) {
+        total += bin.frequency;
+    }
+    return total;
+}
+
+bool histogramIsOrderedAndContiguous(const DataSetHistogram& histogram) {
+    if (!histogram.usable || histogram.bins.empty()) {
+        return false;
+    }
+    for (std::size_t i = 0; i < histogram.bins.size(); ++i) {
+        if (histogram.bins[i].upperLimit < histogram.bins[i].lowerLimit) {
+            return false;
+        }
+        if (i > 0U && !approximatelyEqual(histogram.bins[i - 1U].upperLimit, histogram.bins[i].lowerLimit)) {
+            return false;
+        }
+    }
+    return approximatelyEqual(histogram.bins.front().lowerLimit, histogram.min)
+           && approximatelyEqual(histogram.bins.back().upperLimit, histogram.max);
+}
+
+bool boxplotIsOrdered(const DataSetBoxPlot& boxplot) {
+    return boxplot.usable
+           && boxplot.min <= boxplot.firstQuartile
+           && boxplot.firstQuartile <= boxplot.median
+           && boxplot.median <= boxplot.thirdQuartile
+           && boxplot.thirdQuartile <= boxplot.max
+           && boxplot.lowerWhisker <= boxplot.upperWhisker;
+}
+
+std::string selectedTwoMeanMethod(HypothesisTester_if* tester,
+                                  const DataSetSummary& lhs,
+                                  const DataSetSummary& rhs,
+                                  double confidenceLevel) {
+    const auto varianceRatioInterval = tester->varianceRatioConfidenceInterval(
+            lhs.variance,
+            static_cast<unsigned int>(lhs.count),
+            rhs.variance,
+            static_cast<unsigned int>(rhs.count),
+            confidenceLevel);
+    const bool pooled = varianceRatioInterval.inferiorLimit() <= 1.0
+                        && varianceRatioInterval.superiorLimit() >= 1.0;
+    if (pooled) {
+        return "pooled t-test, equal variances selected by variance-ratio CI";
+    }
+    return "Welch t-test, unequal variances selected by variance-ratio CI";
 }
 
 void regressionCheck(bool condition,
@@ -207,14 +339,19 @@ int main(int argc, char* argv[]) {
     std::cout << "\n";
     printSummary("Independent group B", groupBFile, groupB, groupBBoxplot, groupBHistogram);
 
-    // Demonstrate ingestion from an in-memory vector using the same values loaded
-    // through the DataAnalyser facade.
-    DatasetLoader memoryCopy;
-    memoryCopy.loadFromVector(primaryAnalyser.data());
+    // Demonstrate ingestion from an in-memory vector through the same facade.
+    DataAnalyserDefaultImpl memoryAnalyser;
+    if (!memoryAnalyser.loadDataSet(primaryAnalyser.data())) {
+        std::cerr << "ERROR: Could not load the in-memory copy of the primary dataset.\n";
+        return 1;
+    }
+    const DataSetSummary memorySummary = memoryAnalyser.summary();
+    const DataSetBoxPlot memoryBoxplot = memoryAnalyser.boxplot();
+    const DataSetHistogram memoryHistogram = memoryAnalyser.histogram(10);
     std::cout << "\nMemory copy verification\n"
-              << "  Samples: " << memoryCopy.count()
-              << "  Mean: " << std::fixed << std::setprecision(4) << memoryCopy.mean()
-              << "  Std. deviation: " << memoryCopy.stddev() << "\n";
+              << "  Samples: " << memorySummary.count
+              << "  Mean: " << std::fixed << std::setprecision(4) << memorySummary.mean
+              << "  Std. deviation: " << memorySummary.stddev << "\n";
 
     Fitter_if* fitter = primaryAnalyser.fitter();
 
@@ -283,12 +420,12 @@ int main(int argc, char* argv[]) {
               << " (SSE=" << std::fixed << std::setprecision(6)
               << fitSummary.bestFit.squaredError << ")\n";
 
-    const bool normalityNotRejected95 = fitter->isNormalDistributed(0.05);
-    const bool normalityNotRejected99 = fitter->isNormalDistributed(0.01);
-    std::cout << "Normality H0 at alpha=0.05: "
-              << (normalityNotRejected95 ? "do not reject" : "reject") << "\n"
-              << "Normality H0 at alpha=0.01: "
-              << (normalityNotRejected99 ? "do not reject" : "reject") << "\n";
+    const bool normalSseHeuristic95 = fitter->isNormalDistributed(0.95);
+    const bool normalSseHeuristic99 = fitter->isNormalDistributed(0.99);
+    std::cout << "Normal EDF/CDF SSE heuristic (confidence-like input=0.95): "
+              << (normalSseHeuristic95 ? "pass" : "fail") << "\n"
+              << "Normal EDF/CDF SSE heuristic (confidence-like input=0.99): "
+              << (normalSseHeuristic99 ? "pass" : "fail") << "\n";
 
     printSection("Probability-distribution helpers");
     const double z975 = ProbabilityDistribution::inverseNormal(0.975, 0.0, 1.0);
@@ -327,7 +464,7 @@ int main(int argc, char* argv[]) {
             primaryProportionAbove50, static_cast<unsigned int>(primary.count), confidenceLevel);
 
     printConfidenceInterval("Mean", meanInterval);
-    printConfidenceInterval("Variance", varianceInterval);
+    printConfidenceInterval("Variance", varianceInterval, IntervalPrintMode::IntervalWidth);
     printConfidenceInterval("P(value > 50)", proportionInterval);
 
     printSection("One-population hypothesis tests");
@@ -432,11 +569,11 @@ int main(int argc, char* argv[]) {
 
     printConfidenceInterval("Difference of means (A - B)", meanDifferenceInterval);
     printConfidenceInterval("Difference of proportions (A - B)", proportionDifferenceInterval);
-    printConfidenceInterval("Variance ratio (A / B)", varianceRatioInterval);
+    printConfidenceInterval("Variance ratio (A / B)", varianceRatioInterval, IntervalPrintMode::IntervalWidth);
     std::cout << "P_A(value > 50)=" << std::fixed << std::setprecision(4)
               << groupAProportionAbove50
               << "  P_B(value > 50)=" << groupBProportionAbove50 << "\n";
-    printTestResult("Mean A == mean B", groupMeanTest);
+    printTestResult("Mean A == mean B (" + selectedTwoMeanMethod(tester, groupA, groupB, confidenceLevel) + ")", groupMeanTest);
     printTestResult("Variance A == variance B", groupVarianceTest);
     printTestResult("P_A(>50) == P_B(>50)", groupProportionTest);
 
@@ -487,8 +624,25 @@ int main(int argc, char* argv[]) {
             primaryAnalyser.data(),
             fittedNormalCdf,
             confidenceLevel);
+    const auto memoryMeanInterval = memoryAnalyser.tester()->averageConfidenceInterval(
+            memorySummary.mean,
+            memorySummary.stddev,
+            static_cast<unsigned int>(memorySummary.count),
+            confidenceLevel);
+    const auto memoryMeanTest = memoryAnalyser.tester()->testAverage(
+            expectedMean,
+            memorySummary.stddev,
+            static_cast<unsigned int>(memorySummary.count),
+            memorySummary.mean,
+            confidenceLevel,
+            HypothesisTester_if::DIFFERENT);
+    double memoryNormalSse = 0.0;
+    double memoryNormalMean = 0.0;
+    double memoryNormalStddev = 0.0;
+    memoryAnalyser.fitter()->fitNormal(&memoryNormalSse, &memoryNormalMean, &memoryNormalStddev);
+    const FitSummary memoryFitSummary = memoryAnalyser.fitter()->fitAllSummary();
 
-    printTestResult("Chi-square fitted normal", chiSquareResult);
+    printChiSquareResult("Chi-square fitted normal", chiSquareResult);
     printTestResult("KS fitted normal", ksResult);
     std::cout << "Chi-square configuration: 10 initial classes, minimum expected frequency 5,\n"
               << "2 parameters estimated from the sample.\n"
@@ -501,9 +655,39 @@ int main(int argc, char* argv[]) {
     regressionCheck(primary.count == 160U,
                     "primary file contains 160 observations",
                     failures);
-    regressionCheck(memoryCopy.count() == primary.count
-                    && approximatelyEqual(memoryCopy.mean(), primary.mean),
-                    "file and in-memory ingestion produce the same count and mean",
+    regressionCheck(summariesEquivalent(memorySummary, primary),
+                    "file and in-memory facade ingestion produce the same summary",
+                    failures);
+    regressionCheck(boxplotsEquivalent(memoryBoxplot, primaryBoxplot),
+                    "file and in-memory facade ingestion produce the same boxplot",
+                    failures);
+    regressionCheck(histogramsEquivalent(memoryHistogram, primaryHistogram),
+                    "file and in-memory facade ingestion produce the same histogram",
+                    failures);
+    regressionCheck(approximatelyEqual(memoryNormalMean, normalMean)
+                    && approximatelyEqual(memoryNormalStddev, normalStddev)
+                    && approximatelyEqual(memoryNormalSse, normalSse),
+                    "file and in-memory facade ingestion produce the same normal fit",
+                    failures);
+    regressionCheck(memoryFitSummary.success
+                    && memoryFitSummary.bestFit.distributionName == fitSummary.bestFit.distributionName
+                    && approximatelyEqual(memoryFitSummary.bestFit.squaredError, fitSummary.bestFit.squaredError),
+                    "file and in-memory facade ingestion produce the same best fit",
+                    failures);
+    regressionCheck(approximatelyEqual(memoryMeanInterval.inferiorLimit(), meanInterval.inferiorLimit())
+                    && approximatelyEqual(memoryMeanInterval.superiorLimit(), meanInterval.superiorLimit())
+                    && approximatelyEqual(memoryMeanTest.testStat(), meanTwoSided.testStat())
+                    && approximatelyEqual(memoryMeanTest.pValue(), meanTwoSided.pValue(), 1e-7),
+                    "file and in-memory facade ingestion produce the same mean inference",
+                    failures);
+    regressionCheck(histogramFrequencySum(primaryHistogram) == primary.count,
+                    "histogram bin frequencies sum to the sample count",
+                    failures);
+    regressionCheck(histogramIsOrderedAndContiguous(primaryHistogram),
+                    "histogram bins are ordered, contiguous and cover min/max",
+                    failures);
+    regressionCheck(boxplotIsOrdered(primaryBoxplot),
+                    "boxplot five-number summary and whiskers are ordered",
                     failures);
     regressionCheck(!fitSummary.ranking.empty(),
                     "fitAllSummary returned at least one valid candidate",
@@ -518,6 +702,24 @@ int main(int argc, char* argv[]) {
                     failures);
     regressionCheck(lower(fitSummary.bestFit.distributionName) == "normal",
                     "normal is the best EDF/CDF fit for the primary random sample",
+                    failures);
+    std::set<std::string> rankingNames;
+    bool rankingHasFiniteNonnegativeErrors = true;
+    for (const auto& candidate : fitSummary.ranking) {
+        rankingNames.insert(lower(candidate.distributionName));
+        rankingHasFiniteNonnegativeErrors = rankingHasFiniteNonnegativeErrors
+                && std::isfinite(candidate.squaredError)
+                && candidate.squaredError >= 0.0;
+    }
+    regressionCheck(fitSummary.ranking.size() == 7U && rankingNames.size() == fitSummary.ranking.size(),
+                    "fitAllSummary ranking contains seven unique candidates",
+                    failures);
+    regressionCheck(rankingHasFiniteNonnegativeErrors,
+                    "fitAllSummary ranking errors are finite and nonnegative",
+                    failures);
+    regressionCheck(fitSummary.ranking.front().distributionName == fitSummary.bestFit.distributionName
+                    && approximatelyEqual(fitSummary.ranking.front().squaredError, fitSummary.bestFit.squaredError),
+                    "fitAllSummary best fit matches the first ranked candidate",
                     failures);
     regressionCheck(!meanTwoSided.rejectH0(),
                     "the generating mean 50 is not rejected",
