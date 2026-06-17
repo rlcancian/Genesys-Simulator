@@ -29,7 +29,6 @@ UNIT_TEST_CMAKE_CACHE := $(UNIT_TEST_BUILD_DIR)/CMakeCache.txt
 
 EXAMPLES_BUILD_DIR := build/examples
 EXAMPLES_BINARY := $(EXAMPLES_BUILD_DIR)/examples/genesys_examples_analysis_tools
-EXAMPLES_DATA := examples/data/sample_data.csv
 EXAMPLES_CMAKE_CACHE := $(EXAMPLES_BUILD_DIR)/CMakeCache.txt
 
 .PHONY: \
@@ -134,7 +133,7 @@ examples: $(EXAMPLES_CMAKE_CACHE)
 # Compila e executa o exemplo de ferramentas de análise.
 # Passa o caminho do arquivo de dados a partir da raiz do projeto.
 run-examples: examples
-	$(EXAMPLES_BINARY) $(EXAMPLES_DATA)
+	$(EXAMPLES_BINARY)
 
 examples-clean:
 	rm -rf $(EXAMPLES_BUILD_DIR)

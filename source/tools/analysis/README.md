@@ -250,7 +250,7 @@ int main() {
 }
 ```
 
-A more complete runnable example is available in `examples/examples_analysis_tools.cpp` and can be executed from the repository root with:
+A more complete runnable example is available in `examples/analysis_tools_example.cpp` and can be executed from the repository root with:
 
 ```sh
 make run-examples
