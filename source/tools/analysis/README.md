@@ -4,6 +4,27 @@
 
 This target must remain independent from `source/kernel`: analysis code must not include kernel headers or depend on kernel statistics collectors. Consumers that need analysis should link/import `genesys_tools_analysis`.
 
+## UML Diagrams
+
+The main architecture diagrams are available as rendered images in `diagrams/`.
+They are intentionally high-level and should be read in this order.
+
+Core class view centered on `DataAnalyserDefaultImpl`, its default fitter/tester, dataset loader and local probability helpers:
+
+![Tools/Analysis class overview](diagrams/analysis_class_overview.png)
+
+Essential user-facing workflows supported by the analysis tool:
+
+![Tools/Analysis use cases](diagrams/analysis_use_cases.png)
+
+Typical runtime flow for loading a dataset, computing summaries, fitting distributions and running tests:
+
+![Tools/Analysis dataset flow](diagrams/analysis_dataset_flow_sequence.png)
+
+Dependency direction between consumers, `tools/analysis` and `source/kernel`:
+
+![Tools/Analysis dependency boundaries](diagrams/analysis_dependency_boundaries.png)
+
 ## Facade
 
 `DataAnalyser_if` is the facade contract and `DataAnalyserDefaultImpl` is the default implementation. A default-constructed analyser is ready to use; it creates the default fitter and tester from `TraitsAnalysis`.
