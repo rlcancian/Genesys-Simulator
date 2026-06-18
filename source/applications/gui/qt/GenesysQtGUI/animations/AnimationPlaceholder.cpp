@@ -1,6 +1,6 @@
 #include "AnimationPlaceholder.h"
 
-#include "kernel/simulator/Model.h"
+#include "../../../../../kernel/simulator/model/Model.h"
 
 #include <QFontMetricsF>
 #include <QPainterPath>

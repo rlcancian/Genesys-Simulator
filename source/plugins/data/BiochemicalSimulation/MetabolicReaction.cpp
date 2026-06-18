@@ -2,8 +2,8 @@
 
 #include <functional>
 
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -66,7 +66,7 @@ MetabolicReaction::MetabolicReaction(Model* model, std::string name)
 
 PluginInformation* MetabolicReaction::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<MetabolicReaction>(), &MetabolicReaction::LoadInstance, &MetabolicReaction::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical/Metabolic");
 	info->setDescriptionHelp("Metabolic reaction for constraint-based models with stoichiometry, flux bounds, and optional gene rule.");
 	return info;
 }

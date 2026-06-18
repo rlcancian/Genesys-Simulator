@@ -7,7 +7,7 @@
 #include "plugins/components/ModalModel/FSMState.h"
 #include "plugins/components/ModalModel/DefaultTransitionExtensions.h"
 #include "../../../TraitsApp.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/Logic/Variable.h"
 
 Smart_ModalModelFSM::Smart_ModalModelFSM() {
 }

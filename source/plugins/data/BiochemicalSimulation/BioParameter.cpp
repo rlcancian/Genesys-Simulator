@@ -2,7 +2,7 @@
 
 #include <functional>
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -32,7 +32,7 @@ BioParameter::BioParameter(Model* model, std::string name) : ModelDataDefinition
 
 PluginInformation* BioParameter::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioParameter>(), &BioParameter::LoadInstance, &BioParameter::NewInstance);
-	info->setCategory("BiochemicalSimulation");
+	info->setCategory("Biologic/Biochemical");
 	info->setDescriptionHelp("Scalar biochemical parameter, commonly used as a kinetic constant by BioReaction.");
 	return info;
 }

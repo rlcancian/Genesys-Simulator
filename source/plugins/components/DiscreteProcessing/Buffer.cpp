@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/DiscreteProcessing/Buffer.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
 
@@ -96,6 +96,7 @@ PluginInformation* Buffer::GetPluginInformation() {
 	info->setDescriptionHelp("//@TODO");
 	info->insertDynamicLibFileDependence("queue.so");
 	info->insertDynamicLibFileDependence("signaldata.so");
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

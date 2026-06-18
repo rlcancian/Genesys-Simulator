@@ -16,7 +16,7 @@
 #include "plugins/components/Logic/Create.h"
 #include "plugins/components/ExternalIntegration/CppForG.h"
 #include "plugins/components/Logic/Dispose.h"
-#include "kernel/simulator/ModelSimulation.h"
+#include "kernel/simulator/model/ModelSimulation.h"
 #include "../../../TraitsApp.h"
 
 Smart_CppForG::Smart_CppForG() {
@@ -40,8 +40,8 @@ int Smart_CppForG::main(int argc, char** argv) {
 	cpp2->getConnectionManager()->insert(dispose);
 	// set parameters for cpp1 and cpp2 components
 	std::string includeCode = "\
-		#include \"../../../../kernel/simulator/ModelSimulation.h\"\n\
-		#include \"../../../../kernel/simulator/ModelDataDefinition.h\"\n\
+		#include \"../../../../kernel/simulator/model/ModelSimulation.h\"\n\
+		#include \"../../../../kernel/simulator/model/ModelDataDefinition.h\"\n\
 ";
 	cpp1->setIncludesCode(includeCode);
 	cpp2->setIncludesCode(includeCode);

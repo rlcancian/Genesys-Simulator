@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/Continuous/DiffEquations.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 //#include "kernel/simulator/Simulator.h"
 //#include "kernel/simulator/PluginManager.h"
 
@@ -169,7 +169,7 @@ bool DiffEquations::_check(std::string& errorMessage) {
 #include <string>\n\
 //@TODO: Adjust depending on the running path\n\
 #include \"../../../../kernel/simulator/Simulator.h\"\n\
-#include \"../../../../kernel/simulator/Model.h\"\n\
+#include \"../../../../kernel/simulator/model/Model.h\"\n\
 #include \"../../../../kernel/simulator/Entity.h\"\n\
 #include \"../../../../tools/SolverDefaultImpl1.h\"\n\
 \n\

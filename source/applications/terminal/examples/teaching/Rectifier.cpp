@@ -15,7 +15,7 @@
 // Model Components
 #include "plugins/components/ElectronicsSimulation/SPICECircuit.h"
 #include "plugins/components/ElectronicsSimulation/SPICENode.h"
-#include "plugins/data/ElectronicsSimulation/SPICERunner.h"
+#include "plugins/data/ExternalIntegration/SPICERunner.h"
 #include "../../../TraitsApp.h"
 
 Rectifier::Rectifier() {
@@ -93,4 +93,3 @@ int Rectifier::main(int argc, char** argv) {
 
 	return 0;
 };
-

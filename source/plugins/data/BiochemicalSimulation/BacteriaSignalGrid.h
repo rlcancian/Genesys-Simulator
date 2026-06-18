@@ -8,7 +8,7 @@
 #ifndef BACTERIASIGNALGRID_H
 #define BACTERIASIGNALGRID_H
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/Plugin.h"
 
 #include <string>

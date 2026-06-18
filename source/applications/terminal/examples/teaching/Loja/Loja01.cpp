@@ -10,7 +10,7 @@
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/components/DiscreteProcessing/Release.h"
 // Model data definitions
-#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/essentialPlugins/Attribute.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/SeizableItem.h"
 #include "plugins/components/DiscreteProcessing/auxiliar/QueueableItem.h"
 

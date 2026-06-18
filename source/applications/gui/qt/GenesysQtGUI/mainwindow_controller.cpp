@@ -83,7 +83,7 @@
 #include <QPainter>
 #include <QFileInfo>
 #include <QCoreApplication>
-#include "kernel/simulator/ModelSimulation.h"
+#include "../../../../kernel/simulator/model/ModelSimulation.h"
 #include "../../../../tools/SolverDefaultImpl1.h"
 
 
@@ -278,6 +278,14 @@ void MainWindow::on_actionZoom_All_triggered() {
     // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
     if (_sceneToolController != nullptr) {
         _sceneToolController->onActionZoomAllTriggered();
+    }
+}
+
+
+void MainWindow::on_actionZoom_OneToOne_triggered() {
+    // Keep this wrapper as part of the final compatibility façade from Phase 10 refactor.
+    if (_sceneToolController != nullptr) {
+        _sceneToolController->onActionZoomActualSizeTriggered();
     }
 }
 

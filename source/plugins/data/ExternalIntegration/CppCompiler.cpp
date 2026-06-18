@@ -37,7 +37,7 @@
 #include <thread>
 
 
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 
 #ifdef PLUGINCONNECT_DYNAMIC
@@ -132,6 +132,7 @@ PluginInformation* CppCompiler::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("ExternalIntegration");
 	return info;
 }
 

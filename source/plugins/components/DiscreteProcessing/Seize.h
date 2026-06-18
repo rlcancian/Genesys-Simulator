@@ -15,8 +15,8 @@
 #define SEIZE_H
 
 #include <string>
-#include "kernel/simulator/ModelComponent.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "kernel/simulator/Plugin.h"

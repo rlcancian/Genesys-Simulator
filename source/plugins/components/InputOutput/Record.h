@@ -14,7 +14,7 @@
 #ifndef RECORD_H
 #define RECORD_H
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include <string>
 
 /*!

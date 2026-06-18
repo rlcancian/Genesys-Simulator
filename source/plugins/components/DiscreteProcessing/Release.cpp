@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/DiscreteProcessing/Release.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
@@ -288,6 +288,7 @@ PluginInformation* Release::GetPluginInformation() {
 	help += " TYPICAL USES: (1) Finishing a customer order (release the operator); (2) Completing a tax return (release the accountant);";
 	help += " (3) Leaving the hospital (release the doctor, nurse, hospital room)";
 	info->setDescriptionHelp(help);
+	info->setCategory("DiscreteProcessing");
 	return info;
 }
 

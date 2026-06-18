@@ -22,6 +22,10 @@ set(GENESYS_QT_GUI_RESOURCES
     propertyeditor/qtpropertybrowser/qtpropertybrowser.qrc
 )
 
+set(GENESYS_QT_GUI_HEADERS
+    ${CMAKE_CURRENT_SOURCE_DIR}/cellular_automata/CellularAutomataViewerController.h
+)
+
 set(GENESYS_QT_GUI_TERMINAL_FALLBACK_SOURCES
     ${CMAKE_SOURCE_DIR}/source/applications/BaseGenesysTerminalApplication.cpp
     ${CMAKE_SOURCE_DIR}/source/applications/terminal/GenesysShell/GenesysShell.cpp
@@ -29,6 +33,7 @@ set(GENESYS_QT_GUI_TERMINAL_FALLBACK_SOURCES
 
 add_executable(genesys_qt_gui_application
     ${GENESYS_QT_GUI_SOURCES}
+    ${GENESYS_QT_GUI_HEADERS}
     ${GENESYS_QT_GUI_RESOURCES}
     ${GENESYS_QT_GUI_TERMINAL_FALLBACK_SOURCES}
 )

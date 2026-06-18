@@ -13,7 +13,7 @@
 
 #pragma once
 
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 #include "../../data/ExternalIntegration/CppCompiler.h"
 
 //extern "C" typedef void (*initBetweenReplications_t)(Model* model);

@@ -1,8 +1,8 @@
 #include "services/ModelLanguageSynchronizer.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelPersistence_if.h"
+#include "../../../../../kernel/simulator/model/Model.h"
+#include "../../../../../kernel/simulator/persistence/Persistence_if.h"
 
 #include <QMessageBox>
 #include <QPlainTextEdit>
@@ -35,9 +35,9 @@ void ModelLanguageSynchronizer::actualizeModelSimLanguage() const {
 
     Model* model = _simulator->getModelManager()->current();
     if (model != nullptr) {
-        model->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
+        model->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, true);
         std::string tempFilename = "./temp.tmp";
-        model->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, false);
+        model->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, false);
         model->save(tempFilename);
 
         std::string line;

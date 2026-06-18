@@ -33,7 +33,7 @@
 #include "plugins/data/Grouping/EntityGroup.h"
 #include "plugins/data/MaterialHandling/Station.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/Logic/Variable.h"
 
 Example_PublicTransport::Example_PublicTransport() {
 }

@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/InputOutput/Record.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include <algorithm>
 #include <cctype>

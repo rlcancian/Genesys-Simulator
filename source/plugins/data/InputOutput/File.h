@@ -15,8 +15,8 @@
 #define FILE_H
 
 
-#include "kernel/simulator/ModelDataDefinition.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataManager.h"
 //#include "ParserChangesInformation.h"
 #include "kernel/simulator/PluginInformation.h"
 
