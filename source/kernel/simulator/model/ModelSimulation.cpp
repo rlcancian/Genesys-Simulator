@@ -595,7 +595,14 @@ void ModelSimulation::step() {
 }
 
 void ModelSimulation::stop() {
-	this->_stopRequested = true;
+	_stopRequested = true;
+	if (_isPaused && !_isRunning && _simulationIsInitiated) {
+		_pauseRequested = false;
+		_isPaused = false;
+		_isRunning = false;
+		_stopRequested = false;
+		_simulationEnded();
+	}
 }
 
 void ModelSimulation::setPauseOnEvent(bool _pauseOnEvent) {
