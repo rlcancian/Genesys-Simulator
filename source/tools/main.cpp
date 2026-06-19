@@ -306,6 +306,97 @@ void demoInference(DataAnalyzerDefaultImpl1& da) {
 	check("testAverageTwoSamples rejects H0 for normal vs expo data", t2.rejectH0());
 }
 
+void demoExtensions(DataAnalyzerDefaultImpl1& da) {
+	printSep('=');
+	std::cout << "8. EXTENSIONS: RMSE/R2, ANDERSON-DARLING, TREND DETECTION, EXCEEDANCE\n";
+	printSep();
+
+	// --- RMSE and R2 in FitResult -------------------------------------------
+	da.setDataValues(kNormalData);
+	const auto rNorm = da.fitDistribution("normal");
+	std::cout << std::fixed << std::setprecision(5);
+	std::cout << "  fitDistribution(normal): sse=" << rNorm.sse
+	          << "  rmse=" << rNorm.rmse
+	          << "  r2=" << rNorm.r2 << "\n";
+	check("fitDistribution computes RMSE (> 0)", rNorm.rmse > 0.0);
+	check("fitDistribution computes R2 in (0,1]", rNorm.r2 > 0.0 && rNorm.r2 <= 1.0);
+	// The best-fit distribution for normal data should have R2 > 0.95
+	check("normal fit R2 > 0.90 for N(5,1) data", rNorm.r2 > 0.90);
+
+	// --- analyzeFit: unified report -----------------------------------------
+	printSep();
+	std::cout << "  analyzeFit(\"normal\", 0.05):\n";
+	const auto report = da.analyzeFit("normal", 0.05);
+	std::cout << "    fit valid=" << report.fit.valid
+	          << "  rmse=" << report.fit.rmse
+	          << "  r2=" << report.fit.r2 << "\n";
+	std::cout << "    chi2  p-val=" << report.chiSquare.pValue
+	          << "  reject=" << report.chiSquare.rejectH0 << "\n";
+	std::cout << "    KS    p-val=" << report.ks.pValue
+	          << "  reject=" << report.ks.rejectH0 << "\n";
+	std::cout << "    AD    A2=" << report.ad.testStatistic
+	          << "  p-val=" << report.ad.pValue
+	          << "  reject=" << report.ad.rejectH0 << "\n";
+	check("analyzeFit fit is valid", report.fit.valid);
+	check("analyzeFit chi2 and KS agree on non-rejection",
+	      !report.chiSquare.rejectH0 && !report.ks.rejectH0);
+
+	// --- Anderson-Darling test ----------------------------------------------
+	printSep();
+	const auto ad = da.andersonDarling("normal", 0.05);
+	std::cout << "  AD(normal, alpha=0.05): A2=" << ad.testStatistic
+	          << "  p-val=" << ad.pValue
+	          << "  critical=" << ad.criticalValue
+	          << "  reject=" << ad.rejectH0 << "\n"
+	          << "  -> " << ad.conclusion << "\n";
+	check("AD does not reject normal fit at alpha=0.05 for N(5,1) data", !ad.rejectH0);
+
+	// AD should REJECT exponential fit for clearly normal data
+	const auto adReject = da.andersonDarling("exponential", 0.05);
+	check("AD rejects exponential fit for N(5,1) data", adReject.rejectH0);
+
+	// --- detectTrend --------------------------------------------------------
+	printSep();
+	da.setDataValues(kTemporalData);
+	const auto td = da.detectTrend();
+	std::cout << "  detectTrend (trending data):";
+	std::cout << " hasTrend=" << td.hasTrend
+	          << "  hasSeason=" << td.hasSeasonality
+	          << "  slope=" << std::setprecision(4) << td.trendSlope
+	          << "  intercept=" << td.trendIntercept << "\n";
+	check("detectTrend detects trend in trending data", td.hasTrend);
+	check("detectTrend slope > 0 for increasing data", td.trendSlope > 0.0);
+
+	da.setDataValues(kNormalData);
+	const auto tdFlat = da.detectTrend();
+	std::cout << "  detectTrend (N(5,1) data): slope=" << std::setprecision(4)
+	          << tdFlat.trendSlope << "  hasTrend=" << tdFlat.hasTrend << "\n";
+	check("detectTrend slope is near zero for stationary N(5,1) data",
+	      std::abs(tdFlat.trendSlope) < 0.1);
+
+	// --- exceedanceProbability ----------------------------------------------
+	printSep();
+	da.setDataValues(kExpoData);
+	const double excAtMean = da.exceedanceProbability(2.0, "exponential");
+	std::cout << "  P(X > 2.0 | Exp(mean~" << std::setprecision(2)
+	          << da.summaryStatistics().mean << ")): "
+	          << std::setprecision(4) << excAtMean << " (expected ~0.368)\n";
+	// For Exp(mean=2): P(X>2) = e^{-1} ≈ 0.368; fitted mean may differ slightly
+	check("exceedanceProbability in (0,1)", excAtMean > 0.0 && excAtMean < 1.0);
+	check("P(X > 0) == 1.0 for exponential at x=0",
+	      std::abs(da.exceedanceProbability(0.0, "exponential") - 1.0) < 1e-6);
+
+	const auto curve = da.exceedanceCurve(0.0, 6.0, 7, "exponential");
+	check("exceedanceCurve returns requested number of points", curve.size() == 7);
+	check("exceedanceCurve is monotonically decreasing", [&]() {
+		for (std::size_t i = 1; i < curve.size(); ++i)
+			if (curve[i] > curve[i-1] + 1e-9) return false;
+		return true;
+	}());
+
+	da.setDataValues(kNormalData);  // restore
+}
+
 void runDemo() {
 	DataAnalyzerDefaultImpl1 da;
 
@@ -321,6 +412,7 @@ void runDemo() {
 	demoGoF(da);
 	demoTimeSeries(da);
 	demoInference(da);
+	demoExtensions(da);
 
 	printSep('=');
 	std::cout << "Demo complete.\n";

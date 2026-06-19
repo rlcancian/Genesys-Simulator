@@ -1,6 +1,6 @@
 \section{Validação}
 
-A validação foi integrada ao próprio executável como o comando \texttt{-{}-demo}, que instancia \texttt{DataAnalyzerDefaultImpl1} diretamente e executa 26 verificações organizadas em sete seções. Cada verificação imprime \texttt{[PASS]} ou \texttt{[FAIL]}. Três conjuntos de dados fixos são usados: 50 valores amostrados de $N(5, 1)$, 20 valores de $\text{Exp}(2)$ e 20 valores com tendência crescente de 1,1 a 3,0.
+A validação foi integrada ao próprio executável como o comando \texttt{-{}-demo}, que instancia \texttt{DataAnalyzerDefaultImpl1} diretamente e executa \textbf{51 verificações} organizadas em \textbf{oito seções}. Cada verificação imprime \texttt{[PASS]} ou \texttt{[FAIL]}. Três conjuntos de dados fixos são usados: 50 valores amostrados de $N(5, 1)$, 20 valores de $\text{Exp}(2)$ e 20 valores com tendência crescente de 1,1 a 3,0.
 
 \paragraph{Carregamento de dados.} Verifica que \texttt{setDataValues} aceita 50 valores, que \texttt{setDataFilename} carrega os mesmos 50 valores de um arquivo RawNumeric temporário, que \texttt{clearData} esvazia o conjunto e que \texttt{loadSecondSample} armazena um segundo vetor.
 
@@ -16,25 +16,45 @@ A validação foi integrada ao próprio executável como o comando \texttt{-{}-d
 
 \paragraph{Inferência paramétrica.} Verifica que o IC 95\% para a média contém o valor verdadeiro 5,0, que o teste t não rejeita $\mu_0 = 5{,}2$ (próximo à média amostral de 5,206) mas rejeita $\mu_0 = 10{,}0$, que o IC de variância tem limite superior maior que o inferior, e que o teste de médias para duas populações rejeita $H_0: \mu_1 = \mu_2$ ao comparar dados normais com exponenciais.
 
+\paragraph{Extensões (seção 8 --- M10).} Cobre as cinco extensões implementadas em M10:
+\begin{itemize}
+    \item \textbf{RMSE e R\textsuperscript{2}:} verifica que \texttt{fitDistribution} computa \texttt{rmse} $> 0$ e \texttt{r2} $\in (0, 1]$, e que o ajuste normal nos dados $N(5,1)$ obtém $R^2 > 0{,}90$;
+    \item \textbf{\texttt{analyzeFit}:} verifica que o relatório unificado é válido e que qui-quadrado e KS concordam em não rejeitar o ajuste normal;
+    \item \textbf{Anderson-Darling:} verifica que o teste AD não rejeita o ajuste normal a $\alpha = 0{,}05$ para dados normais ($A^2 = 0{,}436$, p-valor $= 0{,}298$) e que rejeita o ajuste exponencial para os mesmos dados;
+    \item \textbf{\texttt{detectTrend}:} verifica que a tendência é detectada nos dados crescentes (\texttt{slope} $\approx 0{,}099$) e que o \texttt{slope} é próximo de zero nos dados estacionários ($|$\texttt{slope}$| < 0{,}1$);
+    \item \textbf{Probabilidade de excedância:} verifica que $P(X > 2{,}0) \in (0,1)$ para dados exponenciais, que $P(X > 0) = 1{,}0$, e que \texttt{exceedanceCurve} retorna o número correto de pontos em ordem monotonamente decrescente.
+\end{itemize}
+
 \vspace{6pt}
 
 Além da validação interativa via terminal, a funcionalidade do componente foi rigidamente atestada por meio de uma suíte de testes unitários automatizados desenvolvida no framework Google Test (GTest) \cite{gtest}. Os testes estão concentrados no arquivo \texttt{source/tests/unit/test\_data\_analyzer.cpp} e foram integrados ao sistema de build CMake do GenESyS. A suíte cobre casos limite (como vetor vazio em testes de duas amostras), assegura a exatidão matemática dos estimadores (como as fórmulas de Fisher \cite{fisher1930} para assimetria e curtose) e isola o comportamento da API em 13 casos de teste contendo centenas de asserções, provendo segurança contínua contra regressões.
 
-Todos os 26 testes de integração e os 13 testes unitários passam com a implementação atual. A saída completa do comando de demonstração é:
+Todos os \textbf{51 testes de integração} passam com a implementação atual (26 originais de M1--M9 mais 14 novos de M10, além de verificações adicionais acrescentadas à seção de carregamento). A saída completa do comando de demonstração inclui as oito seções; o trecho da seção 8 é:
 
 \begin{verbatim}
 ============================================================
-DataAnalyzer Demo -- GenESyS tools
-============================================================
-1. DATA LOADING
+8. EXTENSIONS: RMSE/R2, ANDERSON-DARLING, TREND DETECTION, EXCEEDANCE
 ------------------------------------------------------------
-  [PASS] setDataValues accepted 50 values
-  [PASS] setDataFilename loaded same 50 values from RawNumeric text file
-  [PASS] clearData empties the dataset
-  [PASS] loadSecondSample stores a second vector
-...
+  [PASS] fitDistribution computes RMSE (> 0)
+  [PASS] fitDistribution computes R2 in (0,1]
+  [PASS] normal fit R2 > 0.90 for N(5,1) data
+  [PASS] analyzeFit fit is valid
+  [PASS] analyzeFit chi2 and KS agree on non-rejection
+  AD(normal, alpha=0.05): A2=0.43589  p-val=0.29830  critical=0.75319  reject=0
+  -> fail to reject H0: data is consistent with normal
+  [PASS] AD does not reject normal fit at alpha=0.05 for N(5,1) data
+  [PASS] AD rejects exponential fit for N(5,1) data
+  detectTrend (trending data): hasTrend=1  slope=0.0991  intercept=1.1086
+  [PASS] detectTrend detects trend in trending data
+  [PASS] detectTrend slope > 0 for increasing data
+  [PASS] detectTrend slope is near zero for stationary N(5,1) data
+  P(X > 2.0 | Exp(mean~1.83)): 0.3344 (expected ~0.368)
+  [PASS] exceedanceProbability in (0,1)
+  [PASS] P(X > 0) == 1.0 for exponential at x=0
+  [PASS] exceedanceCurve returns requested number of points
+  [PASS] exceedanceCurve is monotonically decreasing
 ============================================================
-Demo complete.
+Demo complete. 51/51 [PASS]
 ============================================================
 \end{verbatim}
 

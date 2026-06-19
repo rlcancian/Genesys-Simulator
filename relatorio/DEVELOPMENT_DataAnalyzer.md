@@ -175,6 +175,56 @@ This document tracks the evolution of the unified data analysis tool in `source/
 
 ---
 
+## M10 — Five targeted extensions
+
+**What changed:**
+
+- `DataAnalyzer_if.h` — `FitResult` gained two new fields: `rmse` (sqrt(SSE/n)) and `r2`
+  (1 - SSE/SST, coefficient of determination vs empirical CDF using Hazen plotting positions
+  p_i = (i+0.5)/n). New structs: `FitReport` (aggregates `FitResult` + three `GoFResult`),
+  `TrendDiagnostic` (hasTrend, hasSeasonality, trendSlope, trendIntercept). New pure
+  virtuals: `andersonDarling`, `analyzeFit`, `detectTrend`, `exceedanceProbability`,
+  `exceedanceCurve`.
+
+- `DataAnalyzerDefaultImpl1.h` — Added matching `override` declarations and two new static
+  helpers: `_adPValue(A2)` and `_adQuantile(alpha)`.
+
+- `DataAnalyzerDefaultImpl1.cpp`:
+  - `_adPValue` — asymptotic approximation from Marsaglia & Marsaglia (2004); four piecewise
+    branches cover the range of realistic A² values.
+  - `_adQuantile` — bisection on `_adPValue` (monotone decreasing) to find the critical value.
+  - `fitDistribution` — now computes `rmse` and `r2` after calling the fitter; SST is
+    computed in O(n) from the Hazen order statistics.
+  - `andersonDarling` — computes A² over sorted order statistics, applies the Stephens (1974)
+    finite-sample correction (1 + 4/n - 25/n²), then delegates p-value and critical value to
+    the helpers.
+  - `analyzeFit` — thin facade: calls `fitDistribution` + `chiSquareGoodnessOfFit` +
+    `kolmogorovSmirnov` + `andersonDarling` and packages results into `FitReport`.
+  - `detectTrend` — computes ACF up to min(10, n-1) lags via the existing `autocorrelation`
+    method; classifies lag-1 significance (trend) and any higher-lag significance (seasonality)
+    against the Bartlett band ±1.96/√n; computes OLS slope and intercept in O(n).
+  - `exceedanceProbability` — returns `max(0, 1 - _cdfAt(x, fit))`.
+  - `exceedanceCurve` — evaluates exceedance at `points` equally-spaced x values in
+    [xMin, xMax]; both methods reuse `_cdfAt` without duplication.
+
+- `main.cpp` — Added `demoExtensions()` (section 8) with 13 new checks covering all five
+  extensions. All 49 checks (26 original + 10 from M9 extensions + 13 new) pass.
+
+**Key design decisions:**
+
+- Anderson-Darling p-value uses the asymptotic Marsaglia formula (no lookup tables) with the
+  Stephens finite-sample correction. Acceptable approximation for a university context;
+  documented as such.
+- `FitReport` is a pure data struct (no methods) consistent with the pattern established by
+  the existing output structs.
+- `detectTrend` deliberately reuses `autocorrelation()` rather than recomputing ACF inline —
+  single-responsibility principle; no duplicated logic.
+- `exceedanceCurve` returns only the probability values (not pairs), consistent with how
+  `autocorrelation` and `movingAverage` return plain `vector<double>`. The caller controls x
+  sampling.
+
+---
+
 ## Build history
 
 | Milestone | Files touched | Build result |
@@ -184,3 +234,4 @@ This document tracks the evolution of the unified data analysis tool in `source/
 | M3–M8 | DataAnalyzerDefaultImpl1.h (new), DataAnalyzerDefaultImpl1.cpp (new), CMakeLists.txt, TraitsTools.h | One fix: `long long int` vs `long int` mismatch in erlang CDF (`std::llround` returns `long long int`) |
 | M9 | main.cpp | One fix: `const auto ci` → `auto ci` for ConfidenceInterval locals (non-const accessors) |
 | M8 fix | DataAnalyzerDefaultImpl1.cpp | Two-sample proportion and variance tests corrected to use two-population overloads; `_count2` added as fourth argument |
+| M10 | DataAnalyzer_if.h, DataAnalyzerDefaultImpl1.h, DataAnalyzerDefaultImpl1.cpp, main.cpp | Clean — all 49 demo checks pass |

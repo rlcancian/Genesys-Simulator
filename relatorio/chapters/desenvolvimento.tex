@@ -106,6 +106,59 @@ Os métodos de IC e teste de hipóteses delegam para \texttt{HypothesisTesterDef
 
 Uma versão inicial de \texttt{testProportionTwoSamples} e \texttt{testVarianceTwoSamples} invocava por engano as sobrecargas de uma população do \texttt{HypothesisTesterDefaultImpl1}, tratando a estatística da segunda amostra como valor da hipótese nula. A correção foi passar \texttt{\_count2} como quarto argumento, selecionando as sobrecargas corretas de duas populações, que já existiam na implementação.
 
+\subsection{Extensões adicionais (M10)}
+\label{sec:m10}
+
+Após a conclusão dos marcos M1--M9, cinco extensões foram acrescentadas ao componente, todas alinhadas à diretriz 11.3.1 de diagnósticos adicionais e ajuste de curvas. Nenhuma delas altera a interface já estabilizada; apenas acrescentam métodos novos e dois campos à struct \texttt{FitResult}.
+
+\subsubsection*{RMSE e R\textsuperscript{2} no FitResult}
+
+A struct \texttt{FitResult} passou a expor dois campos de qualidade derivados do SSE:
+
+\begin{itemize}
+    \item \texttt{rmse} = $\sqrt{\text{SSE}/n}$ — erro médio por ponto da CDF empírica;
+    \item \texttt{r2} = $1 - \text{SSE}/\text{SST}$ — coeficiente de determinação, onde $\text{SST} = \sum_i (p_i - 0{,}5)^2$ e $p_i = (i+0{,}5)/n$ é a probabilidade de plotagem de Hazen.
+\end{itemize}
+
+O R\textsuperscript{2} é mais interpretável que o SSE bruto: um valor próximo de 1 indica que a CDF ajustada reproduz bem a CDF empírica. Para os 50 pontos N(5,1) do demo, o ajuste normal obteve $R^2 = 0{,}986$.
+
+\subsubsection*{Teste de Anderson-Darling}
+
+O teste de Anderson-Darling (AD) é mais poderoso que o KS para detectar desvios nas caudas da distribuição, o que é especialmente relevante para dados de saída de simulação com cauda longa. A estatística é:
+\[
+A^2 = -n - \frac{1}{n}\sum_{i=1}^{n}(2i-1)\bigl[\ln F(x_{(i)}) + \ln(1 - F(x_{(n+1-i)}))\bigr]
+\]
+corrigida pelo fator de amostra finita de Stephens (1974): $A^2 \leftarrow A^2 \cdot (1 + 4/n - 25/n^2)$. O p-valor usa a aproximação assintótica de Marsaglia \& Marsaglia (2004); o valor crítico é obtido por bissecção sobre a mesma função, monotonamente decrescente.
+
+\subsubsection*{FitReport: relatório unificado de ajuste}
+
+O método \texttt{analyzeFit(name, alpha)} retorna uma struct \texttt{FitReport} que agrega em uma única chamada:
+
+\begin{itemize}
+    \item os parâmetros e métricas de qualidade (\texttt{FitResult} com SSE, RMSE e R\textsuperscript{2});
+    \item o resultado do qui-quadrado (\texttt{GoFResult});
+    \item o resultado do KS (\texttt{GoFResult});
+    \item o resultado do Anderson-Darling (\texttt{GoFResult}).
+\end{itemize}
+
+Isso é análogo ao que o \textit{Input Analyzer} do Arena apresenta — parâmetros e diagnósticos lado a lado — mas sem qualquer componente gráfico.
+
+\subsubsection*{Detecção de tendência (detectTrend)}
+
+O método \texttt{detectTrend()} retorna uma struct \texttt{TrendDiagnostic} com:
+
+\begin{itemize}
+    \item \texttt{hasTrend} — verdadeiro se $|\hat{r}(1)| > 1{,}96/\sqrt{n}$ (ACF do lag 1 acima da banda de Bartlett a 95\%);
+    \item \texttt{hasSeasonality} — verdadeiro se algum $|\hat{r}(k)|$, $k > 1$, exceder a banda;
+    \item \texttt{trendSlope} e \texttt{trendIntercept} — parâmetros da regressão linear dos valores sobre o índice temporal, por mínimos quadrados ordinários.
+\end{itemize}
+
+Para o dado temporal com tendência crescente do demo, o método detectou corretamente \texttt{hasTrend=true} e estimou \texttt{slope} $\approx 0{,}099$ por observação.
+
+\subsubsection*{Probabilidade de excedância (exceedanceProbability / exceedanceCurve)}
+
+O método \texttt{exceedanceProbability(x, name)} retorna $P(X > x) = 1 - F(x)$, onde $F$ é a CDF teórica da distribuição ajustada. O método \texttt{exceedanceCurve(xMin, xMax, n, name)} avalia essa probabilidade em $n$ pontos igualmente espaçados em $[x_{\min}, x_{\max}]$, produzindo a estrutura numérica de uma curva de excedância. Ambos reutilizam o helper \texttt{\_cdfAt} já existente, sem duplicação de lógica.
+
 \subsection{Integração com o simulador}
 
 O componente é registrado no mecanismo \texttt{TraitsTools<T>} do GenESyS:

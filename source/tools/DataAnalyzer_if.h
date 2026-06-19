@@ -59,10 +59,17 @@ public:
 	 * erlang:       p1=mean, p2=m (integer shape)
 	 * beta:         p1=alpha, p2=beta, p3=infLimit, p4=supLimit
 	 * weibull:      p1=alpha (shape), p2=scale
+	 *
+	 * rmse = sqrt(sse / n): average CDF error per observation.
+	 * r2   = 1 - SSE/SST: proportion of empirical CDF variance explained by the fit.
+	 *        SST = sum((p_i - 0.5)^2), p_i = (i+0.5)/n  (uniform order-statistic baseline).
+	 *        r2 close to 1 means the fitted CDF tracks the empirical CDF well.
 	 */
 	struct FitResult {
 		std::string distributionName;
-		double sse;
+		double sse;                                     ///< sum of squared CDF errors
+		double rmse;                                    ///< sqrt(sse / n) — per-point error
+		double r2;                                      ///< coefficient of determination vs empirical CDF
 		double param1, param2, param3, param4, param5;
 		bool valid;
 	};
@@ -75,6 +82,36 @@ public:
 		double significanceLevel;
 		bool rejectH0;
 		std::string conclusion;
+	};
+
+	/**
+	 * @brief Consolidated result of fitting one distribution and running all three
+	 *        goodness-of-fit tests (chi-square, KS, Anderson-Darling) in one call.
+	 */
+	struct FitReport {
+		FitResult   fit;        ///< parameters + SSE/RMSE/R²
+		GoFResult   chiSquare;  ///< chi-square goodness-of-fit
+		GoFResult   ks;         ///< Kolmogorov-Smirnov
+		GoFResult   ad;         ///< Anderson-Darling
+	};
+
+	/**
+	 * @brief Diagnostics for detecting trend and seasonality in a time series.
+	 *
+	 * hasTrend is true when |ACF[1]| exceeds the Bartlett 95% confidence band
+	 * (1.96/sqrt(n)), which is the standard criterion for declaring lag-1
+	 * autocorrelation significant under the white-noise null hypothesis.
+	 *
+	 * hasSeasonality is true when any |ACF[k]|, k > 1, exceeds the band.
+	 *
+	 * trendSlope and trendIntercept come from ordinary least-squares regression
+	 * of the observations on their sequential index (0, 1, …, n-1).
+	 */
+	struct TrendDiagnostic {
+		bool   hasTrend;        ///< |ACF[1]| > 1.96/sqrt(n)
+		bool   hasSeasonality;  ///< any |ACF[k]|, k>1, > 1.96/sqrt(n)
+		double trendSlope;      ///< OLS slope (units per observation)
+		double trendIntercept;  ///< OLS intercept
 	};
 
 	/**
@@ -151,10 +188,38 @@ public:
 	virtual GoFResult chiSquareGoodnessOfFit(const std::string& distributionName, double significanceLevel) = 0;
 	virtual GoFResult kolmogorovSmirnov(const std::string& distributionName, double significanceLevel) = 0;
 
+	/**
+	 * @brief Anderson-Darling goodness-of-fit test.
+	 *
+	 * More powerful than KS for detecting deviations in the distribution tails,
+	 * which is particularly relevant for simulation output data (e.g. long-tailed
+	 * service times). The p-value uses the asymptotic Marsaglia approximation;
+	 * for n < 25 results are approximate.
+	 */
+	virtual GoFResult andersonDarling(const std::string& distributionName, double significanceLevel) = 0;
+
+	/**
+	 * @brief Fits a distribution and runs all three GoF tests in one call.
+	 *
+	 * Equivalent to calling fitDistribution + chiSquareGoodnessOfFit +
+	 * kolmogorovSmirnov + andersonDarling individually, but more convenient
+	 * for interactive analysis and reporting.
+	 */
+	virtual FitReport analyzeFit(const std::string& distributionName, double significanceLevel) = 0;
+
 	// ---- time-series analysis -------------------------------------------
 
 	virtual std::vector<double> movingAverage(unsigned int window) = 0;
 	virtual std::vector<double> autocorrelation(unsigned int maxLag) = 0;
+
+	/**
+	 * @brief Detects linear trend and seasonality from the ACF and OLS regression.
+	 *
+	 * Uses the Bartlett 95% band (±1.96/sqrt(n)) to classify lags as significant.
+	 * Linear trend parameters come from ordinary least-squares on the index sequence.
+	 * Returns a zeroed-out TrendDiagnostic if fewer than 4 observations are loaded.
+	 */
+	virtual TrendDiagnostic detectTrend() = 0;
 
 	/**
 	 * @brief Returns the autocorrelation function together with its 95%
@@ -166,6 +231,26 @@ public:
 	 * from non-significant lags.
 	 */
 	virtual CorrelogramData correlogram(unsigned int maxLag) = 0;
+
+	/**
+	 * @brief Probability that a future observation exceeds x, given the fitted distribution.
+	 *
+	 * Returns 1 - F(x) where F is the theoretical CDF of the named distribution
+	 * fitted to the current dataset. Returns NaN if the fit fails.
+	 */
+	virtual double exceedanceProbability(double x, const std::string& distributionName) = 0;
+
+	/**
+	 * @brief Exceedance curve: P(X > x) evaluated at `points` equally-spaced x values
+	 *        in [xMin, xMax].
+	 *
+	 * Returns a vector of size `points` where element i corresponds to
+	 * x_i = xMin + i*(xMax-xMin)/(points-1). Returns an empty vector if the
+	 * fit fails or the inputs are invalid.
+	 */
+	virtual std::vector<double> exceedanceCurve(double xMin, double xMax,
+	                                             unsigned int points,
+	                                             const std::string& distributionName) = 0;
 
 	// ---- inference: one-population confidence intervals -----------------
 

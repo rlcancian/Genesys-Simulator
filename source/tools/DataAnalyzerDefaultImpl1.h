@@ -46,11 +46,18 @@ public:
 	// goodness-of-fit tests
 	virtual GoFResult chiSquareGoodnessOfFit(const std::string& distributionName, double significanceLevel) override;
 	virtual GoFResult kolmogorovSmirnov(const std::string& distributionName, double significanceLevel) override;
+	virtual GoFResult andersonDarling(const std::string& distributionName, double significanceLevel) override;
+	virtual FitReport analyzeFit(const std::string& distributionName, double significanceLevel) override;
 
 	// time-series analysis
 	virtual std::vector<double> movingAverage(unsigned int window) override;
 	virtual std::vector<double> autocorrelation(unsigned int maxLag) override;
 	virtual CorrelogramData correlogram(unsigned int maxLag) override;
+	virtual TrendDiagnostic detectTrend() override;
+	virtual double exceedanceProbability(double x, const std::string& distributionName) override;
+	virtual std::vector<double> exceedanceCurve(double xMin, double xMax,
+	                                             unsigned int points,
+	                                             const std::string& distributionName) override;
 
 	// inference: one-population confidence intervals
 	virtual HypothesisTester_if::ConfidenceInterval averageConfidenceInterval() override;
@@ -83,6 +90,10 @@ private:
 	// KS test helpers
 	static double _ksPValue(double Dn, std::size_t n);
 	static double _ksQuantile(std::size_t n, double alpha);
+
+	// Anderson-Darling test helpers
+	static double _adPValue(double A2);
+	static double _adQuantile(double alpha);
 
 private:
 	// primary sample cached stats

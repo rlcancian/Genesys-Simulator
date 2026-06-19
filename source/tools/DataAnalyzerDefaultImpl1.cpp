@@ -95,6 +95,43 @@ double DataAnalyzerDefaultImpl1::_ksQuantile(std::size_t n, double alpha) {
 }
 
 // ============================================================
+// Static helpers — Anderson-Darling CDF
+// ============================================================
+
+double DataAnalyzerDefaultImpl1::_adPValue(double A2) {
+	// Asymptotic p-value approximation from Marsaglia & Marsaglia (2004).
+	// Monotonically decreasing: large A² → small p-value → reject H0.
+	if (A2 <= 0.0) return 1.0;
+	double p;
+	if (A2 < 0.2) {
+		p = 1.0 - std::exp(-13.436 + 101.14 * A2 - 223.73 * A2 * A2);
+	} else if (A2 < 0.34) {
+		p = 1.0 - std::exp(-8.318 + 42.796 * A2 - 59.938 * A2 * A2);
+	} else if (A2 < 0.6) {
+		p = std::exp(0.9177 - 4.279 * A2 - 1.38 * A2 * A2);
+	} else {
+		p = std::exp(1.2937 - 5.709 * A2 + 0.0186 * A2 * A2);
+	}
+	return std::max(0.0, std::min(1.0, p));
+}
+
+double DataAnalyzerDefaultImpl1::_adQuantile(double alpha) {
+	// Bisection on _adPValue (monotone decreasing) to find the critical value
+	// A* such that P(A² > A*) = alpha, i.e. _adPValue(A*) = alpha.
+	if (alpha <= 0.0) return std::numeric_limits<double>::infinity();
+	if (alpha >= 1.0) return 0.0;
+	double lo = 0.0, hi = 5.0;
+	while (_adPValue(hi) > alpha) hi *= 2.0;
+	for (int i = 0; i < 100; ++i) {
+		const double mid = 0.5 * (lo + hi);
+		if (_adPValue(mid) > alpha) lo = mid;
+		else hi = mid;
+		if (hi - lo < 1e-7) break;
+	}
+	return 0.5 * (lo + hi);
+}
+
+// ============================================================
 // Private helpers
 // ============================================================
 
@@ -490,7 +527,9 @@ DataAnalyzer_if::FitResult DataAnalyzerDefaultImpl1::fitDistribution(const std::
 	r.distributionName = name;
 	r.valid = false;
 	r.param1 = r.param2 = r.param3 = r.param4 = r.param5 = std::numeric_limits<double>::quiet_NaN();
-	r.sse = std::numeric_limits<double>::infinity();
+	r.sse  = std::numeric_limits<double>::infinity();
+	r.rmse = std::numeric_limits<double>::quiet_NaN();
+	r.r2   = std::numeric_limits<double>::quiet_NaN();
 
 	double sse = std::numeric_limits<double>::infinity();
 	double p1 = r.param1, p2 = r.param2, p3 = r.param3, p4 = r.param4;
@@ -513,12 +552,28 @@ DataAnalyzer_if::FitResult DataAnalyzerDefaultImpl1::fitDistribution(const std::
 		return r;
 	}
 
-	r.sse = sse;
+	r.sse    = sse;
 	r.param1 = p1;
 	r.param2 = p2;
 	r.param3 = p3;
 	r.param4 = p4;
-	r.valid = std::isfinite(sse);
+	r.valid  = std::isfinite(sse);
+
+	// ---- derived quality metrics ----------------------------------------
+	if (r.valid && _count > 0) {
+		const double n = static_cast<double>(_count);
+		// RMSE: average CDF error per observation
+		r.rmse = std::sqrt(sse / n);
+		// R²: 1 - SSE/SST where SST = Σ(p_i - 0.5)², p_i = (i+0.5)/n
+		// (SST is the variance baseline of the uniform-distribution order statistics)
+		double sst = 0.0;
+		for (std::size_t i = 0; i < _count; ++i) {
+			const double pi = (static_cast<double>(i) + 0.5) / n - 0.5;
+			sst += pi * pi;
+		}
+		r.r2 = (sst > 0.0) ? 1.0 - sse / sst : std::numeric_limits<double>::quiet_NaN();
+	}
+
 	return r;
 }
 
@@ -711,6 +766,73 @@ DataAnalyzer_if::GoFResult DataAnalyzerDefaultImpl1::kolmogorovSmirnov(
 }
 
 // ============================================================
+// Goodness-of-fit: Anderson-Darling
+// ============================================================
+
+DataAnalyzer_if::GoFResult DataAnalyzerDefaultImpl1::andersonDarling(
+		const std::string& distributionName, double significanceLevel) {
+	GoFResult result{};
+	result.distributionName = distributionName;
+	result.significanceLevel = significanceLevel;
+	result.rejectH0 = false;
+	result.conclusion = "insufficient data";
+
+	if (_count < 5) {
+		return result;
+	}
+
+	FitResult fit = fitDistribution(distributionName);
+	if (!fit.valid) {
+		result.conclusion = "fit failed for " + distributionName;
+		return result;
+	}
+
+	// A² = -n - (1/n) * Σ_{i=1}^{n} (2i-1) * [ln(F(x_(i))) + ln(1 - F(x_(n+1-i)))]
+	const double n = static_cast<double>(_count);
+	double A2 = 0.0;
+	const double eps = 1e-12;
+	for (std::size_t i = 0; i < _count; ++i) {
+		const double Fxi  = std::max(eps, std::min(1.0 - eps, _cdfAt(_sortedData[i], fit)));
+		const double Fxni = std::max(eps, std::min(1.0 - eps, _cdfAt(_sortedData[_count - 1 - i], fit)));
+		if (!std::isfinite(Fxi) || !std::isfinite(Fxni)) {
+			result.conclusion = "CDF evaluation failed for " + distributionName;
+			return result;
+		}
+		A2 += (2.0 * static_cast<double>(i + 1) - 1.0) * (std::log(Fxi) + std::log(1.0 - Fxni));
+	}
+	A2 = -n - A2 / n;
+
+	// Apply finite-sample correction factor from Stephens (1974)
+	A2 *= (1.0 + 4.0 / n - 25.0 / (n * n));
+
+	const double pValue  = _adPValue(A2);
+	const double critVal = _adQuantile(significanceLevel);
+
+	result.testStatistic = A2;
+	result.pValue        = pValue;
+	result.criticalValue = critVal;
+	result.rejectH0      = (A2 > critVal);
+	result.conclusion    = result.rejectH0
+		? "reject H0: data does not follow " + distributionName
+		: "fail to reject H0: data is consistent with " + distributionName;
+	return result;
+}
+
+// ============================================================
+// Unified fit report
+// ============================================================
+
+DataAnalyzer_if::FitReport DataAnalyzerDefaultImpl1::analyzeFit(
+		const std::string& distributionName, double significanceLevel) {
+	FitReport report;
+	report.fit       = fitDistribution(distributionName);
+	report.chiSquare = chiSquareGoodnessOfFit(distributionName, significanceLevel);
+	report.ks        = kolmogorovSmirnov(distributionName, significanceLevel);
+	report.ad        = andersonDarling(distributionName, significanceLevel);
+	return report;
+}
+
+// ============================================================
 // Time-series analysis
 // ============================================================
 
@@ -773,6 +895,90 @@ DataAnalyzer_if::CorrelogramData DataAnalyzerDefaultImpl1::correlogram(unsigned 
 	// Bartlett 95% confidence bound for white-noise hypothesis: ±1.96/sqrt(n)
 	out.confidenceBound = 1.96 / std::sqrt(static_cast<double>(_count));
 	return out;
+}
+
+// ============================================================
+// Trend detection
+// ============================================================
+
+DataAnalyzer_if::TrendDiagnostic DataAnalyzerDefaultImpl1::detectTrend() {
+	TrendDiagnostic d{};
+	d.hasTrend       = false;
+	d.hasSeasonality = false;
+	d.trendSlope     = 0.0;
+	d.trendIntercept = _sampleMean;
+
+	if (_count < 4) {
+		return d;
+	}
+
+	// Bartlett 95% confidence band for white-noise ACF
+	const double band = 1.96 / std::sqrt(static_cast<double>(_count));
+
+	// Compute ACF up to min(10, n-1) lags
+	const unsigned int maxLag = static_cast<unsigned int>(
+		std::min(static_cast<std::size_t>(10), _count - 1));
+	const auto acf = autocorrelation(maxLag);
+
+	// Trend: significant lag-1 autocorrelation
+	if (acf.size() >= 2) {
+		d.hasTrend = (std::abs(acf[1]) > band);
+	}
+
+	// Seasonality: any lag > 1 outside the Bartlett band
+	for (std::size_t k = 2; k < acf.size(); ++k) {
+		if (std::abs(acf[k]) > band) {
+			d.hasSeasonality = true;
+			break;
+		}
+	}
+
+	// Ordinary least-squares linear regression on sequential index
+	// slope = Σ(i - mean_i)(x_i - mean_x) / Σ(i - mean_i)²
+	const double mean_i = static_cast<double>(_count - 1) / 2.0;
+	double num = 0.0, den = 0.0;
+	for (std::size_t i = 0; i < _count; ++i) {
+		const double di = static_cast<double>(i) - mean_i;
+		num += di * (_data[i] - _sampleMean);
+		den += di * di;
+	}
+	d.trendSlope     = (den > 0.0) ? num / den : 0.0;
+	d.trendIntercept = _sampleMean - d.trendSlope * mean_i;
+	return d;
+}
+
+// ============================================================
+// Exceedance probability
+// ============================================================
+
+double DataAnalyzerDefaultImpl1::exceedanceProbability(
+		double x, const std::string& distributionName) {
+	const FitResult fit = fitDistribution(distributionName);
+	if (!fit.valid) {
+		return std::numeric_limits<double>::quiet_NaN();
+	}
+	return std::max(0.0, 1.0 - _cdfAt(x, fit));
+}
+
+std::vector<double> DataAnalyzerDefaultImpl1::exceedanceCurve(
+		double xMin, double xMax, unsigned int points,
+		const std::string& distributionName) {
+	if (points == 0 || xMax <= xMin) {
+		return {};
+	}
+	const FitResult fit = fitDistribution(distributionName);
+	if (!fit.valid) {
+		return {};
+	}
+	std::vector<double> result(points);
+	const double step = (points > 1)
+		? (xMax - xMin) / static_cast<double>(points - 1)
+		: 0.0;
+	for (unsigned int i = 0; i < points; ++i) {
+		const double xi = xMin + static_cast<double>(i) * step;
+		result[i] = std::max(0.0, 1.0 - _cdfAt(xi, fit));
+	}
+	return result;
 }
 
 // ============================================================
