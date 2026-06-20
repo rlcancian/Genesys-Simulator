@@ -8,6 +8,7 @@
 #include <fstream>
 #include <limits>
 #include <map>
+#include <locale>
 #include <set>
 #include <sstream>
 
@@ -52,19 +53,15 @@ namespace {
 		if (token.empty()) {
 			return false;
 		}
-		char* end = nullptr;
-		errno = 0;
-		const double parsed = std::strtod(token.c_str(), &end);
-		if (end == token.c_str() || errno == ERANGE) {
+		std::istringstream stream(token);
+		stream.imbue(std::locale::classic());
+		double parsed = 0.0;
+		stream >> parsed;
+		if (!stream || !std::isfinite(parsed)) {
 			return false;
 		}
-		while (end != nullptr && *end != '\0') {
-			if (std::isspace(static_cast<unsigned char>(*end)) == 0) {
-				return false;
-			}
-			++end;
-		}
-		if (!std::isfinite(parsed)) {
+		char extra = '\0';
+		if (stream >> extra) {
 			return false;
 		}
 		if (value != nullptr) {

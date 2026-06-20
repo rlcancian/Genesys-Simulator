@@ -1,7 +1,7 @@
 #include "DialogSelectVariable.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../../../kernel/simulator/model/ModelDataDefinition.h"
 
 DialogSelectVariable::DialogSelectVariable(QWidget *parent)
     : QDialog(parent), comboBox(new QComboBox(this)), okButton(new QPushButton("OK", this)),

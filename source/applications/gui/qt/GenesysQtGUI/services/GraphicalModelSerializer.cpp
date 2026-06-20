@@ -11,9 +11,9 @@
 #include "../animations/AnimationVariable.h"
 #include "../animations/AnimationTimer.h"
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/ModelDataManager.h"
-#include "kernel/simulator/ModelManager.h"
+#include "../../../../../kernel/simulator/model/Model.h"
+#include "../../../../../kernel/simulator/model/ModelDataManager.h"
+#include "../../../../../kernel/simulator/model/ModelManager.h"
 #include "kernel/simulator/Plugin.h"
 #include "kernel/simulator/PluginManager.h"
 
@@ -31,6 +31,7 @@
 #include <QGraphicsTextItem>
 #include <QHash>
 #include <QFont>
+#include <QLocale>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPointer>
@@ -85,9 +86,16 @@ QHash<QString, QPointF> decodePortPositions(const QString& token) {
     while (matches.hasNext()) {
         QRegularExpressionMatch match = matches.next();
         const QString key = match.captured(1) + match.captured(2);
-        positions.insert(key, QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
+        positions.insert(key, QPointF(QLocale::c().toDouble(match.captured(3)),
+                                      QLocale::c().toDouble(match.captured(4))));
     }
     return positions;
+}
+
+double parsePersistedDouble(const QString& text) {
+    bool ok = false;
+    const double parsed = QLocale::c().toDouble(text.trimmed(), &ok);
+    return (ok && std::isfinite(parsed)) ? parsed : 0.0;
 }
 
 bool decodeComponentColor(const QString& token, QColor* color) {
@@ -389,15 +397,15 @@ void applyCommonGraphicsState(const QString& line, QGraphicsItem* item) {
 
     QRegularExpressionMatch match = regexRotation.match(line);
     if (match.hasMatch()) {
-        item->setRotation(match.captured(1).trimmed().toDouble());
+        item->setRotation(parsePersistedDouble(match.captured(1)));
     }
     match = regexScale.match(line);
     if (match.hasMatch()) {
-        item->setScale(match.captured(1).trimmed().toDouble());
+        item->setScale(parsePersistedDouble(match.captured(1)));
     }
     match = regexZ.match(line);
     if (match.hasMatch()) {
-        item->setZValue(match.captured(1).trimmed().toDouble());
+        item->setZValue(parsePersistedDouble(match.captured(1)));
     }
     match = regexVisible.match(line);
     if (match.hasMatch()) {
@@ -405,7 +413,7 @@ void applyCommonGraphicsState(const QString& line, QGraphicsItem* item) {
     }
     match = regexOpacity.match(line);
     if (match.hasMatch()) {
-        item->setOpacity(match.captured(1).trimmed().toDouble());
+        item->setOpacity(parsePersistedDouble(match.captured(1)));
     }
 }
 
@@ -432,7 +440,7 @@ bool decodePenState(const QString& line, QPen* pen) {
         return false;
     }
     pen->setColor(QColor(match.captured(1)));
-    pen->setWidthF(match.captured(2).toDouble());
+    pen->setWidthF(parsePersistedDouble(match.captured(2)));
     pen->setStyle(static_cast<Qt::PenStyle>(match.captured(3).toInt()));
     return true;
 }
@@ -488,7 +496,7 @@ void applyTextStyleState(const QString& line, QGraphicsTextItem* item) {
         }
         if (token.startsWith("textwidth=")) {
             const QString widthValue = token.mid(QString("textwidth=").size()).trimmed();
-            item->setTextWidth(widthValue.toDouble());
+            item->setTextWidth(parsePersistedDouble(widthValue));
             continue;
         }
     }
@@ -1243,8 +1251,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 QRegularExpressionMatch posMatch =
                     QRegularExpression("position=\\((-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*)\\)").match(token);
                 if (posMatch.hasMatch()) {
-                    position.setX(posMatch.captured(1).toDouble());
-                    position.setY(posMatch.captured(2).toDouble());
+                    position.setX(parsePersistedDouble(posMatch.captured(1)));
+                    position.setY(parsePersistedDouble(posMatch.captured(2)));
                     hasPosition = true;
                     continue;
                 }
@@ -1252,8 +1260,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 QRegularExpressionMatch legacyPosMatch =
                     QRegularExpression("position=\\((-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*),(-?\\d+\\.?\\d*)\\)").match(token);
                 if (legacyPosMatch.hasMatch()) {
-                    position.setX(legacyPosMatch.captured(1).toDouble());
-                    position.setY(legacyPosMatch.captured(3).toDouble());
+                    position.setX(parsePersistedDouble(legacyPosMatch.captured(1)));
+                    position.setY(parsePersistedDouble(legacyPosMatch.captured(3)));
                     hasPosition = true;
                     continue;
                 }
@@ -1397,7 +1405,8 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
 
                     QRegularExpressionMatch posMatch = regexPosition.match(token);
                     if (posMatch.hasMatch()) {
-                        state.position = QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble());
+                        state.position = QPointF(parsePersistedDouble(posMatch.captured(1)),
+                                                 parsePersistedDouble(posMatch.captured(2)));
                         hasPosition = true;
                         continue;
                     }
@@ -1536,8 +1545,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     QRegularExpressionMatch sizeMatch = regexSize.match(rawLine);
                     if (idMatch.hasMatch() && posMatch.hasMatch() && sizeMatch.hasMatch()) {
                         counter->setIdCounter(idMatch.captured(1).toInt());
-                        counter->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
-                        counter->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
+                        counter->setRect(QRectF(0, 0, parsePersistedDouble(sizeMatch.captured(1)),
+                                                parsePersistedDouble(sizeMatch.captured(2))).normalized());
+                        counter->setPos(QPointF(parsePersistedDouble(posMatch.captured(1)),
+                                                parsePersistedDouble(posMatch.captured(2))));
                         _graphicsView->getScene()->getAnimationsCounter()->append(counter);
                         _graphicsView->getScene()->addItem(counter);
                         persistedItems.insert(persistedId, counter);
@@ -1566,8 +1577,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                                 variable->setSliceIndex(static_cast<unsigned int>(sliceIndex), static_cast<unsigned int>(std::max(0, slices.at(sliceIndex).toInt())));
                             }
                         }
-                        variable->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
-                        variable->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
+                        variable->setRect(QRectF(0, 0, parsePersistedDouble(sizeMatch.captured(1)),
+                                                 parsePersistedDouble(sizeMatch.captured(2))).normalized());
+                        variable->setPos(QPointF(parsePersistedDouble(posMatch.captured(1)),
+                                                 parsePersistedDouble(posMatch.captured(2))));
                         _graphicsView->getScene()->getAnimationsVariable()->append(variable);
                         _graphicsView->getScene()->addItem(variable);
                         persistedItems.insert(persistedId, variable);
@@ -1592,8 +1605,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                         timer->setInitialSeconds(secondMatch.captured(1).toInt());
                         timer->setTimeFormat(Util::TimeFormat(formatMatch.captured(1).toInt()));
                         timer->setTime(0.0);
-                        timer->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
-                        timer->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
+                        timer->setRect(QRectF(0, 0, parsePersistedDouble(sizeMatch.captured(1)),
+                                              parsePersistedDouble(sizeMatch.captured(2))).normalized());
+                        timer->setPos(QPointF(parsePersistedDouble(posMatch.captured(1)),
+                                              parsePersistedDouble(posMatch.captured(2))));
                         _graphicsView->getScene()->getAnimationsTimer()->append(timer);
                         _graphicsView->getScene()->addItem(timer);
                         persistedItems.insert(persistedId, timer);
@@ -1650,23 +1665,25 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                             plot->setShowTicks(parsePersistedBool(showTicksMatch.captured(1)));
                         }
                         if (xMinMatch.hasMatch()) {
-                            plot->setXAxisMin(xMinMatch.captured(1).trimmed().toDouble());
+                            plot->setXAxisMin(parsePersistedDouble(xMinMatch.captured(1)));
                         }
                         if (xMaxMatch.hasMatch()) {
-                            plot->setXAxisMax(xMaxMatch.captured(1).trimmed().toDouble());
+                            plot->setXAxisMax(parsePersistedDouble(xMaxMatch.captured(1)));
                         }
                         if (yMinMatch.hasMatch()) {
-                            plot->setYAxisMin(yMinMatch.captured(1).trimmed().toDouble());
+                            plot->setYAxisMin(parsePersistedDouble(yMinMatch.captured(1)));
                         }
                         if (yMaxMatch.hasMatch()) {
-                            plot->setYAxisMax(yMaxMatch.captured(1).trimmed().toDouble());
+                            plot->setYAxisMax(parsePersistedDouble(yMaxMatch.captured(1)));
                         }
                         if (datasetsMatch.hasMatch()) {
                             plot->setDatasetsText(decodeGuiText(datasetsMatch.captured(1).trimmed()));
                         }
                     }
-                    placeholder->setRect(QRectF(0, 0, sizeMatch.captured(1).toDouble(), sizeMatch.captured(2).toDouble()).normalized());
-                    placeholder->setPos(QPointF(posMatch.captured(1).toDouble(), posMatch.captured(2).toDouble()));
+                    placeholder->setRect(QRectF(0, 0, parsePersistedDouble(sizeMatch.captured(1)),
+                                                parsePersistedDouble(sizeMatch.captured(2))).normalized());
+                    placeholder->setPos(QPointF(parsePersistedDouble(posMatch.captured(1)),
+                                                parsePersistedDouble(posMatch.captured(2))));
                     _graphicsView->getScene()->getAnimationsPlaceholder()->append(placeholder);
                     _graphicsView->getScene()->addItem(placeholder);
                     persistedItems.insert(persistedId, placeholder);
@@ -1685,8 +1702,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 QRegularExpressionMatch match = regex.match(line);
                 if (match.hasMatch()) {
                     counter->setIdCounter(match.captured(2).toInt());
-                    counter->setRect(QRectF(0, 0, match.captured(5).toDouble(), match.captured(6).toDouble()).normalized());
-                    counter->setPos(QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
+                    counter->setRect(QRectF(0, 0, parsePersistedDouble(match.captured(5)),
+                                            parsePersistedDouble(match.captured(6))).normalized());
+                    counter->setPos(QPointF(parsePersistedDouble(match.captured(3)),
+                                            parsePersistedDouble(match.captured(4))));
                     _graphicsView->getScene()->getAnimationsCounter()->append(counter);
                     _graphicsView->getScene()->addItem(counter);
                 } else {
@@ -1719,8 +1738,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                             variable->setSliceIndex(static_cast<unsigned int>(sliceIndex), static_cast<unsigned int>(std::max(0, slices.at(sliceIndex).toInt())));
                         }
                     }
-                    variable->setRect(QRectF(0, 0, match.captured(5).toDouble(), match.captured(6).toDouble()).normalized());
-                    variable->setPos(QPointF(match.captured(3).toDouble(), match.captured(4).toDouble()));
+                    variable->setRect(QRectF(0, 0, parsePersistedDouble(match.captured(5)),
+                                             parsePersistedDouble(match.captured(6))).normalized());
+                    variable->setPos(QPointF(parsePersistedDouble(match.captured(3)),
+                                             parsePersistedDouble(match.captured(4))));
                     _graphicsView->getScene()->getAnimationsVariable()->append(variable);
                     _graphicsView->getScene()->addItem(variable);
                 } else {
@@ -1743,8 +1764,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                     timer->setInitialSeconds(match.captured(4).toInt());
                     timer->setTimeFormat(Util::TimeFormat(match.captured(5).toInt()));
                     timer->setTime(0.0);
-                    timer->setRect(QRectF(0, 0, match.captured(8).toDouble(), match.captured(9).toDouble()).normalized());
-                    timer->setPos(QPointF(match.captured(6).toDouble(), match.captured(7).toDouble()));
+                    timer->setRect(QRectF(0, 0, parsePersistedDouble(match.captured(8)),
+                                          parsePersistedDouble(match.captured(9))).normalized());
+                    timer->setPos(QPointF(parsePersistedDouble(match.captured(6)),
+                                          parsePersistedDouble(match.captured(7))));
                     _graphicsView->getScene()->getAnimationsTimer()->append(timer);
                     _graphicsView->getScene()->addItem(timer);
                 } else {
@@ -1801,23 +1824,25 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                         plot->setShowTicks(parsePersistedBool(showTicksMatch.captured(1)));
                     }
                     if (xMinMatch.hasMatch()) {
-                        plot->setXAxisMin(xMinMatch.captured(1).trimmed().toDouble());
+                        plot->setXAxisMin(parsePersistedDouble(xMinMatch.captured(1)));
                     }
                     if (xMaxMatch.hasMatch()) {
-                        plot->setXAxisMax(xMaxMatch.captured(1).trimmed().toDouble());
+                        plot->setXAxisMax(parsePersistedDouble(xMaxMatch.captured(1)));
                     }
                     if (yMinMatch.hasMatch()) {
-                        plot->setYAxisMin(yMinMatch.captured(1).trimmed().toDouble());
+                        plot->setYAxisMin(parsePersistedDouble(yMinMatch.captured(1)));
                     }
                     if (yMaxMatch.hasMatch()) {
-                        plot->setYAxisMax(yMaxMatch.captured(1).trimmed().toDouble());
+                        plot->setYAxisMax(parsePersistedDouble(yMaxMatch.captured(1)));
                     }
                     if (datasetsMatch.hasMatch()) {
                         plot->setDatasetsText(decodeGuiText(datasetsMatch.captured(1).trimmed()));
                     }
                 }
-                placeholder->setRect(QRectF(0, 0, match.captured(6).toDouble(), match.captured(7).toDouble()).normalized());
-                placeholder->setPos(QPointF(match.captured(4).toDouble(), match.captured(5).toDouble()));
+                placeholder->setRect(QRectF(0, 0, parsePersistedDouble(match.captured(6)),
+                                            parsePersistedDouble(match.captured(7))).normalized());
+                placeholder->setPos(QPointF(parsePersistedDouble(match.captured(4)),
+                                            parsePersistedDouble(match.captured(5))));
                 _graphicsView->getScene()->getAnimationsPlaceholder()->append(placeholder);
                 _graphicsView->getScene()->addItem(placeholder);
             }
@@ -1907,14 +1932,17 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 QRegularExpressionMatch posMatch = regexPos.match(rawLine);
                 QPointF itemPos(0.0, 0.0);
                 if (posMatch.hasMatch()) {
-                    itemPos.setX(posMatch.captured(1).toDouble());
-                    itemPos.setY(posMatch.captured(2).toDouble());
+                    itemPos.setX(parsePersistedDouble(posMatch.captured(1)));
+                    itemPos.setY(parsePersistedDouble(posMatch.captured(2)));
                 }
 
                 if (type == "line") {
                     QRegularExpressionMatch m = regexLine.match(rawLine);
                     if (m.hasMatch()) {
-                        QGraphicsLineItem* lineItem = new QGraphicsLineItem(m.captured(1).toDouble(), m.captured(2).toDouble(), m.captured(3).toDouble(), m.captured(4).toDouble());
+                        QGraphicsLineItem* lineItem = new QGraphicsLineItem(parsePersistedDouble(m.captured(1)),
+                                                                            parsePersistedDouble(m.captured(2)),
+                                                                            parsePersistedDouble(m.captured(3)),
+                                                                            parsePersistedDouble(m.captured(4)));
                         lineItem->setPos(itemPos);
                         lineItem->setFlag(QGraphicsItem::ItemIsSelectable, true);
                         lineItem->setFlag(QGraphicsItem::ItemIsMovable, true);
@@ -1925,7 +1953,10 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                 } else if (type == "rect" || type == "ellipse") {
                     QRegularExpressionMatch m = regexRect.match(rawLine);
                     if (m.hasMatch()) {
-                        const QRectF rect(m.captured(1).toDouble(), m.captured(2).toDouble(), m.captured(3).toDouble(), m.captured(4).toDouble());
+                        const QRectF rect(parsePersistedDouble(m.captured(1)),
+                                          parsePersistedDouble(m.captured(2)),
+                                          parsePersistedDouble(m.captured(3)),
+                                          parsePersistedDouble(m.captured(4)));
                         if (type == "rect") {
                             QGraphicsRectItem* rectItem = new QGraphicsRectItem(rect.normalized());
                             rectItem->setPos(itemPos);
@@ -1952,7 +1983,7 @@ Model* GraphicalModelSerializer::loadGraphicalModel(const std::string& filename)
                         for (const QString& pointToken : pointsTokens) {
                             QStringList coord = pointToken.split(",");
                             if (coord.size() == 2) {
-                                polygon << QPointF(coord[0].toDouble(), coord[1].toDouble());
+                                polygon << QPointF(parsePersistedDouble(coord[0]), parsePersistedDouble(coord[1]));
                             }
                         }
                         if (!polygon.isEmpty()) {

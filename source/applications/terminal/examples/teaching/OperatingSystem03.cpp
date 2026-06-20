@@ -14,8 +14,8 @@
 #include "OperatingSystem03.h"
 
 #include "kernel/simulator/Simulator.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Attribute.h"
+#include "kernel/simulator/model/Model.h"
+#include "kernel/simulator/essentialPlugins/Attribute.h"
 
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"

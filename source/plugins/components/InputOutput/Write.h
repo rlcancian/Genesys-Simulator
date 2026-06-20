@@ -16,7 +16,7 @@
 
 #include <list>
 #include <fstream>
-#include "kernel/simulator/ModelComponent.h"
+#include "../../../kernel/simulator/model/ModelComponent.h"
 
 /*!
  This component ...

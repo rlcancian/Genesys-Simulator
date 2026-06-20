@@ -12,7 +12,7 @@
  */
 
 #include "plugins/components/ModalModel/CellularAutomataComp.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"

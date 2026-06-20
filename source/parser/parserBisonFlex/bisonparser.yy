@@ -12,8 +12,8 @@
 	#include <algorithm>
 	#include "obj_t.h"
 	#include "kernel/util/Util.h"
-	#include "kernel/simulator/Attribute.h"
-	#include "kernel/simulator/Counter.h"
+	#include "kernel/simulator/essentialPlugins/Attribute.h"
+	#include "kernel/simulator/essentialPlugins/Counter.h"
 
 	/****begin_Includes_plugins****/
 

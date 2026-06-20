@@ -1,5 +1,5 @@
 #include "plugins/components/ModalModel/ModalModelPetriNet.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 extern "C" StaticGetPluginInformation GetPluginInformation() {

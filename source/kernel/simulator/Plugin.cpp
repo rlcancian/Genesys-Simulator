@@ -12,7 +12,7 @@
  */
 
 #include "Plugin.h"
-#include "Model.h"
+#include "model/Model.h"
 #include "SourceModelComponent.h"
 #include "SinkModelComponent.h"
 //#include "Assign.h"

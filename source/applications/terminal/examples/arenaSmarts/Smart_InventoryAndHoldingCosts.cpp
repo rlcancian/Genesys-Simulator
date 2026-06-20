@@ -17,7 +17,7 @@
 #include "plugins/components/DiscreteProcessing/Release.h"
 #include "plugins/data/DiscreteProcessing/Queue.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "plugins/data/DiscreteProcessing/Variable.h"
+#include "plugins/data/Logic/Variable.h"
 #include "../../../TraitsApp.h"
 
 Smart_InventoryAndHoldingCosts::Smart_InventoryAndHoldingCosts() {

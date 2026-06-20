@@ -13,7 +13,7 @@
 
 #include "plugins/components/DiscreteProcessing/Seize.h"
 #include "plugins/data/DiscreteProcessing/Resource.h"
-#include "kernel/simulator/Attribute.h"
+#include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 #include <assert.h>
@@ -162,6 +162,7 @@ PluginInformation* Seize::GetPluginInformation() {
 			" TYPICAL USES: (1) Beginning a customer order (seize the operator); (2) Starting a tax return (seize the accountant);";
 	help += " (3) Being admitted to hospital (seize the hospital room, nurse, doctor)";
 	info->setDescriptionHelp(help);
+	info->setCategory("DiscreteProcessing");
 
 	return info;
 }

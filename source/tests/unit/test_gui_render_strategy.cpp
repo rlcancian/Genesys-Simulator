@@ -54,6 +54,28 @@ GraphicalModelItemRenderContext baseContext(GraphicalModelItemRenderContext::Ite
     return context;
 }
 
+GraphicalModelItemRenderContext geneticPartContext(const QString& partType) {
+    GraphicalModelItemRenderContext context = baseContext(GraphicalModelItemRenderContext::ItemKind::DataDefinition);
+    context.primaryText = partType;
+    context.secondaryText = QStringLiteral("genetic_part");
+    context.tertiaryText = QStringLiteral("role=test");
+    context.semanticClassName = QStringLiteral("GeneticCircuitPart");
+    context.semanticSubtype = partType;
+    context.fillColor = QColor(72, 124, 179, 210);
+    return context;
+}
+
+GraphicalModelItemRenderContext geneticRegulationContext(const QString& regulationType) {
+    GraphicalModelItemRenderContext context = baseContext(GraphicalModelItemRenderContext::ItemKind::DataDefinition);
+    context.primaryText = regulationType;
+    context.secondaryText = QStringLiteral("target_part");
+    context.tertiaryText = QStringLiteral("from=regulator_species");
+    context.semanticClassName = QStringLiteral("GeneticRegulation");
+    context.semanticSubtype = regulationType;
+    context.fillColor = QColor(214, 82, 102, 210);
+    return context;
+}
+
 QImage render(const GraphicalModelItemRenderContext& context) {
     QImage image(kImageWidth, kImageHeight, QImage::Format_ARGB32_Premultiplied);
     image.fill(Qt::transparent);
@@ -133,6 +155,65 @@ TEST(GuiRenderStrategy, OrganicRenderingIsNonBlankAndVisiblyDifferentFromClassic
     EXPECT_GT(countPaintedPixels(classicImage), 5000);
     EXPECT_GT(countPaintedPixels(organicImage), 5000);
     EXPECT_GT(countDifferentPixels(classicImage, organicImage), 2500);
+}
+
+TEST(GuiRenderStrategy, GeneticCircuitPartUsesSpecializedGlyphInClassicAndOrganicModes) {
+    const auto genericContext = baseContext(GraphicalModelItemRenderContext::ItemKind::DataDefinition);
+    const auto promoterContext = geneticPartContext(QStringLiteral("Promoter"));
+
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    const QPainterPath genericClassicShape = GraphicalModelItemRenderer::shape(genericContext);
+    const QPainterPath promoterClassicShape = GraphicalModelItemRenderer::shape(promoterContext);
+    const QImage genericClassicImage = render(genericContext);
+    const QImage promoterClassicImage = render(promoterContext);
+
+    EXPECT_TRUE(genericClassicShape.contains(QPointF(2, 2)));
+    EXPECT_FALSE(promoterClassicShape.contains(QPointF(2, 2)));
+    EXPECT_GT(countDifferentPixels(genericClassicImage, promoterClassicImage), 1500);
+
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Modern);
+    const QPainterPath genericModernShape = GraphicalModelItemRenderer::shape(genericContext);
+    const QPainterPath promoterModernShape = GraphicalModelItemRenderer::shape(promoterContext);
+    const QImage genericModernImage = render(genericContext);
+    const QImage promoterModernImage = render(promoterContext);
+
+    EXPECT_TRUE(genericModernShape.contains(QPointF(genericContext.width / 2.0, genericContext.height / 2.0)));
+    EXPECT_FALSE(promoterModernShape.contains(QPointF(2, 2)));
+    EXPECT_GT(countDifferentPixels(genericModernImage, promoterModernImage), 1500);
+}
+
+TEST(GuiRenderStrategy, GeneticRegulationUsesSpecializedGlyphInClassicAndOrganicModes) {
+    const auto genericContext = baseContext(GraphicalModelItemRenderContext::ItemKind::DataDefinition);
+    const auto activationContext = geneticRegulationContext(QStringLiteral("Activation"));
+    const auto repressionContext = geneticRegulationContext(QStringLiteral("Repression"));
+
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Classic);
+    const QPainterPath genericClassicShape = GraphicalModelItemRenderer::shape(genericContext);
+    const QPainterPath activationClassicShape = GraphicalModelItemRenderer::shape(activationContext);
+    const QPainterPath repressionClassicShape = GraphicalModelItemRenderer::shape(repressionContext);
+    const QImage genericClassicImage = render(genericContext);
+    const QImage activationClassicImage = render(activationContext);
+    const QImage repressionClassicImage = render(repressionContext);
+
+    EXPECT_TRUE(genericClassicShape.contains(QPointF(2, 2)));
+    EXPECT_FALSE(activationClassicShape.contains(QPointF(2, 2)));
+    EXPECT_FALSE(repressionClassicShape.contains(QPointF(2, 2)));
+    EXPECT_GT(countDifferentPixels(genericClassicImage, activationClassicImage), 1500);
+    EXPECT_GT(countDifferentPixels(activationClassicImage, repressionClassicImage), 500);
+
+    SystemPreferences::setInterfaceStyle(SystemPreferences::InterfaceStyle::Modern);
+    const QPainterPath genericModernShape = GraphicalModelItemRenderer::shape(genericContext);
+    const QPainterPath activationModernShape = GraphicalModelItemRenderer::shape(activationContext);
+    const QPainterPath repressionModernShape = GraphicalModelItemRenderer::shape(repressionContext);
+    const QImage genericModernImage = render(genericContext);
+    const QImage activationModernImage = render(activationContext);
+    const QImage repressionModernImage = render(repressionContext);
+
+    EXPECT_TRUE(genericModernShape.contains(QPointF(genericContext.width / 2.0, genericContext.height / 2.0)));
+    EXPECT_FALSE(activationModernShape.contains(QPointF(2, 2)));
+    EXPECT_FALSE(repressionModernShape.contains(QPointF(2, 2)));
+    EXPECT_GT(countDifferentPixels(genericModernImage, activationModernImage), 1500);
+    EXPECT_GT(countDifferentPixels(activationModernImage, repressionModernImage), 500);
 }
 
 TEST(GuiConnectionStyle, ModernModelPathUsesCurveAndSupportsDistanceBasedSampling) {

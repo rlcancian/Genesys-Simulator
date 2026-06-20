@@ -11,7 +11,7 @@
  */
 
 #include "SignalData.h"
-#include "kernel/simulator/Model.h"
+#include "../../../kernel/simulator/model/Model.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -107,6 +107,7 @@ PluginInformation* SignalData::GetPluginInformation() {
 	//info->setDynamicLibFilenameDependencies();
 	//info->setFields();
 	// ...
+	info->setCategory("Synchronization");
 	return info;
 }
 

@@ -23,7 +23,7 @@
 #include <algorithm>
 #include <functional>
 
-#include "kernel/simulator/ModelDataDefinition.h"
+#include "../../../kernel/simulator/model/ModelDataDefinition.h"
 #include "kernel/simulator/PluginInformation.h"
 
 const std::vector<std::pair<std::string, float>> spice_unit_map{{"T",1e12},{"G",1e9},{"Meg",1e6},{"K",1e3},{"",1e0},{"m",1e-3},{"u",1e-6},{"n",1e-9},{"p",1e-12},{"f",1e-15},{"a",1e-18}};

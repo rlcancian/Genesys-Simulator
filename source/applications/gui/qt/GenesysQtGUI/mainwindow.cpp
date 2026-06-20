@@ -14,14 +14,14 @@
 // Dialogs
 // Kernel
 #include "kernel/simulator/SinkModelComponent.h"
-#include "kernel/simulator/Attribute.h"
-#include "kernel/simulator/Counter.h"
-#include "kernel/simulator/StatisticsCollector.h"
+#include "../../../../kernel/simulator/essentialPlugins/Attribute.h"
+#include "../../../../kernel/simulator/essentialPlugins/Counter.h"
+#include "../../../../kernel/simulator/essentialPlugins/StatisticsCollector.h"
 #include "kernel/simulator/PluginManager.h"
 #include "kernel/simulator/Plugin.h"
-#include "kernel/simulator/ModelComponent.h"
-#include "kernel/simulator/ComponentManager.h"
-#include "kernel/simulator/ModelDataManager.h"
+#include "../../../../kernel/simulator/model/ModelComponent.h"
+#include "../../../../kernel/simulator/model/ModelComponentManager.h"
+#include "../../../../kernel/simulator/model/ModelDataManager.h"
 // GUI
 #include "graphicals/ModelGraphicsScene.h"
 #include "TraitsGUI.h"
@@ -108,6 +108,7 @@
 #include <QSplitter>
 #include <QTabBar>
 #include <QTabWidget>
+#include <QTreeWidget>
 #include <QTimer>
 #include <QToolBar>
 #include <QVBoxLayout>
@@ -346,6 +347,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     ui->treeWidget_Plugins->setAcceptDrops(false);
     ui->treeWidget_Plugins->viewport()->setAcceptDrops(false);
     ui->treeWidget_Plugins->setDropIndicatorShown(false);
+    ui->treeWidget_Plugins->setContextMenuPolicy(Qt::CustomContextMenu);
+    ui->treeWidget_Plugins->setSortingEnabled(false);
     //
     // Genesys Simulator
     simulator = new Simulator();
@@ -397,7 +400,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
     splitDockWidget(ui->dockWidgetPropertyEditor, ui->dockWidgetConsole, Qt::Vertical);
     //...
     // plugins
-    ui->treeWidget_Plugins->sortByColumn(0, Qt::AscendingOrder);
     // Text Code Editor // @todo No need for programming
     //QVBoxLayout* layout = dynamic_cast<QVBoxLayout*> (ui->tabModelText->layout());
     //ui->TextCodeEditor = new CodeEditor(ui->tabModelText);
@@ -500,6 +502,11 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent), ui(new Ui::MainWi
                                                                          ui->treeWidget_Plugins,
                                                                          ui->TextCodeEditor,
                                                                          _pluginCategoryColor);
+    connect(ui->treeWidget_Plugins, &QTreeWidget::customContextMenuRequested, this, [this](const QPoint& pos) {
+        if (_pluginCatalogController != nullptr) {
+            _pluginCatalogController->showContextMenu(pos);
+        }
+    });
     //
     // property editor
     ui->treeViewPropertyEditor->setAlternatingRowColors(true);
@@ -1649,6 +1656,7 @@ void MainWindow::_rebuildViewDependentControllers() {
         [this]() { _actualizeTabPanes(); },
         _zoomValue,
         _firstClickShowConnection);
+    _sceneToolController->syncZoomWidgetsForCurrentScale();
     _graphicalContextMenuController = std::make_unique<GraphicalContextMenuController>(
         ui->graphicsView,
         ui,
@@ -2471,9 +2479,9 @@ void MainWindow::_initUiForNewModel(Model* m) {
         ui->TextCodeEditor->clear();
         // create a basic initial template for the model
         std::string tempFilename = "./temp.tmp";
-        m->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, true);
+        m->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, true);
         bool res = m->save(tempFilename);
-        m->getPersistence()->setOption(ModelPersistence_if::Options::SAVEDEFAULTS, false);
+        m->getPersistence()->setOption(Persistence_if::Options::SAVEDEFAULTS, false);
         if (res) { // read the file saved and copy its contents to the model text editor
             std::string line;
             std::ifstream file(tempFilename);

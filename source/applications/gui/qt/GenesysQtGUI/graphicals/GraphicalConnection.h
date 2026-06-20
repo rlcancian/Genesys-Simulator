@@ -21,6 +21,9 @@
  * `GraphicalConnection` links two `GraphicalComponentPort` objects and keeps
  * auxiliary `Connection` metadata synchronized with the simulator model.
  *
+ * The item is also used for the diagram-level routing that the GUI derives from the model
+ * structure when rendering connections inside the scene.
+ *
  * @todo Evaluate decoupling model metadata from this item to keep this class purely visual.
  */
 class GraphicalConnection : public QGraphicsObject {
@@ -32,7 +35,9 @@ public:
 public:
     /** @brief Creates a graphical connection between source and destination ports. */
     GraphicalConnection(GraphicalComponentPort* sourceGraphicalPort, GraphicalComponentPort* destinationGraphicalPort, unsigned int portSourceConnection = 0, unsigned int portDestinationConnection = 0, QColor color = Qt::black, QGraphicsItem *parent = nullptr);
+	/** @brief Copy constructor used by restoration and clipboard flows. */
 	GraphicalConnection(const GraphicalConnection& orig);
+	/** @brief Releases the connection item and its auxiliary routing state. */
 	virtual ~GraphicalConnection();
 public:
 	/** @brief Returns item bounding rectangle for Qt painting system. */
@@ -42,9 +47,9 @@ public:
     /** @brief Paints connection path and selection handles. */
 	void paint(QPainter *painter, const QStyleOptionGraphicsItem *option, QWidget *widget) override;
     /** @brief Returns auxiliary source Connection metadata. */
-	Connection* getSource() const;
+    Connection* getSource() const;
     /** @brief Returns auxiliary destination Connection metadata. */
-	Connection* getDestination() const;
+    Connection* getDestination() const;
     /** @brief Returns source graphical port. */
     GraphicalComponentPort* getSourceGraphicalPort();
     /** @brief Returns destination graphical port. */

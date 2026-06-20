@@ -125,6 +125,7 @@ private slots:
     void on_actionZoom_In_triggered();
     void on_actionZoom_Out_triggered();
     void on_actionZoom_All_triggered();
+    void on_actionZoom_OneToOne_triggered();
 
 	void on_actionDrawLine_triggered();
 	void on_actionDrawRectangle_triggered();

@@ -12,8 +12,8 @@
  */
 
 #include "plugins/components/Decisions/Decide.h"
-#include "kernel/simulator/Model.h"
-#include "kernel/simulator/Counter.h"
+#include "../../../kernel/simulator/model/Model.h"
+#include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
