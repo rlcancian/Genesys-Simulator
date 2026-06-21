@@ -120,6 +120,14 @@ genesys_add_unit_test(genesys_test_statistics
     genesys_kernel_statistics
     genesys_kernel_util
 )
+genesys_add_unit_test(genesys_test_petri_net
+    test_petri_net.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_simulator_support
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
 
 find_package(Qt6 QUIET COMPONENTS Core Gui Widgets PrintSupport Network)
 if(Qt6_FOUND)
@@ -293,6 +301,7 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_tools_hypothesistester
         genesys_test_tools_optimization
         genesys_test_tools_simulation_results_dataset
+        genesys_test_petri_net
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -374,6 +383,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_tools_optimization>
     COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
+    COMMAND $<TARGET_FILE:genesys_test_petri_net>
     DEPENDS
         genesys_kernel_unit_tests
     USES_TERMINAL
