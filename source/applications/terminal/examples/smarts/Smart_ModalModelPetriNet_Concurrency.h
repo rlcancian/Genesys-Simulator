@@ -2,9 +2,9 @@
 
 #include "../../../BaseGenesysTerminalApplication.h"
 
-class Smart_PetriNet_Factory : public BaseGenesysTerminalApplication {
+class Smart_ModalModelPetriNet_Concurrency : public BaseGenesysTerminalApplication {
 public:
-    Smart_PetriNet_Factory();
+    Smart_ModalModelPetriNet_Concurrency();
 public:
     virtual int main(int argc, char** argv) override;
 };
