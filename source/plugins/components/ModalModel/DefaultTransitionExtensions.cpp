@@ -69,15 +69,25 @@ bool PetriTransition::canFire(Model* model, Entity* entity) const {
 void PetriTransition::execute(Model* model, Entity* entity) const {
 	(void) model;
 	(void) entity;
-	PetriPlace* sourcePlace = dynamic_cast<PetriPlace*>(getSource());
-	PetriPlace* destinationPlace = dynamic_cast<PetriPlace*>(getDestination());
-	if (sourcePlace == nullptr || destinationPlace == nullptr) {
-		return;
-	}
-	for (const auto& pair : _inputArcWeights) {
-		sourcePlace->removeTokens(pair.second, pair.first);
-	}
-	for (const auto& pair : _outputArcWeights) {
-		destinationPlace->addTokens(pair.second, pair.first);
-	}
+    for (const auto& placePair : _inputPlaces) {
+        PetriPlace* inputPlace = placePair.first;
+        const auto& colorsAndWeights = placePair.second;
+
+        if (inputPlace == nullptr) continue;
+
+        for (const auto& colorWeightPair : colorsAndWeights) {
+            inputPlace->removeTokens(colorWeightPair.second, colorWeightPair.first);
+        }
+    }
+
+    for (const auto& placePair : _outputPlaces) {
+        PetriPlace* outputPlace = placePair.first;
+        const auto& colorsAndWeights = placePair.second;
+
+        if (outputPlace == nullptr) continue;
+
+        for (const auto& colorWeightPair : colorsAndWeights) {
+            outputPlace->addTokens(colorWeightPair.second, colorWeightPair.first);
+        }
+    }
 }
