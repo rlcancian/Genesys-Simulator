@@ -7,7 +7,8 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 }
 #endif
 
-ModalModelFSM::ModalModelFSM(Model* model, std::string name) : ModalModelDefault(model, name) {
+ModalModelFSM::ModalModelFSM(Model* model, std::string name)
+	: ModalModelDefault(model, Util::TypeOf<ModalModelFSM>(), name) {
 	_fsmInitialState = nullptr;
 }
 
