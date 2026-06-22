@@ -72,6 +72,10 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 ModalModelDefault::ModalModelDefault(Model *model, std::string name)
     : ModelComponent(model, Util::TypeOf<ModalModelDefault>(), name) {}
 
+ModalModelDefault::ModalModelDefault(Model *model, std::string componentTypename,
+                                     std::string name)
+    : ModelComponent(model, componentTypename, name) {}
+
 //
 // public: /// new public user methods for this component
 //
@@ -561,6 +565,7 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
     entity->setAttributeValue(currentNodeAttribute,
                               static_cast<double>(initialNodeIndex), "", true);
   }
+  _currentNode = localCurrentNode;
   unsigned int transitions = 0;
   while (transitions < _maxTransitionsPerDispatch) {
     traceSimulation(this,
@@ -568,6 +573,12 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
                         "\" and " + std::to_string(transitions) +
                         " transitions fired sor far",
                     TraceManager::Level::L7_internal);
+
+    if (localCurrentNode->isFinalNode()) {
+      traceSimulation(this, "Current node is final; no transition will fire",
+                      TraceManager::Level::L7_internal);
+      break;
+    }
 
     List<DefaultNodeTransition *> *outgoing =
         localCurrentNode->getTransitions();
@@ -638,6 +649,7 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
                          true);
       localCurrentNode = nextNode;
       if (localCurrentNode != nullptr) {
+        _currentNode = localCurrentNode;
         int nodeIndex = NodeIndex(_nodes, localCurrentNode);
         if (nodeIndex >= 0) {
           entity->setAttributeValue(currentNodeAttribute,
@@ -646,6 +658,14 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
         entity->setAttributeValue(
             lastNodeAttribute, static_cast<double>(localCurrentNode->getId()),
             "", true);
+          if (localCurrentNode->isFinalNode()) {
+            traceSimulation(this,
+                            "Reached final node \"" +
+                                localCurrentNode->getName() +
+                                "\"; no more transitions will fire",
+                            TraceManager::Level::L7_internal);
+            break;
+          }
       } else {
         traceError("New current node is unknown");
       }
@@ -665,8 +685,15 @@ void ModalModelDefault::_onDispatchEvent(Entity *entity,
           ->getReplicationBaseTimeUnit(); // getReplicationLengthTimeUnit();
   waitTime *= Util::TimeUnitConvert(_timeDelayPerDispatchTimeUnit, stu);
 
+  const unsigned int outputPort =
+      localCurrentNode != nullptr && localCurrentNode->isFinalNode() ? 1u : 0u;
+  Connection *connection =
+      this->getConnectionManager()->getConnectionAtPort(outputPort);
+  if (connection == nullptr) {
+    connection = this->getConnectionManager()->getFrontConnection();
+  }
   _parentModel->sendEntityToComponent(
-      entity, this->getConnectionManager()->getFrontConnection(), waitTime);
+      entity, connection, waitTime);
 }
 
 DefaultNode *ModalModelDefault::getCurrentNode() { return _currentNode; }

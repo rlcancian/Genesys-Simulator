@@ -53,6 +53,7 @@ public: /// static public methods that must have implementations (Load and New j
 	static ModelDataDefinition* NewInstance(Model* model, std::string name = "");
 
 protected: /// virtual protected method that must be overriden
+	ModalModelDefault(Model* model, std::string componentTypename, std::string name);
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
 	virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues) override;
 	virtual void _onDispatchEvent(Entity* entity, unsigned int inputPortNumber) override; ///< This method is only for ModelComponents, not ModelDataElements

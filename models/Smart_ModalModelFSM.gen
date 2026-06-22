@@ -1,0 +1,18 @@
+# Genesys Simulation Model
+# Simulator, Model and Simulation infos
+0   Simulator  "GenESyS - GENeric and Expansible SYstem Simulator" versionNumber=260330 
+0   ModelInfo  "Model 1" version="1.0" projectTitle="" description="" analystName="" 
+0   ModelSimulation "" traceLevel=9 replicationLength=30 replicationLengthTimeUnit=1 
+
+# Model Data Definitions
+100 EntityType "entitytype" 
+101 Variable   "signal" 
+102 Variable   "switches" 
+
+# Model Components
+103 Create     "Create_1" entityType="entitytype" maxCreations=1 nextId=104 
+104 ModalModelFSM "TrafficFSM" timeDelayExpressionPerDispatch="1.0" nexts=2 nextId0=104 nextId1=108 nodesSize=3 node0.typename="FSMState" node0.id=105 node0.name="Red" node0.initialNode=1 node0.finalNode=0 node0.entryActionExpression="signal=0" node1.typename="FSMState" node1.id=106 node1.name="Green" node1.initialNode=0 node1.finalNode=0 node1.entryActionExpression="signal=1" node2.typename="FSMState" node2.id=107 node2.name="Finished" node2.initialNode=0 node2.finalNode=1 node2.entryActionExpression="signal=2" entryNode="Red" transitionsSize=2 transitionSource0="Red" transitionDestination0="Green" transitionTypename0="EFSMTransition" transitionName0="RedToGreen" transitionGuard0="1" transitionOutput0="switches=switches+1" transitionInputEvent0="" transitionTriggerEvent0="" transitionProbabilityExpression0="" transitionPriority0=0 transitionProbability0=1.000000 transitionKind0=0 transitionSource1="Green" transitionDestination1="Finished" transitionTypename1="EFSMTransition" transitionName1="GreenToFinished" transitionGuard1="1" transitionOutput1="switches=switches+1" transitionInputEvent1="" transitionTriggerEvent1="" transitionProbabilityExpression1="" transitionPriority1=1 transitionProbability1=1.000000 transitionKind1=0 
+105 FSMState   "Red" initialNode=1 finalNode=0 entryActionExpression="signal=0" 
+106 FSMState   "Green" initialNode=0 finalNode=0 entryActionExpression="signal=1" 
+107 FSMState   "Finished" initialNode=0 finalNode=1 entryActionExpression="signal=2" 
+108 Dispose    "Dispose_1" nexts=0 

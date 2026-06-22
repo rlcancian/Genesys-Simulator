@@ -28,13 +28,17 @@ int Smart_ModalModelFSM::main(int argc, char** argv) {
 
 	FSMState* red = plugins->newInstance<FSMState>(model, "Red");
 	FSMState* green = plugins->newInstance<FSMState>(model, "Green");
+	FSMState* finished = plugins->newInstance<FSMState>(model, "Finished");
 	red->setInitialNode(true);
 	red->setEntryActionExpression("signal=0");
 	green->setEntryActionExpression("signal=1");
+	finished->setFinalNode(true);
+	finished->setEntryActionExpression("signal=2");
 	fsm->addNode(red);
 	fsm->addNode(green);
+	fsm->addNode(finished);
 	fsm->setEntryNode(red);
-	//fsm->addActionExpressionReference(plugins->newInstance<Variable>(model, "signal"));
+	plugins->newInstance<Variable>(model, "signal");
 
 
 	EFSMTransition* r2g = new EFSMTransition(red, green, "RedToGreen");
@@ -44,11 +48,11 @@ int Smart_ModalModelFSM::main(int argc, char** argv) {
 	fsm->addTransition(r2g);
 	fsm->addOutputExpressionReference(plugins->newInstance<Variable>(model, "switches"));
 
-	EFSMTransition* g2r = new EFSMTransition(green, red, "GreenToRed");
-	g2r->setGuardExpression("1");
-	g2r->setOutputExpression("switches=switches+1");
-	g2r->setPriority(1);
-	fsm->addTransition(g2r);
+	EFSMTransition* g2f = new EFSMTransition(green, finished, "GreenToFinished");
+	g2f->setGuardExpression("1");
+	g2f->setOutputExpression("switches=switches+1");
+	g2f->setPriority(1);
+	fsm->addTransition(g2f);
 
 	create->getConnectionManager()->insert(fsm);
 	fsm->getConnectionManager()->insert(fsm); // outputConnection[0] = normal output

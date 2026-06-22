@@ -13,6 +13,8 @@
 
 #include "ParserDefaultImpl1.h"
 
+#include <cstdlib>
+
 //namespace GenesysKernel {
 
 ParserDefaultImpl1::ParserDefaultImpl1(Model* model) {
