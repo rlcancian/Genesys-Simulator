@@ -229,6 +229,14 @@ public: // only gets
 	 * \return Simulation controller instance.
 	 */
 	ModelSimulation* getSimulation() const;
+	/*!
+	 * \brief Returns the parser/expression evaluator used by this model.
+	 * \details Exposes the existing \c Parser_if so callers can read or configure the
+	 * RNG sampler it owns (for example, to set a per-run seed) without owning or
+	 * recreating it. The parser remains owned by the model.
+	 * \return Parser interface instance.
+	 */
+	Parser_if* getParser() const;
 	// 1:n
 	/*!
 	 * \brief Returns the future-event queue.

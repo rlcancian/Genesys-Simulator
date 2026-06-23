@@ -855,6 +855,10 @@ ModelSimulation* Model::getSimulation() const {
     return _simulation;
 }
 
+Parser_if* Model::getParser() const {
+    return _parser;
+}
+
 Util::identification Model::getId() const {
     return _id;
 }
