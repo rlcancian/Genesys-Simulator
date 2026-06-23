@@ -8,7 +8,7 @@ add_library(genesys_tools_analysis STATIC
     analysis/SimulationResultsParser.cpp
     analysis/ProbabilityDistribution.cpp
     analysis/ProbabilityDistributionBase.cpp
-    SolverDefaultImpl1.cpp
+    analysis/SolverDefaultImpl.cpp
 )
 
 target_include_directories(genesys_tools_analysis

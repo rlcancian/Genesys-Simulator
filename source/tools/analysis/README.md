@@ -103,6 +103,23 @@ The KS p-value is the classical one-sample approximation for a fully specified C
 
 The public headers expose only mathematical APIs. Numerical integration and quantile caching are implementation details.
 
+## Numerical Solver
+
+`Solver_if` and `SolverDefaultImpl` are local numerical helpers in
+`tools/analysis`. `TraitsAnalysis<Solver_if>::Implementation` selects
+`SolverDefaultImpl` as the default used by the fitter and hypothesis tester.
+
+The DCS reuses this pre-existing numerical implementation; it does not
+redesign or extend its algorithms. The consolidation moved the solver into the
+analysis package, renamed `SolverDefaultImpl1` to `SolverDefaultImpl`, and
+made the default binding explicit in `TraitsAnalysis` so the tool remains
+self-contained.
+
+Its analysis-facing role is composite Simpson 1/3 quadrature for probability
+CDF calculations. The legacy `derivate(...)` overloads remain only for
+compatibility with older external consumers and are not used by the analysis
+workflows.
+
 ## Dataset Parsing
 
 `DatasetLoader`, `SimulationResultsDataset` and `SimulationResultsParser` support plain numeric files and GenESyS result files with replication/time/value metadata. They are local to `tools/analysis` and do not depend on kernel collectors.
@@ -115,9 +132,9 @@ The tests are CMake/CTest targets and can be built or executed from QtCreator. T
 
 | Test level | Location | Makefile shortcut | Latest recorded result |
 | --- | --- | --- | --- |
-| Unit | `source/tests/unit/tools/analysis` | `make run-unit-tests PACKAGE=tools` | 95/95 passed on 2026-06-22 |
-| Integration | `source/tests/integration/tools/analysis` | `make run-integration-tests PACKAGE=tools` | 2/2 passed on 2026-06-22 |
-| Example/regression runs | `examples/analysis_tools_example.cpp`, `examples/simulation_analysis_example.cpp` | `make run-examples` | Analytical regression passed and simulation-analysis example succeeded on 2026-06-22 |
+| Unit | `source/tests/unit/tools/analysis` | `make run-unit-tests PACKAGE=tools` | 96/96 passed on 2026-06-23 |
+| Integration | `source/tests/integration/tools/analysis` | `make run-integration-tests PACKAGE=tools` | 2/2 passed on 2026-06-23 |
+| Example/regression runs | `examples/analysis_tools_example.cpp`, `examples/simulation_analysis_example.cpp` | `make run-examples` | Analytical regression passed and simulation-analysis example succeeded on 2026-06-23 |
 
 The integration tests exercise the public facade with bundled datasets and verify that dataset loading, descriptive structures, fitting, confidence intervals, hypothesis tests, goodness-of-fit tests and file/memory ingestion work together.
 

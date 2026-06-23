@@ -66,7 +66,7 @@ SOURCES += \
     $$SOURCE_ROOT/tools/OptimizerDefaultImpl1.cpp \
     $$SOURCE_ROOT/tools/analysis/ProbabilityDistribution.cpp \
     $$SOURCE_ROOT/tools/analysis/ProbabilityDistributionBase.cpp \
-    $$SOURCE_ROOT/tools/SolverDefaultImpl1.cpp \
+    $$SOURCE_ROOT/tools/analysis/SolverDefaultImpl.cpp \
     $$SOURCE_ROOT/tools/FactorialDesign/FactorialDesign.cpp \
     $$SOURCE_ROOT/applications/BaseGenesysTerminalApplication.cpp \
     $$SOURCE_ROOT/applications/terminal/GenesysShell/GenesysShell.cpp

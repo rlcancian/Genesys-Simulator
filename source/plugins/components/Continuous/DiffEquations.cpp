@@ -171,11 +171,11 @@ bool DiffEquations::_check(std::string& errorMessage) {
 #include \"../../../../kernel/simulator/Simulator.h\"\n\
 #include \"../../../../kernel/simulator/model/Model.h\"\n\
 #include \"../../../../kernel/simulator/Entity.h\"\n\
-#include \"../../../../tools/SolverDefaultImpl1.h\"\n\
+#include \"../../../../tools/analysis/SolverDefaultImpl.h\"\n\
 \n\
 \n\
 void _onDispatchEvent_" + name + "(Simulator* simulator, Model* model, Entity* entity) {\n\
-	Solver_if *_solver = new SolverDefaultImpl1("+std::to_string(_precision)+", "+std::to_string(_maxSteps)+");\n\
+	Solver_if *_solver = new SolverDefaultImpl("+std::to_string(_precision)+", "+std::to_string(_maxSteps)+");\n\
 	double x["+std::to_string(_equations->size())+"];\
 	delete solver;\n\
 }\n\

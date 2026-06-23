@@ -1,6 +1,7 @@
 #include "FitterDefaultImpl.h"
+#include "TraitsAnalysis.h"
 #include "tools/analysis/ProbabilityDistributionBase.h"
-#include "tools/SolverDefaultImpl1.h"
+#include "SolverDefaultImpl.h"
 
 #include <algorithm>
 #include <cmath>
@@ -386,7 +387,7 @@ double FitterDefaultImpl::_betaCdfScaled(double x, double alpha, double beta, do
 	const double y = (x - infLimit) / (supLimit - infLimit);
 	if (y <= 0.0) { return 0.0; }
 	if (y >= 1.0) { return 1.0; }
-	SolverDefaultImpl1 solver(1e-8, 10000);
+	TraitsAnalysis<Solver_if>::Implementation solver(1e-8, TraitsAnalysis<Solver_if>::MaxSteps);
 	const double cdf = solver.integrate(0.0, y, &_betaPdfSafe, alpha, beta);
 	if (!std::isfinite(cdf)) { return nanVal(); }
 	return clampUnit(cdf);

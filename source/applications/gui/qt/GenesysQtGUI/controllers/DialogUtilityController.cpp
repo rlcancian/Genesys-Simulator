@@ -27,7 +27,6 @@
 #include "../../../../../tools/analysis/FitterDefaultImpl.h"
 #include "../../../../../tools/analysis/HypothesisTesterDefaultImpl.h"
 #include "../../../../../tools/OptimizerDefaultImpl1.h"
-#include "../../../../../tools/SolverDefaultImpl1.h"
 
 #include <QAction>
 #include <QCheckBox>

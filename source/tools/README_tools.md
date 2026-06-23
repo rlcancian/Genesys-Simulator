@@ -19,7 +19,7 @@
 | Hypothesis testing | `analysis/HypothesisTester_if.h`, `analysis/HypothesisTesterDefaultImpl.h` |
 | Probability helpers | `analysis/ProbabilityDistributionBase.h`, `analysis/ProbabilityDistribution.h` |
 | Defaults/traits | `analysis/TraitsAnalysis.h` |
-| Legacy numerical solver | `Solver_if.h`, `SolverDefaultImpl1.h` |
+| Analysis numerical solver | `analysis/Solver_if.h`, `analysis/SolverDefaultImpl.h` |
 | Other numerical interfaces | `Quadrature_if.h`, `RootFinder_if.h`, `OdeSystem_if.h`, `OdeSolver_if.h` |
 
 ## Analysis Package
@@ -59,4 +59,4 @@ The examples include a standalone analysis workflow over CSV files and a small G
 - `isNormalDistributed(...)` is an EDF/CDF SSE heuristic, not a formal normality test.
 - KS p-values are classical one-sample approximations. When parameters are estimated from the tested sample, treat them as diagnostic values.
 - Distribution APIs are static helpers; reusable distribution objects are future work.
-- The legacy solver abstraction still mixes integration and derivation/advancement concerns.
+- `analysis/Solver_if` is a pre-existing solver integrated into the analysis package; its numerical implementation was not extended by this DCS. It retains legacy derivation overloads for compatibility, but only its Simpson quadrature is used by the analysis workflows.
