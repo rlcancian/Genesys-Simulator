@@ -17,6 +17,7 @@ option(GENESYS_BUILD_KERNEL "Build kernel static libraries" ON)
 option(GENESYS_BUILD_PARSER "Build parser static library" ON)
 option(GENESYS_BUILD_PLUGINS "Build plugins static libraries" ON)
 option(GENESYS_BUILD_TOOLS "Build tools static libraries" OFF)
+option(GENESYS_BUILD_DISTRIBUTED "Build distributed simulation orchestration layer" OFF)
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -71,6 +72,10 @@ endif()
 
 if(GENESYS_BUILD_GUI_APPLICATION)
     add_subdirectory(source/applications/gui/qt/GenesysQtGUI)
+endif()
+
+if(GENESYS_BUILD_DISTRIBUTED)
+    add_subdirectory(source/applications/distributed)
 endif()
 
 if(GENESYS_BUILD_TOOLS OR GENESYS_BUILD_GUI_APPLICATION)
