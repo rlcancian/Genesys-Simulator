@@ -2,6 +2,8 @@
 
 Date: 2026-04-16
 
+Status update: this note is a historical GUI/workstation roadmap. The consolidated backend for the data-analysis component is now documented in `source/tools/analysis/README.md`, with tests documented in `source/tests/README.md`.
+
 This note summarizes the current AI-assisted plan for Genesys GUI tools.
 
 ## General Tools Direction
@@ -78,7 +80,7 @@ Backend work still pending:
 
 Important existing detailed note:
 
-- `documentation/AI/data-analyzer-analysis-study-design-2026-04-16.md`
+- `documentation/developersCommunication/data-analyzer-analysis-study-design-2026-04-16.md`
 
 ## Optimizer Direction
 
@@ -86,4 +88,4 @@ The Optimizer should become an OptQuest-like workstation.
 
 Current detailed roadmap:
 
-- `documentation/IA/optimizer-workstation-roadmap-2026-04-16.md`
+- `documentation/developersCommunication/optimizer-workstation-roadmap-2026-04-16.md`
