@@ -2,6 +2,7 @@ add_library(genesys_distributed_core STATIC
     core/DistributedLibraryInfo.cpp
     core/Json.cpp
     core/WorkerHttpClient.cpp
+    core/WorkerRegistry.cpp
 )
 
 target_include_directories(genesys_distributed_core
