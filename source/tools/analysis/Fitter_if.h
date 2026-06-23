@@ -1,16 +1,3 @@
-/*
- * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
- * and open the template in the editor.
- */
-
-/*
- * File:   Fitter_if.h
- * Author: cancian
- *
- * Created on 14 de Agosto de 2018, 14:05
- */
-
 #ifndef FITTER_IF_H
 #define FITTER_IF_H
 
@@ -71,16 +58,27 @@ struct FitSummary {
  */
 class Fitter_if {
 public:
+	/** @brief Destroys the fitter interface. */
 	virtual ~Fitter_if() = default;
+	/** @brief Checks normal adherence through the implementation's heuristic. */
 	virtual bool isNormalDistributed(double confidencelevel) = 0;
+	/** @brief Fits a uniform distribution and writes its parameters. */
 	virtual void fitUniform(double *sqrerror, double *min, double *max) = 0;
+	/** @brief Fits a triangular distribution and writes its parameters. */
 	virtual void fitTriangular(double *sqrerror, double *min, double *mo, double *max) = 0;
+	/** @brief Fits a normal distribution and writes its parameters. */
 	virtual void fitNormal(double *sqrerror, double *avg, double *stddev) = 0;
+	/** @brief Fits an exponential distribution and writes its parameter. */
 	virtual void fitExpo(double *sqrerror, double *avg1) = 0;
+	/** @brief Fits an Erlang distribution and writes its parameters. */
 	virtual void fitErlang(double *sqrerror, double *avg, double *m) = 0;
+	/** @brief Fits a scaled beta distribution and writes its parameters. */
 	virtual void fitBeta(double *sqrerror, double *alpha, double *beta, double *infLimit, double *supLimit) = 0;
+	/** @brief Fits a Weibull distribution and writes its parameters. */
 	virtual void fitWeibull(double *sqrerror, double *alpha, double *scale) = 0;
+	/** @brief Fits all supported candidates and writes the best legacy result. */
 	virtual void fitAll(double *sqrerror, std::string *name) = 0;
+	/** @brief Fits all supported candidates and returns a structured ranking. */
 	virtual FitSummary fitAllSummary() = 0;
 public:
 	/**

@@ -35,6 +35,7 @@ void expectValidTestResult(const HypothesisTester_if::TestResult& result) {
 
 } // namespace
 
+// Test objective: verifies AnalysisToolIntegrationTest.CompleteFacadeWorkflowFromBundledCsv.
 TEST(AnalysisToolIntegrationTest, CompleteFacadeWorkflowFromBundledCsv) {
     DataAnalyserDefaultImpl analyser;
     ASSERT_TRUE(analyser.loadDataSet(repoPath("examples/data/sample_data.csv")));
@@ -119,6 +120,7 @@ TEST(AnalysisToolIntegrationTest, CompleteFacadeWorkflowFromBundledCsv) {
     EXPECT_FALSE(ks.rejectH0());
 }
 
+// Test objective: verifies AnalysisToolIntegrationTest.FileMemoryAndFileBasedInferenceStayConsistent.
 TEST(AnalysisToolIntegrationTest, FileMemoryAndFileBasedInferenceStayConsistent) {
     const auto primaryPath = repoPath("examples/data/sample_data.csv");
     const auto groupAPath = repoPath("examples/data/sample_group_a.csv");

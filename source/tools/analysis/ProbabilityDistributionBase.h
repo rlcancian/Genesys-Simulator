@@ -1,15 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/class.h to edit this template
- */
-
-/*
- * File:   BaseProbabilityDistribution.h
- * Author: rlcancian
- *
- * Created on 4 de agosto de 2022, 11:03
- */
-
 #ifndef PROBABILITYDISTRIBUTIONBASE_H
 #define PROBABILITYDISTRIBUTIONBASE_H
 
@@ -31,7 +19,7 @@ public:
 	/** Chi-square distribution PDF. */
 	static double chi2(double x, double degreeFreedom);
 	/** Erlang distribution PDF. */
-	static double erlang(double x, double shape, double scale); // int M
+	static double erlang(double x, double shape, double scale);
 	/** Exponential distribution PDF. */
 	static double exponential(double x, double mean);
 	/** Fisher-Snedecor F distribution PDF. */

@@ -1,19 +1,6 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/file.h to edit this template
- */
-
-/*
- * File:   TraitsAnalysis.h
- * Author: rlcancian
- *
- * Created on 3 de maio de 2022, 18:57
- */
-
 #ifndef TRAITSANALYSIS_H
 #define TRAITSANALYSIS_H
 
-// TOOLS
 #include "tools/SolverDefaultImpl1.h"
 #include "HypothesisTesterDefaultImpl.h"
 #include "HypothesisTester_if.h"
@@ -54,7 +41,7 @@ template <> struct TraitsAnalysis<ProbabilityDistribution> {
 };
 
 /*!
- *  Configure the Solver to be used
+ * Configure the numerical solver used by local probability routines.
  */
 template <> struct TraitsAnalysis<Solver_if> {
 	typedef SolverDefaultImpl1 Implementation;
@@ -63,7 +50,7 @@ template <> struct TraitsAnalysis<Solver_if> {
 };
 
 /*!
- *  Configure the Hypothesis Tester to be used
+ * Configure the default hypothesis tester exposed by DataAnalyserDefaultImpl.
  */
 template <> struct TraitsAnalysis<HypothesisTester_if> {
 	typedef HypothesisTesterDefaultImpl Implementation;
@@ -71,7 +58,7 @@ template <> struct TraitsAnalysis<HypothesisTester_if> {
 };
 
 /*!
- *  Configure the Fitter to be used
+ * Configure the default fitter exposed by DataAnalyserDefaultImpl.
  */
 template <> struct TraitsAnalysis<Fitter_if> {
 	typedef FitterDefaultImpl Implementation;

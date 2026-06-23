@@ -26,6 +26,8 @@ double percentile(const std::vector<double>& sorted, double probability) {
 	const std::size_t lower = static_cast<std::size_t>(std::floor(position));
 	const std::size_t upper = static_cast<std::size_t>(std::ceil(position));
 	const double fraction = position - static_cast<double>(lower);
+	// Linear interpolation gives stable quartiles for both even and odd sample
+	// sizes and matches the facade's goal of a compact exploratory summary.
 	return sorted[lower] * (1.0 - fraction) + sorted[upper] * fraction;
 }
 
@@ -110,6 +112,8 @@ DataSetHistogram DataAnalyserDefaultImpl::histogram(std::size_t classCount) cons
 	}
 
 	if (classCount == 0) {
+		// Sturges' rule is the default only when the caller does not request a
+		// specific number of bins.
 		classCount = defaultHistogramClassCount(result.count);
 	}
 	if (classCount == 0) {
@@ -183,12 +187,14 @@ DataSetBoxPlot DataAnalyserDefaultImpl::boxplot() const {
 }
 
 bool DataAnalyserDefaultImpl::saveDataSet(std::string datasetname) {
-	// TODO: Implement dataset persistence
+	// Roadmap hook kept for interface compatibility; persistence is outside the
+	// current analysis-tool scope.
     throw std::runtime_error("DataAnalyserDefaultImpl::saveDataSet not implemented");
 }
 
 void DataAnalyserDefaultImpl::newDataSet(std::string datasetname, std::string datafilename) {
-	// TODO: Implement dataset creation lifecycle
+	// Roadmap hook kept for interface compatibility; dataset creation workflow
+	// will be defined together with persistence support.
     throw std::runtime_error("DataAnalyserDefaultImpl::newDataSet not implemented");
 }
 

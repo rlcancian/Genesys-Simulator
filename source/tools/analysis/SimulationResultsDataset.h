@@ -70,13 +70,18 @@ public:
 public:
 	// -- Format utilities --
 
+	/** @brief Returns a human-readable name for the detected file format. */
 	std::string formatKindName() const;
+	/** @brief Returns whether the dataset was parsed from a GenESyS Record file. */
 	bool isRecordFormat() const;
 
 	// -- Simulation-specific data access --
 
+	/** @brief Returns all observation values without replication/time metadata. */
 	std::vector<double> values() const;
+	/** @brief Returns the unique replication numbers present in the dataset. */
 	std::vector<unsigned int> replications() const;
+	/** @brief Returns observation values for one replication. */
 	std::vector<double> valuesForReplication(unsigned int replication) const;
 
 	// -- Numeric loader --
@@ -97,18 +102,28 @@ public:
 
 	// -- Numeric statistics (delegates to internal DatasetLoader) --
 
+	/** @brief Returns whether the internal loader has usable numeric data. */
 	bool hasNumericData() const;
+	/** @brief Returns the number of numeric observations. */
 	std::size_t count() const;
+	/** @brief Returns the minimum observation value. */
 	double min() const;
+	/** @brief Returns the maximum observation value. */
 	double max() const;
+	/** @brief Returns the arithmetic mean of observation values. */
 	double mean() const;
+	/** @brief Returns the sample variance of observation values. */
 	double variance() const;
+	/** @brief Returns the sample standard deviation of observation values. */
 	double stddev() const;
+	/** @brief Returns whether any observation value is negative. */
 	bool hasNegativeData() const;
 
 	// -- Sorted and unsorted data vectors (delegates to internal DatasetLoader) --
 
+	/** @brief Returns values in parsed order. */
 	const std::vector<double>& data() const;
+	/** @brief Returns values sorted in nondecreasing order. */
 	const std::vector<double>& sortedData() const;
 
 private:
@@ -134,6 +149,7 @@ private:
  */
 class SimulationResultsParser {
 public:
+	/** @brief Loads a simulation-results text file into a structured dataset. */
 	static bool loadFromTextFile(
 	    const std::string& fileName,
 	    SimulationResultsDataset* dataset,

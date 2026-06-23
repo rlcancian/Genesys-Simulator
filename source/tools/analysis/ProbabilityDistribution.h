@@ -1,22 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/class.h to edit this template
- */
-
-/*
- * File:   ProbabilityDistribution.h
- * Author: rlcancian
- *
- * Created on 22 de novembro de 2021, 17:24
- */
-
 #ifndef PROBABILITYDISTRIBUTION_H
 #define PROBABILITYDISTRIBUTION_H
 
 #include "ProbabilityDistributionBase.h"
 
 /**
- * @brief Static façade for inverse/CDF-related distribution utilities.
+ * @brief Static facade for inverse/CDF-related distribution utilities.
  *
  * Architectural role:
  * - Exposes quantile/inverse computations used by hypothesis testing and
@@ -32,9 +20,13 @@
  */
 class ProbabilityDistribution : public ProbabilityDistributionBase {
 public:
+	/** @brief Returns the chi-square quantile for a cumulative probability. */
 	static double inverseChi2(double cumulativeProbability, double degreeFreedom);
+	/** @brief Returns the Fisher-Snedecor F quantile for a cumulative probability. */
 	static double inverseFFisherSnedecor(double cumulativeProbability, double d1, double d2);
+	/** @brief Returns the normal quantile for a cumulative probability. */
 	static double inverseNormal(double cumulativeProbability, double mean, double stddev);
+	/** @brief Returns the Student-t quantile for a cumulative probability. */
 	static double inverseTStudent(double cumulativeProbability, double mean, double stddev, double degreeFreedom);
 };
 #endif /* PROBABILITYDISTRIBUTION_H */

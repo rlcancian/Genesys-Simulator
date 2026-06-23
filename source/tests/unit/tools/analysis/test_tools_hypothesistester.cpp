@@ -42,6 +42,7 @@ void expectValidResult(const HypothesisTester_if::TestResult& result) {
     EXPECT_TRUE(std::isfinite(result.testStat()));
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ConfidenceIntervalsMatchPublishedReferenceValues.
 TEST(HypothesisTesterDefaultImplTest, ConfidenceIntervalsMatchPublishedReferenceValues) {
     HypothesisTesterDefaultImpl tester;
 
@@ -74,6 +75,7 @@ TEST(HypothesisTesterDefaultImplTest, ConfidenceIntervalsMatchPublishedReference
     EXPECT_NEAR(reciprocalVarianceRatioCi.superiorLimit(), 1.0 / varianceRatioCi.inferiorLimit(), 5e-4);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ParametricTestsMatchPublishedReferenceValues.
 TEST(HypothesisTesterDefaultImplTest, ParametricTestsMatchPublishedReferenceValues) {
     HypothesisTesterDefaultImpl tester;
 
@@ -108,6 +110,7 @@ TEST(HypothesisTesterDefaultImplTest, ParametricTestsMatchPublishedReferenceValu
     EXPECT_TRUE(twoMeanTest.rejectH0());
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ChiSquareGoodnessOfFitMatchesReferenceValues.
 TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitMatchesReferenceValues) {
     HypothesisTesterDefaultImpl tester;
 
@@ -129,6 +132,7 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitMatchesReferenceValu
     EXPECT_DOUBLE_EQ(details.expectedTotal, 60.0);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.KolmogorovSmirnovMatchesReferenceValues.
 TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovMatchesReferenceValues) {
     HypothesisTesterDefaultImpl tester;
 
@@ -145,6 +149,7 @@ TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovMatchesReferenceValues) {
     EXPECT_FALSE(result.rejectH0());
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ProportionDifferenceConfidenceIntervalHasExpectedCenterAndFiniteBounds.
 TEST(HypothesisTesterDefaultImplTest, ProportionDifferenceConfidenceIntervalHasExpectedCenterAndFiniteBounds) {
     HypothesisTesterDefaultImpl tester;
 
@@ -159,6 +164,7 @@ TEST(HypothesisTesterDefaultImplTest, ProportionDifferenceConfidenceIntervalHasE
     EXPECT_NEAR(center, 0.15, kCenterTolerance);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ProportionConfidenceIntervalWithoutFinitePopulationHasExpectedCenterAndFiniteBounds.
 TEST(HypothesisTesterDefaultImplTest, ProportionConfidenceIntervalWithoutFinitePopulationHasExpectedCenterAndFiniteBounds) {
     HypothesisTesterDefaultImpl tester;
 
@@ -173,6 +179,7 @@ TEST(HypothesisTesterDefaultImplTest, ProportionConfidenceIntervalWithoutFiniteP
     EXPECT_NEAR(center, 0.80, kCenterTolerance);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ProportionConfidenceIntervalWithFinitePopulationShrinksHalfWidth.
 TEST(HypothesisTesterDefaultImplTest, ProportionConfidenceIntervalWithFinitePopulationShrinksHalfWidth) {
     HypothesisTesterDefaultImpl tester;
 
@@ -189,6 +196,7 @@ TEST(HypothesisTesterDefaultImplTest, ProportionConfidenceIntervalWithFinitePopu
     EXPECT_LT(finitePopulation.halfWidth(), noPopulationCorrection.halfWidth());
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.AverageAndVarianceConfidenceIntervalsHaveFiniteBounds.
 TEST(HypothesisTesterDefaultImplTest, AverageAndVarianceConfidenceIntervalsHaveFiniteBounds) {
     HypothesisTesterDefaultImpl tester;
 
@@ -204,6 +212,7 @@ TEST(HypothesisTesterDefaultImplTest, AverageAndVarianceConfidenceIntervalsHaveF
     EXPECT_GT(variance.halfWidth(), 0.0);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.TwoPopulationConfidenceIntervalsHaveExpectedCenters.
 TEST(HypothesisTesterDefaultImplTest, TwoPopulationConfidenceIntervalsHaveExpectedCenters) {
     HypothesisTesterDefaultImpl tester;
 
@@ -219,6 +228,7 @@ TEST(HypothesisTesterDefaultImplTest, TwoPopulationConfidenceIntervalsHaveExpect
     EXPECT_GT(varianceRatio.halfWidth(), 0.0);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.TestAverageOnePopulationCoversNonRejectionAndRejectionWithValidPValue.
 TEST(HypothesisTesterDefaultImplTest, TestAverageOnePopulationCoversNonRejectionAndRejectionWithValidPValue) {
     HypothesisTesterDefaultImpl tester;
 
@@ -231,6 +241,7 @@ TEST(HypothesisTesterDefaultImplTest, TestAverageOnePopulationCoversNonRejection
     expectValidResult(rejection);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.TestProportionOnePopulationReturnsValidPValues.
 TEST(HypothesisTesterDefaultImplTest, TestProportionOnePopulationReturnsValidPValues) {
     HypothesisTesterDefaultImpl tester;
 
@@ -243,6 +254,7 @@ TEST(HypothesisTesterDefaultImplTest, TestProportionOnePopulationReturnsValidPVa
     expectValidResult(rejection);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.TestVarianceOnePopulationCoversNonRejectionAndRejectionWithValidPValue.
 TEST(HypothesisTesterDefaultImplTest, TestVarianceOnePopulationCoversNonRejectionAndRejectionWithValidPValue) {
     HypothesisTesterDefaultImpl tester;
 
@@ -255,6 +267,7 @@ TEST(HypothesisTesterDefaultImplTest, TestVarianceOnePopulationCoversNonRejectio
     expectValidResult(rejection);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.TwoPopulationTestsReturnValidPValues.
 TEST(HypothesisTesterDefaultImplTest, TwoPopulationTestsReturnValidPValues) {
     HypothesisTesterDefaultImpl tester;
 
@@ -263,6 +276,7 @@ TEST(HypothesisTesterDefaultImplTest, TwoPopulationTestsReturnValidPValues) {
     expectValidResult(tester.testVariance(4.0, 30, 2.0, 28, 0.95, HypothesisTester_if::H1Comparition::DIFFERENT));
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.FileBasedMethodsUseAnalysisDatasetLoader.
 TEST(HypothesisTesterDefaultImplTest, FileBasedMethodsUseAnalysisDatasetLoader) {
     HypothesisTesterDefaultImpl tester;
     const std::string first = writeSampleFile("genesys_hypothesis_first.txt", "-1\n1\n2\n3\n4\n");
@@ -284,6 +298,7 @@ TEST(HypothesisTesterDefaultImplTest, FileBasedMethodsUseAnalysisDatasetLoader) 
     expectValidResult(tester.testVariance(first, second, 0.95, HypothesisTester_if::H1Comparition::DIFFERENT));
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.InvalidConfidenceLevelThrows.
 TEST(HypothesisTesterDefaultImplTest, InvalidConfidenceLevelThrows) {
     HypothesisTesterDefaultImpl tester;
 
@@ -291,6 +306,7 @@ TEST(HypothesisTesterDefaultImplTest, InvalidConfidenceLevelThrows) {
     EXPECT_THROW(tester.testAverage(10.0, 2.0, 30, 10.2, 0.0, HypothesisTester_if::H1Comparition::DIFFERENT), std::invalid_argument);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ChiSquareGoodnessOfFitCoversNonRejectionAndRejection.
 TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitCoversNonRejectionAndRejection) {
     HypothesisTesterDefaultImpl tester;
 
@@ -305,6 +321,7 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitCoversNonRejectionAn
 	EXPECT_GE(rejection.testStat(), 0.0);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ChiSquareGoodnessOfFitBuildsFrequenciesFromSampleAndExplicitClasses.
 TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitBuildsFrequenciesFromSampleAndExplicitClasses) {
     HypothesisTesterDefaultImpl tester;
     const std::vector<double> boundaries = {0.0, 0.25, 0.50, 0.75, 1.0};
@@ -330,6 +347,7 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitBuildsFrequenciesFro
     expectValidResult(rejection);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ChiSquareGoodnessOfFitSupportsAutomaticClasses.
 TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitSupportsAutomaticClasses) {
     HypothesisTesterDefaultImpl tester;
 
@@ -345,6 +363,7 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitSupportsAutomaticCla
     expectValidResult(result);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ChiSquareGoodnessOfFitGroupsLowExpectedClasses.
 TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitGroupsLowExpectedClasses) {
     HypothesisTesterDefaultImpl tester;
     const std::vector<double> sample = {
@@ -369,6 +388,7 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitGroupsLowExpectedCla
     EXPECT_NEAR(result.testStat(), 0.0, 1e-9);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.ChiSquareGoodnessOfFitRejectsInvalidInputs.
 TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitRejectsInvalidInputs) {
     HypothesisTesterDefaultImpl tester;
 
@@ -384,6 +404,7 @@ TEST(HypothesisTesterDefaultImplTest, ChiSquareGoodnessOfFitRejectsInvalidInputs
     EXPECT_THROW(tester.chiSquareGoodnessOfFit(std::vector<double>{0.1, 0.2, 0.8, 0.9}, uniform01Cdf, std::vector<double>{0.0, 0.5, 1.0}, 1, 0.95), std::invalid_argument);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.KolmogorovSmirnovCoversNonRejectionAndRejection.
 TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovCoversNonRejectionAndRejection) {
     HypothesisTesterDefaultImpl tester;
 
@@ -400,6 +421,7 @@ TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovCoversNonRejectionAndReje
     EXPECT_LE(rejection.testStat(), 1.0);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.KolmogorovSmirnovFileBasedOverloadUsesAnalysisDatasetLoader.
 TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovFileBasedOverloadUsesAnalysisDatasetLoader) {
     HypothesisTesterDefaultImpl tester;
     const std::string sample = writeSampleFile("genesys_ks_uniform_sample.txt", "0.1\n0.2\n0.35\n0.5\n0.65\n0.8\n0.9\n");
@@ -412,6 +434,7 @@ TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovFileBasedOverloadUsesAnal
     EXPECT_LE(result.testStat(), 1.0);
 }
 
+// Test objective: verifies HypothesisTesterDefaultImplTest.KolmogorovSmirnovRejectsInvalidInputs.
 TEST(HypothesisTesterDefaultImplTest, KolmogorovSmirnovRejectsInvalidInputs) {
     HypothesisTesterDefaultImpl tester;
 

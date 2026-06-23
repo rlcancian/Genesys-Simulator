@@ -1,15 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/class.cc to edit this template
- */
-
-/*
- * File:   ProbabilityDistribution.cpp
- * Author: rlcancian
- *
- * Created on 22 de novembro de 2021, 17:24
- */
-
 #include "ProbabilityDistribution.h"
 #include <algorithm>
 #include <cmath>
@@ -63,7 +51,8 @@ double normalCdf(double x, double mean, double stddev) {
 }
 
 double inverseStandardNormal(double p) {
-	// Peter J. Acklam's rational approximation.
+	// Peter J. Acklam's rational approximation is accurate enough for the
+	// confidence intervals and tests implemented in this package.
 	static const double a[] = {
 		-3.969683028665376e+01,
 		 2.209460984245205e+02,

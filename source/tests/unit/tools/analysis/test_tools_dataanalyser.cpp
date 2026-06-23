@@ -54,6 +54,7 @@ void expectOrderedAndContiguousHistogram(const DataSetHistogram& histogram) {
     EXPECT_EQ(histogramFrequencySum(histogram), histogram.count);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.ProvidesDefaultFitterAndTester.
 TEST(DataAnalyserDefaultImplTest, ProvidesDefaultFitterAndTester) {
     DataAnalyserDefaultImpl analyser;
 
@@ -61,6 +62,7 @@ TEST(DataAnalyserDefaultImplTest, ProvidesDefaultFitterAndTester) {
     ASSERT_NE(analyser.tester(), nullptr);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.SummaryStartsEmpty.
 TEST(DataAnalyserDefaultImplTest, SummaryStartsEmpty) {
     DataAnalyserDefaultImpl analyser;
 
@@ -76,6 +78,7 @@ TEST(DataAnalyserDefaultImplTest, SummaryStartsEmpty) {
     EXPECT_FALSE(summary.hasNegativeData);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.HistogramStartsEmpty.
 TEST(DataAnalyserDefaultImplTest, HistogramStartsEmpty) {
     DataAnalyserDefaultImpl analyser;
 
@@ -86,6 +89,7 @@ TEST(DataAnalyserDefaultImplTest, HistogramStartsEmpty) {
     EXPECT_TRUE(histogram.bins.empty());
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.LoadDataSetConfiguresFitter.
 TEST(DataAnalyserDefaultImplTest, LoadDataSetConfiguresFitter) {
     DataAnalyserDefaultImpl analyser;
     const auto path = writeSampleFile("genesys_dataanalyser_valid");
@@ -106,6 +110,7 @@ TEST(DataAnalyserDefaultImplTest, LoadDataSetConfiguresFitter) {
     std::filesystem::remove(path);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.FileLoadKeepsFacadeAndFitterOnSameValidatedDataset.
 TEST(DataAnalyserDefaultImplTest, FileLoadKeepsFacadeAndFitterOnSameValidatedDataset) {
     DataAnalyserDefaultImpl analyser;
     const auto path = writeSampleFile("genesys_dataanalyser_space_separated", "3.0 5.0 7.0\n");
@@ -131,6 +136,7 @@ TEST(DataAnalyserDefaultImplTest, FileLoadKeepsFacadeAndFitterOnSameValidatedDat
     std::filesystem::remove(path);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.ExposesTheLoadedDatasetSnapshot.
 TEST(DataAnalyserDefaultImplTest, ExposesTheLoadedDatasetSnapshot) {
     DataAnalyserDefaultImpl analyser;
     ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{5.0, 1.0, 3.0}));
@@ -142,6 +148,7 @@ TEST(DataAnalyserDefaultImplTest, ExposesTheLoadedDatasetSnapshot) {
     EXPECT_EQ(analyser.sortedData(), expectedSortedData);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.HistogramReturnsNumericBinsWithFrequencies.
 TEST(DataAnalyserDefaultImplTest, HistogramReturnsNumericBinsWithFrequencies) {
     DataAnalyserDefaultImpl analyser;
     ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{1.0, 2.0, 3.0, 4.0, 5.0}));
@@ -167,6 +174,7 @@ TEST(DataAnalyserDefaultImplTest, HistogramReturnsNumericBinsWithFrequencies) {
     expectOrderedAndContiguousHistogram(histogram);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.HistogramUsesSingleBinForConstantData.
 TEST(DataAnalyserDefaultImplTest, HistogramUsesSingleBinForConstantData) {
     DataAnalyserDefaultImpl analyser;
     ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{4.0, 4.0, 4.0}));
@@ -186,6 +194,7 @@ TEST(DataAnalyserDefaultImplTest, HistogramUsesSingleBinForConstantData) {
     expectOrderedAndContiguousHistogram(histogram);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.HistogramUsesDefaultClassPolicyForZeroClassCount.
 TEST(DataAnalyserDefaultImplTest, HistogramUsesDefaultClassPolicyForZeroClassCount) {
     DataAnalyserDefaultImpl analyser;
     ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{1.0, 2.0, 3.0, 4.0, 5.0}));
@@ -198,6 +207,7 @@ TEST(DataAnalyserDefaultImplTest, HistogramUsesDefaultClassPolicyForZeroClassCou
     expectOrderedAndContiguousHistogram(histogram);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.LoadInMemoryDataSetConfiguresFitter.
 TEST(DataAnalyserDefaultImplTest, LoadInMemoryDataSetConfiguresFitter) {
     DataAnalyserDefaultImpl analyser;
 
@@ -224,6 +234,7 @@ TEST(DataAnalyserDefaultImplTest, LoadInMemoryDataSetConfiguresFitter) {
     EXPECT_DOUBLE_EQ(stddev, 2.0);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.BoxplotReturnsQuartilesAndWhiskers.
 TEST(DataAnalyserDefaultImplTest, BoxplotReturnsQuartilesAndWhiskers) {
     DataAnalyserDefaultImpl analyser;
     ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{1.0, 2.0, 3.0, 4.0, 5.0}));
@@ -249,6 +260,7 @@ TEST(DataAnalyserDefaultImplTest, BoxplotReturnsQuartilesAndWhiskers) {
     EXPECT_LE(boxplot.thirdQuartile, boxplot.max);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.BoxplotIdentifiesOutliers.
 TEST(DataAnalyserDefaultImplTest, BoxplotIdentifiesOutliers) {
     DataAnalyserDefaultImpl analyser;
     ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{1.0, 2.0, 3.0, 4.0, 100.0}));
@@ -269,6 +281,7 @@ TEST(DataAnalyserDefaultImplTest, BoxplotIdentifiesOutliers) {
     EXPECT_LE(boxplot.thirdQuartile, boxplot.max);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.BoxplotHandlesEvenAndSmallSamples.
 TEST(DataAnalyserDefaultImplTest, BoxplotHandlesEvenAndSmallSamples) {
     DataAnalyserDefaultImpl evenAnalyser;
     ASSERT_TRUE(evenAnalyser.loadDataSet(std::vector<double>{1.0, 2.0, 3.0, 4.0}));
@@ -291,6 +304,7 @@ TEST(DataAnalyserDefaultImplTest, BoxplotHandlesEvenAndSmallSamples) {
     EXPECT_DOUBLE_EQ(pair.thirdQuartile, 3.5);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.LoadDataSetReturnsFalseForInvalidDataset.
 TEST(DataAnalyserDefaultImplTest, LoadDataSetReturnsFalseForInvalidDataset) {
     DataAnalyserDefaultImpl analyser;
     const auto path = std::filesystem::temp_directory_path()
@@ -301,6 +315,7 @@ TEST(DataAnalyserDefaultImplTest, LoadDataSetReturnsFalseForInvalidDataset) {
     EXPECT_FALSE(analyser.summary().usable);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.LoadInMemoryDataSetReturnsFalseForInvalidDataset.
 TEST(DataAnalyserDefaultImplTest, LoadInMemoryDataSetReturnsFalseForInvalidDataset) {
     DataAnalyserDefaultImpl analyser;
     ASSERT_TRUE(analyser.loadDataSet(std::vector<double>{-1.0, 1.0, 3.0}));
@@ -319,6 +334,7 @@ TEST(DataAnalyserDefaultImplTest, LoadInMemoryDataSetReturnsFalseForInvalidDatas
     EXPECT_TRUE(summary.hasNegativeData);
 }
 
+// Test objective: verifies DataAnalyserDefaultImplTest.FutureSamplerAndExperimenterPathsThrowWhenNotInjected.
 TEST(DataAnalyserDefaultImplTest, FutureSamplerAndExperimenterPathsThrowWhenNotInjected) {
     DataAnalyserDefaultImpl analyser;
 

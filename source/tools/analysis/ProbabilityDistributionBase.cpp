@@ -1,22 +1,9 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/class.cc to edit this template
- */
-
-/* 
- * File:   BaseProbabilityDistributionBase.cpp
- * Author: rlcancian
- * 
- * Created on 4 de agosto de 2022, 11:03
- */
-
 #include "ProbabilityDistributionBase.h"
 #include <cmath>
 #include <cassert>
 
 double ProbabilityDistributionBase::beta(double x, double alpha, double beta) {
 	double x1 = _gammaFunction(alpha + beta) / (_gammaFunction(alpha) * _gammaFunction(beta));
-	//double x1 = 1/_betaFunction(alpha,beta);
 	double x2 = pow(x, alpha - 1) * pow(1 - x, beta - 1);
 	return x1*x2;
 }
@@ -35,7 +22,7 @@ double ProbabilityDistributionBase::erlang(double x, double shape, double scale)
 	double x1 = pow(x, shape - 1) * pow(M_E, -x / scale);
 	double x2 = pow(scale, shape) * _gammaFunction(shape);
 	return x1 / x2;
-} // int M
+}
 
 double ProbabilityDistributionBase::exponential(double x, double mean) {
 	if (x >= 0) {
@@ -46,7 +33,7 @@ double ProbabilityDistributionBase::exponential(double x, double mean) {
 
 double ProbabilityDistributionBase::fisherSnedecor(double x, double d1, double d2) {
 	assert(x >= 0);
-	double x1 = 1 / _betaFunction(d1 / 2, d2 / 2); //@TODO: Reimplement using _gammaFunction, but NOT _betaFunction
+	double x1 = 1 / _betaFunction(d1 / 2, d2 / 2);
 	double x2 = pow(d1 / d2, d1 / 2) * pow(x, d1 / 2 - 1);
 	double x3 = pow(1 + (d1 / d2) * x, -(d1 + d2) / 2);
 	return x1 * x2 * x3;
@@ -132,11 +119,10 @@ double ProbabilityDistributionBase::weibull(double x, double shape, double scale
 //************************
 
 double ProbabilityDistributionBase::_gammaFunction(double x) {
-	return tgamma(x); ///@TODO: Implement by myself
+	return tgamma(x);
 }
 
 double ProbabilityDistributionBase::_betaFunction(double x, double y) {
-	//return std::beta(x, y);
 	double x1, x2;
 	x1 = _gammaFunction(x) * _gammaFunction(y);
 	x2 = _gammaFunction(x + y);
