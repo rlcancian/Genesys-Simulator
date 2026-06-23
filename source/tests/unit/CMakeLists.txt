@@ -279,6 +279,11 @@ genesys_add_tools_unit_test(genesys_test_tools_fitter_distributions
     genesys_tools_analysis
 )
 
+genesys_add_tools_unit_test(genesys_test_tools_solver
+    tools/analysis/test_tools_solver.cpp
+    genesys_tools_analysis
+)
+
 add_custom_target(genesys_tools_unit_tests
     DEPENDS
         genesys_test_tools_hypothesistester
@@ -286,6 +291,7 @@ add_custom_target(genesys_tools_unit_tests
         genesys_test_tools_simulation_results_dataset
         genesys_test_tools_dataset_loader
         genesys_test_tools_fitter_distributions
+        genesys_test_tools_solver
 )
 
 add_custom_target(genesys_kernel_unit_tests

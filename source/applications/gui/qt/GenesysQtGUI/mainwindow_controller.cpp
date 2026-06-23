@@ -84,7 +84,6 @@
 #include <QFileInfo>
 #include <QCoreApplication>
 #include "../../../../kernel/simulator/model/ModelSimulation.h"
-#include "../../../../tools/SolverDefaultImpl1.h"
 
 
 //-------------------------

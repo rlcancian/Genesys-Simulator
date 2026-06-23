@@ -1,8 +1,9 @@
 #include "HypothesisTesterDefaultImpl.h"
 #include "DatasetLoader.h"
 #include "SimulationResultsDataset.h"
+#include "TraitsAnalysis.h"
 #include "tools/analysis/ProbabilityDistribution.h"
-#include "tools/SolverDefaultImpl1.h"
+#include "SolverDefaultImpl.h"
 #include <algorithm>
 #include <cmath>
 #include <iterator>
@@ -40,7 +41,9 @@ double chi2CdfByIntegration(double chi2, double degreesOfFreedom) {
 	}
 	// Numerical integration keeps chi-square p-values aligned with the same PDF
 	// family used by the quantile helper.
-	SolverDefaultImpl1 integrator(1e-6, 10000);
+	TraitsAnalysis<Solver_if>::Implementation integrator(
+		TraitsAnalysis<Solver_if>::Precision,
+		TraitsAnalysis<Solver_if>::MaxSteps);
 	const double integral = integrator.integrate(0.0, chi2, ProbabilityDistributionBase::chi2, degreesOfFreedom);
 	return clampProbability(integral);
 }
@@ -58,7 +61,9 @@ double studentTCdf(double t, double degreesOfFreedom) {
 	if (t == 0.0) {
 		return 0.5;
 	}
-	SolverDefaultImpl1 integrator(1e-6, 10000);
+	TraitsAnalysis<Solver_if>::Implementation integrator(
+		TraitsAnalysis<Solver_if>::Precision,
+		TraitsAnalysis<Solver_if>::MaxSteps);
 	const double absT = std::fabs(t);
 	const double integral = integrator.integrate(0.0, absT, ProbabilityDistributionBase::tStudent, 0.0, 1.0, degreesOfFreedom);
 	const double cdf = (t > 0.0) ? (0.5 + integral) : (0.5 - integral);
@@ -72,7 +77,9 @@ double fisherSnedecorCdf(double f, double d1, double d2) {
 	if (d1 <= 0.0 || d2 <= 0.0 || !std::isfinite(d1) || !std::isfinite(d2)) {
 		throw std::invalid_argument("fisherSnedecorCdf requires positive finite degrees of freedom");
 	}
-	SolverDefaultImpl1 integrator(1e-6, 10000);
+	TraitsAnalysis<Solver_if>::Implementation integrator(
+		TraitsAnalysis<Solver_if>::Precision,
+		TraitsAnalysis<Solver_if>::MaxSteps);
 	const double integral = integrator.integrate(0.0, f, ProbabilityDistributionBase::fisherSnedecor, d1, d2);
 	return clampProbability(integral);
 }

@@ -1,40 +1,28 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/class.cc to edit this template
- */
-
-/* 
- * File:   IntegratorDefaultImpl1.cpp
- * Author: rlcancian
- * 
- * Created on 23 de novembro de 2021, 18:36
- */
-
-#include "SolverDefaultImpl1.h"
+#include "SolverDefaultImpl.h"
 #include <math.h>
 
-SolverDefaultImpl1::SolverDefaultImpl1(double precision, unsigned int steps) {
+SolverDefaultImpl::SolverDefaultImpl(double precision, unsigned int steps) {
 	_precision = precision;
 	_numSteps = steps;
 }
 
-void SolverDefaultImpl1::setPrecision(double precision) {
+void SolverDefaultImpl::setPrecision(double precision) {
 	_precision = precision;
 }
 
-double SolverDefaultImpl1::getPrecision() {
+double SolverDefaultImpl::getPrecision() {
 	return _precision;
 }
 
-void SolverDefaultImpl1::setMaxSteps(double steps) {
+void SolverDefaultImpl::setMaxSteps(double steps) {
 	_numSteps = steps;
 }
 
-double SolverDefaultImpl1::getMaxSteps() {
+double SolverDefaultImpl::getMaxSteps() {
 	return _numSteps;
 }
 
-double SolverDefaultImpl1::integrate(double min, double max, double (*f)(double, double), double p2) {
+double SolverDefaultImpl::integrate(double min, double max, double (*f)(double, double), double p2) {
 	// Simpson's 1/3 rule
 	double steps = _numSteps;
 	double h = (max - min) / steps; // distance between points
@@ -57,7 +45,7 @@ double SolverDefaultImpl1::integrate(double min, double max, double (*f)(double,
 	return (h / 3)*sum;
 }
 
-double SolverDefaultImpl1::integrate(double min, double max, double (*f)(double, double, double), double p2, double p3) {
+double SolverDefaultImpl::integrate(double min, double max, double (*f)(double, double, double), double p2, double p3) {
 	// Simpson's 1/3 rule
 
 	unsigned int steps = _numSteps;
@@ -81,7 +69,7 @@ double SolverDefaultImpl1::integrate(double min, double max, double (*f)(double,
 	return (h / 3)*sum;
 }
 
-double SolverDefaultImpl1::integrate(double min, double max, double (*f)(double, double, double, double), double p2, double p3, double p4) {
+double SolverDefaultImpl::integrate(double min, double max, double (*f)(double, double, double, double), double p2, double p3, double p4) {
 	// Simpson's 1/3 rule
 	double steps = _numSteps;
 	double h = (max - min) / steps; // distance between points
@@ -104,7 +92,7 @@ double SolverDefaultImpl1::integrate(double min, double max, double (*f)(double,
 	return (h / 3)*sum;
 }
 
-double SolverDefaultImpl1::integrate(double min, double max, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5) {
+double SolverDefaultImpl::integrate(double min, double max, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5) {
 	// Simpson's 1/3 rule
 	double steps = _numSteps;
 	double h = (max - min) / steps; // distance between points
@@ -127,7 +115,7 @@ double SolverDefaultImpl1::integrate(double min, double max, double (*f)(double,
 	return (h / 3)*sum;
 }
 
-double SolverDefaultImpl1::derivate(double initPoint, double initValue, double (*f)(double, double), double p2) {
+double SolverDefaultImpl::derivate(double initPoint, double initValue, double (*f)(double, double), double p2) {
 	double time, halfStep;
 	unsigned int i, numEqs = 1;
 	double k1[numEqs], k2[numEqs], k3[numEqs], k4[numEqs], result[numEqs];
@@ -154,17 +142,17 @@ double SolverDefaultImpl1::derivate(double initPoint, double initValue, double (
 
 }
 
-double SolverDefaultImpl1::derivate(double initPoint, double initValue, double (*f)(double, double, double), double p2, double p3) {
+double SolverDefaultImpl::derivate(double initPoint, double initValue, double (*f)(double, double, double), double p2, double p3) {
 	/*  @TODO: +-: not implemented yet */
 	return 0.0;
 }
 
-double SolverDefaultImpl1::derivate(double initPoint, double initValue, double (*f)(double, double, double, double), double p2, double p3, double p4) {
+double SolverDefaultImpl::derivate(double initPoint, double initValue, double (*f)(double, double, double, double), double p2, double p3, double p4) {
 	/*  @TODO: +-: not implemented yet */
 	return 0.0;
 }
 
-double SolverDefaultImpl1::derivate(double initPoint, double initValue, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5) {
+double SolverDefaultImpl::derivate(double initPoint, double initValue, double (*f)(double, double, double, double, double), double p2, double p3, double p4, double p5) {
 	/*  @TODO: +-: not implemented yet */
 	return 0.0;
 }

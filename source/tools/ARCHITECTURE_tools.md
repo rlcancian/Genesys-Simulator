@@ -10,7 +10,7 @@ This document records architectural boundaries for `source/tools`. User-facing c
 
 | Target | Boundary |
 | --- | --- |
-| `genesys_tools_analysis` | Standalone analysis library. It contains the analysis facade, dataset loaders/parsers, fitter, hypothesis tester, probability helpers and the local solver implementation needed by analysis routines. |
+| `genesys_tools_analysis` | Standalone analysis library. It contains the analysis facade, dataset loaders/parsers, fitter, hypothesis tester, probability helpers and the pre-existing solver implementation integrated for analysis routines. |
 | `genesys_tools` | Aggregate/legacy target. It may link `genesys_tools_analysis` and older tools such as optimizer/factorial-design code. |
 
 `genesys_tools_analysis` must build without linking `genesys_kernel_*` and without including kernel headers.
@@ -39,6 +39,9 @@ If a kernel, GUI or application workflow needs analysis behavior, that workflow 
 
 - Public legacy signatures are preserved where practical.
 - `FitterDummyImpl` remains as a legacy placeholder, but it is not the default fitter binding.
-- `Solver_if` and `SolverDefaultImpl1` remain available while newer numerical interfaces mature.
+- `analysis/Solver_if` and `analysis/SolverDefaultImpl` provide the numerical
+  quadrature used by fitting and inference. They are a relocated, renamed
+  legacy implementation rather than a new analysis-tool capability; derivation
+  overloads remain only for compatibility with older external consumers.
 - `DataAnalyser_if::newDataSet`, `saveDataSet`, default `sampler()` and default `experimenter()` are explicit roadmap hooks and are unsupported in the current analysis-tool scope.
 - Future work may introduce reusable distribution objects and calibrated goodness-of-fit p-values when parameters are estimated from the tested sample.

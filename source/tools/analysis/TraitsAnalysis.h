@@ -1,7 +1,8 @@
 #ifndef TRAITSANALYSIS_H
 #define TRAITSANALYSIS_H
 
-#include "tools/SolverDefaultImpl1.h"
+#include "SolverDefaultImpl.h"
+#include "Solver_if.h"
 #include "HypothesisTesterDefaultImpl.h"
 #include "HypothesisTester_if.h"
 #include "FitterDefaultImpl.h"
@@ -44,9 +45,9 @@ template <> struct TraitsAnalysis<ProbabilityDistribution> {
  * Configure the numerical solver used by local probability routines.
  */
 template <> struct TraitsAnalysis<Solver_if> {
-	typedef SolverDefaultImpl1 Implementation;
-	static constexpr double Precision = 1e-5;
-	static constexpr unsigned int MaxSteps = 1e2;
+	typedef SolverDefaultImpl Implementation;
+	static constexpr double Precision = 1e-6;
+	static constexpr unsigned int MaxSteps = 10000U;
 };
 
 /*!

@@ -18,7 +18,7 @@
 
 **Professor:** `Rafael Luiz Cancian`
 
-**Data considerada:** 2026-06-22
+**Data considerada:** 2026-06-23
 
 **Repositório/base de comparação:** branch `dev` comparada com `upstream/2026-1` do repositório `rlcancian/Genesys-Simulator`.
 
@@ -56,7 +56,7 @@ Os quatro primeiros critérios avaliativos foram tratados da seguinte forma:
 | Atendimento a requisitos funcionais e casos de uso por testes unitários e de integração | Testes em `source/tests/unit/tools/analysis` e `source/tests/integration/tools/analysis`; documentação em `source/tests/README.md`. |
 | Qualidade de software, engenharia e desempenho | Separação em alvo `genesys_tools_analysis`, fachada `DataAnalyserDefaultImpl`, desacoplamento do kernel, validação de entradas e uso de algoritmos estatísticos conhecidos. |
 | Qualidade da documentação | READMEs em `source/tools`, `source/tools/analysis`, `source/tests`; diagramas renderizados; este relatório em `documentation/tools`. |
-| Qualidade dos testes e comprovação de funcionamento | 95 testes unitários de tools, 2 testes de integração e exemplo executável com verificações determinísticas. |
+| Qualidade dos testes e comprovação de funcionamento | 96 testes unitários de tools, 2 testes de integração e exemplo executável com verificações determinísticas. |
 
 O quinto critério, apresentação/simpósio, deve ser atendido por slides e vídeo preparados a partir deste relatório.
 
@@ -184,9 +184,25 @@ Assim, se um módulo do kernel, GUI ou aplicação precisar de análise estatís
 - Arquivos de análise foram movidos de `source/tools` para `source/tools/analysis`.
 - `TraitsTools.h` foi consolidado como `TraitsAnalysis.h`.
 - `ProbabilityDistribution` e `ProbabilityDistributionBase` foram movidos para `tools/analysis`, mantendo a API matemática local ao pacote.
+- `Solver_if` e `SolverDefaultImpl1` foram movidos para `tools/analysis` e consolidados como `Solver_if` e `SolverDefaultImpl`.
+- `TraitsAnalysis<Solver_if>` passou a definir `SolverDefaultImpl` como implementação padrão para quadratura numérica da análise.
 - `HypothesisTesterDefaultImpl1` foi substituído/consolidado por `HypothesisTesterDefaultImpl`.
 - `FitterDefaultImpl` passou a usar `Fitter_if` e dataset em memória/arquivo de forma alinhada.
 - Os overloads baseados em arquivo do `HypothesisTesterDefaultImpl` passaram a usar parser/loader locais da análise.
+
+### Solver reutilizado como dependência interna
+
+O solver não constitui uma funcionalidade nova implementada por este DCS. As
+implementações de `Solver_if` e `SolverDefaultImpl1` já existiam no projeto e
+foram reutilizadas sem alteração de seus algoritmos numéricos, da regra de
+Simpson 1/3, das sobrecargas de derivação ou de seu comportamento matemático.
+
+O trabalho desta entrega foi arquitetural: mover o código para
+`tools/analysis`, renomear `SolverDefaultImpl1` para `SolverDefaultImpl`,
+ajustar includes e alvos de compilação e registrar sua implementação padrão em
+`TraitsAnalysis`. Assim, o solver passou a ser uma dependência interna local da
+ferramenta para integrações numéricas necessárias ao fitting e à inferência,
+sem criar um novo caso de uso público e sem ampliar o escopo funcional do DCS.
 
 ## 6.2 Adicionado
 
@@ -209,6 +225,7 @@ Assim, se um módulo do kernel, GUI ou aplicação precisar de análise estatís
 ## 6.3 Removido ou substituído
 
 - Implementações antigas soltas em `source/tools` foram removidas ou movidas para `source/tools/analysis`.
+- `SolverDefaultImpl1` foi substituído por `analysis/SolverDefaultImpl`; consumidores passaram a importar a nova localização.
 - Dependências diretas de `source/kernel` foram retiradas da ferramenta de análise.
 - A ferramenta deixou de depender de coletores estatísticos do kernel para operar em arquivos/datasets.
 
@@ -303,7 +320,7 @@ fechada única no pacote. A implementação usa os seguintes procedimentos:
 | --- | --- | --- |
 | Quantil normal | Aproximação racional de **Peter J. Acklam** | Quantis z de ICs/testes e normal inversa pública. |
 | CDF normal | Função erro complementar `erfc` | p-valores de testes z e CDF normal do fitting. |
-| CDF chi-square, t e F no `HypothesisTester` | Integração composta de **Simpson 1/3** por `SolverDefaultImpl1`, com precisão `1e-6` e até 10.000 passos; chi-square possui atalhos fechados para `df=1` e `df=2`. | p-valores de testes de variância, média e razão de variâncias, além de chi-square. |
+| CDF chi-square, t e F no `HypothesisTester` | Integração composta de **Simpson 1/3** da implementação preexistente, agora integrada como `SolverDefaultImpl`, com precisão `1e-6` e até 10.000 passos; chi-square possui atalhos fechados para `df=1` e `df=2`. | p-valores de testes de variância, média e razão de variâncias, além de chi-square. |
 | CDF chi-square, t e F no módulo de quantis | Regra composta do **ponto médio**, com 8.192 subintervalos configurados em `TraitsAnalysis`. | CDFs usadas pela inversão de quantis. |
 | Quantis chi-square, t e F | Expansão de intervalo seguida de **bisseção**; tolerâncias e limites de iteração centralizados em `TraitsAnalysis`. | Limites críticos e ICs. |
 | Cache de quantis | `std::map` indexado pelos parâmetros e probabilidade. | Evita recalcular integrações/bisseções repetidas. |
@@ -360,7 +377,8 @@ Distribuições consideradas:
 | Weibull | Casamento do coeficiente de variação com a expressão teórica, resolvido por bisseção. | Resolve `Gamma(1+2/k)/Gamma(1+1/k)^2 - 1 - CV^2 = 0` para a forma `k`; escala `lambda=mean/Gamma(1+1/k)`. |
 
 Para beta escalada, a CDF é obtida por integração numérica de Simpson 1/3 da
-PDF beta normalizada. Para Weibull, a CDF é fechada:
+PDF beta normalizada, fornecida pelo solver preexistente reutilizado. Para
+Weibull, a CDF é fechada:
 
 ```text
 F(x) = 1 - exp(-(x/lambda)^k), para x >= 0
@@ -592,7 +610,7 @@ O exemplo cobre:
 Resultado registrado:
 
 ```text
-Date: 2026-06-22
+Date: 2026-06-23
 Makefile shortcut: make run-examples
 Result: Regression result: ALL CHECKS PASSED
 ```
@@ -620,7 +638,7 @@ O objetivo do exemplo é comprovar que a ferramenta de análise pode ser usada t
 Resultado registrado:
 
 ```text
-Date: 2026-06-22
+Date: 2026-06-23
 Makefile shortcut: make run-examples
 Result: Simulation analysis example: SUCCESS
 ```
@@ -648,9 +666,9 @@ Arquivos:
 Resultado registrado:
 
 ```text
-Date: 2026-06-22
+Date: 2026-06-23
 Makefile shortcut: make run-unit-tests PACKAGE=tools
-Result: 95/95 tests passed
+Result: 96/96 tests passed on 2026-06-23
 ```
 
 ## 11.2 Testes de integração
@@ -678,7 +696,7 @@ Objetivos:
 Resultado registrado:
 
 ```text
-Date: 2026-06-22
+Date: 2026-06-23
 Makefile shortcut: make run-integration-tests PACKAGE=tools
 Result: 2/2 tests passed
 ```

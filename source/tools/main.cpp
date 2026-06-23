@@ -11,7 +11,7 @@
 #include "Optimizer_if.h"
 #include "Quadrature_if.h"
 #include "RootFinder_if.h"
-#include "Solver_if.h"
+#include "analysis/Solver_if.h"
 #include "analysis/TraitsAnalysis.h"
 
 #include <iostream>

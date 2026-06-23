@@ -25,9 +25,9 @@ make run-unit-tests PACKAGE=tools
 Latest recorded result:
 
 ```text
-Date: 2026-06-22
+Date: 2026-06-23
 Makefile shortcut: make run-unit-tests PACKAGE=tools
-Result: 95/95 tests passed
+Result: 96/96 tests passed on 2026-06-23
 ```
 
 ## Data-Analysis Integration Tests
@@ -47,7 +47,7 @@ make run-integration-tests PACKAGE=tools
 Latest recorded result:
 
 ```text
-Date: 2026-06-22
+Date: 2026-06-23
 Makefile shortcut: make run-integration-tests PACKAGE=tools
 Result: 2/2 tests passed
 ```
@@ -63,7 +63,7 @@ make run-examples
 Latest recorded result:
 
 ```text
-Date: 2026-06-22
+Date: 2026-06-23
 Makefile shortcut: make run-examples
 Result: Regression result: ALL CHECKS PASSED
 Result: Simulation analysis example: SUCCESS
