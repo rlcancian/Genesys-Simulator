@@ -26,14 +26,17 @@ enum class IntervalPrintMode {
     IntervalWidth
 };
 
+// Classifies sample values for proportion examples and tests.
 bool isGreaterThan50(double value) {
     return value > 50.0;
 }
 
+// Converts a boolean hypothesis decision into readable output text.
 std::string decision(bool rejectH0) {
     return rejectH0 ? "reject H0" : "do not reject H0";
 }
 
+// Formats p-values consistently for compact console tables.
 std::string pValueText(double pValue) {
     if (!std::isfinite(pValue)) {
         return "N/A";
@@ -47,6 +50,7 @@ std::string pValueText(double pValue) {
     return stream.str();
 }
 
+// Normalizes distribution names for case-insensitive regression checks.
 std::string lower(std::string text) {
     std::transform(text.begin(), text.end(), text.begin(), [](unsigned char ch) {
         return static_cast<char>(std::tolower(ch));
@@ -54,10 +58,12 @@ std::string lower(std::string text) {
     return text;
 }
 
+// Prints a section title for the example output.
 void printSection(const std::string& title) {
     std::cout << "\n== " << title << " ==\n";
 }
 
+// Prints descriptive statistics, boxplot summary and histogram metadata.
 void printSummary(const std::string& label,
                   const std::string& filename,
                   const DataSetSummary& summary,
@@ -80,6 +86,7 @@ void printSummary(const std::string& label,
               << " classes, width=" << histogram.classWidth << "\n";
 }
 
+// Prints the distribution-fitting table header.
 void printTableHeader() {
     std::cout << std::left
               << std::setw(COL_NAME) << "Distribution"
@@ -91,6 +98,7 @@ void printTableHeader() {
               << std::string(COL_NAME + 4 * COL_PARAM + COL_SSE, '-') << "\n";
 }
 
+// Prints one fitted-distribution row with up to four parameters.
 void printRow(const std::string& name,
               const std::string& p1Label,
               double p1,
@@ -129,6 +137,7 @@ void printRow(const std::string& name,
     std::cout << "\n";
 }
 
+// Aligns labels used by confidence-interval and test result output.
 void printFixedLabel(const std::string& name) {
     if (name.size() < 34U) {
         std::cout << std::left << std::setw(34) << name;
@@ -137,6 +146,7 @@ void printFixedLabel(const std::string& name) {
     }
 }
 
+// Prints a confidence interval and its displayed width metric.
 void printConfidenceInterval(const std::string& name,
                              HypothesisTester_if::ConfidenceInterval interval,
                              IntervalPrintMode mode = IntervalPrintMode::HalfWidth) {
@@ -152,6 +162,7 @@ void printConfidenceInterval(const std::string& name,
     std::cout << "\n";
 }
 
+// Prints a hypothesis-test statistic, p-value and decision.
 void printTestResult(const std::string& name,
                      const HypothesisTester_if::TestResult& result) {
     printFixedLabel(name);
@@ -160,6 +171,7 @@ void printTestResult(const std::string& name,
               << "  decision=" << decision(result.rejectH0()) << "\n";
 }
 
+// Prints chi-square results including grouped-class diagnostics.
 void printChiSquareResult(const std::string& name,
                           const HypothesisTester_if::TestResult& result) {
     printTestResult(name, result);
@@ -174,6 +186,7 @@ void printChiSquareResult(const std::string& name,
     }
 }
 
+// Loads a dataset through the facade and reports a readable error on failure.
 bool load(DataAnalyserDefaultImpl& analyser, const std::string& filename) {
     if (analyser.loadDataSet(filename) && analyser.summary().count > 1U) {
         return true;
@@ -183,10 +196,12 @@ bool load(DataAnalyserDefaultImpl& analyser, const std::string& filename) {
     return false;
 }
 
+// Compares two floating-point values with the example tolerance.
 bool approximatelyEqual(double lhs, double rhs, double tolerance = EPSILON) {
     return std::abs(lhs - rhs) <= tolerance;
 }
 
+// Checks whether two facade summaries represent the same dataset.
 bool summariesEquivalent(const DataSetSummary& lhs, const DataSetSummary& rhs) {
     return lhs.usable == rhs.usable
            && lhs.count == rhs.count
@@ -198,6 +213,7 @@ bool summariesEquivalent(const DataSetSummary& lhs, const DataSetSummary& rhs) {
            && lhs.hasNegativeData == rhs.hasNegativeData;
 }
 
+// Checks whether two boxplot structures are equivalent.
 bool boxplotsEquivalent(const DataSetBoxPlot& lhs, const DataSetBoxPlot& rhs) {
     return lhs.usable == rhs.usable
            && lhs.count == rhs.count
@@ -212,6 +228,7 @@ bool boxplotsEquivalent(const DataSetBoxPlot& lhs, const DataSetBoxPlot& rhs) {
            && lhs.outliers == rhs.outliers;
 }
 
+// Checks whether two histogram structures are equivalent.
 bool histogramsEquivalent(const DataSetHistogram& lhs, const DataSetHistogram& rhs) {
     if (lhs.usable != rhs.usable
         || lhs.count != rhs.count
@@ -241,6 +258,7 @@ std::size_t histogramFrequencySum(const DataSetHistogram& histogram) {
     return total;
 }
 
+// Verifies that histogram bins form an ordered partition of the data range.
 bool histogramIsOrderedAndContiguous(const DataSetHistogram& histogram) {
     if (!histogram.usable || histogram.bins.empty()) {
         return false;
@@ -257,6 +275,7 @@ bool histogramIsOrderedAndContiguous(const DataSetHistogram& histogram) {
            && approximatelyEqual(histogram.bins.back().upperLimit, histogram.max);
 }
 
+// Verifies that the boxplot values follow the expected numeric order.
 bool boxplotIsOrdered(const DataSetBoxPlot& boxplot) {
     return boxplot.usable
            && boxplot.min <= boxplot.firstQuartile
@@ -266,6 +285,7 @@ bool boxplotIsOrdered(const DataSetBoxPlot& boxplot) {
            && boxplot.lowerWhisker <= boxplot.upperWhisker;
 }
 
+// Describes which two-sample mean policy the tester will apply.
 std::string selectedTwoMeanMethod(HypothesisTester_if* tester,
                                   const DataSetSummary& lhs,
                                   const DataSetSummary& rhs,
@@ -284,6 +304,7 @@ std::string selectedTwoMeanMethod(HypothesisTester_if* tester,
     return "Welch t-test, unequal variances selected by variance-ratio CI";
 }
 
+// Prints a regression-check line and counts failures for the example exit code.
 void regressionCheck(bool condition,
                      const std::string& description,
                      unsigned int& failures) {
@@ -296,6 +317,7 @@ void regressionCheck(bool condition,
 } // namespace
 
 int main(int argc, char* argv[]) {
+    // Select the bundled datasets unless paths are passed explicitly.
     const std::string primaryFile =
             (argc > 1) ? argv[1] : "examples/data/sample_data.csv";
     const std::string groupAFile =
@@ -309,6 +331,7 @@ int main(int argc, char* argv[]) {
               << "The datasets are reproducible pseudo-random samples.\n"
               << "The two comparison groups were generated independently.\n";
 
+    // Build one facade per dataset so each analysis service shares its dataset.
     DataAnalyserDefaultImpl primaryAnalyser;
     DataAnalyserDefaultImpl groupAAnalyser;
     DataAnalyserDefaultImpl groupBAnalyser;
@@ -332,6 +355,7 @@ int main(int argc, char* argv[]) {
     const DataSetHistogram groupAHistogram = groupAAnalyser.histogram(8);
     const DataSetHistogram groupBHistogram = groupBAnalyser.histogram(8);
 
+    // Show the descriptive structures exposed by the facade.
     printSection("Descriptive statistics and exploratory structures");
     printSummary("Primary sample", primaryFile, primary, primaryBoxplot, primaryHistogram);
     std::cout << "\n";
@@ -355,6 +379,7 @@ int main(int argc, char* argv[]) {
 
     Fitter_if* fitter = primaryAnalyser.fitter();
 
+    // Demonstrate every distribution fit and the structured ranking.
     printSection("Distribution fitting using EDF/CDF and Hazen positions");
     printTableHeader();
 
@@ -427,6 +452,7 @@ int main(int argc, char* argv[]) {
               << "Normal EDF/CDF SSE heuristic (confidence-like input=0.99): "
               << (normalSseHeuristic99 ? "pass" : "fail") << "\n";
 
+    // Demonstrate the probability helper functions used by fitter/tester code.
     printSection("Probability-distribution helpers");
     const double z975 = ProbabilityDistribution::inverseNormal(0.975, 0.0, 1.0);
     const double t975 = ProbabilityDistribution::inverseTStudent(
@@ -455,6 +481,7 @@ int main(int argc, char* argv[]) {
                           isGreaterThan50))
             / static_cast<double>(primary.count);
 
+    // Demonstrate confidence intervals for one sample.
     printSection("One-population confidence intervals");
     const auto meanInterval = tester->averageConfidenceInterval(
             primary.mean, primary.stddev, static_cast<unsigned int>(primary.count), confidenceLevel);
@@ -467,6 +494,7 @@ int main(int argc, char* argv[]) {
     printConfidenceInterval("Variance", varianceInterval, IntervalPrintMode::IntervalWidth);
     printConfidenceInterval("P(value > 50)", proportionInterval);
 
+    // Demonstrate one-population tests with two-sided and one-sided alternatives.
     printSection("One-population hypothesis tests");
     const auto meanTwoSided = tester->testAverage(
             expectedMean,
@@ -519,6 +547,7 @@ int main(int argc, char* argv[]) {
                           isGreaterThan50))
             / static_cast<double>(groupB.count);
 
+    // Demonstrate confidence intervals and tests comparing two independent groups.
     printSection("Two independent populations");
     const auto meanDifferenceInterval = tester->averageDifferenceConfidenceInterval(
             groupA.mean,
@@ -577,6 +606,7 @@ int main(int argc, char* argv[]) {
     printTestResult("Variance A == variance B", groupVarianceTest);
     printTestResult("P_A(>50) == P_B(>50)", groupProportionTest);
 
+    // Demonstrate file-based overloads that load datasets internally.
     printSection("File-based inference overloads");
     const auto fileMeanInterval = tester->averageConfidenceInterval(primaryFile, confidenceLevel);
     const auto fileMeanTest = tester->testAverage(
@@ -607,6 +637,7 @@ int main(int argc, char* argv[]) {
     printTestResult("Group variances from filenames", fileGroupVarianceTest);
     printTestResult("Group proportions from filenames", fileGroupProportionTest);
 
+    // Demonstrate goodness-of-fit tests against the fitted normal CDF.
     printSection("Goodness-of-fit for fitted normal distribution");
     const auto fittedNormalCdf = [normalMean, normalStddev](double value) {
         return 0.5 * std::erfc(
@@ -649,6 +680,7 @@ int main(int argc, char* argv[]) {
               << "KS note: the reported p-value is the standard approximation even though\n"
               << "the normal parameters were estimated from this same sample.\n";
 
+    // Keep this example useful as a lightweight regression check.
     printSection("Deterministic regression checks for the bundled datasets");
     unsigned int failures = 0U;
 

@@ -59,8 +59,6 @@ FittingResult fittingResult(const std::string& name, double error, std::vector<F
 
 } // namespace
 
-// --- Fitter_if interface ---
-
 bool FitterDefaultImpl::isNormalDistributed(double confidencelevel) {
 	double sqrerror = std::numeric_limits<double>::infinity();
 	double avg = nanVal();
@@ -352,6 +350,8 @@ void FitterDefaultImpl::_setSse(double* sqrerror, const std::function<double(dou
 	double sse = 0.0;
 	const std::size_t n = sortedData.size();
 	for (std::size_t i = 0; i < n; ++i) {
+		// Hazen's plotting position avoids assigning empirical probability 0 or
+		// 1 to the extremes, which keeps tail-heavy candidates comparable.
 		const double pi    = (static_cast<double>(i) + 0.5) / static_cast<double>(n);
 		double model = cdf(sortedData[i]);
 		if (!std::isfinite(model)) {

@@ -17,6 +17,7 @@ namespace {
 	}
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.LoadsRawNumericDataset.
 TEST(SimulationResultsDatasetParserTest, LoadsRawNumericDataset) {
 	const std::filesystem::path path = writeDatasetFile("raw_numeric", "2.1\n\n4.0\n3.8\n");
 	SimulationResultsDataset dataset;
@@ -33,6 +34,7 @@ TEST(SimulationResultsDatasetParserTest, LoadsRawNumericDataset) {
 	EXPECT_FALSE(dataset.observations.at(0).hasTime);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.RejectsCommaDecimalRawNumericDataset.
 TEST(SimulationResultsDatasetParserTest, RejectsCommaDecimalRawNumericDataset) {
 	const std::filesystem::path path = writeDatasetFile("raw_numeric_comma", "21,01\n");
 	SimulationResultsDataset dataset;
@@ -42,6 +44,7 @@ TEST(SimulationResultsDatasetParserTest, RejectsCommaDecimalRawNumericDataset) {
 	EXPECT_NE(errorMessage.find("Invalid raw numeric observation"), std::string::npos);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.RejectsEmptyRawNumericDataset.
 TEST(SimulationResultsDatasetParserTest, RejectsEmptyRawNumericDataset) {
 	const std::filesystem::path path = writeDatasetFile("raw_empty", "\n  \n\t\n");
 	SimulationResultsDataset dataset;
@@ -51,6 +54,7 @@ TEST(SimulationResultsDatasetParserTest, RejectsEmptyRawNumericDataset) {
 	EXPECT_NE(errorMessage.find("does not contain observations"), std::string::npos);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.RejectsInvalidRawNumericDataset.
 TEST(SimulationResultsDatasetParserTest, RejectsInvalidRawNumericDataset) {
 	const std::filesystem::path path = writeDatasetFile("raw_invalid", "2.1\nnot numeric\n");
 	SimulationResultsDataset dataset;
@@ -60,6 +64,7 @@ TEST(SimulationResultsDatasetParserTest, RejectsInvalidRawNumericDataset) {
 	EXPECT_NE(errorMessage.find("Invalid raw numeric observation"), std::string::npos);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.LoadsLegacyRecordDatasetWithTime.
 TEST(SimulationResultsDatasetParserTest, LoadsLegacyRecordDatasetWithTime) {
 	const std::filesystem::path path = writeDatasetFile(
 			"record_legacy",
@@ -85,6 +90,7 @@ TEST(SimulationResultsDatasetParserTest, LoadsLegacyRecordDatasetWithTime) {
 	EXPECT_DOUBLE_EQ(dataset.observations.front().time, 0.5);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.LoadsLegacyRecordDatasetWithoutTime.
 TEST(SimulationResultsDatasetParserTest, LoadsLegacyRecordDatasetWithoutTime) {
 	const std::filesystem::path path = writeDatasetFile(
 			"record_legacy_without_time",
@@ -106,6 +112,7 @@ TEST(SimulationResultsDatasetParserTest, LoadsLegacyRecordDatasetWithoutTime) {
 	EXPECT_DOUBLE_EQ(dataset.observations.back().value, 7.0);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.LoadsEnrichedRecordDatasetWithoutTime.
 TEST(SimulationResultsDatasetParserTest, LoadsEnrichedRecordDatasetWithoutTime) {
 	const std::filesystem::path path = writeDatasetFile(
 			"record_enriched",
@@ -137,6 +144,7 @@ TEST(SimulationResultsDatasetParserTest, LoadsEnrichedRecordDatasetWithoutTime) 
 	EXPECT_DOUBLE_EQ(dataset.observations.at(1).value, 7.0);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.LoadsEnrichedRecordDatasetWithTimeAndNormalizesVariableType.
 TEST(SimulationResultsDatasetParserTest, LoadsEnrichedRecordDatasetWithTimeAndNormalizesVariableType) {
 	const std::filesystem::path path = writeDatasetFile(
 			"record_enriched_with_time",
@@ -167,6 +175,7 @@ TEST(SimulationResultsDatasetParserTest, LoadsEnrichedRecordDatasetWithTimeAndNo
 	EXPECT_DOUBLE_EQ(dataset.observations.front().time, 0.5);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.LoadsGuiTabularDatasetBySemanticHeader.
 TEST(SimulationResultsDatasetParserTest, LoadsGuiTabularDatasetBySemanticHeader) {
 	const std::filesystem::path path = writeDatasetFile(
 			"gui_tabular",
@@ -187,6 +196,7 @@ TEST(SimulationResultsDatasetParserTest, LoadsGuiTabularDatasetBySemanticHeader)
 	EXPECT_EQ(dataset.observations.at(1).replication, 2u);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.LoadsGuiTabularDatasetWithoutTime.
 TEST(SimulationResultsDatasetParserTest, LoadsGuiTabularDatasetWithoutTime) {
 	const std::filesystem::path path = writeDatasetFile(
 			"gui_tabular_without_time",
@@ -205,6 +215,7 @@ TEST(SimulationResultsDatasetParserTest, LoadsGuiTabularDatasetWithoutTime) {
 	EXPECT_FALSE(dataset.observations.front().hasTime);
 }
 
+// Test objective: verifies SimulationResultsDatasetParserTest.RejectsGuiTabularDatasetWithoutValueColumn.
 TEST(SimulationResultsDatasetParserTest, RejectsGuiTabularDatasetWithoutValueColumn) {
 	const std::filesystem::path path = writeDatasetFile("gui_no_value", "dataset,variable,replication,time\nA,X,1,0.5\n");
 	SimulationResultsDataset dataset;

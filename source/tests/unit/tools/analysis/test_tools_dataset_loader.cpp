@@ -31,6 +31,7 @@ namespace {
 	}
 }
 
+// Test objective: verifies DatasetLoaderTest.StartsEmptyAndClearResetsState.
 TEST(DatasetLoaderTest, StartsEmptyAndClearResetsState) {
 	DatasetLoader loader;
 
@@ -59,6 +60,7 @@ TEST(DatasetLoaderTest, StartsEmptyAndClearResetsState) {
 	EXPECT_FALSE(loader.hasNegativeData());
 }
 
+// Test objective: verifies DatasetLoaderTest.LoadsDelimitedTextAndComputesStatistics.
 TEST(DatasetLoaderTest, LoadsDelimitedTextAndComputesStatistics) {
 	const std::filesystem::path path = writeTextDatasetFile(
 			"dataset_loader_csv",
@@ -87,6 +89,7 @@ TEST(DatasetLoaderTest, LoadsDelimitedTextAndComputesStatistics) {
 	EXPECT_TRUE(loader.hasNegativeData());
 }
 
+// Test objective: verifies DatasetLoaderTest.SupportsWhitespaceSeparatedText.
 TEST(DatasetLoaderTest, SupportsWhitespaceSeparatedText) {
 	const std::filesystem::path path = writeTextDatasetFile("dataset_loader_whitespace", "4 1\n2\t3\n");
 	DatasetLoader loader;
@@ -106,6 +109,7 @@ TEST(DatasetLoaderTest, SupportsWhitespaceSeparatedText) {
 	EXPECT_FALSE(loader.hasNegativeData());
 }
 
+// Test objective: verifies DatasetLoaderTest.LoadsBinaryDoubleDataset.
 TEST(DatasetLoaderTest, LoadsBinaryDoubleDataset) {
 	const std::vector<double> values = {10.0, 4.0, 6.0};
 	const std::filesystem::path path = writeBinaryDatasetFile("dataset_loader_binary", values);
@@ -125,6 +129,7 @@ TEST(DatasetLoaderTest, LoadsBinaryDoubleDataset) {
 	EXPECT_FALSE(loader.hasNegativeData());
 }
 
+// Test objective: verifies DatasetLoaderTest.SingleObservationIsUsableWithZeroVariance.
 TEST(DatasetLoaderTest, SingleObservationIsUsableWithZeroVariance) {
 	const std::filesystem::path path = writeTextDatasetFile("dataset_loader_single", "7.5\n");
 	DatasetLoader loader;
@@ -142,6 +147,7 @@ TEST(DatasetLoaderTest, SingleObservationIsUsableWithZeroVariance) {
 	EXPECT_FALSE(loader.hasNegativeData());
 }
 
+// Test objective: verifies DatasetLoaderTest.RejectsInvalidOrEmptyTextAndKeepsEmptyState.
 TEST(DatasetLoaderTest, RejectsInvalidOrEmptyTextAndKeepsEmptyState) {
 	const std::filesystem::path invalidPath = writeTextDatasetFile("dataset_loader_invalid", "1.0,not-number\n");
 	const std::filesystem::path emptyPath = writeTextDatasetFile("dataset_loader_empty", "\n  \n# comment only\n");
@@ -161,6 +167,7 @@ TEST(DatasetLoaderTest, RejectsInvalidOrEmptyTextAndKeepsEmptyState) {
 	EXPECT_TRUE(loader.sortedData().empty());
 }
 
+// Test objective: verifies DatasetLoaderTest.RejectsMissingFile.
 TEST(DatasetLoaderTest, RejectsMissingFile) {
 	DatasetLoader loader;
 

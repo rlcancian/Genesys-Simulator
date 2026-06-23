@@ -1,15 +1,3 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/cppFiles/class.cc to edit this template
- */
-
-/*
- * File:   HypothesisTesterDefaultImpl.cpp
- * Author: rlcancian
- *
- * Created on 24 de novembro de 2021, 02:52
- */
-
 #include "HypothesisTesterDefaultImpl.h"
 #include "DatasetLoader.h"
 #include "SimulationResultsDataset.h"
@@ -37,16 +25,6 @@ double normalCdf(double z) {
 	return 0.5 * std::erfc(-z / std::sqrt(2.0));
 }
 
-double chi2CdfApproximation(double chi2, double degreesOfFreedom) {
-	// Wilson-Hilferty approximation
-	if (chi2 <= 0.0 || degreesOfFreedom <= 0.0) {
-		return 0.0;
-	}
-	const double k = degreesOfFreedom;
-	const double transformed = (std::cbrt(chi2 / k) - (1.0 - 2.0 / (9.0 * k))) / std::sqrt(2.0 / (9.0 * k));
-	return clampProbability(normalCdf(transformed));
-}
-
 double chi2CdfByIntegration(double chi2, double degreesOfFreedom) {
 	if (chi2 <= 0.0) {
 		return 0.0;
@@ -60,7 +38,8 @@ double chi2CdfByIntegration(double chi2, double degreesOfFreedom) {
 	if (std::fabs(degreesOfFreedom - 2.0) < 1e-12) {
 		return clampProbability(1.0 - std::exp(-chi2 / 2.0));
 	}
-	// Use numerical integration of the chi-square PDF to keep p-values coherent with chi-square quantiles.
+	// Numerical integration keeps chi-square p-values aligned with the same PDF
+	// family used by the quantile helper.
 	SolverDefaultImpl1 integrator(1e-6, 10000);
 	const double integral = integrator.integrate(0.0, chi2, ProbabilityDistributionBase::chi2, degreesOfFreedom);
 	return clampProbability(integral);
@@ -108,6 +87,9 @@ double kolmogorovSmirnovPValue(double d, unsigned int n) {
 	const double sqrtN = std::sqrt(static_cast<double>(n));
 	const double lambda = (sqrtN + 0.12 + 0.11 / sqrtN) * d;
 	double sum = 0.0;
+	// Classical one-sample asymptotic series. The implementation intentionally
+	// does not apply Lilliefors/bootstrap correction when parameters are fitted
+	// from the same sample; callers/documentation treat that p-value as diagnostic.
 	for (unsigned int k = 1; k <= 100; ++k) {
 		const double term = std::exp(-2.0 * static_cast<double>(k * k) * lambda * lambda);
 		sum += (k % 2 == 1) ? term : -term;
@@ -131,6 +113,8 @@ double pValueFromCdf(double cdf, HypothesisTester_if::H1Comparition comp) {
 DatasetLoader loadSampleData(const std::string& sampleDataFilename) {
 	SimulationResultsDataset dataset;
 	std::string parserError;
+	// Prefer the simulation-results parser so Record/GUI metadata formats are
+	// reduced to their observation values before falling back to raw numeric text.
 	if (SimulationResultsParser::loadFromTextFile(sampleDataFilename, &dataset, &parserError) && dataset.hasNumericData()) {
 		DatasetLoader loader;
 		if (loader.loadFromVector(dataset.values())) {
@@ -351,8 +335,6 @@ HypothesisTester_if::TestResult makeChiSquareResult(const std::vector<double>& o
 HypothesisTesterDefaultImpl::HypothesisTesterDefaultImpl() {
 }
 
-// confidence intervals
-
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::averageConfidenceInterval(double avg, double stddev, unsigned int n, double confidenceLevel) {
 	if (n < 2 || stddev < 0.0) {
 		throw std::invalid_argument("averageConfidenceInterval requires n >= 2 and stddev >= 0");
@@ -369,11 +351,10 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::proportionC
 		throw std::invalid_argument("proportionConfidenceInterval requires n >= 2 and 0 <= prop <= 1");
 	}
 	validateConfidenceLevel(confidenceLevel);
-	// Use the large-sample normal approximation for one-population proportion CI;
-	// keep the previous t-Student quantile expression commented for historical/technical traceability.
+	// Proportion intervals use the large-sample normal approximation adopted by
+	// the requirements for this analysis tool.
 	const double alpha = 1.0 - confidenceLevel;
 	const double critic = ProbabilityDistribution::inverseNormal(1.0 - alpha / 2.0, 0.0, 1.0);
-	// const double critic = -ProbabilityDistribution::inverseTStudent((1.0 - confidenceLevel) / 2.0, 0.0, 1.0, n - 1);
 	double e0 = critic * sqrt(prop * (1 - prop) / n);
 	return HypothesisTester_if::ConfidenceInterval(prop - e0, prop + e0, e0);
 }
@@ -383,11 +364,10 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::proportionC
 		throw std::invalid_argument("proportionConfidenceInterval(population) requires N > 1, 2 <= n <= N and 0 <= prop <= 1");
 	}
 	validateConfidenceLevel(confidenceLevel);
-	// Use the finite-population proportion CI with normal approximation + finite-population correction;
-	// keep the previous t-Student quantile expression commented for historical/technical traceability.
+	// Finite-population correction scales the same large-sample proportion
+	// interval when the sampled population size is known.
 	const double alpha = 1.0 - confidenceLevel;
 	const double critic = ProbabilityDistribution::inverseNormal(1.0 - alpha / 2.0, 0.0, 1.0);
-	// const double critic = -ProbabilityDistribution::inverseTStudent((1.0 - confidenceLevel) / 2.0, 0.0, 1.0, n - 1);
 	double e0 = critic * sqrt(prop * (1 - prop) / n) * sqrt((static_cast<double> (N) - n) / (static_cast<double> (N) - 1.0));
 	return HypothesisTester_if::ConfidenceInterval(prop - e0, prop + e0, e0);
 }
@@ -412,13 +392,13 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::averageDiff
 	double correctConf = (1.0 - confidenceLevel) / 2.0;
 	double e0;
 	HypothesisTester_if::ConfidenceInterval varIC = varianceRatioConfidenceInterval(pow(stddev1, 2), n1, pow(stddev2, 2), n2, confidenceLevel);
-	// @TODO: Equal-variance selection is currently indirect, based on whether the variance-ratio CI contains 1.0; revisit with an explicit pooled-vs-Welch policy.
-	if ((varIC.inferiorLimit() <= 1.0 && varIC.superiorLimit() >= 1.0) || (varIC.inferiorLimit() >= 1.0 && varIC.superiorLimit() <= 1.0)) { // test variances ratio
-		// equal variances
+	// Policy retained from the consolidated requirements: use pooled t when
+	// the variance-ratio interval is compatible with 1.0, otherwise use Welch.
+	if (varIC.inferiorLimit() <= 1.0 && varIC.superiorLimit() >= 1.0) {
 		const double pooledVariance = (((n1 - 1) * stddev1 * stddev1) + ((n2 - 1) * stddev2 * stddev2)) / (n1 + n2 - 2);
 		const double critic = -ProbabilityDistribution::inverseTStudent(correctConf, 0.0, 1.0, n1 + n2 - 2);
 		e0 = critic * sqrt(pooledVariance * (1.0 / n1 + 1.0 / n2));
-	} else { // different variances
+	} else {
 		const double varianceTerm = (stddev1 * stddev1) / n1 + (stddev2 * stddev2) / n2;
 		const double degreeFreedom = (varianceTerm * varianceTerm) /
 				((pow((stddev1 * stddev1) / n1, 2) / (n1 - 1)) + (pow((stddev2 * stddev2) / n2, 2) / (n2 - 1)));
@@ -464,8 +444,6 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::varianceRat
 }
 
 
-// confidence intervals based on datafile
-
 HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::averageConfidenceInterval(std::string sampleDataFilename, double confidenceLevel) {
 	const DatasetLoader data = loadSampleData(sampleDataFilename);
 	return averageConfidenceInterval(data.mean(), data.stddev(), static_cast<unsigned int>(data.count()), confidenceLevel);
@@ -490,8 +468,6 @@ HypothesisTester_if::ConfidenceInterval HypothesisTesterDefaultImpl::varianceCon
 	return varianceConfidenceInterval(data.variance(), static_cast<unsigned int>(data.count()), confidenceLevel);
 }
 
-// estimate sample size
-
 unsigned int HypothesisTesterDefaultImpl::estimateSampleSize(double avg, double stddev, double desiredE0, double confidenceLevel) {
 	(void) avg;
 	if (desiredE0 <= 0.0 || stddev < 0.0) {
@@ -504,9 +480,6 @@ unsigned int HypothesisTesterDefaultImpl::estimateSampleSize(double avg, double 
 	return static_cast<unsigned int> (std::ceil(std::max(n, 1.0)));
 }
 
-
-// parametric tests
-// one population
 
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(double avg, double stddev, unsigned int n, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	if (n < 2 || stddev <= 0.0) {
@@ -525,10 +498,9 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(double 
 		acceptSupLimit = ProbabilityDistribution::inverseTStudent(1.0 - significanceLevel, 0.0, 1.0, n - 1);
 	}
 	double testStat = (avgSample - avg) / (stddev / sqrt(n));
-	// Use Student-t CDF for p-value consistency with the t-based critical limits above.
+	// Use Student-t CDF for p-value consistency with the t-based acceptance
+	// limits above.
 	const double cdf = studentTCdf(testStat, n - 1);
-	// Historical reference: the previous implementation used a normal approximation for p-value.
-	// const double cdf = normalCdf(testStat); // normal approximation
 	double pvalue;
 	if (comp == HypothesisTester_if::H1Comparition::LESS_THAN) {
 		pvalue = cdf;
@@ -574,10 +546,9 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(double
 	const double significanceLevel = 1.0 - confidenceLevel;
 	const double dof = n - 1;
 	const double testStat = (dof * var) / vartest;
-	// Use integrated chi-square CDF for p-value coherence with inverseChi2-based acceptance limits.
+	// Use integrated chi-square CDF for p-value coherence with inverseChi2-based
+	// acceptance limits.
 	const double cdf = chi2CdfByIntegration(testStat, dof);
-	// Historical reference: Wilson-Hilferty approximation kept commented for technical traceability.
-	// const double cdf = chi2CdfApproximation(testStat, dof);
 	double pValue;
 	double acceptInfLim = -std::numeric_limits<double>::infinity();
 	double acceptSupLim = std::numeric_limits<double>::infinity();
@@ -594,8 +565,6 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(double
 	}
 	return HypothesisTester_if::TestResult(clampProbability(pValue), pValue < significanceLevel, acceptInfLim, acceptSupLim, testStat);
 }
-// two populations
-
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(double avg1, double stddev1, unsigned int n1, double avg2, double stddev2, unsigned int n2, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	if (n1 < 2 || n2 < 2 || stddev1 < 0.0 || stddev2 < 0.0) {
 		throw std::invalid_argument("testAverage(2pop) requires n1,n2 >= 2 and stddev1,stddev2 >= 0");
@@ -605,7 +574,8 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(double 
 	const double var1 = stddev1 * stddev1;
 	const double var2 = stddev2 * stddev2;
 	HypothesisTester_if::ConfidenceInterval varIC = varianceRatioConfidenceInterval(var1, n1, var2, n2, confidenceLevel);
-	// @TODO: Equal-variance selection is currently indirect, based on whether the variance-ratio CI contains 1.0; revisit with an explicit pooled-vs-Welch policy.
+	// Keep the same pooled-vs-Welch policy used by the corresponding confidence
+	// interval to avoid contradictory two-population mean decisions.
 	const bool equalVariances = (varIC.inferiorLimit() <= 1.0 && varIC.superiorLimit() >= 1.0);
 	const double diff = avg1 - avg2;
 	double testStat;
@@ -700,8 +670,6 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(double
 	}
 	return HypothesisTester_if::TestResult(pValue, pValue < alpha, acceptInfLim, acceptSupLim, testStat);
 }
-// one population based on datafile
-
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(std::string sampleDataFilename, double avgSample, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	const DatasetLoader data = loadSampleData(sampleDataFilename);
 	return testAverage(avgSample, data.stddev(), static_cast<unsigned int>(data.count()), data.mean(), confidenceLevel, comp);
@@ -718,8 +686,6 @@ HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testVariance(std::s
 	const DatasetLoader data = loadSampleData(sampleDataFilename);
 	return testVariance(data.variance(), static_cast<unsigned int>(data.count()), vartest, confidenceLevel, comp);
 }
-// two populations based on datafile
-
 HypothesisTester_if::TestResult HypothesisTesterDefaultImpl::testAverage(std::string firstSampleDataFilename, std::string secondSampleDataFilename, double confidenceLevel, HypothesisTester_if::H1Comparition comp) {
 	const DatasetLoader first = loadSampleData(firstSampleDataFilename);
 	const DatasetLoader second = loadSampleData(secondSampleDataFilename);

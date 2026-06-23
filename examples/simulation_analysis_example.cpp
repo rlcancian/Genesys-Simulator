@@ -15,19 +15,23 @@
 
 namespace {
 
+// Converts a hypothesis-test decision into readable output text.
 std::string decision(bool rejectH0) {
 	return rejectH0 ? "reject H0" : "do not reject H0";
 }
 
+// Evaluates the normal CDF used by the KS diagnostic in this example.
 double normalCdf(double mean, double stddev, double value) {
 	const double z = (value - mean) / (stddev * std::sqrt(2.0));
 	return 0.5 * (1.0 + std::erf(z));
 }
 
+// Prints a section title for the example output.
 void printSection(const std::string& title) {
 	std::cout << "\n== " << title << " ==\n";
 }
 
+// Prints the minimum descriptive summary needed to inspect the simulation output.
 void printSummary(const DataSetSummary& summary) {
 	std::cout << std::fixed << std::setprecision(4)
 	          << "  samples : " << summary.count << "\n"
@@ -36,16 +40,19 @@ void printSummary(const DataSetSummary& summary) {
 	          << "  stddev  : " << summary.stddev << "\n";
 }
 
+// Turns runtime checks into exceptions so main can report a single failure path.
 void ensure(bool condition, const std::string& message) {
 	if (!condition) {
 		throw std::runtime_error(message);
 	}
 }
 
+// Selects a temporary output file for the Record-generated simulation dataset.
 std::filesystem::path simulationOutputFile() {
 	return std::filesystem::temp_directory_path() / "genesys_dcs_simulation_analysis_record.txt";
 }
 
+// Builds and runs the GenESyS model that produces the Record dataset.
 void buildAndRunInspectionStationModel(const std::filesystem::path& outputFile) {
 	// Modeling objective:
 	// This model represents a lightweight inspection sampling process. Parts
@@ -96,6 +103,7 @@ void buildAndRunInspectionStationModel(const std::filesystem::path& outputFile) 
 	simulation->start();
 }
 
+// Parses the Record output into the analysis package's simulation dataset object.
 SimulationResultsDataset loadSimulationResults(const std::filesystem::path& outputFile) {
 	SimulationResultsDataset dataset;
 	std::string errorMessage;
@@ -105,6 +113,7 @@ SimulationResultsDataset loadSimulationResults(const std::filesystem::path& outp
 	return dataset;
 }
 
+// Runs descriptive, fitting and inference operations over simulation results.
 void analyseSimulationOutput(const SimulationResultsDataset& dataset) {
 	DataAnalyserDefaultImpl analyser;
 	ensure(analyser.loadDataSet(dataset.data()), "Could not load simulation output into DataAnalyser.");
@@ -165,13 +174,16 @@ void analyseSimulationOutput(const SimulationResultsDataset& dataset) {
 
 int main() {
 	try {
+		// Prepare a clean temporary Record file before running the simulation.
 		const std::filesystem::path outputFile = simulationOutputFile();
 		std::filesystem::remove(outputFile);
 
+		// Run the model, parse its output, and analyze the generated observations.
 		buildAndRunInspectionStationModel(outputFile);
 		const SimulationResultsDataset dataset = loadSimulationResults(outputFile);
 		analyseSimulationOutput(dataset);
 
+		// Remove the temporary dataset after a successful run.
 		std::filesystem::remove(outputFile);
 		std::cout << "\nSimulation analysis example: SUCCESS\n";
 		return 0;

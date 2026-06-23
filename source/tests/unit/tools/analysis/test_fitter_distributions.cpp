@@ -42,6 +42,7 @@ constexpr double kTol = 1e-9;
 
 // ============================= Uniform =============================
 
+// Test objective: verifies FitterTest.Uniform_ReturnsCorrectMinMax.
 TEST_F(FitterTest, Uniform_ReturnsCorrectMinMax) {
 	// For uniform MLE: min = sample min, max = sample max.
 	loadData("uniform", {1.0, 2.0, 3.0, 4.0, 5.0});
@@ -53,6 +54,7 @@ TEST_F(FitterTest, Uniform_ReturnsCorrectMinMax) {
 	EXPECT_DOUBLE_EQ(max, 5.0);
 }
 
+// Test objective: verifies FitterTest.Uniform_TwoPoints.
 TEST_F(FitterTest, Uniform_TwoPoints) {
 	loadData("uniform2", {0.0, 10.0});
 	double sqrerror, min, max;
@@ -62,6 +64,7 @@ TEST_F(FitterTest, Uniform_TwoPoints) {
 	EXPECT_DOUBLE_EQ(max, 10.0);
 }
 
+// Test objective: verifies FitterTest.Uniform_AllSame_Fails.
 TEST_F(FitterTest, Uniform_AllSame_Fails) {
 	loadData("uniform_same", {3.0, 3.0, 3.0});
 	double sqrerror = 0.0, min = 0.0, max = 0.0;
@@ -71,6 +74,7 @@ TEST_F(FitterTest, Uniform_AllSame_Fails) {
 	EXPECT_TRUE(std::isnan(max));
 }
 
+// Test objective: verifies FitterTest.Uniform_OnePoint_Fails.
 TEST_F(FitterTest, Uniform_OnePoint_Fails) {
 	loadData("uniform1", {5.0});
 	double sqrerror = 0.0, min = 0.0, max = 0.0;
@@ -80,6 +84,7 @@ TEST_F(FitterTest, Uniform_OnePoint_Fails) {
 
 // ============================= Triangular =============================
 
+// Test objective: verifies FitterTest.Triangular_ReturnsCorrectMode.
 TEST_F(FitterTest, Triangular_ReturnsCorrectMode) {
 	// E[X] = (min + mode + max) / 3  →  mode = 3*mean - min - max
 	// {1,2,3,4,5}: mean=3, min=1, max=5  →  mode = 9 - 1 - 5 = 3
@@ -93,6 +98,7 @@ TEST_F(FitterTest, Triangular_ReturnsCorrectMode) {
 	EXPECT_DOUBLE_EQ(max, 5.0);
 }
 
+// Test objective: verifies FitterTest.Triangular_AllSame_Fails.
 TEST_F(FitterTest, Triangular_AllSame_Fails) {
 	loadData("tri_same", {2.0, 2.0, 2.0});
 	double sqrerror = 0.0, min = 0.0, mo = 0.0, max = 0.0;
@@ -100,6 +106,7 @@ TEST_F(FitterTest, Triangular_AllSame_Fails) {
 	EXPECT_EQ(sqrerror, std::numeric_limits<double>::infinity());
 }
 
+// Test objective: verifies FitterTest.Triangular_OnePoint_Fails.
 TEST_F(FitterTest, Triangular_OnePoint_Fails) {
 	loadData("tri1", {4.0});
 	double sqrerror = 0.0, min = 0.0, mo = 0.0, max = 0.0;
@@ -109,6 +116,7 @@ TEST_F(FitterTest, Triangular_OnePoint_Fails) {
 
 // ============================= Normal =============================
 
+// Test objective: verifies FitterTest.Normal_ReturnsCorrectMeanAndStddev.
 TEST_F(FitterTest, Normal_ReturnsCorrectMeanAndStddev) {
 	// {3, 5, 7}: mean = 5, sample variance = 4, stddev = 2
 	loadData("normal", {3.0, 5.0, 7.0});
@@ -120,6 +128,7 @@ TEST_F(FitterTest, Normal_ReturnsCorrectMeanAndStddev) {
 	EXPECT_DOUBLE_EQ(stddev, 2.0);
 }
 
+// Test objective: verifies FitterTest.Normal_SseDecreasesWithMoreSymmetricData.
 TEST_F(FitterTest, Normal_SseDecreasesWithMoreSymmetricData) {
 	// More symmetric data should yield smaller SSE than skewed data.
 	loadData("normal_sym", {3.0, 4.0, 5.0, 6.0, 7.0});
@@ -133,6 +142,7 @@ TEST_F(FitterTest, Normal_SseDecreasesWithMoreSymmetricData) {
 	EXPECT_LT(sse_sym, sse_skew);
 }
 
+// Test objective: verifies FitterTest.Normal_AllSame_Fails.
 TEST_F(FitterTest, Normal_AllSame_Fails) {
 	loadData("normal_same", {4.0, 4.0, 4.0});
 	double sqrerror = 0.0, avg = 0.0, stddev = 0.0;
@@ -140,6 +150,7 @@ TEST_F(FitterTest, Normal_AllSame_Fails) {
 	EXPECT_EQ(sqrerror, std::numeric_limits<double>::infinity());
 }
 
+// Test objective: verifies FitterTest.Normal_OnePoint_Fails.
 TEST_F(FitterTest, Normal_OnePoint_Fails) {
 	loadData("normal1", {5.0});
 	double sqrerror = 0.0, avg = 0.0, stddev = 0.0;
@@ -149,6 +160,7 @@ TEST_F(FitterTest, Normal_OnePoint_Fails) {
 
 // ============================= Exponential =============================
 
+// Test objective: verifies FitterTest.Exponential_ReturnsSampleMeanAsParameter.
 TEST_F(FitterTest, Exponential_ReturnsSampleMeanAsParameter) {
 	// MLE for exponential: λ = 1/mean  →  mean output = sample mean
 	// {1,2,3,4,5}: mean=3
@@ -160,6 +172,7 @@ TEST_F(FitterTest, Exponential_ReturnsSampleMeanAsParameter) {
 	EXPECT_DOUBLE_EQ(avg1, 3.0);
 }
 
+// Test objective: verifies FitterTest.Exponential_SseIsSmallForMonotonicData.
 TEST_F(FitterTest, Exponential_SseIsSmallForMonotonicData) {
 	// Exponential CDF should fit strictly increasing data with positive mean well.
 	loadData("expo_mono", {0.5, 1.0, 2.0, 3.0, 5.0, 8.0});
@@ -168,6 +181,7 @@ TEST_F(FitterTest, Exponential_SseIsSmallForMonotonicData) {
 	EXPECT_TRUE(std::isfinite(sqrerror));
 }
 
+// Test objective: verifies FitterTest.Exponential_NegativeData_Fails.
 TEST_F(FitterTest, Exponential_NegativeData_Fails) {
 	loadData("expo_neg", {-1.0, 1.0, 2.0, 3.0});
 	double sqrerror = 0.0, avg1 = 0.0;
@@ -175,6 +189,7 @@ TEST_F(FitterTest, Exponential_NegativeData_Fails) {
 	EXPECT_EQ(sqrerror, std::numeric_limits<double>::infinity());
 }
 
+// Test objective: verifies FitterTest.Exponential_NonPositiveMean_Fails.
 TEST_F(FitterTest, Exponential_NonPositiveMean_Fails) {
 	// Mean = 0 when positives and negatives cancel out.
 	loadData("expo_zero", {-2.0, 0.0, 2.0});
@@ -185,6 +200,7 @@ TEST_F(FitterTest, Exponential_NonPositiveMean_Fails) {
 
 // ============================= Erlang =============================
 
+// Test objective: verifies FitterTest.Erlang_ReturnsCorrectPhaseCount.
 TEST_F(FitterTest, Erlang_ReturnsCorrectPhaseCount) {
 	// MOM: m = round(mean² / variance)
 	// {0,2,4,6,8}: mean=4, var=10  →  m = round(16/10) = 2
@@ -197,6 +213,7 @@ TEST_F(FitterTest, Erlang_ReturnsCorrectPhaseCount) {
 	EXPECT_DOUBLE_EQ(m, 2.0);
 }
 
+// Test objective: verifies FitterTest.Erlang_HighVarianceGivesPhaseOne.
 TEST_F(FitterTest, Erlang_HighVarianceGivesPhaseOne) {
 	// {0,4,8}: mean=4, var=16  →  m = round(16/16) = 1 (reduces to exponential)
 	loadData("erlang_m1", {0.0, 4.0, 8.0});
@@ -207,6 +224,7 @@ TEST_F(FitterTest, Erlang_HighVarianceGivesPhaseOne) {
 	EXPECT_DOUBLE_EQ(m, 1.0);
 }
 
+// Test objective: verifies FitterTest.Erlang_LowVarianceGivesHighPhaseCount.
 TEST_F(FitterTest, Erlang_LowVarianceGivesHighPhaseCount) {
 	// {3.5, 4.0, 4.5}: mean=4, var=0.25  →  m = round(16/0.25) = 64
 	loadData("erlang_high_m", {3.5, 4.0, 4.5});
@@ -217,6 +235,7 @@ TEST_F(FitterTest, Erlang_LowVarianceGivesHighPhaseCount) {
 	EXPECT_GT(m, 10.0);
 }
 
+// Test objective: verifies FitterTest.Erlang_NegativeData_Fails.
 TEST_F(FitterTest, Erlang_NegativeData_Fails) {
 	loadData("erlang_neg", {-1.0, 1.0, 2.0, 3.0});
 	double sqrerror = 0.0, avg = 0.0, m = 0.0;
@@ -224,6 +243,7 @@ TEST_F(FitterTest, Erlang_NegativeData_Fails) {
 	EXPECT_EQ(sqrerror, std::numeric_limits<double>::infinity());
 }
 
+// Test objective: verifies FitterTest.Erlang_ZeroVariance_Fails.
 TEST_F(FitterTest, Erlang_ZeroVariance_Fails) {
 	loadData("erlang_same", {3.0, 3.0, 3.0});
 	double sqrerror = 0.0, avg = 0.0, m = 0.0;
@@ -233,6 +253,7 @@ TEST_F(FitterTest, Erlang_ZeroVariance_Fails) {
 
 // ============================= Beta =============================
 
+// Test objective: verifies FitterTest.Beta_ReturnsPositiveShapeParameters.
 TEST_F(FitterTest, Beta_ReturnsPositiveShapeParameters) {
 	// Well-spread data on [0,3]: alpha > 0, beta > 0, infLimit=0, supLimit=3
 	loadData("beta", {0.0, 0.5, 1.0, 1.5, 2.0, 2.5, 3.0});
@@ -246,6 +267,7 @@ TEST_F(FitterTest, Beta_ReturnsPositiveShapeParameters) {
 	EXPECT_DOUBLE_EQ(supLimit, 3.0);
 }
 
+// Test objective: verifies FitterTest.Beta_SymmetricData_GivesEqualAlphaBeta.
 TEST_F(FitterTest, Beta_SymmetricData_GivesEqualAlphaBeta) {
 	// Symmetric data around the midpoint: alpha ≈ beta
 	loadData("beta_sym", {0.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0});
@@ -255,6 +277,7 @@ TEST_F(FitterTest, Beta_SymmetricData_GivesEqualAlphaBeta) {
 	EXPECT_NEAR(alpha, beta, 1e-9);
 }
 
+// Test objective: verifies FitterTest.Beta_AllSame_Fails.
 TEST_F(FitterTest, Beta_AllSame_Fails) {
 	loadData("beta_same", {2.0, 2.0, 2.0});
 	double sqrerror = 0.0, alpha = 0.0, beta = 0.0, inf = 0.0, sup = 0.0;
@@ -262,6 +285,7 @@ TEST_F(FitterTest, Beta_AllSame_Fails) {
 	EXPECT_EQ(sqrerror, std::numeric_limits<double>::infinity());
 }
 
+// Test objective: verifies FitterTest.Beta_OnePoint_Fails.
 TEST_F(FitterTest, Beta_OnePoint_Fails) {
 	loadData("beta1", {1.5});
 	double sqrerror = 0.0, alpha = 0.0, beta = 0.0, inf = 0.0, sup = 0.0;
@@ -271,6 +295,7 @@ TEST_F(FitterTest, Beta_OnePoint_Fails) {
 
 // ============================= Weibull =============================
 
+// Test objective: verifies FitterTest.Weibull_ReturnsPositiveParameters.
 TEST_F(FitterTest, Weibull_ReturnsPositiveParameters) {
 	loadData("weibull", {1.0, 2.0, 3.0, 4.0, 5.0});
 	double sqrerror, alpha, scale;
@@ -281,6 +306,7 @@ TEST_F(FitterTest, Weibull_ReturnsPositiveParameters) {
 	EXPECT_GT(scale, 0.0);
 }
 
+// Test objective: verifies FitterTest.Weibull_ExponentialLikeData_ShapeNearOne.
 TEST_F(FitterTest, Weibull_ExponentialLikeData_ShapeNearOne) {
 	// {0,1,2}: mean=1, sample var=1  →  CV=1  →  shape≈1 (Weibull → Exponential)
 	// For Weibull: CV² = Γ(1+2/k)/Γ(1+1/k)² - 1. CV=1 ⟺ k=1 exactly.
@@ -292,6 +318,7 @@ TEST_F(FitterTest, Weibull_ExponentialLikeData_ShapeNearOne) {
 	EXPECT_NEAR(scale, 1.0, 1e-5);
 }
 
+// Test objective: verifies FitterTest.Weibull_NegativeData_Fails.
 TEST_F(FitterTest, Weibull_NegativeData_Fails) {
 	loadData("weibull_neg", {-1.0, 1.0, 2.0, 3.0});
 	double sqrerror = 0.0, alpha = 0.0, scale = 0.0;
@@ -299,6 +326,7 @@ TEST_F(FitterTest, Weibull_NegativeData_Fails) {
 	EXPECT_EQ(sqrerror, std::numeric_limits<double>::infinity());
 }
 
+// Test objective: verifies FitterTest.Weibull_ZeroVariance_Fails.
 TEST_F(FitterTest, Weibull_ZeroVariance_Fails) {
 	loadData("weibull_same", {3.0, 3.0, 3.0});
 	double sqrerror = 0.0, alpha = 0.0, scale = 0.0;
@@ -306,6 +334,7 @@ TEST_F(FitterTest, Weibull_ZeroVariance_Fails) {
 	EXPECT_EQ(sqrerror, std::numeric_limits<double>::infinity());
 }
 
+// Test objective: verifies FitterTest.Weibull_OnePoint_Fails.
 TEST_F(FitterTest, Weibull_OnePoint_Fails) {
 	loadData("weibull1", {5.0});
 	double sqrerror = 0.0, alpha = 0.0, scale = 0.0;
@@ -315,6 +344,7 @@ TEST_F(FitterTest, Weibull_OnePoint_Fails) {
 
 // ============================= fitAll =============================
 
+// Test objective: verifies FitterTest.FitAll_NoDataLoaded_ReturnsInvalidDataset.
 TEST_F(FitterTest, FitAll_NoDataLoaded_ReturnsInvalidDataset) {
 	double sqrerror = 0.0;
 	std::string name;
@@ -329,6 +359,7 @@ TEST_F(FitterTest, FitAll_NoDataLoaded_ReturnsInvalidDataset) {
 	EXPECT_EQ(summary.bestFit.squaredError, std::numeric_limits<double>::infinity());
 }
 
+// Test objective: verifies FitterTest.FitAll_ValidData_ReturnsKnownNameAndFiniteSse.
 TEST_F(FitterTest, FitAll_ValidData_ReturnsKnownNameAndFiniteSse) {
 	loadData("fitall", {1.0, 2.0, 3.0, 4.0, 5.0});
 	double sqrerror = std::numeric_limits<double>::infinity();
@@ -343,6 +374,7 @@ TEST_F(FitterTest, FitAll_ValidData_ReturnsKnownNameAndFiniteSse) {
 		<< "fitAll returned unexpected name: " << name;
 }
 
+// Test objective: verifies FitterTest.FitAll_SelectedSseIsMinimumAcrossAllFits.
 TEST_F(FitterTest, FitAll_SelectedSseIsMinimumAcrossAllFits) {
 	// The SSE returned by fitAll must be ≤ the SSE of every individual fit.
 	loadData("fitall_cmp", {1.0, 2.0, 3.0, 4.0, 5.0});
@@ -366,6 +398,7 @@ TEST_F(FitterTest, FitAll_SelectedSseIsMinimumAcrossAllFits) {
 	fitter.fitWeibull(&sse, &p1, &p2);         checkFit(sse);
 }
 
+// Test objective: verifies FitterTest.FitAllSummary_ReturnsCompleteOrderedRankingAndBestFit.
 TEST_F(FitterTest, FitAllSummary_ReturnsCompleteOrderedRankingAndBestFit) {
 	loadData("fitall_summary", {1.0, 2.0, 3.0, 4.0, 5.0});
 
@@ -401,6 +434,7 @@ TEST_F(FitterTest, FitAllSummary_ReturnsCompleteOrderedRankingAndBestFit) {
 	}
 }
 
+// Test objective: verifies FitterTest.FitAllLegacyOutputMatchesStructuredBestFit.
 TEST_F(FitterTest, FitAllLegacyOutputMatchesStructuredBestFit) {
 	loadData("fitall_legacy_summary", {1.0, 2.0, 3.0, 4.0, 5.0});
 
@@ -416,6 +450,7 @@ TEST_F(FitterTest, FitAllLegacyOutputMatchesStructuredBestFit) {
 
 // ============================= isNormalDistributed =============================
 
+// Test objective: verifies FitterTest.IsNormalDistributed_SymmetricBellData_ReturnsTrue.
 TEST_F(FitterTest, IsNormalDistributed_SymmetricBellData_ReturnsTrue) {
 	// 8 near-normal points: mean=5, symmetric distribution
 	loadData("normal_check",
@@ -423,11 +458,13 @@ TEST_F(FitterTest, IsNormalDistributed_SymmetricBellData_ReturnsTrue) {
 	EXPECT_TRUE(fitter.isNormalDistributed(0.95));
 }
 
+// Test objective: verifies FitterTest.IsNormalDistributed_FewerThanEightPoints_ReturnsFalse.
 TEST_F(FitterTest, IsNormalDistributed_FewerThanEightPoints_ReturnsFalse) {
 	loadData("normal_few", {3.0, 4.0, 5.0, 6.0, 7.0});
 	EXPECT_FALSE(fitter.isNormalDistributed(0.95));
 }
 
+// Test objective: verifies FitterTest.IsNormalDistributed_HighlySkewedData_ReturnsFalse.
 TEST_F(FitterTest, IsNormalDistributed_HighlySkewedData_ReturnsFalse) {
 	// One extreme outlier makes the data clearly non-normal.
 	loadData("normal_skew",
@@ -437,6 +474,7 @@ TEST_F(FitterTest, IsNormalDistributed_HighlySkewedData_ReturnsFalse) {
 
 // ============================= Null pointer outputs =============================
 
+// Test objective: verifies FitterTest.NullOutputPointers_DoNotCrash.
 TEST_F(FitterTest, NullOutputPointers_DoNotCrash) {
 	loadData("null", {1.0, 2.0, 3.0, 4.0, 5.0});
 	EXPECT_NO_FATAL_FAILURE(fitter.fitUniform(nullptr, nullptr, nullptr));

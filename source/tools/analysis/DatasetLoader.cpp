@@ -242,6 +242,8 @@ void DatasetLoader::_computeStatistics() {
 	double mean = 0.0;
 	double m2 = 0.0;
 	std::size_t seen = 0;
+	// Welford's one-pass algorithm keeps variance stable without requiring
+	// a second traversal over large datasets.
 	for (double value : _data) {
 		_min = std::min(_min, value);
 		_max = std::max(_max, value);
