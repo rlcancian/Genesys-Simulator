@@ -111,7 +111,9 @@ The public headers expose only mathematical APIs. Numerical integration and quan
 
 Automated tests for this tool are documented in `source/tests/README.md`.
 
-| Test level | Location | Command | Latest recorded result |
+The tests are CMake/CTest targets and can be built or executed from QtCreator. The commands below are Makefile shortcuts for focused terminal runs.
+
+| Test level | Location | Makefile shortcut | Latest recorded result |
 | --- | --- | --- | --- |
 | Unit | `source/tests/unit/tools/analysis` | `make run-unit-tests PACKAGE=tools` | 95/95 passed on 2026-06-22 |
 | Integration | `source/tests/integration/tools/analysis` | `make run-integration-tests PACKAGE=tools` | 2/2 passed on 2026-06-22 |
@@ -154,7 +156,7 @@ int main() {
 }
 ```
 
-A complete runnable example is available in `examples/analysis_tools_example.cpp` and can be executed from the repository root with:
+A complete runnable example is available in `examples/analysis_tools_example.cpp`. It can be built from the CMake examples target or from QtCreator. When using the repository Makefile, run it from the repository root with:
 
 ```sh
 make run-examples

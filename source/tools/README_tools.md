@@ -38,7 +38,13 @@ The analysis package is documented in `source/tools/analysis/README.md`. In shor
 
 ## Tests
 
-The data-analysis package has dedicated unit and integration tests documented in `source/tests/README.md`
+The data-analysis package has dedicated unit and integration tests documented in `source/tests/README.md`. These tests are CMake/CTest targets and can be executed from QtCreator. When using the repository Makefile, the focused shortcuts are:
+
+| Test level | Makefile shortcut |
+| --- | --- |
+| Unit tests | `make run-unit-tests PACKAGE=tools` |
+| Integration tests | `make run-integration-tests PACKAGE=tools` |
+| Runnable example/regression checks | `make run-examples` |
 
 ## Dependency Rule
 
