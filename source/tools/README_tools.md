@@ -36,6 +36,10 @@ The analysis package is documented in `source/tools/analysis/README.md`. In shor
 
 `DataAnalyserDefaultImpl` is the facade intended for examples and direct use. A default-constructed analyser creates the default fitter and tester from `TraitsAnalysis`.
 
+## Tests
+
+The data-analysis package has dedicated unit and integration tests documented in `source/tests/README.md`
+
 ## Dependency Rule
 
 `source/tools/analysis` must remain independent from `source/kernel`. If GUI, kernel tests or other modules need analysis functionality, those consumers should depend on `genesys_tools_analysis`; analysis code should not include kernel headers or use kernel statistics collectors.

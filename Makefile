@@ -17,6 +17,8 @@ JOBS := $(shell nproc)
 PACKAGE ?=
 UNIT_TEST_TARGET := $(if $(PACKAGE),genesys_$(PACKAGE)_unit_tests,genesys_kernel_unit_tests)
 UNIT_TEST_CTEST_FILTER := $(if $(PACKAGE),-R "^$(PACKAGE)\.",)
+INTEGRATION_TEST_TARGET := $(if $(PACKAGE),genesys_$(PACKAGE)_integration_tests,genesys_integration_tests)
+INTEGRATION_TEST_CTEST_FILTER := $(if $(PACKAGE),-R "^integration\.$(PACKAGE)\.",-L integration)
 
 # Binários
 GUI_BINARY := $(GUI_BUILD_DIR)/source/applications/gui/qt/GenesysQtGUI/genesys_qt_gui_application
@@ -35,6 +37,7 @@ EXAMPLES_CMAKE_CACHE := $(EXAMPLES_BUILD_DIR)/CMakeCache.txt
 	gui run-gui gui-clean gui-reconfigure \
 	terminal run-terminal terminal-clean terminal-reconfigure \
 	unit-tests unit-tests-configure run-unit-tests test tests unit-tests-clean unit-tests-reconfigure \
+	integration-tests integration-tests-configure run-integration-tests integration-tests-clean integration-tests-reconfigure \
 	examples run-examples examples-clean \
 	clean
 
@@ -121,6 +124,31 @@ unit-tests-reconfigure:
 
 
 # ==========================================================
+# INTEGRATION TESTS
+# ==========================================================
+
+# Configura testes de integração no mesmo preset de testes.
+integration-tests-configure: unit-tests-configure
+
+# Build incremental da bateria de testes de integração.
+# Use PACKAGE=tools para restringir ao pacote de tools.
+integration-tests: integration-tests-configure
+	cmake --build $(UNIT_TEST_BUILD_DIR) \
+		--target $(INTEGRATION_TEST_TARGET) \
+		-j$(JOBS)
+
+# Compila e executa os testes de integração.
+# Use PACKAGE=tools para restringir ao pacote de tools.
+run-integration-tests: integration-tests
+	ctest --preset tests-kernel-unit $(INTEGRATION_TEST_CTEST_FILTER) --output-on-failure
+
+# Força reconfiguração dos testes de integração
+integration-tests-reconfigure:
+	rm -rf $(UNIT_TEST_BUILD_DIR)
+	$(MAKE) integration-tests
+
+
+# ==========================================================
 # EXAMPLES
 # ==========================================================
 
@@ -151,5 +179,7 @@ terminal-clean:
 
 unit-tests-clean:
 	rm -rf $(UNIT_TEST_BUILD_DIR)
+
+integration-tests-clean: unit-tests-clean
 
 clean: gui-clean terminal-clean unit-tests-clean examples-clean
