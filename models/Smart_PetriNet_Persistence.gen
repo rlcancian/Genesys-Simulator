@@ -12,6 +12,6 @@
 # Model Components
 102 Create     "Create_1" entityType="entitytype" nextId=110 
 107 Dispose    "Dispose_1" nexts=0 
-110 ModalModelPetriNet "Rede_Persistencia" t_0_inCount=1 transitionName[0]="T_Mover_Tokens" t_0_inPlace_0=111 node[1].nexts=0 node[0].petriTokens[0]=5 transitionSource[0]="Entrada_Persistida" nextId=107 node[0].name="Entrada_Persistida" node[1].name="Saida_Persistida" nodesSize=2 entryNode="Entrada_Persistida" node[0].id=111 t_0_outWgt_0_0=1 t_0_inColorCount_0=1 t_0_outCol_0_0="dark_cyan" t_0_outColorCount_0=1 t_0_inCol_0_0="cyan" node[0].nexts=0 node[1].typename="PetriPlace" t_0_outCount=1 node[0].petriColors=1 node[0].petriColor[0]="cyan" node[0].initialNode=1 node[1].id=112 transitionDestination[0]="Saida_Persistida" transitionsSize=1 node[0].typename="PetriPlace" t_0_inWgt_0_0=1 t_0_outPlace_0=112 
-111 PetriPlace "Entrada_Persistida" petriTokens[0]=5 petriColor[0]="cyan" petriColors=1 initialNode=1 nexts=0 
-112 PetriPlace "Saida_Persistida" nexts=0 
+110 ModalModelPetriNet "Persistence_Network" t_0_inCount=1 transitionName[0]="T_Move_Tokens" t_0_inPlace_0=111 node[1].nexts=0 node[0].petriTokens[0]=5 transitionSource[0]="Persisted_Input" nextId=107 node[0].name="Persisted_Input" node[1].name="Persisted_Output" nodesSize=2 entryNode="Persisted_Input" node[0].id=111 t_0_outWgt_0_0=1 t_0_inColorCount_0=1 t_0_outCol_0_0="dark_cyan" t_0_outColorCount_0=1 t_0_inCol_0_0="cyan" node[0].nexts=0 node[1].typename="PetriPlace" t_0_outCount=1 node[0].petriColors=1 node[0].petriColor[0]="cyan" node[0].initialNode=1 node[1].id=112 transitionDestination[0]="Persisted_Output" transitionsSize=1 node[0].typename="PetriPlace" t_0_inWgt_0_0=1 t_0_outPlace_0=112 
+111 PetriPlace "Persisted_Input" petriTokens[0]=5 petriColor[0]="cyan" petriColors=1 initialNode=1 nexts=0 
+112 PetriPlace "Persisted_Output" nexts=0 
