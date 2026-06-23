@@ -201,7 +201,8 @@ Assim, se um módulo do kernel, GUI ou aplicação precisar de análise estatís
 - Testes chi-square e Kolmogorov-Smirnov.
 - Testes unitários dedicados de `tools/analysis`.
 - Testes de integração dedicados de `tools/analysis`.
-- Exemplo executável em `examples/analysis_tools_example.cpp`.
+- Exemplo executável analítico em `examples/analysis_tools_example.cpp`.
+- Exemplo executável de simulação e análise em `examples/simulation_analysis_example.cpp`.
 - Datasets de exemplo.
 - READMEs e diagramas da ferramenta.
 
@@ -412,6 +413,8 @@ Também foi adicionado:
 - opção `GENESYS_BUILD_EXAMPLES`;
 - preset `examples`;
 - executável `genesys_examples_analysis_tools`;
+- executável `genesys_examples_simulation_analysis`;
+- alvo agregador `genesys_examples`;
 - alvo `genesys_tools_unit_tests`;
 - alvo `genesys_tools_integration_tests`.
 
@@ -436,12 +439,12 @@ Principais alvos:
 | `run-integration-tests` | Executa testes de integração. |
 | `run-integration-tests PACKAGE=tools` | Executa somente testes de integração da ferramenta de análise. |
 | `examples` | Compila exemplos. |
-| `run-examples` | Executa o exemplo de análise. |
+| `run-examples` | Executa os exemplos de análise. |
 | `clean` | Remove builds gerados pelos alvos do Makefile. |
 
-# 10. Exemplo Executável
+# 10. Exemplos Executáveis
 
-O exemplo principal está em:
+## 10.1 Exemplo analítico
 
 ```text
 examples/analysis_tools_example.cpp
@@ -479,6 +482,34 @@ Resultado registrado:
 Date: 2026-06-22
 Makefile shortcut: make run-examples
 Result: Regression result: ALL CHECKS PASSED
+```
+
+## 10.2 Exemplo com modelagem, simulação e análise
+
+Também foi adicionado:
+
+```text
+examples/simulation_analysis_example.cpp
+```
+
+Esse exemplo demonstra o uso da ferramenta de análise a partir de um resultado gerado pelo próprio GenESyS. O modelo representa um processo leve de amostragem de inspeção:
+
+- entidades do tipo `Part` são criadas por um componente `Create`;
+- cada chegada passa por um componente `Record`;
+- o `Record` grava uma medição simulada de inspeção em arquivo de resultado do GenESyS;
+- a entidade é enviada para `Dispose`;
+- o arquivo produzido é lido por `SimulationResultsParser`;
+- os valores observados são carregados em memória em `DataAnalyserDefaultImpl`;
+- a fachada calcula resumo descritivo, fitting, IC da média, teste da média e diagnóstico KS.
+
+O objetivo do exemplo é comprovar que a ferramenta de análise pode ser usada tanto com datasets externos quanto com saídas produzidas por um modelo de simulação. A dependência com o kernel e os plugins aparece apenas no executável de exemplo, isto é, como consumidor da ferramenta. O pacote `tools/analysis` continua independente de `source/kernel`.
+
+Resultado registrado:
+
+```text
+Date: 2026-06-22
+Makefile shortcut: make run-examples
+Result: Simulation analysis example: SUCCESS
 ```
 
 # 11. Testes

@@ -30,7 +30,8 @@ TERMINAL_CMAKE_CACHE := $(TERMINAL_BUILD_DIR)/CMakeCache.txt
 UNIT_TEST_CMAKE_CACHE := $(UNIT_TEST_BUILD_DIR)/CMakeCache.txt
 
 EXAMPLES_BUILD_DIR := build/examples
-EXAMPLES_BINARY := $(EXAMPLES_BUILD_DIR)/examples/genesys_examples_analysis_tools
+EXAMPLES_ANALYSIS_BINARY := $(EXAMPLES_BUILD_DIR)/examples/genesys_examples_analysis_tools
+EXAMPLES_SIMULATION_ANALYSIS_BINARY := $(EXAMPLES_BUILD_DIR)/examples/genesys_examples_simulation_analysis
 EXAMPLES_CMAKE_CACHE := $(EXAMPLES_BUILD_DIR)/CMakeCache.txt
 
 .PHONY: \
@@ -158,10 +159,10 @@ $(EXAMPLES_CMAKE_CACHE):
 examples: $(EXAMPLES_CMAKE_CACHE)
 	cmake --build --preset examples -j$(JOBS)
 
-# Compila e executa o exemplo de ferramentas de análise.
-# Passa o caminho do arquivo de dados a partir da raiz do projeto.
+# Compila e executa os exemplos de ferramentas de análise.
 run-examples: examples
-	$(EXAMPLES_BINARY)
+	$(EXAMPLES_ANALYSIS_BINARY)
+	$(EXAMPLES_SIMULATION_ANALYSIS_BINARY)
 
 examples-clean:
 	rm -rf $(EXAMPLES_BUILD_DIR)

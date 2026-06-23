@@ -44,7 +44,9 @@ The data-analysis package has dedicated unit and integration tests documented in
 | --- | --- |
 | Unit tests | `make run-unit-tests PACKAGE=tools` |
 | Integration tests | `make run-integration-tests PACKAGE=tools` |
-| Runnable example/regression checks | `make run-examples` |
+| Runnable examples/regression checks | `make run-examples` |
+
+The examples include a standalone analysis workflow over CSV files and a small GenESyS simulation workflow that writes a `Record` dataset and analyzes that simulation output through `DataAnalyserDefaultImpl`.
 
 ## Dependency Rule
 

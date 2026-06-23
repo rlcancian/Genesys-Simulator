@@ -54,7 +54,7 @@ Result: 2/2 tests passed
 
 ## Example Regression Checks
 
-The analysis example is a runnable integration-style demonstration and includes deterministic regression checks over the bundled datasets. It can be built from CMake/QtCreator through the examples target. When using the repository Makefile, run it with:
+The examples are runnable integration-style demonstrations. `analysis_tools_example.cpp` includes deterministic regression checks over the bundled datasets, while `simulation_analysis_example.cpp` builds a small GenESyS model, writes a `Record` result file and analyzes that simulation output with the analysis facade. They can be built from CMake/QtCreator through the examples target. When using the repository Makefile, run them with:
 
 ```sh
 make run-examples
@@ -66,4 +66,5 @@ Latest recorded result:
 Date: 2026-06-22
 Makefile shortcut: make run-examples
 Result: Regression result: ALL CHECKS PASSED
+Result: Simulation analysis example: SUCCESS
 ```
