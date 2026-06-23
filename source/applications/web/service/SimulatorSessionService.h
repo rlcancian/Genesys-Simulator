@@ -7,6 +7,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <vector>
 
 /**
  * @brief Encapsulates session-scoped simulator operations exposed by the Web API.
@@ -199,6 +200,7 @@ public:
         double warmUpPeriod = 0.0;
         bool hasIsPaused = false;
         bool isPaused = false;
+        std::vector<WorkerJobCollectorStat> collectors;
     };
 
     /**

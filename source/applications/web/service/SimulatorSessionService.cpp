@@ -781,5 +781,6 @@ SimulatorSessionService::WorkerJobResultInfo SimulatorSessionService::_toWorkerJ
     result.warmUpPeriod = job.terminalResult.warmUpPeriod;
     result.hasIsPaused = job.terminalResult.isPaused.has_value();
     result.isPaused = job.terminalResult.isPaused.value_or(false);
+    result.collectors = job.terminalResult.collectors;
     return result;
 }

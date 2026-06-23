@@ -3,8 +3,19 @@
 #include <algorithm>
 #include <cctype>
 #include <cstdlib>
+#include <iomanip>
 #include <regex>
+#include <sstream>
 #include <string_view>
+
+namespace {
+/// Serializes a double with full round-trip precision so transported statistics stay exact.
+std::string fullPrecisionDouble(double value) {
+    std::ostringstream stream;
+    stream << std::setprecision(17) << value;
+    return stream.str();
+}
+} // namespace
 
 /**
  * @brief Dispatches HTTP routes for the Genesys web API.
@@ -748,6 +759,35 @@ std::string ApiRouter::_workerJobResultDataJson(const SimulatorSessionService::W
     if (result.hasIsPaused) {
         json += ",\"isPaused\":" + std::string(result.isPaused ? "true" : "false");
     }
+
+    // Cross-replication aggregates split by kind: full statistics for collectors and
+    // summed totals for counters. Doubles use full precision so a distributed orchestrator
+    // can merge partial results exactly.
+    std::string statisticsArray;
+    std::string countersArray;
+    for (const WorkerJobCollectorStat& collector : result.collectors) {
+        if (collector.kind == WorkerJobCollectorKind::Counter) {
+            const double total = collector.average * static_cast<double>(collector.numReplications);
+            if (!countersArray.empty()) {
+                countersArray += ",";
+            }
+            countersArray += "{\"name\":\"" + _escapeJson(collector.name) + "\","
+                             "\"total\":" + fullPrecisionDouble(total) + "}";
+        } else {
+            if (!statisticsArray.empty()) {
+                statisticsArray += ",";
+            }
+            statisticsArray += "{\"name\":\"" + _escapeJson(collector.name) + "\","
+                              "\"numReplications\":" + std::to_string(collector.numReplications) + ","
+                              "\"average\":" + fullPrecisionDouble(collector.average) + ","
+                              "\"variance\":" + fullPrecisionDouble(collector.variance) + ","
+                              "\"min\":" + fullPrecisionDouble(collector.min) + ","
+                              "\"max\":" + fullPrecisionDouble(collector.max) + ","
+                              "\"numObservations\":" + std::to_string(collector.numObservations) + "}";
+        }
+    }
+    json += ",\"statistics\":[" + statisticsArray + "]";
+    json += ",\"counters\":[" + countersArray + "]";
 
     json += "}";
     return json;
