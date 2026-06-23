@@ -315,8 +315,14 @@ if(TARGET genesys_distributed_core)
         genesys_distributed_core
     )
 
+    genesys_add_unit_test(genesys_test_distributed_discovery
+        test_distributed_discovery.cpp
+        genesys_distributed_core
+    )
+
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_json)
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_registry)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_discovery)
 endif()
 
 if(TARGET genesys_test_gui_render_strategy)

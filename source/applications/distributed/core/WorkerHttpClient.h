@@ -31,19 +31,22 @@ public:
     /** @param timeoutSeconds Connect and receive/send timeout applied to every request. */
     explicit WorkerHttpClient(int timeoutSeconds = 5);
 
+    // Virtual so tests can inject a fake client; the real implementation uses POSIX sockets.
+    virtual ~WorkerHttpClient() = default;
+
     /** @brief Performs a GET request, optionally authenticated with a Bearer token. */
-    HttpClientResponse get(const std::string& host,
-                           int port,
-                           const std::string& path,
-                           const std::string& bearerToken = "") const;
+    virtual HttpClientResponse get(const std::string& host,
+                                   int port,
+                                   const std::string& path,
+                                   const std::string& bearerToken = "") const;
 
     /** @brief Performs a POST request with an optional body and Bearer token. */
-    HttpClientResponse post(const std::string& host,
-                            int port,
-                            const std::string& path,
-                            const std::string& body,
-                            const std::string& contentType = "application/json",
-                            const std::string& bearerToken = "") const;
+    virtual HttpClientResponse post(const std::string& host,
+                                    int port,
+                                    const std::string& path,
+                                    const std::string& body,
+                                    const std::string& contentType = "application/json",
+                                    const std::string& bearerToken = "") const;
 
 private:
     HttpClientResponse _request(const std::string& method,
