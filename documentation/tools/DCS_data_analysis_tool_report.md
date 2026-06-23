@@ -271,6 +271,48 @@ Falhas de carregamento retornam `false` na fachada. Falhas matemáticas de uso i
 
 # 8. Algoritmos e Desempenho
 
+## 8.0 Matriz de Rastreabilidade por Caso de Uso
+
+Esta matriz enumera os algoritmos efetivamente usados na implementação. Ela
+separa algoritmos estatísticos dos procedimentos de apoio necessários para
+executá-los, como ordenação, integração numérica e busca de quantis.
+
+| Caso de uso | Métodos da ferramenta | Algoritmos, estatísticas e políticas empregados |
+| --- | --- | --- |
+| UC01 - Carregar dataset de arquivo | `loadDataSet(filename)`, `DatasetLoader::loadFromFile` | Parsing por `strtod`; validação de finitude com `std::isfinite`; texto delimitado/espaços e binário de `double`. Linhas de metadados iniciadas por `#`, como as de `Record`, são ignoradas. Não há inferência estatística nesta etapa. |
+| UC02 - Carregar dataset em memória | `loadDataSet(vector)`, `DatasetLoader::loadFromVector` | Varredura linear para validar valores finitos e cópia do vetor; em seguida executa a mesma pré-computação estatística do UC01. |
+| UC03 - Resumo estatístico | `summary()` | Média, variância amostral, desvio padrão, mínimo e máximo por algoritmo online de **Welford**; variância dividida por `n - 1`; flag de negativos por comparação com o mínimo. |
+| UC04 - Histograma numérico | `histogram(k)` | Classes de largura igual no intervalo `[min, max]`; contagem por índice aritmético; frequência relativa `f_i/n`. Com `k=0`, usa **regra de Sturges**: `ceil(1 + 3.322 log10(n))`. |
+| UC05 - Boxplot numérico | `boxplot()` | Quartis e mediana por interpolação linear na amostra ordenada, com posição `p(n-1)`; IQR `Q3-Q1`; cercas de **Tukey** `Q1-1.5IQR` e `Q3+1.5IQR`; whiskers são os valores extremos dentro das cercas. |
+| UC06 - Ajustar distribuições | `fitUniform`, `fitTriangular`, `fitNormal`, `fitExpo`, `fitErlang`, `fitBeta`, `fitWeibull` | Estimadores por estatísticas amostrais, método dos momentos e inversão numérica, detalhados na Seção 8.3. Todos os candidatos são avaliados pelo SSE EDF/CDF com posições de **Hazen**. |
+| UC07 - Ranking de ajustes | `fitAllSummary()` | Executa os sete ajustes, marca falhas, e usa `std::stable_sort` por sucesso e SSE crescente. O ranking não é um teste formal de aderência. |
+| UC08 - Intervalos de confiança | Métodos `*ConfidenceInterval` | IC t-Student para média; normal para proporções; correção de população finita; chi-square para variância; F para razão de variâncias; pooled t ou **Welch-Satterthwaite** para diferença de médias. |
+| UC09 - Testes paramétricos | Métodos `testAverage`, `testProportion`, `testVariance` | Estatísticas t, z, chi-square e F; p-valor uni/bilateral pela CDF correspondente; teste z de duas proporções usa proporção combinada; teste de médias escolhe pooled/Welch pela compatibilidade do IC da razão de variâncias com 1. |
+| UC10 - Testes de aderência | `chiSquareGoodnessOfFit`, `kolmogorovSmirnov` | Pearson chi-square com frequências esperadas por CDF, agrupamento sequencial de classes de baixa frequência esperada e `df=k-1-p`; KS de uma amostra com `D=max(D+,D-)` e série assintótica clássica para p-valor. |
+| UC11 - Inferência baseada em arquivo | Overloads de IC, testes e KS | Reaplica os algoritmos de UC08--UC10 após converter o arquivo em `DatasetLoader`; prioriza parser de resultados GenESyS para preservar apenas os valores observados. |
+| UC12 - Exemplos executáveis | `analysis_tools_example`, `simulation_analysis_example` | Demonstra os algoritmos anteriores. O exemplo de simulação usa chegadas exponenciais `expo(5)` e gera medições normais `norm(50,9.83)` em um `Record`, que são então analisadas pela ferramenta. |
+| UC13 - Sampler/experimenter | `sampler()`, `experimenter()` | Não implementado; não há algoritmo estatístico associado neste escopo. |
+| UC14 - Novo/salvar dataset | `newDataSet()`, `saveDataSet()` | Não implementado; são ganchos de ciclo de vida/persistência, sem algoritmo estatístico associado. |
+
+### Procedimentos numéricos transversais
+
+Vários casos de uso dependem de quantis e CDFs que não possuem uma rotina
+fechada única no pacote. A implementação usa os seguintes procedimentos:
+
+| Necessidade | Procedimento implementado | Uso |
+| --- | --- | --- |
+| Quantil normal | Aproximação racional de **Peter J. Acklam** | Quantis z de ICs/testes e normal inversa pública. |
+| CDF normal | Função erro complementar `erfc` | p-valores de testes z e CDF normal do fitting. |
+| CDF chi-square, t e F no `HypothesisTester` | Integração composta de **Simpson 1/3** por `SolverDefaultImpl1`, com precisão `1e-6` e até 10.000 passos; chi-square possui atalhos fechados para `df=1` e `df=2`. | p-valores de testes de variância, média e razão de variâncias, além de chi-square. |
+| CDF chi-square, t e F no módulo de quantis | Regra composta do **ponto médio**, com 8.192 subintervalos configurados em `TraitsAnalysis`. | CDFs usadas pela inversão de quantis. |
+| Quantis chi-square, t e F | Expansão de intervalo seguida de **bisseção**; tolerâncias e limites de iteração centralizados em `TraitsAnalysis`. | Limites críticos e ICs. |
+| Cache de quantis | `std::map` indexado pelos parâmetros e probabilidade. | Evita recalcular integrações/bisseções repetidas. |
+| Função gamma | `std::tgamma`; função beta por relação `B(a,b)=Gamma(a)Gamma(b)/Gamma(a+b)`. | PDFs de beta, gamma, t, chi-square, F e escala Weibull. |
+
+Os limites numéricos devem ser considerados ao interpretar resultados muito
+extremos de cauda. Os testes unitários com valores tabelados cobrem as regiões
+usuais de uso didático da ferramenta.
+
 ## 8.1 Carregamento e estatísticas
 
 `DatasetLoader` carrega dados de texto delimitado, texto separado por espaços e arquivo binário de `double`.
@@ -307,15 +349,22 @@ p_i = (i + 0.5) / n
 
 Distribuições consideradas:
 
-| Distribuição | Parametrização usada |
-| --- | --- |
-| Uniforme | mínimo e máximo da amostra |
-| Triangular | mínimo, máximo e moda estimada por `3 * média - min - max` com ajuste para ficar no intervalo |
-| Normal | média e desvio padrão amostral |
-| Exponencial | média amostral, rejeitando dados negativos |
-| Erlang | média e número de fases aproximado por `round(mean^2 / variance)` |
-| Beta escalada | método dos momentos sobre dados normalizados para `[min, max]` |
-| Weibull | forma por bisseção a partir do coeficiente de variação; escala pela função gamma |
+| Distribuição | Estimador/algoritmo implementado | Parâmetros produzidos |
+| --- | --- | --- |
+| Uniforme | Estimadores de extremos da amostra, equivalentes aos limites de suporte usados pelo MLE para uniforme contínua. | `a=min(x)`, `b=max(x)`. |
+| Triangular | Método dos momentos com extremos amostrais. | `a=min(x)`, `b=max(x)`, `modo=3*mean-a-b`; a moda é limitada ao interior de `[a,b]` para manter CDF válida. |
+| Normal | Estatísticas amostrais pré-computadas. | `mu=mean`, `sigma=stddev` com variância amostral de Welford. |
+| Exponencial | MLE para a parametrização por escala/média. | `mean=mean(x)`; dados negativos ou média não positiva invalidam o ajuste. |
+| Erlang | Método dos momentos. | `m=round(mean^2/variance)`, limitado a `m>=1`; `scale=mean/m`. A CDF usa a soma finita da Erlang inteira. |
+| Beta escalada | Método dos momentos após normalizar `y=(x-min)/(max-min)` e limitar `y` a `(epsilon,1-epsilon)`. | `alpha=m((m(1-m)/v)-1)`, `beta=(1-m)((m(1-m)/v)-1)`, mais limites `min/max` originais. |
+| Weibull | Casamento do coeficiente de variação com a expressão teórica, resolvido por bisseção. | Resolve `Gamma(1+2/k)/Gamma(1+1/k)^2 - 1 - CV^2 = 0` para a forma `k`; escala `lambda=mean/Gamma(1+1/k)`. |
+
+Para beta escalada, a CDF é obtida por integração numérica de Simpson 1/3 da
+PDF beta normalizada. Para Weibull, a CDF é fechada:
+
+```text
+F(x) = 1 - exp(-(x/lambda)^k), para x >= 0
+```
 
 `fitAllSummary()` executa todos os candidatos, descarta ajustes inválidos por `success=false`, ordena por SSE e retorna o melhor ajuste e o ranking completo.
 
@@ -347,6 +396,24 @@ Como o número de distribuições e iterações é limitado por constantes, o co
 | Teste de variância | Chi-square |
 | Testes de duas populações | t, normal ou F conforme parâmetro |
 
+As estatísticas e erros-padrão usados são os seguintes:
+
+| Operação | Estatística/intervalo implementado |
+| --- | --- |
+| IC/teste de uma média | `t=(xbar-mu0)/(s/sqrt(n))`; IC `xbar +- t_(1-alpha/2,n-1)s/sqrt(n)`. |
+| Planejamento amostral da média | `n=ceil((z_(1-alpha/2)s/e0)^2)`. |
+| IC/teste de uma proporção | Aproximação normal: `z=(phat-p0)/sqrt(p0(1-p0)/n)` e IC `phat +- z_(1-alpha/2)sqrt(phat(1-phat)/n)`. |
+| IC de proporção finita | Multiplica o erro-padrão por `sqrt((N-n)/(N-1))`. |
+| IC/teste de uma variância | `chi2=(n-1)s^2/sigma0^2`; IC pelos quantis chi-square de `n-1` graus de liberdade. |
+| Diferença de médias pooled | `t=(xbar1-xbar2)/sqrt(sp^2(1/n1+1/n2))`, com `sp^2=((n1-1)s1^2+(n2-1)s2^2)/(n1+n2-2)`. |
+| Diferença de médias Welch | `t=(xbar1-xbar2)/sqrt(s1^2/n1+s2^2/n2)`; graus de liberdade pela fórmula de Welch-Satterthwaite. |
+| Diferença de proporções | IC usa erros não combinados; teste usa proporção combinada `pbar=(x1+x2)/(n1+n2)`. |
+| Razão/teste de variâncias | `F=s1^2/s2^2`, com graus de liberdade `n1-1` e `n2-1`. |
+
+Nos testes paramétricos, hipóteses bilaterais usam
+`2*min(F_T(t), 1-F_T(t))` ou a CDF equivalente da estatística; hipóteses
+unilaterais usam a cauda compatível com `LESS_THAN` ou `GREATER_THAN`.
+
 Para diferença de médias, a política implementada é:
 
 - usar t pooled quando a razão de variâncias indicar compatibilidade com 1;
@@ -372,11 +439,37 @@ A partir de amostra crua:
 df = effectiveClasses - 1 - estimatedParameters
 ```
 
+A estatística de Pearson implementada é:
+
+```text
+X^2 = sum_i (O_i - E_i)^2 / E_i
+```
+
+Para dados crus, cada frequência esperada é calculada por
+`E_i=n*(F(b_i)-F(a_i))/P(a_0 <= X <= b_k)`. Essa normalização preserva a
+comparação mesmo quando os limites explícitos de classe não cobrem toda a
+cauda teórica. O agrupamento é sequencial: acumula classes adjacentes até
+atingir `minExpectedFrequency`; se a última classe ainda ficar abaixo do
+limiar, ela é fundida à anterior.
+
 Complexidade: O(n + k), onde `n` é o tamanho da amostra e `k` é o número de classes iniciais.
 
 ## 8.6 Kolmogorov-Smirnov
 
 O KS ordena a amostra e calcula a maior diferença entre a CDF empírica e a CDF teórica informada.
+
+Para cada observação ordenada `x_(i)`, a implementação calcula:
+
+```text
+D+ = max_i (i/n - F(x_(i)))
+D- = max_i (F(x_(i)) - (i-1)/n)
+D  = max(D+, D-)
+```
+
+O limite crítico usado é a aproximação assintótica
+`sqrt(-0.5*ln(alpha/2)/n)`. O p-valor usa a série alternada clássica com
+correção finita `lambda=(sqrt(n)+0.12+0.11/sqrt(n))*D`, truncada quando o
+termo fica menor que `1e-12` ou após 100 termos.
 
 Complexidade:
 
@@ -389,10 +482,30 @@ Observação importante: o p-value implementado é a aproximação clássica do 
 
 `ProbabilityDistributionBase` fornece densidades/massas para distribuições conhecidas. `ProbabilityDistribution` fornece inversas/quantis usados em ICs e testes.
 
+As funções de probabilidade implementadas usam as fórmulas fechadas usuais:
+
+| Família | Função implementada | Base matemática |
+| --- | --- | --- |
+| Beta | `beta` | PDF beta por funções gamma. |
+| Chi-square | `chi2` | PDF chi-square por potência, exponencial e gamma. |
+| Erlang/Gamma | `erlang`, `gamma` | PDFs gamma com forma e escala; Erlang é o caso de forma inteira. |
+| Exponencial | `exponential` | PDF exponencial parametrizada pela taxa usada pelo helper legado. |
+| Fisher-Snedecor | `fisherSnedecor` | PDF F por função beta. |
+| Normal/Lognormal | `normal`, `logNormal` | PDFs fechadas com exponencial quadrática. |
+| Poisson | `poisson` | PMF `mean^x exp(-mean)/x!`. |
+| Triangular/Uniforme | `triangular`, `uniform` | PDFs por partes. |
+| t-Student | `tStudent` | PDF por gamma e graus de liberdade. |
+| Weibull | `weibull` | PDF de forma/escala. |
+
+Essas funções são usadas tanto diretamente pelo exemplo quanto indiretamente
+pelas integrações de CDF, cálculo de quantis e avaliação de ajustes.
+
 Decisões relevantes:
 
-- normal inversa usa aproximação numérica;
-- chi-square, t-Student e Fisher-Snedecor usam CDF por integração e busca numérica;
+- normal inversa usa aproximação racional de Peter J. Acklam;
+- chi-square, t-Student e Fisher-Snedecor usam CDF numérica e bisseção para
+  os quantis; o tipo de integração depende do consumidor, conforme matriz da
+  Seção 8.0;
 - quantis usam cache interno para evitar recomputação;
 - constantes numéricas foram centralizadas em `TraitsAnalysis<ProbabilityDistribution>`.
 
