@@ -33,6 +33,24 @@ bool WorkerJobManager::setSnapshotFilename(const std::string& jobId, const std::
 }
 
 /**
+ * @brief Stores the requested per-job simulation configuration.
+ */
+bool WorkerJobManager::setConfig(const std::string& jobId,
+                                 std::optional<unsigned int> numberOfReplications,
+                                 std::optional<std::uint32_t> seed) {
+    std::scoped_lock lock(_mutex);
+
+    const auto iterator = _jobs.find(jobId);
+    if (iterator == _jobs.end()) {
+        return false;
+    }
+
+    iterator->second.numberOfReplications = numberOfReplications;
+    iterator->second.seed = seed;
+    return true;
+}
+
+/**
  * @brief Updates the lifecycle state for a stored job.
  */
 bool WorkerJobManager::setState(const std::string& jobId, WorkerJobState state) {
