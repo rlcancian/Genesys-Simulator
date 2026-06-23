@@ -57,6 +57,39 @@ genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
     genesys_plugins_components_minimal
 )
 
+# Sutter (universal CA): component-level behaviour — boundaries, state sets, update policies, N-D.
+genesys_add_unit_test(genesys_test_cellular_automata
+    test_cellular_automata.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+)
+
+# Pedro (Linha B): engine ground truth, user-defined rule via CppCompiler, component integration.
+genesys_add_unit_test(genesys_test_cellular_automata_elementary
+    test_cellular_automata_elementary.cpp
+    genesys_plugins_components_minimal
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata_user_defined
+    test_cellular_automata_user_defined.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    ${CMAKE_DL_LIBS}
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata_component
+    test_cellular_automata_component.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components
+    ${CMAKE_DL_LIBS}
+)
+
 genesys_add_unit_test(genesys_test_support_modelmanager
     test_support_modelmanager.cpp
     genesys_kernel_simulator_support
@@ -272,6 +305,10 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_simulator_runtime
         genesys_test_parser_expressions
         genesys_test_cellular_automata_neighborhood
+        genesys_test_cellular_automata
+        genesys_test_cellular_automata_elementary
+        genesys_test_cellular_automata_user_defined
+        genesys_test_cellular_automata_component
         genesys_test_support_modelmanager
         genesys_test_support_persistence
         genesys_test_runtime_pluginmanager
@@ -351,6 +388,10 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_simulator_runtime>
     COMMAND $<TARGET_FILE:genesys_test_parser_expressions>
     COMMAND $<TARGET_FILE:genesys_test_cellular_automata_neighborhood>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_elementary>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_user_defined>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_component>
     COMMAND $<TARGET_FILE:genesys_test_support_modelmanager>
     COMMAND $<TARGET_FILE:genesys_test_support_persistence>
     COMMAND $<TARGET_FILE:genesys_test_runtime_pluginmanager>

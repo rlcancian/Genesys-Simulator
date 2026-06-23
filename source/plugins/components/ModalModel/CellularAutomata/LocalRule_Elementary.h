@@ -18,12 +18,12 @@ public:
 		long number = 0;
         int bit, power = 2;
         for (Cell* neigh : cell->getNeighbors()) {
-			number += neigh->getCurrentState().getValue() * std::pow(2, power--);
+			number += stateValue(neigh) * std::pow(2, power--);
             if (power==1)
-				number += std::pow(2, power--)*cell->getCurrentState().getValue();
+				number += std::pow(2, power--)*stateValue(cell);
         }
         bit = (ruleNumber & (uint8_t)std::pow(2,number)) >> number;
-		cell->setNextState(State(bit));
+		setNextStateFromValue(cell, bit);
     }
 public:
     uint8_t getRuleNumber() const { return ruleNumber; }

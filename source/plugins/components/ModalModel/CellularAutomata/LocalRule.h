@@ -1,6 +1,7 @@
 #pragma once
 #include "plugins/components/ModalModel/CellularAutomata/Cell.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
+#include "plugins/components/ModalModel/CellularAutomata/StateSet.h"
 
 
 class LocalRule {
@@ -20,6 +21,19 @@ public:
 public:
 	void setStateSet(StateSet* stateSet){
 		this->stateSet = stateSet;
+	}
+protected:
+	bool setNextStateFromValue(Cell* cell, long value) const {
+		if (cell == nullptr)
+			return false;
+		State nextState(value);
+		if (stateSet != nullptr && !stateSet->tryMakeState(value, &nextState))
+			return false;
+		cell->setNextState(nextState);
+		return true;
+	}
+	long stateValue(const Cell* cell) const {
+		return cell->getCurrentState().getValue();
 	}
 protected:
     CellularAutomataBase* parentCellularAutomata;
