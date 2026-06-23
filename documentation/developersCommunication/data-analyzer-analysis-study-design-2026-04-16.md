@@ -2,6 +2,8 @@
 
 Date: 2026-04-16
 
+Status update: this note predates the consolidated backend in `source/tools/analysis`. Exact chi-square and Kolmogorov-Smirnov implementations, file/in-memory dataset loading, fitting, summaries, histograms, boxplots and hypothesis tests now live in the standalone analysis tool. GUI-specific concepts such as `Analysis Study`, DOE/RSM previews and multi-dataset workstation behavior remain roadmap material.
+
 ## Conversation Context
 
 The Genesys GUI is evolving the `Results/Data Analyzer` menu entry into a larger statistical-analysis tool. The current direction is that this tool should behave like a professional statistical environment rather than like a small file-opening dialog.
@@ -146,6 +148,6 @@ Pending design work:
 
 - persist and reload complete Analysis Studies;
 - support multiple variables per file;
-- implement exact goodness-of-fit tests in the tools layer rather than GUI approximations;
+- connect GUI workflows to the exact goodness-of-fit tests now implemented in the tools layer;
 - define formal interfaces for regression, ANOVA, DOE and response-surface workflows;
 - decide whether Analysis Study should become a kernel/tool model class, not only a GUI model.
