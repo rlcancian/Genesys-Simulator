@@ -1,27 +1,19 @@
-# Architecture notes for `source/tools`
+# Architecture Notes for `source/tools`
 
-## Overview
+This document records architectural boundaries for `source/tools`. User-facing capabilities, examples and test execution notes are documented in `README_tools.md` and `analysis/README.md`.
 
-`source/tools` groups support services that are useful outside the simulation kernel: data analysis, probability helpers and numerical utilities. The package contains both the consolidated analysis tool and legacy support APIs kept for compatibility.
+## Scope
+
+`source/tools` contains support services that are useful outside the simulation kernel. The consolidated data-analysis package is the main current deliverable; legacy numerical and optimization helpers remain for compatibility.
 
 ## Target Boundaries
 
-### `genesys_tools_analysis`
+| Target | Boundary |
+| --- | --- |
+| `genesys_tools_analysis` | Standalone analysis library. It contains the analysis facade, dataset loaders/parsers, fitter, hypothesis tester, probability helpers and the local solver implementation needed by analysis routines. |
+| `genesys_tools` | Aggregate/legacy target. It may link `genesys_tools_analysis` and older tools such as optimizer/factorial-design code. |
 
-Standalone analysis target. It contains:
-
-- `DataAnalyser_if` / `DataAnalyserDefaultImpl`
-- Dataset loaders and simulation-result parsers
-- `Fitter_if` / `FitterDefaultImpl`
-- `HypothesisTester_if` / `HypothesisTesterDefaultImpl`
-- Probability helpers
-- The legacy solver implementation needed internally by the analysis routines
-
-This target must build without linking `genesys_kernel_*` and without including kernel headers.
-
-### `genesys_tools`
-
-Aggregate/legacy target. It may link `genesys_tools_analysis` and broader GenESyS dependencies where existing consumers still require them.
+`genesys_tools_analysis` must build without linking `genesys_kernel_*` and without including kernel headers.
 
 ## Dependency Direction
 
@@ -33,25 +25,20 @@ applications / GUI / tests / kernel consumers
     -> local analysis helpers
 ```
 
-`tools/analysis` must not depend on kernel statistics collectors, model objects or simulator runtime objects. If a kernel or GUI workflow needs analysis, that workflow imports the analysis target.
+If a kernel, GUI or application workflow needs analysis behavior, that workflow should import/link the analysis target. The analysis package must not depend on kernel statistics collectors, simulator runtime objects or model objects.
 
 ## Stable Analysis Contracts
 
-- `DataAnalyserDefaultImpl` owns one validated dataset snapshot and keeps summaries, histogram, boxplot and fitter input aligned.
+- `DataAnalyserDefaultImpl` owns one validated dataset snapshot and keeps summary, histogram, boxplot and default fitter input aligned.
 - `FitterDefaultImpl` is the default fitter selected by `TraitsAnalysis<Fitter_if>`.
 - `HypothesisTesterDefaultImpl` is the default tester selected by `TraitsAnalysis<HypothesisTester_if>`.
-- `ProbabilityDistributionBase` and `ProbabilityDistribution` expose static mathematical helpers only.
 - File-based tester overloads use analysis loaders/parsers, not kernel statistics APIs.
+- `ProbabilityDistributionBase` and `ProbabilityDistribution` expose static mathematical helpers only.
 
-## Compatibility
+## Compatibility and Roadmap
 
 - Public legacy signatures are preserved where practical.
-- `FitterDummyImpl` remains as a placeholder/documental implementation.
+- `FitterDummyImpl` remains as a legacy placeholder, but it is not the default fitter binding.
 - `Solver_if` and `SolverDefaultImpl1` remain available while newer numerical interfaces mature.
-- Roadmap hooks in `DataAnalyser_if` (`newDataSet`, `saveDataSet`, default `sampler`, default `experimenter`) stay explicit and unsupported rather than partially implemented.
-
-## Future Work
-
-- Introduce reusable distribution objects over the current static probability helpers.
-- Split the legacy solver responsibilities into focused quadrature, root-finding and ODE components.
-- Add calibrated alternatives for goodness-of-fit p-values when parameters are estimated from the tested sample.
+- `DataAnalyser_if::newDataSet`, `saveDataSet`, default `sampler()` and default `experimenter()` are explicit roadmap hooks and are unsupported in the current analysis-tool scope.
+- Future work may introduce reusable distribution objects and calibrated goodness-of-fit p-values when parameters are estimated from the tested sample.

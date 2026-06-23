@@ -2,6 +2,8 @@
 
 This directory contains automated tests for GenESyS. The data-analysis tool is covered by both unit tests and integration tests.
 
+Tests are regular CMake/CTest targets and can be built or executed from QtCreator after configuring the project with tests enabled. The Makefile commands below are convenience shortcuts used by this repository to run focused subsets from the terminal.
+
 ## Data-Analysis Unit Tests
 
 Unit tests for `source/tools/analysis` are located in `source/tests/unit/tools/analysis`.
@@ -14,7 +16,7 @@ Unit tests for `source/tools/analysis` are located in `source/tests/unit/tools/a
 | `test_fitter_distributions.cpp` | Distribution fitting, error handling, ranking and structured fit summaries. |
 | `test_tools_hypothesistester.cpp` | Confidence intervals, parametric tests, chi-square, Kolmogorov-Smirnov, file-based overloads and reference-value checks. |
 
-Run only the tools unit tests with Makefile target:
+When using the repository Makefile, run only the tools unit tests with:
 
 ```sh
 make run-unit-tests PACKAGE=tools
@@ -24,7 +26,7 @@ Latest recorded result:
 
 ```text
 Date: 2026-06-22
-Command: make run-unit-tests PACKAGE=tools
+Makefile shortcut: make run-unit-tests PACKAGE=tools
 Result: 95/95 tests passed
 ```
 
@@ -36,7 +38,7 @@ Integration tests for `source/tools/analysis` are located in `source/tests/integ
 | --- | --- |
 | `test_analysis_tool_integration.cpp` | End-to-end use of `DataAnalyserDefaultImpl` with bundled example datasets, validating dataset loading, descriptive structures, fitting, confidence intervals, hypothesis tests, goodness-of-fit tests and consistency between file, memory and file-based overloads. |
 
-Run only the tools integration tests with Makefile target:
+When using the repository Makefile, run only the tools integration tests with:
 
 ```sh
 make run-integration-tests PACKAGE=tools
@@ -46,13 +48,13 @@ Latest recorded result:
 
 ```text
 Date: 2026-06-22
-Command: make run-integration-tests PACKAGE=tools
+Makefile shortcut: make run-integration-tests PACKAGE=tools
 Result: 2/2 tests passed
 ```
 
 ## Example Regression Checks
 
-The analysis example is a runnable integration-style demonstration and includes deterministic regression checks over the bundled datasets.
+The analysis example is a runnable integration-style demonstration and includes deterministic regression checks over the bundled datasets. It can be built from CMake/QtCreator through the examples target. When using the repository Makefile, run it with:
 
 ```sh
 make run-examples
@@ -62,6 +64,6 @@ Latest recorded result:
 
 ```text
 Date: 2026-06-22
-Command: make run-examples
+Makefile shortcut: make run-examples
 Result: Regression result: ALL CHECKS PASSED
 ```
