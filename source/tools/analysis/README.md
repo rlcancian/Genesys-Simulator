@@ -107,6 +107,18 @@ The public headers expose only mathematical APIs. Numerical integration and quan
 
 `DatasetLoader`, `SimulationResultsDataset` and `SimulationResultsParser` support plain numeric files and GenESyS result files with replication/time/value metadata. They are local to `tools/analysis` and do not depend on kernel collectors.
 
+## Tests
+
+Automated tests for this tool are documented in `source/tests/README.md`.
+
+| Test level | Location | Command | Latest recorded result |
+| --- | --- | --- | --- |
+| Unit | `source/tests/unit/tools/analysis` | `make run-unit-tests PACKAGE=tools` | 95/95 passed on 2026-06-22 |
+| Integration | `source/tests/integration/tools/analysis` | `make run-integration-tests PACKAGE=tools` | 2/2 passed on 2026-06-22 |
+| Example regression | `examples/analysis_tools_example.cpp` | `make run-examples` | All checks passed on 2026-06-22 |
+
+The integration tests exercise the public facade with bundled datasets and verify that dataset loading, descriptive structures, fitting, confidence intervals, hypothesis tests, goodness-of-fit tests and file/memory ingestion work together.
+
 ## Example
 
 ```cpp
