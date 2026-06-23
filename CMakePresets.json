@@ -144,7 +144,7 @@
     {
       "name": "examples",
       "displayName": "Examples",
-      "description": "Builds standalone examples, including the distribution fit analysis tool.",
+      "description": "Builds standalone examples, including analysis-only and simulation-output analysis tools.",
       "inherits": "base",
       "binaryDir": "${sourceDir}/build/examples",
       "cacheVariables": {
@@ -230,7 +230,7 @@
       "name": "examples",
       "configurePreset": "examples",
       "targets": [
-        "genesys_examples_analysis_tools"
+        "genesys_examples"
       ]
     }
   ],

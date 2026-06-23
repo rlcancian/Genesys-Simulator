@@ -117,7 +117,7 @@ The tests are CMake/CTest targets and can be built or executed from QtCreator. T
 | --- | --- | --- | --- |
 | Unit | `source/tests/unit/tools/analysis` | `make run-unit-tests PACKAGE=tools` | 95/95 passed on 2026-06-22 |
 | Integration | `source/tests/integration/tools/analysis` | `make run-integration-tests PACKAGE=tools` | 2/2 passed on 2026-06-22 |
-| Example regression | `examples/analysis_tools_example.cpp` | `make run-examples` | All checks passed on 2026-06-22 |
+| Example/regression runs | `examples/analysis_tools_example.cpp`, `examples/simulation_analysis_example.cpp` | `make run-examples` | Analytical regression passed and simulation-analysis example succeeded on 2026-06-22 |
 
 The integration tests exercise the public facade with bundled datasets and verify that dataset loading, descriptive structures, fitting, confidence intervals, hypothesis tests, goodness-of-fit tests and file/memory ingestion work together.
 
@@ -156,7 +156,12 @@ int main() {
 }
 ```
 
-A complete runnable example is available in `examples/analysis_tools_example.cpp`. It can be built from the CMake examples target or from QtCreator. When using the repository Makefile, run it from the repository root with:
+Complete runnable examples are available in:
+
+- `examples/analysis_tools_example.cpp`: exercises the standalone analysis facade over bundled CSV datasets and includes deterministic regression checks.
+- `examples/simulation_analysis_example.cpp`: builds and runs a lightweight GenESyS simulation model, writes a `Record` dataset, parses it with `SimulationResultsParser`, and analyzes the generated observations with `DataAnalyserDefaultImpl`.
+
+They can be built from the CMake examples target or from QtCreator. When using the repository Makefile, run them from the repository root with:
 
 ```sh
 make run-examples
