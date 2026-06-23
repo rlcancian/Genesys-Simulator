@@ -1,5 +1,6 @@
 add_library(genesys_distributed_core STATIC
     core/DistributedLibraryInfo.cpp
+    core/Json.cpp
 )
 
 target_include_directories(genesys_distributed_core

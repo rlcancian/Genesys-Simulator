@@ -304,6 +304,15 @@ if(GENESYS_BUILD_WEB_APPLICATION)
     add_dependencies(genesys_kernel_unit_tests genesys_test_web_api_router)
 endif()
 
+if(TARGET genesys_distributed_core)
+    genesys_add_unit_test(genesys_test_distributed_json
+        test_distributed_json.cpp
+        genesys_distributed_core
+    )
+
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_json)
+endif()
+
 if(TARGET genesys_test_gui_render_strategy)
     add_dependencies(genesys_kernel_unit_tests genesys_test_gui_render_strategy)
 endif()
