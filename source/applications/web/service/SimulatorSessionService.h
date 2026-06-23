@@ -4,6 +4,8 @@
 #include "../worker/WorkerJob.h"
 #include "../worker/WorkerJobManager.h"
 
+#include <cstdint>
+#include <optional>
 #include <string>
 
 /**
@@ -142,6 +144,18 @@ public:
         std::string snapshotFilename;
         std::string createdMarker;
         std::string message;
+        std::optional<unsigned int> numberOfReplications;
+        std::optional<std::uint32_t> seed;
+    };
+
+    /**
+     * @brief Optional per-job simulation configuration provided at creation time.
+     *
+     * Unset fields keep the configuration carried by the imported model.
+     */
+    struct WorkerJobConfigInput {
+        std::optional<unsigned int> numberOfReplications;
+        std::optional<std::uint32_t> seed;
     };
 
     /**
@@ -343,7 +357,8 @@ public:
      * @param accessToken Bearer token associated with a session.
      * @return Worker job creation output and error state.
      */
-    WorkerJobCreationResult createWorkerJob(const std::string& accessToken);
+    WorkerJobCreationResult createWorkerJob(const std::string& accessToken,
+                                            const WorkerJobConfigInput& config = {});
     /**
      * @brief Returns worker job metadata for a token-scoped session.
      * @param accessToken Bearer token associated with a session.

@@ -441,7 +441,8 @@ SimulatorSessionService::ModelImportResult SimulatorSessionService::importModelF
 /**
  * @brief Creates a queued worker job by snapshotting the current model.
  */
-SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::createWorkerJob(const std::string& accessToken) {
+SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::createWorkerJob(const std::string& accessToken,
+                                                                                          const WorkerJobConfigInput& config) {
     SessionContext* session = _sessionManager.getSessionByToken(accessToken);
     if (session == nullptr || session->simulator == nullptr) {
         return WorkerJobCreationResult{false, WorkerJobError::InvalidToken, WorkerJobInfoResult{}};
@@ -468,6 +469,10 @@ SimulatorSessionService::WorkerJobCreationResult SimulatorSessionService::create
     }
 
     if (!_workerJobManager.setSnapshotFilename(job.jobId, snapshotFilename)) {
+        return WorkerJobCreationResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
+    }
+
+    if (!_workerJobManager.setConfig(job.jobId, config.numberOfReplications, config.seed)) {
         return WorkerJobCreationResult{false, WorkerJobError::OperationFailed, WorkerJobInfoResult{}};
     }
 
@@ -662,6 +667,8 @@ SimulatorSessionService::WorkerJobInfoResult SimulatorSessionService::_toWorkerJ
     result.snapshotFilename = job.snapshotFilename;
     result.createdMarker = job.createdMarker;
     result.message = job.message;
+    result.numberOfReplications = job.numberOfReplications;
+    result.seed = job.seed;
     return result;
 }
 
