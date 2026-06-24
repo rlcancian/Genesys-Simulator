@@ -73,6 +73,26 @@ TEST(WorkerDiscovery, ShouldRegisterCompatibleWorkerAsAvailable) {
     EXPECT_TRUE(worker->capabilities.supportsDistributedJobs);
 }
 
+TEST(WorkerDiscovery, ShouldRegisterMultipleAvailableWorkers) {
+    // Arrange: two reachable, compatible workers.
+    FakeHttpClient client;
+    client.responses["host-a:8080 /api/v1/worker/info"] = okResponse(kInfoOk);
+    client.responses["host-a:8080 /api/v1/worker/capabilities"] = okResponse(kCapabilitiesOk);
+    client.responses["host-b:8081 /api/v1/worker/info"] = okResponse(kInfoOk);
+    client.responses["host-b:8081 /api/v1/worker/capabilities"] = okResponse(kCapabilitiesOk);
+    WorkerRegistry registry;
+    WorkerDiscoveryService discovery(client, registry);
+
+    // Act
+    const int available = discovery.discover({{"host-a", 8080}, {"host-b", 8081}});
+
+    // Assert: both workers registered and available.
+    EXPECT_EQ(available, 2);
+    EXPECT_EQ(registry.available().size(), 2u);
+    EXPECT_EQ(registry.find("host-a", 8080)->state, WorkerState::Available);
+    EXPECT_EQ(registry.find("host-b", 8081)->state, WorkerState::Available);
+}
+
 TEST(WorkerDiscovery, ShouldMarkUnreachableEndpointUnavailableWithoutAborting) {
     // Arrange: host-a is reachable, host-b has no canned response (connection fails).
     FakeHttpClient client;
