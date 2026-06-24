@@ -345,7 +345,13 @@ if(TARGET genesys_distributed_core)
         genesys_distributed_core
     )
 
+    genesys_add_unit_test(genesys_test_distributed_config_loader
+        test_distributed_config_loader.cpp
+        genesys_distributed_core
+    )
+
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_manager)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_config_loader)
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_json)
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_registry)
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_discovery)

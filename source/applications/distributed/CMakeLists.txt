@@ -10,6 +10,7 @@ add_library(genesys_distributed_core STATIC
     core/DistributedExecutionManager.cpp
     core/DistributedResultsAggregator.cpp
     core/DistributedSimulationManager.cpp
+    core/DistributedConfigLoader.cpp
 )
 
 target_include_directories(genesys_distributed_core
