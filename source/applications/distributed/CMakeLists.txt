@@ -5,6 +5,7 @@ add_library(genesys_distributed_core STATIC
     core/WorkerRegistry.cpp
     core/WorkerDiscoveryService.cpp
     core/DistributedScheduler.cpp
+    core/RemoteSimulationExecutor.cpp
 )
 
 target_include_directories(genesys_distributed_core
