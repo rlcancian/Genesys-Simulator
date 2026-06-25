@@ -5,6 +5,7 @@
 
 #include <gtest/gtest.h>
 
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
@@ -208,4 +209,132 @@ TEST(UserDefinedCA, GameOfLifeBlinkerOscillatesViaUserRule) {
 	expectedVertical[2 + side * 2] = '1';
 	expectedVertical[2 + side * 3] = '1';
 	EXPECT_EQ(vertical, expectedVertical);
+}
+
+TEST(UserDefinedCA, ClosedBoundaryWrapsAroundTorus) {
+	// Exercises the Boundary_Closed (periodic) condition, distinct from the Fixed boundary used above.
+	// A "copy your left neighbor" rule (next = neighbors[0]) shifts the pattern one cell to the right
+	// each step. On a closed 1D ring a single live cell must travel around and return to its start
+	// after `width` steps; under a fixed boundary it would instead fall off the edge and vanish.
+	Simulator simulator;
+	std::string error;
+	const unsigned short width = 5;
+
+	CellularAutomata_Classic cellularAutomata;
+	Lattice lattice(&cellularAutomata, nullptr, {width}, LatticeType::RETICULAR);
+	State zero(0);
+	State one(1);
+	StateSet_Enumerable stateSet(&cellularAutomata, {&zero, &one});
+	Boundary_Closed boundary(&lattice);
+	Neighborhood_Center neighborhood(&cellularAutomata, 1, &boundary);
+	CppCompiler* compiler = makeCompiler(simulator);
+	LocalRule_UserDefined rule(&cellularAutomata, compiler, &stateSet);
+	ASSERT_TRUE(rule.buildBody("return neighbors[0];", error)) << error; // next = left neighbor's state
+
+	cellularAutomata.setLattice(&lattice);
+	cellularAutomata.setStateSet(&stateSet);
+	cellularAutomata.setNeighborhood(&neighborhood);
+	cellularAutomata.setLocalRule(&rule);
+	lattice.init();
+	State on(1);
+	lattice.setCellState(2, &on);
+
+	EXPECT_EQ(rowOf(lattice), "00100");
+	cellularAutomata.step();
+	EXPECT_EQ(rowOf(lattice), "00010");
+	cellularAutomata.step();
+	EXPECT_EQ(rowOf(lattice), "00001"); // at the right edge
+	cellularAutomata.step();
+	EXPECT_EQ(rowOf(lattice), "10000") << "closed boundary must wrap the live cell around the ring";
+	cellularAutomata.step();
+	EXPECT_EQ(rowOf(lattice), "01000");
+	cellularAutomata.step();
+	EXPECT_EQ(rowOf(lattice), "00100") << "after `width` steps the pattern must return to its start";
+}
+
+TEST(UserDefinedCA, GameOfLifeGliderTranslatesViaUserRule) {
+	// The classic Game of Life glider returns to its own shape shifted by (+1,+1) after 4 generations.
+	// This test-backs the glider space-time diagram shipped in dcs/site/assets/evidence-diagrams.txt
+	// (previously only the blinker was asserted) using the user rule over a Moore neighborhood.
+	Simulator simulator;
+	std::string error;
+	const std::string gol =
+		"long live = 0;"
+		"for (int i = 0; i < numNeighbors; ++i) live += neighbors[i];"
+		"if (self != 0) return (live == 2 || live == 3) ? 1 : 0;"
+		"return (live == 3) ? 1 : 0;";
+
+	CellularAutomata_Classic cellularAutomata;
+	const unsigned short side = 10;
+	Lattice lattice(&cellularAutomata, nullptr, {side, side}, LatticeType::RETICULAR);
+	State zero(0);
+	State one(1);
+	StateSet_Enumerable stateSet(&cellularAutomata, {&zero, &one});
+	Boundary_Fixed boundary(&lattice);
+	Neighborhood_Moore neighborhood(&cellularAutomata, 1, &boundary);
+	CppCompiler* compiler = makeCompiler(simulator);
+	LocalRule_UserDefined rule(&cellularAutomata, compiler, &stateSet);
+	ASSERT_TRUE(rule.buildBody(gol, error)) << error;
+
+	cellularAutomata.setLattice(&lattice);
+	cellularAutomata.setStateSet(&stateSet);
+	cellularAutomata.setNeighborhood(&neighborhood);
+	cellularAutomata.setLocalRule(&rule);
+	lattice.init();
+
+	// Glider placed in the interior (cell number = col + side*row), matching the evidence file's t0.
+	auto setOn = [&](int row, int col) { State s(1); lattice.setCellState(col + side * row, &s); };
+	setOn(1, 2);
+	setOn(2, 3);
+	setOn(3, 1);
+	setOn(3, 2);
+	setOn(3, 3);
+
+	for (int t = 0; t < 4; ++t) {
+		cellularAutomata.step();
+	}
+
+	// After 4 generations: same glider, shifted by (+1,+1) — matches the evidence file's t4.
+	std::string expected(side * side, '0');
+	auto mark = [&](int row, int col) { expected[col + side * row] = '1'; };
+	mark(2, 3);
+	mark(3, 4);
+	mark(4, 2);
+	mark(4, 3);
+	mark(4, 4);
+	EXPECT_EQ(rowOf(lattice), expected) << "glider must reappear shifted by (+1,+1) after 4 steps";
+}
+
+TEST(UserDefinedCA, ExtendedContractExposesCellPosition) {
+	// The extended user contract (nextStateEx) hands the rule the cell's n-dimensional position.
+	// A rule returning the parity of the first coordinate must paint a 1D row 0,1,0,1,... after one
+	// step regardless of neighbor states, proving the position is delivered to user code (tema 6 §6).
+	Simulator simulator;
+	std::string error;
+	const unsigned short width = 6;
+
+	CellularAutomata_Classic cellularAutomata;
+	Lattice lattice(&cellularAutomata, nullptr, {width}, LatticeType::RETICULAR);
+	State zero(0);
+	State one(1);
+	StateSet_Enumerable stateSet(&cellularAutomata, {&zero, &one});
+	Boundary_Fixed boundary(&lattice);
+	Neighborhood_Center neighborhood(&cellularAutomata, 1, &boundary);
+	CppCompiler* compiler = makeCompiler(simulator);
+	LocalRule_UserDefined rule(&cellularAutomata, compiler, &stateSet);
+	const std::string source =
+		"extern \"C\" long nextStateEx(long self, const long* neighbors, int numNeighbors, "
+		"const int* position, int numDimensions) { (void) self; (void) neighbors; (void) numNeighbors; "
+		"(void) numDimensions; return position[0] & 1; }";
+	ASSERT_TRUE(rule.build(source, error)) << error;
+	EXPECT_TRUE(rule.isReady());
+
+	cellularAutomata.setLattice(&lattice);
+	cellularAutomata.setStateSet(&stateSet);
+	cellularAutomata.setNeighborhood(&neighborhood);
+	cellularAutomata.setLocalRule(&rule);
+	lattice.init();
+
+	cellularAutomata.step();
+	EXPECT_EQ(rowOf(lattice), "010101") << "extended rule must color cells by the parity of their column";
 }

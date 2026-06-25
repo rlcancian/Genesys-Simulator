@@ -16,7 +16,7 @@ class Lattice {
 public:
 	Lattice(CellularAutomataBase* parentCellularAutomata, Cell *progenitorCell = nullptr, std::vector<unsigned short> dimensions={}, LatticeType latticeType = LatticeType::RETICULAR);
 	Lattice(const Lattice& orig);
-	virtual ~Lattice() = default;
+	virtual ~Lattice(); ///< frees the cells this lattice owns (created in init())
 public:
 	virtual std::string show();
 	bool init(); ///< init all cells

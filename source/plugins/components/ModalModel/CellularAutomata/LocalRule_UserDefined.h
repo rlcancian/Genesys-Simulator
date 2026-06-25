@@ -5,18 +5,28 @@
 // then loaded and invoked per cell.
 // This is "Linha B" of Tema 6: arbitrary local rules defined by the user, without recompiling GenESyS.
 //
-// The user only writes a single C-linkage function with this signature (no GenESyS headers needed):
+// The user writes one C-linkage function (no GenESyS headers needed). Two contracts are accepted:
 //
-//     extern "C" long nextState(long self, const long* neighbors, int numNeighbors);
+//   (simple)   extern "C" long nextState(long self, const long* neighbors, int numNeighbors);
+//   (extended) extern "C" long nextStateEx(long self, const long* neighbors, int numNeighbors,
+//                                           const int* position, int numDimensions);
 //
 //   - self         : current state of the cell (a long).
 //   - neighbors    : current states of the cell's neighbors, in the neighborhood's canonical order
 //                    (for a 1D centered radius-1 neighborhood this is {left, right}).
 //   - numNeighbors : how many neighbors were provided.
+//   - position     : (extended only) the cell's n-dimensional coordinate, length numDimensions.
+//   - numDimensions: (extended only) the lattice dimensionality.
 //   - return value : the cell's next state.
+//
+// The extended contract lets a rule depend on the cell's position in the lattice (tema 6 §6: the
+// local rule may need "a posição da célula no lattice ... a dimensão do lattice"). If the compiled
+// library exports nextStateEx it is used; otherwise nextState is used. At least one must be present.
 //
 // Example (elementary rule 90, next = left XOR right):
 //     extern "C" long nextState(long self, const long* n, int) { return n[0] ^ n[1]; }
+// Example (position-dependent: a cell's next state is the parity of its first coordinate):
+//     extern "C" long nextStateEx(long, const long*, int, const int* pos, int) { return pos[0] & 1; }
 //
 // The function is pure integer arithmetic, so it compiles standalone (g++ -shared -fPIC), which keeps
 // runtime compilation fast and portable between Linux (.so) and macOS (clang also accepts -shared).
@@ -39,6 +49,10 @@
 // The user-provided transition function, resolved by name "nextState" from the compiled library.
 // Declared at namespace scope with C linkage (as CppForG does), so dlsym finds the unmangled symbol.
 extern "C" typedef long (*NextStateFunction)(long self, const long* neighbors, int numNeighbors);
+// Optional extended contract: also receives the cell's n-dimensional position (length numDimensions),
+// resolved by name "nextStateEx" if the library exports it. Lets rules depend on cell coordinates.
+extern "C" typedef long (*NextStateExFunction)(long self, const long* neighbors, int numNeighbors,
+	const int* position, int numDimensions);
 
 class LocalRule_UserDefined : public LocalRule {
 public:
@@ -48,7 +62,11 @@ public:
 		: LocalRule(parentCellularAutomata, stateSet) {
 		this->compiler = compiler;
 	}
-	LocalRule_UserDefined(const LocalRule_UserDefined& orig) : LocalRule(orig) {}
+	// Non-copyable: it owns a loaded dynamic library and a function pointer into it. A shallow copy
+	// would either alias one library across two owners (double unload) or, as the old default-bodied
+	// copy did, leave the copy with compiler==nullptr/ruleFunction==nullptr (a silent no-op rule).
+	LocalRule_UserDefined(const LocalRule_UserDefined&) = delete;
+	LocalRule_UserDefined& operator=(const LocalRule_UserDefined&) = delete;
 	virtual ~LocalRule_UserDefined() {
 		if (libraryLoaded && compiler != nullptr) {
 			compiler->unloadLibrary();
@@ -125,13 +143,17 @@ public:
 			removeBuildFiles();
 			return false;
 		}
-		dlerror(); // clear any stale error
+		// Prefer the extended symbol (gives the rule the cell position); fall back to the simple one.
+		// A missing optional symbol is not an error, so dlerror() is cleared between lookups; at least
+		// one of the two must resolve.
+		dlerror();
+		ruleFunctionEx = reinterpret_cast<NextStateExFunction>(dlsym(handle, "nextStateEx"));
+		dlerror();
 		ruleFunction = reinterpret_cast<NextStateFunction>(dlsym(handle, "nextState"));
-		const char* symbolError = dlerror();
-		if (ruleFunction == nullptr || symbolError != nullptr) {
-			errorMessage += "LocalRule_UserDefined: could not resolve symbol 'nextState': " +
-				std::string(symbolError != nullptr ? symbolError : "symbol is null");
-			ruleFunction = nullptr;
+		dlerror();
+		if (ruleFunctionEx == nullptr && ruleFunction == nullptr) {
+			errorMessage += "LocalRule_UserDefined: could not resolve symbol 'nextState' or 'nextStateEx' "
+				"(the user source must define one of them).";
 			removeBuildFiles();
 			return false;
 		}
@@ -155,27 +177,41 @@ public:
 		return build(wrapBody(body), errorMessage);
 	}
 
-	bool isReady() const { return ruleFunction != nullptr; }
+	bool isReady() const { return ruleFunction != nullptr || ruleFunctionEx != nullptr; }
 
 public:
 	virtual void applyRule(Cell* cell) override {
-		if (ruleFunction == nullptr) {
+		if (ruleFunction == nullptr && ruleFunctionEx == nullptr) {
 			return; // not built yet: leave the cell unchanged
 		}
 		const std::vector<Cell*> neighbors = cell->getNeighbors();
-		std::vector<long> neighborStates;
-		neighborStates.reserve(neighbors.size());
+		// Reuse a member buffer across cells/steps instead of allocating a fresh vector per cell per
+		// step (clear() keeps the capacity), which matters on large lattices over many generations.
+		neighborStatesBuffer.clear();
+		neighborStatesBuffer.reserve(neighbors.size());
 		for (Cell* neighbor : neighbors) {
-			neighborStates.emplace_back(neighbor->getCurrentState().getValue());
+			neighborStatesBuffer.emplace_back(neighbor->getCurrentState().getValue());
 		}
 		const long self = cell->getCurrentState().getValue();
-		const long next = ruleFunction(self, neighborStates.data(), static_cast<int>(neighborStates.size()));
+		const int numNeighbors = static_cast<int>(neighborStatesBuffer.size());
+		long next;
+		if (ruleFunctionEx != nullptr) {
+			// Extended contract: also hand the rule the cell's n-dimensional position so it can be
+			// position-dependent (tema 6 §6). getPosition() is populated by Lattice::init().
+			const std::vector<int> position = cell->getPosition();
+			next = ruleFunctionEx(self, neighborStatesBuffer.data(), numNeighbors,
+				position.data(), static_cast<int>(position.size()));
+		} else {
+			next = ruleFunction(self, neighborStatesBuffer.data(), numNeighbors);
+		}
 		cell->setNextState(State(next));
 	}
 
 private:
 	CppCompiler* compiler = nullptr; // injected, not owned
-	NextStateFunction ruleFunction = nullptr;
+	NextStateFunction ruleFunction = nullptr;     // simple contract symbol, or null if the rule uses Ex
+	NextStateExFunction ruleFunctionEx = nullptr; // extended contract symbol (preferred when present)
 	bool libraryLoaded = false;
+	std::vector<long> neighborStatesBuffer; // reused across applyRule() calls to avoid per-cell allocation
 	inline static int buildCounter = 0; // gives each compiled library a unique name
 };

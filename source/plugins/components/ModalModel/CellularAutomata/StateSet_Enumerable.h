@@ -26,7 +26,8 @@ public:
 	void setStates(std::vector<State*> states);
 	std::vector<State*> getStates() const;
 protected:
-	CellularAutomataBase* parentCellularAutomata;
+	// parentCellularAutomata is inherited from StateSet; it used to be shadowed here (two separate
+	// fields), which was a silent maintenance hazard. Only the enumerated-specific `states` lives here.
 	std::vector<State*> states;
 private:
 };

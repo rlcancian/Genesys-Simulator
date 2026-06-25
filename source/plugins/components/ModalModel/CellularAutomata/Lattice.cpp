@@ -25,6 +25,14 @@ Lattice::Lattice(const Lattice& orig) {
 
 }
 
+Lattice::~Lattice() {
+	// init() fills `cells` with new Cell objects owned by this lattice; free them here so a lattice
+	// does not leak its whole grid on teardown. The empty copy constructor leaves a copy's `cells`
+	// empty, so a copied lattice frees nothing — no double free.
+	for (Cell* cell : cells)
+		delete cell;
+}
+
 /* **************
  *  PUBLIC
  * **************/
@@ -103,7 +111,7 @@ void Lattice::setCell(const std::vector<int> position, Cell* cell) {
 		Cell* oldCell = cells.at(cellNumber);
 		cells.at(cellNumber) = cell;
 		if (oldCell != nullptr)
-			oldCell->~Cell();
+			delete oldCell; // was an explicit destructor call, which freed nothing (leak) and left a zombie
 	}
 }
 

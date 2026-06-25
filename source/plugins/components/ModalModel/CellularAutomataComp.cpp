@@ -541,7 +541,11 @@ void CellularAutomataComp::_ensureCellularAutomata() {
 }
 
 bool CellularAutomataComp::_checkImplementedTypes(std::string* errorMessage) const {
-	if (_cellularAutomataType == CellularAutomataType::ASYNCHRONOUS ||
+	// TIMED_1D is rejected: its applyLocalRule() is unfinished (dereferences an uninitialized State*)
+	// and would crash. A 1D timed/elementary automaton is already covered by CLASSIC on a 1D lattice,
+	// so only CLASSIC is offered until TIMED_1D is implemented and verified.
+	if (_cellularAutomataType == CellularAutomataType::TIMED_1D ||
+			_cellularAutomataType == CellularAutomataType::ASYNCHRONOUS ||
 			_cellularAutomataType == CellularAutomataType::NONUNIFORMRULE ||
 			_cellularAutomataType == CellularAutomataType::NONUNIFORMNEIGHBOOR ||
 			_cellularAutomataType == CellularAutomataType::USERDEFINED) {
@@ -714,7 +718,10 @@ void CellularAutomataComp::_applyRuleAndUpdateCell(unsigned long cellNumber) {
 PluginInformation* CellularAutomataComp::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<CellularAutomataComp>(), &CellularAutomataComp::LoadInstance, &CellularAutomataComp::NewInstance);
 	info->setCategory("ModalModel");
-	info->setDescriptionHelp("//@TODO");
+	info->setDescriptionHelp("Universal cellular automaton: configurable lattice (1D/2D/3D), neighborhood "
+		"(centered/Moore/Von Neumann), boundary (fixed/closed/reflexive/adiabatic), state set "
+		"(enumerated/integer/bit/double), update policy (synchronous/sequential/random/blocks) and local "
+		"rule (elementary/Game of Life/biased-competition or a user-defined rule compiled at runtime).");
 	return info;
 }
 
