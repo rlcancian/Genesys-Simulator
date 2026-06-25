@@ -37,22 +37,33 @@ Binaries:
 
 ## Running the orchestrator
 
-Via command-line arguments:
+The binary is **not installed on `PATH`** — run it from its build location. The examples below run
+from the project root and use a shell variable for brevity:
 
 ```bash
-genesys_distributed_app --model <file> --replications <N> [--local] \
+APP=build/distributed/source/applications/distributed/genesys_distributed_app
+```
+
+Via command-line arguments (no config file needed):
+
+```bash
+$APP --model <file> --replications <N> [--local] \
     [--worker host:port]... [--output <file.json>] \
     [--max-retries <N>] [--base-seed <N>] [--timeout <seconds>]
 ```
 
-Or via a JSON config (see `config/workers.example.json`):
+Or via a JSON config. Copy the example and edit it (the `modelFile` path and worker ports must
+match your setup); the path is relative to your current directory:
 
 ```bash
-genesys_distributed_app --config workers.json
+cp source/applications/distributed/config/workers.example.json workers.json
+# edit workers.json, then:
+$APP --config workers.json
 ```
 
-The app prints a human-readable summary to stdout and, when `--output` is given, writes the
-aggregated result as structured JSON.
+Running `$APP` with no arguments prints the usage. The app prints a human-readable summary to
+stdout and, when `--output` (or `outputFile` in the config) is given, writes the aggregated result
+as structured JSON.
 
 ## Reproducing the distributed speedup
 
