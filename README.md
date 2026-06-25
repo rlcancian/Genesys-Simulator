@@ -45,6 +45,14 @@ The root build currently exposes the following important options:
 - `GENESYS_BUILD_PARSER`
 - `GENESYS_BUILD_PLUGINS`
 - `GENESYS_BUILD_TOOLS`
+- `GENESYS_BUILD_DISTRIBUTED`
+
+### Distributed simulation layer
+
+An optional orchestration layer (`GENESYS_BUILD_DISTRIBUTED=ON`, off by default) runs simulations
+across several `genesys_web_app` workers. See
+[`source/applications/distributed/README.md`](source/applications/distributed/README.md) for the
+architecture and a step-by-step guide to reproducing the distributed speedup.
 
 ### GUI build status
 

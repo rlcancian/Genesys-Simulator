@@ -1,0 +1,133 @@
+# Genesys Distributed Simulation Layer
+
+Intermediate orchestration layer that runs GenESyS simulations across several machines, using
+existing **web worker** instances (`genesys_web_app`) as remote simulation workers. It discovers
+workers, partitions the replications, executes them (locally and remotely, with failover) and
+aggregates the partial results into a single unified result — as if the whole simulation had run
+locally.
+
+This layer is **not** part of the kernel and **not** the web application itself; it is a reusable
+library (`genesys_distributed_core`) plus a standalone orchestrator app (`genesys_distributed_app`).
+
+## Architecture
+
+- `WorkerDescriptor` / `WorkerRegistry` — known workers, their capabilities, state and failure history.
+- `WorkerDiscoveryService` — validates a static list of endpoints via the worker API.
+- `WorkerHttpClient` — minimal outbound HTTP/1.1 client (POSIX sockets, no extra dependency).
+- `DistributedScheduler` — partitions N replications into batches (one per target) with distinct seeds.
+- `RemoteSimulationExecutor` / `LocalSimulationExecutor` — run a batch on a worker or in-process.
+- `DistributedExecutionManager` — runs batches in parallel, with timeout/failure handling and failover.
+- `DistributedResultsAggregator` — merges partial results with exact pooled statistics.
+- `DistributedSimulationManager` — high-level facade used by applications.
+
+## Build
+
+The layer is gated by a CMake option and is **off by default** (so it never affects other apps):
+
+```bash
+cmake -S . -B build/distributed -G Ninja \
+    -DGENESYS_BUILD_DISTRIBUTED=ON \
+    -DGENESYS_BUILD_WEB_APPLICATION=ON
+cmake --build build/distributed --target genesys_distributed_app genesys_web_app
+```
+
+Binaries:
+- orchestrator: `build/distributed/source/applications/distributed/genesys_distributed_app`
+- worker:       `build/distributed/source/applications/web/genesys_web_app`
+
+## Running the orchestrator
+
+Via command-line arguments:
+
+```bash
+genesys_distributed_app --model <file> --replications <N> [--local] \
+    [--worker host:port]... [--output <file.json>] \
+    [--max-retries <N>] [--base-seed <N>] [--timeout <seconds>]
+```
+
+Or via a JSON config (see `config/workers.example.json`):
+
+```bash
+genesys_distributed_app --config workers.json
+```
+
+The app prints a human-readable summary to stdout and, when `--output` is given, writes the
+aggregated result as structured JSON.
+
+## Reproducing the distributed speedup
+
+The primary use case of this layer is running a **large number of replications** faster by spreading
+them across workers. The steps below show a measurable wall-clock reduction.
+
+### 1. Create a model file `model.txt`
+
+```
+0   ModelInfo  "DistributedDemo" version="1.0" projectTitle="" description="" analystName="" 0   ModelSimulation "" traceLevel=0 replicationLength=10.000000 numberOfReplications=120000 63  Create "Create_1" entityType="entitytype" nextId=73 73  Dispose "Dispose_1" nexts=0
+```
+
+### 2. Start two workers on free ports
+
+```bash
+WEB=build/distributed/source/applications/web/genesys_web_app
+pkill -f genesys_web_app           # make sure no stale worker holds the ports
+$WEB --port 8101 --max-requests 200 &
+$WEB --port 8102 --max-requests 200 &
+sleep 2
+```
+
+### 3. Measure baseline (local only) vs distributed
+
+```bash
+APP=build/distributed/source/applications/distributed/genesys_distributed_app
+
+# Baseline: a single local engine.
+time $APP --model model.txt --replications 120000 --local
+
+# Distributed: two remote workers plus the local engine (3 engines in parallel).
+time $APP --model model.txt --replications 120000 \
+     --worker 127.0.0.1:8101 --worker 127.0.0.1:8102 --local
+
+pkill -f genesys_web_app           # clean up the workers
+```
+
+Representative result (4-core machine):
+
+| Execution                         | Wall-clock |
+|-----------------------------------|------------|
+| Local only (1 engine)             | ~9.8 s     |
+| 2 workers + local (3 engines)     | ~3.3 s     |
+
+Both runs complete `120000 / 120000` replications. Increase `--replications` (e.g. `300000`) or add
+more `--worker` endpoints for a larger, clearer speedup.
+
+### Tips and caveats
+
+- **Use free ports.** A worker that fails to bind is marked unavailable during discovery, and its
+  share of the load falls back to the remaining targets (or local) — which hides the speedup.
+- The orchestrator runs the initial attempts in parallel; failover reassignment is sequential.
+- Failover during execution (a worker dying mid-job) is covered by the unit tests; pointing
+  `--worker` at a dead port instead exercises the "ignore unavailable worker" path at discovery.
+
+## Known limitation: component statistics
+
+In the current static build, imported language models parse with **zero instantiated components**
+(the engine has no registered component plugins — the plugin system relies on dynamic `.so`
+loading, which is not active here). Consequently:
+
+- A run executes the replication loop but performs no component-level work, so the measurable cost
+  comes from the **replication count**, not the model's structure.
+- The aggregated `statistics` and `counters` come back empty for language-imported models.
+
+The correctness of the statistical aggregation is proven independently by unit tests
+(`genesys_test_distributed_aggregator`: pooled moments equal the statistics computed over the
+combined values). Producing real component statistics end-to-end would require activating the
+dynamic plugin system (or a static name→component registry), which is outside this layer's scope.
+
+## Tests
+
+```bash
+cmake -S . -B build/distributed -G Ninja \
+    -DGENESYS_BUILD_DISTRIBUTED=ON -DGENESYS_BUILD_WEB_APPLICATION=ON -DGENESYS_BUILD_TESTS=ON
+cmake --build build/distributed --target genesys_kernel_unit_tests
+ctest --test-dir build/distributed -L unit -R distributed --output-on-failure
+```
