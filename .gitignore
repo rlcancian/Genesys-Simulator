@@ -45,7 +45,7 @@ temp*
 .idea/
 .aider*
 
-documentation/diagrams/
-
 # VS Code
 .vscode/
+
+documentation/diagrams/

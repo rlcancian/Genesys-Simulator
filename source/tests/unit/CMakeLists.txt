@@ -219,8 +219,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             ${GENESYS_QT_TEST_PACKAGE}::Core
             ${GENESYS_QT_TEST_PACKAGE}::Gui
             ${GENESYS_QT_TEST_PACKAGE}::Widgets
-            "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
-            genesys_web_core
+            "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_web_core>"
             genesys_tools
     )
 
