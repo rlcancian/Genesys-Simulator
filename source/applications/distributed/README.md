@@ -86,6 +86,21 @@ $WEB --port 8102 --max-requests 200 &
 sleep 2
 ```
 
+### Automated benchmark
+
+The helper script runs both versions and prints a filtered comparison (no startup banner). From the
+project root:
+
+```bash
+source/applications/distributed/run-distributed-demo.sh            # default 120000 replications
+source/applications/distributed/run-distributed-demo.sh 300000     # custom replication count
+BUILD_DIR=build/distributed WORKER_PORTS="8101 8102 8103" \
+    source/applications/distributed/run-distributed-demo.sh        # override build dir / workers
+```
+
+It builds nothing (build first, see above), starts/stops the workers itself, and prints `local`,
+`distributed` and `speedup`. The manual steps below do the same by hand.
+
 ### 3. Measure baseline (local only) vs distributed
 
 ```bash
