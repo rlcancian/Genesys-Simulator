@@ -25,6 +25,21 @@ struct AggregatedCounter {
 };
 
 /**
+ * @brief Per-target report: discovery state and how much each worker (or local) executed.
+ *
+ * Makes visible which workers were discovered, their availability/latency/failure history, and
+ * how many replications each one actually completed.
+ */
+struct WorkerReport {
+    std::string endpoint;
+    bool isLocal = false;
+    std::string state;                 // "available" | "unavailable" | "unknown" | "local"
+    long long latencyMs = -1;          // observed discovery latency (-1 if not measured).
+    unsigned int failureCount = 0;
+    unsigned int replicationsCompleted = 0;
+};
+
+/**
  * @brief Final unified result of a distributed simulation run.
  *
  * Equivalent to what a single centralized run would produce, plus bookkeeping about how many
@@ -35,6 +50,7 @@ struct AggregatedResult {
     unsigned int totalReplicationsCompleted = 0;
     std::vector<AggregatedStatistic> statistics;
     std::vector<AggregatedCounter> counters;
+    std::vector<WorkerReport> workers;
     std::vector<std::string> failures;
 };
 

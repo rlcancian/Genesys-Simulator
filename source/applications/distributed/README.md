@@ -86,6 +86,25 @@ $WEB --port 8102 --max-requests 200 &
 sleep 2
 ```
 
+### Demonstrating the required behaviors (Tema 13, section 14)
+
+`demonstrate-requirements.sh` walks through every item the assignment's tests must show
+(discovery of multiple workers, remote job submission, replication distribution, aggregation,
+timeout/failure handling, failover re-routing, and distributed-vs-local coherence), printing a
+PASS/FAIL line for each. It mixes live orchestrator+worker runs with the targeted unit tests.
+
+```bash
+cmake -S . -B build/distributed -G Ninja \
+    -DGENESYS_BUILD_DISTRIBUTED=ON -DGENESYS_BUILD_WEB_APPLICATION=ON -DGENESYS_BUILD_TESTS=ON
+cmake --build build/distributed --target \
+    genesys_distributed_app genesys_web_app genesys_kernel_unit_tests
+source/applications/distributed/demonstrate-requirements.sh
+```
+
+The orchestrator output includes a per-worker report (discovery state, observed latency, failure
+count and replications completed per target), so the distribution and failure handling are visible
+directly in the summary / JSON.
+
 ### Automated benchmark
 
 The helper script runs both versions and prints a filtered comparison (no startup banner). From the

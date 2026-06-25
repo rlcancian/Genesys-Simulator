@@ -30,6 +30,19 @@ std::string CoordinatorApplication::renderSummary(const AggregatedResult& result
         out << "    " << counter.name << ": total=" << counter.total << "\n";
     }
 
+    out << "  Workers (" << result.workers.size() << "):\n";
+    for (const WorkerReport& worker : result.workers) {
+        out << "    " << worker.endpoint << " [" << worker.state << "]"
+            << " replications=" << worker.replicationsCompleted;
+        if (!worker.isLocal) {
+            if (worker.latencyMs >= 0) {
+                out << " latency=" << worker.latencyMs << "ms";
+            }
+            out << " failures=" << worker.failureCount;
+        }
+        out << "\n";
+    }
+
     if (!result.failures.empty()) {
         out << "  Failures (" << result.failures.size() << "):\n";
         for (const std::string& failure : result.failures) {
@@ -71,6 +84,22 @@ std::string CoordinatorApplication::renderJson(const AggregatedResult& result) c
         }
         json += "{\"name\":\"" + json::escape(result.counters[i].name) + "\"";
         json += ",\"total\":" + json::number(result.counters[i].total) + "}";
+    }
+    json += "]";
+
+    json += ",\"workers\":[";
+    for (std::size_t i = 0; i < result.workers.size(); ++i) {
+        const WorkerReport& worker = result.workers[i];
+        if (i > 0) {
+            json += ",";
+        }
+        json += "{\"endpoint\":\"" + json::escape(worker.endpoint) + "\"";
+        json += ",\"isLocal\":" + std::string(worker.isLocal ? "true" : "false");
+        json += ",\"state\":\"" + json::escape(worker.state) + "\"";
+        json += ",\"latencyMs\":" + std::to_string(worker.latencyMs);
+        json += ",\"failureCount\":" + std::to_string(worker.failureCount);
+        json += ",\"replicationsCompleted\":" + std::to_string(worker.replicationsCompleted);
+        json += "}";
     }
     json += "]";
 

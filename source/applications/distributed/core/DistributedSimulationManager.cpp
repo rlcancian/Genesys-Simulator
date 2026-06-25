@@ -65,7 +65,40 @@ AggregatedResult DistributedSimulationManager::run(const DistributedSimulationCo
     const std::vector<BatchExecution> outcomes = executionManager.execute(jobs);
 
     DistributedResultsAggregator aggregator;
-    return aggregator.aggregate(outcomes);
+    AggregatedResult result = aggregator.aggregate(outcomes);
+
+    // 5. Build the per-worker / discovery report (which workers were found, their final state,
+    //    and how many replications each one actually completed).
+    std::map<std::string, unsigned int> completedByTarget;
+    for (const BatchExecution& outcome : outcomes) {
+        if (outcome.result.success && !outcome.ranOn.empty()) {
+            completedByTarget[outcome.ranOn] += outcome.result.numberOfReplications;
+        }
+    }
+    for (const WorkerDescriptor& worker : registry.all()) {
+        WorkerReport report;
+        report.endpoint = worker.endpoint();
+        report.isLocal = false;
+        report.state = worker.state == WorkerState::Available     ? "available"
+                       : worker.state == WorkerState::Unavailable ? "unavailable"
+                                                                  : "unknown";
+        report.latencyMs = worker.observedLatencyMs;
+        report.failureCount = worker.failureCount;
+        const auto completed = completedByTarget.find(report.endpoint);
+        report.replicationsCompleted = completed != completedByTarget.end() ? completed->second : 0;
+        result.workers.push_back(report);
+    }
+    if (config.includeLocal) {
+        WorkerReport report;
+        report.endpoint = kLocalTarget;
+        report.isLocal = true;
+        report.state = "local";
+        const auto completed = completedByTarget.find(kLocalTarget);
+        report.replicationsCompleted = completed != completedByTarget.end() ? completed->second : 0;
+        result.workers.push_back(report);
+    }
+
+    return result;
 }
 
 } // namespace genesys::distributed
