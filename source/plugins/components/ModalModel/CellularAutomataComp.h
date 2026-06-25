@@ -27,7 +27,7 @@ class BoundaryCondition;
 class CellularAutomataComp : public ModelComponent {
 public: //! enums
 	enum class CellularAutomataType : int {
-		CLASSIC = 1, TIMED_1D = 2, ASYNCHRONOUS = 3, NONUNIFORMRULE = 4, NONUNIFORMNEIGHBOOR = 5, USERDEFINED = 6
+		CLASSIC = 1, TIMED_1D = 2, ASYNCHRONOUS = 3, NONUNIFORMRULE = 4, NONUNIFORMNEIGHBOOR = 5, NONUNIFORM = 7, USERDEFINED = 6
 	};
 
 	enum class LatticeType : int {
@@ -92,6 +92,11 @@ public: //! static public methods that must have implementations (Load and New j
 	void setLocalRuleType(CellularAutomataComp::LocalRuleType newLocalRuleType);
 
 	LocalRule *getlocalRule() const;
+
+	bool setCellLocalRule(long cellNumber, LocalRule* rule);
+	bool setCellLocalRule(std::vector<int> position, LocalRule* rule);
+	bool setCellNeighborhood(long cellNumber, Neighborhood* hood);
+	bool setCellNeighborhood(std::vector<int> position, Neighborhood* hood);
 
 protected: //! virtual protected method that must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
