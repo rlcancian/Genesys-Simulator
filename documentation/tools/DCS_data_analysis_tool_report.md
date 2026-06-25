@@ -22,7 +22,7 @@
 
 **Data considerada:** 2026-06-23
 
-**Repositório/base de comparação:** branch `dev` comparada com `upstream/2026-1` do repositório `rlcancian/Genesys-Simulator`.
+**Repositório/base de comparação:** branch `dev` comparada com `upstream/2026-1` do repositório `rlcancian/Genesys-Simulator`. Pull request aberto: https://github.com/rlcancian/Genesys-Simulator/pull/424
 
 ---
 
