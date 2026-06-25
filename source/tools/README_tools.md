@@ -1,44 +1,62 @@
 # tools package
 
-## 1. Purpose of the tools package
+`source/tools` contains analysis and numerical support code used by GenESyS applications, examples and tests. The main current deliverable is the standalone data-analysis package in `source/tools/analysis`.
 
-The `source/tools` package hosts statistical and numerical support abstractions used by simulation and analysis flows. It provides interfaces and legacy implementations for fitting, hypothesis testing, probability utilities, and numerical solvers.
+## Main Targets
 
-## 2. Current major abstractions
+| Target | Purpose |
+| --- | --- |
+| `genesys_tools_analysis` | Standalone data-analysis layer: dataset loading, descriptive summaries, fitting, hypothesis testing, goodness-of-fit tests and probability helpers. It must not depend on `source/kernel`. |
+| `genesys_tools` | Aggregating/legacy tools target. It links `genesys_tools_analysis` and legacy helpers such as optimizer/factorial-design code. |
 
-- `DataAnalyser_if`: high-level façade to orchestrate dataset-oriented analysis services.
-- `SimulationResultsDatasetParser`: loader for numeric result files, including Genesys `Record` outputs split by replication and optional time/value columns.
-- `Fitter_if`: fitting contract for distribution parameter inference from sample data.
-- `HypothesisTester_if`: parametric inference API (confidence intervals and tests).
-- `ProbabilityDistributionBase` / `ProbabilityDistribution`: static math façade for PDF/PMF and inverse/quantile routines.
-- `Solver_if`: legacy numerical contract mixing integration and derivation/advancement.
-- `TraitsTools`: traits registry binding abstractions to concrete implementations.
+## Main Abstractions
 
-## 3. Current limitations
+| Area | Main files |
+| --- | --- |
+| Analysis facade | `analysis/DataAnalyser_if.h`, `analysis/DataAnalyserDefaultImpl.h` |
+| Dataset loading | `analysis/DatasetLoader.h`, `analysis/SimulationResultsDataset.h`, `analysis/SimulationResultsParser.cpp` |
+| Fitting | `analysis/Fitter_if.h`, `analysis/FitterDefaultImpl.h` |
+| Hypothesis testing | `analysis/HypothesisTester_if.h`, `analysis/HypothesisTesterDefaultImpl.h` |
+| Probability helpers | `analysis/ProbabilityDistributionBase.h`, `analysis/ProbabilityDistribution.h` |
+| Defaults/traits | `analysis/TraitsAnalysis.h` |
+| Analysis numerical solver | `analysis/Solver_if.h`, `analysis/SolverDefaultImpl.h` |
+| Other numerical interfaces | `Quadrature_if.h`, `RootFinder_if.h`, `OdeSystem_if.h`, `OdeSolver_if.h` |
 
-- Fitting baseline was expanded in FITTER-2: `FitterDefaultImpl` now also provides functional Beta (scaled) and Weibull fitting, still preserving controlled-failure behavior when constraints are not met.
-- `FitterDummyImpl` is preserved as a legacy placeholder/documental implementation, but it is no longer the default trait binding after FITTER-3.
-- Some hypothesis-testing paths, especially two-population paths, remain partially consolidated.
-- Distribution APIs are static utilities, not yet an OO hierarchy with reusable distribution objects.
-- Solver abstraction conflates quadrature and ODE-like concerns.
+## Analysis Package
 
-## 4. Planned evolution
+The analysis package is documented in `source/tools/analysis/README.md`. In short, it provides:
 
-- Introduce cohesive interfaces for dataset, distributions, quadrature, root finding, and ODE solving.
-- Continue hardening `FitterDefaultImpl` as the promoted default fitting implementation.
-- Evolve traits coverage to include newly stabilized abstractions.
-- Keep legacy interfaces during migration to avoid behavior breaks.
+- File and in-memory dataset loading.
+- Summary, histogram and boxplot structures.
+- Distribution fitting for uniform, triangular, normal, exponential, erlang, beta and weibull.
+- Structured fit ranking through `fitAllSummary()`.
+- Parametric confidence intervals and hypothesis tests for one and two populations.
+- Chi-square and one-sample Kolmogorov-Smirnov goodness-of-fit tests.
+- Probability density/mass and quantile helpers.
 
-## 5. Relationship with kernel/statistics
+`DataAnalyserDefaultImpl` is the facade intended for examples and direct use. A default-constructed analyser creates the default fitter and tester from `TraitsAnalysis`.
 
-`source/tools` consumes kernel/statistics contracts (collectors, samplers and data files) but this phase does not modify kernel or statistics code. The package remains a consumer and adapter layer over those existing contracts.
+## Tests
 
-## 6. Current status by topic
+The data-analysis package has dedicated unit and integration tests documented in `source/tests/README.md`. These tests are CMake/CTest targets and can be executed from QtCreator. When using the repository Makefile, the focused shortcuts are:
 
-- **Fitting**: interface defined; `FitterDefaultImpl` is functional for uniform/triangular/normal/exponential/erlang/beta/weibull with binary dataset loading and SSE-CDF comparison and is now the default `TraitsTools<Fitter_if>` binding (FITTER-3). `FitterDummyImpl` remains available as legacy placeholder.
-- **Hypothesis testing**: functional baseline exists in `HypothesisTesterDefaultImpl1`, with known partial areas.
-  - HYPTEST-1 alignment update: proportion-difference CI now follows the classical two-proportion formula, and one-population average/variance tests now compute p-values with Student-t/chi-square-coherent CDF paths.
-  - HYPTEST-2 final alignment update: one-population proportion confidence intervals (with and without finite-population correction) now use the large-sample normal quantile formulation.
-- **Simulation result datasets**: `SimulationResultsDatasetParser` reads text datasets and Genesys `Record` files, preserving replication ids and optional time columns so GUI analysis can expose pooled and per-replication scopes.
-- **Probability distributions**: mathematical static base and inverse façade available, with internal numeric dependencies.
-- **Numerical solvers**: legacy `Solver_if` + `SolverDefaultImpl1` remain the compatible baseline.
+| Test level | Makefile shortcut |
+| --- | --- |
+| Unit tests | `make run-unit-tests PACKAGE=tools` |
+| Integration tests | `make run-integration-tests PACKAGE=tools` |
+| Runnable examples/regression checks | `make run-examples` |
+
+The examples include a standalone analysis workflow over CSV files and a small GenESyS simulation workflow that writes a `Record` dataset and analyzes that simulation output through `DataAnalyserDefaultImpl`.
+
+## Dependency Rule
+
+`source/tools/analysis` must remain independent from `source/kernel`. If GUI, kernel tests or other modules need analysis functionality, those consumers should depend on `genesys_tools_analysis`; analysis code should not include kernel headers or use kernel statistics collectors.
+
+## Current Limitations
+
+- `DataAnalyserDefaultImpl::newDataSet`, `saveDataSet`, default `sampler()` and default `experimenter()` are roadmap hooks and are not supported in the current analysis-tool scope.
+- `FitterDummyImpl` remains available as a legacy placeholder but is not the default fitter binding.
+- `isNormalDistributed(...)` is an EDF/CDF SSE heuristic, not a formal normality test.
+- KS p-values are classical one-sample approximations. When parameters are estimated from the tested sample, treat them as diagnostic values.
+- Distribution APIs are static helpers; reusable distribution objects are future work.
+- `analysis/Solver_if` is a pre-existing solver integrated into the analysis package; its numerical implementation was not extended by this DCS. It retains legacy derivation overloads for compatibility, but only its Simpson quadrature is used by the analysis workflows.

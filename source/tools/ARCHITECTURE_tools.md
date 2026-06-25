@@ -1,67 +1,47 @@
-# Architecture notes for `source/tools`
+# Architecture Notes for `source/tools`
 
-## 1. Architectural overview
+This document records architectural boundaries for `source/tools`. User-facing capabilities, examples and test execution notes are documented in `README_tools.md` and `analysis/README.md`.
 
-The `tools` package provides domain-support services for statistical analysis and numerical procedures. It exposes interfaces used by higher-level workflows and retains legacy implementations for compatibility.
+## Scope
 
-## 2. Current package responsibilities
+`source/tools` contains support services that are useful outside the simulation kernel. The consolidated data-analysis package is the main current deliverable; legacy numerical and optimization helpers remain for compatibility.
 
-- Dataset-oriented analysis orchestration (`DataAnalyser_if`).
-- Simulation result dataset loading, including Genesys `Record` text output with replication metadata.
-- Distribution fitting contracts (`Fitter_if`).
-- Parametric hypothesis testing (`HypothesisTester_if`, default impl 1).
-- Distribution mathematical utilities and quantile inversion.
-- Numerical integration and derivation utilities via legacy solver abstractions.
-- Binding of abstractions to implementations through traits.
+## Target Boundaries
 
-## 3. Approved target decomposition
+| Target | Boundary |
+| --- | --- |
+| `genesys_tools_analysis` | Standalone analysis library. It contains the analysis facade, dataset loaders/parsers, fitter, hypothesis tester, probability helpers and the pre-existing solver implementation integrated for analysis routines. |
+| `genesys_tools` | Aggregate/legacy target. It may link `genesys_tools_analysis` and older tools such as optimizer/factorial-design code. |
 
-### Data analysis
-- Keep façade role in `DataAnalyser_if`.
-- Clarify ownership and lifecycle of returned collaborating services.
+`genesys_tools_analysis` must build without linking `genesys_kernel_*` and without including kernel headers.
 
-### Fitting
-- Preserve legacy fitting API.
-- Transition from dummy implementation to a concrete default implementation in phased manner (FITTER-1 delivered baseline behavior, FITTER-2 added functional Beta and Weibull fitting in `FitterDefaultImpl`, and FITTER-3 promotes `TraitsTools<Fitter_if>` to `FitterDefaultImpl`).
+## Dependency Direction
 
-### Hypothesis testing
-- Maintain current contract and refine implementation completeness, especially two-population methods.
-- HYPTEST-1 alignment keeps the current pooled-vs-Welch heuristic, but documents it as a TODO while consolidating one-population p-value coherence and the two-proportion-difference confidence interval formula.
-- HYPTEST-2 final alignment updates one-population proportion confidence intervals to the normal-approximation formulation (including finite-population correction when `N` is provided).
+The intended direction is:
 
-### Distribution abstractions
-- Introduce `Distribution_if` and specialized continuous/discrete interfaces.
-- Keep legacy static façade while migration is in progress.
+```text
+applications / GUI / tests / kernel consumers
+    -> genesys_tools_analysis
+    -> local analysis helpers
+```
 
-### Numerical tools
-- Split legacy solver responsibilities into dedicated interfaces:
-  - `Quadrature_if`
-  - `RootFinder_if`
-  - `OdeSystem_if`
-  - `OdeSolver_if`
+If a kernel, GUI or application workflow needs analysis behavior, that workflow should import/link the analysis target. The analysis package must not depend on kernel statistics collectors, simulator runtime objects or model objects.
 
-### Traits/binding
-- Keep current traits stable.
-- Expand only when safe concrete implementations exist.
+## Stable Analysis Contracts
 
-## 4. Legacy compatibility strategy
+- `DataAnalyserDefaultImpl` owns one validated dataset snapshot and keeps summary, histogram, boxplot and default fitter input aligned.
+- `FitterDefaultImpl` is the default fitter selected by `TraitsAnalysis<Fitter_if>`.
+- `HypothesisTesterDefaultImpl` is the default tester selected by `TraitsAnalysis<HypothesisTester_if>`.
+- File-based tester overloads use analysis loaders/parsers, not kernel statistics APIs.
+- `ProbabilityDistributionBase` and `ProbabilityDistribution` expose static mathematical helpers only.
 
-- Do not break existing public signatures in this phase.
-- Preserve compatibility by keeping legacy classes available while promoting only validated trait selections.
-- Add new abstractions as header-only contracts until implementations are mature.
+## Compatibility and Roadmap
 
-## 5. Planned migration order
-
-1. Stabilize documentation and explicit contracts for existing headers.
-2. Introduce new interface headers without forcing behavior changes.
-3. Add concrete implementations incrementally behind existing traits.
-4. Migrate trait bindings once implementations are production-safe.
-5. Deprecate legacy conflated abstractions only after full replacement is validated.
-
-## 6. Stability notes and non-goals for this phase
-
-- FITTER-2 consolidated additional fitting algorithms in `FitterDefaultImpl` (beta and weibull) on top of FITTER-1 families; FITTER-3 now switches the default trait binding so `TraitsTools<Fitter_if>` points to `FitterDefaultImpl`.
-- `FitterDummyImpl` is intentionally preserved as a legacy/documental placeholder and is no longer the default fitter binding.
-- No full completion of hypothesis-testing theory coverage.
-- No numerical refactor of legacy solver internals.
-- No cross-package behavior changes outside `source/tools`.
+- Public legacy signatures are preserved where practical.
+- `FitterDummyImpl` remains as a legacy placeholder, but it is not the default fitter binding.
+- `analysis/Solver_if` and `analysis/SolverDefaultImpl` provide the numerical
+  quadrature used by fitting and inference. They are a relocated, renamed
+  legacy implementation rather than a new analysis-tool capability; derivation
+  overloads remain only for compatibility with older external consumers.
+- `DataAnalyser_if::newDataSet`, `saveDataSet`, default `sampler()` and default `experimenter()` are explicit roadmap hooks and are unsupported in the current analysis-tool scope.
+- Future work may introduce reusable distribution objects and calibrated goodness-of-fit p-values when parameters are estimated from the tested sample.

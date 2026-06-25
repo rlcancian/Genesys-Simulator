@@ -57,13 +57,16 @@ SOURCES += \
     $$files($$SOURCE_ROOT/plugins/data/*.cpp, true) \
     $$SOURCE_ROOT/plugins/PluginConnectorStaticImpl1.cpp \
     $$SOURCE_ROOT/plugins/PluginConnectorDummyImpl1.cpp \
-    $$SOURCE_ROOT/tools/FitterDummyImpl.cpp \
-    $$SOURCE_ROOT/tools/HypothesisTesterDefaultImpl1.cpp \
+    $$SOURCE_ROOT/tools/analysis/DatasetLoader.cpp \
+    $$SOURCE_ROOT/tools/analysis/FitterDefaultImpl.cpp \
+    $$SOURCE_ROOT/tools/analysis/FitterDummyImpl.cpp \
+    $$SOURCE_ROOT/tools/analysis/HypothesisTesterDefaultImpl.cpp \
+    $$SOURCE_ROOT/tools/analysis/SimulationResultsDataset.cpp \
+    $$SOURCE_ROOT/tools/analysis/SimulationResultsParser.cpp \
     $$SOURCE_ROOT/tools/OptimizerDefaultImpl1.cpp \
-    $$SOURCE_ROOT/tools/ProbabilityDistribution.cpp \
-    $$SOURCE_ROOT/tools/ProbabilityDistributionBase.cpp \
-    $$SOURCE_ROOT/tools/SimulationResultsDataset.cpp \
-    $$SOURCE_ROOT/tools/SolverDefaultImpl1.cpp \
+    $$SOURCE_ROOT/tools/analysis/ProbabilityDistribution.cpp \
+    $$SOURCE_ROOT/tools/analysis/ProbabilityDistributionBase.cpp \
+    $$SOURCE_ROOT/tools/analysis/SolverDefaultImpl.cpp \
     $$SOURCE_ROOT/tools/FactorialDesign/FactorialDesign.cpp \
     $$SOURCE_ROOT/applications/BaseGenesysTerminalApplication.cpp \
     $$SOURCE_ROOT/applications/terminal/GenesysShell/GenesysShell.cpp

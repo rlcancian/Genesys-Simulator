@@ -12,7 +12,7 @@
 #include "plugins/data/BiochemicalSimulation/BioParameter.h"
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
-#include "tools/SimulationResultsDataset.h"
+#include "tools/analysis/SimulationResultsDataset.h"
 #include "../../../TraitsApp.h"
 
 Smart_BioNetworkAnalysis::Smart_BioNetworkAnalysis() {

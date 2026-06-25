@@ -20,6 +20,26 @@ function(genesys_add_unit_test test_target test_source)
     set_property(TARGET ${test_target} PROPERTY FOLDER tests/unit)
 endfunction()
 
+function(genesys_add_tools_unit_test test_target test_source)
+    add_executable(${test_target}
+        ${test_source}
+    )
+
+    target_link_libraries(${test_target}
+        PRIVATE
+            ${ARGN}
+            GTest::gtest_main
+    )
+
+    gtest_discover_tests(${test_target}
+        TEST_PREFIX "tools."
+        PROPERTIES
+            LABELS "unit"
+    )
+
+    set_property(TARGET ${test_target} PROPERTY FOLDER tests/unit/tools)
+endfunction()
+
 genesys_add_unit_test(genesys_test_util
     test_util.cpp
     genesys_kernel_util
@@ -31,7 +51,7 @@ genesys_add_unit_test(genesys_test_simulator_support
     genesys_kernel_util
 )
 
-if(NOT TARGET genesys_tools)
+if(NOT TARGET genesys_tools_analysis)
     add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-unit-tests)
 endif()
 
@@ -170,6 +190,9 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
     if(NOT TARGET genesys_tools)
         add_subdirectory(${CMAKE_SOURCE_DIR}/source/tools ${CMAKE_BINARY_DIR}/source/tools-for-gui-tests)
     endif()
+    if(NOT TARGET genesys_web_core)
+        add_subdirectory(${CMAKE_SOURCE_DIR}/source/applications/web ${CMAKE_BINARY_DIR}/source/web-for-gui-tests)
+    endif()
 
     add_executable(genesys_test_gui_gmdd_layout
         test_gui_gmdd_layout.cpp
@@ -196,8 +219,7 @@ if(DEFINED GENESYS_QT_TEST_PACKAGE)
             ${GENESYS_QT_TEST_PACKAGE}::Core
             ${GENESYS_QT_TEST_PACKAGE}::Gui
             ${GENESYS_QT_TEST_PACKAGE}::Widgets
-            "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime>"
-            genesys_web_core
+            "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_web_core>"
             genesys_tools
     )
 
@@ -232,37 +254,44 @@ else()
     message(STATUS "Qt was not found; skipping GUI render strategy unit test.")
 endif()
 
-add_executable(genesys_test_tools_hypothesistester
-    test_tools_hypothesistester.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/HypothesisTesterDefaultImpl1.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistribution.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/ProbabilityDistributionBase.cpp
-    ${CMAKE_SOURCE_DIR}/source/tools/SolverDefaultImpl1.cpp
+genesys_add_tools_unit_test(genesys_test_tools_hypothesistester
+    tools/analysis/test_tools_hypothesistester.cpp
+    genesys_tools_analysis
 )
 
-target_include_directories(genesys_test_tools_hypothesistester
-    PRIVATE
-        ${CMAKE_SOURCE_DIR}/source
+genesys_add_tools_unit_test(genesys_test_tools_dataanalyser
+    tools/analysis/test_tools_dataanalyser.cpp
+    genesys_tools_analysis
 )
 
-target_link_libraries(genesys_test_tools_hypothesistester
-    PRIVATE
-        genesys_kernel_simulator_runtime
-        genesys_kernel_statistics
-        genesys_kernel_util
-        GTest::gtest_main
+genesys_add_tools_unit_test(genesys_test_tools_simulation_results_dataset
+    tools/analysis/test_tools_simulation_results_dataset.cpp
+    genesys_tools_analysis
 )
 
-gtest_discover_tests(genesys_test_tools_hypothesistester
-    PROPERTIES
-        LABELS "unit"
+genesys_add_tools_unit_test(genesys_test_tools_dataset_loader
+    tools/analysis/test_tools_dataset_loader.cpp
+    genesys_tools_analysis
 )
 
-set_property(TARGET genesys_test_tools_hypothesistester PROPERTY FOLDER tests/unit)
+genesys_add_tools_unit_test(genesys_test_tools_fitter_distributions
+    tools/analysis/test_fitter_distributions.cpp
+    genesys_tools_analysis
+)
 
-genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
-    test_tools_simulation_results_dataset.cpp
-    genesys_tools
+genesys_add_tools_unit_test(genesys_test_tools_solver
+    tools/analysis/test_tools_solver.cpp
+    genesys_tools_analysis
+)
+
+add_custom_target(genesys_tools_unit_tests
+    DEPENDS
+        genesys_test_tools_hypothesistester
+        genesys_test_tools_dataanalyser
+        genesys_test_tools_simulation_results_dataset
+        genesys_test_tools_dataset_loader
+        genesys_test_tools_fitter_distributions
+        genesys_test_tools_solver
 )
 
 add_custom_target(genesys_kernel_unit_tests
@@ -283,7 +312,9 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_support_experimentmanager
         genesys_test_statistics
         genesys_test_tools_hypothesistester
+        genesys_test_tools_dataanalyser
         genesys_test_tools_simulation_results_dataset
+        genesys_test_tools_dataset_loader
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -363,6 +394,7 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
     COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
+    COMMAND $<TARGET_FILE:genesys_test_tools_dataset_loader>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests
