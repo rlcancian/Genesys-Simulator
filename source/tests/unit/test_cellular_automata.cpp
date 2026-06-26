@@ -277,10 +277,15 @@ TEST_F(CellularAutomataFixture, UpdatePoliciesProduceDeterministicSequences) {
 	ConfigureRule90(random);
 	random->setUpdatePolicyType(CellularAutomataComp::UpdatePolicyType::RANDOM);
 	random->setRandomSeed(7);
-	// Deterministic AND platform-independent: _stepRandom uses a uniform_int_distribution Fisher-Yates
-	// (not std::shuffle, whose engine consumption differs across libc++/libstdc++), so this exact value
-	// reproduces on macOS and Linux alike.
-	EXPECT_EQ(RunRule90(random, 4).back(), "1101110");
+	const std::string randomFirstRun = RunRule90(random, 4).back();
+	// RANDOM consumes the engine via std::uniform_int_distribution, whose value mapping is
+	// implementation-defined (libstdc++ vs libc++); a hardcoded golden is not portable.
+	// Assert what the test name promises: the same seed reproduces the same sequence.
+	CellularAutomataComp* randomAgain = CreateComponent();
+	ConfigureRule90(randomAgain);
+	randomAgain->setUpdatePolicyType(CellularAutomataComp::UpdatePolicyType::RANDOM);
+	randomAgain->setRandomSeed(7);
+	EXPECT_EQ(RunRule90(randomAgain, 4).back(), randomFirstRun);
 
 	CellularAutomataComp* blocks = CreateComponent();
 	ConfigureRule90(blocks);
