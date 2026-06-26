@@ -37,7 +37,8 @@ public:
                 pos = neighborNDimPosition.at(dim);
                 maxPos = (int) (lattice->getDimension(dim));
                 if (pos < 0 || pos >= maxPos) { // out of bound
-                    pos = (2 * maxPos + pos) % maxPos;
+                    // Keep periodic wrapping valid for any radius, including large negative offsets.
+                    pos = ((pos % maxPos) + maxPos) % maxPos;
                     // position corrected
                     neighborNDimPosition.at(dim) = pos;
                 }

@@ -25,6 +25,14 @@ Lattice::Lattice(const Lattice& orig) {
 
 }
 
+Lattice::~Lattice() {
+	// init() fills `cells` with new Cell objects owned by this lattice; free them here so a lattice
+	// does not leak its whole grid on teardown. The empty copy constructor leaves a copy's `cells`
+	// empty, so a copied lattice frees nothing — no double free.
+	for (Cell* cell : cells)
+		delete cell;
+}
+
 /* **************
  *  PUBLIC
  * **************/
@@ -103,11 +111,13 @@ void Lattice::setCell(const std::vector<int> position, Cell* cell) {
 		Cell* oldCell = cells.at(cellNumber);
 		cells.at(cellNumber) = cell;
 		if (oldCell != nullptr)
-			oldCell->~Cell();
+			delete oldCell; // was an explicit destructor call, which freed nothing (leak) and left a zombie
 	}
 }
 
 bool Lattice::setCellState(long cellNumber, State* state, Cell* cell) {
+	if (cellNumber < 0)
+		return false;
 	if (cells.size() <= cellNumber)
 		cells.resize(cellNumber + 1);
 	Cell* newCell = cell;
@@ -130,6 +140,8 @@ bool Lattice::setCellState(long cellNumber, State* state, Cell* cell) {
 
 bool Lattice::setCellState(std::vector<int> position, State* state, Cell* cell) {
 	long cellNumber = cellNDimPosition2Number(position);
+	if (cellNumber < 0)
+		return false;
 	return setCellState(cellNumber, state, cell);
 }
 
@@ -173,11 +185,15 @@ std::vector<int> Lattice::cellNumber2NDimPosition(const long cellNumber) {
 }
 
 Cell* Lattice::getCell(const long cellNumber) {
+	if (cellNumber < 0 || static_cast<unsigned long>(cellNumber) >= cells.size())
+		return nullptr;
 	return cells.at(cellNumber);
 }
 
 Cell* Lattice::getCell(const std::vector<int> position) {
-	unsigned int cellNumber = this->cellNDimPosition2Number(position);
+	long cellNumber = this->cellNDimPosition2Number(position);
+	if (cellNumber < 0)
+		return nullptr;
 	return getCell(cellNumber);
 }
 

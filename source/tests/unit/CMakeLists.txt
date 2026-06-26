@@ -252,6 +252,52 @@ genesys_add_unit_test(genesys_test_tools_simulation_results_dataset
     genesys_tools
 )
 
+# --- Cellular Automata component tests (DCS Tema 6.2) ---
+genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
+    test_cellular_automata_neighborhood.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata
+    test_cellular_automata.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata_elementary
+    test_cellular_automata_elementary.cpp
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata_user_defined
+    test_cellular_automata_user_defined.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    ${CMAKE_DL_LIBS}
+    genesys_kernel_simulator_runtime
+)
+
+genesys_add_unit_test(genesys_test_cellular_automata_component
+    test_cellular_automata_component.cpp
+    genesys_tools
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components
+    ${CMAKE_DL_LIBS}
+    genesys_kernel_simulator_runtime
+)
+
 add_custom_target(genesys_kernel_unit_tests
     DEPENDS
         genesys_test_util
@@ -270,6 +316,11 @@ add_custom_target(genesys_kernel_unit_tests
         genesys_test_statistics
         genesys_test_tools_hypothesistester
         genesys_test_tools_simulation_results_dataset
+        genesys_test_cellular_automata_neighborhood
+        genesys_test_cellular_automata
+        genesys_test_cellular_automata_elementary
+        genesys_test_cellular_automata_user_defined
+        genesys_test_cellular_automata_component
 )
 
 if(GENESYS_BUILD_WEB_APPLICATION)
@@ -348,6 +399,11 @@ add_custom_target(genesys_kernel_unit_tests_run
     COMMAND $<TARGET_FILE:genesys_test_statistics>
     COMMAND $<TARGET_FILE:genesys_test_tools_hypothesistester>
     COMMAND $<TARGET_FILE:genesys_test_tools_simulation_results_dataset>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_neighborhood>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_elementary>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_user_defined>
+    COMMAND $<TARGET_FILE:genesys_test_cellular_automata_component>
     COMMAND $<TARGET_FILE:genesys_test_kernel_simulator_method_inventory>
     DEPENDS
         genesys_kernel_unit_tests

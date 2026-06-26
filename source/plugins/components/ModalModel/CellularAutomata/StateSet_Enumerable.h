@@ -13,7 +13,11 @@ public:
 	StateSet_Enumerable(const StateSet_Enumerable& orig);
 	virtual ~StateSet_Enumerable()=default;
 public:
-	virtual std::string show();
+	virtual bool contains(const State& state) const override;
+	virtual bool tryMakeState(long value, State* state) const override;
+	virtual bool tryMakeState(double value, State* state) const override;
+	virtual std::string show() const override;
+	virtual std::string typeName() const override;
 	unsigned int size();
 	void addState(State* state);
 	unsigned int getStatesSize();
@@ -22,7 +26,8 @@ public:
 	void setStates(std::vector<State*> states);
 	std::vector<State*> getStates() const;
 protected:
-	CellularAutomataBase* parentCellularAutomata;
+	// parentCellularAutomata is inherited from StateSet; it used to be shadowed here (two separate
+	// fields), which was a silent maintenance hazard. Only the enumerated-specific `states` lives here.
 	std::vector<State*> states;
 private:
 };
