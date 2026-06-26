@@ -4,6 +4,7 @@
 #include <functional>
 #include <iomanip>
 #include <map>
+#include <memory>
 #include <sstream>
 
 #include "plugins/data/BiochemicalSimulation/BioReaction.h"
@@ -14,7 +15,7 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "tools/BioKineticLawExpression.h"
 #include "tools/MassActionOdeSystem.h"
-#include "tools/RungeKutta4OdeSolver.h"
+#include "tools/OdeSolverFactory.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -180,6 +181,9 @@ BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(mod
 	auto* propLastResponsePayload = new SimulationControlGeneric<std::string>(
 			std::bind(&BioNetwork::getLastResponsePayload, this), std::bind(&BioNetwork::setLastResponsePayload, this, std::placeholders::_1),
 			Util::TypeOf<BioNetwork>(), getName(), "LastResponsePayload", "");
+	auto* propOdeSolver = new SimulationControlGeneric<std::string>(
+			std::bind(&BioNetwork::getOdeSolver, this), std::bind(&BioNetwork::setOdeSolver, this, std::placeholders::_1),
+			Util::TypeOf<BioNetwork>(), getName(), "OdeSolver", "");
 
 	_parentModel->getControls()->insert(propStartTime);
 	_parentModel->getControls()->insert(propStopTime);
@@ -198,12 +202,14 @@ BioNetwork::BioNetwork(Model* model, std::string name) : ModelDataDefinition(mod
 	_addSimulationControl(propLastStatus);
 	_addSimulationControl(propLastErrorMessage);
 	_addSimulationControl(propLastResponsePayload);
+	_parentModel->getControls()->insert(propOdeSolver);
+	_addSimulationControl(propOdeSolver);
 }
 
 PluginInformation* BioNetwork::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<BioNetwork>(), &BioNetwork::LoadInstance, &BioNetwork::NewInstance);
 	info->setCategory("Biologic/Biochemical");
-	info->setDescriptionHelp("Native biochemical network runner. It advances BioSpecies and BioReaction data definitions with mass-action kinetics using a fixed-step RK4 solver, optionally constrained to explicit network membership.");
+	info->setDescriptionHelp("Native biochemical network runner. It advances BioSpecies and BioReaction data definitions with mass-action kinetics, integrating the ODE system with a selectable solver built by OdeSolverFactory (fixed-step RK4 or adaptive Dormand-Prince 5(4)), optionally constrained to explicit network membership.");
 	return info;
 }
 
@@ -226,6 +232,7 @@ std::string BioNetwork::show() {
 			",species=" + std::to_string(_speciesNames.size()) +
 			",reactions=" + std::to_string(_reactionNames.size()) +
 			",lastStatus=\"" + _lastStatus + "\"" +
+			",odeSolver=\"" + _odeSolver + "\"" +
 			",lastResponsePayloadSize=" + std::to_string(_lastResponsePayload.size());
 }
 
@@ -240,6 +247,10 @@ bool BioNetwork::_loadInstance(PersistenceRecord *fields) {
 		_lastStatus = fields->loadField("lastStatus", DEFAULT.lastStatus);
 		_lastErrorMessage = fields->loadField("lastErrorMessage", DEFAULT.lastErrorMessage);
 		_lastResponsePayload = fields->loadField("lastResponsePayload", DEFAULT.lastResponsePayload);
+		_odeSolver = fields->loadField("odeSolver", DEFAULT.odeSolver);
+		if (_odeSolver.empty()) {
+			_odeSolver = OdeSolverFactory::defaultKey();
+		}
 		_speciesNames.clear();
 		const unsigned int speciesCount = fields->loadField("species", 0u);
 		for (unsigned int i = 0; i < speciesCount; ++i) {
@@ -264,6 +275,7 @@ void BioNetwork::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues
 	fields->saveField("lastStatus", _lastStatus, DEFAULT.lastStatus, saveDefaultValues);
 	fields->saveField("lastErrorMessage", _lastErrorMessage, DEFAULT.lastErrorMessage, saveDefaultValues);
 	fields->saveField("lastResponsePayload", _lastResponsePayload, DEFAULT.lastResponsePayload, saveDefaultValues);
+	fields->saveField("odeSolver", _odeSolver, DEFAULT.odeSolver, saveDefaultValues);
 	fields->saveField("species", static_cast<unsigned int>(_speciesNames.size()), 0u, saveDefaultValues);
 	for (unsigned int i = 0; i < _speciesNames.size(); ++i) {
 		fields->saveField("speciesName" + Util::StrIndex(i), _speciesNames[i], "", saveDefaultValues);
@@ -286,6 +298,10 @@ bool BioNetwork::_check(std::string& errorMessage) {
 	}
 	if (_stopTime < _startTime) {
 		errorMessage += "BioNetwork \"" + getName() + "\" must define stopTime >= startTime. ";
+		resultAll = false;
+	}
+	if (!OdeSolverFactory::isRegistered(_odeSolver)) {
+		errorMessage += "BioNetwork \"" + getName() + "\" references unknown ODE solver \"" + _odeSolver + "\". ";
 		resultAll = false;
 	}
 
@@ -375,10 +391,13 @@ bool BioNetwork::advanceOneStep(std::string& errorMessage) {
 		y0[i] = species[i]->getAmount();
 	}
 
-	RungeKutta4OdeSolver solver;
-	if (!solver.advance(system, _currentTime, dt, y0.data(), y1.data())) {
+	// The solver isn't hard-coded anymore: instead of creating one directly, we
+	// ask the factory for the one named by _odeSolver and use it through the
+	// OdeSolver_if interface.
+	std::unique_ptr<OdeSolver_if> solver = OdeSolverFactory::create(_odeSolver);
+	if (!solver || !solver->advance(system, _currentTime, dt, y0.data(), y1.data())) {
 		_lastStatus = "Failed";
-		_lastErrorMessage = "BioNetwork \"" + getName() + "\" failed to advance the ODE system.";
+		_lastErrorMessage = "BioNetwork \"" + getName() + "\" failed to advance the ODE system with solver \"" + _odeSolver + "\".";
 		errorMessage = _lastErrorMessage;
 		return false;
 	}
@@ -665,6 +684,16 @@ void BioNetwork::setLastResponsePayload(std::string lastResponsePayload) {
 
 std::string BioNetwork::getLastResponsePayload() const {
 	return _lastResponsePayload;
+}
+
+void BioNetwork::setOdeSolver(std::string odeSolver) {
+	// Empty selection means "use the default solver" so legacy models that
+	// never stored the field keep working unchanged.
+	_odeSolver = odeSolver.empty() ? OdeSolverFactory::defaultKey() : odeSolver;
+}
+
+std::string BioNetwork::getOdeSolver() const {
+	return _odeSolver;
 }
 
 void BioNetwork::addSpecies(std::string speciesName) {
