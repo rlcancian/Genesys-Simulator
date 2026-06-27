@@ -3,7 +3,7 @@
 // LocalRule_UserDefined — a cellular-automaton local rule whose transition function is supplied by
 // the user as C++ source and compiled at runtime to a shared library (via the GenESyS CppCompiler),
 // then loaded and invoked per cell.
-// This is "Linha B" of Tema 6: arbitrary local rules defined by the user, without recompiling GenESyS.
+// Arbitrary local rules defined by the user, without recompiling GenESyS.
 //
 // The user writes one C-linkage function (no GenESyS headers needed). Two contracts are accepted:
 //
@@ -19,8 +19,8 @@
 //   - numDimensions: (extended only) the lattice dimensionality.
 //   - return value : the cell's next state.
 //
-// The extended contract lets a rule depend on the cell's position in the lattice (tema 6 §6: the
-// local rule may need "a posição da célula no lattice ... a dimensão do lattice"). If the compiled
+// The extended contract lets a rule depend on the cell's position in the lattice: a rule may need
+// the cell's position and the lattice dimensionality. If the compiled
 // library exports nextStateEx it is used; otherwise nextState is used. At least one must be present.
 //
 // Example (elementary rule 90, next = left XOR right):
@@ -197,7 +197,7 @@ public:
 		long next;
 		if (ruleFunctionEx != nullptr) {
 			// Extended contract: also hand the rule the cell's n-dimensional position so it can be
-			// position-dependent (tema 6 §6). getPosition() is populated by Lattice::init().
+			// position-dependent. getPosition() is populated by Lattice::init().
 			const std::vector<int> position = cell->getPosition();
 			next = ruleFunctionEx(self, neighborStatesBuffer.data(), numNeighbors,
 				position.data(), static_cast<int>(position.size()));

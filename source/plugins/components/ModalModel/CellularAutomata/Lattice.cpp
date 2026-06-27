@@ -111,7 +111,7 @@ void Lattice::setCell(const std::vector<int> position, Cell* cell) {
 		Cell* oldCell = cells.at(cellNumber);
 		cells.at(cellNumber) = cell;
 		if (oldCell != nullptr)
-			delete oldCell; // was an explicit destructor call, which freed nothing (leak) and left a zombie
+			delete oldCell;
 	}
 }
 

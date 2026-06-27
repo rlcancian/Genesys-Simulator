@@ -49,7 +49,7 @@ extern "C" StaticGetPluginInformation GetPluginInformation() {
 
 namespace {
 // Lattice dimensions are persisted as a comma-separated list (e.g. "5,5") so a saved automaton
-// round-trips to a checkable configuration (Tema 6 §10.1: persist the model's structural parameters).
+// round-trips to a checkable configuration (persist the model's structural parameters).
 std::string serializeDimensions(const std::vector<unsigned short>& dimensions) {
 	std::string out;
 	for (std::size_t i = 0; i < dimensions.size(); ++i) {
@@ -214,8 +214,8 @@ bool CellularAutomataComp::_buildUserDefinedRule(std::string* errorMessage) {
 }
 
 bool CellularAutomataComp::_check(std::string* errorMessage) {
-	// Best-of-each semantic check: Sutter's decomposed structural/rule/policy validation, plus the
-	// USERDEFINED (Linha B) rule built lazily once every structural sub-object is available.
+	// Decomposed structural/rule/policy validation, plus the USERDEFINED rule built lazily once
+	// every structural sub-object is available.
 	if (!_checkImplementedTypes(errorMessage))
 		return false;
 	if (_cellularAutomata == nullptr) {
@@ -238,7 +238,7 @@ bool CellularAutomataComp::_check(std::string* errorMessage) {
 		*errorMessage += "State set type is not set. ";
 		return false;
 	}
-	// Linha B: compile and load a user-defined local rule now, when the automaton, lattice,
+	// Compile and load a user-defined local rule now, when the automaton, lattice,
 	// neighborhood, boundary and state set all exist (see _buildUserDefinedRule).
 	if (_localRuleType == LocalRuleType::USERDEFINED) {
 		if (!_buildUserDefinedRule(errorMessage))
@@ -578,7 +578,7 @@ bool CellularAutomataComp::_checkImplementedTypes(std::string* errorMessage) con
 			*errorMessage += "Configured state set type is not implemented yet. ";
 		return false;
 	}
-	// USERDEFINED local rule IS implemented (Linha B, via CppCompiler); only HPP remains unimplemented.
+	// USERDEFINED local rule IS implemented (via CppCompiler); only HPP remains unimplemented.
 	if (_localRuleType == LocalRuleType::HPP) {
 		if (errorMessage != nullptr)
 			*errorMessage += "Configured local rule type is not implemented yet. ";
