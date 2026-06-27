@@ -35,35 +35,50 @@ difusão compilando contra o kernel real.
 
 ## Pré-requisitos
 
-- **CMake ≥ 3.24**, gerador **Ninja** e um compilador com **C++23** (GCC 13+/Clang 16+).
+- **CMake ≥ 3.24**, compilador com **C++23** (GCC 13+/Clang 16+) e um gerador: **Ninja** (usado pelos presets) **ou Make**.
 - **GoogleTest** (resolvido pelo próprio build dos testes).
 
 
 ## Compilar e rodar os testes
 
-Rodar **apenas os testes do DCS** (filtro por nome com `-R`):
+> Compilar os testes compila também as libs do kernel (a lib `genesys_tools` depende delas),
+> mas **não** precisa de Qt nem das aplicações terminal/GUI.
+
+### 1. Configurar
 
 ```bash
-# Parte 1 — Factory + Dormand-Prince + RK4
-ctest --preset tests-kernel-unit -R "OdeSolverFactory|DormandPrince54|RungeKutta4|OdeSolverContract"
-
-# Parte 2 — Método das Linhas N-D (núcleo)
-ctest --preset tests-kernel-unit -R "DiffusionMol"
-
-# Integração (plugins escolhendo solver)
-ctest --preset tests-kernel-unit -R "Diffusion|BioNetwork"
-```
-
-Rodar todos os testes:
-```bash
-# 1. Configurar o preset de testes unitários do kernel
+# Opção A — presets do projeto (requer Ninja)
 cmake --preset tests-kernel-unit
 
-# 2. Compilar tudo (kernel, plugins, tools, testes e a demo)
-cmake --build --preset tests-kernel-unit-run
+# Opção B — manual, sem Ninja (usa Make); gera em build/tests-unit
+cmake -S . -B build/tests-unit -G "Unix Makefiles" \
+  -DGENESYS_BUILD_TESTS=ON \
+  -DGENESYS_BUILD_TERMINAL_APPLICATION=OFF \
+  -DGENESYS_BUILD_GUI_APPLICATION=OFF
+```
 
-# 3. Rodar TODOS os testes
-ctest --preset tests-kernel-unit
+### 2. Compilar
+
+```bash
+# com preset
+cmake --build --preset tests-kernel-unit-run
+# ou, com a build manual (Make)
+cmake --build build/tests-unit -j
+```
+
+### 3. Rodar
+
+Use `--preset tests-kernel-unit` (se configurou por preset) ou `--test-dir build/tests-unit`
+(se configurou manual):
+
+```bash
+# todos os testes
+ctest --test-dir build/tests-unit
+
+# apenas os testes do DCS (filtro por nome -R)
+ctest --test-dir build/tests-unit -R "OdeSolverFactory|DormandPrince54|RungeKutta4|OdeSolverContract"  # Parte 1
+ctest --test-dir build/tests-unit -R "DiffusionMol"                                                     # Parte 2
+ctest --test-dir build/tests-unit -R "Diffusion|BioNetwork"                                             # integração
 ```
 
 
@@ -72,7 +87,7 @@ ctest --preset tests-kernel-unit
 Ou executar os binários diretamente (aceitam `--gtest_filter`):
 
 ```bash
-BIN=build/tests-kernel-unit/source/tests/unit
+BIN=build/tests-unit/source/tests/unit   # ou build/tests-kernel-unit/... se usou o preset
 $BIN/genesys_test_tools_ode_solver_factory
 $BIN/genesys_test_tools_diffusion_mol
 $BIN/genesys_test_simulator_runtime --gtest_filter='*Diffusion*'
@@ -80,16 +95,16 @@ $BIN/genesys_test_simulator_runtime --gtest_filter='*Diffusion*'
 
 ## Rodar a demo (difusão 2D animada)
 
-A demo já é compilada no passo de build acima. Para compilar só ela:
+A demo é o alvo `genesys_diffusion_ascii_demo` (fonte: `diffusion_demo.cpp`). Compilar só ela e executar:
 
 ```bash
-cmake --build --preset tests-kernel-unit-run --target genesys_diffusion_ascii_demo
-```
+# build manual (Make)
+cmake --build build/tests-unit --target genesys_diffusion_ascii_demo -j
+./build/tests-unit/source/tests/genesys_diffusion_ascii_demo
 
-Executar:
-
-```bash
-./build/tests-kernel-unit/source/tests/genesys_diffusion_ascii_demo
+# (com preset:
+#   cmake --build --preset tests-kernel-unit-run --target genesys_diffusion_ascii_demo
+#   ./build/tests-kernel-unit/source/tests/genesys_diffusion_ascii_demo )
 ```
 
 Mostra uma malha **2D 41×41**, condição inicial **Gaussiana**, contorno **Neumann**, solver
