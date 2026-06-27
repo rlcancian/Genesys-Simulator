@@ -263,5 +263,10 @@ std::string WebWorkerRuntime::_statusMessageLocked() const {
 }
 
 std::unique_ptr<Simulator> WebWorkerRuntime::_createSimulator() {
-    return std::make_unique<Simulator>();
+    auto simulator = std::make_unique<Simulator>();
+    // Register the built-in component plugins so that language-imported models can resolve
+    // their component types by name. The dummy plugin connector maps names to compiled-in
+    // classes, so this works in the static build without loading any .so file.
+    simulator->getPluginManager()->autoInsertPlugins();
+    return simulator;
 }

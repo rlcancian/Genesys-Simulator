@@ -153,20 +153,30 @@ more `--worker` endpoints for a larger, clearer speedup.
 - Failover during execution (a worker dying mid-job) is covered by the unit tests; pointing
   `--worker` at a dead port instead exercises the "ignore unavailable worker" path at discovery.
 
-## Known limitation: component statistics
+## Component statistics: how it works and current limits
 
-In the current static build, imported language models parse with **zero instantiated components**
-(the engine has no registered component plugins — the plugin system relies on dynamic `.so`
-loading, which is not active here). Consequently:
+Imported language models now instantiate their components and produce **real component statistics**
+(Cstats and Counters), both locally and on remote workers, and the layer aggregates them correctly.
 
-- A run executes the replication loop but performs no component-level work, so the measurable cost
-  comes from the **replication count**, not the model's structure.
-- The aggregated `statistics` and `counters` come back empty for language-imported models.
+This relies on registering the built-in component plugins before parsing: the worker
+(`genesys_web_app`) and the local executor call `autoInsertPlugins()` when creating their `Simulator`.
+The built-in plugin connector maps component type names to compiled-in classes, so this works in the
+static build **without loading any `.so` file** (no dynamic plugin system needed).
 
-The correctness of the statistical aggregation is proven independently by unit tests
-(`genesys_test_distributed_aggregator`: pooled moments equal the statistics computed over the
-combined values). Producing real component statistics end-to-end would require activating the
-dynamic plugin system (or a static name→component registry), which is outside this layer's scope.
+Two limits remain:
+
+- **Model format must be multi-line** — one record per line, like the `.gen` files under `models/`.
+  A model squeezed onto a single line is parsed as a single record (only its `ModelInfo`), yielding
+  zero components. (The replication count still works because it comes from `--replications` / the job
+  config, not from the parsed model.)
+- **Complex `.gen` models still fail to import** (`INVALID_MODEL_SPECIFICATION`) on this branch. This
+  is a separate pre-existing limitation of the parser/serializer, unrelated to plugin registration.
+  Simple and moderate models run end-to-end with real statistics.
+
+Example (Create→Dispose, multi-line, run on a remote worker) returns non-empty results:
+`Create_1.CountNumberOut`, `Dispose_1.CountNumberIn` and the `Part.TotalTimeInSystem` Cstat. The
+exactness of the pooled aggregation is additionally proven by `genesys_test_distributed_aggregator`
+(pooled moments equal the statistics computed over the combined values).
 
 ## Tests
 

@@ -101,6 +101,9 @@ void captureInto(Model* model, ModelSimulation* simulation, BatchResult& result)
 
 BatchResult LocalSimulationExecutor::execute(const DistributedSimulationJob& job) {
     Simulator simulator;
+    // Register the built-in component plugins so language-imported models can resolve their
+    // component types by name (mirrors the web worker setup; works in the static build).
+    simulator.getPluginManager()->autoInsertPlugins();
     ModelManager* modelManager = simulator.getModelManager();
     if (modelManager == nullptr) {
         return failure("local: unable to access model manager");
