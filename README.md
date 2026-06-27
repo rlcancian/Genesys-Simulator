@@ -44,13 +44,19 @@ difusão compilando contra o kernel real.
 Rodar **apenas os testes do DCS** (filtro por nome com `-R`):
 
 ```bash
-# Parte 1 — Factory + Dormand-Prince + RK4
+# 1. Configurar o preset de testes unitários do kernel
+cmake --preset tests-kernel-unit
+
+# 2. Compilar tudo (kernel, plugins, tools, testes e a demo)
+cmake --build --preset tests-kernel-unit-run
+
+# 3. Parte 1 — Factory + Dormand-Prince + RK4
 ctest --preset tests-kernel-unit -R "OdeSolverFactory|DormandPrince54|RungeKutta4|OdeSolverContract"
 
-# Parte 2 — Método das Linhas N-D (núcleo)
+# 4. Parte 2 — Método das Linhas N-D (núcleo)
 ctest --preset tests-kernel-unit -R "DiffusionMol"
 
-# Integração (plugins escolhendo solver)
+# 5. Integração (plugins escolhendo solver)
 ctest --preset tests-kernel-unit -R "Diffusion|BioNetwork"
 ```
 
