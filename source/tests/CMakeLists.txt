@@ -16,7 +16,7 @@ if(GENESYS_BUILD_SMOKE_TESTS)
 endif()
 
 add_executable(genesys_diffusion_ascii_demo
-    diffusion_ascii_demo.cpp
+    diffusion_demo.cpp
 )
 
 target_include_directories(genesys_diffusion_ascii_demo
