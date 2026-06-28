@@ -9,9 +9,13 @@
 #
 # Environment overrides:
 #   BUILD_DIR     build directory                 (default: build/distributed)
-#   REPLICATIONS  total replications              (default: 120000, or $1)
+#   REPLICATIONS  total replications              (default: 20000, or $1)
 #   WORKER_PORTS  space-separated worker ports    (default: "8101 8102")
 #   MODEL         model file to use               (default: a generated temp model)
+#   TIMEOUT       per-request timeout in seconds  (default: 60)
+#
+# The default model does real component work, so a worker batch can take several seconds. The
+# orchestrator's default timeout (5s) would abort such batches; TIMEOUT raises it generously.
 #
 # Note: this script runs `pkill -f genesys_web_app` to free the worker ports, which will
 # also stop any unrelated genesys_web_app instances you may have running.
@@ -22,9 +26,10 @@ set -u
 # would otherwise produce "3,84" and break the numeric comparison below).
 export LC_ALL=C
 
-REPLICATIONS="${1:-${REPLICATIONS:-120000}}"
+REPLICATIONS="${1:-${REPLICATIONS:-20000}}"
 BUILD_DIR="${BUILD_DIR:-build/distributed}"
 WORKER_PORTS="${WORKER_PORTS:-8101 8102}"
+TIMEOUT="${TIMEOUT:-60}"
 
 APP="$BUILD_DIR/source/applications/distributed/genesys_distributed_app"
 WEB="$BUILD_DIR/source/applications/web/genesys_web_app"
@@ -86,7 +91,7 @@ echo "workers      : $WORKER_PORTS  (+ local engine)"
 echo
 
 echo "--- Local only (1 engine) ---"
-run_case --model "$MODEL_FILE" --replications "$REPLICATIONS" --local
+run_case --model "$MODEL_FILE" --replications "$REPLICATIONS" --timeout "$TIMEOUT" --local
 LOCAL_TIME="$LAST"
 echo
 
@@ -108,7 +113,7 @@ for port in $WORKER_PORTS; do
 done
 
 echo "--- Distributed (${NUM_WORKERS} workers + local) ---"
-run_case --model "$MODEL_FILE" --replications "$REPLICATIONS" "${WORKER_ARGS[@]}" --local
+run_case --model "$MODEL_FILE" --replications "$REPLICATIONS" --timeout "$TIMEOUT" "${WORKER_ARGS[@]}" --local
 DIST_TIME="$LAST"
 echo
 

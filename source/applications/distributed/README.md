@@ -72,9 +72,23 @@ them across workers. The steps below show a measurable wall-clock reduction.
 
 ### 1. Create a model file `model.txt`
 
+The model **must be multi-line** — the `.gen` parser reads one record per line. A single-line model is
+parsed as a single `ModelInfo` record (zero components, empty statistics).
+
 ```
-0   ModelInfo  "DistributedDemo" version="1.0" projectTitle="" description="" analystName="" 0   ModelSimulation "" traceLevel=0 replicationLength=10.000000 numberOfReplications=120000 63  Create "Create_1" entityType="entitytype" nextId=73 73  Dispose "Dispose_1" nexts=0
+# Genesys Simulation Model
+0   ModelInfo  "DistributedDemo" version="1.0" projectTitle="" description="" analystName=""
+0   ModelSimulation "" traceLevel=0 replicationLength=10.000000 numberOfReplications=20000
+62  EntityType "Part"
+61  Create     "Create_1" entityType="Part" nextId=64 timeBetweenCreations="norm(1.5,0.5)"
+64  Delay      "Delay_1" delayExpression="norm(1.0,0.2)" nextId=63
+63  Dispose    "Dispose_1" nexts=0
 ```
+
+This model does real component work (entities flow Create → Delay → Dispose), so it produces real
+statistics (`Delay_1.DelayTime`, `Part.TotalTimeInSystem`, `Part.WaitTime`) and counters. Because each
+replication now does real work, **far fewer replications** are needed for a measurable run than with a
+trivial model (and a worker batch can take several seconds — see the `--timeout` note below).
 
 ### 2. Start two workers on free ports
 
@@ -111,14 +125,15 @@ The helper script runs both versions and prints a filtered comparison (no startu
 project root:
 
 ```bash
-source/applications/distributed/run-distributed-demo.sh            # default 120000 replications
-source/applications/distributed/run-distributed-demo.sh 300000     # custom replication count
+source/applications/distributed/run-distributed-demo.sh            # default 20000 replications
+source/applications/distributed/run-distributed-demo.sh 50000      # custom replication count
 BUILD_DIR=build/distributed WORKER_PORTS="8101 8102 8103" \
     source/applications/distributed/run-distributed-demo.sh        # override build dir / workers
 ```
 
 It builds nothing (build first, see above), starts/stops the workers itself, and prints `local`,
-`distributed` and `speedup`. The manual steps below do the same by hand.
+`distributed` and `speedup`. It passes a generous `--timeout` (env `TIMEOUT`, default 60s) so heavy
+worker batches are not aborted. The manual steps below do the same by hand.
 
 ### 3. Measure baseline (local only) vs distributed
 
@@ -126,27 +141,32 @@ It builds nothing (build first, see above), starts/stops the workers itself, and
 APP=build/distributed/source/applications/distributed/genesys_distributed_app
 
 # Baseline: a single local engine.
-time $APP --model model.txt --replications 120000 --local
+time $APP --model model.txt --replications 20000 --timeout 60 --local
 
 # Distributed: two remote workers plus the local engine (3 engines in parallel).
-time $APP --model model.txt --replications 120000 \
+time $APP --model model.txt --replications 20000 --timeout 60 \
      --worker 127.0.0.1:8101 --worker 127.0.0.1:8102 --local
 
 pkill -f genesys_web_app           # clean up the workers
 ```
 
-Representative result (4-core machine):
+Representative result (4-core machine, model above):
 
 | Execution                         | Wall-clock |
 |-----------------------------------|------------|
-| Local only (1 engine)             | ~9.8 s     |
-| 2 workers + local (3 engines)     | ~3.3 s     |
+| Local only (1 engine)             | ~7.5 s     |
+| 2 workers + local (3 engines)     | ~3.0 s     |
 
-Both runs complete `120000 / 120000` replications. Increase `--replications` (e.g. `300000`) or add
-more `--worker` endpoints for a larger, clearer speedup.
+Both runs complete `20000 / 20000` replications. Increase `--replications` or add more `--worker`
+endpoints for a larger, clearer speedup.
 
 ### Tips and caveats
 
+- **Raise `--timeout` for real models.** The orchestrator's default per-request timeout is **5s**. A
+  worker batch that runs a non-trivial model for many replications can take longer than that; if it
+  does, the batch is treated as a worker failure (timed out → marked unavailable → failover, or the
+  batch is reported `lost`). Pass `--timeout <seconds>` comfortably above the per-batch time. The demo
+  scripts already do this (`TIMEOUT`, default 60s).
 - **Use free ports.** A worker that fails to bind is marked unavailable during discovery, and its
   share of the load falls back to the remaining targets (or local) — which hides the speedup.
 - The orchestrator runs the initial attempts in parallel; failover reassignment is sequential.
