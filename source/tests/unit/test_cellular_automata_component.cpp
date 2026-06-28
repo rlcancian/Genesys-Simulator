@@ -11,6 +11,8 @@
 #include "kernel/simulator/Persistence.h"
 
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace {
 
@@ -49,6 +51,16 @@ void configureValidUserDefined(ComponentProbe& comp, const std::string& ruleSour
 }
 
 const std::string kRule90 = LocalRule_UserDefined::wrapBody("return neighbors[0] ^ neighbors[1];");
+
+void configureGenericSpecialLattice(ComponentProbe& comp, CellularAutomataComp::LatticeType latticeType,
+		const std::vector<unsigned short>& dimensions) {
+	comp.setCellularAutomataType(CellularAutomataComp::CellularAutomataType::CLASSIC);
+	comp.setLatticeType(latticeType);
+	comp.getlattice()->setDimensions(dimensions);
+	comp.setBoundaryType(CellularAutomataComp::BoundaryType::FIXED);
+	comp.setStateSetType(CellularAutomataComp::StateSetType::ENUMERATED);
+	comp.setLocalRuleType(CellularAutomataComp::LocalRuleType::BIASED_COMPETITION);
+}
 
 } // namespace
 
@@ -132,4 +144,95 @@ TEST(CellularAutomataComponent, PersistenceRoundTripPreservesConfiguration) {
 	// The reloaded configuration must still pass the semantic check (rebuilds and recompiles the rule).
 	std::string error;
 	EXPECT_TRUE(loaded.CheckProbe(&error)) << error;
+}
+
+TEST(CellularAutomataComponent, CheckAcceptsTriangularAndHexagonalLattices) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe triangular(model, "CA_Triangular");
+	configureGenericSpecialLattice(triangular, CellularAutomataComp::LatticeType::TRIANGULAR, {3, 3});
+	std::string error;
+	ASSERT_TRUE(triangular.initializeCellularAutomata(&error)) << error;
+	EXPECT_EQ(triangular.getlattice()->getCell({1, 1})->getNeighbors().size(), 3u);
+
+	ComponentProbe hexagonal(model, "CA_Hexagonal");
+	configureGenericSpecialLattice(hexagonal, CellularAutomataComp::LatticeType::HEXAGONAL, {3, 3});
+	error.clear();
+	ASSERT_TRUE(hexagonal.initializeCellularAutomata(&error)) << error;
+	EXPECT_EQ(hexagonal.getlattice()->getCell({1, 1})->getNeighbors().size(), 6u);
+}
+
+TEST(CellularAutomataComponent, CheckRejectsInvalidSpecialLattices) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe triangular3d(model, "CA_Triangular3D");
+	configureGenericSpecialLattice(triangular3d, CellularAutomataComp::LatticeType::TRIANGULAR, {3, 3, 3});
+	std::string error;
+	EXPECT_FALSE(triangular3d.CheckProbe(&error));
+	EXPECT_NE(error.find("exactly two dimensions"), std::string::npos) << error;
+
+	ComponentProbe hexRadius2(model, "CA_HexRadius2");
+	configureGenericSpecialLattice(hexRadius2, CellularAutomataComp::LatticeType::HEXAGONAL, {3, 3});
+	hexRadius2.getNeighboorhood()->setRadius(2);
+	error.clear();
+	EXPECT_FALSE(hexRadius2.CheckProbe(&error));
+	EXPECT_NE(error.find("radius-1"), std::string::npos) << error;
+}
+
+TEST(CellularAutomataComponent, CheckAcceptsNetworkLatticeWithEdges) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe network(model, "CA_Network");
+	configureGenericSpecialLattice(network, CellularAutomataComp::LatticeType::NETWORK, {4});
+	network.setNetworkEdges({{0, 1}, {0, 2}, {2, 3}});
+	std::string error;
+	ASSERT_TRUE(network.initializeCellularAutomata(&error)) << error;
+	EXPECT_EQ(network.getlattice()->getCell(0L)->getNeighbors().size(), 2u);
+	EXPECT_EQ(network.getlattice()->getCell(1L)->getNeighbors().size(), 1u);
+}
+
+TEST(CellularAutomataComponent, CheckRejectsNetworkWithoutOrWithInvalidEdges) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe noEdges(model, "CA_NetworkNoEdges");
+	configureGenericSpecialLattice(noEdges, CellularAutomataComp::LatticeType::NETWORK, {4});
+	std::string error;
+	EXPECT_FALSE(noEdges.CheckProbe(&error));
+	EXPECT_NE(error.find("at least one edge"), std::string::npos) << error;
+
+	ComponentProbe invalidEdges(model, "CA_NetworkInvalidEdges");
+	configureGenericSpecialLattice(invalidEdges, CellularAutomataComp::LatticeType::NETWORK, {4});
+	invalidEdges.setNetworkEdges({{0, 4}});
+	error.clear();
+	EXPECT_FALSE(invalidEdges.CheckProbe(&error));
+	EXPECT_NE(error.find("existing cells"), std::string::npos) << error;
+}
+
+TEST(CellularAutomataComponent, PersistenceRoundTripPreservesNetworkEdges) {
+	Simulator simulator;
+	Model* model = simulator.getModelManager()->newModel();
+
+	ComponentProbe saved(model, "CA_NetworkSaved");
+	configureGenericSpecialLattice(saved, CellularAutomataComp::LatticeType::NETWORK, {4});
+	saved.setNetworkEdges({{0, 1}, {0, 2}, {2, 3}}, false);
+
+	FakePersistence persistence;
+	PersistenceRecord fields(persistence);
+	saved.SaveProbe(&fields, true);
+
+	ComponentProbe loaded(model, "CA_NetworkLoaded");
+	ASSERT_TRUE(loaded.LoadProbe(&fields));
+
+	EXPECT_EQ(loaded.getLatticeType(), CellularAutomataComp::LatticeType::NETWORK);
+	EXPECT_EQ(loaded.getNetworkEdges(), (std::vector<std::pair<unsigned long, unsigned long>>{{0, 1}, {0, 2}, {2, 3}}));
+	EXPECT_FALSE(loaded.getNetworkEdgesUndirected());
+
+	std::string error;
+	ASSERT_TRUE(loaded.initializeCellularAutomata(&error)) << error;
+	EXPECT_EQ(loaded.getlattice()->getCell(0L)->getNeighbors().size(), 2u);
+	EXPECT_EQ(loaded.getlattice()->getCell(1L)->getNeighbors().size(), 0u);
 }

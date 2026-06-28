@@ -24,7 +24,10 @@
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Growty.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_UserDefined.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Center.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Hexagonal.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Network.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Triangular.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
 #include "plugins/components/ModalModel/CellularAutomata/State.h"
 #include "plugins/components/ModalModel/CellularAutomata/StateSet_Bit.h"
@@ -69,6 +72,31 @@ std::vector<unsigned short> parseDimensions(const std::string& serialized) {
 			dimensions.emplace_back(static_cast<unsigned short>(std::stoul(item)));
 	}
 	return dimensions;
+}
+
+std::string serializeNetworkEdges(const std::vector<std::pair<unsigned long, unsigned long>>& edges) {
+	std::string out;
+	for (std::size_t i = 0; i < edges.size(); ++i) {
+		if (i > 0)
+			out += ',';
+		out += std::to_string(edges.at(i).first) + '-' + std::to_string(edges.at(i).second);
+	}
+	return out;
+}
+
+std::vector<std::pair<unsigned long, unsigned long>> parseNetworkEdges(const std::string& serialized) {
+	std::vector<std::pair<unsigned long, unsigned long>> edges;
+	std::stringstream stream(serialized);
+	std::string item;
+	while (std::getline(stream, item, ',')) {
+		const std::size_t separator = item.find('-');
+		if (separator == std::string::npos)
+			continue;
+		edges.emplace_back(
+			static_cast<unsigned long>(std::stoul(item.substr(0, separator))),
+			static_cast<unsigned long>(std::stoul(item.substr(separator + 1))));
+	}
+	return edges;
 }
 } // namespace
 
@@ -125,6 +153,10 @@ bool CellularAutomataComp::_loadInstance(PersistenceRecord *fields) {
 		const std::string serializedDimensions = fields->loadField("latticeDimensions", std::string(""));
 		if (_lattice != nullptr && !serializedDimensions.empty())
 			_lattice->setDimensions(parseDimensions(serializedDimensions));
+		const std::string serializedEdges = fields->loadField("networkEdges", std::string(""));
+		const bool networkEdgesUndirected = fields->loadField("networkEdgesUndirected", 1) != 0;
+		if (_lattice != nullptr && !serializedEdges.empty())
+			_lattice->setNetworkEdges(parseNetworkEdges(serializedEdges), networkEdgesUndirected);
 		setNeighboorhoodType(static_cast<NeighboorhoodType>(
 			fields->loadField("neighborhoodType", static_cast<int>(DEFAULT.neighboorhoodType))));
 		if (_neighboorhood != nullptr)
@@ -174,6 +206,10 @@ void CellularAutomataComp::_saveInstance(PersistenceRecord *fields, bool saveDef
 		DEFAULT.userDefinedRuleSource, saveDefaultValues);
 	const std::string serializedDimensions = _lattice != nullptr ? serializeDimensions(_lattice->getDimensions()) : std::string("");
 	fields->saveField("latticeDimensions", serializedDimensions, std::string(""), saveDefaultValues);
+	const std::string serializedNetworkEdges = _lattice != nullptr ? serializeNetworkEdges(_lattice->getNetworkEdges()) : std::string("");
+	fields->saveField("networkEdges", serializedNetworkEdges, std::string(""), saveDefaultValues);
+	const int networkEdgesUndirected = (_lattice == nullptr || _lattice->getNetworkEdgesUndirected()) ? 1 : 0;
+	fields->saveField("networkEdgesUndirected", networkEdgesUndirected, 1, saveDefaultValues);
 	const int neighborhoodRadius = _neighboorhood != nullptr ? static_cast<int>(_neighboorhood->getRadius()) : 1;
 	fields->saveField("neighborhoodRadius", neighborhoodRadius, 1, saveDefaultValues);
 }
@@ -367,6 +403,22 @@ void CellularAutomataComp::setRandomSeed(unsigned int randomSeed) {
 	_randomStepCounter = 0;
 }
 
+void CellularAutomataComp::setNetworkEdges(const std::vector<std::pair<unsigned long, unsigned long>>& edges, bool undirected) {
+	if (_lattice == nullptr)
+		setLatticeType(LatticeType::NETWORK);
+	_lattice->setNetworkEdges(edges, undirected);
+}
+
+std::vector<std::pair<unsigned long, unsigned long>> CellularAutomataComp::getNetworkEdges() const {
+	if (_lattice == nullptr)
+		return {};
+	return _lattice->getNetworkEdges();
+}
+
+bool CellularAutomataComp::getNetworkEdgesUndirected() const {
+	return _lattice == nullptr || _lattice->getNetworkEdgesUndirected();
+}
+
 LocalRule *CellularAutomataComp::getlocalRule() const
 {
 	return _localRule;
@@ -486,8 +538,21 @@ void CellularAutomataComp::setLatticeType(CellularAutomataComp::LatticeType newL
 {
 	_latticeType = newLatticeStructure;
 	_ensureCellularAutomata();
+	const ::LatticeType latticeType = static_cast<::LatticeType>(static_cast<int>(_latticeType));
 	if (_lattice == nullptr)
-		_lattice = new Lattice(_cellularAutomata);
+		_lattice = new Lattice(_cellularAutomata, nullptr, {}, latticeType);
+	else
+		_lattice->setLatticeType(latticeType);
+	if (_neighboorhood != nullptr) {
+		const unsigned short radius = _neighboorhood->getRadius();
+		setNeighboorhoodType(_neighboorhoodType);
+		if (_neighboorhood != nullptr)
+			_neighboorhood->setRadius(radius);
+	} else if (_latticeType == LatticeType::TRIANGULAR ||
+			_latticeType == LatticeType::HEXAGONAL ||
+			_latticeType == LatticeType::NETWORK) {
+		setNeighboorhoodType(_neighboorhoodType);
+	}
 }
 
 CellularAutomataComp::NeighboorhoodType CellularAutomataComp::getNeighboorhoodType() const
@@ -506,7 +571,13 @@ void CellularAutomataComp::setNeighboorhoodType(CellularAutomataComp::Neighboorh
 	// itself (Neighborhood ctor), an unimplemented one leaves it safely null (avoids use-after-free).
 	if (_cellularAutomata != nullptr)
 		_cellularAutomata->setNeighborhood(nullptr);
-	if (_neighboorhoodType == NeighboorhoodType::CENTERED)
+	if (_latticeType == LatticeType::TRIANGULAR)
+		_neighboorhood = new Neighborhood_Triangular(_cellularAutomata);
+	else if (_latticeType == LatticeType::HEXAGONAL)
+		_neighboorhood = new Neighborhood_Hexagonal(_cellularAutomata);
+	else if (_latticeType == LatticeType::NETWORK)
+		_neighboorhood = new Neighborhood_Network(_cellularAutomata);
+	else if (_neighboorhoodType == NeighboorhoodType::CENTERED)
 		_neighboorhood = new Neighborhood_Center(_cellularAutomata);
 	else if (_neighboorhoodType == NeighboorhoodType::MOORE)
 		_neighboorhood = new Neighborhood_Moore(_cellularAutomata);
@@ -553,10 +624,7 @@ bool CellularAutomataComp::_checkImplementedTypes(std::string* errorMessage) con
 			*errorMessage += "Configured cellular automata type is not implemented yet. ";
 		return false;
 	}
-	if (_latticeType == LatticeType::TRIANGULAR ||
-			_latticeType == LatticeType::HEXAGONAL ||
-			_latticeType == LatticeType::NETWORK ||
-			_latticeType == LatticeType::USERDEFINED) {
+	if (_latticeType == LatticeType::USERDEFINED) {
 		if (errorMessage != nullptr)
 			*errorMessage += "Configured lattice type is not implemented yet. ";
 		return false;
@@ -601,6 +669,24 @@ bool CellularAutomataComp::_checkLattice(std::string* errorMessage) const {
 			return false;
 		}
 	}
+	if ((_latticeType == LatticeType::TRIANGULAR || _latticeType == LatticeType::HEXAGONAL) &&
+			dimensions.size() != 2) {
+		if (errorMessage != nullptr)
+			*errorMessage += "Triangular and hexagonal lattices require exactly two dimensions. ";
+		return false;
+	}
+	if (_latticeType == LatticeType::NETWORK) {
+		if (!_lattice->hasNetworkEdges()) {
+			if (errorMessage != nullptr)
+				*errorMessage += "Network lattice requires at least one edge. ";
+			return false;
+		}
+		if (!_lattice->networkEdgesAreValid()) {
+			if (errorMessage != nullptr)
+				*errorMessage += "Network lattice edges must reference existing cells. ";
+			return false;
+		}
+	}
 	return true;
 }
 
@@ -615,12 +701,23 @@ bool CellularAutomataComp::_checkStateSet(std::string* errorMessage) const {
 
 bool CellularAutomataComp::_checkRuleCompatibility(std::string* errorMessage) const {
 	const unsigned short numDimensions = _lattice->getNumDimensions();
-	if (_neighboorhoodType == NeighboorhoodType::CENTERED && numDimensions != 1) {
+	if ((_latticeType == LatticeType::TRIANGULAR || _latticeType == LatticeType::HEXAGONAL) &&
+			(_neighboorhood == nullptr || _neighboorhood->getRadius() != 1)) {
+		if (errorMessage != nullptr)
+			*errorMessage += "Triangular and hexagonal lattices currently require radius-1 neighborhoods. ";
+		return false;
+	}
+	if (_latticeType == LatticeType::RETICULAR && _neighboorhoodType == NeighboorhoodType::CENTERED && numDimensions != 1) {
 		if (errorMessage != nullptr)
 			*errorMessage += "Centered neighborhood is currently supported only for 1D lattices. ";
 		return false;
 	}
 	if (_localRuleType == LocalRuleType::ELEMENTAR_CA) {
+		if (_latticeType != LatticeType::RETICULAR) {
+			if (errorMessage != nullptr)
+				*errorMessage += "Elementary cellular automata rule requires a reticular lattice. ";
+			return false;
+		}
 		if (numDimensions != 1) {
 			if (errorMessage != nullptr)
 				*errorMessage += "Elementary cellular automata rule requires a 1D lattice. ";
@@ -638,9 +735,12 @@ bool CellularAutomataComp::_checkRuleCompatibility(std::string* errorMessage) co
 		}
 	}
 	if (_localRuleType == LocalRuleType::GAME_OF_LIFE) {
-		if (numDimensions != 2 || _neighboorhoodType != NeighboorhoodType::MOORE || _neighboorhood->getRadius() != 1) {
+		if (_latticeType != LatticeType::RETICULAR ||
+				numDimensions != 2 ||
+				_neighboorhoodType != NeighboorhoodType::MOORE ||
+				_neighboorhood->getRadius() != 1) {
 			if (errorMessage != nullptr)
-				*errorMessage += "Game of Life requires a 2D lattice with Moore radius-1 neighborhood. ";
+				*errorMessage += "Game of Life requires a 2D reticular lattice with Moore radius-1 neighborhood. ";
 			return false;
 		}
 		StateSet_Enumerable* enumerableStateSet = dynamic_cast<StateSet_Enumerable*>(_stateSet);
@@ -718,8 +818,8 @@ void CellularAutomataComp::_applyRuleAndUpdateCell(unsigned long cellNumber) {
 PluginInformation* CellularAutomataComp::GetPluginInformation() {
 	PluginInformation* info = new PluginInformation(Util::TypeOf<CellularAutomataComp>(), &CellularAutomataComp::LoadInstance, &CellularAutomataComp::NewInstance);
 	info->setCategory("ModalModel");
-	info->setDescriptionHelp("Universal cellular automaton: configurable lattice (1D/2D/3D), neighborhood "
-		"(centered/Moore/Von Neumann), boundary (fixed/closed/reflexive/adiabatic), state set "
+	info->setDescriptionHelp("Universal cellular automaton: configurable lattice (reticular/triangular/hexagonal/network), neighborhood "
+		"(centered/Moore/Von Neumann/lattice-specific), boundary (fixed/closed/reflexive/adiabatic), state set "
 		"(enumerated/integer/bit/double), update policy (synchronous/sequential/random/blocks) and local "
 		"rule (elementary/Game of Life/biased-competition or a user-defined rule compiled at runtime).");
 	return info;

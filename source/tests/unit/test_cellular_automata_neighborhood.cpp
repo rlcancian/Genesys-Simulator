@@ -5,7 +5,10 @@
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Hexagonal.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Network.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Triangular.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
 
 #include <algorithm>
@@ -180,6 +183,68 @@ TEST(CellularAutomataVonNeumannNeighborhood, KeepsFixedBoundaryPositionsAsFixedC
 	EXPECT_EQ(std::count(numbers.begin(), numbers.end(), -99), 2);
 	EXPECT_NE(std::find(numbers.begin(), numbers.end(), 1), numbers.end());
 	EXPECT_NE(std::find(numbers.begin(), numbers.end(), 3), numbers.end());
+}
+
+TEST(CellularAutomataTriangularNeighborhood, ReturnsThreeNeighborsWithAlternatingOrientation) {
+	const auto numbers = buildNeighborNumbers<Neighborhood_Triangular, Boundary_Closed>({3, 3}, {1, 1}, 1);
+
+	EXPECT_EQ(numbers, (std::vector<long>{3, 5, 1}));
+}
+
+TEST(CellularAutomataTriangularNeighborhood, AppliesClosedAndFixedBoundaries) {
+	const auto closed = buildNeighborNumbers<Neighborhood_Triangular, Boundary_Closed>({3, 3}, {0, 0}, 1);
+	EXPECT_EQ(closed, (std::vector<long>{2, 1, 6}));
+
+	const auto fixed = buildNeighborNumbers<Neighborhood_Triangular, Boundary_Fixed>({3, 3}, {0, 0}, 1);
+	EXPECT_EQ(fixed.size(), 3);
+	EXPECT_EQ(std::count(fixed.begin(), fixed.end(), -99), 2);
+	EXPECT_NE(std::find(fixed.begin(), fixed.end(), 1), fixed.end());
+}
+
+TEST(CellularAutomataHexagonalNeighborhood, ReturnsSixOffsetNeighbors) {
+	const auto numbers = buildNeighborNumbers<Neighborhood_Hexagonal, Boundary_Closed>({3, 3}, {1, 1}, 1);
+
+	EXPECT_EQ(numbers, (std::vector<long>{6, 7, 8, 5, 1, 3}));
+}
+
+TEST(CellularAutomataHexagonalNeighborhood, AppliesClosedAndFixedBoundaries) {
+	const auto closed = buildNeighborNumbers<Neighborhood_Hexagonal, Boundary_Closed>({3, 3}, {0, 0}, 1);
+	EXPECT_EQ(closed, (std::vector<long>{2, 3, 1, 7, 6, 8}));
+
+	const auto fixed = buildNeighborNumbers<Neighborhood_Hexagonal, Boundary_Fixed>({3, 3}, {0, 0}, 1);
+	EXPECT_EQ(fixed.size(), 6);
+	EXPECT_EQ(std::count(fixed.begin(), fixed.end(), -99), 4);
+	EXPECT_NE(std::find(fixed.begin(), fixed.end(), 1), fixed.end());
+	EXPECT_NE(std::find(fixed.begin(), fixed.end(), 3), fixed.end());
+}
+
+TEST(CellularAutomataNetworkNeighborhood, UsesConfiguredEdgesAsTopology) {
+	CellularAutomata_Classic automaton;
+	Boundary_Fixed boundary;
+	Neighborhood_Network neighborhood(&automaton, 1, &boundary);
+	Lattice lattice(&automaton, nullptr, {4}, LatticeType::NETWORK);
+	lattice.setNetworkEdges({{0, 1}, {0, 2}, {2, 3}});
+
+	ASSERT_TRUE(automaton.init());
+	std::vector<Cell*> neighbors = neighborhood.getNeighbors(lattice.getCell(0L));
+	std::vector<long> numbers;
+	for (Cell* neighbor : neighbors)
+		numbers.emplace_back(neighbor->getCellNumber());
+
+	EXPECT_EQ(numbers, (std::vector<long>{1, 2}));
+	EXPECT_EQ(lattice.getNetworkNeighborCellNumbers(1), (std::vector<unsigned long>{0}));
+}
+
+TEST(CellularAutomataNetworkNeighborhood, SupportsDirectedEdges) {
+	CellularAutomata_Classic automaton;
+	Boundary_Fixed boundary;
+	Neighborhood_Network neighborhood(&automaton, 1, &boundary);
+	Lattice lattice(&automaton, nullptr, {4}, LatticeType::NETWORK);
+	lattice.setNetworkEdges({{0, 1}, {0, 2}}, false);
+
+	ASSERT_TRUE(automaton.init());
+	EXPECT_EQ(lattice.getNetworkNeighborCellNumbers(0), (std::vector<unsigned long>{1, 2}));
+	EXPECT_TRUE(lattice.getNetworkNeighborCellNumbers(1).empty());
 }
 
 TEST(CellularAutomataGameOfLife, KeepsTwoDimensionalMooreBlinkerRegression) {

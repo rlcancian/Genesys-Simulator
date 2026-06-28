@@ -21,6 +21,7 @@
 #include "plugins/components/ModalModel/CellularAutomata/StateSet.h"
 
 #include <cstdint>
+#include <utility>
 #include <vector>
 
 class BoundaryCondition;
@@ -104,6 +105,9 @@ public: //! new public user methods for this component
 	void setUpdateBlockSize(unsigned int updateBlockSize);
 	unsigned int getRandomSeed() const;
 	void setRandomSeed(unsigned int randomSeed);
+	void setNetworkEdges(const std::vector<std::pair<unsigned long, unsigned long>>& edges, bool undirected = true);
+	std::vector<std::pair<unsigned long, unsigned long>> getNetworkEdges() const;
+	bool getNetworkEdgesUndirected() const;
 
 	//CellularAutomataBase *getcellularAutomata() const;
 	Lattice *getlattice() const;
