@@ -44,13 +44,6 @@ public:
     virtual bool canFire(Model* model, Entity* entity) const override;
 	virtual void execute(Model* model, Entity* entity) const override;
 
-    virtual bool _loadInstance(PersistenceRecord *fields, Model* model);
-    virtual void _saveInstance(PersistenceRecord *fields, bool saveDefaultValues);
-
-// private:
-// 	std::map<std::string, unsigned int> _inputArcWeights;
-// 	std::map<std::string, unsigned int> _outputArcWeights;
-
 protected:
     std::map<PetriPlace*, ColorWeightMap> _inputPlaces;
     std::map<PetriPlace*, ColorWeightMap> _outputPlaces;
