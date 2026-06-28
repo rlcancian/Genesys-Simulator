@@ -43,7 +43,7 @@ int Smart_ModalModelPetriNet_Persistence::main(int argc, char** argv) {
     model_save->getSimulation()->setReplicationLength(10, Util::TimeUnit::second);
 
     // saves and destroys the entire environment from memory
-    std::string filename = "./models/Smart_PetriNet_Persistence.gen";
+    std::string filename = "Smart_PetriNet_Persistence.gen";
     model_save->save(filename);
     delete genesys_save;
 
