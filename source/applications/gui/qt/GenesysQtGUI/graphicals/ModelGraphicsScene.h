@@ -62,6 +62,8 @@
 /**
  * @brief Lightweight event envelope used to notify GUI changes in the graphics scene.
  */
+class GuiExtensionManager;
+
 class GraphicalModelEvent {
 public:
 
@@ -472,11 +474,13 @@ public:
     /** @brief Creates the queue-remove animation overlay for one component. */
     void animateQueueRemove(ModelComponent *component);
     /** @brief Updates the counter animation overlay. */
+    void setGuiExtensionManager(GuiExtensionManager* manager);
     void animateCounter();
     /** @brief Updates the variable animation overlay. */
     void animateVariable(Entity* entity = nullptr);
     /** @brief Updates the timer animation overlay. */
     void animateTimer(double time);
+    void animateStatistics();
 
 protected: // virtual functions
     virtual void contextMenuEvent(QGraphicsSceneContextMenuEvent *contextMenuEvent);
@@ -506,6 +510,7 @@ private:
 private:
     GRID _grid;
     Simulator* _simulator = nullptr;
+    GuiExtensionManager* _guiExtensionManager = nullptr;
     PropertyEditorGenesys* _propertyEditor = nullptr;
     std::map<SimulationControl*, DataComponentProperty*>* _propertyList = nullptr;
     std::map<SimulationControl*, DataComponentEditor*>* _propertyEditorUI = nullptr;

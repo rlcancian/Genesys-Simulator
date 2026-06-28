@@ -8,6 +8,8 @@
 #include <QString>
 #include <limits>
 
+#include "kernel/statistics/Collector_if.h"
+
 class Model;
 
 class AnimationPlaceholder : public QGraphicsRectItem {
@@ -117,24 +119,23 @@ private:
     QVector<DataSeries> _series;
 };
 
-class AnimationQueueDisplay : public AnimationPlaceholder {
-public:
-    AnimationQueueDisplay();
-};
-
-class AnimationResource : public AnimationPlaceholder {
-public:
-    AnimationResource();
-};
-
-class AnimationStation : public AnimationPlaceholder {
-public:
-    AnimationStation();
-};
-
 class AnimationStatistics : public AnimationPlaceholder {
 public:
     AnimationStatistics();
+
+    void setCollector(Collector_if* collector);
+    Collector_if* getCollector() const;
+
+    // Refreshes the displayed values from the linked collector.
+    void refreshValue();
+
+    void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
+
+private:
+    Collector_if* _collector = nullptr;
+    double _lastValue = 0.0;
+    unsigned long _numSamples = 0;
+    QString _collectorName;
 };
 
 #endif // ANIMATIONPLACEHOLDER_H

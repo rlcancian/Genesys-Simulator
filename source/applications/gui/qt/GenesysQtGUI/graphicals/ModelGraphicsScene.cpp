@@ -53,7 +53,7 @@
 #include "dialogs/DialogSelectCounter.h"
 #include "dialogs/DialogSelectVariable.h"
 #include "dialogs/DialogTimerConfigure.h"
-#include "animations/AnimationQueue.h"
+#include "extensions/GuiExtensionManager.h"
 #include "services/GraphicalModelBuilder.h"
 #include "systempreferences.h"
 #include "UtilGUI.h"
@@ -133,7 +133,7 @@ namespace {
         }
     }
 
-    AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode) {
+    AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode, GuiExtensionManager* manager) {
         switch (mode) {
         case ModelGraphicsScene::ENTITY:
             return new AnimationEntity();
@@ -144,11 +144,11 @@ namespace {
         case ModelGraphicsScene::PLOT:
             return new AnimationPlot();
         case ModelGraphicsScene::QUEUE_PLACEHOLDER:
-            return new AnimationQueueDisplay();
+            return manager ? manager->createAnimationPlaceholder("Queue") : nullptr;
         case ModelGraphicsScene::RESOURCE:
-            return new AnimationResource();
+            return manager ? manager->createAnimationPlaceholder("Resource") : nullptr;
         case ModelGraphicsScene::STATION:
-            return new AnimationStation();
+            return manager ? manager->createAnimationPlaceholder("Station") : nullptr;
         case ModelGraphicsScene::STATISTICS:
             return new AnimationStatistics();
         default:
@@ -2062,25 +2062,29 @@ void ModelGraphicsScene::handleAnimationStateChanged(QAbstractAnimation::State n
 }
 
 void ModelGraphicsScene::animateQueueInsert(ModelComponent* component, bool visivible) {
-    // Cria a animação
-    AnimationQueue* animationQueue = new AnimationQueue(this, component);
-
-    // Adiciona uma imagem na fila
-    animationQueue->addAnimationQueue(visivible);
-
-    // Libera o espaço de memória alocado pela animação
-    delete animationQueue;
+    if (_guiExtensionManager == nullptr) {
+        return;
+    }
+    GuiSimAnimationEvent event;
+    event.type = GuiSimAnimationEvent::Type::Insert;
+    event.component = component;
+    event.visible = visivible;
+    _guiExtensionManager->dispatchAnimationEvent("Queue", this, event);
 }
 
 void ModelGraphicsScene::animateQueueRemove(ModelComponent* component) {
-    // Cria a animação
-    AnimationQueue* animationQueue = new AnimationQueue(this, component);
+    if (_guiExtensionManager == nullptr) {
+        return;
+    }
+    GuiSimAnimationEvent event;
+    event.type = GuiSimAnimationEvent::Type::Remove;
+    event.component = component;
+    event.visible = true;
+    _guiExtensionManager->dispatchAnimationEvent("Queue", this, event);
+}
 
-    // Remove uma imagem da fila
-    animationQueue->removeAnimationQueue();
-
-    // Libera o espaço de memória alocado pela animação
-    delete animationQueue;
+void ModelGraphicsScene::setGuiExtensionManager(GuiExtensionManager* manager) {
+    _guiExtensionManager = manager;
 }
 
 
@@ -2119,6 +2123,15 @@ void ModelGraphicsScene::animatePlot() {
         AnimationPlot* plot = dynamic_cast<AnimationPlot*>(placeholder);
         if (plot != nullptr) {
             plot->appendSample(currentModel);
+        }
+    }
+}
+
+void ModelGraphicsScene::animateStatistics() {
+    for (AnimationPlaceholder* placeholder : *_animationsPlaceholder) {
+        AnimationStatistics* stats = dynamic_cast<AnimationStatistics*>(placeholder);
+        if (stats != nullptr) {
+            stats->refreshValue();
         }
     }
 }
@@ -3145,7 +3158,7 @@ void ModelGraphicsScene::initializeAnimationDrawing(QGraphicsSceneMouseEvent* mo
     }
 
     if (isPlaceholderAnimationMode(_drawingMode)) {
-        _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode);
+        _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode, _guiExtensionManager);
         if (_currentPlaceholderAnimation != nullptr) {
             _currentPlaceholderAnimation->startDrawing(mouseEvent);
             addItem(_currentPlaceholderAnimation);
@@ -3204,7 +3217,7 @@ void ModelGraphicsScene::continueAnimationDrawing(QGraphicsSceneMouseEvent* mous
             }
         }
         else {
-            _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode);
+            _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode, _guiExtensionManager);
         }
     }
 }

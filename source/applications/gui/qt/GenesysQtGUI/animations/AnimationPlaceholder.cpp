@@ -458,14 +458,99 @@ QString AnimationPlot::datasetsTextFromSeries(const QVector<DataSeries>& seriesL
     return lines.join("\n");
 }
 
-AnimationQueueDisplay::AnimationQueueDisplay() : AnimationPlaceholder("Queue") {
-}
-
-AnimationResource::AnimationResource() : AnimationPlaceholder("Resource") {
-}
-
-AnimationStation::AnimationStation() : AnimationPlaceholder("Station") {
-}
-
 AnimationStatistics::AnimationStatistics() : AnimationPlaceholder("Statistics") {
+}
+
+void AnimationStatistics::setCollector(Collector_if* collector) {
+    _collector = collector;
+    _collectorName = getTargetName();
+    update();
+}
+
+Collector_if* AnimationStatistics::getCollector() const {
+    return _collector;
+}
+
+void AnimationStatistics::refreshValue() {
+    if (_collector == nullptr) {
+        return;
+    }
+    _lastValue = _collector->getLastValue();
+    _numSamples = _collector->numElements();
+    update();
+}
+
+void AnimationStatistics::paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget) {
+    Q_UNUSED(option);
+    Q_UNUSED(widget);
+
+    const QRectF bounds = boundingRect();
+    painter->setRenderHint(QPainter::Antialiasing);
+
+    // Background
+    painter->setPen(QPen(QColor(80, 120, 180), 1.5));
+    painter->setBrush(QColor(235, 242, 255));
+    painter->drawRoundedRect(bounds.adjusted(1, 1, -1, -1), 4.0, 4.0);
+
+    // Header bar
+    const QRectF headerRect(bounds.left() + 1, bounds.top() + 1, bounds.width() - 2, qMin(22.0, bounds.height() * 0.3));
+    painter->setPen(Qt::NoPen);
+    painter->setBrush(QColor(80, 120, 180));
+    painter->drawRoundedRect(headerRect, 3.0, 3.0);
+
+    // Header label (collector name or "Statistics")
+    QFont headerFont = painter->font();
+    const int headerFontSize = qMax(7, qMin(11, static_cast<int>(headerRect.height() * 0.6)));
+    headerFont.setPixelSize(headerFontSize);
+    headerFont.setBold(true);
+    painter->setFont(headerFont);
+    painter->setPen(Qt::white);
+    const QString label = getTargetName().trimmed().isEmpty() ? QStringLiteral("Statistics") : getTargetName().trimmed();
+    painter->drawText(headerRect.adjusted(4, 0, -4, 0), Qt::AlignVCenter | Qt::AlignLeft, label);
+
+    if (_collector == nullptr) {
+        // Design-time: show placeholder hint
+        painter->setPen(QPen(QColor(140, 140, 140), 1.0, Qt::DashLine));
+        painter->setBrush(Qt::NoBrush);
+        QFont hintFont = painter->font();
+        hintFont.setPixelSize(qMax(8, static_cast<int>(bounds.height() * 0.18)));
+        hintFont.setBold(false);
+        painter->setFont(hintFont);
+        painter->setPen(QColor(160, 160, 160));
+        painter->drawText(bounds.adjusted(4, headerRect.height() + 2, -4, -4),
+                          Qt::AlignCenter | Qt::TextWordWrap,
+                          QStringLiteral("no collector\nlinked"));
+    } else {
+        // Runtime: show last value and sample count
+        const QRectF bodyRect = bounds.adjusted(4, headerRect.height() + 4, -4, -4);
+        QFont valueFont = painter->font();
+        const int valueFontSize = qMax(9, qMin(18, static_cast<int>(bodyRect.height() * 0.45)));
+        valueFont.setPixelSize(valueFontSize);
+        valueFont.setBold(true);
+        painter->setFont(valueFont);
+        painter->setPen(QColor(40, 80, 160));
+        painter->drawText(QRectF(bodyRect.left(), bodyRect.top(), bodyRect.width(), bodyRect.height() * 0.55),
+                          Qt::AlignCenter,
+                          QString::number(_lastValue, 'f', 4));
+
+        QFont countFont = painter->font();
+        countFont.setPixelSize(qMax(7, static_cast<int>(bodyRect.height() * 0.28)));
+        countFont.setBold(false);
+        painter->setFont(countFont);
+        painter->setPen(QColor(100, 100, 100));
+        painter->drawText(QRectF(bodyRect.left(), bodyRect.top() + bodyRect.height() * 0.58,
+                                 bodyRect.width(), bodyRect.height() * 0.42),
+                          Qt::AlignCenter,
+                          QString("n = %1").arg(_numSamples));
+    }
+
+    if (isSelected()) {
+        const qreal cs = 10.0;
+        painter->setPen(Qt::NoPen);
+        painter->setBrush(Qt::black);
+        painter->drawRect(QRectF(-cs, -cs, cs, cs));
+        painter->drawRect(QRectF(bounds.topRight() - QPointF(0, cs), QSizeF(cs, cs)));
+        painter->drawRect(QRectF(-cs, bounds.height(), cs, cs));
+        painter->drawRect(QRectF(bounds.bottomRight(), QSizeF(cs, cs)));
+    }
 }

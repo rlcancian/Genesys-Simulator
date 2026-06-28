@@ -1,5 +1,7 @@
 #include "GuiExtensionManager.h"
 
+#include "animations/AnimationPlaceholder.h"
+
 #include <QAction>
 #include <QDockWidget>
 #include <QMainWindow>
@@ -62,6 +64,7 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 			continue;
 		}
 		plugin->registerContributions(&registry);
+		plugin->registerAnimations(&registry);
 	}
 
 	for (const GuiActionContribution& action : registry.actions()) {
@@ -73,6 +76,32 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	for (const GuiDockContribution& dock : registry.docks()) {
 		_applyDockContribution(dock, context);
 	}
+	_animationContributions = registry.animations();
+}
+
+const std::vector<GuiAnimationContribution>& GuiExtensionManager::animationContributions() const {
+	return _animationContributions;
+}
+
+void GuiExtensionManager::dispatchAnimationEvent(
+	const std::string& animationType,
+	ModelGraphicsScene* scene,
+	const GuiSimAnimationEvent& event) const
+{
+	for (const GuiAnimationContribution& contrib : _animationContributions) {
+		if (contrib.animationType == animationType && contrib.onSimEvent) {
+			contrib.onSimEvent(scene, event);
+		}
+	}
+}
+
+AnimationPlaceholder* GuiExtensionManager::createAnimationPlaceholder(const std::string& animationType) const {
+	for (const GuiAnimationContribution& contrib : _animationContributions) {
+		if (contrib.animationType == animationType && contrib.createPlaceholder) {
+			return contrib.createPlaceholder();
+		}
+	}
+	return nullptr;
 }
 
 void GuiExtensionManager::clear() {
@@ -90,6 +119,7 @@ void GuiExtensionManager::clear() {
 		delete *it;
 	}
 	_createdMenuActions.clear();
+	_animationContributions.clear();
 }
 
 bool GuiExtensionManager::_isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const {

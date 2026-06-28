@@ -1709,6 +1709,9 @@ void MainWindow::_refreshGuiExtensions() {
     _guiExtensionManager->setLoadedModelPluginIds(collectLoadedModelPluginIds(simulator));
     _guiExtensionManager->setPlugins(GuiExtensionPluginCatalog::resolvedPlugins());
     _guiExtensionManager->rebuild(extensionContext);
+    if (extensionContext.graphicsScene != nullptr) {
+        extensionContext.graphicsScene->setGuiExtensionManager(_guiExtensionManager.get());
+    }
 }
 
 void MainWindow::_disconnectSceneSignals(const char* context) {

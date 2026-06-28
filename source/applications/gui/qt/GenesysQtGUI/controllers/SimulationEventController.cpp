@@ -443,6 +443,7 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
             << "destinationId=" << (destinationComponent ? destinationComponent->getId() : 0)
             << "destinationName=" << (destinationComponent ? QString::fromStdString(destinationComponent->getName()) : QStringLiteral("<null>"));
     _scene->animateCounter();
+    _scene->animateStatistics();
     _scene->animateVariable(re != nullptr && re->getCurrentEvent() != nullptr ? re->getCurrentEvent()->getEntity() : nullptr);
 
     if (re) {
@@ -480,6 +481,7 @@ void SimulationEventController::onAfterProcessEvent(SimulationEvent* re) const {
         return;
     }
     _scene->animateCounter();
+    _scene->animateStatistics();
     _scene->animateVariable(re != nullptr && re->getCurrentEvent() != nullptr ? re->getCurrentEvent()->getEntity() : nullptr);
     _scene->animateTimer(_simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
 }

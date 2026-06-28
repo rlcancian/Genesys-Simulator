@@ -11,6 +11,9 @@ class QDockWidget;
 class QMainWindow;
 class QMenu;
 class QToolBar;
+class AnimationPlaceholder;
+class ModelGraphicsScene;
+class ModelComponent;
 
 class GuiExtensionManager {
 public:
@@ -21,6 +24,19 @@ public:
 	void setLoadedModelPluginIds(std::vector<std::string> modelPluginIds);
 	void rebuild(const GuiExtensionRuntimeContext& context);
 	void clear();
+
+	// Returns the animation contributions collected from all active plugins.
+	const std::vector<GuiAnimationContribution>& animationContributions() const;
+
+	// Dispatches a simulation animation event to the matching plugin handler.
+	void dispatchAnimationEvent(
+		const std::string& animationType,
+		ModelGraphicsScene* scene,
+		const GuiSimAnimationEvent& event) const;
+
+	// Creates the placeholder for the given animationType using the registered factory.
+	// Returns nullptr if no plugin registered a factory for that type.
+	AnimationPlaceholder* createAnimationPlaceholder(const std::string& animationType) const;
 
 private:
 	QMenu* _resolveMenuPath(const std::string& menuPath);
@@ -37,6 +53,7 @@ private:
 	std::vector<QAction*> _createdActions;
 	std::vector<QAction*> _createdMenuActions;
 	std::vector<QDockWidget*> _createdDocks;
+	std::vector<GuiAnimationContribution> _animationContributions;
 };
 
 #endif /* GUIEXTENSIONMANAGER_H */
