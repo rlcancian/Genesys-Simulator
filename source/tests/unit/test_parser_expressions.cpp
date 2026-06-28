@@ -67,9 +67,19 @@ struct ParserAttributeProcessObserver {
 };
 
 TEST_F(ParserExpressionsTest, ArithmeticPrecedenceAndParentheses) {
+    EXPECT_DOUBLE_EQ(model->parseExpression("1+2"), 3.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("2*3+4"), 10.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("(2+3)*4"), 20.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("1+2*3"), 7.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("(1+2)*3"), 9.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("10/2+3"), 8.0);
+}
+
+TEST_F(ParserExpressionsTest, OperatorAssociativityMatchesCurrentGrammar) {
+    EXPECT_DOUBLE_EQ(model->parseExpression("10-3-2"), 5.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("20/5/2"), 2.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("2^3^2"), 512.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("-2^2"), 4.0);
 }
 
 TEST_F(ParserExpressionsTest, PowerIsRightAssociative) {
@@ -87,6 +97,14 @@ TEST_F(ParserExpressionsTest, MathFunctionsRoundTruncFracAndSqrt) {
     EXPECT_DOUBLE_EQ(model->parseExpression("trunc(3.9)"), 3.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("frac(3.9)"), 0.9);
     EXPECT_DOUBLE_EQ(model->parseExpression("sqrt(9)"), 3.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("mod(7,4)"), 3.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("exp(0)"), 1.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("log(100)"), 2.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("ln(1)"), 0.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("min(7,4)"), 4.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("max(7,4)"), 7.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("sin(0)"), 0.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("cos(0)"), 1.0);
 }
 
 TEST_F(ParserExpressionsTest, VariableIndexesSupportScalarLegacyAndNDReads) {
