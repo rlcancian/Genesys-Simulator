@@ -2,9 +2,38 @@
 
 #include "Json.h"
 
+#include <cmath>
+#include <iomanip>
 #include <sstream>
 
 namespace genesys::distributed {
+
+namespace {
+
+constexpr int kRuleWidth = 88;
+
+// Repeats a (possibly multi-byte UTF-8) unit `times` times — used to draw horizontal rules.
+std::string repeat(const char* unit, int times) {
+    std::string out;
+    for (int i = 0; i < times; ++i) {
+        out += unit;
+    }
+    return out;
+}
+
+// Compact human-readable real: up to 5 significant digits, no trailing-zero noise.
+std::string num(double value) {
+    std::ostringstream stream;
+    stream << std::setprecision(5) << value;
+    return stream.str();
+}
+
+// Counters are integral counts; render them without a decimal point.
+std::string integer(double value) {
+    return std::to_string(static_cast<long long>(std::llround(value)));
+}
+
+} // namespace
 
 AggregatedResult CoordinatorApplication::execute(const DistributedSimulationConfig& config) const {
     DistributedSimulationManager manager;
@@ -12,44 +41,82 @@ AggregatedResult CoordinatorApplication::execute(const DistributedSimulationConf
 }
 
 std::string CoordinatorApplication::renderSummary(const AggregatedResult& result) const {
+    const std::string heavyRule = repeat("═", kRuleWidth);          // ═
+    const std::string lightRule = "  " + repeat("─", kRuleWidth - 2); // ─
+
     std::ostringstream out;
-    out << "Distributed simulation result\n";
-    out << "  Replications: " << result.totalReplicationsCompleted << " completed / "
-        << result.totalReplicationsRequested << " requested\n";
+    out << heavyRule << "\n";
+    out << "  DISTRIBUTED SIMULATION RESULT\n";
+    out << heavyRule << "\n";
 
-    out << "  Statistics (" << result.statistics.size() << "):\n";
-    for (const AggregatedStatistic& stat : result.statistics) {
-        out << "    " << stat.name << ": avg=" << stat.average << " stddev=" << stat.stddev
-            << " ci" << static_cast<int>(stat.confidenceLevel * 100) << "%=+/-"
-            << stat.halfWidthConfidenceInterval << " [" << stat.min << ", " << stat.max << "]"
-            << " (n=" << stat.numReplications << ")\n";
+    const unsigned int requested = result.totalReplicationsRequested;
+    const unsigned int completed = result.totalReplicationsCompleted;
+    out << "  Replications   " << completed << " / " << requested << " completed";
+    if (requested > 0) {
+        out << "  (" << static_cast<int>((100.0 * completed / requested) + 0.5) << "%)";
     }
+    out << "\n\n";
 
-    out << "  Counters (" << result.counters.size() << "):\n";
-    for (const AggregatedCounter& counter : result.counters) {
-        out << "    " << counter.name << ": total=" << counter.total << "\n";
+    // Statistics: one aligned row per collector (mean / std dev / CI / range).
+    out << "  STATISTICS  ·  " << result.statistics.size()
+        << (result.statistics.size() == 1 ? " collector\n" : " collectors\n");
+    out << lightRule << "\n";
+    if (result.statistics.empty()) {
+        out << "  (none)\n";
+    } else {
+        out << "  " << std::left << std::setw(32) << "Collector"
+            << std::right << std::setw(9) << "Mean" << std::setw(11) << "Std Dev"
+            << std::setw(16) << "95% CI" << std::setw(9) << "Min" << std::setw(9) << "Max" << "\n";
+        for (const AggregatedStatistic& stat : result.statistics) {
+            const std::string ci = "+/- " + num(stat.halfWidthConfidenceInterval);
+            out << "  " << std::left << std::setw(32) << stat.name
+                << std::right << std::setw(9) << num(stat.average)
+                << std::setw(11) << num(stat.stddev) << std::setw(16) << ci
+                << std::setw(9) << num(stat.min) << std::setw(9) << num(stat.max) << "\n";
+        }
     }
+    out << "\n";
 
-    out << "  Workers (" << result.workers.size() << "):\n";
+    // Counters: name and summed total.
+    out << "  COUNTERS  ·  " << result.counters.size() << "\n";
+    out << lightRule << "\n";
+    if (result.counters.empty()) {
+        out << "  (none)\n";
+    } else {
+        for (const AggregatedCounter& counter : result.counters) {
+            out << "  " << std::left << std::setw(32) << counter.name
+                << std::right << std::setw(14) << integer(counter.total) << "\n";
+        }
+    }
+    out << "\n";
+
+    // Workers: discovery state and the share each target actually completed.
+    out << "  WORKERS  ·  " << result.workers.size() << "\n";
+    out << lightRule << "\n";
     for (const WorkerReport& worker : result.workers) {
-        out << "    " << worker.endpoint << " [" << worker.state << "]"
-            << " replications=" << worker.replicationsCompleted;
+        out << "  " << std::left << std::setw(19) << worker.endpoint
+            << std::setw(13) << worker.state
+            << std::right << std::setw(8) << worker.replicationsCompleted << " reps";
         if (!worker.isLocal) {
             if (worker.latencyMs >= 0) {
-                out << " latency=" << worker.latencyMs << "ms";
+                out << std::setw(7) << worker.latencyMs << " ms";
+            } else {
+                out << std::setw(10) << "";
             }
-            out << " failures=" << worker.failureCount;
+            out << std::setw(5) << worker.failureCount << " failures";
         }
         out << "\n";
     }
 
     if (!result.failures.empty()) {
-        out << "  Failures (" << result.failures.size() << "):\n";
+        out << "\n  FAILURES  ·  " << result.failures.size() << "\n";
+        out << lightRule << "\n";
         for (const std::string& failure : result.failures) {
-            out << "    - " << failure << "\n";
+            out << "  - " << failure << "\n";
         }
     }
 
+    out << heavyRule << "\n";
     return out.str();
 }
 

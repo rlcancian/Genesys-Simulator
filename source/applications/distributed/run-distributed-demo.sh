@@ -68,8 +68,8 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Keep only the comparison-relevant summary lines (drop the startup banner).
-filter() { grep -E 'Replications:|Statistics \(|Counters \(|Failures \(|^[[:space:]]+- '; }
+# Show the orchestrator's (already tidy) summary, dropping only the simulator startup banner.
+filter() { grep -vE 'STARTING|LICENCE|ACTIVATION|LIMITS|^[[:space:]]*\|'; }
 
 LAST=""
 run_case() {

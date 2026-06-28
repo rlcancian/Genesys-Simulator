@@ -65,8 +65,8 @@ TEST(CoordinatorApplication, ShouldRenderHumanReadableSummary) {
     const std::string summary = app.renderSummary(result);
 
     // Assert: key facts appear in the text.
-    EXPECT_NE(summary.find("25 completed / 30 requested"), std::string::npos);
+    EXPECT_NE(summary.find("25 / 30 completed"), std::string::npos);
     EXPECT_NE(summary.find("Queue.Wait"), std::string::npos);
     EXPECT_NE(summary.find("Out.Count"), std::string::npos);
-    EXPECT_NE(summary.find("Failures"), std::string::npos);
+    EXPECT_NE(summary.find("FAILURES"), std::string::npos);
 }
