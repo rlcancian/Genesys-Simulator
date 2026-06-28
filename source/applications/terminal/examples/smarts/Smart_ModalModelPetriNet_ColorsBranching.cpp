@@ -36,7 +36,7 @@ int Smart_ModalModelPetriNet_ColorsBranching::main(int argc, char** argv) {
     p2_red_supply->setInitialNode(true);
 
     // adding tokens
-    // 3 blues so 2 can mix with red and 1 can be used later by the green branch
+    // 4 blues so 2 can mix with red and 1 can be used later by the green branch
     p1_initial_mix->addTokens(4, "blue");
     p1_initial_mix->addTokens(2, "green");
     p2_red_supply->addTokens(2, "red");
