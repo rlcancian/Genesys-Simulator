@@ -44,7 +44,17 @@ if [[ -n "${MODEL:-}" ]]; then
 else
     MODEL_FILE="$(mktemp)"
     CLEAN_MODEL=1
-    printf '0   ModelInfo  "DistributedDemo" version="1.0" projectTitle="" description="" analystName="" 0   ModelSimulation "" traceLevel=0 replicationLength=10.000000 numberOfReplications=%s 63  Create "Create_1" entityType="entitytype" nextId=73 73  Dispose "Dispose_1" nexts=0\n' "$REPLICATIONS" > "$MODEL_FILE"
+    # The model MUST be multi-line: the .gen parser reads one record per line. A single-line model is
+    # parsed as a single ModelInfo record, yielding zero components (empty statistics/counters).
+    printf '%s\n' \
+        '# Genesys Simulation Model' \
+        '0   ModelInfo  "DistributedDemo" version="1.0" projectTitle="" description="" analystName=""' \
+        "0   ModelSimulation \"\" traceLevel=0 replicationLength=10.000000 numberOfReplications=${REPLICATIONS}" \
+        '62  EntityType "Part"' \
+        '61  Create     "Create_1" entityType="Part" nextId=64 timeBetweenCreations="norm(1.5,0.5)"' \
+        '64  Delay      "Delay_1" delayExpression="norm(1.0,0.2)" nextId=63' \
+        '63  Dispose    "Dispose_1" nexts=0' \
+        > "$MODEL_FILE"
 fi
 
 WORKER_PIDS=()
