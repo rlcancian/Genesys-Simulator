@@ -104,7 +104,8 @@ int parseStatusCode(const std::string& responseText) {
 
 } // namespace
 
-WorkerHttpClient::WorkerHttpClient(int timeoutSeconds) : _timeoutSeconds(timeoutSeconds) {}
+WorkerHttpClient::WorkerHttpClient(int connectTimeoutSeconds, int recvTimeoutSeconds)
+    : _connectTimeoutSeconds(connectTimeoutSeconds), _recvTimeoutSeconds(recvTimeoutSeconds) {}
 
 HttpClientResponse WorkerHttpClient::get(const std::string& host,
                                          int port,
@@ -146,12 +147,12 @@ HttpClientResponse WorkerHttpClient::_request(const std::string& method,
     }
     SocketGuard socketGuard(fd);
 
-    timeval timeout{_timeoutSeconds, 0};
+    timeval timeout{_recvTimeoutSeconds, 0};
     ::setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
     ::setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
 
     std::string connectError;
-    const bool connected = connectWithTimeout(fd, resolved, _timeoutSeconds, connectError);
+    const bool connected = connectWithTimeout(fd, resolved, _connectTimeoutSeconds, connectError);
     ::freeaddrinfo(resolved);
     if (!connected) {
         return failure(connectError);

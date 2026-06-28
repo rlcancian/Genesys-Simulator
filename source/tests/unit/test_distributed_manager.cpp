@@ -40,7 +40,7 @@ TEST(DistributedSimulationManager, ShouldReportFailureWhenNoTargetsAvailable) {
     config.totalReplications = 4;
     config.includeLocal = false;
     config.workers = {{"127.0.0.1", 9}};  // discard port: unreachable.
-    config.httpTimeoutSeconds = 2;
+    config.discoveryTimeoutSeconds = 2;
 
     // Act
     const AggregatedResult result = manager.run(config);

@@ -25,9 +25,6 @@ export LC_ALL=C
 
 BUILD_DIR="${BUILD_DIR:-build/distributed}"
 REPLICATIONS="${REPLICATIONS:-1200}"
-# The default model does real component work; raise the per-request timeout above the orchestrator's
-# 5s default so worker batches are not aborted (matters if REPLICATIONS is increased).
-TIMEOUT="${TIMEOUT:-60}"
 APP="$BUILD_DIR/source/applications/distributed/genesys_distributed_app"
 WEB="$BUILD_DIR/source/applications/web/genesys_web_app"
 TESTDIR="$BUILD_DIR/source/tests/unit"
@@ -80,7 +77,7 @@ stop_workers() {
 }
 
 # Run the orchestrator and strip the simulator startup banner.
-run_app() { "$APP" --timeout "$TIMEOUT" "$@" 2>/dev/null | grep -vE 'STARTING|LICENCE|ACTIVATION|LIMITS|^[[:space:]]*\|'; }
+run_app() { "$APP" "$@" 2>/dev/null | grep -vE 'STARTING|LICENCE|ACTIVATION|LIMITS|^[[:space:]]*\|'; }
 
 hr() { printf '%s\n' "------------------------------------------------------------"; }
 PASS=0; FAIL=0

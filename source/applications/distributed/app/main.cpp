@@ -30,7 +30,7 @@ void printUsage() {
               << "  genesys_distributed_app --config <file.json>\n"
               << "  genesys_distributed_app --model <file> --replications <N> [--local]\n"
               << "      [--worker host:port]... [--output <file>] [--max-retries <N>]\n"
-              << "      [--base-seed <N>] [--timeout <seconds>]\n";
+              << "      [--base-seed <N>] [--timeout <seconds>] [--discovery-timeout <seconds>]\n";
 }
 
 DistributedSimulationConfig toSimulationConfig(const RunConfig& runConfig, std::string modelText) {
@@ -41,7 +41,8 @@ DistributedSimulationConfig toSimulationConfig(const RunConfig& runConfig, std::
     config.includeLocal = runConfig.includeLocal;
     config.maxRetries = runConfig.maxRetries;
     config.baseSeed = runConfig.baseSeed;
-    config.httpTimeoutSeconds = runConfig.httpTimeoutSeconds;
+    config.discoveryTimeoutSeconds = runConfig.discoveryTimeoutSeconds;
+    config.runTimeoutSeconds = runConfig.runTimeoutSeconds;
     return config;
 }
 

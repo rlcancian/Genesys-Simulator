@@ -17,11 +17,14 @@ constexpr const char* kLocalTarget = "local";
 } // namespace
 
 AggregatedResult DistributedSimulationManager::run(const DistributedSimulationConfig& config) {
-    WorkerHttpClient client(config.httpTimeoutSeconds);
+    // Discovery must be fast (short timeout); execution may take minutes (long receive timeout).
+    // Both connect quickly. Two clients keep these opposing requirements from sharing one value.
+    WorkerHttpClient discoveryClient(config.discoveryTimeoutSeconds, config.discoveryTimeoutSeconds);
+    WorkerHttpClient executionClient(config.discoveryTimeoutSeconds, config.runTimeoutSeconds);
     WorkerRegistry registry;
 
     // 1. Discover and validate the configured workers.
-    WorkerDiscoveryService discovery(client, registry);
+    WorkerDiscoveryService discovery(discoveryClient, registry);
     discovery.discover(config.workers);
 
     // 2. Build the execution targets: every available worker, plus local when requested.
@@ -32,7 +35,7 @@ AggregatedResult DistributedSimulationManager::run(const DistributedSimulationCo
     for (const WorkerDescriptor& worker : registry.available()) {
         const std::string endpoint = worker.endpoint();
         targets.push_back({endpoint, false});
-        ownedExecutors.push_back(std::make_unique<RemoteSimulationExecutor>(client, worker.host, worker.port));
+        ownedExecutors.push_back(std::make_unique<RemoteSimulationExecutor>(executionClient, worker.host, worker.port));
         executors[endpoint] = ownedExecutors.back().get();
     }
 

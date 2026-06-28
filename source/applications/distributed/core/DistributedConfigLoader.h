@@ -19,7 +19,8 @@ struct RunConfig {
     bool includeLocal = false;
     int maxRetries = 1;
     std::uint32_t baseSeed = DistributedScheduler::kDefaultBaseSeed;
-    int httpTimeoutSeconds = 5;
+    int discoveryTimeoutSeconds = 5;    // connect/response timeout for worker discovery (fast).
+    int runTimeoutSeconds = 300;        // response timeout while a worker runs the job (generous).
 };
 
 /**

@@ -25,11 +25,19 @@ struct HttpClientResponse {
  * worker's SimpleHttpServer: bounded response size, per-socket receive/send timeouts and a
  * bounded connect timeout. Requests send `Connection: close`, so the response is read until
  * the peer closes the connection.
+ *
+ * Connect and receive timeouts are separate on purpose: connecting (or detecting a dead worker)
+ * should be fast, while a request that drives a whole simulation may legitimately take minutes.
+ * Use a short connect timeout and a receive timeout sized to the expected job duration.
  */
 class WorkerHttpClient {
 public:
-    /** @param timeoutSeconds Connect and receive/send timeout applied to every request. */
-    explicit WorkerHttpClient(int timeoutSeconds = 5);
+    /**
+     * @param connectTimeoutSeconds Timeout for establishing the TCP connection.
+     * @param recvTimeoutSeconds     Receive/send timeout applied while reading the response
+     *                               (must cover the full server-side processing time).
+     */
+    explicit WorkerHttpClient(int connectTimeoutSeconds = 5, int recvTimeoutSeconds = 5);
 
     // Virtual so tests can inject a fake client; the real implementation uses POSIX sockets.
     virtual ~WorkerHttpClient() = default;
@@ -57,7 +65,8 @@ private:
                                 const std::string& contentType,
                                 const std::string& bearerToken) const;
 
-    int _timeoutSeconds;
+    int _connectTimeoutSeconds;
+    int _recvTimeoutSeconds;
 };
 
 } // namespace genesys::distributed

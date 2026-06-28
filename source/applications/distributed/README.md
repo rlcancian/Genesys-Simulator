@@ -49,7 +49,8 @@ Via command-line arguments (no config file needed):
 ```bash
 $APP --model <file> --replications <N> [--local] \
     [--worker host:port]... [--output <file.json>] \
-    [--max-retries <N>] [--base-seed <N>] [--timeout <seconds>]
+    [--max-retries <N>] [--base-seed <N>] \
+    [--timeout <seconds>] [--discovery-timeout <seconds>]
 ```
 
 Or via a JSON config. Copy the example and edit it (the `modelFile` path and worker ports must
@@ -132,8 +133,7 @@ BUILD_DIR=build/distributed WORKER_PORTS="8101 8102 8103" \
 ```
 
 It builds nothing (build first, see above), starts/stops the workers itself, and prints `local`,
-`distributed` and `speedup`. It passes a generous `--timeout` (env `TIMEOUT`, default 60s) so heavy
-worker batches are not aborted. The manual steps below do the same by hand.
+`distributed` and `speedup`. The manual steps below do the same by hand.
 
 ### 3. Measure baseline (local only) vs distributed
 
@@ -141,10 +141,10 @@ worker batches are not aborted. The manual steps below do the same by hand.
 APP=build/distributed/source/applications/distributed/genesys_distributed_app
 
 # Baseline: a single local engine.
-time $APP --model model.txt --replications 20000 --timeout 60 --local
+time $APP --model model.txt --replications 20000 --local
 
 # Distributed: two remote workers plus the local engine (3 engines in parallel).
-time $APP --model model.txt --replications 20000 --timeout 60 \
+time $APP --model model.txt --replications 20000 \
      --worker 127.0.0.1:8101 --worker 127.0.0.1:8102 --local
 
 pkill -f genesys_web_app           # clean up the workers
@@ -162,11 +162,16 @@ endpoints for a larger, clearer speedup.
 
 ### Tips and caveats
 
-- **Raise `--timeout` for real models.** The orchestrator's default per-request timeout is **5s**. A
-  worker batch that runs a non-trivial model for many replications can take longer than that; if it
-  does, the batch is treated as a worker failure (timed out → marked unavailable → failover, or the
-  batch is reported `lost`). Pass `--timeout <seconds>` comfortably above the per-batch time. The demo
-  scripts already do this (`TIMEOUT`, default 60s).
+- **Two separate timeouts.** Discovery and execution have opposite needs, so they use different
+  timeouts:
+  - `--discovery-timeout <s>` (default **5s**): connect/response timeout for probing workers, so a
+    dead/unreachable worker is detected quickly.
+  - `--timeout <s>` (default **300s**): response timeout while a worker runs the job. A batch that
+    runs a non-trivial model for many replications can take a while; if it exceeds this, the batch is
+    treated as a worker failure (→ failover, or reported `lost`). Raise it for very long jobs.
+
+  The 300s default covers the demo batches out of the box (no `--timeout` needed). Both are also
+  settable in the JSON config as `discoveryTimeoutSeconds` / `runTimeoutSeconds`.
 - **Use free ports.** A worker that fails to bind is marked unavailable during discovery, and its
   share of the load falls back to the remaining targets (or local) — which hides the speedup.
 - The orchestrator runs the initial attempts in parallel; failover reassignment is sequential.

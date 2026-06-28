@@ -21,6 +21,10 @@ bool validate(const RunConfig& config, std::string& error) {
         error = "no workers configured and local execution disabled";
         return false;
     }
+    if (config.discoveryTimeoutSeconds <= 0 || config.runTimeoutSeconds <= 0) {
+        error = "discoveryTimeoutSeconds and runTimeoutSeconds must be greater than zero";
+        return false;
+    }
     return true;
 }
 
@@ -48,7 +52,10 @@ std::optional<RunConfig> DistributedConfigLoader::fromJson(const std::string& js
     config.maxRetries = static_cast<int>(json::getInt(jsonText, "maxRetries").value_or(1));
     config.baseSeed = static_cast<std::uint32_t>(
         json::getInt(jsonText, "baseSeed").value_or(DistributedScheduler::kDefaultBaseSeed));
-    config.httpTimeoutSeconds = static_cast<int>(json::getInt(jsonText, "httpTimeoutSeconds").value_or(5));
+    config.discoveryTimeoutSeconds =
+        static_cast<int>(json::getInt(jsonText, "discoveryTimeoutSeconds").value_or(5));
+    config.runTimeoutSeconds =
+        static_cast<int>(json::getInt(jsonText, "runTimeoutSeconds").value_or(300));
 
     if (const auto workersArray = json::getArray(jsonText, "workers"); workersArray.has_value()) {
         for (const std::string& object : json::splitObjects(workersArray.value())) {
@@ -95,7 +102,9 @@ std::optional<RunConfig> DistributedConfigLoader::fromArgs(const std::vector<std
         } else if (arg == "--base-seed") {
             config.baseSeed = static_cast<std::uint32_t>(std::strtoul(next(arg).c_str(), nullptr, 10));
         } else if (arg == "--timeout") {
-            config.httpTimeoutSeconds = std::atoi(next(arg).c_str());
+            config.runTimeoutSeconds = std::atoi(next(arg).c_str());
+        } else if (arg == "--discovery-timeout") {
+            config.discoveryTimeoutSeconds = std::atoi(next(arg).c_str());
         } else if (arg == "--worker") {
             WorkerDiscoveryService::Endpoint endpoint;
             if (!parseEndpoint(next(arg), endpoint)) {

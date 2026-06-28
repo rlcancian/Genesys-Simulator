@@ -11,7 +11,8 @@ TEST(DistributedConfigLoader, ShouldParseValidJsonConfig) {
     // Arrange
     const std::string json =
         "{\"modelFile\":\"model.txt\",\"outputFile\":\"out.json\",\"totalReplications\":30,"
-        "\"includeLocal\":true,\"maxRetries\":2,\"baseSeed\":123,\"httpTimeoutSeconds\":7,"
+        "\"includeLocal\":true,\"maxRetries\":2,\"baseSeed\":123,"
+        "\"discoveryTimeoutSeconds\":4,\"runTimeoutSeconds\":120,"
         "\"workers\":[{\"host\":\"127.0.0.1\",\"port\":8080},{\"host\":\"10.0.0.2\",\"port\":8081}]}";
     std::string error;
 
@@ -26,7 +27,8 @@ TEST(DistributedConfigLoader, ShouldParseValidJsonConfig) {
     EXPECT_TRUE(config->includeLocal);
     EXPECT_EQ(config->maxRetries, 2);
     EXPECT_EQ(config->baseSeed, 123u);
-    EXPECT_EQ(config->httpTimeoutSeconds, 7);
+    EXPECT_EQ(config->discoveryTimeoutSeconds, 4);
+    EXPECT_EQ(config->runTimeoutSeconds, 120);
     ASSERT_EQ(config->workers.size(), 2u);
     EXPECT_EQ(config->workers[0].host, "127.0.0.1");
     EXPECT_EQ(config->workers[0].port, 8080);
@@ -80,6 +82,36 @@ TEST(DistributedConfigLoader, ShouldParseArgsWithRepeatedWorkers) {
     EXPECT_EQ(config->workers[0].port, 8080);
     EXPECT_EQ(config->workers[1].host, "host-b");
     EXPECT_EQ(config->workers[1].port, 9090);
+}
+
+TEST(DistributedConfigLoader, ShouldMapTimeoutArgsAndDefaults) {
+    // Arrange: --timeout sets the run timeout; --discovery-timeout sets the discovery timeout.
+    const std::vector<std::string> args = {
+        "--model", "m.txt", "--replications", "5", "--local",
+        "--timeout", "200", "--discovery-timeout", "3"};
+    std::string error;
+
+    // Act
+    const auto config = DistributedConfigLoader::fromArgs(args, error);
+
+    // Assert
+    ASSERT_TRUE(config.has_value()) << error;
+    EXPECT_EQ(config->runTimeoutSeconds, 200);
+    EXPECT_EQ(config->discoveryTimeoutSeconds, 3);
+}
+
+TEST(DistributedConfigLoader, ShouldDefaultTimeoutsWhenAbsent) {
+    // Arrange: a minimal config without any timeout fields.
+    const std::string json = "{\"modelFile\":\"m.txt\",\"totalReplications\":10,\"includeLocal\":true}";
+    std::string error;
+
+    // Act
+    const auto config = DistributedConfigLoader::fromJson(json, error);
+
+    // Assert: discovery stays fast by default; the run timeout is generous.
+    ASSERT_TRUE(config.has_value()) << error;
+    EXPECT_EQ(config->discoveryTimeoutSeconds, 5);
+    EXPECT_EQ(config->runTimeoutSeconds, 300);
 }
 
 TEST(DistributedConfigLoader, ShouldRejectMalformedWorkerArgument) {
