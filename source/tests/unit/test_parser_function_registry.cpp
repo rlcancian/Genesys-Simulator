@@ -1,9 +1,11 @@
 #include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include <gtest/gtest.h>
 
+#include "parser/Genesys++-driver.h"
 #include "parser/FunctionRegistry.h"
 
 namespace {
@@ -164,4 +166,62 @@ TEST(FunctionRegistryTest, SupportsArityRanges) {
 	FunctionCallResult tooMany = registry.callFunction("Range", {1.0, 2.0, 3.0, 4.0});
 	EXPECT_FALSE(tooMany.success);
 	EXPECT_NE(tooMany.errorMessage.find("between 1 and 3"), std::string::npos);
+}
+
+TEST(ParserDriverFunctionRegistryTest, DriverStartsWithoutFunctionRegistry) {
+	genesyspp_driver driver;
+
+	EXPECT_FALSE(driver.hasFunctionRegistry());
+	EXPECT_EQ(driver.getFunctionRegistry(), nullptr);
+}
+
+TEST(ParserDriverFunctionRegistryTest, DriverAcceptsAndExposesExternalFunctionRegistry) {
+	FunctionRegistry registry = makeRegistryWithFakeFunctions();
+	genesyspp_driver driver;
+
+	driver.setFunctionRegistry(&registry);
+
+	ASSERT_TRUE(driver.hasFunctionRegistry());
+	ASSERT_EQ(driver.getFunctionRegistry(), &registry);
+	EXPECT_TRUE(driver.getFunctionRegistry()->hasFunction("FakeAdd"));
+
+	const FunctionCallResult result = driver.getFunctionRegistry()->callFunction("FakeAdd", {10.0, 5.0});
+	ASSERT_TRUE(result.success) << result.errorMessage;
+	EXPECT_DOUBLE_EQ(result.value, 15.0);
+}
+
+TEST(ParserDriverFunctionRegistryTest, DriverCanClearFunctionRegistryReference) {
+	FunctionRegistry registry = makeRegistryWithFakeFunctions();
+	genesyspp_driver driver;
+
+	driver.setFunctionRegistry(&registry);
+	ASSERT_TRUE(driver.hasFunctionRegistry());
+
+	driver.setFunctionRegistry(nullptr);
+	EXPECT_FALSE(driver.hasFunctionRegistry());
+	EXPECT_EQ(driver.getFunctionRegistry(), nullptr);
+}
+
+TEST(ParserDriverFunctionRegistryTest, DriverCopiesNonOwningFunctionRegistryReference) {
+	FunctionRegistry registry = makeRegistryWithFakeFunctions();
+	genesyspp_driver driver;
+	driver.setFunctionRegistry(&registry);
+
+	genesyspp_driver copied(driver);
+
+	ASSERT_TRUE(copied.hasFunctionRegistry());
+	ASSERT_EQ(copied.getFunctionRegistry(), &registry);
+	EXPECT_TRUE(copied.getFunctionRegistry()->hasFunction("FakeSquare"));
+}
+
+TEST(ParserDriverFunctionRegistryTest, DriverMovesNonOwningFunctionRegistryReference) {
+	FunctionRegistry registry = makeRegistryWithFakeFunctions();
+	genesyspp_driver driver;
+	driver.setFunctionRegistry(&registry);
+
+	genesyspp_driver moved(std::move(driver));
+
+	ASSERT_TRUE(moved.hasFunctionRegistry());
+	ASSERT_EQ(moved.getFunctionRegistry(), &registry);
+	EXPECT_FALSE(driver.hasFunctionRegistry());
 }

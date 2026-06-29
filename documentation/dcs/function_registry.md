@@ -38,6 +38,12 @@ Esta etapa nao altera:
 - classes de plugin;
 - avaliacao atual de expressoes pelo Bison.
 
+## Ponte com Genesys++-driver
+
+O `genesyspp_driver` possui agora uma referencia opcional para `FunctionRegistry`.
+
+O ownership e nao-dono: o driver guarda apenas um ponteiro externo, alinhado ao estilo ja usado para `Model*` e `Sampler_if*`. O ciclo de vida do registry continua responsabilidade do chamador. Por isso, o driver oferece `setFunctionRegistry(...)`, `getFunctionRegistry()` e `hasFunctionRegistry()`, mas nao cria nem destroi o registry.
+
 ## Proximos passos
 
 1. Adicionar testes de caracterizacao para uma categoria real de funcoes antes de migrar avaliacao.

@@ -60,6 +60,10 @@ genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
 genesys_add_unit_test(genesys_test_parser_function_registry
     test_parser_function_registry.cpp
     genesys_parser
+    genesys_kernel_simulator_runtime
+    genesys_kernel_util
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_runtime
 )
 
 genesys_add_unit_test(genesys_test_support_modelmanager
