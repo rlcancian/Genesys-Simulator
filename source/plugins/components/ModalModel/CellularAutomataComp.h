@@ -1,6 +1,6 @@
 /*
  * To change this license header, choose License Headers in Project Properties.
- * To change this template file, choose Tools | Templates
+ * To change this template file, choose Templates
  * and open the template in the editor.
  */
 
@@ -19,7 +19,11 @@
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
 #include "plugins/components/ModalModel/CellularAutomata/StateSet.h"
 
+#include <memory>
+#include <string>
+
 class BoundaryCondition;
+class UpdatePolicy;
 
 /*!
  This component ...
@@ -53,7 +57,14 @@ public: //! enums
 	enum class AutomataType : int {
 		Temporary = 0, Permanent = 1
 	};
-	
+
+	//! Política de atualização temporal
+	enum class UpdatePolicyType : int {
+		SYNCHRONOUS = 0,
+		RANDOM_ASYNCHRONOUS = 1,
+		SEQUENTIAL = 2
+	};
+
 public: //! constructors
 	CellularAutomataComp(Model* model, std::string name = "");
 	virtual ~CellularAutomataComp() = default;
@@ -78,7 +89,11 @@ public: //! new public user methods for this component
 	Lattice *getlattice() const;
 	Neighborhood *getNeighboorhood() const;
 	//BoundaryCondition *getBoundary() const;
-	StateSet *getStateSet() const;	
+	StateSet *getStateSet() const;
+
+	//! Política de atualização
+	CellularAutomataComp::UpdatePolicyType getUpdatePolicyType() const;
+	void setUpdatePolicyType(CellularAutomataComp::UpdatePolicyType policy);
 
 public: //! virtual public methods
 	virtual std::string show() override;
@@ -92,6 +107,12 @@ public: //! static public methods that must have implementations (Load and New j
 	void setLocalRuleType(CellularAutomataComp::LocalRuleType newLocalRuleType);
 
 	LocalRule *getlocalRule() const;
+
+	//! Define o código-fonte para regra definida pelo usuário (compilação dinâmica)
+	void setUserRuleCode(const std::string& sourceCode);
+
+	//! Obtém o código-fonte da regra definida pelo usuário
+	const std::string& getUserRuleCode() const { return _userRuleSourceCode; }
 
 protected: //! virtual protected method that must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;
@@ -119,7 +140,7 @@ protected:
 	// virtual void _createAttachedAttributes() override;
 
 private: //! new private user methods
-	// ...
+	void createUpdatePolicyInstance();
 
 private: //! Attributes that should be loaded or saved with this component (Persistent Fields)
 
@@ -131,6 +152,7 @@ private: //! Attributes that should be loaded or saved with this component (Pers
 		const BoundaryType boundaryType = BoundaryType::FIXED;
 		const StateSetType stateSetType = StateSetType::ENUMERATED;
 		const LocalRuleType localRuleType = LocalRuleType::GAME_OF_LIFE;
+		const UpdatePolicyType updatePolicyType = UpdatePolicyType::SYNCHRONOUS;
 	} DEFAULT;
 	CellularAutomataComp::CellularAutomataType _cellularAutomataType = DEFAULT.cellularAutomataType;
 	CellularAutomataComp::LatticeType _latticeType = DEFAULT.latticeType;
@@ -138,6 +160,8 @@ private: //! Attributes that should be loaded or saved with this component (Pers
 	CellularAutomataComp::BoundaryType _boundaryType = DEFAULT.boundaryType;
 	CellularAutomataComp::StateSetType _stateSetType = DEFAULT.stateSetType;
 	CellularAutomataComp::LocalRuleType _localRuleType = DEFAULT.localRuleType;
+	CellularAutomataComp::UpdatePolicyType _updatePolicyType = DEFAULT.updatePolicyType;
+	std::string _userRuleSourceCode;
 
 private: //! Attributes that do not need to be loaded or saved with this component (Non Persistent Fields)
 	CellularAutomataBase* _cellularAutomata = nullptr;
@@ -146,6 +170,7 @@ private: //! Attributes that do not need to be loaded or saved with this compone
 	BoundaryCondition* _boundary = nullptr;
 	StateSet* _stateSet = nullptr;
 	LocalRule* _localRule = nullptr;
+	std::unique_ptr<UpdatePolicy> _updatePolicyInstance;
 
 private: //! internal DataElements (Composition)
 

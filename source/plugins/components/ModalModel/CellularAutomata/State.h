@@ -69,9 +69,9 @@ public:
 	State(const State& orig) : _value(orig._value) {}
 	virtual ~State() = default;
 public:
-	long getValue(){return _value;}
+	long getValue() const {return _value;}
 	void setValue(long value) {_value=value;}
-	std::string show() { return std::to_string(_value); }
+	std::string show() const { return std::to_string(_value); }
 protected:
 	long _value;
 private:

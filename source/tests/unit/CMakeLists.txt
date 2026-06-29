@@ -57,6 +57,11 @@ genesys_add_unit_test(genesys_test_cellular_automata_neighborhood
     genesys_plugins_components_minimal
 )
 
+genesys_add_unit_test(genesys_test_cellular_automata_persistence
+    test_cellular_automata_persistence.cpp
+    genesys_plugins_components_minimal
+)
+
 genesys_add_unit_test(genesys_test_support_modelmanager
     test_support_modelmanager.cpp
     genesys_kernel_simulator_support

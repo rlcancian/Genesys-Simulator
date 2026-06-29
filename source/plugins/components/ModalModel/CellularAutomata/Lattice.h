@@ -20,10 +20,13 @@ public:
 public:
 	virtual std::string show();
 	bool init(); ///< init all cells
-	virtual long cellNDimPosition2Number(const std::vector<int> position); ///< Maps n-dimensional to cell number
-	virtual std::vector<int> cellNumber2NDimPosition(const long cellNumber); ///< Maps cell number to n-dimensional
+	virtual long cellNDimPosition2Number(const std::vector<int> position) const; ///< Maps n-dimensional to cell number
+	virtual std::vector<int> cellNumber2NDimPosition(const long cellNumber) const; ///< Maps cell number to n-dimensional
+	const Cell* getCell(const long cellNumber) const;
 	Cell* getCell(const long cellNumber);
+	const Cell* getCell(const std::vector<int> position) const;
 	Cell* getCell(const std::vector<int> position);
+	CellularAutomataBase* getParentCellularAutomata() const { return parentCellularAutomata; }
 	void setCell(const std::vector<int> position, Cell* cell);
 	bool setCellState(std::vector<int> position, State* state = nullptr, Cell* cell = nullptr);
 	bool setCellState(long cellNumber, State* state = nullptr, Cell* cell = nullptr);

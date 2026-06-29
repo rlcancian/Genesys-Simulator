@@ -19,6 +19,7 @@ public:
     }
     virtual ~LocalRule_FlorestalFire() = default;
 public:
+    virtual std::string getRuleType() const override { return "ForestFire"; }
 
     virtual void applyRule(Cell* cell) override {
         if (cell == nullptr || stateSet == nullptr) {

@@ -33,6 +33,8 @@ public:
 	unsigned short getRadius() const{
 		return radius;
 	}
+	std::string getName() const { return name; }
+	void setName(const std::string& newName) { name = newName; }
 	void setBoundary(BoundaryCondition* boundary) {
 		this->boundary = boundary;
 		boundary->setNeighborhood(this);

@@ -133,7 +133,7 @@ bool Lattice::setCellState(std::vector<int> position, State* state, Cell* cell) 
 	return setCellState(cellNumber, state, cell);
 }
 
-long Lattice::cellNDimPosition2Number(const std::vector<int> position) {
+long Lattice::cellNDimPosition2Number(const std::vector<int> position) const {
 	long cellNum = 0;
 	unsigned int dim = 0;
 	unsigned int mult = 1;
@@ -155,7 +155,7 @@ long Lattice::cellNDimPosition2Number(const std::vector<int> position) {
 	return cellNum;
 }
 
-std::vector<int> Lattice::cellNumber2NDimPosition(const long cellNumber) {
+std::vector<int> Lattice::cellNumber2NDimPosition(const long cellNumber) const {
 	std::vector<int> cellPosition;
 	cellPosition.resize(dimensions.size());
 	unsigned int dim = 0;
@@ -176,7 +176,16 @@ Cell* Lattice::getCell(const long cellNumber) {
 	return cells.at(cellNumber);
 }
 
+const Cell* Lattice::getCell(const long cellNumber) const {
+	return cells.at(cellNumber);
+}
+
 Cell* Lattice::getCell(const std::vector<int> position) {
+	unsigned int cellNumber = this->cellNDimPosition2Number(position);
+	return getCell(cellNumber);
+}
+
+const Cell* Lattice::getCell(const std::vector<int> position) const {
 	unsigned int cellNumber = this->cellNDimPosition2Number(position);
 	return getCell(cellNumber);
 }
