@@ -24,7 +24,7 @@ source/plugins/components/ModalModel/CellularAutomataComp.cpp
 
 | Enum | Valores |
 |---|---|
-| `CellularAutomataType` | CLASSIC, TIMED_1D, ASYNCHRONOUS, NONUNIFORMRULE, NONUNIFORMNEIGHBOOR, USERDEFINED |
+| `CellularAutomataType` | CLASSIC, TIMED_1D, ASYNCHRONOUS, NONUNIFORMRULE, NONUNIFORMNEIGHBOOR, NONUNIFORM, USERDEFINED |
 | `LatticeType` | RETICULAR, TRIANGULAR, HEXAGONAL, NETWORK, USERDEFINED |
 | `NeighboorhoodType` | CENTERED, BACKWARD, FORWARD, VONNEUMANN, MOORE, USERDEFINED |
 | `BoundaryType` | FIXED, CLOSED, REFLEXIVE, ADIABATIC, USERDEFINED |
@@ -74,8 +74,12 @@ setLocalRuleType(GAME_OF_LIFE)     → new LocalRule_GameOfLife(_cellularAutomat
 
 ```
 CellularAutomataBase (abstrata)
-├── CellularAutomata_Classic           ← CA uniforme síncrono
-└── CellularAutomata_1DTimed           ← CA 1D onde 2ª dimensão é o tempo
+├── CellularAutomata_Classic                   ← CA uniforme síncrono
+├── CellularAutomata_1DTimed                   ← CA 1D onde 2ª dimensão é o tempo
+└── CellularAutomata_NonUniformNeighborhood    ← vizinhança por célula (sobrecarrega init)
+    ├── CellularAutomata_NonUniform            ← regra + vizinhança por célula combinadas
+    └── (CellularAutomata_NonUniformRule herda de CellularAutomata_Classic
+        com apenas regra por célula)
 
 Lattice                                ← malha n-dimensional
 Cell                                   ← célula individual
@@ -90,7 +94,9 @@ Neighborhood (abstrata)
 
 BoundaryCondition (abstrata)
 ├── Boundary_Fixed                     ← célula fantasma fixa fora dos limites
-└── Boundary_Closed                    ← envoltório toroidal (módulo)
+├── Boundary_Closed                    ← envoltório toroidal (módulo)
+├── Boundary_Reflexive                 ← reflexão especular: posição inválida é espelhada de volta
+└── Boundary_Adiabatic                 ← sem fluxo: clamp na célula de borda (célula vê a si mesma)
 
 LocalRule (abstrata, pure virtual)
 ├── LocalRule_Elementary               ← CA elementar de Wolfram (número de regra 0–255)
@@ -98,7 +104,9 @@ LocalRule (abstrata, pure virtual)
 ├── LocalRule_Growty                   ← competição tendenciosa
 ├── LocalRule_FlorestalFire            ← incêndio florestal
 ├── LocalRule_HppLatticeGas            ← gás HPP
-└── LocalRule_ShowNeighbordhood        ← debug: exibe vizinhos
+├── LocalRule_ShowNeighbordhood        ← debug: exibe vizinhos
+├── LocalRule_PermissiveLife           ← sobrevivência/nascimento com intervalos configuráveis
+└── LocalRule_Custom                   ← exemplo de extensão: voto por maioria
 ```
 
 ### 3.2 Fluxo de dados entre classes
@@ -172,6 +180,8 @@ Recebe uma célula, lê `cell->getNeighbors()` (já pré-computados), e define `
 
 - `Boundary_Fixed`: retorna uma célula fantasma com número −99 e estado fixo (padrão 0) para posições fora dos limites.
 - `Boundary_Closed`: faz o envoltório toroidal usando módulo por dimensão.
+- `Boundary_Reflexive`: reflete posições inválidas de volta ao grid por espelhamento iterativo. Para cada dimensão: `if (pos < 0) pos = -pos; if (pos >= D) pos = 2*(D-1)-pos;` repetido até a posição ser válida. A borda é um "espelho".
+- `Boundary_Adiabatic`: sem fluxo de informação para fora. Usa `std::clamp` para travar coordenadas inválidas na borda mais próxima. Células de borda "veem a si mesmas" quando olham para fora do grid.
 
 ---
 
@@ -203,10 +213,9 @@ Recebe uma célula, lê `cell->getNeighbors()` (já pré-computados), e define `
 
 | Problema | Onde |
 |---|---|
-| `_loadInstance` e `_saveInstance` não implementados | `CellularAutomataComp.cpp` |
-| `_check()` não valida coerência, apenas conecta objetos | `CellularAutomataComp.cpp` |
-| Tipos NONUNIFORMRULE e NONUNIFORMNEIGHBOOR não têm implementação | `CellularAutomataComp.cpp` |
+| `_loadInstance` e `_saveInstance` implementados apenas para os 6 campos enum | `CellularAutomataComp.cpp` |
+| `_check()` valida ponteiros nulos mas não verifica coerência semântica entre tipos | `CellularAutomataComp.cpp` |
 | `~CellularAutomataBase()` chamado diretamente em vez de `delete` | `CellularAutomataComp.cpp` |
-| Vizinhança é global (mesmo tipo para todas as células) | arquitetura atual |
-| Regra local é global (mesma regra para todas as células) | arquitetura atual |
-| `Neighborhood` se auto-registra no CA no construtor — impede criar instâncias extras sem sobrescrever | `Neighborhood.h` |
+| Vizinhanças por célula são estáticas após `init()` — mudar vizinhança durante a simulação requer redesenho do `Lattice` | arquitetura atual |
+| `Neighborhood` se auto-registra no CA no construtor — vizinhanças por célula devem ser criadas com `registerWithCA=false` | `Neighborhood.h` |
+| API de região (`setRegionRule`, `setRegionNeighborhood`) disponível apenas em `CellularAutomata_NonUniform` | `CellularAutomata_NonUniform.h` |

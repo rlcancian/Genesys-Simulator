@@ -8,7 +8,7 @@ Branch: `dcs/nonuniform-ca`
 
 O objetivo do trabalho é estender o framework de autômatos celulares do GenESyS para suportar **não uniformidade**: a capacidade de cada célula ter sua própria regra local, sua própria vizinhança, ou ambas simultaneamente. O framework existente só suportava autômatos uniformes, onde todas as células compartilham a mesma regra e a mesma vizinhança.
 
-Foram implementados três novos tipos de CA, uma nova regra local configurável, uma regra de exemplo, um componente de simulação estendido e 17 testes unitários.
+Foram implementados três novos tipos de CA, duas novas condições de contorno, uma API de região, duas novas regras locais, um componente de simulação estendido e 24 testes unitários distribuídos em três executáveis.
 
 ---
 
@@ -50,6 +50,18 @@ A escolha de herdar de `NonUniformNeighborhood` (e não de `NonUniformRule`) é 
 - `setCellRule(long cellNumber, LocalRule* rule)`
 - `setCellRule(std::vector<int> position, LocalRule* rule)`
 - (herda `setCellNeighborhood` da classe base)
+
+---
+
+### `CellularAutomata/Boundary_Reflexive.h`
+
+Condição de contorno reflexiva: posições fora dos limites são espelhadas de volta ao grid por reflexão iterativa. Para cada dimensão, aplica `if (pos < 0) pos = -pos; if (pos >= D) pos = 2*(D-1)-pos;` em loop até a posição ser válida. A borda age como um espelho — a célula de borda vê o interior do grid refletido.
+
+---
+
+### `CellularAutomata/Boundary_Adiabatic.h`
+
+Condição de contorno adiabática (sem fluxo): posições fora dos limites são travadas na célula de borda mais próxima usando `std::clamp`. Células de borda "veem a si mesmas" quando a vizinhança solicita uma posição fora do grid. Isso garante que não há informação fluindo para dentro a partir de fora do domínio.
 
 ---
 
@@ -106,33 +118,43 @@ Neighborhood_Moore(CellularAutomataBase* parentCellularAutomata,
 ### `CellularAutomataComp.h`
 
 - Adicionado `NONUNIFORM = 7` ao enum `CellularAutomataType`
-- Declarados quatro novos métodos públicos para configurar células individualmente através do componente:
+- Declarados seis novos métodos públicos para configurar células e regiões através do componente:
 
 ```cpp
 bool setCellLocalRule(long cellNumber, LocalRule* rule);
 bool setCellLocalRule(std::vector<int> position, LocalRule* rule);
 bool setCellNeighborhood(long cellNumber, Neighborhood* hood);
 bool setCellNeighborhood(std::vector<int> position, Neighborhood* hood);
+bool setRegionRule(std::vector<int> posMin, std::vector<int> posMax, LocalRule* rule);
+bool setRegionNeighborhood(std::vector<int> posMin, std::vector<int> posMax, Neighborhood* hood);
 ```
 
 ### `CellularAutomataComp.cpp`
 
-- Includes dos novos arquivos adicionados
+- Includes dos novos arquivos adicionados (incluindo `Boundary_Reflexive.h` e `Boundary_Adiabatic.h`)
 - `setCellularAutomataType()`: adicionados casos para `NONUNIFORMRULE`, `NONUNIFORMNEIGHBOOR` e `NONUNIFORM`
+- `setBoundaryType()`: adicionados casos para `REFLEXIVE` (→ `new Boundary_Reflexive()`) e `ADIABATIC` (→ `new Boundary_Adiabatic()`)
 - `_loadInstance()`: implementado — carrega 6 campos de configuração (`caType`, `latticeType`, `neighborhoodType`, `boundaryType`, `stateSetType`, `localRuleType`) e instancia os objetos correspondentes
 - `_saveInstance()`: implementado — salva os mesmos 6 campos
 - `_check()`: melhorado — verifica ponteiros nulos com mensagens específicas; permite `_localRule == nullptr` para os tipos que operam com regras por célula
 - `setCellLocalRule()` / `setCellNeighborhood()`: implementados via `dynamic_cast` para o tipo não-uniforme correto; retornam `false` se o CA ativo não suportar o recurso
+- `setRegionRule()` / `setRegionNeighborhood()`: delegam para os métodos equivalentes em `CellularAutomata_NonUniform` via `dynamic_cast`
 
-### `test_cellular_automata_neighborhood.cpp`
+### Testes — reorganização em 3 arquivos
 
-Adicionados 9 novos testes (total: 17, todos passando). Ver seção de testes abaixo.
+Os testes foram divididos em três executáveis independentes:
+
+- `test_cellular_automata_neighborhood.cpp` → `genesys_test_cellular_automata_neighborhood` (8 testes — sem alteração de conteúdo)
+- `test_cellular_automata_nonuniform.cpp` → `genesys_test_cellular_automata_nonuniform` (12 testes novos)
+- `test_cellular_automata_boundary.cpp` → `genesys_test_cellular_automata_boundary` (4 testes novos)
+
+Total: 24 testes (8 pré-existentes + 16 novos). Ver seção de testes abaixo.
 
 ---
 
 ## Testes unitários
 
-### Testes existentes (8) — implementados pelo professor
+### Testes existentes (8) — `genesys_test_cellular_automata_neighborhood`
 
 | Teste | O que verifica |
 |---|---|
@@ -147,7 +169,7 @@ Adicionados 9 novos testes (total: 17, todos passando). Ver seção de testes ab
 
 ---
 
-### Novos testes (9) — implementados neste trabalho
+### Novos testes (12) — `genesys_test_cellular_automata_nonuniform`
 
 #### `CellularAutomataNonUniformRule/AppliesPerCellRuleOverridingGlobalRule`
 
@@ -244,6 +266,64 @@ Resultado esperado: `[0, 1, 0]`.
 
 ---
 
+#### `CellularAutomataNonUniformRegion/SetRegionRuleAssignsRuleToAllCellsInBox`
+
+**O que testa:** `setRegionRule` atribui a regra corretamente a todas as células do bounding box.
+
+**Como:** grid 1D com 5 células, regra global AlwaysAlive. Região `[1,3]` recebe AlwaysDead. Todas as células iniciam com estado 0. Após um passo: células 0 e 4 (fora da região) devem ser 1; células 1, 2 e 3 (dentro da região) devem ser 0.
+
+---
+
+#### `CellularAutomataNonUniformRegion/SetRegionNeighborhoodAssignsNeighborhoodToAllCellsInBox`
+
+**O que testa:** `setRegionNeighborhood` recalcula os vizinhos de todas as células do bounding box.
+
+**Como:** grid 2D 5×5, vizinhança global Moore r=1 (8 vizinhos para células interiores). Região `[1,1]`–`[3,3]` recebe VonNeumann r=1. Após `init()`, verifica que células interiores da região têm 4 vizinhos (VonNeumann) e células fora da região têm 8 vizinhos (Moore).
+
+---
+
+#### `CellularAutomataNonUniformRegion/SetRegionRuleAndNeighborhoodCombined`
+
+**O que testa:** `setRegionRule` e `setRegionNeighborhood` podem ser usados juntos na mesma região.
+
+**Como:** grid 2D 5×5, global GoL+Moore. Região `[2,2]`–`[3,3]` recebe AlwaysDead (regra) e VonNeumann (vizinhança). Após um passo: células da região estão mortas (AlwaysDead); células fora evoluem normalmente com GoL+Moore.
+
+---
+
+### Novos testes (4) — `genesys_test_cellular_automata_boundary`
+
+#### `BoundaryReflexive/CornerCellSeesReflectedNeighbors`
+
+**O que testa:** a condição reflexiva mapeia posições inválidas de volta ao grid.
+
+**Como:** lattice 1D [0..4], raio 1. Verifica que os vizinhos das células 0 e 4 têm números dentro do intervalo [0,4] — nenhum índice inválido é retornado.
+
+---
+
+#### `BoundaryReflexive/ReflectedNeighborHasSameStateAsInnerCell`
+
+**O que testa:** o vizinho refletido aponta para a célula interior correta.
+
+**Como:** lattice 1D [0..4], célula 1 viva. Verifica que os vizinhos da célula 0 incluem a célula 1 (a posição −1 reflete para +1).
+
+---
+
+#### `BoundaryAdiabatic/CornerCellSeesItselfForOutOfBoundsNeighbor`
+
+**O que testa:** a condição adiabática trava posições inválidas na célula de borda.
+
+**Como:** lattice 1D [0..4]. Verifica que os vizinhos da célula 0 incluem ela mesma (posição −1 é clamped para 0), e que os vizinhos da célula 4 incluem ela mesma (posição 5 é clamped para 4).
+
+---
+
+#### `BoundaryAdiabatic/AllDeadGridRemainsDeadAfterStep`
+
+**O que testa:** a condição adiabática não introduz estado artificial nas bordas.
+
+**Como:** grid 1D de 5 células, todas mortas, GoL, Adiabatic. Após um passo, todas as células devem continuar mortas — a auto-referência da borda contribui estado 0, não induz nascimentos.
+
+---
+
 ## Decisões de design
 
 **`registerWithCA=false` em vez de uma nova classe de vizinhança**
@@ -260,3 +340,12 @@ Mantém a semântica existente do simulador. Vizinhanças por célula são confi
 
 **`LocalRule_PermissiveLife` como classe parametrizável, não hardcoded**
 Torna a classe reutilizável para outros cenários (ex: GoL pode ser expresso como PermissiveLife com `surviveMin=2, surviveMax=3, birthMin=3, birthMax=3`). Mantém `LocalRule_Custom` como exemplo de extensão livre e `LocalRule_PermissiveLife` como regra de biblioteca configurável — duas formas complementares de customização.
+
+**`Boundary_Reflexive` com loop de reflexão iterativa**
+Um único espelho não é suficiente quando `radius > D/2` (a posição refletida pode sair do outro lado). O loop garante que posições muito negativas ou muito grandes são refletidas repetidamente até ficarem dentro do grid. A complexidade extra só ocorre no pré-processamento de `init()`, não durante a simulação.
+
+**`Boundary_Adiabatic` via `std::clamp`**
+A implementação mais simples e eficiente para condição de fluxo zero: `std::clamp(pos, 0, D-1)`. Células de borda se auto-referenciam, o que conserva o estado da borda (nenhuma informação externa entra). A alternativa (retornar a própria célula como ponteiro nulo ou célula fantasma) exigiria tratamento especial em `LocalRule`, acoplando a condição de contorno à regra.
+
+**`setRegionRule` / `setRegionNeighborhood` com helper `_iterateRegion`**
+A iteração n-dimensional sobre um bounding box [posMin, posMax] é delegada ao método privado `_iterateRegion`, que usa recursão por dimensão (idêntica ao padrão usado em `Neighborhood_Moore` e `Neighborhood_VonNeumann`). Isso mantém os métodos públicos simples e o helper pode ser reutilizado para futuras APIs de região sem duplicação.

@@ -34,66 +34,89 @@ g++ --version   # precisa ser 13 ou superior
 # 1. Configurar o preset (cria o diretório build/tests-kernel-unit)
 cmake --preset tests-kernel-unit
 
-# 2. Compilar o executável de testes
+# 2. Compilar os três executáveis de testes de CA
 cmake --build build/tests-kernel-unit --target genesys_test_cellular_automata_neighborhood -- -k 0
+cmake --build build/tests-kernel-unit --target genesys_test_cellular_automata_nonuniform -- -k 0
+cmake --build build/tests-kernel-unit --target genesys_test_cellular_automata_boundary -- -k 0
 ```
 
-O passo 1 precisa ser feito apenas uma vez (ou ao deletar o diretório `build/tests-kernel-unit`). O `-k 0` no passo 2 ignora erros em outros alvos do projeto que não afetam os testes de CA.
+O passo 1 precisa ser feito apenas uma vez (ou ao deletar o diretório `build/tests-kernel-unit`). O `-k 0` ignora erros em outros alvos do projeto que não afetam os testes de CA.
 
 ---
 
 ### Executar todos os testes de autômatos celulares
 
-O executável `genesys_test_cellular_automata_neighborhood` contém todos os 24 testes de CA (8 existentes + 16 novos):
+Os 24 testes estão distribuídos em três executáveis independentes:
 
 ```bash
+# Vizinhança e lattice (8 testes — pré-existentes)
 ./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood
+
+# CA não uniforme (12 testes — novos)
+./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_nonuniform
+
+# Condições de contorno (4 testes — novos)
+./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_boundary
 ```
 
-Saída esperada (todos passando):
+Saída esperada de cada executável:
 
 ```
-[==========] Running 24 tests from 13 test suites.
+# genesys_test_cellular_automata_neighborhood
+[==========] Running 8 tests from 4 test suites.
 [----------] 1 test from CellularAutomataLattice
 [----------] 3 tests from CellularAutomataMooreNeighborhood
 [----------] 3 tests from CellularAutomataVonNeumannNeighborhood
 [----------] 1 test from CellularAutomataGameOfLife
+[  PASSED  ] 8 tests.
+
+# genesys_test_cellular_automata_nonuniform
+[==========] Running 12 tests from 7 test suites.
 [----------] 2 tests from CellularAutomataNonUniformRule
 [----------] 2 tests from CellularAutomataNonUniformNeighborhood
 [----------] 2 tests from CellularAutomataNonUniform
 [----------] 1 test from CellularAutomataCompDispatch
 [----------] 1 test from CellularAutomataPermissiveLife
 [----------] 1 test from CellularAutomataCustomRule
+[----------] 3 tests from CellularAutomataNonUniformRegion
+[  PASSED  ] 12 tests.
+
+# genesys_test_cellular_automata_boundary
+[==========] Running 4 tests from 2 test suites.
 [----------] 2 tests from BoundaryReflexive
 [----------] 2 tests from BoundaryAdiabatic
-[----------] 3 tests from CellularAutomataNonUniformRegion
-[==========] 24 tests ran.
-[  PASSED  ] 24 tests.
+[  PASSED  ] 4 tests.
 ```
 
 ---
 
 ### Executar subconjuntos de testes
 
-Use o filtro `--gtest_filter` para rodar grupos específicos:
+Use `--gtest_filter` no executável correto para cada grupo:
 
 ```bash
 # Apenas testes de CA não uniforme (regra/vizinhança por célula)
-./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood \
-  --gtest_filter="CellularAutomataNonUniform*:CellularAutomataCompDispatch*:CellularAutomataPermissiveLife*:CellularAutomataCustomRule*:CellularAutomataNonUniformRegion*"
+./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_nonuniform \
+  --gtest_filter="CellularAutomataNonUniform*:CellularAutomataCompDispatch*"
 
-# Apenas condições de contorno novas
-./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood \
-  --gtest_filter="BoundaryReflexive*:BoundaryAdiabatic*"
+# Apenas regras customizadas
+./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_nonuniform \
+  --gtest_filter="CellularAutomataPermissiveLife*:CellularAutomataCustomRule*"
 
 # Apenas API de região
-./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood \
+./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_nonuniform \
   --gtest_filter="CellularAutomataNonUniformRegion*"
+
+# Apenas condições de contorno novas
+./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_boundary \
+  --gtest_filter="BoundaryReflexive*:BoundaryAdiabatic*"
 ```
 
 ---
 
 ### Referência dos 16 novos testes
+
+**Executável: `genesys_test_cellular_automata_nonuniform`** (12 testes)
 
 | Suite | Teste | O que verifica |
 |---|---|---|
@@ -106,13 +129,18 @@ Use o filtro `--gtest_filter` para rodar grupos específicos:
 | `CellularAutomataCompDispatch` | `NonUniformAcceptsPerCellApiClassicDoesNot` | `dynamic_cast` roteia corretamente a API por célula |
 | `CellularAutomataPermissiveLife` | `DeadCellBornWhenNeighborCountInBirthRange` | `LocalRule_PermissiveLife` aplica condições de nascimento e sobrevivência |
 | `CellularAutomataCustomRule` | `MajorityVoteConvergesUniformRegion` | `LocalRule_Custom` aplica voto por maioria com desempate correto |
+| `CellularAutomataNonUniformRegion` | `SetRegionRuleAssignsRuleToAllCellsInBox` | `setRegionRule` preenche o mapa para todas as células do bounding box |
+| `CellularAutomataNonUniformRegion` | `SetRegionNeighborhoodAssignsCorrectNeighborCountAfterInit` | `setRegionNeighborhood` recalcula vizinhos de toda a região no `init()` |
+| `CellularAutomataNonUniformRegion` | `CellRuleOverridesRegionRule` | `setCellRule` sobrescreve a entrada de `setRegionRule` para aquela célula |
+
+**Executável: `genesys_test_cellular_automata_boundary`** (4 testes)
+
+| Suite | Teste | O que verifica |
+|---|---|---|
 | `BoundaryReflexive` | `CornerCellSeesReflectedNeighbors` | Células de canto recebem vizinhos refletidos dentro dos limites |
 | `BoundaryReflexive` | `ReflectedNeighborHasSameStateAsInnerCell` | O vizinho refletido em -1 aponta para a célula 1 (reflexão correta) |
 | `BoundaryAdiabatic` | `CornerCellSeesItselfForOutOfBoundsNeighbor` | Célula de borda vê a si mesma quando olha para fora |
 | `BoundaryAdiabatic` | `AllDeadGridRemainsDeadAfterStep` | Sem fluxo de estado cruzando a fronteira adiabática |
-| `CellularAutomataNonUniformRegion` | `SetRegionRuleAssignsRuleToAllCellsInBox` | `setRegionRule` preenche o mapa para todas as 9 células do bounding box |
-| `CellularAutomataNonUniformRegion` | `SetRegionNeighborhoodAssignsCorrectNeighborCountAfterInit` | `setRegionNeighborhood` com VonNeumann afeta apenas a célula-alvo após `init()` |
-| `CellularAutomataNonUniformRegion` | `CellRuleOverridesRegionRule` | `setCellRule` sobrescreve a entrada de `setRegionRule` para aquela célula |
 
 ---
 
@@ -383,5 +411,7 @@ source/applications/terminal/examples/smarts/
 └── Smart_CellularAutomata_NonUniform.cpp     ← 4 cenários de demonstração completos
 
 source/tests/unit/
-└── test_cellular_automata_neighborhood.cpp   ← 24 testes (8 existentes + 16 novos)
+├── test_cellular_automata_neighborhood.cpp   ← 8 testes pré-existentes (lattice, Moore, VonNeumann, GoL)
+├── test_cellular_automata_nonuniform.cpp     ← 12 testes novos (regra/vizinhança/região por célula)
+└── test_cellular_automata_boundary.cpp       ← 4 testes novos (Reflexive, Adiabatic)
 ```
