@@ -27,7 +27,7 @@ class BoundaryCondition;
 class CellularAutomataComp : public ModelComponent {
 public: //! enums
 	enum class CellularAutomataType : int {
-		CLASSIC = 1, TIMED_1D = 2, ASYNCHRONOUS = 3, NONUNIFORMRULE = 4, NONUNIFORMNEIGHBOOR = 5, NONUNIFORM = 7, USERDEFINED = 6
+		CLASSIC = 1, TIMED_1D = 2, ASYNCHRONOUS = 3, NONUNIFORM = 4, USERDEFINED = 5
 	};
 
 	enum class LatticeType : int {

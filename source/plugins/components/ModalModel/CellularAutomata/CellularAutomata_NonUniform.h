@@ -1,24 +1,32 @@
 #pragma once
 
-#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniformNeighborhood.h"
+#include "plugins/components/ModalModel/CellularAutomata/CellularAutomataBase.h"
 #include "plugins/components/ModalModel/CellularAutomata/Cell.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
+#include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
 #include <unordered_map>
 #include <vector>
 
-//! Fully non-uniform CA: each cell may have both its own local rule and its own neighborhood.
-//! Inherits per-cell neighborhood handling (init override) from CellularAutomata_NonUniformNeighborhood
-//! and adds per-cell rule dispatch in applyLocalRule().
-class CellularAutomata_NonUniform : public CellularAutomata_NonUniformNeighborhood {
+//! Non-uniform CA: each cell may have its own local rule, its own neighborhood, or both.
+//!
+//! - Cells without a specific rule fall back to the CA's global localRule.
+//! - Cells without a specific neighborhood use the global neighborhood (computed at init time).
+//!
+//! Per-cell neighborhoods must be created with registerWithCA=false to avoid
+//! overwriting the CA's global neighborhood pointer.
+class CellularAutomata_NonUniform : public CellularAutomataBase {
 public:
-    CellularAutomata_NonUniform(Lattice* lattice = nullptr, StateSet* stateSet = nullptr, Neighborhood* neighborhood = nullptr, LocalRule* localRule = nullptr)
-        : CellularAutomata_NonUniformNeighborhood(lattice, stateSet, neighborhood, localRule) {}
+    CellularAutomata_NonUniform(Lattice* lattice = nullptr, StateSet* stateSet = nullptr,
+                                Neighborhood* neighborhood = nullptr, LocalRule* localRule = nullptr)
+        : CellularAutomataBase(lattice, stateSet, neighborhood, localRule) {}
     CellularAutomata_NonUniform(const CellularAutomata_NonUniform& orig)
-        : CellularAutomata_NonUniformNeighborhood(orig) {}
+        : CellularAutomataBase(orig) {}
     virtual ~CellularAutomata_NonUniform() = default;
 
 public:
+    // --- Per-cell rule API ---
+
     void setCellRule(long cellNumber, LocalRule* rule) {
         _cellLocalRules[cellNumber] = rule;
     }
@@ -35,11 +43,45 @@ public:
         return _cellLocalRules;
     }
 
-protected:
-    // init() is inherited from CellularAutomata_NonUniformNeighborhood:
-    // it sets per-cell neighborhoods after the default lattice init.
+    // --- Per-cell neighborhood API ---
 
+    void setCellNeighborhood(long cellNumber, Neighborhood* hood) {
+        _cellNeighborhoods[cellNumber] = hood;
+    }
+
+    void setCellNeighborhood(std::vector<int> position, Neighborhood* hood) {
+        if (lattice != nullptr) {
+            long cellNumber = lattice->cellNDimPosition2Number(position);
+            if (cellNumber >= 0)
+                _cellNeighborhoods[cellNumber] = hood;
+        }
+    }
+
+    const std::unordered_map<long, Neighborhood*>& getCellNeighborhoods() const {
+        return _cellNeighborhoods;
+    }
+
+    // --- Lifecycle ---
+
+    virtual bool init() override {
+        // Step 1: standard init — creates all cells and assigns neighbors using the global neighborhood
+        bool res = CellularAutomataBase::init();
+        // Step 2: override neighbors for cells that have a per-cell neighborhood
+        for (auto& [cellNumber, hood] : _cellNeighborhoods) {
+            if (hood == nullptr)
+                continue;
+            if (hood->getBoundary() != nullptr)
+                hood->getBoundary()->setLattice(lattice);
+            Cell* cell = lattice->getCell(cellNumber);
+            if (cell != nullptr)
+                cell->setNeighbors(hood->getNeighbors(cell));
+        }
+        return res;
+    }
+
+protected:
     virtual void applyLocalRule() override {
+        // Phase 1: compute next state for each cell using its specific rule or the global fallback
         for (long cellNumber = 0; cellNumber < static_cast<long>(lattice->getCellsSize()); cellNumber++) {
             Cell* cell = lattice->getCell(cellNumber);
             auto it = _cellLocalRules.find(cellNumber);
@@ -47,11 +89,13 @@ protected:
             if (rule != nullptr)
                 rule->applyRule(cell);
         }
+        // Phase 2: commit next state to current state (synchronous update)
         for (long cellNumber = 0; cellNumber < static_cast<long>(lattice->getCellsSize()); cellNumber++) {
             lattice->getCell(cellNumber)->updateState();
         }
     }
 
 private:
-    std::unordered_map<long, LocalRule*> _cellLocalRules;
+    std::unordered_map<long, LocalRule*>    _cellLocalRules;
+    std::unordered_map<long, Neighborhood*> _cellNeighborhoods;
 };

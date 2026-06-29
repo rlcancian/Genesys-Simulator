@@ -17,8 +17,6 @@
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_1DTimed.h"
-#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniformRule.h"
-#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniformNeighborhood.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniform.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Elementary.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
@@ -114,7 +112,6 @@ bool CellularAutomataComp::_check(std::string* errorMessage) {
 		isValid = false;
 	}
 	if (_localRule == nullptr &&
-		_cellularAutomataType != CellularAutomataType::NONUNIFORMRULE &&
 		_cellularAutomataType != CellularAutomataType::NONUNIFORM) {
 		*errorMessage += "Local rule not set. ";
 		isValid = false;
@@ -211,39 +208,31 @@ void CellularAutomataComp::setCellularAutomataType(CellularAutomataComp::Cellula
 		_cellularAutomata = new CellularAutomata_Classic();
 	else if (_cellularAutomataType == CellularAutomataType::TIMED_1D)
 		_cellularAutomata = new CellularAutomata_1DTimed();
-	else if (_cellularAutomataType == CellularAutomataType::NONUNIFORMRULE)
-		_cellularAutomata = new CellularAutomata_NonUniformRule();
-	else if (_cellularAutomataType == CellularAutomataType::NONUNIFORMNEIGHBOOR)
-		_cellularAutomata = new CellularAutomata_NonUniformNeighborhood();
 	else if (_cellularAutomataType == CellularAutomataType::NONUNIFORM)
 		_cellularAutomata = new CellularAutomata_NonUniform();
 }
 
 bool CellularAutomataComp::setCellLocalRule(long cellNumber, LocalRule* rule) {
-	auto* nr = dynamic_cast<CellularAutomata_NonUniformRule*>(_cellularAutomata);
-	if (nr != nullptr) { nr->setCellRule(cellNumber, rule); return true; }
 	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
 	if (nu != nullptr) { nu->setCellRule(cellNumber, rule); return true; }
 	return false;
 }
 
 bool CellularAutomataComp::setCellLocalRule(std::vector<int> position, LocalRule* rule) {
-	auto* nr = dynamic_cast<CellularAutomata_NonUniformRule*>(_cellularAutomata);
-	if (nr != nullptr) { nr->setCellRule(position, rule); return true; }
 	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
 	if (nu != nullptr) { nu->setCellRule(position, rule); return true; }
 	return false;
 }
 
 bool CellularAutomataComp::setCellNeighborhood(long cellNumber, Neighborhood* hood) {
-	auto* nn = dynamic_cast<CellularAutomata_NonUniformNeighborhood*>(_cellularAutomata);
-	if (nn != nullptr) { nn->setCellNeighborhood(cellNumber, hood); return true; }
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setCellNeighborhood(cellNumber, hood); return true; }
 	return false;
 }
 
 bool CellularAutomataComp::setCellNeighborhood(std::vector<int> position, Neighborhood* hood) {
-	auto* nn = dynamic_cast<CellularAutomata_NonUniformNeighborhood*>(_cellularAutomata);
-	if (nn != nullptr) { nn->setCellNeighborhood(position, hood); return true; }
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setCellNeighborhood(position, hood); return true; }
 	return false;
 }
 

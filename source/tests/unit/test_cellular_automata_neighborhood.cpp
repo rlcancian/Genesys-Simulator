@@ -4,8 +4,6 @@
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniform.h"
-#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniformNeighborhood.h"
-#include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniformRule.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Custom.h"
@@ -233,10 +231,10 @@ public:
 TEST(CellularAutomataNonUniformRule, AppliesPerCellRuleOverridingGlobalRule) {
 	// 5-cell 1D lattice. Global rule: AlwaysAlive. Cells 1 and 3: AlwaysDead.
 	// Expected after one step: [1, 0, 1, 0, 1]
-	CellularAutomata_NonUniformRule automaton;
+	CellularAutomata_NonUniform automaton;
 	Boundary_Closed boundary;
 	Neighborhood_Center neighborhood(&automaton, 1, &boundary);
-	LocalRule_AlwaysDead deadRule(&automaton);   // registers last → global = deadRule
+	LocalRule_AlwaysDead deadRule(&automaton);   // registers first
 	LocalRule_AlwaysAlive aliveRule(&automaton);  // registers last → global = aliveRule
 	Lattice lattice(&automaton, nullptr, {5});
 
@@ -258,7 +256,7 @@ TEST(CellularAutomataNonUniformRule, AppliesPerCellRuleOverridingGlobalRule) {
 TEST(CellularAutomataNonUniformRule, FallsBackToGlobalRuleForUnassignedCells) {
 	// 3-cell lattice. No per-cell overrides. All cells use global AlwaysDead rule.
 	// Expected after one step: all 0.
-	CellularAutomata_NonUniformRule automaton;
+	CellularAutomata_NonUniform automaton;
 	Boundary_Closed boundary;
 	Neighborhood_Center neighborhood(&automaton, 1, &boundary);
 	LocalRule_AlwaysDead deadRule(&automaton);
@@ -283,7 +281,7 @@ TEST(CellularAutomataNonUniformRule, FallsBackToGlobalRuleForUnassignedCells) {
 TEST(CellularAutomataNonUniformNeighborhood, AssignsCorrectNeighborCountPerCell) {
 	// 5x5 lattice. Global: Moore r=1 (8 neighbors for interior cells).
 	// Cell {2,2}: VonNeumann r=1 (4 neighbors for interior cells).
-	CellularAutomata_NonUniformNeighborhood automaton;
+	CellularAutomata_NonUniform automaton;
 	Boundary_Closed boundary;
 	Neighborhood_Moore globalNeighborhood(&automaton, 1, &boundary);
 	LocalRule_GameOfLife rule(&automaton);
@@ -306,7 +304,7 @@ TEST(CellularAutomataNonUniformNeighborhood, EvolvesCorrectlyWithMixedNeighborho
 	// Under Moore: {2,2} has 2 live neighbors → survives (standard blinker).
 	// Under VonNeumann for {2,2}: neighbors are {1,2},{3,2},{2,1},{2,3} → 2 live → survives.
 	// After step, blinker rotates to vertical: {2,1},{2,2},{2,3} should be alive.
-	CellularAutomata_NonUniformNeighborhood automaton;
+	CellularAutomata_NonUniform automaton;
 	Boundary_Closed boundary;
 	Neighborhood_Moore globalNeighborhood(&automaton, 1, &boundary);
 	LocalRule_GameOfLife rule(&automaton);
@@ -405,37 +403,26 @@ TEST(CellularAutomataNonUniform, SameGoLRuleDifferentNeighborhoodProducesDiffere
 }
 
 // ---------------------------------------------------------------------------
-// CellularAutomataComp dispatch contract: class hierarchy enables/blocks per-cell API
+// CellularAutomataComp dispatch contract: only CellularAutomata_NonUniform
+// accepts per-cell rules and neighborhoods; Classic does not.
 // ---------------------------------------------------------------------------
 
-TEST(CellularAutomataCompDispatch, ClassHierarchyEnablesPerCellApiForNonUniformTypesOnly) {
-	// CellularAutomataComp::setCellLocalRule() and setCellNeighborhood() use dynamic_cast
-	// to route calls to the correct NonUniform subclass and return false for incompatible types.
-	// This test verifies the cast contracts that the dispatch relies on.
+TEST(CellularAutomataCompDispatch, NonUniformAcceptsPerCellApiClassicDoesNot) {
+	// Verify via a base pointer that CellularAutomataComp::setCellLocalRule/setCellNeighborhood
+	// correctly routes calls: NonUniform accepts both APIs, Classic rejects both.
+	CellularAutomataBase* nonUniformBase = new CellularAutomata_NonUniform();
+	CellularAutomataBase* classicBase    = new CellularAutomata_Classic();
 
-	CellularAutomata_NonUniformRule nonUniformRule;
-	CellularAutomata_NonUniformNeighborhood nonUniformNeighborhood;
-	CellularAutomata_NonUniform nonUniform;
-	CellularAutomata_Classic classic;
+	// Cast through base pointer — not known at compile time, so no spurious warning
+	EXPECT_NE(dynamic_cast<CellularAutomata_NonUniform*>(nonUniformBase), nullptr);
+	EXPECT_EQ(dynamic_cast<CellularAutomata_NonUniform*>(classicBase),    nullptr);
 
-	// NonUniformRule accepts per-cell rules
-	EXPECT_NE(dynamic_cast<CellularAutomata_NonUniformRule*>(&nonUniformRule), nullptr);
-	// NonUniform also accepts per-cell rules (same cast path in setCellLocalRule)
-	EXPECT_NE(dynamic_cast<CellularAutomata_NonUniform*>(&nonUniform), nullptr);
-	// Classic does not
-	EXPECT_EQ(dynamic_cast<CellularAutomata_NonUniformRule*>(&classic), nullptr);
-	EXPECT_EQ(dynamic_cast<CellularAutomata_NonUniform*>(&classic), nullptr);
-
-	// NonUniformNeighborhood accepts per-cell neighborhoods
-	EXPECT_NE(dynamic_cast<CellularAutomata_NonUniformNeighborhood*>(&nonUniformNeighborhood), nullptr);
-	// NonUniform inherits NonUniformNeighborhood, so it also accepts per-cell neighborhoods
-	EXPECT_NE(dynamic_cast<CellularAutomata_NonUniformNeighborhood*>(&nonUniform), nullptr);
-	// Classic does not
-	EXPECT_EQ(dynamic_cast<CellularAutomata_NonUniformNeighborhood*>(&classic), nullptr);
+	delete nonUniformBase;
+	delete classicBase;
 }
 
 // ---------------------------------------------------------------------------
-// User-defined rule (LocalRule_Custom) test
+// LocalRule_PermissiveLife test
 // ---------------------------------------------------------------------------
 
 TEST(CellularAutomataPermissiveLife, DeadCellBornWhenNeighborCountInBirthRange) {
@@ -468,6 +455,10 @@ TEST(CellularAutomataPermissiveLife, DeadCellBornWhenNeighborCountInBirthRange) 
 	EXPECT_EQ(lattice.getCell({3, 3})->getCurrentState().getValue(), 1); // born (2 live)
 	EXPECT_EQ(lattice.getCell({1, 2})->getCurrentState().getValue(), 0); // not born (1 live < birthMin)
 }
+
+// ---------------------------------------------------------------------------
+// LocalRule_Custom (majority vote) test
+// ---------------------------------------------------------------------------
 
 TEST(CellularAutomataCustomRule, MajorityVoteConvergesUniformRegion) {
 	// 3x1 lattice: [1, 0, 1]. Custom rule (majority).
