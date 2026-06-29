@@ -32,6 +32,17 @@ BatchExecution lostBatch(unsigned int seed, unsigned int replications) {
     return outcome;
 }
 
+BatchExecution rejectedBatch(unsigned int seed, unsigned int replications, const std::string& error) {
+    BatchExecution outcome;
+    outcome.batch.seed = seed;
+    outcome.batch.numberOfReplications = replications;
+    outcome.result.success = false;
+    outcome.result.failureKind = FailureKind::ModelRejected;
+    outcome.result.error = error;
+    outcome.lost = true;
+    return outcome;
+}
+
 CollectorStat stat(const std::string& name,
                     unsigned int n,
                     double average,
@@ -106,6 +117,24 @@ TEST(DistributedResultsAggregator, ShouldReportRequestedCompletedAndFailuresForL
     // The lost batch contributed no replications to the aggregated statistic.
     ASSERT_EQ(result.statistics.size(), 1u);
     EXPECT_EQ(result.statistics[0].numReplications, 10u);
+}
+
+TEST(DistributedResultsAggregator, ShouldReportRealErrorAndRejectedLabelForModelRejectedBatches) {
+    // Arrange: a batch the worker refused because the model itself was invalid.
+    DistributedResultsAggregator aggregator;
+    const std::vector<BatchExecution> outcomes = {
+        rejectedBatch(7, 5, "model import returned status 400: INVALID_MODEL_SPECIFICATION"),
+    };
+
+    // Act
+    const AggregatedResult result = aggregator.aggregate(outcomes);
+
+    // Assert: the failure is labelled "rejected" and carries the worker's real reason.
+    EXPECT_EQ(result.totalReplicationsRequested, 5u);
+    EXPECT_EQ(result.totalReplicationsCompleted, 0u);
+    ASSERT_EQ(result.failures.size(), 1u);
+    EXPECT_NE(result.failures[0].find("rejected"), std::string::npos);
+    EXPECT_NE(result.failures[0].find("INVALID_MODEL_SPECIFICATION"), std::string::npos);
 }
 
 TEST(DistributedResultsAggregator, ShouldHandleSingleReplicationBatchesWithoutCrashing) {

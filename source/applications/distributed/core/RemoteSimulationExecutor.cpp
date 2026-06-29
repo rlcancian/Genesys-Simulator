@@ -42,9 +42,10 @@ void parseResultInto(const std::string& body, BatchResult& result) {
 RemoteSimulationExecutor::RemoteSimulationExecutor(WorkerHttpClient& client, std::string host, int port)
     : _client(client), _host(std::move(host)), _port(port) {}
 
-BatchResult RemoteSimulationExecutor::_failure(const std::string& error) {
+BatchResult RemoteSimulationExecutor::_failure(const std::string& error, FailureKind kind) {
     BatchResult result;
     result.success = false;
+    result.failureKind = kind;
     result.error = error;
     return result;
 }
@@ -78,8 +79,18 @@ BatchResult RemoteSimulationExecutor::execute(const DistributedSimulationJob& jo
     const HttpClientResponse import =
         _client.post(_host, _port, kImportPath, job.modelText, "text/plain", _token);
     if (!import.ok || import.status != 200) {
-        return _failure(import.ok ? ("model import returned status " + std::to_string(import.status))
-                                  : import.error);
+        if (!import.ok) {
+            // Transport-level problem (connection/timeout): the worker is unreachable.
+            return _failure(import.error, FailureKind::WorkerUnavailable);
+        }
+        // The worker answered: a 4xx means it rejected the model itself (invalid specification),
+        // which every target would reject the same way; a 5xx is a worker-side error worth retrying.
+        const std::string message = json::getString(import.body, "message").value_or("");
+        const std::string detail = "model import returned status " + std::to_string(import.status) +
+                                   (message.empty() ? "" : ": " + message);
+        const bool modelRejected = import.status >= 400 && import.status < 500;
+        return _failure(detail,
+                        modelRejected ? FailureKind::ModelRejected : FailureKind::WorkerUnavailable);
     }
 
     // Create the job configured with this batch's replication count and seed.

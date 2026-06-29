@@ -23,7 +23,8 @@ public:
 
 private:
     bool _ensureSession(std::string& error);
-    static BatchResult _failure(const std::string& error);
+    static BatchResult _failure(const std::string& error,
+                                FailureKind kind = FailureKind::WorkerUnavailable);
 
     WorkerHttpClient& _client;
     std::string _host;

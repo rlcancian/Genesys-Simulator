@@ -75,6 +75,9 @@ std::vector<BatchExecution> DistributedExecutionManager::execute(
         futures[i] = std::async(std::launch::async, [executor, job]() { return executor->execute(job); });
     }
 
+    // A rejected model fails identically on every target, so retrying anywhere is futile: we skip
+    // failover and report the real reason instead of masking it as a string of worker failures.
+    bool modelRejected = false;
     for (std::size_t i = 0; i < jobs.size(); ++i) {
         if (!futures[i].valid()) {
             continue;
@@ -84,13 +87,19 @@ std::vector<BatchExecution> DistributedExecutionManager::execute(
             outcomes[i].result = result;
             outcomes[i].ranOn = jobs[i].batch.targetEndpoint;
         } else {
+            outcomes[i].result = result;  // keep the error so the aggregator can report it.
             outcomes[i].failedTargets.push_back(jobs[i].batch.targetEndpoint);
-            _markFailure(jobs[i].batch.targetEndpoint, result.error);
+            if (result.failureKind == FailureKind::ModelRejected) {
+                modelRejected = true;  // healthy worker, bad model: don't mark it unavailable.
+            } else {
+                _markFailure(jobs[i].batch.targetEndpoint, result.error);
+            }
         }
     }
 
-    // Phase 2: re-route batches that have not succeeded to other available targets.
-    for (std::size_t i = 0; i < jobs.size(); ++i) {
+    // Phase 2: re-route batches that have not succeeded to other available targets (skipped
+    // entirely when the model was rejected, since no target would accept it).
+    for (std::size_t i = 0; i < jobs.size() && !modelRejected; ++i) {
         if (outcomes[i].result.success) {
             continue;
         }
@@ -109,12 +118,20 @@ std::vector<BatchExecution> DistributedExecutionManager::execute(
                 outcomes[i].ranOn = alternative;
                 break;
             }
+            outcomes[i].result = result;  // keep the latest error.
             outcomes[i].failedTargets.push_back(alternative);
+            if (result.failureKind == FailureKind::ModelRejected) {
+                modelRejected = true;
+                break;
+            }
             _markFailure(alternative, result.error);
         }
+    }
 
-        if (!outcomes[i].result.success) {
-            outcomes[i].lost = true;  // Exhausted retries; batch contributes no statistics.
+    // Any batch without a successful result is lost (it contributes no statistics).
+    for (BatchExecution& outcome : outcomes) {
+        if (!outcome.result.success) {
+            outcome.lost = true;
         }
     }
 

@@ -30,9 +30,14 @@ AggregatedResult DistributedResultsAggregator::aggregate(
         result.totalReplicationsRequested += outcome.batch.numberOfReplications;
 
         if (!outcome.result.success) {
-            result.failures.push_back(
-                "batch (seed=" + std::to_string(outcome.batch.seed) + ", replications=" +
-                std::to_string(outcome.batch.numberOfReplications) + ") lost");
+            const bool rejected = outcome.result.failureKind == FailureKind::ModelRejected;
+            std::string message = "batch (seed=" + std::to_string(outcome.batch.seed) +
+                                  ", replications=" + std::to_string(outcome.batch.numberOfReplications) +
+                                  (rejected ? ") rejected" : ") lost");
+            if (!outcome.result.error.empty()) {
+                message += ": " + outcome.result.error;
+            }
+            result.failures.push_back(message);
             continue;
         }
 

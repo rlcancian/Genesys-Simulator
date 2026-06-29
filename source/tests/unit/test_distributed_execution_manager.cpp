@@ -13,15 +13,21 @@ namespace {
 // Executor that succeeds or fails based on a flag, recording how many times it ran.
 class StubExecutor : public SimulationExecutor {
 public:
-    explicit StubExecutor(bool succeeds, double markerAverage = 0.0)
-        : _succeeds(succeeds), _markerAverage(markerAverage) {}
+    explicit StubExecutor(bool succeeds, double markerAverage = 0.0,
+                          FailureKind failureKind = FailureKind::WorkerUnavailable,
+                          std::string error = "stub failure")
+        : _succeeds(succeeds),
+          _markerAverage(markerAverage),
+          _failureKind(failureKind),
+          _error(std::move(error)) {}
 
     BatchResult execute(const DistributedSimulationJob& job) override {
         ++runCount;
         BatchResult result;
         if (!_succeeds) {
             result.success = false;
-            result.error = "stub failure";
+            result.failureKind = _failureKind;
+            result.error = _error;
             return result;
         }
         result.success = true;
@@ -39,6 +45,8 @@ public:
 private:
     bool _succeeds;
     double _markerAverage;
+    FailureKind _failureKind;
+    std::string _error;
 };
 
 DistributedSimulationJob job(const std::string& target, unsigned int replications, std::uint32_t seed) {
@@ -142,6 +150,46 @@ TEST(DistributedExecutionManager, ShouldNotDoubleCountWhenRetrying) {
     ASSERT_TRUE(outcomes[0].result.success);
     ASSERT_EQ(outcomes[0].result.statistics.size(), 1u);
     EXPECT_DOUBLE_EQ(outcomes[0].result.statistics[0].average, 3.5);
+}
+
+TEST(DistributedExecutionManager, ShouldNotMarkWorkerUnavailableWhenModelRejected) {
+    // Arrange: both targets reject the model itself (a healthy worker, an invalid model).
+    StubExecutor a(false, 0.0, FailureKind::ModelRejected, "invalid model specification");
+    StubExecutor b(false, 0.0, FailureKind::ModelRejected, "invalid model specification");
+    WorkerRegistry registry;
+    registry.upsert(availableWorker("a", 1));
+    registry.upsert(availableWorker("b", 2));
+    std::map<std::string, SimulationExecutor*> executors = {{"a:1", &a}, {"b:2", &b}};
+    DistributedExecutionManager manager(executors, registry, 5);
+
+    // Act
+    const auto outcomes = manager.execute({job("a:1", 5, 10)});
+
+    // Assert: batch lost, but the worker stays Available and the real error is preserved.
+    ASSERT_EQ(outcomes.size(), 1u);
+    EXPECT_TRUE(outcomes[0].lost);
+    EXPECT_EQ(outcomes[0].result.failureKind, FailureKind::ModelRejected);
+    EXPECT_EQ(outcomes[0].result.error, "invalid model specification");
+    EXPECT_EQ(registry.find("a", 1)->state, WorkerState::Available);
+}
+
+TEST(DistributedExecutionManager, ShouldNotFailoverWhenModelRejected) {
+    // Arrange: the assigned target rejects the model; an otherwise healthy alternative exists.
+    StubExecutor rejecting(false, 0.0, FailureKind::ModelRejected, "invalid model specification");
+    StubExecutor healthy(true);
+    WorkerRegistry registry;
+    registry.upsert(availableWorker("a", 1));
+    registry.upsert(availableWorker("b", 2));
+    std::map<std::string, SimulationExecutor*> executors = {{"a:1", &rejecting}, {"b:2", &healthy}};
+    DistributedExecutionManager manager(executors, registry, 5);
+
+    // Act
+    const auto outcomes = manager.execute({job("a:1", 5, 10)});
+
+    // Assert: no retry on the alternative (futile for a bad model); the batch is lost.
+    EXPECT_TRUE(outcomes[0].lost);
+    EXPECT_EQ(rejecting.runCount, 1);
+    EXPECT_EQ(healthy.runCount, 0);
 }
 
 TEST(DistributedExecutionManager, ShouldRespectMaxRetriesLimit) {

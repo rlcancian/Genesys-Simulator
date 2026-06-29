@@ -19,9 +19,11 @@ namespace genesys::distributed {
 
 namespace {
 
-BatchResult failure(const std::string& error) {
+BatchResult failure(const std::string& error,
+                    FailureKind kind = FailureKind::WorkerUnavailable) {
     BatchResult result;
     result.success = false;
+    result.failureKind = kind;
     result.error = error;
     return result;
 }
@@ -111,7 +113,8 @@ BatchResult LocalSimulationExecutor::execute(const DistributedSimulationJob& job
 
     Model* model = modelManager->createFromLanguage(job.modelText);
     if (model == nullptr) {
-        return failure("local: model specification could not be parsed");
+        // The model itself is invalid; no other target would parse it either.
+        return failure("local: model specification could not be parsed", FailureKind::ModelRejected);
     }
 
     ModelSimulation* simulation = model->getSimulation();
