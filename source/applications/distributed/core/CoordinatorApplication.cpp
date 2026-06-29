@@ -77,15 +77,20 @@ std::string CoordinatorApplication::renderSummary(const AggregatedResult& result
     }
     out << "\n";
 
-    // Counters: name and summed total.
+    // Counters: the grand total summed across replications, plus the per-replication mean
+    // (total / completed) — the latter matches what a single monolithic run reports.
     out << "  COUNTERS  ·  " << result.counters.size() << "\n";
     out << lightRule << "\n";
     if (result.counters.empty()) {
         out << "  (none)\n";
     } else {
+        out << "  " << std::left << std::setw(32) << "Counter"
+            << std::right << std::setw(14) << "Total" << std::setw(12) << "Mean/Rep" << "\n";
         for (const AggregatedCounter& counter : result.counters) {
+            const double meanPerReplication = completed > 0 ? counter.total / completed : 0.0;
             out << "  " << std::left << std::setw(32) << counter.name
-                << std::right << std::setw(14) << integer(counter.total) << "\n";
+                << std::right << std::setw(14) << integer(counter.total)
+                << std::setw(12) << num(meanPerReplication) << "\n";
         }
     }
     out << "\n";

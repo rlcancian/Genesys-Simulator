@@ -51,6 +51,37 @@ TEST(LocalSimulationExecutor, ShouldFailGracefullyOnUnparseableModel) {
     EXPECT_FALSE(result.error.empty());
 }
 
+TEST(LocalSimulationExecutor, ShouldClassifyCreateDisposeCountersAsCountersNotStatistics) {
+    // Pins a fragile assumption: the counter-vs-statistic split relies on the kernel's
+    // simulation-level collector keeping the original counter name (the prefix
+    // ModelSimulation::_cte_stCountSimulNamePrefix is currently ""). Create/Dispose auto-create
+    // counters (CountNumberOut / CountNumberIn). If the kernel re-enables a name prefix, the name
+    // match in LocalSimulationExecutor breaks and these counters leak into statistics -> this fails.
+    // Uses a multi-line model (one record per line) so the components actually instantiate.
+    const std::string counterModel =
+        "0   ModelInfo  \"M\"\n"
+        "0   ModelSimulation \"\" replicationLength=10 numberOfReplications=2\n"
+        "62  EntityType \"Part\"\n"
+        "61  Create     \"Create_1\" entityType=\"Part\" nextId=63 timeBetweenCreations=\"norm(1.5,0.5)\"\n"
+        "63  Dispose    \"Dispose_1\" nexts=0\n";
+    LocalSimulationExecutor executor;
+    DistributedSimulationJob job;
+    job.modelText = counterModel;
+    job.batch.numberOfReplications = 3;
+    job.batch.seed = 11;
+
+    // Act
+    const BatchResult result = executor.execute(job);
+
+    // Assert: counters were recognised, and none leaked into the statistics bucket.
+    ASSERT_TRUE(result.success) << result.error;
+    EXPECT_FALSE(result.counters.empty());
+    for (const CollectorStat& stat : result.statistics) {
+        EXPECT_EQ(stat.name.find("CountNumber"), std::string::npos)
+            << "counter '" << stat.name << "' was misclassified as a statistic";
+    }
+}
+
 TEST(LocalSimulationExecutor, ShouldProduceStableResultForSameSeed) {
     // Arrange
     LocalSimulationExecutor executor;
