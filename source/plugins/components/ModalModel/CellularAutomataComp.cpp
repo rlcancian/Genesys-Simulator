@@ -15,6 +15,8 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Reflexive.h"
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Adiabatic.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_1DTimed.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniform.h"
@@ -236,6 +238,18 @@ bool CellularAutomataComp::setCellNeighborhood(std::vector<int> position, Neighb
 	return false;
 }
 
+bool CellularAutomataComp::setRegionRule(std::vector<int> posMin, std::vector<int> posMax, LocalRule* rule) {
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setRegionRule(posMin, posMax, rule); return true; }
+	return false;
+}
+
+bool CellularAutomataComp::setRegionNeighborhood(std::vector<int> posMin, std::vector<int> posMax, Neighborhood* hood) {
+	auto* nu = dynamic_cast<CellularAutomata_NonUniform*>(_cellularAutomata);
+	if (nu != nullptr) { nu->setRegionNeighborhood(posMin, posMax, hood); return true; }
+	return false;
+}
+
 CellularAutomataComp::LatticeType CellularAutomataComp::getLatticeType() const
 {
 	return _latticeType;
@@ -280,6 +294,10 @@ void CellularAutomataComp::setBoundaryType(CellularAutomataComp::BoundaryType ne
 		_boundary = new Boundary_Closed();
 	else if (_boundaryType == BoundaryType::FIXED)
 		_boundary = new Boundary_Fixed();
+	else if (_boundaryType == BoundaryType::REFLEXIVE)
+		_boundary = new Boundary_Reflexive();
+	else if (_boundaryType == BoundaryType::ADIABATIC)
+		_boundary = new Boundary_Adiabatic();
 }
 
 PluginInformation* CellularAutomataComp::GetPluginInformation() {

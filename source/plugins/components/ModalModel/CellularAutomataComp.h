@@ -97,6 +97,8 @@ public: //! static public methods that must have implementations (Load and New j
 	bool setCellLocalRule(std::vector<int> position, LocalRule* rule);
 	bool setCellNeighborhood(long cellNumber, Neighborhood* hood);
 	bool setCellNeighborhood(std::vector<int> position, Neighborhood* hood);
+	bool setRegionRule(std::vector<int> posMin, std::vector<int> posMax, LocalRule* rule);
+	bool setRegionNeighborhood(std::vector<int> posMin, std::vector<int> posMax, Neighborhood* hood);
 
 protected: //! virtual protected method that must be overriden
 	virtual bool _loadInstance(PersistenceRecord *fields) override;

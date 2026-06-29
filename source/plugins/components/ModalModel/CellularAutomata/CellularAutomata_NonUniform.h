@@ -5,6 +5,7 @@
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood.h"
+#include <functional>
 #include <unordered_map>
 #include <vector>
 
@@ -61,6 +62,33 @@ public:
         return _cellNeighborhoods;
     }
 
+    // --- Region API ---
+    //! Assign the same rule to every cell inside the rectangular region
+    //! [posMin, posMax] (inclusive on all dimensions).
+    //! Requires the lattice to be attached before calling.
+    void setRegionRule(std::vector<int> posMin, std::vector<int> posMax, LocalRule* rule) {
+        if (lattice == nullptr) return;
+        std::vector<int> current(posMin.size());
+        _iterateRegion(posMin, posMax, current, 0, [this, rule](std::vector<int>& pos) {
+            long cellNumber = lattice->cellNDimPosition2Number(pos);
+            if (cellNumber >= 0)
+                _cellLocalRules[cellNumber] = rule;
+        });
+    }
+
+    //! Assign the same neighborhood to every cell inside the rectangular region
+    //! [posMin, posMax] (inclusive on all dimensions).
+    //! Requires the lattice to be attached before calling.
+    void setRegionNeighborhood(std::vector<int> posMin, std::vector<int> posMax, Neighborhood* hood) {
+        if (lattice == nullptr) return;
+        std::vector<int> current(posMin.size());
+        _iterateRegion(posMin, posMax, current, 0, [this, hood](std::vector<int>& pos) {
+            long cellNumber = lattice->cellNDimPosition2Number(pos);
+            if (cellNumber >= 0)
+                _cellNeighborhoods[cellNumber] = hood;
+        });
+    }
+
     // --- Lifecycle ---
 
     virtual bool init() override {
@@ -98,4 +126,18 @@ protected:
 private:
     std::unordered_map<long, LocalRule*>    _cellLocalRules;
     std::unordered_map<long, Neighborhood*> _cellNeighborhoods;
+
+    // Recursively visits every integer position in [posMin, posMax] (inclusive).
+    void _iterateRegion(const std::vector<int>& posMin, const std::vector<int>& posMax,
+                        std::vector<int>& current, int dim,
+                        const std::function<void(std::vector<int>&)>& callback) {
+        if (dim == static_cast<int>(posMin.size())) {
+            callback(current);
+            return;
+        }
+        for (int coord = posMin[dim]; coord <= posMax[dim]; ++coord) {
+            current[dim] = coord;
+            _iterateRegion(posMin, posMax, current, dim + 1, callback);
+        }
+    }
 };

@@ -34,17 +34,17 @@ g++ --version   # precisa ser 13 ou superior
 # 1. Configurar o preset (cria o diretório build/tests-kernel-unit)
 cmake --preset tests-kernel-unit
 
-# 2. Compilar todos os testes sem executar nenhum
-cmake --build build/tests-kernel-unit
+# 2. Compilar o executável de testes
+cmake --build build/tests-kernel-unit --target genesys_test_cellular_automata_neighborhood -- -k 0
 ```
 
-O passo 1 precisa ser feito apenas uma vez. O passo 2 pode ser repetido sempre que o código mudar.
+O passo 1 precisa ser feito apenas uma vez (ou ao deletar o diretório `build/tests-kernel-unit`). O `-k 0` no passo 2 ignora erros em outros alvos do projeto que não afetam os testes de CA.
 
 ---
 
 ### Executar todos os testes de autômatos celulares
 
-O executável `genesys_test_cellular_automata_neighborhood` contém todos os 17 testes de CA (8 existentes + 9 novos de CA não uniforme):
+O executável `genesys_test_cellular_automata_neighborhood` contém todos os 24 testes de CA (8 existentes + 16 novos):
 
 ```bash
 ./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood
@@ -53,7 +53,7 @@ O executável `genesys_test_cellular_automata_neighborhood` contém todos os 17 
 Saída esperada (todos passando):
 
 ```
-[==========] Running 17 tests from 9 test suites.
+[==========] Running 24 tests from 13 test suites.
 [----------] 1 test from CellularAutomataLattice
 [----------] 3 tests from CellularAutomataMooreNeighborhood
 [----------] 3 tests from CellularAutomataVonNeumannNeighborhood
@@ -64,39 +64,36 @@ Saída esperada (todos passando):
 [----------] 1 test from CellularAutomataCompDispatch
 [----------] 1 test from CellularAutomataPermissiveLife
 [----------] 1 test from CellularAutomataCustomRule
-[==========] 17 tests ran.
-[  PASSED  ] 17 tests.
+[----------] 2 tests from BoundaryReflexive
+[----------] 2 tests from BoundaryAdiabatic
+[----------] 3 tests from CellularAutomataNonUniformRegion
+[==========] 24 tests ran.
+[  PASSED  ] 24 tests.
 ```
 
 ---
 
-### Executar apenas os testes de CA não uniforme
+### Executar subconjuntos de testes
 
-Use o filtro `--gtest_filter` para rodar somente os testes adicionados neste trabalho:
+Use o filtro `--gtest_filter` para rodar grupos específicos:
 
 ```bash
-# Todos os testes não uniformes de uma vez
+# Apenas testes de CA não uniforme (regra/vizinhança por célula)
 ./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood \
-  --gtest_filter="CellularAutomataNonUniform*:CellularAutomataCompDispatch*:CellularAutomataPermissiveLife*:CellularAutomataCustomRule*"
+  --gtest_filter="CellularAutomataNonUniform*:CellularAutomataCompDispatch*:CellularAutomataPermissiveLife*:CellularAutomataCustomRule*:CellularAutomataNonUniformRegion*"
 
-# Apenas testes de regra não uniforme
+# Apenas condições de contorno novas
 ./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood \
-  --gtest_filter="CellularAutomataNonUniformRule*"
+  --gtest_filter="BoundaryReflexive*:BoundaryAdiabatic*"
 
-# Apenas testes de vizinhança não uniforme
+# Apenas API de região
 ./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood \
-  --gtest_filter="CellularAutomataNonUniformNeighborhood*"
-
-# Apenas testes combinados (regra + vizinhança simultâneas)
-./build/tests-kernel-unit/source/tests/unit/genesys_test_cellular_automata_neighborhood \
-  --gtest_filter="CellularAutomataNonUniform/*"
+  --gtest_filter="CellularAutomataNonUniformRegion*"
 ```
 
 ---
 
-### Referência dos 9 novos testes
-
-Todos os testes não uniformes usam `CellularAutomata_NonUniform` — a única classe implementada.
+### Referência dos 16 novos testes
 
 | Suite | Teste | O que verifica |
 |---|---|---|
@@ -109,6 +106,13 @@ Todos os testes não uniformes usam `CellularAutomata_NonUniform` — a única c
 | `CellularAutomataCompDispatch` | `NonUniformAcceptsPerCellApiClassicDoesNot` | `dynamic_cast` roteia corretamente a API por célula |
 | `CellularAutomataPermissiveLife` | `DeadCellBornWhenNeighborCountInBirthRange` | `LocalRule_PermissiveLife` aplica condições de nascimento e sobrevivência |
 | `CellularAutomataCustomRule` | `MajorityVoteConvergesUniformRegion` | `LocalRule_Custom` aplica voto por maioria com desempate correto |
+| `BoundaryReflexive` | `CornerCellSeesReflectedNeighbors` | Células de canto recebem vizinhos refletidos dentro dos limites |
+| `BoundaryReflexive` | `ReflectedNeighborHasSameStateAsInnerCell` | O vizinho refletido em -1 aponta para a célula 1 (reflexão correta) |
+| `BoundaryAdiabatic` | `CornerCellSeesItselfForOutOfBoundsNeighbor` | Célula de borda vê a si mesma quando olha para fora |
+| `BoundaryAdiabatic` | `AllDeadGridRemainsDeadAfterStep` | Sem fluxo de estado cruzando a fronteira adiabática |
+| `CellularAutomataNonUniformRegion` | `SetRegionRuleAssignsRuleToAllCellsInBox` | `setRegionRule` preenche o mapa para todas as 9 células do bounding box |
+| `CellularAutomataNonUniformRegion` | `SetRegionNeighborhoodAssignsCorrectNeighborCountAfterInit` | `setRegionNeighborhood` com VonNeumann afeta apenas a célula-alvo após `init()` |
+| `CellularAutomataNonUniformRegion` | `CellRuleOverridesRegionRule` | `setCellRule` sobrescreve a entrada de `setRegionRule` para aquela célula |
 
 ---
 
@@ -127,7 +131,9 @@ source/plugins/components/ModalModel/CellularAutomata/
 |---|---|
 | Regra por célula | `setCellRule(cellNumber, rule)` ou `setCellRule(position, rule)` |
 | Vizinhança por célula | `setCellNeighborhood(cellNumber, hood)` ou `setCellNeighborhood(position, hood)` |
-| Ambos simultaneamente | Use ambas as APIs na mesma instância |
+| Regra por região | `setRegionRule(posMin, posMax, rule)` |
+| Vizinhança por região | `setRegionNeighborhood(posMin, posMax, hood)` |
+| Ambos simultaneamente | Use qualquer combinação das APIs acima na mesma instância |
 
 Células sem regra individual usam a regra global. Células sem vizinhança individual usam a vizinhança global.
 
@@ -143,7 +149,7 @@ Todo CA no GenESyS segue a mesma sequência de configuração:
 3. Criar a vizinhança global (registra no autômato automaticamente)
 4. Criar a regra local global (registra no autômato automaticamente)
 5. Criar o lattice (registra no autômato automaticamente)
-6. [Não uniforme] Atribuir regras/vizinhanças por célula
+6. [Não uniforme] Atribuir regras/vizinhanças por célula ou por região
 7. Chamar automaton.init()
 8. Definir estados iniciais das células
 9. Chamar automaton.step() para avançar passos
@@ -232,46 +238,93 @@ automaton.step();
 
 ---
 
-### Exemplo 4 — Zonas ecológicas
+### Exemplo 4 — Zonas ecológicas com API de região
 
-**Cenário**: grid 20×20 dividido em `x=10`. Zona esquerda: Moore + GoL. Zona direita: VonNeumann + `PermissiveLife`.
+**Cenário**: grid 20×20 dividido em `x=10`. Zona esquerda: Moore + GoL. Zona direita: VonNeumann + `PermissiveLife`. Usa `setRegionRule` e `setRegionNeighborhood` em vez de laços manuais.
 
 ```cpp
-const int cols = 20, rows = 20, zoneX = 10;
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Adiabatic.h"
+
+const int cols = 20, rows = 20;
 
 CellularAutomata_NonUniform automaton;
-Boundary_Closed boundary;
+Boundary_Adiabatic boundary;                               // sem fluxo nas bordas externas
 Neighborhood_Moore globalMoore(&automaton, 1, &boundary);
-LocalRule_PermissiveLife permissiveRule(&automaton);  // registra primeiro
-LocalRule_GameOfLife golRule(&automaton);              // registra por último → global = GoL
+LocalRule_PermissiveLife permissiveRule(&automaton);       // registra primeiro
+LocalRule_GameOfLife golRule(&automaton);                  // registra por último → global = GoL
 Lattice lattice(&automaton, nullptr, {cols, rows});
 
-std::vector<Neighborhood_VonNeumann*> rightNeighborhoods;
-for (int y = 0; y < rows; ++y) {
-    for (int x = zoneX; x < cols; ++x) {
-        auto* vn = new Neighborhood_VonNeumann(&automaton, 1, &boundary, false, false);
-        rightNeighborhoods.push_back(vn);
-        automaton.setCellNeighborhood({x, y}, vn);
-        automaton.setCellRule({x, y}, &permissiveRule);
-    }
-}
+// Um único objeto VonNeumann compartilhado pela zona direita inteira
+Neighborhood_VonNeumann vnRight(&automaton, 1, &boundary, false, /*registerWithCA=*/false);
+
+// Atribuir vizinhança e regra para a zona direita com duas chamadas
+automaton.setRegionNeighborhood({10, 0}, {19, 19}, &vnRight);
+automaton.setRegionRule({10, 0}, {19, 19}, &permissiveRule);
 
 automaton.init();
 
-// Glider GoL na zona esquerda
-lattice.getCell({6, 7})->setCurrentState(State(1));
-// ...
-
-// Forma em L na zona direita (morre sob GoL, cresce sob PermissiveLife)
-lattice.getCell({13, 8})->setCurrentState(State(1));
-// ...
-
+// Semear padrões...
 for (int step = 0; step < 10; ++step)
     automaton.step();
-
-for (auto* vn : rightNeighborhoods)
-    delete vn;
 ```
+
+> **Comparação com o exemplo anterior**: a API de região substitui os laços `for (x...) for (y...)` com `new Neighborhood_VonNeumann(...)` individuais. O compartilhamento de um único objeto de vizinhança é seguro aqui porque `setRegionNeighborhood` armazena ponteiros — todos os ponteiros apontam para o mesmo objeto, e o objeto VonNeumann não guarda estado por célula.
+
+---
+
+### Exemplo 5 — Condição de contorno reflexiva
+
+**Cenário**: grade 1D onde as ondas "ricocheteiam" nas bordas em vez de envolver (Closed) ou desaparecer (Fixed).
+
+```cpp
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Reflexive.h"
+
+CellularAutomata_Classic automaton;
+Boundary_Reflexive boundary;
+Neighborhood_Center neighborhood(&automaton, 1, &boundary);
+LocalRule_Elementary elementaryRule(&automaton, 30);
+Lattice lattice(&automaton, nullptr, {20});
+
+automaton.init();
+lattice.getCell(10)->setCurrentState(State(1));   // semente central
+
+for (int step = 0; step < 15; ++step)
+    automaton.step();
+// Ao atingir a borda, o padrão é refletido de volta para o interior
+```
+
+---
+
+### Condições de contorno disponíveis
+
+| Classe | Comportamento fora dos limites | Uso típico |
+|--------|-------------------------------|------------|
+| `Boundary_Fixed` | Retorna célula fantasma com estado fixo (padrão: 0) | CA elementar, GoL padrão |
+| `Boundary_Closed` | Wrapping periódico (toroidal) | Grade toroidal, testes de blinker |
+| `Boundary_Reflexive` | Reflete a coordenada de volta para dentro | Ondas que ricocheteiam nas bordas |
+| `Boundary_Adiabatic` | Clamps para a borda mais próxima (célula de borda vê a si mesma) | Zonas com fronteiras isolantes |
+
+Todas implementam `BoundaryCondition` e podem ser usadas com qualquer tipo de CA.
+
+---
+
+### API de região — detalhes
+
+`setRegionRule` e `setRegionNeighborhood` recebem dois vetores `posMin` e `posMax` que definem o bounding box (inclusivo em todas as dimensões) e iteram todas as posições inteiras dentro dele:
+
+```cpp
+// Atribuir regra a um retângulo 2D
+automaton.setRegionRule({x0, y0}, {x1, y1}, &rule);
+
+// Atribuir vizinhança a um cubo 3D
+automaton.setRegionNeighborhood({x0, y0, z0}, {x1, y1, z1}, &hood);
+```
+
+**Regras de precedência:**
+- `setCellRule` / `setCellNeighborhood` chamados **depois** de `setRegionRule` / `setRegionNeighborhood` sobrescrevem a entrada daquela célula específica.
+- A chamada mais recente sempre vence, pois ambas escrevem no mesmo `unordered_map`.
+
+**Requisito:** o lattice precisa estar criado (e associado ao autômato) antes de `setRegionRule` / `setRegionNeighborhood`, pois a conversão de posição para índice linear usa `lattice->cellNDimPosition2Number()`.
 
 ---
 
@@ -318,7 +371,9 @@ LocalRule_Custom regra(&automaton);
 
 ```
 source/plugins/components/ModalModel/CellularAutomata/
-├── CellularAutomata_NonUniform.h             ← única classe (regra + vizinhança por célula)
+├── CellularAutomata_NonUniform.h             ← única classe (regra + vizinhança por célula e por região)
+├── Boundary_Reflexive.h                      ← condição de contorno reflexiva (espelho)
+├── Boundary_Adiabatic.h                      ← condição de contorno adiabática (sem fluxo)
 ├── LocalRule_Custom.h                        ← voto por maioria
 ├── LocalRule_PermissiveLife.h                ← sobrevivência/nascimento configurável
 └── Neighborhood.h                            ← parâmetro registerWithCA adicionado aqui
@@ -328,5 +383,5 @@ source/applications/terminal/examples/smarts/
 └── Smart_CellularAutomata_NonUniform.cpp     ← 4 cenários de demonstração completos
 
 source/tests/unit/
-└── test_cellular_automata_neighborhood.cpp   ← 17 testes (8 existentes + 9 novos)
+└── test_cellular_automata_neighborhood.cpp   ← 24 testes (8 existentes + 16 novos)
 ```

@@ -1,7 +1,9 @@
 #include <gtest/gtest.h>
 
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Adiabatic.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Closed.h"
 #include "plugins/components/ModalModel/CellularAutomata/Boundary_Fixed.h"
+#include "plugins/components/ModalModel/CellularAutomata/Boundary_Reflexive.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_Classic.h"
 #include "plugins/components/ModalModel/CellularAutomata/CellularAutomata_NonUniform.h"
 #include "plugins/components/ModalModel/CellularAutomata/Lattice.h"
@@ -482,4 +484,161 @@ TEST(CellularAutomataCustomRule, MajorityVoteConvergesUniformRegion) {
 	EXPECT_EQ(lattice.getCell(0)->getCurrentState().getValue(), 0);
 	EXPECT_EQ(lattice.getCell(1)->getCurrentState().getValue(), 1);
 	EXPECT_EQ(lattice.getCell(2)->getCurrentState().getValue(), 0);
+}
+
+// ---------------------------------------------------------------------------
+// Boundary_Reflexive tests
+// ---------------------------------------------------------------------------
+
+TEST(BoundaryReflexive, CornerCellSeesReflectedNeighbors) {
+	// 1-D lattice [0..4] with Boundary_Reflexive and Center neighborhood (radius 1).
+	// Cell 0 has a "left" neighbor at position -1 which should reflect to position 1.
+	// Cell 4 has a "right" neighbor at position 5 which should reflect to position 3.
+	CellularAutomata_Classic automaton;
+	Boundary_Reflexive boundary;
+	Neighborhood_Center neighborhood(&automaton, 1, &boundary);
+	Lattice lattice(&automaton, nullptr, {5});
+
+	ASSERT_TRUE(automaton.init());
+
+	std::vector<Cell*> neighbors0 = neighborhood.getNeighbors(lattice.getCell(0));
+	ASSERT_EQ(neighbors0.size(), 2u);
+	for (Cell* n : neighbors0)
+		EXPECT_GE(n->getCellNumber(), 0);
+
+	std::vector<Cell*> neighbors4 = neighborhood.getNeighbors(lattice.getCell(4));
+	ASSERT_EQ(neighbors4.size(), 2u);
+	for (Cell* n : neighbors4)
+		EXPECT_LE(n->getCellNumber(), 4);
+}
+
+TEST(BoundaryReflexive, ReflectedNeighborHasSameStateAsInnerCell) {
+	// 1-D lattice [0..4]. Cell 1 is alive.
+	// Cell 0's left neighbor at -1 reflects to 1 → neighbors of cell 0 must include cell 1.
+	CellularAutomata_Classic automaton;
+	Boundary_Reflexive boundary;
+	Neighborhood_Center neighborhood(&automaton, 1, &boundary);
+	LocalRule_GameOfLife gol(&automaton);
+	Lattice lattice(&automaton, nullptr, {5});
+
+	ASSERT_TRUE(automaton.init());
+	lattice.getCell(1)->setCurrentState(State(1));
+
+	std::vector<Cell*> neighbors0 = neighborhood.getNeighbors(lattice.getCell(0));
+	bool seesCell1 = false;
+	for (Cell* n : neighbors0)
+		if (n->getCellNumber() == 1) seesCell1 = true;
+	EXPECT_TRUE(seesCell1);
+}
+
+// ---------------------------------------------------------------------------
+// Boundary_Adiabatic tests
+// ---------------------------------------------------------------------------
+
+TEST(BoundaryAdiabatic, CornerCellSeesItselfForOutOfBoundsNeighbor) {
+	// 1-D lattice [0..4]. Cell 0 with Adiabatic: left neighbor at -1 clamps to 0 (itself).
+	CellularAutomata_Classic automaton;
+	Boundary_Adiabatic boundary;
+	Neighborhood_Center neighborhood(&automaton, 1, &boundary);
+	Lattice lattice(&automaton, nullptr, {5});
+
+	ASSERT_TRUE(automaton.init());
+
+	std::vector<Cell*> neighbors0 = neighborhood.getNeighbors(lattice.getCell(0));
+	ASSERT_EQ(neighbors0.size(), 2u);
+	bool seesItself = false;
+	for (Cell* n : neighbors0)
+		if (n->getCellNumber() == 0) seesItself = true;
+	EXPECT_TRUE(seesItself);
+
+	std::vector<Cell*> neighbors4 = neighborhood.getNeighbors(lattice.getCell(4));
+	ASSERT_EQ(neighbors4.size(), 2u);
+	bool seesItself4 = false;
+	for (Cell* n : neighbors4)
+		if (n->getCellNumber() == 4) seesItself4 = true;
+	EXPECT_TRUE(seesItself4);
+}
+
+TEST(BoundaryAdiabatic, AllDeadGridRemainsDeadAfterStep) {
+	// All-dead grid with Adiabatic boundary. No births should occur anywhere,
+	// including at the boundary (the clamped self-neighbor contributes state 0).
+	CellularAutomata_Classic automaton;
+	Boundary_Adiabatic boundary;
+	Neighborhood_Center neighborhood(&automaton, 1, &boundary);
+	LocalRule_GameOfLife gol(&automaton);
+	Lattice lattice(&automaton, nullptr, {5});
+
+	ASSERT_TRUE(automaton.init());
+	automaton.step();
+	for (int i = 0; i < 5; ++i)
+		EXPECT_EQ(lattice.getCell(i)->getCurrentState().getValue(), 0);
+}
+
+// ---------------------------------------------------------------------------
+// setRegionRule / setRegionNeighborhood tests
+// ---------------------------------------------------------------------------
+
+TEST(CellularAutomataNonUniformRegion, SetRegionRuleAssignsRuleToAllCellsInBox) {
+	// 5x5 grid. setRegionRule on the 3x3 interior [{1,1},{3,3}] → 9 cells mapped.
+	CellularAutomata_NonUniform automaton;
+	Boundary_Fixed boundary;
+	Neighborhood_Moore hood(&automaton, 1, &boundary);
+	LocalRule_GameOfLife gol(&automaton);
+	Lattice lattice(&automaton, nullptr, {5, 5});
+
+	LocalRule_Custom regionRule(&automaton);
+	automaton.setRegionRule({1, 1}, {3, 3}, &regionRule);
+
+	const auto& rules = automaton.getCellRules();
+	EXPECT_EQ(rules.size(), 9u);
+
+	for (int y = 1; y <= 3; ++y) {
+		for (int x = 1; x <= 3; ++x) {
+			long cellNum = lattice.cellNDimPosition2Number({x, y});
+			EXPECT_NE(rules.find(cellNum), rules.end())
+				<< "Missing cell at (" << x << "," << y << ")";
+		}
+	}
+}
+
+TEST(CellularAutomataNonUniformRegion, SetRegionNeighborhoodAssignsCorrectNeighborCountAfterInit) {
+	// 5x5 grid. Region [{2,2},{2,2}] gets VonNeumann; rest keeps Moore.
+	CellularAutomata_NonUniform automaton;
+	Boundary_Fixed boundary;
+	Neighborhood_Moore globalMoore(&automaton, 1, &boundary);
+	LocalRule_GameOfLife gol(&automaton);
+	Lattice lattice(&automaton, nullptr, {5, 5});
+
+	Neighborhood_VonNeumann vnCenter(&automaton, 1, &boundary, false, /*registerWithCA=*/false);
+	automaton.setRegionNeighborhood({2, 2}, {2, 2}, &vnCenter);
+
+	ASSERT_TRUE(automaton.init());
+
+	// Center cell {2,2} must have 4 neighbors (VonNeumann)
+	EXPECT_EQ(lattice.getCell({2, 2})->getNeighbors().size(), 4u);
+	// Corner cell {0,0} keeps Moore: Fixed boundary returns fixedCell placeholder for
+	// out-of-bounds positions, so all 8 slots are filled (some with the placeholder cell).
+	EXPECT_EQ(lattice.getCell({0, 0})->getNeighbors().size(), 8u);
+}
+
+TEST(CellularAutomataNonUniformRegion, CellRuleOverridesRegionRule) {
+	// setRegionRule for all 25 cells, then setCellRule on {2,2}: the map entry
+	// for that cell must point to the overriding rule.
+	CellularAutomata_NonUniform automaton;
+	Boundary_Fixed boundary;
+	Neighborhood_Moore hood(&automaton, 1, &boundary);
+	LocalRule_GameOfLife gol(&automaton);
+	Lattice lattice(&automaton, nullptr, {5, 5});
+
+	LocalRule_Custom regionRule(&automaton);
+	automaton.setRegionRule({0, 0}, {4, 4}, &regionRule);
+
+	LocalRule_GameOfLife overrideRule(&automaton);
+	automaton.setCellRule({2, 2}, &overrideRule);
+
+	long centerNum = lattice.cellNDimPosition2Number({2, 2});
+	const auto& rules = automaton.getCellRules();
+	auto it = rules.find(centerNum);
+	ASSERT_NE(it, rules.end());
+	EXPECT_EQ(it->second, &overrideRule);
 }
