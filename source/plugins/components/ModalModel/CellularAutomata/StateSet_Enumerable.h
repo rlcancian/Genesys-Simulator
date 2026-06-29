@@ -14,10 +14,11 @@ public:
 	virtual ~StateSet_Enumerable()=default;
 public:
 	virtual std::string show();
-	unsigned int size();
+	unsigned int size() const;
 	void addState(State* state);
-	unsigned int getStatesSize();
+	unsigned int getStatesSize() const;
 	State* getState(unsigned int rank);
+	const State* getState(unsigned int rank) const;
 	State* getState(std::string name);
 	void setStates(std::vector<State*> states);
 	std::vector<State*> getStates() const;

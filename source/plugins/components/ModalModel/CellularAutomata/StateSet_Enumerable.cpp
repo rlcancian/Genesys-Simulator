@@ -25,7 +25,7 @@ std::string StateSet_Enumerable::show() {
 	return "-";
 }
 
-unsigned int StateSet_Enumerable::size(){
+unsigned int StateSet_Enumerable::size() const {
 	return states.size();
 }
 
@@ -45,6 +45,10 @@ State* StateSet_Enumerable::getState(unsigned int rank) {
 	return states.at(rank);
 }
 
+const State* StateSet_Enumerable::getState(unsigned int rank) const {
+	return states.at(rank);
+}
+
 State* StateSet_Enumerable::getState(std::string name) {
 	for (State* s: states) {
 		if (std::to_string(s->getValue())==name) {
@@ -54,6 +58,6 @@ State* StateSet_Enumerable::getState(std::string name) {
 	return nullptr;
 }
 
-unsigned int StateSet_Enumerable::getStatesSize() {
+unsigned int StateSet_Enumerable::getStatesSize() const {
 	return states.size();
 }

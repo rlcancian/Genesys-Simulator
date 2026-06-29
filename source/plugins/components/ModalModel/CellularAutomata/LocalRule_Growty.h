@@ -10,6 +10,8 @@ public:
     LocalRule_Growty(const LocalRule_Growty& orig): LocalRule(orig) {}
     virtual ~LocalRule_Growty() = default;
 public:
+    virtual std::string getRuleType() const override { return "Growty"; }
+
     virtual void applyRule(Cell* cell) override {
         unsigned int sum = 0;
         for (Cell* neigh : cell->getNeighbors()) {

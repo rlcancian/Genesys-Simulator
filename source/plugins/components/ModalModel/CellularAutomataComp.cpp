@@ -4,10 +4,10 @@
  * and open the template in the editor.
  */
 
-/* 
+/*
  * File:   CelularAutomata.cpp
  * Author: rlcancian
- * 
+ *
  * Created on 03 de Junho de 2019, 15:14
  */
 
@@ -20,9 +20,14 @@
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Elementary.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_GameOfLife.h"
 #include "plugins/components/ModalModel/CellularAutomata/LocalRule_Growty.h"
+#include "plugins/components/ModalModel/CellularAutomata/LocalRule_FlorestalFire.h"
+#include "plugins/components/ModalModel/CellularAutomata/semantic/CompiledRuleLogic.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Center.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_Moore.h"
 #include "plugins/components/ModalModel/CellularAutomata/Neighborhood_VonNeumann.h"
+#include "plugins/components/ModalModel/CellularAutomata/semantic/LocalRuleFactory.h"
+#include "plugins/components/ModalModel/CellularAutomata/temporal/UpdatePolicy.h"
+#include "plugins/components/ModalModel/CellularAutomata/persistence/CellularAutomataSerializer.h"
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
@@ -60,19 +65,135 @@ void CellularAutomataComp::_onDispatchEvent(Entity* entity, unsigned int inputPo
 
 bool CellularAutomataComp::_loadInstance(PersistenceRecord *fields) {
 	bool res = ModelComponent::_loadInstance(fields);
-	if (res) {
-		// @TODO: not implemented yet
+	if (!res) {
+		return false;
 	}
+
+	// Carrega configuração básica (enums)
+	_cellularAutomataType = static_cast<CellularAutomataType>(
+		fields->loadField("ca.cellularAutomataType", static_cast<int>(CellularAutomataType::CLASSIC)));
+	_latticeType = static_cast<LatticeType>(
+		fields->loadField("ca.latticeType", static_cast<int>(LatticeType::RETICULAR)));
+	_neighboorhoodType = static_cast<NeighboorhoodType>(
+		fields->loadField("ca.neighboorhoodType", static_cast<int>(NeighboorhoodType::VONNEUMANN)));
+	_boundaryType = static_cast<BoundaryType>(
+		fields->loadField("ca.boundaryType", static_cast<int>(BoundaryType::FIXED)));
+	_stateSetType = static_cast<StateSetType>(
+		fields->loadField("ca.stateSetType", static_cast<int>(StateSetType::ENUMERATED)));
+	_localRuleType = static_cast<LocalRuleType>(
+		fields->loadField("ca.localRuleType", static_cast<int>(LocalRuleType::GAME_OF_LIFE)));
+
+	// Carrega código-fonte da regra definida pelo usuário
+	_userRuleSourceCode = fields->loadField("ca.userRule.sourceCode", std::string(""));
+
+	// Reconstrói o autômato
+	setCellularAutomataType(_cellularAutomataType);
+	setLatticeType(_latticeType);
+	setNeighboorhoodType(_neighboorhoodType);
+	setBoundaryType(_boundaryType);
+	setStateSetType(_stateSetType);
+	setLocalRuleType(_localRuleType);
+
+	// Se há código de regra definido pelo usuário, compila
+	if (!_userRuleSourceCode.empty() && _localRuleType == LocalRuleType::USERDEFINED) {
+		setUserRuleCode(_userRuleSourceCode);
+	}
+
 	return res;
 }
 
 void CellularAutomataComp::_saveInstance(PersistenceRecord *fields, bool saveDefaultValues) {
 	ModelComponent::_saveInstance(fields, saveDefaultValues);
-	// @TODO: not implemented yet
+
+	// Salva configuração
+	fields->saveField("ca.cellularAutomataType", static_cast<int>(_cellularAutomataType),
+					  static_cast<int>(DEFAULT.cellularAutomataType), saveDefaultValues);
+	fields->saveField("ca.latticeType", static_cast<int>(_latticeType),
+					  static_cast<int>(DEFAULT.latticeType), saveDefaultValues);
+	fields->saveField("ca.neighboorhoodType", static_cast<int>(_neighboorhoodType),
+					  static_cast<int>(DEFAULT.neighboorhoodType), saveDefaultValues);
+	fields->saveField("ca.boundaryType", static_cast<int>(_boundaryType),
+					  static_cast<int>(DEFAULT.boundaryType), saveDefaultValues);
+	fields->saveField("ca.stateSetType", static_cast<int>(_stateSetType),
+					  static_cast<int>(DEFAULT.stateSetType), saveDefaultValues);
+	fields->saveField("ca.localRuleType", static_cast<int>(_localRuleType),
+					  static_cast<int>(DEFAULT.localRuleType), saveDefaultValues);
+
+	// Salva tipo da regra por nome (para factory)
+	if (_localRule != nullptr) {
+		fields->saveField("ca.semantic.ruleType", _localRule->getRuleType());
+	}
+
+	// Salva código-fonte da regra definida pelo usuário
+	if (!_userRuleSourceCode.empty()) {
+		fields->saveField("ca.userRule.sourceCode", _userRuleSourceCode, std::string(""), saveDefaultValues);
+	}
+
+	// Salva estado do autômato via serializer
+	if (_cellularAutomata != nullptr && _lattice != nullptr && _neighboorhood != nullptr && _localRule != nullptr) {
+		CellularAutomataSerializer::save(_lattice, _neighboorhood, _localRule, _cellularAutomata, fields);
+	}
 }
 
 bool CellularAutomataComp::_check(std::string* errorMessage) {
-	*errorMessage += "";
+	*errorMessage = "";
+
+	// Validar existência dos componentes básicos
+	if (_cellularAutomata == nullptr) {
+		*errorMessage += "CellularAutomata is nullptr; ";
+		return false;
+	}
+	if (_lattice == nullptr) {
+		*errorMessage += "Lattice is nullptr; ";
+		return false;
+	}
+	if (_neighboorhood == nullptr) {
+		*errorMessage += "Neighborhood is nullptr; ";
+		return false;
+	}
+	if (_localRule == nullptr) {
+		*errorMessage += "LocalRule is nullptr; ";
+		return false;
+	}
+	if (_stateSet == nullptr) {
+		*errorMessage += "StateSet is nullptr; ";
+		return false;
+	}
+	if (_boundary == nullptr) {
+		*errorMessage += "Boundary is nullptr; ";
+		return false;
+	}
+
+	// Validar compatibilidade dimensão lattice
+	unsigned short latticeDims = _lattice->getNumDimensions();
+	if (latticeDims == 0) {
+		*errorMessage += "Lattice has no dimensions; ";
+		return false;
+	}
+
+	// Validar compatibilidade StateSet com regra local
+	if (_localRuleType == LocalRuleType::ELEMENTAR_CA && latticeDims != 1) {
+		*errorMessage += "Elementary CA requires 1D lattice; ";
+		return false;
+	}
+
+	// Validar regra definida pelo usuário
+	if (_localRuleType == LocalRuleType::USERDEFINED) {
+		if (_userRuleSourceCode.empty()) {
+			*errorMessage += "UserDefined rule requires source code; ";
+			return false;
+		}
+	}
+
+	// Validar política de atualização
+	if (_updatePolicyType != UpdatePolicyType::SYNCHRONOUS &&
+		_updatePolicyType != UpdatePolicyType::RANDOM_ASYNCHRONOUS &&
+		_updatePolicyType != UpdatePolicyType::SEQUENTIAL) {
+		*errorMessage += "Invalid UpdatePolicyType; ";
+		return false;
+	}
+
+	// Tudo OK - configurar referências cruzadas
 	_cellularAutomata->setLattice(_lattice);
 	_cellularAutomata->setLocalRule(_localRule);
 	_cellularAutomata->setNeighborhood(_neighboorhood);
@@ -81,11 +202,53 @@ bool CellularAutomataComp::_check(std::string* errorMessage) {
 	_neighboorhood->setBoundary(_boundary);
 	_boundary->setLattice(_lattice);
 	_boundary->setNeighborhood(_neighboorhood);
+
 	return true;
 }
 
 void CellularAutomataComp::_initBetweenReplications() {
+	// Registra todas as regras concretas na factory
+	LocalRuleFactory::registerRule("GameOfLife", [](CellularAutomataBase* parent) -> std::unique_ptr<LocalRule> {
+		return std::make_unique<LocalRule_GameOfLife>(parent);
+	});
+	LocalRuleFactory::registerRule("Elementary", [](CellularAutomataBase* parent) -> std::unique_ptr<LocalRule> {
+		return std::make_unique<LocalRule_Elementary>(parent);
+	});
+	LocalRuleFactory::registerRule("Growty", [](CellularAutomataBase* parent) -> std::unique_ptr<LocalRule> {
+		return std::make_unique<LocalRule_Growty>(parent);
+	});
+	LocalRuleFactory::registerRule("ForestFire", [](CellularAutomataBase* parent) -> std::unique_ptr<LocalRule> {
+		return std::make_unique<LocalRule_FlorestalFire>(parent);
+	});
+
 	_cellularAutomata->init();
+}
+
+void CellularAutomataComp::setUserRuleCode(const std::string& sourceCode) {
+	_userRuleSourceCode = sourceCode;
+
+	if (sourceCode.empty()) {
+		return;
+	}
+
+	// Se o tipo é USERDEFINED, compila o código
+	if (_localRuleType == LocalRuleType::USERDEFINED) {
+		// Remove regra anterior se existir
+		if (_localRule != nullptr) {
+			delete _localRule;
+			_localRule = nullptr;
+		}
+
+		// Cria nova regra compilada
+		auto* compiledRule = new CompiledRuleLogic(_cellularAutomata, _stateSet);
+		if (compiledRule->compile(sourceCode)) {
+			_localRule = compiledRule;
+		} else {
+			// Se falhou, armazena erro e mantém regra anterior
+			delete compiledRule;
+			// Em produção, deveria logar o erro
+		}
+	}
 }
 
 LocalRule *CellularAutomataComp::getlocalRule() const
@@ -103,12 +266,36 @@ void CellularAutomataComp::setLocalRuleType(CellularAutomataComp::LocalRuleType 
 	_localRuleType = newLocalRuleType;
 	if (_localRule != nullptr)
 		delete _localRule;
-	if (_localRuleType == LocalRuleType::ELEMENTAR_CA) {
-		_localRule = new LocalRule_Elementary(_cellularAutomata, 30);
-	} else if (_localRuleType == LocalRuleType::GAME_OF_LIFE) {
-		_localRule = new LocalRule_GameOfLife(_cellularAutomata);
-	} else if (_localRuleType == LocalRuleType::BIASED_COMPETITION) {
-		_localRule = new LocalRule_Growty(_cellularAutomata);
+
+	// Usa a factory para criar a regra pelo tipo
+	switch (_localRuleType) {
+		case LocalRuleType::ELEMENTAR_CA:
+			_localRule = LocalRuleFactory::create("Elementary", _cellularAutomata).release();
+			break;
+		case LocalRuleType::GAME_OF_LIFE:
+			_localRule = LocalRuleFactory::create("GameOfLife", _cellularAutomata).release();
+			break;
+		case LocalRuleType::BIASED_COMPETITION:
+			_localRule = LocalRuleFactory::create("Growty", _cellularAutomata).release();
+			break;
+		case LocalRuleType::USERDEFINED:
+			// Para USERDEFINED, o código deve ser compilado via setUserRuleCode()
+			// Se já há código-fonte, compila agora
+			if (!_userRuleSourceCode.empty()) {
+				auto* compiledRule = new CompiledRuleLogic(_cellularAutomata, _stateSet);
+				if (compiledRule->compile(_userRuleSourceCode)) {
+					_localRule = compiledRule;
+				} else {
+					delete compiledRule;
+					_localRule = nullptr;
+				}
+			} else {
+				_localRule = nullptr;
+			}
+			break;
+		default:
+			_localRule = nullptr;
+			break;
 	}
 }
 
