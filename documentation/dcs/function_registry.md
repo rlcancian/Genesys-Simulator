@@ -50,7 +50,21 @@ O `SemanticResolver` foi adicionado em `source/parser` como camada isolada entre
 
 A estrutura minima `FunctionCallRequest` representa uma chamada por nome e argumentos numericos. O resolver recebe um `FunctionRegistry` externo, valida registry ausente, funcao inexistente, aridade incorreta, erros do callback e retorno numerico nao finito. As mensagens incluem o nome da funcao, quantidade de argumentos, aridade esperada, origem/plugin quando disponivel e lista de funcoes registradas quando a funcao nao existe.
 
-Esta etapa ainda nao conecta o resolver ao Bison/Flex. A gramatica e o lexer continuam inalterados.
+Na etapa de criacao do resolver, ele ainda nao estava conectado ao Bison/Flex. A integracao inicial abaixo registra a primeira mudanca localizada na gramatica e no lexer.
+
+## Integracao inicial no parser
+
+A primeira integracao sintatica adiciona chamada generica de funcao no formato `IDENTIFIER(...)`.
+
+O lexer continua priorizando tokens legados, palavras reservadas e elementos conhecidos do modelo. Apenas o fallback de literal nao reconhecido passa a retornar `IDENTIFIER`; quando esse identificador aparece sozinho, a gramatica preserva a mensagem legada de literal nao encontrado. Quando aparece como chamada de funcao, o Bison delega a resolucao para `SemanticResolver` usando o `FunctionRegistry` configurado no driver.
+
+Limitacoes desta etapa:
+
+- argumentos e retorno continuam restritos a `double`;
+- a avaliacao ainda acontece diretamente nas acoes semanticas do Bison, sem AST;
+- funcoes que ja possuem token legado continuam seguindo o caminho legado, mesmo que exista funcao registrada com mesmo nome;
+- `Model::parseExpression(...)` ainda nao expoe API publica para configurar registry; testes de integracao usam `ParserDefaultImpl2` diretamente;
+- o build normal usa fontes gerados versionados; ao alterar `.yy` ou `.ll`, e necessario regenerar `GenesysParser.*` e `Genesys++-scanner.cpp`.
 
 ## Proximos passos
 

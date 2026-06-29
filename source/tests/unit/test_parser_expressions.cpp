@@ -9,7 +9,35 @@
 #include "kernel/simulator/ParserDefaultImpl2.h"
 #include "kernel/statistics/SamplerDefaultImpl1.h"
 #include "parser/Genesys++-driver.h"
+#include "parser/FunctionRegistry.h"
 #include "../../plugins/data/Logic/Variable.h"
+
+namespace {
+
+FunctionRegistry makeParserGenericFunctionRegistry() {
+    FunctionRegistry registry;
+    registry.registerFunction({"FakeAdd", 2, 2, "ParserIntegrationTest", "Adds two arguments", "test"},
+        [](const std::vector<double>& arguments) {
+            return arguments[0] + arguments[1];
+        });
+    registry.registerFunction({"FakeSquare", 1, 1, "ParserIntegrationTest", "Squares one argument", "test"},
+        [](const std::vector<double>& arguments) {
+            return arguments[0] * arguments[0];
+        });
+    registry.registerFunction({"FakeConst", 0, 0, "ParserIntegrationTest", "Returns a fixed value", "test"},
+        [](const std::vector<double>&) {
+            return 42.0;
+        });
+    return registry;
+}
+
+double parseExpressionWithRegistry(Model* model, FunctionRegistry& registry, const std::string& expression, bool& success, std::string& errorMessage) {
+    ParserDefaultImpl2 parser(model, nullptr, false);
+    parser.setFunctionRegistry(&registry);
+    return parser.parse(expression, success, errorMessage);
+}
+
+}
 
 class ParserExpressionsTest : public ::testing::Test {
 protected:
@@ -105,6 +133,66 @@ TEST_F(ParserExpressionsTest, MathFunctionsRoundTruncFracAndSqrt) {
     EXPECT_DOUBLE_EQ(model->parseExpression("max(7,4)"), 7.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("sin(0)"), 0.0);
     EXPECT_DOUBLE_EQ(model->parseExpression("cos(0)"), 1.0);
+}
+
+TEST_F(ParserExpressionsTest, GenericFunctionCallsResolveThroughFunctionRegistry) {
+    FunctionRegistry registry = makeParserGenericFunctionRegistry();
+    bool success = false;
+    std::string errorMessage;
+
+    EXPECT_DOUBLE_EQ(parseExpressionWithRegistry(model, registry, "FakeAdd(2,3)", success, errorMessage), 5.0);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+
+    errorMessage.clear();
+    EXPECT_DOUBLE_EQ(parseExpressionWithRegistry(model, registry, "FakeSquare(4)", success, errorMessage), 16.0);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+
+    errorMessage.clear();
+    EXPECT_DOUBLE_EQ(parseExpressionWithRegistry(model, registry, "FakeConst()", success, errorMessage), 42.0);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+}
+
+TEST_F(ParserExpressionsTest, GenericFunctionCallsReportSemanticErrors) {
+    FunctionRegistry registry = makeParserGenericFunctionRegistry();
+    bool success = true;
+    std::string errorMessage;
+
+    (void)parseExpressionWithRegistry(model, registry, "FakeAdd(1)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("FakeAdd"), std::string::npos);
+    EXPECT_NE(errorMessage.find("expected 2"), std::string::npos);
+
+    errorMessage.clear();
+    success = true;
+    (void)parseExpressionWithRegistry(model, registry, "FuncaoInexistente(2)", success, errorMessage);
+    EXPECT_FALSE(success);
+    EXPECT_FALSE(errorMessage.empty());
+    EXPECT_NE(errorMessage.find("FuncaoInexistente"), std::string::npos);
+    EXPECT_NE(errorMessage.find("function is not registered"), std::string::npos);
+}
+
+TEST_F(ParserExpressionsTest, GenericFunctionIntegrationKeepsLegacyArithmeticExpressions) {
+    FunctionRegistry registry = makeParserGenericFunctionRegistry();
+    bool success = false;
+    std::string errorMessage;
+
+    EXPECT_DOUBLE_EQ(parseExpressionWithRegistry(model, registry, "1+2", success, errorMessage), 3.0);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+
+    errorMessage.clear();
+    EXPECT_DOUBLE_EQ(parseExpressionWithRegistry(model, registry, "2*3+4", success, errorMessage), 10.0);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
+
+    errorMessage.clear();
+    EXPECT_DOUBLE_EQ(parseExpressionWithRegistry(model, registry, "(2+3)*4", success, errorMessage), 20.0);
+    EXPECT_TRUE(success);
+    EXPECT_TRUE(errorMessage.empty());
 }
 
 TEST_F(ParserExpressionsTest, VariableIndexesSupportScalarLegacyAndNDReads) {
