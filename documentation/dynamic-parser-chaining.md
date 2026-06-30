@@ -2,7 +2,7 @@
 
 ## Visao geral
 
-Esta documentacao consolida a implementacao do DCS para tornar o parser do
+Esta documentacao consolida a implementacao do DCS - Tema 12.3.2 - para tornar o parser do
 GenESyS mais extensivel no suporte a funcoes usadas em expressoes textuais.
 
 A entrega cria uma camada incremental de registro e resolucao de funcoes:
@@ -64,7 +64,7 @@ O parser original reconhecia muitas funcoes por tokens especificos em Flex/Bison
 Funcoes matematicas, probabilisticas, de kernel e de plugins conhecidos
 apareciam como regras lexicais e producoes dedicadas.
 
-Exemplos de acoplamento encontrados:
+Exemplos de acoplamentos:
 
 - `nq`, `firstinq`, `mr`, `nr`, `numset` e outras funcoes eram regras lexicais
   explicitas em `lexerparser.ll`;
@@ -595,96 +595,6 @@ A cobertura adicionada inclui:
 Queue, Resource e Set nao foram cobertos nessa primeira regressao especifica.
 Esses casos dependem de objetos de modelo e plugins especificos e devem entrar
 como testes de integracao ou testes unitarios com montagem dedicada do modelo.
-
-## Limitacoes conhecidas
-
-- Argumentos e retorno de funcoes registradas ainda sao `double`.
-- O parser ainda avalia argumentos diretamente nas acoes semanticas do Bison.
-- Nao ha AST explicita nem avaliacao tardia geral.
-- `Model::parseExpression(...)` ainda nao expoe API publica para configurar
-  `FunctionRegistry`; os testes de integracao usam `ParserDefaultImpl2`
-  diretamente.
-- `FakePlugin` e uma classe de demonstracao em testes, nao um plugin real
-  carregado dinamicamente.
-- Funcoes legadas tem precedencia lexical sobre chamadas genericas.
-- Regeneracao dinamica completa de Flex/Bison nao foi implementada.
-- Rollback e ciclo de vida de plugins dinamicos ainda nao foram tratados.
-- Queue, Resource e Set nao foram cobertos na primeira regressao focada de
-  expressoes aritmeticas e funcoes matematicas.
-- O teste unitario completo `ctest --preset tests-unit` foi interrompido
-  manualmente na validacao documentada original, apos falhas fora do escopo
-  direto do DCS.
-
-Falhas conhecidas documentadas na regressao especifica do parser:
-
-- `ParserExpressionsTest.VariableIndexesSupportScalarLegacyAndNDReads`;
-- `ParserExpressionsTest.AttributeIndexesSupportLegacyAndNDReadsAndAssignmentsDuringEvent`;
-- `ParserExpressionsTest.VariableIndexesSupportScalarLegacyAndNDAssignments`.
-
-Essas falhas retornavam `0` para leituras ou atribuicoes com chaves como `1,2`,
-`1,2,3` e `1,2,3,4,5`. Elas nao foram corrigidas nesta etapa porque nao fazem
-parte da integracao do `FunctionRegistry`.
-
-Falhas fora do escopo direto do DCS observadas antes da interrupcao do
-`ctest --preset tests-unit`:
-
-- `SimulatorRuntimeTest.EntityAttributeValuesRoundTripByNameAndIndex`, com
-  excecao `stoul`;
-- os tres testes de indices multidimensionais listados acima;
-- `RuntimePluginManagerClassTest.DummyConnectorRegistersConcreteModelPlugins`,
-  envolvendo `dummyelement.so`.
-
-## Pontos futuros
-
-1. Migrar gradualmente funcoes legadas como `NQ`, `MR`, `NR` e `NUMSET` para o
-   registry, mantendo testes de equivalencia com o caminho atual.
-2. Integrar plugins reais ao `FunctionRegistry`, definindo quando e onde cada
-   plugin registra suas funcoes.
-3. Expor uma API de configuracao do registry em nivel apropriado do modelo ou
-   simulador, se necessario.
-4. Usar `ParserChangesInformation` apenas para casos que realmente exijam sintaxe
-   nova, e nao para cada funcao numerica simples.
-5. Avaliar regeneracao dinamica de Flex/Bison como etapa posterior, depois de
-   estabilizar contrato, cobertura e politica de erro.
-6. Definir rollback, descarregamento e substituicao de funcoes registradas quando
-   houver carregamento dinamico real.
-7. Avaliar suporte a tipos alem de `double`, contexto de simulacao e acesso
-   controlado a elementos do modelo.
-
-## Baseline historico do desenvolvimento
-
-O baseline documental inicial registrou:
-
-- branch atual no momento do registro: `dcs-parser-function-registry`;
-- branch base assumida: `currentStable`;
-- verificacao de ancestralidade: `currentStable` era ancestral de `HEAD`;
-- remoto `origin`: `https://github.com/joaomdaltoe/Genesys-Simulator.git`;
-- remoto `upstream`: `https://github.com/rlcancian/Genesys-Simulator`;
-- estado local inicial sem alteracoes locais reportadas por
-  `git status --short --branch`.
-
-As restricoes iniciais daquela etapa eram nao modificar parser, kernel, CMake,
-criar classes novas, executar refatoracao ou fazer commit automaticamente. Essas
-restricoes pertenciam ao baseline inicial de levantamento; a implementacao final
-foi conduzida depois em etapas incrementais documentadas.
-
-## Checklist de PR documentado
-
-Checklist registrado antes desta consolidacao documental:
-
-- build principal `terminal-app`: passou;
-- build `tests-unit`: passou;
-- build/teste `tests-smoke`: passou, 1/1;
-- testes novos e focados do DCS: passaram, 32/32;
-- regressao especifica do parser: 15/18, com 3 falhas ND remanescentes
-  documentadas;
-- teste unitario completo `ctest --preset tests-unit`: interrompido manualmente,
-  com falhas fora do DCS observadas antes da interrupcao;
-- branch estava atualizada com `origin/dcs-parser-function-registry` no momento
-  da verificacao;
-- sem arquivos temporarios detectados apos build/testes antes da atualizacao
-  documental;
-- sem arquivos de build versionados indevidamente detectados.
 
 ## Conclusao
 
