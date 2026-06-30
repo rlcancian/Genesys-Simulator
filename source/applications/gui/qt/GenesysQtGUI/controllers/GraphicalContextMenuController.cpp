@@ -484,8 +484,6 @@ void GraphicalContextMenuController::addAnimateMenu(QMenu* menu) const {
     animateMenu->addAction(_ui->actionAnimatePlot);
     animateMenu->addSeparator();
     animateMenu->addAction(_ui->actionAnimateVariable);
-    animateMenu->addAction(_ui->actionAnimateResource);
-    animateMenu->addAction(_ui->actionAnimateQueue);
     animateMenu->addAction(_ui->actionAnimateExpression);
 }
 

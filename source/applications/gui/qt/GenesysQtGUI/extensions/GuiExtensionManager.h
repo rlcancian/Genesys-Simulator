@@ -38,12 +38,19 @@ public:
 	// Returns nullptr if no plugin registered a factory for that type.
 	AnimationPlaceholder* createAnimationPlaceholder(const std::string& animationType) const;
 
+	// Returns true if any plugin-registered drawing tool action is currently checked.
+	bool anyDrawingToolChecked() const;
+
+	// Unchecks all plugin-registered drawing tool actions.
+	void uncheckAllDrawingTools() const;
+
 private:
 	QMenu* _resolveMenuPath(const std::string& menuPath);
 	QToolBar* _resolveToolBar(const std::string& toolBarId) const;
 	void _applyActionContribution(const GuiActionContribution& contribution, const GuiExtensionRuntimeContext& context);
 	void _applyWindowContribution(const GuiWindowContribution& contribution, const GuiExtensionRuntimeContext& context);
 	void _applyDockContribution(const GuiDockContribution& contribution, const GuiExtensionRuntimeContext& context);
+	void _applyDrawingToolContribution(const GuiDrawingToolContribution& contribution, const GuiExtensionRuntimeContext& context);
 	bool _isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const;
 
 private:
@@ -54,6 +61,7 @@ private:
 	std::vector<QAction*> _createdMenuActions;
 	std::vector<QDockWidget*> _createdDocks;
 	std::vector<GuiAnimationContribution> _animationContributions;
+	std::vector<QAction*> _drawingToolActions;
 };
 
 #endif /* GUIEXTENSIONMANAGER_H */

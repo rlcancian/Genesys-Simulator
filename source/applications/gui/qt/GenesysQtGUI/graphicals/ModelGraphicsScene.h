@@ -117,7 +117,8 @@ public: // editing graphic model
     enum DrawingMode{
         NONE, LINE, TEXT, RECTANGLE, ELLIPSE, POLYGON,  POLYGON_POINTS, POLYGON_FINISHED,
         COUNTER, VARIABLE, TIMER,
-        ATTRIBUTE, ENTITY, EVENT, EXPRESSION, PLOT, QUEUE_PLACEHOLDER, RESOURCE, STATION, STATISTICS
+        ATTRIBUTE, ENTITY, EVENT, EXPRESSION, PLOT, QUEUE_PLACEHOLDER, RESOURCE, STATION, STATISTICS,
+        PLUGIN_DRAWING
     };
     /** @brief Creates and inserts one graphical component into the scene. */
     GraphicalModelComponent* addGraphicalModelComponent(Plugin* plugin, ModelComponent* component, QPointF position, QColor color = Qt::blue, bool notify = false, GraphicalModelComponent* autoConnectSource = nullptr);
@@ -382,6 +383,10 @@ public:
     void drawingStation();
     /** @brief Creates statistics overlay geometry. */
     void drawingStatistics();
+    /** @brief Activates plugin-provided drawing mode for the given animation type. */
+    void drawingByAnimationType(const std::string& animationType);
+    /** @brief Returns the animation type set by drawingByAnimationType(), or empty if none. */
+    std::string pluginDrawingAnimationType() const;
     /** @brief Clears animation-specific cached values. */
     void clearAnimationsValues();
     /** @brief Synchronizes the component counters used by animation overlays. */
@@ -535,6 +540,7 @@ private:
     QList<ModelDataDefinition *> *_variables = new QList<ModelDataDefinition *>();
 private:
     DrawingMode _drawingMode = NONE;
+    std::string _pluginDrawingAnimationType;
     QGraphicsRectItem* _currentRectangle = nullptr;
     QGraphicsLineItem* _currentLine = nullptr;
     QGraphicsPolygonItem* _currentPolygon = nullptr;

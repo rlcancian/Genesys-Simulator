@@ -1966,9 +1966,9 @@ void MainWindow::_actualizeTabPanes() {
         ui->actionAnimateVariable->setChecked(false);
         ui->actionAnimateSimulatedTime->setChecked(false);
         ui->actionAnimateExpression->setChecked(false);
-        ui->actionAnimateResource->setChecked(false);
-        ui->actionAnimateQueue->setChecked(false);
-        ui->actionAnimateStation->setChecked(false);
+        if (_guiExtensionManager != nullptr) {
+            _guiExtensionManager->uncheckAllDrawingTools();
+        }
         ui->actionAnimateEntity->setChecked(false);
         ui->actionAnimateEvent->setChecked(false);
         ui->actionAnimateAttribute->setChecked(false);
@@ -2419,9 +2419,7 @@ bool MainWindow::checkSelectedDrawIcons() {
     if(ui->actionAnimateVariable->isChecked()) alreadyChecked++;
     if(ui->actionAnimateSimulatedTime->isChecked()) alreadyChecked++;
     if(ui->actionAnimateExpression->isChecked()) alreadyChecked++;
-    if(ui->actionAnimateResource->isChecked()) alreadyChecked++;
-    if(ui->actionAnimateQueue->isChecked()) alreadyChecked++;
-    if(ui->actionAnimateStation->isChecked()) alreadyChecked++;
+    if(_guiExtensionManager != nullptr && _guiExtensionManager->anyDrawingToolChecked()) alreadyChecked++;
     if(ui->actionAnimateEntity->isChecked()) alreadyChecked++;
     if(ui->actionAnimateEvent->isChecked()) alreadyChecked++;
     if(ui->actionAnimateAttribute->isChecked()) alreadyChecked++;
@@ -2442,9 +2440,9 @@ void MainWindow::unselectDrawIcons() {
     ui->actionAnimateVariable->setChecked(false);
     ui->actionAnimateSimulatedTime->setChecked(false);
     ui->actionAnimateExpression->setChecked(false);
-    ui->actionAnimateResource->setChecked(false);
-    ui->actionAnimateQueue->setChecked(false);
-    ui->actionAnimateStation->setChecked(false);
+    if (_guiExtensionManager != nullptr) {
+        _guiExtensionManager->uncheckAllDrawingTools();
+    }
     ui->actionAnimateEntity->setChecked(false);
     ui->actionAnimateEvent->setChecked(false);
     ui->actionAnimateAttribute->setChecked(false);

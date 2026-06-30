@@ -85,7 +85,16 @@ public:
 	}
 
 	void registerContributions(GuiExtensionRegistry* registry) const override {
-		(void)registry;
+		if (registry == nullptr) {
+			return;
+		}
+		GuiDrawingToolContribution tool;
+		tool.animationType = "Resource";
+		tool.text = "Animate Resource";
+		tool.menuPath = "Animate/Plugin";
+		tool.toolBarId = "toolBarAnimations";
+		tool.statusTip = "Draw a Resource animation placeholder on the scene";
+		registry->addDrawingTool(std::move(tool));
 	}
 
 	void registerAnimations(GuiExtensionRegistry* registry) const override {

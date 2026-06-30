@@ -1,6 +1,8 @@
 #include "GuiExtensionManager.h"
 
 #include "animations/AnimationPlaceholder.h"
+#include "graphicals/ModelGraphicsView.h"
+#include "graphicals/ModelGraphicsScene.h"
 
 #include <QAction>
 #include <QDockWidget>
@@ -76,6 +78,9 @@ void GuiExtensionManager::rebuild(const GuiExtensionRuntimeContext& context) {
 	for (const GuiDockContribution& dock : registry.docks()) {
 		_applyDockContribution(dock, context);
 	}
+	for (const GuiDrawingToolContribution& tool : registry.drawingTools()) {
+		_applyDrawingToolContribution(tool, context);
+	}
 	_animationContributions = registry.animations();
 }
 
@@ -120,6 +125,11 @@ void GuiExtensionManager::clear() {
 	}
 	_createdMenuActions.clear();
 	_animationContributions.clear();
+
+	for (QAction* action : _drawingToolActions) {
+		delete action;
+	}
+	_drawingToolActions.clear();
 }
 
 bool GuiExtensionManager::_isPluginDependenciesSatisfied(const GuiExtensionPlugin* plugin) const {
@@ -151,6 +161,71 @@ bool GuiExtensionManager::_isPluginDependenciesSatisfied(const GuiExtensionPlugi
 		}
 	}
 	return true;
+}
+
+bool GuiExtensionManager::anyDrawingToolChecked() const {
+	for (const QAction* action : _drawingToolActions) {
+		if (action != nullptr && action->isChecked()) {
+			return true;
+		}
+	}
+	return false;
+}
+
+void GuiExtensionManager::uncheckAllDrawingTools() const {
+	for (QAction* action : _drawingToolActions) {
+		if (action != nullptr) {
+			action->setChecked(false);
+		}
+	}
+}
+
+void GuiExtensionManager::_applyDrawingToolContribution(
+	const GuiDrawingToolContribution& contribution,
+	const GuiExtensionRuntimeContext& context)
+{
+	if (_mainWindow == nullptr || contribution.animationType.empty()) {
+		return;
+	}
+
+	QAction* action = new QAction(QString::fromStdString(contribution.text), _mainWindow);
+	action->setCheckable(true);
+	if (!contribution.statusTip.empty()) {
+		action->setStatusTip(QString::fromStdString(contribution.statusTip));
+	}
+	if (!contribution.shortcut.empty()) {
+		action->setShortcut(QKeySequence(QString::fromStdString(contribution.shortcut)));
+	}
+
+	const std::string animationType = contribution.animationType;
+	ModelGraphicsView* graphicsView = context.graphicsView;
+
+	QObject::connect(action, &QAction::triggered, _mainWindow, [action, animationType, graphicsView](bool checked) {
+		if (graphicsView == nullptr) {
+			return;
+		}
+		ModelGraphicsScene* scene = graphicsView->getScene();
+		if (scene == nullptr) {
+			return;
+		}
+		if (checked) {
+			graphicsView->setCursor(Qt::CrossCursor);
+			scene->drawingByAnimationType(animationType);
+			scene->setAction(action);
+		} else {
+			graphicsView->setCursor(Qt::ArrowCursor);
+			scene->clearDrawingMode();
+		}
+	});
+
+	if (QMenu* menu = _resolveMenuPath(contribution.menuPath)) {
+		menu->addAction(action);
+	}
+	if (QToolBar* toolBar = _resolveToolBar(contribution.toolBarId)) {
+		toolBar->addAction(action);
+	}
+
+	_drawingToolActions.push_back(action);
 }
 
 QMenu* GuiExtensionManager::_resolveMenuPath(const std::string& menuPath) {

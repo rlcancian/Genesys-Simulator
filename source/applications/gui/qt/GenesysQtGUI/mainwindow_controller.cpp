@@ -337,27 +337,6 @@ void MainWindow::on_actionAnimateExpression_triggered() {
 }
 
 
-void MainWindow::on_actionAnimateResource_triggered() {
-    if (_sceneToolController != nullptr) {
-        _sceneToolController->onActionAnimateResourceTriggered();
-    }
-}
-
-
-void MainWindow::on_actionAnimateQueue_triggered() {
-    if (_sceneToolController != nullptr) {
-        _sceneToolController->onActionAnimateQueueTriggered();
-    }
-}
-
-
-void MainWindow::on_actionAnimateStation_triggered() {
-    if (_sceneToolController != nullptr) {
-        _sceneToolController->onActionAnimateStationTriggered();
-    }
-}
-
-
 void MainWindow::on_actionEditDelete_triggered()
 {
     // Keep this wrapper as part of the final compatibility façade from Phase 9 refactor.

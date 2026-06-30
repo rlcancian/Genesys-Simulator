@@ -167,13 +167,14 @@ namespace {
         case ModelGraphicsScene::RESOURCE:
         case ModelGraphicsScene::STATION:
         case ModelGraphicsScene::STATISTICS:
+        case ModelGraphicsScene::PLUGIN_DRAWING:
             return true;
         default:
             return false;
         }
     }
 
-    AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode, GuiExtensionManager* manager) {
+    AnimationPlaceholder* createPlaceholderAnimation(ModelGraphicsScene::DrawingMode mode, GuiExtensionManager* manager, const std::string& pluginAnimationType = "") {
         switch (mode) {
         case ModelGraphicsScene::ENTITY:
             return new AnimationEntity();
@@ -191,6 +192,8 @@ namespace {
             return manager ? manager->createAnimationPlaceholder("Station") : nullptr;
         case ModelGraphicsScene::STATISTICS:
             return new AnimationStatistics();
+        case ModelGraphicsScene::PLUGIN_DRAWING:
+            return (manager && !pluginAnimationType.empty()) ? manager->createAnimationPlaceholder(pluginAnimationType) : nullptr;
         default:
             return nullptr;
         }
@@ -3264,7 +3267,7 @@ void ModelGraphicsScene::initializeAnimationDrawing(QGraphicsSceneMouseEvent* mo
     }
 
     if (isPlaceholderAnimationMode(_drawingMode)) {
-        _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode, _guiExtensionManager);
+        _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode, _guiExtensionManager, _pluginDrawingAnimationType);
         if (_currentPlaceholderAnimation != nullptr) {
             _currentPlaceholderAnimation->startDrawing(mouseEvent);
             addItem(_currentPlaceholderAnimation);
@@ -3323,7 +3326,7 @@ void ModelGraphicsScene::continueAnimationDrawing(QGraphicsSceneMouseEvent* mous
             }
         }
         else {
-            _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode, _guiExtensionManager);
+            _currentPlaceholderAnimation = createPlaceholderAnimation(_drawingMode, _guiExtensionManager, _pluginDrawingAnimationType);
         }
     }
 }
@@ -3719,6 +3722,15 @@ void ModelGraphicsScene::drawingStation() {
 
 void ModelGraphicsScene::drawingStatistics() {
     _drawingMode = DrawingMode::STATISTICS;
+}
+
+void ModelGraphicsScene::drawingByAnimationType(const std::string& animationType) {
+    _pluginDrawingAnimationType = animationType;
+    _drawingMode = DrawingMode::PLUGIN_DRAWING;
+}
+
+std::string ModelGraphicsScene::pluginDrawingAnimationType() const {
+    return _pluginDrawingAnimationType;
 }
 
 void ModelGraphicsScene::setObjectBeingDragged(QTreeWidgetItem* objectBeingDragged) {
