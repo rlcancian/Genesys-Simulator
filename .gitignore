@@ -46,3 +46,9 @@ temp*
 .aider*
 
 documentation/diagrams/
+.gitignore
+relatorio/
+!relatorio/diagrama_classes_parser_dinamico.md
+!relatorio/diagrama_sequencia_lazy_reload.md
+!relatorio/diagrama_componentes_parser_dinamico.md
+!relatorio/diagrama_estados_parser_dinamico.md

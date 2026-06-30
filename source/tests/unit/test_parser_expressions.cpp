@@ -463,22 +463,74 @@ TEST_F(ParserExpressionsTest, ParserDefaultImpl2SetSamplerSameExternalPointerDoe
 
 class ParserExtensionTestPlugin : public ModelDataDefinition {
 public:
-    ParserExtensionTestPlugin(Model* model) : ModelDataDefinition(model, "ParserExtensionTestPlugin") {}
+    ParserExtensionTestPlugin(Model* model,
+                              const std::string& name = "ParserExtensionTestPlugin",
+                              const std::string& functionName = "parsertest",
+                              const std::string& tokenName = "fPARSERTEST",
+                              double increment = 1.0)
+        : ModelDataDefinition(model, name, "", false),
+          _functionName(functionName),
+          _tokenName(tokenName),
+          _increment(increment) {}
 
     ParserChangesInformation* _getParserChangesInformation() override {
         auto* changes = new ParserChangesInformation();
-        changes->setTokens("%token <obj_t> fPARSERTEST\n");
+        changes->setIncludes("// parser extension test include slot\n");
+        changes->setTokens("%token <obj_t> " + _tokenName + "\n");
         changes->setFunctionProdutions(
-            "    | fPARSERTEST \"(\" expression \")\" { $$.valor = $3.valor + 1; }\n"
+            "    | " + _tokenName + " \"(\" expression \")\" { $$.valor = $3.valor + " + std::to_string(_increment) + "; }\n"
         );
         changes->setLexicalRules(
-            "[pP][aA][rR][sS][eE][rR][tT][eE][sS][tT] {return yy::genesyspp_parser::make_fPARSERTEST(obj_t(0, std::string(yytext)), loc);}\n"
+            _caseInsensitiveLexeme(_functionName) + " {return yy::genesyspp_parser::make_" + _tokenName + "(obj_t(0, std::string(yytext)), loc);}\n"
         );
         return changes;
     }
 
     static ModelDataDefinition* LoadInstance(Model* model, std::map<std::string, std::string>* /*args*/) {
         return new ParserExtensionTestPlugin(model);
+    }
+
+private:
+    static std::string _caseInsensitiveLexeme(const std::string& text) {
+        std::string result;
+        for (char ch : text) {
+            if (ch >= 'a' && ch <= 'z') {
+                result += "[";
+                result += static_cast<char>(ch - ('a' - 'A'));
+                result += ch;
+                result += "]";
+            } else if (ch >= 'A' && ch <= 'Z') {
+                result += "[";
+                result += ch;
+                result += static_cast<char>(ch + ('a' - 'A'));
+                result += "]";
+            } else {
+                result += ch;
+            }
+        }
+        return result;
+    }
+
+    std::string _functionName;
+    std::string _tokenName;
+    double _increment = 1.0;
+};
+
+class BrokenParserExtensionTestPlugin : public ModelDataDefinition {
+public:
+    explicit BrokenParserExtensionTestPlugin(Model* model)
+        : ModelDataDefinition(model, "BrokenParserExtensionTestPlugin", "", false) {}
+
+    ParserChangesInformation* _getParserChangesInformation() override {
+        auto* changes = new ParserChangesInformation();
+        changes->setTokens("%token <obj_t> fBROKENTEST\n");
+        changes->setFunctionProdutions(
+            "    | fBROKENTEST \"(\" expression \")\" { this is not valid generated parser code }\n"
+        );
+        changes->setLexicalRules(
+            "[bB][rR][oO][kK][eE][nN][tT][eE][sS][tT] {return yy::genesyspp_parser::make_fBROKENTEST(obj_t(0, std::string(yytext)), loc);}\n"
+        );
+        return changes;
     }
 };
 
@@ -545,6 +597,133 @@ TEST_F(ParserExpressionsTest, DynamicParserExtensionAddsNewFunction) {
 
     double result3 = model->parseExpression("parsertest(parsertest(2))");
     EXPECT_DOUBLE_EQ(result3, 4.0);
+
+    model->getDataManager()->remove(extension);
+    delete extension;
+}
+
+TEST_F(ParserExpressionsTest, LazyDynamicParserReloadsOnNextParseExpression) {
+    bool success = false;
+    std::string errorMsg;
+
+    EXPECT_DOUBLE_EQ(model->parseExpression("1+2", success, errorMsg), 3.0);
+    ASSERT_TRUE(success) << errorMsg;
+    ASSERT_FALSE(model->isParserStale());
+
+    auto* extension = new ParserExtensionTestPlugin(model,
+                                                    "ParserLazyExtensionTestPlugin",
+                                                    "lazytest",
+                                                    "fLAZYTEST",
+                                                    2.0);
+    model->getDataManager()->insert(extension);
+    ASSERT_TRUE(model->isParserStale());
+
+    ParserManager* pm = model->getParserManager();
+    ASSERT_NE(pm, nullptr);
+    pm->setModel(model);
+    std::filesystem::path sourceRoot = FindSourceRoot();
+    ASSERT_FALSE(sourceRoot.empty()) << "Could not find GenESyS source root";
+    pm->setSourceDir(sourceRoot.string());
+    pm->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_lazy_reload_test_build").string());
+
+    double lazyResult = model->parseExpression("lazytest(5)", success, errorMsg);
+    EXPECT_TRUE(success) << errorMsg;
+    EXPECT_DOUBLE_EQ(lazyResult, 7.0);
+    EXPECT_FALSE(model->isParserStale());
+
+    model->getDataManager()->remove(extension);
+    delete extension;
+}
+
+TEST_F(ParserExpressionsTest, AggregateChangesCombinesMultipleParserExtensions) {
+    auto* first = new ParserExtensionTestPlugin(model,
+                                                "ParserFirstExtensionTestPlugin",
+                                                "firsttest",
+                                                "fFIRSTTEST",
+                                                10.0);
+    auto* second = new ParserExtensionTestPlugin(model,
+                                                 "ParserSecondExtensionTestPlugin",
+                                                 "secondtest",
+                                                 "fSECONDTEST",
+                                                 20.0);
+    model->getDataManager()->insert(first);
+    model->getDataManager()->insert(second);
+
+    ParserManager* pm = model->getParserManager();
+    ASSERT_NE(pm, nullptr);
+    pm->setModel(model);
+    std::filesystem::path sourceRoot = FindSourceRoot();
+    ASSERT_FALSE(sourceRoot.empty()) << "Could not find GenESyS source root";
+    pm->setSourceDir(sourceRoot.string());
+    pm->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_multi_extension_test_build").string());
+
+    std::list<ParserChangesInformation*> allChanges = pm->aggregateChanges();
+    ASSERT_EQ(allChanges.size(), 2u);
+
+    auto* combined = new ParserChangesInformation();
+    for (ParserChangesInformation* ch : allChanges) {
+        ASSERT_NE(ch, nullptr);
+        combined->setIncludes(combined->getincludes() + ch->getincludes());
+        combined->setTokens(combined->gettokens() + ch->gettokens());
+        combined->setTypeObjs(combined->gettypeObjs() + ch->gettypeObjs());
+        combined->setExpressions(combined->getexpressions() + ch->getexpressions());
+        combined->setExpressionProductions(combined->getexpressionProductions() + ch->getexpressionProductions());
+        combined->setAssignments(combined->getassignments() + ch->getassignments());
+        combined->setFunctionProdutions(combined->getfunctionProdutions() + ch->getfunctionProdutions());
+        combined->setLexicalRules(combined->getlexicalRules() + ch->getlexicalRules());
+        combined->setLexicalLiterals(combined->getlexicalLiterals() + ch->getlexicalLiterals());
+    }
+
+    EXPECT_NE(combined->getincludes().find("parser extension test include slot"), std::string::npos);
+    EXPECT_NE(combined->gettokens().find("fFIRSTTEST"), std::string::npos);
+    EXPECT_NE(combined->gettokens().find("fSECONDTEST"), std::string::npos);
+
+    ParserManager::GenerateNewParserResult result = pm->generateNewParser(combined);
+    if (!result.result) {
+        std::cout << "Bison messages:\n" << result.bisonMessages << std::endl;
+        std::cout << "Flex messages:\n" << result.lexMessages << std::endl;
+        std::cout << "Compilation messages:\n" << result.compilationMessages << std::endl;
+    }
+    ASSERT_TRUE(result.result) << "generateNewParser failed";
+    ASSERT_TRUE(pm->connectNewParser(result.newParser));
+
+    EXPECT_DOUBLE_EQ(model->parseExpression("firsttest(1)"), 11.0);
+    EXPECT_DOUBLE_EQ(model->parseExpression("secondtest(1)"), 21.0);
+
+    model->getDataManager()->remove(first);
+    model->getDataManager()->remove(second);
+    delete first;
+    delete second;
+}
+
+TEST_F(ParserExpressionsTest, LazyDynamicParserFailurePreservesExistingParser) {
+    bool success = false;
+    std::string errorMsg;
+
+    EXPECT_DOUBLE_EQ(model->parseExpression("1+2", success, errorMsg), 3.0);
+    ASSERT_TRUE(success) << errorMsg;
+    ASSERT_FALSE(model->isParserStale());
+
+    auto* extension = new BrokenParserExtensionTestPlugin(model);
+    model->getDataManager()->insert(extension);
+    ASSERT_TRUE(model->isParserStale());
+
+    ParserManager* pm = model->getParserManager();
+    ASSERT_NE(pm, nullptr);
+    pm->setModel(model);
+    std::filesystem::path sourceRoot = FindSourceRoot();
+    ASSERT_FALSE(sourceRoot.empty()) << "Could not find GenESyS source root";
+    pm->setSourceDir(sourceRoot.string());
+    pm->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_broken_lazy_test_build").string());
+
+    double failedResult = model->parseExpression("1+2", success, errorMsg);
+    EXPECT_FALSE(success);
+    EXPECT_DOUBLE_EQ(failedResult, 0.0);
+    EXPECT_NE(errorMsg.find("Lazy parser regeneration failed"), std::string::npos);
+
+    errorMsg.clear();
+    EXPECT_DOUBLE_EQ(model->parseExpression("1+2", success, errorMsg), 3.0);
+    EXPECT_TRUE(success) << errorMsg;
 
     model->getDataManager()->remove(extension);
     delete extension;

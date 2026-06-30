@@ -332,7 +332,7 @@ TEST(SimulatorSupportTest, ParserChangesInformationReportsWhetherAnySectionHasCh
 	ParserChangesInformation changes;
 	EXPECT_FALSE(changes.hasChanges());
 
-	changes.setLexicalRules("[dD][eE][mM][oO] return DEMO;\n");
+	changes.setLexicalRules("[pP][aA][rR][sS][eE][rR][tT][eE][sS][tT] return PARSERTEST;\n");
 	EXPECT_TRUE(changes.hasChanges());
 }
 
