@@ -27,14 +27,14 @@ public:
   PluginConnectorDynamicLibraryLoader();
   virtual ~PluginConnectorDynamicLibraryLoader() = default;
 
-  Plugin *check(const std::string dynamicLibraryFilename) override;
+  List<Plugin*>* check(const std::string dynamicLibraryFilename) override;
   /*!
    * \brief connect
    * \param dynamicLibraryFilename
    * \return
    */
   /*! \brief Loads and connects a plugin from a dynamic library. */
-  Plugin *connect(const std::string dynamicLibraryFilename) override;
+  List<Plugin*>* connect(const std::string dynamicLibraryFilename) override;
   /*!
    * \brief find dynamicLibraryFilenames
    * \param
@@ -63,6 +63,8 @@ public:
   static std::filesystem::path localPluginDir();
 
 private:
+	const std::string _globalPluginDir = "/usr/local/lib/genesys/plugins";
+  std::string _localPluginDir;
   std::map<std::string, void *> _pluginRegistry;
 
   std::string _stripDynamicLibraryFileExtension(std::string) const;

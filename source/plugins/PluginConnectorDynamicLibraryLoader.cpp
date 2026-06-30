@@ -14,89 +14,83 @@
 
 using GetPluginInformation = StaticGetPluginInformation (*)();
 
-PluginConnectorDynamicLibraryLoader::PluginConnectorDynamicLibraryLoader() {}
-
-// ~PluginConnectorDynamicLibraryLoader();
-
-// TODO: Does this method even make sense?
-// connect already throws exceptions the caller can handle.
-Plugin *PluginConnectorDynamicLibraryLoader::check(
-    const std::string dynamicLibraryFilename) {
-  return connect(dynamicLibraryFilename);
-}
-
-Plugin *PluginConnectorDynamicLibraryLoader::connect(
-    const std::string dynamicLibraryFilename) {
-  // Try loading library from default paths.
-  void *dynamicLibraryHandle;
-  try {
-    dynamicLibraryHandle =
-        StaticCppCompiler::loadLibrary(dynamicLibraryFilename.c_str());
-
-  } catch (StaticCppCompilerError &err) {
-    auto msg = "Unable to connect to plugin: " + std::string(err.what());
-    throw PluginConnectorDynamicLibraryLoaderError(msg.c_str());
-  }
-
-  // Strip file extension if the filepath includes it.
-  std::string strippedFilename =
-      _stripDynamicLibraryFileExtension(dynamicLibraryFilename);
-
-  // Look for symbol in the loaded library.
-  auto getPluginInformation =
-      reinterpret_cast<StaticGetPluginInformation (*)()>(
-          dlsym(dynamicLibraryHandle, "GetPluginInformation"));
-  const char *error = dlerror();
-  if (error != nullptr)
-    throw PluginConnectorDynamicLibraryLoaderError(error);
-
-  StaticGetPluginInformation staticGetPluginInformation =
-      getPluginInformation();
-  PluginInformation *info = staticGetPluginInformation();
-  std::string pluginTypename = info->getPluginTypename();
-
-  // Insert plugin handle into registry.
-  if (_pluginRegistry.find(pluginTypename) == _pluginRegistry.end()) {
-    std::string error_message =
-        "Unable to connect to plugin: " + pluginTypename +
-        " already in registry";
-    throw PluginConnectorDynamicLibraryLoaderError(error_message.c_str());
-    _pluginRegistry[pluginTypename] = dynamicLibraryHandle;
-  }
-
-  return new Plugin(staticGetPluginInformation);
-}
-
-List<std::string> *PluginConnectorDynamicLibraryLoader::find() {
-  namespace fs = std::filesystem;
-  auto pluginNames = std::vector<std::string>();
-
-  auto scan = [&](const fs::path &dir) {
-    if (!fs::exists(dir))
-      return;
-    for (const auto &entry : fs::directory_iterator(dir)) {
-      if (entry.path().extension() == ".so") {
-        std::string name = entry.path().filename().string();
-        // avoid duplicates — local overrides global
-        if (std::find(pluginNames.begin(), pluginNames.end(), name) ==
-            pluginNames.end())
-          pluginNames.push_back(name);
-      }
-    }
-  };
-  scan(TraitsKernel<PluginConnector_if>::globalPluginDir);
-
+PluginConnectorDynamicLibraryLoader::PluginConnectorDynamicLibraryLoader() {
   const char *xdg = getenv("XDG_DATA_HOME");
-  std::string local =
+  _localPluginDir =
       xdg ? std::string(xdg) + "/genesys/plugins"
           : std::string(getenv("HOME")) + "/.local/lib/genesys/plugins";
-  scan(local);
+}
 
-  auto plugins = new List<std::string>();
-  for (int i = 0; i < pluginNames.size(); i++)
-    plugins->insert(pluginNames[i]);
+List<Plugin*>* PluginConnectorDynamicLibraryLoader::check(
+    const std::string dynamicLibraryFilename) {
+  void *handle;
+  try {
+    handle = StaticCppCompiler::loadLibrary(dynamicLibraryFilename.c_str());
+  } catch (StaticCppCompilerError &err) {
+    throw PluginConnectorDynamicLibraryLoaderError(
+        ("Unable to check plugin: " + std::string(err.what())).c_str());
+  }
 
+  auto *plugins = new List<Plugin*>();
+  for (int i = 0;; ++i) {
+    std::string symbol = "GetPluginInformation_" + std::to_string(i);
+    dlerror();
+    auto fn = reinterpret_cast<StaticGetPluginInformation>(
+        dlsym(handle, symbol.c_str()));
+    if (!fn) break;
+    plugins->insert(new Plugin(fn));
+  }
+  dlclose(handle); 
   return plugins;
+}
+
+List<Plugin*>* PluginConnectorDynamicLibraryLoader::connect(
+    const std::string dynamicLibraryFilename) {
+  void *handle;
+  try {
+    handle = StaticCppCompiler::loadLibrary(dynamicLibraryFilename.c_str());
+  } catch (StaticCppCompilerError &err) {
+    throw PluginConnectorDynamicLibraryLoaderError(
+        ("Unable to connect to plugin: " + std::string(err.what())).c_str());
+  }
+
+  auto *plugins = new List<Plugin*>();
+  for (int i = 0;; ++i) {
+    std::string symbol = "GetPluginInformation_" + std::to_string(i);
+    dlerror();
+    auto fn = reinterpret_cast<StaticGetPluginInformation>(
+        dlsym(handle, symbol.c_str()));
+    if (!fn) break;
+
+    PluginInformation *info = fn();
+    std::string typeName = info->getPluginTypename();
+    if (_pluginRegistry.find(typeName) != _pluginRegistry.end())
+      continue;
+
+    _pluginRegistry[typeName] = handle;
+    plugins->insert(new Plugin(fn));
+  }
+  return plugins;
+}
+
+List<std::string>* PluginConnectorDynamicLibraryLoader::find() {
+  namespace fs = std::filesystem;
+  std::vector<std::string> names;
+  auto scan = [&](const fs::path &dir) {
+    if (!fs::exists(dir)) return;
+    for (auto &entry : fs::directory_iterator(dir))
+      if (entry.path().extension() == ".so") {
+        std::string p = entry.path().string();
+        if (std::find(names.begin(), names.end(), p) == names.end())
+          names.push_back(p);
+      }
+  };
+  scan(_globalPluginDir);
+  scan(_localPluginDir);
+
+  auto *result = new List<std::string>();
+  for (auto &n : names) result->insert(n);
+  return result;
 }
 
 bool PluginConnectorDynamicLibraryLoader::disconnect(
@@ -119,12 +113,6 @@ bool PluginConnectorDynamicLibraryLoader::disconnect(Plugin *plugin) {
   return true;
 }
 
-static std::filesystem::path localPluginDir() {
-  const char *xdg = getenv("XDG_DATA_HOME");
-  std::string base = xdg ? xdg : std::string(getenv("HOME")) + "/.local/lib";
-  return base + "/genesys/plugins";
-}
-
 std::string
 PluginConnectorDynamicLibraryLoader::_stripDynamicLibraryFileExtension(
     std::string filename) const {
@@ -141,6 +129,6 @@ PluginConnectorDynamicLibraryLoaderError::
     PluginConnectorDynamicLibraryLoaderError(const char *msg)
     : message(msg) {}
 
-const char* PluginConnectorDynamicLibraryLoaderError::what() const noexcept {
+const char *PluginConnectorDynamicLibraryLoaderError::what() const noexcept {
   return message.c_str();
 }

@@ -65,7 +65,6 @@ struct TraitsKernel<PluginConnector_if> {
 	//typedef PluginConnectorStaticImpl1 Implementation;
 	#ifdef PLUGINCONNECT_DYNAMIC
 		typedef PluginConnectorDynamicLibraryLoader Implementation;
-		static constexpr const char* globalPluginDir = "/usr/local/lib/genesys/plugins";
 	#else
 		typedef PluginConnectorDummyImpl1 Implementation;
 	#endif
