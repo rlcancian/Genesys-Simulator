@@ -69,6 +69,9 @@ public: // commands
 	//void cmdSimulationInfo();
 	void cmdReplication();
 	//void cmdShowReport();
+#ifdef GENESYS_DISTRIBUTED_ENABLED
+	void cmdDistribute();  // run the loaded model distributed across web workers (reusable layer)
+#endif
 	void cmdModel();
 	//void cmdModelClose();
 	void cmdModelLoad();
@@ -91,6 +94,7 @@ private:
 	List<ShellCommand*>* _commands = new List<ShellCommand*>();
 	std::string _prompt = "$genesys> ";
 	bool _exitRequested = false;
+	std::string _lastLoadedModelFile;  // path of the most recently loaded model (used by distribute)
 };
 #endif /* GENESYSSHELL_H */
 

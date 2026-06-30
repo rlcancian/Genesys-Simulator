@@ -28,6 +28,13 @@
 #include <ostream>
 #include <sstream>
 
+#ifdef GENESYS_DISTRIBUTED_ENABLED
+#include "applications/distributed/core/CoordinatorApplication.h"
+#include "applications/distributed/core/DistributedConfigLoader.h"
+#include <optional>
+#include <vector>
+#endif
+
 #ifdef _WIN32
 #include <io.h>
 #else
@@ -232,6 +239,9 @@ void GenesysShell::defineCommands() {
 	//_commands->insert(new ShellCommand("", "pluginadd", "<plugin filename>", "", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdPluginAdd)));
 	//_commands->insert(new ShellCommand("", "pluginremove", "<classname>", "", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdPluginRemove)));
 	_commands->insert(new ShellCommand("", "simul", "[-s|--start|-p|--step]", "Control simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdSimulation)));
+#ifdef GENESYS_DISTRIBUTED_ENABLED
+	_commands->insert(new ShellCommand("", "distribute", "--worker host:port [--worker ...] [--local] [--replications <N>] [--model <file>]", "Run the loaded model distributed across web workers", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdDistribute)));
+#endif
 	//_commands->insert(new ShellCommand("", "step", "", "Step simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdSimulationStep)));
 	//_commands->insert(new ShellCommand("", "stop", "", "Stop simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdSimulationStop)));
 	_commands->insert(new ShellCommand("", "config", "[-r|--replications=<number of repliations>] [-l|--length=<replication length>] [-t|--time=<replication time unit>] [-s|--show]", "Configure simulation", DefineExecuterMember<GenesysShell>(this, &GenesysShell::cmdReplication)));
@@ -478,6 +488,68 @@ void GenesysShell::cmdSimulation() {
 		cout<<"Syntax error on "+parameter<<endl;
 }
 
+#ifdef GENESYS_DISTRIBUTED_ENABLED
+void GenesysShell::cmdDistribute() {
+	using namespace genesys::distributed;
+
+	// Arguments are everything after the command word; they mirror the standalone orchestrator's
+	// flags (--worker, --local, --model, --replications, ...) and are parsed by the same tested loader.
+	std::vector<std::string> args(_typedWords->begin() + 1, _typedWords->end());
+
+	// Convenience: default --model to the model loaded in the shell and --replications to its
+	// configured count, so the usual "load / config -r / distribute --worker ..." flow just works.
+	const bool hasModel = std::find(args.begin(), args.end(), std::string("--model")) != args.end();
+	const bool hasReps = std::find(args.begin(), args.end(), std::string("--replications")) != args.end();
+
+	if (!hasModel) {
+		if (_lastLoadedModelFile.empty()) {
+			cout<<"Error: no model loaded. Use 'load <file>' first or pass --model <file>."<<endl;
+			return;
+		}
+		args.push_back("--model");
+		args.push_back(_lastLoadedModelFile);
+	}
+	if (!hasReps) {
+		if (model==nullptr||model->getSimulation()==nullptr) {
+			cout<<"Error: no replication count. Use 'config -r <N>' first or pass --replications <N>."<<endl;
+			return;
+		}
+		args.push_back("--replications");
+		args.push_back(std::to_string(model->getSimulation()->getNumberOfReplications()));
+	}
+
+	std::string error;
+	std::optional<RunConfig> runConfig = DistributedConfigLoader::fromArgs(args, error);
+	if (!runConfig.has_value()) {
+		cout<<"Configuration error: "<<error<<endl;
+		return;
+	}
+
+	// Ship the model language text to the workers; re-read the file so it is lossless (no serializer round-trip).
+	std::ifstream file(runConfig->modelFile);
+	if (!file) {
+		cout<<"Error: cannot read model file: "<<runConfig->modelFile<<endl;
+		return;
+	}
+	std::ostringstream buffer;
+	buffer<<file.rdbuf();
+
+	DistributedSimulationConfig config;
+	config.workers = runConfig->workers;
+	config.modelText = buffer.str();
+	config.totalReplications = runConfig->totalReplications;
+	config.includeLocal = runConfig->includeLocal;
+	config.maxRetries = runConfig->maxRetries;
+	config.baseSeed = runConfig->baseSeed;
+	config.discoveryTimeoutSeconds = runConfig->discoveryTimeoutSeconds;
+	config.runTimeoutSeconds = runConfig->runTimeoutSeconds;
+
+	CoordinatorApplication app;
+	const AggregatedResult result = app.execute(config);
+	cout<<app.renderSummary(result);
+}
+#endif
+
 void GenesysShell::cmdReplication() {
 	if (model==nullptr) {
 		cout<<"Error: There is no loaded model to setup its simulation."<<endl;
@@ -580,6 +652,7 @@ void GenesysShell::cmdModelLoad() {
 	if (model==nullptr) {
 		cout<<"Error: Could not load the model"<<endl;
 	} else {
+		_lastLoadedModelFile = parameter;  // remember the source path for the distribute command
 		cout<<"Model loaded"<<endl;
 	}
 }

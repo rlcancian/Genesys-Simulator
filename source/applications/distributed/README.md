@@ -8,6 +8,9 @@ locally.
 
 This layer is **not** part of the kernel and **not** the web application itself; it is a reusable
 library (`genesys_distributed_core`) plus a standalone orchestrator app (`genesys_distributed_app`).
+Because the logic lives in a library behind a small facade, it is **reusable by other applications**:
+the GenESyS **terminal** app embeds it as a `distribute` shell command (see
+[Using the layer from the integrated terminal](#using-the-layer-from-the-integrated-terminal)).
 
 ## Architecture
 
@@ -31,9 +34,18 @@ cmake -S . -B build/distributed -G Ninja \
 cmake --build build/distributed --target genesys_distributed_app genesys_web_app
 ```
 
+Or, matching the project's other apps, use the **`distributed-app` preset** — it enables the layer,
+the worker web app and the terminal (with the distributed command wired in), and builds all three:
+
+```bash
+cmake --preset distributed-app
+cmake --build --preset distributed-app -j$(nproc)
+```
+
 Binaries:
 - orchestrator: `build/distributed/source/applications/distributed/genesys_distributed_app`
 - worker:       `build/distributed/source/applications/web/genesys_web_app`
+- terminal:     `build/distributed/source/applications/terminal/genesys_terminal_application`
 
 ## Running the orchestrator
 
@@ -65,6 +77,51 @@ $APP --config workers.json
 Running `$APP` with no arguments prints the usage. The app prints a human-readable summary to
 stdout and, when `--output` (or `outputFile` in the config) is given, writes the aggregated result
 as structured JSON.
+
+## Using the layer from the integrated terminal
+
+The same facade is also reachable from the GenESyS **terminal** application through a `distribute`
+shell command — demonstrating that the layer is reusable by an existing app, not just the standalone
+orchestrator. The command is only compiled when the layer is enabled (it is guarded by
+`GENESYS_DISTRIBUTED_ENABLED`, set by the CMake glue when `GENESYS_BUILD_DISTRIBUTED=ON`), so the
+default terminal build is unaffected.
+
+Build the terminal with the layer wired in (the `distributed-app` preset does this), then drive it
+non-interactively — pass each shell command as a quoted argument and end with `exit`:
+
+```bash
+APP=build/distributed/source/applications/terminal/genesys_terminal_application
+
+# Local only (no workers needed):
+"$APP" "load model.txt" "distribute --local --replications 200" "exit" < /dev/null
+
+# Distributed across two workers plus local (start the workers first, see below):
+"$APP" "load model.txt" \
+    "distribute --worker 127.0.0.1:8101 --worker 127.0.0.1:8102 --local --replications 3000" \
+    "exit" < /dev/null
+```
+
+`distribute` accepts the **same flags** as the standalone orchestrator (`--worker`, `--local`,
+`--replications`, `--model`, `--max-retries`, `--base-seed`, `--timeout`, `--discovery-timeout`) and
+prints the same aggregated summary. When `--model` / `--replications` are omitted it falls back to the
+**model already loaded** with `load` and its configured replication count, so the natural flow is
+`load … → distribute --worker …`.
+
+Three things matter when invoking the terminal this way:
+
+- **Pass commands as quoted `argv` arguments and finish with `"exit"`.** The shell consumes `argv`
+  entries as commands; without a final `exit` it then falls back to reading stdin in raw mode, which
+  garbles the calling terminal. (Do **not** name the shell variable `TERM` — that is the reserved
+  terminfo variable and setting it to a path breaks your terminal.)
+- **Redirect stdin from `/dev/null`.** On start-up the terminal tries to auto-load every plugin and
+  interactively offers to install missing system dependencies (libSBML, ngspice, R, Octave). With a
+  non-interactive stdin it declines automatically and simply skips those plugins — none are needed by
+  ordinary discrete-event models. (The standalone orchestrator and the worker do not prompt: they use
+  the silent `autoInsertPlugins()` over the built-in connector.)
+- **Timing note.** `time` only measures the orchestrator process; the remote workers are separate
+  processes whose CPU it does not count. Numbers vary run-to-run because the local batch and the two
+  worker processes contend for the same cores — this is environmental, not a difference between the
+  terminal and standalone code paths (both call the identical facade and kernel).
 
 ## Reproducing the distributed speedup
 
