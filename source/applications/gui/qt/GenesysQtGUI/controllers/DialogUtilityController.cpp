@@ -1298,7 +1298,7 @@ void DialogUtilityController::onActionToolsParserGrammarCheckerTriggered() {
             }
         }
         pm->setSourceDir(sourceRoot.string());
-        pm->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_gui_demo").string());
+        pm->setWorkDir((std::filesystem::temp_directory_path() / "genesys_parser_gui_dynamic").string());
 
         appendConsole(QObject::tr("Aggregating parser changes...\n"));
         auto allChanges = pm->aggregateChanges();
@@ -1333,7 +1333,7 @@ void DialogUtilityController::onActionToolsParserGrammarCheckerTriggered() {
             consoleStatus->setText(QObject::tr("Failed to connect new parser."));
             return;
         }
-        appendConsole(QObject::tr("New parser connected. Try demo(5) now!\n> "));
+        appendConsole(QObject::tr("New parser connected.\n> "));
         consoleStatus->setText(QObject::tr("Dynamic parser regenerated and connected."));
     });
     auto* evaluateShortcut = new QShortcut(QKeySequence(Qt::CTRL | Qt::Key_Return), console);
