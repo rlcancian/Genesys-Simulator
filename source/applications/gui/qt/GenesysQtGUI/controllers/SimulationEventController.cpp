@@ -302,6 +302,7 @@ void SimulationEventController::onSimulationStartHandler(SimulationEvent* re) co
     _scene->clearAnimationsTransition();
     _scene->clearAnimationsQueue();
     _scene->clearAnimationsValues();
+    _scene->setStatisticsCollectors();
 
     // Log simulation-start handler exit after scene reset and timer factor setup.
     qInfo() << "GUI SimulationEvent onSimulationStartHandler end";
@@ -462,6 +463,9 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
 
                 _scene->animateQueueRemove(source);
 
+                Entity* entity = re->getCurrentEvent()->getEntity();
+                _scene->notifyEntityMovePluginAnimations(source, entity);
+
                 _scene->animateTransition(
                     source,
                     destination,
@@ -476,7 +480,6 @@ void SimulationEventController::onMoveEntityEvent(SimulationEvent* re) const {
 
 // Preserve after-process animation update behavior.
 void SimulationEventController::onAfterProcessEvent(SimulationEvent* re) const {
-    Q_UNUSED(re)
     if (!animationsEnabled()) {
         return;
     }
@@ -484,6 +487,12 @@ void SimulationEventController::onAfterProcessEvent(SimulationEvent* re) const {
     _scene->animateStatistics();
     _scene->animateVariable(re != nullptr && re->getCurrentEvent() != nullptr ? re->getCurrentEvent()->getEntity() : nullptr);
     _scene->animateTimer(_simulator->getModelManager()->current()->getSimulation()->getSimulatedTime());
+
+    if (_scene != nullptr && re != nullptr && re->getCurrentEvent() != nullptr) {
+        ModelComponent* processedComponent = re->getCurrentEvent()->getComponent();
+        Entity* entity = re->getCurrentEvent()->getEntity();
+        _scene->notifyAfterProcessPluginAnimations(processedComponent, entity);
+    }
 }
 
 // Preserve event registration semantics by registering existing MainWindow wrapper handlers.

@@ -8,6 +8,10 @@ class AnimationStation : public AnimationPlaceholder {
 public:
 	AnimationStation() : AnimationPlaceholder("Station") {}
 
+	void resetRuntimeState() override {
+		setEntityCount(0);
+	}
+
 	void setEntityCount(int count) {
 		_entityCount = qMax(0, count);
 		update();
@@ -93,9 +97,13 @@ public:
 				if (scene == nullptr || event.component == nullptr) {
 					return;
 				}
-				const QString name = QString::fromStdString(event.component->getName());
+				const QString name = !event.animationTargetName.empty()
+					? QString::fromStdString(event.animationTargetName)
+					: (event.component != nullptr
+					           ? QString::fromStdString(event.component->getName())
+					           : QString());
 				QList<AnimationPlaceholder*>* placeholders = scene->getAnimationsPlaceholder();
-				if (placeholders == nullptr) {
+				if (placeholders == nullptr || name.isEmpty()) {
 					return;
 				}
 				for (AnimationPlaceholder* ph : *placeholders) {

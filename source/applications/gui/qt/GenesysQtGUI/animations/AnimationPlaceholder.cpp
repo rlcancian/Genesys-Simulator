@@ -70,6 +70,9 @@ void AnimationPlaceholder::setTargetName(const QString& targetName) {
     update();
 }
 
+void AnimationPlaceholder::resetRuntimeState() {
+}
+
 void AnimationPlaceholder::startDrawing(QGraphicsSceneMouseEvent* event) {
     _isDrawingInicialized = true;
     _isResizing = true;
@@ -477,6 +480,12 @@ void AnimationStatistics::refreshValue() {
     }
     _lastValue = _collector->getLastValue();
     _numSamples = _collector->numElements();
+    update();
+}
+
+void AnimationStatistics::clearRuntimeState() {
+    _lastValue = 0.0;
+    _numSamples = 0;
     update();
 }
 

@@ -29,6 +29,9 @@ public:
     bool isDrawingInicialized() const;
     bool isDrawingFinalized() const;
 
+    // Resets runtime-only overlay state at simulation start (overridden by plugin placeholders).
+    virtual void resetRuntimeState();
+
 private:
     QString _animationType;
     QString _targetName;
@@ -128,6 +131,7 @@ public:
 
     // Refreshes the displayed values from the linked collector.
     void refreshValue();
+    void clearRuntimeState();
 
     void paint(QPainter* painter, const QStyleOptionGraphicsItem* option, QWidget* widget = nullptr) override;
 

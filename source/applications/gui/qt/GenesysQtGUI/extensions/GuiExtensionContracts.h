@@ -22,6 +22,8 @@ struct GuiSimAnimationEvent {
 	enum class Type { Insert, Remove };
 	Type type = Type::Insert;
 	ModelComponent* component = nullptr;
+	// When non-empty, plugin handlers match placeholders by this name (e.g. resource or station).
+	std::string animationTargetName;
 	bool visible = true;
 };
 

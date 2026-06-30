@@ -388,6 +388,12 @@ public:
     void setCounters();
     /** @brief Synchronizes the variable counters used by animation overlays. */
     void setVariables();
+    /** @brief Links Statistics animation placeholders to model StatisticsCollectors by Target name. */
+    void setStatisticsCollectors();
+    /** @brief Dispatches resource/station plugin animation events after an entity move. */
+    void notifyEntityMovePluginAnimations(ModelComponent* sourceComponent, Entity* entity);
+    /** @brief Dispatches station plugin animation events after a component processes an entity. */
+    void notifyAfterProcessPluginAnimations(ModelComponent* processedComponent, Entity* entity);
     // TODO: Funções abaixo são usadas para reaver os dataDefinitions do componente nos dataDefinitions do modelo dos componentes deletados, "checados" e reinseridos (Control Z de um delete, por exemplo).
     // O kernel não trata este caso, ale acusa erro, pois não encontra os dataDefinitions do componente nos dataDefinitions do modelo, pois ele os remove como "órfãos" e não os reinsere quando voltados ao modelo.
     /** @brief Restores data definitions removed by previous delete/check cycles. */

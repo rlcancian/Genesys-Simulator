@@ -2374,6 +2374,7 @@ bool MainWindow::_check(bool success)
         // Seta os em uma lista os contadores e variáveis criadas
         myScene()->setCounters();
         myScene()->setVariables();
+        myScene()->setStatisticsCollectors();
 
         _modelCheked = true;
     } else {
