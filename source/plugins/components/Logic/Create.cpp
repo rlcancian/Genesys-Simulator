@@ -17,12 +17,12 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include <cassert>
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Create::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Create::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Create::NewInstance(Model* model, std::string name) {
 	return new Create(model, name);

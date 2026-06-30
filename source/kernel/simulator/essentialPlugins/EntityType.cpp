@@ -16,12 +16,12 @@
 
 //using namespace GenesysKernel;
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &EntityType::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &EntityType::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* EntityType::NewInstance(Model* model, std::string name) {
 	return new EntityType(model, name);

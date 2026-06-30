@@ -14,12 +14,12 @@
 #include "plugins/components/MaterialHandling/Unstore.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Unstore::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Unstore::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Unstore::NewInstance(Model* model, std::string name) {
 	return new Unstore(model, name);

@@ -21,12 +21,12 @@
 #include <cstdlib>
 #include <vector>
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Remove::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Remove::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Remove::NewInstance(Model* model, std::string name) {
 	return new Remove(model, name);

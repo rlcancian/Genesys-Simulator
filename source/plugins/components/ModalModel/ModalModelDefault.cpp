@@ -26,11 +26,11 @@
 
 
 /// Externalize function GetPluginInformation to be accessible through dynamic linked library
-#ifdef PLUGINCONNECT_DYNAMIC
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &ModalModelDefault::GetPluginInformation;
-}
-#endif
+// #ifdef PLUGINCONNECT_DYNAMIC
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &ModalModelDefault::GetPluginInformation;
+// }
+// #endif
 
 
 //

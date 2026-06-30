@@ -64,12 +64,12 @@ namespace {
 	}
 }
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Record::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Record::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Record::NewInstance(Model* model, std::string name) {
 	return new Record(model, name);

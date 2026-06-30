@@ -1,11 +1,11 @@
 #include "plugins/components/ModalModel/ModalModelFSM.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &ModalModelFSM::GetPluginInformation;
-}
-#endif
+// #ifdef PLUGINCONNECT_DYNAMIC
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &ModalModelFSM::GetPluginInformation;
+// }
+// #endif
 
 ModalModelFSM::ModalModelFSM(Model* model, std::string name) : ModalModelDefault(model, name) {
 	_fsmInitialState = new FSMState(model);

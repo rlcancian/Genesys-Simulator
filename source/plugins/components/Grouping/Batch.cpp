@@ -18,12 +18,12 @@
 #include "../../data/Grouping/EntityGroup.h"
 #include "kernel/simulator/Simulator.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Batch::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Batch::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Batch::NewInstance(Model* model, std::string name) {
 	return new Batch(model, name);

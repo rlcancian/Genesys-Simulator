@@ -16,12 +16,12 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Buffer::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Buffer::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Buffer::NewInstance(Model* model, std::string name) {
 	return new Buffer(model, name);

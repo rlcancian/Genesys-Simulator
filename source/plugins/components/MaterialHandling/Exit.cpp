@@ -17,10 +17,10 @@
 
 #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Exit::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Exit::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Exit::NewInstance(Model* model, std::string name) {
 	return new Exit(model, name);

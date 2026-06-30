@@ -15,12 +15,12 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "../../../kernel/simulator/essentialPlugins/Counter.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Decide::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Decide::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Decide::NewInstance(Model* model, std::string name) {
 	return new Decide(model, name);

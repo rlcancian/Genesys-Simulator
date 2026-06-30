@@ -1,11 +1,11 @@
 #include "plugins/components/ModalModel/ModalModelPetriNet.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &ModalModelPetriNet::GetPluginInformation;
-}
-#endif
+// #ifdef PLUGINCONNECT_DYNAMIC
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &ModalModelPetriNet::GetPluginInformation;
+// }
+// #endif
 
 ModalModelPetriNet::ModalModelPetriNet(Model* model, std::string name) : ModalModelDefault(model, name) {
 }

@@ -15,12 +15,12 @@
 #include "plugins/components/Continuous/LSODE.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &LSODE::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &LSODE::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* LSODE::NewInstance(Model* model, std::string name) {
 	return new LSODE(model, name);

@@ -16,12 +16,12 @@
 #include "kernel/simulator/Simulator.h"
 #include "kernel/simulator/PluginManager.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &PickStation::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &PickStation::GetPluginInformation;
+// }
+// #endif
 
 //******************************************
 

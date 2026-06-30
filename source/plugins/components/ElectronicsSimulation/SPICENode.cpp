@@ -17,11 +17,11 @@
 
 
 /// Externalize function GetPluginInformation to be accessible throught dynamic linked library
-#ifdef PLUGINCONNECT_DYNAMIC
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &SPICENode::GetPluginInformation;
-}
-#endif
+// #ifdef PLUGINCONNECT_DYNAMIC
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &SPICENode::GetPluginInformation;
+// }
+// #endif
 
 int SPICENode::std_node_count = 0;
 std::set<std::string> SPICENode::used_names;

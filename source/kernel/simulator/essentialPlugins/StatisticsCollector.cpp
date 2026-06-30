@@ -18,11 +18,11 @@
 
 typedef TraitsKernel<Model>::StatisticsCollector_StatisticsImplementation StatisticsClass;
 
-#ifdef PLUGINCONNECT_DYNAMIC
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &StatisticsCollector::GetPluginInformation;
-}
-#endif
+// #ifdef PLUGINCONNECT_DYNAMIC
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &StatisticsCollector::GetPluginInformation;
+// }
+// #endif
 
 
 StatisticsCollector::StatisticsCollector(Model* model, std::string name, ModelDataDefinition* parent, bool insertIntoModel)

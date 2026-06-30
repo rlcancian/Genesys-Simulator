@@ -14,12 +14,12 @@
 #include "plugins/components/MaterialHandling/Store.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Store::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Store::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Store::NewInstance(Model* model, std::string name) {
 	return new Store(model, name);

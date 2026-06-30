@@ -15,12 +15,12 @@
 
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Access::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Access::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Access::NewInstance(Model* model, std::string name) {
 	return new Access(model, name);
