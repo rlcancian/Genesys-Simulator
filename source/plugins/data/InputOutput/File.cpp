@@ -14,12 +14,12 @@
 #include "File.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &File::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &File::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* File::NewInstance(Model* model, std::string name) {
 	return new File(model, name);

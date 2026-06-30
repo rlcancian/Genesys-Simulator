@@ -17,12 +17,12 @@
 #include "../../../kernel/simulator/essentialPlugins/Attribute.h"
 #include <vector>
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &Station::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &Station::GetPluginInformation;
+// }
+// #endif
 
 ModelDataDefinition* Station::NewInstance(Model* model, std::string name) {
 	return new Station(model, name);

@@ -14,13 +14,13 @@
 #include "../../../kernel/simulator/model/Model.h"
 #include "kernel/simulator/SimulationControlAndResponse.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-/// Externalize function GetPluginInformation to be accessible throught dynamic linked library
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &DummyElement::GetPluginInformation;
-}
-#endif
+// /// Externalize function GetPluginInformation to be accessible throught dynamic linked library
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &DummyElement::GetPluginInformation;
+// }
+// #endif
 
 //
 // public: /// constructors

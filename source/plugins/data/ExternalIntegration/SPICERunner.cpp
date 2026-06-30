@@ -13,13 +13,13 @@
 #include "plugins/data/ExternalIntegration/SPICERunner.h"
 #include "../../../kernel/simulator/model/Model.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-/// Externalize function GetPluginInformation to be accessible throught dynamic linked library
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &SPICERunner::GetPluginInformation;
-}
-#endif
+// /// Externalize function GetPluginInformation to be accessible throught dynamic linked library
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &SPICERunner::GetPluginInformation;
+// }
+// #endif
 
 std::vector<std::string> SPICERunner::split(std::string word, char split_char = ' ') {
     std::vector<std::string> tokenized_string;

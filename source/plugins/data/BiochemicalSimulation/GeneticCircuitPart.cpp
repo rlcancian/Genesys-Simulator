@@ -7,12 +7,12 @@
 #include "../../../kernel/simulator/model/ModelDataManager.h"
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 
-#ifdef PLUGINCONNECT_DYNAMIC
+// #ifdef PLUGINCONNECT_DYNAMIC
 
-extern "C" StaticGetPluginInformation GetPluginInformation() {
-	return &GeneticCircuitPart::GetPluginInformation;
-}
-#endif
+// extern "C" StaticGetPluginInformation GetPluginInformation() {
+// 	return &GeneticCircuitPart::GetPluginInformation;
+// }
+// #endif
 
 namespace {
 
