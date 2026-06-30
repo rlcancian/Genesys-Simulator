@@ -30,8 +30,12 @@
 #include "statistics/StatisticsDataFileDefaultImpl.h"
 #include "statistics/SamplerDefaultImpl1.h"
 
-#include "../plugins/PluginConnectorStaticImpl1.h"
+// #include "../plugins/PluginConnectorStaticImpl1.h"
+#ifdef PLUGINCONNECT_DYNAMIC
+#include "../plugins/PluginConnectorDynamicLibraryLoader.h"
+#else
 #include "../plugins/PluginConnectorDummyImpl1.h"
+#endif
 
 
 //namespace GenesysKernel {
@@ -59,8 +63,12 @@ struct TraitsKernel<SimulationReporter_if> {
 template <>
 struct TraitsKernel<PluginConnector_if> {
 	//typedef PluginConnectorStaticImpl1 Implementation;
-	typedef PluginConnectorDummyImpl1 Implementation;
-	//typedef PluginConnectorDynamicLibraryLoader Implementation;
+	#ifdef PLUGINCONNECT_DYNAMIC
+		typedef PluginConnectorDynamicLibraryLoader Implementation;
+		static constexpr const char* globalPluginDir = "/usr/local/lib/genesys/plugins";
+	#else
+		typedef PluginConnectorDummyImpl1 Implementation;
+	#endif
 	static const TraceManager::Level traceLevel = TraceManager::Level::L4_warning;
 };
 
