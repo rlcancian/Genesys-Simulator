@@ -34,7 +34,7 @@ public:
 		tool.animationType = "Queue";
 		tool.text = "Animate Queue";
 		tool.menuPath = "Animate/Plugin";
-		tool.toolBarId = "toolBarAnimations";
+		tool.toolBarId = "toolBarAnimate";
 		tool.statusTip = "Draw a Queue animation placeholder on the scene";
 		registry->addDrawingTool(std::move(tool));
 	}

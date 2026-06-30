@@ -92,7 +92,7 @@ public:
 		tool.animationType = "Station";
 		tool.text = "Animate Station";
 		tool.menuPath = "Animate/Plugin";
-		tool.toolBarId = "toolBarAnimations";
+		tool.toolBarId = "toolBarAnimate";
 		tool.statusTip = "Draw a Station animation placeholder on the scene";
 		registry->addDrawingTool(std::move(tool));
 	}

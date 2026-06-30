@@ -1,4 +1,4 @@
-#include "GuiExtensionPluginCatalog.h"
+﻿#include "GuiExtensionPluginCatalog.h"
 
 #include "animations/AnimationPlaceholder.h"
 #include "graphicals/ModelGraphicsScene.h"
@@ -92,7 +92,7 @@ public:
 		tool.animationType = "Resource";
 		tool.text = "Animate Resource";
 		tool.menuPath = "Animate/Plugin";
-		tool.toolBarId = "toolBarAnimations";
+		tool.toolBarId = "toolBarAnimate";
 		tool.statusTip = "Draw a Resource animation placeholder on the scene";
 		registry->addDrawingTool(std::move(tool));
 	}
