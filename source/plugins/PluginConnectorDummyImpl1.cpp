@@ -76,7 +76,6 @@
 #include "plugins/data/BiochemicalSimulation/BioSpecies.h"
 #include "plugins/data/ExternalIntegration/CppCompiler.h"
 #include "plugins/data/Template/DummyElement.h"
-#include "plugins/data/Template/DemoPlugin.h"
 #include "plugins/data/Grouping/EntityGroup.h"
 #include "plugins/data/DiscreteProcessing/Failure.h"
 #include "plugins/data/InputOutput/File.h"
@@ -211,7 +210,6 @@ List<std::string>* PluginConnectorDummyImpl1::find() {
     filenames->insert("fsm_transition.so");
     filenames->insert("fsm_modalmodel.so");
     */
-    filenames->insert("demoplugin.so");
     filenames->insert("markovchain.so");
     filenames->insert("resistor.so");
     filenames->insert("vsource.so");
@@ -408,8 +406,6 @@ Plugin* PluginConnectorDummyImpl1::connect(const std::string dynamicLibraryFilen
         GetInfo = &FSM_ModalModel::GetPluginInformation;
     else
     */
-    else if (fn == "demoplugin.so")
-        GetInfo = &DemoPlugin::GetPluginInformation;
     else if (fn == "markovchain.so")
         GetInfo = &MarkovChain::GetPluginInformation;
     else if (fn == "resistor.so")
