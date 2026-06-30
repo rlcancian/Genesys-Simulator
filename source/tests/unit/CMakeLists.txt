@@ -330,6 +330,11 @@ if(TARGET genesys_distributed_core)
         genesys_distributed_core
     )
 
+    genesys_add_unit_test(genesys_test_distributed_remote_executor
+        test_distributed_remote_executor.cpp
+        genesys_distributed_core
+    )
+
     genesys_add_unit_test(genesys_test_distributed_execution_manager
         test_distributed_execution_manager.cpp
         genesys_distributed_core
@@ -370,6 +375,7 @@ if(TARGET genesys_distributed_core)
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_scheduler)
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_local_executor)
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_execution_manager)
+    add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_remote_executor)
     add_dependencies(genesys_kernel_unit_tests genesys_test_distributed_aggregator)
 endif()
 

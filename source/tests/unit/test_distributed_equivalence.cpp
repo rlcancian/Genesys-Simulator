@@ -5,12 +5,12 @@
 // combined values, to full precision). This test validates the end-to-end orchestration
 // coherence: splitting N replications into batches, running them through the real local
 // simulator, and aggregating yields a result coherent with a single monolithic run of N
-// (same completed-replication count and same statistics structure), and is reproducible.
+// (same completed-replication count and same statistics), and is reproducible.
 //
-// Component-level statistics are not exercised here because, in this static build, the
-// worker/local engine does not register named component plugins (no dynamic plugin
-// connector), so a language model parses with zero components. The simple model below runs
-// the engine and the full pipeline without relying on component statistics.
+// The model below is multi-line (one record per line, as the .gen parser requires) and runs a
+// real Create -> Delay -> Dispose pipeline, so the engine produces actual component statistics
+// (e.g. the entity TotalTimeInSystem) and counters — these are exercised end to end here, since
+// the local/worker engine now registers the built-in component plugins via autoInsertPlugins().
 
 #include <gtest/gtest.h>
 
@@ -27,8 +27,12 @@ using namespace genesys::distributed;
 namespace {
 
 const std::string kSimpleModel =
-    "0   ModelInfo  \"M\" 0   ModelSimulation \"\" replicationLength=10 numberOfReplications=2 "
-    "63  Create \"Create_1\" nextId=73 73  Dispose \"Dispose_1\" nexts=0 ";
+    "0   ModelInfo  \"M\"\n"
+    "0   ModelSimulation \"\" replicationLength=20 numberOfReplications=2\n"
+    "62  EntityType \"Part\"\n"
+    "61  Create     \"Create_1\" entityType=\"Part\" nextId=64 timeBetweenCreations=\"norm(1.5,0.5)\"\n"
+    "64  Delay      \"Delay_1\" delayExpression=\"norm(1.0,0.2)\" nextId=63\n"
+    "63  Dispose    \"Dispose_1\" nexts=0\n";
 
 // Runs each batch sequentially through a local executor and aggregates the outcomes.
 AggregatedResult runDistributedLocally(const std::string& model,
@@ -79,6 +83,57 @@ TEST(DistributedEquivalence, ShouldMatchMonolithicReplicationCountWhenSplit) {
     EXPECT_TRUE(distributed.failures.empty());
     EXPECT_EQ(distributed.statistics.size(), monoResult.statistics.size());
     EXPECT_EQ(distributed.counters.size(), monoResult.counters.size());
+    // The real Create -> Delay -> Dispose model must actually produce statistics/counters,
+    // otherwise the structural assertions above would be vacuously true.
+    EXPECT_FALSE(distributed.statistics.empty());
+    EXPECT_FALSE(distributed.counters.empty());
+}
+
+TEST(DistributedEquivalence, ShouldReproduceMonolithicStatisticsExactlyForIdentityPartition) {
+    // The strongest coherence check (AC-07a): for the identity partition (a single target with the
+    // same base seed), routing N replications through scheduler + executor + aggregator must yield
+    // EXACTLY the kernel's own statistics — the orchestration/aggregation layer adds no distortion.
+    const unsigned int kReplications = 8;
+    const std::uint32_t kSeed = DistributedScheduler::kDefaultBaseSeed;
+
+    // Arrange: monolithic run of N with the base seed.
+    LocalSimulationExecutor monolithic;
+    DistributedSimulationJob monoJob{kSimpleModel, {}};
+    monoJob.batch.numberOfReplications = kReplications;
+    monoJob.batch.seed = kSeed;
+    const BatchResult mono = monolithic.execute(monoJob);
+    ASSERT_TRUE(mono.success) << mono.error;
+    ASSERT_FALSE(mono.statistics.empty());
+
+    // Act: distributed run over a single local target with the same base seed (-> one batch, seed kSeed).
+    const AggregatedResult distributed = runDistributedLocally(kSimpleModel, kReplications, 1, kSeed);
+
+    // The aggregator emits statistics name-sorted; the monolithic capture keeps engine order. Compare
+    // by name so the test does not depend on ordering.
+    ASSERT_EQ(distributed.statistics.size(), mono.statistics.size());
+    for (const AggregatedStatistic& d : distributed.statistics) {
+        const CollectorStat* m = nullptr;
+        for (const CollectorStat& candidate : mono.statistics) {
+            if (candidate.name == d.name) { m = &candidate; break; }
+        }
+        ASSERT_NE(m, nullptr) << "collector '" << d.name << "' missing from the monolithic result";
+        EXPECT_EQ(d.numReplications, m->numReplications);
+        EXPECT_DOUBLE_EQ(d.average, m->average);  // mean = (avg*n)/n is exact for n a power of two.
+        EXPECT_DOUBLE_EQ(d.min, m->min);          // min/max pass through untouched.
+        EXPECT_DOUBLE_EQ(d.max, m->max);
+        // Variance is reconstructed from pooled moments (a subtraction with rounding), so allow a
+        // tiny numerical tolerance rather than bit-exactness.
+        EXPECT_NEAR(d.variance, m->variance, 1e-9);
+    }
+    ASSERT_EQ(distributed.counters.size(), mono.counters.size());
+    for (const AggregatedCounter& d : distributed.counters) {
+        const CounterStat* m = nullptr;
+        for (const CounterStat& candidate : mono.counters) {
+            if (candidate.name == d.name) { m = &candidate; break; }
+        }
+        ASSERT_NE(m, nullptr) << "counter '" << d.name << "' missing from the monolithic result";
+        EXPECT_DOUBLE_EQ(d.total, m->total);
+    }
 }
 
 TEST(DistributedEquivalence, ShouldSumBatchesToTotalForVariousSplits) {
