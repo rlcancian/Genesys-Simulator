@@ -48,6 +48,18 @@ target_include_directories(genesys_qt_gui_application
         ${CMAKE_CURRENT_SOURCE_DIR}/propertyeditor/qtpropertybrowser
 )
 
+set(GENESYS_QT_GUI_LINK_LIBRARIES
+    genesys_kernel_util
+    genesys_kernel_statistics
+    genesys_parser
+    genesys_plugins_data
+    genesys_plugins_components_minimal
+    genesys_kernel_simulator_support
+    genesys_kernel_simulator_runtime
+    genesys_web_core
+    genesys_tools
+)
+
 target_link_libraries(genesys_qt_gui_application
     PRIVATE
         ${GENESYS_QT_PACKAGE}::Core
@@ -55,8 +67,20 @@ target_link_libraries(genesys_qt_gui_application
         ${GENESYS_QT_PACKAGE}::Widgets
         ${GENESYS_QT_PACKAGE}::PrintSupport
         ${GENESYS_QT_PACKAGE}::Network
-        "$<LINK_GROUP:RESCAN,genesys_kernel_util,genesys_kernel_statistics,genesys_parser,genesys_plugins_data,genesys_plugins_components_minimal,genesys_kernel_simulator_support,genesys_kernel_simulator_runtime,genesys_web_core,genesys_tools>"
 )
+
+if(CMAKE_CXX_LINK_GROUP_USING_RESCAN_SUPPORTED OR CMAKE_LINK_GROUP_USING_RESCAN_SUPPORTED)
+    target_link_libraries(genesys_qt_gui_application
+        PRIVATE
+            "$<LINK_GROUP:RESCAN,${GENESYS_QT_GUI_LINK_LIBRARIES}>"
+    )
+else()
+    target_link_libraries(genesys_qt_gui_application
+        PRIVATE
+            ${GENESYS_QT_GUI_LINK_LIBRARIES}
+            ${GENESYS_QT_GUI_LINK_LIBRARIES}
+    )
+endif()
 
 target_compile_features(genesys_qt_gui_application PRIVATE cxx_std_23)
 
