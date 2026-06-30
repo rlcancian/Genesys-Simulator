@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+#include <limits>
 #include <string>
 
 /*
@@ -64,15 +66,20 @@ private:
 
 class State {
 public:
-	State() {}
-	State(long value) {_value=value;}
-	State(const State& orig){}
+	State() : _value(0.0) {}
+	State(int value) {_value=static_cast<double>(value);}
+	State(long value) {_value=static_cast<double>(value);}
+	State(double value) {_value=value;}
+	State(const State& orig) : _value(orig._value) {}
 	virtual ~State() = default;
 public:
-	long getValue(){return _value;}
-	void setValue(long value) {_value=value;}
-	std::string show();
+	long getValue() const {return static_cast<long>(_value);}
+	double getDoubleValue() const {return _value;}
+	void setValue(int value) {_value=static_cast<double>(value);}
+	void setValue(long value) {_value=static_cast<double>(value);}
+	void setDoubleValue(double value) {_value=value;}
+	std::string show() { return std::to_string(getValue()); }
 protected:
-	long _value;
+	double _value = 0.0;
 private:
 };
